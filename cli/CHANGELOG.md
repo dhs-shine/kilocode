@@ -1,5 +1,13 @@
 # @kilocode/cli
 
+## 0.10.3
+
+### Patch Changes
+
+- [#4066](https://github.com/Kilo-Org/kilocode/pull/4066) [`1831796`](https://github.com/Kilo-Org/kilocode/commit/18317963fbb5b02a1178f4579d5cb643cfbd531c) Thanks [@iscekic](https://github.com/iscekic)! - use shared session manager from extension folder
+
+- [#4122](https://github.com/Kilo-Org/kilocode/pull/4122) [`fa54645`](https://github.com/Kilo-Org/kilocode/commit/fa546456b379d10044c045118b08f77b9034d5fc) Thanks [@catrielmuller](https://github.com/catrielmuller)! - Pulish version on Github Pages
+
 ## 0.10.2
 
 ### Patch Changes
