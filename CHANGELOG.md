@@ -1,5 +1,25 @@
 # kilo-code
 
+## 4.135.0
+
+### Minor Changes
+
+- [#4326](https://github.com/Kilo-Org/kilocode/pull/4326) [`6d62090`](https://github.com/Kilo-Org/kilocode/commit/6d620905dfc6d8419bdbc9ffcad54109057e709e) Thanks [@iscekic](https://github.com/iscekic)! - improve session sync mechanism (event based instead of timer)
+
+### Patch Changes
+
+- [#4366](https://github.com/Kilo-Org/kilocode/pull/4366) [`11c2f87`](https://github.com/Kilo-Org/kilocode/commit/11c2f870a82b39cbbb2d3e9bcdecc8bc13b44adb) Thanks [@marius-kilocode](https://github.com/marius-kilocode)! - Agent Manager: remind first-time CLI installs to run `kilocode auth` after opening the install terminal, with translations.
+
+- [#4362](https://github.com/Kilo-Org/kilocode/pull/4362) [`d596a08`](https://github.com/Kilo-Org/kilocode/commit/d596a08d6fe5c1a719855616ba5f582407f6769a) Thanks [@iscekic](https://github.com/iscekic)! - extract an extension message handler for extension/cli reuse
+
+- [#4361](https://github.com/Kilo-Org/kilocode/pull/4361) [`24813e9`](https://github.com/Kilo-Org/kilocode/commit/24813e900e50bf63dbb553a951970467221ce73d) Thanks [@catrielmuller](https://github.com/catrielmuller)! - Fix Kilo Auth flow
+
+- [#4374](https://github.com/Kilo-Org/kilocode/pull/4374) [`612e472`](https://github.com/Kilo-Org/kilocode/commit/612e47277d32eb4c481e15fa47c4216015597e88) Thanks [@kevinvandijk](https://github.com/kevinvandijk)! - Fix styling issue on task headers
+
+- [#4308](https://github.com/Kilo-Org/kilocode/pull/4308) [`a9eab93`](https://github.com/Kilo-Org/kilocode/commit/a9eab931b11baf20e229dd328dd47557fa29fe49) Thanks [@markijbema](https://github.com/markijbema)! - Minor tuning to autocomplete
+
+- [#4369](https://github.com/Kilo-Org/kilocode/pull/4369) [`5195bd0`](https://github.com/Kilo-Org/kilocode/commit/5195bd00067d83474606dfca0df71abfed13566a) Thanks [@catrielmuller](https://github.com/catrielmuller)! - Agent-Manager - Fix Chat Input scroll
+
 ## 4.134.0
 
 ### Minor Changes
