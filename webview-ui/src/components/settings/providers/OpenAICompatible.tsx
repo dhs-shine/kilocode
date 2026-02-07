@@ -158,6 +158,20 @@ export const OpenAICompatible = ({
 				onChange={handleInputChange("openAiStreamingEnabled", noTransform)}>
 				{t("settings:modelInfo.enableStreaming")}
 			</Checkbox>
+			{/* kilocode_change start */}
+			<div>
+				<Checkbox
+					checked={apiConfiguration?.toolProtocol === "xml"}
+					onChange={(checked: boolean) =>
+						setApiConfigurationField("toolProtocol", checked ? "xml" : "native")
+					}>
+					{t("settings:toolProtocol.label")} (XML)
+				</Checkbox>
+				<div className="text-sm text-vscode-descriptionForeground ml-6">
+					{t("settings:toolProtocol.description")}
+				</div>
+			</div>
+			{/* kilocode_change end */}
 			<div>
 				<Checkbox
 					checked={apiConfiguration?.includeMaxTokens ?? true}
