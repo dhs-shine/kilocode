@@ -4,6 +4,7 @@ import { pathToFileURL } from "url"
 import { UI } from "../ui"
 import { cmd } from "./cmd"
 import { Flag } from "@opencode-ai/core/flag/flag"
+import { buildRunMessage } from "./run-message"
 import { bootstrap } from "../bootstrap"
 import { EOL } from "os"
 import { text as streamText } from "node:stream/consumers"
@@ -300,9 +301,7 @@ export const RunCommand = cmd({
     )
   },
   handler: async (args) => {
-    let message = [...args.message, ...(args["--"] || [])]
-      .map((arg) => (arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg))
-      .join(" ")
+    let message = buildRunMessage(args.message, args["--"])
 
     const directory = (() => {
       if (!args.dir) return undefined
