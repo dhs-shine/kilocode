@@ -1,3 +1,4 @@
+// kilocode_change - new file
 // Atoms before `--` are positional shell arguments where re-quoting around
 // embedded spaces preserves the user's word-binding intent (PR #4979).
 // Atoms in `args["--"]` are raw passthrough per yargs `populate--` semantics:

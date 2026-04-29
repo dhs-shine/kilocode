@@ -1,3 +1,4 @@
+// kilocode_change - new file
 import { describe, expect, test } from "bun:test"
 import { buildRunMessage } from "../../../src/cli/cmd/run-message"
 
