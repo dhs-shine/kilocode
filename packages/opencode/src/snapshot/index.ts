@@ -338,12 +338,17 @@ export const layer: Layer.Layer<
           return yield* locked(
             Effect.gen(function* () {
               yield* add()
+              // kilocode_change start - --no-renames so file moves list both source and destination paths.
+              // Without this, Git's default rename detection collapses a move (A/foo -> B/foo) to
+              // just the destination. revert() then deletes B/foo but never restores A/foo.
+              // See https://github.com/Kilo-Org/kilocode/issues/9741.
               const result = yield* git(
-                [...quote, ...args(["diff", "--cached", "--no-ext-diff", "--name-only", hash, "--", "."])],
+                [...quote, ...args(["diff", "--cached", "--no-ext-diff", "--no-renames", "--name-only", hash, "--", "."])],
                 {
                   cwd: state.directory,
                 },
               )
+              // kilocode_change end
               if (result.code !== 0) {
                 log.warn("failed to get diff", { hash, exitCode: result.code })
                 return { hash, files: [] }
