@@ -342,7 +342,9 @@ const live: Layer.Layer<
       const chunkTimeout =
         typeof prepared.params.options["chunkTimeout"] === "number"
           ? prepared.params.options["chunkTimeout"]
-          : undefined // kilocode_change
+          : typeof item.options?.["chunkTimeout"] === "number"
+            ? item.options["chunkTimeout"]
+            : undefined // kilocode_change
       if (chunkTimeout) {
         // kilocode_change
         l.debug("chunk idle timeout configured", { chunkTimeout }) // kilocode_change
