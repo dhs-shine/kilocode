@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test"
+import { describe, test, expect, beforeEach, mock } from "bun:test"
 import { Identity } from "../identity.js"
 import { TelemetryEvent } from "../events.js"
 import { Telemetry } from "../telemetry.js"
@@ -87,5 +87,45 @@ describe("Telemetry", () => {
     expect(typeof Telemetry.trackIndexingFileCount).toBe("function")
     expect(typeof Telemetry.trackIndexingBatchRetry).toBe("function")
     expect(typeof Telemetry.trackIndexingError).toBe("function")
+  })
+})
+
+describe("Telemetry.shutdown timeout (#9788)", () => {
+  test("passes timeoutMs through to PostHog.shutdown and skips unbounded explicit flush()", async () => {
+    // Reproduces the CLI exit hang reported in #9788: when the PostHog endpoint
+    // is unreachable (offline, firewall, DNS adblock resolving the host to
+    // 0.0.0.0), an explicit flush() call before shutdown retries 3x with 3s
+    // gaps plus 10s per attempt before throwing, blocking process.exit on
+    // short-lived commands like `kilo --help`. The fix drops the explicit
+    // flush() (PostHog.shutdown drains the queue itself) and threads a caller-
+    // supplied timeoutMs through to PostHog.shutdown.
+    let flushCalls = 0
+    const shutdownCalls: Array<number | undefined> = []
+    mock.module("posthog-node", () => ({
+      PostHog: class {
+        async flush() {
+          flushCalls += 1
+          await new Promise((resolve) => setTimeout(resolve, 60_000))
+        }
+        async shutdown(timeoutMs?: number) {
+          shutdownCalls.push(timeoutMs)
+        }
+        optIn() {}
+        optOut() {}
+        capture() {}
+        alias() {}
+      },
+    }))
+
+    const { Telemetry } = await import("../telemetry.js")
+    const { Client } = await import("../client.js")
+    Client.init()
+    const start = Date.now()
+    await Telemetry.shutdown(50)
+    const elapsed = Date.now() - start
+
+    expect(flushCalls).toBe(0)
+    expect(shutdownCalls).toEqual([50])
+    expect(elapsed).toBeLessThan(1000)
   })
 })

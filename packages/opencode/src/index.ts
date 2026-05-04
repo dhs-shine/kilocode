@@ -316,7 +316,10 @@ try {
   // kilocode_change start - Track CLI exit and shutdown telemetry
   const exitCode = typeof process.exitCode === "number" ? process.exitCode : undefined
   Telemetry.trackCliExit(exitCode)
-  await Telemetry.shutdown()
+  // Bound telemetry shutdown so an unreachable endpoint (offline, firewall,
+  // DNS adblock resolving the host to 0.0.0.0) cannot block process exit on
+  // short-lived commands like `kilo --help` / `kilo --version` (#9788).
+  await Telemetry.shutdown(2000)
   // kilocode_change end
 
   await Instance.disposeAll() // kilocode_change - safety net disposal (no-op if already disposed)

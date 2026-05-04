@@ -241,7 +241,7 @@ export namespace Telemetry {
     track(TelemetryEvent.ERROR, { error, context })
   }
 
-  export async function shutdown(): Promise<void> {
-    await Client.shutdown()
+  export async function shutdown(timeoutMs?: number): Promise<void> {
+    await Client.shutdown(timeoutMs)
   }
 }
