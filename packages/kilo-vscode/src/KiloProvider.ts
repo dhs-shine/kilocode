@@ -39,6 +39,7 @@ import {
   resolveContextDirectory,
   resolveNewSessionDirectory,
   resolveWorkspaceDirectory,
+  sameDirectory,
   SessionStreamScheduler,
   type SessionRefreshContext,
 } from "./kilo-provider-utils"
@@ -3085,7 +3086,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     if (event.type === "server.instance.disposed") {
       const props = event.properties as Record<string, unknown> | null
       const dir = typeof props?.directory === "string" ? props.directory : undefined
-      if (dir && path.resolve(dir) !== path.resolve(this.getWorkspaceDirectory())) return
+      if (dir && !sameDirectory(dir, this.getWorkspaceDirectory())) return
       void this.reloadAfterAuthChange()
       return
     }
@@ -3131,8 +3132,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     handleNetworkEvent(event.type as string, event.properties as any, this.client, (s) => this.getWorkspaceDirectory(s))
 
     if (event.type === "indexing.status" && directory) {
-      const current = path.resolve(this.getWorkspaceDirectory(this.currentSession?.id))
-      if (path.resolve(directory) !== current) return
+      if (!sameDirectory(directory, this.getWorkspaceDirectory(this.currentSession?.id))) return
     }
 
     const msg = mapSSEEventToWebviewMessage(event, sessionID)
