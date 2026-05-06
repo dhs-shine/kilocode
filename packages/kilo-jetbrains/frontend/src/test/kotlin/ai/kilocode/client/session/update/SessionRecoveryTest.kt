@@ -1,6 +1,9 @@
 package ai.kilocode.client.session.update
 
 import ai.kilocode.client.session.model.SessionState
+import ai.kilocode.rpc.dto.ConfigDto
+import ai.kilocode.rpc.dto.KiloAppStateDto
+import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
 import ai.kilocode.rpc.dto.QuestionInfoDto
 import ai.kilocode.rpc.dto.QuestionRequestDto
@@ -18,6 +21,7 @@ class SessionRecoveryTest : SessionControllerTestBase() {
         super.setUp()
         // Set a pre-existing session in the fake API
         rpc.session = rpc.session.copy(id = "ses_test")
+        appRpc.state.value = KiloAppStateDto(KiloAppStatusDto.READY, config = ConfigDto(model = "kilo/gpt-5"))
     }
 
     fun `test pending permission is recovered on history load`() {
@@ -30,7 +34,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             )
         )
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -50,7 +53,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             )
         )
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -70,7 +72,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             )
         )
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -96,7 +97,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             )
         )
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -110,7 +110,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
     fun `test busy status is seeded from statuses map`() {
         rpc.statuses.value = mapOf("ses_test" to SessionStatusDto("busy"))
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -131,7 +130,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             next = 5000L,
         ))
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -154,7 +152,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             requestID = "req_xyz",
         ))
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -171,7 +168,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
     fun `test idle status in map leaves controller in Idle`() {
         rpc.statuses.value = mapOf("ses_test" to SessionStatusDto("idle"))
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -187,7 +183,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
     fun `test missing status entry leaves controller in Idle`() {
         rpc.statuses.value = emptyMap()
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -211,7 +206,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             )
         )
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()
@@ -243,7 +237,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             )
         )
 
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()
         val m = controller("ses_test")
         flush()

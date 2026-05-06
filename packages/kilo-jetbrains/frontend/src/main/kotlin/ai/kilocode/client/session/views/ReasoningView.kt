@@ -8,6 +8,7 @@ import ai.kilocode.client.session.model.Reasoning
 import ai.kilocode.client.session.ui.SessionStyle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.md.MdView
+import ai.kilocode.client.ui.md.MdViewFactory
 import com.intellij.icons.AllIcons
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -28,7 +29,7 @@ class ReasoningView(reasoning: Reasoning) : PartView() {
 
     override val contentId: String = reasoning.id
 
-    val md: MdView = MdView.html()
+    val md: MdView = MdViewFactory.create(SessionStyle.current())
 
     private val arrow = JBLabel()
     private val body = TrackPanel().apply {
@@ -153,6 +154,7 @@ class ReasoningView(reasoning: Reasoning) : PartView() {
             title.font = style.smallEditorFont
             changed = true
         }
+        md.applyStyle(style)
         changed = apply(md) || changed
         if (changed) refresh()
     }

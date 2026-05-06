@@ -3,7 +3,7 @@ package ai.kilocode.client.session.ui
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.update.SessionController
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.client.ui.md.MdView
+import ai.kilocode.client.ui.md.MdViewFactory
 import ai.kilocode.rpc.dto.SessionDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
@@ -84,7 +84,7 @@ class EmptySessionPanel(
             }
         })
     }
-    private val md = MdView.html().apply {
+    private val md = MdViewFactory.html(style).apply {
         // MdView uses an HTML component; transparency keeps the centered panel seamless.
         opaque = false
         foreground = UIUtil.getContextHelpForeground()
@@ -242,7 +242,9 @@ class EmptySessionPanel(
 
     override fun applyStyle(style: SessionStyle) {
         this.style = style
+        md.applyStyle(style)
         md.font = style.uiFont
+        md.foreground = UIUtil.getContextHelpForeground()
         recentTitle.font = style.smallUiFont
         revalidate()
         repaint()
