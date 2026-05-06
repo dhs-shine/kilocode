@@ -16,6 +16,7 @@
   <!-- packages/opencode/src/kilocode/components/dialog-claw-setup.tsx -->
   <!-- packages/opencode/src/kilocode/components/dialog-claw-upgrade.tsx -->
 - <https://app.kilo.ai/config.json>
+  <!-- packages/kilo-vscode/src/kilo-provider/config-file.ts -->
   <!-- packages/opencode/src/config/config.ts -->
 - <https://app.kilo.ai/credits>
   <!-- packages/kilo-vscode/src/services/autocomplete/AutocompleteServiceManager.ts -->
@@ -33,6 +34,8 @@
   <!-- packages/opencode/src/provider/sdk/copilot/responses/openai-responses-language-model.ts -->
 - <https://docs.github.com/en/actions/how-tos/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services>
   <!-- packages/opencode/src/cli/cmd/github.ts -->
+- <https://docs.mistral.ai/capabilities/reasoning/adjustable>
+  <!-- packages/opencode/src/provider/transform.ts -->
 - <https://docs.venice.ai/overview/guides/reasoning-models#reasoning-effort>
   <!-- packages/opencode/src/provider/transform.ts -->
 - <https://docs.x.ai/docs/guides/reasoning#control-how-hard-the-model-thinks>
@@ -174,5 +177,3 @@
   <!-- packages/opencode/src/tool/warpgrep.ts -->
 - <https://www.rfc-editor.org/rfc/rfc8628#section-3.5>
   <!-- packages/opencode/src/plugin/github-copilot/copilot.ts -->
-- <https://zod.dev/v4/changelog?id=zfunction>
-  <!-- packages/opencode/src/command/index.ts -->

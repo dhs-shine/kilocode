@@ -8,14 +8,10 @@
 
 import { createKilo, type KiloProvider, AI_SDK_PROVIDERS, PROMPTS } from "@kilocode/kilo-gateway"
 import { DEFAULT_HEADERS } from "@/kilocode/const"
-import { AiSdkProvider, Prompt } from "@/provider/models"
 import { ProviderID, ModelID } from "@/provider/schema"
 import { Effect, Schema } from "effect"
 import type { LanguageModelV3 } from "@ai-sdk/provider"
 import { mapValues, omit, pickBy } from "remeda"
-
-// Re-export for consumers that previously imported from provider.ts
-export { Prompt, AiSdkProvider }
 
 /** Default timeout (ms) for provider HTTP requests (connection phase). */
 export const REQUEST_TIMEOUT_MS = 120_000 // 2 minutes
@@ -128,13 +124,6 @@ export function kiloCustomLoaders(dep: CustomDep): Record<string, CustomLoader> 
         return false
       })
 
-      if (!hasKey) {
-        for (const [key, value] of Object.entries(input.models)) {
-          if ((value as any).cost.input === 0) continue
-          delete input.models[key]
-        }
-      }
-
       const options: Record<string, string> = {}
       if (env.KILO_ORG_ID) {
         options.kilocodeOrganizationId = env.KILO_ORG_ID
@@ -180,20 +169,6 @@ export function patchCustomLoaderResult(
   if (!result.options) return
 
   switch (providerID) {
-    case "anthropic": {
-      // Prepend claude-code beta flag to the anthropic-beta header
-      // TODO: Add adaptive thinking headers when @ai-sdk/anthropic supports it:
-      // adaptive-thinking-2026-01-28,effort-2025-11-24,max-effort-2026-01-24
-      const existing = result.options.headers?.["anthropic-beta"] ?? ""
-      const prefix = "claude-code-20250219"
-      if (!existing.includes(prefix)) {
-        result.options.headers = {
-          ...result.options.headers,
-          "anthropic-beta": existing ? `${prefix},${existing}` : prefix,
-        }
-      }
-      break
-    }
     case "openrouter":
     case "vercel":
     case "zenmux":

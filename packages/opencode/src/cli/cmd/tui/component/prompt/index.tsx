@@ -3,7 +3,7 @@ import { createEffect, createMemo, onMount, createSignal, onCleanup, on, Show, S
 import "opentui-spinner/solid"
 import path from "path"
 import { fileURLToPath } from "url"
-import { Filesystem } from "@/util"
+import { Filesystem } from "@/util/filesystem"
 import { useLocal } from "@tui/context/local"
 import { tint, useTheme } from "@tui/context/theme"
 import { EmptyBorder, SplitBorder } from "@tui/component/border"
@@ -12,6 +12,7 @@ import { useRoute } from "@tui/context/route"
 import { useProject } from "@tui/context/project"
 import { useSync } from "@tui/context/sync"
 import { useEvent } from "@tui/context/event"
+import { useEditorContext, type EditorSelection } from "@tui/context/editor"
 import { MessageID, PartID } from "@/session/schema"
 import { createStore, produce, unwrap } from "solid-js/store"
 import { useKeybind } from "@tui/context/keybind"
@@ -21,14 +22,14 @@ import { usePromptStash } from "./stash"
 import { DialogStash } from "../dialog-stash"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useCommandDialog } from "../dialog-command"
-import { useRenderer, type JSX } from "@opentui/solid"
+import { useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
 import * as Editor from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import * as Clipboard from "../../util/clipboard"
 import type { AssistantMessage, FilePart, UserMessage } from "@kilocode/sdk/v2"
 import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
-import { Locale } from "@/util"
+import { Locale } from "@/util/locale"
 import { formatDuration } from "@/util/format"
 import { createColors, createFrames } from "../../ui/spinner.ts"
 import { useDialog } from "@tui/ui/dialog"
@@ -42,6 +43,7 @@ import { DialogSkill } from "../dialog-skill"
 import { DialogWorkspaceCreate, restoreWorkspaceSession } from "../dialog-workspace-create"
 import { DialogWorkspaceUnavailable } from "../dialog-workspace-unavailable"
 import { useArgs } from "@tui/context/args"
+import { KiloSessionTuiSync } from "@/kilocode/session/tui-sync" // kilocode_change
 
 export type PromptProps = {
   sessionID?: string
@@ -83,6 +85,18 @@ function fadeColor(color: RGBA, alpha: number) {
   return RGBA.fromValues(color.r, color.g, color.b, color.a * alpha)
 }
 
+function getEditorSelectionKey(selection: EditorSelection) {
+  return [
+    selection.filePath,
+    selection.text,
+    selection.source ?? "",
+    selection.selection.start.line,
+    selection.selection.start.character,
+    selection.selection.end.line,
+    selection.selection.end.character,
+  ].join("-")
+}
+
 let stashed: { prompt: PromptInfo; cursor: number } | undefined
 
 export function Prompt(props: PromptProps) {
@@ -94,6 +108,7 @@ export function Prompt(props: PromptProps) {
   const local = useLocal()
   const args = useArgs()
   const sdk = useSDK()
+  const editor = useEditorContext()
   const route = useRoute()
   const project = useProject()
   const sync = useSync()
@@ -104,11 +119,36 @@ export function Prompt(props: PromptProps) {
   const stash = usePromptStash()
   const command = useCommandDialog()
   const renderer = useRenderer()
+  const dimensions = useTerminalDimensions()
   const { theme, syntax } = useTheme()
   const kv = useKV()
   const animationsEnabled = createMemo(() => kv.get("animations_enabled", true))
   const list = createMemo(() => props.placeholders?.normal ?? [])
   const shell = createMemo(() => props.placeholders?.shell ?? [])
+  const fileContextEnabled = createMemo(() => kv.get("file_context_enabled", true))
+  const editorPath = createMemo(() => (fileContextEnabled() ? editor.selection()?.filePath : undefined))
+  const editorSelectionLabel = createMemo(() => {
+    const selection = fileContextEnabled() ? editor.selection()?.selection : undefined
+    if (!selection) return
+    if (selection.start.line === selection.end.line && selection.start.character === selection.end.character) return
+    if (selection.start.line === selection.end.line) return `#${selection.start.line}`
+    return `#${selection.start.line}-${selection.end.line}`
+  })
+  const editorFileLabel = createMemo(() => {
+    const value = editorPath()
+    if (!value) return
+    const filename = path.basename(value)
+    const file = /^index\.[^./]+$/.test(filename)
+      ? [path.basename(path.dirname(value)), filename].filter(Boolean).join("/")
+      : filename
+    return `${file.split(path.sep).join("/")}${editorSelectionLabel() ?? ""}`
+  })
+  const editorFileLabelDisplay = createMemo(() => {
+    const file = editorFileLabel()
+    if (!file) return
+    return Locale.truncateMiddle(file, Math.max(12, Math.min(48, Math.floor(dimensions().width / 3))))
+  })
+  let lastSubmittedEditorSelectionKey: string | undefined
   const [auto, setAuto] = createSignal<AutocompleteRef>()
   const currentProviderLabel = createMemo(() => local.model.parsed().provider)
   const hasRightContent = createMemo(() => Boolean(props.right))
@@ -210,17 +250,22 @@ export function Prompt(props: PromptProps) {
     const sessionID = props.sessionID
     const msg = lastUserMessage()
     if (!sessionID || !msg) return
+    // kilocode_change start - skip compaction messages while syncing local agent/model
+    const parts = sync.data.part[msg.id]
+    if (!parts) return
+    if (!KiloSessionTuiSync.model({ role: msg.role, parts })) return
+    // kilocode_change end
 
     const key = [sessionID, msg.id].join(":")
     if (key === syncedKey) return
     syncedKey = key
 
     // Only set agent if it's a primary agent (not a subagent)
-    const isPrimaryAgent = local.agent.list().some((x) => x.name === msg.agent)
-    if (msg.agent && isPrimaryAgent) {
+    const primary = local.agent.list().find((x) => x.name === msg.agent)
+    if (msg.agent && primary) {
       // Keep command line --agent if specified.
       if (!args.agent) local.agent.set(msg.agent)
-      if (msg.model) {
+      if (msg.model && !primary.model && !args.agent) {
         local.model.set(msg.model)
         local.model.variant.set(msg.model.variant)
       }
@@ -731,6 +776,39 @@ export function Prompt(props: PromptProps) {
     // Capture mode before it gets reset
     const currentMode = store.mode
     const variant = local.model.variant.current()
+    const editorSelection = fileContextEnabled() ? editor.selection() : undefined
+    const editorSelectionKey = editorSelection ? getEditorSelectionKey(editorSelection) : undefined
+    const editorParts =
+      editorSelection && editorSelectionKey !== lastSubmittedEditorSelectionKey
+        ? [
+            {
+              id: PartID.ascending(),
+              type: "text" as const,
+              text: (() => {
+                const start = editorSelection.selection.start
+                const end = editorSelection.selection.end
+
+                let text = ""
+                if (start.line === end.line && start.character === end.character) {
+                  text = `Note: The user opened the file "${editorSelection.filePath}".`
+                } else if (start.line === end.line) {
+                  text = `Note: The user selected line ${start.line + 1} from "${editorSelection.filePath}". \`\`\`${editorSelection.text}\`\`\`\n\n`
+                } else {
+                  text = `Note: The user selected lines ${start.line + 1} to ${end.line + 1} from "${editorSelection.filePath}". \`\`\`${editorSelection.text}\`\`\`\n\n`
+                }
+
+                return `<system-reminder>${text} This may or may not be relevant to the current task.</system-reminder>\n`
+              })(),
+              synthetic: true,
+              metadata: {
+                kind: "editor_context",
+                source: editorSelection.source ?? "editor",
+                filePath: editorSelection.filePath,
+                selection: editorSelection.selection,
+              },
+            },
+          ]
+        : []
 
     if (store.mode === "shell") {
       void sdk.client.session.shell({
@@ -783,6 +861,7 @@ export function Prompt(props: PromptProps) {
           model: selectedModel,
           variant,
           parts: [
+            ...editorParts,
             {
               id: PartID.ascending(),
               type: "text",
@@ -792,6 +871,7 @@ export function Prompt(props: PromptProps) {
           ],
         })
         .catch(() => {})
+      lastSubmittedEditorSelectionKey = editorSelectionKey
     }
     toast.dismiss() // kilocode_change - dismiss persistent config warning on first submit
     history.append({
@@ -1181,7 +1261,7 @@ export function Prompt(props: PromptProps) {
                 const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
                 if (
                   (lineCount >= 5 || pastedContent.length > 800) && // kilocode_change #7252 delay paste summary
-                  !sync.data.config.experimental?.disable_paste_summary
+                  kv.get("paste_summary_enabled", !sync.data.config.experimental?.disable_paste_summary)
                 ) {
                   pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
                   return
@@ -1376,6 +1456,7 @@ export function Prompt(props: PromptProps) {
                 </text>
               </Show>
               {/* kilocode_change end */}
+              <Show when={editorFileLabelDisplay()}>{(file) => <text fg={theme.secondary}>{file()}</text>}</Show>
               <Switch>
                 <Match when={store.mode === "normal"}>
                   <Switch>

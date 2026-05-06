@@ -1,19 +1,20 @@
-import z from "zod"
-import { Effect, Option, Scope } from "effect"
 import { lstat } from "fs/promises" // kilocode_change
+import { Effect, Option, Schema, Scope } from "effect"
+import { NonNegativeInt } from "@/util/schema"
+import { createReadStream } from "fs"
 import * as path from "path"
 import { Readable } from "stream" // kilocode_change
 import { createInterface } from "readline"
 import * as Tool from "./tool"
-import { AppFileSystem } from "@opencode-ai/shared/filesystem"
-import { LSP } from "../lsp"
+import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { LSP } from "@/lsp/lsp"
 import DESCRIPTION from "./read.txt"
 import { Instance } from "../project/instance"
 import { assertExternalDirectoryEffect } from "./external-directory"
 import { Instruction } from "../session/instruction"
 import { isImageAttachment, isPdfAttachment, sniffAttachmentMime } from "@/util/media"
 // kilocode_change start
-import { Encoding } from "../kilocode/encoding"
+import * as Encoding from "../kilocode/encoding"
 // kilocode_change end
 
 const DEFAULT_READ_LIMIT = 2000
@@ -24,10 +25,19 @@ const MAX_BYTES_LABEL = `${MAX_BYTES / 1024} KB`
 const SAMPLE_BYTES = 4096
 const DIRECTORY_CONCURRENCY = 8 // kilocode_change
 
-const parameters = z.object({
-  filePath: z.string().describe("The absolute path to the file or directory to read"),
-  offset: z.coerce.number().describe("The line number to start reading from (1-indexed)").optional(),
-  limit: z.coerce.number().describe("The maximum number of lines to read (defaults to 2000)").optional(),
+// `offset` and `limit` were originally `z.coerce.number()` — the runtime
+// coercion was useful when the tool was called from a shell but serves no
+// purpose in the LLM tool-call path (the model emits typed JSON). The JSON
+// Schema output is identical (`type: "number"`), so the LLM view is
+// unchanged; purely CLI-facing uses must now send numbers rather than strings.
+export const Parameters = Schema.Struct({
+  filePath: Schema.String.annotate({ description: "The absolute path to the file or directory to read" }),
+  offset: Schema.optional(NonNegativeInt).annotate({
+    description: "The line number to start reading from (1-indexed)",
+  }),
+  limit: Schema.optional(NonNegativeInt).annotate({
+    description: "The maximum number of lines to read (defaults to 2000)",
+  }),
 })
 
 export const ReadTool = Tool.define(
@@ -80,7 +90,7 @@ export const ReadTool = Tool.define(
     })
 
     const warm = Effect.fn("ReadTool.warm")(function* (filepath: string) {
-      yield* lsp.touchFile(filepath, false).pipe(Effect.ignore, Effect.forkIn(scope))
+      yield* lsp.touchFile(filepath).pipe(Effect.ignore, Effect.forkIn(scope))
     })
 
     const readSample = Effect.fn("ReadTool.readSample")(function* (
@@ -134,9 +144,9 @@ export const ReadTool = Tool.define(
 
       if (bytes.length === 0) return false
 
-      // kilocode_change start - UTF-16 BOM: NUL bytes are legitimate, skip the NUL/control-char heuristic
-      if (Encoding.hasUtf16Bom(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength), bytes.length))
-        return false
+      // kilocode_change start - UTF-16/32 BOM: NUL bytes are legitimate, skip the NUL/control-char heuristic
+      const buf = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      if (Encoding.hasUtf16Bom(buf, bytes.length) || Encoding.hasUtf32Bom(buf, bytes.length)) return false
       // kilocode_change end
 
       let nonPrintableCount = 0
@@ -185,7 +195,10 @@ export const ReadTool = Tool.define(
     })
     // kilocode_change end
 
-    const run = Effect.fn("ReadTool.execute")(function* (params: z.infer<typeof parameters>, ctx: Tool.Context) {
+    const run = Effect.fn("ReadTool.execute")(function* (
+      params: Schema.Schema.Type<typeof Parameters>,
+      ctx: Tool.Context,
+    ) {
       if (params.offset !== undefined && params.offset < 1) {
         return yield* Effect.fail(new Error("offset must be greater than or equal to 1"))
       }
@@ -330,8 +343,9 @@ export const ReadTool = Tool.define(
 
     return {
       description: DESCRIPTION,
-      parameters,
-      execute: (params: z.infer<typeof parameters>, ctx: Tool.Context) => run(params, ctx).pipe(Effect.orDie),
+      parameters: Parameters,
+      execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
+        run(params, ctx).pipe(Effect.orDie),
     }
   }),
 )
