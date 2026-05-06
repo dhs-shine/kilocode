@@ -1712,14 +1712,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
       const raw = input.arguments.match(argsRegex) ?? []
       const args = raw.map((arg) => arg.replace(quoteTrimRegex, ""))
+      // kilocode_change start - ask for the /local-review base branch before building the prompt
       const templateCommand = yield* Effect.gen(function* () {
-        // kilocode_change start - ask for the /local-review base branch before building the prompt
         if (input.command === Command.Default.LOCAL_REVIEW && cmd.source === undefined) {
           return yield* Effect.promise(() => ReviewBranch.template({ sessionID: input.sessionID }))
         }
-        // kilocode_change end
         return yield* Effect.promise(async () => cmd.template)
       })
+      // kilocode_change end
 
       const placeholders = templateCommand.match(placeholderRegex) ?? []
       let last = 0
