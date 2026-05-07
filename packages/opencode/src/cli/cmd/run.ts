@@ -33,7 +33,7 @@ import { INTERACTIVE_INPUT_ERROR, resolveInteractiveStdin } from "./run/runtime.
 import { event as normalizeEvent } from "./run/event"
 import { importCloudSession, validateCloudFork } from "@/kilocode/cloud-session" // kilocode_change
 import { KiloRunAuto } from "@/kilocode/cli/run-auto" // kilocode_change
-import { KiloRunDaemon } from "@/kilocode/cli/cmd/run" // kilocode_change
+import { KiloRun, KiloRunDaemon } from "@/kilocode/cli/cmd/run" // kilocode_change
 
 const runtimeTask = import("./run/runtime")
 type ModelInput = Parameters<KiloClient["session"]["prompt"]>[0]["model"]
@@ -384,6 +384,8 @@ export const RunCommand = effectCmd({
         UI.error("--fork requires --continue or --session")
         process.exit(1)
       }
+
+      KiloRun.validateBuiltin(args) // kilocode_change
 
       // kilocode_change start - validate cloud session imports before local lookup
       const cloudForkError = validateCloudFork({
@@ -878,6 +880,17 @@ export const RunCommand = effectCmd({
             console.error(e)
             process.exit(1)
           })
+
+          // kilocode_change start - handle built-in session commands
+          if (KiloRun.isBuiltin(args.command)) {
+            const result = await KiloRun.runBuiltin(client, sessionID, args.command, args.model, cwd)
+            if (result.error) {
+              if (!emit("error", { error: result.error })) UI.error(formatRunError(result.error))
+              process.exitCode = 1
+            }
+            return
+          }
+          // kilocode_change end
 
           if (args.command) {
             const result = await client.session.command({
