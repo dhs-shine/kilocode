@@ -8,7 +8,6 @@ import { KiloCostPropagation } from "@/kilocode/session/cost-propagation" // kil
 import { KiloSessionProcessor } from "@/kilocode/session/processor" // kilocode_change
 import { Suggestion } from "@/kilocode/suggestion" // kilocode_change
 import { Question } from "@/question" // kilocode_change
-import { ReviewBranch } from "@/kilocode/review/base" // kilocode_change
 import z from "zod"
 import * as EffectZod from "@/util/effect-zod"
 import { SessionID, MessageID, PartID } from "./schema"
@@ -1710,16 +1709,20 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       }
       const agentName = cmd.agent ?? input.agent ?? (yield* agents.defaultAgent())
 
-      const raw = input.arguments.match(argsRegex) ?? []
-      const args = raw.map((arg) => arg.replace(quoteTrimRegex, ""))
-      // kilocode_change start - ask for the /local-review base branch before building the prompt
-      const templateCommand = yield* Effect.gen(function* () {
-        if (input.command === Command.Default.LOCAL_REVIEW && cmd.source === undefined) {
-          return yield* Effect.promise(() => ReviewBranch.template({ sessionID: input.sessionID }))
-        }
-        return yield* Effect.promise(async () => cmd.template)
-      })
+      // kilocode_change start - allow Kilo commands to consume input before template interpolation
+      const resolved = yield* Effect.promise(() =>
+        KiloSessionPrompt.resolveCommand({
+          command: input.command,
+          source: cmd.source,
+          template: () => cmd.template,
+          arguments: input.arguments,
+        }),
+      )
+      const templateCommand = resolved.template
+      const text = resolved.arguments
       // kilocode_change end
+      const raw = text.match(argsRegex) ?? [] // kilocode_change
+      const args = raw.map((arg) => arg.replace(quoteTrimRegex, ""))
 
       const placeholders = templateCommand.match(placeholderRegex) ?? []
       let last = 0
@@ -1736,10 +1739,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         return args[argIndex]
       })
       const usesArgumentsPlaceholder = templateCommand.includes("$ARGUMENTS")
-      let template = withArgs.replaceAll("$ARGUMENTS", input.arguments)
+      let template = withArgs.replaceAll("$ARGUMENTS", text) // kilocode_change
 
-      if (placeholders.length === 0 && !usesArgumentsPlaceholder && input.arguments.trim()) {
-        template = template + "\n\n" + input.arguments
+      if (placeholders.length === 0 && !usesArgumentsPlaceholder && text.trim()) { // kilocode_change
+        template = template + "\n\n" + text // kilocode_change
       }
 
       const shellMatches = ConfigMarkdown.shell(template)

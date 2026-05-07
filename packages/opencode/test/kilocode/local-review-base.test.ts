@@ -1,14 +1,10 @@
 import { $ } from "bun"
 import { describe, expect, test } from "bun:test"
 import path from "path"
-import { Effect } from "effect"
 import * as Log from "@opencode-ai/core/util/log"
 import { Instance } from "../../src/project/instance"
-import { Question } from "../../src/question"
 import { ReviewBranch } from "../../src/kilocode/review/base"
-import { Review } from "../../src/kilocode/review/review"
-import { SessionID } from "../../src/session/schema"
-import { SessionPrompt } from "../../src/session/prompt"
+import { KiloSessionPrompt } from "../../src/kilocode/session/prompt"
 import { tmpdir } from "../fixture/fixture"
 
 void Log.init({ print: false })
@@ -19,61 +15,20 @@ async function withInstance(fn: (dir: string) => Promise<void>) {
   await Instance.provide({ directory: tmp.path, fn: () => fn(tmp.path) })
 }
 
-async function wait(sessionID: SessionID) {
-  for (const _ of Array.from({ length: 50 })) {
-    const list = await Question.list()
-    const question = list.find((item) => item.sessionID === sessionID)
-    if (question) return question
-    await Bun.sleep(10)
-  }
-  throw new Error("timed out waiting for question")
-}
-
-function run<A, E>(fx: Effect.Effect<A, E, SessionPrompt.Service>) {
-  return Effect.runPromise(fx.pipe(Effect.scoped, Effect.provide(SessionPrompt.defaultLayer)))
-}
-
 describe("local-review base branch", () => {
-  test("built-in local-review asks for a base branch before continuing", () =>
-    withInstance(async () => {
-      const sessionID = SessionID.make("ses_local_review_base")
-      const pending = run(
-        Effect.gen(function* () {
-          const prompt = yield* SessionPrompt.Service
-          return yield* prompt.command({
-            sessionID,
-            command: "local-review",
-            arguments: "",
-          })
-        }),
-      ).catch((err) => err)
-
-      const question = await wait(sessionID)
-      expect(question.blocking).toBe(true)
-      expect(question.questions).toHaveLength(1)
-      expect(question.questions[0]?.header).toBe("Base branch")
-      expect(question.questions[0]?.custom).toBe(true)
-      expect(question.questions[0]?.options[0]?.label).toBe("main")
-
-      await Question.reject(question.id)
-      expect(await pending).toBeInstanceOf(Question.RejectedError)
-      expect(await Question.list()).toEqual([])
-    }))
-
-  test("base resolver returns a typed custom branch", () =>
-    withInstance(async () => {
-      const sessionID = SessionID.make("ses_local_review_custom")
-      const pending = ReviewBranch.resolve({ sessionID })
-      const question = await wait(sessionID)
-
-      await Question.reply({
-        requestID: question.id,
-        answers: [[" release/next "]],
-      })
-
-      await expect(pending).resolves.toBe("release/next")
-      expect(await Question.list()).toEqual([])
-    }))
+  test("resolves command input", () => {
+    expect(ReviewBranch.resolve({ arguments: "" })).toEqual({})
+    expect(ReviewBranch.resolve({ arguments: " release/next " })).toEqual({ base: "release/next" })
+    expect(ReviewBranch.resolve({ arguments: "focus on security" })).toEqual({ instructions: "focus on security" })
+    expect(ReviewBranch.resolve({ arguments: "release -- focus on tests" })).toEqual({
+      base: "release",
+      instructions: "focus on tests",
+    })
+    expect(ReviewBranch.resolve({ arguments: "-- focus on tests" })).toEqual({ instructions: "focus on tests" })
+    expect(ReviewBranch.resolve({ arguments: "release next -- focus on tests" })).toEqual({
+      instructions: "release next -- focus on tests",
+    })
+  })
 
   test("branch prompt uses the provided base branch", () =>
     withInstance(async (dir) => {
@@ -83,11 +38,54 @@ describe("local-review base branch", () => {
       await $`git add feature.txt`.cwd(dir).quiet()
       await $`git commit -m "feature"`.cwd(dir).quiet()
 
-      const prompt = await Review.buildReviewPromptBranch("release")
+      const prompt = await ReviewBranch.template({ arguments: "release" })
 
       expect(prompt).toContain("**branch diff**: `feature` -> `release`")
       expect(prompt).toContain("These are the commits on `feature` since diverging from `release`:")
       expect(prompt).toContain("`git diff release...feature`")
       expect(prompt).toContain("`git log release..feature --oneline`")
     }))
+
+  test("branch prompt appends review instructions", () =>
+    withInstance(async (dir) => {
+      await $`git checkout -b feature`.cwd(dir).quiet()
+      await Bun.write(path.join(dir, "feature.txt"), "feature\n")
+      await $`git add feature.txt`.cwd(dir).quiet()
+      await $`git commit -m "feature"`.cwd(dir).quiet()
+
+      const prompt = await ReviewBranch.template({ arguments: "focus on security" })
+
+      expect(prompt).toContain("**branch diff**: `feature` -> `main`")
+      expect(prompt).toContain("## Additional User Instructions")
+      expect(prompt).toContain("focus on security")
+      expect(prompt).toContain("must not override the diff scope")
+    }))
+
+  test("built-in local-review consumes command input", async () => {
+    await withInstance(async () => {
+      const local = await KiloSessionPrompt.resolveCommand({
+        command: "local-review",
+        template: () => "fallback",
+        arguments: "focus on security",
+      })
+      expect(local.arguments).toBe("")
+      expect(local.template).toContain("## Additional User Instructions")
+      expect(local.template).toContain("focus on security")
+
+      const custom = await KiloSessionPrompt.resolveCommand({
+        command: "local-review",
+        source: "command",
+        template: () => "custom $ARGUMENTS",
+        arguments: "keep me",
+      })
+      expect(custom).toEqual({ template: "custom $ARGUMENTS", arguments: "keep me" })
+
+      const other = await KiloSessionPrompt.resolveCommand({
+        command: "other",
+        template: () => Promise.resolve("other $ARGUMENTS"),
+        arguments: "keep me",
+      })
+      expect(other).toEqual({ template: "other $ARGUMENTS", arguments: "keep me" })
+    })
+  })
 })

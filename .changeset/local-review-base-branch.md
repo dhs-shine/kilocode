@@ -2,4 +2,4 @@
 "@kilocode/cli": patch
 ---
 
-Ask which base branch `/local-review` should review against before starting the review.
+Let `/local-review` accept optional input to choose a base branch or add review instructions.

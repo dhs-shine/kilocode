@@ -21,7 +21,7 @@ export function localReviewUncommittedCommand(): Command.Info {
 export function localReviewCommand(): Command.Info {
   return {
     name: "local-review",
-    description: "local review (current branch)",
+    description: "local review (current branch, optional base or instructions)",
     get template() {
       return Review.buildReviewPromptBranch()
     },

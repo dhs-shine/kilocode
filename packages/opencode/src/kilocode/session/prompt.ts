@@ -14,11 +14,30 @@ import { Permission } from "@/permission"
 import { environmentDetails, type EditorContext } from "@/kilocode/editor-context"
 import { Identifier } from "@/id/id"
 import { Filesystem } from "@/util/filesystem"
+import { ReviewBranch } from "@/kilocode/review/base"
 import PROMPT_PLAN from "@/session/prompt/plan.txt"
 import CODE_SWITCH from "@/session/prompt/code-switch.txt"
 
 export namespace KiloSessionPrompt {
   const modes = ["ask", "plan"]
+
+  export async function resolveCommand(input: {
+    command: string
+    source?: string
+    template: () => string | Promise<string>
+    arguments: string
+  }) {
+    if (input.command === "local-review" && input.source === undefined) {
+      return {
+        template: await ReviewBranch.template({ arguments: input.arguments }),
+        arguments: "",
+      }
+    }
+    return {
+      template: await input.template(),
+      arguments: input.arguments,
+    }
+  }
 
   /**
    * Determines whether the plan follow-up prompt should be shown.
