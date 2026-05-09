@@ -4,7 +4,7 @@ import * as fs from "fs/promises"
 import path from "path"
 import { Instance } from "../../src/project/instance"
 import { WorktreeFamily } from "../../src/kilocode/worktree-family"
-import { Log } from "../../src/util"
+import * as Log from "@opencode-ai/core/util/log"
 import { tmpdir } from "../fixture/fixture"
 
 Log.init({ print: false })
