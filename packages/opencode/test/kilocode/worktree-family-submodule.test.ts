@@ -5,12 +5,12 @@ import path from "path"
 import { Instance } from "../../src/project/instance"
 import { WorktreeFamily } from "../../src/kilocode/worktree-family"
 import * as Log from "@opencode-ai/core/util/log"
-import { tmpdir } from "../fixture/fixture"
+import { disposeAllInstances, tmpdir } from "../fixture/fixture"
 
 Log.init({ print: false })
 
 afterEach(async () => {
-  await Instance.disposeAll()
+  await disposeAllInstances()
 })
 
 describe("WorktreeFamily.list — git submodule", () => {
