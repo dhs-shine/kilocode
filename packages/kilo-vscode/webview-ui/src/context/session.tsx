@@ -4,7 +4,17 @@
  * Also owns global (extension-lifetime) model selection (provider context is catalog-only).
  */
 
-import { createContext, useContext, createSignal, createMemo, createEffect, onMount, onCleanup, batch, untrack } from "solid-js"
+import {
+  createContext,
+  useContext,
+  createSignal,
+  createMemo,
+  createEffect,
+  onMount,
+  onCleanup,
+  batch,
+  untrack,
+} from "solid-js"
 import type { ParentComponent, Accessor } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useVSCode } from "./vscode"
