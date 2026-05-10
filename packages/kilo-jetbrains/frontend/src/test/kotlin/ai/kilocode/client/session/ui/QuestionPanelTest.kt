@@ -117,6 +117,109 @@ class QuestionPanelTest : BasePlatformTestCase() {
         assertEquals("req_1", rpc.questionRejects.single().first)
     }
 
+    fun `test single question submit sends answer`() {
+        panel.show(
+            Question(
+                id = "req_2",
+                items = listOf(
+                    QuestionItem(
+                        question = "Choose approach",
+                        header = "Approach",
+                        options = listOf(
+                            QuestionOption("Minimal", "Keep it simple"),
+                            QuestionOption("Refactor", "Full refactor"),
+                        ),
+                        multiple = false,
+                        custom = false,
+                    )
+                ),
+            )
+        )
+
+        buttons(panel).first { it.text == "Minimal" }.doClick()
+        buttons(panel).first { it.text == "Submit" }.doClick()
+        flush()
+
+        assertFalse(panel.isVisible)
+        val reply = rpc.questionReplies.single()
+        assertEquals("req_2", reply.first)
+        assertEquals("/test", reply.second)
+        assertEquals(listOf(listOf("Minimal")), reply.third.answers)
+    }
+
+    fun `test multi question submit sends all answers`() {
+        panel.show(
+            Question(
+                id = "q_strategy",
+                items = listOf(
+                    QuestionItem(
+                        question = "Choose approach",
+                        header = "Approach",
+                        options = listOf(
+                            QuestionOption("Minimal", "Keep it simple"),
+                            QuestionOption("Refactor", "Full refactor"),
+                        ),
+                        multiple = false,
+                        custom = false,
+                    ),
+                    QuestionItem(
+                        question = "Choose test level",
+                        header = "Test Level",
+                        options = listOf(
+                            QuestionOption("Unit", "Unit tests"),
+                            QuestionOption("Integration", "Integration tests"),
+                        ),
+                        multiple = false,
+                        custom = false,
+                    ),
+                ),
+            )
+        )
+
+        buttons(panel).first { it.text == "Minimal" }.doClick()
+        buttons(panel).first { it.text == "Unit" }.doClick()
+        buttons(panel).first { it.text == "Submit" }.doClick()
+        flush()
+
+        assertFalse(panel.isVisible)
+        val reply = rpc.questionReplies.single()
+        assertEquals("q_strategy", reply.first)
+        assertEquals("/test", reply.second)
+        assertEquals(listOf(listOf("Minimal"), listOf("Unit")), reply.third.answers)
+    }
+
+    fun `test multiple selection item toggles options`() {
+        panel.show(
+            Question(
+                id = "req_3",
+                items = listOf(
+                    QuestionItem(
+                        question = "Select features",
+                        header = "Features",
+                        options = listOf(
+                            QuestionOption("A", "Feature A"),
+                            QuestionOption("B", "Feature B"),
+                            QuestionOption("C", "Feature C"),
+                        ),
+                        multiple = true,
+                        custom = false,
+                    )
+                ),
+            )
+        )
+
+        buttons(panel).first { it.text == "A" }.doClick()
+        buttons(panel).first { it.text == "B" }.doClick()
+        // Toggle B off
+        buttons(panel).first { it.text == "B" }.doClick()
+        buttons(panel).first { it.text == "Submit" }.doClick()
+        flush()
+
+        assertFalse(panel.isVisible)
+        val reply = rpc.questionReplies.single()
+        assertEquals(listOf(listOf("A")), reply.third.answers)
+    }
+
     private fun buttons(root: Container): List<JButton> = root.components.flatMap { comp ->
         val item = if (comp is JButton) listOf(comp) else emptyList()
         if (comp is Container) item + buttons(comp) else item
