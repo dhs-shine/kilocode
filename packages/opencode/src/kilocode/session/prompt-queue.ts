@@ -36,6 +36,13 @@ export namespace KiloSessionPromptQueue {
 
   export function cancel(sessionID: SessionID) {
     return Effect.sync(() => {
+      if (!tails.has(sessionID)) {
+        versions.delete(sessionID)
+        targets.delete(sessionID)
+        latest.delete(sessionID)
+        activeSince.delete(sessionID)
+        return
+      }
       versions.set(sessionID, version(sessionID) + 1)
     })
   }
