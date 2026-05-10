@@ -111,10 +111,7 @@ class JsonSessionStreamTest : SessionControllerTestBase() {
         flush()
 
         // Assert the reply was forwarded through RPC
-        val reply = rpc.questionReplies.single()
-        assertEquals("q_strategy", reply.first)
-        assertEquals("/test", reply.second)
-        assertEquals(listOf(listOf("Minimal"), listOf("Unit")), reply.third.answers)
+        assertQuestionReply("q_strategy /test [[Minimal],[Unit]]", rpc.questionReplies)
 
         // --- question.replied — controller moves to Busy ---
         emit(ChatEventDto.QuestionReplied("ses_test", "q_strategy"))

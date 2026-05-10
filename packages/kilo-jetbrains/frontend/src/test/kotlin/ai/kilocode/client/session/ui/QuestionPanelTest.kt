@@ -141,10 +141,7 @@ class QuestionPanelTest : BasePlatformTestCase() {
         flush()
 
         assertFalse(panel.isVisible)
-        val reply = rpc.questionReplies.single()
-        assertEquals("req_2", reply.first)
-        assertEquals("/test", reply.second)
-        assertEquals(listOf(listOf("Minimal")), reply.third.answers)
+        assertReply("req_2 /test [[Minimal]]", rpc.questionReplies)
     }
 
     fun `test multi question submit sends all answers`() {
@@ -182,10 +179,7 @@ class QuestionPanelTest : BasePlatformTestCase() {
         flush()
 
         assertFalse(panel.isVisible)
-        val reply = rpc.questionReplies.single()
-        assertEquals("q_strategy", reply.first)
-        assertEquals("/test", reply.second)
-        assertEquals(listOf(listOf("Minimal"), listOf("Unit")), reply.third.answers)
+        assertReply("q_strategy /test [[Minimal],[Unit]]", rpc.questionReplies)
     }
 
     fun `test multiple selection item toggles options`() {
@@ -216,8 +210,17 @@ class QuestionPanelTest : BasePlatformTestCase() {
         flush()
 
         assertFalse(panel.isVisible)
-        val reply = rpc.questionReplies.single()
-        assertEquals(listOf(listOf("A")), reply.third.answers)
+        assertReply("req_3 /test [[A]]", rpc.questionReplies)
+    }
+
+    private fun assertReply(expected: String, replies: List<Triple<String, String, ai.kilocode.rpc.dto.QuestionReplyDto>>) {
+        val act = replies.joinToString("\n") { (id, dir, reply) ->
+            val answers = reply.answers.joinToString(",", "[", "]") { inner ->
+                inner.joinToString(",", "[", "]")
+            }
+            "$id $dir $answers"
+        }
+        assertEquals(expected, act)
     }
 
     private fun buttons(root: Container): List<JButton> = root.components.flatMap { comp ->
