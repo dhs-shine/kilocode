@@ -28,6 +28,10 @@
     "@kilocode/kilo-jetbrains#build": {
       "dependsOn": ["@kilocode/cli#build"],
       "outputs": ["build/distributions/**"]
+    },
+    "@kilocode/kilo-jetbrains#typecheck": {
+      "dependsOn": ["@kilocode/cli#build"],
+      "outputs": []
     }
   }
 }

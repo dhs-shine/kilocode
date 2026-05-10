@@ -11,6 +11,7 @@ kotlin {
 }
 
 val generatedApi = layout.buildDirectory.dir("generated/openapi/src/main/kotlin")
+val generatedSpec = layout.buildDirectory.file("generated/openapi-spec/openapi.json")
 
 sourceSets {
     main {
@@ -19,10 +20,17 @@ sourceSets {
     }
 }
 
+val generateOpenApiSpec by tasks.registering(GenerateOpenApiSpecTask::class) {
+    description = "Generate CLI OpenAPI spec into the build directory"
+    opencodeDir.set(rootProject.layout.projectDirectory.dir("../opencode"))
+    serverSrcDir.set(rootProject.layout.projectDirectory.dir("../opencode/src/server"))
+    spec.set(generatedSpec)
+}
+
 openApiGenerate {
     generatorName.set("kotlin")
     library.set("jvm-okhttp4")
-    inputSpec.set("${rootDir}/../sdk/openapi.json")
+    inputSpec.set(generatedSpec.map { it.asFile.absolutePath })
     outputDir.set(layout.buildDirectory.dir("generated/openapi").get().asFile.absolutePath)
     packageName.set("ai.kilocode.jetbrains.api")
     apiPackage.set("ai.kilocode.jetbrains.api.client")
@@ -52,6 +60,10 @@ openApiGenerate {
     generateModelTests.set(false)
     generateApiDocumentation.set(false)
     generateModelDocumentation.set(false)
+}
+
+tasks.named("openApiGenerate") {
+    dependsOn(generateOpenApiSpec)
 }
 
 val fixGeneratedApi by tasks.registering(FixGeneratedApiTask::class) {

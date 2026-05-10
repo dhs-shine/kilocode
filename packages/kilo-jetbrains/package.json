@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "bun script/build.ts",
-    "build:production": "bun script/build.ts --production"
+    "build:production": "bun script/build.ts --production",
+    "typecheck": "bun run build"
   }
 }
