@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdir, writeFile } from "fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "fs/promises"
 import { join } from "path"
 import { tmpdir } from "os"
 import { resolveCoreRuntimeWasmPath, resolveLanguageWasmPath } from "../../../src/tree-sitter/languageParser"
@@ -14,9 +14,7 @@ describe("tree-sitter WASM resolution", () => {
   })
 
   test("prefers installed CLI tree-sitter resources over module resolution", async () => {
-    const root = await Bun.$`mktemp -d ${join(tmpdir(), "kilo-tree-sitter-wasm-XXXXXX")}`
-      .text()
-      .then((text) => text.trim())
+    const root = await mkdtemp(join(tmpdir(), "kilo-tree-sitter-wasm-"))
     try {
       const dir = join(root, "bin", "tree-sitter")
       await mkdir(dir, { recursive: true })
@@ -28,7 +26,7 @@ describe("tree-sitter WASM resolution", () => {
       expect(resolveCoreRuntimeWasmPath()).toBe(join(dir, "tree-sitter.wasm"))
       expect(resolveLanguageWasmPath("typescript").wasmPath).toBe(join(dir, "tree-sitter-typescript.wasm"))
     } finally {
-      await Bun.$`rm -rf ${root}`
+      await rm(root, { recursive: true, force: true })
     }
   })
 })

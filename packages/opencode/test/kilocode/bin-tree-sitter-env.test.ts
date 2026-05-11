@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { mkdir, writeFile } from "fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "fs/promises"
 import { tmpdir } from "os"
 import { join } from "path"
 
@@ -16,15 +16,23 @@ describe("bin/kilo tree-sitter resources", () => {
 
     await mkdir(wasm, { recursive: true })
     await writeFile(join(wasm, "tree-sitter.wasm"), "wasm")
-    await writeFile(bin, `#!/bin/sh\nprintf '%s' "$KILO_TREE_SITTER_WASM_DIR" > ${JSON.stringify(log)}\n`, {
-      mode: 0o755,
-    })
+    await writeFile(bin, "binary")
 
     return { bin, log, wasm }
   }
 
-  async function run(root: string, bin: string) {
-    return Bun.spawnSync(["node", "--input-type=commonjs", "--eval", await Bun.file(script).text()], {
+  async function run(root: string, bin: string, log: string) {
+    const capture = `
+const kiloFs = require("fs")
+const kiloChild = require("child_process")
+const log = process.argv[1]
+kiloChild.spawnSync = () => {
+  kiloFs.writeFileSync(log, process.env.KILO_TREE_SITTER_WASM_DIR || "")
+  return { status: 0 }
+}
+`
+    const source = (await Bun.file(script).text()).replace(/^#!.*\n/, "")
+    return Bun.spawnSync(["node", "--input-type=commonjs", "--eval", capture + source, log], {
       cwd: root,
       env: {
         PATH: process.env.PATH ?? "",
@@ -34,32 +42,28 @@ describe("bin/kilo tree-sitter resources", () => {
   }
 
   test("exports co-located tree-sitter WASM dir for optional package binary", async () => {
-    const root = await Bun.$`mktemp -d ${join(tmpdir(), "kilo-bin-tree-sitter-XXXXXX")}`
-      .text()
-      .then((text) => text.trim())
+    const root = await mkdtemp(join(tmpdir(), "kilo-bin-tree-sitter-"))
     try {
       const item = await setup(root, true)
-      const proc = await run(root, item.bin)
+      const proc = await run(root, item.bin, item.log)
 
       expect(proc.exitCode).toBe(0)
       expect(await Bun.file(item.log).text()).toBe(item.wasm)
     } finally {
-      await Bun.$`rm -rf ${root}`
+      await rm(root, { recursive: true, force: true })
     }
   })
 
   test("exports co-located tree-sitter WASM dir for cached postinstall binary", async () => {
-    const root = await Bun.$`mktemp -d ${join(tmpdir(), "kilo-bin-tree-sitter-XXXXXX")}`
-      .text()
-      .then((text) => text.trim())
+    const root = await mkdtemp(join(tmpdir(), "kilo-bin-tree-sitter-"))
     try {
       const item = await setup(root, false)
-      const proc = await run(root, item.bin)
+      const proc = await run(root, item.bin, item.log)
 
       expect(proc.exitCode).toBe(0)
       expect(await Bun.file(item.log).text()).toBe(item.wasm)
     } finally {
-      await Bun.$`rm -rf ${root}`
+      await rm(root, { recursive: true, force: true })
     }
   })
 })
