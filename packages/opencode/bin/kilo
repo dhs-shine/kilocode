@@ -6,6 +6,12 @@ const path = require("path")
 const os = require("os")
 
 function run(target) {
+  // kilocode_change start - point packaged binaries at co-located tree-sitter WASM resources
+  const wasmDir = path.join(path.dirname(target), "tree-sitter")
+  if (!process.env.KILO_TREE_SITTER_WASM_DIR && fs.existsSync(path.join(wasmDir, "tree-sitter.wasm"))) {
+    process.env.KILO_TREE_SITTER_WASM_DIR = wasmDir
+  }
+  // kilocode_change end
   const result = childProcess.spawnSync(target, process.argv.slice(2), {
     stdio: "inherit",
   })
