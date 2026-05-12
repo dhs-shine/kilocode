@@ -27,6 +27,7 @@ export namespace KiloSessionPromptQueue {
   const activeSince = new Map<SessionID, number>()
   let seq = 0
 
+  /** @internal - test-only helper */
   export function _hasInternalState(sessionID: SessionID): boolean {
     return versions.has(sessionID) || targets.has(sessionID) || latest.has(sessionID) || activeSince.has(sessionID)
   }
