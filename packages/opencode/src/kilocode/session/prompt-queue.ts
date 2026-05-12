@@ -27,6 +27,10 @@ export namespace KiloSessionPromptQueue {
   const activeSince = new Map<SessionID, number>()
   let seq = 0
 
+  export function _hasInternalState(sessionID: SessionID): boolean {
+    return versions.has(sessionID) || targets.has(sessionID) || latest.has(sessionID) || activeSince.has(sessionID)
+  }
+
   const version = (sessionID: SessionID) => versions.get(sessionID) ?? 0
   const settle = (promise: Promise<void>) =>
     promise.then(
