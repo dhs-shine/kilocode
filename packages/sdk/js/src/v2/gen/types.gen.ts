@@ -93,6 +93,10 @@ export type QuestionOption = {
    * Optional i18n key for the description
    */
   descriptionKey?: string
+  /**
+   * Optional agent/mode name to pre-select in the UI when this option is picked
+   */
+  mode?: string
 }
 
 export type QuestionInfo = {
@@ -2044,6 +2048,10 @@ export type Config = {
      * Enable automatic compaction when context is full (default: true)
      */
     auto?: boolean
+    /**
+     * Percentage of the model input/context window that triggers automatic compaction. The reserved safety buffer still applies if it would compact sooner.
+     */
+    threshold_percent?: number | null
     /**
      * Enable pruning of old tool outputs (default: true)
      */

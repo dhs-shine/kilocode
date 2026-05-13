@@ -19,9 +19,17 @@ export const CodeWithAiNav: NavSection[] = [
         children: "CLI",
         subLinks: [{ href: "/code-with-ai/platforms/cli-reference", children: "Command Reference" }],
       },
+      {
+        href: "/code-with-ai/platforms/kilo-connect",
+        children: "Kilo Connect",
+        subLinks: [
+          { href: "/code-with-ai/platforms/slack", children: "Slack" },
+          { href: "/code-with-ai/platforms/github", children: "GitHub" },
+          { href: "/code-with-ai/platforms/linear", children: "Linear" },
+        ],
+      },
       { href: "/code-with-ai/platforms/cloud-agent", children: "Cloud Agent" },
       { href: "/code-with-ai/platforms/mobile", children: "Mobile Apps" },
-      { href: "/code-with-ai/platforms/slack", children: "Slack" },
       { href: "/code-with-ai/app-builder", children: "App Builder" },
       {
         href: "/code-with-ai/gastown",
