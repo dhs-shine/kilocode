@@ -2,6 +2,7 @@ import { TextAttributes } from "@opentui/core"
 import { useTheme } from "../context/theme"
 import { useDialog, type DialogContext } from "./dialog"
 import { useKeyboard } from "@opentui/solid"
+import { For } from "solid-js"
 
 export type DialogAlertProps = {
   title: string
@@ -31,8 +32,10 @@ export function DialogAlert(props: DialogAlertProps) {
           esc
         </text>
       </box>
-      <box paddingBottom={1}>
-        <text fg={theme.textMuted}>{props.message}</text>
+      <box paddingBottom={1} flexDirection="column">
+        <For each={props.message.replace(/\\n/g, "\n").split("\n")}>
+          {(line) => <text fg={theme.textMuted}>{line}</text>}
+        </For>
       </box>
       <box flexDirection="row" justifyContent="flex-end" paddingBottom={1}>
         <box
