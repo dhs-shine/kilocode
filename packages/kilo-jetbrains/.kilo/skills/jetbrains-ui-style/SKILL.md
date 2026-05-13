@@ -38,6 +38,104 @@ Avoid starting searches in:
 - generated parser artifacts
 - decompiled library sources
 
+## Threading and Coroutine Context Annotations
+
+IntelliJ Platform provides method-level annotations to declare threading and coroutine context requirements. All annotations live in `com.intellij.util.concurrency.annotations`.
+
+Source in `$INTELLIJ_REPO`: `platform/core-api/src/com/intellij/util/concurrency/annotations/`
+
+### Annotation reference
+
+| Need | Annotation | What it checks |
+|---|---|---|
+| Must run on EDT | `@RequiresEdt` | `ThreadingAssertions.assertEventDispatchThread()` |
+| Must run off EDT | `@RequiresBackgroundThread` | `ThreadingAssertions.assertBackgroundThread()` |
+| Must hold read or write lock | `@RequiresReadLock` | `ThreadingAssertions.assertReadAccess()` |
+| Must hold write lock | `@RequiresWriteLock` | `ThreadingAssertions.assertWriteAccess()` |
+| Must not hold any read or write lock | `@RequiresReadLockAbsence` | `ThreadingAssertions.assertNoReadAccess()` |
+| Must not be called from suspend context | `@RequiresBlockingContext` | Inspection/documentation only (source-retained, no runtime check) |
+
+All five `Requires*` annotations on threads/locks have a `generateAssertion` attribute that defaults to `true`. Set it to `false` to keep the annotation as documentation without injecting a runtime assertion:
+
+```kotlin
+@RequiresEdt(generateAssertion = false) // document only, no assert injected
+fun maybeOnEdt() { ... }
+```
+
+Runtime assertions are injected by the DevKit JPS Threading Model Helper instrumentation at build time. The assertions call methods in `com.intellij.util.concurrency.ThreadingAssertions`, which throw `RuntimeException` on violation. The annotations also power the `ThreadingConcurrencyInspection` static analysis.
+
+Example usage:
+
+```kotlin
+import com.intellij.util.concurrency.annotations.RequiresEdt
+import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
+import com.intellij.util.concurrency.annotations.RequiresReadLock
+
+@RequiresEdt
+fun applyToUi(data: MyData) { ... }
+
+@RequiresBackgroundThread
+fun loadFromDisk(): MyData { ... }
+
+@RequiresReadLock
+fun queryModel(): String { ... }
+```
+
+### `@RequiresBlockingContext`
+
+Marks functions that should not be called from a `suspend` context because a suspend-friendly alternative exists. This annotation is **source-retained** and does not inject a runtime assertion. It is enforced by the `ForbiddenInSuspectContextMethodInspection` (DevKit Kotlin) and `CallingMethodShouldBeRequiresBlockingContextInspection`.
+
+```kotlin
+@RequiresBlockingContext
+fun writeActionBlocking(action: () -> Unit) { ... }
+
+// Callers should use the suspend version inside coroutines:
+suspend fun writeAction(action: () -> Unit) { ... }
+```
+
+Only annotate a function with `@RequiresBlockingContext` when a suspend-friendly alternative exists. Do not propagate it to all callers.
+
+### IO / coroutine dispatcher: no dedicated annotation
+
+There is no IntelliJ annotation that directly requires "must be called under `Dispatchers.IO`". The correct pattern is to move the dispatcher switch inside the callee:
+
+```kotlin
+// Preferred: callee is responsible for its own context
+suspend fun loadFile(path: Path): ByteArray = withContext(Dispatchers.IO) {
+    Files.readAllBytes(path)
+}
+```
+
+For static analysis on blocking calls in coroutines, IntelliJ uses `BlockingMethodInNonBlockingContextInspection` (source: `jvm/jvm-analysis-impl/src/com/intellij/codeInspection/blockingCallsDetection/`). The inspection treats `Dispatchers.IO` as blocking-friendly and `Dispatchers.Default` / `Dispatchers.Main` as non-blocking contexts.
+
+To annotate a custom dispatcher or `CoroutineContext` return type as IO-safe, use JetBrains annotations:
+
+```kotlin
+import org.jetbrains.annotations.BlockingExecutor
+import org.jetbrains.annotations.NonBlockingExecutor
+
+// Return type annotated — inspection skips blocking-call warnings inside withContext(myIoCtx)
+fun ioContext(): @BlockingExecutor CoroutineContext = TODO()
+
+// Class annotated — any withContext(CustomDispatcher()) is treated as IO-safe
+@BlockingExecutor
+class CustomDispatcher : CoroutineContext { ... }
+```
+
+### Decision guide
+
+| Situation | Solution |
+|---|---|
+| Method must run on EDT | `@RequiresEdt` |
+| Method must run off EDT | `@RequiresBackgroundThread` |
+| Method requires read or write access | `@RequiresReadLock` |
+| Method requires write access | `@RequiresWriteLock` |
+| Method must not hold any lock | `@RequiresReadLockAbsence` |
+| Blocking function, suspend alternative exists | `@RequiresBlockingContext` |
+| Blocking I/O work in a coroutine | `withContext(Dispatchers.IO) { ... }` in the callee |
+| Custom IO-safe dispatcher/context return | `@BlockingExecutor` on return type or class |
+| Custom non-blocking dispatcher/context return | `@NonBlockingExecutor` on return type or class |
+
 ## Primary Rules
 
 - Prefer Kotlin UI DSL v2 whenever the UI is a dialog, settings page, form, options panel, or structured component layout.
@@ -1333,3 +1431,4 @@ Review generated UI code and remove:
 - UI FAQ: https://plugins.jetbrains.com/docs/intellij/ui-faq.html
 - Kotlin UI DSL v2: https://plugins.jetbrains.com/docs/intellij/kotlin-ui-dsl-version-2.html
 - Split mode for remote development: https://plugins.jetbrains.com/docs/intellij/split-mode-for-remote-development.html
+- Threading model: https://plugins.jetbrains.com/docs/intellij/threading-model.html
