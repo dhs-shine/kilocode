@@ -19,6 +19,7 @@ import { useDialog } from "../../ui/dialog"
 import { getScrollAcceleration } from "../../util/scroll"
 import { useTuiConfig } from "../../context/tui-config"
 import { ConfigProtection } from "@/kilocode/permission/config-paths" // kilocode_change
+import { splitDiffHunks } from "@/kilocode/tui/diff" // kilocode_change
 import { normalizeUrls } from "@/kilocode/util/url" // kilocode_change
 
 type PermissionStage = "permission" | "always" | "reject"
@@ -67,6 +68,7 @@ function EditBody(props: { request: PermissionRequest }) {
 
   const ft = createMemo(() => filetype(filepath()))
   const scrollAcceleration = createMemo(() => getScrollAcceleration(config))
+  const hunks = createMemo(() => splitDiffHunks(diff())) // kilocode_change
 
   return (
     <box flexDirection="column" gap={1}>
@@ -81,25 +83,38 @@ function EditBody(props: { request: PermissionRequest }) {
             },
           }}
         >
-          <diff
-            diff={diff()}
-            view={view()}
-            filetype={ft()}
-            syntaxStyle={syntax()}
-            showLineNumbers={true}
-            width="100%"
-            wrapMode="word"
-            fg={theme.text}
-            addedBg={theme.diffAddedBg}
-            removedBg={theme.diffRemovedBg}
-            contextBg={theme.diffContextBg}
-            addedSignColor={theme.diffHighlightAdded}
-            removedSignColor={theme.diffHighlightRemoved}
-            lineNumberFg={theme.diffLineNumber}
-            lineNumberBg={theme.diffContextBg}
-            addedLineNumberBg={theme.diffAddedLineNumberBg}
-            removedLineNumberBg={theme.diffRemovedLineNumberBg}
-          />
+          {/* kilocode_change start */}
+          <box flexDirection="column">
+            <For each={hunks()}>
+              {(hunk, i) => (
+                <>
+                  <Show when={i() > 0}>
+                    <text fg={theme.textMuted}>...</text>
+                  </Show>
+                  <diff
+                    diff={hunk}
+                    view={view()}
+                    filetype={ft()}
+                    syntaxStyle={syntax()}
+                    showLineNumbers={true}
+                    width="100%"
+                    wrapMode="word"
+                    fg={theme.text}
+                    addedBg={theme.diffAddedBg}
+                    removedBg={theme.diffRemovedBg}
+                    contextBg={theme.diffContextBg}
+                    addedSignColor={theme.diffHighlightAdded}
+                    removedSignColor={theme.diffHighlightRemoved}
+                    lineNumberFg={theme.diffLineNumber}
+                    lineNumberBg={theme.diffContextBg}
+                    addedLineNumberBg={theme.diffAddedLineNumberBg}
+                    removedLineNumberBg={theme.diffRemovedLineNumberBg}
+                  />
+                </>
+              )}
+            </For>
+          </box>
+          {/* kilocode_change end */}
         </scrollbox>
       </Show>
       <Show when={!diff()}>

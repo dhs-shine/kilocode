@@ -282,6 +282,20 @@ export const dict = {
     "O botão 'Aprimorar prompt' ajuda a melhorar seu pedido fornecendo contexto adicional, esclarecimentos ou reformulações. Tente digitar um pedido aqui e clique no botão novamente para ver como funciona.",
   "prompt.action.indexing": "Configurações de indexação",
 
+  "speechToText.tooltip.start": "Iniciar entrada de voz",
+  "speechToText.tooltip.stop": "Parar captura",
+  "speechToText.tooltip.transcribing": "Transcrevendo... Clique para cancelar.",
+  "speechToText.tooltip.error": "Falha na entrada de voz. Clique para limpar.",
+  "speechToText.error.title": "Falha na entrada de voz",
+  "speechToText.error.loginRequired": "Faça login no Kilo para usar a entrada de voz.",
+  "speechToText.error.permission": "A permissão do microfone foi negada.",
+  "speechToText.error.microphone": "Não foi possível iniciar o microfone.",
+  "speechToText.error.recording": "A gravação falhou.",
+  "speechToText.error.emptyRecording": "Nenhum áudio foi gravado.",
+  "speechToText.error.emptyTranscript": "Nenhuma fala foi detectada.",
+  "speechToText.error.encoding": "Não foi possível codificar a gravação.",
+  "speechToText.toast.transcribed": "Transcrição inserida",
+
   "prompt.toast.pasteUnsupported.title": "Colagem não suportada",
   "prompt.toast.pasteUnsupported.description": "Somente imagens ou PDFs podem ser colados aqui.",
   "prompt.toast.modelAgentRequired.title": "Selecione um agente e modelo",
@@ -465,6 +479,11 @@ export const dict = {
   "error.promotionLimit.description":
     "Cadastre-se gratuitamente para continuar e explorar mais de 500 modelos. Leva 2 minutos, sem cartão de crédito. Ou volte mais tarde.",
   "error.promotionLimit.action": "Cadastrar-se",
+  "error.providerAuth.title": "{{provider}} desconectou você",
+  "error.providerAuth.description": "Reconecte o {{provider}} e envie sua mensagem novamente.",
+  "error.providerAuth.chatgpt.title": "OpenAI desconectou você",
+  "error.providerAuth.chatgpt.description":
+    "Faça login no ChatGPT novamente e envie sua mensagem de novo para continuar usando os modelos Codex.",
 
   "error.chain.unknown": "Erro desconhecido",
   "error.chain.causedBy": "Causado por:",
@@ -1236,6 +1255,14 @@ export const dict = {
   "settings.experimental.agentManagerTool.title": "Ferramenta Agent Manager",
   "settings.experimental.agentManagerTool.description":
     "Permitir que agentes iniciem sessões locais e sessões worktree do Agent Manager a partir de uma chamada de ferramenta",
+  "settings.experimental.speechToText.title": "Fala para texto",
+  "settings.experimental.speechToText.description":
+    "Ative a entrada de voz nos campos de prompt usando sua conta do Kilo por meio do Kilo Gateway.",
+  "settings.experimental.speechToText.disabledDescription":
+    "Ative e faça login no Kilo provider para usar a entrada de voz nos campos de prompt.",
+  "settings.experimental.speechToTextModel.title": "Modelo de fala para texto",
+  "settings.experimental.speechToTextModel.description":
+    "Escolha o modelo de transcrição do Kilo Gateway para entrada de voz.",
   "settings.experimental.continueOnDeny.title": "Continuar ao negar",
   "settings.experimental.continueOnDeny.description": "Continuar o loop do agente quando uma permissão é negada",
   "settings.experimental.mcpTimeout.title": "Tempo limite MCP (ms)",
@@ -1414,7 +1441,10 @@ export const dict = {
   "settings.checkpoints.enable.title": "Ativar snapshots",
   "settings.checkpoints.enable.description": "Criar pontos de verificação antes de editar arquivos",
   "settings.context.autoCompaction.title": "Compactação automática",
-  "settings.context.autoCompaction.description": "Compactar automaticamente o contexto quando estiver cheio",
+  "settings.context.autoCompaction.description": "Compactar automaticamente o contexto antes que atinja o limite",
+  "settings.context.compactionLimit.title": "Limite de compactação automática",
+  "settings.context.compactionLimit.description":
+    "Compacte quando o contexto atingir esta porcentagem da janela do modelo. Deixe em branco para usar apenas a margem de segurança.",
   "settings.context.prune.title": "Remover saídas antigas",
   "settings.context.prune.description": "Remover saídas antigas de ferramentas durante a compactação",
   "settings.context.watcherPatterns": "Padrões de ignorar do observador",

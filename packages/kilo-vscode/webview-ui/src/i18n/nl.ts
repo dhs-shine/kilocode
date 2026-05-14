@@ -283,6 +283,20 @@ export const dict = {
   "prompt.action.enhanceDescription":
     "De knop 'Prompt verbeteren' helpt je prompt te verbeteren door extra context, verduidelijking of herformulering te bieden. Typ hier een prompt en klik nogmaals op de knop om te zien hoe het werkt.",
 
+  "speechToText.tooltip.start": "Spraakinvoer starten",
+  "speechToText.tooltip.stop": "Audio vastleggen stoppen",
+  "speechToText.tooltip.transcribing": "Transcriberen... Klik om te annuleren.",
+  "speechToText.tooltip.error": "Spraakinvoer mislukt. Klik om te wissen.",
+  "speechToText.error.title": "Spraakinvoer mislukt",
+  "speechToText.error.loginRequired": "Meld u aan bij Kilo om spraakinvoer te gebruiken.",
+  "speechToText.error.permission": "Microfoontoegang is geweigerd.",
+  "speechToText.error.microphone": "Kon de microfoon niet starten.",
+  "speechToText.error.recording": "Opname mislukt.",
+  "speechToText.error.emptyRecording": "Er is geen audio opgenomen.",
+  "speechToText.error.emptyTranscript": "Er is geen spraak gedetecteerd.",
+  "speechToText.error.encoding": "Kon de opname niet coderen.",
+  "speechToText.toast.transcribed": "Transcriptie ingevoegd",
+
   "prompt.toast.pasteUnsupported.title": "Plakken niet ondersteund",
   "prompt.toast.pasteUnsupported.description": "Hier kunnen alleen afbeeldingen of PDF's worden geplakt.",
   "prompt.toast.modelAgentRequired.title": "Selecteer een agent en model",
@@ -469,6 +483,11 @@ export const dict = {
   "error.promotionLimit.description":
     "Registreer je gratis om door te gaan en 500 andere modellen te ontdekken. Duurt 2 minuten, geen creditcard vereist. Of kom later terug.",
   "error.promotionLimit.action": "Registreren",
+  "error.providerAuth.title": "{{provider}} heeft je afgemeld",
+  "error.providerAuth.description": "Verbind opnieuw met {{provider}} en stuur je bericht nog een keer.",
+  "error.providerAuth.chatgpt.title": "OpenAI heeft je afgemeld",
+  "error.providerAuth.chatgpt.description":
+    "Meld je opnieuw aan bij ChatGPT en stuur je bericht nog een keer om Codex-modellen te blijven gebruiken.",
 
   "error.chain.unknown": "Onbekende fout",
   "error.chain.causedBy": "Veroorzaakt door:",
@@ -1235,6 +1254,13 @@ export const dict = {
   "settings.experimental.agentManagerTool.title": "Agent Manager-tool",
   "settings.experimental.agentManagerTool.description":
     "Sta agents toe om lokale Agent Manager-sessies en worktree-sessies te starten vanuit een tool call",
+  "settings.experimental.speechToText.title": "Spraak naar tekst",
+  "settings.experimental.speechToText.description":
+    "Schakel spraakinvoer in promptvelden in met uw Kilo-account via Kilo Gateway.",
+  "settings.experimental.speechToText.disabledDescription":
+    "Schakel Kilo provider in en meld u aan om spraakinvoer in promptvelden te gebruiken.",
+  "settings.experimental.speechToTextModel.title": "Spraak-naar-tekst-model",
+  "settings.experimental.speechToTextModel.description": "Kies het Kilo Gateway-transcriptiemodel voor spraakinvoer.",
   "settings.experimental.continueOnDeny.title": "Doorgaan bij weigering",
   "settings.experimental.continueOnDeny.description":
     "Ga door met de agent loop wanneer een toestemming wordt geweigerd",
@@ -1380,7 +1406,10 @@ export const dict = {
     "Maak checkpoints aan voor het bewerken van bestanden zodat je eerdere staten kunt herstellen",
 
   "settings.context.autoCompaction.title": "Automatische Compactie",
-  "settings.context.autoCompaction.description": "Context automatisch compacteren wanneer deze vol is",
+  "settings.context.autoCompaction.description": "Context automatisch compacteren voordat deze de limiet bereikt",
+  "settings.context.compactionLimit.title": "Limiet voor automatisch compacteren",
+  "settings.context.compactionLimit.description":
+    "Compacteer wanneer de context dit percentage van het modelvenster bereikt. Laat leeg om alleen de veiligheidsbuffer te gebruiken.",
   "settings.context.prune.title": "Oude Uitvoer Opschonen",
   "settings.context.prune.description": "Verwijder oude tool uitvoer tijdens compactie",
   "settings.context.watcherPatterns": "File Watcher Negeer Patronen",

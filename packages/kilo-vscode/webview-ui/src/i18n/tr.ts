@@ -280,6 +280,20 @@ export const dict = {
   "prompt.action.enhanceDescription":
     "'Komutu Geliştir' düğmesi, ek bağlam, açıklama veya yeniden ifadelendirme sağlayarak komutunuzu iyileştirmeye yardımcı olur. Buraya bir komut yazıp düğmeye tekrar tıklayarak nasıl çalıştığını görebilirsiniz.",
 
+  "speechToText.tooltip.start": "Sesli girişi başlat",
+  "speechToText.tooltip.stop": "Ses yakalamayı durdur",
+  "speechToText.tooltip.transcribing": "Metne dönüştürülüyor... İptal etmek için tıklayın.",
+  "speechToText.tooltip.error": "Sesli giriş başarısız oldu. Temizlemek için tıklayın.",
+  "speechToText.error.title": "Sesli giriş başarısız oldu",
+  "speechToText.error.loginRequired": "Sesli girişi kullanmak için Kilo'ya giriş yapın.",
+  "speechToText.error.permission": "Mikrofon izni reddedildi.",
+  "speechToText.error.microphone": "Mikrofon başlatılamadı.",
+  "speechToText.error.recording": "Kayıt başarısız oldu.",
+  "speechToText.error.emptyRecording": "Hiçbir ses kaydedilmedi.",
+  "speechToText.error.emptyTranscript": "Hiçbir konuşma algılanmadı.",
+  "speechToText.error.encoding": "Kayıt kodlanamadı.",
+  "speechToText.toast.transcribed": "Döküm eklendi",
+
   "prompt.toast.pasteUnsupported.title": "Desteklenmeyen yapıştırma",
   "prompt.toast.pasteUnsupported.description": "Buraya sadece görsel veya PDF yapıştırılabilir.",
   "prompt.toast.modelAgentRequired.title": "Bir ajan ve model seçin",
@@ -466,6 +480,11 @@ export const dict = {
   "error.promotionLimit.description":
     "Devam etmek ve 500'den fazla modeli keşfetmek için ücretsiz kayıt olun. 2 dakika sürer, kredi kartı gerekmez. Ya da daha sonra gelin.",
   "error.promotionLimit.action": "Kayıt Ol",
+  "error.providerAuth.title": "{{provider}} oturumunuzu kapattı",
+  "error.providerAuth.description": "{{provider}} bağlantısını yeniden kurun ve mesajınızı tekrar gönderin.",
+  "error.providerAuth.chatgpt.title": "OpenAI oturumunuzu kapattı",
+  "error.providerAuth.chatgpt.description":
+    "Codex modellerini kullanmaya devam etmek için ChatGPT ile tekrar giriş yapın ve mesajınızı yeniden gönderin.",
 
   "error.chain.unknown": "Bilinmeyen hata",
   "error.chain.causedBy": "Nedeni:",
@@ -1228,6 +1247,13 @@ export const dict = {
   "settings.experimental.agentManagerTool.title": "Agent Manager Aracı",
   "settings.experimental.agentManagerTool.description":
     "Ajanların bir araç çağrısından Agent Manager yerel oturumları ve worktree oturumları başlatmasına izin ver",
+  "settings.experimental.speechToText.title": "Sesten metne",
+  "settings.experimental.speechToText.description":
+    "Kilo Gateway üzerinden Kilo hesabınızı kullanarak komut alanlarında sesli girişi etkinleştirin.",
+  "settings.experimental.speechToText.disabledDescription":
+    "Komut alanlarında sesli girişi kullanmak için Kilo provider'ı etkinleştirin ve giriş yapın.",
+  "settings.experimental.speechToTextModel.title": "Sesten metne modeli",
+  "settings.experimental.speechToTextModel.description": "Sesli giriş için Kilo Gateway transkripsiyon modelini seçin.",
   "settings.experimental.continueOnDeny.title": "Reddetme Durumunda Devam Et",
   "settings.experimental.continueOnDeny.description": "Bir izin reddedildiğinde ajan döngüsüne devam et",
   "settings.experimental.mcpTimeout.title": "MCP Zaman Aşımı (ms)",
@@ -1369,7 +1395,10 @@ export const dict = {
     "Dosya düzenlemelerinden önce kontrol noktaları oluştur, böylece önceki durumları geri yükleyebilirsiniz",
 
   "settings.context.autoCompaction.title": "Otomatik Sıkıştırma",
-  "settings.context.autoCompaction.description": "Bağlam dolduğunda otomatik olarak sıkıştır",
+  "settings.context.autoCompaction.description": "Bağlam sınıra ulaşmadan önce otomatik olarak sıkıştır",
+  "settings.context.compactionLimit.title": "Otomatik sıkıştırma sınırı",
+  "settings.context.compactionLimit.description":
+    "Bağlam model penceresinin bu yüzdesine ulaştığında sıkıştır. Yalnızca güvenlik tamponunu kullanmak için boş bırakın.",
   "settings.context.prune.title": "Eski Çıktıları Temizle",
   "settings.context.prune.description": "Sıkıştırma sırasında eski araç çıktılarını kaldır",
   "settings.context.watcherPatterns": "Dosya İzleyici Yok Sayma Kalıpları",

@@ -282,6 +282,20 @@ export const dict = {
   "prompt.action.enhanceDescription":
     "Dugme 'Poboljšaj prompt' pomaže poboljšati vaš zahtjev pružajući dodatni kontekst, pojašnjenje ili preformulaciju. Pokušajte upisati zahtjev ovdje i ponovo kliknite na dugme da vidite kako funkcioniše.",
 
+  "speechToText.tooltip.start": "Započni glasovni unos",
+  "speechToText.tooltip.stop": "Zaustavi hvatanje zvuka",
+  "speechToText.tooltip.transcribing": "Prepisivanje... Kliknite da otkažete.",
+  "speechToText.tooltip.error": "Glasovni unos nije uspio. Kliknite da očistite.",
+  "speechToText.error.title": "Glasovni unos nije uspio",
+  "speechToText.error.loginRequired": "Prijavite se na Kilo da koristite glasovni unos.",
+  "speechToText.error.permission": "Dozvola za mikrofon je odbijena.",
+  "speechToText.error.microphone": "Nije moguće pokrenuti mikrofon.",
+  "speechToText.error.recording": "Snimanje nije uspjelo.",
+  "speechToText.error.emptyRecording": "Zvuk nije snimljen.",
+  "speechToText.error.emptyTranscript": "Govor nije otkriven.",
+  "speechToText.error.encoding": "Nije moguće kodirati snimak.",
+  "speechToText.toast.transcribed": "Prijepis ubačen",
+
   "prompt.toast.pasteUnsupported.title": "Nepodržano lijepljenje",
   "prompt.toast.pasteUnsupported.description": "Ovdje se mogu zalijepiti samo slike ili PDF-ovi.",
   "prompt.toast.modelAgentRequired.title": "Odaberi agenta i model",
@@ -469,6 +483,11 @@ export const dict = {
   "error.promotionLimit.description":
     "Registrujte se besplatno da nastavite i istražite preko 500 modela. Traje 2 minute, bez kreditne kartice. Ili se vratite kasnije.",
   "error.promotionLimit.action": "Registracija",
+  "error.providerAuth.title": "{{provider}} vas je odjavio",
+  "error.providerAuth.description": "Ponovo se povežite sa {{provider}}, a zatim ponovo pošaljite poruku.",
+  "error.providerAuth.chatgpt.title": "OpenAI vas je odjavio",
+  "error.providerAuth.chatgpt.description":
+    "Ponovo se prijavite na ChatGPT, a zatim ponovo pošaljite poruku da nastavite koristiti Codex modele.",
 
   "error.chain.unknown": "Nepoznata greška",
   "error.chain.causedBy": "Uzrok:",
@@ -1236,6 +1255,14 @@ export const dict = {
   "settings.experimental.agentManagerTool.title": "Agent Manager alat",
   "settings.experimental.agentManagerTool.description":
     "Dozvoli agentima da pokreću lokalne Agent Manager sesije i worktree sesije iz poziva alata",
+  "settings.experimental.speechToText.title": "Govor u tekst",
+  "settings.experimental.speechToText.description":
+    "Omogućite glasovni unos u poljima za promptove koristeći vaš Kilo račun preko Kilo Gateway.",
+  "settings.experimental.speechToText.disabledDescription":
+    "Omogućite i prijavite se na Kilo provider da koristite glasovni unos u poljima za promptove.",
+  "settings.experimental.speechToTextModel.title": "Model govora u tekst",
+  "settings.experimental.speechToTextModel.description":
+    "Odaberite Kilo Gateway model za transkripciju za glasovni unos.",
   "settings.experimental.continueOnDeny.title": "Nastavi pri odbijanju",
   "settings.experimental.continueOnDeny.description": "Nastavi petlju agenta kada je dozvola odbijena",
   "settings.experimental.mcpTimeout.title": "MCP istek vremena (ms)",
@@ -1411,7 +1438,10 @@ export const dict = {
   "settings.checkpoints.enable.title": "Omogući snimke",
   "settings.checkpoints.enable.description": "Kreiraj kontrolne točke prije uređivanja datoteka",
   "settings.context.autoCompaction.title": "Automatska kompresija",
-  "settings.context.autoCompaction.description": "Automatski komprimiraj kontekst kada je pun",
+  "settings.context.autoCompaction.description": "Automatski komprimiraj kontekst prije nego dostigne limit",
+  "settings.context.compactionLimit.title": "Limit automatske kompresije",
+  "settings.context.compactionLimit.description":
+    "Komprimiraj kada kontekst dostigne ovaj procenat prozora modela. Ostavite prazno da koristite samo sigurnosnu rezervu.",
   "settings.context.prune.title": "Očisti stare izlaze",
   "settings.context.prune.description": "Ukloni stare izlaze alata tokom kompresije",
   "settings.context.watcherPatterns": "Uzorci ignoriranja za promatrač datoteka",

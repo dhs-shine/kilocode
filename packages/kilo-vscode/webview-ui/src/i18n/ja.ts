@@ -279,6 +279,20 @@ export const dict = {
     "「プロンプトを強化」ボタンは、追加コンテキスト、説明、または言い換えを提供することで、リクエストを改善します。ここにリクエストを入力し、ボタンを再度クリックして動作を確認してください。",
   "prompt.action.indexing": "インデックス設定",
 
+  "speechToText.tooltip.start": "音声入力を開始",
+  "speechToText.tooltip.stop": "音声キャプチャを停止",
+  "speechToText.tooltip.transcribing": "文字起こし中... クリックしてキャンセル。",
+  "speechToText.tooltip.error": "音声入力に失敗しました。クリックしてクリア。",
+  "speechToText.error.title": "音声入力に失敗しました",
+  "speechToText.error.loginRequired": "音声入力を使用するにはKiloにサインインしてください。",
+  "speechToText.error.permission": "マイクの許可が拒否されました。",
+  "speechToText.error.microphone": "マイクを起動できませんでした。",
+  "speechToText.error.recording": "録音に失敗しました。",
+  "speechToText.error.emptyRecording": "音声が録音されていません。",
+  "speechToText.error.emptyTranscript": "音声が検出されませんでした。",
+  "speechToText.error.encoding": "録音をエンコードできませんでした。",
+  "speechToText.toast.transcribed": "文字起こしを挿入しました",
+
   "prompt.toast.pasteUnsupported.title": "サポートされていない貼り付け",
   "prompt.toast.pasteUnsupported.description": "ここでは画像またはPDFのみ貼り付け可能です。",
   "prompt.toast.modelAgentRequired.title": "エージェントとモデルを選択",
@@ -463,6 +477,11 @@ export const dict = {
   "error.promotionLimit.description":
     "無料でサインアップして、500以上のモデルを探索しましょう。2分で完了、クレジットカード不要。または後でお戻りください。",
   "error.promotionLimit.action": "サインアップ",
+  "error.providerAuth.title": "{{provider}} からログアウトしました",
+  "error.providerAuth.description": "{{provider}} に再接続してから、メッセージを再送信してください。",
+  "error.providerAuth.chatgpt.title": "OpenAI からログアウトしました",
+  "error.providerAuth.chatgpt.description":
+    "Codex モデルを引き続き使用するには、ChatGPT に再度ログインしてから、メッセージを再送信してください。",
 
   "error.chain.unknown": "不明なエラー",
   "error.chain.causedBy": "原因:",
@@ -1224,6 +1243,13 @@ export const dict = {
   "settings.experimental.agentManagerTool.title": "Agent Manager ツール",
   "settings.experimental.agentManagerTool.description":
     "エージェントがツール呼び出しから Agent Manager のローカルセッションとワークツリーセッションを開始できるようにする",
+  "settings.experimental.speechToText.title": "音声認識",
+  "settings.experimental.speechToText.description":
+    "Kilo Gateway経由でKiloアカウントを使用して、プロンプトフィールドでの音声入力を有効にします。",
+  "settings.experimental.speechToText.disabledDescription":
+    "プロンプトフィールドで音声入力を使用するには、Kilo providerを有効にしてサインインしてください。",
+  "settings.experimental.speechToTextModel.title": "音声認識モデル",
+  "settings.experimental.speechToTextModel.description": "音声入力に使用するKilo Gateway文字起こしモデルを選択します。",
   "settings.experimental.continueOnDeny.title": "拒否時に続行",
   "settings.experimental.continueOnDeny.description": "権限が拒否された場合にエージェントループを続行",
   "settings.experimental.mcpTimeout.title": "MCPタイムアウト（ミリ秒）",
@@ -1396,7 +1422,10 @@ export const dict = {
   "settings.checkpoints.enable.title": "スナップショットを有効にする",
   "settings.checkpoints.enable.description": "ファイル編集前にチェックポイントを作成して以前の状態を復元可能にする",
   "settings.context.autoCompaction.title": "自動圧縮",
-  "settings.context.autoCompaction.description": "コンテキストが満杯のとき自動的に圧縮",
+  "settings.context.autoCompaction.description": "コンテキストが上限に達する前に自動的に圧縮",
+  "settings.context.compactionLimit.title": "自動圧縮の上限",
+  "settings.context.compactionLimit.description":
+    "コンテキストがモデルウィンドウのこの割合に達したら圧縮します。安全バッファーのみを使用するには空欄のままにしてください。",
   "settings.context.prune.title": "古い出力を削除",
   "settings.context.prune.description": "圧縮時に古いツール出力を削除",
   "settings.context.watcherPatterns": "ファイルウォッチャー無視パターン",

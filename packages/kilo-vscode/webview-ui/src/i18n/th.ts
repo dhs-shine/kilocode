@@ -280,6 +280,20 @@ export const dict = {
     "ปุ่ม 'ปรับปรุงพรอมต์' ช่วยปรับปรุงพรอมต์ของคุณโดยให้บริบทเพิ่มเติม ชี้แจง หรือเขียนใหม่ ลองพิมพ์พรอมต์ที่นี่และคลิกปุ่มอีกครั้งเพื่อดูว่ามันทำงานอย่างไร",
   "prompt.action.indexing": "การตั้งค่าการสร้างดัชนี",
 
+  "speechToText.tooltip.start": "เริ่มการป้อนข้อมูลด้วยเสียง",
+  "speechToText.tooltip.stop": "หยุดจับเสียง",
+  "speechToText.tooltip.transcribing": "กำลังถอดเสียง... คลิกเพื่อยกเลิก",
+  "speechToText.tooltip.error": "การป้อนข้อมูลด้วยเสียงล้มเหลว คลิกเพื่อล้าง",
+  "speechToText.error.title": "การป้อนข้อมูลด้วยเสียงล้มเหลว",
+  "speechToText.error.loginRequired": "ลงชื่อเข้าใช้ Kilo เพื่อใช้การป้อนข้อมูลด้วยเสียง",
+  "speechToText.error.permission": "การอนุญาตเข้าถึงไมโครโฟนถูกปฏิเสธ",
+  "speechToText.error.microphone": "ไม่สามารถเริ่มต้นไมโครโฟนได้",
+  "speechToText.error.recording": "การบันทึกล้มเหลว",
+  "speechToText.error.emptyRecording": "ไม่มีการบันทึกเสียง",
+  "speechToText.error.emptyTranscript": "ตรวจไม่พบเสียงพูด",
+  "speechToText.error.encoding": "ไม่สามารถเข้ารหัสการบันทึกได้",
+  "speechToText.toast.transcribed": "แทรกข้อความที่ถอดเสียงแล้ว",
+
   "prompt.toast.pasteUnsupported.title": "การวางไม่รองรับ",
   "prompt.toast.pasteUnsupported.description": "สามารถวางรูปภาพหรือ PDF เท่านั้น",
   "prompt.toast.modelAgentRequired.title": "เลือกเอเจนต์และโมเดล",
@@ -464,6 +478,11 @@ export const dict = {
   "error.promotionLimit.description":
     "สมัครฟรีเพื่อดำเนินการต่อและสำรวจโมเดลกว่า 500 รายการ ใช้เวลา 2 นาที ไม่ต้องใช้บัตรเครดิต หรือกลับมาทีหลัง",
   "error.promotionLimit.action": "สมัครสมาชิก",
+  "error.providerAuth.title": "{{provider}} ออกจากระบบของคุณแล้ว",
+  "error.providerAuth.description": "เชื่อมต่อ {{provider}} อีกครั้ง จากนั้นส่งข้อความของคุณใหม่",
+  "error.providerAuth.chatgpt.title": "OpenAI ออกจากระบบของคุณแล้ว",
+  "error.providerAuth.chatgpt.description":
+    "เข้าสู่ระบบ ChatGPT อีกครั้ง จากนั้นส่งข้อความของคุณใหม่เพื่อใช้งานโมเดล Codex ต่อไป",
 
   "error.chain.unknown": "ข้อผิดพลาดที่ไม่รู้จัก",
   "error.chain.causedBy": "สาเหตุ:",
@@ -1215,6 +1234,14 @@ export const dict = {
   "settings.experimental.agentManagerTool.title": "เครื่องมือ Agent Manager",
   "settings.experimental.agentManagerTool.description":
     "อนุญาตให้เอเจนต์เริ่มเซสชัน Agent Manager ในเครื่องและเซสชัน worktree จากการเรียกเครื่องมือ",
+  "settings.experimental.speechToText.title": "แปลงเสียงเป็นข้อความ",
+  "settings.experimental.speechToText.description":
+    "เปิดใช้งานการป้อนข้อมูลด้วยเสียงในช่องพรอมต์โดยใช้บัญชี Kilo ของคุณผ่าน Kilo Gateway",
+  "settings.experimental.speechToText.disabledDescription":
+    "เปิดใช้งานและลงชื่อเข้าใช้ Kilo provider เพื่อใช้การป้อนข้อมูลด้วยเสียงในช่องพรอมต์",
+  "settings.experimental.speechToTextModel.title": "โมเดลแปลงเสียงเป็นข้อความ",
+  "settings.experimental.speechToTextModel.description":
+    "เลือกโมเดลการถอดเสียง Kilo Gateway สำหรับการป้อนข้อมูลด้วยเสียง",
   "settings.experimental.continueOnDeny.title": "ดำเนินต่อเมื่อถูกปฏิเสธ",
   "settings.experimental.continueOnDeny.description": "ดำเนินลูปเอเจนต์ต่อเมื่อสิทธิ์ถูกปฏิเสธ",
   "settings.experimental.mcpTimeout.title": "หมดเวลา MCP (มิลลิวินาที)",
@@ -1379,7 +1406,10 @@ export const dict = {
   "settings.checkpoints.enable.title": "เปิดใช้งานสแนปชอต",
   "settings.checkpoints.enable.description": "สร้างจุดตรวจก่อนแก้ไขไฟล์",
   "settings.context.autoCompaction.title": "การบีบอัดอัตโนมัติ",
-  "settings.context.autoCompaction.description": "บีบอัดบริบทอัตโนมัติเมื่อเต็ม",
+  "settings.context.autoCompaction.description": "บีบอัดบริบทอัตโนมัติก่อนถึงขีดจำกัด",
+  "settings.context.compactionLimit.title": "ขีดจำกัดการบีบอัดอัตโนมัติ",
+  "settings.context.compactionLimit.description":
+    "บีบอัดเมื่อบริบทถึงเปอร์เซ็นต์นี้ของหน้าต่างโมเดล เว้นว่างไว้เพื่อใช้เฉพาะบัฟเฟอร์ความปลอดภัย",
   "settings.context.prune.title": "ตัดผลลัพธ์เก่า",
   "settings.context.prune.description": "ลบผลลัพธ์เครื่องมือเก่าระหว่างการบีบอัด",
   "settings.context.watcherPatterns": "รูปแบบการละเว้นตัวเฝ้าดูไฟล์",

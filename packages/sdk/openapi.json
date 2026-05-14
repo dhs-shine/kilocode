@@ -11215,6 +11215,10 @@
           "descriptionKey": {
             "description": "Optional i18n key for the description",
             "type": "string"
+          },
+          "mode": {
+            "description": "Optional agent/mode name to pre-select in the UI when this option is picked",
+            "type": "string"
           }
         },
         "required": ["label", "description"]
@@ -16408,6 +16412,19 @@
               "auto": {
                 "description": "Enable automatic compaction when context is full (default: true)",
                 "type": "boolean"
+              },
+              "threshold_percent": {
+                "description": "Percentage of the model input/context window that triggers automatic compaction. The reserved safety buffer still applies if it would compact sooner.",
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "prune": {
                 "description": "Enable pruning of old tool outputs (default: true)",
