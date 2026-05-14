@@ -132,7 +132,7 @@ function ConversationItem(props: { conversation: ConversationListItem }) {
   }
 
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
       e.preventDefault()
       commitRename()
     } else if (e.key === "Escape") {

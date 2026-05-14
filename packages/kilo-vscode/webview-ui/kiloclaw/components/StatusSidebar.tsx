@@ -77,7 +77,7 @@ export function StatusSidebar() {
   }
 
   const onTitleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
       e.preventDefault()
       commitTitleRename()
     } else if (e.key === "Escape") {

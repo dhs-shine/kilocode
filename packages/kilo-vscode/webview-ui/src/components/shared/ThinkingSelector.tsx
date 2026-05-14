@@ -117,7 +117,7 @@ export const ThinkingSelectorBase: Component<ThinkingSelectorBaseProps> = (props
       focusItem(len - 1)
       return
     }
-    if (e.key === "Enter" || e.key === " ") {
+    if (e.key === " " || (e.key === "Enter" && !e.isComposing && e.keyCode !== 229)) {
       e.preventDefault()
       if (cur >= 0 && cur < len) pick(items[cur])
       return

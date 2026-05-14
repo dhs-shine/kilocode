@@ -254,7 +254,7 @@ export function MessageBubble(props: MessageBubbleProps) {
                     value={editText()}
                     onInput={(e) => setEditText(e.currentTarget.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
+                      if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
                         e.preventDefault()
                         saveEdit()
                       } else if (e.key === "Escape") {

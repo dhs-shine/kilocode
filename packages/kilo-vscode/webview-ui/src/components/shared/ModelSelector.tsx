@@ -549,7 +549,7 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
       return
     }
 
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
       e.preventDefault()
       const row = rowMap().get(selectedKey())
       if (row) selectRow(row)

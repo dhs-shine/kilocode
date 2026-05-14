@@ -133,7 +133,7 @@ export const PermissionDock: Component<{
     )
 
   const plain = (e: KeyboardEvent) =>
-    e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && !e.isComposing
+    e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && !e.isComposing && e.keyCode !== 229
 
   const skip = (e: KeyboardEvent, target: Element | undefined) => {
     const local = !!target?.closest("[data-component='permission-shortcuts']")

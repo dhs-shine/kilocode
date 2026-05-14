@@ -288,7 +288,7 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
       reject()
       return
     }
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.isComposing && e.keyCode !== 229) {
       e.preventDefault()
       e.stopPropagation()
       if (store.sending) return
