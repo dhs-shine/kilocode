@@ -1,7 +1,7 @@
 import type { Argv } from "yargs"
 import { cmd } from "../../../cli/cmd/cmd"
 import { UI } from "../../../cli/ui"
-import { Auth } from "../../../auth"
+import { Auth, type Info as AuthInfo } from "../../../auth"
 import { fetchBalance, fetchProfile, type KilocodeBalance, type KilocodeProfile } from "@kilocode/kilo-gateway"
 
 interface Info {
@@ -29,6 +29,15 @@ export function format(info: Info): string {
   return [`Account: ${info.email}`, `Team: ${info.team}`, `Balance: $${info.balance.toFixed(2)}`].join("\n")
 }
 
+interface Args {
+  json: boolean
+  getAuth?: (providerID: string) => Promise<AuthInfo | undefined>
+  getProfile?: (token: string) => Promise<KilocodeProfile>
+  getBalance?: (token: string, organizationId?: string) => Promise<KilocodeBalance | null>
+  error?: (msg: string) => void
+  exit?: (code: number) => void
+}
+
 export const BalanceCommand = cmd({
   command: "balance",
   describe: "show Kilo account balance",
@@ -39,22 +48,43 @@ export const BalanceCommand = cmd({
       default: false,
     }),
   handler: async (args) => {
-    const auth = await Auth.get("kilo")
-    if (!auth || auth.type !== "oauth") {
-      UI.error("Not authenticated with Kilo Gateway")
-      process.exitCode = 1
-      return
-    }
-
-    const org = auth.accountId ?? null
-    const [profile, balance] = await Promise.all([fetchProfile(auth.access), fetchBalance(auth.access, org ?? undefined)])
-    const info = payload({ profile, balance, organizationId: org })
-
-    if (args.json) {
-      console.log(JSON.stringify(info, null, 2))
-      return
-    }
-
-    UI.println(format(info))
+    await handle({ json: args.json })
   },
 })
+
+export async function handle(args: Args) {
+  const auth = await (args.getAuth ?? Auth.get)("kilo")
+  const error = args.error ?? UI.error
+  const exit = args.exit ?? ((code: number) => (process.exitCode = code))
+
+  if (!auth || auth.type !== "oauth") {
+    error("Not authenticated with Kilo Gateway")
+    exit(1)
+    return
+  }
+
+  const org = auth.accountId ?? null
+  const result = await (async () => {
+    try {
+      return await Promise.all([
+        (args.getProfile ?? fetchProfile)(auth.access),
+        (args.getBalance ?? fetchBalance)(auth.access, org ?? undefined),
+      ] as const)
+    } catch (err) {
+      error(err instanceof Error ? err.message : String(err))
+      exit(1)
+      return undefined
+    }
+  })()
+  if (!result) return
+
+  const [profile, balance] = result
+  const info = payload({ profile, balance, organizationId: org })
+
+  if (args.json) {
+    console.log(JSON.stringify(info, null, 2))
+    return
+  }
+
+  process.stdout.write(format(info) + "\n")
+}
