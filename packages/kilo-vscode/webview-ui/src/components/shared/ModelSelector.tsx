@@ -31,6 +31,7 @@ import type { EnrichedModel } from "../../context/provider"
 import { useSession, SessionContext } from "../../context/session"
 import { useLanguage } from "../../context/language"
 import type { ModelSelection } from "../../types/messages"
+import { isEnterKeyCommitNotIme } from "../../utils/ime-enter"
 import {
   KILO_GATEWAY_ID,
   isSmall,
@@ -549,7 +550,7 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
       return
     }
 
-    if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
+    if (isEnterKeyCommitNotIme(e)) {
       e.preventDefault()
       const row = rowMap().get(selectedKey())
       if (row) selectRow(row)
