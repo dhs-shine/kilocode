@@ -16,7 +16,7 @@ import { join } from "node:path"
 import { mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs"
 
 const root = join(import.meta.dir, "..")
-const gradlew = process.platform === "win32" ? "gradlew.bat" : "./gradlew"
+const gradlew = process.platform === "win32" ? "./gradlew.bat" : "./gradlew"
 
 const result = await $`${gradlew} test --continue`.cwd(root).nothrow()
 

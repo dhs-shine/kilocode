@@ -210,9 +210,9 @@ class HistorySessionActionsTest : BasePlatformTestCase() {
         val event = event(action, manager, selection(HistorySource.LOCAL, items), controller)
 
         action.actionPerformed(event)
-        flush()
+        waitFor { rpc.deletes.size == 2 }
 
-        assertEquals(listOf("ses_1", "ses_2"), rpc.deletes.map { it.first })
+        assertEquals(listOf("ses_1", "ses_2"), rpc.deletes.map { it.first }.sorted())
         assertTrue(controller.local.items.isEmpty())
     }
 
