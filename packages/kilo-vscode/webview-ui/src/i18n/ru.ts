@@ -92,6 +92,7 @@ export const dict = {
   "command.session.share.description": "Поделиться сессией и скопировать URL в буфер обмена",
   "command.session.unshare": "Отменить публикацию",
   "command.session.unshare.description": "Прекратить публикацию сессии",
+  "command.session.export": "Экспортировать запись сеанса",
 
   "palette.search.placeholder": "Поиск файлов, команд и сессий",
   "palette.empty": "Ничего не найдено",
@@ -268,6 +269,7 @@ export const dict = {
   "prompt.attachment.remove": "Удалить вложение",
   "prompt.action.send": "Отправить",
   "prompt.action.send.blocked": "Сначала ответьте на ожидающий вопрос или отклоните его",
+  "prompt.action.send.recording": "Расшифровать и отправить",
   "prompt.action.stop": "Остановить",
   "prompt.action.enhance": "Улучшить промпт",
   "prompt.action.autoApprove.enable": "Включить автоодобрение",
@@ -1617,4 +1619,5 @@ export const dict = {
   "diffViewer.baseBranch.empty": "Нет подходящих веток",
   "diffViewer.baseBranch.loading": "Загрузка веток…",
   "diffViewer.baseBranch.none": "—",
+  "plan.exit.ready": "План готов:",
 }

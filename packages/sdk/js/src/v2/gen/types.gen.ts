@@ -7255,6 +7255,7 @@ export type KiloAudioTranscriptionsData = {
       format: string
     }
     language?: string
+    prompt?: string
     temperature?: number
   }
   path?: never
