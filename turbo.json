@@ -10,6 +10,10 @@
       "dependsOn": [],
       "outputs": ["dist/**"]
     },
+    "@kilocode/cli#build": {
+      "dependsOn": ["@kilocode/sdk#build"],
+      "outputs": ["dist/**"]
+    },
     "@kilocode/cli#test": {
       "dependsOn": ["^build"],
       "outputs": [],
@@ -30,7 +34,6 @@
       "outputs": ["build/distributions/**"]
     },
     "@kilocode/kilo-jetbrains#typecheck": {
-      "dependsOn": ["@kilocode/cli#build"],
       "outputs": []
     },
     "@kilocode/kilo-jetbrains#test:ci": {

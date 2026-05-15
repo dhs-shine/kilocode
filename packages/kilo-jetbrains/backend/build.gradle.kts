@@ -88,37 +88,12 @@ val requiredPlatforms = listOf(
     "windows-arm64",
 )
 
-val localCli by tasks.registering(PrepareLocalCliTask::class) {
-    description = "Prepare local CLI binary for JetBrains dev"
-    val os = providers.systemProperty("os.name").map {
-        val name = it.lowercase()
-        if (name.contains("mac")) return@map "darwin"
-        if (name.contains("win")) return@map "windows"
-        if (name.contains("linux")) return@map "linux"
-        throw GradleException("Unsupported host OS: $it")
-    }
-    val arch = providers.systemProperty("os.arch").map {
-        val name = it.lowercase()
-        if (name == "aarch64" || name == "arm64") return@map "arm64"
-        if (name == "x86_64" || name == "amd64") return@map "x64"
-        throw GradleException("Unsupported host arch: $it")
-    }
-    script.set(rootProject.layout.projectDirectory.file("script/build.ts"))
-    root.set(rootProject.layout.projectDirectory)
-    out.set(cliDir)
-    platform.set(os.zip(arch) { a, b -> "$a-$b" })
-    exe.set(platform.map { if (it.startsWith("windows")) "kilo.exe" else "kilo" })
-}
-
 val prod = production
 val checkCli by tasks.registering(CheckCliTask::class) {
-    description = "Verify CLI binaries exist before building"
+    description = "Verify CLI binaries exist before packaging"
     dir.set(cliDir)
     this.production.set(prod)
     platforms.set(requiredPlatforms)
-    if (!prod.get()) {
-        dependsOn(localCli)
-    }
 }
 
 tasks.processResources {
