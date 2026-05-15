@@ -518,9 +518,9 @@ fi
 
 # kilocode_change start
 echo -e ""
-echo -e "██ ▄█▀ ██ ██     ▄████▄   ▄█████ ██     ██ "
-echo -e "████   ██ ██     ██  ██   ██     ██     ██ "
-echo -e "██ ▀█▄ ██ ██████ ▀████▀   ▀█████ ██████ ██ "
+echo -e "██  ██ ██🬺🬏   ██  ██   ██🬺🬏     ████ ██     ██🬺🬏   "
+echo -e "████🬺🬏   ██   ██     ██  ██   ██     ██       ██   "
+echo -e "██  ██ ██████ 🬁🬬████ 🬁🬬██     🬁🬬████ 🬁🬬████ ██████ "
 echo -e ""
 echo -e ""
 echo -e "${MUTED}Kilo includes free models so you can start immediately:${NC}"
