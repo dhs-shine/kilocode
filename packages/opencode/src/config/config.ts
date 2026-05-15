@@ -12,11 +12,12 @@ import { Auth } from "../auth"
 import { Env } from "../env"
 import { applyEdits, findNodeAtLocation, modify, parseTree } from "jsonc-parser" // kilocode_change - parseTree/findNodeAtLocation used in patchJsonc
 import { type InstanceContext } from "../project/instance"
-import { InstanceStore } from "../project/instance-store"
 import { InstallationLocal, InstallationVersion } from "@opencode-ai/core/installation/version"
 import { existsSync } from "fs"
+// kilocode_change start
 import { GlobalBus } from "@/bus/global"
 import { Event } from "../server/event"
+// kilocode_change end
 import { Account } from "@/account/account"
 import { isRecord } from "@/util/record"
 import type { ConsoleState } from "./console-state"
@@ -246,8 +247,14 @@ export const Info = Schema.Struct({
       ]),
     ),
   ).annotate({ description: "MCP (Model Context Protocol) server configurations" }),
-  formatter: Schema.optional(ConfigFormatter.Info),
-  lsp: Schema.optional(ConfigLSP.Info),
+  formatter: Schema.optional(ConfigFormatter.Info).annotate({
+    description:
+      "Enable or configure formatters. Omit or set to false to disable, true to enable built-ins, or an object to enable built-ins with overrides.",
+  }),
+  lsp: Schema.optional(ConfigLSP.Info).annotate({
+    description:
+      "Enable or configure LSP servers. Omit or set to false to disable, true to enable built-ins, or an object to enable built-ins with overrides.",
+  }),
   instructions: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
     description: "Additional instruction files or patterns to include",
   }),
@@ -359,9 +366,12 @@ export interface Interface {
   readonly get: () => Effect.Effect<Info>
   readonly getGlobal: () => Effect.Effect<Info>
   readonly getConsoleState: () => Effect.Effect<ConsoleState>
-  readonly update: (config: Info, options?: { dispose?: boolean }) => Effect.Effect<void>
-  readonly updateGlobal: (config: Info, options?: { dispose?: boolean }) => Effect.Effect<Info> // kilocode_change
-  readonly invalidate: (wait?: boolean) => Effect.Effect<void>
+  readonly update: (config: Info) => Effect.Effect<void>
+  readonly updateGlobal: (
+    config: Info,
+    options?: { dispose?: boolean },
+  ) => Effect.Effect<{ info: Info; changed: boolean }> // kilocode_change
+  readonly invalidate: () => Effect.Effect<void>
   readonly directories: () => Effect.Effect<string[]>
   readonly waitForDependencies: () => Effect.Effect<void>
   readonly warnings: () => Effect.Effect<Warning[]> // kilocode_change
@@ -446,15 +456,7 @@ export const layer = Layer.effect(
     const env = yield* Env.Service
     const npmSvc = yield* Npm.Service
 
-    const readConfigFile = Effect.fnUntraced(function* (filepath: string) {
-      return yield* fs.readFileString(filepath).pipe(
-        Effect.catchIf(
-          (e) => e.reason._tag === "NotFound",
-          () => Effect.succeed(undefined),
-        ),
-        Effect.orDie,
-      )
-    })
+    const readConfigFile = (filepath: string) => fs.readFileStringSafe(filepath).pipe(Effect.orDie)
 
     const loadConfig = Effect.fnUntraced(function* (
       text: string,
@@ -947,13 +949,7 @@ export const layer = Layer.effect(
       )
     })
 
-    // kilocode_change start
-    const warnings = Effect.fn("Config.warnings")(function* () {
-      return yield* InstanceState.use(state, (s) => s.warnings)
-    })
-    // kilocode_change end
-
-    const update = Effect.fn("Config.update")(function* (config: Info, options?: { dispose?: boolean }) {
+    const update = Effect.fn("Config.update")(function* (config: Info) {
       // kilocode_change start - delegate Kilo project config update behavior.
       const ctx = yield* InstanceState.context
       yield* KilocodeConfig.updateProjectConfig({
@@ -967,30 +963,16 @@ export const layer = Layer.effect(
         writable,
       })
       // kilocode_change end
-      if (options?.dispose !== false) {
-        // Fail loudly if no instance is bound — silently skipping would
-        // mask "config update without an active instance" bugs. The throw
-        // comes from `Instance.current` inside `InstanceState.context`.
-        const ctx = yield* InstanceState.context
-        yield* Effect.promise(() => InstanceStore.disposeInstance(ctx))
-      }
     })
 
-    const invalidate = Effect.fn("Config.invalidate")(function* (wait?: boolean) {
+    // kilocode_change start
+    const warnings = Effect.fn("Config.warnings")(function* () {
+      return yield* InstanceState.use(state, (s) => s.warnings)
+    })
+    // kilocode_change end
+
+    const invalidate = Effect.fn("Config.invalidate")(function* () {
       yield* invalidateGlobal
-      const task = InstanceStore.disposeAllInstances()
-        .catch(() => undefined)
-        .finally(() =>
-          GlobalBus.emit("event", {
-            directory: "global",
-            payload: {
-              type: Event.Disposed.type,
-              properties: {},
-            },
-          }),
-        )
-      if (wait) yield* Effect.promise(() => task)
-      else void task
     })
 
     // kilocode_change start - add dispose option to skip Instance.disposeAll for permission-only changes
@@ -1031,13 +1013,12 @@ export const layer = Layer.effect(
             },
           }),
         )
-        return next
+        return { info: next, changed }
       }
       // kilocode_change end
 
-      // Only tear down running instances if the config actually changed.
       if (changed) yield* invalidate()
-      return next
+      return { info: next, changed }
     })
 
     return Service.of({
@@ -1078,16 +1059,16 @@ export async function getConsoleState() {
   return runPromise((svc) => svc.getConsoleState())
 }
 
-export async function update(config: Info, options?: { dispose?: boolean }) {
-  return runPromise((svc) => svc.update(config, options))
+export async function update(config: Info) {
+  return runPromise((svc) => svc.update(config))
 }
 
 export async function updateGlobal(config: Info, options?: { dispose?: boolean }) {
   return runPromise((svc) => svc.updateGlobal(config, options))
 }
 
-export async function invalidate(wait = false) {
-  return runPromise((svc) => svc.invalidate(wait))
+export async function invalidate() {
+  return runPromise((svc) => svc.invalidate())
 }
 
 export async function directories() {
