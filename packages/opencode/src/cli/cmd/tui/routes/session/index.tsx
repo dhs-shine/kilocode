@@ -981,14 +981,14 @@ export function Session() {
           if (!sessionData) return
           // kilocode_change start - fetch all messages from server instead of truncated sync store
           const allMessages = await sdk.client.session.messages({ sessionID: sessionData.id })
-          const sessionMessages = allMessages.data!.map((msg) => ({
+          const sessionMessages = (allMessages.data ?? []).map((msg) => ({
             info: msg.info,
             parts: msg.parts,
           }))
+          // kilocode_change end
           const transcript = formatTranscript(
             sessionData,
-            sessionMessages,
-            // kilocode_change end
+            sessionMessages, // kilocode_change
             {
               thinking: showThinking(),
               toolDetails: showDetails(),
@@ -1032,15 +1032,15 @@ export function Session() {
 
           // kilocode_change start - fetch all messages from server instead of truncated sync store
           const allMessages = await sdk.client.session.messages({ sessionID: sessionData.id })
-          const sessionMessages = allMessages.data!.map((msg) => ({
+          const sessionMessages = (allMessages.data ?? []).map((msg) => ({
             info: msg.info,
             parts: msg.parts,
           }))
+          // kilocode_change end
 
           const transcript = formatTranscript(
             sessionData,
-            sessionMessages,
-            // kilocode_change end
+            sessionMessages, // kilocode_change
             {
               thinking: options.thinking,
               toolDetails: options.toolDetails,
