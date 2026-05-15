@@ -119,7 +119,7 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             """
             [code] [kilo/gpt-5] [busy] [considering next steps]
             """,
-            m, show = false,
+            m, show = true,
         )
     }
 
@@ -140,7 +140,7 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             """
             [code] [kilo/gpt-5] [retry] [Rate limited]
             """,
-            m, show = false,
+            m, show = true,
         )
         val state = m.model.state as SessionState.Retry
         assertEquals(3, state.attempt)
@@ -163,7 +163,7 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             """
             [code] [kilo/gpt-5] [offline] [No network]
             """,
-            m, show = false,
+            m, show = true,
         )
         assertEquals("req_xyz", (m.model.state as SessionState.Offline).requestId)
     }
@@ -180,7 +180,7 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             """
             [code] [kilo/gpt-5] [idle]
             """,
-            m, show = false,
+            m, show = true,
         )
     }
 
@@ -196,7 +196,7 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             """
             [code] [kilo/gpt-5] [idle]
             """,
-            m, show = false,
+            m, show = true,
         )
     }
 
@@ -229,7 +229,7 @@ class SessionRecoveryTest : SessionControllerTestBase() {
 
             [code] [kilo/gpt-5] [awaiting-permission]
             """,
-            m, show = false,
+            m, show = true,
         )
     }
 
@@ -259,7 +259,7 @@ class SessionRecoveryTest : SessionControllerTestBase() {
 
             [code] [kilo/gpt-5] [awaiting-question]
             """,
-            m, show = false,
+            m, show = true,
         )
     }
 }
