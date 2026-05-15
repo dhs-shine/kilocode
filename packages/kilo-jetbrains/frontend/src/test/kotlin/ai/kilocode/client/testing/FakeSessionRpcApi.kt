@@ -18,6 +18,7 @@ import ai.kilocode.rpc.dto.SessionListDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.SessionTimeDto
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,8 +53,8 @@ class FakeSessionRpcApi : KiloSessionRpcApi {
     var recentFailures = 0
     var recentGate: CompletableDeferred<Unit>? = null
 
-    /** Local sessions returned by [list]. */
-    val listed = mutableListOf<SessionDto>()
+    /** Local sessions returned by [list]. Accessed from concurrent coroutines in delete tests. */
+    val listed = java.util.concurrent.CopyOnWriteArrayList<SessionDto>()
 
     /** Cloud sessions returned by [cloudSessions]. */
     val cloud = mutableListOf<CloudSessionDto>()
@@ -85,8 +86,10 @@ class FakeSessionRpcApi : KiloSessionRpcApi {
     val permissionRulesSaved = mutableListOf<Triple<String, String, PermissionAlwaysRulesDto>>()
     val questionReplies = mutableListOf<Triple<String, String, QuestionReplyDto>>()
     val questionRejects = mutableListOf<Pair<String, String>>()
-    val deletes = mutableListOf<Pair<String, String>>()
+    val deletes = java.util.concurrent.CopyOnWriteArrayList<Pair<String, String>>()
     var deleteGate: CompletableDeferred<Unit>? = null
+    /** Receives one element per completed delete — lets tests await deletes without polling. */
+    val deleteSignal = Channel<Pair<String, String>>(Channel.UNLIMITED)
     val renames = mutableListOf<Triple<String, String, String>>()
     var renameThrows: Exception? = null
     val lists = mutableListOf<String>()
@@ -133,6 +136,7 @@ class FakeSessionRpcApi : KiloSessionRpcApi {
         deleteGate?.await()
         deletes.add(id to directory)
         listed.removeAll { it.id == id }
+        deleteSignal.trySend(id to directory)
     }
 
     override suspend fun rename(id: String, directory: String, title: String): SessionDto {

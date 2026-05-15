@@ -10555,9 +10555,6 @@
                   "language": {
                     "type": "string"
                   },
-                  "prompt": {
-                    "type": "string"
-                  },
                   "temperature": {
                     "type": "number"
                   }

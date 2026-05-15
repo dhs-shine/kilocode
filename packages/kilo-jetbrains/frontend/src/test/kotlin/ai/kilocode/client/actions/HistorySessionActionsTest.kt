@@ -210,7 +210,12 @@ class HistorySessionActionsTest : BasePlatformTestCase() {
         val event = event(action, manager, selection(HistorySource.LOCAL, items), controller)
 
         action.actionPerformed(event)
-        waitFor { rpc.deletes.size == 2 }
+
+        // Await both deletes via the signal channel — event-driven, no timeout polling.
+        runBlocking {
+            repeat(2) { rpc.deleteSignal.receive() }
+        }
+        ApplicationManager.getApplication().invokeAndWait { UIUtil.dispatchAllInvocationEvents() }
 
         assertEquals(listOf("ses_1", "ses_2"), rpc.deletes.map { it.first }.sorted())
         assertTrue(controller.local.items.isEmpty())
@@ -235,7 +240,8 @@ class HistorySessionActionsTest : BasePlatformTestCase() {
         assertTrue(rpc.deletes.isEmpty())
 
         rpc.deleteGate?.complete(Unit)
-        waitFor { rpc.deletes.size == 1 }
+        runBlocking { rpc.deleteSignal.receive() }
+        ApplicationManager.getApplication().invokeAndWait { UIUtil.dispatchAllInvocationEvents() }
         assertEquals(listOf("ses_1"), rpc.deletes.map { it.first })
     }
 

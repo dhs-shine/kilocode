@@ -302,7 +302,10 @@ export const layer: Layer.Layer<
     // goes backwards through parts until there are PRUNE_PROTECT tokens worth of tool
     // calls, then erases output of older tool calls to free context space
     // kilocode_change start - preserve normal opt-in pruning, but allow payload/compaction cleanup by default
-    const prune = Effect.fn("SessionCompaction.prune")(function* (input: { sessionID: SessionID; reason?: PruneReason }) {
+    const prune = Effect.fn("SessionCompaction.prune")(function* (input: {
+      sessionID: SessionID
+      reason?: PruneReason
+    }) {
       const cfg = yield* config.get()
       const reason = input.reason ?? "normal"
       if (cfg.compaction?.prune === false) return
@@ -666,11 +669,13 @@ export const defaultLayer = Layer.suspend(() =>
 
 const { runPromise } = makeRuntime(Service, defaultLayer)
 
-export async function isOverflow(input: { tokens: MessageV2.Assistant["tokens"]; model: Provider.Model }) { // kilocode_change
+export async function isOverflow(input: { tokens: MessageV2.Assistant["tokens"]; model: Provider.Model }) {
+  // kilocode_change
   return runPromise((svc) => svc.isOverflow(input))
 }
 
-export async function prune(input: { sessionID: SessionID; reason?: PruneReason }) { // kilocode_change
+export async function prune(input: { sessionID: SessionID; reason?: PruneReason }) {
+  // kilocode_change
   return runPromise((svc) => svc.prune(input))
 }
 
