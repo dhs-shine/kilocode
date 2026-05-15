@@ -25,6 +25,7 @@ import { ConfigCommand as ConfigCLICommand } from "../cli/cmd/config"
 import { PluginCommand } from "../cli/cmd/plug"
 import { DevSetupCommand, DevAliasCommand } from "./cli/dev-setup"
 import { RollCallCommand } from "./cli/cmd/roll-call"
+import { BalanceCommand } from "./cli/cmd/balance"
 import { HelpCommand } from "./help-command"
 import { InstallationBuildKind } from "@opencode-ai/core/installation/version"
 
@@ -57,6 +58,7 @@ export const commands = [
   ServeCommand,
   ModelsCommand,
   RollCallCommand,
+  BalanceCommand,
   StatsCommand,
   ExportCommand,
   ImportCommand,
