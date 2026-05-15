@@ -139,6 +139,12 @@ tasks.register("typecheck") {
     )
 }
 
+// CLI binaries must be present before packaging. Wire the check here (not in
+// :backend:processResources) so compile/test tasks work without CLI binaries.
+tasks.named("buildPlugin") {
+    dependsOn(":backend:checkCli")
+}
+
 tasks.named<JavaExec>("runIde") {
     dependsOn(":backend:processResources")
     jvmArgumentProviders += CommandLineArgumentProvider {

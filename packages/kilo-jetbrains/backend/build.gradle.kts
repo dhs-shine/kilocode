@@ -96,9 +96,9 @@ val checkCli by tasks.registering(CheckCliTask::class) {
     platforms.set(requiredPlatforms)
 }
 
-tasks.processResources {
-    dependsOn(checkCli)
-}
+// CLI binaries are verified only at packaging time (buildPlugin), not at
+// processResources time, so that Kotlin compile and tests work without binaries.
+// Wire checkCli to buildPlugin in the root build.gradle.kts instead.
 
 dependencies {
     intellijPlatform {
