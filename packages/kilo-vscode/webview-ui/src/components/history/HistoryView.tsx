@@ -30,9 +30,9 @@ const HistoryView: Component<HistoryViewProps> = (props) => {
 
     const frame = requestAnimationFrame(() => {
       content
-        ?.querySelector<HTMLInputElement | HTMLTextAreaElement>(
-          '[data-slot="list-search"] input, [data-slot="list-search"] textarea',
-        )
+        ?.querySelector<
+          HTMLInputElement | HTMLTextAreaElement
+        >('[data-slot="list-search"] input, [data-slot="list-search"] textarea')
         ?.focus()
     })
 
