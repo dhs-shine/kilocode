@@ -92,6 +92,7 @@ export const dict = {
   "command.session.share.description": "Deel deze sessie en kopieer de URL naar het klembord",
   "command.session.unshare": "Delen van sessie stoppen",
   "command.session.unshare.description": "Stop met het delen van deze sessie",
+  "command.session.export": "Sessietranscript exporteren",
 
   "palette.search.placeholder": "Zoeken naar bestanden, commando's en sessies",
   "palette.empty": "Geen resultaten gevonden",

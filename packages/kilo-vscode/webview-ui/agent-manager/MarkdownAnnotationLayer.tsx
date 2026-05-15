@@ -88,11 +88,19 @@ function matches(annotation: DiffLineAnnotation<AnnotationMeta>, anchor: Anchor,
   return true
 }
 
+const selector = ".am-markdown-inline-annotations, .am-markdown-list-annotation, .am-markdown-table-annotation"
+
+// Keep host insertion observable, only nested annotation UI updates are safe to ignore.
+export function isAnnotationMutation(mutation: Pick<MutationRecord, "target">): boolean {
+  const target = mutation.target
+  if (!("closest" in target)) return false
+  if (typeof target.closest !== "function") return false
+  return target.closest(selector) !== null
+}
+
 function removeInserted(root: HTMLElement, layer: HTMLElement): void {
   layer.replaceChildren()
-  root
-    .querySelectorAll(".am-markdown-inline-annotations, .am-markdown-list-annotation, .am-markdown-table-annotation")
-    .forEach((node) => node.remove())
+  root.querySelectorAll(selector).forEach((node) => node.remove())
 }
 
 function insertHost(anchor: Anchor, host: HTMLElement): void {
@@ -206,7 +214,10 @@ export const MarkdownAnnotationLayer: Component<MarkdownAnnotationLayerProps> = 
     const root = props.root()
     if (!root) return
     observer?.disconnect()
-    observer = new MutationObserver(schedule)
+    observer = new MutationObserver((mutations) => {
+      if (mutations.every(isAnnotationMutation)) return
+      schedule()
+    })
     observer.observe(root, { childList: true, subtree: true })
   })
 

@@ -92,6 +92,7 @@ export const dict = {
   "command.session.share.description": "Udostępnij tę sesję i skopiuj URL do schowka",
   "command.session.unshare": "Przestań udostępniać sesję",
   "command.session.unshare.description": "Zatrzymaj udostępnianie tej sesji",
+  "command.session.export": "Eksportuj transkrypcję sesji",
 
   "palette.search.placeholder": "Szukaj plików, poleceń i sesji",
   "palette.empty": "Brak wyników",

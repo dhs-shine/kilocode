@@ -92,6 +92,7 @@ export const dict = {
   "command.session.share.description": "このセッションを共有しURLをクリップボードにコピー",
   "command.session.unshare": "セッションの共有を停止",
   "command.session.unshare.description": "このセッションの共有を停止",
+  "command.session.export": "セッション記録をエクスポート",
 
   "palette.search.placeholder": "ファイル、コマンド、セッションを検索",
   "palette.empty": "結果が見つかりません",

@@ -92,6 +92,7 @@ export const dict = {
   "command.session.share.description": "Відкрити доступ до цієї сесії та скопіювати URL до буфера обміну",
   "command.session.unshare": "Закрити доступ до сесії",
   "command.session.unshare.description": "Закрити доступ до цієї сесії",
+  "command.session.export": "Експортувати запис сеансу",
 
   "palette.search.placeholder": "Пошук файлів, команд і сесій",
   "palette.empty": "Результатів не знайдено",

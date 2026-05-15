@@ -96,6 +96,7 @@ export const dict = {
   "command.session.share.description": "Diese Sitzung teilen und URL in die Zwischenablage kopieren",
   "command.session.unshare": "Teilen der Sitzung aufheben",
   "command.session.unshare.description": "Teilen dieser Sitzung beenden",
+  "command.session.export": "Sitzungsprotokoll exportieren",
 
   "palette.search.placeholder": "Dateien, Befehle und Sitzungen durchsuchen",
   "palette.empty": "Keine Ergebnisse gefunden",
