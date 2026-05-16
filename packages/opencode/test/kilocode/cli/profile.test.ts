@@ -1,34 +1,37 @@
 import { describe, expect, test } from "bun:test"
 
-import { format, handle, payload } from "../../../src/kilocode/cli/cmd/balance"
+import { format, handle, payload } from "../../../src/kilocode/cli/cmd/profile"
 
-describe("balance CLI formatting", () => {
+describe("profile CLI formatting", () => {
   test("formats personal balance for human output", () => {
     expect(
       format({
+        name: null,
         email: "one@example.com",
         team: "Personal",
         organizationId: null,
         balance: 12.345,
       }),
-    ).toBe("Account: one@example.com\nTeam: Personal\nBalance: $12.35")
+    ).toBe("Email: one@example.com\nTeam: Personal\nBalance: $12.35")
   })
 
-  test("formats team balance for human output", () => {
+  test("formats profile name for human output", () => {
     expect(
       format({
+        name: "User One",
         email: "one@example.com",
         team: "Team One",
         organizationId: "org-1",
         balance: 7,
       }),
-    ).toBe("Account: one@example.com\nTeam: Team One\nBalance: $7.00")
+    ).toBe("Name: User One\nEmail: one@example.com\nTeam: Team One\nBalance: $7.00")
   })
 
   test("creates JSON payload", () => {
     expect(
       payload({
         profile: {
+          name: "User One",
           email: "one@example.com",
           organizations: [{ id: "org-1", name: "Team One", role: "admin" }],
         },
@@ -36,6 +39,7 @@ describe("balance CLI formatting", () => {
         organizationId: "org-1",
       }),
     ).toEqual({
+      name: "User One",
       email: "one@example.com",
       team: "Team One",
       organizationId: "org-1",
@@ -56,14 +60,14 @@ describe("balance CLI formatting", () => {
       await handle({
         json: false,
         getAuth: async () => ({ type: "oauth", refresh: "refresh", access: "token", expires: 1 }),
-        getProfile: async () => ({ email: "one@example.com" }),
+        getProfile: async () => ({ email: "one@example.com", name: "User One" }),
         getBalance: async () => ({ balance: 4 }),
       })
     } finally {
       process.stdout.write = write
     }
 
-    expect(logs.join("")).toBe("Account: one@example.com\nTeam: Personal\nBalance: $4.00\n")
+    expect(logs.join("")).toBe("Name: User One\nEmail: one@example.com\nTeam: Personal\nBalance: $4.00\n")
   })
 
   test("handles profile fetch errors without throwing", async () => {

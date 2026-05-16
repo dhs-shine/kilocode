@@ -5,6 +5,7 @@ import { Auth, type Info as AuthInfo } from "../../../auth"
 import { fetchBalance, fetchProfile, type KilocodeBalance, type KilocodeProfile } from "@kilocode/kilo-gateway"
 
 interface Info {
+  name: string | null
   email: string
   team: string
   organizationId: string | null
@@ -18,6 +19,7 @@ export function payload(input: {
 }): Info {
   const org = input.profile.organizations?.find((item) => item.id === input.organizationId)
   return {
+    name: input.profile.name ?? null,
     email: input.profile.email,
     team: org?.name ?? "Personal",
     organizationId: input.organizationId ?? null,
@@ -26,7 +28,13 @@ export function payload(input: {
 }
 
 export function format(info: Info): string {
-  return [`Account: ${info.email}`, `Team: ${info.team}`, `Balance: $${info.balance.toFixed(2)}`].join("\n")
+  const lines = [
+    ...(info.name ? [`Name: ${info.name}`] : []),
+    `Email: ${info.email}`,
+    `Team: ${info.team}`,
+    `Balance: $${info.balance.toFixed(2)}`,
+  ]
+  return lines.join("\n")
 }
 
 interface Args {
@@ -38,12 +46,12 @@ interface Args {
   exit?: (code: number) => void
 }
 
-export const BalanceCommand = cmd({
-  command: "balance",
-  describe: "show Kilo account balance",
+export const ProfileCommand = cmd({
+  command: "profile",
+  describe: "show Kilo account profile",
   builder: (yargs: Argv) =>
     yargs.option("json", {
-      describe: "output balance as JSON",
+      describe: "output profile as JSON",
       type: "boolean",
       default: false,
     }),

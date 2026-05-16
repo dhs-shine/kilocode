@@ -23,7 +23,7 @@ import { ConfigCommand as ConfigCLICommand } from "../../src/cli/cmd/config"
 import { PluginCommand } from "../../src/cli/cmd/plug"
 import { DbCommand } from "../../src/cli/cmd/db"
 import { HelpCommand } from "../../src/kilocode/help-command"
-import { BalanceCommand } from "../../src/kilocode/cli/cmd/balance"
+import { ProfileCommand } from "../../src/kilocode/cli/cmd/profile"
 
 // Stand-in for TuiThreadCommand — the real one imports @opentui/solid which
 // doesn't resolve in the test environment. Only command/describe matter here.
@@ -71,7 +71,7 @@ const commands = [
   DbCommand,
   ConfigCLICommand,
   PluginCommand,
-  BalanceCommand,
+  ProfileCommand,
   HelpCommand,
   CompletionStub,
 ] as any[]
@@ -79,7 +79,7 @@ const commands = [
 describe("kilo help --all (markdown)", () => {
   test("contains ## heading for each known top-level command", async () => {
     const output = await generateHelp({ all: true, format: "md", commands })
-    for (const cmd of ["run", "auth", "debug", "mcp", "session", "agent", "balance"]) {
+    for (const cmd of ["run", "auth", "debug", "mcp", "session", "agent", "profile"]) {
       expect(output).toContain(`## kilo ${cmd}`)
     }
   })
@@ -101,7 +101,7 @@ describe("kilo help --all (text)", () => {
 
   test("still contains each command name", async () => {
     const output = await generateHelp({ all: true, format: "text", commands })
-    for (const cmd of ["run", "auth", "debug", "mcp", "session", "agent", "balance"]) {
+    for (const cmd of ["run", "auth", "debug", "mcp", "session", "agent", "profile"]) {
       expect(output).toContain(`kilo ${cmd}`)
     }
   })

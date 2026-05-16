@@ -36,7 +36,7 @@ import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
 import { RemoteCommand } from "./cli/cmd/remote" // kilocode_change
 import { RollCallCommand } from "./kilocode/cli/cmd/roll-call" // kilocode_change
-import { BalanceCommand } from "./kilocode/cli/cmd/balance" // kilocode_change
+import { ProfileCommand } from "./kilocode/cli/cmd/profile" // kilocode_change
 import { DevSetupCommand, DevAliasCommand } from "./kilocode/cli/dev-setup" // kilocode_change
 // kilocode_change start - Import telemetry, instance disposal, and legacy migration
 import { Telemetry } from "@kilocode/kilo-telemetry"
@@ -232,7 +232,7 @@ let cli = yargs(args) // kilocode_change
   // .command(WebCommand) // kilocode_change (Disabled unsupported opencode web UI)
   .command(ModelsCommand)
   .command(RollCallCommand) // kilocode_change
-  .command(BalanceCommand) // kilocode_change
+  .command(ProfileCommand) // kilocode_change
   .command(StatsCommand)
   .command(ExportCommand)
   .command(ImportCommand)
