@@ -1,5 +1,56 @@
 # @kilocode/cli
 
+## 7.3.0
+
+### Patch Changes
+
+- [#10279](https://github.com/Kilo-Org/kilocode/pull/10279) [`a3769d8`](https://github.com/Kilo-Org/kilocode/commit/a3769d83de3e1121c05877f5673dbcb5d3429c6b) - Keep Enhance Prompt focused on rewriting draft prompts instead of answering question-shaped drafts directly.
+
+## 7.2.54
+
+### Minor Changes
+
+- [#10218](https://github.com/Kilo-Org/kilocode/pull/10218) [`4860e65`](https://github.com/Kilo-Org/kilocode/commit/4860e654ca1cc46c4e99acc3f40d4f1302e34944) - Support setting an auto-compaction threshold percentage so long sessions can compact before the context window is full.
+
+### Patch Changes
+
+- [#10136](https://github.com/Kilo-Org/kilocode/pull/10136) [`8af638e`](https://github.com/Kilo-Org/kilocode/commit/8af638e7e20c645b22d96da5e30665e8e9cbf6ad) - Show ChatGPT sign-in again when Codex authentication expires.
+
+- [#8754](https://github.com/Kilo-Org/kilocode/pull/8754) [`e498c02`](https://github.com/Kilo-Org/kilocode/commit/e498c02f7acc5c228bbd45f9e4f294bf5def21ca) Thanks [@shssoichiro](https://github.com/shssoichiro)! - Fix TUI diff rendering when header-like content lines appear inside a unified diff hunk.
+
+- [#10158](https://github.com/Kilo-Org/kilocode/pull/10158) [`d8245a0`](https://github.com/Kilo-Org/kilocode/commit/d8245a0ceb0989b8596c5a5d17fd1095ba9521be) - Fix Mermaid diagrams rendering with empty text inside every shape by restoring the `foreignObject` HTML integration point that DOMPurify dropped in 3.1.7.
+
+- [#10197](https://github.com/Kilo-Org/kilocode/pull/10197) [`1ea86fb`](https://github.com/Kilo-Org/kilocode/commit/1ea86fb6e15cbe486cb0af6f26995d0b1b2745a2) - Prevent Kilo Gateway Responses requests from replaying transient provider item IDs when request storage is disabled.
+
+- Updated dependencies [[`4860e65`](https://github.com/Kilo-Org/kilocode/commit/4860e654ca1cc46c4e99acc3f40d4f1302e34944), [`1af7973`](https://github.com/Kilo-Org/kilocode/commit/1af79731a8ed925f1f69aa536ba90a53b89e8dfb), [`1ea86fb`](https://github.com/Kilo-Org/kilocode/commit/1ea86fb6e15cbe486cb0af6f26995d0b1b2745a2), [`f5dc95b`](https://github.com/Kilo-Org/kilocode/commit/f5dc95b99394c17ad7140bb034bc15a0f9de60b6)]:
+  - @kilocode/sdk@7.3.0
+  - @kilocode/kilo-gateway@7.3.0
+  - @kilocode/plugin@7.2.53
+  - @kilocode/kilo-indexing@7.2.53
+  - @kilocode/kilo-telemetry@7.2.53
+
+## 7.2.51
+
+### Patch Changes
+
+- [#10121](https://github.com/Kilo-Org/kilocode/pull/10121) [`9963b02`](https://github.com/Kilo-Org/kilocode/commit/9963b0271a78244f773e6192721376618d0a3549) Thanks [@shssoichiro](https://github.com/shssoichiro)! - Auto-approve Task subagent tool permissions when running `kilo run --auto`.
+
+- [#10114](https://github.com/Kilo-Org/kilocode/pull/10114) [`0676243`](https://github.com/Kilo-Org/kilocode/commit/0676243df3afcd97fa7fc40da3c8bf9b092156c3) Thanks [@shssoichiro](https://github.com/shssoichiro)! - Remove `--dangerously-skip-permissions` CLI flag which did nothing
+
+- [#10137](https://github.com/Kilo-Org/kilocode/pull/10137) [`33a233f`](https://github.com/Kilo-Org/kilocode/commit/33a233fd117f23ce967bda7318dc6b3aa3c83e11) - Prevent subagents from spawning nested subagents.
+
+- [#10142](https://github.com/Kilo-Org/kilocode/pull/10142) [`00313bf`](https://github.com/Kilo-Org/kilocode/commit/00313bfcd4326cf24ffda674da3befe493633b20) Thanks [@truffle-dev](https://github.com/truffle-dev)! - Clarify that semantic search returns matching code snippets with paths, line ranges, and relevance scores.
+
+## 7.2.50
+
+## 7.2.49
+
+### Patch Changes
+
+- [#10076](https://github.com/Kilo-Org/kilocode/pull/10076) [`c48b31c`](https://github.com/Kilo-Org/kilocode/commit/c48b31c3ec077ea88549a1f1f025b558a1f8abf6) - Fix garbled diff and additions/deletions counts shown by `apply_patch` when updating a non-UTF-8 file.
+
+- [#10077](https://github.com/Kilo-Org/kilocode/pull/10077) [`1cf0943`](https://github.com/Kilo-Org/kilocode/commit/1cf09437f9d6cf8227f28d6a85a84d4766f26bc0) - Speed up reading large files: the `read` tool now streams UTF-8 content from disk and stops once the line/byte cap is reached, instead of loading the whole file into memory first.
+
 ## 7.2.48
 
 ### Patch Changes

@@ -92,6 +92,7 @@ export const dict = {
   "command.session.share.description": "Del denne session og kopier URL'en til udklipsholderen",
   "command.session.unshare": "Stop deling af session",
   "command.session.unshare.description": "Stop med at dele denne session",
+  "command.session.export": "Eksporter sessionsudskrift",
 
   "palette.search.placeholder": "Søg i filer, kommandoer og sessioner",
   "palette.empty": "Ingen resultater fundet",
@@ -269,6 +270,7 @@ export const dict = {
   "prompt.attachment.remove": "Fjern vedhæftning",
   "prompt.action.send": "Send",
   "prompt.action.send.blocked": "Besvar eller afvis det afventende spørgsmål først",
+  "prompt.action.send.recording": "Transskriber og send",
   "prompt.action.stop": "Stop",
   "prompt.action.enhance": "Forbedr prompt",
   "prompt.action.autoApprove.enable": "Aktiver automatisk godkendelse",
@@ -280,6 +282,20 @@ export const dict = {
   "prompt.action.resetModel": "Nulstil model til standard",
   "prompt.action.enhanceDescription":
     "Knappen 'Forbedr prompt' hjælper med at forbedre din forespørgsel ved at give ekstra kontekst, præcisering eller omformulering. Prøv at skrive en forespørgsel her og klik på knappen igen for at se hvordan det virker.",
+
+  "speechToText.tooltip.start": "Start stemmeinput",
+  "speechToText.tooltip.stop": "Stop lydoptagelse",
+  "speechToText.tooltip.transcribing": "Transskriberer... Klik for at annullere.",
+  "speechToText.tooltip.error": "Stemmeinput mislykkedes. Klik for at rydde.",
+  "speechToText.error.title": "Stemmeinput mislykkedes",
+  "speechToText.error.loginRequired": "Log ind på Kilo for at bruge stemmeinput.",
+  "speechToText.error.permission": "Mikrofontilladelse blev nægtet.",
+  "speechToText.error.microphone": "Kunne ikke starte mikrofonen.",
+  "speechToText.error.recording": "Optagelse mislykkedes.",
+  "speechToText.error.emptyRecording": "Ingen lyd blev optaget.",
+  "speechToText.error.emptyTranscript": "Ingen tale blev registreret.",
+  "speechToText.error.encoding": "Kunne ikke kode optagelsen.",
+  "speechToText.toast.transcribed": "Transskription indsat",
 
   "prompt.toast.pasteUnsupported.title": "Ikke understøttet indsæt",
   "prompt.toast.pasteUnsupported.description": "Kun billeder eller PDF'er kan indsættes her.",
@@ -466,6 +482,11 @@ export const dict = {
   "error.promotionLimit.description":
     "Tilmeld dig gratis for at fortsætte og udforske over 500 modeller. Tager 2 minutter, intet kreditkort nødvendigt. Eller kom tilbage senere.",
   "error.promotionLimit.action": "Tilmeld dig",
+  "error.providerAuth.title": "{{provider}} har logget dig af",
+  "error.providerAuth.description": "Forbind til {{provider}} igen, og send din besked på ny.",
+  "error.providerAuth.chatgpt.title": "OpenAI har logget dig af",
+  "error.providerAuth.chatgpt.description":
+    "Log ind med ChatGPT igen, og send din besked på ny for at fortsætte med at bruge Codex-modeller.",
 
   "error.chain.unknown": "Ukendt fejl",
   "error.chain.causedBy": "Forårsaget af:",
@@ -1229,6 +1250,13 @@ export const dict = {
   "settings.experimental.agentManagerTool.title": "Agent Manager-værktøj",
   "settings.experimental.agentManagerTool.description":
     "Tillad agenter at starte lokale Agent Manager-sessioner og worktree-sessioner fra et værktøjskald",
+  "settings.experimental.speechToText.title": "Tale til tekst",
+  "settings.experimental.speechToText.description":
+    "Aktivér stemmeinput i prompt-felter ved hjælp af din Kilo-konto gennem Kilo Gateway.",
+  "settings.experimental.speechToText.disabledDescription":
+    "Aktivér og log ind på Kilo provider for at bruge stemmeinput i prompt-felter.",
+  "settings.experimental.speechToTextModel.title": "Model til tale til tekst",
+  "settings.experimental.speechToTextModel.description": "Vælg Kilo Gateway-transskriptionsmodellen til stemmeinput.",
   "settings.experimental.continueOnDeny.title": "Fortsæt ved afvisning",
   "settings.experimental.continueOnDeny.description": "Fortsæt agentløkken, når en tilladelse afvises",
   "settings.experimental.mcpTimeout.title": "MCP-timeout (ms)",
@@ -1400,7 +1428,10 @@ export const dict = {
   "settings.checkpoints.enable.title": "Aktiver snapshots",
   "settings.checkpoints.enable.description": "Opret kontrolpunkter før filredigeringer",
   "settings.context.autoCompaction.title": "Automatisk komprimering",
-  "settings.context.autoCompaction.description": "Komprimér automatisk kontekst, når den er fuld",
+  "settings.context.autoCompaction.description": "Komprimér automatisk kontekst, før den når grænsen",
+  "settings.context.compactionLimit.title": "Grænse for automatisk komprimering",
+  "settings.context.compactionLimit.description":
+    "Komprimér, når konteksten når denne procentdel af modelvinduet. Lad feltet være tomt for kun at bruge sikkerhedsbufferen.",
   "settings.context.prune.title": "Fjern gamle output",
   "settings.context.prune.description": "Fjern gamle værktøjsoutput under komprimering",
   "settings.context.watcherPatterns": "Filvagt-ignormønstre",
@@ -1583,4 +1614,5 @@ export const dict = {
   "diffViewer.baseBranch.empty": "No matching branches",
   "diffViewer.baseBranch.loading": "Loading branches…",
   "diffViewer.baseBranch.none": "—",
+  "plan.exit.ready": "Planen er klar:",
 }
