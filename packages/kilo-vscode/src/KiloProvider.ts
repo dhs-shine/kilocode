@@ -17,6 +17,7 @@ import { FileIgnoreController } from "./services/autocomplete/shims/FileIgnoreCo
 import { ChatTextAreaAutocomplete } from "./services/autocomplete/chat-autocomplete/ChatTextAreaAutocomplete"
 import { buildWebviewHtml, getWebviewFontSize } from "./utils"
 import { saveImage } from "./kilo-provider/save-image"
+import { exportTranscript } from "./kilo-provider/export-transcript"
 import {
   TelemetryProxy,
   type TelemetryPropertiesProvider,
@@ -622,6 +623,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           connection: this.connectionService,
           dir: this.getWorkspaceDirectory(this.currentSession?.id),
           post: (msg) => this.postMessage(msg),
+          exportTranscript: (sessionID) => this.handleExportSessionTranscript(sessionID),
         })
       ) {
         return
@@ -1664,6 +1666,30 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.postMessage({
         type: "error",
         message: getErrorMessage(error) || "Failed to rename session",
+      })
+    }
+  }
+
+  /**
+   * Export a full session transcript as Markdown.
+   */
+  private async handleExportSessionTranscript(sessionID: string): Promise<void> {
+    if (!this.client) {
+      this.postMessage({ type: "error", message: "Not connected to CLI backend" })
+      return
+    }
+
+    try {
+      const saved = await exportTranscript(this.client, {
+        sessionID,
+        dir: this.getWorkspaceDirectory(sessionID),
+      })
+      if (saved) void vscode.window.showInformationMessage("Session transcript exported as Markdown.")
+    } catch (error) {
+      console.error("[Kilo New] KiloProvider: Failed to export session transcript:", error)
+      this.postMessage({
+        type: "error",
+        message: getErrorMessage(error) || "Failed to export session transcript",
       })
     }
   }

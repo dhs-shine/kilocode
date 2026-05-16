@@ -96,6 +96,7 @@ export const dict = {
   "command.session.share.description": "分享此工作階段並將連結複製到剪貼簿",
   "command.session.unshare": "取消分享工作階段",
   "command.session.unshare.description": "停止分享此工作階段",
+  "command.session.export": "匯出會話紀錄",
 
   "palette.search.placeholder": "搜尋檔案、命令和工作階段",
   "palette.empty": "找不到結果",
@@ -1555,4 +1556,5 @@ export const dict = {
   "diffViewer.baseBranch.empty": "沒有相符的分支",
   "diffViewer.baseBranch.loading": "正在載入分支…",
   "diffViewer.baseBranch.none": "—",
+  "plan.exit.ready": "計畫已準備就緒：",
 } satisfies Partial<Record<Keys, string>>

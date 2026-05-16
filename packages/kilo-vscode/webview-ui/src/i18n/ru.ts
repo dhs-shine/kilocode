@@ -92,6 +92,7 @@ export const dict = {
   "command.session.share.description": "Поделиться сессией и скопировать URL в буфер обмена",
   "command.session.unshare": "Отменить публикацию",
   "command.session.unshare.description": "Прекратить публикацию сессии",
+  "command.session.export": "Экспортировать запись сеанса",
 
   "palette.search.placeholder": "Поиск файлов, команд и сессий",
   "palette.empty": "Ничего не найдено",
@@ -1618,4 +1619,5 @@ export const dict = {
   "diffViewer.baseBranch.empty": "Нет подходящих веток",
   "diffViewer.baseBranch.loading": "Загрузка веток…",
   "diffViewer.baseBranch.none": "—",
+  "plan.exit.ready": "План готов:",
 }
