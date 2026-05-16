@@ -44,6 +44,7 @@ class HistorySessionActionsTest : BasePlatformTestCase() {
     private lateinit var controller: HistoryController
     private lateinit var manager: FakeManager
     /** Counts fully-completed deletes (incremented on EDT after local.remove). */
+    @Volatile
     private var deleteCount = 0
 
     override fun setUp() {
@@ -468,8 +469,7 @@ class HistorySessionActionsTest : BasePlatformTestCase() {
 
     /** Waits until [n] deletes have fully completed (deleted callback fired on EDT after local.remove). */
     private fun awaitDeletes(n: Int) {
-        val target = deleteCount + n
-        waitFor { deleteCount >= target }
+        waitFor { deleteCount >= n }
     }
 
     private fun flush() = runBlocking {
