@@ -45,12 +45,7 @@ test("failedProviders returns empty array when no fetch has occurred", () => {
 test("getFailure returns undefined when fetch succeeds", async () => {
   stubbedResult = {
     models: {
-      "test/model": {
-        id: "test/model",
-        name: "Test",
-        cost: { input: 1, output: 2 },
-        limit: { context: 128000, output: 4096 },
-      },
+      "test/model": { id: "test/model", name: "Test", cost: { input: 1, output: 2 }, limit: { context: 128000, output: 4096 } },
     },
   }
   ModelCache.clear("kilo")
@@ -86,12 +81,7 @@ test("failure state is cleared when subsequent fetch succeeds", async () => {
 
   stubbedResult = {
     models: {
-      "test/model": {
-        id: "test/model",
-        name: "Test",
-        cost: { input: 1, output: 2 },
-        limit: { context: 128000, output: 4096 },
-      },
+      "test/model": { id: "test/model", name: "Test", cost: { input: 1, output: 2 }, limit: { context: 128000, output: 4096 } },
     },
   }
   ModelCache.clear("kilo")

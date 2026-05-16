@@ -91,12 +91,11 @@ test("returns error with kind=http on non-auth HTTP error (e.g. 500)", async () 
 
 test("returns models without error on success", async () => {
   const orig = globalThis.fetch
-  stubFetch(
-    async () =>
-      new Response(VALID_RESPONSE, {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+  stubFetch(async () =>
+    new Response(VALID_RESPONSE, {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }),
   )
 
   const result = await fetchKiloModels({})
@@ -109,12 +108,11 @@ test("returns models without error on success", async () => {
 
 test("returns error with kind=schema when response body is invalid JSON", async () => {
   const orig = globalThis.fetch
-  stubFetch(
-    async () =>
-      new Response("not valid json{{{{", {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+  stubFetch(async () =>
+    new Response("not valid json{{{{", {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }),
   )
 
   const result = await fetchKiloModels({})
