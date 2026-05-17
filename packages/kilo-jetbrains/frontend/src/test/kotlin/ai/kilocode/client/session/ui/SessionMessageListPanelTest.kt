@@ -1,7 +1,15 @@
 package ai.kilocode.client.session.ui
 
+import ai.kilocode.client.session.model.Permission
+import ai.kilocode.client.session.model.PermissionMeta
+import ai.kilocode.client.session.model.Question
+import ai.kilocode.client.session.model.QuestionItem
+import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.model.SessionModel
+import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.views.PermissionView
+import ai.kilocode.client.session.views.QuestionView
 import ai.kilocode.client.session.views.TextView
 import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
@@ -10,6 +18,7 @@ import ai.kilocode.rpc.dto.PartDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import java.awt.Container
 
 /**
  * Tests for [SessionMessageListPanel] — structural and index integrity.
@@ -257,7 +266,109 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertTrue(text.md.overrideSheet().contains("25pt"))
     }
 
+    // ------ active view tests ------
+
+    fun `test active question is anchored before progress footer`() {
+        val item = panelWithPrompts()
+        model.upsertMessage(msg("u1", "user"))
+        model.setState(SessionState.AwaitingQuestion(question()))
+
+        val qv = find<QuestionView>(item)!!
+        val pv = find<PermissionView>(item)!!
+        val comps = item.components.toList()
+
+        assertTrue(qv.isVisible)
+        assertFalse(pv.isVisible)
+        assertSame(item.progress, comps.last())
+        assertTrue(comps.indexOf(qv) < comps.indexOf(item.progress))
+    }
+
+    fun `test active permission replaces active question`() {
+        val item = panelWithPrompts()
+        model.setState(SessionState.AwaitingQuestion(question()))
+        model.setState(SessionState.AwaitingPermission(permission()))
+
+        val qv = find<QuestionView>(item)!!
+        val pv = find<PermissionView>(item)!!
+        val comps = item.components.toList()
+
+        assertFalse(qv.isVisible)
+        assertTrue(pv.isVisible)
+        assertSame(item.progress, comps.last())
+    }
+
+    fun `test idle hides active prompt and keeps progress footer last`() {
+        val item = panelWithPrompts()
+        model.setState(SessionState.AwaitingQuestion(question()))
+        model.setState(SessionState.Idle)
+
+        val qv = find<QuestionView>(item)!!
+        val pv = find<PermissionView>(item)!!
+
+        assertFalse(qv.isVisible)
+        assertFalse(pv.isVisible)
+        assertSame(item.progress, item.components.last())
+    }
+
+    fun `test cleared hides active prompt`() {
+        val item = panelWithPrompts()
+        model.setState(SessionState.AwaitingPermission(permission()))
+        model.clear()
+
+        val pv = find<PermissionView>(item)!!
+
+        assertFalse(pv.isVisible)
+        assertSame(item.progress, item.components.last())
+    }
+
     // ------ helpers ------
+
+    private fun panelWithPrompts(): SessionMessageListPanel {
+        val q = QuestionView(
+            reply = { _, _ -> },
+            reject = { _ -> },
+        )
+        val p = PermissionView(
+            reply = { _, _ -> },
+        )
+        return SessionMessageListPanel(model, parent, q, p)
+    }
+
+    private inline fun <reified T> find(root: Container): T? = findCls(root, T::class.java)
+
+    private fun <T> findCls(root: Container, cls: Class<T>): T? {
+        if (cls.isInstance(root)) return cls.cast(root)
+        for (child in root.components) {
+            if (cls.isInstance(child)) return cls.cast(child)
+            if (child is Container) {
+                val item = findCls(child, cls)
+                if (item != null) return item
+            }
+        }
+        return null
+    }
+
+    private fun question(id: String = "q1") = Question(
+        id = id,
+        items = listOf(
+            QuestionItem(
+                question = "Proceed?",
+                header = "Confirm",
+                options = listOf(QuestionOption("Yes", "Continue")),
+                multiple = false,
+                custom = true,
+            ),
+        ),
+    )
+
+    private fun permission(id: String = "p1") = Permission(
+        id = id,
+        sessionId = "ses",
+        name = "edit",
+        patterns = listOf("*.kt"),
+        always = emptyList(),
+        meta = PermissionMeta(),
+    )
 
     private fun msg(id: String, role: String) = MessageDto(
         id = id, sessionID = "ses", role = role, time = MessageTimeDto(0.0),
