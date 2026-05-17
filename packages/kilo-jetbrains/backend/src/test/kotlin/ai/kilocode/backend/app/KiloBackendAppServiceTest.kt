@@ -165,6 +165,22 @@ class KiloBackendAppServiceTest {
     }
 
     @Test
+    fun `set organization sends explicit null body for personal account`() = runBlocking {
+        val svc = create()
+        svc.connect()
+
+        withTimeout(10_000) {
+            svc.appState.first { it is KiloAppState.Ready }
+        }
+
+        svc.setOrganization("org_1")
+        assertEquals("""{"organizationId":"org_1"}""", mock.lastOrganizationSetBody)
+
+        svc.setOrganization(null)
+        assertEquals("""{"organizationId":null}""", mock.lastOrganizationSetBody)
+    }
+
+    @Test
     fun `profile 401 does not prevent Ready`() = runBlocking {
         mock.profileStatus = 401
         val svc = create()
