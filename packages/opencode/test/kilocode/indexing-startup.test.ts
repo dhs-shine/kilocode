@@ -4,7 +4,7 @@ import type { Config } from "../../src/config/config"
 import { GlobalBus } from "../../src/bus/global"
 import { getBootstrapRunEffect } from "../../src/effect/app-runtime"
 import { KiloIndexing } from "../../src/kilocode/indexing"
-import { Instance } from "../../src/project/instance"
+import { WithInstance } from "../../src/project/with-instance"
 import { Server } from "../../src/server/server"
 import * as Log from "@opencode-ai/core/util/log"
 import { disposeAllInstances, tmpdir } from "../fixture/fixture"
@@ -183,7 +183,7 @@ describe("indexing startup degradation", () => {
     GlobalBus.on("event", on)
 
     try {
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         init: await getBootstrapRunEffect(),
         fn: async () => {
@@ -211,7 +211,7 @@ describe("indexing startup degradation", () => {
     process.env["KILO_CONFIG_DIR"] = tmp.path
 
     try {
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         init: await getBootstrapRunEffect(),
         fn: async () => {
@@ -236,7 +236,7 @@ describe("indexing startup degradation", () => {
     const init = spyOn(CodeIndexManager.prototype, "initialize").mockImplementation(() => gate.promise)
 
     try {
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         init: await getBootstrapRunEffect(),
         fn: async () => {
@@ -259,7 +259,7 @@ describe("indexing startup degradation", () => {
     process.env["KILO_CONFIG_DIR"] = tmp.path
     const init = spyOn(CodeIndexManager.prototype, "initialize")
 
-    await Instance.provide({
+    await WithInstance.provide({
       directory: tmp.path,
       init: await getBootstrapRunEffect(),
       fn: async () => {
@@ -300,7 +300,7 @@ describe("indexing startup degradation", () => {
     process.env.KILO_ORG_ID = "org_123"
 
     try {
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         init: await getBootstrapRunEffect(),
         fn: async () => {
@@ -333,7 +333,7 @@ describe("indexing startup degradation", () => {
     process.env.KILO_API_KEY = "kilo-token"
 
     try {
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         init: await getBootstrapRunEffect(),
         fn: async () => {
@@ -358,7 +358,7 @@ describe("indexing startup degradation", () => {
     const init = spyOn(CodeIndexManager.prototype, "initialize")
 
     try {
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         init: await getBootstrapRunEffect(),
         fn: async () => {

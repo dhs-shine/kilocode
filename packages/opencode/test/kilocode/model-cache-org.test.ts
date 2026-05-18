@@ -36,7 +36,7 @@ mock.module("opencode-anthropic-auth", () => ({ default: mockPlugin }))
 mock.module("@gitlab/opencode-gitlab-auth", () => ({ default: mockPlugin }))
 
 import { tmpdir } from "../fixture/fixture"
-import { Instance } from "../../src/project/instance"
+import { WithInstance } from "../../src/project/with-instance"
 import { Auth } from "../../src/auth"
 import { ModelCache } from "../../src/provider/model-cache"
 
@@ -51,7 +51,7 @@ test("model fetch uses accountId from OAuth auth as kilocodeOrganizationId", asy
       )
     },
   })
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     init: Effect.promise(async () => {
       // Simulate an OAuth login where user selected an enterprise organization
@@ -90,7 +90,7 @@ test("model fetch without OAuth accountId does not set kilocodeOrganizationId", 
       )
     },
   })
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     init: Effect.promise(async () => {
       // Simulate an OAuth login for a personal account (no accountId)
@@ -125,7 +125,7 @@ test("ModelCache.clear removes cached entry so next fetch hits the network", asy
       )
     },
   })
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     init: Effect.promise(async () => {
       await Auth.set("kilo", {

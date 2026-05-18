@@ -120,12 +120,10 @@ test("provider OAuth auth overrides inherited env variable", async () => {
         )
       },
     })
-    await Instance.provide({
+    await WithInstance.provide({
       directory: tmp.path,
-      init: Effect.promise(async () => {
-        set("OPENAI_API_KEY", "test-openai-key")
-      }).pipe(Effect.asVoid),
       fn: async () => {
+        set("OPENAI_API_KEY", "test-openai-key")
         const providers = await list()
         const provider = providers[ProviderID.openai]
         expect(provider).toBeDefined()
@@ -2513,7 +2511,7 @@ test("plugin config providers persist after instance dispose", async () => {
   expect(first[ProviderID.make("demo")].models[ModelID.make("chat")]).toBeDefined()
 
   // kilocode_change start
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: () => InstanceStore.disposeInstance(Instance.current),
   })

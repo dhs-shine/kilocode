@@ -18,6 +18,7 @@ import { Schema } from "effect"
 import { KILO_API_BASE } from "@kilocode/kilo-gateway"
 import { Config } from "@/config/config"
 import { Instance } from "@/project/instance"
+import { WithInstance } from "@/project/with-instance"
 import { Vcs } from "@/project/vcs"
 import simpleGit from "simple-git"
 import { RemoteWS } from "@/kilo-sessions/remote-ws"
@@ -363,7 +364,7 @@ export namespace KiloSessions {
       const conn = RemoteWS.connect({
         url,
         getToken: kilocodeToken,
-        withContext: (fn) => Instance.provide({ directory, fn }),
+        withContext: (fn) => WithInstance.provide({ directory, fn }),
         getSessions,
         log,
         onOpen: () => {
@@ -375,7 +376,7 @@ export namespace KiloSessions {
         onMessage: (msg) => {
           // Must run inside Instance.provide so Bus.subscribeAll can access
           // the instance-scoped subscription map via Instance.state().
-          void Instance.provide({ directory, fn: () => sender.handle(msg) })
+          void WithInstance.provide({ directory, fn: () => sender.handle(msg) })
         },
         onClose: () => disableRemote(),
       })

@@ -1,11 +1,11 @@
-import { afterEach, expect } from "bun:test"
+import { afterEach, expect, test } from "bun:test"
 import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import { Question } from "../../src/question"
 import { Instance } from "../../src/project/instance"
 import { WithInstance } from "../../src/project/with-instance"
 import { InstanceRuntime } from "../../src/project/instance-runtime"
 import { QuestionID } from "../../src/question/schema"
-import { disposeAllInstances, provideInstance, reloadTestInstance, tmpdirScoped } from "../fixture/fixture"
+import { disposeAllInstances, provideInstance, reloadTestInstance, tmpdir, tmpdirScoped } from "../fixture/fixture"
 import { SessionID } from "../../src/session/schema"
 import { testEffect } from "../lib/effect"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
@@ -112,7 +112,7 @@ it.instance(
 // kilocode_change start - review follow-up uses non-blocking question prompts
 test("ask - preserves blocking flag", async () => {
   await using tmp = await tmpdir({ git: true })
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const askPromise = Question.ask({

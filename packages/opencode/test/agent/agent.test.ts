@@ -2,7 +2,6 @@ import { afterEach, test, expect } from "bun:test"
 import { Effect } from "effect"
 import path from "path"
 import { disposeAllInstances, provideInstance, tmpdir } from "../fixture/fixture"
-import { Instance } from "../../src/project/instance"
 import { WithInstance } from "../../src/project/with-instance"
 import { Agent } from "../../src/agent/agent"
 import { Permission } from "../../src/permission"
@@ -63,7 +62,7 @@ test("code agent has correct default properties", async () => {
 // kilocode_change start - ask agent tests
 test("ask agent has correct default properties", async () => {
   await using tmp = await tmpdir()
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const ask = await Agent.get("ask")
@@ -97,7 +96,7 @@ test("ask agent denies edit/write/bash even when user config adds a specific edi
       },
     },
   })
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const ask = await Agent.get("ask")
@@ -144,7 +143,7 @@ test("plan agent user config allows cannot re-enable non-plan edits", async () =
       },
     },
   })
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const plan = await load(tmp.path, (svc) => svc.get("plan"))
@@ -883,7 +882,7 @@ test("defaultAgent throws when all primary agents are disabled", async () => {
 // kilocode_change start - Backward compatibility tests for "build" -> "code" rename
 test("Agent.get('build') returns code agent for backward compatibility", async () => {
   await using tmp = await tmpdir()
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const build = await Agent.get("build")
@@ -906,7 +905,7 @@ test("agent.build config applies to code agent for backward compatibility", asyn
       },
     },
   })
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const code = await Agent.get("code")
@@ -923,7 +922,7 @@ test("default_agent: 'build' returns code agent for backward compatibility", asy
       default_agent: "build",
     },
   })
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const agent = await Agent.defaultAgent()
@@ -940,7 +939,7 @@ test("agent.build disable removes code agent for backward compatibility", async 
       },
     },
   })
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const code = await Agent.get("code")

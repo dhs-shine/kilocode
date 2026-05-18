@@ -11,7 +11,7 @@ import { Env } from "../../../src/env"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { EffectFlock } from "@opencode-ai/core/util/effect-flock"
 import { Filesystem } from "../../../src/util/filesystem"
-import { Instance } from "../../../src/project/instance"
+import { WithInstance } from "../../../src/project/with-instance"
 import { Npm } from "@opencode-ai/core/npm"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 
@@ -67,7 +67,7 @@ describe("kilocode default indexing plugin", () => {
         },
       })
 
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         fn: async () => {
           const config = await load()

@@ -4,7 +4,7 @@ import fs from "fs/promises"
 import { Effect, Layer } from "effect"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { ToolRegistry } from "@/tool/registry"
-import { disposeAllInstances, TestInstance, tmpdir } from "../fixture/fixture" // kilocode_change
+import { disposeAllInstances, provideTmpdirInstance, TestInstance, tmpdir } from "../fixture/fixture" // kilocode_change
 import { testEffect } from "../lib/effect"
 import { TestConfig } from "../fixture/config"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
@@ -23,6 +23,7 @@ import { Format } from "@/format"
 import { Ripgrep } from "@/file/ripgrep"
 import * as Truncate from "@/tool/truncate"
 import { InstanceState } from "@/effect/instance-state"
+import { WithInstance } from "@/project/with-instance"
 
 const node = CrossSpawnSpawner.defaultLayer
 const configLayer = TestConfig.layer({
@@ -92,7 +93,7 @@ describe("tool.registry", () => {
         process.env["KILO_ENABLE_QUESTION_TOOL"] = client === "vscode" ? "true" : "false"
         await using tmp = await tmpdir({ git: true })
         process.env["KILO_CONFIG_DIR"] = tmp.path
-        await Instance.provide({
+        await WithInstance.provide({
           directory: tmp.path,
           fn: async () => {
             const ids = await ToolRegistry.ids()

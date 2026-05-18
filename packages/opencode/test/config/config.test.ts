@@ -406,7 +406,7 @@ test("prefers .kilo directory config over legacy .kilocode", async () => {
     },
   })
 
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const config = await Config.get()

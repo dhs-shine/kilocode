@@ -14,7 +14,7 @@ import { Config } from "../../../src/config/config"
 import { ConfigMarkdown } from "../../../src/config/markdown"
 import { Env } from "../../../src/env"
 import { KiloIndexing } from "../../../src/kilocode/indexing"
-import { Instance } from "../../../src/project/instance"
+import { WithInstance } from "../../../src/project/with-instance"
 import { Filesystem } from "../../../src/util/filesystem"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 
@@ -109,7 +109,7 @@ describe("kilocode indexing config", () => {
         },
       })
 
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         fn: async () => {
           const config = await load()
@@ -143,7 +143,7 @@ describe("kilocode indexing config", () => {
         },
       })
 
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         fn: async () => {
           const global = await Effect.runPromise(

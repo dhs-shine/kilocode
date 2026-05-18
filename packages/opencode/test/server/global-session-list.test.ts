@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:
 import { Effect } from "effect"
 import path from "path"
 import z from "zod"
-import { Instance } from "../../src/project/instance"
 import { WithInstance } from "../../src/project/with-instance"
 import { Project } from "@/project/project"
 import { Session as SessionNs } from "@/session/session"
@@ -131,7 +130,7 @@ describe("session.listGlobal", () => {
       await $`git worktree add ${worktree} -b test-branch-${Date.now()}`.cwd(first.path).quiet()
 
       // Create worktree session first so it computes its own project ID via rev-list
-      const branch = await Instance.provide({
+      const branch = await WithInstance.provide({
         directory: worktree,
         fn: async () => svc.create({ title: "worktree-session" }),
       })
@@ -139,12 +138,12 @@ describe("session.listGlobal", () => {
       // Now write a stale project ID to .git/kilo — this overrides the root's cached ID
       await Bun.write(path.join(first.path, ".git", "kilo"), "stale-project-id")
 
-      const root = await Instance.provide({
+      const root = await WithInstance.provide({
         directory: first.path,
         fn: async () => svc.create({ title: "root-session" }),
       })
       await Bun.file(path.join(first.path, ".git", "kilo")).delete()
-      const other = await Instance.provide({
+      const other = await WithInstance.provide({
         directory: second.path,
         fn: async () => svc.create({ title: "other-session" }),
       })

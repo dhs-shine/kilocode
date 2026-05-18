@@ -5,7 +5,7 @@ import { GlobalBus } from "@/bus/global"
 // module init cycle: Worktree → project/bootstrap → kilo-sessions → remote-sender →
 // app-runtime → Worktree. Static import here caused Worktree.defaultLayer to be
 // undefined when app-runtime evaluated during tests that import Worktree.
-import { Instance } from "@/project/instance"
+import { WithInstance } from "@/project/with-instance"
 import { Session } from "@/session/session"
 import { SessionPrompt } from "@/session/prompt"
 import { Question } from "@/question"
@@ -69,7 +69,7 @@ export namespace RemoteSender {
       warn: (...args: any[]) => void
     }
     subscribe?: (callback: (event: any) => void) => () => void
-    provide?: typeof Instance.provide
+    provide?: typeof WithInstance.provide
   }
 
   export type Sender = {
@@ -110,7 +110,7 @@ export namespace RemoteSender {
     }
 
     async function backfillChildren(parentId: string) {
-      const provide = options.provide ?? Instance.provide
+      const provide = options.provide ?? WithInstance.provide
       try {
         const dir = await directoryFor(parentId)
         await provide({
@@ -163,7 +163,7 @@ export namespace RemoteSender {
     }
 
     async function backfillPendingState(sessionId: string) {
-      const provide = options.provide ?? Instance.provide
+      const provide = options.provide ?? WithInstance.provide
       try {
         const dir = await directoryFor(sessionId)
         await provide({
@@ -228,7 +228,7 @@ export namespace RemoteSender {
     }
 
     function dispatchLongRunning(msg: RemoteProtocol.Command, dir: Promise<string>, work: () => Promise<void>) {
-      const provide = options.provide ?? Instance.provide
+      const provide = options.provide ?? WithInstance.provide
       options.conn.send({ type: "response", id: msg.id, result: {} })
       void (async () => {
         try {
@@ -244,7 +244,7 @@ export namespace RemoteSender {
     }
 
     function dispatchQuick(msg: RemoteProtocol.Command, dir: Promise<string>, work: () => Promise<void>) {
-      const provide = options.provide ?? Instance.provide
+      const provide = options.provide ?? WithInstance.provide
       void (async () => {
         try {
           await provide({ directory: await dir, fn: work })

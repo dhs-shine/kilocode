@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { aggregateSessionStats } from "../../src/cli/cmd/stats"
 import { MessageV2 } from "../../src/session/message-v2"
-import { Instance } from "../../src/project/instance"
+import { WithInstance } from "../../src/project/with-instance"
 import { ProviderID, ModelID } from "../../src/provider/schema"
 import { Session } from "../../src/session/session"
 import { MessageID, PartID } from "../../src/session/schema"
@@ -76,7 +76,7 @@ async function tool(sessionID: string, messageID: string) {
 describe("stats subagent cost", () => {
   test("counts child usage without double-counting propagated cost", async () => {
     await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
+    await WithInstance.provide({
       directory: tmp.path,
       fn: async () => {
         const parent = await Session.create({ title: "root" })
