@@ -130,13 +130,13 @@ class QuestionResultViewTest : BasePlatformTestCase() {
         )
         val view = QuestionResultView(tool)
 
-        assertTrue("Default state should be expanded", view.isExpanded())
+        assertFalse("Default state should be collapsed", view.isExpanded())
 
         view.toggle()
-        assertFalse("Should be collapsed after toggle", view.isExpanded())
+        assertTrue("Should be expanded after toggle", view.isExpanded())
 
         view.toggle()
-        assertTrue("Should be expanded after second toggle", view.isExpanded())
+        assertFalse("Should be collapsed after second toggle", view.isExpanded())
     }
 
     // ------ view factory routing ------

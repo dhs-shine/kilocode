@@ -143,8 +143,7 @@ class QuestionResultView(tool: Tool) : PartView() {
         add(root, BorderLayout.CENTER)
         syncLabels()
         rebuildBody()
-        // Default expanded: add body
-        root.add(body, BorderLayout.CENTER)
+        // Default collapsed: body not added
         syncArrow()
     }
 
