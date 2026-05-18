@@ -8,6 +8,7 @@ import {
   importSessionToDb,
 } from "@kilocode/kilo-gateway"
 import {
+  HEADER_FEATURE,
   HEADER_ORGANIZATIONID,
   KILO_API_BASE,
   KILO_CHAT_URL,
@@ -15,9 +16,13 @@ import {
   clearModesCache,
   fetchBalance,
   fetchKilocodeNotifications,
+  fetchOrganizationModes,
   fetchProfile,
 } from "@kilocode/kilo-gateway"
+import { buildKiloHeaders } from "@kilocode/kilo-gateway"
 import { Effect } from "effect"
+import * as Stream from "effect/Stream"
+import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 import { Auth } from "@/auth"
 import { Bus } from "@/bus"
@@ -29,6 +34,9 @@ import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 import { MessageTable, PartTable, SessionTable } from "@/session/session.sql"
 import { Session } from "@/session/session"
 import { Database } from "@/storage/db"
+import { AudioTranscriptionsBody, FimBody } from "../groups/kilo-gateway"
+
+const FIM_TIMEOUT_MS = 30_000
 
 export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo", (handlers) =>
   Effect.gen(function* () {
@@ -45,6 +53,117 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
         catch: () => new HttpApiError.BadRequest({}),
       })
       return { profile, balance, currentOrgId }
+    })
+
+    const proxy = Effect.fn("KiloGatewayHttpApi.proxyAuth")(function* () {
+      const info = yield* auth.get("kilo").pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
+      return {
+        auth: info,
+        token: getToken(info),
+        organizationId: getOrganizationId(info),
+      }
+    })
+
+    const modes = Effect.fn("KiloGatewayHttpApi.modes")(function* () {
+      const info = yield* auth.get("kilo").pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
+      if (!info || info.type !== "oauth" || !info.access || !info.accountId) return { modes: [] }
+
+      return yield* Effect.promise(() => fetchOrganizationModes(info.access, info.accountId)).pipe(
+        Effect.map((modes) => ({ modes })),
+        Effect.catch(() => Effect.succeed({ modes: [] })),
+      )
+    })
+
+    const fim = Effect.fn("KiloGatewayHttpApi.fim")(function* (ctx: { payload: typeof FimBody.Type }) {
+      const info = yield* proxy()
+      if (!info.auth) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+      if (!info.token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const endpoint = new URL("fim/completions", `${KILO_API_BASE}/api/`)
+      const signal = AbortSignal.any([request.source.signal, AbortSignal.timeout(FIM_TIMEOUT_MS)])
+      const response = yield* Effect.promise(async () => {
+        try {
+          return await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${info.token}`,
+              ...buildKiloHeaders(undefined, { kilocodeOrganizationId: info.organizationId }),
+              [HEADER_FEATURE]: "autocomplete",
+            },
+            signal,
+            body: JSON.stringify({
+              model: ctx.payload.model ?? "mistralai/codestral-2501",
+              prompt: ctx.payload.prefix,
+              suffix: ctx.payload.suffix,
+              max_tokens: ctx.payload.maxTokens ?? 256,
+              temperature: ctx.payload.temperature ?? 0.2,
+              stream: true,
+            }),
+          })
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "TimeoutError")
+            return Response.json({ error: "FIM request timed out" }, { status: 504 })
+          if (signal.aborted) return Response.json({ error: "FIM request canceled" }, { status: 499 })
+          throw err
+        }
+      })
+      if (!response.ok) {
+        const text = yield* Effect.promise(() => response.text())
+        return HttpServerResponse.jsonUnsafe(
+          { error: `FIM request failed: ${response.status} ${text}` },
+          { status: response.status },
+        )
+      }
+      if (!response.body) return HttpServerResponse.raw(null, { status: response.status })
+
+      return HttpServerResponse.stream(
+        Stream.fromReadableStream({
+          evaluate: () => response.body!,
+          onError: (err) => err,
+        }),
+        {
+          contentType: "text/event-stream",
+          headers: {
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          },
+        },
+      )
+    })
+
+    const audioTranscriptions = Effect.fn("KiloGatewayHttpApi.audioTranscriptions")(function* (ctx: {
+      payload: typeof AudioTranscriptionsBody.Type
+    }) {
+      const info = yield* proxy()
+      if (!info.auth) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+      if (!info.token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const response = yield* Effect.tryPromise({
+        try: () =>
+          fetch(`${KILO_API_BASE}/api/gateway/v1/audio/transcriptions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${info.token}`,
+              ...buildKiloHeaders(undefined, { kilocodeOrganizationId: info.organizationId }),
+              [HEADER_FEATURE]: "vscode-extension",
+            },
+            signal: request.source.signal,
+            body: JSON.stringify(ctx.payload),
+          }),
+        catch: () => new HttpApiError.BadRequest({}),
+      })
+      const text = yield* Effect.promise(() => response.text())
+      return HttpServerResponse.raw(text, {
+        status: response.status,
+        contentType: response.headers.get("Content-Type") ?? "application/json",
+        headers: {
+          "Content-Type": response.headers.get("Content-Type") ?? "application/json",
+        },
+      })
     })
 
     const notifications = Effect.fn("KiloGatewayHttpApi.notifications")(function* () {
@@ -178,6 +297,9 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
 
     return handlers
       .handle("profile", profile)
+      .handle("modes", modes)
+      .handle("fim", fim)
+      .handle("audioTranscriptions", audioTranscriptions)
       .handle("notifications", notifications)
       .handle("organization", organization)
       .handle("clawStatus", clawStatus)

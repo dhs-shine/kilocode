@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
+import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "@/server/routes/instance/httpapi/middleware/authorization"
 import { InstanceContextMiddleware } from "@/server/routes/instance/httpapi/middleware/instance-context"
 import { WorkspaceRoutingMiddleware } from "@/server/routes/instance/httpapi/middleware/workspace-routing"
@@ -103,6 +103,61 @@ export const CloudSessionImportBody = Schema.Struct({
   sessionId: Schema.String,
 })
 
+const GroupEntry = Schema.Union([
+  Schema.String,
+  Schema.Tuple([
+    Schema.String,
+    Schema.Struct({
+      fileRegex: Schema.optional(Schema.String),
+      description: Schema.optional(Schema.String),
+    }),
+  ]),
+])
+
+export const OrganizationMode = Schema.Struct({
+  id: Schema.String,
+  organization_id: Schema.String,
+  name: Schema.String,
+  slug: Schema.String,
+  created_by: Schema.String,
+  created_at: Schema.String,
+  updated_at: Schema.String,
+  config: Schema.Struct({
+    roleDefinition: Schema.optional(Schema.String),
+    whenToUse: Schema.optional(Schema.String),
+    description: Schema.optional(Schema.String),
+    customInstructions: Schema.optional(Schema.String),
+    groups: Schema.optional(Schema.Array(GroupEntry)),
+  }),
+})
+
+export const OrganizationModes = Schema.Struct({
+  modes: Schema.Array(OrganizationMode),
+})
+
+export const FimBody = Schema.Struct({
+  prefix: Schema.String,
+  suffix: Schema.String,
+  model: Schema.optional(Schema.String),
+  maxTokens: Schema.optional(Schema.Finite),
+  temperature: Schema.optional(Schema.Finite),
+})
+
+export const AudioTranscriptionsBody = Schema.Struct({
+  model: Schema.String,
+  input_audio: Schema.Struct({
+    data: Schema.String,
+    format: Schema.String,
+  }),
+  language: Schema.optional(Schema.String),
+  temperature: Schema.optional(Schema.Finite),
+})
+
+export const TranscriptionResponse = Schema.Struct({
+  text: Schema.String,
+  usage: Schema.optional(Schema.Unknown),
+})
+
 export const CloudMessage = Schema.Struct({
   info: Schema.Struct({
     id: Schema.String,
@@ -136,7 +191,10 @@ export const CloudSessionData = Schema.Struct({
 })
 
 export const KiloGatewayPaths = {
+  modes: `${root}/modes`,
   profile: `${root}/profile`,
+  fim: `${root}/fim`,
+  audioTranscriptions: `${root}/audio/transcriptions`,
   notifications: `${root}/notifications`,
   organization: `${root}/organization`,
   clawStatus: `${root}/claw/status`,
@@ -158,6 +216,37 @@ export const KiloGatewayApi = HttpApi.make("kilo")
             identifier: "kilo.profile",
             summary: "Get Kilo Gateway profile",
             description: "Fetch user profile and organizations from Kilo Gateway",
+          }),
+        ),
+        HttpApiEndpoint.get("modes", KiloGatewayPaths.modes, {
+          success: described(OrganizationModes, "Organization modes list"),
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "kilo.modes",
+            summary: "Get organization custom modes",
+            description: "Fetch custom modes defined for the current organization",
+          }),
+        ),
+        HttpApiEndpoint.post("fim", KiloGatewayPaths.fim, {
+          payload: FimBody,
+          success: Schema.String.pipe(HttpApiSchema.asText({ contentType: "text/event-stream" })),
+          error: [HttpApiError.BadRequest, HttpApiError.Unauthorized],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "kilo.fim",
+            summary: "FIM completion",
+            description: "Proxy a Fill-in-the-Middle completion request to the Kilo Gateway",
+          }),
+        ),
+        HttpApiEndpoint.post("audioTranscriptions", KiloGatewayPaths.audioTranscriptions, {
+          payload: AudioTranscriptionsBody,
+          success: described(TranscriptionResponse, "Transcription response"),
+          error: [HttpApiError.BadRequest, HttpApiError.Unauthorized],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "kilo.audio.transcriptions",
+            summary: "Speech to text transcription",
+            description: "Proxy an audio transcription request to the Kilo Gateway",
           }),
         ),
         HttpApiEndpoint.get("notifications", KiloGatewayPaths.notifications, {

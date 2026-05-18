@@ -36,6 +36,7 @@ import {
   ShellPayload,
   SummarizePayload,
   UpdatePayload,
+  ViewedPayload,
 } from "../groups/session"
 
 const mapNotFound = <A, E, R>(self: Effect.Effect<A, E, R>) =>
@@ -360,6 +361,14 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       return yield* session.updatePart(payload)
     })
 
+    // kilocode_change start
+    const viewed = Effect.fn("SessionHttpApi.viewed")(function* (ctx: { payload: typeof ViewedPayload.Type }) {
+      const { KiloSessions } = yield* Effect.promise(() => import("@/kilo-sessions/kilo-sessions"))
+      KiloSessions.setViewedSessions({ focused: ctx.payload.focused ?? [], open: ctx.payload.open ?? [] })
+      return true
+    })
+    // kilocode_change end
+
     return handlers
       .handle("list", list)
       .handle("status", status)
@@ -388,5 +397,6 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       .handle("deleteMessage", deleteMessage)
       .handle("deletePart", deletePart)
       .handle("updatePart", updatePart)
+      .handle("viewed", viewed) // kilocode_change
   }),
 )
