@@ -1488,8 +1488,7 @@
             "name": "worktrees",
             "in": "query",
             "schema": {
-              "type": "string",
-              "enum": ["true", "false"]
+              "type": "boolean"
             },
             "required": false
           },
@@ -10564,7 +10563,8 @@
             "name": "requestID",
             "in": "path",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^que.*"
             },
             "required": true
           }
@@ -10637,7 +10637,8 @@
             "name": "requestID",
             "in": "path",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^que.*"
             },
             "required": true
           }

@@ -55,7 +55,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       return { profile, balance, currentOrgId }
     })
 
-    const proxy = Effect.fn("KiloGatewayHttpApi.proxyAuth")(function* () {
+    const proxyAuth = Effect.fn("KiloGatewayHttpApi.proxyAuth")(function* () {
       const info = yield* auth.get("kilo").pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
       return {
         auth: info,
@@ -65,7 +65,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
     })
 
     const modes = Effect.fn("KiloGatewayHttpApi.modes")(function* () {
-      const info = yield* auth.get("kilo").pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
+      const info = yield* auth.get("kilo").pipe(Effect.catch(() => Effect.succeed(undefined)))
       if (!info || info.type !== "oauth" || !info.access || !info.accountId) return { modes: [] }
 
       return yield* Effect.promise(() => fetchOrganizationModes(info.access, info.accountId)).pipe(
@@ -75,7 +75,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
     })
 
     const fim = Effect.fn("KiloGatewayHttpApi.fim")(function* (ctx: { payload: typeof FimBody.Type }) {
-      const info = yield* proxy()
+      const info = yield* proxyAuth()
       if (!info.auth) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
       if (!info.token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
 
@@ -136,7 +136,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
     const audioTranscriptions = Effect.fn("KiloGatewayHttpApi.audioTranscriptions")(function* (ctx: {
       payload: typeof AudioTranscriptionsBody.Type
     }) {
-      const info = yield* proxy()
+      const info = yield* proxyAuth()
       if (!info.auth) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
       if (!info.token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
 
@@ -160,9 +160,6 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       return HttpServerResponse.raw(text, {
         status: response.status,
         contentType: response.headers.get("Content-Type") ?? "application/json",
-        headers: {
-          "Content-Type": response.headers.get("Content-Type") ?? "application/json",
-        },
       })
     })
 

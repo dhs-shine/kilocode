@@ -2,10 +2,12 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Instance } from "../../src/project/instance"
 import { ControlPaths } from "../../src/server/routes/instance/httpapi/groups/control"
+import { ExperimentalPaths } from "../../src/server/routes/instance/httpapi/groups/experimental"
 import { FilePaths } from "../../src/server/routes/instance/httpapi/groups/file"
 import { GlobalPaths } from "../../src/server/routes/instance/httpapi/groups/global"
 import { KiloGatewayPaths } from "../../src/kilocode/server/httpapi/groups/kilo-gateway"
 import { PublicApi } from "../../src/server/routes/instance/httpapi/public"
+import { SessionPaths } from "../../src/server/routes/instance/httpapi/groups/session"
 import { ExperimentalHttpApiServer } from "../../src/server/routes/instance/httpapi/server"
 import { Server } from "../../src/server/server"
 import * as Log from "@opencode-ai/core/util/log"
@@ -222,13 +224,8 @@ describe("HttpApi server", () => {
     expect(Server.backend()).toEqual({ backend: "effect-httpapi", reason: "env" })
   })
 
-  // kilocode_change start - skip Effect HttpApi parity tests until Kilo overlay routes are migrated.
-  // These tests verify every Hono route has an Effect HttpApi contract. Kilo-specific routes
-  // (/config/warnings, /indexing/status, /kilo/claw/*, /kilo/cloud-sessions, /experimental/worktree/diff*)
-  // aren't yet wired into PublicApi. The Effect HttpApi bridge is gated behind KILO_EXPERIMENTAL_HTTPAPI
-  // and is not enabled in any production client (VS Code extension, JetBrains, TUI, desktop all use Hono).
-  // Follow-up: migrate Kilo overlay routes onto the Effect HttpApi bridge.
-  test.skip("covers every generated OpenAPI route with Effect HttpApi contracts", async () => {
+  // kilocode_change start - Effect HttpApi route parity.
+  test("covers every generated OpenAPI route with Effect HttpApi contracts", async () => {
     const honoRoutes = openApiRouteKeys(await Server.openapiHono())
     const effectRoutes = openApiRouteKeys(effectOpenApi())
 
@@ -237,13 +234,14 @@ describe("HttpApi server", () => {
       "GET /api/session",
       "GET /api/session/{sessionID}/context",
       "GET /api/session/{sessionID}/message",
+      "GET /indexing/status",
       "POST /api/session/{sessionID}/compact",
       "POST /api/session/{sessionID}/prompt",
       "POST /api/session/{sessionID}/wait",
     ])
   })
 
-  test.skip("matches generated OpenAPI route parameters", async () => {
+  test("matches generated OpenAPI route parameters", async () => {
     const hono = openApiParameters(await Server.openapiHono())
     const effect = openApiParameters(effectOpenApi())
 
@@ -254,7 +252,7 @@ describe("HttpApi server", () => {
     ).toEqual([])
   })
 
-  test.skip("matches generated OpenAPI request body shape", async () => {
+  test("matches generated OpenAPI request body shape", async () => {
     const hono = openApiRequestBodies(await Server.openapiHono())
     const effect = openApiRequestBodies(effectOpenApi())
 
@@ -270,17 +268,24 @@ describe("HttpApi server", () => {
   test("Kilo overlay routes are mirrored in Hono and Effect specs", async () => {
     const hono = new Set(openApiRouteKeys(await Server.openapiHono()))
     const effect = new Set(openApiRouteKeys(effectOpenApi()))
-    // The 22 Kilo overlay paths ported to Effect HttpApi. Both backends must serve each.
+    // Kilo overlay paths ported to Effect HttpApi. Both backends must serve each.
     const kilo = [
       "POST /permission/allow-everything",
       "POST /enhance-prompt",
       "POST /commit-message",
+      `GET ${ExperimentalPaths.worktreeDiff}`,
+      `GET ${ExperimentalPaths.worktreeDiffFile}`,
+      `GET ${ExperimentalPaths.worktreeDiffSummary}`,
       "GET /network",
       "POST /network/{requestID}/reply",
       "POST /network/{requestID}/reject",
+      `GET ${KiloGatewayPaths.modes}`,
+      `POST ${KiloGatewayPaths.fim}`,
+      `POST ${KiloGatewayPaths.audioTranscriptions}`,
       "POST /remote/enable",
       "POST /remote/disable",
       "GET /remote/status",
+      `POST ${SessionPaths.viewed}`,
       "POST /telemetry/capture",
       "POST /telemetry/setEnabled",
       "GET /suggestion",

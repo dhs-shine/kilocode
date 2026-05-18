@@ -866,7 +866,7 @@ export class Session extends HeyApiClient {
       directory?: string
       workspace?: string
       projectID?: string
-      worktrees?: "true" | "false"
+      worktrees?: boolean
       roots?: boolean | "true" | "false"
       start?: number
       cursor?: number
