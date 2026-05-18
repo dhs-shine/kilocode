@@ -24,7 +24,6 @@ export namespace SessionNetwork {
     "ENETUNREACH",
     "EHOSTUNREACH",
     "ENETDOWN",
-    "EPIPE",
     "UND_ERR_CONNECT_TIMEOUT",
     "UND_ERR_HEADERS_TIMEOUT",
     "UND_ERR_SOCKET",
@@ -108,6 +107,7 @@ export namespace SessionNetwork {
       QuestionID,
       {
         info: Types.Mutable<Wait>
+        abort: AbortSignal
         resolve: () => void
         reject: (e: unknown) => void
       }
@@ -182,7 +182,6 @@ export namespace SessionNetwork {
     if (match === "ENETUNREACH") return "Network is unreachable"
     if (match === "EHOSTUNREACH") return "Host is unreachable"
     if (match === "ENETDOWN") return "Network is down"
-    if (match === "EPIPE") return "Network connection closed"
     if (match === "UND_ERR_CONNECT_TIMEOUT") return "Connection timed out"
     if (match === "UND_ERR_HEADERS_TIMEOUT") return "Request timed out"
     if (match === "UND_ERR_SOCKET") return "Network socket failed"
@@ -218,8 +217,23 @@ export namespace SessionNetwork {
     ).catch(() => false)
   }
 
-  async function resume(input: { requestID: QuestionID }) {
-    await new Promise((resolve) => setTimeout(resolve, RESUME_MS))
+  async function delay(abort: AbortSignal) {
+    if (abort.aborted) return false
+    return new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        abort.removeEventListener("abort", onAbort)
+        resolve(true)
+      }, RESUME_MS)
+      function onAbort() {
+        clearTimeout(timer)
+        resolve(false)
+      }
+      abort.addEventListener("abort", onAbort, { once: true })
+    })
+  }
+
+  async function resume(input: { requestID: QuestionID; abort: AbortSignal }) {
+    if (!(await delay(input.abort))) return
     const s = await state()
     const req = s.pending.get(input.requestID)
     if (!req || !req.info.restored) return
@@ -266,6 +280,7 @@ export namespace SessionNetwork {
       }
       s.pending.set(id, {
         info,
+        abort: input.abort,
         resolve: () => {
           input.abort.removeEventListener("abort", onAbort)
           resolve()
@@ -307,7 +322,7 @@ export namespace SessionNetwork {
         requestID: req.info.id,
         time,
       })
-      void resume({ requestID }).catch((err) => {
+      void resume({ requestID, abort: req.abort }).catch((err) => {
         log.error("auto resume failed", { err, requestID })
       })
     },

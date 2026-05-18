@@ -7,18 +7,30 @@ import { SessionNetwork } from "../../src/session/network"
 import { SessionID } from "../../src/session/schema"
 
 const timer = globalThis.setTimeout
+const clear = globalThis.clearTimeout
 
 afterEach(() => {
   globalThis.setTimeout = timer
+  globalThis.clearTimeout = clear
 })
 
 function manual() {
-  const jobs: TimerHandler[] = []
+  const state = {
+    next: 0,
+    jobs: new Map<number, TimerHandler>(),
+  }
   globalThis.setTimeout = ((cb: TimerHandler) => {
-    jobs.push(cb)
-    return 0 as unknown as ReturnType<typeof setTimeout>
+    const id = state.next + 1
+    state.next = id
+    state.jobs.set(id, cb)
+    return id as unknown as ReturnType<typeof setTimeout>
   }) as unknown as typeof setTimeout
+  globalThis.clearTimeout = ((id: ReturnType<typeof setTimeout>) => {
+    state.jobs.delete(id as unknown as number)
+  }) as unknown as typeof clearTimeout
   return () => {
+    const jobs = Array.from(state.jobs.values())
+    state.jobs.clear()
     for (const job of jobs) {
       if (typeof job === "function") job()
     }
@@ -32,6 +44,7 @@ describe("session.network", () => {
     expect(SessionNetwork.disconnected({ code: "EAI_AGAIN" })).toBe(true)
     expect(SessionNetwork.disconnected({ code: "EHOSTUNREACH" })).toBe(true)
     expect(SessionNetwork.disconnected({ code: "UND_ERR_CONNECT_TIMEOUT" })).toBe(true)
+    expect(SessionNetwork.disconnected({ code: "EPIPE" })).toBe(false)
     expect(SessionNetwork.disconnected({ code: "ENOENT" })).toBe(false)
   })
 
@@ -130,6 +143,28 @@ describe("session.network", () => {
         await SessionNetwork.restore({ requestID: req.id })
         await SessionNetwork.reject({ requestID: req.id })
         await expect(promise).rejects.toBeInstanceOf(SessionNetwork.RejectedError)
+        run()
+        expect(await SessionNetwork.list()).toHaveLength(0)
+      },
+    })
+  })
+
+  test("abort cancels restored auto-resume timer", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const run = manual()
+        const abort = new AbortController()
+        const { promise } = await SessionNetwork.ask({
+          sessionID: SessionID.make("ses_test"),
+          message: "Connection refused",
+          abort: abort.signal,
+        })
+        const req = (await SessionNetwork.list())[0]!
+        await SessionNetwork.restore({ requestID: req.id })
+        abort.abort()
+        await expect(promise).rejects.toBeInstanceOf(DOMException)
         run()
         expect(await SessionNetwork.list()).toHaveLength(0)
       },
