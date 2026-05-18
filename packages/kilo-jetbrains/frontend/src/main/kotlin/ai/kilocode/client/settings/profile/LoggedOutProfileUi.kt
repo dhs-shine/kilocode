@@ -2,23 +2,35 @@ package ai.kilocode.client.settings.profile
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.rpc.dto.DeviceAuthDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
+import com.intellij.icons.AllIcons
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.components.JBTextField
+import com.intellij.util.ui.AsyncProcessIcon
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.CardLayout
+import java.awt.FlowLayout
 import java.awt.Font
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JButton
+import javax.swing.JLabel
 import javax.swing.JPanel
+import javax.swing.SwingConstants
+import javax.swing.Timer
 
-internal enum class OutMode { CONNECTING, ERROR, AUTH, EMPTY }
+internal enum class OutMode { CONNECTING, APP_ERROR, INITIATING, AUTH, LOGIN_ERROR, EMPTY }
 
 /**
  * Retained logged-out UI. Internally uses a [CardLayout] to switch between
- * connecting, error, device-auth, and not-logged-in states without rebuilding.
+ * connecting, error, device-auth, initiating, login-error, and not-logged-in states
+ * without rebuilding components on every state change.
  */
 internal class LoggedOutProfileUi(
     private val login: () -> Unit,
@@ -31,104 +43,312 @@ internal class LoggedOutProfileUi(
     private val cardLayout = cards.layout as CardLayout
     private var mode: OutMode? = null
 
-    // -- retained components for connecting card --
-    private val retryBtnConnecting = JButton(KiloBundle.message("profile.action.retry"))
-        .also { it.addActionListener { retry() } }
-
-    private val connectingCard = panel {
-        row {
-            label(KiloBundle.message("profile.status.connecting"))
-                .applyToComponent { foreground = UiStyle.Colors.weak() }
-        }
-        row { cell(retryBtnConnecting) }
-    }
-
-    // -- retained components for error card --
-    private val retryBtnError = JButton(KiloBundle.message("profile.action.retry"))
-        .also { it.addActionListener { retry() } }
-
-    private val errorCard = panel {
-        row {
-            label(KiloBundle.message("profile.status.error"))
-                .applyToComponent { foreground = UiStyle.Colors.errorLabelForeground() }
-        }
-        row { cell(retryBtnError) }
-    }
-
-    // -- retained components for not-logged-in card --
+    // -- retained buttons --
     val loginBtn = JButton(KiloBundle.message("profile.action.login"))
         .also { it.addActionListener { login() } }
 
-    private val emptyCard = panel {
-        row {
-            label(KiloBundle.message("profile.notLoggedIn"))
-                .applyToComponent { foreground = UiStyle.Colors.weak() }
-        }
-        row { cell(loginBtn) }
-    }
+    private val retryBtnConnecting = JButton(KiloBundle.message("profile.action.retry"))
+        .also { it.addActionListener { retry() } }
 
-    // -- retained components for device-auth card --
-    private val authUrlLabel = JBLabel().apply { setCopyable(true) }
-    private val authCodeLabel = JBLabel().apply { font = font.deriveFont(Font.BOLD) }
-    private val authCodeRowPanel = JPanel()
+    private val retryBtnError = JButton(KiloBundle.message("profile.action.retry"))
+        .also { it.addActionListener { retry() } }
+
+    private val authRetryBtn = JButton(KiloBundle.message("profile.login.tryAgain"))
+        .also { it.addActionListener { login() } }
+
     private val cancelBtn = JButton(KiloBundle.message("profile.login.cancel"))
         .also { it.addActionListener { cancel() } }
 
-    private var authUrl: String? = null
+    private val openBtn = JButton(KiloBundle.message("profile.login.openBrowser"))
 
-    private val authCard = panel {
-        row {
-            label(KiloBundle.message("profile.login.signingIn")).bold()
-        }
-        row(KiloBundle.message("profile.login.urlLabel")) {
-            cell(authUrlLabel.also {
-                it.addMouseListener(object : MouseAdapter() {
-                    override fun mouseClicked(e: MouseEvent) {
-                        val url = authUrl ?: return
-                        browse(url)
-                    }
-                })
-            })
-        }
-        row(KiloBundle.message("profile.login.codeLabel")) {
-            cell(authCodeRowPanel.also { it.add(authCodeLabel) })
-        }
-        row {
-            label(KiloBundle.message("profile.login.waiting"))
-                .applyToComponent { foreground = UiStyle.Colors.weak() }
-        }
-        row { cell(cancelBtn) }
+    private val copyUrlBtn = JButton(AllIcons.Actions.Copy).apply {
+        toolTipText = KiloBundle.message("profile.login.copyUrl")
+        isBorderPainted = false
+        isContentAreaFilled = false
     }
 
+    // -- retained auth card components --
+    private val urlField = JBTextField().apply {
+        isEditable = false
+        name = "kilo.login.url"
+        columns = 30
+    }
+
+    val qrLabel = JBLabel().apply {
+        horizontalAlignment = SwingConstants.CENTER
+        name = "kilo.login.qr"
+        accessibleContext.accessibleName = KiloBundle.message("profile.login.qr")
+        accessibleContext.accessibleDescription = KiloBundle.message("profile.login.qr.description")
+    }
+
+    private val codePanel = JPanel(BorderLayout()).apply {
+        toolTipText = KiloBundle.message("profile.login.clickToCopy")
+        border = JBUI.Borders.compound(
+            JBUI.Borders.customLine(JBColor.namedColor("Component.focusColor", JBColor.border()), 1),
+            JBUI.Borders.empty(UiStyle.Gap.sm(), UiStyle.Gap.md()),
+        )
+        addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+                val c = rawCode ?: return
+                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(c), null)
+            }
+        })
+    }
+
+    private val codeLabel = JBLabel().apply {
+        horizontalAlignment = SwingConstants.CENTER
+        font = font.deriveFont(Font.BOLD, (font.size * 1.3f))
+    }
+
+    private val codeHint = JBLabel(KiloBundle.message("profile.login.clickToCopy")).apply {
+        foreground = UiStyle.Colors.weak()
+        horizontalAlignment = SwingConstants.CENTER
+    }
+
+    private val waitIcon = AsyncProcessIcon("KiloLogin")
+
+    private val waitLabel = JBLabel().apply {
+        foreground = UiStyle.Colors.weak()
+    }
+
+    private val errLabel = JBLabel().apply {
+        foreground = UiStyle.Colors.errorLabelForeground()
+        horizontalAlignment = SwingConstants.CENTER
+    }
+
+    // -- step 2 label reference for visibility toggling --
+    private var step2Label: JLabel? = null
+
+    // -- countdown state --
+    private var rawCode: String? = null
+    private var pendingStarted = 0L
+    private var pendingExpires = 900
+
+    // -- cached URL for listener/QR deduplication --
+    private var lastPendingUrl: String? = null
+
+    private val timer = Timer(1000) { syncTime() }
+
     init {
-        cards.add(connectingCard, OutMode.CONNECTING.name)
-        cards.add(errorCard, OutMode.ERROR.name)
-        cards.add(emptyCard, OutMode.EMPTY.name)
-        cards.add(authCard, OutMode.AUTH.name)
+        codePanel.add(codeLabel, BorderLayout.CENTER)
+        codePanel.add(codeHint, BorderLayout.SOUTH)
+
+        cards.add(connectingCard(), OutMode.CONNECTING.name)
+        cards.add(appErrorCard(), OutMode.APP_ERROR.name)
+        cards.add(emptyCard(), OutMode.EMPTY.name)
+        cards.add(initiatingCard(), OutMode.INITIATING.name)
+        cards.add(authCard(), OutMode.AUTH.name)
+        cards.add(loginErrorCard(), OutMode.LOGIN_ERROR.name)
         add(cards, BorderLayout.NORTH)
     }
 
-    fun update(status: KiloAppStatusDto, auth: DeviceAuthDto?) {
-        val target = when {
-            status == KiloAppStatusDto.DISCONNECTED || status == KiloAppStatusDto.CONNECTING -> OutMode.CONNECTING
-            status == KiloAppStatusDto.ERROR -> OutMode.ERROR
-            auth != null -> OutMode.AUTH
-            else -> OutMode.EMPTY
+    // ---- card builders (called once in init) ----
+
+    private fun connectingCard(): JPanel {
+        val p = padded()
+        p.add(JBLabel(KiloBundle.message("profile.status.connecting")).apply {
+            foreground = UiStyle.Colors.weak()
+            horizontalAlignment = SwingConstants.CENTER
+        }, gbc(0))
+        p.add(retryBtnConnecting, gbc(1, UiStyle.Gap.sm()).centered())
+        return p
+    }
+
+    private fun appErrorCard(): JPanel {
+        val p = padded()
+        p.add(JBLabel(KiloBundle.message("profile.status.error")).apply {
+            foreground = UiStyle.Colors.errorLabelForeground()
+            horizontalAlignment = SwingConstants.CENTER
+        }, gbc(0))
+        p.add(retryBtnError, gbc(1, UiStyle.Gap.sm()).centered())
+        return p
+    }
+
+    private fun emptyCard(): JPanel {
+        val p = padded()
+        p.add(JBLabel(KiloBundle.message("profile.notLoggedIn")).apply {
+            foreground = UiStyle.Colors.weak()
+            horizontalAlignment = SwingConstants.CENTER
+        }, gbc(0))
+        p.add(loginBtn, gbc(1, UiStyle.Gap.sm()).centered())
+        return p
+    }
+
+    private fun initiatingCard(): JPanel {
+        val p = padded()
+        val row = JPanel(FlowLayout(FlowLayout.CENTER, UiStyle.Gap.sm(), 0)).apply {
+            isOpaque = false
+            add(AsyncProcessIcon("KiloInitiating"))
+            add(JBLabel(KiloBundle.message("profile.login.starting")).apply {
+                foreground = UiStyle.Colors.weak()
+            })
+        }
+        p.add(row, gbc(0).centered())
+        return p
+    }
+
+    private fun authCard(): JPanel {
+        val p = padded()
+        var row = 0
+
+        p.add(JBLabel(KiloBundle.message("profile.login.title")).apply {
+            font = font.deriveFont(Font.BOLD, (font.size * 1.2f))
+            horizontalAlignment = SwingConstants.CENTER
+        }, gbc(row++))
+
+        p.add(JBLabel(KiloBundle.message("profile.login.step.url")).apply {
+            foreground = UiStyle.Colors.weak()
+            horizontalAlignment = SwingConstants.CENTER
+        }, gbc(row++, UiStyle.Gap.md()))
+
+        p.add(urlRow(), gbc(row++, UiStyle.Gap.sm()))
+
+        p.add(qrLabel, gbc(row++, UiStyle.Gap.md()).centered())
+
+        val s2 = JBLabel(KiloBundle.message("profile.login.step.code")).apply {
+            foreground = UiStyle.Colors.weak()
+            horizontalAlignment = SwingConstants.CENTER
+        }
+        step2Label = s2
+        p.add(s2, gbc(row++, UiStyle.Gap.md()))
+
+        p.add(codePanel, gbc(row++, UiStyle.Gap.sm()))
+
+        val waitRow = JPanel(FlowLayout(FlowLayout.CENTER, UiStyle.Gap.sm(), 0)).apply {
+            isOpaque = false
+            add(waitIcon)
+            add(waitLabel)
+        }
+        p.add(waitRow, gbc(row++, UiStyle.Gap.md()))
+
+        p.add(cancelBtn, gbc(row, UiStyle.Gap.sm()).centered())
+
+        return p
+    }
+
+    private fun urlRow(): JPanel {
+        val row = JPanel(BorderLayout(UiStyle.Gap.sm(), 0))
+        row.add(urlField, BorderLayout.CENTER)
+        val btns = JPanel(FlowLayout(FlowLayout.LEFT, UiStyle.Gap.sm(), 0)).apply {
+            isOpaque = false
+            add(copyUrlBtn)
+            add(openBtn)
+        }
+        row.add(btns, BorderLayout.EAST)
+        return row
+    }
+
+    private fun loginErrorCard(): JPanel {
+        val p = padded()
+        p.add(errLabel, gbc(0))
+        p.add(authRetryBtn, gbc(1, UiStyle.Gap.sm()).centered())
+        return p
+    }
+
+    // ---- update ----
+
+    fun update(status: KiloAppStatusDto, login: LoginState) {
+        val target = resolveMode(status, login)
+
+        if (target == OutMode.AUTH && login is LoginState.Pending) {
+            val auth = login.auth
+            val url = auth.verificationUrl
+            val code = auth.code
+
+            rawCode = code
+            urlField.text = url
+            urlField.toolTipText = url
+
+            // Wire listeners and generate QR only when URL changes (avoids re-wiring on every re-sync)
+            if (url != lastPendingUrl) {
+                lastPendingUrl = url
+
+                openBtn.actionListeners.toList().forEach { openBtn.removeActionListener(it) }
+                openBtn.addActionListener { browse(url) }
+                copyUrlBtn.actionListeners.toList().forEach { copyUrlBtn.removeActionListener(it) }
+                copyUrlBtn.addActionListener {
+                    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(url), null)
+                }
+
+                // QR code — expensive; only regenerate when URL changes
+                try {
+                    qrLabel.icon = QrCode.icon(url, JBUI.scale(160))
+                } catch (_: Exception) {
+                    qrLabel.icon = null
+                }
+            }
+
+            // Code display
+            codePanel.isVisible = code != null
+            step2Label?.isVisible = code != null
+            if (code != null) {
+                codeLabel.text = spacedCode(code)
+            }
+
+            // Countdown: only reset when entering auth for the first time for this pending
+            if (mode != OutMode.AUTH) {
+                pendingStarted = login.started
+                pendingExpires = auth.expiresIn
+                syncTime()
+                timer.restart()
+            }
         }
 
-        if (target == OutMode.AUTH && auth != null) {
-            authUrl = auth.verificationUrl
-            authUrlLabel.text = auth.verificationUrl
-            val code = auth.code
-            authCodeLabel.text = code ?: ""
-            authCodeRowPanel.isVisible = code != null
+        if (target == OutMode.LOGIN_ERROR && login is LoginState.Error) {
+            errLabel.text = login.message
         }
 
         if (mode != target) {
+            if (mode == OutMode.AUTH) {
+                timer.stop()
+                waitIcon.suspend()
+                lastPendingUrl = null
+            }
             cardLayout.show(cards, target.name)
             mode = target
+            if (target == OutMode.AUTH) {
+                waitIcon.resume()
+            }
             revalidate()
             repaint()
         }
     }
+
+    private fun resolveMode(status: KiloAppStatusDto, login: LoginState): OutMode = when {
+        status == KiloAppStatusDto.DISCONNECTED || status == KiloAppStatusDto.CONNECTING -> OutMode.CONNECTING
+        status == KiloAppStatusDto.ERROR -> OutMode.APP_ERROR
+        login is LoginState.Initiating -> OutMode.INITIATING
+        login is LoginState.Pending -> OutMode.AUTH
+        login is LoginState.Error -> OutMode.LOGIN_ERROR
+        else -> OutMode.EMPTY
+    }
+
+    private fun syncTime() {
+        val elapsed = ((System.currentTimeMillis() - pendingStarted) / 1000).toInt()
+        val remain = (pendingExpires - elapsed).coerceAtLeast(0)
+        val min = remain / 60
+        val sec = remain % 60
+        waitLabel.text = KiloBundle.message("profile.login.waitingTimed", "$min:${sec.toString().padStart(2, '0')}")
+    }
+
+    // ---- helpers ----
+
+    private fun padded() = JPanel(GridBagLayout()).apply {
+        border = JBUI.Borders.empty(UiStyle.Gap.pad())
+    }
+
+    private fun gbc(y: Int, top: Int = 0) = GridBagConstraints().apply {
+        gridx = 0
+        gridy = y
+        weightx = 1.0
+        fill = GridBagConstraints.HORIZONTAL
+        insets = JBUI.insetsTop(top)
+    }
+
+    private fun GridBagConstraints.centered(): GridBagConstraints = apply {
+        fill = GridBagConstraints.NONE
+        anchor = GridBagConstraints.CENTER
+    }
+
+    private fun spacedCode(code: String): String = code.map { it.toString() }.joinToString(" ")
 }

@@ -12,6 +12,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -23,6 +24,7 @@ import javax.swing.AbstractButton
 import javax.swing.JComboBox
 import javax.swing.JEditorPane
 import javax.swing.JLabel
+import javax.swing.JTextField
 import javax.swing.SwingUtilities
 
 @Suppress("UnstableApiUsage")
@@ -263,6 +265,112 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test login shows device auth card before completion`() {
+        rpc.fakeProfile = ProfileDto(email = "alice@test.com", name = "Alice")
+        rpc.completeGate = CompletableDeferred()
+
+        edt {
+            buttons(panel).first { it.text == "Login with Kilo Code" }.doClick()
+        }
+
+        flushUntil { text(panel).contains("Sign in to Kilo Code") }
+
+        edt {
+            val t = text(panel)
+            assertTrue(t, t.contains("Sign in to Kilo Code"))
+            assertTrue(t, t.contains("STEP 1: OPEN THIS URL"))
+            assertTrue(t, t.contains("https://auth.kilo.ai/device"))
+            assertTrue(t, t.contains("Open Browser"))
+            assertTrue(t, t.contains("STEP 2: ENTER THIS CODE"))
+            assertTrue(t, t.contains("Waiting for authorization..."))
+            assertTrue(t, t.contains("Cancel"))
+        }
+
+        // QR label should have an icon
+        edt {
+            val qr = labelsByName(panel, "kilo.login.qr").firstOrNull()
+            assertNotNull(qr)
+            assertNotNull(qr!!.icon)
+        }
+
+        assertEquals(listOf("https://auth.kilo.ai/device"), urls)
+
+        // Complete login
+        edt { rpc.completeGate!!.complete(Unit) }
+        flushUntil { text(panel).contains("Alice") }
+
+        edt {
+            val t = text(panel)
+            assertTrue(t, t.contains("Alice"))
+            assertTrue(t, t.contains("alice@test.com"))
+            assertTrue(buttons(panel).any { it.text == "Log Out" })
+        }
+    }
+
+    fun `test cancel login invalidates stale completion`() {
+        rpc.fakeProfile = ProfileDto(email = "alice@test.com", name = "Alice")
+        rpc.completeGate = CompletableDeferred()
+
+        edt { buttons(panel).first { it.text == "Login with Kilo Code" }.doClick() }
+        flushUntil { text(panel).contains("Sign in to Kilo Code") }
+
+        // Click Cancel
+        edt { buttons(panel).first { it.text == "Cancel" }.doClick() }
+        flush()
+
+        edt {
+            val t = text(panel)
+            assertTrue(t, t.contains("Not logged in"))
+            assertTrue(buttons(panel).any { it.text == "Login with Kilo Code" })
+        }
+
+        // Now complete the gate — the stale result should be ignored
+        rpc.fakeProfile = ProfileDto(email = "stale@test.com", name = "Stale")
+        edt { rpc.completeGate!!.complete(Unit) }
+        flush()
+
+        edt {
+            val t = text(panel)
+            assertFalse(t, t.contains("Stale"))
+            assertTrue(t, t.contains("Not logged in"))
+        }
+    }
+
+    fun `test login failure shows retry`() {
+        rpc.startError = IllegalStateException("HTTP 500 <!doctype html><body>Internal Server Error</body>")
+
+        edt { buttons(panel).first { it.text == "Login with Kilo Code" }.doClick() }
+        flushUntil { text(panel).contains("Login failed") }
+
+        edt {
+            val t = text(panel)
+            assertTrue(t, t.contains("Login failed"))
+            assertTrue(buttons(panel).any { it.text == "Try Again" })
+        }
+    }
+
+    fun `test auth card retains qr label across sync`() {
+        rpc.fakeProfile = ProfileDto(email = "alice@test.com", name = "Alice")
+        rpc.completeGate = CompletableDeferred()
+
+        edt { buttons(panel).first { it.text == "Login with Kilo Code" }.doClick() }
+        flushUntil { text(panel).contains("Sign in to Kilo Code") }
+
+        val qrBefore = edt { labelsByName(panel, "kilo.login.qr").firstOrNull() }
+        assertNotNull(qrBefore)
+
+        // Force another sync call while still pending
+        edt { panel.update(null, KiloAppStatusDto.READY) }
+        flush()
+
+        val qrAfter = edt { labelsByName(panel, "kilo.login.qr").firstOrNull() }
+        assertNotNull(qrAfter)
+        assertSame(qrBefore, qrAfter)
+
+        edt { rpc.completeGate!!.complete(Unit) }
+        flush()
+    }
+
     fun `test profile update does not trigger organization rpc`() {
         val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
         val profile = ProfileDto(
@@ -279,6 +387,22 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
     }
 
     // -- helpers --
+
+    private fun flushUntil(timeoutMs: Long = 3000, condition: () -> Boolean) = runBlocking {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (!edt { condition() }) {
+            if (System.currentTimeMillis() > deadline) fail("flushUntil timed out after ${timeoutMs}ms")
+            delay(50)
+            edt { UIUtil.dispatchAllInvocationEvents() }
+        }
+    }
+
+    private fun labelsByName(root: Container, name: String): List<JLabel> = buildList {
+        for (comp in root.components) {
+            if (comp is JLabel && comp.name == name) add(comp)
+            if (comp is Container) addAll(labelsByName(comp, name))
+        }
+    }
 
     private fun <T> edt(block: () -> T): T {
         var result: T? = null
@@ -349,6 +473,7 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
                 is AbstractButton -> comp.text?.let { acc.add(it) }
                 is JEditorPane -> comp.text?.let { acc.add(it) }
                 is JLabel -> comp.text?.let { acc.add(it) }
+                is JTextField -> comp.text?.let { acc.add(it) }
             }
             if (comp is Container) collectText(comp, acc)
         }

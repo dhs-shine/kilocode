@@ -1,7 +1,7 @@
 package ai.kilocode.client.settings.profile
 
 import ai.kilocode.client.app.KiloAppService
-import ai.kilocode.rpc.dto.DeviceAuthDto
+import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.ProfileDto
 import com.intellij.ide.BrowserUtil
@@ -57,7 +57,8 @@ internal class ProfileUi(
 
     private var prof = profile
     private var status = status
-    private var auth: DeviceAuthDto? = null
+    private var login: LoginState = LoginState.Idle
+    private var attempt = 0
     private var card: Card? = null
     private var switching = false
 
@@ -74,7 +75,7 @@ internal class ProfileUi(
         val was = switching
         if (profile != null) {
             prof = profile
-            auth = null
+            login = LoginState.Idle
             this.switching = false
         } else if (!was || prof == null) {
             prof = null
@@ -86,7 +87,7 @@ internal class ProfileUi(
         checkEdt()
         val target = targetCard()
         if (target == Card.OUT) {
-            out.update(status, auth)
+            out.update(status, login)
         } else {
             account.update(prof!!, accounts)
         }
@@ -122,29 +123,41 @@ internal class ProfileUi(
     }
 
     private fun start() {
+        val id = ++attempt
+        login = LoginState.Initiating
+        sync()
         cs.launch {
             try {
                 val next = app.startLogin()
                 withContext(edt) {
-                    auth = next
+                    if (id != attempt) return@withContext
+                    login = LoginState.Pending(next, System.currentTimeMillis())
                     sync()
                     browse(next.verificationUrl)
                 }
                 val profile = app.completeLogin()
                 val state = app.state.value
                 withContext(edt) {
-                    auth = null
+                    if (id != attempt) return@withContext
+                    login = LoginState.Idle
                     update(profile ?: state.profile, state.status)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 withContext(edt) {
-                    auth = null
-                    applyState()
+                    if (id != attempt) return@withContext
+                    login = LoginState.Error(compactLoginError(e))
+                    sync()
                 }
             }
         }
+    }
+
+    private fun cancel() {
+        attempt++
+        login = LoginState.Idle
+        sync()
     }
 
     private fun logout() {
@@ -154,7 +167,7 @@ internal class ProfileUi(
                 if (!ok) return@launch
                 val state = app.state.value
                 withContext(edt) {
-                    auth = null
+                    login = LoginState.Idle
                     update(state.profile, state.status)
                 }
             } catch (e: CancellationException) {
@@ -207,9 +220,20 @@ internal class ProfileUi(
             }
         }
     }
+}
 
-    private fun cancel() {
-        auth = null
-        sync()
+private val HTML_MARKERS = listOf("<!doctype html", "<html", "<head", "<body")
+private val HTTP_STATUS_RE = Regex("""(?:^|\s)([45]\d{2})(?:\s|$)""")
+
+internal fun compactLoginError(e: Exception): String {
+    val msg = e.message?.trim() ?: return KiloBundle.message("profile.login.failed")
+    val lower = msg.lowercase()
+    if (HTML_MARKERS.any { lower.contains(it) }) {
+        val status = HTTP_STATUS_RE.find(msg)?.groupValues?.getOrNull(1)
+        return if (status != null) "${KiloBundle.message("profile.login.failed")} ($status)"
+        else KiloBundle.message("profile.login.failed")
     }
+    val norm = msg.replace(Regex("\\s+"), " ")
+    val summary = norm.take(180)
+    return if (summary.isNotBlank()) summary else KiloBundle.message("profile.login.failed")
 }
