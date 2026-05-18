@@ -1,4 +1,3 @@
-$ bun run --conditions=browser ./src/index.ts generate
 {
   "openapi": "3.1.0",
   "info": {
@@ -11202,27 +11201,7 @@ $ bun run --conditions=browser ./src/index.ts generate
             "type": "object",
             "properties": {
               "created": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["NaN"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["Infinity"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["-Infinity"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["Infinity", "-Infinity", "NaN"]
-                  }
-                ]
+                "type": "number"
               }
             },
             "required": ["created"],
@@ -15925,51 +15904,6 @@ $ bun run --conditions=browser ./src/index.ts generate
           }
         },
         "required": ["ok", "id"],
-        "additionalProperties": false
-      },
-      "SessionNetworkWait1": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "sessionID": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "restored": {
-            "type": "boolean"
-          },
-          "time": {
-            "type": "object",
-            "properties": {
-              "created": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["NaN"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["Infinity"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["-Infinity"]
-                  }
-                ]
-              }
-            },
-            "required": ["created"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "sessionID", "message", "restored", "time"],
         "additionalProperties": false
       },
       "SyncEventMessageUpdated": {
