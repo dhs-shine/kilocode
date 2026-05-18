@@ -3,6 +3,7 @@ package ai.kilocode.client.session.ui
 import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
+import ai.kilocode.client.session.model.ToolCallRef
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
@@ -57,6 +58,7 @@ class SessionMessageListPanel(
     private val msgToTurn = HashMap<String, TurnView>()
     private val msgToView = HashMap<String, MessageView>()
     private var style = SessionEditorStyle.current()
+    private var hiddenTool: ToolCallRef? = null
 
     /** Progress footer — always the last child inside the scroll. */
     val progress = ProgressPanel(model, parent)
@@ -253,18 +255,28 @@ class SessionMessageListPanel(
     private fun syncActive(state: SessionState = model.state) {
         when (state) {
             is SessionState.AwaitingQuestion -> {
+                setHiddenQuestionTool(state.question.tool)
                 permission?.hideView()
                 question?.show(state.question)
             }
             is SessionState.AwaitingPermission -> {
+                setHiddenQuestionTool(null)
                 question?.hideView()
                 permission?.show(state.permission)
             }
             else -> {
+                setHiddenQuestionTool(null)
                 question?.hideView()
                 permission?.hideView()
             }
         }
+    }
+
+    /** Fan out the hidden question tool ref to all registered [MessageView]s. */
+    private fun setHiddenQuestionTool(ref: ToolCallRef?) {
+        if (hiddenTool == ref) return
+        hiddenTool = ref
+        for (mv in msgToView.values) mv.setHiddenQuestionTool(ref)
     }
 
     /**
@@ -287,6 +299,7 @@ class SessionMessageListPanel(
     private fun register(msgId: String, tv: TurnView, mv: MessageView) {
         msgToTurn[msgId] = tv
         msgToView[msgId] = mv
+        mv.setHiddenQuestionTool(hiddenTool)
     }
 
     private fun unregister(msgId: String) {

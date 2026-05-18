@@ -7,10 +7,12 @@ import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionState
+import ai.kilocode.client.session.model.ToolCallRef
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.PermissionView
 import ai.kilocode.client.session.views.QuestionView
 import ai.kilocode.client.session.views.TextView
+import ai.kilocode.client.session.views.ToolView
 import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
@@ -321,6 +323,60 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertSame(item.progress, item.components.last())
     }
 
+    // ------ question tool suppression ------
+
+    fun `test active linked question hides matching running question tool`() {
+        val item = panelWithPrompts()
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", toolPart("tp1", "a1", "question", "call1", state = "running"))
+
+        val mv = item.findMessage("a1")!!
+        assertEquals(listOf("tp1"), mv.partIds())
+
+        model.setState(SessionState.AwaitingQuestion(question(tool = ToolCallRef("a1", "call1"))))
+
+        assertTrue(mv.partIds().isEmpty())
+    }
+
+    fun `test clearing active question restores hidden question tool`() {
+        val item = panelWithPrompts()
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", toolPart("tp1", "a1", "question", "call1", state = "running"))
+
+        model.setState(SessionState.AwaitingQuestion(question(tool = ToolCallRef("a1", "call1"))))
+        val mv = item.findMessage("a1")!!
+        assertTrue(mv.partIds().isEmpty())
+
+        model.setState(SessionState.Idle)
+
+        assertEquals(listOf("tp1"), mv.partIds())
+    }
+
+    fun `test active question does not hide unrelated question tool`() {
+        val item = panelWithPrompts()
+        model.upsertMessage(msg("a1", "assistant"))
+        // tool part with a different callId
+        model.updateContent("a1", toolPart("tp1", "a1", "question", "other-call", state = "running"))
+
+        model.setState(SessionState.AwaitingQuestion(question(tool = ToolCallRef("a1", "call1"))))
+
+        val mv = item.findMessage("a1")!!
+        assertEquals(listOf("tp1"), mv.partIds())
+    }
+
+    fun `test completed question tool remains visible while question active`() {
+        val item = panelWithPrompts()
+        model.upsertMessage(msg("a1", "assistant"))
+        // completed state — must NOT be suppressed even when callId matches
+        model.updateContent("a1", toolPart("tp1", "a1", "question", "call1", state = "completed"))
+
+        model.setState(SessionState.AwaitingQuestion(question(tool = ToolCallRef("a1", "call1"))))
+
+        val mv = item.findMessage("a1")!!
+        assertEquals(listOf("tp1"), mv.partIds())
+        assertTrue(mv.part("tp1") is ToolView)
+    }
+
     // ------ helpers ------
 
     private fun panelWithPrompts(): SessionMessageListPanel {
@@ -348,8 +404,9 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         return null
     }
 
-    private fun question(id: String = "q1") = Question(
+    private fun question(id: String = "q1", tool: ToolCallRef? = null) = Question(
         id = id,
+        tool = tool,
         items = listOf(
             QuestionItem(
                 question = "Proceed?",
@@ -376,5 +433,9 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
 
     private fun part(id: String, mid: String, type: String, text: String? = null) = PartDto(
         id = id, sessionID = "ses", messageID = mid, type = type, text = text,
+    )
+
+    private fun toolPart(id: String, mid: String, tool: String, callId: String, state: String = "running") = PartDto(
+        id = id, sessionID = "ses", messageID = mid, type = "tool", tool = tool, callID = callId, state = state,
     )
 }

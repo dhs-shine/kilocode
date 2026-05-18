@@ -3,6 +3,9 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Message
 import ai.kilocode.client.session.model.StepFinish
+import ai.kilocode.client.session.model.Tool
+import ai.kilocode.client.session.model.ToolCallRef
+import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
@@ -36,6 +39,7 @@ class MessageView(
         get() = if (role == SessionUiStyle.View.Message.USER_ROLE) SessionView.Kind.UserPrompt else SessionView.Kind.Default
 
     private val parts = LinkedHashMap<String, PartView>()
+    private var hidden: ToolCallRef? = null
 
     init {
         isOpaque = false
@@ -48,6 +52,7 @@ class MessageView(
         // Populate content that already exists (e.g. after loadHistory)
         for ((_, content) in msg.parts) {
             if (content is StepFinish) continue
+            if (isHidden(content)) continue
             val view = ViewFactory.create(content)
             view.applyStyle(style)
             parts[content.id] = view
@@ -55,9 +60,29 @@ class MessageView(
         }
     }
 
+    /**
+     * Suppress the running/pending question tool part that matches [ref] while
+     * the linked question request is active. Pass null to stop suppressing.
+     */
+    fun setHiddenQuestionTool(ref: ToolCallRef?) {
+        if (hidden == ref) return
+        hidden = ref
+        rebuildParts()
+    }
+
     /** Add or update the renderer for [content]. */
     fun upsertPart(content: Content) {
         if (content is StepFinish) return
+        if (isHidden(content)) {
+            // Remove any stale view for this content so it disappears when suppressed
+            val stale = parts.remove(content.id)
+            if (stale != null) {
+                remove(stale)
+                syncBorder()
+                refresh()
+            }
+            return
+        }
         val existing = parts[content.id]
         if (existing != null) {
             existing.update(content)
@@ -76,6 +101,37 @@ class MessageView(
     fun removePart(contentId: String) {
         val view = parts.remove(contentId) ?: return
         remove(view)
+        syncBorder()
+        refresh()
+    }
+
+    /**
+     * Returns true when [content] should be suppressed because it is the
+     * pending/running question tool part linked to the active question.
+     */
+    private fun isHidden(content: Content): Boolean {
+        val ref = hidden ?: return false
+        if (content !is Tool) return false
+        if (content.name != "question") return false
+        if (content.state != ToolExecState.PENDING && content.state != ToolExecState.RUNNING) return false
+        return msg.info.id == ref.messageId && content.callId == ref.callId
+    }
+
+    /**
+     * Clear and rebuild all part views from [msg.parts].
+     * Called only when the hidden ref changes to avoid unnecessary rebuilds.
+     */
+    private fun rebuildParts() {
+        parts.values.forEach { remove(it) }
+        parts.clear()
+        for ((_, content) in msg.parts) {
+            if (content is StepFinish) continue
+            if (isHidden(content)) continue
+            val view = ViewFactory.create(content)
+            view.applyStyle(style)
+            parts[content.id] = view
+            add(view)
+        }
         syncBorder()
         refresh()
     }
