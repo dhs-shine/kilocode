@@ -12,6 +12,7 @@ import ai.kilocode.rpc.dto.ProfileOrganizationDto
 import ai.kilocode.rpc.dto.ProfileStatusDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CompletableDeferred
@@ -293,10 +294,12 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         edt {
             val t = text(panel)
             assertTrue(t, t.contains("Sign in to Kilo Code"))
-            assertTrue(t, t.contains("STEP 1: OPEN THIS URL"))
+            assertTrue(t, t.contains("Step 1:"))
+            assertTrue(t, t.contains("Open this URL"))
             assertTrue(t, t.contains("https://auth.kilo.ai/device"))
             assertTrue(t, t.contains("Open Browser"))
-            assertTrue(t, t.contains("STEP 2: ENTER THIS CODE"))
+            assertTrue(t, t.contains("Step 2:"))
+            assertTrue(t, t.contains("Enter this code"))
             assertTrue(t, t.contains("Waiting for authorization..."))
             assertTrue(t, t.contains("Cancel"))
         }
@@ -386,7 +389,7 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         flush()
     }
 
-    fun `test auth card step labels are left aligned`() {
+    fun `test auth card step labels are present`() {
         rpc.fakeProfile = ProfileDto(email = "alice@test.com", name = "Alice")
         rpc.completeGate = CompletableDeferred()
 
@@ -394,12 +397,12 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         flushUntil { text(panel).contains("Sign in to Kilo Code") }
 
         edt {
-            val step1 = labels(panel).firstOrNull { it.text == "STEP 1: OPEN THIS URL" }
-            val step2 = labels(panel).firstOrNull { it.text == "STEP 2: ENTER THIS CODE" }
-            assertNotNull("STEP 1 label not found", step1)
-            assertNotNull("STEP 2 label not found", step2)
-            assertEquals("STEP 1 label should be left aligned", SwingConstants.LEFT, step1!!.horizontalAlignment)
-            assertEquals("STEP 2 label should be left aligned", SwingConstants.LEFT, step2!!.horizontalAlignment)
+            val t = text(panel)
+            // Step labels are now SimpleColoredComponent with bold "Step N:" + grayed suffix
+            assertTrue("Step 1 label not found", t.contains("Step 1:"))
+            assertTrue("Step 1 url text not found", t.contains("Open this URL"))
+            assertTrue("Step 2 label not found", t.contains("Step 2:"))
+            assertTrue("Step 2 code text not found", t.contains("Enter this code"))
         }
 
         edt { rpc.completeGate!!.complete(Unit) }
@@ -828,6 +831,10 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
                 is JEditorPane -> comp.text?.let { acc.add(it) }
                 is JLabel -> comp.text?.let { acc.add(it) }
                 is JTextField -> comp.text?.let { acc.add(it) }
+                is SimpleColoredComponent -> {
+                    val t = comp.toString()
+                    if (t.isNotEmpty()) acc.add(t)
+                }
             }
             if (comp is Container) collectText(comp, acc)
         }

@@ -1,11 +1,16 @@
 package ai.kilocode.client.settings.profile
 
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.ide.CopyPasteManager
+import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.ui.SimpleColoredComponent
+import com.intellij.ui.SimpleTextAttributes
+import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.AsyncProcessIcon
@@ -16,6 +21,7 @@ import java.awt.FlowLayout
 import java.awt.Font
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
+import java.awt.Point
 import java.awt.datatransfer.StringSelection
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
@@ -63,10 +69,9 @@ internal class LoggedOutProfileUi(
 
     private val openBtn = JButton(KiloBundle.message("profile.login.openBrowser"))
 
-    private val copyUrlBtn = JButton(AllIcons.Actions.Copy).apply {
+    private val copyUrlBtn = HoverIcon().apply {
+        icon = AllIcons.Actions.Copy
         toolTipText = KiloBundle.message("profile.login.copyUrl")
-        isBorderPainted = false
-        isContentAreaFilled = false
     }
 
     // -- retained auth card components --
@@ -122,7 +127,7 @@ internal class LoggedOutProfileUi(
     }
 
     // -- step 2 label reference for visibility toggling --
-    private var step2Label: JBLabel? = null
+    private var step2Label: SimpleColoredComponent? = null
 
     // -- countdown state --
     private var rawCode: String? = null
@@ -201,19 +206,14 @@ internal class LoggedOutProfileUi(
             horizontalAlignment = SwingConstants.CENTER
         }, gbc(row++))
 
-        p.add(JBLabel(KiloBundle.message("profile.login.step.url")).apply {
-            foreground = UiStyle.Colors.weak()
-            horizontalAlignment = SwingConstants.LEFT
-        }, gbc(row++, UiStyle.Gap.md()))
+        p.add(stepLabel(KiloBundle.message("profile.login.step.one"), KiloBundle.message("profile.login.step.url")),
+            gbc(row++, UiStyle.Gap.md()))
 
         p.add(urlRow(), gbc(row++, UiStyle.Gap.sm()))
 
         p.add(qrLabel, gbc(row++, UiStyle.Gap.md()).centered())
 
-        val s2 = JBLabel(KiloBundle.message("profile.login.step.code")).apply {
-            foreground = UiStyle.Colors.weak()
-            horizontalAlignment = SwingConstants.LEFT
-        }
+        val s2 = stepLabel(KiloBundle.message("profile.login.step.two"), KiloBundle.message("profile.login.step.code"))
         step2Label = s2
         p.add(s2, gbc(row++, UiStyle.Gap.md()))
 
@@ -224,18 +224,22 @@ internal class LoggedOutProfileUi(
             add(waitIcon)
             add(waitLabel)
         }
-        p.add(waitRow, gbc(row++, UiStyle.Gap.md()))
+        p.add(waitRow, gbc(row++, UiStyle.Gap.xl()))
 
         p.add(cancelBtn, gbc(row, UiStyle.Gap.sm()).centered())
 
         return p
     }
 
+    private fun stepLabel(step: String, text: String) = SimpleColoredComponent().apply {
+        append(step, SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES)
+        append(" $text", SimpleTextAttributes.GRAYED_ATTRIBUTES)
+    }
+
     private fun urlRow(): JPanel {
-        val gap = UiStyle.Gap.sm()
-        val row = JPanel(BorderLayout(gap, 0))
+        val row = JPanel(BorderLayout(UiStyle.Gap.xs(), 0))
         row.add(urlField, BorderLayout.CENTER)
-        val btns = JPanel(FlowLayout(FlowLayout.LEFT, gap, 0)).apply {
+        val btns = JPanel(FlowLayout(FlowLayout.RIGHT, UiStyle.Gap.sm(), 0)).apply {
             isOpaque = false
             add(copyUrlBtn)
             add(openBtn)
@@ -365,9 +369,10 @@ internal class LoggedOutProfileUi(
 private fun copyToClipboard(text: String, msg: String, anchor: java.awt.Component) {
     CopyPasteManager.getInstance().setContents(StringSelection(text))
     if (anchor is javax.swing.JComponent) {
+        val point = RelativePoint(anchor, Point(anchor.width / 2, 0))
         JBPopupFactory.getInstance()
             .createHtmlTextBalloonBuilder(msg, null, null, null)
             .createBalloon()
-            .showInCenterOf(anchor)
+            .show(point, Balloon.Position.above)
     }
 }
