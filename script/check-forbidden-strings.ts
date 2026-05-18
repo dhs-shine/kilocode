@@ -41,6 +41,18 @@ const forbidden: { pattern: string; reason: string; allow?: string[] }[] = [
   },
   { pattern: `"HTTP-Referer": "https://opencode.ai/"`, reason: "attributes outbound LLM traffic to upstream" },
   { pattern: `"http-referer": "https://opencode.ai/"`, reason: "attributes outbound LLM traffic to upstream" },
+
+  // Candidates -- enable once the underlying call sites have been rebranded.
+  // Each one currently fires on real leaks; uncomment after fixing the listed
+  // file(s) (and add an allowlist if there are unavoidable legitimate hits).
+  //
+  // { pattern: "opencode.ai/auth", reason: "upstream auth URL -- providers.ts opencode-provider help text" },
+  // { pattern: "opencode.ai/go", reason: "upstream upsell URL -- dialog-go-upsell.tsx" },
+  // { pattern: "opencode.ai/docs", reason: "upstream docs URL -- config.ts schema descriptions, providers.ts cloudflare help" },
+  // { pattern: "opencode.ai/tui.json", reason: "upstream-hosted schema URL -- tui-migrate.ts" },
+  // { pattern: `?? "https://opncd.ai"`, reason: "default share base URL still points at upstream -- share-next.ts" },
+  // { pattern: "opencode.ai/theme.json", reason: "upstream-hosted theme JSON-Schema URL -- theme/*.json $schema fields" },
+  // { pattern: "opencode.ai/desktop-theme.json", reason: "upstream-hosted desktop theme schema URL" },
 ]
 
 const isAllowed = (file: string, allow?: string[]) => {
