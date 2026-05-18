@@ -10,9 +10,9 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 @Suppress("UnstableApiUsage")
 class QuestionResultViewTest : BasePlatformTestCase() {
 
-    // ------ canRender ------
+    // ------ canRender (integration with parser) ------
 
-    fun `test completed question tool is renderable`() {
+    fun `test completed question tool with valid data is renderable`() {
         val tool = completedTool(
             input = mapOf("questions" to """[{"question":"Which strategy?"},{"question":"Which checks?"}]"""),
             metadata = mapOf("answers" to """[["Comprehensive"],["Build"]]"""),
@@ -20,42 +20,12 @@ class QuestionResultViewTest : BasePlatformTestCase() {
         assertTrue(QuestionResultView.canRender(tool))
     }
 
-    fun `test invalid question data is not renderable`() {
-        val tool = completedTool(
-            input = emptyMap(),
-            metadata = emptyMap(),
-        )
-        assertFalse(QuestionResultView.canRender(tool))
+    fun `test completed question tool without questions is not renderable`() {
+        assertFalse(QuestionResultView.canRender(completedTool(input = emptyMap(), metadata = emptyMap())))
     }
 
-    fun `test non-completed question tool is not renderable`() {
-        val tool = runningTool("question")
-        assertFalse(QuestionResultView.canRender(tool))
-    }
-
-    fun `test non-question tool with question json is not renderable`() {
-        val tool = completedTool(
-            name = "bash",
-            input = mapOf("questions" to """[{"question":"Which strategy?"}]"""),
-            metadata = emptyMap(),
-        )
-        assertFalse(QuestionResultView.canRender(tool))
-    }
-
-    fun `test empty questions array is not renderable`() {
-        val tool = completedTool(
-            input = mapOf("questions" to "[]"),
-            metadata = emptyMap(),
-        )
-        assertFalse(QuestionResultView.canRender(tool))
-    }
-
-    fun `test invalid json in questions is not renderable`() {
-        val tool = completedTool(
-            input = mapOf("questions" to "not json"),
-            metadata = emptyMap(),
-        )
-        assertFalse(QuestionResultView.canRender(tool))
+    fun `test running question tool is not renderable`() {
+        assertFalse(QuestionResultView.canRender(runningTool("question")))
     }
 
     // ------ label text ------

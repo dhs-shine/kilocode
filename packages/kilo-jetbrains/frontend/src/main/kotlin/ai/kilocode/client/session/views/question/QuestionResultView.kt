@@ -3,7 +3,6 @@ package ai.kilocode.client.session.views.question
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Tool
-import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.PartView
@@ -13,11 +12,6 @@ import com.intellij.icons.AllIcons
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.JBUI
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -30,44 +24,11 @@ import javax.swing.BoxLayout
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
 
-private data class QuestionResult(
-    val questions: List<String>,
-    val answers: List<List<String>>,
-)
-
-private val json = Json { ignoreUnknownKeys = true }
-
-private fun parseQuestions(raw: String): List<String>? {
-    val arr = runCatching { json.parseToJsonElement(raw).jsonArray }.getOrNull() ?: return null
-    val list = arr.mapNotNull { elem ->
-        elem.jsonObject["question"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-    }
-    return list.takeIf { it.isNotEmpty() }
-}
-
-private fun parseAnswers(raw: String?): List<List<String>> {
-    val arr = raw
-        ?.takeIf { it.isNotBlank() }
-        ?.let { runCatching { json.parseToJsonElement(it).jsonArray }.getOrNull() }
-    return arr?.map { elem ->
-        runCatching {
-            elem.jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull?.takeIf(String::isNotBlank) }
-        }.getOrDefault(emptyList())
-    } ?: emptyList()
-}
-
-private fun parse(tool: Tool): QuestionResult? {
-    if (tool.name != "question" || tool.state != ToolExecState.COMPLETED) return null
-    return tool.input["questions"]
-        ?.let(::parseQuestions)
-        ?.let { QuestionResult(it, parseAnswers(tool.metadata["answers"])) }
-}
-
 class QuestionResultView(tool: Tool) : PartView() {
 
     override val contentId: String = tool.id
 
-    private var result = parse(tool) ?: QuestionResult(emptyList(), emptyList())
+    private var result = QuestionResultParser.parse(tool) ?: QuestionResult(emptyList(), emptyList())
     private var style = SessionEditorStyle.current()
     private val texts = mutableListOf<Pair<JBTextArea, Boolean>>()
 
@@ -137,7 +98,7 @@ class QuestionResultView(tool: Tool) : PartView() {
 
     override fun update(content: Content) {
         if (content !is Tool) return
-        val next = parse(content) ?: QuestionResult(emptyList(), emptyList())
+        val next = QuestionResultParser.parse(content) ?: QuestionResult(emptyList(), emptyList())
         if (next == result) return
         result = next
         syncLabels()
@@ -179,7 +140,7 @@ class QuestionResultView(tool: Tool) : PartView() {
     override fun dumpLabel(): String = "QuestionResultView#$contentId(${labelText()})"
 
     companion object {
-        fun canRender(tool: Tool): Boolean = parse(tool) != null
+        fun canRender(tool: Tool): Boolean = QuestionResultParser.parse(tool) != null
     }
 
     private fun body(): JPanel {
