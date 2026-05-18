@@ -22,7 +22,7 @@ import ai.kilocode.client.session.controller.EVENT_FLUSH_MS
 import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.session.controller.SessionControllerEvent
 import ai.kilocode.client.session.views.PermissionView
-import ai.kilocode.client.session.views.QuestionView
+import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
 import com.intellij.ide.ui.LafManagerListener

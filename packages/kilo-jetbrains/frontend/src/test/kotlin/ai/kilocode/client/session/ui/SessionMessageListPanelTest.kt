@@ -10,8 +10,8 @@ import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.model.ToolCallRef
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.PermissionView
-import ai.kilocode.client.session.views.QuestionResultView
-import ai.kilocode.client.session.views.QuestionView
+import ai.kilocode.client.session.views.question.QuestionResultView
+import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.session.views.TextView
 import ai.kilocode.client.session.views.ToolView
 import ai.kilocode.rpc.dto.MessageDto

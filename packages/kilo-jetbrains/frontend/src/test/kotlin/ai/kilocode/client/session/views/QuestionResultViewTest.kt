@@ -4,6 +4,7 @@ import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.toolKind
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.views.question.QuestionResultView
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 @Suppress("UnstableApiUsage")
@@ -74,6 +75,18 @@ class QuestionResultViewTest : BasePlatformTestCase() {
         assertTrue(view.bodyText().contains("Comprehensive"))
         assertTrue(view.bodyText().contains("Build"))
         assertFalse(view.bodyText().contains("raw output should not be rendered"))
+    }
+
+    fun `test collapsed view does not create body components`() {
+        val tool = completedTool(
+            input = mapOf("questions" to """[{"question":"Q1"}]"""),
+            metadata = mapOf("answers" to """[["A1"]]"""),
+        )
+        val view = QuestionResultView(tool)
+
+        assertFalse("Default collapsed state should not eagerly create body", view.bodyCreated())
+        assertTrue(view.bodyText().contains("Q1"))
+        assertFalse("Reading assertion text should not create Swing body", view.bodyCreated())
     }
 
     fun `test missing answer renders not answered`() {
@@ -192,9 +205,10 @@ class QuestionResultViewTest : BasePlatformTestCase() {
         val style = SessionEditorStyle.create(family = "Courier New", size = 22)
 
         view.applyStyle(style)
+        view.toggle()
 
-        // Body text areas should use the new font family
-        assertTrue(view.bodyText().isNotEmpty())
+        assertTrue(view.bodyFonts().contains(style.transcriptFont))
+        assertTrue(view.bodyFonts().contains(style.boldEditorFont))
     }
 
     // ------ update ------
@@ -213,6 +227,7 @@ class QuestionResultViewTest : BasePlatformTestCase() {
         )
         view.update(updated)
 
+        assertFalse("Collapsed update should not create body components", view.bodyCreated())
         assertTrue(view.bodyText().contains("Updated Q"))
         assertTrue(view.bodyText().contains("Updated A"))
         assertFalse(view.bodyText().contains("Initial Q"))

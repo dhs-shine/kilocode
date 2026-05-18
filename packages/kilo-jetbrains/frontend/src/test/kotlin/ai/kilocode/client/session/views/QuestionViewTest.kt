@@ -4,6 +4,7 @@ import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.rpc.dto.QuestionReplyDto
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
@@ -306,9 +307,19 @@ class QuestionViewTest : BasePlatformTestCase() {
 
         option<JBRadioButton>(view, "Minimal").doClick()
 
-        // Re-render happened; get fresh reference
         val nextAfter = button(view, "Next")
         assertTrue("Next should be enabled after selection", nextAfter.isEnabled)
+    }
+
+    fun `test selection updates existing footer controls`() {
+        view.show(twoItemQuestion("q_retained"))
+
+        val next = button(view, "Next")
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+
+        assertSame("selection should not rebuild the footer button", next, button(view, "Next"))
+        assertTrue("existing Next button should be enabled", next.isEnabled)
     }
 
     fun `test header nav disables unavailable directions`() {
@@ -343,7 +354,7 @@ class QuestionViewTest : BasePlatformTestCase() {
     fun `test single question hides header nav`() {
         view.show(singleSelectQuestion("q_single"))
 
-        assertTrue(findAll<HoverIcon>(view).isEmpty())
+        assertTrue(findAll<HoverIcon>(view).all { !it.parent.isVisible })
     }
 
     fun `test selection requests scroll to bottom`() {
@@ -392,7 +403,6 @@ class QuestionViewTest : BasePlatformTestCase() {
 
         boxes.first { it.actionCommand == "A" }.doClick()
         boxes.first { it.actionCommand == "B" }.doClick()
-        // Toggle B off — need fresh refs after re-render
         option<JBCheckBox>(view, "B").doClick()
 
         // Single multi-select item gets a Review step (VS Code parity: single() is false when multiple=true)

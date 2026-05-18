@@ -1,4 +1,4 @@
-package ai.kilocode.client.session.views
+package ai.kilocode.client.session.views.question
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Content
@@ -6,6 +6,8 @@ import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.PartView
+import ai.kilocode.client.session.views.ToolView
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.icons.AllIcons
 import com.intellij.ui.components.JBLabel
@@ -24,7 +26,6 @@ import java.awt.Dimension
 import java.awt.Font
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
@@ -45,49 +46,49 @@ private fun parseQuestions(raw: String): List<String>? {
 }
 
 private fun parseAnswers(raw: String?): List<List<String>> {
-    if (raw.isNullOrBlank()) return emptyList()
-    val arr = runCatching { json.parseToJsonElement(raw).jsonArray }.getOrNull() ?: return emptyList()
-    return arr.map { elem ->
+    val arr = raw
+        ?.takeIf { it.isNotBlank() }
+        ?.let { runCatching { json.parseToJsonElement(it).jsonArray }.getOrNull() }
+    return arr?.map { elem ->
         runCatching {
             elem.jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull?.takeIf(String::isNotBlank) }
         }.getOrDefault(emptyList())
-    }
+    } ?: emptyList()
 }
 
 private fun parse(tool: Tool): QuestionResult? {
-    if (tool.name != "question") return null
-    if (tool.state != ToolExecState.COMPLETED) return null
-    val raw = tool.input["questions"] ?: return null
-    val questions = parseQuestions(raw) ?: return null
-    val answers = parseAnswers(tool.metadata["answers"])
-    return QuestionResult(questions, answers)
+    if (tool.name != "question" || tool.state != ToolExecState.COMPLETED) return null
+    return tool.input["questions"]
+        ?.let(::parseQuestions)
+        ?.let { QuestionResult(it, parseAnswers(tool.metadata["answers"])) }
 }
 
-/**
- * Renders completed `question` tool parts as a structured answered-question card.
- *
- * Shows each question with its selected answer(s). Hides raw output text.
- * Falls back to [ToolView] when structured data cannot be parsed.
- */
 class QuestionResultView(tool: Tool) : PartView() {
 
     override val contentId: String = tool.id
 
     private var result = parse(tool) ?: QuestionResult(emptyList(), emptyList())
     private var style = SessionEditorStyle.current()
+    private val texts = mutableListOf<Pair<JBTextArea, Boolean>>()
 
-    private val root = JPanel(BorderLayout()).apply {
-        isOpaque = true
-        background = SessionUiStyle.View.surface()
-        border = SessionUiStyle.View.card()
+    private val root = object : JPanel(BorderLayout()) {
+        override fun updateUI() {
+            super.updateUI()
+            isOpaque = true
+            background = SessionUiStyle.View.surface()
+            border = SessionUiStyle.View.card()
+        }
     }
-    private val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0)).apply {
-        isOpaque = true
-        background = SessionUiStyle.View.header()
-        border = JBUI.Borders.empty(
-            JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
-            JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
-        )
+    private val header = object : JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0)) {
+        override fun updateUI() {
+            super.updateUI()
+            isOpaque = true
+            background = SessionUiStyle.View.header()
+            border = JBUI.Borders.empty(
+                JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
+            )
+        }
     }
     private val glyph = JBLabel(AllIcons.General.Balloon)
     private val title = JBLabel()
@@ -96,18 +97,7 @@ class QuestionResultView(tool: Tool) : PartView() {
     private val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0)).apply {
         isOpaque = false
     }
-    private val body = JPanel().apply {
-        isOpaque = true
-        background = SessionUiStyle.View.surface()
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        border = JBUI.Borders.empty(
-            JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
-            JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
-        )
-    }
-
-    // Text components tracked for font updates
-    private val textComponents = mutableListOf<JBTextArea>()
+    private var pane: JPanel? = null
 
     private val click = object : MouseAdapter() {
         override fun mouseClicked(e: MouseEvent) { toggle() }
@@ -142,45 +132,49 @@ class QuestionResultView(tool: Tool) : PartView() {
         applyStyle(SessionEditorStyle.current())
         add(root, BorderLayout.CENTER)
         syncLabels()
-        rebuildBody()
-        // Default collapsed: body not added
         syncArrow()
     }
 
     override fun update(content: Content) {
         if (content !is Tool) return
-        val parsed = parse(content)
-        result = parsed ?: QuestionResult(emptyList(), emptyList())
+        val next = parse(content) ?: QuestionResult(emptyList(), emptyList())
+        if (next == result) return
+        result = next
         syncLabels()
-        rebuildBody()
+        syncBody()
         refresh()
     }
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
-        setFont(title, style.boldEditorFont)
-        setFont(sub, style.smallEditorFont)
-        for (ta in textComponents) {
-            val bold = ta.font?.isBold == true
-            ta.font = if (bold) style.boldEditorFont else style.transcriptFont
-        }
+        val label = setFont(title, style.boldEditorFont) || setFont(sub, style.smallEditorFont)
+        val body = texts.fold(false) { acc, item -> setFont(item.first, item.second) || acc }
+        if (!label && !body) return
         refresh()
     }
 
     fun toggle() {
-        val expanded = isExpanded()
-        if (expanded) root.remove(body) else root.add(body, BorderLayout.CENTER)
+        if (isExpanded()) {
+            pane?.let { root.remove(it) }
+        } else {
+            root.add(body(), BorderLayout.CENTER)
+        }
         syncArrow()
         refresh()
     }
 
-    fun isExpanded(): Boolean = body.parent === root
+    fun isExpanded(): Boolean = pane?.parent === root
 
-    /** Label text for test assertions — title + sub joined. */
     fun labelText(): String = listOf(title.text, sub.text).filter { it.isNotBlank() }.joinToString(" ")
 
-    /** Body text for test assertions — all text areas joined. */
-    fun bodyText(): String = textComponents.joinToString("\n") { it.text }
+    fun bodyText(): String = result.questions.mapIndexed { i, q ->
+        val joined = result.answers.getOrNull(i)?.joinToString(", ").orEmpty()
+        listOf(q, joined.ifBlank { KiloBundle.message("session.question.review.notAnswered") }).joinToString("\n")
+    }.joinToString("\n")
+
+    fun bodyCreated(): Boolean = pane != null
+
+    fun bodyFonts(): List<Font> = texts.map { it.first.font }
 
     override fun dumpLabel(): String = "QuestionResultView#$contentId(${labelText()})"
 
@@ -188,17 +182,37 @@ class QuestionResultView(tool: Tool) : PartView() {
         fun canRender(tool: Tool): Boolean = parse(tool) != null
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
+    private fun body(): JPanel {
+        pane?.let { return it }
+        val panel = object : JPanel() {
+            override fun updateUI() {
+                super.updateUI()
+                isOpaque = true
+                background = SessionUiStyle.View.surface()
+                border = JBUI.Borders.empty(
+                    JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
+                    JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
+                )
+            }
+        }.apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        }
+        pane = panel
+        syncBody()
+        return panel
+    }
 
     private fun syncLabels() {
         title.text = KiloBundle.message("session.question.result.title")
         val count = result.answers.count { it.isNotEmpty() }
         sub.text = KiloBundle.message("session.question.result.answered", count)
+        sub.foreground = UiStyle.Colors.weak()
     }
 
-    private fun rebuildBody() {
-        body.removeAll()
-        textComponents.clear()
+    private fun syncBody() {
+        val panel = pane ?: return
+        panel.removeAll()
+        texts.clear()
 
         for ((i, q) in result.questions.withIndex()) {
             val row = JPanel().apply {
@@ -206,9 +220,7 @@ class QuestionResultView(tool: Tool) : PartView() {
                 layout = BoxLayout(this, BoxLayout.Y_AXIS)
                 alignmentX = Component.LEFT_ALIGNMENT
             }
-            if (i > 0) {
-                row.border = JBUI.Borders.emptyTop(UiStyle.Gap.lg())
-            }
+            if (i > 0) row.border = JBUI.Borders.emptyTop(UiStyle.Gap.lg())
 
             val qText = makeText(q, UiStyle.Colors.weak(), false)
             qText.alignmentX = Component.LEFT_ALIGNMENT
@@ -222,26 +234,27 @@ class QuestionResultView(tool: Tool) : PartView() {
             )
             aText.alignmentX = Component.LEFT_ALIGNMENT
             row.add(aText)
-
-            body.add(row)
+            panel.add(row)
         }
     }
 
     private fun makeText(value: String, color: Color, bold: Boolean): JBTextArea {
-        val ta = object : JBTextArea(value) {
-            override fun getPreferredSize(): Dimension {
+        val area = object : JBTextArea(value) {
+            override fun getPreferredSize() = withWidth(super.getPreferredSize().height)
+
+            override fun getMaximumSize(): Dimension {
+                val size = preferredSize
+                return Dimension(Int.MAX_VALUE, size.height)
+            }
+
+            private fun withWidth(fallback: Int): Dimension {
                 val width = space()
-                if (width <= 0) return super.getPreferredSize()
+                if (width <= 0) return Dimension(super.getPreferredSize().width, fallback)
                 val old = size
                 setSize(width, Int.MAX_VALUE)
                 val size = super.getPreferredSize()
                 setSize(old)
                 return Dimension(width, size.height)
-            }
-
-            override fun getMaximumSize(): Dimension {
-                val size = preferredSize
-                return Dimension(Int.MAX_VALUE, size.height)
             }
 
             private fun space(): Int {
@@ -265,10 +278,10 @@ class QuestionResultView(tool: Tool) : PartView() {
             wrapStyleWord = true
             foreground = color
             border = JBUI.Borders.empty()
-            font = if (bold) style.boldEditorFont else style.transcriptFont
         }
-        textComponents.add(ta)
-        return ta
+        texts.add(area to bold)
+        setFont(area, bold)
+        return area
     }
 
     private fun syncArrow() {
@@ -290,6 +303,13 @@ class QuestionResultView(tool: Tool) : PartView() {
     private fun setFont(label: JBLabel, font: Font): Boolean {
         if (label.font == font) return false
         label.font = font
+        return true
+    }
+
+    private fun setFont(area: JBTextArea, bold: Boolean): Boolean {
+        val font = if (bold) style.boldEditorFont else style.transcriptFont
+        if (area.font == font) return false
+        area.font = font
         return true
     }
 
