@@ -177,14 +177,44 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertLabelsDoNotContain(view, "Choose approach")
         assertLabelsContain(view, "2 of 2 questions")
 
-        // Select answer on second question, submit
+        // Select answer on second question, click Review
         option<JBRadioButton>(view, "Unit").doClick()
+        button(view, "Review").doClick()
+
+        // Review page shown
+        assertLabelsContain(view, "Review your answers")
+        assertLabelsContain(view, "Choose approach")
+        assertLabelsContain(view, "Minimal")
+        assertLabelsContain(view, "Choose test level")
+        assertLabelsContain(view, "Unit")
+
+        // Submit from review page
         button(view, "Submit").doClick()
 
         assertFalse(view.isVisible)
         assertEquals(1, replies.size)
         assertEquals("q_nav", replies.single().first)
         assertEquals(listOf(listOf("Minimal"), listOf("Unit")), replies.single().second.answers)
+    }
+
+    fun `test multi question uses review before submit`() {
+        view.show(twoItemQuestion("q_review"))
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+        button(view, "Next").doClick()
+        option<JBRadioButton>(view, "Unit").doClick()
+
+        // Clicking Review should NOT submit
+        button(view, "Review").doClick()
+
+        assertTrue("Should still be visible after Review", view.isVisible)
+        assertTrue("No replies should be sent after Review", replies.isEmpty())
+
+        // Now submit from review page
+        button(view, "Submit").doClick()
+
+        assertFalse(view.isVisible)
+        assertEquals(1, replies.size)
     }
 
     fun `test back preserves previous selection`() {
@@ -203,13 +233,69 @@ class QuestionViewTest : BasePlatformTestCase() {
         val radios = findAll<JBRadioButton>(view)
         assertTrue("Minimal should still be selected", radios.first { it.actionCommand == "Minimal" }.isSelected)
 
-        // Change selection to Balanced, go forward, submit
+        // Change selection to Balanced, go forward, then to review
         option<JBRadioButton>(view, "Balanced").doClick()
         button(view, "Next").doClick()
         option<JBRadioButton>(view, "Unit").doClick()
+        button(view, "Review").doClick()
         button(view, "Submit").doClick()
 
         assertEquals(listOf(listOf("Balanced"), listOf("Unit")), replies.single().second.answers)
+    }
+
+    fun `test review back preserves answers`() {
+        view.show(twoItemQuestion("q_review_back"))
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+        button(view, "Next").doClick()
+        option<JBRadioButton>(view, "Unit").doClick()
+        button(view, "Review").doClick()
+
+        // On review page - go back to last question
+        button(view, "Back").doClick()
+
+        // Back on second question — selection should be preserved
+        assertLabelsContain(view, "Choose test level")
+        assertLabelsContain(view, "2 of 2 questions")
+        val radios = findAll<JBRadioButton>(view)
+        assertTrue("Unit should still be selected", radios.first { it.actionCommand == "Unit" }.isSelected)
+    }
+
+    fun `test review displays multi select answers joined`() {
+        val q = Question(
+            id = "q_multi",
+            items = listOf(
+                QuestionItem(
+                    question = "Choose features",
+                    header = "Features",
+                    options = listOf(
+                        QuestionOption("A", "Feature A"),
+                        QuestionOption("B", "Feature B"),
+                    ),
+                    multiple = true,
+                    custom = false,
+                ),
+            ),
+        )
+        view.show(q)
+
+        option<JBCheckBox>(view, "A").doClick()
+        option<JBCheckBox>(view, "B").doClick()
+        button(view, "Review").doClick()
+
+        assertLabelsContain(view, "A, B")
+    }
+
+    fun `test single select question still submits directly`() {
+        view.show(singleSelectQuestion("q_direct"))
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+        button(view, "Submit").doClick()
+
+        // Should submit directly without a review step
+        assertFalse(view.isVisible)
+        assertEquals(1, replies.size)
+        assertEquals(listOf(listOf("Minimal")), replies.single().second.answers)
     }
 
     fun `test next is disabled until current question is answered`() {
@@ -234,12 +320,16 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertNotNull("Forward should have disabled icon", navButton(view, "Next").disabledIcon)
 
         option<JBRadioButton>(view, "Minimal").doClick()
-        assertTrue("Forward should be enabled after selection", navButton(view, "Next").isEnabled)
+        assertTrue("Forward should be enabled after selection on first question", navButton(view, "Next").isEnabled)
 
         button(view, "Next").doClick()
 
         assertTrue("Back should be enabled on second question", navButton(view, "Back").isEnabled)
-        assertFalse("Forward should be disabled on last question", navButton(view, "Next").isEnabled)
+        // Forward on last question is enabled only after selection (can go to review)
+        assertFalse("Forward should be disabled on last question before selection", navButton(view, "Next").isEnabled)
+
+        option<JBRadioButton>(view, "Unit").doClick()
+        assertTrue("Forward should be enabled on last question after selection (goes to review)", navButton(view, "Next").isEnabled)
     }
 
     fun `test submit button uses default style`() {
@@ -304,6 +394,9 @@ class QuestionViewTest : BasePlatformTestCase() {
         boxes.first { it.actionCommand == "B" }.doClick()
         // Toggle B off — need fresh refs after re-render
         option<JBCheckBox>(view, "B").doClick()
+
+        // Single multi-select item gets a Review step (VS Code parity: single() is false when multiple=true)
+        button(view, "Review").doClick()
         button(view, "Submit").doClick()
 
         assertFalse(view.isVisible)
@@ -315,7 +408,7 @@ class QuestionViewTest : BasePlatformTestCase() {
     // ------ helpers ------
 
     /**
-     * Find a [JButton] by button text — covers footer buttons (Dismiss, Next, Submit).
+     * Find a [JButton] by button text — covers footer buttons (Dismiss, Next, Submit, Review, Back).
      * For icon-only nav buttons (Back/Forward) that use tooltip, use [navButton].
      */
     private fun button(root: Container, text: String): JButton =

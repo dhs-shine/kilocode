@@ -85,6 +85,10 @@ class MessageView(
         }
         val existing = parts[content.id]
         if (existing != null) {
+            if (ViewFactory.shouldReplace(existing, content)) {
+                replacePart(content, existing)
+                return
+            }
             existing.update(content)
             refresh()
             return
@@ -93,6 +97,18 @@ class MessageView(
         view.applyStyle(style)
         parts[content.id] = view
         add(view)
+        syncBorder()
+        refresh()
+    }
+
+    private fun replacePart(content: Content, existing: PartView) {
+        val at = components.indexOfFirst { it === existing }.takeIf { it >= 0 } ?: componentCount
+        parts.remove(content.id)
+        remove(existing)
+        val view = ViewFactory.create(content)
+        view.applyStyle(style)
+        parts[content.id] = view
+        add(view, at)
         syncBorder()
         refresh()
     }

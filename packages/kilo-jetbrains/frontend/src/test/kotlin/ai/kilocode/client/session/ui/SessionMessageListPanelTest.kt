@@ -10,6 +10,7 @@ import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.model.ToolCallRef
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.PermissionView
+import ai.kilocode.client.session.views.QuestionResultView
 import ai.kilocode.client.session.views.QuestionView
 import ai.kilocode.client.session.views.TextView
 import ai.kilocode.client.session.views.ToolView
@@ -368,6 +369,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         val item = panelWithPrompts()
         model.upsertMessage(msg("a1", "assistant"))
         // completed state — must NOT be suppressed even when callId matches
+        // No structured input/metadata so it renders as ToolView
         model.updateContent("a1", toolPart("tp1", "a1", "question", "call1", state = "completed"))
 
         model.setState(SessionState.AwaitingQuestion(question(tool = ToolCallRef("a1", "call1"))))
@@ -375,6 +377,29 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         val mv = item.findMessage("a1")!!
         assertEquals(listOf("tp1"), mv.partIds())
         assertTrue(mv.part("tp1") is ToolView)
+    }
+
+    fun `test completed question update replaces generic tool view with question result view`() {
+        val item = panelWithPrompts()
+        model.upsertMessage(msg("a1", "assistant"))
+        // Running question tool — no structured data yet, renders as ToolView
+        model.updateContent("a1", toolPart("tp1", "a1", "question", "call1", state = "running"))
+
+        val mv = item.findMessage("a1")!!
+        assertTrue("Running question tool should be ToolView", mv.part("tp1") is ToolView)
+
+        // Complete with structured data — should replace ToolView with QuestionResultView
+        model.updateContent(
+            "a1",
+            toolPart(
+                "tp1", "a1", "question", "call1", state = "completed",
+                input = mapOf("questions" to """[{"question":"Which strategy?"},{"question":"Which checks?"}]"""),
+                metadata = mapOf("answers" to """[["Comprehensive"],["Build"]]"""),
+            ),
+        )
+
+        assertTrue("Completed question with data should be QuestionResultView", mv.part("tp1") is QuestionResultView)
+        assertEquals(listOf("tp1"), mv.partIds())
     }
 
     // ------ helpers ------
@@ -435,7 +460,16 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         id = id, sessionID = "ses", messageID = mid, type = type, text = text,
     )
 
-    private fun toolPart(id: String, mid: String, tool: String, callId: String, state: String = "running") = PartDto(
+    private fun toolPart(
+        id: String,
+        mid: String,
+        tool: String,
+        callId: String,
+        state: String = "running",
+        input: Map<String, String> = emptyMap(),
+        metadata: Map<String, String> = emptyMap(),
+    ) = PartDto(
         id = id, sessionID = "ses", messageID = mid, type = "tool", tool = tool, callID = callId, state = state,
+        input = input, metadata = metadata,
     )
 }

@@ -38,6 +38,10 @@ import javax.swing.JPanel
  * Shows one [QuestionItem] at a time as a carousel with back/forward navigation.
  * Single-select items render as radio-button rows; multi-select as checkbox rows.
  * Each option shows a bold label and a regular description.
+ *
+ * For multi-question prompts (or a single multi-select item), a review pseudo-step
+ * is inserted after the last real question. The review step lists all questions
+ * and their selected answers before the final Submit.
  */
 class QuestionView(
     private val reply: (String, QuestionReplyDto) -> Unit,
@@ -94,9 +98,7 @@ class QuestionView(
 
     private fun render() {
         val q = question ?: return
-        val item = q.items[idx]
         val total = q.items.size
-        val set = selections[idx]
 
         removeAll()
 
@@ -104,7 +106,9 @@ class QuestionView(
         card.isOpaque = true
         card.background = SessionUiStyle.View.surface()
         card.border = SessionUiStyle.View.card()
-        card.add(buildContent(item, total, set), BorderLayout.CENTER)
+
+        val node = if (review(q)) buildReview(q) else buildContent(q.items[idx], total, selections[idx])
+        card.add(node, BorderLayout.CENTER)
         add(card, BorderLayout.CENTER)
     }
 
@@ -116,7 +120,26 @@ class QuestionView(
 
         val head = header(total)
         val body = body(item, set)
-        val foot = footer(item, set)
+        val foot = footer()
+        head.alignmentX = Component.LEFT_ALIGNMENT
+        body.alignmentX = Component.LEFT_ALIGNMENT
+        foot.alignmentX = Component.LEFT_ALIGNMENT
+        root.add(head)
+        root.add(body)
+        root.add(foot)
+
+        return root
+    }
+
+    private fun buildReview(q: Question): JPanel {
+        val root = JPanel()
+        root.isOpaque = false
+        root.layout = BoxLayout(root, BoxLayout.Y_AXIS)
+        root.border = JBUI.Borders.empty(UiStyle.Gap.lg(), UiStyle.Gap.pad(), UiStyle.Gap.lg(), UiStyle.Gap.pad())
+
+        val head = header(q.items.size)
+        val body = reviewBody(q)
+        val foot = footer()
         head.alignmentX = Component.LEFT_ALIGNMENT
         body.alignmentX = Component.LEFT_ALIGNMENT
         foot.alignmentX = Component.LEFT_ALIGNMENT
@@ -134,7 +157,8 @@ class QuestionView(
         row.isOpaque = false
         row.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
 
-        val summary = JBLabel(KiloBundle.message("session.question.summary", idx + 1, total))
+        val shown = minOf(idx + 1, total)
+        val summary = JBLabel(KiloBundle.message("session.question.summary", shown, total))
         summary.foreground = UiStyle.Colors.weak()
         row.add(summary, BorderLayout.WEST)
 
@@ -165,7 +189,7 @@ class QuestionView(
             disabledIcon = IconLoader.getDisabledIcon(ico)
             toolTipText = KiloBundle.message("session.question.next")
             val q = question
-            isEnabled = q != null && idx < q.items.size - 1 && selections[idx].isNotEmpty()
+            isEnabled = q != null && idx < q.items.size && selections.getOrNull(idx)?.isNotEmpty() == true
             addActionListener { goForward() }
         }
 
@@ -197,6 +221,48 @@ class QuestionView(
         panel.add(opts)
 
         return panel
+    }
+
+    // ── Review body ───────────────────────────────────────────────────────────
+
+    private fun reviewBody(q: Question): JPanel {
+        val panel = JPanel()
+        panel.isOpaque = false
+        panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
+
+        val title = text(KiloBundle.message("session.question.review.title"), UiStyle.Colors.fg(), true)
+        title.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
+        title.alignmentX = Component.LEFT_ALIGNMENT
+        panel.add(title)
+
+        for ((i, item) in q.items.withIndex()) {
+            val row = reviewRow(item, i)
+            row.alignmentX = Component.LEFT_ALIGNMENT
+            panel.add(row)
+        }
+        return panel
+    }
+
+    private fun reviewRow(item: QuestionItem, i: Int): JPanel {
+        val row = JPanel()
+        row.isOpaque = false
+        row.layout = BoxLayout(row, BoxLayout.Y_AXIS)
+        row.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
+
+        val question = text(item.question, UiStyle.Colors.weak())
+        question.alignmentX = Component.LEFT_ALIGNMENT
+        row.add(question)
+
+        val joined = selections.getOrNull(i)?.joinToString(", ").orEmpty()
+        val answer = text(
+            joined.ifBlank { KiloBundle.message("session.question.review.notAnswered") },
+            UiStyle.Colors.fg(),
+            true,
+        )
+        answer.alignmentX = Component.LEFT_ALIGNMENT
+        row.add(answer)
+
+        return row
     }
 
     private fun optionList(item: QuestionItem, set: MutableSet<String>): JPanel {
@@ -338,11 +404,10 @@ class QuestionView(
         }
     }
 
-    // ── Footer: Dismiss + Next/Submit ─────────────────────────────────────────
+    // ── Footer: Dismiss + Back/Next/Review/Submit ─────────────────────────────
 
-    private fun footer(item: QuestionItem, set: MutableSet<String>): JPanel {
+    private fun footer(): JPanel {
         val q = question ?: return JPanel()
-        val last = idx == q.items.size - 1
 
         val row = JPanel(BorderLayout())
         row.isOpaque = false
@@ -352,19 +417,60 @@ class QuestionView(
         dismiss.addActionListener { doReject() }
         row.add(dismiss, BorderLayout.WEST)
 
-        val rightLabel = if (last) KiloBundle.message("session.question.submit")
-                         else KiloBundle.message("session.question.next")
-        val right = JButton(rightLabel)
-        right.putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, last)
-        right.isEnabled = set.isNotEmpty()
-        right.addActionListener {
-            if (last) doReply()
-            else goForward()
+        if (review(q)) {
+            // Review page: Back + Submit
+            val right = JPanel()
+            right.isOpaque = false
+            right.layout = BoxLayout(right, BoxLayout.X_AXIS)
+
+            val back = JButton(KiloBundle.message("session.question.back"))
+            back.addActionListener { goBack() }
+            right.add(back)
+
+            right.add(javax.swing.Box.createHorizontalStrut(JBUI.scale(UiStyle.Gap.sm())))
+
+            val submit = JButton(KiloBundle.message("session.question.submit"))
+            submit.putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
+            submit.addActionListener { doReply() }
+            right.add(submit)
+
+            row.add(right, BorderLayout.EAST)
+        } else {
+            val label = when {
+                direct(q) -> KiloBundle.message("session.question.submit")
+                lastItem(q) -> KiloBundle.message("session.question.review")
+                else -> KiloBundle.message("session.question.next")
+            }
+            val primary = direct(q) || lastItem(q)
+            val right = JButton(label)
+            right.putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, primary)
+            right.isEnabled = selections.getOrNull(idx)?.isNotEmpty() == true
+            right.addActionListener {
+                when {
+                    direct(q) -> doReply()
+                    lastItem(q) -> goReview()
+                    else -> goForward()
+                }
+            }
+            row.add(right, BorderLayout.EAST)
         }
-        row.add(right, BorderLayout.EAST)
 
         return row
     }
+
+    // ── State predicates ──────────────────────────────────────────────────────
+
+    /** True for a single non-multiple question — direct submit, no review step. */
+    private fun single(q: Question): Boolean = q.items.size == 1 && !q.items[0].multiple
+
+    /** True when we are on the review pseudo-step. */
+    private fun review(q: Question): Boolean = !single(q) && idx == q.items.size
+
+    /** True when we are on the last real question page. */
+    private fun lastItem(q: Question): Boolean = idx == q.items.size - 1
+
+    /** True for a single non-multiple question — direct submit, no review step. */
+    private fun direct(q: Question): Boolean = single(q)
 
     // ── Navigation ────────────────────────────────────────────────────────────
 
@@ -378,9 +484,23 @@ class QuestionView(
 
     private fun goForward() {
         val q = question ?: return
-        if (idx >= q.items.size - 1) return
-        if (selections[idx].isEmpty()) return
+        if (idx >= q.items.size) return
+        if (selections.getOrNull(idx)?.isEmpty() != false) return
+        if (idx == q.items.size - 1 && !direct(q)) {
+            goReview()
+            return
+        }
         idx++
+        render()
+        refresh()
+        scroll()
+    }
+
+    private fun goReview() {
+        val q = question ?: return
+        if (idx != q.items.size - 1) return
+        if (selections[idx].isEmpty()) return
+        idx = q.items.size
         render()
         refresh()
         scroll()
