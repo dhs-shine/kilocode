@@ -3,26 +3,36 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
+import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.rpc.dto.QuestionReplyDto
 import com.intellij.icons.AllIcons
-import com.intellij.ui.dsl.builder.RightGap
-import com.intellij.ui.dsl.builder.RowLayout
-import com.intellij.ui.dsl.builder.TopGap
-import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBRadioButton
+import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
+import java.awt.Font
+import javax.swing.AbstractButton
+import javax.swing.BoxLayout
+import javax.swing.ButtonGroup
+import javax.swing.JButton
+import javax.swing.JPanel
 
 /**
  * Transcript-style question view — rendered inside [ai.kilocode.client.session.ui.SessionMessageListPanel]
  * at the end of the transcript when the session is in
  * [ai.kilocode.client.session.model.SessionState.AwaitingQuestion].
  *
- * Unlike the old docked [ai.kilocode.client.session.ui.QuestionPanel], this view lives inside
- * the scrollable transcript so the user can scroll through prior messages while a question is active.
+ * Shows one [QuestionItem] at a time as a carousel with back/forward navigation.
+ * Single-select items render as radio-button rows; multi-select as checkbox rows.
+ * Each option shows a bold label and a regular description.
  */
 class QuestionView(
     private val reply: (String, QuestionReplyDto) -> Unit,
@@ -31,6 +41,9 @@ class QuestionView(
     override val sessionViewKind = SessionView.Kind.Default
 
     private var requestId: String? = null
+    private var question: Question? = null
+    private var idx = 0
+    private var selections = emptyList<MutableSet<String>>()
     private var style = SessionEditorStyle.current()
 
     init {
@@ -38,16 +51,43 @@ class QuestionView(
         isVisible = false
     }
 
-    /** Populate the view for all items in [question] and make it visible. */
-    fun show(question: Question) {
-        if (question.items.isEmpty()) {
+    /** Populate the view for [q] and make it visible, starting at the first question. */
+    fun show(q: Question) {
+        if (q.items.isEmpty()) {
             hideView()
             return
         }
-        requestId = question.id
+        requestId = q.id
+        question = q
+        idx = 0
+        selections = List(q.items.size) { mutableSetOf() }
+        render()
+        isVisible = true
+        refresh()
+    }
 
-        // Per-item selected answers: index → mutable set of selected labels
-        val selections = Array(question.items.size) { mutableSetOf<String>() }
+    /** Hide this view and clear all active request state. */
+    fun hideView() {
+        requestId = null
+        question = null
+        idx = 0
+        selections = emptyList()
+        removeAll()
+        isVisible = false
+        refresh()
+    }
+
+    override fun applyStyle(s: SessionEditorStyle) {
+        style = s
+    }
+
+    // ------ private rendering ------
+
+    private fun render() {
+        val q = question ?: return
+        val item = q.items[idx]
+        val total = q.items.size
+        val set = selections[idx]
 
         removeAll()
 
@@ -55,72 +95,240 @@ class QuestionView(
         card.isOpaque = true
         card.background = SessionUiStyle.View.surface()
         card.border = SessionUiStyle.View.card()
-
-        card.add(panel {
-            for ((idx, item) in question.items.withIndex()) {
-                if (idx > 0) row { }.topGap(TopGap.SMALL)
-                row {
-                    icon(AllIcons.General.QuestionDialog).gap(RightGap.SMALL)
-                    label(item.header).bold()
-                }
-                row {
-                    label(item.question)
-                }
-                row {
-                    for (opt in item.options) {
-                        button(opt.label) {
-                            toggleOption(selections, idx, item, opt.label)
-                        }
-                            .gap(RightGap.SMALL)
-                            .applyToComponent { toolTipText = opt.description }
-                    }
-                }.layout(RowLayout.INDEPENDENT)
-            }
-
-            row {
-                button(KiloBundle.message("session.question.submit")) {
-                    doReply(selections.map { it.toList() })
-                }.gap(RightGap.SMALL)
-                button(KiloBundle.message("session.question.dismiss")) { doReject() }
-            }.layout(RowLayout.INDEPENDENT).topGap(TopGap.SMALL)
-        }.also { it.isOpaque = false }, BorderLayout.CENTER)
-
+        card.add(buildContent(item, total, set), BorderLayout.CENTER)
         add(card, BorderLayout.CENTER)
-
-        isVisible = true
-        refresh()
     }
 
-    /** Hide this view and clear the active request id. */
-    fun hideView() {
-        requestId = null
-        removeAll()
-        isVisible = false
-        refresh()
+    private fun buildContent(item: QuestionItem, total: Int, set: MutableSet<String>): JPanel {
+        val root = JPanel()
+        root.isOpaque = false
+        root.layout = BoxLayout(root, BoxLayout.Y_AXIS)
+        root.border = JBUI.Borders.empty(8, 12, 8, 12)
+
+        root.add(header(total))
+        root.add(body(item, set))
+        root.add(footer(item, set))
+
+        return root
     }
 
-    override fun applyStyle(style: SessionEditorStyle) {
-        this.style = style
-    }
+    // ── Header: icon + summary + nav buttons ──────────────────────────────────
 
-    private fun toggleOption(
-        selections: Array<MutableSet<String>>,
-        idx: Int,
-        item: QuestionItem,
-        label: String,
-    ) {
-        val set = selections[idx]
-        if (item.multiple) {
-            if (!set.remove(label)) set.add(label)
-        } else {
-            set.clear()
-            set.add(label)
+    private fun header(total: Int): JPanel {
+        val row = JPanel(BorderLayout())
+        row.isOpaque = false
+        row.border = JBUI.Borders.emptyBottom(6)
+
+        val left = JPanel()
+        left.isOpaque = false
+        left.layout = BoxLayout(left, BoxLayout.X_AXIS)
+
+        val icon = JBLabel(AllIcons.General.QuestionDialog)
+        icon.border = JBUI.Borders.emptyRight(6)
+        left.add(icon)
+
+        val summary = JBLabel(KiloBundle.message("session.question.summary", idx + 1, total))
+        summary.foreground = UIUtil.getContextHelpForeground()
+        left.add(summary)
+
+        row.add(left, BorderLayout.WEST)
+
+        if (total > 1) {
+            row.add(navButtons(), BorderLayout.EAST)
         }
+
+        return row
     }
 
-    private fun doReply(answers: List<List<String>>) {
+    private fun navButtons(): JPanel {
+        val nav = JPanel()
+        nav.isOpaque = false
+        nav.layout = BoxLayout(nav, BoxLayout.X_AXIS)
+
+        val back = HoverIcon().apply {
+            icon = AllIcons.Actions.Back
+            toolTipText = KiloBundle.message("session.question.back")
+            isEnabled = idx > 0
+            addActionListener { goBack() }
+        }
+
+        val fwd = HoverIcon().apply {
+            icon = AllIcons.Actions.Forward
+            toolTipText = KiloBundle.message("session.question.next")
+            val q = question
+            isEnabled = q != null && idx < q.items.size - 1 && selections[idx].isNotEmpty()
+            addActionListener { goForward() }
+        }
+
+        nav.add(back)
+        nav.add(fwd)
+        return nav
+    }
+
+    // ── Body: question text + hint + options ──────────────────────────────────
+
+    private fun body(item: QuestionItem, set: MutableSet<String>): JPanel {
+        val panel = JPanel()
+        panel.isOpaque = false
+        panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
+
+        val title = JBLabel(item.question)
+        title.font = title.font.deriveFont(Font.BOLD)
+        title.border = JBUI.Borders.emptyBottom(2)
+        panel.add(title)
+
+        val hintKey = if (item.multiple) "session.question.hint.multi" else "session.question.hint.single"
+        val hint = JBLabel(KiloBundle.message(hintKey))
+        hint.foreground = UIUtil.getContextHelpForeground()
+        hint.border = JBUI.Borders.emptyBottom(6)
+        panel.add(hint)
+
+        panel.add(optionList(item, set))
+
+        return panel
+    }
+
+    private fun optionList(item: QuestionItem, set: MutableSet<String>): JPanel {
+        val panel = JPanel()
+        panel.isOpaque = false
+        panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
+
+        if (item.multiple) {
+            for (opt in item.options) {
+                panel.add(checkboxRow(opt, set))
+            }
+        } else {
+            val group = ButtonGroup()
+            for (opt in item.options) {
+                val row = radioRow(opt, set, group)
+                panel.add(row)
+            }
+        }
+
+        return panel
+    }
+
+    // ── Option rows ───────────────────────────────────────────────────────────
+
+    private fun radioRow(opt: QuestionOption, set: MutableSet<String>, group: ButtonGroup): JPanel {
+        val radio = JBRadioButton(opt.label)
+        radio.font = radio.font.deriveFont(Font.BOLD)
+        radio.isSelected = opt.label in set
+        radio.isOpaque = false
+        group.add(radio)
+
+        radio.addActionListener {
+            set.clear()
+            set.add(opt.label)
+            refreshNavButtons()
+        }
+
+        return optionRow(radio, opt)
+    }
+
+    private fun checkboxRow(opt: QuestionOption, set: MutableSet<String>): JPanel {
+        val box = JBCheckBox(opt.label)
+        box.font = box.font.deriveFont(Font.BOLD)
+        box.isSelected = opt.label in set
+        box.isOpaque = false
+
+        box.addActionListener {
+            if (!set.remove(opt.label)) set.add(opt.label)
+            refreshNavButtons()
+        }
+
+        return optionRow(box, opt)
+    }
+
+    private fun optionRow(toggle: AbstractButton, opt: QuestionOption): JPanel {
+        val row = JPanel(BorderLayout())
+        row.isOpaque = false
+        row.border = JBUI.Borders.emptyBottom(2)
+        row.toolTipText = opt.description.ifBlank { null }
+
+        if (opt.description.isNotBlank()) {
+            // Stack toggle (with label) on top, description label below
+            val col = JPanel()
+            col.isOpaque = false
+            col.layout = BoxLayout(col, BoxLayout.Y_AXIS)
+            col.add(toggle)
+
+            val desc = JBLabel(opt.description)
+            desc.foreground = UIUtil.getContextHelpForeground()
+            desc.border = JBUI.Borders.emptyLeft(toggle.insets.left + 4)
+            col.add(desc)
+            row.add(col, BorderLayout.CENTER)
+        } else {
+            row.add(toggle, BorderLayout.CENTER)
+        }
+
+        // make clicking anywhere on the row trigger the toggle
+        row.addMouseListener(object : java.awt.event.MouseAdapter() {
+            override fun mouseClicked(e: java.awt.event.MouseEvent) {
+                if (toggle.isEnabled) toggle.doClick()
+            }
+        })
+
+        return row
+    }
+
+    // ── Footer: Dismiss + Next/Submit ─────────────────────────────────────────
+
+    private fun footer(item: QuestionItem, set: MutableSet<String>): JPanel {
+        val q = question ?: return JPanel()
+        val last = idx == q.items.size - 1
+
+        val row = JPanel(BorderLayout())
+        row.isOpaque = false
+        row.border = JBUI.Borders.emptyTop(8)
+
+        val dismiss = JButton(KiloBundle.message("session.question.dismiss"))
+        dismiss.addActionListener { doReject() }
+        row.add(dismiss, BorderLayout.WEST)
+
+        val rightLabel = if (last) KiloBundle.message("session.question.submit")
+                         else KiloBundle.message("session.question.next")
+        val right = JButton(rightLabel)
+        right.isEnabled = set.isNotEmpty()
+        right.addActionListener {
+            if (last) doReply()
+            else goForward()
+        }
+        row.add(right, BorderLayout.EAST)
+
+        return row
+    }
+
+    // ── Navigation ────────────────────────────────────────────────────────────
+
+    private fun goBack() {
+        if (idx <= 0) return
+        idx--
+        render()
+        refresh()
+    }
+
+    private fun goForward() {
+        val q = question ?: return
+        if (idx >= q.items.size - 1) return
+        if (selections[idx].isEmpty()) return
+        idx++
+        render()
+        refresh()
+    }
+
+    /** Refresh only the enabled state of nav buttons without a full re-render. */
+    private fun refreshNavButtons() {
+        // Re-render is cheap and keeps state consistent; do a full render.
+        render()
+        refresh()
+    }
+
+    // ── Submit / reject ───────────────────────────────────────────────────────
+
+    private fun doReply() {
         val id = requestId ?: return
-        reply(id, QuestionReplyDto(answers))
+        reply(id, QuestionReplyDto(selections.map { it.toList() }))
         hideView()
     }
 
