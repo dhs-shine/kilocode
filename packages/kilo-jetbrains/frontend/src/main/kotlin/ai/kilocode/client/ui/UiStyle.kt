@@ -15,13 +15,21 @@ object UiStyle {
     object Gap {
         fun xs() = JBUI.scale(2)
 
+        fun sm() = JBUI.scale(4)
+
         fun md() = JBUI.scale(6)
 
         fun lg() = JBUI.scale(8)
 
-        fun sm() = JBUI.scale(4)
-
         fun pad() = JBUI.scale(12)
+
+        fun xl() = JBUI.scale(16)
+    }
+
+    /** Theme-aware component geometry tokens. */
+    object Arc {
+        /** Standard component corner arc, matching the platform's `Component.arc` key. */
+        fun component() = com.intellij.util.ui.JBValue.UIInteger("Component.arc", 8).get()
     }
 
     /** Theme-aware colors and color math used by multiple UI surfaces. */

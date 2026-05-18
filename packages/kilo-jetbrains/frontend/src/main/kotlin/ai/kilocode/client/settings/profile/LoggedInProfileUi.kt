@@ -4,22 +4,24 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.ProfileDto
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.JBColor
 import com.intellij.ui.RoundedLineBorder
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.RightGap
+import com.intellij.ui.dsl.builder.TopGap
+import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.RelativeFont
 import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.JBValue
+import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
-import java.awt.Font
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.text.DecimalFormat
-import javax.swing.Box
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
-import javax.swing.JComboBox
-import javax.swing.JPanel
 import javax.swing.SwingConstants
 
 /**
@@ -31,9 +33,9 @@ internal class LoggedInProfileUi(
     private val logout: () -> Unit,
     private val organization: (String?) -> Unit,
     private val refresh: () -> Unit,
-) : JPanel(BorderLayout()) {
+) : BorderLayoutPanel() {
 
-    private val nameLabel = JBLabel().apply { font = font.deriveFont(Font.BOLD) }
+    private val nameLabel = JBLabel().also { RelativeFont.BOLD.install(it) }
     private val emailLabel = JBLabel().apply {
         foreground = UiStyle.Colors.weak()
         setCopyable(true)
@@ -55,48 +57,44 @@ internal class LoggedInProfileUi(
             }
         }
 
-    private val balanceCard = JPanel(BorderLayout()).apply {
+    private val balanceCard = BorderLayoutPanel().apply {
         border = JBUI.Borders.compound(
-            RoundedLineBorder(JBColor.border(), JBValue.UIInteger("Component.arc", 8).get()),
-            JBUI.Borders.empty(JBUI.scale(12), JBUI.scale(16)),
+            RoundedLineBorder(JBColor.border(), UiStyle.Arc.component()),
+            JBUI.Borders.empty(UiStyle.Gap.pad(), UiStyle.Gap.xl()),
         )
-        add(titleLabel, BorderLayout.NORTH)
-        add(JPanel(GridBagLayout()).apply {
-            add(valueLabel, GridBagConstraints().apply {
-                gridx = 0
-                gridy = 0
-                anchor = GridBagConstraints.CENTER
-            })
-            add(refreshBtn, GridBagConstraints().apply {
-                gridx = 0
-                gridy = 1
-                anchor = GridBagConstraints.CENTER
-                insets = JBUI.insetsTop(UiStyle.Gap.pad())
-            })
-        }, BorderLayout.CENTER)
+        addToTop(titleLabel)
+        addToCenter(GridBagLayout().let { gbl ->
+            BorderLayoutPanel().apply {
+                addToCenter(object : javax.swing.JPanel(gbl) {}.apply {
+                    add(valueLabel, GridBagConstraints().apply {
+                        gridx = 0; gridy = 0; anchor = GridBagConstraints.CENTER
+                    })
+                    add(refreshBtn, GridBagConstraints().apply {
+                        gridx = 0; gridy = 1; anchor = GridBagConstraints.CENTER
+                        insets = JBUI.insetsTop(UiStyle.Gap.pad())
+                    })
+                })
+            }
+        })
     }
 
     private val comboModel = DefaultComboBoxModel<String>()
-    val combo = JComboBox(comboModel)
+    val combo = ComboBox(comboModel)
 
     val dashboardBtn = JButton(KiloBundle.message("profile.action.dashboard"))
         .also { it.addActionListener { dashboard() } }
     val logoutBtn = JButton(KiloBundle.message("profile.action.logout"))
         .also { it.addActionListener { logout() } }
 
-    private val buttons = JPanel().apply {
-        layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.X_AXIS)
-        add(dashboardBtn)
-        add(Box.createHorizontalStrut(JBUI.scale(6)))
-        add(logoutBtn)
-    }
-
-    private val content = JPanel(GridBagLayout()).apply {
-        addRow(nameLabel, 0)
-        addRow(emailLabel, 1, UiStyle.Gap.lg())
-        addRow(combo, 2, UiStyle.Gap.lg())
-        addRow(balanceCard, 3, UiStyle.Gap.lg())
-        addRow(buttons, 4, UiStyle.Gap.lg())
+    private val content = panel {
+        row { cell(nameLabel) }
+        row { cell(emailLabel) }.topGap(TopGap.SMALL)
+        row { cell(combo).align(AlignX.FILL) }.topGap(TopGap.SMALL)
+        row { cell(balanceCard).align(AlignX.FILL) }.topGap(TopGap.SMALL)
+        row {
+            cell(dashboardBtn).gap(RightGap.SMALL)
+            cell(logoutBtn)
+        }.topGap(TopGap.SMALL)
     }
 
     private var applying = false
@@ -114,18 +112,7 @@ internal class LoggedInProfileUi(
             if (orgId == current) return@addActionListener
             organization(orgId)
         }
-        add(content, BorderLayout.NORTH)
-    }
-
-    private fun JPanel.addRow(comp: java.awt.Component, y: Int, top: Int = 0) {
-        add(comp, GridBagConstraints().apply {
-            gridx = 0
-            gridy = y
-            weightx = 1.0
-            fill = GridBagConstraints.HORIZONTAL
-            anchor = GridBagConstraints.WEST
-            insets = JBUI.insets(top, 0, 0, 0)
-        })
+        addToTop(content)
     }
 
     fun update(profile: ProfileDto, accounts: Boolean = true) {
@@ -135,7 +122,7 @@ internal class LoggedInProfileUi(
         if (nameLabel.text != display) nameLabel.text = display
 
         val showEmail = profile.name != null
-        emailLabel.isVisible = showEmail
+        if (emailLabel.isVisible != showEmail) emailLabel.isVisible = showEmail
         if (showEmail && emailLabel.text != profile.email) emailLabel.text = profile.email
 
         val bal = profile.balance
@@ -163,14 +150,11 @@ internal class LoggedInProfileUi(
     }
 
     fun setRefreshing(refreshing: Boolean) {
+        if (this.refreshing == refreshing) return
         this.refreshing = refreshing
-        val text = if (refreshing) {
-            KiloBundle.message("profile.action.refreshing")
-        } else {
-            KiloBundle.message("profile.action.refresh")
-        }
+        val text = if (refreshing) KiloBundle.message("profile.action.refreshing")
+        else KiloBundle.message("profile.action.refresh")
         if (refreshBtn.text != text) refreshBtn.text = text
-        refreshBtn.maximumSize = refreshBtn.preferredSize
         syncLayout()
     }
 
@@ -205,8 +189,7 @@ internal class LoggedInProfileUi(
         val show = orgs.isNotEmpty()
         if (combo.isVisible != show) {
             combo.isVisible = show
-            revalidate()
-            repaint()
+            syncLayout()
         }
     }
 }
