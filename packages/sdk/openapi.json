@@ -587,6 +587,67 @@
         ]
       }
     },
+    "/config/warnings": {
+      "get": {
+        "tags": ["config"],
+        "operationId": "config.warnings",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Config warnings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "detail": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["path", "message"],
+                    "additionalProperties": false
+                  },
+                  "description": "Config warnings"
+                }
+              }
+            }
+          }
+        },
+        "description": "Get warnings generated during config loading (e.g., invalid JSON, schema errors).",
+        "summary": "Get config warnings",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.warnings({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/config/providers": {
       "get": {
         "tags": ["config"],
@@ -8802,6 +8863,446 @@
         ]
       }
     },
+    "/kilo/profile": {
+      "get": {
+        "tags": ["kilo"],
+        "operationId": "kilo.profile",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profile": {
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "organizations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["id", "name", "role"],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": ["email"],
+                      "additionalProperties": false
+                    },
+                    "balance": {
+                      "type": "object",
+                      "properties": {
+                        "balance": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["balance"],
+                      "additionalProperties": false
+                    },
+                    "currentOrgId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["profile", "balance", "currentOrgId"],
+                  "additionalProperties": false,
+                  "description": "Profile data"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Fetch user profile and organizations from Kilo Gateway",
+        "summary": "Get Kilo Gateway profile",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.profile({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/kilo/notifications": {
+      "get": {
+        "tags": ["kilo"],
+        "operationId": "kilo.notifications",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notifications list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "object",
+                        "properties": {
+                          "actionText": {
+                            "type": "string"
+                          },
+                          "actionURL": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["actionText", "actionURL"],
+                        "additionalProperties": false
+                      },
+                      "showIn": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "suggestModelId": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["id", "title", "message"],
+                    "additionalProperties": false
+                  },
+                  "description": "Notifications list"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Fetch notifications from Kilo Gateway for CLI display",
+        "summary": "Get Kilo notifications",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.notifications({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/kilo/organization": {
+      "post": {
+        "tags": ["kilo"],
+        "operationId": "kilo.organization.set",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organization updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean",
+                  "description": "Organization updated successfully"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Switch to a different Kilo Gateway organization",
+        "summary": "Update Kilo Gateway organization",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "organizationId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["organizationId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.organization.set({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/kilo/claw/status": {
+      "get": {
+        "tags": ["kilo"],
+        "operationId": "kilo.claw.status",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Instance status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "provisioned",
+                        "starting",
+                        "restarting",
+                        "recovering",
+                        "running",
+                        "stopped",
+                        "destroying",
+                        "restoring"
+                      ]
+                    },
+                    "sandboxId": {
+                      "type": "string"
+                    },
+                    "flyRegion": {
+                      "type": "string"
+                    },
+                    "machineSize": {
+                      "type": "object",
+                      "properties": {
+                        "cpus": {
+                          "type": "number"
+                        },
+                        "memory_mb": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["cpus", "memory_mb"],
+                      "additionalProperties": false
+                    },
+                    "openclawVersion": {
+                      "type": "string"
+                    },
+                    "lastStartedAt": {
+                      "type": "string"
+                    },
+                    "lastStoppedAt": {
+                      "type": "string"
+                    },
+                    "channelCount": {
+                      "type": "number"
+                    },
+                    "secretCount": {
+                      "type": "number"
+                    },
+                    "userId": {
+                      "type": "string"
+                    },
+                    "botName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["status"],
+                  "additionalProperties": false,
+                  "description": "Instance status"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/effect_HttpApiError_InternalServerError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Fetch the user's KiloClaw instance status via the KiloClaw worker",
+        "summary": "Get KiloClaw instance status",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.claw.status({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/kilo/claw/chat-credentials": {
+      "get": {
+        "tags": ["kilo"],
+        "operationId": "kilo.claw.chatCredentials",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kilo Chat credentials or null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string"
+                    },
+                    "kiloChatUrl": {
+                      "type": "string"
+                    },
+                    "eventServiceUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["token", "expiresAt", "kiloChatUrl", "eventServiceUrl"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns the bearer token and endpoint URLs the client uses to talk to the Kilo Chat worker and the Event Service. The bearer is the user's existing long-lived Kilo JWT — kilo-chat and event-service both verify it directly with NEXTAUTH_SECRET, so no separate token mint is needed.",
+        "summary": "Get KiloClaw chat credentials",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.claw.chatCredentials({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/kilocode/heap/snapshot": {
       "post": {
         "tags": ["kilocode"],
@@ -15890,6 +16391,17 @@
         "required": ["_tag"],
         "additionalProperties": false
       },
+      "effect_HttpApiError_InternalServerError": {
+        "type": "object",
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": ["InternalServerError"]
+          }
+        },
+        "required": ["_tag"],
+        "additionalProperties": false
+      },
       "KilocodeSessionImportResult": {
         "type": "object",
         "properties": {
@@ -21050,6 +21562,10 @@
     {
       "name": "indexing",
       "description": "Kilo indexing routes."
+    },
+    {
+      "name": "kilo",
+      "description": "Kilo Gateway routes."
     },
     {
       "name": "kilocode",

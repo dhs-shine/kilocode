@@ -5,19 +5,21 @@
  * This factory function accepts OpenCode dependencies to create Kilo-specific routes
  */
 
-import { fetchProfile, fetchBalance } from "../api/profile.js"
 import { fetchKilocodeNotifications, KilocodeNotificationSchema } from "../api/notifications.js"
 import { fetchOrganizationModes, clearModesCache } from "../api/modes.js"
-import {
-  KILO_API_BASE,
-  KILO_CHAT_URL,
-  KILO_EVENT_SERVICE_URL,
-  HEADER_FEATURE,
-  HEADER_ORGANIZATIONID,
-} from "../api/constants.js"
+import { KILO_API_BASE, HEADER_FEATURE, HEADER_ORGANIZATIONID } from "../api/constants.js"
 import { buildKiloHeaders } from "../headers.js"
 import type { ImportDeps, DrizzleDb } from "../cloud-sessions.js"
 import { fetchCloudSession, fetchCloudSessionForImport, importSessionToDb } from "../cloud-sessions.js"
+import {
+  GatewayError,
+  UnauthorizedError,
+  getClawChatCredentials,
+  getClawStatus,
+  getNotifications,
+  getProfile,
+  setOrganization,
+} from "./handlers.js"
 
 // Type definitions for OpenCode dependencies (injected at runtime)
 type Hono = any
@@ -167,24 +169,12 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
         },
       }),
       async (c: any) => {
-        // Get Kilo auth
-        const auth = await Auth.get("kilo")
-
-        if (!auth || auth.type !== "oauth") {
+        try {
+          return c.json(await getProfile(Auth))
+        } catch (err) {
+          if (!(err instanceof UnauthorizedError)) throw err
           return c.json({ error: "Not authenticated with Kilo Gateway" }, 401)
         }
-
-        const token = auth.access
-        const currentOrgId = auth.accountId ?? null
-
-        // Fetch profile and balance in parallel
-        // Pass organizationId to fetchBalance to get team balance when in org context
-        const [profile, balance] = await Promise.all([
-          fetchProfile(token),
-          fetchBalance(token, currentOrgId ?? undefined),
-        ])
-
-        return c.json({ profile, balance, currentOrgId })
       },
     )
     .post(
@@ -214,27 +204,21 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
       async (c: any) => {
         const { organizationId } = c.req.valid("json")
 
-        // Get current Kilo auth
-        const auth = await Auth.get("kilo")
-
-        if (!auth || auth.type !== "oauth") {
+        try {
+          return c.json(
+            await setOrganization(
+              {
+                auth: Auth,
+                clear: () => ModelCache.clear("kilo"),
+                dispose: () => InstanceStore.disposeAllInstances(),
+              },
+              organizationId,
+            ),
+          )
+        } catch (err) {
+          if (!(err instanceof UnauthorizedError)) throw err
           return c.json({ error: "Not authenticated with Kilo Gateway" }, 401)
         }
-
-        // Update auth with new organization ID
-        await Auth.set("kilo", {
-          type: "oauth",
-          refresh: auth.refresh,
-          access: auth.access,
-          expires: auth.expires,
-          ...(organizationId && { accountId: organizationId }),
-        })
-
-        ModelCache.clear("kilo")
-        clearModesCache()
-        await InstanceStore.disposeAllInstances()
-
-        return c.json(true)
       },
     )
     .get(
@@ -481,19 +465,7 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
         },
       }),
       async (c: any) => {
-        const auth = await Auth.get("kilo")
-        if (!auth) return c.json([])
-
-        const token = auth.type === "api" ? auth.key : auth.type === "oauth" ? auth.access : undefined
-        if (!token) return c.json([])
-
-        const organizationId = auth.type === "oauth" ? auth.accountId : undefined
-        const notifications = await fetchKilocodeNotifications({
-          kilocodeToken: token,
-          kilocodeOrganizationId: organizationId,
-        })
-
-        return c.json(notifications)
+        return c.json(await getNotifications(Auth))
       },
     )
     .get(
@@ -642,29 +614,11 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
       }),
       async (c: any) => {
         try {
-          const auth = await Auth.get("kilo")
-          if (!auth) return c.json({ error: "Not authenticated with Kilo Gateway" }, 401)
-          const token = auth.type === "api" ? auth.key : auth.type === "oauth" ? auth.access : undefined
-          if (!token) return c.json({ error: "No valid token found" }, 401)
-
-          const organizationId = auth.type === "oauth" ? auth.accountId : undefined
-          const headers: Record<string, string> = {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          }
-          if (organizationId) {
-            headers[HEADER_ORGANIZATIONID] = organizationId
-          }
-
-          const response = await fetch(`${KILO_API_BASE}/api/kiloclaw/status`, { headers })
-
-          if (!response.ok) {
-            const text = await response.text()
-            return c.json({ error: `KiloClaw request failed: ${response.status} ${text}` }, response.status as any)
-          }
-
-          return c.json(await response.json())
+          return c.json(await getClawStatus(Auth))
         } catch (err: any) {
+          if (err instanceof GatewayError) {
+            return c.json({ error: `KiloClaw request failed: ${err.status} ${err.message}` }, err.status as any)
+          }
           console.error("[Kilo Gateway] claw/status: error", err?.message ?? err)
           return c.json({ error: "Failed to reach KiloClaw" }, 502)
         }
@@ -701,25 +655,12 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
         },
       }),
       async (c: any) => {
-        const auth = await Auth.get("kilo")
-        if (!auth) return c.json({ error: "Not authenticated with Kilo Gateway" }, 401)
-        const token = auth.type === "api" ? auth.key : auth.type === "oauth" ? auth.access : undefined
-        if (!token) return c.json({ error: "No valid token found" }, 401)
-
-        // For OAuth, expires is a millisecond epoch we already track. For
-        // API tokens we don't have a verified expiry locally — the JWT is
-        // signed by the cloud and validated by kilo-chat/event-service on
-        // every request. Use a far-future placeholder so the client cache
-        // doesn't refetch unnecessarily; on 401 the client clears the
-        // cache and prompts re-auth.
-        const expiresAtMs = auth.type === "oauth" ? auth.expires : Date.now() + 365 * 24 * 60 * 60 * 1000
-
-        return c.json({
-          token,
-          expiresAt: new Date(expiresAtMs).toISOString(),
-          kiloChatUrl: KILO_CHAT_URL,
-          eventServiceUrl: KILO_EVENT_SERVICE_URL,
-        })
+        try {
+          return c.json(await getClawChatCredentials(Auth))
+        } catch (err) {
+          if (!(err instanceof UnauthorizedError)) throw err
+          return c.json({ error: "Not authenticated with Kilo Gateway" }, 401)
+        }
       },
     )
     .get(

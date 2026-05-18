@@ -1856,6 +1856,10 @@ export type EffectHttpApiErrorUnauthorized = {
   _tag: "Unauthorized"
 }
 
+export type EffectHttpApiErrorInternalServerError = {
+  _tag: "InternalServerError"
+}
+
 export type KilocodeSessionImportResult = {
   ok: boolean
   id: string
@@ -3793,6 +3797,29 @@ export type ConfigUpdateResponses = {
 }
 
 export type ConfigUpdateResponse = ConfigUpdateResponses[keyof ConfigUpdateResponses]
+
+export type ConfigWarningsData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/warnings"
+}
+
+export type ConfigWarningsResponses = {
+  /**
+   * Config warnings
+   */
+  200: Array<{
+    path: string
+    message: string
+    detail?: string
+  }>
+}
+
+export type ConfigWarningsResponse = ConfigWarningsResponses[keyof ConfigWarningsResponses]
 
 export type ConfigProvidersData = {
   body?: never
@@ -7102,6 +7129,191 @@ export type IndexingStatusResponses = {
 }
 
 export type IndexingStatusResponse = IndexingStatusResponses[keyof IndexingStatusResponses]
+
+export type KiloProfileData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/kilo/profile"
+}
+
+export type KiloProfileErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type KiloProfileError = KiloProfileErrors[keyof KiloProfileErrors]
+
+export type KiloProfileResponses = {
+  /**
+   * Profile data
+   */
+  200: {
+    profile: {
+      email: string
+      name?: string
+      organizations?: Array<{
+        id: string
+        name: string
+        role: string
+      }>
+    }
+    balance: {
+      balance: number
+    }
+    currentOrgId: string
+  }
+}
+
+export type KiloProfileResponse = KiloProfileResponses[keyof KiloProfileResponses]
+
+export type KiloNotificationsData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/kilo/notifications"
+}
+
+export type KiloNotificationsErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type KiloNotificationsError = KiloNotificationsErrors[keyof KiloNotificationsErrors]
+
+export type KiloNotificationsResponses = {
+  /**
+   * Notifications list
+   */
+  200: Array<{
+    id: string
+    title: string
+    message: string
+    action?: {
+      actionText: string
+      actionURL: string
+    }
+    showIn?: Array<string>
+    suggestModelId?: string
+  }>
+}
+
+export type KiloNotificationsResponse = KiloNotificationsResponses[keyof KiloNotificationsResponses]
+
+export type KiloOrganizationSetData = {
+  body?: {
+    organizationId: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/kilo/organization"
+}
+
+export type KiloOrganizationSetErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type KiloOrganizationSetError = KiloOrganizationSetErrors[keyof KiloOrganizationSetErrors]
+
+export type KiloOrganizationSetResponses = {
+  /**
+   * Organization updated successfully
+   */
+  200: boolean
+}
+
+export type KiloOrganizationSetResponse = KiloOrganizationSetResponses[keyof KiloOrganizationSetResponses]
+
+export type KiloClawStatusData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/kilo/claw/status"
+}
+
+export type KiloClawStatusErrors = {
+  /**
+   * InternalServerError
+   */
+  500: EffectHttpApiErrorInternalServerError
+}
+
+export type KiloClawStatusError = KiloClawStatusErrors[keyof KiloClawStatusErrors]
+
+export type KiloClawStatusResponses = {
+  /**
+   * Instance status
+   */
+  200: {
+    status:
+      | "provisioned"
+      | "starting"
+      | "restarting"
+      | "recovering"
+      | "running"
+      | "stopped"
+      | "destroying"
+      | "restoring"
+    sandboxId?: string
+    flyRegion?: string
+    machineSize?: {
+      cpus: number
+      memory_mb: number
+    }
+    openclawVersion?: string
+    lastStartedAt?: string
+    lastStoppedAt?: string
+    channelCount?: number
+    secretCount?: number
+    userId?: string
+    botName?: string
+  }
+}
+
+export type KiloClawStatusResponse = KiloClawStatusResponses[keyof KiloClawStatusResponses]
+
+export type KiloClawChatCredentialsData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/kilo/claw/chat-credentials"
+}
+
+export type KiloClawChatCredentialsResponses = {
+  /**
+   * Kilo Chat credentials or null
+   */
+  200: {
+    token: string
+    expiresAt: string
+    kiloChatUrl: string
+    eventServiceUrl: string
+  }
+}
+
+export type KiloClawChatCredentialsResponse = KiloClawChatCredentialsResponses[keyof KiloClawChatCredentialsResponses]
 
 export type KilocodeHeapSnapshotData = {
   body?: never

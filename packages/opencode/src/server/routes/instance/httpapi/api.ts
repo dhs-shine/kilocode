@@ -24,6 +24,7 @@ import { V2Api } from "./groups/v2"
 import { CommitMessageApi } from "@/kilocode/server/httpapi/groups/commit-message"
 import { EnhancePromptApi } from "@/kilocode/server/httpapi/groups/enhance-prompt"
 import { IndexingApi } from "@/kilocode/server/httpapi/groups/indexing"
+import { KiloGatewayApi } from "@/kilocode/server/httpapi/groups/kilo-gateway"
 import { KilocodeApi } from "@/kilocode/server/httpapi/groups/kilocode"
 import { NetworkApi } from "@/kilocode/server/httpapi/groups/network"
 import { RemoteApi } from "@/kilocode/server/httpapi/groups/remote"
@@ -59,6 +60,7 @@ export const InstanceHttpApi = HttpApi.make("opencode-instance")
   .addHttpApi(CommitMessageApi)
   .addHttpApi(EnhancePromptApi)
   .addHttpApi(IndexingApi)
+  .addHttpApi(KiloGatewayApi)
   .addHttpApi(KilocodeApi)
   .addHttpApi(NetworkApi)
   .addHttpApi(RemoteApi)

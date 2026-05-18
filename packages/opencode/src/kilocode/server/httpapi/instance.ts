@@ -1,6 +1,7 @@
 import type { Context } from "effect"
 import type { Hono } from "hono"
 import { IndexingPaths } from "./groups/indexing"
+import { KiloGatewayPaths } from "./groups/kilo-gateway"
 import { KilocodePaths } from "./groups/kilocode"
 import { NetworkPaths } from "./groups/network"
 import { RemotePaths } from "./groups/remote"
@@ -33,6 +34,11 @@ export function register(app: Hono, handler: Handler, context: Context.Context<u
   app.post(SessionImportPaths.message, (c) => handler(c.req.raw, context))
   app.post(SessionImportPaths.part, (c) => handler(c.req.raw, context))
   app.get(IndexingPaths.status, (c) => handler(c.req.raw, context))
+  app.get(KiloGatewayPaths.profile, (c) => handler(c.req.raw, context))
+  app.get(KiloGatewayPaths.notifications, (c) => handler(c.req.raw, context))
+  app.post(KiloGatewayPaths.organization, (c) => handler(c.req.raw, context))
+  app.get(KiloGatewayPaths.clawStatus, (c) => handler(c.req.raw, context))
+  app.get(KiloGatewayPaths.clawChatCredentials, (c) => handler(c.req.raw, context))
 
   return app
 }

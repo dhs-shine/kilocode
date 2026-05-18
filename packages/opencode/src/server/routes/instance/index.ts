@@ -59,6 +59,7 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket, opts?: CorsOptions): H
     app.post("/permission/:requestID/reply", (c) => handler(c.req.raw, context))
     app.get("/config", (c) => handler(c.req.raw, context))
     app.patch("/config", (c) => handler(c.req.raw, context))
+    app.get("/config/warnings", (c) => handler(c.req.raw, context)) // kilocode_change
     app.get("/config/providers", (c) => handler(c.req.raw, context))
     app.get(ExperimentalPaths.console, (c) => handler(c.req.raw, context))
     app.get(ExperimentalPaths.consoleOrgs, (c) => handler(c.req.raw, context))
