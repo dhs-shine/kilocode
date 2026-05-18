@@ -10,6 +10,7 @@ import ai.kilocode.rpc.dto.ProfileDto
 import ai.kilocode.rpc.dto.ProfileOrganizationDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -20,7 +21,9 @@ import java.awt.Component
 import java.awt.Container
 import javax.swing.AbstractButton
 import javax.swing.JComboBox
+import javax.swing.JEditorPane
 import javax.swing.JLabel
+import javax.swing.SwingUtilities
 
 @Suppress("UnstableApiUsage")
 class UserProfileConfigurableTest : BasePlatformTestCase() {
@@ -110,7 +113,10 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         edt {
             val t = text(panel)
             assertTrue(t, t.contains("\$10.00"))
-            combos(panel).single().selectedIndex = 1
+            val combo = combos(panel).single()
+            assertEquals("Acme", combo.getItemAt(1))
+            assertFalse(combo.getItemAt(1).toString().contains("admin", ignoreCase = true))
+            combo.selectedIndex = 1
         }
         flush()
 
@@ -119,6 +125,67 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
             assertTrue(t, t.contains("\$25.00"))
         }
         assertEquals(listOf("org_1"), rpc.orgSelections)
+    }
+
+    fun `test logged in profile uses compact stack and copyable email`() {
+        val profile = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "MEMBER")),
+            balance = ProfileBalanceDto(10.0),
+        )
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile)
+        edt { panel.update(profile, KiloAppStatusDto.READY) }
+
+        edt {
+            val t = text(panel)
+            assertTrue(t, t.contains("Alice"))
+            assertTrue(t, t.contains("alice@test.com"))
+            assertTrue(t, t.contains("BALANCE"))
+            assertTrue(t, t.contains("Refresh"))
+            assertFalse(t, t.contains("Active account"))
+            assertFalse(t, t.contains("Organization"))
+
+            val mail = labels(panel).filterIsInstance<JBLabel>().first { it.text == "alice@test.com" }
+            assertTrue(editorPanes(mail).isNotEmpty())
+
+            panel.setSize(800, 600)
+            layout(panel)
+            val refresh = buttons(panel).first { it.text == "Refresh" }
+            val card = refresh.parent
+            val dash = buttons(panel).first { it.text == "Dashboard" }
+            val cardLoc = SwingUtilities.convertPoint(card.parent, card.location, panel)
+            val dashLoc = SwingUtilities.convertPoint(dash.parent, dash.location, panel)
+            assertTrue(dashLoc.y >= cardLoc.y + card.height)
+        }
+    }
+
+    fun `test refresh updates balance UI`() {
+        val profile = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            balance = ProfileBalanceDto(10.0),
+        )
+        val updated = profile.copy(balance = ProfileBalanceDto(25.0))
+        rpc.fakeProfile = profile
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile)
+        edt { panel.update(profile, KiloAppStatusDto.READY) }
+
+        edt {
+            assertTrue(text(panel).contains("\$10.00"))
+            rpc.fakeProfile = updated
+            buttons(panel).first { it.text == "Refresh" }.doClick()
+            assertTrue(text(panel).contains("Refreshing...."))
+        }
+        flush()
+
+        edt {
+            val t = text(panel)
+            assertTrue(t, t.contains("\$25.00"))
+            assertTrue(t, t.contains("Refresh"))
+            assertFalse(t, t.contains("Refreshing...."))
+            assertTrue(buttons(panel).first { it.text == "Refresh" }.isEnabled)
+        }
     }
 
     fun `test logged out update retains login button`() {
@@ -252,6 +319,21 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         }
     }
 
+    private fun layout(root: Container) {
+        root.doLayout()
+        for (comp in root.components) {
+            if (comp is Container) layout(comp)
+        }
+    }
+
+    private fun editorPanes(root: Container): List<JEditorPane> = buildList {
+        for (comp in root.components) {
+            if (!comp.isVisible) continue
+            if (comp is JEditorPane) add(comp)
+            if (comp is Container) addAll(editorPanes(comp))
+        }
+    }
+
     private fun text(root: Container): String {
         val acc = mutableListOf<String>()
         collectText(root, acc)
@@ -263,6 +345,7 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
             if (!comp.isVisible) continue
             when (comp) {
                 is AbstractButton -> comp.text?.let { acc.add(it) }
+                is JEditorPane -> comp.text?.let { acc.add(it) }
                 is JLabel -> comp.text?.let { acc.add(it) }
             }
             if (comp is Container) collectText(comp, acc)

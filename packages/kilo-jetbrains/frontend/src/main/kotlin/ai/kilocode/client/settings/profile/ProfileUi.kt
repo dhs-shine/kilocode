@@ -52,6 +52,7 @@ internal class ProfileUi(
         dashboard = { browse(DASHBOARD_URL) },
         logout = ::logout,
         organization = ::organization,
+        refresh = ::refreshProfile,
     )
 
     private var prof = profile
@@ -181,6 +182,26 @@ internal class ProfileUi(
                 withContext(edt) {
                     switching = false
                     applyState()
+                }
+            }
+        }
+    }
+
+    private fun refreshProfile() {
+        cs.launch {
+            try {
+                val profile = app.refreshProfile()
+                val state = app.state.value
+                withContext(edt) {
+                    update(profile ?: state.profile, state.status)
+                    account.setRefreshing(false)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                withContext(edt) {
+                    applyState()
+                    account.setRefreshing(false)
                 }
             }
         }
