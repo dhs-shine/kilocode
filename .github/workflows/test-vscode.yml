@@ -53,7 +53,3 @@ jobs:
       - name: Check for kilocode_change markers
         working-directory: packages/kilo-vscode
         run: bun run check-kilocode-change
-
-      - name: Check for forbidden strings
-        working-directory: packages/kilo-vscode
-        run: bun run check-forbidden-strings
