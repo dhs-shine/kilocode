@@ -4,10 +4,10 @@
 /**
  * Greps tracked files for forbidden strings that must not appear in the repo.
  *
- * Currently enforced:
- *   - opncd.ai/s/  -- legacy upstream OpenCode share URL pattern. Kilo shares
- *                     go through a different host/path; this string sneaking
- *                     back in usually means a hardcoded upstream URL.
+ * Each entry is a literal substring (no regex / globs) plus a one-line reason.
+ * If a hit is genuinely legitimate (e.g. inside upstream-merge tooling), fix the
+ * call site rather than weakening the rule -- the list is intentionally
+ * narrow so it stays low-noise.
  */
 
 import { spawnSync } from "node:child_process"
@@ -16,7 +16,37 @@ import path from "node:path"
 const ROOT = path.resolve(import.meta.dir, "..")
 const SELF = path.relative(ROOT, import.meta.path).replaceAll("\\", "/")
 
-const forbidden = [{ pattern: "opncd.ai/s/", reason: "legacy upstream share URL pattern" }]
+// Each entry: pattern (literal substring) + reason + optional allow list of path
+// prefixes where the string is legitimate (e.g. docs describing the fork lineage,
+// upstream-merge tooling, generated source-link manifests).
+const forbidden: { pattern: string; reason: string; allow?: string[] }[] = [
+  { pattern: "opncd.ai/s/", reason: "legacy upstream share URL pattern" },
+  {
+    pattern: "github.com/anomalyco/opencode",
+    reason: "upstream repo URL -- should be Kilo-Org/kilocode",
+    allow: [
+      "AGENTS.md",
+      "README.md",
+      ".opencode/glossary/",
+      "packages/kilo-vscode/AGENTS.md",
+      "packages/kilo-docs/source-links.md",
+      "patches/",
+      "script/upstream/",
+    ],
+  },
+  {
+    pattern: "sst/opencode",
+    reason: "old upstream org path -- should be Kilo-Org/kilocode",
+    allow: [".kilo/agent/upstream-merge.md", "script/upstream/"],
+  },
+  { pattern: `"HTTP-Referer": "https://opencode.ai/"`, reason: "attributes outbound LLM traffic to upstream" },
+  { pattern: `"http-referer": "https://opencode.ai/"`, reason: "attributes outbound LLM traffic to upstream" },
+]
+
+const isAllowed = (file: string, allow?: string[]) => {
+  if (!allow) return false
+  return allow.some((prefix) => file === prefix || file.startsWith(prefix))
+}
 
 const ls = spawnSync("git", ["ls-files", "-z"], { cwd: ROOT, encoding: "buffer" })
 if (ls.status !== 0) {
@@ -39,6 +69,7 @@ for (const file of files) {
   if (text === null) continue
   if (text.includes("\0")) continue
   for (const f of forbidden) {
+    if (isAllowed(file, f.allow)) continue
     let idx = 0
     while (true) {
       const at = text.indexOf(f.pattern, idx)
