@@ -234,6 +234,7 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
             assertTrue(t, t.contains("\$25.00"))
             val same = combos(panel).single()
             assertSame(captured, same)
+            assertEquals(1, same.selectedIndex)
         }
     }
 
@@ -258,6 +259,7 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
             val t = text(panel)
             assertTrue(t, t.contains("Alice"))
             assertFalse(t, t.contains("Not logged in"))
+            assertEquals(1, combos(panel).single().selectedIndex)
         }
     }
 

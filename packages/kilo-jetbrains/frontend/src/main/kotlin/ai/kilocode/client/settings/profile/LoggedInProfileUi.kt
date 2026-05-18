@@ -71,6 +71,7 @@ internal class LoggedInProfileUi(
                 gridx = 0
                 gridy = 1
                 anchor = GridBagConstraints.CENTER
+                insets = JBUI.insetsTop(UiStyle.Gap.pad())
             })
         }, BorderLayout.CENTER)
     }
@@ -127,7 +128,7 @@ internal class LoggedInProfileUi(
         })
     }
 
-    fun update(profile: ProfileDto) {
+    fun update(profile: ProfileDto, accounts: Boolean = true) {
         currentProf = profile
 
         val display = profile.name?.takeIf { it.isNotBlank() } ?: profile.email
@@ -157,7 +158,7 @@ internal class LoggedInProfileUi(
             }
         }
 
-        applyOrganizations(profile)
+        if (accounts) applyOrganizations(profile)
         if (changed) syncLayout()
     }
 

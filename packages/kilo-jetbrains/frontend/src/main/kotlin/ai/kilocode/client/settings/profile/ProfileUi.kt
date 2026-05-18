@@ -68,26 +68,27 @@ internal class ProfileUi(
         sync()
     }
 
-    fun update(profile: ProfileDto?, status: KiloAppStatusDto) {
+    fun update(profile: ProfileDto?, status: KiloAppStatusDto, accounts: Boolean = true) {
         checkEdt()
         this.status = status
+        val was = switching
         if (profile != null) {
             prof = profile
             auth = null
-            switching = false
-        } else if (!switching || prof == null) {
+            this.switching = false
+        } else if (!was || prof == null) {
             prof = null
         }
-        sync()
+        sync(accounts && !(was && profile == null))
     }
 
-    private fun sync() {
+    private fun sync(accounts: Boolean = true) {
         checkEdt()
         val target = targetCard()
         if (target == Card.OUT) {
             out.update(status, auth)
         } else {
-            account.update(prof!!)
+            account.update(prof!!, accounts)
         }
         if (card != target) {
             cardLayout.show(cards, target.name)
@@ -174,7 +175,7 @@ internal class ProfileUi(
                 val state = app.state.value
                 withContext(edt) {
                     switching = false
-                    update(profile ?: state.profile, state.status)
+                    update(profile ?: state.profile, state.status, accounts = false)
                 }
             } catch (e: CancellationException) {
                 throw e
