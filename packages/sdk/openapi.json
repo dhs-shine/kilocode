@@ -9222,12 +9222,12 @@
               }
             }
           },
-          "500": {
-            "description": "InternalServerError",
+          "503": {
+            "description": "ServiceUnavailable",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/effect_HttpApiError_InternalServerError"
+                  "$ref": "#/components/schemas/effect_HttpApiError_ServiceUnavailable"
                 }
               }
             }
@@ -9299,6 +9299,376 @@
           {
             "lang": "js",
             "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.claw.chatCredentials({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/kilo/cloud-sessions": {
+      "get": {
+        "tags": ["kilo"],
+        "operationId": "kilo.cloudSessions",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "required": false
+          },
+          {
+            "name": "gitUrl",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cloud sessions list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cliSessions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "session_id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "number"
+                          }
+                        },
+                        "required": ["session_id", "title", "created_at", "updated_at", "version"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["cliSessions", "nextCursor"],
+                  "additionalProperties": false,
+                  "description": "Cloud sessions list"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Fetch cloud CLI sessions from Kilo API",
+        "summary": "Get cloud sessions",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.cloudSessions({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/kilo/cloud/session/{id}": {
+      "get": {
+        "tags": ["kilo"],
+        "operationId": "kilo.cloud.session.get",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cloud session data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "info": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "time": {
+                          "type": "object",
+                          "properties": {
+                            "created": {
+                              "type": "number"
+                            },
+                            "updated": {
+                              "type": "number"
+                            }
+                          },
+                          "required": ["created", "updated"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["id", "title", "time"],
+                      "additionalProperties": false
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "info": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "sessionID": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": ["user", "assistant"]
+                              },
+                              "time": {
+                                "type": "object",
+                                "properties": {
+                                  "created": {
+                                    "type": "number"
+                                  },
+                                  "completed": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": ["created"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": ["id", "sessionID", "role", "time"],
+                            "additionalProperties": false
+                          },
+                          "parts": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "sessionID": {
+                                  "type": "string"
+                                },
+                                "messageID": {
+                                  "type": "string"
+                                },
+                                "type": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["id", "sessionID", "messageID", "type"],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": ["info", "parts"],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["info", "messages"],
+                  "additionalProperties": false,
+                  "description": "Cloud session data"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Fetch full session data from the Kilo cloud for preview",
+        "summary": "Get cloud session",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.cloud.session.get({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/kilo/cloud/session/import": {
+      "post": {
+        "tags": ["kilo"],
+        "operationId": "kilo.cloud.session.import",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Imported session info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "created": {
+                          "type": "number"
+                        },
+                        "updated": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["created", "updated"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["id", "title", "time"],
+                  "additionalProperties": false,
+                  "description": "Imported session info"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Download a cloud-synced session and write it to local storage with fresh IDs.",
+        "summary": "Import session from cloud",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["sessionId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.cloud.session.import({\n  ...\n})"
           }
         ]
       }
@@ -16391,12 +16761,12 @@
         "required": ["_tag"],
         "additionalProperties": false
       },
-      "effect_HttpApiError_InternalServerError": {
+      "effect_HttpApiError_ServiceUnavailable": {
         "type": "object",
         "properties": {
           "_tag": {
             "type": "string",
-            "enum": ["InternalServerError"]
+            "enum": ["ServiceUnavailable"]
           }
         },
         "required": ["_tag"],

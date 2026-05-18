@@ -39,6 +39,9 @@ export function register(app: Hono, handler: Handler, context: Context.Context<u
   app.post(KiloGatewayPaths.organization, (c) => handler(c.req.raw, context))
   app.get(KiloGatewayPaths.clawStatus, (c) => handler(c.req.raw, context))
   app.get(KiloGatewayPaths.clawChatCredentials, (c) => handler(c.req.raw, context))
+  app.get(KiloGatewayPaths.cloudSessions, (c) => handler(c.req.raw, context))
+  app.get(KiloGatewayPaths.cloudSession, (c) => handler(c.req.raw, context))
+  app.post(KiloGatewayPaths.cloudSessionImport, (c) => handler(c.req.raw, context))
 
   return app
 }

@@ -86,12 +86,64 @@ export const ClawChatCredentials = Schema.NullOr(
   }),
 )
 
+export const CloudSession = Schema.Struct({
+  session_id: Schema.String,
+  title: Schema.NullOr(Schema.String),
+  created_at: Schema.String,
+  updated_at: Schema.String,
+  version: Schema.Finite,
+})
+
+export const CloudSessions = Schema.Struct({
+  cliSessions: Schema.Array(CloudSession),
+  nextCursor: Schema.NullOr(Schema.String),
+})
+
+export const CloudSessionImportBody = Schema.Struct({
+  sessionId: Schema.String,
+})
+
+export const CloudMessage = Schema.Struct({
+  info: Schema.Struct({
+    id: Schema.String,
+    sessionID: Schema.String,
+    role: Schema.Literals(["user", "assistant"]),
+    time: Schema.Struct({
+      created: Schema.Finite,
+      completed: Schema.optional(Schema.Finite),
+    }),
+  }),
+  parts: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+      sessionID: Schema.String,
+      messageID: Schema.String,
+      type: Schema.String,
+    }),
+  ),
+})
+
+export const CloudSessionData = Schema.Struct({
+  info: Schema.Struct({
+    id: Schema.String,
+    title: Schema.String,
+    time: Schema.Struct({
+      created: Schema.Finite,
+      updated: Schema.Finite,
+    }),
+  }),
+  messages: Schema.Array(CloudMessage),
+})
+
 export const KiloGatewayPaths = {
   profile: `${root}/profile`,
   notifications: `${root}/notifications`,
   organization: `${root}/organization`,
   clawStatus: `${root}/claw/status`,
   clawChatCredentials: `${root}/claw/chat-credentials`,
+  cloudSessions: `${root}/cloud-sessions`,
+  cloudSession: `${root}/cloud/session/:id`,
+  cloudSessionImport: `${root}/cloud/session/import`,
 } as const
 
 export const KiloGatewayApi = HttpApi.make("kilo")
@@ -150,6 +202,43 @@ export const KiloGatewayApi = HttpApi.make("kilo")
               "Returns the bearer token and endpoint URLs the client uses to talk to the Kilo Chat worker " +
               "and the Event Service. The bearer is the user's existing long-lived Kilo JWT — kilo-chat and " +
               "event-service both verify it directly with NEXTAUTH_SECRET, so no separate token mint is needed.",
+          }),
+        ),
+        HttpApiEndpoint.get("cloudSessions", KiloGatewayPaths.cloudSessions, {
+          query: {
+            cursor: Schema.optional(Schema.String),
+            limit: Schema.optional(Schema.String),
+            gitUrl: Schema.optional(Schema.String),
+          },
+          success: described(CloudSessions, "Cloud sessions list"),
+          error: [HttpApiError.BadRequest, HttpApiError.Unauthorized],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "kilo.cloudSessions",
+            summary: "Get cloud sessions",
+            description: "Fetch cloud CLI sessions from Kilo API",
+          }),
+        ),
+        HttpApiEndpoint.get("cloudSession", KiloGatewayPaths.cloudSession, {
+          params: { id: Schema.String },
+          success: described(CloudSessionData, "Cloud session data"),
+          error: [HttpApiError.Unauthorized, HttpApiError.NotFound],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "kilo.cloud.session.get",
+            summary: "Get cloud session",
+            description: "Fetch full session data from the Kilo cloud for preview",
+          }),
+        ),
+        HttpApiEndpoint.post("cloudSessionImport", KiloGatewayPaths.cloudSessionImport, {
+          payload: CloudSessionImportBody,
+          success: described(CloudSessionData.fields.info, "Imported session info"),
+          error: [HttpApiError.BadRequest, HttpApiError.Unauthorized, HttpApiError.NotFound],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "kilo.cloud.session.import",
+            summary: "Import session from cloud",
+            description: "Download a cloud-synced session and write it to local storage with fresh IDs.",
           }),
         ),
       )

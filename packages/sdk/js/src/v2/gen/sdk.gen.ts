@@ -65,6 +65,12 @@ import type {
   KiloClawChatCredentialsResponses,
   KiloClawStatusErrors,
   KiloClawStatusResponses,
+  KiloCloudSessionGetErrors,
+  KiloCloudSessionGetResponses,
+  KiloCloudSessionImportErrors,
+  KiloCloudSessionImportResponses,
+  KiloCloudSessionsErrors,
+  KiloCloudSessionsResponses,
   KilocodeHeapSnapshotErrors,
   KilocodeHeapSnapshotResponses,
   KilocodeRemoveAgentErrors,
@@ -5027,6 +5033,88 @@ export class Claw extends HeyApiClient {
   }
 }
 
+export class Session4 extends HeyApiClient {
+  /**
+   * Get cloud session
+   *
+   * Fetch full session data from the Kilo cloud for preview
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      id: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "id" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<KiloCloudSessionGetResponses, KiloCloudSessionGetErrors, ThrowOnError>({
+      url: "/kilo/cloud/session/{id}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Import session from cloud
+   *
+   * Download a cloud-synced session and write it to local storage with fresh IDs.
+   */
+  public import<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      sessionId?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "sessionId" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      KiloCloudSessionImportResponses,
+      KiloCloudSessionImportErrors,
+      ThrowOnError
+    >({
+      url: "/kilo/cloud/session/import",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
+export class Cloud extends HeyApiClient {
+  private _session?: Session4
+  get session(): Session4 {
+    return (this._session ??= new Session4({ client: this.client }))
+  }
+}
+
 export class Kilo extends HeyApiClient {
   /**
    * Get Kilo Gateway profile
@@ -5088,6 +5176,42 @@ export class Kilo extends HeyApiClient {
     })
   }
 
+  /**
+   * Get cloud sessions
+   *
+   * Fetch cloud CLI sessions from Kilo API
+   */
+  public cloudSessions<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      cursor?: string
+      limit?: number
+      gitUrl?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "cursor" },
+            { in: "query", key: "limit" },
+            { in: "query", key: "gitUrl" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<KiloCloudSessionsResponses, KiloCloudSessionsErrors, ThrowOnError>({
+      url: "/kilo/cloud-sessions",
+      ...options,
+      ...params,
+    })
+  }
+
   private _organization?: Organization
   get organization(): Organization {
     return (this._organization ??= new Organization({ client: this.client }))
@@ -5096,6 +5220,11 @@ export class Kilo extends HeyApiClient {
   private _claw?: Claw
   get claw(): Claw {
     return (this._claw ??= new Claw({ client: this.client }))
+  }
+
+  private _cloud?: Cloud
+  get cloud(): Cloud {
+    return (this._cloud ??= new Cloud({ client: this.client }))
   }
 }
 

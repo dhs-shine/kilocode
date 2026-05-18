@@ -75,6 +75,7 @@ const QueryNumberParameters = new Set(["start", "cursor", "limit", "method"])
 const QueryBooleanParameters = new Set(["roots", "archived"])
 const QueryParameterSchemas = {
   "GET /find/file limit": { type: "integer", minimum: 1, maximum: 200 },
+  "GET /kilo/cloud-sessions cursor": { type: "string" }, // kilocode_change
   "GET /session/{sessionID}/diff messageID": { type: "string", pattern: "^msg.*" },
   "GET /session/{sessionID}/message limit": { type: "integer", minimum: 0, maximum: Number.MAX_SAFE_INTEGER },
 } satisfies Record<string, OpenApiSchema>

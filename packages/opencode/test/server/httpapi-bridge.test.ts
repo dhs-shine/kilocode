@@ -4,6 +4,7 @@ import { Instance } from "../../src/project/instance"
 import { ControlPaths } from "../../src/server/routes/instance/httpapi/groups/control"
 import { FilePaths } from "../../src/server/routes/instance/httpapi/groups/file"
 import { GlobalPaths } from "../../src/server/routes/instance/httpapi/groups/global"
+import { KiloGatewayPaths } from "../../src/kilocode/server/httpapi/groups/kilo-gateway"
 import { PublicApi } from "../../src/server/routes/instance/httpapi/public"
 import { ExperimentalHttpApiServer } from "../../src/server/routes/instance/httpapi/server"
 import { Server } from "../../src/server/server"
@@ -292,10 +293,10 @@ describe("HttpApi server", () => {
       "POST /kilocode/session-import/session",
       "POST /kilocode/session-import/message",
       "POST /kilocode/session-import/part",
-      "GET /indexing/status",
     ]
     expect(kilo.filter((route) => !hono.has(route))).toEqual([])
     expect(kilo.filter((route) => !effect.has(route))).toEqual([])
+    expect(effect.has("GET /indexing/status")).toBe(true)
   })
   // kilocode_change end
 
@@ -333,6 +334,16 @@ describe("HttpApi server", () => {
     const time = sessionUpdateProperties?.time
     expect(time?.properties?.archived).toEqual({ type: "number" })
   })
+
+  // kilocode_change start - cloud session literal route must not be swallowed by :id.
+  test("documents cloud session import separately from session id lookup", () => {
+    const effect = effectOpenApi()
+
+    expect(effect.paths["/kilo/cloud/session/import"]?.post).toBeDefined()
+    expect(effect.paths["/kilo/cloud/session/{id}"]?.get).toBeDefined()
+    expect(KiloGatewayPaths.cloudSessionImport).not.toBe(KiloGatewayPaths.cloudSession)
+  })
+  // kilocode_change end
 
   test("documents event routes as server-sent events", () => {
     const effect = effectOpenApi()

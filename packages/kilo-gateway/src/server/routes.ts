@@ -16,6 +16,7 @@ import {
   UnauthorizedError,
   getClawChatCredentials,
   getClawStatus,
+  getCloudSessions,
   getNotifications,
   getProfile,
   setOrganization,
@@ -710,63 +711,9 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
           const token = auth.type === "api" ? auth.key : auth.type === "oauth" ? auth.access : undefined
           if (!token) return c.json({ error: "No valid token found" }, 401)
 
-          const { cursor, limit, gitUrl } = c.req.valid("query")
-
-          const input: Record<string, unknown> = {}
-          if (cursor) input.cursor = cursor
-          if (limit) input.limit = limit
-          if (gitUrl) input.gitUrl = gitUrl
-
-          const params = new URLSearchParams({
-            batch: "1",
-            input: JSON.stringify({ "0": input }),
-          })
-
-          const url = `${KILO_API_BASE}/api/trpc/cliSessionsV2.list?${params.toString()}`
-
-          const response = await fetch(url, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-              ...buildKiloHeaders(),
-            },
-          })
-
-          if (!response.ok) {
-            const text = await response.text()
-            console.error("[Kilo Gateway] cloud-sessions: tRPC request failed", {
-              status: response.status,
-              body: text.slice(0, 500),
-            })
-            return c.json({ error: `Cloud sessions fetch failed: ${response.status}` }, response.status as any)
-          }
-
-          const raw = await response.text()
-          const json = JSON.parse(raw)
-          const data = Array.isArray(json) ? json[0]?.result?.data : null
-          const result = data?.json ?? data
-          if (!result) return c.json({ cliSessions: [], nextCursor: null })
-
-          const sessions = (result.cliSessions ?? []).map((s: any) => ({
-            session_id: s.session_id,
-            title: s.title ?? null,
-            created_at:
-              typeof s.created_at === "string"
-                ? s.created_at
-                : s.created_at
-                  ? new Date(s.created_at).toISOString()
-                  : new Date().toISOString(),
-            updated_at:
-              typeof s.updated_at === "string"
-                ? s.updated_at
-                : s.updated_at
-                  ? new Date(s.updated_at).toISOString()
-                  : new Date().toISOString(),
-            version: s.version ?? 0,
-          }))
-
-          return c.json({ cliSessions: sessions, nextCursor: result.nextCursor ?? null })
+          return c.json(await getCloudSessions(token, c.req.valid("query")))
         } catch (err: any) {
+          if (err instanceof GatewayError) return c.json({ error: err.message }, err.status as any)
           console.error("[Kilo Gateway] cloud-sessions: unhandled error", err?.message ?? err)
           return c.json({ error: "Internal error" }, 500)
         }

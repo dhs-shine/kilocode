@@ -1,4 +1,12 @@
-import { GatewayError, UnauthorizedError, getOrganizationId, getToken } from "@kilocode/kilo-gateway"
+import {
+  GatewayError,
+  fetchCloudSession,
+  fetchCloudSessionForImport,
+  getCloudSessions,
+  getOrganizationId,
+  getToken,
+  importSessionToDb,
+} from "@kilocode/kilo-gateway"
 import {
   HEADER_ORGANIZATIONID,
   KILO_API_BASE,
@@ -12,9 +20,15 @@ import {
 import { Effect } from "effect"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 import { Auth } from "@/auth"
+import { Bus } from "@/bus"
+import { Identifier } from "@/id/id"
+import { Instance } from "@/project/instance"
 import { InstanceStore } from "@/project/instance-store"
 import { ModelCache } from "@/provider/model-cache"
 import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
+import { MessageTable, PartTable, SessionTable } from "@/session/session.sql"
+import { Session } from "@/session/session"
+import { Database } from "@/storage/db"
 
 export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo", (handlers) =>
   Effect.gen(function* () {
@@ -85,7 +99,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
           return response.json()
         },
         catch: (err) =>
-          err instanceof UnauthorizedError
+          err instanceof GatewayError && err.status === 401
             ? new HttpApiError.Unauthorized({})
             : new HttpApiError.ServiceUnavailable({}),
       })
@@ -105,11 +119,71 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       }
     })
 
+    const cloudSessions = Effect.fn("KiloGatewayHttpApi.cloudSessions")(function* (ctx) {
+      const info = yield* auth.get("kilo").pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
+      const token = getToken(info)
+      if (!token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+
+      const query = {
+        ...ctx.query,
+        limit: ctx.query.limit === undefined ? undefined : Number(ctx.query.limit),
+      }
+
+      return yield* Effect.tryPromise({
+        try: () => getCloudSessions(token, query),
+        catch: (err) =>
+          err instanceof GatewayError && err.status === 401
+            ? new HttpApiError.Unauthorized({})
+            : new HttpApiError.BadRequest({}),
+      })
+    })
+
+    const cloudSession = Effect.fn("KiloGatewayHttpApi.cloudSession")(function* (ctx) {
+      const info = yield* auth.get("kilo").pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
+      const token = getToken(info)
+      if (!token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+
+      const result = yield* Effect.promise(() => fetchCloudSession(token, ctx.params.id))
+      if (!result.ok && result.status === 404) return yield* Effect.fail(new HttpApiError.NotFound({}))
+      if (!result.ok) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+      return result.data
+    })
+
+    const cloudSessionImport = Effect.fn("KiloGatewayHttpApi.cloudSessionImport")(function* (ctx) {
+      const info = yield* auth.get("kilo").pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
+      const token = getToken(info)
+      if (!token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+
+      const fetched = yield* Effect.promise(() => fetchCloudSessionForImport(token, ctx.payload.sessionId))
+      if (!fetched.ok && fetched.status === 404) return yield* Effect.fail(new HttpApiError.NotFound({}))
+      if (!fetched.ok) return yield* Effect.fail(new HttpApiError.BadRequest({}))
+      if (!fetched.data?.info?.id) return yield* Effect.fail(new HttpApiError.BadRequest({}))
+
+      return yield* Effect.try({
+        try: () =>
+          importSessionToDb(fetched.data, {
+            Database,
+            Instance,
+            SessionTable,
+            MessageTable,
+            PartTable,
+            SessionToRow: Session.toRow,
+            Bus,
+            SessionCreatedEvent: Session.Event.Created,
+            Identifier,
+          }),
+        catch: () => new HttpApiError.BadRequest({}),
+      })
+    })
+
     return handlers
       .handle("profile", profile)
       .handle("notifications", notifications)
       .handle("organization", organization)
       .handle("clawStatus", clawStatus)
       .handle("clawChatCredentials", clawChatCredentials)
+      .handle("cloudSessions", cloudSessions)
+      .handle("cloudSession", cloudSession)
+      .handle("cloudSessionImport", cloudSessionImport)
   }),
 )
