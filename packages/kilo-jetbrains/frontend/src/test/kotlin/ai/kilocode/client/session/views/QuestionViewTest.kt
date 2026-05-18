@@ -3,14 +3,16 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.rpc.dto.QuestionReplyDto
+import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBRadioButton
+import com.intellij.ui.components.JBTextArea
 import java.awt.Container
-import java.awt.Font
 import javax.swing.AbstractButton
 import javax.swing.JButton
 
@@ -19,6 +21,7 @@ class QuestionViewTest : BasePlatformTestCase() {
 
     private val replies = mutableListOf<Pair<String, QuestionReplyDto>>()
     private val rejects = mutableListOf<String>()
+    private var scrolls = 0
     private lateinit var view: QuestionView
 
     override fun setUp() {
@@ -26,6 +29,7 @@ class QuestionViewTest : BasePlatformTestCase() {
         view = QuestionView(
             reply = { id, dto -> replies.add(id to dto) },
             reject = { id -> rejects.add(id) },
+            scroll = { scrolls++ },
         )
     }
 
@@ -87,8 +91,8 @@ class QuestionViewTest : BasePlatformTestCase() {
 
         val radios = findAll<JBRadioButton>(view)
         assertEquals(2, radios.size)
-        assertEquals("Minimal", radios[0].text)
-        assertEquals("Balanced", radios[1].text)
+        assertEquals("Minimal", radios[0].actionCommand)
+        assertEquals("Balanced", radios[1].actionCommand)
         assertTrue(findAll<JBCheckBox>(view).isEmpty())
     }
 
@@ -96,7 +100,7 @@ class QuestionViewTest : BasePlatformTestCase() {
         view.show(singleSelectQuestion("req_2"))
 
         // Select via radio button
-        findAll<JBRadioButton>(view).first { it.text == "Minimal" }.doClick()
+        option<JBRadioButton>(view, "Minimal").doClick()
         button(view, "Submit").doClick()
 
         assertFalse(view.isVisible)
@@ -107,7 +111,7 @@ class QuestionViewTest : BasePlatformTestCase() {
 
     // ------ option label and description ------
 
-    fun `test option row shows bold label and regular description`() {
+    fun `test option row aligns label and description beside button`() {
         view.show(
             Question(
                 id = "desc_test",
@@ -125,14 +129,33 @@ class QuestionViewTest : BasePlatformTestCase() {
             )
         )
 
-        // The option label is the radio button text (bold)
-        val radio = findAll<JBRadioButton>(view).first { it.text == "Minimal" }
-        assertTrue("option label should be bold", radio.font.isBold)
+        val radio = option<JBRadioButton>(view, "Minimal")
+        assertTrue("radio should keep text in aligned renderer", radio.text.isNullOrEmpty())
 
-        // The description is a JBLabel with regular weight
-        val desc = findAll<JBLabel>(view).firstOrNull { it.text == "Smallest safe change" }
-        assertNotNull("description label should be present", desc)
-        assertFalse("description should not be bold", desc!!.font.style == Font.BOLD)
+        val label = findAll<JBTextArea>(view).firstOrNull { it.text == "Minimal" }
+        assertNotNull("option label should be present", label)
+        assertTrue("option label should be bold", label!!.font.isBold)
+        assertTrue("option label should wrap", label.lineWrap)
+
+        val desc = findAll<JBTextArea>(view).firstOrNull { it.text == "Smallest safe change" }
+        assertNotNull("description should be present", desc)
+        assertTrue("description should wrap", desc!!.lineWrap)
+        assertEquals("description should align in the text renderer", label.parent, desc.parent)
+
+        val style = SessionEditorStyle.current()
+        assertEquals("option label should use bold editor font", style.boldEditorFont, label.font)
+        assertEquals("description should use transcript font", style.transcriptFont, desc.font)
+    }
+
+    fun `test question title and hint use editor fonts`() {
+        view.show(singleSelectQuestion("q_fonts"))
+
+        val style = SessionEditorStyle.current()
+        val title = text(view, "Choose approach")
+        val hint = text(view, "Select one answer")
+
+        assertEquals(style.boldEditorFont, title.font)
+        assertEquals(style.transcriptFont, hint.font)
     }
 
     // ------ multi-question navigation ------
@@ -146,7 +169,7 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertLabelsContain(view, "1 of 2 questions")
 
         // Select an answer on first question, then click Next
-        findAll<JBRadioButton>(view).first { it.text == "Minimal" }.doClick()
+        option<JBRadioButton>(view, "Minimal").doClick()
         button(view, "Next").doClick()
 
         // Second question shown, first not
@@ -155,7 +178,7 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertLabelsContain(view, "2 of 2 questions")
 
         // Select answer on second question, submit
-        findAll<JBRadioButton>(view).first { it.text == "Unit" }.doClick()
+        option<JBRadioButton>(view, "Unit").doClick()
         button(view, "Submit").doClick()
 
         assertFalse(view.isVisible)
@@ -168,7 +191,7 @@ class QuestionViewTest : BasePlatformTestCase() {
         view.show(twoItemQuestion("q_back"))
 
         // Answer first question
-        findAll<JBRadioButton>(view).first { it.text == "Minimal" }.doClick()
+        option<JBRadioButton>(view, "Minimal").doClick()
         button(view, "Next").doClick()
 
         // Go back via header nav icon
@@ -178,12 +201,12 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertLabelsContain(view, "Choose approach")
         assertLabelsContain(view, "1 of 2 questions")
         val radios = findAll<JBRadioButton>(view)
-        assertTrue("Minimal should still be selected", radios.first { it.text == "Minimal" }.isSelected)
+        assertTrue("Minimal should still be selected", radios.first { it.actionCommand == "Minimal" }.isSelected)
 
         // Change selection to Balanced, go forward, submit
-        findAll<JBRadioButton>(view).first { it.text == "Balanced" }.doClick()
+        option<JBRadioButton>(view, "Balanced").doClick()
         button(view, "Next").doClick()
-        findAll<JBRadioButton>(view).first { it.text == "Unit" }.doClick()
+        option<JBRadioButton>(view, "Unit").doClick()
         button(view, "Submit").doClick()
 
         assertEquals(listOf(listOf("Balanced"), listOf("Unit")), replies.single().second.answers)
@@ -195,11 +218,60 @@ class QuestionViewTest : BasePlatformTestCase() {
         val next = button(view, "Next")
         assertFalse("Next should be disabled before selection", next.isEnabled)
 
-        findAll<JBRadioButton>(view).first { it.text == "Minimal" }.doClick()
+        option<JBRadioButton>(view, "Minimal").doClick()
 
         // Re-render happened; get fresh reference
         val nextAfter = button(view, "Next")
         assertTrue("Next should be enabled after selection", nextAfter.isEnabled)
+    }
+
+    fun `test header nav disables unavailable directions`() {
+        view.show(twoItemQuestion("q_nav_disabled"))
+
+        assertFalse("Back should be disabled on first question", navButton(view, "Back").isEnabled)
+        assertNotNull("Back should have disabled icon", navButton(view, "Back").disabledIcon)
+        assertFalse("Forward should be disabled before selection", navButton(view, "Next").isEnabled)
+        assertNotNull("Forward should have disabled icon", navButton(view, "Next").disabledIcon)
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+        assertTrue("Forward should be enabled after selection", navButton(view, "Next").isEnabled)
+
+        button(view, "Next").doClick()
+
+        assertTrue("Back should be enabled on second question", navButton(view, "Back").isEnabled)
+        assertFalse("Forward should be disabled on last question", navButton(view, "Next").isEnabled)
+    }
+
+    fun `test submit button uses default style`() {
+        view.show(singleSelectQuestion("q_default"))
+
+        val submit = button(view, "Submit")
+
+        assertEquals(true, submit.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
+    }
+
+    fun `test single question hides header nav`() {
+        view.show(singleSelectQuestion("q_single"))
+
+        assertTrue(findAll<HoverIcon>(view).isEmpty())
+    }
+
+    fun `test selection requests scroll to bottom`() {
+        view.show(singleSelectQuestion("q_scroll"))
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+
+        assertEquals(1, scrolls)
+    }
+
+    fun `test question navigation requests scroll to bottom`() {
+        view.show(twoItemQuestion("q_nav_scroll"))
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+        button(view, "Next").doClick()
+        navButton(view, "Back").doClick()
+
+        assertEquals(3, scrolls)
     }
 
     // ------ multi-select checkboxes ------
@@ -228,10 +300,10 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertEquals(3, boxes.size)
         assertTrue(findAll<JBRadioButton>(view).isEmpty())
 
-        boxes.first { it.text == "A" }.doClick()
-        boxes.first { it.text == "B" }.doClick()
+        boxes.first { it.actionCommand == "A" }.doClick()
+        boxes.first { it.actionCommand == "B" }.doClick()
         // Toggle B off — need fresh refs after re-render
-        findAll<JBCheckBox>(view).first { it.text == "B" }.doClick()
+        option<JBCheckBox>(view, "B").doClick()
         button(view, "Submit").doClick()
 
         assertFalse(view.isVisible)
@@ -252,6 +324,12 @@ class QuestionViewTest : BasePlatformTestCase() {
     /** Find a [HoverIcon] nav button by tooltip text (Back / Next nav arrows). */
     private fun navButton(root: Container, tooltip: String): HoverIcon =
         findAll<HoverIcon>(root).first { it.toolTipText == tooltip }
+
+    private inline fun <reified T : AbstractButton> option(root: Container, label: String): T =
+        findAll<T>(root).first { it.actionCommand == label }
+
+    private fun text(root: Container, value: String): JBTextArea =
+        findAll<JBTextArea>(root).first { it.text == value }
 
     private fun singleSelectQuestion(id: String) = Question(
         id = id,
@@ -296,12 +374,12 @@ class QuestionViewTest : BasePlatformTestCase() {
     )
 
     private fun assertLabelsContain(root: Container, text: String) {
-        val found = findAll<JBLabel>(root).any { it.text == text }
+        val found = findAll<JBLabel>(root).any { it.text == text } || findAll<JBTextArea>(root).any { it.text == text }
         assertTrue("Expected label '$text' to be present", found)
     }
 
     private fun assertLabelsDoNotContain(root: Container, text: String) {
-        val found = findAll<JBLabel>(root).any { it.text == text }
+        val found = findAll<JBLabel>(root).any { it.text == text } || findAll<JBTextArea>(root).any { it.text == text }
         assertFalse("Expected label '$text' to be absent, but it was found", found)
     }
 

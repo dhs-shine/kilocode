@@ -9,16 +9,21 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.HoverIcon
+import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.QuestionReplyDto
+import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBRadioButton
+import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
-import java.awt.Font
+import java.awt.Color
+import java.awt.Component
+import java.awt.Dimension
 import javax.swing.AbstractButton
 import javax.swing.BoxLayout
 import javax.swing.ButtonGroup
@@ -37,6 +42,7 @@ import javax.swing.JPanel
 class QuestionView(
     private val reply: (String, QuestionReplyDto) -> Unit,
     private val reject: (String) -> Unit,
+    private val scroll: () -> Unit = {},
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SessionView {
     override val sessionViewKind = SessionView.Kind.Default
 
@@ -77,8 +83,11 @@ class QuestionView(
         refresh()
     }
 
-    override fun applyStyle(s: SessionEditorStyle) {
-        style = s
+    override fun applyStyle(style: SessionEditorStyle) {
+        this.style = style
+        if (question == null) return
+        render()
+        refresh()
     }
 
     // ------ private rendering ------
@@ -103,35 +112,31 @@ class QuestionView(
         val root = JPanel()
         root.isOpaque = false
         root.layout = BoxLayout(root, BoxLayout.Y_AXIS)
-        root.border = JBUI.Borders.empty(8, 12, 8, 12)
+        root.border = JBUI.Borders.empty(UiStyle.Gap.lg(), UiStyle.Gap.pad(), UiStyle.Gap.lg(), UiStyle.Gap.pad())
 
-        root.add(header(total))
-        root.add(body(item, set))
-        root.add(footer(item, set))
+        val head = header(total)
+        val body = body(item, set)
+        val foot = footer(item, set)
+        head.alignmentX = Component.LEFT_ALIGNMENT
+        body.alignmentX = Component.LEFT_ALIGNMENT
+        foot.alignmentX = Component.LEFT_ALIGNMENT
+        root.add(head)
+        root.add(body)
+        root.add(foot)
 
         return root
     }
 
-    // ── Header: icon + summary + nav buttons ──────────────────────────────────
+    // ── Header: summary + nav buttons ─────────────────────────────────────────
 
     private fun header(total: Int): JPanel {
         val row = JPanel(BorderLayout())
         row.isOpaque = false
-        row.border = JBUI.Borders.emptyBottom(6)
-
-        val left = JPanel()
-        left.isOpaque = false
-        left.layout = BoxLayout(left, BoxLayout.X_AXIS)
-
-        val icon = JBLabel(AllIcons.General.QuestionDialog)
-        icon.border = JBUI.Borders.emptyRight(6)
-        left.add(icon)
+        row.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
 
         val summary = JBLabel(KiloBundle.message("session.question.summary", idx + 1, total))
-        summary.foreground = UIUtil.getContextHelpForeground()
-        left.add(summary)
-
-        row.add(left, BorderLayout.WEST)
+        summary.foreground = UiStyle.Colors.weak()
+        row.add(summary, BorderLayout.WEST)
 
         if (total > 1) {
             row.add(navButtons(), BorderLayout.EAST)
@@ -146,14 +151,18 @@ class QuestionView(
         nav.layout = BoxLayout(nav, BoxLayout.X_AXIS)
 
         val back = HoverIcon().apply {
-            icon = AllIcons.Actions.Back
+            val ico = AllIcons.Actions.Back
+            icon = ico
+            disabledIcon = IconLoader.getDisabledIcon(ico)
             toolTipText = KiloBundle.message("session.question.back")
             isEnabled = idx > 0
             addActionListener { goBack() }
         }
 
         val fwd = HoverIcon().apply {
-            icon = AllIcons.Actions.Forward
+            val ico = AllIcons.Actions.Forward
+            icon = ico
+            disabledIcon = IconLoader.getDisabledIcon(ico)
             toolTipText = KiloBundle.message("session.question.next")
             val q = question
             isEnabled = q != null && idx < q.items.size - 1 && selections[idx].isNotEmpty()
@@ -172,18 +181,20 @@ class QuestionView(
         panel.isOpaque = false
         panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
 
-        val title = JBLabel(item.question)
-        title.font = title.font.deriveFont(Font.BOLD)
-        title.border = JBUI.Borders.emptyBottom(2)
+        val title = text(item.question, UiStyle.Colors.fg(), true)
+        title.border = JBUI.Borders.emptyBottom(UiStyle.Gap.xs())
+        title.alignmentX = Component.LEFT_ALIGNMENT
         panel.add(title)
 
         val hintKey = if (item.multiple) "session.question.hint.multi" else "session.question.hint.single"
-        val hint = JBLabel(KiloBundle.message(hintKey))
-        hint.foreground = UIUtil.getContextHelpForeground()
-        hint.border = JBUI.Borders.emptyBottom(6)
+        val hint = text(KiloBundle.message(hintKey), UiStyle.Colors.weak())
+        hint.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
+        hint.alignmentX = Component.LEFT_ALIGNMENT
         panel.add(hint)
 
-        panel.add(optionList(item, set))
+        val opts = optionList(item, set)
+        opts.alignmentX = Component.LEFT_ALIGNMENT
+        panel.add(opts)
 
         return panel
     }
@@ -211,8 +222,8 @@ class QuestionView(
     // ── Option rows ───────────────────────────────────────────────────────────
 
     private fun radioRow(opt: QuestionOption, set: MutableSet<String>, group: ButtonGroup): JPanel {
-        val radio = JBRadioButton(opt.label)
-        radio.font = radio.font.deriveFont(Font.BOLD)
+        val radio = JBRadioButton()
+        radio.actionCommand = opt.label
         radio.isSelected = opt.label in set
         radio.isOpaque = false
         group.add(radio)
@@ -220,21 +231,21 @@ class QuestionView(
         radio.addActionListener {
             set.clear()
             set.add(opt.label)
-            refreshNavButtons()
+            refreshSelection()
         }
 
         return optionRow(radio, opt)
     }
 
     private fun checkboxRow(opt: QuestionOption, set: MutableSet<String>): JPanel {
-        val box = JBCheckBox(opt.label)
-        box.font = box.font.deriveFont(Font.BOLD)
+        val box = JBCheckBox()
+        box.actionCommand = opt.label
         box.isSelected = opt.label in set
         box.isOpaque = false
 
         box.addActionListener {
             if (!set.remove(opt.label)) set.add(opt.label)
-            refreshNavButtons()
+            refreshSelection()
         }
 
         return optionRow(box, opt)
@@ -243,33 +254,88 @@ class QuestionView(
     private fun optionRow(toggle: AbstractButton, opt: QuestionOption): JPanel {
         val row = JPanel(BorderLayout())
         row.isOpaque = false
-        row.border = JBUI.Borders.emptyBottom(2)
+        row.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
         row.toolTipText = opt.description.ifBlank { null }
+        row.alignmentX = Component.LEFT_ALIGNMENT
 
-        if (opt.description.isNotBlank()) {
-            // Stack toggle (with label) on top, description label below
-            val col = JPanel()
-            col.isOpaque = false
-            col.layout = BoxLayout(col, BoxLayout.Y_AXIS)
-            col.add(toggle)
-
-            val desc = JBLabel(opt.description)
-            desc.foreground = UIUtil.getContextHelpForeground()
-            desc.border = JBUI.Borders.emptyLeft(toggle.insets.left + 4)
-            col.add(desc)
-            row.add(col, BorderLayout.CENTER)
-        } else {
-            row.add(toggle, BorderLayout.CENTER)
-        }
-
-        // make clicking anywhere on the row trigger the toggle
-        row.addMouseListener(object : java.awt.event.MouseAdapter() {
+        val press = object : java.awt.event.MouseAdapter() {
             override fun mouseClicked(e: java.awt.event.MouseEvent) {
                 if (toggle.isEnabled) toggle.doClick()
             }
-        })
+        }
+
+        val icon = JPanel(BorderLayout())
+        icon.isOpaque = false
+        icon.border = JBUI.Borders.emptyRight(UiStyle.Gap.sm())
+        icon.add(toggle, BorderLayout.NORTH)
+        row.add(icon, BorderLayout.WEST)
+
+        val col = JPanel()
+        col.isOpaque = false
+        col.layout = BoxLayout(col, BoxLayout.Y_AXIS)
+
+        val label = text(opt.label, UiStyle.Colors.fg(), true)
+        label.alignmentX = Component.LEFT_ALIGNMENT
+        col.add(label)
+
+        if (opt.description.isNotBlank()) {
+            val desc = text(opt.description, UiStyle.Colors.weak())
+            desc.alignmentX = Component.LEFT_ALIGNMENT
+            desc.addMouseListener(press)
+            col.add(desc)
+        }
+
+        row.add(col, BorderLayout.CENTER)
+
+        // make clicking anywhere on the row trigger the toggle
+        row.addMouseListener(press)
+        icon.addMouseListener(press)
+        col.addMouseListener(press)
+        label.addMouseListener(press)
 
         return row
+    }
+
+    private fun text(value: String, color: Color, bold: Boolean = false): JBTextArea {
+        return object : JBTextArea(value) {
+            override fun getPreferredSize(): Dimension {
+                val width = space()
+                if (width <= 0) return super.getPreferredSize()
+                val old = size
+                setSize(width, Int.MAX_VALUE)
+                val size = super.getPreferredSize()
+                setSize(old)
+                return Dimension(width, size.height)
+            }
+
+            override fun getMaximumSize(): Dimension {
+                val size = preferredSize
+                return Dimension(Int.MAX_VALUE, size.height)
+            }
+
+            private fun space(): Int {
+                var node = parent
+                while (node != null) {
+                    if (node.width > 0) {
+                        val ins = node.insets
+                        return (node.width - ins.left - ins.right).coerceAtLeast(0)
+                    }
+                    node = node.parent
+                }
+                return width
+            }
+        }.apply {
+            isEditable = false
+            isOpaque = false
+            isFocusable = false
+            caret.isVisible = false
+            caret.isSelectionVisible = false
+            lineWrap = true
+            wrapStyleWord = true
+            foreground = color
+            border = JBUI.Borders.empty()
+            font = if (bold) style.boldEditorFont else style.transcriptFont
+        }
     }
 
     // ── Footer: Dismiss + Next/Submit ─────────────────────────────────────────
@@ -280,7 +346,7 @@ class QuestionView(
 
         val row = JPanel(BorderLayout())
         row.isOpaque = false
-        row.border = JBUI.Borders.emptyTop(8)
+        row.border = JBUI.Borders.emptyTop(UiStyle.Gap.lg())
 
         val dismiss = JButton(KiloBundle.message("session.question.dismiss"))
         dismiss.addActionListener { doReject() }
@@ -289,6 +355,7 @@ class QuestionView(
         val rightLabel = if (last) KiloBundle.message("session.question.submit")
                          else KiloBundle.message("session.question.next")
         val right = JButton(rightLabel)
+        right.putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, last)
         right.isEnabled = set.isNotEmpty()
         right.addActionListener {
             if (last) doReply()
@@ -306,6 +373,7 @@ class QuestionView(
         idx--
         render()
         refresh()
+        scroll()
     }
 
     private fun goForward() {
@@ -315,13 +383,14 @@ class QuestionView(
         idx++
         render()
         refresh()
+        scroll()
     }
 
-    /** Refresh only the enabled state of nav buttons without a full re-render. */
-    private fun refreshNavButtons() {
+    private fun refreshSelection() {
         // Re-render is cheap and keeps state consistent; do a full render.
         render()
         refresh()
+        scroll()
     }
 
     // ── Submit / reject ───────────────────────────────────────────────────────

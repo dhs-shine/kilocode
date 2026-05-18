@@ -148,6 +148,7 @@ class SessionUi(
         question = QuestionView(
             reply = { id, dto -> controller.replyQuestion(id, dto) },
             reject = { id -> controller.rejectQuestion(id) },
+            scroll = { scroll.followBottom(true) },
         )
         permission = PermissionView(
             reply = { id, dto -> controller.replyPermission(id, dto) },
