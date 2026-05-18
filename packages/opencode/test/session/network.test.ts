@@ -1,10 +1,41 @@
 // kilocode_change - new file
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
 import { Bus } from "../../src/bus"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { SessionNetwork } from "../../src/session/network"
 import { SessionID } from "../../src/session/schema"
+
+const timer = globalThis.setTimeout
+const clear = globalThis.clearTimeout
+
+afterEach(() => {
+  globalThis.setTimeout = timer
+  globalThis.clearTimeout = clear
+})
+
+function manual() {
+  const state = {
+    next: 0,
+    jobs: new Map<number, TimerHandler>(),
+  }
+  globalThis.setTimeout = ((cb: TimerHandler) => {
+    const id = state.next + 1
+    state.next = id
+    state.jobs.set(id, cb)
+    return id as unknown as ReturnType<typeof setTimeout>
+  }) as unknown as typeof setTimeout
+  globalThis.clearTimeout = ((id: ReturnType<typeof setTimeout>) => {
+    state.jobs.delete(id as unknown as number)
+  }) as unknown as typeof clearTimeout
+  return () => {
+    const jobs = Array.from(state.jobs.values())
+    state.jobs.clear()
+    for (const job of jobs) {
+      if (typeof job === "function") job()
+    }
+  }
+}
 
 describe("session.network", () => {
   test("detects common network disconnect codes", () => {
@@ -79,17 +110,18 @@ describe("session.network", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
+        const run = manual()
         const { promise } = await SessionNetwork.ask({
           sessionID: SessionID.make("ses_test"),
           message: "Connection refused",
           abort: new AbortController().signal,
-          resumeMs: 0,
         })
         const pending = await SessionNetwork.list()
         expect(pending).toHaveLength(1)
         const req = pending[0]!
         await SessionNetwork.restore({ requestID: req.id })
         expect((await SessionNetwork.list())[0]?.restored).toBe(true)
+        run()
         await expect(promise).resolves.toBeUndefined()
         expect(await SessionNetwork.list()).toHaveLength(0)
       },
@@ -101,6 +133,7 @@ describe("session.network", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
+        const run = manual()
         const { promise } = await SessionNetwork.ask({
           sessionID: SessionID.make("ses_test"),
           message: "Connection timed out",
@@ -110,6 +143,7 @@ describe("session.network", () => {
         await SessionNetwork.restore({ requestID: req.id })
         await SessionNetwork.reject({ requestID: req.id })
         await expect(promise).rejects.toBeInstanceOf(SessionNetwork.RejectedError)
+        run()
         expect(await SessionNetwork.list()).toHaveLength(0)
       },
     })
@@ -120,6 +154,7 @@ describe("session.network", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
+        const run = manual()
         const abort = new AbortController()
         const { promise } = await SessionNetwork.ask({
           sessionID: SessionID.make("ses_test"),
@@ -130,6 +165,7 @@ describe("session.network", () => {
         await SessionNetwork.restore({ requestID: req.id })
         abort.abort()
         await expect(promise).rejects.toBeInstanceOf(DOMException)
+        run()
         expect(await SessionNetwork.list()).toHaveLength(0)
       },
     })
