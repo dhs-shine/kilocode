@@ -44,8 +44,6 @@
   <!-- packages/opencode/src/provider/transform.ts -->
 - <https://git-scm.com>
   <!-- packages/kilo-vscode/src/agent-manager/WorktreeManager.ts -->
-- <https://github.com/anomalyco/opencode/issues/new?template=bug-report.yml>
-  <!-- packages/opencode/src/cli/cmd/tui/component/error-component.tsx -->
 - <https://github.com/apps/kiloconnect>
   <!-- packages/opencode/src/cli/cmd/github.ts -->
 - <https://github.com/badlogic/pi-mono/blob/main/packages/ai/src/utils/overflow.ts>
@@ -70,6 +68,7 @@
   <!-- packages/opencode/src/kilocode/encoding.ts -->
 - <https://github.com/Kilo-Org/kilocode/issues/new?template=bug-report.yml>
   <!-- packages/opencode/src/cli/cmd/tui/app.tsx -->
+  <!-- packages/opencode/src/cli/cmd/tui/component/error-component.tsx -->
 - <https://github.com/Kilo-Org/kilocode/issues/new/choose>
   <!-- packages/kilo-vscode/webview-ui/src/components/chat/FeedbackDialog.tsx -->
 - <https://github.com/microsoft/vscode-eslint/archive/refs/heads/main.zip>
@@ -88,6 +87,7 @@
   <!-- packages/opencode/src/session/network.ts -->
 - <https://kilo.ai/>
   <!-- packages/opencode/src/cli/cmd/generate.ts -->
+  <!-- packages/opencode/src/provider/provider.ts -->
 - <https://kilo.ai/discord>
   <!-- packages/kilo-vscode/webview-ui/src/components/chat/FeedbackDialog.tsx -->
   <!-- packages/kilo-vscode/webview-ui/src/components/settings/AboutKiloCodeTab.tsx -->
@@ -116,7 +116,6 @@
   <!-- packages/opencode/src/config/model-id.ts -->
 - <https://opencode.ai/>
   <!-- packages/opencode/src/cli/cmd/generate.ts -->
-  <!-- packages/opencode/src/provider/provider.ts -->
 - <https://opencode.ai/auth>
   <!-- packages/opencode/src/cli/cmd/providers.ts -->
 - <https://opencode.ai/docs/agents>
