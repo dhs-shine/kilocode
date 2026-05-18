@@ -29,13 +29,8 @@ export function NetworkPrompt(props: { request: SessionNetworkWait }) {
       setCountdown(10)
       return
     }
-    const restored = props.request.time.restored
-    if (restored === undefined) {
-      console.warn("session.network restored without restore time", props.request.id)
-      setCountdown(0)
-      return
-    }
-    const remaining = () => Math.max(0, 10 - Math.floor((Date.now() - restored) / 1000))
+    const started = Date.now()
+    const remaining = () => Math.max(0, 10 - Math.floor((Date.now() - started) / 1000))
     setCountdown(remaining())
     const timer = setInterval(() => {
       const next = remaining()
