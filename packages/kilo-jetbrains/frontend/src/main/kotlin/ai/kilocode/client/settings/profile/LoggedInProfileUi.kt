@@ -2,6 +2,7 @@ package ai.kilocode.client.settings.profile
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.ProfileDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.ComboBox
@@ -12,9 +13,13 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
+import java.awt.KeyboardFocusManager
+import java.awt.event.FocusEvent
+import java.awt.event.FocusListener
 import java.text.DecimalFormat
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingConstants
 
@@ -28,6 +33,10 @@ internal class LoggedInProfileUi(
     private val organization: (String?) -> Unit,
     private val refresh: () -> Unit,
 ) : BorderLayoutPanel() {
+
+    companion object {
+        private val LOG = KiloLog.create(LoggedInProfileUi::class.java)
+    }
 
     private val nameLabel = JBLabel().also { RelativeFont.BOLD.install(it) }
     private val emailLabel = JBLabel().apply {
@@ -103,25 +112,49 @@ internal class LoggedInProfileUi(
 
     private var applying = false
     private var refreshing = false
-    private var currentProf: ProfileDto? = null
+    // Stable identity cache: (orgId or null for personal) to display name.
+    // Reflects what is currently shown in the retained combo model.
+    private var comboKeys: List<Pair<String?, String>> = emptyList()
+    // The orgId that was current as of the last applied profile update.
+    private var currentOrgId: String? = null
 
     init {
+        combo.addFocusListener(object : FocusListener {
+            override fun focusGained(e: FocusEvent) = logFocus("gained", e)
+            override fun focusLost(e: FocusEvent) = logFocus("lost", e)
+        })
         combo.addActionListener {
-            if (applying) return@addActionListener
-            val prof = currentProf ?: return@addActionListener
+            if (applying) return@addActionListener  // programmatic update — suppress RPC
             val idx = combo.selectedIndex
-            if (idx < 0) return@addActionListener
-            val orgId = if (idx == 0) null else prof.organizations.getOrNull(idx - 1)?.id ?: return@addActionListener
-            val current = prof.currentOrgId
-            if (orgId == current) return@addActionListener
+            if (idx < 0 || idx >= comboKeys.size) return@addActionListener
+            val orgId = comboKeys[idx].first
+            // currentOrgId reflects the last profile applied by applyOrganizations.
+            // applying=true during model/selection changes prevents re-entry here.
+            if (orgId == currentOrgId) return@addActionListener
             organization(orgId)
         }
         addToTop(content)
     }
 
-    fun update(profile: ProfileDto, accounts: Boolean = true) {
-        currentProf = profile
+    fun preferredFocus(): JComponent = if (combo.isVisible) combo else dashboardBtn
 
+    private fun logFocus(kind: String, e: FocusEvent) {
+        val edge = if (kind == "lost") "to" else "from"
+        val mode = if (e.isTemporary) "temporary" else "permanent"
+        val peer = e.oppositeComponent?.let {
+            "${it.javaClass.name} name=${it.name ?: "-"} showing=${it.isShowing} visible=${it.isVisible}"
+        } ?: "unknown"
+        val owner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner?.let {
+            "${it.javaClass.name} name=${it.name ?: "-"}"
+        } ?: "unknown"
+        LOG.info(
+            "org combo focus $kind [$mode] $edge=$peer owner=$owner " +
+                    "popup=${combo.isPopupVisible} selected=${combo.selectedIndex} " +
+                    "size=${comboModel.size} visible=${combo.isVisible} showing=${combo.isShowing}",
+        )
+    }
+
+    fun update(profile: ProfileDto) {
         val display = profile.name?.takeIf { it.isNotBlank() } ?: profile.email
         if (nameLabel.text != display) nameLabel.text = display
 
@@ -149,7 +182,7 @@ internal class LoggedInProfileUi(
             }
         }
 
-        if (accounts) applyOrganizations(profile)
+        applyOrganizations(profile)
         if (changed) syncLayout()
     }
 
@@ -171,19 +204,20 @@ internal class LoggedInProfileUi(
 
     private fun applyOrganizations(profile: ProfileDto) {
         val orgs = profile.organizations
-        val options = listOf(KiloBundle.message("profile.personalAccount")) +
-                orgs.map { it.name }
+        val keys: List<Pair<String?, String>> = listOf(null to KiloBundle.message("profile.personalAccount")) +
+                orgs.map { it.id to it.name }
 
         val target = profile.currentOrgId
             ?.let { id -> orgs.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.plus(1) }
             ?: 0
 
+        currentOrgId = profile.currentOrgId
+
         applying = true
         try {
-            val existing = (0 until comboModel.size).map { comboModel.getElementAt(it) }
-            if (existing != options) {
-                comboModel.removeAllElements()
-                options.forEach { comboModel.addElement(it) }
+            if (keys != comboKeys) {
+                comboKeys = keys
+                syncModel(keys)
             }
             if (combo.selectedIndex != target) combo.selectedIndex = target
         } finally {
@@ -194,6 +228,33 @@ internal class LoggedInProfileUi(
         if (combo.isVisible != show) {
             combo.isVisible = show
             syncLayout()
+        }
+    }
+
+    /**
+     * Reconcile [comboModel] with [keys] in place — never empties the model.
+     *
+     * - Trim excess elements from the tail (avoids transient empty state).
+     * - Update or append each position by name.
+     * This keeps the model always non-empty during changes, preserving popup/focus state.
+     */
+    private fun syncModel(keys: List<Pair<String?, String>>) {
+        if (comboModel.size == 0) {
+            keys.forEach { comboModel.addElement(it.second) }
+            return
+        }
+        // Remove excess from the end first so indices stay stable during updates below.
+        while (comboModel.size > keys.size) {
+            comboModel.removeElementAt(comboModel.size - 1)
+        }
+        keys.forEachIndexed { i, (_, name) ->
+            if (i >= comboModel.size) {
+                comboModel.addElement(name)
+            } else if (comboModel.getElementAt(i) != name) {
+                // Insert new name before the stale one, then remove stale — never leaves a gap.
+                comboModel.insertElementAt(name, i)
+                comboModel.removeElementAt(i + 1)
+            }
         }
     }
 }

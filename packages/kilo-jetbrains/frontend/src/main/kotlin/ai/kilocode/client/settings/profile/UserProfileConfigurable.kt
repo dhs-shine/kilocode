@@ -2,8 +2,11 @@ package ai.kilocode.client.settings.profile
 
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.SearchableConfigurable
+import com.intellij.openapi.wm.IdeFocusManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -27,10 +30,20 @@ class UserProfileConfigurable : SearchableConfigurable {
     private var ui: JComponent? = null
     private var scope: CoroutineScope? = null
     private var watchJob: Job? = null
+    private var focus = false
 
     override fun getId(): String = ID
 
     override fun getDisplayName(): String = KiloBundle.message("settings.profile.displayName")
+
+    override fun getPreferredFocusedComponent(): JComponent? = (ui as? ProfileUi)?.preferredFocus()
+
+    override fun focusOn(label: String) {
+        if (label != FOCUS_ACCOUNT_COMBO) return
+        focus = true
+        val panel = ui as? ProfileUi ?: return
+        requestFocus(panel)
+    }
 
     override fun createComponent(): JComponent {
         val cs = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -38,7 +51,18 @@ class UserProfileConfigurable : SearchableConfigurable {
         val panel = buildPanel(cs)
         ui = panel
         startWatching(cs, panel)
+        if (focus) requestFocus(panel)
         return panel
+    }
+
+    private fun requestFocus(panel: ProfileUi) {
+        val app = ApplicationManager.getApplication()
+        app.invokeLater({
+            app.invokeLater({
+                val target = panel.preferredFocus()
+                if (target.isShowing) IdeFocusManager.getGlobalInstance().requestFocus(target, true)
+            }, ModalityState.any())
+        }, ModalityState.any())
     }
 
     private fun buildPanel(cs: CoroutineScope): ProfileUi {
@@ -51,7 +75,7 @@ class UserProfileConfigurable : SearchableConfigurable {
         watchJob = cs.launch {
             app.state.collect { state ->
                 withContext(edt) {
-                    panel.update(state.profile, state.status)
+                    panel.update(state)
                 }
             }
         }
@@ -76,5 +100,6 @@ class UserProfileConfigurable : SearchableConfigurable {
 
     companion object {
         const val ID = "ai.kilocode.jetbrains.settings.profile"
+        const val FOCUS_ACCOUNT_COMBO = "kilo.profile.account.combo"
     }
 }

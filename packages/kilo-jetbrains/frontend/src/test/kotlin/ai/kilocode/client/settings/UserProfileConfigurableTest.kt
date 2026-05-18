@@ -5,9 +5,11 @@ import ai.kilocode.client.settings.profile.ProfileUi
 import ai.kilocode.client.testing.FakeAppRpcApi
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
+import ai.kilocode.rpc.dto.LoadProgressDto
 import ai.kilocode.rpc.dto.ProfileBalanceDto
 import ai.kilocode.rpc.dto.ProfileDto
 import ai.kilocode.rpc.dto.ProfileOrganizationDto
+import ai.kilocode.rpc.dto.ProfileStatusDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
@@ -28,6 +30,8 @@ import javax.swing.JPanel
 import javax.swing.JTextField
 import javax.swing.SwingConstants
 import javax.swing.SwingUtilities
+import javax.swing.event.ListDataEvent
+import javax.swing.event.ListDataListener
 
 @Suppress("UnstableApiUsage")
 class UserProfileConfigurableTest : BasePlatformTestCase() {
@@ -251,19 +255,27 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
             organizations = orgs,
             balance = ProfileBalanceDto(10.0),
         )
-        val org = personal.copy(balance = ProfileBalanceDto(25.0), currentOrgId = "org_1")
-        rpc.fakeProfile = personal
-        rpc.orgProfiles["org_1"] = org
         app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = personal)
+
+        // A transient null profile update with PENDING progress (e.g. mid-switch state from collector)
+        // must keep the logged-in card visible and not reset combo selection.
+        val transientState = KiloAppStateDto(
+            status = KiloAppStatusDto.READY,
+            profile = null,
+            progress = LoadProgressDto(profile = ProfileStatusDto.PENDING),
+        )
 
         edt {
             panel.update(personal, KiloAppStatusDto.READY)
+            // Simulate user switching org — sets selectedIndex to 1
             combos(panel).single().selectedIndex = 1
-            panel.update(null, KiloAppStatusDto.READY)
+            // State-collector fires a transient null before RPC completes
+            panel.update(transientState)
 
             val t = text(panel)
             assertTrue(t, t.contains("Alice"))
             assertFalse(t, t.contains("Not logged in"))
+            // Combo selection must not be reset by the transient update
             assertEquals(1, combos(panel).single().selectedIndex)
         }
     }
@@ -450,6 +462,130 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         flush()
     }
 
+    fun `test combo model not rebuilt when org list unchanged during switch`() {
+        val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val personal = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs,
+            balance = ProfileBalanceDto(10.0),
+        )
+        val switched = personal.copy(balance = ProfileBalanceDto(25.0), currentOrgId = "org_1")
+        rpc.fakeProfile = personal
+        rpc.orgProfiles["org_1"] = switched
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = personal)
+        edt { panel.update(personal, KiloAppStatusDto.READY) }
+
+        val combo = edt { combos(panel).single() }
+
+        // Track any removals from the model
+        var removals = 0
+        edt {
+            combo.model.addListDataListener(object : ListDataListener {
+                override fun intervalAdded(e: ListDataEvent) {}
+                override fun intervalRemoved(e: ListDataEvent) { removals++ }
+                override fun contentsChanged(e: ListDataEvent) {}
+            })
+        }
+
+        // Switch org — same org list, only balance and currentOrgId change
+        edt { combo.selectedIndex = 1 }
+        flush()
+
+        edt {
+            // Combo should reflect org selection
+            assertEquals(1, combos(panel).single().selectedIndex)
+            // Same combo instance retained
+            assertSame(combo, combos(panel).single())
+            // Model should never have been cleared — org list is identical
+            assertEquals("combo model should not be cleared for unchanged org list", 0, removals)
+        }
+    }
+
+    fun `test combo model not rebuilt on balance change with same org list`() {
+        val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val profile = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs,
+            currentOrgId = "org_1",
+            balance = ProfileBalanceDto(10.0),
+        )
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile)
+        edt { panel.update(profile, KiloAppStatusDto.READY) }
+
+        val combo = edt { combos(panel).single() }
+
+        var removals = 0
+        edt {
+            combo.model.addListDataListener(object : ListDataListener {
+                override fun intervalAdded(e: ListDataEvent) {}
+                override fun intervalRemoved(e: ListDataEvent) { removals++ }
+                override fun contentsChanged(e: ListDataEvent) {}
+            })
+        }
+
+        // Update with same orgs but different balance — model should not be rebuilt
+        val updated = profile.copy(balance = ProfileBalanceDto(99.0))
+        edt { panel.update(updated, KiloAppStatusDto.READY) }
+
+        edt {
+            assertEquals("removals should be 0 for unchanged org list", 0, removals)
+            assertEquals("selection should remain at org_1 index", 1, combos(panel).single().selectedIndex)
+            assertTrue(text(panel).contains("\$99.00"))
+        }
+    }
+
+    fun `test combo model updated in place when org list changes`() {
+        val orgs1 = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val orgs2 = listOf(
+            ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"),
+            ProfileOrganizationDto(id = "org_2", name = "Beta", role = "MEMBER"),
+        )
+        val profile1 = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs1,
+            currentOrgId = "org_1",
+        )
+        val profile2 = profile1.copy(organizations = orgs2, currentOrgId = "org_2")
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile1)
+        edt { panel.update(profile1, KiloAppStatusDto.READY) }
+
+        val combo = edt { combos(panel).single() }
+        // Track that the model was never emptied (no removeAllElements-style full clear)
+        var minSizeDuringUpdate = Int.MAX_VALUE
+        edt {
+            combo.model.addListDataListener(object : ListDataListener {
+                override fun intervalAdded(e: ListDataEvent) {
+                    minSizeDuringUpdate = minOf(minSizeDuringUpdate, combo.model.size)
+                }
+                override fun intervalRemoved(e: ListDataEvent) {
+                    minSizeDuringUpdate = minOf(minSizeDuringUpdate, combo.model.size)
+                }
+                override fun contentsChanged(e: ListDataEvent) {}
+            })
+        }
+
+        edt { panel.update(profile2, KiloAppStatusDto.READY) }
+
+        edt {
+            val c = combos(panel).single()
+            // Same combo instance retained — never replaced
+            assertSame(combo, c)
+            // 3 items: personal + org_1 + org_2
+            assertEquals(3, c.itemCount)
+            assertEquals("Beta", c.getItemAt(2))
+            // Selection is at org_2
+            assertEquals(2, c.selectedIndex)
+            // Model was never fully emptied during the update
+            assertTrue(
+                "combo model must never become empty during org list change",
+                minSizeDuringUpdate > 0,
+            )
+        }
+    }
+
     fun `test profile update does not trigger organization rpc`() {
         val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
         val profile = ProfileDto(
@@ -463,6 +599,124 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         edt { panel.update(profile.copy(currentOrgId = "org_1"), KiloAppStatusDto.READY) }
         flush()
         assertTrue(rpc.orgSelections.isEmpty())
+    }
+
+    fun `test connecting while logged in keeps logged-in card visible`() {
+        val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val profile = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs,
+            balance = ProfileBalanceDto(10.0),
+        )
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile)
+        edt { panel.update(profile, KiloAppStatusDto.READY) }
+
+        // Simulate reconnect: CONNECTING with null profile (CLI restarting)
+        edt { panel.update(null, KiloAppStatusDto.CONNECTING) }
+
+        edt {
+            val t = text(panel)
+            assertTrue("logged-in card must stay visible during reconnect", t.contains("Alice"))
+            assertFalse("logged-out card must not show during reconnect", t.contains("Not logged in"))
+            // combo selection must be retained
+            assertEquals(0, combos(panel).single().selectedIndex)
+        }
+    }
+
+    fun `test loading while logged in keeps logged-in card visible`() {
+        val profile = ProfileDto(email = "alice@test.com", name = "Alice")
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile)
+        edt { panel.update(profile, KiloAppStatusDto.READY) }
+
+        // Simulate org switch in progress: LOADING with profile cleared
+        edt { panel.update(null, KiloAppStatusDto.LOADING) }
+
+        edt {
+            val t = text(panel)
+            assertTrue("logged-in card must stay visible during loading", t.contains("Alice"))
+            assertFalse("logged-out card must not show during loading", t.contains("Not logged in"))
+        }
+    }
+
+    fun `test loading with null profile while logged in does not crash`() {
+        val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val profile = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs,
+            currentOrgId = "org_1",
+            balance = ProfileBalanceDto(10.0),
+        )
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile)
+        edt { panel.update(profile, KiloAppStatusDto.READY) }
+
+        // Account switch: backend emits LOADING state with no profile yet
+        // Must not throw NullPointerException on account.update(prof!!)
+        edt { panel.update(KiloAppStateDto(KiloAppStatusDto.LOADING)) }
+
+        edt {
+            // Logged-in card stays, stale content still shown until new profile arrives
+            val t = text(panel)
+            assertTrue("logged-in card must stay visible", t.contains("Alice"))
+            assertFalse("must not flip to logged-out", t.contains("Not logged in"))
+            assertEquals("combo selection must be retained", 1, combos(panel).single().selectedIndex)
+        }
+
+        // Profile arrives — UI updates with new data
+        val switched = profile.copy(currentOrgId = null, balance = ProfileBalanceDto(5.0))
+        edt { panel.update(switched, KiloAppStatusDto.READY) }
+
+        edt {
+            assertTrue(text(panel).contains("\$5.00"))
+        }
+    }
+
+    fun `test connecting while logged in with org selected keeps combo selection`() {
+        val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val profile = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs,
+            currentOrgId = "org_1",
+            balance = ProfileBalanceDto(10.0),
+        )
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile)
+        edt {
+            panel.update(profile, KiloAppStatusDto.READY)
+            combos(panel).single().selectedIndex = 1
+        }
+
+        edt { panel.update(null, KiloAppStatusDto.CONNECTING) }
+
+        edt {
+            val t = text(panel)
+            assertTrue("logged-in card must stay visible", t.contains("Alice"))
+            assertEquals("combo selection must not reset during reconnect", 1, combos(panel).single().selectedIndex)
+        }
+    }
+
+    fun `test preferred focus for logged-in is combo when visible`() {
+        val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val profile = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs,
+        )
+        edt {
+            panel.update(profile, KiloAppStatusDto.READY)
+            val focus = panel.preferredFocus()
+            assertTrue("preferred focus should be combo for logged-in with orgs", focus is javax.swing.JComboBox<*>)
+        }
+    }
+
+    fun `test preferred focus for logged-out is login button`() {
+        edt {
+            val focus = panel.preferredFocus()
+            val loginBtn = buttons(panel).firstOrNull { it.text == "Login with Kilo Code" }
+            assertNotNull("login button not found", loginBtn)
+            assertSame("preferred focus should be login button for logged-out", loginBtn, focus)
+        }
     }
 
     // -- helpers --

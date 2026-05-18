@@ -2,8 +2,10 @@ package ai.kilocode.client.settings.profile
 
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.ProfileDto
+import ai.kilocode.rpc.dto.ProfileStatusDto
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
@@ -17,13 +19,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import java.awt.CardLayout
+import javax.swing.JComponent
 import javax.swing.JPanel
 
 internal const val DASHBOARD_URL = "https://app.kilo.ai/profile"
 
 internal val edt = Dispatchers.EDT + ModalityState.any().asContextElement()
 
-private enum class Card { OUT, IN }
+private enum class Card { LOGGED_OUT, LOGGED_IN }
 
 /**
  * Retained top-level profile UI component.
@@ -59,41 +62,74 @@ internal class ProfileUi(
     private var status = status
     private var login: LoginState = LoginState.Idle
     private var attempt = 0
-    private var card: Card? = null
-    private var switching = false
+    private var shown: Card? = null
 
     init {
-        cards.add(out, Card.OUT.name)
-        cards.add(account, Card.IN.name)
+        cards.add(out, Card.LOGGED_OUT.name)
+        cards.add(account, Card.LOGGED_IN.name)
         add(cards, BorderLayout.NORTH)
         sync()
     }
 
-    fun update(profile: ProfileDto?, status: KiloAppStatusDto, accounts: Boolean = true) {
+    fun preferredFocus(): JComponent = when (targetCard()) {
+        Card.LOGGED_IN -> account.preferredFocus()
+        Card.LOGGED_OUT -> out.preferredFocus()
+    }
+
+    /**
+     * Update from a full app state snapshot.
+     *
+     * A null profile is only treated as transient (keep the logged-in card without updating
+     * account content) when [KiloAppStateDto.progress]`.profile` is [ProfileStatusDto.PENDING],
+     * meaning a switch or initial load is still in flight. Any other null (no progress,
+     * NOT_LOGGED_IN, etc.) clears the profile and shows the logged-out card.
+     */
+    fun update(state: KiloAppStateDto) {
+        checkEdt()
+        this.status = state.status
+        val transient = state.profile == null && state.progress?.profile == ProfileStatusDto.PENDING
+        when {
+            state.profile != null -> {
+                prof = state.profile
+                login = LoginState.Idle
+            }
+            transient -> { /* keep existing prof and account UI untouched */ }
+            else -> prof = null
+        }
+        sync(skipAccount = transient)
+    }
+
+    /**
+     * Convenience overload for callers that already hold separate profile/status values
+     * (login flow, direct tests). Null profile clears [prof] only when there is no existing
+     * profile; otherwise keeps the logged-in card visible without updating account content.
+     * Callers that pass null always provide a state fallback (`profile ?: state.profile`),
+     * so this branch is not reachable in production — it exists for transient-null tests.
+     */
+    fun update(profile: ProfileDto?, status: KiloAppStatusDto) {
         checkEdt()
         this.status = status
-        val was = switching
+        val transient = profile == null && prof != null
         if (profile != null) {
             prof = profile
             login = LoginState.Idle
-            this.switching = false
-        } else if (!was || prof == null) {
+        } else if (!transient) {
             prof = null
         }
-        sync(accounts && !(was && profile == null))
+        sync(skipAccount = transient)
     }
 
-    private fun sync(accounts: Boolean = true) {
+    private fun sync(skipAccount: Boolean = false) {
         checkEdt()
         val target = targetCard()
-        if (target == Card.OUT) {
+        if (target == Card.LOGGED_OUT) {
             out.update(status, login)
-        } else {
-            account.update(prof!!, accounts)
+        } else if (!skipAccount) {
+            prof?.let { account.update(it) }
         }
-        if (card != target) {
+        if (shown != target) {
             cardLayout.show(cards, target.name)
-            card = target
+            shown = target
             revalidate()
             repaint()
         }
@@ -102,18 +138,21 @@ internal class ProfileUi(
     private fun targetCard(): Card {
         val s = status
         val p = prof
+        // When loading/connecting and already showing the logged-in card, stay on it to
+        // avoid focus loss during reconnects, initial loads, and org switches.
+        val transientLoad = s == KiloAppStatusDto.CONNECTING || s == KiloAppStatusDto.LOADING
+        if (transientLoad && shown == Card.LOGGED_IN) return Card.LOGGED_IN
         return when {
-            s == KiloAppStatusDto.DISCONNECTED || s == KiloAppStatusDto.CONNECTING -> Card.OUT
-            s == KiloAppStatusDto.ERROR -> Card.OUT
-            p == null -> Card.OUT
-            else -> Card.IN
+            s == KiloAppStatusDto.DISCONNECTED || transientLoad -> Card.LOGGED_OUT
+            s == KiloAppStatusDto.ERROR -> Card.LOGGED_OUT
+            p == null -> Card.LOGGED_OUT
+            else -> Card.LOGGED_IN
         }
     }
 
     private fun applyState() {
         checkEdt()
-        val state = app.state.value
-        update(state.profile, state.status)
+        update(app.state.value)
     }
 
     private fun checkEdt() {
@@ -165,10 +204,9 @@ internal class ProfileUi(
             try {
                 val ok = app.logout()
                 if (!ok) return@launch
-                val state = app.state.value
                 withContext(edt) {
                     login = LoginState.Idle
-                    update(state.profile, state.status)
+                    applyState()
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -181,20 +219,17 @@ internal class ProfileUi(
     }
 
     private fun organization(org: String?) {
-        switching = true
         cs.launch {
             try {
                 val profile = app.setOrganization(org)
                 val state = app.state.value
                 withContext(edt) {
-                    switching = false
-                    update(profile ?: state.profile, state.status, accounts = false)
+                    update(profile ?: state.profile, state.status)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 withContext(edt) {
-                    switching = false
                     applyState()
                 }
             }

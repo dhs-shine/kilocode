@@ -22,6 +22,7 @@ import java.awt.event.FocusEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingConstants
 import javax.swing.Timer
@@ -318,6 +319,8 @@ internal class LoggedOutProfileUi(
             repaint()
         }
     }
+
+    fun preferredFocus(): JComponent = loginBtn
 
     private fun resolveMode(status: KiloAppStatusDto, login: LoginState): OutMode = when {
         status == KiloAppStatusDto.DISCONNECTED || status == KiloAppStatusDto.CONNECTING -> OutMode.CONNECTING

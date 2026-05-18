@@ -30,7 +30,7 @@ class ShowProfileAction : DumbAwareAction(
             Predicate { cfg: Configurable ->
                 cfg is ConfigurableWithId && cfg.getId() == UserProfileConfigurable.ID
             },
-            null,
+            { cfg: Configurable -> cfg.focusOn(UserProfileConfigurable.FOCUS_ACCOUNT_COMBO) },
         )
     }
 
