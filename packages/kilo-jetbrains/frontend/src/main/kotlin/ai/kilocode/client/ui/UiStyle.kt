@@ -43,6 +43,15 @@ object UiStyle {
         /** Uses the editor background so chat cards feel native beside editor content. */
         fun editorBackground(): Color = JBColor.lazy { EditorColorsManager.getInstance().globalScheme.defaultBackground }
 
+        /**
+         * Card surface background: white in light themes, black in dark themes.
+         * Used for profile cards that need strong contrast against the panel background.
+         */
+        fun cardBg(): Color = JBColor(Color.WHITE, Color.BLACK)
+
+        /** Card border color shared across profile cards. */
+        fun cardBorder(): Color = JBColor.namedColor("Component.borderColor", JBColor.border())
+
         fun errorLabelForeground(): Color = JBColor.namedColor("Label.errorForeground", UIUtil.getErrorForeground())
 
         fun warningLabelForeground(): Color = JBColor.lazy {

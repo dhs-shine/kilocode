@@ -24,7 +24,9 @@ import javax.swing.AbstractButton
 import javax.swing.JComboBox
 import javax.swing.JEditorPane
 import javax.swing.JLabel
+import javax.swing.JPanel
 import javax.swing.JTextField
+import javax.swing.SwingConstants
 import javax.swing.SwingUtilities
 
 @Suppress("UnstableApiUsage")
@@ -154,6 +156,7 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
             panel.setSize(800, 600)
             layout(panel)
             val refresh = buttons(panel).first { it.text == "Refresh" }
+            assertFalse(refresh.isContentAreaFilled)
             val card = refresh.parent
             val dash = buttons(panel).first { it.text == "Dashboard" }
             val cardLoc = SwingUtilities.convertPoint(card.parent, card.location, panel)
@@ -371,6 +374,82 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         flush()
     }
 
+    fun `test auth card step labels are left aligned`() {
+        rpc.fakeProfile = ProfileDto(email = "alice@test.com", name = "Alice")
+        rpc.completeGate = CompletableDeferred()
+
+        edt { buttons(panel).first { it.text == "Login with Kilo Code" }.doClick() }
+        flushUntil { text(panel).contains("Sign in to Kilo Code") }
+
+        edt {
+            val step1 = labels(panel).firstOrNull { it.text == "STEP 1: OPEN THIS URL" }
+            val step2 = labels(panel).firstOrNull { it.text == "STEP 2: ENTER THIS CODE" }
+            assertNotNull("STEP 1 label not found", step1)
+            assertNotNull("STEP 2 label not found", step2)
+            assertEquals("STEP 1 label should be left aligned", SwingConstants.LEFT, step1!!.horizontalAlignment)
+            assertEquals("STEP 2 label should be left aligned", SwingConstants.LEFT, step2!!.horizontalAlignment)
+        }
+
+        edt { rpc.completeGate!!.complete(Unit) }
+        flush()
+    }
+
+    fun `test url field selects all on click`() {
+        rpc.fakeProfile = ProfileDto(email = "alice@test.com", name = "Alice")
+        rpc.completeGate = CompletableDeferred()
+
+        edt { buttons(panel).first { it.text == "Login with Kilo Code" }.doClick() }
+        flushUntil { text(panel).contains("Sign in to Kilo Code") }
+
+        edt {
+            val field = fieldsByName(panel, "kilo.login.url").firstOrNull()
+            assertNotNull("URL field not found", field)
+            // Verify the field has focus/mouse listeners wired for selectAll
+            assertTrue("URL field should have focus listeners", field!!.focusListeners.isNotEmpty())
+            assertTrue("URL field should have mouse listeners", field.mouseListeners.isNotEmpty())
+        }
+
+        edt { rpc.completeGate!!.complete(Unit) }
+        flush()
+    }
+
+    fun `test balance card has card background`() {
+        val profile = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            balance = ProfileBalanceDto(10.0),
+        )
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile)
+        edt { panel.update(profile, KiloAppStatusDto.READY) }
+
+        edt {
+            val card = panelsByName(panel, "kilo.profile.balanceCard").firstOrNull()
+            assertNotNull("Balance card not found", card)
+            assertFalse("Balance card should paint its own rounded background", card!!.isOpaque)
+            assertNotNull("Balance card background should not be null", card.background)
+            val inner = panels(card).filter { it !== card }
+            assertTrue("Balance card internals should be transparent", inner.all { !it.isOpaque })
+        }
+    }
+
+    fun `test code panel has card background`() {
+        rpc.fakeProfile = ProfileDto(email = "alice@test.com", name = "Alice")
+        rpc.completeGate = CompletableDeferred()
+
+        edt { buttons(panel).first { it.text == "Login with Kilo Code" }.doClick() }
+        flushUntil { text(panel).contains("Sign in to Kilo Code") }
+
+        edt {
+            val codePanel = panelsByName(panel, "kilo.login.codePanel").firstOrNull()
+            assertNotNull("Code panel not found", codePanel)
+            assertFalse("Code panel should paint its own rounded background", codePanel!!.isOpaque)
+            assertNotNull("Code panel background should not be null", codePanel.background)
+        }
+
+        edt { rpc.completeGate!!.complete(Unit) }
+        flush()
+    }
+
     fun `test profile update does not trigger organization rpc`() {
         val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
         val profile = ProfileDto(
@@ -401,6 +480,27 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         for (comp in root.components) {
             if (comp is JLabel && comp.name == name) add(comp)
             if (comp is Container) addAll(labelsByName(comp, name))
+        }
+    }
+
+    private fun fieldsByName(root: Container, name: String): List<JTextField> = buildList {
+        for (comp in root.components) {
+            if (comp is JTextField && comp.name == name) add(comp)
+            if (comp is Container) addAll(fieldsByName(comp, name))
+        }
+    }
+
+    private fun panelsByName(root: Container, name: String): List<JPanel> = buildList {
+        for (comp in root.components) {
+            if (comp is JPanel && comp.name == name) add(comp)
+            if (comp is Container) addAll(panelsByName(comp, name))
+        }
+    }
+
+    private fun panels(root: Container): List<JPanel> = buildList {
+        if (root is JPanel) add(root)
+        for (comp in root.components) {
+            if (comp is Container) addAll(panels(comp))
         }
     }
 

@@ -5,9 +5,7 @@ import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.ProfileDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.ComboBox
-import com.intellij.ui.JBColor
 import com.intellij.ui.RelativeFont
-import com.intellij.ui.RoundedLineBorder
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
@@ -46,6 +44,8 @@ internal class LoggedInProfileUi(
     }
     private val refreshBtn = JButton(KiloBundle.message("profile.action.refresh"), AllIcons.Actions.Refresh)
         .also {
+            it.isOpaque = false
+            it.isContentAreaFilled = false
             it.addActionListener {
                 if (refreshing) return@addActionListener
                 setRefreshing(true)
@@ -53,13 +53,11 @@ internal class LoggedInProfileUi(
             }
         }
 
-    private val balanceCard = BorderLayoutPanel().apply {
-        border = JBUI.Borders.compound(
-            RoundedLineBorder(JBColor.border(), UiStyle.Arc.component()),
-            JBUI.Borders.empty(UiStyle.Gap.pad(), UiStyle.Gap.xl()),
-        )
+    private val balanceCard = ProfileCardPanel(UiStyle.Gap.pad(), UiStyle.Gap.xl()).apply {
+        name = "kilo.profile.balanceCard"
         addToTop(titleLabel)
         addToCenter(JPanel(GridBagLayout()).apply {
+            isOpaque = false
             add(valueLabel, GridBagConstraints().apply {
                 gridx = 0; gridy = 0; anchor = GridBagConstraints.CENTER
             })

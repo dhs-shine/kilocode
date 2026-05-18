@@ -4,7 +4,8 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import com.intellij.icons.AllIcons
-import com.intellij.ui.JBColor
+import com.intellij.openapi.ide.CopyPasteManager
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.AsyncProcessIcon
@@ -15,12 +16,12 @@ import java.awt.FlowLayout
 import java.awt.Font
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
-import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JButton
-import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.SwingConstants
 import javax.swing.Timer
@@ -68,10 +69,17 @@ internal class LoggedOutProfileUi(
     }
 
     // -- retained auth card components --
-    private val urlField = JBTextField().apply {
+    val urlField = JBTextField().apply {
         isEditable = false
         name = "kilo.login.url"
         columns = 30
+        // Select all on focus so clicking the field selects the whole URL
+        addFocusListener(object : FocusAdapter() {
+            override fun focusGained(e: FocusEvent) = selectAll()
+        })
+        addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) = selectAll()
+        })
     }
 
     val qrLabel = JBLabel().apply {
@@ -81,16 +89,12 @@ internal class LoggedOutProfileUi(
         accessibleContext.accessibleDescription = KiloBundle.message("profile.login.qr.description")
     }
 
-    private val codePanel = JPanel(BorderLayout()).apply {
-        toolTipText = KiloBundle.message("profile.login.clickToCopy")
-        border = JBUI.Borders.compound(
-            JBUI.Borders.customLine(JBColor.namedColor("Component.focusColor", JBColor.border()), 1),
-            JBUI.Borders.empty(UiStyle.Gap.sm(), UiStyle.Gap.md()),
-        )
+    private val codePanel = ProfileCardPanel(UiStyle.Gap.sm(), UiStyle.Gap.md()).apply {
+        name = "kilo.login.codePanel"
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 val c = rawCode ?: return
-                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(c), null)
+                copyToClipboard(c, KiloBundle.message("profile.login.codeCopied"), this@LoggedOutProfileUi)
             }
         })
     }
@@ -117,7 +121,7 @@ internal class LoggedOutProfileUi(
     }
 
     // -- step 2 label reference for visibility toggling --
-    private var step2Label: JLabel? = null
+    private var step2Label: JBLabel? = null
 
     // -- countdown state --
     private var rawCode: String? = null
@@ -198,7 +202,7 @@ internal class LoggedOutProfileUi(
 
         p.add(JBLabel(KiloBundle.message("profile.login.step.url")).apply {
             foreground = UiStyle.Colors.weak()
-            horizontalAlignment = SwingConstants.CENTER
+            horizontalAlignment = SwingConstants.LEFT
         }, gbc(row++, UiStyle.Gap.md()))
 
         p.add(urlRow(), gbc(row++, UiStyle.Gap.sm()))
@@ -207,7 +211,7 @@ internal class LoggedOutProfileUi(
 
         val s2 = JBLabel(KiloBundle.message("profile.login.step.code")).apply {
             foreground = UiStyle.Colors.weak()
-            horizontalAlignment = SwingConstants.CENTER
+            horizontalAlignment = SwingConstants.LEFT
         }
         step2Label = s2
         p.add(s2, gbc(row++, UiStyle.Gap.md()))
@@ -227,9 +231,10 @@ internal class LoggedOutProfileUi(
     }
 
     private fun urlRow(): JPanel {
-        val row = JPanel(BorderLayout(UiStyle.Gap.sm(), 0))
+        val gap = UiStyle.Gap.sm()
+        val row = JPanel(BorderLayout(gap, 0))
         row.add(urlField, BorderLayout.CENTER)
-        val btns = JPanel(FlowLayout(FlowLayout.LEFT, UiStyle.Gap.sm(), 0)).apply {
+        val btns = JPanel(FlowLayout(FlowLayout.LEFT, gap, 0)).apply {
             isOpaque = false
             add(copyUrlBtn)
             add(openBtn)
@@ -267,7 +272,7 @@ internal class LoggedOutProfileUi(
                 openBtn.addActionListener { browse(url) }
                 copyUrlBtn.actionListeners.toList().forEach { copyUrlBtn.removeActionListener(it) }
                 copyUrlBtn.addActionListener {
-                    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(url), null)
+                    copyToClipboard(url, KiloBundle.message("profile.login.urlCopied"), copyUrlBtn)
                 }
 
                 // QR code — expensive; only regenerate when URL changes
@@ -351,4 +356,15 @@ internal class LoggedOutProfileUi(
     }
 
     private fun spacedCode(code: String): String = code.map { it.toString() }.joinToString(" ")
+}
+
+/** Copy [text] to the platform clipboard and show a brief confirmation balloon anchored to [anchor]. */
+private fun copyToClipboard(text: String, msg: String, anchor: java.awt.Component) {
+    CopyPasteManager.getInstance().setContents(StringSelection(text))
+    if (anchor is javax.swing.JComponent) {
+        JBPopupFactory.getInstance()
+            .createHtmlTextBalloonBuilder(msg, null, null, null)
+            .createBalloon()
+            .showInCenterOf(anchor)
+    }
 }
