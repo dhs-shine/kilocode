@@ -33,6 +33,7 @@ import javax.swing.ButtonGroup
 import javax.swing.JButton
 import javax.swing.JPanel
 
+/** Question tool form rendered inside the session transcript. */
 class QuestionView(
     private val reply: (String, QuestionReplyDto) -> Unit,
     private val reject: (String) -> Unit,
@@ -443,6 +444,7 @@ class QuestionView(
 
     private fun doReply() {
         val id = request ?: return
+        if (selections.any { it.isEmpty() }) return
         reply(id, QuestionReplyDto(selections.map { it.toList() }))
         hideView()
     }

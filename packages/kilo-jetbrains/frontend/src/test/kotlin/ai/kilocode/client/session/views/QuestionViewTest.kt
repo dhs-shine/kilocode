@@ -110,6 +110,19 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertEquals(listOf(listOf("Minimal")), replies.single().second.answers)
     }
 
+    fun `test submit is disabled until question is answered`() {
+        view.show(singleSelectQuestion("req_required"))
+
+        val submit = button(view, "Submit")
+        assertFalse("Submit should be disabled before selection", submit.isEnabled)
+
+        submit.doClick()
+        assertTrue("Disabled submit should not send a reply", replies.isEmpty())
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+        assertTrue("Submit should be enabled after selection", submit.isEnabled)
+    }
+
     // ------ option label and description ------
 
     fun `test option row aligns label and description beside button`() {
