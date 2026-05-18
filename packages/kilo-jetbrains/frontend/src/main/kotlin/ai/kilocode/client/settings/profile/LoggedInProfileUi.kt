@@ -6,22 +6,18 @@ import ai.kilocode.rpc.dto.ProfileDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.JBColor
+import com.intellij.ui.RelativeFont
 import com.intellij.ui.RoundedLineBorder
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.dsl.builder.AlignX
-import com.intellij.ui.dsl.builder.RightGap
-import com.intellij.ui.dsl.builder.TopGap
-import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.RelativeFont
 import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
-import java.awt.BorderLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.text.DecimalFormat
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
+import javax.swing.JPanel
 import javax.swing.SwingConstants
 
 /**
@@ -63,18 +59,14 @@ internal class LoggedInProfileUi(
             JBUI.Borders.empty(UiStyle.Gap.pad(), UiStyle.Gap.xl()),
         )
         addToTop(titleLabel)
-        addToCenter(GridBagLayout().let { gbl ->
-            BorderLayoutPanel().apply {
-                addToCenter(object : javax.swing.JPanel(gbl) {}.apply {
-                    add(valueLabel, GridBagConstraints().apply {
-                        gridx = 0; gridy = 0; anchor = GridBagConstraints.CENTER
-                    })
-                    add(refreshBtn, GridBagConstraints().apply {
-                        gridx = 0; gridy = 1; anchor = GridBagConstraints.CENTER
-                        insets = JBUI.insetsTop(UiStyle.Gap.pad())
-                    })
-                })
-            }
+        addToCenter(JPanel(GridBagLayout()).apply {
+            add(valueLabel, GridBagConstraints().apply {
+                gridx = 0; gridy = 0; anchor = GridBagConstraints.CENTER
+            })
+            add(refreshBtn, GridBagConstraints().apply {
+                gridx = 0; gridy = 1; anchor = GridBagConstraints.CENTER
+                insets = JBUI.insetsTop(UiStyle.Gap.pad())
+            })
         })
     }
 
@@ -86,15 +78,29 @@ internal class LoggedInProfileUi(
     val logoutBtn = JButton(KiloBundle.message("profile.action.logout"))
         .also { it.addActionListener { logout() } }
 
-    private val content = panel {
-        row { cell(nameLabel) }
-        row { cell(emailLabel) }.topGap(TopGap.SMALL)
-        row { cell(combo).align(AlignX.FILL) }.topGap(TopGap.SMALL)
-        row { cell(balanceCard).align(AlignX.FILL) }.topGap(TopGap.SMALL)
-        row {
-            cell(dashboardBtn).gap(RightGap.SMALL)
-            cell(logoutBtn)
-        }.topGap(TopGap.SMALL)
+    private val actionRow = JPanel(GridBagLayout()).apply {
+        add(dashboardBtn, GridBagConstraints().apply {
+            gridx = 0; gridy = 0; anchor = GridBagConstraints.WEST
+        })
+        add(logoutBtn, GridBagConstraints().apply {
+            gridx = 1; gridy = 0; anchor = GridBagConstraints.WEST
+            insets = JBUI.insetsLeft(UiStyle.Gap.md())
+        })
+    }
+
+    private val rows: List<java.awt.Component> = listOf(nameLabel, emailLabel, combo, balanceCard, actionRow)
+
+    private val content = JPanel(GridBagLayout()).apply {
+        val gap = UiStyle.Gap.lg()
+        rows.forEachIndexed { i, comp ->
+            add(comp, GridBagConstraints().apply {
+                gridx = 0; gridy = i
+                weightx = 1.0
+                fill = GridBagConstraints.HORIZONTAL
+                anchor = GridBagConstraints.WEST
+                insets = if (i == 0) JBUI.emptyInsets() else JBUI.insetsTop(gap)
+            })
+        }
     }
 
     private var applying = false
