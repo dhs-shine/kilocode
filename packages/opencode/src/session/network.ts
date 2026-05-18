@@ -108,6 +108,8 @@ export namespace SessionNetwork {
       {
         info: Types.Mutable<Wait>
         abort: AbortSignal
+        ctl: AbortController
+        delay: number
         resolve: () => void
         reject: (e: unknown) => void
       }
@@ -217,23 +219,23 @@ export namespace SessionNetwork {
     ).catch(() => false)
   }
 
-  async function delay(abort: AbortSignal) {
-    if (abort.aborted) return false
+  async function delay(input: { abort: AbortSignal; ms: number }) {
+    if (input.abort.aborted) return false
     return new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => {
-        abort.removeEventListener("abort", onAbort)
+        input.abort.removeEventListener("abort", onAbort)
         resolve(true)
-      }, RESUME_MS)
+      }, input.ms)
       function onAbort() {
         clearTimeout(timer)
         resolve(false)
       }
-      abort.addEventListener("abort", onAbort, { once: true })
+      input.abort.addEventListener("abort", onAbort, { once: true })
     })
   }
 
-  async function resume(input: { requestID: QuestionID; abort: AbortSignal }) {
-    if (!(await delay(input.abort))) return
+  async function resume(input: { requestID: QuestionID; abort: AbortSignal; ms: number }) {
+    if (!(await delay(input))) return
     const s = await state()
     const req = s.pending.get(input.requestID)
     if (!req || !req.info.restored) return
@@ -254,9 +256,10 @@ export namespace SessionNetwork {
     }
   }
 
-  export async function ask(input: { sessionID: SessionID; message: string; abort: AbortSignal }) {
+  export async function ask(input: { sessionID: SessionID; message: string; abort: AbortSignal; resumeMs?: number }) {
     const s = await state()
     const id = QuestionID.ascending()
+    const ctl = new AbortController()
     const info: Wait = {
       id,
       sessionID: input.sessionID,
@@ -270,6 +273,7 @@ export namespace SessionNetwork {
     const promise = new Promise<void>((resolve, reject) => {
       const onAbort = () => {
         if (!s.pending.has(id)) return
+        ctl.abort()
         input.abort.removeEventListener("abort", onAbort)
         s.pending.delete(id)
         Bus.publish(Event.Rejected, {
@@ -281,11 +285,15 @@ export namespace SessionNetwork {
       s.pending.set(id, {
         info,
         abort: input.abort,
+        ctl,
+        delay: input.resumeMs ?? RESUME_MS,
         resolve: () => {
+          ctl.abort()
           input.abort.removeEventListener("abort", onAbort)
           resolve()
         },
         reject: (err) => {
+          ctl.abort()
           input.abort.removeEventListener("abort", onAbort)
           reject(err)
         },
@@ -322,7 +330,7 @@ export namespace SessionNetwork {
         requestID: req.info.id,
         time,
       })
-      void resume({ requestID, abort: req.abort }).catch((err) => {
+      void resume({ requestID, abort: AbortSignal.any([req.abort, req.ctl.signal]), ms: req.delay }).catch((err) => {
         log.error("auto resume failed", { err, requestID })
       })
     },
@@ -340,6 +348,7 @@ export namespace SessionNetwork {
         log.warn("reply for unknown request", { requestID })
         return
       }
+      req.ctl.abort()
       s.pending.delete(requestID)
       // kilocode_change start — reconnect failed remote MCP servers after network recovery
       void MCP.status()
@@ -376,6 +385,7 @@ export namespace SessionNetwork {
         log.warn("reject for unknown request", { requestID })
         return
       }
+      req.ctl.abort()
       s.pending.delete(requestID)
       Bus.publish(Event.Rejected, {
         sessionID: req.info.sessionID,
