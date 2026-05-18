@@ -18,7 +18,6 @@ import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.FlowLayout
-import java.awt.Font
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Point
@@ -107,7 +106,7 @@ internal class LoggedOutProfileUi(
 
     private val codeLabel = JBLabel().apply {
         horizontalAlignment = SwingConstants.CENTER
-        font = font.deriveFont(Font.BOLD, (font.size * 1.3f))
+        font = UiStyle.Fonts.large()
     }
 
     private val codeHint = JBLabel(KiloBundle.message("profile.login.clickToCopy")).apply {
@@ -202,7 +201,7 @@ internal class LoggedOutProfileUi(
         var row = 0
 
         p.add(JBLabel(KiloBundle.message("profile.login.title")).apply {
-            font = font.deriveFont(Font.BOLD, (font.size * 1.2f))
+            font = UiStyle.Fonts.heading()
             horizontalAlignment = SwingConstants.CENTER
         }, gbc(row++))
 

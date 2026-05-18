@@ -8,7 +8,6 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.RelativeFont
 import com.intellij.ui.components.JBLabel
-import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.GridBagConstraints
@@ -49,7 +48,7 @@ internal class LoggedInProfileUi(
     }
     private val valueLabel = JBLabel().apply {
         horizontalAlignment = SwingConstants.CENTER
-        font = JBFont.h1().asBold()
+        font = UiStyle.Fonts.display()
     }
     private val refreshBtn = JButton(KiloBundle.message("profile.action.refresh"), AllIcons.Actions.Refresh)
         .also {

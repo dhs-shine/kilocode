@@ -2,6 +2,7 @@ package ai.kilocode.client.ui
 
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.ui.JBColor
+import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.Color
@@ -44,10 +45,13 @@ object UiStyle {
         fun editorBackground(): Color = JBColor.lazy { EditorColorsManager.getInstance().globalScheme.defaultBackground }
 
         /**
-         * Card surface background: white in light themes, black in dark themes.
-         * Used for profile cards that need strong contrast against the panel background.
+         * Card surface background: follows the active theme's text-field/input surface.
+         * Uses [UIUtil.getTextFieldBackground] as the semantic platform surface color for
+         * contained panels. Falls back to the panel background when unavailable.
          */
-        fun cardBg(): Color = JBColor(Color.WHITE, Color.BLACK)
+        fun cardBg(): Color = JBColor.lazy {
+            UIManager.getColor("TextField.background") ?: UIUtil.getPanelBackground()
+        }
 
         /** Card border color shared across profile cards. */
         fun cardBorder(): Color = JBColor.namedColor("Component.borderColor", JBColor.border())
@@ -82,6 +86,23 @@ object UiStyle {
 
         internal fun bright(color: Color): Boolean =
             (color.red * 0.299 + color.green * 0.587 + color.blue * 0.114) >= 128
+    }
+
+    /**
+     * Platform typography tokens for use throughout the plugin.
+     *
+     * Use these instead of [java.awt.Font.deriveFont] with manual size multipliers.
+     * All values delegate to [JBFont] helpers which scale with the platform default font.
+     */
+    object Fonts {
+        /** Large display value, e.g. account balance. Maps to [JBFont.h1] bold. */
+        fun display(): JBFont = JBFont.h1().asBold()
+
+        /** Page/section heading, e.g. login card title. Maps to [JBFont.h3] bold. */
+        fun heading(): JBFont = JBFont.h3().asBold()
+
+        /** Prominent short content, e.g. device auth code. Maps to [JBFont.h2] bold. */
+        fun large(): JBFont = JBFont.h2().asBold()
     }
 
     /** Small component helpers that keep repeated Swing setup in one place. */
