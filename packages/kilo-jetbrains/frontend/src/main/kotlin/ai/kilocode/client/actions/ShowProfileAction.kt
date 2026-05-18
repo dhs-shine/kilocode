@@ -1,7 +1,7 @@
 package ai.kilocode.client.actions
 
 import ai.kilocode.client.plugin.KiloBundle
-import ai.kilocode.client.settings.UserProfileConfigurable
+import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent

@@ -9,7 +9,7 @@ import javax.swing.JLabel
  * Parent settings entry under Settings -> Tools -> Kilo.
  *
  * Acts as a group node; actual functionality lives in child configurables
- * (e.g. [UserProfileConfigurable]).
+ * (e.g. [ai.kilocode.client.settings.profile.UserProfileConfigurable]).
  */
 class KiloSettingsConfigurable : Configurable {
 

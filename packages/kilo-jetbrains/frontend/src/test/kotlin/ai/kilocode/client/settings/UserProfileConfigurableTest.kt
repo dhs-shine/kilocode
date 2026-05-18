@@ -1,6 +1,7 @@
 package ai.kilocode.client.settings
 
 import ai.kilocode.client.app.KiloAppService
+import ai.kilocode.client.settings.profile.ProfileUi
 import ai.kilocode.client.testing.FakeAppRpcApi
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
@@ -15,6 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import java.awt.Component
 import java.awt.Container
 import javax.swing.AbstractButton
 import javax.swing.JComboBox
@@ -26,7 +28,7 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
     private lateinit var scope: CoroutineScope
     private lateinit var rpc: FakeAppRpcApi
     private lateinit var app: KiloAppService
-    private lateinit var panel: ProfilePanel
+    private lateinit var panel: ProfileUi
     private val urls = mutableListOf<String>()
 
     override fun setUp() {
@@ -36,7 +38,7 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         app = KiloAppService(scope, rpc)
         app._state.value = KiloAppStateDto(KiloAppStatusDto.READY)
         edt {
-            panel = ProfilePanel(
+            panel = ProfileUi(
                 profile = null,
                 status = KiloAppStatusDto.READY,
                 cs = scope,
@@ -119,8 +121,101 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         assertEquals(listOf("org_1"), rpc.orgSelections)
     }
 
-    private fun edt(block: () -> Unit) {
-        ApplicationManager.getApplication().invokeAndWait(block)
+    fun `test logged out update retains login button`() {
+        edt {
+            val btn = buttons(panel).first { it.text == "Login with Kilo Code" }
+            panel.update(null, KiloAppStatusDto.READY)
+            val btn2 = buttons(panel).first { it.text == "Login with Kilo Code" }
+            assertSame(btn, btn2)
+        }
+    }
+
+    fun `test account update retains name label`() {
+        val alice = ProfileDto(email = "alice@test.com", name = "Alice")
+        val bob = ProfileDto(email = "bob@test.com", name = "Bob")
+        edt {
+            panel.update(alice, KiloAppStatusDto.READY)
+            val lbl = labels(panel).first { it.text == "Alice" }
+            panel.update(bob, KiloAppStatusDto.READY)
+            val lbl2 = labels(panel).first { it.text == "Bob" }
+            assertSame(lbl, lbl2)
+        }
+    }
+
+    fun `test organization switch retains combo`() {
+        val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val personal = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs,
+            balance = ProfileBalanceDto(10.0),
+        )
+        val org = personal.copy(balance = ProfileBalanceDto(25.0), currentOrgId = "org_1")
+        rpc.fakeProfile = personal
+        rpc.orgProfiles["org_1"] = org
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = personal)
+
+        edt { panel.update(personal, KiloAppStatusDto.READY) }
+
+        val captured = edt { combos(panel).single() }
+
+        edt { captured.selectedIndex = 1 }
+        flush()
+
+        edt {
+            val t = text(panel)
+            assertTrue(t, t.contains("\$25.00"))
+            val same = combos(panel).single()
+            assertSame(captured, same)
+        }
+    }
+
+    fun `test organization switch keeps account visible during transient null profile`() {
+        val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val personal = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs,
+            balance = ProfileBalanceDto(10.0),
+        )
+        val org = personal.copy(balance = ProfileBalanceDto(25.0), currentOrgId = "org_1")
+        rpc.fakeProfile = personal
+        rpc.orgProfiles["org_1"] = org
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = personal)
+
+        edt {
+            panel.update(personal, KiloAppStatusDto.READY)
+            combos(panel).single().selectedIndex = 1
+            panel.update(null, KiloAppStatusDto.READY)
+
+            val t = text(panel)
+            assertTrue(t, t.contains("Alice"))
+            assertFalse(t, t.contains("Not logged in"))
+        }
+    }
+
+    fun `test profile update does not trigger organization rpc`() {
+        val orgs = listOf(ProfileOrganizationDto(id = "org_1", name = "Acme", role = "ADMIN"))
+        val profile = ProfileDto(
+            email = "alice@test.com",
+            name = "Alice",
+            organizations = orgs,
+            currentOrgId = "org_1",
+        )
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = profile)
+        edt { panel.update(profile, KiloAppStatusDto.READY) }
+        edt { panel.update(profile.copy(currentOrgId = "org_1"), KiloAppStatusDto.READY) }
+        flush()
+        assertTrue(rpc.orgSelections.isEmpty())
+    }
+
+    // -- helpers --
+
+    private fun <T> edt(block: () -> T): T {
+        var result: T? = null
+        ApplicationManager.getApplication().invokeAndWait { result = block() }
+        @Suppress("UNCHECKED_CAST")
+        return result as T
     }
 
     private fun flush() = runBlocking {
@@ -130,14 +225,31 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
         }
     }
 
-    private fun buttons(root: Container): List<AbstractButton> = root.components.flatMap { comp ->
-        val item = if (comp is AbstractButton) listOf(comp) else emptyList()
-        if (comp is Container) item + buttons(comp) else item
+    private fun visible(comp: Component): Boolean =
+        comp.isVisible && (comp.parent?.let(::visible) ?: true)
+
+    private fun buttons(root: Container): List<AbstractButton> = buildList {
+        for (comp in root.components) {
+            if (!comp.isVisible) continue
+            if (comp is AbstractButton) add(comp)
+            if (comp is Container) addAll(buttons(comp))
+        }
     }
 
-    private fun combos(root: Container): List<JComboBox<*>> = root.components.flatMap { comp ->
-        val item = if (comp is JComboBox<*>) listOf(comp) else emptyList()
-        if (comp is Container) item + combos(comp) else item
+    private fun combos(root: Container): List<JComboBox<*>> = buildList {
+        for (comp in root.components) {
+            if (!comp.isVisible) continue
+            if (comp is JComboBox<*>) add(comp)
+            if (comp is Container) addAll(combos(comp))
+        }
+    }
+
+    private fun labels(root: Container): List<JLabel> = buildList {
+        for (comp in root.components) {
+            if (!comp.isVisible) continue
+            if (comp is JLabel) add(comp)
+            if (comp is Container) addAll(labels(comp))
+        }
     }
 
     private fun text(root: Container): String {
@@ -148,6 +260,7 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
 
     private fun collectText(root: Container, acc: MutableList<String>) {
         for (comp in root.components) {
+            if (!comp.isVisible) continue
             when (comp) {
                 is AbstractButton -> comp.text?.let { acc.add(it) }
                 is JLabel -> comp.text?.let { acc.add(it) }
