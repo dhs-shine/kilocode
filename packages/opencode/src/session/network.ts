@@ -48,7 +48,7 @@ export namespace SessionNetwork {
     message: Schema.String,
     restored: Schema.Boolean,
     time: Schema.Struct({
-      created: Schema.Number,
+      created: Schema.Finite,
     }),
   })
     .annotate({ identifier: "SessionNetworkWait" })

@@ -24,6 +24,7 @@ import { Auth } from "@/auth"
 import { registerDisposer } from "@/effect/instance-registry"
 import { Global } from "@opencode-ai/core/global"
 import * as Log from "@opencode-ai/core/util/log"
+import { NonNegativeInt } from "@/util/schema"
 import { LanceDBRuntime } from "./lancedb" // kilocode_change
 import { indexingWithKiloDefault, resolveKiloIndexingAuth, type KiloIndexingAuth } from "./indexing-auth" // kilocode_change
 
@@ -192,9 +193,9 @@ export namespace KiloIndexing {
   const StatusSchema = Schema.Struct({
     state: StateSchema,
     message: Schema.String,
-    processedFiles: Schema.Number,
-    totalFiles: Schema.Number,
-    percent: Schema.Number,
+    processedFiles: NonNegativeInt,
+    totalFiles: NonNegativeInt,
+    percent: NonNegativeInt.check(Schema.isLessThanOrEqualTo(100)),
   }).annotate({ identifier: "IndexingStatus" })
 
   type Entry = {

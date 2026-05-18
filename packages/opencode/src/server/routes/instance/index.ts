@@ -40,6 +40,7 @@ import { SessionPaths } from "./httpapi/groups/session"
 import { SyncPaths } from "./httpapi/groups/sync"
 import { TuiPaths } from "./httpapi/groups/tui"
 import { WorkspacePaths } from "./httpapi/groups/workspace"
+import { register as registerKiloHttpApiRoutes } from "@/kilocode/server/httpapi/instance" // kilocode_change
 import type { CorsOptions } from "@/server/cors"
 
 export const InstanceRoutes = (upgrade: UpgradeWebSocket, opts?: CorsOptions): Hono => {
@@ -157,6 +158,7 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket, opts?: CorsOptions): H
     app.get(WorkspacePaths.status, (c) => handler(c.req.raw, context))
     app.delete(WorkspacePaths.remove, (c) => handler(c.req.raw, context))
     app.post(WorkspacePaths.sessionRestore, (c) => handler(c.req.raw, context))
+    registerKiloHttpApiRoutes(app, handler, context) // kilocode_change
   }
 
   const full = app // kilocode_change

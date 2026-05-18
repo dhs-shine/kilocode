@@ -265,6 +265,40 @@ describe("HttpApi server", () => {
   })
   // kilocode_change end
 
+  // kilocode_change start - Kilo overlay route parity
+  test("Kilo overlay routes are mirrored in Hono and Effect specs", async () => {
+    const hono = new Set(openApiRouteKeys(await Server.openapiHono()))
+    const effect = new Set(openApiRouteKeys(effectOpenApi()))
+    // The 22 Kilo overlay paths ported to Effect HttpApi. Both backends must serve each.
+    const kilo = [
+      "POST /permission/allow-everything",
+      "POST /enhance-prompt",
+      "POST /commit-message",
+      "GET /network",
+      "POST /network/{requestID}/reply",
+      "POST /network/{requestID}/reject",
+      "POST /remote/enable",
+      "POST /remote/disable",
+      "GET /remote/status",
+      "POST /telemetry/capture",
+      "POST /telemetry/setEnabled",
+      "GET /suggestion",
+      "POST /suggestion/{requestID}/accept",
+      "POST /suggestion/{requestID}/dismiss",
+      "POST /kilocode/heap/snapshot",
+      "POST /kilocode/skill/remove",
+      "POST /kilocode/agent/remove",
+      "POST /kilocode/session-import/project",
+      "POST /kilocode/session-import/session",
+      "POST /kilocode/session-import/message",
+      "POST /kilocode/session-import/part",
+      "GET /indexing/status",
+    ]
+    expect(kilo.filter((route) => !hono.has(route))).toEqual([])
+    expect(kilo.filter((route) => !effect.has(route))).toEqual([])
+  })
+  // kilocode_change end
+
   test("matches SDK-affecting query parameter schemas", async () => {
     const effect = effectOpenApi()
 
