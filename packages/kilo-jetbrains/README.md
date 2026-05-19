@@ -72,7 +72,7 @@ See [RELEASING.md](RELEASING.md) for the full release process, including how to 
 
 ## Run the plugin
 
-Use the `runIde` Gradle task (available in the Gradle tool window or via the "Run JetBrains Plugin" run configuration) to launch a sandboxed IntelliJ instance with the plugin installed.
+Use the `runIde` Gradle task (available in the Gradle tool window or via `./gradlew runIde` from `packages/kilo-jetbrains/`) to launch a sandboxed IntelliJ instance with the plugin installed.
 
 `runIde` does not prepare the CLI binary automatically. Run `bun run build --prepare-cli` from `packages/kilo-jetbrains/` first to copy the local-platform binary into `backend/build/generated/cli/cli/`.
 
@@ -80,18 +80,45 @@ Production packaging still requires running `bun run build:production` so all pl
 
 ### Run the split backend
 
-The `Run IDE (Backend)` / `runIdeBackend` path prepares the local-platform CLI binary automatically when `backend/build/generated/cli/cli/` does not contain the expected binary. It runs `bun run build --prepare-cli` and then copies backend resources for the sandbox.
+Use the checked-in `Run IDE (Backend)` run configuration (or `./gradlew runIdeBackend`) to launch just the backend half of a split-mode session. It prepares the local-platform CLI binary automatically when `backend/build/generated/cli/cli/` does not contain the expected binary.
 
-The backend run configuration includes `-Pkilo.splitModeServerPort=0` by default. Leave it blank, set it to `0`, or omit it to use a random high port from `49152..65535`; set it to a fixed port when you need one:
+Use `Run IDE (Split Mode)` to launch both halves at once (composes `Run IDE (Backend)` + `Run IDE (Frontend)`).
+
+### Backend Gradle properties
+
+All properties below are passed with `-P` on the Gradle command line or in the run configuration's script parameters field.
+
+| Property | Default | Description |
+|---|---|---|
+| `kilo.splitModeServerPort` | random high port | Backend split-mode server port. `0` or omitted picks a random port from 49152-65535. |
+| `kilo.dev.storage.isolated` | `false` | When `true`, CLI runs with `XDG_*_HOME` pointing to `.kilo-dev/` in the worktree root, fully isolating dev storage from your real Kilo installation. Enabled by default in `Run IDE (Backend)`. |
+| `kilo.dev.worktree.root` | monorepo root | Worktree root used to resolve `.kilo-dev/`. Auto-detected from the Gradle project directory; override only when the auto-detection is wrong. |
+| `kilo.bun.path` | `bun` on `$PATH` | Absolute path to Bun. Set this when IntelliJ-launched Gradle cannot find Bun automatically. |
+
+Example with a fixed split-mode port:
 
 ```text
 -Pkilo.dev.log.level=debug -Pkilo.splitModeServerPort=12345
 ```
 
-If IntelliJ-launched Gradle cannot find Bun automatically, add this to the backend Gradle run configuration arguments:
+### Dev storage isolation
+
+When `kilo.dev.storage.isolated=true`, the CLI subprocess receives standard `XDG_*_HOME` env vars pointing under `.kilo-dev/` in the worktree root:
+
+```
+.kilo-dev/
+  data/    -> XDG_DATA_HOME   (CLI uses .../data/kilo for sessions, logs, ...)
+  config/  -> XDG_CONFIG_HOME (CLI uses .../config/kilo for global config)
+  state/   -> XDG_STATE_HOME  (CLI uses .../state/kilo for state)
+  cache/   -> XDG_CACHE_HOME  (CLI uses .../cache/kilo for cache, bin)
+```
+
+This keeps all development data isolated from your real Kilo installation. The `.kilo-dev/` directory is gitignored and created automatically on first run.
+
+The `Run IDE (Backend)` run configuration enables this by default. To disable it:
 
 ```text
--Pkilo.bun.path=/absolute/path/to/bun
+-Pkilo.dev.storage.isolated=false
 ```
 
 ---

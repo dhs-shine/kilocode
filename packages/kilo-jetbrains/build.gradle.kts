@@ -47,6 +47,10 @@ val ver = if (release) checked(
 val notes = providers.gradleProperty("kilo.changeNotes").orElse("Release candidate build.")
 val channel = providers.gradleProperty("kilo.channel").map { it.trim() }.orElse("default")
 val splitPort = providers.gradleProperty("kilo.splitModeServerPort").map(::port).orElse(providers.provider(::fallback))
+val isolated = providers.gradleProperty("kilo.dev.storage.isolated").map { it.toBoolean() }.orElse(false)
+val worktreeRoot = providers.gradleProperty("kilo.dev.worktree.root").orElse(
+    providers.provider { rootProject.layout.projectDirectory.asFile.parentFile.parentFile.canonicalPath }
+)
 
 version = ver
 
@@ -184,6 +188,8 @@ tasks.withType<RunIdeTask> {
     systemProperty("kilo.dev.log.level", level)
     systemProperty("kilo.dev.log.chat.content", content)
     systemProperty("kilo.dev.log.chat.preview.max", preview)
+    systemProperty("kilo.dev.storage.isolated", isolated.get().toString())
+    systemProperty("kilo.dev.worktree.root", worktreeRoot.get())
 }
 
 tasks.named<Delete>("clean") {
