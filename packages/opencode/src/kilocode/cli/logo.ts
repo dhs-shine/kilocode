@@ -40,10 +40,11 @@ function flag(value: string | undefined) {
 export function supports(env = process.env, platform = process.platform) {
   const override = flag(env.KILO_UNICODE_LOGO)
   if (override !== undefined) return override
-  // Terminals do not expose font glyph coverage, so avoid hosts known to miss Symbols for Legacy Computing.
+  // Terminals do not expose font glyph coverage over SSH, so prefer the safe logo for remote sessions.
   if (env.TERM === "dumb") return false
-  if (platform === "win32") return false
-  if (env.WT_SESSION) return false
+  if (env.SSH_TTY) return false
+  if (env.SSH_CLIENT) return false
+  if (env.SSH_CONNECTION) return false
   if (env.ConEmuPID) return false
   if (env.ANSICON) return false
   return true
