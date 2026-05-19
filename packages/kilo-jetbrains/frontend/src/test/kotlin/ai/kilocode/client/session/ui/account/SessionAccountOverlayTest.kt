@@ -15,15 +15,12 @@ import com.intellij.icons.AllIcons
 class SessionAccountOverlayTest : SessionControllerTestBase() {
 
     private lateinit var panel: SessionAccountOverlay
-    private val selected = mutableListOf<String?>()
-    private var loginCalls = 0
     private var profileCalls = 0
 
     override fun setUp() {
         super.setUp()
         panel = SessionAccountOverlay(
-            select = { org -> selected.add(org) },
-            login = { loginCalls++ },
+            select = { },
             profile = { profileCalls++ },
         )
     }
@@ -56,13 +53,12 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
     private fun org(id: String, name: String, role: String = "MEMBER") =
         ProfileOrganizationDto(id = id, name = name, role = role)
 
-    // --- test 1: logged-out state shows login prompt ---
+    // --- test 1: logged-out state hides the overlay entirely ---
 
-    fun `test logged out state is visible with login button`() {
+    fun `test logged out state hides overlay`() {
         show(snap(null))
 
-        assertTrue(panel.isVisible)
-        assertTrue(panel.loggedOutVisible())
+        assertFalse(panel.isVisible)
     }
 
     // --- test 2: logged-in personal account shows picker title ---
@@ -113,18 +109,22 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
     // --- test 4: programmatic update does not call select callback ---
 
     fun `test programmatic update does not call select callback`() {
+        val selected = mutableListOf<String?>()
+        val p = SessionAccountOverlay(
+            select = { org -> selected.add(org) },
+            profile = {},
+        )
         val acme = org("org_1", "Acme")
         val prof = profile(
             email = "user@example.com",
             organizations = listOf(acme),
             currentOrgId = null,
         )
-        // Show with personal account selected
-        show(snap(prof))
+        edt { p.onEvent(SessionControllerEvent.AccountOverlayChanged.Show(snap(prof))) }
         selected.clear()
 
         // Show again with same profile - no user selection
-        show(snap(prof))
+        edt { p.onEvent(SessionControllerEvent.AccountOverlayChanged.Show(snap(prof))) }
 
         assertEquals(0, selected.size)
     }
@@ -226,7 +226,7 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
         )
         show(transientSnap)
 
-        // Should remain visible and logged-in, not flash to logged-out
+        // Should remain visible and logged-in, not flash to hidden
         assertTrue(panel.isVisible)
         assertTrue(panel.loggedInVisible())
     }
@@ -316,5 +316,16 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
         assertTrue(panel.loggedInVisible())
         assertTrue(panel.balanceVisible())
         assertSame(icon, panel.balanceIcon())
+    }
+
+    // --- test 16: non-transient null profile after login hides overlay ---
+
+    fun `test non-transient null profile after login hides overlay`() {
+        show(snap(profile(email = "user@example.com")))
+        assertTrue(panel.isVisible)
+
+        show(snap(null))
+
+        assertFalse(panel.isVisible)
     }
 }

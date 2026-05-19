@@ -149,7 +149,6 @@ class SessionUi(
 
         account = SessionAccountOverlay(
             select = { org -> controller.selectOrganization(org) },
-            login = { controller.openProfile() },
             profile = { controller.openProfile() },
         )
         root.addOverlay(account) { pane, child ->
