@@ -1,6 +1,7 @@
 package ai.kilocode.client.testing
 
 import ai.kilocode.rpc.KiloAppRpcApi
+import ai.kilocode.rpc.dto.DeviceAuthDto
 import ai.kilocode.rpc.dto.HealthDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
@@ -9,6 +10,8 @@ import ai.kilocode.rpc.dto.ModelSelectionDto
 import ai.kilocode.rpc.dto.ModelSelectionUpdateDto
 import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.ModelVariantUpdateDto
+import ai.kilocode.rpc.dto.ProfileDto
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -101,5 +104,57 @@ class FakeAppRpcApi : KiloAppRpcApi {
         variants.add(update)
         models = models.copy(variant = models.variant + (update.key to update.value))
         return models
+    }
+
+    var fakeProfile: ProfileDto? = null
+    var fakeDeviceAuth = DeviceAuthDto(code = "TEST-1234", verificationUrl = "https://auth.kilo.ai/device")
+    val orgProfiles = mutableMapOf<String?, ProfileDto?>()
+    val orgSelections = mutableListOf<String?>()
+
+    /** When set, [completeLogin] will await this deferred before returning. */
+    var completeGate: CompletableDeferred<Unit>? = null
+
+    /** When set, [completeLogin] will throw this exception (after awaiting [completeGate] if set). */
+    var completeError: Exception? = null
+
+    /** When set, [startLogin] will throw this exception. */
+    var startError: Exception? = null
+
+    var starts = 0
+        private set
+    var completes = 0
+        private set
+
+    override suspend fun refreshProfile(): ProfileDto? {
+        assertNotEdt("refreshProfile")
+        return fakeProfile
+    }
+
+    override suspend fun startLogin(directory: String?): DeviceAuthDto {
+        assertNotEdt("startLogin")
+        starts++
+        startError?.let { throw it }
+        return fakeDeviceAuth
+    }
+
+    override suspend fun completeLogin(directory: String?): ProfileDto? {
+        assertNotEdt("completeLogin")
+        completes++
+        completeGate?.await()
+        completeError?.let { throw it }
+        return fakeProfile
+    }
+
+    override suspend fun logout(): Boolean {
+        assertNotEdt("logout")
+        fakeProfile = null
+        return true
+    }
+
+    override suspend fun setOrganization(organizationId: String?): ProfileDto? {
+        assertNotEdt("setOrganization")
+        orgSelections.add(organizationId)
+        if (orgProfiles.containsKey(organizationId)) fakeProfile = orgProfiles[organizationId]
+        return fakeProfile
     }
 }

@@ -27,6 +27,8 @@ import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
+import ai.kilocode.rpc.dto.ProfileDto
+import ai.kilocode.rpc.dto.ProfileStatusDto
 import ai.kilocode.rpc.dto.PermissionAlwaysRulesDto
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
@@ -77,7 +79,10 @@ class SessionController(
   private val afterUpdate: (Boolean) -> Unit = {},
   private val loaded: (Boolean) -> Unit = {},
   private val auto: KiloAutoApproveService? = null,
+  private val openProfileAction: () -> Unit = {},
 ) : Disposable {
+
+    private data class OrganizationTarget(val org: String?)
 
     companion object {
         private val LOG = KiloLog.create(SessionController::class.java)
@@ -114,6 +119,11 @@ class SessionController(
     private var connectionState: SessionControllerEvent.ConnectionChanged? = null
     private var connectionTargetState: SessionControllerEvent.ConnectionChanged? = null
     private val connectionDelay = DelayedState(displayMs)
+    private var acctState: SessionControllerEvent.AccountOverlayChanged =
+        SessionControllerEvent.AccountOverlayChanged.Hide
+    private var acctAllowed = false
+    private var lastProfile: ProfileDto? = null
+    private var target: OrganizationTarget? = null
 
     val ready: Boolean get() = model.isReady()
     internal val blank: Boolean get() = ref == null && model.isEmpty() && !model.showSession
@@ -416,6 +426,7 @@ class SessionController(
                     model.version = app.version
                     syncModelSelection()
                     syncConnectionState()
+                    refreshAccountOverlay()
                 }
             }
         }
@@ -901,6 +912,79 @@ class SessionController(
         else -> KiloBundle.message("session.status.considering")
     }
 
+    fun selectOrganization(org: String?) {
+        assertEdt()
+        val next = OrganizationTarget(org)
+        if (target == next) return
+        target = next
+        refreshAccountOverlay()
+        cs.launch {
+            try {
+                app.setOrganization(org)
+            } catch (e: Exception) {
+                LOG.warn("account switch failed org=$org message=${e.message}", e)
+                edt {
+                    if (disposed) return@edt
+                    target = null
+                    refreshAccountOverlay()
+                }
+            }
+        }
+    }
+
+    fun openProfile() {
+        assertEdt()
+        openProfileAction()
+    }
+
+    private fun accountSnapshot(): SessionControllerEvent.AccountOverlaySnapshot {
+        val state = model.app
+        val prof = state.profile
+        val pending = prof == null && state.progress?.profile == ProfileStatusDto.PENDING
+        val current = when {
+            prof != null -> prof
+            pending -> lastProfile
+            else -> null
+        }
+        if (prof != null) {
+            lastProfile = prof
+            if (target?.org == prof.currentOrgId) target = null
+        }
+        if (!pending && prof == null) {
+            lastProfile = null
+            target = null
+        }
+        return SessionControllerEvent.AccountOverlaySnapshot(
+            status = state.status,
+            profile = current,
+            transient = pending,
+            switching = target != null,
+            targetOrgId = target?.org,
+        )
+    }
+
+    private fun showAccountOverlay() {
+        acctAllowed = true
+        setAccountOverlayState(SessionControllerEvent.AccountOverlayChanged.Show(accountSnapshot()))
+    }
+
+    private fun hideAccountOverlay() {
+        acctAllowed = false
+        setAccountOverlayState(SessionControllerEvent.AccountOverlayChanged.Hide)
+    }
+
+    private fun refreshAccountOverlay() {
+        if (!acctAllowed) return
+        setAccountOverlayState(SessionControllerEvent.AccountOverlayChanged.Show(accountSnapshot()))
+    }
+
+    private fun setAccountOverlayState(event: SessionControllerEvent.AccountOverlayChanged) {
+        if (acctState == event) return
+        fire(event) {
+            acctState = event
+        }
+    }
+
     fun refreshRecents(force: Boolean = false) {
         assertEdt()
         if (!canUseRecents()) return
@@ -951,6 +1035,11 @@ class SessionController(
                 setSessionLoadState(SessionLoadState.Idle)
                 setRecentSessionsState(RecentsState.Idle)
             }
+        }
+        when (event) {
+            is SessionControllerEvent.ViewChanged.ShowRecents -> showAccountOverlay()
+            is SessionControllerEvent.ViewChanged.ShowProgress -> hideAccountOverlay()
+            is SessionControllerEvent.ViewChanged.ShowSession -> hideAccountOverlay()
         }
     }
 
@@ -1060,6 +1149,7 @@ class SessionController(
         val block: () -> Unit = {
             if (!disposed) {
                 viewState?.let(listener::onEvent)
+                listener.onEvent(acctState)
                 connectionState?.let(listener::onEvent)
             }
         }

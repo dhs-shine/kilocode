@@ -165,6 +165,22 @@ class KiloBackendAppServiceTest {
     }
 
     @Test
+    fun `set organization sends explicit null body for personal account`() = runBlocking {
+        val svc = create()
+        svc.connect()
+
+        withTimeout(10_000) {
+            svc.appState.first { it is KiloAppState.Ready }
+        }
+
+        svc.setOrganization("org_1")
+        assertEquals("""{"organizationId":"org_1"}""", mock.lastOrganizationSetBody)
+
+        svc.setOrganization(null)
+        assertEquals("""{"organizationId":null}""", mock.lastOrganizationSetBody)
+    }
+
+    @Test
     fun `profile 401 does not prevent Ready`() = runBlocking {
         mock.profileStatus = 401
         val svc = create()
@@ -438,6 +454,41 @@ class KiloBackendAppServiceTest {
         }
 
         assertTrue((svc.appState.value as KiloAppState.Ready).data.warnings.isEmpty())
+    }
+
+    // ------ Auth mapping tests ------
+
+    @Test
+    fun `start login maps device auth response`() = runBlocking<Unit> {
+        // Default authorizeResponse: url=https://auth.kilo.ai/device, code=TEST-1234
+        val svc = create()
+        svc.connect()
+
+        withTimeout(10_000) {
+            svc.appState.first { it is KiloAppState.Ready }
+        }
+
+        val auth = svc.startLogin(null)
+        assertEquals("https://auth.kilo.ai/device", auth.verificationUrl)
+        assertEquals("TEST-1234", auth.code)
+        assertEquals(900, auth.expiresIn)
+        assertNotNull(mock.lastAuthorizeBody)
+    }
+
+    @Test
+    fun `complete login calls callback and refreshes profile`() = runBlocking<Unit> {
+        mock.profile = """{"profile":{"email":"alice@test.com","name":"Alice"},"balance":null,"currentOrgId":null}"""
+        val svc = create()
+        svc.connect()
+
+        withTimeout(10_000) {
+            svc.appState.first { it is KiloAppState.Ready }
+        }
+
+        val profile = svc.completeLogin(null)
+        assertNotNull(profile)
+        assertEquals("alice@test.com", profile!!.profile.email)
+        assertNotNull(mock.lastCallbackBody)
     }
 
     // ------ Concurrency & lifecycle tests ------
