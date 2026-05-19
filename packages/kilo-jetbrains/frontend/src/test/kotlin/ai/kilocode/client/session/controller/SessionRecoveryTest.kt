@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.controller
 
+import ai.kilocode.client.app.KiloAutoApproveService
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.rpc.dto.PermissionRequestDto
 import ai.kilocode.rpc.dto.QuestionInfoDto
@@ -231,6 +232,31 @@ class SessionRecoveryTest : SessionControllerTestBase() {
             """,
             m, show = true,
         )
+    }
+
+    fun `test auto-approve recovery replies once and does not show awaiting permission`() {
+        rpc.pendingPermissionList.add(
+            PermissionRequestDto(
+                id = "perm_auto",
+                sessionID = "ses_test",
+                permission = "read",
+                patterns = listOf("*.json"),
+            )
+        )
+
+        val svc = KiloAutoApproveService()
+        svc.set(true)
+
+        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY, config = ai.kilocode.rpc.dto.ConfigDto(model = "kilo/gpt-5"))
+        projectRpc.state.value = workspaceReady()
+        val m = controller("ses_test", auto = svc)
+        flush()
+
+        assertFalse(m.model.state is SessionState.AwaitingPermission)
+        assertEquals(1, rpc.permissionReplies.size)
+        assertEquals("once", rpc.permissionReplies[0].third.reply)
+
+        svc.set(false)
     }
 
     fun `test pending question overrides a seeded retry status`() {

@@ -1,6 +1,7 @@
 package ai.kilocode.client.session.controller
 
 import ai.kilocode.client.app.KiloAppService
+import ai.kilocode.client.app.KiloAutoApproveService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.plugin.KiloBundle
@@ -11,6 +12,7 @@ import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.model.Permission
+import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.model.Question
@@ -74,6 +76,7 @@ class SessionController(
   private val beforeUpdate: () -> Boolean = { false },
   private val afterUpdate: (Boolean) -> Unit = {},
   private val loaded: (Boolean) -> Unit = {},
+  private val auto: KiloAutoApproveService? = null,
 ) : Disposable {
 
     companion object {
@@ -304,6 +307,7 @@ class SessionController(
     fun replyPermission(requestId: String, reply: PermissionReplyDto, rules: PermissionAlwaysRulesDto? = null) {
         assertEdt()
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission rid=$requestId reply=${reply.reply}" }
+        updatePermission(requestId, PermissionRequestState.RESPONDING)
         cs.launch {
             try {
                 if (rules != null) sessions.savePermissionRules(requestId, directory, rules)
@@ -311,8 +315,27 @@ class SessionController(
                 LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission rid=$requestId ok=true" }
             } catch (e: Exception) {
                 LOG.warn("${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission rid=$requestId reply=${reply.reply} dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
+                edt {
+                    updatePermission(
+                        requestId,
+                        PermissionRequestState.ERROR,
+                        e.message ?: KiloBundle.message("session.permission.error"),
+                    )
+                }
             }
         }
+    }
+
+    private fun updatePermission(id: String, state: PermissionRequestState, message: String? = null) {
+        assertEdt()
+        val current = model.state
+        if (current !is SessionState.AwaitingPermission) return
+        if (current.permission.id != id) return
+        val perm = current.permission.copy(
+            state = state,
+            message = message ?: current.permission.message,
+        )
+        updateModel { model.setState(SessionState.AwaitingPermission(perm)) }
     }
 
     fun replyQuestion(requestId: String, answers: QuestionReplyDto) {
@@ -337,6 +360,28 @@ class SessionController(
                 LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=question rid=$requestId ok=true" }
             } catch (e: Exception) {
                 LOG.warn("${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=question rid=$requestId rejected=true dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
+            }
+        }
+    }
+
+    fun toggleAutoApprove(): Boolean {
+        assertEdt()
+        val next = auto?.toggle() ?: false
+        if (next) drainPermissions()
+        return next
+    }
+
+    private fun drainPermissions() {
+        val id = sid ?: return
+        cs.launch {
+            try {
+                val pending = sessions.pendingPermissions(directory).filter { it.sessionID == id }
+                for (req in pending) {
+                    sessions.replyPermission(req.id, directory, PermissionReplyDto("once"))
+                }
+                LOG.debug { "${ChatLogSummary.sid(id)} kind=auto-approve drain count=${pending.size}" }
+            } catch (e: Exception) {
+                LOG.warn("${ChatLogSummary.sid(id)} kind=auto-approve drain failed message=${e.message}", e)
             }
         }
     }
@@ -568,6 +613,12 @@ class SessionController(
             LOG.debug {
                 "${ChatLogSummary.sid(id)} kind=recovery permissions=${permissions.size} questions=${questions.size} status=${status?.type ?: "none"} branch=$branch"
             }
+            if (permissions.isNotEmpty() && auto?.active() == true) {
+                for (req in permissions) {
+                    sessions.replyPermission(req.id, directory, PermissionReplyDto("once"))
+                }
+                return
+            }
             runEdt {
                 if (disposed) return@runEdt
                 if (sid != id) return@runEdt
@@ -669,7 +720,12 @@ class SessionController(
             }
 
             is ChatEventDto.PermissionAsked -> {
-                model.setState(SessionState.AwaitingPermission(toPermission(event.request)))
+                val perm = toPermission(event.request)
+                if (auto?.active() == true) {
+                    replyPermission(perm.id, PermissionReplyDto("once"))
+                    return
+                }
+                model.setState(SessionState.AwaitingPermission(perm))
             }
 
             is ChatEventDto.PermissionReplied -> {
@@ -1213,17 +1269,40 @@ private fun ConfigWarningDto.toDetailLine(): String {
 
 private fun toPermission(dto: PermissionRequestDto): Permission {
     val ref = dto.tool?.let { ToolCallRef(it.messageID, it.callID) }
-    val file = dto.metadata["file"] ?: dto.metadata["path"]
     val state = dto.metadata["state"]?.let { raw ->
         PermissionRequestState.values().firstOrNull { item -> item.name.equals(raw, ignoreCase = true) }
     } ?: PermissionRequestState.PENDING
+    val diffs = dto.fileDiffs.map {
+        PermissionFileDiff(
+            file = it.file,
+            patch = it.patch,
+            before = it.before,
+            after = it.after,
+            additions = it.additions,
+            deletions = it.deletions,
+        )
+    }
+    val file = dto.filePath
+        ?: dto.metadata["filepath"]
+        ?: dto.metadata["filePath"]
+        ?: dto.metadata["file"]
+        ?: dto.metadata["path"]
     return Permission(
         id = dto.id,
         sessionId = dto.sessionID,
         name = dto.permission,
         patterns = dto.patterns,
         always = dto.always,
-        meta = PermissionMeta(filePath = file, raw = dto.metadata),
+        meta = PermissionMeta(
+            command = dto.command ?: dto.metadata["command"],
+            rules = dto.rules,
+            diff = dto.metadata["diff"],
+            filePath = file,
+            fileDiff = diffs.firstOrNull(),
+            fileDiffs = diffs,
+            raw = dto.metadata,
+        ),
+        message = dto.message ?: dto.metadata["message"],
         tool = ref,
         state = state,
     )

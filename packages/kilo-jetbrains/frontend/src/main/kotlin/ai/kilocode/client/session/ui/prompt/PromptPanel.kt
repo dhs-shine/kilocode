@@ -61,12 +61,15 @@ class PromptPanel(
     private val project: Project,
     private val onSend: (String) -> Unit,
     private val onAbort: () -> Unit,
+    private val autoApprove: () -> Boolean = { false },
+    private val onAutoApproveToggle: () -> Boolean = { false },
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext {
 
     companion object {
         private val LOG = KiloLog.create(PromptPanel::class.java)
         private val SEND_ICON: Icon = IconLoader.getIcon("/icons/send.svg", PromptPanel::class.java)
         private val STOP_ICON: Icon = IconLoader.getIcon("/icons/stop.svg", PromptPanel::class.java)
+        private val SHIELD_ICON: Icon = IconLoader.getIcon("/icons/shield.svg", PromptPanel::class.java)
     }
 
     val mode = ModePicker()
@@ -130,6 +133,13 @@ class PromptPanel(
         addActionListener { onReset() }
     }
 
+    private val autoIcon = HoverIcon().apply {
+        icon = SHIELD_ICON
+        addActionListener {
+            setAutoApprove(onAutoApproveToggle())
+        }
+    }
+
     @Volatile
     private var busy = false
     private var ready = false
@@ -152,6 +162,7 @@ class PromptPanel(
         )
 
         applyStyle(style)
+        setAutoApprove(autoApprove())
         shell.add(editor, BorderLayout.CENTER)
 
         val bar = BorderLayoutPanel().apply {
@@ -167,6 +178,8 @@ class PromptPanel(
         bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
         bar.add(reset)
         bar.add(Box.createHorizontalGlue())
+        bar.add(autoIcon)
+        bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
         bar.add(button)
         shell.add(bar, BorderLayout.SOUTH)
         add(shell, BorderLayout.CENTER)
@@ -210,6 +223,8 @@ class PromptPanel(
 
     internal fun buttonForTest(): JButton = button
 
+    internal fun autoApproveButtonForTest(): JButton = autoIcon
+
     internal val defaultFocusedComponent: JComponent get() = editor
 
     override fun applyStyle(style: SessionEditorStyle) {
@@ -231,6 +246,21 @@ class PromptPanel(
 
     fun focus() {
         editor.requestFocusInWindow()
+    }
+
+    fun setAutoApprove(value: Boolean) {
+        autoIcon.putClientProperty("selected", value)
+        autoIcon.toolTipText = if (value) {
+            KiloBundle.message("prompt.autoApprove.enabled")
+        } else {
+            KiloBundle.message("prompt.autoApprove.disabled")
+        }
+        autoIcon.accessibleContext.accessibleName = if (value) {
+            KiloBundle.message("prompt.autoApprove.disable")
+        } else {
+            KiloBundle.message("prompt.autoApprove.enable")
+        }
+        autoIcon.repaint()
     }
 
     override fun addNotify() {

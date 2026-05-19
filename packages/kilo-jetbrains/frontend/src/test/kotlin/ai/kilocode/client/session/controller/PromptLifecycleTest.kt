@@ -1,8 +1,12 @@
 package ai.kilocode.client.session.controller
 
+import ai.kilocode.client.app.KiloAutoApproveService
+import ai.kilocode.client.session.model.PermissionFileDiff
+import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.PermissionAlwaysRulesDto
+import ai.kilocode.rpc.dto.PermissionFileDiffDto
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
 import ai.kilocode.rpc.dto.QuestionInfoDto
@@ -10,6 +14,7 @@ import ai.kilocode.rpc.dto.QuestionOptionDto
 import ai.kilocode.rpc.dto.QuestionReplyDto
 import ai.kilocode.rpc.dto.QuestionRequestDto
 import ai.kilocode.rpc.dto.ToolRefDto
+import com.intellij.ide.util.PropertiesComponent
 
 class PromptLifecycleTest : SessionControllerTestBase() {
 
@@ -173,6 +178,59 @@ class PromptLifecycleTest : SessionControllerTestBase() {
 
         assertEquals(1, rpc.questionRejects.size)
         assertEquals("q1", rpc.questionRejects[0].first)
+    }
+
+    fun `test PermissionAsked maps rich fields to meta`() {
+        val (m, _, _) = prompted()
+        val req = PermissionRequestDto(
+            id = "perm_rich",
+            sessionID = "ses_test",
+            permission = "edit",
+            patterns = listOf("*.kt"),
+            always = emptyList(),
+            command = "git diff",
+            fileDiffs = listOf(PermissionFileDiffDto("src/A.kt", patch = "@@ @@", additions = 1, deletions = 0)),
+        )
+
+        emit(ChatEventDto.PermissionAsked("ses_test", req))
+
+        assertTrue(m.model.state is SessionState.AwaitingPermission)
+        val perm = (m.model.state as SessionState.AwaitingPermission).permission
+        assertEquals("git diff", perm.meta.command)
+        assertEquals(1, perm.meta.fileDiffs.size)
+        assertEquals("src/A.kt", perm.meta.fileDiffs[0].file)
+    }
+
+    fun `test replyPermission without rules leaves rulesSaved empty`() {
+        val (m, _, _) = prompted()
+        emit(ChatEventDto.PermissionAsked("ses_test", permission("perm1")))
+
+        edt { m.replyPermission("perm1", PermissionReplyDto("once")) }
+        flush()
+
+        assertTrue(rpc.permissionRulesSaved.isEmpty())
+        assertEquals(1, rpc.permissionReplies.size)
+    }
+
+    fun `test auto-approve live event replies once without showing prompt`() {
+        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(
+            ai.kilocode.rpc.dto.KiloAppStatusDto.READY,
+            config = ai.kilocode.rpc.dto.ConfigDto(model = "kilo/gpt-5"),
+        )
+        projectRpc.state.value = workspaceReady()
+        val svc = KiloAutoApproveService()
+        svc.set(true)
+        val m = controller(flushMs = Long.MAX_VALUE, auto = svc)
+        edt { m.prompt("go") }
+        flush()
+
+        emit(ChatEventDto.PermissionAsked("ses_test", permission("perm_auto")))
+
+        assertFalse(m.model.state is SessionState.AwaitingPermission)
+        assertEquals(1, rpc.permissionReplies.size)
+        assertEquals("once", rpc.permissionReplies[0].third.reply)
+
+        svc.set(false)
     }
 
     private fun permission(id: String) = PermissionRequestDto(

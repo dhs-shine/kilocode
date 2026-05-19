@@ -1141,6 +1141,148 @@ class KiloCliDataParserTest {
     }
 
     // ================================================================
+    // parsePermissionRequest — rich metadata
+    // ================================================================
+
+    @Test
+    fun `parsePermissionRequest - command metadata extracted`() {
+        val data = globalEvent("""
+            "type": "permission.asked",
+            "properties": {
+                "id": "perm_cmd",
+                "sessionID": "ses_1",
+                "permission": "bash",
+                "patterns": [],
+                "always": [],
+                "metadata": {"command": "git status --short"}
+            }
+        """)
+
+        val result = KiloCliDataParser.parseChatEvent("permission.asked", data)
+        assertNotNull(result)
+        val asked = result as? ChatEventDto.PermissionAsked ?: error("Expected PermissionAsked")
+        assertEquals("git status --short", asked.request.command)
+        assertEquals("git status --short", asked.request.metadata["command"])
+    }
+
+    @Test
+    fun `parsePermissionRequest - diff and filepath fallback`() {
+        val data = globalEvent("""
+            "type": "permission.asked",
+            "properties": {
+                "id": "perm_diff",
+                "sessionID": "ses_1",
+                "permission": "edit",
+                "patterns": [],
+                "always": [],
+                "metadata": {"filepath": "src/App.kt", "diff": "@@ -1 +1 @@"}
+            }
+        """)
+
+        val result = KiloCliDataParser.parseChatEvent("permission.asked", data)
+        assertNotNull(result)
+        val asked = result as? ChatEventDto.PermissionAsked ?: error("Expected PermissionAsked")
+        assertEquals("src/App.kt", asked.request.filePath)
+        assertEquals(1, asked.request.fileDiffs.size)
+        assertEquals("src/App.kt", asked.request.fileDiffs[0].file)
+        assertEquals("@@ -1 +1 @@", asked.request.fileDiffs[0].patch)
+    }
+
+    @Test
+    fun `parsePermissionRequest - filediff object`() {
+        val data = globalEvent("""
+            "type": "permission.asked",
+            "properties": {
+                "id": "perm_filediff",
+                "sessionID": "ses_1",
+                "permission": "edit",
+                "patterns": [],
+                "always": [],
+                "metadata": {
+                    "filediff": {
+                        "file": "src/A.kt",
+                        "patch": "@@ -1 +1 @@",
+                        "additions": 1,
+                        "deletions": 1
+                    }
+                }
+            }
+        """)
+
+        val result = KiloCliDataParser.parseChatEvent("permission.asked", data)
+        assertNotNull(result)
+        val asked = result as? ChatEventDto.PermissionAsked ?: error("Expected PermissionAsked")
+        assertEquals(1, asked.request.fileDiffs.size)
+        assertEquals("src/A.kt", asked.request.fileDiffs[0].file)
+        assertEquals("@@ -1 +1 @@", asked.request.fileDiffs[0].patch)
+        assertEquals(1, asked.request.fileDiffs[0].additions)
+        assertEquals(1, asked.request.fileDiffs[0].deletions)
+    }
+
+    @Test
+    fun `parsePermissionRequest - files array`() {
+        val data = globalEvent("""
+            "type": "permission.asked",
+            "properties": {
+                "id": "perm_files",
+                "sessionID": "ses_1",
+                "permission": "edit",
+                "patterns": [],
+                "always": [],
+                "metadata": {
+                    "files": [
+                        {"relativePath": "src/A.kt", "patch": "@@", "additions": 2, "deletions": 0},
+                        {"filePath": "src/B.kt", "patch": "@@", "additions": 0, "deletions": 3}
+                    ]
+                }
+            }
+        """)
+
+        val result = KiloCliDataParser.parseChatEvent("permission.asked", data)
+        assertNotNull(result)
+        val asked = result as? ChatEventDto.PermissionAsked ?: error("Expected PermissionAsked")
+        assertEquals(2, asked.request.fileDiffs.size)
+        assertEquals("src/A.kt", asked.request.fileDiffs[0].file)
+        assertEquals(2, asked.request.fileDiffs[0].additions)
+        assertEquals("src/B.kt", asked.request.fileDiffs[1].file)
+        assertEquals(3, asked.request.fileDiffs[1].deletions)
+    }
+
+    @Test
+    fun `parsePermissionRequest - malformed files metadata returns empty diffs`() {
+        val data = globalEvent("""
+            "type": "permission.asked",
+            "properties": {
+                "id": "perm_bad",
+                "sessionID": "ses_1",
+                "permission": "edit",
+                "patterns": [],
+                "always": [],
+                "metadata": {"files": "not-an-array"}
+            }
+        """)
+
+        val result = KiloCliDataParser.parseChatEvent("permission.asked", data)
+        assertNotNull(result)
+        val asked = result as? ChatEventDto.PermissionAsked ?: error("Expected PermissionAsked")
+        assertTrue(asked.request.fileDiffs.isEmpty())
+    }
+
+    @Test
+    fun `parsePermissionRequest - old json without new fields uses defaults`() {
+        val raw = """[
+            {"id": "p1", "sessionID": "s1", "permission": "edit", "patterns": ["*.kt"], "always": [], "metadata": {}}
+        ]"""
+        val result = KiloCliDataParser.parsePermissionRequests(raw)
+        assertEquals(1, result.size)
+        assertNull(result[0].command)
+        assertTrue(result[0].rules.isEmpty())
+        assertTrue(result[0].fileDiffs.isEmpty())
+        assertNull(result[0].filePath)
+        assertNull(result[0].message)
+    }
+
+    // ================================================================
     // Helpers
     // ================================================================
 
