@@ -23,7 +23,7 @@ export type Event =
   | EventSessionNetworkAsked
   | EventSessionNetworkReplied
   | EventSessionNetworkRejected
-  | EventSessionNetworkRestored1
+  | EventSessionNetworkRestored
   | EventMessagePartDelta
   | EventPermissionAsked
   | EventPermissionReplied
@@ -2582,7 +2582,7 @@ export type EventSessionNetworkRestored = {
   properties: {
     sessionID: string
     requestID: string
-    time: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    time: number
   }
 }
 
@@ -3574,16 +3574,6 @@ export type EventTuiToastShow1 = {
     message: string
     variant: "info" | "success" | "warning" | "error"
     duration?: number
-  }
-}
-
-export type EventSessionNetworkRestored1 = {
-  id: string
-  type: "session.network.restored"
-  properties: {
-    sessionID: string
-    requestID: string
-    time: number | "NaN" | "Infinity" | "-Infinity"
   }
 }
 

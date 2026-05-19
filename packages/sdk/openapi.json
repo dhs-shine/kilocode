@@ -12181,7 +12181,7 @@
             "$ref": "#/components/schemas/EventSessionNetworkRejected"
           },
           {
-            "$ref": "#/components/schemas/EventSessionNetworkRestored1"
+            "$ref": "#/components/schemas/EventSessionNetworkRestored"
           },
           {
             "$ref": "#/components/schemas/EventMessagePartDelta"
@@ -19784,27 +19784,7 @@
                 "type": "string"
               },
               "time": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["NaN"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["Infinity"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["-Infinity"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["Infinity", "-Infinity", "NaN"]
-                  }
-                ]
+                "type": "number"
               }
             },
             "required": ["sessionID", "requestID", "time"],
@@ -22736,52 +22716,6 @@
               }
             },
             "required": ["message", "variant"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventSessionNetworkRestored1": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["session.network.restored"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "sessionID": {
-                "type": "string"
-              },
-              "requestID": {
-                "type": "string"
-              },
-              "time": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["NaN"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["Infinity"]
-                  },
-                  {
-                    "type": "string",
-                    "enum": ["-Infinity"]
-                  }
-                ]
-              }
-            },
-            "required": ["sessionID", "requestID", "time"],
             "additionalProperties": false
           }
         },

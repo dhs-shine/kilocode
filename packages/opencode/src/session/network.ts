@@ -97,7 +97,7 @@ export namespace SessionNetwork {
       Schema.Struct({
         sessionID: SessionID,
         requestID: QuestionID,
-        time: Schema.Number,
+        time: Schema.Finite,
       }),
     ),
   }
