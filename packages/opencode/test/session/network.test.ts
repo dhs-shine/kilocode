@@ -107,7 +107,7 @@ describe("session.network", () => {
 
   test("restore auto-resumes pending request after cancellation window", async () => {
     await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
+    await WithInstance.provide({
       directory: tmp.path,
       fn: async () => {
         const run = manual()
@@ -130,7 +130,7 @@ describe("session.network", () => {
 
   test("reject wins before restored auto-resume fires", async () => {
     await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
+    await WithInstance.provide({
       directory: tmp.path,
       fn: async () => {
         const run = manual()
@@ -151,7 +151,7 @@ describe("session.network", () => {
 
   test("abort cancels restored auto-resume timer", async () => {
     await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
+    await WithInstance.provide({
       directory: tmp.path,
       fn: async () => {
         const run = manual()
