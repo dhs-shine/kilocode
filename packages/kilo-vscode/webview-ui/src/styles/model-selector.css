@@ -295,6 +295,16 @@
   transform: rotate(-90deg);
 }
 
+.model-selector-group-match-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-list-highlightForeground, var(--vscode-focusBorder));
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
 .model-selector-item {
   display: flex;
   align-items: center;

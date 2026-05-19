@@ -675,6 +675,9 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
                           <path d="M4 6l4 5 4-5H4z" />
                         </svg>
                         <span>{group.label}</span>
+                        <Show when={!shown() && !!debouncedSearch()}>
+                          <span class="model-selector-group-match-dot" aria-hidden="true" />
+                        </Show>
                       </button>
                       <Show when={shown()}>
                         <For each={group.rows}>
