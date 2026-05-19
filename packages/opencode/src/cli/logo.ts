@@ -1,11 +1,9 @@
 // kilocode_change start
+import { plain } from "../kilocode/cli/logo"
+
 export const logo = {
   left: ["", "", ""],
-  right: [
-    "██  ██ ██🬺🬏   ██  ██   ██🬺🬏     ████ ██     ██🬺🬏   ",
-    `████🬺🬏   ██   ██     ██  ██   ██     ██       ██   `,
-    `██  ██ ██████ 🬁🬬████ 🬁🬬██     🬁🬬████ 🬁🬬████ ██████ `,
-  ],
+  right: plain(),
 }
 // kilocode_change end
 
