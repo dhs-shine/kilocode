@@ -6,7 +6,6 @@ import { Flag } from "@opencode-ai/core/flag/flag"
 import { Global } from "@opencode-ai/core/global"
 import { Identifier } from "@/id/id"
 import { Instance } from "@/project/instance"
-import { WithInstance } from "@/project/with-instance"
 import { Provider } from "@/provider/provider"
 import { ProviderID, ModelID } from "@/provider/schema"
 import { Question } from "@/question"
@@ -334,6 +333,7 @@ export namespace PlanFollowup {
       model: input.model,
     })
     const session = await Session.get(input.sessionID)
+    const { WithInstance } = await import("@/project/with-instance")
 
     await WithInstance.provide({
       directory: session.directory,
