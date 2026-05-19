@@ -53,8 +53,7 @@ Extension-specific settings should live in the Kilo extension settings, not defa
 
 ## Package Instructions
 
-- When a task primarily touches `packages/kilo-jetbrains/`, read `packages/kilo-jetbrains/AGENTS.md` before planning or editing.
-- For JetBrains Kotlin/Swing UI work, also apply `packages/kilo-jetbrains/.kilo/skills/jetbrains-ui-style/SKILL.md`.
+- When a task primarily touches `packages/kilo-jetbrains/`, read `packages/kilo-jetbrains/AGENTS.md` before planning or editing. It covers split-mode architecture, IntelliJ source lookup, threading fundamentals, UI guidelines, and session component architecture.
 
 ## Monorepo Structure
 
