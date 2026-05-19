@@ -53,8 +53,35 @@ object UiStyle {
             UIManager.getColor("TextField.background") ?: UIUtil.getPanelBackground()
         }
 
+        /** Standard picker/combobox surface, contrasted against the default panel background by the active theme. */
+        fun picker(): Color = JBColor.lazy {
+            UIManager.getColor("ComboBoxButton.background")
+                ?: UIManager.getColor("ComboBox.nonEditableBackground")
+                ?: UIUtil.getPanelBackground()
+        }
+
+        /** Filled badge surface using platform badge/info colors with a soft theme-derived fallback. */
+        fun badgeBg(): Color = JBColor.lazy {
+            UIManager.getColor("Badge.background")
+                ?: UIManager.getColor("Label.infoBackground")
+                ?: blend(cardBg(), fg(), 0.16f)
+        }
+
+        /** Filled badge text color paired with [badgeBg]. */
+        fun badgeFg(): Color = JBColor(Color.BLACK, UIUtil.getLabelForeground())
+
         /** Card border color shared across profile cards. */
         fun cardBorder(): Color = JBColor.namedColor("Component.borderColor", JBColor.border())
+
+        /**
+         * Floating panel background: white in light themes, black in dark themes.
+         * Used for account switcher popup panels and any overlay panels that need
+         * a high-contrast base distinct from the standard editor/sidebar background.
+         */
+        fun floatingPanel(): Color = JBColor.namedColor(
+            "Kilo.FloatingPanel.background",
+            JBColor(java.awt.Color.WHITE, java.awt.Color.BLACK),
+        )
 
         fun errorLabelForeground(): Color = JBColor.namedColor("Label.errorForeground", UIUtil.getErrorForeground())
 

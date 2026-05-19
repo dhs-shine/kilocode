@@ -1,6 +1,7 @@
 package ai.kilocode.client.settings.profile
 
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.ProfileDto
@@ -61,7 +62,7 @@ internal class LoggedInProfileUi(
             }
         }
 
-    private val balanceCard = ProfileCardPanel(UiStyle.Gap.pad(), UiStyle.Gap.xl()).apply {
+    private val balanceCard = RoundedContentPanel(UiStyle.Gap.pad(), UiStyle.Gap.xl()).apply {
         name = "kilo.profile.balanceCard"
         addToTop(titleLabel)
         addToCenter(JPanel(GridBagLayout()).apply {

@@ -13,6 +13,7 @@ import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.SessionMessageListPanel
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
@@ -21,17 +22,24 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.controller.EVENT_FLUSH_MS
 import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.session.controller.SessionControllerEvent
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
+import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.log.ChatLogSummary
+import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.options.ConfigurableWithId
+import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.registry.Registry
+import java.util.function.Predicate
 import kotlinx.coroutines.CoroutineScope
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
@@ -79,10 +87,12 @@ class SessionUi(
         beforeUpdate = { if (opening) false else scroll.atBottom() },
         afterUpdate = { if (!opening) scroll.followBottom(it) },
         loaded = ::onSessionLoaded,
+        openProfileAction = ::openProfileSettings,
     )
 
 
     private lateinit var root: SessionRootPanel
+    private lateinit var account: SessionAccountOverlay
 
     private lateinit var sessionContent: JPanel
 
@@ -136,6 +146,23 @@ class SessionUi(
 
     private fun buildUi() {
         root = SessionRootPanel()
+
+        account = SessionAccountOverlay(
+            select = { org -> controller.selectOrganization(org) },
+            login = { controller.openProfile() },
+            profile = { controller.openProfile() },
+        )
+        root.addOverlay(account) { pane, child ->
+            val size = child.preferredSize
+            val top = JBUI.scale(SessionUiStyle.View.Prompt.PANEL_VERTICAL_PADDING)
+            val right = JBUI.scale(SessionUiStyle.View.Prompt.PANEL_HORIZONTAL_PADDING)
+            java.awt.Rectangle(
+                pane.width - size.width - right,
+                top,
+                size.width,
+                size.height,
+            )
+        }
 
         sessionContent = JPanel(BorderLayout())
 
@@ -234,6 +261,8 @@ class SessionUi(
                 }
 
                 is SessionControllerEvent.ConnectionChanged -> Unit
+
+                is SessionControllerEvent.AccountOverlayChanged -> account.onEvent(event)
             }
         }
 
@@ -338,6 +367,16 @@ class SessionUi(
         prompt.applyStyle(style)
         scroll.applyStyle(style)
         refresh()
+    }
+
+    private fun openProfileSettings() {
+        ShowSettingsUtil.getInstance().showSettingsDialog(
+            project,
+            Predicate { cfg: Configurable ->
+                cfg is ConfigurableWithId && cfg.getId() == UserProfileConfigurable.ID
+            },
+            { cfg: Configurable -> cfg.focusOn(UserProfileConfigurable.FOCUS_ACCOUNT_COMBO) },
+        )
     }
 
     override fun dispose() {}

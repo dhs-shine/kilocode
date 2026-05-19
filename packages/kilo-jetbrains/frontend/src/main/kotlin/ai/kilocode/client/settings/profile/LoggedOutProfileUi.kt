@@ -2,6 +2,7 @@ package ai.kilocode.client.settings.profile
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.HoverIcon
+import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import com.intellij.icons.AllIcons
@@ -94,7 +95,7 @@ internal class LoggedOutProfileUi(
         accessibleContext.accessibleDescription = KiloBundle.message("profile.login.qr.description")
     }
 
-    private val codePanel = ProfileCardPanel(UiStyle.Gap.sm(), UiStyle.Gap.md()).apply {
+    private val codePanel = RoundedContentPanel(UiStyle.Gap.sm(), UiStyle.Gap.md()).apply {
         name = "kilo.login.codePanel"
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
