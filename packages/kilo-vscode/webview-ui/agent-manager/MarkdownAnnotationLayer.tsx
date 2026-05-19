@@ -1,8 +1,8 @@
 import { type Component, createEffect, createMemo, onCleanup } from "solid-js"
 import type { AnnotationSide, DiffLineAnnotation, SelectedLineRange } from "@pierre/diffs"
 import { markdownCommentBlocks, type MarkdownRange } from "./markdown-comment-ranges"
-import { isAnnotationMutation, selector } from "./markdown-annotation-mutation"
 import type { AnnotationMeta } from "./review-annotations"
+import { annotationSelector, isAnnotationMutation } from "./markdown-annotation-mutation"
 
 type Insert = "after" | "list" | "table"
 
@@ -88,6 +88,8 @@ function matches(annotation: DiffLineAnnotation<AnnotationMeta>, anchor: Anchor,
   if (annotation.lineNumber > anchor.end) return false
   return true
 }
+
+const selector = annotationSelector()
 
 function removeInserted(root: HTMLElement, layer: HTMLElement): void {
   layer.replaceChildren()
