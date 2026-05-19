@@ -143,10 +143,16 @@ class KiloBackendCliManager(
             return null
         }
         val dev = File(root, ".kilo-dev")
-        val data = File(dev, "data").also { it.mkdirs() }
-        val config = File(dev, "config").also { it.mkdirs() }
-        val state = File(dev, "state").also { it.mkdirs() }
-        val cache = File(dev, "cache").also { it.mkdirs() }
+        val data = File(dev, "data")
+        val config = File(dev, "config")
+        val state = File(dev, "state")
+        val cache = File(dev, "cache")
+        for (dir in listOf(data, config, state, cache)) {
+            if (!dir.mkdirs() && !dir.isDirectory) {
+                log.warn("Failed to create dev storage dir ${dir.absolutePath}; skipping dev storage isolation")
+                return null
+            }
+        }
         log.info("Dev storage isolation enabled under ${dev.absolutePath}")
         return mapOf(
             "XDG_DATA_HOME" to data.absolutePath,
