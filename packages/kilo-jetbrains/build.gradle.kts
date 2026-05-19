@@ -5,6 +5,24 @@ import org.jetbrains.intellij.platform.gradle.tasks.aware.SplitModeAware.SplitMo
 
 group = "ai.kilocode.jetbrains"
 
+val ports = 49152..65535
+
+fun fallback(): Int {
+    return ports.random()
+}
+
+fun port(value: String): Int {
+    val text = value.trim()
+    if (text.isEmpty()) return fallback()
+    val n = text.toIntOrNull()
+        ?: error("kilo.splitModeServerPort must be an integer from 0 to 65535; use 0 or omit it for a random high port")
+    require(n in 0..65535) {
+        "kilo.splitModeServerPort must be an integer from 0 to 65535; use 0 or omit it for a random high port"
+    }
+    if (n == 0) return fallback()
+    return n
+}
+
 fun checked(value: String): String {
     if (value == "0.0.0-dev") return value
     require(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?$").matches(value)) {
@@ -28,6 +46,7 @@ val ver = if (release) checked(
 
 val notes = providers.gradleProperty("kilo.changeNotes").orElse("Release candidate build.")
 val channel = providers.gradleProperty("kilo.channel").map { it.trim() }.orElse("default")
+val splitPort = providers.gradleProperty("kilo.splitModeServerPort").map(::port).orElse(providers.provider(::fallback))
 
 version = ver
 
@@ -123,8 +142,14 @@ intellijPlatform {
 
 tasks {
     runIdeBackend {
-        splitModeServerPort.set(12345)
+        splitModeServerPort.set(splitPort)
+        dependsOn(":backend:prepareLocalCli")
+        dependsOn(":backend:processResources")
     }
+}
+
+project(":backend").tasks.named("processResources") {
+    mustRunAfter(":backend:prepareLocalCli")
 }
 
 // Compile-only typecheck: verifies Kotlin compiles (including generated API client)

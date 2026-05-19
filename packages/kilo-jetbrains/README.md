@@ -14,6 +14,18 @@ AI coding agent plugin for JetBrains IDEs.
 
 ---
 
+## Fresh worktree setup
+
+When working in a git worktree (e.g. via the Agent Manager), run `bun install` from the repo root before building or running Gradle tasks:
+
+```bash
+bun install
+```
+
+This installs Node dependencies required by the build scripts, including `script/build.ts` which prepares CLI binaries.
+
+---
+
 ## Open in IntelliJ
 
 When you open the monorepo root in IntelliJ IDEA, the Gradle project at `packages/kilo-jetbrains/` should be auto-detected via `.idea/gradle.xml`. If not, link it manually: **File > Settings > Build Tools > Gradle > +** and select `packages/kilo-jetbrains/settings.gradle.kts`.
@@ -62,9 +74,27 @@ See [RELEASING.md](RELEASING.md) for the full release process, including how to 
 
 Use the `runIde` Gradle task (available in the Gradle tool window or via the "Run JetBrains Plugin" run configuration) to launch a sandboxed IntelliJ instance with the plugin installed.
 
-On a fresh worktree, `runIde` now checks `backend/build/generated/cli/cli/` first. If the local-platform CLI binary is missing, it runs the standard single-binary generation flow and copies the result into the backend resources automatically.
+`runIde` does not prepare the CLI binary automatically. Run `bun run build --prepare-cli` from `packages/kilo-jetbrains/` first to copy the local-platform binary into `backend/build/generated/cli/cli/`.
 
-That bootstrap is local-development only. Production packaging still requires running `bun run build:production` so all platform binaries are present.
+Production packaging still requires running `bun run build:production` so all platform binaries are present.
+
+### Run the split backend
+
+The `Run IDE (Backend)` / `runIdeBackend` path prepares the local-platform CLI binary automatically when `backend/build/generated/cli/cli/` does not contain the expected binary. It runs `bun run build --prepare-cli` and then copies backend resources for the sandbox.
+
+The backend run configuration includes `-Pkilo.splitModeServerPort=0` by default. Leave it blank, set it to `0`, or omit it to use a random high port from `49152..65535`; set it to a fixed port when you need one:
+
+```text
+-Pkilo.dev.log.level=debug -Pkilo.splitModeServerPort=12345
+```
+
+If IntelliJ-launched Gradle cannot find Bun automatically, add this to the backend Gradle run configuration arguments:
+
+```text
+-Pkilo.bun.path=/absolute/path/to/bun
+```
+
+---
 
 ### Debug logging properties
 
@@ -115,7 +145,15 @@ Use `off` first. Switch to `preview` only when you need prompt or tool payload h
 
 ## Run Gradle directly
 
-You can run `./gradlew buildPlugin` directly for local development. Gradle will auto-generate the current-platform CLI binary if `backend/build/generated/cli/` is missing.
+For direct local packaging, run:
+
+```bash
+bun run build
+```
+
+This prepares the local CLI binary and then runs `./gradlew buildPlugin`.
+
+If you run `./gradlew buildPlugin` directly, Gradle verifies CLI binaries are present but does not build them first. Run `bun run build --prepare-cli` beforehand if the binaries are missing.
 
 For production verification:
 
