@@ -277,6 +277,33 @@ class KiloCliDataParserTest {
     }
 
     @Test
+    fun `parseChatEvent - session error preserves API error details`() {
+        val data = globalEvent("""
+            "type": "session.error",
+            "properties": {
+                "sessionID": "ses_1",
+                "error": {
+                    "name": "APIError",
+                    "message": "Unauthorized",
+                    "data": {
+                        "statusCode": 401,
+                        "responseBody": "{\"error\":{\"code\":\"PAID_MODEL_AUTH_REQUIRED\"}}"
+                    }
+                }
+            }
+        """)
+
+        val result = KiloCliDataParser.parseChatEvent("session.error", data)
+        assertNotNull(result)
+        assertTrue(result is ChatEventDto.Error)
+        assertEquals("ses_1", result.sessionID)
+        assertEquals("APIError", result.error?.type)
+        assertEquals("Unauthorized", result.error?.message)
+        assertEquals(401, result.error?.statusCode)
+        assertEquals("""{"error":{"code":"PAID_MODEL_AUTH_REQUIRED"}}""", result.error?.responseBody)
+    }
+
+    @Test
     fun `parseChatEvent - message removed`() {
         val data = globalEvent("""
             "type": "message.removed",
@@ -643,6 +670,30 @@ class KiloCliDataParserTest {
         )
         val result = KiloCliDataParser.buildPromptJson(prompt)
         assertTrue(result.contains(""""model":{"providerID":"anthropic","modelID":"claude-4"}"""))
+    }
+
+    @Test
+    fun `buildPromptJson - with messageID`() {
+        val prompt = PromptDto(
+            parts = listOf(PromptPartDto("text", "Hi")),
+            messageID = "msg_1",
+        )
+
+        val result = KiloCliDataParser.buildPromptJson(prompt)
+
+        assertTrue(result.contains(""""messageID":"msg_1""""))
+    }
+
+    @Test
+    fun `buildPromptJson - with noReply`() {
+        val prompt = PromptDto(
+            parts = listOf(PromptPartDto("text", "Hi")),
+            noReply = true,
+        )
+
+        val result = KiloCliDataParser.buildPromptJson(prompt)
+
+        assertEquals("""{"parts":[{"type":"text","text":"Hi"}],"noReply":true}""", result)
     }
 
     @Test

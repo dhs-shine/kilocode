@@ -121,6 +121,7 @@ class SessionController(
     private var acctAllowed = false
     private var lastProfile: ProfileDto? = null
     private var target: OrganizationTarget? = null
+    private var loginRetry: PromptDto? = null
 
     val ready: Boolean get() = model.isReady()
     internal val blank: Boolean get() = ref == null && model.isEmpty() && !model.showSession
@@ -379,6 +380,9 @@ class SessionController(
                 fire(SessionControllerEvent.AppChanged) {
                     model.app = state
                     model.version = app.version
+                    if (model.state is SessionState.LoginRequired && state.profile != null) {
+                        resumeAfterLogin()
+                    }
                     syncModelSelection()
                     syncConnectionState()
                     refreshAccountOverlay()
@@ -659,7 +663,7 @@ class SessionController(
                 tool = null
                 // "completed" always transitions to idle.
                 // Other reasons: don't clobber a more specific terminal state (Error,
-                // AwaitingPermission, AwaitingQuestion) that arrived just before close.
+                // AwaitingPermission, AwaitingQuestion, LoginRequired) that arrived just before close.
                 val current = model.state
                 val clobberOk = event.reason == "completed"
                     || current is SessionState.Busy
@@ -671,8 +675,14 @@ class SessionController(
             is ChatEventDto.Error -> {
                 partType = null
                 tool = null
-                val msg = event.error?.message ?: event.error?.type ?: KiloBundle.message("session.error.unknown")
-                model.setState(SessionState.Error(msg, event.error?.type))
+                if (isPaidModelAuthRequired(event.error)) {
+                    loginRetry = retryPrompt()
+                    showSession()
+                    model.setState(SessionState.LoginRequired(KiloBundle.message("session.login.required.description")))
+                } else {
+                    val msg = event.error?.message ?: event.error?.type ?: KiloBundle.message("session.error.unknown")
+                    model.setState(SessionState.Error(msg, event.error?.type))
+                }
             }
 
             is ChatEventDto.MessageRemoved -> {
@@ -710,7 +720,11 @@ class SessionController(
 
             is ChatEventDto.SessionStatusChanged -> {
                 val state = when (event.status.type) {
-                    "idle" -> SessionState.Idle
+                    "idle" -> {
+                        val current = model.state
+                        if (current is SessionState.LoginRequired) return
+                        SessionState.Idle
+                    }
                     "busy" -> {
                         val current = model.state
                         if (current is SessionState.Idle || current is SessionState.Error)
@@ -740,6 +754,7 @@ class SessionController(
                 if (current !is SessionState.Error
                     && current !is SessionState.AwaitingPermission
                     && current !is SessionState.AwaitingQuestion
+                    && current !is SessionState.LoginRequired
                 ) {
                     model.setState(SessionState.Idle)
                 }
@@ -748,6 +763,49 @@ class SessionController(
             is ChatEventDto.SessionCompacted -> model.markCompacted()
             is ChatEventDto.SessionDiffChanged -> model.setDiff(event.diff)
             is ChatEventDto.TodoUpdated -> model.setTodos(event.todos)
+        }
+    }
+
+    private fun retryPrompt(): PromptDto? {
+        val msg = model.messages().lastOrNull { it.info.role == "user" } ?: return null
+        val sel = model.model?.let(::parseModel)
+        return PromptDto(
+            parts = emptyList(),
+            messageID = msg.info.id,
+            providerID = sel?.first,
+            modelID = sel?.second,
+            agent = msg.info.agent,
+            variant = model.variant?.takeIf { it in model.variants },
+            noReply = false,
+        )
+    }
+
+    private fun resumeAfterLogin() {
+        assertEdt()
+        val retry = loginRetry
+        loginRetry = null
+        if (retry == null) {
+            model.setState(SessionState.Idle)
+            return
+        }
+        val id = sid
+        if (id == null) {
+            model.setState(SessionState.Idle)
+            return
+        }
+        model.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
+        cs.launch {
+            try {
+                sessions.prompt(id, directory, retry)
+                LOG.debug { "${ChatLogSummary.sid(id)} kind=login-resume dispatched=true" }
+            } catch (e: Exception) {
+                LOG.warn("${ChatLogSummary.sid(id)} kind=login-resume dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
+                edt {
+                    if (disposed) return@edt
+                    val msg = e.message ?: KiloBundle.message("session.error.prompt")
+                    model.setState(SessionState.Error(msg))
+                }
+            }
         }
     }
 
@@ -1171,6 +1229,10 @@ class SessionController(
             }
             is SessionState.Error -> {
                 out.add("[error]")
+                out.add("[${state.message}]")
+            }
+            is SessionState.LoginRequired -> {
+                out.add("[login-required]")
                 out.add("[${state.message}]")
             }
         }

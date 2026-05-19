@@ -327,6 +327,14 @@ object KiloCliDataParser {
         }
         val sb = StringBuilder()
         sb.append("""{"parts":[$parts]""")
+        val msg = prompt.messageID
+        if (msg != null) {
+            sb.append(""","messageID":${escape(msg)}""")
+        }
+        val reply = prompt.noReply
+        if (reply != null) {
+            sb.append(""","noReply":$reply""")
+        }
         val pid = prompt.providerID
         val mid = prompt.modelID
         if (pid != null && mid != null) {
@@ -441,10 +449,16 @@ object KiloCliDataParser {
 
     internal fun parseError(obj: JsonObject): MessageErrorDto {
         val type = obj.str("type") ?: obj.str("name") ?: "unknown"
+        val data = obj["data"]?.jsonObject
         val msg = obj.str("message")
-            ?: obj["data"]?.jsonObject?.str("message")
+            ?: data?.str("message")
             ?: obj.str("error")
-        return MessageErrorDto(type, msg)
+        return MessageErrorDto(
+            type,
+            msg,
+            statusCode = data?.long("statusCode")?.safeInt(),
+            responseBody = data?.str("responseBody"),
+        )
     }
 
     internal fun parsePermissionRequest(obj: JsonObject): PermissionRequestDto? {

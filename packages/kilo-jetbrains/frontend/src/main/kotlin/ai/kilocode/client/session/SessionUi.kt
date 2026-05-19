@@ -23,6 +23,7 @@ import ai.kilocode.client.session.controller.EVENT_FLUSH_MS
 import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.session.controller.SessionControllerEvent
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.LoginRequiredView
 import ai.kilocode.client.session.views.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
@@ -108,6 +109,7 @@ class SessionUi(
 
     private lateinit var question: QuestionView
     private lateinit var permission: PermissionView
+    private lateinit var login: LoginRequiredView
     private lateinit var connection: ConnectionPanel
 
     private lateinit var prompt: PromptPanel
@@ -179,7 +181,8 @@ class SessionUi(
         permission = PermissionView(
             reply = { id, dto -> controller.replyPermission(id, dto) },
         )
-        messageBody = SessionMessageListPanel(controller.model, this, question, permission)
+        login = LoginRequiredView(openProfile = { controller.openProfile() })
+        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login)
         header = SessionHeaderPanel(controller, this)
 
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
