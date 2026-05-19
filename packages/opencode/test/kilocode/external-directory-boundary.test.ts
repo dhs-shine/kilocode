@@ -3,7 +3,7 @@ import { Effect } from "effect"
 import path from "path"
 import type { Permission } from "../../src/permission"
 import { Instance } from "../../src/project/instance"
-import { InstanceStore } from "../../src/project/instance-store"
+import { InstanceRuntime } from "../../src/project/instance-runtime"
 import { WithInstance } from "../../src/project/with-instance"
 import { SessionID, MessageID } from "../../src/session/schema"
 import { assertExternalDirectory } from "../../src/tool/external-directory"
@@ -50,7 +50,7 @@ describe("kilocode external directory boundaries", () => {
         try {
           await assertExternalDirectory(ctx, file)
         } finally {
-          await InstanceStore.disposeInstance(Instance.current)
+          await InstanceRuntime.disposeInstance(Instance.current)
         }
       },
     })
@@ -74,7 +74,7 @@ describe("kilocode external directory boundaries", () => {
         try {
           await assertExternalDirectory(ctx, file)
         } finally {
-          await InstanceStore.disposeInstance(Instance.current)
+          await InstanceRuntime.disposeInstance(Instance.current)
         }
       },
     })

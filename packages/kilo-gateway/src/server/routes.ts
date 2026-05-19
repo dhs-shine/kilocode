@@ -41,7 +41,7 @@ interface KiloRoutesDeps extends ImportDeps {
   Auth: Auth
   ModelCache: ModelCache
   z: Z
-  InstanceStore: { disposeAllInstances(): Promise<void> }
+  Instances: { disposeAllInstances(): Promise<void> }
 }
 
 const FIM_TIMEOUT_MS = 30_000
@@ -88,7 +88,7 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
     SessionCreatedEvent,
     Identifier,
     ModelCache,
-    InstanceStore,
+    Instances,
   } = deps
 
   const Organization = z.object({
@@ -211,7 +211,7 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
               {
                 auth: Auth,
                 clear: () => ModelCache.clear("kilo"),
-                dispose: () => InstanceStore.disposeAllInstances(),
+                dispose: () => Instances.disposeAllInstances(),
               },
               organizationId,
             ),

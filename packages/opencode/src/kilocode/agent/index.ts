@@ -5,7 +5,7 @@ import { Glob } from "@opencode-ai/core/util/glob"
 import * as Truncate from "../../tool/truncate"
 import { Config } from "../../config/config"
 import { Instance } from "../../project/instance"
-import { InstanceStore } from "../../project/instance-store"
+import { InstanceRuntime } from "../../project/instance-runtime"
 import { makeRuntime } from "@/effect/run-service"
 import z from "zod"
 import path from "path"
@@ -512,5 +512,5 @@ export async function remove(name: string) {
 
   if (!found) throw new RemoveError({ name, message: "no agent file found on disk" })
 
-  await InstanceStore.disposeInstance(Instance.current)
+  await InstanceRuntime.disposeInstance(Instance.current)
 }

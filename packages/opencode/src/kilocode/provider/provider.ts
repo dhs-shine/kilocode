@@ -31,7 +31,7 @@ export const KILO_BUNDLED_PROVIDERS: Record<string, () => Promise<(options: any)
 // ---------------------------------------------------------------------------
 
 export const KILO_MODEL_SCHEMA_EXTENSIONS = {
-  recommendedIndex: Schema.optional(Schema.Number),
+  recommendedIndex: Schema.optional(Schema.Finite),
   prompt: Schema.optional(Schema.Literals(PROMPTS)),
   isFree: Schema.optional(Schema.Boolean),
   ai_sdk_provider: Schema.optional(Schema.Literals(AI_SDK_PROVIDERS)),

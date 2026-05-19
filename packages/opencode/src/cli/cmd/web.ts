@@ -4,7 +4,7 @@ import { UI } from "../ui"
 import { effectCmd } from "../effect-cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Flag } from "@opencode-ai/core/flag/flag"
-import { InstanceStore } from "../../project/instance-store" // kilocode_change
+import { InstanceRuntime } from "../../project/instance-runtime" // kilocode_change
 import open from "open"
 import { networkInterfaces } from "os"
 
@@ -86,7 +86,7 @@ export const WebCommand = effectCmd({
         new Promise<void>((resolve) => {
           const shutdown = async () => {
             try {
-              await InstanceStore.disposeAllInstances()
+              await InstanceRuntime.disposeAllInstances()
               await server.stop(true)
             } finally {
               resolve()

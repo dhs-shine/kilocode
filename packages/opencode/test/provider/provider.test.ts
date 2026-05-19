@@ -5,7 +5,7 @@ import path from "path"
 import { tmpdir } from "../fixture/fixture"
 import { Global } from "@opencode-ai/core/global"
 import { Instance } from "../../src/project/instance"
-import { InstanceStore } from "../../src/project/instance-store"
+import { InstanceRuntime } from "../../src/project/instance-runtime"
 import { WithInstance } from "../../src/project/with-instance"
 import { Plugin } from "../../src/plugin/index"
 import { ModelsDev } from "@/provider/models"
@@ -2513,7 +2513,7 @@ test("plugin config providers persist after instance dispose", async () => {
   // kilocode_change start
   await WithInstance.provide({
     directory: tmp.path,
-    fn: () => InstanceStore.disposeInstance(Instance.current),
+    fn: () => InstanceRuntime.disposeInstance(Instance.current),
   })
   // kilocode_change end
 

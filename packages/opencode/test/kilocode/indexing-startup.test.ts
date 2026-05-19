@@ -2,7 +2,6 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { CodeIndexManager } from "@kilocode/kilo-indexing/engine"
 import type { Config } from "../../src/config/config"
 import { GlobalBus } from "../../src/bus/global"
-import { getBootstrapRunEffect } from "../../src/effect/app-runtime"
 import { KiloIndexing } from "../../src/kilocode/indexing"
 import { WithInstance } from "../../src/project/with-instance"
 import { Server } from "../../src/server/server"
@@ -185,7 +184,6 @@ describe("indexing startup degradation", () => {
     try {
       await WithInstance.provide({
         directory: tmp.path,
-        init: await getBootstrapRunEffect(),
         fn: async () => {
           await called(init)
           expect((await KiloIndexing.current()).state).toBe("In Progress")
@@ -213,7 +211,6 @@ describe("indexing startup degradation", () => {
     try {
       await WithInstance.provide({
         directory: tmp.path,
-        init: await getBootstrapRunEffect(),
         fn: async () => {
           const status = await wait(() => KiloIndexing.current(), "Error")
 
@@ -238,7 +235,6 @@ describe("indexing startup degradation", () => {
     try {
       await WithInstance.provide({
         directory: tmp.path,
-        init: await getBootstrapRunEffect(),
         fn: async () => {
           await called(init)
 
@@ -261,7 +257,6 @@ describe("indexing startup degradation", () => {
 
     await WithInstance.provide({
       directory: tmp.path,
-      init: await getBootstrapRunEffect(),
       fn: async () => {
         const status = await KiloIndexing.current()
 
@@ -302,7 +297,6 @@ describe("indexing startup degradation", () => {
     try {
       await WithInstance.provide({
         directory: tmp.path,
-        init: await getBootstrapRunEffect(),
         fn: async () => {
           await called(init)
           expect(init.mock.calls[0]?.[0]).toMatchObject({
@@ -335,7 +329,6 @@ describe("indexing startup degradation", () => {
     try {
       await WithInstance.provide({
         directory: tmp.path,
-        init: await getBootstrapRunEffect(),
         fn: async () => {
           await called(init)
           expect(init.mock.calls[0]?.[0]).toMatchObject({
@@ -360,7 +353,6 @@ describe("indexing startup degradation", () => {
     try {
       await WithInstance.provide({
         directory: tmp.path,
-        init: await getBootstrapRunEffect(),
         fn: async () => {
           const status = await KiloIndexing.current()
 

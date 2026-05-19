@@ -3,7 +3,7 @@ import { Server } from "../../server/server"
 import { effectCmd } from "../effect-cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Flag } from "@opencode-ai/core/flag/flag"
-import { InstanceStore } from "../../project/instance-store" // kilocode_change
+import { InstanceRuntime } from "../../project/instance-runtime" // kilocode_change
 
 export const ServeCommand = effectCmd({
   command: "serve",
@@ -27,7 +27,7 @@ export const ServeCommand = effectCmd({
         new Promise<void>((resolve) => {
           const shutdown = async () => {
             try {
-              await InstanceStore.disposeAllInstances()
+              await InstanceRuntime.disposeAllInstances()
               await server.stop(true)
             } finally {
               resolve()
