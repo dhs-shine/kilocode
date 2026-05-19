@@ -414,6 +414,7 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
             format: z.string(),
           }),
           language: z.string().optional(),
+          prompt: z.string().optional(),
           temperature: z.number().optional(),
         }),
       ),

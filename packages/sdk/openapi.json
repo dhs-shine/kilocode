@@ -12181,7 +12181,7 @@
             "$ref": "#/components/schemas/EventSessionNetworkRejected"
           },
           {
-            "$ref": "#/components/schemas/EventSessionNetworkRestored"
+            "$ref": "#/components/schemas/EventSessionNetworkRestored1"
           },
           {
             "$ref": "#/components/schemas/EventMessagePartDelta"
@@ -12217,12 +12217,6 @@
             "$ref": "#/components/schemas/EventFileWatcherUpdated"
           },
           {
-            "$ref": "#/components/schemas/EventCommandExecuted"
-          },
-          {
-            "$ref": "#/components/schemas/EventProjectUpdated"
-          },
-          {
             "$ref": "#/components/schemas/EventTodoUpdated"
           },
           {
@@ -12242,6 +12236,12 @@
           },
           {
             "$ref": "#/components/schemas/EventSessionCompacted"
+          },
+          {
+            "$ref": "#/components/schemas/EventCommandExecuted"
+          },
+          {
+            "$ref": "#/components/schemas/EventProjectUpdated"
           },
           {
             "$ref": "#/components/schemas/EventKilocodeAgent_managerStart"
@@ -12751,6 +12751,9 @@
             "properties": {
               "created": {
                 "type": "number"
+              },
+              "restored": {
+                "type": "number"
               }
             },
             "required": ["created"],
@@ -13002,76 +13005,6 @@
         "required": ["name", "data"],
         "additionalProperties": false
       },
-      "Project": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "worktree": {
-            "type": "string"
-          },
-          "vcs": {
-            "type": "string",
-            "enum": ["git"]
-          },
-          "name": {
-            "type": "string"
-          },
-          "icon": {
-            "type": "object",
-            "properties": {
-              "url": {
-                "type": "string"
-              },
-              "override": {
-                "type": "string"
-              },
-              "color": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          },
-          "commands": {
-            "type": "object",
-            "properties": {
-              "start": {
-                "type": "string",
-                "description": "Startup script to run when creating a new workspace (worktree)"
-              }
-            },
-            "additionalProperties": false
-          },
-          "time": {
-            "type": "object",
-            "properties": {
-              "created": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "updated": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "initialized": {
-                "type": "integer",
-                "minimum": 0
-              }
-            },
-            "required": ["created", "updated"],
-            "additionalProperties": false
-          },
-          "sandboxes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": ["id", "worktree", "time", "sandboxes"],
-        "additionalProperties": false
-      },
       "Todo": {
         "type": "object",
         "properties": {
@@ -13209,6 +13142,76 @@
           }
         },
         "required": ["id", "sessionID", "text", "actions"],
+        "additionalProperties": false
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "worktree": {
+            "type": "string"
+          },
+          "vcs": {
+            "type": "string",
+            "enum": ["git"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "override": {
+                "type": "string"
+              },
+              "color": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "commands": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string",
+                "description": "Startup script to run when creating a new workspace (worktree)"
+              }
+            },
+            "additionalProperties": false
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "created": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "updated": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "initialized": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": ["created", "updated"],
+            "additionalProperties": false
+          },
+          "sandboxes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["id", "worktree", "time", "sandboxes"],
         "additionalProperties": false
       },
       "Pty": {
@@ -14650,12 +14653,6 @@
                 "$ref": "#/components/schemas/EventFileWatcherUpdated"
               },
               {
-                "$ref": "#/components/schemas/EventCommandExecuted"
-              },
-              {
-                "$ref": "#/components/schemas/EventProjectUpdated"
-              },
-              {
                 "$ref": "#/components/schemas/EventTodoUpdated"
               },
               {
@@ -14675,6 +14672,12 @@
               },
               {
                 "$ref": "#/components/schemas/EventSessionCompacted"
+              },
+              {
+                "$ref": "#/components/schemas/EventCommandExecuted"
+              },
+              {
+                "$ref": "#/components/schemas/EventProjectUpdated"
               },
               {
                 "$ref": "#/components/schemas/EventKilocodeAgent_managerStart"
@@ -19779,9 +19782,32 @@
               },
               "requestID": {
                 "type": "string"
+              },
+              "time": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string",
+                    "enum": ["NaN"]
+                  },
+                  {
+                    "type": "string",
+                    "enum": ["Infinity"]
+                  },
+                  {
+                    "type": "string",
+                    "enum": ["-Infinity"]
+                  },
+                  {
+                    "type": "string",
+                    "enum": ["Infinity", "-Infinity", "NaN"]
+                  }
+                ]
               }
             },
-            "required": ["sessionID", "requestID"],
+            "required": ["sessionID", "requestID", "time"],
             "additionalProperties": false
           }
         },
@@ -20102,56 +20128,6 @@
         "required": ["id", "type", "properties"],
         "additionalProperties": false
       },
-      "EventCommandExecuted": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["command.executed"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "sessionID": {
-                "type": "string"
-              },
-              "arguments": {
-                "type": "string"
-              },
-              "messageID": {
-                "type": "string"
-              }
-            },
-            "required": ["name", "sessionID", "arguments", "messageID"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventProjectUpdated": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["project.updated"]
-          },
-          "properties": {
-            "$ref": "#/components/schemas/Project"
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
       "EventTodoUpdated": {
         "type": "object",
         "properties": {
@@ -20345,6 +20321,56 @@
             },
             "required": ["sessionID"],
             "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventCommandExecuted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["command.executed"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "arguments": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              }
+            },
+            "required": ["name", "sessionID", "arguments", "messageID"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventProjectUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["project.updated"]
+          },
+          "properties": {
+            "$ref": "#/components/schemas/Project"
           }
         },
         "required": ["id", "type", "properties"],
@@ -22710,6 +22736,52 @@
               }
             },
             "required": ["message", "variant"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventSessionNetworkRestored1": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["session.network.restored"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              },
+              "requestID": {
+                "type": "string"
+              },
+              "time": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string",
+                    "enum": ["NaN"]
+                  },
+                  {
+                    "type": "string",
+                    "enum": ["Infinity"]
+                  },
+                  {
+                    "type": "string",
+                    "enum": ["-Infinity"]
+                  }
+                ]
+              }
+            },
+            "required": ["sessionID", "requestID", "time"],
             "additionalProperties": false
           }
         },

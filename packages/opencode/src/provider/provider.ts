@@ -439,9 +439,9 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
-            "X-Source": "opencode",
+            "HTTP-Referer": "https://kilo.ai/", // kilocode_change
+            "X-Title": "Kilo Code", // kilocode_change
+            "X-Source": "kilo", // kilocode_change
           },
         },
       }),
@@ -450,8 +450,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://kilo.ai/", // kilocode_change
+            "X-Title": "Kilo Code", // kilocode_change
           },
         },
       }),
@@ -460,8 +460,9 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://kilo.ai/", // kilocode_change
+            "X-Title": "Kilo Code", // kilocode_change
+            "X-BILLING-INVOKE-ORIGIN": "KiloCode", // kilocode_change
           },
         },
       }),
@@ -470,8 +471,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "http-referer": "https://opencode.ai/",
-            "x-title": "opencode",
+            "http-referer": "https://kilo.ai/", // kilocode_change
+            "x-title": "Kilo Code", // kilocode_change
           },
         },
       }),
@@ -568,8 +569,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://kilo.ai/", // kilocode_change
+            "X-Title": "Kilo Code", // kilocode_change
           },
         },
       }),
@@ -844,7 +845,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "X-Cerebras-3rd-Party-Integration": "opencode",
+            "X-Cerebras-3rd-Party-Integration": "Kilo Code", // kilocode_change
           },
         },
       }),
@@ -853,8 +854,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://kilo.ai/", // kilocode_change
+            "X-Title": "Kilo Code", // kilocode_change
           },
         },
       }),

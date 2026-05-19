@@ -85,7 +85,7 @@ const getAllSessions = Effect.sync(() =>
 
 // kilocode_change start - expose Effect stats aggregation for Kilo regression coverage
 export const aggregateSessionStats = Effect.fn("Cli.stats.aggregate")(function* (
-// kilocode_change end
+  // kilocode_change end
   days?: number,
   projectFilter?: string,
   currentProject?: Project.Info,

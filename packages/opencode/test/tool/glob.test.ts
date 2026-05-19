@@ -41,7 +41,7 @@ const unixInstance = process.platform !== "win32" ? it.instance : it.instance.sk
 describe("tool.glob", () => {
   // kilocode_change start - skip on windows: address windows ci failures #9496
   unixInstance("matches files from a directory path", () =>
-  // kilocode_change end
+    // kilocode_change end
     Effect.gen(function* () {
       const test = yield* TestInstance
       yield* Effect.promise(() => Bun.write(path.join(test.directory, "a.ts"), "export const a = 1\n"))
