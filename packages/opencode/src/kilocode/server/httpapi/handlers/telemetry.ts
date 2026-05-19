@@ -12,7 +12,7 @@ export const telemetryHandlers = HttpApiBuilder.group(InstanceHttpApi, "telemetr
       // fire-and-forget: log instead of swallowing
       yield* Effect.sync(() =>
         Telemetry.track(ctx.payload.event as any, ctx.payload.properties as Record<string, unknown> | undefined),
-      ).pipe(Effect.catchAllCause((cause) => Effect.logWarning("telemetry.capture failed", cause)))
+      ).pipe(Effect.catchCause((cause) => Effect.logWarning("telemetry.capture failed", cause)))
       return true
     })
 

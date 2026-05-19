@@ -33,14 +33,10 @@ export type Event =
   | EventSessionError
   | EventInstallationUpdated
   | EventInstallationUpdateAvailable
-  | EventCommandExecuted
-  | EventProjectUpdated
-  | EventWorkspaceReady
-  | EventWorkspaceFailed
-  | EventWorkspaceRestore
-  | EventWorkspaceStatus
   | EventFileEdited
   | EventFileWatcherUpdated
+  | EventCommandExecuted
+  | EventProjectUpdated
   | EventTodoUpdated
   | EventSessionStatus
   | EventSessionIdle
@@ -50,6 +46,10 @@ export type Event =
   | EventSessionCompacted
   | EventKilocodeAgentManagerStart
   | EventVcsBranchUpdated
+  | EventWorkspaceReady
+  | EventWorkspaceFailed
+  | EventWorkspaceRestore
+  | EventWorkspaceStatus
   | EventWorktreeReady
   | EventWorktreeFailed
   | EventPtyCreated
@@ -878,14 +878,10 @@ export type GlobalEvent = {
     | EventSessionError
     | EventInstallationUpdated
     | EventInstallationUpdateAvailable
-    | EventCommandExecuted
-    | EventProjectUpdated
-    | EventWorkspaceReady
-    | EventWorkspaceFailed
-    | EventWorkspaceRestore
-    | EventWorkspaceStatus
     | EventFileEdited
     | EventFileWatcherUpdated
+    | EventCommandExecuted
+    | EventProjectUpdated
     | EventTodoUpdated
     | EventSessionStatus
     | EventSessionIdle
@@ -895,6 +891,10 @@ export type GlobalEvent = {
     | EventSessionCompacted
     | EventKilocodeAgentManagerStart
     | EventVcsBranchUpdated
+    | EventWorkspaceReady
+    | EventWorkspaceFailed
+    | EventWorkspaceRestore
+    | EventWorkspaceStatus
     | EventWorktreeReady
     | EventWorktreeFailed
     | EventPtyCreated
@@ -985,6 +985,70 @@ export type ServerConfig = {
   mdns?: boolean
   mdnsDomain?: string
   cors?: Array<string>
+}
+
+export type IndexingConfig = {
+  enabled?: boolean
+  provider?:
+    | "kilo"
+    | "openai"
+    | "ollama"
+    | "openai-compatible"
+    | "gemini"
+    | "mistral"
+    | "vercel-ai-gateway"
+    | "bedrock"
+    | "openrouter"
+    | "voyage"
+  model?: string
+  dimension?: number
+  vectorStore?: "lancedb" | "qdrant"
+  kilo?: {
+    apiKey?: string
+    baseUrl?: string
+    organizationId?: string
+  }
+  openai?: {
+    apiKey?: string
+  }
+  ollama?: {
+    baseUrl?: string
+  }
+  "openai-compatible"?: {
+    baseUrl?: string
+    apiKey?: string
+  }
+  gemini?: {
+    apiKey?: string
+  }
+  mistral?: {
+    apiKey?: string
+  }
+  "vercel-ai-gateway"?: {
+    apiKey?: string
+  }
+  bedrock?: {
+    region?: string
+    profile?: string
+  }
+  openrouter?: {
+    apiKey?: string
+    specificProvider?: string
+  }
+  voyage?: {
+    apiKey?: string
+  }
+  qdrant?: {
+    url?: string
+    apiKey?: string
+  }
+  lancedb?: {
+    directory?: string
+  }
+  searchMinScore?: number
+  searchMaxResults?: number
+  embeddingBatchSize?: number
+  scannerMaxBatchRetries?: number
 }
 
 export type PermissionActionConfig = "ask" | "allow" | "deny"
@@ -1238,7 +1302,7 @@ export type Config = {
   enabled_providers?: Array<string>
   remote_control?: boolean
   auto_collapse_reasoning?: boolean
-  indexing?: unknown
+  indexing?: IndexingConfig
   terminal_command_display?: "expanded" | "collapsed"
   model?: string
   small_model?: string
@@ -1419,7 +1483,7 @@ export type Model = {
       [key: string]: unknown
     }
   }
-  recommendedIndex?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  recommendedIndex?: number
   prompt?: "codex" | "gemini" | "beast" | "anthropic" | "trinity" | "anthropic_without_todo" | "ling" | "gpt55"
   isFree?: boolean
   ai_sdk_provider?: "alibaba" | "anthropic" | "openai" | "openai-compatible" | "openrouter"
@@ -2606,59 +2670,6 @@ export type EventInstallationUpdateAvailable = {
   }
 }
 
-export type EventCommandExecuted = {
-  id: string
-  type: "command.executed"
-  properties: {
-    name: string
-    sessionID: string
-    arguments: string
-    messageID: string
-  }
-}
-
-export type EventProjectUpdated = {
-  id: string
-  type: "project.updated"
-  properties: Project
-}
-
-export type EventWorkspaceReady = {
-  id: string
-  type: "workspace.ready"
-  properties: {
-    name: string
-  }
-}
-
-export type EventWorkspaceFailed = {
-  id: string
-  type: "workspace.failed"
-  properties: {
-    message: string
-  }
-}
-
-export type EventWorkspaceRestore = {
-  id: string
-  type: "workspace.restore"
-  properties: {
-    workspaceID: string
-    sessionID: string
-    total: number
-    step: number
-  }
-}
-
-export type EventWorkspaceStatus = {
-  id: string
-  type: "workspace.status"
-  properties: {
-    workspaceID: string
-    status: "connected" | "connecting" | "disconnected" | "error"
-  }
-}
-
 export type EventFileEdited = {
   id: string
   type: "file.edited"
@@ -2674,6 +2685,23 @@ export type EventFileWatcherUpdated = {
     file: string
     event: "add" | "change" | "unlink"
   }
+}
+
+export type EventCommandExecuted = {
+  id: string
+  type: "command.executed"
+  properties: {
+    name: string
+    sessionID: string
+    arguments: string
+    messageID: string
+  }
+}
+
+export type EventProjectUpdated = {
+  id: string
+  type: "project.updated"
+  properties: Project
 }
 
 export type EventTodoUpdated = {
@@ -2767,6 +2795,42 @@ export type EventVcsBranchUpdated = {
   type: "vcs.branch.updated"
   properties: {
     branch?: string
+  }
+}
+
+export type EventWorkspaceReady = {
+  id: string
+  type: "workspace.ready"
+  properties: {
+    name: string
+  }
+}
+
+export type EventWorkspaceFailed = {
+  id: string
+  type: "workspace.failed"
+  properties: {
+    message: string
+  }
+}
+
+export type EventWorkspaceRestore = {
+  id: string
+  type: "workspace.restore"
+  properties: {
+    workspaceID: string
+    sessionID: string
+    total: number
+    step: number
+  }
+}
+
+export type EventWorkspaceStatus = {
+  id: string
+  type: "workspace.status"
+  properties: {
+    workspaceID: string
+    status: "connected" | "connecting" | "disconnected" | "error"
   }
 }
 

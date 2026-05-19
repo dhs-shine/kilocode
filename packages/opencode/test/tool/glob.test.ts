@@ -35,12 +35,13 @@ const ctx = {
 }
 
 // kilocode_change start - skip on windows: address windows ci failures #9496
-const unix = process.platform !== "win32" ? it.live : it.live.skip
 const unixInstance = process.platform !== "win32" ? it.instance : it.instance.skip
 // kilocode_change end
 
 describe("tool.glob", () => {
+  // kilocode_change start - skip on windows: address windows ci failures #9496
   unixInstance("matches files from a directory path", () =>
+  // kilocode_change end
     Effect.gen(function* () {
       const test = yield* TestInstance
       yield* Effect.promise(() => Bun.write(path.join(test.directory, "a.ts"), "export const a = 1\n"))
@@ -85,28 +86,27 @@ describe("tool.glob", () => {
   )
 
   // kilocode_change start - absolute glob patterns outside the project
-  unix("supports absolute glob patterns outside the project", () =>
-    provideTmpdirInstance(
-      (_dir) =>
-        Effect.gen(function* () {
-          const outer = yield* Effect.promise(() => fs.mkdtemp(path.join(os.tmpdir(), "glob-outer-")))
-          yield* Effect.promise(() => Bun.write(path.join(outer, "one.md"), "one"))
-          yield* Effect.promise(() => Bun.write(path.join(outer, "two.md"), "two"))
-          yield* Effect.promise(() => Bun.write(path.join(outer, "three.txt"), "three"))
-          const info = yield* GlobTool
-          const glob = yield* info.init()
-          const result = yield* glob.execute(
-            {
-              pattern: path.join(outer, "*.md"),
-            },
-            ctx,
-          )
-          expect(result.output).toContain(path.join(outer, "one.md"))
-          expect(result.output).toContain(path.join(outer, "two.md"))
-          expect(result.output).not.toContain(path.join(outer, "three.txt"))
-        }),
-      { git: true },
-    ),
+  unixInstance(
+    "supports absolute glob patterns outside the project",
+    () =>
+      Effect.gen(function* () {
+        const outer = yield* Effect.promise(() => fs.mkdtemp(path.join(os.tmpdir(), "glob-outer-")))
+        yield* Effect.promise(() => Bun.write(path.join(outer, "one.md"), "one"))
+        yield* Effect.promise(() => Bun.write(path.join(outer, "two.md"), "two"))
+        yield* Effect.promise(() => Bun.write(path.join(outer, "three.txt"), "three"))
+        const info = yield* GlobTool
+        const glob = yield* info.init()
+        const result = yield* glob.execute(
+          {
+            pattern: path.join(outer, "*.md"),
+          },
+          ctx,
+        )
+        expect(result.output).toContain(path.join(outer, "one.md"))
+        expect(result.output).toContain(path.join(outer, "two.md"))
+        expect(result.output).not.toContain(path.join(outer, "three.txt"))
+      }),
+    { git: true },
   )
   // kilocode_change end
 })

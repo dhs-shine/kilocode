@@ -41,13 +41,13 @@ const layer = Config.layer.pipe(
 )
 
 const load = () => Effect.runPromise(Config.Service.use((svc) => svc.get()).pipe(Effect.scoped, Effect.provide(layer)))
-const clear = (wait = false) =>
-  Effect.runPromise(Config.Service.use((svc) => svc.invalidate(wait)).pipe(Effect.scoped, Effect.provide(layer)))
+const clear = () =>
+  Effect.runPromise(Config.Service.use((svc) => svc.invalidate()).pipe(Effect.scoped, Effect.provide(layer)))
 
 describe("kilocode default indexing plugin", () => {
   afterEach(async () => {
+    await clear()
     await disposeAllInstances()
-    await clear(true)
   })
 
   test("does not hard-enable indexing plugin when default plugins are disabled", async () => {

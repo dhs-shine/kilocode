@@ -12211,28 +12211,16 @@
             "$ref": "#/components/schemas/EventInstallationUpdate-available"
           },
           {
-            "$ref": "#/components/schemas/EventCommandExecuted"
-          },
-          {
-            "$ref": "#/components/schemas/EventProjectUpdated"
-          },
-          {
-            "$ref": "#/components/schemas/EventWorkspaceReady"
-          },
-          {
-            "$ref": "#/components/schemas/EventWorkspaceFailed"
-          },
-          {
-            "$ref": "#/components/schemas/EventWorkspaceRestore"
-          },
-          {
-            "$ref": "#/components/schemas/EventWorkspaceStatus"
-          },
-          {
             "$ref": "#/components/schemas/EventFileEdited"
           },
           {
             "$ref": "#/components/schemas/EventFileWatcherUpdated"
+          },
+          {
+            "$ref": "#/components/schemas/EventCommandExecuted"
+          },
+          {
+            "$ref": "#/components/schemas/EventProjectUpdated"
           },
           {
             "$ref": "#/components/schemas/EventTodoUpdated"
@@ -12260,6 +12248,18 @@
           },
           {
             "$ref": "#/components/schemas/EventVcsBranchUpdated"
+          },
+          {
+            "$ref": "#/components/schemas/EventWorkspaceReady"
+          },
+          {
+            "$ref": "#/components/schemas/EventWorkspaceFailed"
+          },
+          {
+            "$ref": "#/components/schemas/EventWorkspaceRestore"
+          },
+          {
+            "$ref": "#/components/schemas/EventWorkspaceStatus"
           },
           {
             "$ref": "#/components/schemas/EventWorktreeReady"
@@ -14644,28 +14644,16 @@
                 "$ref": "#/components/schemas/EventInstallationUpdate-available"
               },
               {
-                "$ref": "#/components/schemas/EventCommandExecuted"
-              },
-              {
-                "$ref": "#/components/schemas/EventProjectUpdated"
-              },
-              {
-                "$ref": "#/components/schemas/EventWorkspaceReady"
-              },
-              {
-                "$ref": "#/components/schemas/EventWorkspaceFailed"
-              },
-              {
-                "$ref": "#/components/schemas/EventWorkspaceRestore"
-              },
-              {
-                "$ref": "#/components/schemas/EventWorkspaceStatus"
-              },
-              {
                 "$ref": "#/components/schemas/EventFileEdited"
               },
               {
                 "$ref": "#/components/schemas/EventFileWatcherUpdated"
+              },
+              {
+                "$ref": "#/components/schemas/EventCommandExecuted"
+              },
+              {
+                "$ref": "#/components/schemas/EventProjectUpdated"
               },
               {
                 "$ref": "#/components/schemas/EventTodoUpdated"
@@ -14693,6 +14681,18 @@
               },
               {
                 "$ref": "#/components/schemas/EventVcsBranchUpdated"
+              },
+              {
+                "$ref": "#/components/schemas/EventWorkspaceReady"
+              },
+              {
+                "$ref": "#/components/schemas/EventWorkspaceFailed"
+              },
+              {
+                "$ref": "#/components/schemas/EventWorkspaceRestore"
+              },
+              {
+                "$ref": "#/components/schemas/EventWorkspaceStatus"
               },
               {
                 "$ref": "#/components/schemas/EventWorktreeReady"
@@ -14952,6 +14952,184 @@
         },
         "additionalProperties": false,
         "description": "Server configuration for kilo serve and web commands"
+      },
+      "IndexingConfig": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "kilo",
+              "openai",
+              "ollama",
+              "openai-compatible",
+              "gemini",
+              "mistral",
+              "vercel-ai-gateway",
+              "bedrock",
+              "openrouter",
+              "voyage"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "dimension": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "vectorStore": {
+            "type": "string",
+            "enum": ["lancedb", "qdrant"]
+          },
+          "kilo": {
+            "type": "object",
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              },
+              "baseUrl": {
+                "type": "string"
+              },
+              "organizationId": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "openai": {
+            "type": "object",
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "ollama": {
+            "type": "object",
+            "properties": {
+              "baseUrl": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "openai-compatible": {
+            "type": "object",
+            "properties": {
+              "baseUrl": {
+                "type": "string"
+              },
+              "apiKey": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "gemini": {
+            "type": "object",
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "mistral": {
+            "type": "object",
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "vercel-ai-gateway": {
+            "type": "object",
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "bedrock": {
+            "type": "object",
+            "properties": {
+              "region": {
+                "type": "string"
+              },
+              "profile": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "openrouter": {
+            "type": "object",
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              },
+              "specificProvider": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "voyage": {
+            "type": "object",
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "qdrant": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "apiKey": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "lancedb": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "searchMinScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "searchMaxResults": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "embeddingBatchSize": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "scannerMaxBatchRetries": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "additionalProperties": false
       },
       "PermissionActionConfig": {
         "type": "string",
@@ -15584,7 +15762,9 @@
           "auto_collapse_reasoning": {
             "type": "boolean"
           },
-          "indexing": {},
+          "indexing": {
+            "$ref": "#/components/schemas/IndexingConfig"
+          },
           "terminal_command_display": {
             "type": "string",
             "enum": ["expanded", "collapsed"]
@@ -16125,27 +16305,7 @@
             }
           },
           "recommendedIndex": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string",
-                "enum": ["NaN"]
-              },
-              {
-                "type": "string",
-                "enum": ["Infinity"]
-              },
-              {
-                "type": "string",
-                "enum": ["-Infinity"]
-              },
-              {
-                "type": "string",
-                "enum": ["Infinity", "-Infinity", "NaN"]
-              }
-            ]
+            "type": "number"
           },
           "prompt": {
             "type": "string",
@@ -19890,167 +20050,6 @@
         "required": ["id", "type", "properties"],
         "additionalProperties": false
       },
-      "EventCommandExecuted": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["command.executed"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "sessionID": {
-                "type": "string"
-              },
-              "arguments": {
-                "type": "string"
-              },
-              "messageID": {
-                "type": "string"
-              }
-            },
-            "required": ["name", "sessionID", "arguments", "messageID"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventProjectUpdated": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["project.updated"]
-          },
-          "properties": {
-            "$ref": "#/components/schemas/Project"
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventWorkspaceReady": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["workspace.ready"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              }
-            },
-            "required": ["name"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventWorkspaceFailed": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["workspace.failed"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "message": {
-                "type": "string"
-              }
-            },
-            "required": ["message"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventWorkspaceRestore": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["workspace.restore"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "workspaceID": {
-                "type": "string"
-              },
-              "sessionID": {
-                "type": "string"
-              },
-              "total": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "step": {
-                "type": "integer",
-                "minimum": 0
-              }
-            },
-            "required": ["workspaceID", "sessionID", "total", "step"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventWorkspaceStatus": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["workspace.status"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "workspaceID": {
-                "type": "string"
-              },
-              "status": {
-                "type": "string",
-                "enum": ["connected", "connecting", "disconnected", "error"]
-              }
-            },
-            "required": ["workspaceID", "status"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
       "EventFileEdited": {
         "type": "object",
         "properties": {
@@ -20098,6 +20097,56 @@
             },
             "required": ["file", "event"],
             "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventCommandExecuted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["command.executed"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "arguments": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string"
+              }
+            },
+            "required": ["name", "sessionID", "arguments", "messageID"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventProjectUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["project.updated"]
+          },
+          "properties": {
+            "$ref": "#/components/schemas/Project"
           }
         },
         "required": ["id", "type", "properties"],
@@ -20372,6 +20421,117 @@
                 "type": "string"
               }
             },
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventWorkspaceReady": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["workspace.ready"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["name"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventWorkspaceFailed": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["workspace.failed"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": ["message"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventWorkspaceRestore": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["workspace.restore"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "workspaceID": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string"
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": ["workspaceID", "sessionID", "total", "step"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventWorkspaceStatus": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["workspace.status"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "workspaceID": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["connected", "connecting", "disconnected", "error"]
+              }
+            },
+            "required": ["workspaceID", "status"],
             "additionalProperties": false
           }
         },

@@ -49,7 +49,10 @@ import { Npm } from "@opencode-ai/core/npm"
 import { ZodOverride } from "@/util/effect-zod"
 import { KilocodeConfig } from "../kilocode/config/config"
 import { KilocodeDefaultPlugins } from "@/kilocode/config/default-plugins"
-import { IndexingConfig as KiloIndexingConfig } from "@kilocode/kilo-indexing/config"
+import {
+  IndexingConfig as KiloIndexingConfig,
+  IndexingSchema as KiloIndexingSchema,
+} from "@kilocode/kilo-indexing/config"
 import { makeRuntime } from "@/effect/run-service"
 import { unique } from "remeda"
 // kilocode_change end
@@ -118,8 +121,7 @@ const LogLevelRef = Schema.Literals(["DEBUG", "INFO", "WARN", "ERROR"]).annotate
 })
 const Percent = Schema.Number.check(Schema.isGreaterThan(0), Schema.isLessThanOrEqualTo(100)) // kilocode_change
 
-// kilocode_change - KiloIndexingConfig is still a Zod schema; bridge via ZodOverride
-const IndexingRef = Schema.Any.annotate({ [ZodOverride]: KiloIndexingConfig })
+const IndexingRef = KiloIndexingSchema.annotate({ [ZodOverride]: KiloIndexingConfig }) // kilocode_change
 
 // The Effect Schema is the canonical source of truth. The `.zod` compatibility
 // surface is derived so existing Hono validators keep working without a parallel

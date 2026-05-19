@@ -11,8 +11,6 @@ import { Array as Arr, Effect, Layer, Record, Result, Context, Schema } from "ef
 // kilocode_change start
 import { Telemetry } from "@kilocode/kilo-telemetry"
 import { ModelCache } from "./model-cache"
-import { Instance } from "@/project/instance"
-import { InstanceStore } from "@/project/instance-store"
 // kilocode_change end
 
 const When = Schema.Struct({
@@ -113,13 +111,11 @@ interface State {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/ProviderAuth") {}
 
-export const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service | InstanceStore.Service> = Layer.effect(
-  // kilocode_change
+export const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service> = Layer.effect(
   Service,
   Effect.gen(function* () {
     const auth = yield* Auth.Service
     const plugin = yield* Plugin.Service
-    const store = yield* InstanceStore.Service // kilocode_change
     const state = yield* InstanceState.make<State>(
       Effect.fn("ProviderAuth.state")(function* () {
         const plugins = yield* plugin.list()
@@ -236,7 +232,6 @@ export const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service | 
       }
       Telemetry.trackAuthSuccess(input.providerID)
       ModelCache.clear(input.providerID)
-      yield* store.disposeAll()
       // kilocode_change end
     })
 

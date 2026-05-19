@@ -83,7 +83,9 @@ const getAllSessions = Effect.sync(() =>
   Database.use((db) => db.select().from(SessionTable).all()).map((row) => Session.fromRow(row)),
 )
 
-const aggregateSessionStats = Effect.fn("Cli.stats.aggregate")(function* (
+// kilocode_change start - expose Effect stats aggregation for Kilo regression coverage
+export const aggregateSessionStats = Effect.fn("Cli.stats.aggregate")(function* (
+// kilocode_change end
   days?: number,
   projectFilter?: string,
   currentProject?: Project.Info,

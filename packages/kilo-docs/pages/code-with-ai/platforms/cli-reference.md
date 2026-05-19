@@ -172,6 +172,7 @@ Options:
   -c, --continue                      continue the last session  [boolean]
   -s, --session                       session id to continue  [string]
       --fork                          fork the session before continuing (requires --continue or --session)  [boolean]
+      --cloud-fork                    fetch session from cloud and continue locally (use with --session)  [boolean]
       --share                         share the session  [boolean]
   -m, --model                         model to use in the format of provider/model  [string]
       --agent                         agent to use  [string]

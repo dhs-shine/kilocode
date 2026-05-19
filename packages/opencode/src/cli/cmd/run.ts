@@ -241,6 +241,12 @@ export const RunCommand = effectCmd({
         describe: "fork the session before continuing (requires --continue or --session)",
         type: "boolean",
       })
+      // kilocode_change start - support cloud fork in run command
+      .option("cloud-fork", {
+        type: "boolean",
+        describe: "fetch session from cloud and continue locally (use with --session)",
+      })
+      // kilocode_change end
       .option("share", {
         type: "boolean",
         describe: "share the session",
@@ -366,7 +372,12 @@ export const RunCommand = effectCmd({
         process.exit(1)
       }
       // kilocode_change start
-      const cloudForkError = validateCloudFork(args)
+      const cloudForkError = validateCloudFork({
+        cloudFork: args["cloud-fork"],
+        fork: args.fork,
+        continue: args.continue,
+        session: args.session,
+      })
       if (cloudForkError) {
         UI.error(cloudForkError)
         process.exit(1)
@@ -401,7 +412,7 @@ export const RunCommand = effectCmd({
         const baseID = args.continue ? (await sdk.session.list()).data?.find((s) => !s.parentID)?.id : args.session
 
         // kilocode_change start
-        if (baseID && args.cloudFork) {
+        if (baseID && args["cloud-fork"]) {
           const id = await importCloudSession(sdk, baseID).catch(() => undefined)
           if (!id) {
             UI.error("Failed to import session from cloud")

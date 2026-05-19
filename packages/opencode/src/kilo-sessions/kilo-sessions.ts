@@ -435,7 +435,7 @@ export namespace KiloSessions {
       connected: remote?.conn.connected ?? false,
     }
   }
-  export function setViewedSessions(input: { focused: string[]; open?: string[] }) {
+  export function setViewedSessions(input: { focused: readonly string[]; open?: readonly string[] }) {
     focused.clear()
     opened.clear()
     for (const id of input.focused) {

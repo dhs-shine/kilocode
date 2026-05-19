@@ -68,7 +68,8 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       const info = yield* auth.get("kilo").pipe(Effect.catch(() => Effect.succeed(undefined)))
       if (!info || info.type !== "oauth" || !info.access || !info.accountId) return { modes: [] }
 
-      return yield* Effect.promise(() => fetchOrganizationModes(info.access, info.accountId)).pipe(
+      const org = info.accountId
+      return yield* Effect.promise(() => fetchOrganizationModes(info.access, org)).pipe(
         Effect.map((modes) => ({ modes })),
         Effect.catch(() => Effect.succeed({ modes: [] })),
       )
@@ -81,7 +82,10 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
 
       const request = yield* HttpServerRequest.HttpServerRequest
       const endpoint = new URL("fim/completions", `${KILO_API_BASE}/api/`)
-      const signal = AbortSignal.any([request.source.signal, AbortSignal.timeout(FIM_TIMEOUT_MS)])
+      const signal =
+        request.source instanceof Request
+          ? AbortSignal.any([request.source.signal, AbortSignal.timeout(FIM_TIMEOUT_MS)])
+          : AbortSignal.timeout(FIM_TIMEOUT_MS)
       const response = yield* Effect.promise(async () => {
         try {
           return await fetch(endpoint, {
@@ -151,7 +155,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
               ...buildKiloHeaders(undefined, { kilocodeOrganizationId: info.organizationId }),
               [HEADER_FEATURE]: "vscode-extension",
             },
-            signal: request.source.signal,
+            signal: request.source instanceof Request ? request.source.signal : undefined,
             body: JSON.stringify(ctx.payload),
           }),
         catch: () => new HttpApiError.BadRequest({}),
