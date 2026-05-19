@@ -284,9 +284,9 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
     return [...result, ...rest]
   })
 
-  // While a search is active, collapse state is ignored — otherwise users
-  // get confusing "no results" when their match lives inside a collapsed group.
-  const isGroupOpen = (key: string) => !!debouncedSearch() || !collapsed().has(key)
+  // Collapse state is honored even during search so users can skip past
+  // large providers (e.g. Kilo Gateway) without scrolling through every match.
+  const isGroupOpen = (key: string) => !collapsed().has(key)
 
   function toggleGroup(key: string) {
     setCollapsed((prev) => {
@@ -298,9 +298,8 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
   }
 
   const rows = createMemo<ModelRow[]>(() => {
-    const search = !!debouncedSearch()
     const c = collapsed()
-    const list = groups().flatMap((g) => (search || !c.has(g.key) ? g.rows : []))
+    const list = groups().flatMap((g) => (c.has(g.key) ? [] : g.rows))
     if (!props.allowClear) return list
     return [{ key: CLEAR_KEY, kind: "clear" }, ...list]
   })
