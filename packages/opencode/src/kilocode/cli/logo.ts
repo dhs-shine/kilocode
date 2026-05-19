@@ -14,6 +14,11 @@ const modern = {
     `████🬺🬏   ██   ██     ██  ██   ██     ██       ██   `,
     `██  ██ ██████ 🬁🬬████ 🬁🬬██     🬁🬬████ 🬁🬬████ ██████ `,
   ],
+  exit: [
+    `  ██  ██ ██🬺🬏   ██  ██   ██🬺🬏  `,
+    `  ████🬺🬏   ██   ██     ██  ██  `,
+    `  ██  ██ ██████ 🬁🬬████ 🬁🬬██    `,
+  ],
 }
 
 const fallback = {
@@ -27,6 +32,11 @@ const fallback = {
     `██  ██ ████   ██  ██   ███      ████ ██     ████   `,
     `████     ██   ██     ██  ██   ██     ██       ██   `,
     `██  ██ ██████ ██████   ██       ████ ██████ ██████ `,
+  ],
+  exit: [
+    `  ██  ██ ████   ██  ██   ██    `,
+    `  ████     ██   ██     ██  ██  `,
+    `  ██  ██ ██████ ██████   ██    `,
   ],
 }
 
@@ -56,4 +66,21 @@ export function tui(env = process.env, platform = process.platform) {
 
 export function plain(env = process.env, platform = process.platform) {
   return supports(env, platform) ? modern.plain : fallback.plain
+}
+
+export function session(
+  title: string,
+  id: string | undefined,
+  dim: string,
+  normal: string,
+  env = process.env,
+  platform = process.platform,
+) {
+  const logo = supports(env, platform) ? modern.exit : fallback.exit
+  return [
+    ``,
+    `${logo[0]}${dim}${title}${normal}`,
+    `${logo[1]}${dim}kilo -s ${id}${normal}`,
+    logo[2],
+  ].join("\n")
 }

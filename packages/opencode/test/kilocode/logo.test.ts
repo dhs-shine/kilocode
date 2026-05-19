@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { plain, supports, tui } from "../../src/kilocode/cli/logo"
+import { plain, session, supports, tui } from "../../src/kilocode/cli/logo"
 
 describe("kilocode logo", () => {
   test("falls back on remote terminals", () => {
@@ -22,5 +22,11 @@ describe("kilocode logo", () => {
     expect(tui({ KILO_UNICODE_LOGO: "1" }, "linux").join("\n")).toContain("🬺🬏")
     expect(tui({ SSH_TTY: "/dev/pts/0" }, "linux").join("\n")).not.toContain("🬺🬏")
     expect(plain({ SSH_TTY: "/dev/pts/0" }, "linux").join("\n")).not.toContain("🬁🬬")
+  })
+
+  test("formats child session exit logo", () => {
+    const out = session("Title", "ses_test", "<dim>", "<reset>", { SSH_TTY: "/dev/pts/0" }, "linux")
+    expect(out).toContain("<dim>Title<reset>")
+    expect(out).not.toContain("🬺🬏")
   })
 })
