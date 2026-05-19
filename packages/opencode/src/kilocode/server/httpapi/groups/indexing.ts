@@ -1,25 +1,13 @@
-import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
-import { INDEXING_STATUS_STATES } from "@kilocode/kilo-indexing/status"
+import { IndexingStatusInfo } from "@/kilocode/indexing-event"
 import { Authorization } from "@/server/routes/instance/httpapi/middleware/authorization"
 import { InstanceContextMiddleware } from "@/server/routes/instance/httpapi/middleware/instance-context"
 import { WorkspaceRoutingMiddleware } from "@/server/routes/instance/httpapi/middleware/workspace-routing"
 import { described } from "@/server/routes/instance/httpapi/groups/metadata"
-import { NonNegativeInt } from "@/util/schema"
+
+export { IndexingStatusInfo, IndexingStatusState } from "@/kilocode/indexing-event"
 
 const root = "/indexing"
-
-export const IndexingStatusState = Schema.Literals(INDEXING_STATUS_STATES).annotate({
-  identifier: "IndexingStatusState",
-})
-
-export const IndexingStatusInfo = Schema.Struct({
-  state: IndexingStatusState,
-  message: Schema.String,
-  processedFiles: NonNegativeInt,
-  totalFiles: NonNegativeInt,
-  percent: NonNegativeInt.check(Schema.isLessThanOrEqualTo(100)),
-}).annotate({ identifier: "IndexingStatus" })
 
 export const IndexingPaths = {
   status: `${root}/status`,

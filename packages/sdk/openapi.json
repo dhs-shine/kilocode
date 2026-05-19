@@ -4112,7 +4112,18 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PermissionReplyBody"
+                "type": "object",
+                "properties": {
+                  "reply": {
+                    "type": "string",
+                    "enum": ["once", "always", "reject"]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": ["reply"],
+                "additionalProperties": false
               }
             }
           }
@@ -9431,11 +9442,46 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Streaming FIM completion response",
             "content": {
               "text/event-stream": {
                 "schema": {
-                  "type": "string"
+                  "type": "object",
+                  "properties": {
+                    "choices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "delta": {
+                            "type": "object",
+                            "properties": {
+                              "content": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "prompt_tokens": {
+                          "type": "number"
+                        },
+                        "completion_tokens": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    "cost": {
+                      "type": "number"
+                    }
+                  }
                 }
               }
             }
@@ -9734,7 +9780,14 @@
                 "type": "object",
                 "properties": {
                   "organizationId": {
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": ["organizationId"],
@@ -12327,6 +12380,9 @@
           },
           {
             "$ref": "#/components/schemas/EventKilo-sessionsRemote-status-changed"
+          },
+          {
+            "$ref": "#/components/schemas/EventIndexingStatus"
           }
         ]
       },
@@ -14459,6 +14515,36 @@
         "required": ["text"],
         "additionalProperties": false
       },
+      "IndexingStatusState": {
+        "type": "string",
+        "enum": ["Disabled", "In Progress", "Complete", "Error", "Standby"]
+      },
+      "IndexingStatus": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/IndexingStatusState"
+          },
+          "message": {
+            "type": "string"
+          },
+          "processedFiles": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalFiles": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "percent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": ["state", "message", "processedFiles", "totalFiles", "percent"],
+        "additionalProperties": false
+      },
       "GlobalEvent": {
         "type": "object",
         "properties": {
@@ -14727,6 +14813,9 @@
               },
               {
                 "$ref": "#/components/schemas/EventKilo-sessionsRemote-status-changed"
+              },
+              {
+                "$ref": "#/components/schemas/EventIndexingStatus"
               },
               {
                 "$ref": "#/components/schemas/SyncEventMessageUpdated"
@@ -15567,7 +15656,14 @@
           "provider": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "#/components/schemas/ProviderConfig"
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ProviderConfig"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "mcp": {
@@ -16895,20 +16991,6 @@
         "required": ["_tag"],
         "additionalProperties": false
       },
-      "PermissionReplyBody": {
-        "type": "object",
-        "properties": {
-          "reply": {
-            "type": "string",
-            "enum": ["once", "always", "reject"]
-          },
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": ["reply"],
-        "additionalProperties": false
-      },
       "ProviderAuthMethod": {
         "type": "object",
         "properties": {
@@ -17394,36 +17476,6 @@
           }
         },
         "required": ["id", "type", "name", "branch", "directory", "extra", "projectID"],
-        "additionalProperties": false
-      },
-      "IndexingStatusState": {
-        "type": "string",
-        "enum": ["Disabled", "In Progress", "Complete", "Error", "Standby"]
-      },
-      "IndexingStatus": {
-        "type": "object",
-        "properties": {
-          "state": {
-            "$ref": "#/components/schemas/IndexingStatusState"
-          },
-          "message": {
-            "type": "string"
-          },
-          "processedFiles": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "totalFiles": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "percent": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 100
-          }
-        },
-        "required": ["state", "message", "processedFiles", "totalFiles", "percent"],
         "additionalProperties": false
       },
       "effect_HttpApiError_Unauthorized": {
@@ -21782,6 +21834,30 @@
               }
             },
             "required": ["enabled", "connected"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventIndexingStatus": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["indexing.status"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "$ref": "#/components/schemas/IndexingStatus"
+              }
+            },
+            "required": ["status"],
             "additionalProperties": false
           }
         },

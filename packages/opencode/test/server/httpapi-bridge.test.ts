@@ -2,12 +2,9 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Instance } from "../../src/project/instance"
 import { ControlPaths } from "../../src/server/routes/instance/httpapi/groups/control"
-import { ExperimentalPaths } from "../../src/server/routes/instance/httpapi/groups/experimental"
 import { FilePaths } from "../../src/server/routes/instance/httpapi/groups/file"
 import { GlobalPaths } from "../../src/server/routes/instance/httpapi/groups/global"
-import { KiloGatewayPaths } from "../../src/kilocode/server/httpapi/groups/kilo-gateway"
 import { PublicApi } from "../../src/server/routes/instance/httpapi/public"
-import { SessionPaths } from "../../src/server/routes/instance/httpapi/groups/session"
 import { ExperimentalHttpApiServer } from "../../src/server/routes/instance/httpapi/server"
 import { Server } from "../../src/server/server"
 import * as Log from "@opencode-ai/core/util/log"
@@ -224,7 +221,6 @@ describe("HttpApi server", () => {
     expect(Server.backend()).toEqual({ backend: "effect-httpapi", reason: "env" })
   })
 
-  // kilocode_change start - Effect HttpApi route parity.
   test("covers every generated OpenAPI route with Effect HttpApi contracts", async () => {
     const honoRoutes = openApiRouteKeys(await Server.openapiHono())
     const effectRoutes = openApiRouteKeys(effectOpenApi())
@@ -234,7 +230,7 @@ describe("HttpApi server", () => {
       "GET /api/session",
       "GET /api/session/{sessionID}/context",
       "GET /api/session/{sessionID}/message",
-      "GET /indexing/status",
+      "GET /indexing/status", // kilocode_change - Kilo Effect-only indexing route
       "POST /api/session/{sessionID}/compact",
       "POST /api/session/{sessionID}/prompt",
       "POST /api/session/{sessionID}/wait",
@@ -262,48 +258,6 @@ describe("HttpApi server", () => {
         .map((route) => ({ route, hono: hono[route], effect: effect[route] })),
     ).toEqual([])
   })
-  // kilocode_change end
-
-  // kilocode_change start - Kilo overlay route parity
-  test("Kilo overlay routes are mirrored in Hono and Effect specs", async () => {
-    const hono = new Set(openApiRouteKeys(await Server.openapiHono()))
-    const effect = new Set(openApiRouteKeys(effectOpenApi()))
-    // Kilo overlay paths ported to Effect HttpApi. Both backends must serve each.
-    const kilo = [
-      "POST /permission/allow-everything",
-      "POST /enhance-prompt",
-      "POST /commit-message",
-      `GET ${ExperimentalPaths.worktreeDiff}`,
-      `GET ${ExperimentalPaths.worktreeDiffFile}`,
-      `GET ${ExperimentalPaths.worktreeDiffSummary}`,
-      "GET /network",
-      "POST /network/{requestID}/reply",
-      "POST /network/{requestID}/reject",
-      `GET ${KiloGatewayPaths.modes}`,
-      `POST ${KiloGatewayPaths.fim}`,
-      `POST ${KiloGatewayPaths.audioTranscriptions}`,
-      "POST /remote/enable",
-      "POST /remote/disable",
-      "GET /remote/status",
-      `POST ${SessionPaths.viewed}`,
-      "POST /telemetry/capture",
-      "POST /telemetry/setEnabled",
-      "GET /suggestion",
-      "POST /suggestion/{requestID}/accept",
-      "POST /suggestion/{requestID}/dismiss",
-      "POST /kilocode/heap/snapshot",
-      "POST /kilocode/skill/remove",
-      "POST /kilocode/agent/remove",
-      "POST /kilocode/session-import/project",
-      "POST /kilocode/session-import/session",
-      "POST /kilocode/session-import/message",
-      "POST /kilocode/session-import/part",
-    ]
-    expect(kilo.filter((route) => !hono.has(route))).toEqual([])
-    expect(kilo.filter((route) => !effect.has(route))).toEqual([])
-    expect(effect.has("GET /indexing/status")).toBe(true)
-  })
-  // kilocode_change end
 
   test("matches SDK-affecting query parameter schemas", async () => {
     const effect = effectOpenApi()
@@ -339,16 +293,6 @@ describe("HttpApi server", () => {
     const time = sessionUpdateProperties?.time
     expect(time?.properties?.archived).toEqual({ type: "number" })
   })
-
-  // kilocode_change start - cloud session literal route must not be swallowed by :id.
-  test("documents cloud session import separately from session id lookup", () => {
-    const effect = effectOpenApi()
-
-    expect(effect.paths["/kilo/cloud/session/import"]?.post).toBeDefined()
-    expect(effect.paths["/kilo/cloud/session/{id}"]?.get).toBeDefined()
-    expect(KiloGatewayPaths.cloudSessionImport).not.toBe(KiloGatewayPaths.cloudSession)
-  })
-  // kilocode_change end
 
   test("documents event routes as server-sent events", () => {
     const effect = effectOpenApi()

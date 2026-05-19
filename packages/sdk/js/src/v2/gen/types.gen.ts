@@ -90,6 +90,7 @@ export type Event =
   | EventSessionNextCompactionDelta
   | EventSessionNextCompactionEnded
   | EventKiloSessionsRemoteStatusChanged
+  | EventIndexingStatus
 
 export type OAuth = {
   type: "oauth"
@@ -834,6 +835,16 @@ export type Prompt = {
   agents?: Array<PromptAgentAttachment>
 }
 
+export type IndexingStatusState = "Disabled" | "In Progress" | "Complete" | "Error" | "Standby"
+
+export type IndexingStatus = {
+  state: IndexingStatusState
+  message: string
+  processedFiles: number
+  totalFiles: number
+  percent: number
+}
+
 export type GlobalEvent = {
   directory: string
   project?: string
@@ -924,6 +935,7 @@ export type GlobalEvent = {
     | EventSessionNextCompactionDelta
     | EventSessionNextCompactionEnded
     | EventKiloSessionsRemoteStatusChanged
+    | EventIndexingStatus
     | SyncEventMessageUpdated
     | SyncEventMessageRemoved
     | SyncEventMessagePartUpdated
@@ -1251,7 +1263,7 @@ export type Config = {
     [key: string]: AgentConfig | undefined
   }
   provider?: {
-    [key: string]: ProviderConfig
+    [key: string]: ProviderConfig | null
   }
   mcp?: {
     [key: string]:
@@ -1687,11 +1699,6 @@ export type EffectHttpApiErrorForbidden = {
   _tag: "Forbidden"
 }
 
-export type PermissionReplyBody = {
-  reply: "once" | "always" | "reject"
-  message?: string
-}
-
 export type ProviderAuthMethod = {
   type: "oauth" | "api"
   label: string
@@ -1854,16 +1861,6 @@ export type Workspace = {
   directory: string | null
   extra: unknown | null
   projectID: string
-}
-
-export type IndexingStatusState = "Disabled" | "In Progress" | "Complete" | "Error" | "Standby"
-
-export type IndexingStatus = {
-  state: IndexingStatusState
-  message: string
-  processedFiles: number
-  totalFiles: number
-  percent: number
 }
 
 export type EffectHttpApiErrorUnauthorized = {
@@ -3262,6 +3259,14 @@ export type EventKiloSessionsRemoteStatusChanged = {
   properties: {
     enabled: boolean
     connected: boolean
+  }
+}
+
+export type EventIndexingStatus = {
+  id: string
+  type: "indexing.status"
+  properties: {
+    status: IndexingStatus
   }
 }
 
@@ -5205,7 +5210,10 @@ export type PermissionListResponses = {
 export type PermissionListResponse = PermissionListResponses[keyof PermissionListResponses]
 
 export type PermissionReplyData = {
-  body?: PermissionReplyBody
+  body?: {
+    reply: "once" | "always" | "reject"
+    message?: string
+  }
   path: {
     requestID: string
   }
@@ -7370,9 +7378,21 @@ export type KiloFimError = KiloFimErrors[keyof KiloFimErrors]
 
 export type KiloFimResponses = {
   /**
-   * Success
+   * Streaming FIM completion response
    */
-  200: string
+  200: {
+    choices?: Array<{
+      delta?: {
+        content?: string
+      }
+      text?: string
+    }>
+    usage?: {
+      prompt_tokens?: number
+      completion_tokens?: number
+    }
+    cost?: number
+  }
 }
 
 export type KiloFimResponse = KiloFimResponses[keyof KiloFimResponses]
@@ -7456,7 +7476,7 @@ export type KiloNotificationsResponse = KiloNotificationsResponses[keyof KiloNot
 
 export type KiloOrganizationSetData = {
   body?: {
-    organizationId: string
+    organizationId: string | null
   }
   path?: never
   query?: {

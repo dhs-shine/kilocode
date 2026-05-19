@@ -1,4 +1,5 @@
 import { OpenApi } from "effect/unstable/httpapi"
+import { matchLegacyKiloOpenApi } from "@/kilocode/server/httpapi/public" // kilocode_change
 import { OpenCodeHttpApi } from "./api"
 
 type OpenApiParameter = {
@@ -185,6 +186,7 @@ function matchLegacyOpenApi(input: Record<string, unknown>) {
       for (const param of operation.parameters) normalizeParameter(param, `${method.toUpperCase()} ${path}`)
     }
   }
+  matchLegacyKiloOpenApi(input) // kilocode_change
   return input
 }
 

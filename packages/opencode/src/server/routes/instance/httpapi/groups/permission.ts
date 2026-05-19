@@ -8,6 +8,10 @@ import { WorkspaceRoutingMiddleware } from "../middleware/workspace-routing"
 import { described } from "./metadata"
 
 const root = "/permission"
+const ReplyPayload = Schema.Struct({
+  reply: Permission.Reply,
+  message: Schema.optional(Schema.String),
+})
 
 // kilocode_change start
 export const SaveAlwaysRulesBody = Schema.Struct({
@@ -37,7 +41,7 @@ export const PermissionApi = HttpApi.make("permission")
         ),
         HttpApiEndpoint.post("reply", `${root}/:requestID/reply`, {
           params: { requestID: PermissionID },
-          payload: Permission.ReplyBody,
+          payload: ReplyPayload,
           success: described(Schema.Boolean, "Permission processed successfully"),
           error: [HttpApiError.BadRequest, HttpApiError.NotFound],
         }).annotateMerge(

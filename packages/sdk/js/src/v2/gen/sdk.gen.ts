@@ -127,7 +127,6 @@ import type {
   PermissionAllowEverythingErrors,
   PermissionAllowEverythingResponses,
   PermissionListResponses,
-  PermissionReplyBody,
   PermissionReplyErrors,
   PermissionReplyResponses,
   PermissionRespondErrors,
@@ -2757,7 +2756,8 @@ export class Permission extends HeyApiClient {
       requestID: string
       directory?: string
       workspace?: string
-      permissionReplyBody?: PermissionReplyBody
+      reply?: "once" | "always" | "reject"
+      message?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2769,7 +2769,8 @@ export class Permission extends HeyApiClient {
             { in: "path", key: "requestID" },
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
-            { key: "permissionReplyBody", map: "body" },
+            { in: "body", key: "reply" },
+            { in: "body", key: "message" },
           ],
         },
       ],
@@ -5145,7 +5146,7 @@ export class Organization extends HeyApiClient {
     parameters?: {
       directory?: string
       workspace?: string
-      organizationId?: string
+      organizationId?: string | null
     },
     options?: Options<never, ThrowOnError>,
   ) {
