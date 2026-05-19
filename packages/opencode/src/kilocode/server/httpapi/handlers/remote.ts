@@ -1,13 +1,15 @@
 import { Effect } from "effect"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
+import { EffectBridge } from "@/effect/bridge"
 import { KiloSessions } from "@/kilo-sessions/kilo-sessions"
 import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 
 export const remoteHandlers = HttpApiBuilder.group(InstanceHttpApi, "remote", (handlers) =>
   Effect.gen(function* () {
     const enable = Effect.fn("RemoteHttpApi.enable")(function* () {
+      const bridge = yield* EffectBridge.make()
       yield* Effect.tryPromise({
-        try: () => KiloSessions.enableRemote(),
+        try: () => bridge.promise(Effect.promise(() => KiloSessions.enableRemote())),
         catch: () => new HttpApiError.Unauthorized(),
       })
       return KiloSessions.remoteStatus()

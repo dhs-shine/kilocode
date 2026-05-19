@@ -35,8 +35,6 @@ export type Event =
   | EventInstallationUpdateAvailable
   | EventFileEdited
   | EventFileWatcherUpdated
-  | EventCommandExecuted
-  | EventProjectUpdated
   | EventTodoUpdated
   | EventSessionStatus
   | EventSessionIdle
@@ -44,6 +42,8 @@ export type Event =
   | EventSuggestionAccepted
   | EventSuggestionDismissed
   | EventSessionCompacted
+  | EventCommandExecuted
+  | EventProjectUpdated
   | EventKilocodeAgentManagerStart
   | EventVcsBranchUpdated
   | EventWorkspaceReady
@@ -328,30 +328,6 @@ export type ApiError = {
   }
 }
 
-export type Project = {
-  id: string
-  worktree: string
-  vcs?: "git"
-  name?: string
-  icon?: {
-    url?: string
-    override?: string
-    color?: string
-  }
-  commands?: {
-    /**
-     * Startup script to run when creating a new workspace (worktree)
-     */
-    start?: string
-  }
-  time: {
-    created: number
-    updated: number
-    initialized?: number
-  }
-  sandboxes: Array<string>
-}
-
 export type Todo = {
   /**
    * Brief description of the task
@@ -406,6 +382,30 @@ export type SuggestionRequest = {
     messageID: string
     callID: string
   }
+}
+
+export type Project = {
+  id: string
+  worktree: string
+  vcs?: "git"
+  name?: string
+  icon?: {
+    url?: string
+    override?: string
+    color?: string
+  }
+  commands?: {
+    /**
+     * Startup script to run when creating a new workspace (worktree)
+     */
+    start?: string
+  }
+  time: {
+    created: number
+    updated: number
+    initialized?: number
+  }
+  sandboxes: Array<string>
 }
 
 export type Pty = {
@@ -880,8 +880,6 @@ export type GlobalEvent = {
     | EventInstallationUpdateAvailable
     | EventFileEdited
     | EventFileWatcherUpdated
-    | EventCommandExecuted
-    | EventProjectUpdated
     | EventTodoUpdated
     | EventSessionStatus
     | EventSessionIdle
@@ -889,6 +887,8 @@ export type GlobalEvent = {
     | EventSuggestionAccepted
     | EventSuggestionDismissed
     | EventSessionCompacted
+    | EventCommandExecuted
+    | EventProjectUpdated
     | EventKilocodeAgentManagerStart
     | EventVcsBranchUpdated
     | EventWorkspaceReady
@@ -2687,23 +2687,6 @@ export type EventFileWatcherUpdated = {
   }
 }
 
-export type EventCommandExecuted = {
-  id: string
-  type: "command.executed"
-  properties: {
-    name: string
-    sessionID: string
-    arguments: string
-    messageID: string
-  }
-}
-
-export type EventProjectUpdated = {
-  id: string
-  type: "project.updated"
-  properties: Project
-}
-
 export type EventTodoUpdated = {
   id: string
   type: "todo.updated"
@@ -2772,6 +2755,23 @@ export type EventSessionCompacted = {
   properties: {
     sessionID: string
   }
+}
+
+export type EventCommandExecuted = {
+  id: string
+  type: "command.executed"
+  properties: {
+    name: string
+    sessionID: string
+    arguments: string
+    messageID: string
+  }
+}
+
+export type EventProjectUpdated = {
+  id: string
+  type: "project.updated"
+  properties: Project
 }
 
 export type EventKilocodeAgentManagerStart = {

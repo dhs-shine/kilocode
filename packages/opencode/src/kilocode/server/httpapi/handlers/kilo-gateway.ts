@@ -25,6 +25,7 @@ import * as Stream from "effect/Stream"
 import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 import { Auth } from "@/auth"
+import { EffectBridge } from "@/effect/bridge"
 import { Bus } from "@/bus"
 import { Identifier } from "@/id/id"
 import { Instance } from "@/project/instance"
@@ -279,19 +280,24 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       if (!fetched.ok) return yield* Effect.fail(new HttpApiError.BadRequest({}))
       if (!fetched.data?.info?.id) return yield* Effect.fail(new HttpApiError.BadRequest({}))
 
-      return yield* Effect.try({
+      const bridge = yield* EffectBridge.make()
+      return yield* Effect.tryPromise({
         try: () =>
-          importSessionToDb(fetched.data, {
-            Database,
-            Instance,
-            SessionTable,
-            MessageTable,
-            PartTable,
-            SessionToRow: Session.toRow,
-            Bus,
-            SessionCreatedEvent: Session.Event.Created,
-            Identifier,
-          }),
+          bridge.promise(
+            Effect.sync(() =>
+              importSessionToDb(fetched.data, {
+                Database,
+                Instance,
+                SessionTable,
+                MessageTable,
+                PartTable,
+                SessionToRow: Session.toRow,
+                Bus,
+                SessionCreatedEvent: Session.Event.Created,
+                Identifier,
+              }),
+            ),
+          ),
         catch: () => new HttpApiError.BadRequest({}),
       })
     })

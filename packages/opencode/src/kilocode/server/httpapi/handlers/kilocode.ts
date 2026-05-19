@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { Agent } from "@/agent/agent"
+import { EffectBridge } from "@/effect/bridge"
 import { HeapSnapshot } from "@/kilocode/cli/heap-snapshot"
 import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 import { Skill } from "@/skill"
@@ -22,7 +23,7 @@ export const kilocodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilocode"
     const removeAgent = Effect.fn("KilocodeHttpApi.removeAgent")(function* (ctx: {
       payload: typeof RemoveAgentPayload.Type
     }) {
-      yield* Effect.promise(() => Agent.remove(ctx.payload.name))
+      yield* EffectBridge.fromPromise(() => Agent.remove(ctx.payload.name))
       return true
     })
 

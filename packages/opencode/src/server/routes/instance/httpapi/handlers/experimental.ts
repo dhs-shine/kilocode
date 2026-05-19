@@ -1,6 +1,7 @@
 import { Account } from "@/account/account"
 import { Agent } from "@/agent/agent"
 import { Config } from "@/config/config"
+import { EffectBridge } from "@/effect/bridge" // kilocode_change
 import { InstanceState } from "@/effect/instance-state"
 import { MCP } from "@/mcp"
 import { Project } from "@/project/project"
@@ -128,7 +129,7 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
     // kilocode_change start - worktree diff endpoints for agent manager
     const base = Effect.fn("ExperimentalHttpApi.worktreeDiffBase")(function* (input: { base?: string }) {
       if (input.base) return input.base
-      return yield* Effect.promise(() => Review.getBaseBranch())
+      return yield* EffectBridge.fromPromise(() => Review.getBaseBranch())
     })
 
     const worktreeDiff = Effect.fn("ExperimentalHttpApi.worktreeDiff")(function* (ctx: {
@@ -178,7 +179,7 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
       // kilocode_change start
       const state = yield* InstanceState.context
       const projectID = ctx.query.worktrees && !ctx.query.projectID ? state.project.id : ctx.query.projectID
-      const directories = ctx.query.worktrees ? yield* Effect.promise(() => WorktreeFamily.list()) : undefined
+      const directories = ctx.query.worktrees ? yield* EffectBridge.fromPromise(() => WorktreeFamily.list()) : undefined
       const sorted = directories ? [...directories].sort((a, b) => b.length - a.length) : undefined
       // kilocode_change end
       const sessions = Array.from(

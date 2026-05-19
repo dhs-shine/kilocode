@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
+import { EffectBridge } from "@/effect/bridge"
 import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 import { Config } from "@/config/config"
 import { generateCommitMessage } from "@/kilocode/commit-message"
@@ -14,7 +15,7 @@ export const commitMessageHandlers = HttpApiBuilder.group(InstanceHttpApi, "comm
     }) {
       const cfg = yield* config.get()
       const prompt = cfg.commit_message?.prompt || undefined
-      const result = yield* Effect.promise(() =>
+      const result = yield* EffectBridge.fromPromise(() =>
         generateCommitMessage({
           path: ctx.payload.path,
           selectedFiles: ctx.payload.selectedFiles ? [...ctx.payload.selectedFiles] : undefined,
