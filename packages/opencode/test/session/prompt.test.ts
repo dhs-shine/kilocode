@@ -1610,6 +1610,7 @@ unix(
 
           const run = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
           yield* llm.wait(1)
+          // kilocode_change start
           yield* waitFor(
             "large bash output",
             sessions.messages({ sessionID: chat.id }).pipe(
@@ -1622,6 +1623,7 @@ unix(
               }),
             ),
           )
+          // kilocode_change end
           yield* prompt.cancel(chat.id)
 
           const exit = yield* Fiber.await(run)
