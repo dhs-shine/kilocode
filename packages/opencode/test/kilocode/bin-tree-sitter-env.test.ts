@@ -18,25 +18,28 @@ describe("bin/kilo tree-sitter resources", () => {
     await writeFile(join(wasm, "tree-sitter.wasm"), "wasm")
     await writeFile(bin, "binary")
 
-    return { bin, log, wasm }
+    return { bin, log, wasm, wrapper: join(dir, "kilo") }
   }
 
-  async function run(root: string, bin: string, log: string) {
+  async function run(root: string, bin: string | undefined, log: string, wrapper?: string) {
     const capture = `
 const kiloFs = require("fs")
 const kiloChild = require("child_process")
 const log = process.argv[1]
+const wrapper = process.argv[2]
+const realpathSync = kiloFs.realpathSync
+kiloFs.realpathSync = (file) => wrapper && file === __filename ? wrapper : realpathSync(file)
 kiloChild.spawnSync = () => {
   kiloFs.writeFileSync(log, process.env.KILO_TREE_SITTER_WASM_DIR || "")
   return { status: 0 }
 }
 `
     const source = (await Bun.file(script).text()).replace(/^#!.*\n/, "")
-    return Bun.spawnSync(["node", "--input-type=commonjs", "--eval", capture + source, log], {
+    return Bun.spawnSync(["node", "--input-type=commonjs", "--eval", capture + source, log, wrapper ?? ""], {
       cwd: root,
       env: {
         PATH: process.env.PATH ?? "",
-        KILO_BIN_PATH: bin,
+        ...(bin ? { KILO_BIN_PATH: bin } : {}),
       },
     })
   }
@@ -58,7 +61,7 @@ kiloChild.spawnSync = () => {
     const root = await mkdtemp(join(tmpdir(), "kilo-bin-tree-sitter-"))
     try {
       const item = await setup(root, false)
-      const proc = await run(root, item.bin, item.log)
+      const proc = await run(root, undefined, item.log, item.wrapper)
 
       expect(proc.exitCode).toBe(0)
       expect(await Bun.file(item.log).text()).toBe(item.wasm)
