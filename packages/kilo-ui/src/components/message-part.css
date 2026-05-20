@@ -421,9 +421,17 @@ html[data-theme="kilo-vscode"] [data-component="bash-output"] {
   }
 
   [data-slot="reasoning-label"] {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  [data-slot="reasoning-title"] {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--text-weak);
+    font-weight: var(--font-weight-regular);
   }
 
   [data-slot="reasoning-content"] {

@@ -53,6 +53,7 @@ import { busy, createThrottledValue, useToolFade, useContextToolPending } from "
 import { readToolOpen, toolOpenKey } from "./tool-open-state"
 import { ContextToolGroupHeader, ContextToolExpandedList, ContextToolRollingResults } from "./context-tool-results"
 import { ShellRollingResults } from "./shell-rolling-results"
+import { reasoningHeading } from "./reasoning-heading"
 import { extractFilePathFromHref } from "../file-path"
 import { normalize } from "./session-diff"
 import { deferredHighlight } from "../context/marked"
@@ -1487,6 +1488,7 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props: MessagePartProp
 
   // Throttle markdown re-renders during streaming
   const display = createThrottledValue(text)
+  const view = createMemo(() => reasoningHeading(display()))
 
   // time.end is set by the processor on reasoning-end.
   // v1 parts lack time entirely → treat as historical.
@@ -1567,12 +1569,13 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props: MessagePartProp
             <div data-slot="reasoning-header">
               <Icon name="brain" size="small" />
               <span data-slot="reasoning-label">{i18n.t("ui.reasoning.label" as never)}</span>
+              <Show when={view().title}>{(title) => <span data-slot="reasoning-title">{title()}</span>}</Show>
             </div>
             <Collapsible.Arrow />
           </Collapsible.Trigger>
           <Collapsible.Content>
             <div data-slot="reasoning-content" ref={ref} onScroll={onScroll} onWheel={onWheel}>
-              <Markdown text={display()} cacheKey={id} />
+              <Markdown text={view().body} cacheKey={id} />
             </div>
           </Collapsible.Content>
         </Collapsible>
