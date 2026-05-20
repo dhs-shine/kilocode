@@ -7,9 +7,8 @@ import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 export const remoteHandlers = HttpApiBuilder.group(InstanceHttpApi, "remote", (handlers) =>
   Effect.gen(function* () {
     const enable = Effect.fn("RemoteHttpApi.enable")(function* () {
-      const bridge = yield* EffectBridge.make()
       yield* Effect.tryPromise({
-        try: () => bridge.promise(Effect.promise(() => KiloSessions.enableRemote())),
+        try: () => Effect.runPromise(EffectBridge.fromPromise(() => KiloSessions.enableRemote())),
         catch: () => new HttpApiError.Unauthorized(),
       })
       return KiloSessions.remoteStatus()
