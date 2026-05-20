@@ -64,7 +64,7 @@ import { interceptMessage } from "./kilo-provider/git-changes-request"
 import { matchFollowup, recordFollowup, type Followup } from "./kilo-provider/followup-session"
 import { clearCommandsCache, loadCommands } from "./kilo-provider/commands"
 import { fetchMessagePage, MESSAGE_PAGE_LIMIT } from "./kilo-provider/message-page"
-import { childID } from "./kilo-provider/task-session"
+import { childID, VisibleTaskStreams } from "./kilo-provider/task-session"
 import { handleNetworkEvent, clearNetworkWaits } from "./kilo-provider/network"
 import { abortSession } from "./kilo-provider/abort"
 import {
@@ -215,6 +215,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
    *  Cleared and retried once the connection transitions to "connected". */
   private pendingSessionRefresh = false
   private readonly streams = new SessionStreamScheduler((msg) => this.postMessage(msg))
+  private readonly visibleTaskStreams = new VisibleTaskStreams((id, visible) => this.streams.setVisible(id, visible))
   private readonly confirmations = new MessageConfirmation()
   private unsubscribeEvent: (() => void) | null = null
   private unsubscribeState: (() => void) | null = null
@@ -300,6 +301,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.streams.focus(id)
     if (id) this.connectionService.registerFocused(this.instanceId, id)
     else this.connectionService.unregisterFocused(this.instanceId)
+  }
+
+  public setStreamVisibility(active: boolean): void {
+    this.visibleTaskStreams.setActive(active)
   }
 
   public setProjectDirectory(directory: string | null): void {
@@ -452,9 +457,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.setupWebviewMessageHandler(webviewView.webview)
 
     this.setSidebarVisible(webviewView.visible)
+    this.setStreamVisibility(webviewView.visible)
     this.visibilityDisposable?.dispose()
     this.visibilityDisposable = webviewView.onDidChangeVisibility(() => {
       this.setSidebarVisible(webviewView.visible)
+      this.setStreamVisibility(webviewView.visible)
       if (this.statsPoller) {
         this.statsPoller.setEnabled(webviewView.visible)
         this.statsPoller.setVisible(webviewView.visible)
@@ -485,10 +492,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     panel.webview.html = this._getHtmlForWebview(panel.webview)
 
     this.setupWebviewMessageHandler(panel.webview)
+    this.setStreamVisibility(panel.active)
     this.viewStateDisposable?.dispose()
-    this.viewStateDisposable = panel.onDidChangeViewState(() =>
-      this.focusSession(panel.active ? this.currentSession?.id : undefined),
-    )
+    this.viewStateDisposable = panel.onDidChangeViewState(() => {
+      this.setStreamVisibility(panel.active)
+      this.focusSession(panel.active ? this.currentSession?.id : undefined)
+    })
     this.initializeConnection()
   }
 
@@ -645,10 +654,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       ) {
         return
       }
+      this.visibleTaskStreams.handle(message)
       switch (message.type) {
         case "webviewReady":
           console.log("[Kilo New] KiloProvider: ✅ webviewReady received")
           this.isWebviewReady = true
+          this.visibleTaskStreams.clear()
           await this.syncWebviewState("webviewReady")
           this.flushPendingReviewComments()
           this.recoverPendingPrompts()
@@ -1624,6 +1635,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       await this.client.session.delete({ sessionID, directory: workspaceDir }, { throwOnError: true })
       this.trackedSessionIds.delete(sessionID)
       this.streams.drop(sessionID)
+      this.visibleTaskStreams.delete(sessionID)
       this.syncedChildSessions.delete(sessionID)
       this.sessionDirectories.delete(sessionID)
       this.lastReconciledAt.delete(sessionID)
@@ -3563,7 +3575,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.speechToTextDisposable?.dispose()
     this.telemetryStateDisposable?.dispose()
     this.autoApproveBridge?.dispose()
-    this.streams.dispose()
+    ;(this.visibleTaskStreams.clear(), this.streams.dispose())
     this.isWebviewReady = false
     this.promptRecoveryQueued = false
     clearNetworkWaits(this.trackedSessionIds)
