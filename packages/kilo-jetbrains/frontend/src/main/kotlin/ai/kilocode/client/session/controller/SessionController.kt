@@ -768,12 +768,11 @@ class SessionController(
 
     private fun retryPrompt(): PromptDto? {
         val msg = model.messages().lastOrNull { it.info.role == "user" } ?: return null
-        val sel = model.model?.let(::parseModel)
         return PromptDto(
             parts = emptyList(),
             messageID = msg.info.id,
-            providerID = sel?.first,
-            modelID = sel?.second,
+            providerID = msg.info.providerID,
+            modelID = msg.info.modelID,
             agent = msg.info.agent,
             variant = model.variant?.takeIf { it in model.variants },
             noReply = false,
