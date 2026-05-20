@@ -6,13 +6,15 @@ import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
+import ai.kilocode.client.session.ui.shared.SessionQuestionButton
+import ai.kilocode.client.session.ui.shared.applyButton
+import ai.kilocode.client.session.ui.shared.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.QuestionReplyDto
 import com.intellij.icons.AllIcons
-import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
@@ -30,7 +32,6 @@ import javax.swing.AbstractButton
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.ButtonGroup
-import javax.swing.JButton
 import javax.swing.JPanel
 
 /** Question tool form rendered inside the session transcript. */
@@ -84,9 +85,7 @@ class QuestionView(
         border = JBUI.Borders.emptyTop(UiStyle.Gap.lg())
         alignmentX = Component.LEFT_ALIGNMENT
     }
-    private val dismiss = JButton(KiloBundle.message("session.question.dismiss")).apply {
-        addActionListener { doReject() }
-    }
+    private val dismiss = dismissButton(KiloBundle.message("session.question.dismiss")) { doReject() }
     private val right = JPanel().apply {
         isOpaque = false
         layout = BoxLayout(this, BoxLayout.X_AXIS)
@@ -179,15 +178,10 @@ class QuestionView(
     private fun syncFooter(q: Question) {
         right.removeAll()
         if (review(q)) {
-            val back = JButton(KiloBundle.message("session.question.back")).apply {
-                addActionListener { goBack() }
-            }
-            val submit = JButton(KiloBundle.message("session.question.submit")).apply {
-                putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
-                addActionListener { doReply() }
-            }
+            val back = dismissButton(KiloBundle.message("session.question.back")) { goBack() }
+            val submit = applyButton(KiloBundle.message("session.question.submit")) { doReply() }
             right.add(back)
-            right.add(Box.createHorizontalStrut(JBUI.scale(UiStyle.Gap.sm())))
+            right.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
             right.add(submit)
             return
         }
@@ -197,8 +191,8 @@ class QuestionView(
             lastItem(q) -> KiloBundle.message("session.question.review")
             else -> KiloBundle.message("session.question.next")
         }
-        val button = JButton(label).apply {
-            putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, direct(q) || lastItem(q))
+        val isPrimary = direct(q) || lastItem(q)
+        val button = SessionQuestionButton(label, isPrimary).apply {
             addActionListener {
                 when {
                     direct(q) -> doReply()
@@ -215,7 +209,7 @@ class QuestionView(
         back.isEnabled = idx > 0
         fwd.isEnabled = idx < q.items.size && ready
         for (node in right.components) {
-            if (node is JButton && node.text != KiloBundle.message("session.question.back")) {
+            if (node is SessionQuestionButton && node.text != KiloBundle.message("session.question.back")) {
                 node.isEnabled = review(q) || ready
             }
         }

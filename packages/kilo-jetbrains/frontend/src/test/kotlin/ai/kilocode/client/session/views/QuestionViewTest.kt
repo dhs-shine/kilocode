@@ -3,6 +3,8 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
+import ai.kilocode.client.session.ui.shared.SessionQuestionButton
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.ui.HoverIcon
@@ -362,6 +364,71 @@ class QuestionViewTest : BasePlatformTestCase() {
         val submit = button(view, "Submit")
 
         assertEquals(true, submit.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
+    }
+
+    fun `test submit is SessionQuestionButton with primary true`() {
+        view.show(singleSelectQuestion("q_btn_type"))
+
+        val submit = button(view, "Submit")
+
+        assertTrue("Submit should be SessionQuestionButton", submit is SessionQuestionButton)
+        assertTrue("Submit should be primary", (submit as SessionQuestionButton).primary)
+    }
+
+    fun `test dismiss is SessionQuestionButton with primary false`() {
+        view.show(singleSelectQuestion("q_dismiss_type"))
+
+        val dismiss = button(view, "Dismiss")
+
+        assertTrue("Dismiss should be SessionQuestionButton", dismiss is SessionQuestionButton)
+        assertFalse("Dismiss should not be primary", (dismiss as SessionQuestionButton).primary)
+    }
+
+    fun `test session question buttons use question surface background`() {
+        view.show(singleSelectQuestion("q_btn_bg"))
+
+        val dismiss = button(view, "Dismiss")
+        val submit = button(view, "Submit")
+
+        assertEquals(SessionUiStyle.View.surface(), dismiss.background)
+        assertEquals(SessionUiStyle.View.surface(), submit.background)
+    }
+
+    fun `test review submit and back buttons are correct types on review page`() {
+        view.show(twoItemQuestion("q_review_types"))
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+        button(view, "Next").doClick()
+        option<JBRadioButton>(view, "Unit").doClick()
+        button(view, "Review").doClick()
+
+        val submit = button(view, "Submit")
+        val back = button(view, "Back")
+
+        assertTrue("Submit on review page should be SessionQuestionButton", submit is SessionQuestionButton)
+        assertTrue("Submit on review page should be primary", (submit as SessionQuestionButton).primary)
+        assertTrue("Back on review page should be SessionQuestionButton", back is SessionQuestionButton)
+        assertFalse("Back on review page should not be primary", (back as SessionQuestionButton).primary)
+    }
+
+    fun `test next button is not primary before last item`() {
+        view.show(twoItemQuestion("q_next_not_primary"))
+
+        val next = button(view, "Next")
+
+        assertTrue(next is SessionQuestionButton)
+        assertFalse("Next should not be primary on first question", (next as SessionQuestionButton).primary)
+    }
+
+    fun `test review button is primary on last item`() {
+        view.show(twoItemQuestion("q_review_primary"))
+        option<JBRadioButton>(view, "Minimal").doClick()
+        button(view, "Next").doClick()
+
+        val review = button(view, "Review")
+
+        assertTrue(review is SessionQuestionButton)
+        assertTrue("Review should be primary on last question", (review as SessionQuestionButton).primary)
     }
 
     fun `test single question hides header nav`() {

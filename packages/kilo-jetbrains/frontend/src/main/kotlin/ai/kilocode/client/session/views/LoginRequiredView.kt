@@ -3,11 +3,13 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
+import ai.kilocode.client.session.ui.shared.applyButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
+import ai.kilocode.client.ui.UiStyle
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
-import java.awt.FlowLayout
-import javax.swing.JButton
+import java.awt.BorderLayout
 import javax.swing.JPanel
 
 /**
@@ -25,7 +27,7 @@ class LoginRequiredView(
     override val sessionViewKind = SessionView.Kind.Default
 
     private val card = BaseSessionQuestionPanel()
-    private val button = JButton(KiloBundle.message("session.login.required.button"))
+    val button = applyButton(KiloBundle.message("session.login.required.button")) { openProfile() }
 
     init {
         isOpaque = false
@@ -33,13 +35,13 @@ class LoginRequiredView(
 
         card.headerText.text = KiloBundle.message("session.login.required.title")
 
-        button.addActionListener { openProfile() }
+        val footer = JPanel(BorderLayout()).apply {
+            isOpaque = false
+            border = JBUI.Borders.emptyTop(UiStyle.Gap.lg())
+            add(button, BorderLayout.WEST)
+        }
 
-        val actions = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0))
-        actions.isOpaque = false
-        actions.add(button)
-
-        card.setFooter(actions)
+        card.setFooter(footer)
 
         addToCenter(card)
     }

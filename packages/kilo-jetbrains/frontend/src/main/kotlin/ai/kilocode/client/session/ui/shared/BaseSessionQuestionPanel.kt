@@ -24,6 +24,10 @@ import javax.swing.JPanel
  * [ai.kilocode.client.session.views.LoginRequiredView] use this as their
  * outer card shell so they share the same background, padding, and text
  * styling without duplicating the setup.
+ *
+ * The column always contains (in order): optional top, [headerText],
+ * [descriptionText], optional body, optional footer. Call [setTopPanel],
+ * [setBody], or [setFooter] to replace those slots at any time.
  */
 class BaseSessionQuestionPanel : RoundedContentPanel(
     UiStyle.Gap.lg(),
@@ -41,6 +45,11 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
     // ---- description text ----
     val descriptionText: JBTextArea = makeText("", UiStyle.Colors.weak(), bold = false)
 
+    // ---- slot fields ----
+    private var top: JComponent? = null
+    private var body: JComponent? = null
+    private var footer: JComponent? = null
+
     // ---- inner layout ----
     private val col = JPanel().apply {
         isOpaque = false
@@ -49,6 +58,7 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
 
     init {
         addToCenter(col)
+        rebuildCol()
     }
 
     /**
@@ -60,14 +70,8 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
      * The header/description text areas follow immediately after.
      */
     fun setTopPanel(top: JComponent?) {
-        // Remove any existing top slot (first child if it is not header/desc)
-        if (col.componentCount > 0 && col.getComponent(0) !== headerText) {
-            col.remove(0)
-        }
-        col.removeAll()
-        if (top != null) col.add(top)
-        col.add(headerText)
-        col.add(descriptionText)
+        this.top = top
+        rebuildCol()
     }
 
     /**
@@ -75,10 +79,8 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
      * Pass `null` to remove the current body.
      */
     fun setBody(body: JComponent?) {
-        // Remove components after header+desc (index 0..1 or 0..2 with top)
-        val fixed = if (col.componentCount > 0 && col.getComponent(0) !== headerText) 3 else 2
-        while (col.componentCount > fixed) col.remove(fixed)
-        if (body != null) col.add(body)
+        this.body = body
+        rebuildCol()
     }
 
     /**
@@ -86,11 +88,8 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
      * Pass `null` to remove the current footer.
      */
     fun setFooter(footer: JComponent?) {
-        val fixed = if (col.componentCount > 0 && col.getComponent(0) !== headerText) 3 else 2
-        // footer is at fixed+1 if body exists, or at fixed if no body
-        // simplest: remove anything beyond the header/desc/body block
-        while (col.componentCount > fixed + 1) col.remove(fixed + 1)
-        if (footer != null) col.add(footer)
+        this.footer = footer
+        rebuildCol()
     }
 
     // ---- SessionEditorStyleTarget ----
@@ -107,6 +106,17 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
     override fun outlineColor(): Color = SessionUiStyle.View.line()
 
     // ---- helpers ----
+
+    private fun rebuildCol() {
+        col.removeAll()
+        top?.let { col.add(it) }
+        col.add(headerText)
+        col.add(descriptionText)
+        body?.let { col.add(it) }
+        footer?.let { col.add(it) }
+        col.revalidate()
+        col.repaint()
+    }
 
     private fun makeText(value: String, color: Color, bold: Boolean): JBTextArea {
         val area = object : JBTextArea(value) {
