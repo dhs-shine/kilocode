@@ -17,6 +17,10 @@ import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.controller.SessionControllerEvent
+import ai.kilocode.rpc.dto.ConfigDto
+import ai.kilocode.rpc.dto.KiloAppStateDto
+import ai.kilocode.rpc.dto.KiloAppStatusDto
+import ai.kilocode.rpc.dto.ProfileDto
 import com.intellij.util.ui.JBUI
 import ai.kilocode.client.session.views.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
@@ -376,6 +380,7 @@ class SessionUiLayoutTest : SessionUiTestBase() {
     }
 
     fun `test account overlay shows after recents complete`() {
+        appRpc.state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = ProfileDto(email = "user@example.com"))
         rpc.recent.add(session("ses_1"))
         ui = newUi(displayMs = 1_000)
 
@@ -386,6 +391,7 @@ class SessionUiLayoutTest : SessionUiTestBase() {
     }
 
     fun `test account overlay hides after first prompt`() {
+        appRpc.state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = ProfileDto(email = "user@example.com"))
         rpc.recent.add(session("ses_1"))
         ui = newUi(displayMs = 1_000)
         settle()
@@ -410,6 +416,7 @@ class SessionUiLayoutTest : SessionUiTestBase() {
     }
 
     fun `test account overlay uses prompt panel top and right insets`() {
+        appRpc.state.value = KiloAppStateDto(KiloAppStatusDto.READY, profile = ProfileDto(email = "user@example.com"))
         rpc.recent.add(session("ses_1"))
         ui = newUi(displayMs = 1_000)
         settle()

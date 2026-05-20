@@ -9,6 +9,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.RelativeFont
 import com.intellij.ui.components.JBLabel
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.GridBagConstraints
@@ -16,7 +17,6 @@ import java.awt.GridBagLayout
 import java.awt.KeyboardFocusManager
 import java.awt.event.FocusEvent
 import java.awt.event.FocusListener
-import java.text.DecimalFormat
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -136,6 +136,7 @@ internal class LoggedInProfileUi(
         addToTop(content)
     }
 
+    @RequiresEdt
     fun preferredFocus(): JComponent = if (combo.isVisible) combo else dashboardBtn
 
     private fun logFocus(kind: String, e: FocusEvent) {
@@ -154,6 +155,7 @@ internal class LoggedInProfileUi(
         )
     }
 
+    @RequiresEdt
     fun update(profile: ProfileDto) {
         val display = profile.name?.takeIf { it.isNotBlank() } ?: profile.email
         if (nameLabel.text != display) nameLabel.text = display
@@ -165,8 +167,7 @@ internal class LoggedInProfileUi(
         val bal = profile.balance
         var changed = false
         if (bal != null) {
-            val fmt = DecimalFormat("$#,##0.00")
-            val balText = fmt.format(bal.balance)
+            val balText = formatBalance(bal.balance)
             if (valueLabel.text != balText) {
                 valueLabel.text = balText
                 changed = true
@@ -186,6 +187,7 @@ internal class LoggedInProfileUi(
         if (changed) syncLayout()
     }
 
+    @RequiresEdt
     fun setRefreshing(refreshing: Boolean) {
         if (this.refreshing == refreshing) return
         this.refreshing = refreshing
@@ -195,6 +197,7 @@ internal class LoggedInProfileUi(
         syncLayout()
     }
 
+    @RequiresEdt
     private fun syncLayout() {
         balanceCard.revalidate()
         content.revalidate()
@@ -202,6 +205,7 @@ internal class LoggedInProfileUi(
         repaint()
     }
 
+    @RequiresEdt
     private fun applyOrganizations(profile: ProfileDto) {
         val orgs = profile.organizations
         val keys: List<Pair<String?, String>> = listOf(null to KiloBundle.message("profile.personalAccount")) +
@@ -238,6 +242,7 @@ internal class LoggedInProfileUi(
      * - Update or append each position by name.
      * This keeps the model always non-empty during changes, preserving popup/focus state.
      */
+    @RequiresEdt
     private fun syncModel(keys: List<Pair<String?, String>>) {
         if (comboModel.size == 0) {
             keys.forEach { comboModel.addElement(it.second) }

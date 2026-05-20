@@ -91,11 +91,33 @@ class UserProfileConfigurable : SearchableConfigurable {
     override fun reset() = Unit
 
     override fun disposeUIResources() {
-        watchJob?.cancel()
-        watchJob = null
-        scope?.cancel()
-        scope = null
+        // Dispose UI first to invalidate pending login attempts before scope cancellation.
+        // Capturing local refs before nulling fields so the EDT callback is self-contained.
+        val panel = ui as? ProfileUi
+        val job = watchJob
+        val cs = scope
         ui = null
+        watchJob = null
+        scope = null
+
+        val app = ApplicationManager.getApplication()
+        if (panel != null) {
+            if (app.isDispatchThread) {
+                panel.dispose()
+                job?.cancel()
+                cs?.cancel()
+            } else {
+                // Schedule on EDT so dispose runs before scope cancel, as the plan requires.
+                app.invokeLater({
+                    panel.dispose()
+                    job?.cancel()
+                    cs?.cancel()
+                }, ModalityState.any())
+            }
+        } else {
+            job?.cancel()
+            cs?.cancel()
+        }
     }
 
     companion object {

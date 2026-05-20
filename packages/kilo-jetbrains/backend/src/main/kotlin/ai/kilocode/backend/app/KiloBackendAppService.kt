@@ -30,8 +30,10 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -632,9 +634,11 @@ class KiloBackendAppService private constructor(
             .header("Accept", "application/json")
             .post(body.toRequestBody("application/json".toMediaType()))
             .build()
-        http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IllegalStateException("Organization switch failed: HTTP ${response.code} ${response.message}")
+        withContext(Dispatchers.IO) {
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IllegalStateException("Organization switch failed: HTTP ${response.code} ${response.message}")
+                }
             }
         }
         return refreshProfile()

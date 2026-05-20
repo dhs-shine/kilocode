@@ -39,6 +39,8 @@ data class TokensDto(
 data class MessageErrorDto(
     val type: String,
     val message: String? = null,
+    val statusCode: Int? = null,
+    val responseBody: String? = null,
 )
 
 @Serializable
@@ -81,10 +83,12 @@ data class PartTimeDto(
 @Serializable
 data class PromptDto(
     val parts: List<PromptPartDto>,
+    val messageID: String? = null,
     val providerID: String? = null,
     val modelID: String? = null,
     val agent: String? = null,
     val variant: String? = null,
+    val noReply: Boolean? = null,
 )
 
 @Serializable

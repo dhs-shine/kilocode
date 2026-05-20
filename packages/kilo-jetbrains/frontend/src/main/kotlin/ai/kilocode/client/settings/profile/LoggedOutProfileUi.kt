@@ -14,6 +14,7 @@ import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.AsyncProcessIcon
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
@@ -115,6 +116,8 @@ internal class LoggedOutProfileUi(
         horizontalAlignment = SwingConstants.CENTER
     }
 
+    private val initiatingIcon = AsyncProcessIcon("KiloInitiating").also { it.suspend() }
+
     private val waitIcon = AsyncProcessIcon("KiloLogin")
 
     private val waitLabel = JBLabel().apply {
@@ -188,7 +191,7 @@ internal class LoggedOutProfileUi(
         val p = padded()
         val row = JPanel(FlowLayout(FlowLayout.CENTER, UiStyle.Gap.sm(), 0)).apply {
             isOpaque = false
-            add(AsyncProcessIcon("KiloInitiating"))
+            add(initiatingIcon)
             add(JBLabel(KiloBundle.message("profile.login.starting")).apply {
                 foreground = UiStyle.Colors.weak()
             })
@@ -257,6 +260,7 @@ internal class LoggedOutProfileUi(
 
     // ---- update ----
 
+    @RequiresEdt
     fun update(status: KiloAppStatusDto, login: LoginState) {
         val target = resolveMode(status, login)
 
@@ -314,17 +318,29 @@ internal class LoggedOutProfileUi(
                 waitIcon.suspend()
                 lastPendingUrl = null
             }
+            if (mode == OutMode.INITIATING) initiatingIcon.suspend()
             cardLayout.show(cards, target.name)
             mode = target
             if (target == OutMode.AUTH) {
                 waitIcon.resume()
             }
+            if (target == OutMode.INITIATING) initiatingIcon.resume()
             revalidate()
             repaint()
         }
     }
 
+    @RequiresEdt
     fun preferredFocus(): JComponent = loginBtn
+
+    /** Stop the timer and suspend all animated icons. Safe to call multiple times. */
+    @RequiresEdt
+    fun dispose() {
+        timer.stop()
+        waitIcon.suspend()
+        initiatingIcon.suspend()
+        lastPendingUrl = null
+    }
 
     private fun resolveMode(status: KiloAppStatusDto, login: LoginState): OutMode = when {
         status == KiloAppStatusDto.DISCONNECTED || status == KiloAppStatusDto.CONNECTING -> OutMode.CONNECTING
@@ -335,6 +351,7 @@ internal class LoggedOutProfileUi(
         else -> OutMode.EMPTY
     }
 
+    @RequiresEdt
     private fun syncTime() {
         val elapsed = ((System.currentTimeMillis() - pendingStarted) / 1000).toInt()
         val remain = (pendingExpires - elapsed).coerceAtLeast(0)

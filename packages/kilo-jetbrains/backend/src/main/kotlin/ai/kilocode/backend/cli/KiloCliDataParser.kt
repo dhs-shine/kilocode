@@ -1,5 +1,10 @@
 package ai.kilocode.backend.cli
 
+import ai.kilocode.backend.workspace.CommandInfo
+import ai.kilocode.backend.workspace.ModelInfo
+import ai.kilocode.backend.workspace.ModelLimitInfo
+import ai.kilocode.backend.workspace.ProviderData
+import ai.kilocode.backend.workspace.ProviderInfo
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.CloudSessionDto
 import ai.kilocode.rpc.dto.CloudSessionListDto
@@ -287,6 +292,45 @@ object KiloCliDataParser {
         )
     }
 
+    /**
+     * Parse a provider catalog response (`GET /provider`) into [ProviderData].
+     * Throws if [raw] is not a valid JSON object (lets the workspace loading
+     * catch the exception and surface it as a LoadError).
+     */
+    fun parseProviders(raw: String): ProviderData {
+        val obj = json.parseToJsonElement(raw).jsonObject
+        return ProviderData(
+            providers = obj["all"]?.jsonArray?.map { parseProvider(it.jsonObject) } ?: emptyList(),
+            connected = obj["connected"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList(),
+            defaults = obj["default"]?.jsonObject?.mapValues { (_, v) -> v.jsonPrimitive.content } ?: emptyMap(),
+        )
+    }
+
+    /**
+     * Parse a command list response (`GET /command`) into a list of [CommandInfo].
+     * The `template` field is intentionally ignored — CLI commands can return lazy
+     * promise objects (`{}`) for that field, which must not crash JetBrains startup.
+     */
+    fun parseCommands(raw: String): List<CommandInfo> =
+        json.parseToJsonElement(raw).jsonArray.map { item ->
+            val obj = item.jsonObject
+            CommandInfo(
+                name = obj.str("name") ?: "",
+                description = obj.str("description"),
+                source = obj.str("source"),
+                hints = obj["hints"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList(),
+            )
+        }
+
+    /**
+     * Extract the `state` directory path from a `/path` response.
+     * Returns `null` when the field is missing, not a JSON string, or the JSON is malformed.
+     */
+    fun parsePathState(raw: String): String? {
+        val prim = runCatching { tryParseObject(raw)?.get("state")?.jsonPrimitive }.getOrNull() ?: return null
+        return if (prim.isString) prim.content else null
+    }
+
     fun parseModelState(raw: String): ModelStateDto {
         val obj = tryParseObject(raw) ?: return ModelStateDto()
         return ModelStateDto(
@@ -328,6 +372,14 @@ object KiloCliDataParser {
         }
         val sb = StringBuilder()
         sb.append("""{"parts":[$parts]""")
+        val msg = prompt.messageID
+        if (msg != null) {
+            sb.append(""","messageID":${escape(msg)}""")
+        }
+        val reply = prompt.noReply
+        if (reply != null) {
+            sb.append(""","noReply":$reply""")
+        }
         val pid = prompt.providerID
         val mid = prompt.modelID
         if (pid != null && mid != null) {
@@ -442,10 +494,16 @@ object KiloCliDataParser {
 
     internal fun parseError(obj: JsonObject): MessageErrorDto {
         val type = obj.str("type") ?: obj.str("name") ?: "unknown"
+        val data = obj["data"]?.jsonObject
         val msg = obj.str("message")
-            ?: obj["data"]?.jsonObject?.str("message")
+            ?: data?.str("message")
             ?: obj.str("error")
-        return MessageErrorDto(type, msg)
+        return MessageErrorDto(
+            type,
+            msg,
+            statusCode = data?.long("statusCode")?.safeInt(),
+            responseBody = data?.str("responseBody"),
+        )
     }
 
     internal fun parsePermissionRequest(obj: JsonObject): PermissionRequestDto? {
@@ -536,6 +594,49 @@ object KiloCliDataParser {
         "providerID" to JsonPrimitive(item.providerID),
         "modelID" to JsonPrimitive(item.modelID),
     ))
+
+    // ================================================================
+    // Internal — provider/catalog parsing
+    // ================================================================
+
+    private val EFFORT_ORDER = listOf("none", "minimal", "low", "medium", "high", "xhigh", "max")
+        .withIndex().associate { it.value to it.index }
+
+    private fun parseProvider(obj: JsonObject) = ProviderInfo(
+        id = obj.str("id") ?: "",
+        name = obj.str("name") ?: "",
+        source = obj.str("source"),
+        models = obj["models"]?.jsonObject?.mapValues { (id, v) -> parseModel(id, v.jsonObject) } ?: emptyMap(),
+    )
+
+    private fun parseModel(id: String, obj: JsonObject): ModelInfo {
+        val cap = obj["capabilities"]?.jsonObject
+        val limit = obj["limit"]?.jsonObject
+        return ModelInfo(
+            id = obj.str("id") ?: id,
+            name = obj.str("name") ?: id,
+            attachment = cap.bool("attachment"),
+            reasoning = cap.bool("reasoning"),
+            temperature = cap.bool("temperature"),
+            toolCall = cap.bool("toolcall"),
+            free = obj.bool("isFree"),
+            status = obj.str("status"),
+            recommendedIndex = obj.num("recommendedIndex"),
+            variants = parseVariants(obj),
+            limit = limit?.let {
+                ModelLimitInfo(
+                    context = it.long("context") ?: 0,
+                    input = it.long("input"),
+                    output = it.long("output") ?: 0,
+                )
+            },
+        )
+    }
+
+    private fun parseVariants(obj: JsonObject): List<String> {
+        val keys = obj["variants"]?.jsonObject?.keys?.toList() ?: return emptyList()
+        return keys.sortedWith(compareBy<String> { EFFORT_ORDER[it] ?: Int.MAX_VALUE }.thenBy { it })
+    }
 
     private fun parseSessionObject(obj: JsonObject): SessionDto {
         val time = obj["time"]?.jsonObject
@@ -764,6 +865,9 @@ private fun JsonObject.num(key: String): Double? =
 
 private fun JsonObject.long(key: String): Long? =
     this[key]?.jsonPrimitive?.longOrNull
+
+private fun JsonObject?.bool(key: String): Boolean =
+    this?.get(key)?.jsonPrimitive?.booleanOrNull ?: false
 
 private fun Long.safeInt() = coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 

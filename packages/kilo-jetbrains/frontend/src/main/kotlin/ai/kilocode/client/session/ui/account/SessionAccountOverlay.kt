@@ -15,20 +15,17 @@ import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.ScrollingUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
+import ai.kilocode.client.settings.profile.formatBalance
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
-import java.awt.CardLayout
 import java.awt.Cursor
-import java.awt.GridBagConstraints
-import java.awt.GridBagLayout
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import java.text.DecimalFormat
 import javax.swing.Box
 import javax.swing.BoxLayout
-import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.KeyStroke
@@ -38,37 +35,13 @@ import javax.swing.ScrollPaneConstants
 /**
  * Compact account overlay shown in the top-right of the empty session screen.
  *
- * Displays logged-out prompt or logged-in account/balance info.
+ * Only visible when logged in. Hidden when not logged in or no profile is available.
  * Visibility is controlled entirely by [onEvent] — never set [isVisible] externally.
  */
 internal class SessionAccountOverlay(
     private val select: (String?) -> Unit,
-    private val login: () -> Unit,
     private val profile: () -> Unit,
 ) : BorderLayoutPanel() {
-
-    companion object {
-        private const val CARD_OUT = "out"
-        private const val CARD_IN = "in"
-    }
-
-    private val loginLabel = JBLabel(KiloBundle.message("profile.notLoggedIn")).apply {
-        foreground = UiStyle.Colors.weak()
-    }
-    private val loginBtn = JButton(KiloBundle.message("profile.action.login")).apply {
-        isOpaque = false
-        addActionListener { login() }
-    }
-    private val outCard = JPanel(GridBagLayout()).apply {
-        isOpaque = false
-        add(loginLabel, GridBagConstraints().apply {
-            gridx = 0; gridy = 0; anchor = GridBagConstraints.WEST
-        })
-        add(loginBtn, GridBagConstraints().apply {
-            gridx = 0; gridy = 1; anchor = GridBagConstraints.CENTER
-            insets = JBUI.insetsTop(UiStyle.Gap.sm())
-        })
-    }
 
     private val picker = PickerButton().apply {
         isEnabled = false
@@ -82,7 +55,6 @@ internal class SessionAccountOverlay(
         })
     }
 
-    private val fmt = DecimalFormat("$#,##0.00")
     private var balanceText: String? = null
 
     private val balance = JBLabel().apply {
@@ -110,29 +82,16 @@ internal class SessionAccountOverlay(
         addToCenter(row)
     }
 
-    private val inCard = JPanel(GridBagLayout()).apply {
-        isOpaque = false
-        add(panel, GridBagConstraints().apply {
-            gridx = 0; gridy = 0; fill = GridBagConstraints.HORIZONTAL
-        })
-    }
-
-    private val cardLayout = CardLayout()
-    private val cards = JPanel(cardLayout).apply {
-        isOpaque = false
-        add(outCard, CARD_OUT)
-        add(inCard, CARD_IN)
-    }
-
     private var choices: List<AccountChoice> = emptyList()
     private var currentOrgId: String? = null
 
     init {
         isOpaque = false
         isVisible = false
-        addToCenter(cards)
+        addToCenter(panel)
     }
 
+    @RequiresEdt
     fun onEvent(event: SessionControllerEvent.AccountOverlayChanged) {
         var layout = false
         var paint = false
@@ -148,16 +107,13 @@ internal class SessionAccountOverlay(
                 val snap = event.account
                 val prof = snap.profile
                 if (prof == null) {
-                    if (!snap.transient) {
-                        layout = showCard(CARD_OUT) || layout
-                        if (!isVisible) {
-                            isVisible = true
-                            layout = true
-                        }
+                    if (!snap.transient && isVisible) {
+                        isVisible = false
+                        layout = true
+                        paint = true
                     }
                 } else {
                     layout = updateLoggedIn(prof, snap.switching, snap.targetOrgId) || layout
-                    layout = showCard(CARD_IN) || layout
                     if (!isVisible) {
                         isVisible = true
                         layout = true
@@ -169,22 +125,10 @@ internal class SessionAccountOverlay(
         if (layout || paint) repaint()
     }
 
-    private fun activeCard(): String? {
-        for (i in 0 until cards.componentCount) {
-            val comp = cards.getComponent(i)
-            if (comp.isVisible) return if (comp === inCard) CARD_IN else CARD_OUT
-        }
-        return null
-    }
-
-    private fun showCard(card: String): Boolean {
-        if (activeCard() == card) return false
-        cardLayout.show(cards, card)
-        return true
-    }
-
+    @RequiresEdt
     private fun updateLoggedIn(prof: ai.kilocode.rpc.dto.ProfileDto, switching: Boolean, target: String?): Boolean {
         var layout = false
+
         val orgs = prof.organizations
         val next = listOf(AccountChoice(null, KiloBundle.message("profile.personalAccount"))) +
             orgs.map { org -> AccountChoice(org.id, org.name) }
@@ -216,18 +160,14 @@ internal class SessionAccountOverlay(
         }
         if (picker.toolTipText != tip) picker.toolTipText = tip
 
-        if (!picker.isVisible) {
-            picker.isVisible = true
-            layout = true
-        }
-
         layout = syncBalance(prof) || layout
         return layout
     }
 
+    @RequiresEdt
     private fun syncBalance(prof: ai.kilocode.rpc.dto.ProfileDto): Boolean {
         var layout = false
-        val next = prof.balance?.let { fmt.format(it.balance) }
+        val next = prof.balance?.let { formatBalance(it.balance) }
         if (next == null) {
             if (balance.isVisible) {
                 balance.isVisible = false
@@ -258,6 +198,7 @@ internal class SessionAccountOverlay(
         return layout
     }
 
+    @RequiresEdt
     private fun showPopup() {
         val bg = UiStyle.Colors.cardBg()
         val model = CollectionListModel(choices)
@@ -333,23 +274,17 @@ internal class SessionAccountOverlay(
         popup.showUnderneathOf(picker)
     }
 
-    internal fun loggedInVisible() = isVisible && cards.let {
-        var card = CARD_OUT
-        for (i in 0 until it.componentCount) {
-            val comp = it.getComponent(i)
-            if (comp.isVisible) card = if (comp === inCard) CARD_IN else CARD_OUT
-        }
-        card == CARD_IN
+    /**
+     * Activate an account choice without showing the popup.
+     * Only calls [select] when the choice differs from [currentOrgId].
+     * Used by tests and by the popup's confirm action.
+     */
+    @RequiresEdt
+    internal fun activate(choice: AccountChoice) {
+        if (choice.org != currentOrgId) select(choice.org)
     }
 
-    internal fun loggedOutVisible() = isVisible && cards.let {
-        for (i in 0 until it.componentCount) {
-            val comp = it.getComponent(i)
-            if (comp.isVisible) return@let comp === outCard
-        }
-        false
-    }
-
+    internal fun loggedInVisible() = isVisible
     internal fun accountTitle(): String? = picker.text?.removeSuffix(" ▾")?.ifBlank { null }
     internal fun pickerEnabled() = picker.isEnabled
     internal fun pickerVisible() = picker.isVisible

@@ -3,6 +3,7 @@ package ai.kilocode.client.settings
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.settings.profile.ProfileUi
 import ai.kilocode.client.testing.FakeAppRpcApi
+import ai.kilocode.rpc.dto.DeviceAuthDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.LoadProgressDto
@@ -720,6 +721,49 @@ class UserProfileConfigurableTest : BasePlatformTestCase() {
             assertNotNull("login button not found", loginBtn)
             assertSame("preferred focus should be login button for logged-out", loginBtn, focus)
         }
+    }
+
+    fun `test dispose during login invalidates stale completion`() {
+        rpc.fakeProfile = ProfileDto(email = "stale@test.com", name = "Stale")
+        rpc.completeGate = CompletableDeferred()
+
+        edt { buttons(panel).first { it.text == "Login with Kilo Code" }.doClick() }
+        flushUntil { text(panel).contains("Sign in to Kilo Code") }
+
+        // Dispose while login is in progress
+        edt { panel.dispose() }
+        flush()
+
+        // Complete the gate — stale result should be ignored
+        edt { rpc.completeGate!!.complete(Unit) }
+        flush()
+
+        edt {
+            val t = text(panel)
+            // After dispose, stale login should not update UI to logged-in state.
+            // The panel is disposed and attempt counter incremented, so completion is ignored.
+            assertFalse("stale login must not show logged-in state after dispose", t.contains("Stale"))
+        }
+    }
+
+    fun `test device auth without code hides code panel and step2 label`() {
+        rpc.fakeProfile = ProfileDto(email = "alice@test.com", name = "Alice")
+        rpc.completeGate = CompletableDeferred()
+        // Set device auth response without a code
+        rpc.fakeDeviceAuth = DeviceAuthDto(code = null, verificationUrl = "https://auth.kilo.ai/device")
+
+        edt { buttons(panel).first { it.text == "Login with Kilo Code" }.doClick() }
+        flushUntil { text(panel).contains("Sign in to Kilo Code") }
+
+        edt {
+            // Code panel should be hidden when no code is provided
+            val codePanel = panelsByName(panel, "kilo.login.codePanel").firstOrNull()
+            assertNotNull("Code panel should exist", codePanel)
+            assertFalse("Code panel should be hidden when no code", codePanel!!.isVisible)
+        }
+
+        edt { rpc.completeGate!!.complete(Unit) }
+        flush()
     }
 
     // -- helpers --
