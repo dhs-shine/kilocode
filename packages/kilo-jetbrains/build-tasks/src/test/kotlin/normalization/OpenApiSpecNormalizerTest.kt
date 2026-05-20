@@ -5,15 +5,13 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import org.gradle.api.GradleException
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
+import kotlin.test.assertNull
 
 class OpenApiSpecNormalizerTest {
     @Test
-    fun `renames configured duplicate tags and linked operations`() {
+    fun `strips tags from all operations`() {
         val raw = """
             {
               "paths": {
@@ -23,61 +21,106 @@ class OpenApiSpecNormalizerTest {
                     "operationId": "pty.list"
                   }
                 },
-                "/pty/{ptyID}/connect": {
+                "/session": {
+                  "post": {
+                    "tags": ["session"],
+                    "operationId": "session.create"
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val root = obj(OpenApiSpecNormalizer.normalize(raw))
+        val paths = obj(root["paths"])
+        val pty = obj(obj(paths["/pty"])["get"])
+        val session = obj(obj(paths["/session"])["post"])
+
+        assertNull(pty["tags"], "tags should be stripped from pty operation")
+        assertNull(session["tags"], "tags should be stripped from session operation")
+    }
+
+    @Test
+    fun `leaves operations without tags unchanged`() {
+        val raw = """
+            {
+              "paths": {
+                "/health": {
                   "get": {
-                    "tags": ["pty"],
-                    "operationId": "pty.connect"
+                    "operationId": "health.get"
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val root = obj(OpenApiSpecNormalizer.normalize(raw))
+        val paths = obj(root["paths"])
+        val health = obj(obj(paths["/health"])["get"])
+
+        assertNull(health["tags"])
+        assertEquals("health.get", text(health["operationId"]))
+    }
+
+    @Test
+    fun `removes dot schemas and rewrites refs to camelCase equivalents`() {
+        val raw = """
+            {
+              "paths": {
+                "/tui/publish": {
+                  "post": {
+                    "requestBody": {
+                      "content": {
+                        "application/json": {
+                          "schema": {
+                            "${'$'}ref": "#/components/schemas/Event.tui.command.execute"
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               },
+              "components": {
+                "schemas": {
+                  "EventTuiCommandExecute": { "type": "object" },
+                  "Event.tui.command.execute": { "type": "object" },
+                  "Session": { "type": "object" }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val root = obj(OpenApiSpecNormalizer.normalize(raw))
+        val schemas = obj(obj(root["components"])["schemas"])
+
+        assertNull(schemas["Event.tui.command.execute"], "dot schema should be removed")
+        assert("EventTuiCommandExecute" in schemas) { "camelCase schema should be kept" }
+        assert("Session" in schemas) { "non-dot schema should be kept" }
+
+        // Check that the $ref was rewritten
+        val post = obj(obj(obj(obj(root["paths"])["/tui/publish"])["post"])["requestBody"])
+        val schema = obj(obj(obj(post["content"])["application/json"])["schema"])
+        assertEquals("#/components/schemas/EventTuiCommandExecute", text(schema["\$ref"]))
+    }
+
+    @Test
+    fun `deduplicates root-level tags array`() {
+        val raw = """
+            {
+              "paths": {},
               "tags": [
                 { "name": "pty", "description": "PTY routes." },
-                { "name": "pty", "description": "PTY WebSocket route." }
+                { "name": "pty", "description": "PTY WebSocket route." },
+                { "name": "session", "description": "Session routes." }
               ]
             }
         """.trimIndent()
 
         val root = obj(OpenApiSpecNormalizer.normalize(raw))
         val tags = arr(root["tags"]).map { text(obj(it)["name"]) }
-        val paths = obj(root["paths"])
-        val pty = obj(obj(paths["/pty"])["get"])
-        val link = obj(obj(paths["/pty/{ptyID}/connect"])["get"])
 
-        assertEquals(listOf("pty", "pty-connect"), tags)
-        assertEquals(listOf("pty"), arr(pty["tags"]).map(::text))
-        assertEquals(listOf("pty-connect"), arr(link["tags"]).map(::text))
-    }
-
-    @Test
-    fun `keeps specs without duplicate configured tags unchanged`() {
-        val raw = """
-            {
-              "tags": [
-                { "name": "pty", "description": "PTY routes." }
-              ]
-            }
-        """.trimIndent()
-
-        assertEquals(raw, OpenApiSpecNormalizer.normalize(raw))
-    }
-
-    @Test
-    fun `fails when configured operation for renamed tag is absent`() {
-        val raw = """
-            {
-              "paths": {},
-              "tags": [
-                { "name": "pty", "description": "PTY routes." },
-                { "name": "pty", "description": "PTY WebSocket route." }
-              ]
-            }
-        """.trimIndent()
-
-        val err = assertFailsWith<GradleException> {
-            OpenApiSpecNormalizer.normalize(raw)
-        }
-
-        assertTrue(err.message?.contains("Expected one OpenAPI operation 'pty.connect'") == true)
+        assertEquals(listOf("pty", "session"), tags, "duplicate pty tag should be removed")
     }
 
     private fun obj(raw: String) = Json.parseToJsonElement(raw) as JsonObject
