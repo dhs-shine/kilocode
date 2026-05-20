@@ -10,8 +10,11 @@ import { registerAdapter } from "../../src/control-plane/adapters"
 import type { WorkspaceAdapter } from "../../src/control-plane/types"
 import { Workspace } from "../../src/control-plane/workspace"
 import { InstanceRef, WorkspaceRef } from "../../src/effect/instance-ref"
+// kilocode_change start - avoid InstanceLayer.layer's lazy bootstrap import in this test graph.
+import { InstanceBootstrap } from "../../src/project/bootstrap"
 import { Instance } from "../../src/project/instance"
-import { InstanceLayer } from "../../src/project/instance-layer"
+import { InstanceStore } from "../../src/project/instance-store"
+// kilocode_change end
 import { Project } from "../../src/project/project"
 import { disposeMiddleware, markInstanceForDisposal } from "../../src/server/routes/instance/httpapi/lifecycle"
 import { instanceRouterMiddleware } from "../../src/server/routes/instance/httpapi/middleware/instance-context"
@@ -41,7 +44,9 @@ const it = testEffect(
     testStateLayer,
     NodeHttpServer.layerTest,
     NodeServices.layer,
-    InstanceLayer.layer,
+    // kilocode_change start - local equivalent of InstanceLayer.layer.
+    InstanceStore.defaultLayer.pipe(Layer.provide(InstanceBootstrap.defaultLayer)),
+    // kilocode_change end
     Project.defaultLayer,
     Workspace.defaultLayer,
   ),
