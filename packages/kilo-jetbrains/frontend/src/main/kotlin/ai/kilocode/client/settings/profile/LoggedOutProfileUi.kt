@@ -116,6 +116,8 @@ internal class LoggedOutProfileUi(
         horizontalAlignment = SwingConstants.CENTER
     }
 
+    private val initiatingIcon = AsyncProcessIcon("KiloInitiating").also { it.suspend() }
+
     private val waitIcon = AsyncProcessIcon("KiloLogin")
 
     private val waitLabel = JBLabel().apply {
@@ -189,7 +191,7 @@ internal class LoggedOutProfileUi(
         val p = padded()
         val row = JPanel(FlowLayout(FlowLayout.CENTER, UiStyle.Gap.sm(), 0)).apply {
             isOpaque = false
-            add(AsyncProcessIcon("KiloInitiating"))
+            add(initiatingIcon)
             add(JBLabel(KiloBundle.message("profile.login.starting")).apply {
                 foreground = UiStyle.Colors.weak()
             })
@@ -316,11 +318,13 @@ internal class LoggedOutProfileUi(
                 waitIcon.suspend()
                 lastPendingUrl = null
             }
+            if (mode == OutMode.INITIATING) initiatingIcon.suspend()
             cardLayout.show(cards, target.name)
             mode = target
             if (target == OutMode.AUTH) {
                 waitIcon.resume()
             }
+            if (target == OutMode.INITIATING) initiatingIcon.resume()
             revalidate()
             repaint()
         }
@@ -329,11 +333,12 @@ internal class LoggedOutProfileUi(
     @RequiresEdt
     fun preferredFocus(): JComponent = loginBtn
 
-    /** Stop the timer and suspend the wait icon. Safe to call multiple times. */
+    /** Stop the timer and suspend all animated icons. Safe to call multiple times. */
     @RequiresEdt
     fun dispose() {
         timer.stop()
         waitIcon.suspend()
+        initiatingIcon.suspend()
         lastPendingUrl = null
     }
 
