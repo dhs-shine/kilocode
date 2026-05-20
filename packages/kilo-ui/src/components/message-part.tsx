@@ -929,18 +929,34 @@ export function UserMessageDisplay(props: {
 
 type HighlightSegment = { text: string; type?: "file" | "agent" }
 
+/** Match @path mentions: `@` followed by a path-like token (contains `/` or `.`). */
+const MENTION_RE = /@([\w./-]+\.[\w]+|[\w.-]+\/[\w./-]+)/g
+
+function detectMentions(text: string): { start: number; end: number; type: "file" }[] {
+  const result: { start: number; end: number; type: "file" }[] = []
+  MENTION_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = MENTION_RE.exec(text))) {
+    result.push({ start: m.index, end: m.index + m[0].length, type: "file" })
+  }
+  return result
+}
+
 function HighlightedText(props: { text: string; references: FilePart[]; agents: AgentPart[] }) {
   const segments = createMemo(() => {
     const text = props.text
 
-    const allRefs: { start: number; end: number; type: "file" | "agent" }[] = [
+    const offset: { start: number; end: number; type: "file" | "agent" }[] = [
       ...props.references
         .filter((r) => r.source?.text?.start !== undefined && r.source?.text?.end !== undefined)
         .map((r) => ({ start: r.source!.text!.start, end: r.source!.text!.end, type: "file" as const })),
       ...props.agents
         .filter((a) => a.source?.start !== undefined && a.source?.end !== undefined)
         .map((a) => ({ start: a.source!.start, end: a.source!.end, type: "agent" as const })),
-    ].sort((a, b) => a.start - b.start)
+    ]
+
+    // Fall back to regex detection when no source offsets are available
+    const allRefs = offset.length > 0 ? offset.sort((a, b) => a.start - b.start) : detectMentions(text)
 
     const result: HighlightSegment[] = []
     let lastIndex = 0
@@ -963,7 +979,28 @@ function HighlightedText(props: { text: string; references: FilePart[]; agents: 
     return result
   })
 
-  return <For each={segments()}>{(segment) => <span data-highlight={segment.type}>{segment.text}</span>}</For>
+  const data = useData()
+
+  const click = (segment: HighlightSegment, e: MouseEvent) => {
+    if (segment.type !== "file" || !data.openFile) return
+    e.preventDefault()
+    const path = segment.text.replace(/^@/, "")
+    if (path) data.openFile(path)
+  }
+
+  return (
+    <For each={segments()}>
+      {(segment) => (
+        <span
+          data-highlight={segment.type}
+          data-clickable={segment.type === "file" && data.openFile ? "" : undefined}
+          onClick={[click, segment]}
+        >
+          {segment.text}
+        </span>
+      )}
+    </For>
+  )
 }
 
 export function Part(props: MessagePartProps) {
