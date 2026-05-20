@@ -87,14 +87,15 @@ import { NewWorktreeDialog } from "./NewWorktreeDialog"
 import { LanguageBridge, DataBridge, MermaidDownloadBridge } from "../src/App"
 import { useLanguage } from "../src/context/language"
 import { formatRelativeDate } from "../src/utils/date"
+import { nextSelectionAfterDelete, adjacentHint, filterUnassignedSessions, LOCAL } from "./navigate"
 import {
-  nextSelectionAfterDelete,
-  adjacentHint,
-  restoreLocalSessions,
-  reconcileLocalSessions,
-  filterUnassignedSessions,
-  LOCAL,
-} from "./navigate"
+  addPendingTab as addLocalPendingTab,
+  nextTabAfterClose,
+  openSessionTab,
+  reconcileTrackedTabs,
+  replacePendingTab,
+  restoreTrackedTabs,
+} from "../src/utils/local-tabs"
 import { reorderTabs, applyTabOrder, firstOrderedTitle } from "./tab-order"
 import { createTabOrderSync } from "./tab-order-sync"
 import { ConstrainDragYAxis } from "./sortable-tab"
@@ -222,6 +223,10 @@ const AgentManagerContent: Component = () => {
   /** Remove a session ID from the local tab (no-op if absent). */
   const evictLocal = (sid: string) =>
     setLocalSessionIDs((prev) => (prev.includes(sid) ? prev.filter((id) => id !== sid) : prev))
+  const inventory = (items: ManagedSessionState[]) => ({
+    local: items.filter((item) => !item.worktreeId).map((item) => item.id),
+    external: new Set(items.filter((item) => item.worktreeId).map((item) => item.id)),
+  })
   const [sidebarWidth, setSidebarWidth] = createSignal(persisted?.sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH)
   const [sessionsCollapsed, setSessionsCollapsed] = createSignal(false)
   const sidebar = createSidebarCollapse(vscode)
@@ -574,7 +579,8 @@ const AgentManagerContent: Component = () => {
 
   const addPendingTab = () => {
     const id = `${PENDING_PREFIX}${++pendingCounter}`
-    setLocalSessionIDs((prev) => [...prev, id])
+    const next = addLocalPendingTab({ ids: localSessionIDs(), active: activePendingId() }, id)
+    setLocalSessionIDs(next.ids)
     appendToTabOrder(LOCAL, id)
     // Deactivate any focused terminal so the new pending session is
     // actually visible — visibleTabId prioritises terms.activeId().
@@ -615,10 +621,10 @@ const AgentManagerContent: Component = () => {
     if (!worktreesLoaded()) return
     const all = session.sessions()
     if (all.length === 0) return // sessions not loaded yet
-    const next = reconcileLocalSessions(
+    const next = reconcileTrackedTabs(
       localSessionIDs(),
       all.map((s) => s.id),
-      managedSessions(),
+      inventory(managedSessions()),
       isPending,
     )
     if (!next) return
@@ -1081,22 +1087,31 @@ const AgentManagerContent: Component = () => {
     // backend follow-ups). Dedups HTTP + SSE firing together.
     const unsubCreate = vscode.onMessage((msg) => {
       if (msg.type !== "sessionCreated") return
-      const created = msg as { type: string; session: { id: string } }
+      const created = msg as { type: string; session: { id: string }; draftID?: string }
       if (localSessionIDs().includes(created.session.id)) return
       if (worktreeSessionIds().has(created.session.id)) return
-      const pending = selection() === LOCAL ? activePendingId() : undefined
+      const active = activePendingId()
+      const pending =
+        created.draftID && localSessionIDs().includes(created.draftID)
+          ? created.draftID
+          : selection() === LOCAL
+            ? active
+            : undefined
+      const focus = !pending || pending === active
       if (pending) {
-        setLocalSessionIDs((prev) => prev.map((id) => (id === pending ? created.session.id : id)))
+        const next = replacePendingTab({ ids: localSessionIDs(), active }, pending, created.session.id)
+        setLocalSessionIDs(next.ids)
         tabOrderSync.replaceOrAppend(LOCAL, pending, created.session.id)
-        setActivePendingId(undefined)
+        if (pending === active) setActivePendingId(undefined)
       } else {
         saveTabMemory()
-        setLocalSessionIDs((prev) => [...prev, created.session.id])
+        const next = openSessionTab({ ids: localSessionIDs(), active }, created.session.id)
+        setLocalSessionIDs(next.ids)
         tabOrderSync.append(LOCAL, created.session.id)
         setSelection(LOCAL)
       }
       vscode.postMessage({ type: "agentManager.persistSession", sessionId: created.session.id })
-      session.selectSession(created.session.id)
+      if (focus) session.selectSession(created.session.id)
     })
 
     // Mark sessions loaded as soon as the session context receives data (even if empty)
@@ -1234,8 +1249,8 @@ const AgentManagerContent: Component = () => {
           if (ms?.worktreeId) setSelection(ms.worktreeId)
         }
         // Restore local session IDs from persisted state (sessions with no worktreeId)
-        const restored = restoreLocalSessions(
-          state.sessions,
+        const restored = restoreTrackedTabs(
+          inventory(state.sessions),
           localSessionIDs(),
           state.tabOrder?.[LOCAL],
           isPending,
@@ -1829,9 +1844,16 @@ const AgentManagerContent: Component = () => {
     expandSidebar()
     const pending = activePendingId()
     if (pending) {
-      setLocalSessionIDs((prev) => prev.map((id) => (id === pending ? sid : id)))
+      const next = replacePendingTab({ ids: localSessionIDs(), active: pending }, pending, sid)
+      setLocalSessionIDs(next.ids)
+      tabOrderSync.replaceOrAppend(LOCAL, pending, sid)
       setActivePendingId(undefined)
-    } else setLocalSessionIDs((prev) => [...prev, sid])
+    }
+    if (!pending) {
+      const next = openSessionTab({ ids: localSessionIDs(), active: session.currentSessionID() }, sid)
+      setLocalSessionIDs(next.ids)
+      tabOrderSync.append(LOCAL, sid)
+    }
     setSelection(LOCAL)
     setReviewActive(false)
     session.selectSession(sid)
@@ -1859,16 +1881,19 @@ const AgentManagerContent: Component = () => {
     const pending = isPending(sessionId)
     const isActive = pending ? sessionId === activePendingId() : session.currentSessionID() === sessionId
     if (isActive) {
-      const tabs = activeTabs()
-      const idx = tabs.findIndex((s) => s.id === sessionId)
-      const next = tabs[idx + 1] ?? tabs[idx - 1]
-      if (next && isPending(next.id)) {
-        setActivePendingId(next.id)
+      const id = nextTabAfterClose(
+        activeTabs().map((tab) => tab.id),
+        sessionId,
+      )
+      if (id && isPending(id)) {
+        setActivePendingId(id)
         session.clearCurrentSession()
-      } else if (next) {
+      }
+      if (id && !isPending(id)) {
         setActivePendingId(undefined)
-        session.selectSession(next.id)
-      } else {
+        session.selectSession(id)
+      }
+      if (!id) {
         setActivePendingId(undefined)
         session.clearCurrentSession()
       }

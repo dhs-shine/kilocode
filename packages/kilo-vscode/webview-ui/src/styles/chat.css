@@ -6,6 +6,7 @@
  */
 
 @import "./task-header.css";
+@import "./session-tabs.css";
 @import "./chat-layout.css";
 @import "./banners.css";
 @import "./session-actions.css";
