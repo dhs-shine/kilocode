@@ -71,11 +71,11 @@ export function buildSessionToolParts(
 }
 
 export function upsertSessionToolPart(
-  current: readonly ToolPart[],
+  current: ToolPart[],
   part: Part,
   msg: { id: string; sessionID?: string },
 ): ToolPart[] {
-  if (part.type !== "tool") return current.slice()
+  if (part.type !== "tool") return current
   const next = withMessage(part, msg)
   const index = current.findIndex((item) => item.id === part.id)
   if (index < 0) return [...current, next]
