@@ -38,7 +38,7 @@ const ModelsTab: Component = () => {
     const list = subagentVariants()
     if (list.length === 0) return undefined
     const value = config().subagent_variant ?? undefined
-    return value && list.includes(value) ? value : list[0]
+    return value && list.includes(value) ? value : undefined
   })
 
   function handleSubagentModelSelect(providerID: string, modelID: string) {
