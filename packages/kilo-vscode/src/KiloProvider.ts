@@ -1434,6 +1434,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.loadMessagesAbort = abort
       this.refreshSessionDetails(sessionID, dir, abort.signal)
     }
+    const since = mode === "reconcile" ? Date.now() : undefined
     try {
       const page = await fetchMessagePage(this.client, {
         sessionID,
@@ -1465,6 +1466,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         mode,
         cursor: page.cursor,
         hasMore: Boolean(page.cursor),
+        since,
       })
       // Recover any prompts missed while the webview was loading or during an SSE reconnection.
       this.recoverPendingPrompts()
