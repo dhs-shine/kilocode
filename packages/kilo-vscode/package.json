@@ -753,11 +753,11 @@
           "type": "string",
           "enum": [
             "mistralai/codestral-2508",
-            "inception/mercury-edit"
+            "inception/mercury-edit-2"
           ],
           "enumDescriptions": [
             "Codestral by Mistral AI (default)",
-            "Mercury Edit by Inception"
+            "Mercury Edit 2 by Inception"
           ],
           "description": "Model to use for inline autocomplete suggestions"
         },
