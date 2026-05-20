@@ -29,6 +29,7 @@ import { Locale } from "@/util/locale"
 import { importCloudSession, validateCloudFork } from "@/kilocode/cloud-session" // kilocode_change
 import { AppRuntime } from "@/effect/app-runtime"
 import { KiloRunAuto } from "@/kilocode/cli/run-auto" // kilocode_change
+import { DaemonClient } from "@/kilocode/daemon/client" // kilocode_change
 
 type ToolProps<T> = {
   input: Tool.InferParameters<T>
@@ -723,6 +724,15 @@ export const RunCommand = cmd({
       const sdk = createKiloClient({ baseUrl: args.attach, directory, headers })
       return await execute(sdk)
     }
+
+    // kilocode_change start - default local runs attach to the daemon unless explicitly disabled
+    const daemon = await DaemonClient.maybe(DaemonClient.options())
+    if (daemon) {
+      const dir = directory ?? Filesystem.resolve(process.cwd())
+      const sdk = createKiloClient({ baseUrl: daemon.url, directory: dir, headers: daemon.headers })
+      return await execute(sdk)
+    }
+    // kilocode_change end
 
     await bootstrap(process.cwd(), async () => {
       const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {

@@ -66,6 +66,25 @@
         "@types/semver": "catalog:",
       },
     },
+    "packages/kilo-config-ui": {
+      "name": "@kilocode/kilo-config-ui",
+      "version": "7.2.52",
+      "dependencies": {
+        "@kilocode/kilo-ui": "workspace:*",
+        "@kilocode/sdk": "workspace:*",
+        "@opencode-ai/ui": "workspace:*",
+        "@solidjs/router": "catalog:",
+        "solid-js": "catalog:",
+      },
+      "devDependencies": {
+        "@tsconfig/node22": "catalog:",
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
+        "typescript": "catalog:",
+        "vite": "catalog:",
+        "vite-plugin-solid": "catalog:",
+      },
+    },
     "packages/kilo-docs": {
       "name": "@kilocode/kilo-docs",
       "version": "7.2.52",
@@ -1277,6 +1296,8 @@
     "@jsdevtools/ono": ["@jsdevtools/ono@7.1.3", "", {}, "sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg=="],
 
     "@kilocode/cli": ["@kilocode/cli@workspace:packages/opencode"],
+
+    "@kilocode/kilo-config-ui": ["@kilocode/kilo-config-ui@workspace:packages/kilo-config-ui"],
 
     "@kilocode/kilo-docs": ["@kilocode/kilo-docs@workspace:packages/kilo-docs"],
 

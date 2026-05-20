@@ -78,7 +78,10 @@ export const AttachCommand = cmd({
       const headers = (() => {
         const password = args.password ?? process.env.KILO_SERVER_PASSWORD
         if (!password) return undefined
-        const auth = `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}`
+        // kilocode_change start - align attach auth with Kilo server defaults
+        const username = process.env.KILO_SERVER_USERNAME ?? "kilo"
+        const auth = `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`
+        // kilocode_change end
         return { Authorization: auth }
       })()
       // kilocode_change start - import cloud session before TUI renders

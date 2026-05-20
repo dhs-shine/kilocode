@@ -3,6 +3,10 @@
 import { client } from "./client.gen.js"
 import { buildClientParams, type Client, type Options as Options2, type TDataShape } from "./client/index.js"
 import type {
+  AgentBuilderPreviewErrors,
+  AgentBuilderPreviewResponses,
+  AgentBuilderSaveErrors,
+  AgentBuilderSaveResponses,
   AgentPartInput,
   AppAgentsResponses,
   AppLogErrors,
@@ -16,9 +20,17 @@ import type {
   CommandListResponses,
   CommitMessageGenerateErrors,
   CommitMessageGenerateResponses,
-  Config as Config3,
+  Config as Config4,
+  ConfigEffectiveResponses,
   ConfigGetResponses,
+  ConfigModelStateResponses,
+  ConfigModelStateUpdateResponses,
+  ConfigOverlayResponses,
+  ConfigOverlayUpdateResponses,
   ConfigProvidersResponses,
+  ConfigRulesResponses,
+  ConfigRulesUpdateResponses,
+  ConfigSourcesResponses,
   ConfigUpdateErrors,
   ConfigUpdateResponses,
   ConfigWarningsResponses,
@@ -232,6 +244,9 @@ import type {
   TuiAppendPromptErrors,
   TuiAppendPromptResponses,
   TuiClearPromptResponses,
+  TuiConfigGetResponses,
+  TuiConfigUpdateErrors,
+  TuiConfigUpdateResponses,
   TuiControlNextResponses,
   TuiControlResponseResponses,
   TuiExecuteCommandErrors,
@@ -329,7 +344,7 @@ export class Config extends HeyApiClient {
    */
   public update<ThrowOnError extends boolean = false>(
     parameters?: {
-      config?: Config3
+      config?: Config4
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -1438,7 +1453,7 @@ export class Config2 extends HeyApiClient {
     parameters?: {
       directory?: string
       workspace?: string
-      config?: Config3
+      config?: Config4
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -1523,6 +1538,282 @@ export class Config2 extends HeyApiClient {
       url: "/config/providers",
       ...options,
       ...params,
+    })
+  }
+
+  /**
+   * List config sources
+   *
+   * List config source metadata in load order without exposing config contents or secrets.
+   */
+  public sources<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigSourcesResponses, unknown, ThrowOnError>({
+      url: "/config/sources",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get effective configuration
+   *
+   * Retrieve effective config for the current instance directory.
+   */
+  public effective<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigEffectiveResponses, unknown, ThrowOnError>({
+      url: "/config/effective",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get config overlay
+   *
+   * Resolve global, project, and effective config values with source metadata for inheritance-aware settings UI.
+   */
+  public overlay<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "global" | "project"
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "scope" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigOverlayResponses, unknown, ThrowOnError>({
+      url: "/config/overlay",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Patch config overlay
+   *
+   * Apply a minimal global or project config patch, including unset paths for reverting local overrides.
+   */
+  public overlayUpdate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "global" | "project"
+      set?: {
+        [key: string]: unknown
+      }
+      unset?: Array<Array<string>>
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "scope" },
+            { in: "body", key: "set" },
+            { in: "body", key: "unset" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<ConfigOverlayUpdateResponses, unknown, ThrowOnError>({
+      url: "/config/overlay",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Get project rules
+   *
+   * List project instruction files used by Kilo and return their current contents.
+   */
+  public rules<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "project"
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "scope" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigRulesResponses, unknown, ThrowOnError>({
+      url: "/config/rules",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update project rules
+   *
+   * Create or update the project AGENTS.md rules file.
+   */
+  public rulesUpdate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "project"
+      content?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "scope" },
+            { in: "body", key: "content" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).put<ConfigRulesUpdateResponses, unknown, ThrowOnError>({
+      url: "/config/rules",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Get model state
+   *
+   * Retrieve TUI-compatible recent and favorite model selections.
+   */
+  public modelState<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigModelStateResponses, unknown, ThrowOnError>({
+      url: "/config/model-state",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update model state
+   *
+   * Patch TUI-compatible model selections shared with Kilo Console.
+   */
+  public modelStateUpdate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      favorite?: Array<{
+        providerID: string
+        modelID: string
+      }>
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "favorite" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<ConfigModelStateUpdateResponses, unknown, ThrowOnError>({
+      url: "/config/model-state",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 }
@@ -4097,6 +4388,209 @@ export class Control extends HeyApiClient {
   }
 }
 
+export class Config3 extends HeyApiClient {
+  /**
+   * Get TUI configuration
+   *
+   * Retrieve the effective TUI configuration for the current instance directory.
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<TuiConfigGetResponses, unknown, ThrowOnError>({
+      url: "/tui/config",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update TUI configuration
+   *
+   * Patch global or project TUI configuration and return the effective TUI configuration.
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "project" | "global"
+      $schema?: string
+      theme?: string
+      keybinds?: {
+        leader?: string
+        app_exit?: string
+        editor_open?: string
+        theme_list?: string
+        sidebar_toggle?: string
+        scrollbar_toggle?: string
+        username_toggle?: string
+        status_view?: string
+        session_export?: string
+        session_new?: string
+        session_list?: string
+        session_timeline?: string
+        session_fork?: string
+        session_rename?: string
+        session_delete?: string
+        stash_delete?: string
+        model_provider_list?: string
+        model_favorite_toggle?: string
+        session_share?: string
+        session_unshare?: string
+        session_interrupt?: string
+        session_compact?: string
+        messages_page_up?: string
+        messages_page_down?: string
+        messages_line_up?: string
+        messages_line_down?: string
+        messages_half_page_up?: string
+        messages_half_page_down?: string
+        messages_first?: string
+        messages_last?: string
+        messages_next?: string
+        messages_previous?: string
+        messages_last_user?: string
+        messages_copy?: string
+        messages_undo?: string
+        messages_redo?: string
+        messages_feedback_up?: string
+        messages_feedback_down?: string
+        messages_toggle_conceal?: string
+        tool_details?: string
+        model_list?: string
+        model_cycle_recent?: string
+        model_cycle_recent_reverse?: string
+        model_cycle_favorite?: string
+        model_cycle_favorite_reverse?: string
+        command_list?: string
+        agent_list?: string
+        agent_cycle?: string
+        agent_cycle_reverse?: string
+        variant_cycle?: string
+        variant_list?: string
+        input_clear?: string
+        input_paste?: string
+        input_submit?: string
+        input_newline?: string
+        input_move_left?: string
+        input_move_right?: string
+        input_move_up?: string
+        input_move_down?: string
+        input_select_left?: string
+        input_select_right?: string
+        input_select_up?: string
+        input_select_down?: string
+        input_line_home?: string
+        input_line_end?: string
+        input_select_line_home?: string
+        input_select_line_end?: string
+        input_visual_line_home?: string
+        input_visual_line_end?: string
+        input_select_visual_line_home?: string
+        input_select_visual_line_end?: string
+        input_buffer_home?: string
+        input_buffer_end?: string
+        input_select_buffer_home?: string
+        input_select_buffer_end?: string
+        input_delete_line?: string
+        input_delete_to_line_end?: string
+        input_delete_to_line_start?: string
+        input_backspace?: string
+        input_delete?: string
+        input_undo?: string
+        input_redo?: string
+        input_word_forward?: string
+        input_word_backward?: string
+        input_select_word_forward?: string
+        input_select_word_backward?: string
+        input_delete_word_forward?: string
+        input_delete_word_backward?: string
+        history_previous?: string
+        history_next?: string
+        session_child_first?: string
+        session_child_cycle?: string
+        session_child_cycle_reverse?: string
+        session_parent?: string
+        terminal_suspend?: string
+        terminal_title_toggle?: string
+        tips_toggle?: string
+        news_toggle?: string
+        plugin_manager?: string
+        display_thinking?: string
+      }
+      plugin?: Array<
+        | string
+        | [
+            string,
+            {
+              [key: string]: unknown
+            },
+          ]
+      >
+      plugin_enabled?: {
+        [key: string]: boolean
+      }
+      scroll_speed?: number
+      scroll_acceleration?: {
+        /**
+         * Enable scroll acceleration
+         */
+        enabled: boolean
+      }
+      diff_style?: "auto" | "stacked"
+      mouse?: boolean
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "scope" },
+            { in: "body", key: "$schema" },
+            { in: "body", key: "theme" },
+            { in: "body", key: "keybinds" },
+            { in: "body", key: "plugin" },
+            { in: "body", key: "plugin_enabled" },
+            { in: "body", key: "scroll_speed" },
+            { in: "body", key: "scroll_acceleration" },
+            { in: "body", key: "diff_style" },
+            { in: "body", key: "mouse" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<TuiConfigUpdateResponses, TuiConfigUpdateErrors, ThrowOnError>({
+      url: "/tui/config",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class Tui extends HeyApiClient {
   /**
    * Append TUI prompt
@@ -4473,6 +4967,11 @@ export class Tui extends HeyApiClient {
   get control(): Control {
     return (this._control ??= new Control({ client: this.client }))
   }
+
+  private _config?: Config3
+  get config(): Config3 {
+    return (this._config ??= new Config3({ client: this.client }))
+  }
 }
 
 export class Instance extends HeyApiClient {
@@ -4695,6 +5194,134 @@ export class Formatter extends HeyApiClient {
       url: "/formatter",
       ...options,
       ...params,
+    })
+  }
+}
+
+export class AgentBuilder extends HeyApiClient {
+  /**
+   * Preview agent markdown
+   *
+   * Validate an agent builder payload and return the canonical agent markdown without writing it.
+   */
+  public preview<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "global" | "project"
+      description?: string
+      mode?: "primary" | "subagent" | "all"
+      model?: string
+      color?: string
+      steps?: number
+      tools?: Array<string>
+      permission?: {
+        [key: string]: unknown
+      }
+      prompt?: string
+      id?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "scope" },
+            { in: "body", key: "description" },
+            { in: "body", key: "mode" },
+            { in: "body", key: "model" },
+            { in: "body", key: "color" },
+            { in: "body", key: "steps" },
+            { in: "body", key: "tools" },
+            { in: "body", key: "permission" },
+            { in: "body", key: "prompt" },
+            { in: "body", key: "id" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<AgentBuilderPreviewResponses, AgentBuilderPreviewErrors, ThrowOnError>(
+      {
+        url: "/agent-builder/preview",
+        ...options,
+        ...params,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+          ...params.headers,
+        },
+      },
+    )
+  }
+
+  /**
+   * Save agent markdown
+   *
+   * Save an agent builder payload as a canonical agent markdown file.
+   */
+  public save<ThrowOnError extends boolean = false>(
+    parameters: {
+      path_id: string
+      directory?: string
+      workspace?: string
+      scope?: "global" | "project"
+      description?: string
+      mode?: "primary" | "subagent" | "all"
+      model?: string
+      color?: string
+      steps?: number
+      tools?: Array<string>
+      permission?: {
+        [key: string]: unknown
+      }
+      prompt?: string
+      body_id?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            {
+              in: "path",
+              key: "path_id",
+              map: "id",
+            },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "scope" },
+            { in: "body", key: "description" },
+            { in: "body", key: "mode" },
+            { in: "body", key: "model" },
+            { in: "body", key: "color" },
+            { in: "body", key: "steps" },
+            { in: "body", key: "tools" },
+            { in: "body", key: "permission" },
+            { in: "body", key: "prompt" },
+            {
+              in: "body",
+              key: "body_id",
+              map: "id",
+            },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).put<AgentBuilderSaveResponses, AgentBuilderSaveErrors, ThrowOnError>({
+      url: "/agent-builder/{id}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 }
@@ -6213,6 +6840,11 @@ export class KiloClient extends HeyApiClient {
   private _formatter?: Formatter
   get formatter(): Formatter {
     return (this._formatter ??= new Formatter({ client: this.client }))
+  }
+
+  private _agentBuilder?: AgentBuilder
+  get agentBuilder(): AgentBuilder {
+    return (this._agentBuilder ??= new AgentBuilder({ client: this.client }))
   }
 
   private _network?: Network

@@ -36,6 +36,7 @@ import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
 import { RemoteCommand } from "./cli/cmd/remote" // kilocode_change
 import { DevSetupCommand, DevAliasCommand } from "./kilocode/cli/dev-setup" // kilocode_change
+import { DaemonCommand } from "./kilocode/cli/cmd/daemon" // kilocode_change
 // kilocode_change start - Import telemetry, instance disposal, and legacy migration
 import { Telemetry } from "@kilocode/kilo-telemetry"
 import { InstanceStore } from "./project/instance-store" // kilocode_change
@@ -236,6 +237,7 @@ let cli = yargs(args) // kilocode_change
   .command(PrCommand)
   .command(SessionCommand)
   .command(RemoteCommand) // kilocode_change
+  .command(DaemonCommand) // kilocode_change
   .command(ConfigCLICommand) // kilocode_change
   .command(PluginCommand)
   .command(DbCommand)

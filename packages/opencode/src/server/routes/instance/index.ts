@@ -32,8 +32,7 @@ import { register as registerKiloRoutes } from "@/kilocode/server/instance" // k
 export const InstanceRoutes = (upgrade: UpgradeWebSocket): Hono => {
   const app = new Hono()
 
-  const full = app // kilocode_change
-  full
+  app
     .route("/project", ProjectRoutes())
     .route("/pty", PtyRoutes(upgrade))
     .route("/config", ConfigRoutes())
@@ -279,5 +278,5 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket): Hono => {
         }),
     )
 
-  return registerKiloRoutes(full) // kilocode_change
+  return registerKiloRoutes(app) // kilocode_change
 }

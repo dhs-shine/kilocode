@@ -6261,6 +6261,100 @@ export type PermissionAllowEverythingResponses = {
 export type PermissionAllowEverythingResponse =
   PermissionAllowEverythingResponses[keyof PermissionAllowEverythingResponses]
 
+export type AgentBuilderPreviewData = {
+  body?: {
+    scope?: "global" | "project"
+    description?: string
+    mode?: "primary" | "subagent" | "all"
+    model?: string
+    color?: string
+    steps?: number
+    tools?: Array<string>
+    permission?: {
+      [key: string]: unknown
+    }
+    prompt: string
+    id: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/agent-builder/preview"
+}
+
+export type AgentBuilderPreviewErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type AgentBuilderPreviewError = AgentBuilderPreviewErrors[keyof AgentBuilderPreviewErrors]
+
+export type AgentBuilderPreviewResponses = {
+  /**
+   * Agent markdown preview
+   */
+  200: {
+    id: string
+    scope: "global" | "project"
+    path: string
+    markdown: string
+  }
+}
+
+export type AgentBuilderPreviewResponse = AgentBuilderPreviewResponses[keyof AgentBuilderPreviewResponses]
+
+export type AgentBuilderSaveData = {
+  body?: {
+    scope?: "global" | "project"
+    description?: string
+    mode?: "primary" | "subagent" | "all"
+    model?: string
+    color?: string
+    steps?: number
+    tools?: Array<string>
+    permission?: {
+      [key: string]: unknown
+    }
+    prompt: string
+    id?: string
+  }
+  path: {
+    id: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/agent-builder/{id}"
+}
+
+export type AgentBuilderSaveErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type AgentBuilderSaveError = AgentBuilderSaveErrors[keyof AgentBuilderSaveErrors]
+
+export type AgentBuilderSaveResponses = {
+  /**
+   * Saved agent markdown
+   */
+  200: {
+    id: string
+    scope: "global" | "project"
+    path: string
+    markdown: string
+  }
+}
+
+export type AgentBuilderSaveResponse = AgentBuilderSaveResponses[keyof AgentBuilderSaveResponses]
+
 export type NetworkListData = {
   body?: never
   path?: never
@@ -6458,6 +6552,315 @@ export type SuggestionDismissResponses = {
 }
 
 export type SuggestionDismissResponse = SuggestionDismissResponses[keyof SuggestionDismissResponses]
+
+export type ConfigSourcesData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/sources"
+}
+
+export type ConfigSourcesResponses = {
+  /**
+   * Config source inventory
+   */
+  200: {
+    sources: Array<{
+      order: number
+      kind:
+        | "remote-wellknown"
+        | "global-file"
+        | "env-file"
+        | "project-file"
+        | "config-dir"
+        | "config-dir-file"
+        | "env-content"
+        | "cloud-org"
+        | "managed-dir"
+        | "managed-file"
+        | "managed-preferences"
+        | "runtime-env"
+      scope: "global" | "project" | "env" | "managed" | "cloud"
+      label: string
+      source: string
+      path?: string
+      exists: boolean
+      editable: boolean
+      reason?: string
+    }>
+  }
+}
+
+export type ConfigSourcesResponse = ConfigSourcesResponses[keyof ConfigSourcesResponses]
+
+export type ConfigEffectiveData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/effective"
+}
+
+export type ConfigEffectiveResponses = {
+  /**
+   * Effective config info
+   */
+  200: Config
+}
+
+export type ConfigEffectiveResponse = ConfigEffectiveResponses[keyof ConfigEffectiveResponses]
+
+export type ConfigOverlayData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    scope?: "global" | "project"
+  }
+  url: "/config/overlay"
+}
+
+export type ConfigOverlayResponses = {
+  /**
+   * Resolved config overlay
+   */
+  200: {
+    scope: "global" | "project"
+    effective: Config
+    global: Config
+    project: Config
+    sources: Array<{
+      order: number
+      kind:
+        | "remote-wellknown"
+        | "global-file"
+        | "env-file"
+        | "project-file"
+        | "config-dir"
+        | "config-dir-file"
+        | "env-content"
+        | "cloud-org"
+        | "managed-dir"
+        | "managed-file"
+        | "managed-preferences"
+        | "runtime-env"
+      scope: "global" | "project" | "env" | "managed" | "cloud"
+      label: string
+      source: string
+      path?: string
+      exists: boolean
+      editable: boolean
+      reason?: string
+    }>
+    targets: {
+      global?: string
+      project?: string
+      active?: string
+    }
+    fields: {
+      [key: string]: {
+        key: string
+        path: Array<string>
+        value?: unknown
+        global?: unknown
+        local?: unknown
+        source: "project" | "global" | "system" | "default"
+        inherited: boolean
+        overridden: boolean
+        editable: boolean
+        reason?: string
+      }
+    }
+    collections: {
+      [key: string]: Array<{
+        key: string
+        path: Array<string>
+        value?: unknown
+        global?: unknown
+        local?: unknown
+        source: "project" | "global" | "system" | "default"
+        inherited: boolean
+        overridden: boolean
+        editable: boolean
+        reason?: string
+      }>
+    }
+  }
+}
+
+export type ConfigOverlayResponse = ConfigOverlayResponses[keyof ConfigOverlayResponses]
+
+export type ConfigOverlayUpdateData = {
+  body?: {
+    scope?: "global" | "project"
+    set?: {
+      [key: string]: unknown
+    }
+    unset?: Array<Array<string>>
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/overlay"
+}
+
+export type ConfigOverlayUpdateResponses = {
+  /**
+   * Effective configuration after patch
+   */
+  200: Config
+}
+
+export type ConfigOverlayUpdateResponse = ConfigOverlayUpdateResponses[keyof ConfigOverlayUpdateResponses]
+
+export type ConfigRulesData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    scope?: "project"
+  }
+  url: "/config/rules"
+}
+
+export type ConfigRulesResponses = {
+  /**
+   * Project rules
+   */
+  200: {
+    scope: "project"
+    target: string
+    files: Array<{
+      name: string
+      path: string
+      exists: boolean
+      editable: boolean
+      content: string
+    }>
+  }
+}
+
+export type ConfigRulesResponse = ConfigRulesResponses[keyof ConfigRulesResponses]
+
+export type ConfigRulesUpdateData = {
+  body?: {
+    scope?: "project"
+    content: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/rules"
+}
+
+export type ConfigRulesUpdateResponses = {
+  /**
+   * Project rules after update
+   */
+  200: {
+    scope: "project"
+    target: string
+    files: Array<{
+      name: string
+      path: string
+      exists: boolean
+      editable: boolean
+      content: string
+    }>
+  }
+}
+
+export type ConfigRulesUpdateResponse = ConfigRulesUpdateResponses[keyof ConfigRulesUpdateResponses]
+
+export type ConfigModelStateData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/model-state"
+}
+
+export type ConfigModelStateResponses = {
+  /**
+   * Model state
+   */
+  200: {
+    model: {
+      [key: string]: {
+        providerID: string
+        modelID: string
+      }
+    }
+    recent: Array<{
+      providerID: string
+      modelID: string
+    }>
+    favorite: Array<{
+      providerID: string
+      modelID: string
+    }>
+    variant: {
+      [key: string]: string
+    }
+  }
+}
+
+export type ConfigModelStateResponse = ConfigModelStateResponses[keyof ConfigModelStateResponses]
+
+export type ConfigModelStateUpdateData = {
+  body?: {
+    favorite?: Array<{
+      providerID: string
+      modelID: string
+    }>
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/model-state"
+}
+
+export type ConfigModelStateUpdateResponses = {
+  /**
+   * Updated model state
+   */
+  200: {
+    model: {
+      [key: string]: {
+        providerID: string
+        modelID: string
+      }
+    }
+    recent: Array<{
+      providerID: string
+      modelID: string
+    }>
+    favorite: Array<{
+      providerID: string
+      modelID: string
+    }>
+    variant: {
+      [key: string]: string
+    }
+  }
+}
+
+export type ConfigModelStateUpdateResponse = ConfigModelStateUpdateResponses[keyof ConfigModelStateUpdateResponses]
 
 export type TelemetryCaptureData = {
   body?: {
@@ -6671,6 +7074,468 @@ export type EnhancePromptEnhanceResponses = {
 }
 
 export type EnhancePromptEnhanceResponse = EnhancePromptEnhanceResponses[keyof EnhancePromptEnhanceResponses]
+
+export type TuiConfigGetData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/tui/config"
+}
+
+export type TuiConfigGetResponses = {
+  /**
+   * Effective TUI configuration
+   */
+  200: {
+    $schema?: string
+    theme?: string
+    keybinds?: {
+      leader?: string
+      app_exit?: string
+      editor_open?: string
+      theme_list?: string
+      sidebar_toggle?: string
+      scrollbar_toggle?: string
+      username_toggle?: string
+      status_view?: string
+      session_export?: string
+      session_new?: string
+      session_list?: string
+      session_timeline?: string
+      session_fork?: string
+      session_rename?: string
+      session_delete?: string
+      stash_delete?: string
+      model_provider_list?: string
+      model_favorite_toggle?: string
+      session_share?: string
+      session_unshare?: string
+      session_interrupt?: string
+      session_compact?: string
+      messages_page_up?: string
+      messages_page_down?: string
+      messages_line_up?: string
+      messages_line_down?: string
+      messages_half_page_up?: string
+      messages_half_page_down?: string
+      messages_first?: string
+      messages_last?: string
+      messages_next?: string
+      messages_previous?: string
+      messages_last_user?: string
+      messages_copy?: string
+      messages_undo?: string
+      messages_redo?: string
+      messages_feedback_up?: string
+      messages_feedback_down?: string
+      messages_toggle_conceal?: string
+      tool_details?: string
+      model_list?: string
+      model_cycle_recent?: string
+      model_cycle_recent_reverse?: string
+      model_cycle_favorite?: string
+      model_cycle_favorite_reverse?: string
+      command_list?: string
+      agent_list?: string
+      agent_cycle?: string
+      agent_cycle_reverse?: string
+      variant_cycle?: string
+      variant_list?: string
+      input_clear?: string
+      input_paste?: string
+      input_submit?: string
+      input_newline?: string
+      input_move_left?: string
+      input_move_right?: string
+      input_move_up?: string
+      input_move_down?: string
+      input_select_left?: string
+      input_select_right?: string
+      input_select_up?: string
+      input_select_down?: string
+      input_line_home?: string
+      input_line_end?: string
+      input_select_line_home?: string
+      input_select_line_end?: string
+      input_visual_line_home?: string
+      input_visual_line_end?: string
+      input_select_visual_line_home?: string
+      input_select_visual_line_end?: string
+      input_buffer_home?: string
+      input_buffer_end?: string
+      input_select_buffer_home?: string
+      input_select_buffer_end?: string
+      input_delete_line?: string
+      input_delete_to_line_end?: string
+      input_delete_to_line_start?: string
+      input_backspace?: string
+      input_delete?: string
+      input_undo?: string
+      input_redo?: string
+      input_word_forward?: string
+      input_word_backward?: string
+      input_select_word_forward?: string
+      input_select_word_backward?: string
+      input_delete_word_forward?: string
+      input_delete_word_backward?: string
+      history_previous?: string
+      history_next?: string
+      session_child_first?: string
+      session_child_cycle?: string
+      session_child_cycle_reverse?: string
+      session_parent?: string
+      terminal_suspend?: string
+      terminal_title_toggle?: string
+      tips_toggle?: string
+      news_toggle?: string
+      plugin_manager?: string
+      display_thinking?: string
+    }
+    plugin?: Array<
+      | string
+      | [
+          string,
+          {
+            [key: string]: unknown
+          },
+        ]
+    >
+    plugin_enabled?: {
+      [key: string]: boolean
+    }
+    /**
+     * TUI scroll speed
+     */
+    scroll_speed?: number
+    /**
+     * Scroll acceleration settings
+     */
+    scroll_acceleration?: {
+      /**
+       * Enable scroll acceleration
+       */
+      enabled: boolean
+    }
+    /**
+     * Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column
+     */
+    diff_style?: "auto" | "stacked"
+    /**
+     * Enable or disable mouse capture (default: true)
+     */
+    mouse?: boolean
+  }
+}
+
+export type TuiConfigGetResponse = TuiConfigGetResponses[keyof TuiConfigGetResponses]
+
+export type TuiConfigUpdateData = {
+  body?: {
+    $schema?: string
+    theme?: string
+    keybinds?: {
+      leader?: string
+      app_exit?: string
+      editor_open?: string
+      theme_list?: string
+      sidebar_toggle?: string
+      scrollbar_toggle?: string
+      username_toggle?: string
+      status_view?: string
+      session_export?: string
+      session_new?: string
+      session_list?: string
+      session_timeline?: string
+      session_fork?: string
+      session_rename?: string
+      session_delete?: string
+      stash_delete?: string
+      model_provider_list?: string
+      model_favorite_toggle?: string
+      session_share?: string
+      session_unshare?: string
+      session_interrupt?: string
+      session_compact?: string
+      messages_page_up?: string
+      messages_page_down?: string
+      messages_line_up?: string
+      messages_line_down?: string
+      messages_half_page_up?: string
+      messages_half_page_down?: string
+      messages_first?: string
+      messages_last?: string
+      messages_next?: string
+      messages_previous?: string
+      messages_last_user?: string
+      messages_copy?: string
+      messages_undo?: string
+      messages_redo?: string
+      messages_feedback_up?: string
+      messages_feedback_down?: string
+      messages_toggle_conceal?: string
+      tool_details?: string
+      model_list?: string
+      model_cycle_recent?: string
+      model_cycle_recent_reverse?: string
+      model_cycle_favorite?: string
+      model_cycle_favorite_reverse?: string
+      command_list?: string
+      agent_list?: string
+      agent_cycle?: string
+      agent_cycle_reverse?: string
+      variant_cycle?: string
+      variant_list?: string
+      input_clear?: string
+      input_paste?: string
+      input_submit?: string
+      input_newline?: string
+      input_move_left?: string
+      input_move_right?: string
+      input_move_up?: string
+      input_move_down?: string
+      input_select_left?: string
+      input_select_right?: string
+      input_select_up?: string
+      input_select_down?: string
+      input_line_home?: string
+      input_line_end?: string
+      input_select_line_home?: string
+      input_select_line_end?: string
+      input_visual_line_home?: string
+      input_visual_line_end?: string
+      input_select_visual_line_home?: string
+      input_select_visual_line_end?: string
+      input_buffer_home?: string
+      input_buffer_end?: string
+      input_select_buffer_home?: string
+      input_select_buffer_end?: string
+      input_delete_line?: string
+      input_delete_to_line_end?: string
+      input_delete_to_line_start?: string
+      input_backspace?: string
+      input_delete?: string
+      input_undo?: string
+      input_redo?: string
+      input_word_forward?: string
+      input_word_backward?: string
+      input_select_word_forward?: string
+      input_select_word_backward?: string
+      input_delete_word_forward?: string
+      input_delete_word_backward?: string
+      history_previous?: string
+      history_next?: string
+      session_child_first?: string
+      session_child_cycle?: string
+      session_child_cycle_reverse?: string
+      session_parent?: string
+      terminal_suspend?: string
+      terminal_title_toggle?: string
+      tips_toggle?: string
+      news_toggle?: string
+      plugin_manager?: string
+      display_thinking?: string
+    }
+    plugin?: Array<
+      | string
+      | [
+          string,
+          {
+            [key: string]: unknown
+          },
+        ]
+    >
+    plugin_enabled?: {
+      [key: string]: boolean
+    }
+    /**
+     * TUI scroll speed
+     */
+    scroll_speed?: number
+    /**
+     * Scroll acceleration settings
+     */
+    scroll_acceleration?: {
+      /**
+       * Enable scroll acceleration
+       */
+      enabled: boolean
+    }
+    /**
+     * Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column
+     */
+    diff_style?: "auto" | "stacked"
+    /**
+     * Enable or disable mouse capture (default: true)
+     */
+    mouse?: boolean
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    scope?: "project" | "global"
+  }
+  url: "/tui/config"
+}
+
+export type TuiConfigUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type TuiConfigUpdateError = TuiConfigUpdateErrors[keyof TuiConfigUpdateErrors]
+
+export type TuiConfigUpdateResponses = {
+  /**
+   * Effective TUI configuration after the update
+   */
+  200: {
+    $schema?: string
+    theme?: string
+    keybinds?: {
+      leader?: string
+      app_exit?: string
+      editor_open?: string
+      theme_list?: string
+      sidebar_toggle?: string
+      scrollbar_toggle?: string
+      username_toggle?: string
+      status_view?: string
+      session_export?: string
+      session_new?: string
+      session_list?: string
+      session_timeline?: string
+      session_fork?: string
+      session_rename?: string
+      session_delete?: string
+      stash_delete?: string
+      model_provider_list?: string
+      model_favorite_toggle?: string
+      session_share?: string
+      session_unshare?: string
+      session_interrupt?: string
+      session_compact?: string
+      messages_page_up?: string
+      messages_page_down?: string
+      messages_line_up?: string
+      messages_line_down?: string
+      messages_half_page_up?: string
+      messages_half_page_down?: string
+      messages_first?: string
+      messages_last?: string
+      messages_next?: string
+      messages_previous?: string
+      messages_last_user?: string
+      messages_copy?: string
+      messages_undo?: string
+      messages_redo?: string
+      messages_feedback_up?: string
+      messages_feedback_down?: string
+      messages_toggle_conceal?: string
+      tool_details?: string
+      model_list?: string
+      model_cycle_recent?: string
+      model_cycle_recent_reverse?: string
+      model_cycle_favorite?: string
+      model_cycle_favorite_reverse?: string
+      command_list?: string
+      agent_list?: string
+      agent_cycle?: string
+      agent_cycle_reverse?: string
+      variant_cycle?: string
+      variant_list?: string
+      input_clear?: string
+      input_paste?: string
+      input_submit?: string
+      input_newline?: string
+      input_move_left?: string
+      input_move_right?: string
+      input_move_up?: string
+      input_move_down?: string
+      input_select_left?: string
+      input_select_right?: string
+      input_select_up?: string
+      input_select_down?: string
+      input_line_home?: string
+      input_line_end?: string
+      input_select_line_home?: string
+      input_select_line_end?: string
+      input_visual_line_home?: string
+      input_visual_line_end?: string
+      input_select_visual_line_home?: string
+      input_select_visual_line_end?: string
+      input_buffer_home?: string
+      input_buffer_end?: string
+      input_select_buffer_home?: string
+      input_select_buffer_end?: string
+      input_delete_line?: string
+      input_delete_to_line_end?: string
+      input_delete_to_line_start?: string
+      input_backspace?: string
+      input_delete?: string
+      input_undo?: string
+      input_redo?: string
+      input_word_forward?: string
+      input_word_backward?: string
+      input_select_word_forward?: string
+      input_select_word_backward?: string
+      input_delete_word_forward?: string
+      input_delete_word_backward?: string
+      history_previous?: string
+      history_next?: string
+      session_child_first?: string
+      session_child_cycle?: string
+      session_child_cycle_reverse?: string
+      session_parent?: string
+      terminal_suspend?: string
+      terminal_title_toggle?: string
+      tips_toggle?: string
+      news_toggle?: string
+      plugin_manager?: string
+      display_thinking?: string
+    }
+    plugin?: Array<
+      | string
+      | [
+          string,
+          {
+            [key: string]: unknown
+          },
+        ]
+    >
+    plugin_enabled?: {
+      [key: string]: boolean
+    }
+    /**
+     * TUI scroll speed
+     */
+    scroll_speed?: number
+    /**
+     * Scroll acceleration settings
+     */
+    scroll_acceleration?: {
+      /**
+       * Enable scroll acceleration
+       */
+      enabled: boolean
+    }
+    /**
+     * Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column
+     */
+    diff_style?: "auto" | "stacked"
+    /**
+     * Enable or disable mouse capture (default: true)
+     */
+    mouse?: boolean
+  }
+}
+
+export type TuiConfigUpdateResponse = TuiConfigUpdateResponses[keyof TuiConfigUpdateResponses]
 
 export type KilocodeSessionImportProjectData = {
   body?: {

@@ -8154,6 +8154,275 @@
         ]
       }
     },
+    "/agent-builder/preview": {
+      "post": {
+        "operationId": "agentBuilder.preview",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Preview agent markdown",
+        "description": "Validate an agent builder payload and return the canonical agent markdown without writing it.",
+        "responses": {
+          "200": {
+            "description": "Agent markdown preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": ["global", "project"]
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "markdown": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["id", "scope", "path", "markdown"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "default": "project",
+                    "type": "string",
+                    "enum": ["global", "project"]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "default": "primary",
+                    "type": "string",
+                    "enum": ["primary", "subagent", "all"]
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "permission": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                  }
+                },
+                "required": ["prompt", "id"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.agentBuilder.preview({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/agent-builder/{id}": {
+      "put": {
+        "operationId": "agentBuilder.save",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+            },
+            "required": true
+          }
+        ],
+        "summary": "Save agent markdown",
+        "description": "Save an agent builder payload as a canonical agent markdown file.",
+        "responses": {
+          "200": {
+            "description": "Saved agent markdown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": ["global", "project"]
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "markdown": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["id", "scope", "path", "markdown"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "default": "project",
+                    "type": "string",
+                    "enum": ["global", "project"]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "default": "primary",
+                    "type": "string",
+                    "enum": ["primary", "subagent", "all"]
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "permission": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                  }
+                },
+                "required": ["prompt"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.agentBuilder.save({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/network": {
       "get": {
         "operationId": "network.list",
@@ -8575,6 +8844,835 @@
           {
             "lang": "js",
             "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.suggestion.dismiss({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/config/sources": {
+      "get": {
+        "operationId": "config.sources",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "List config sources",
+        "description": "List config source metadata in load order without exposing config contents or secrets.",
+        "responses": {
+          "200": {
+            "description": "Config source inventory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "order": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "remote-wellknown",
+                              "global-file",
+                              "env-file",
+                              "project-file",
+                              "config-dir",
+                              "config-dir-file",
+                              "env-content",
+                              "cloud-org",
+                              "managed-dir",
+                              "managed-file",
+                              "managed-preferences",
+                              "runtime-env"
+                            ]
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": ["global", "project", "env", "managed", "cloud"]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "exists": {
+                            "type": "boolean"
+                          },
+                          "editable": {
+                            "type": "boolean"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["order", "kind", "scope", "label", "source", "exists", "editable"]
+                      }
+                    }
+                  },
+                  "required": ["sources"]
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.sources({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/config/effective": {
+      "get": {
+        "operationId": "config.effective",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Get effective configuration",
+        "description": "Retrieve effective config for the current instance directory.",
+        "responses": {
+          "200": {
+            "description": "Effective config info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Config"
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.effective({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/config/overlay": {
+      "get": {
+        "operationId": "config.overlay",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "default": "project",
+              "type": "string",
+              "enum": ["global", "project"]
+            }
+          }
+        ],
+        "summary": "Get config overlay",
+        "description": "Resolve global, project, and effective config values with source metadata for inheritance-aware settings UI.",
+        "responses": {
+          "200": {
+            "description": "Resolved config overlay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "type": "string",
+                      "enum": ["global", "project"]
+                    },
+                    "effective": {
+                      "$ref": "#/components/schemas/Config"
+                    },
+                    "global": {
+                      "$ref": "#/components/schemas/Config"
+                    },
+                    "project": {
+                      "$ref": "#/components/schemas/Config"
+                    },
+                    "sources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "order": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "remote-wellknown",
+                              "global-file",
+                              "env-file",
+                              "project-file",
+                              "config-dir",
+                              "config-dir-file",
+                              "env-content",
+                              "cloud-org",
+                              "managed-dir",
+                              "managed-file",
+                              "managed-preferences",
+                              "runtime-env"
+                            ]
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": ["global", "project", "env", "managed", "cloud"]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "exists": {
+                            "type": "boolean"
+                          },
+                          "editable": {
+                            "type": "boolean"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["order", "kind", "scope", "label", "source", "exists", "editable"]
+                      }
+                    },
+                    "targets": {
+                      "type": "object",
+                      "properties": {
+                        "global": {
+                          "type": "string"
+                        },
+                        "project": {
+                          "type": "string"
+                        },
+                        "active": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "fields": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "value": {},
+                          "global": {},
+                          "local": {},
+                          "source": {
+                            "type": "string",
+                            "enum": ["project", "global", "system", "default"]
+                          },
+                          "inherited": {
+                            "type": "boolean"
+                          },
+                          "overridden": {
+                            "type": "boolean"
+                          },
+                          "editable": {
+                            "type": "boolean"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["key", "path", "source", "inherited", "overridden", "editable"]
+                      }
+                    },
+                    "collections": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string"
+                            },
+                            "path": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "value": {},
+                            "global": {},
+                            "local": {},
+                            "source": {
+                              "type": "string",
+                              "enum": ["project", "global", "system", "default"]
+                            },
+                            "inherited": {
+                              "type": "boolean"
+                            },
+                            "overridden": {
+                              "type": "boolean"
+                            },
+                            "editable": {
+                              "type": "boolean"
+                            },
+                            "reason": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["key", "path", "source", "inherited", "overridden", "editable"]
+                        }
+                      }
+                    }
+                  },
+                  "required": ["scope", "effective", "global", "project", "sources", "targets", "fields", "collections"]
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.overlay({\n  ...\n})"
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "config.overlayUpdate",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Patch config overlay",
+        "description": "Apply a minimal global or project config patch, including unset paths for reverting local overrides.",
+        "responses": {
+          "200": {
+            "description": "Effective configuration after patch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Config"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "default": "project",
+                    "type": "string",
+                    "enum": ["global", "project"]
+                  },
+                  "set": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  "unset": {
+                    "type": "array",
+                    "items": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.overlayUpdate({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/config/rules": {
+      "get": {
+        "operationId": "config.rules",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "default": "project",
+              "type": "string",
+              "const": "project"
+            }
+          }
+        ],
+        "summary": "Get project rules",
+        "description": "List project instruction files used by Kilo and return their current contents.",
+        "responses": {
+          "200": {
+            "description": "Project rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "type": "string",
+                      "const": "project"
+                    },
+                    "target": {
+                      "type": "string"
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "exists": {
+                            "type": "boolean"
+                          },
+                          "editable": {
+                            "type": "boolean"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["name", "path", "exists", "editable", "content"]
+                      }
+                    }
+                  },
+                  "required": ["scope", "target", "files"]
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.rules({\n  ...\n})"
+          }
+        ]
+      },
+      "put": {
+        "operationId": "config.rulesUpdate",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Update project rules",
+        "description": "Create or update the project AGENTS.md rules file.",
+        "responses": {
+          "200": {
+            "description": "Project rules after update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "type": "string",
+                      "const": "project"
+                    },
+                    "target": {
+                      "type": "string"
+                    },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "exists": {
+                            "type": "boolean"
+                          },
+                          "editable": {
+                            "type": "boolean"
+                          },
+                          "content": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["name", "path", "exists", "editable", "content"]
+                      }
+                    }
+                  },
+                  "required": ["scope", "target", "files"]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "default": "project",
+                    "type": "string",
+                    "const": "project"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                },
+                "required": ["content"]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.rulesUpdate({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/config/model-state": {
+      "get": {
+        "operationId": "config.modelState",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Get model state",
+        "description": "Retrieve TUI-compatible recent and favorite model selections.",
+        "responses": {
+          "200": {
+            "description": "Model state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "model": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "providerID": {
+                            "type": "string"
+                          },
+                          "modelID": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["providerID", "modelID"]
+                      }
+                    },
+                    "recent": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "providerID": {
+                            "type": "string"
+                          },
+                          "modelID": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["providerID", "modelID"]
+                      }
+                    },
+                    "favorite": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "providerID": {
+                            "type": "string"
+                          },
+                          "modelID": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["providerID", "modelID"]
+                      }
+                    },
+                    "variant": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": ["model", "recent", "favorite", "variant"]
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.modelState({\n  ...\n})"
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "config.modelStateUpdate",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Update model state",
+        "description": "Patch TUI-compatible model selections shared with Kilo Console.",
+        "responses": {
+          "200": {
+            "description": "Updated model state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "model": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "providerID": {
+                            "type": "string"
+                          },
+                          "modelID": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["providerID", "modelID"]
+                      }
+                    },
+                    "recent": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "providerID": {
+                            "type": "string"
+                          },
+                          "modelID": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["providerID", "modelID"]
+                      }
+                    },
+                    "favorite": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "providerID": {
+                            "type": "string"
+                          },
+                          "modelID": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["providerID", "modelID"]
+                      }
+                    },
+                    "variant": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": ["model", "recent", "favorite", "variant"]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "favorite": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "providerID": {
+                          "type": "string"
+                        },
+                        "modelID": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["providerID", "modelID"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.modelStateUpdate({\n  ...\n})"
           }
         ]
       }
@@ -9024,6 +10122,1236 @@
           {
             "lang": "js",
             "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.enhancePrompt.enhance({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/tui/config": {
+      "get": {
+        "operationId": "tui.config.get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Get TUI configuration",
+        "description": "Retrieve the effective TUI configuration for the current instance directory.",
+        "responses": {
+          "200": {
+            "description": "Effective TUI configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "$schema": {
+                      "type": "string"
+                    },
+                    "theme": {
+                      "type": "string"
+                    },
+                    "keybinds": {
+                      "type": "object",
+                      "properties": {
+                        "leader": {
+                          "type": "string"
+                        },
+                        "app_exit": {
+                          "type": "string"
+                        },
+                        "editor_open": {
+                          "type": "string"
+                        },
+                        "theme_list": {
+                          "type": "string"
+                        },
+                        "sidebar_toggle": {
+                          "type": "string"
+                        },
+                        "scrollbar_toggle": {
+                          "type": "string"
+                        },
+                        "username_toggle": {
+                          "type": "string"
+                        },
+                        "status_view": {
+                          "type": "string"
+                        },
+                        "session_export": {
+                          "type": "string"
+                        },
+                        "session_new": {
+                          "type": "string"
+                        },
+                        "session_list": {
+                          "type": "string"
+                        },
+                        "session_timeline": {
+                          "type": "string"
+                        },
+                        "session_fork": {
+                          "type": "string"
+                        },
+                        "session_rename": {
+                          "type": "string"
+                        },
+                        "session_delete": {
+                          "type": "string"
+                        },
+                        "stash_delete": {
+                          "type": "string"
+                        },
+                        "model_provider_list": {
+                          "type": "string"
+                        },
+                        "model_favorite_toggle": {
+                          "type": "string"
+                        },
+                        "session_share": {
+                          "type": "string"
+                        },
+                        "session_unshare": {
+                          "type": "string"
+                        },
+                        "session_interrupt": {
+                          "type": "string"
+                        },
+                        "session_compact": {
+                          "type": "string"
+                        },
+                        "messages_page_up": {
+                          "type": "string"
+                        },
+                        "messages_page_down": {
+                          "type": "string"
+                        },
+                        "messages_line_up": {
+                          "type": "string"
+                        },
+                        "messages_line_down": {
+                          "type": "string"
+                        },
+                        "messages_half_page_up": {
+                          "type": "string"
+                        },
+                        "messages_half_page_down": {
+                          "type": "string"
+                        },
+                        "messages_first": {
+                          "type": "string"
+                        },
+                        "messages_last": {
+                          "type": "string"
+                        },
+                        "messages_next": {
+                          "type": "string"
+                        },
+                        "messages_previous": {
+                          "type": "string"
+                        },
+                        "messages_last_user": {
+                          "type": "string"
+                        },
+                        "messages_copy": {
+                          "type": "string"
+                        },
+                        "messages_undo": {
+                          "type": "string"
+                        },
+                        "messages_redo": {
+                          "type": "string"
+                        },
+                        "messages_feedback_up": {
+                          "type": "string"
+                        },
+                        "messages_feedback_down": {
+                          "type": "string"
+                        },
+                        "messages_toggle_conceal": {
+                          "type": "string"
+                        },
+                        "tool_details": {
+                          "type": "string"
+                        },
+                        "model_list": {
+                          "type": "string"
+                        },
+                        "model_cycle_recent": {
+                          "type": "string"
+                        },
+                        "model_cycle_recent_reverse": {
+                          "type": "string"
+                        },
+                        "model_cycle_favorite": {
+                          "type": "string"
+                        },
+                        "model_cycle_favorite_reverse": {
+                          "type": "string"
+                        },
+                        "command_list": {
+                          "type": "string"
+                        },
+                        "agent_list": {
+                          "type": "string"
+                        },
+                        "agent_cycle": {
+                          "type": "string"
+                        },
+                        "agent_cycle_reverse": {
+                          "type": "string"
+                        },
+                        "variant_cycle": {
+                          "type": "string"
+                        },
+                        "variant_list": {
+                          "type": "string"
+                        },
+                        "input_clear": {
+                          "type": "string"
+                        },
+                        "input_paste": {
+                          "type": "string"
+                        },
+                        "input_submit": {
+                          "type": "string"
+                        },
+                        "input_newline": {
+                          "type": "string"
+                        },
+                        "input_move_left": {
+                          "type": "string"
+                        },
+                        "input_move_right": {
+                          "type": "string"
+                        },
+                        "input_move_up": {
+                          "type": "string"
+                        },
+                        "input_move_down": {
+                          "type": "string"
+                        },
+                        "input_select_left": {
+                          "type": "string"
+                        },
+                        "input_select_right": {
+                          "type": "string"
+                        },
+                        "input_select_up": {
+                          "type": "string"
+                        },
+                        "input_select_down": {
+                          "type": "string"
+                        },
+                        "input_line_home": {
+                          "type": "string"
+                        },
+                        "input_line_end": {
+                          "type": "string"
+                        },
+                        "input_select_line_home": {
+                          "type": "string"
+                        },
+                        "input_select_line_end": {
+                          "type": "string"
+                        },
+                        "input_visual_line_home": {
+                          "type": "string"
+                        },
+                        "input_visual_line_end": {
+                          "type": "string"
+                        },
+                        "input_select_visual_line_home": {
+                          "type": "string"
+                        },
+                        "input_select_visual_line_end": {
+                          "type": "string"
+                        },
+                        "input_buffer_home": {
+                          "type": "string"
+                        },
+                        "input_buffer_end": {
+                          "type": "string"
+                        },
+                        "input_select_buffer_home": {
+                          "type": "string"
+                        },
+                        "input_select_buffer_end": {
+                          "type": "string"
+                        },
+                        "input_delete_line": {
+                          "type": "string"
+                        },
+                        "input_delete_to_line_end": {
+                          "type": "string"
+                        },
+                        "input_delete_to_line_start": {
+                          "type": "string"
+                        },
+                        "input_backspace": {
+                          "type": "string"
+                        },
+                        "input_delete": {
+                          "type": "string"
+                        },
+                        "input_undo": {
+                          "type": "string"
+                        },
+                        "input_redo": {
+                          "type": "string"
+                        },
+                        "input_word_forward": {
+                          "type": "string"
+                        },
+                        "input_word_backward": {
+                          "type": "string"
+                        },
+                        "input_select_word_forward": {
+                          "type": "string"
+                        },
+                        "input_select_word_backward": {
+                          "type": "string"
+                        },
+                        "input_delete_word_forward": {
+                          "type": "string"
+                        },
+                        "input_delete_word_backward": {
+                          "type": "string"
+                        },
+                        "history_previous": {
+                          "type": "string"
+                        },
+                        "history_next": {
+                          "type": "string"
+                        },
+                        "session_child_first": {
+                          "type": "string"
+                        },
+                        "session_child_cycle": {
+                          "type": "string"
+                        },
+                        "session_child_cycle_reverse": {
+                          "type": "string"
+                        },
+                        "session_parent": {
+                          "type": "string"
+                        },
+                        "terminal_suspend": {
+                          "type": "string"
+                        },
+                        "terminal_title_toggle": {
+                          "type": "string"
+                        },
+                        "tips_toggle": {
+                          "type": "string"
+                        },
+                        "news_toggle": {
+                          "type": "string"
+                        },
+                        "plugin_manager": {
+                          "type": "string"
+                        },
+                        "display_thinking": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "plugin": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "prefixItems": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {}
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "plugin_enabled": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "boolean"
+                      }
+                    },
+                    "scroll_speed": {
+                      "description": "TUI scroll speed",
+                      "type": "number",
+                      "minimum": 0.001
+                    },
+                    "scroll_acceleration": {
+                      "description": "Scroll acceleration settings",
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "description": "Enable scroll acceleration",
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["enabled"]
+                    },
+                    "diff_style": {
+                      "description": "Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column",
+                      "type": "string",
+                      "enum": ["auto", "stacked"]
+                    },
+                    "mouse": {
+                      "description": "Enable or disable mouse capture (default: true)",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.tui.config.get({\n  ...\n})"
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "tui.config.update",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "default": "project",
+              "type": "string",
+              "enum": ["project", "global"]
+            }
+          }
+        ],
+        "summary": "Update TUI configuration",
+        "description": "Patch global or project TUI configuration and return the effective TUI configuration.",
+        "responses": {
+          "200": {
+            "description": "Effective TUI configuration after the update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "$schema": {
+                      "type": "string"
+                    },
+                    "theme": {
+                      "type": "string"
+                    },
+                    "keybinds": {
+                      "type": "object",
+                      "properties": {
+                        "leader": {
+                          "type": "string"
+                        },
+                        "app_exit": {
+                          "type": "string"
+                        },
+                        "editor_open": {
+                          "type": "string"
+                        },
+                        "theme_list": {
+                          "type": "string"
+                        },
+                        "sidebar_toggle": {
+                          "type": "string"
+                        },
+                        "scrollbar_toggle": {
+                          "type": "string"
+                        },
+                        "username_toggle": {
+                          "type": "string"
+                        },
+                        "status_view": {
+                          "type": "string"
+                        },
+                        "session_export": {
+                          "type": "string"
+                        },
+                        "session_new": {
+                          "type": "string"
+                        },
+                        "session_list": {
+                          "type": "string"
+                        },
+                        "session_timeline": {
+                          "type": "string"
+                        },
+                        "session_fork": {
+                          "type": "string"
+                        },
+                        "session_rename": {
+                          "type": "string"
+                        },
+                        "session_delete": {
+                          "type": "string"
+                        },
+                        "stash_delete": {
+                          "type": "string"
+                        },
+                        "model_provider_list": {
+                          "type": "string"
+                        },
+                        "model_favorite_toggle": {
+                          "type": "string"
+                        },
+                        "session_share": {
+                          "type": "string"
+                        },
+                        "session_unshare": {
+                          "type": "string"
+                        },
+                        "session_interrupt": {
+                          "type": "string"
+                        },
+                        "session_compact": {
+                          "type": "string"
+                        },
+                        "messages_page_up": {
+                          "type": "string"
+                        },
+                        "messages_page_down": {
+                          "type": "string"
+                        },
+                        "messages_line_up": {
+                          "type": "string"
+                        },
+                        "messages_line_down": {
+                          "type": "string"
+                        },
+                        "messages_half_page_up": {
+                          "type": "string"
+                        },
+                        "messages_half_page_down": {
+                          "type": "string"
+                        },
+                        "messages_first": {
+                          "type": "string"
+                        },
+                        "messages_last": {
+                          "type": "string"
+                        },
+                        "messages_next": {
+                          "type": "string"
+                        },
+                        "messages_previous": {
+                          "type": "string"
+                        },
+                        "messages_last_user": {
+                          "type": "string"
+                        },
+                        "messages_copy": {
+                          "type": "string"
+                        },
+                        "messages_undo": {
+                          "type": "string"
+                        },
+                        "messages_redo": {
+                          "type": "string"
+                        },
+                        "messages_feedback_up": {
+                          "type": "string"
+                        },
+                        "messages_feedback_down": {
+                          "type": "string"
+                        },
+                        "messages_toggle_conceal": {
+                          "type": "string"
+                        },
+                        "tool_details": {
+                          "type": "string"
+                        },
+                        "model_list": {
+                          "type": "string"
+                        },
+                        "model_cycle_recent": {
+                          "type": "string"
+                        },
+                        "model_cycle_recent_reverse": {
+                          "type": "string"
+                        },
+                        "model_cycle_favorite": {
+                          "type": "string"
+                        },
+                        "model_cycle_favorite_reverse": {
+                          "type": "string"
+                        },
+                        "command_list": {
+                          "type": "string"
+                        },
+                        "agent_list": {
+                          "type": "string"
+                        },
+                        "agent_cycle": {
+                          "type": "string"
+                        },
+                        "agent_cycle_reverse": {
+                          "type": "string"
+                        },
+                        "variant_cycle": {
+                          "type": "string"
+                        },
+                        "variant_list": {
+                          "type": "string"
+                        },
+                        "input_clear": {
+                          "type": "string"
+                        },
+                        "input_paste": {
+                          "type": "string"
+                        },
+                        "input_submit": {
+                          "type": "string"
+                        },
+                        "input_newline": {
+                          "type": "string"
+                        },
+                        "input_move_left": {
+                          "type": "string"
+                        },
+                        "input_move_right": {
+                          "type": "string"
+                        },
+                        "input_move_up": {
+                          "type": "string"
+                        },
+                        "input_move_down": {
+                          "type": "string"
+                        },
+                        "input_select_left": {
+                          "type": "string"
+                        },
+                        "input_select_right": {
+                          "type": "string"
+                        },
+                        "input_select_up": {
+                          "type": "string"
+                        },
+                        "input_select_down": {
+                          "type": "string"
+                        },
+                        "input_line_home": {
+                          "type": "string"
+                        },
+                        "input_line_end": {
+                          "type": "string"
+                        },
+                        "input_select_line_home": {
+                          "type": "string"
+                        },
+                        "input_select_line_end": {
+                          "type": "string"
+                        },
+                        "input_visual_line_home": {
+                          "type": "string"
+                        },
+                        "input_visual_line_end": {
+                          "type": "string"
+                        },
+                        "input_select_visual_line_home": {
+                          "type": "string"
+                        },
+                        "input_select_visual_line_end": {
+                          "type": "string"
+                        },
+                        "input_buffer_home": {
+                          "type": "string"
+                        },
+                        "input_buffer_end": {
+                          "type": "string"
+                        },
+                        "input_select_buffer_home": {
+                          "type": "string"
+                        },
+                        "input_select_buffer_end": {
+                          "type": "string"
+                        },
+                        "input_delete_line": {
+                          "type": "string"
+                        },
+                        "input_delete_to_line_end": {
+                          "type": "string"
+                        },
+                        "input_delete_to_line_start": {
+                          "type": "string"
+                        },
+                        "input_backspace": {
+                          "type": "string"
+                        },
+                        "input_delete": {
+                          "type": "string"
+                        },
+                        "input_undo": {
+                          "type": "string"
+                        },
+                        "input_redo": {
+                          "type": "string"
+                        },
+                        "input_word_forward": {
+                          "type": "string"
+                        },
+                        "input_word_backward": {
+                          "type": "string"
+                        },
+                        "input_select_word_forward": {
+                          "type": "string"
+                        },
+                        "input_select_word_backward": {
+                          "type": "string"
+                        },
+                        "input_delete_word_forward": {
+                          "type": "string"
+                        },
+                        "input_delete_word_backward": {
+                          "type": "string"
+                        },
+                        "history_previous": {
+                          "type": "string"
+                        },
+                        "history_next": {
+                          "type": "string"
+                        },
+                        "session_child_first": {
+                          "type": "string"
+                        },
+                        "session_child_cycle": {
+                          "type": "string"
+                        },
+                        "session_child_cycle_reverse": {
+                          "type": "string"
+                        },
+                        "session_parent": {
+                          "type": "string"
+                        },
+                        "terminal_suspend": {
+                          "type": "string"
+                        },
+                        "terminal_title_toggle": {
+                          "type": "string"
+                        },
+                        "tips_toggle": {
+                          "type": "string"
+                        },
+                        "news_toggle": {
+                          "type": "string"
+                        },
+                        "plugin_manager": {
+                          "type": "string"
+                        },
+                        "display_thinking": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "plugin": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "prefixItems": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {}
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "plugin_enabled": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "boolean"
+                      }
+                    },
+                    "scroll_speed": {
+                      "description": "TUI scroll speed",
+                      "type": "number",
+                      "minimum": 0.001
+                    },
+                    "scroll_acceleration": {
+                      "description": "Scroll acceleration settings",
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "description": "Enable scroll acceleration",
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["enabled"]
+                    },
+                    "diff_style": {
+                      "description": "Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column",
+                      "type": "string",
+                      "enum": ["auto", "stacked"]
+                    },
+                    "mouse": {
+                      "description": "Enable or disable mouse capture (default: true)",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "$schema": {
+                    "type": "string"
+                  },
+                  "theme": {
+                    "type": "string"
+                  },
+                  "keybinds": {
+                    "type": "object",
+                    "properties": {
+                      "leader": {
+                        "type": "string"
+                      },
+                      "app_exit": {
+                        "type": "string"
+                      },
+                      "editor_open": {
+                        "type": "string"
+                      },
+                      "theme_list": {
+                        "type": "string"
+                      },
+                      "sidebar_toggle": {
+                        "type": "string"
+                      },
+                      "scrollbar_toggle": {
+                        "type": "string"
+                      },
+                      "username_toggle": {
+                        "type": "string"
+                      },
+                      "status_view": {
+                        "type": "string"
+                      },
+                      "session_export": {
+                        "type": "string"
+                      },
+                      "session_new": {
+                        "type": "string"
+                      },
+                      "session_list": {
+                        "type": "string"
+                      },
+                      "session_timeline": {
+                        "type": "string"
+                      },
+                      "session_fork": {
+                        "type": "string"
+                      },
+                      "session_rename": {
+                        "type": "string"
+                      },
+                      "session_delete": {
+                        "type": "string"
+                      },
+                      "stash_delete": {
+                        "type": "string"
+                      },
+                      "model_provider_list": {
+                        "type": "string"
+                      },
+                      "model_favorite_toggle": {
+                        "type": "string"
+                      },
+                      "session_share": {
+                        "type": "string"
+                      },
+                      "session_unshare": {
+                        "type": "string"
+                      },
+                      "session_interrupt": {
+                        "type": "string"
+                      },
+                      "session_compact": {
+                        "type": "string"
+                      },
+                      "messages_page_up": {
+                        "type": "string"
+                      },
+                      "messages_page_down": {
+                        "type": "string"
+                      },
+                      "messages_line_up": {
+                        "type": "string"
+                      },
+                      "messages_line_down": {
+                        "type": "string"
+                      },
+                      "messages_half_page_up": {
+                        "type": "string"
+                      },
+                      "messages_half_page_down": {
+                        "type": "string"
+                      },
+                      "messages_first": {
+                        "type": "string"
+                      },
+                      "messages_last": {
+                        "type": "string"
+                      },
+                      "messages_next": {
+                        "type": "string"
+                      },
+                      "messages_previous": {
+                        "type": "string"
+                      },
+                      "messages_last_user": {
+                        "type": "string"
+                      },
+                      "messages_copy": {
+                        "type": "string"
+                      },
+                      "messages_undo": {
+                        "type": "string"
+                      },
+                      "messages_redo": {
+                        "type": "string"
+                      },
+                      "messages_feedback_up": {
+                        "type": "string"
+                      },
+                      "messages_feedback_down": {
+                        "type": "string"
+                      },
+                      "messages_toggle_conceal": {
+                        "type": "string"
+                      },
+                      "tool_details": {
+                        "type": "string"
+                      },
+                      "model_list": {
+                        "type": "string"
+                      },
+                      "model_cycle_recent": {
+                        "type": "string"
+                      },
+                      "model_cycle_recent_reverse": {
+                        "type": "string"
+                      },
+                      "model_cycle_favorite": {
+                        "type": "string"
+                      },
+                      "model_cycle_favorite_reverse": {
+                        "type": "string"
+                      },
+                      "command_list": {
+                        "type": "string"
+                      },
+                      "agent_list": {
+                        "type": "string"
+                      },
+                      "agent_cycle": {
+                        "type": "string"
+                      },
+                      "agent_cycle_reverse": {
+                        "type": "string"
+                      },
+                      "variant_cycle": {
+                        "type": "string"
+                      },
+                      "variant_list": {
+                        "type": "string"
+                      },
+                      "input_clear": {
+                        "type": "string"
+                      },
+                      "input_paste": {
+                        "type": "string"
+                      },
+                      "input_submit": {
+                        "type": "string"
+                      },
+                      "input_newline": {
+                        "type": "string"
+                      },
+                      "input_move_left": {
+                        "type": "string"
+                      },
+                      "input_move_right": {
+                        "type": "string"
+                      },
+                      "input_move_up": {
+                        "type": "string"
+                      },
+                      "input_move_down": {
+                        "type": "string"
+                      },
+                      "input_select_left": {
+                        "type": "string"
+                      },
+                      "input_select_right": {
+                        "type": "string"
+                      },
+                      "input_select_up": {
+                        "type": "string"
+                      },
+                      "input_select_down": {
+                        "type": "string"
+                      },
+                      "input_line_home": {
+                        "type": "string"
+                      },
+                      "input_line_end": {
+                        "type": "string"
+                      },
+                      "input_select_line_home": {
+                        "type": "string"
+                      },
+                      "input_select_line_end": {
+                        "type": "string"
+                      },
+                      "input_visual_line_home": {
+                        "type": "string"
+                      },
+                      "input_visual_line_end": {
+                        "type": "string"
+                      },
+                      "input_select_visual_line_home": {
+                        "type": "string"
+                      },
+                      "input_select_visual_line_end": {
+                        "type": "string"
+                      },
+                      "input_buffer_home": {
+                        "type": "string"
+                      },
+                      "input_buffer_end": {
+                        "type": "string"
+                      },
+                      "input_select_buffer_home": {
+                        "type": "string"
+                      },
+                      "input_select_buffer_end": {
+                        "type": "string"
+                      },
+                      "input_delete_line": {
+                        "type": "string"
+                      },
+                      "input_delete_to_line_end": {
+                        "type": "string"
+                      },
+                      "input_delete_to_line_start": {
+                        "type": "string"
+                      },
+                      "input_backspace": {
+                        "type": "string"
+                      },
+                      "input_delete": {
+                        "type": "string"
+                      },
+                      "input_undo": {
+                        "type": "string"
+                      },
+                      "input_redo": {
+                        "type": "string"
+                      },
+                      "input_word_forward": {
+                        "type": "string"
+                      },
+                      "input_word_backward": {
+                        "type": "string"
+                      },
+                      "input_select_word_forward": {
+                        "type": "string"
+                      },
+                      "input_select_word_backward": {
+                        "type": "string"
+                      },
+                      "input_delete_word_forward": {
+                        "type": "string"
+                      },
+                      "input_delete_word_backward": {
+                        "type": "string"
+                      },
+                      "history_previous": {
+                        "type": "string"
+                      },
+                      "history_next": {
+                        "type": "string"
+                      },
+                      "session_child_first": {
+                        "type": "string"
+                      },
+                      "session_child_cycle": {
+                        "type": "string"
+                      },
+                      "session_child_cycle_reverse": {
+                        "type": "string"
+                      },
+                      "session_parent": {
+                        "type": "string"
+                      },
+                      "terminal_suspend": {
+                        "type": "string"
+                      },
+                      "terminal_title_toggle": {
+                        "type": "string"
+                      },
+                      "tips_toggle": {
+                        "type": "string"
+                      },
+                      "news_toggle": {
+                        "type": "string"
+                      },
+                      "plugin_manager": {
+                        "type": "string"
+                      },
+                      "display_thinking": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "plugin": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "array",
+                          "prefixItems": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {}
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "plugin_enabled": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "boolean"
+                    }
+                  },
+                  "scroll_speed": {
+                    "description": "TUI scroll speed",
+                    "type": "number",
+                    "minimum": 0.001
+                  },
+                  "scroll_acceleration": {
+                    "description": "Scroll acceleration settings",
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "description": "Enable scroll acceleration",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["enabled"]
+                  },
+                  "diff_style": {
+                    "description": "Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column",
+                    "type": "string",
+                    "enum": ["auto", "stacked"]
+                  },
+                  "mouse": {
+                    "description": "Enable or disable mouse capture (default: true)",
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.tui.config.update({\n  ...\n})"
           }
         ]
       }

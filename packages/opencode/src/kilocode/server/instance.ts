@@ -1,4 +1,3 @@
-// kilocode_change - new file
 // Registers all Kilo-specific instance routes on a Hono app.
 // Called from ../../server/instance/index.ts before the UI fallback route.
 
@@ -13,7 +12,13 @@ import { PermissionKilocodeRoutes } from "../permission/routes"
 import { RemoteRoutes } from "../../server/routes/instance/remote"
 import { NetworkRoutes } from "../../server/routes/instance/network"
 import { SuggestionRoutes } from "../suggestion/routes"
+import { ConfigSourcesRoutes } from "./routes/config-sources"
+import { ConfigOverlayRoutes } from "./routes/config-overlay"
+import { ConfigRulesRoutes } from "./routes/config-rules"
+import { ConfigModelStateRoutes } from "./routes/config-model-state"
+import { AgentBuilderRoutes } from "./routes/agent-builder"
 import { IndexingRoutes } from "./routes/indexing"
+import { TuiConfigRoutes } from "./routes/tui-config"
 import { createKiloRoutes } from "@kilocode/kilo-gateway"
 import { Auth } from "../../auth"
 import { errors } from "../../server/error"
@@ -29,13 +34,19 @@ import { Bus } from "@/bus"
 export function register(app: Hono): Hono {
   return app
     .route("/permission", PermissionKilocodeRoutes())
+    .route("/agent-builder", AgentBuilderRoutes())
     .route("/network", NetworkRoutes())
-    .route("/indexing", IndexingRoutes()) // kilocode_change
+    .route("/indexing", IndexingRoutes())
     .route("/suggestion", SuggestionRoutes())
+    .route("/config", ConfigSourcesRoutes())
+    .route("/config", ConfigOverlayRoutes())
+    .route("/config", ConfigRulesRoutes())
+    .route("/config", ConfigModelStateRoutes())
     .route("/telemetry", TelemetryRoutes())
     .route("/remote", RemoteRoutes())
     .route("/commit-message", CommitMessageRoutes())
     .route("/enhance-prompt", EnhancePromptRoutes())
+    .route("/tui", TuiConfigRoutes())
     .route("/kilocode", KilocodeRoutes())
     .route(
       "/kilo",
