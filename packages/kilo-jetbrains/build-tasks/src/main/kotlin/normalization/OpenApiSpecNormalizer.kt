@@ -17,7 +17,7 @@ internal object OpenApiSpecNormalizer {
         // Step 3: Deduplicate the root-level tags array.
         // Step 4: Fix nullable fields in the /kilo/profile response that Effect's
         //         OpenAPI generator incorrectly emits as non-nullable.
-        val (noDotsRoot, dotMap) = remapDotSchemas(root)
+        val (noDotsRoot, _) = remapDotSchemas(root)
         val stripped = stripTags(noDotsRoot)
         val deduped = dedupRootTags(stripped)
         val fixed = fixProfileNullable(deduped)
@@ -137,21 +137,15 @@ internal object OpenApiSpecNormalizer {
         })
 
         // Rebuild nested objects up to root.
+        val responses = getOp["responses"]!! as JsonObject
+        val resp200 = responses["200"]!! as JsonObject
+        val content = resp200["content"]!! as JsonObject
+        val appJson = content["application/json"]!! as JsonObject
         val newSchema = JsonObject(schema + mapOf("properties" to fixed))
-        val newApp = JsonObject(
-            (getOp["responses"]!!.let { it as JsonObject }["200"]!!.let { it as JsonObject }["content"]!!.let { it as JsonObject }["application/json"]!!
-                .let { it as JsonObject }) + mapOf("schema" to newSchema)
-        )
-        val newContent = JsonObject(
-            (getOp["responses"]!!.let { it as JsonObject }["200"]!!.let { it as JsonObject }["content"]!!
-                .let { it as JsonObject }) + mapOf("application/json" to newApp)
-        )
-        val new200 = JsonObject(
-            (getOp["responses"]!!.let { it as JsonObject }["200"]!!.let { it as JsonObject }) + mapOf("content" to newContent)
-        )
-        val newResponses = JsonObject(
-            (getOp["responses"]!!.let { it as JsonObject }) + mapOf("200" to new200)
-        )
+        val newApp = JsonObject(appJson + mapOf("schema" to newSchema))
+        val newContent = JsonObject(content + mapOf("application/json" to newApp))
+        val new200 = JsonObject(resp200 + mapOf("content" to newContent))
+        val newResponses = JsonObject(responses + mapOf("200" to new200))
         val newGet = JsonObject(getOp + mapOf("responses" to newResponses))
         val newProfile = JsonObject(profileItem + mapOf("get" to newGet))
         val newPaths = JsonObject(paths + mapOf("/kilo/profile" to newProfile))
