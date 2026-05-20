@@ -14,6 +14,7 @@ import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.AsyncProcessIcon
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
@@ -257,6 +258,7 @@ internal class LoggedOutProfileUi(
 
     // ---- update ----
 
+    @RequiresEdt
     fun update(status: KiloAppStatusDto, login: LoginState) {
         val target = resolveMode(status, login)
 
@@ -324,7 +326,16 @@ internal class LoggedOutProfileUi(
         }
     }
 
+    @RequiresEdt
     fun preferredFocus(): JComponent = loginBtn
+
+    /** Stop the timer and suspend the wait icon. Safe to call multiple times. */
+    @RequiresEdt
+    fun dispose() {
+        timer.stop()
+        waitIcon.suspend()
+        lastPendingUrl = null
+    }
 
     private fun resolveMode(status: KiloAppStatusDto, login: LoginState): OutMode = when {
         status == KiloAppStatusDto.DISCONNECTED || status == KiloAppStatusDto.CONNECTING -> OutMode.CONNECTING
@@ -335,6 +346,7 @@ internal class LoggedOutProfileUi(
         else -> OutMode.EMPTY
     }
 
+    @RequiresEdt
     private fun syncTime() {
         val elapsed = ((System.currentTimeMillis() - pendingStarted) / 1000).toInt()
         val remain = (pendingExpires - elapsed).coerceAtLeast(0)

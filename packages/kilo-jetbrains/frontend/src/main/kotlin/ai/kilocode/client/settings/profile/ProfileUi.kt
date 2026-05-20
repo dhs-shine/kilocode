@@ -12,6 +12,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.service
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +72,7 @@ internal class ProfileUi(
         sync()
     }
 
+    @RequiresEdt
     fun preferredFocus(): JComponent = when (targetCard()) {
         Card.LOGGED_IN -> account.preferredFocus()
         Card.LOGGED_OUT -> out.preferredFocus()
@@ -84,6 +86,7 @@ internal class ProfileUi(
      * meaning a switch or initial load is still in flight. Any other null (no progress,
      * NOT_LOGGED_IN, etc.) clears the profile and shows the logged-out card.
      */
+    @RequiresEdt
     fun update(state: KiloAppStateDto) {
         checkEdt()
         this.status = state.status
@@ -106,6 +109,7 @@ internal class ProfileUi(
      * Callers that pass null always provide a state fallback (`profile ?: state.profile`),
      * so this branch is not reachable in production — it exists for transient-null tests.
      */
+    @RequiresEdt
     fun update(profile: ProfileDto?, status: KiloAppStatusDto) {
         checkEdt()
         this.status = status
@@ -119,6 +123,7 @@ internal class ProfileUi(
         sync(skipAccount = transient)
     }
 
+    @RequiresEdt
     private fun sync(skipAccount: Boolean = false) {
         checkEdt()
         val target = targetCard()
@@ -150,9 +155,20 @@ internal class ProfileUi(
         }
     }
 
+    @RequiresEdt
     private fun applyState() {
         checkEdt()
         update(app.state.value)
+    }
+
+    /**
+     * Invalidate any pending login flows and dispose the logged-out UI timer.
+     * Called from [ai.kilocode.client.settings.profile.UserProfileConfigurable.disposeUIResources].
+     */
+    @RequiresEdt
+    fun dispose() {
+        attempt++
+        out.dispose()
     }
 
     private fun checkEdt() {

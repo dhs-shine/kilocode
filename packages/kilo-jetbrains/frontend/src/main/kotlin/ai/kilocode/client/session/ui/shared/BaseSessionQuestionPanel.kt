@@ -6,6 +6,7 @@ import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.ui.components.JBTextArea
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.Color
 import java.awt.Component
@@ -69,6 +70,7 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
      *
      * The header/description text areas follow immediately after.
      */
+    @RequiresEdt
     fun setTopPanel(top: JComponent?) {
         this.top = top
         rebuildCol()
@@ -78,6 +80,7 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
      * Replace the body slot that comes after the header/description.
      * Pass `null` to remove the current body.
      */
+    @RequiresEdt
     fun setBody(body: JComponent?) {
         this.body = body
         rebuildCol()
@@ -87,6 +90,7 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
      * Replace the footer slot that comes after the body.
      * Pass `null` to remove the current footer.
      */
+    @RequiresEdt
     fun setFooter(footer: JComponent?) {
         this.footer = footer
         rebuildCol()
@@ -94,6 +98,7 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
 
     // ---- SessionEditorStyleTarget ----
 
+    @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         for ((area, bold) in tracked) applyFont(area, bold)

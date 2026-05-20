@@ -3,7 +3,6 @@ package ai.kilocode.client.settings
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import com.intellij.ide.DataManager
-import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.openapi.options.ex.Settings
 import com.intellij.ui.components.ActionLink
@@ -16,21 +15,20 @@ import javax.swing.JPanel
 /**
  * Root settings entry under Settings -> Tools -> Kilo Code.
  *
- * Displays a brief description and links to each child settings page.
- * Acts as a [SearchableConfigurable.Parent] so the node is selectable and
- * shows its own index content while also hosting child configurables.
+ * Displays a brief description and a link to the User Profile child page.
+ * Child configurables are registered in XML (`kilo.jetbrains.frontend.xml`) as
+ * `applicationConfigurable` entries with the appropriate `parentId` — that is the
+ * single source of truth for the settings hierarchy. This class does NOT implement
+ * [com.intellij.openapi.options.SearchableConfigurable.Parent] to avoid creating a
+ * second `UserProfileConfigurable` instance alongside the one registered in XML.
+ *
+ * The link uses [UserProfileConfigurable.ID] to navigate via [Settings.find]/[Settings.select].
  */
-class KiloSettingsConfigurable : SearchableConfigurable.Parent {
-
-    private val kids: Array<Configurable> = arrayOf(UserProfileConfigurable())
+class KiloSettingsConfigurable : SearchableConfigurable {
 
     override fun getId(): String = ID
 
     override fun getDisplayName(): String = KiloBundle.message("settings.kilo.displayName")
-
-    override fun hasOwnContent(): Boolean = true
-
-    override fun getConfigurables(): Array<Configurable> = kids
 
     override fun createComponent(): JComponent {
         val panel = JPanel()
@@ -41,15 +39,13 @@ class KiloSettingsConfigurable : SearchableConfigurable.Parent {
         desc.border = JBUI.Borders.emptyBottom(12)
         panel.add(desc)
 
-        for (child in kids) {
-            val link = ActionLink(child.displayName) { e ->
-                val src = e.source as? JComponent ?: return@ActionLink
-                val settings = Settings.KEY.getData(DataManager.getInstance().getDataContext(src)) ?: return@ActionLink
-                open(settings, child)
-            }
-            link.border = JBUI.Borders.emptyBottom(4)
-            panel.add(link)
+        val link = ActionLink(KiloBundle.message("settings.profile.displayName")) { e ->
+            val src = e.source as? JComponent ?: return@ActionLink
+            val settings = Settings.KEY.getData(DataManager.getInstance().getDataContext(src)) ?: return@ActionLink
+            open(settings, UserProfileConfigurable.ID)
         }
+        link.border = JBUI.Borders.emptyBottom(4)
+        panel.add(link)
 
         return panel
     }
@@ -58,9 +54,8 @@ class KiloSettingsConfigurable : SearchableConfigurable.Parent {
 
     override fun apply() = Unit
 
-    internal fun open(settings: Settings, cfg: Configurable) {
-        val id = (cfg as? SearchableConfigurable)?.id ?: cfg.javaClass.name
-        settings.select(settings.find(id))
+    internal fun open(settings: Settings, id: String = UserProfileConfigurable.ID) {
+        settings.find(id)?.let { settings.select(it) }
     }
 
     companion object {

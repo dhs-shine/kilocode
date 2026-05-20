@@ -8,6 +8,7 @@ import ai.kilocode.client.session.ui.shared.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.ui.UiStyle
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
@@ -55,6 +56,7 @@ class LoginRequiredView(
     }
 
     /** Make the view visible with [message] shown as the description. */
+    @RequiresEdt
     fun show(message: String) {
         card.descriptionText.text = message
         isVisible = true
@@ -62,12 +64,14 @@ class LoginRequiredView(
     }
 
     /** Hide the view. */
+    @RequiresEdt
     fun hideView() {
         if (!isVisible) return
         isVisible = false
         refresh()
     }
 
+    @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
         card.applyStyle(style)
     }

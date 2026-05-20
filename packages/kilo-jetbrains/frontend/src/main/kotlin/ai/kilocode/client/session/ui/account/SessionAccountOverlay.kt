@@ -15,6 +15,8 @@ import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.ScrollingUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
+import ai.kilocode.client.settings.profile.formatBalance
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
@@ -22,7 +24,6 @@ import java.awt.Cursor
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import java.text.DecimalFormat
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JComponent
@@ -54,7 +55,6 @@ internal class SessionAccountOverlay(
         })
     }
 
-    private val fmt = DecimalFormat("$#,##0.00")
     private var balanceText: String? = null
 
     private val balance = JBLabel().apply {
@@ -91,6 +91,7 @@ internal class SessionAccountOverlay(
         addToCenter(panel)
     }
 
+    @RequiresEdt
     fun onEvent(event: SessionControllerEvent.AccountOverlayChanged) {
         var layout = false
         var paint = false
@@ -124,6 +125,7 @@ internal class SessionAccountOverlay(
         if (layout || paint) repaint()
     }
 
+    @RequiresEdt
     private fun updateLoggedIn(prof: ai.kilocode.rpc.dto.ProfileDto, switching: Boolean, target: String?): Boolean {
         var layout = false
 
@@ -162,9 +164,10 @@ internal class SessionAccountOverlay(
         return layout
     }
 
+    @RequiresEdt
     private fun syncBalance(prof: ai.kilocode.rpc.dto.ProfileDto): Boolean {
         var layout = false
-        val next = prof.balance?.let { fmt.format(it.balance) }
+        val next = prof.balance?.let { formatBalance(it.balance) }
         if (next == null) {
             if (balance.isVisible) {
                 balance.isVisible = false
@@ -195,6 +198,7 @@ internal class SessionAccountOverlay(
         return layout
     }
 
+    @RequiresEdt
     private fun showPopup() {
         val bg = UiStyle.Colors.cardBg()
         val model = CollectionListModel(choices)
@@ -268,6 +272,16 @@ internal class SessionAccountOverlay(
             .createPopup()
 
         popup.showUnderneathOf(picker)
+    }
+
+    /**
+     * Activate an account choice without showing the popup.
+     * Only calls [select] when the choice differs from [currentOrgId].
+     * Used by tests and by the popup's confirm action.
+     */
+    @RequiresEdt
+    internal fun activate(choice: AccountChoice) {
+        if (choice.org != currentOrgId) select(choice.org)
     }
 
     internal fun loggedInVisible() = isVisible

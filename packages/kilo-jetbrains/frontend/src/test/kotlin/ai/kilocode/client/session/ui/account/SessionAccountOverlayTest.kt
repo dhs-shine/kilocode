@@ -57,8 +57,7 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
 
     fun `test logged out state hides overlay`() {
         show(snap(null))
-
-        assertFalse(panel.isVisible)
+        edt { assertFalse(panel.isVisible) }
     }
 
     // --- test 2: logged-in personal account shows picker title ---
@@ -70,18 +69,18 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
             balance = ProfileBalanceDto(10.0),
         )
         show(snap(prof))
-
-        assertTrue(panel.isVisible)
-        assertTrue(panel.loggedInVisible())
-        assertTrue(panel.pickerVisible())
-        assertEquals("Personal Account", panel.accountTitle())
+        edt {
+            assertTrue(panel.isVisible)
+            assertTrue(panel.loggedInVisible())
+            assertTrue(panel.pickerVisible())
+            assertEquals("Personal Account", panel.accountTitle())
+        }
     }
 
     fun `test logged in with email fallback still shows personal account title`() {
         val prof = profile(email = "user@example.com")
         show(snap(prof))
-
-        assertEquals("Personal Account", panel.accountTitle())
+        edt { assertEquals("Personal Account", panel.accountTitle()) }
     }
 
     // --- test 3: logged-in org account shows org title in picker ---
@@ -95,15 +94,16 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
             currentOrgId = "org_1",
         )
         show(snap(prof))
-
-        assertTrue(panel.isVisible)
-        assertTrue(panel.loggedInVisible())
-        assertTrue(panel.pickerVisible())
-        assertEquals("Acme", panel.accountTitle())
-        // personal + acme = 2 choices
-        assertEquals(2, panel.choiceCount())
-        // selected index is 1 (org_1 is the second item)
-        assertEquals(1, panel.selectedIndex())
+        edt {
+            assertTrue(panel.isVisible)
+            assertTrue(panel.loggedInVisible())
+            assertTrue(panel.pickerVisible())
+            assertEquals("Acme", panel.accountTitle())
+            // personal + acme = 2 choices
+            assertEquals(2, panel.choiceCount())
+            // selected index is 1 (org_1 is the second item)
+            assertEquals(1, panel.selectedIndex())
+        }
     }
 
     // --- test 4: programmatic update does not call select callback ---
@@ -145,8 +145,7 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
             targetOrgId = "org_1",
         )
         show(switchingSnap)
-
-        assertFalse(panel.pickerEnabled())
+        edt { assertFalse(panel.pickerEnabled()) }
     }
 
     fun `test switching false enables picker`() {
@@ -157,8 +156,7 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
             currentOrgId = null,
         )
         show(snap(prof))
-
-        assertTrue(panel.pickerEnabled())
+        edt { assertTrue(panel.pickerEnabled()) }
     }
 
     // --- test 6: switching with targetOrgId shows the target account title ---
@@ -177,10 +175,10 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
             targetOrgId = "org_1",
         )
         show(switchingSnap)
-
-        // Should display the target org while switching
-        assertEquals("Acme", panel.accountTitle())
-        assertFalse(panel.pickerEnabled())
+        edt {
+            assertEquals("Acme", panel.accountTitle())
+            assertFalse(panel.pickerEnabled())
+        }
     }
 
     fun `test switching to personal account shows personal account title`() {
@@ -197,17 +195,19 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
             targetOrgId = null,
         )
         show(switchingSnap)
-
-        assertEquals("Personal Account", panel.accountTitle())
-        assertFalse(panel.pickerEnabled())
+        edt {
+            assertEquals("Personal Account", panel.accountTitle())
+            assertFalse(panel.pickerEnabled())
+        }
     }
 
     fun `test account switcher uses card background and border`() {
         val prof = profile(email = "user@example.com")
         show(snap(prof))
-
-        assertEquals(UiStyle.Colors.cardBg(), panel.panelBackground())
-        assertEquals(UiStyle.Colors.cardBorder(), panel.panelBorderColor())
+        edt {
+            assertEquals(UiStyle.Colors.cardBg(), panel.panelBackground())
+            assertEquals(UiStyle.Colors.cardBorder(), panel.panelBorderColor())
+        }
     }
 
     // --- test 7: transient null profile keeps existing logged-in content ---
@@ -215,8 +215,10 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
     fun `test transient null profile keeps logged in card`() {
         val prof = profile(email = "user@example.com", name = "Test User")
         show(snap(prof))
-        assertTrue(panel.loggedInVisible())
-        assertEquals("Personal Account", panel.accountTitle())
+        edt {
+            assertTrue(panel.loggedInVisible())
+            assertEquals("Personal Account", panel.accountTitle())
+        }
 
         // Show transient null (pending switch)
         val transientSnap = AccountOverlaySnapshot(
@@ -225,10 +227,10 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
             transient = true,
         )
         show(transientSnap)
-
-        // Should remain visible and logged-in, not flash to hidden
-        assertTrue(panel.isVisible)
-        assertTrue(panel.loggedInVisible())
+        edt {
+            assertTrue(panel.isVisible)
+            assertTrue(panel.loggedInVisible())
+        }
     }
 
     // --- test 8: hide event hides component ---
@@ -236,11 +238,10 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
     fun `test hide event hides component`() {
         val prof = profile(email = "user@example.com")
         show(snap(prof))
-        assertTrue(panel.isVisible)
+        edt { assertTrue(panel.isVisible) }
 
         hide()
-
-        assertFalse(panel.isVisible)
+        edt { assertFalse(panel.isVisible) }
     }
 
     // --- test 9: renderer uses check icon for active account ---
@@ -267,41 +268,44 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
     fun `test logged in account shows balance badge`() {
         val prof = profile(balance = ProfileBalanceDto(10.0))
         show(snap(prof))
-
-        assertTrue(panel.balanceVisible())
-        assertTrue(panel.balanceIcon() is FilledBadgeIcon)
-        assertEquals("\$10.00", panel.balanceText())
+        edt {
+            assertTrue(panel.balanceVisible())
+            assertTrue(panel.balanceIcon() is FilledBadgeIcon)
+            assertEquals("\$10.00", panel.balanceText())
+        }
     }
 
     // --- test 12: balance badge hides when balance is missing ---
 
     fun `test logged in account hides balance badge without balance`() {
         show(snap(profile(balance = null)))
-
-        assertFalse(panel.balanceVisible())
-        assertNull(panel.balanceIcon())
+        edt {
+            assertFalse(panel.balanceVisible())
+            assertNull(panel.balanceIcon())
+        }
     }
 
     // --- test 13: balance badge updates when profile balance changes ---
 
     fun `test balance badge updates retained label`() {
         show(snap(profile(balance = ProfileBalanceDto(10.0))))
-        assertEquals("\$10.00", panel.balanceText())
+        edt { assertEquals("\$10.00", panel.balanceText()) }
 
         show(snap(profile(balance = ProfileBalanceDto(25.0))))
-
-        assertTrue(panel.balanceVisible())
-        assertEquals("\$25.00", panel.balanceText())
+        edt {
+            assertTrue(panel.balanceVisible())
+            assertEquals("\$25.00", panel.balanceText())
+        }
     }
 
     // --- test 14: profile button uses toolbar icon and invokes callback ---
 
     fun `test profile button uses profile icon and opens settings`() {
         show(snap(profile(email = "user@example.com")))
-
-        assertSame(AllIcons.General.User, panel.profileIcon())
-        panel.clickProfile()
-
+        edt {
+            assertSame(AllIcons.General.User, panel.profileIcon())
+            panel.clickProfile()
+        }
         assertEquals(1, profileCalls)
     }
 
@@ -309,23 +313,74 @@ class SessionAccountOverlayTest : SessionControllerTestBase() {
 
     fun `test transient null profile keeps logged in balance badge`() {
         show(snap(profile(balance = ProfileBalanceDto(10.0))))
-        val icon = panel.balanceIcon()
+        // Capture icon on EDT
+        var icon: javax.swing.Icon? = null
+        edt { icon = panel.balanceIcon() }
 
         show(AccountOverlaySnapshot(status = KiloAppStatusDto.READY, profile = null, transient = true))
-
-        assertTrue(panel.loggedInVisible())
-        assertTrue(panel.balanceVisible())
-        assertSame(icon, panel.balanceIcon())
+        edt {
+            assertTrue(panel.loggedInVisible())
+            assertTrue(panel.balanceVisible())
+            assertSame(icon, panel.balanceIcon())
+        }
     }
 
     // --- test 16: non-transient null profile after login hides overlay ---
 
     fun `test non-transient null profile after login hides overlay`() {
         show(snap(profile(email = "user@example.com")))
-        assertTrue(panel.isVisible)
+        edt { assertTrue(panel.isVisible) }
 
         show(snap(null))
+        edt { assertFalse(panel.isVisible) }
+    }
 
-        assertFalse(panel.isVisible)
+    // --- test 17: account choice activation selects different org ---
+
+    fun `test activate different org calls select callback`() {
+        val selected = mutableListOf<String?>()
+        val p = SessionAccountOverlay(
+            select = { org -> selected.add(org) },
+            profile = {},
+        )
+        val acme = org("org_1", "Acme")
+        val prof = profile(organizations = listOf(acme), currentOrgId = null)
+        edt { p.onEvent(SessionControllerEvent.AccountOverlayChanged.Show(snap(prof))) }
+
+        // Simulate selecting org_1 (different from currentOrgId = null)
+        edt { p.activate(AccountChoice("org_1", "Acme")) }
+
+        assertEquals(listOf<String?>("org_1"), selected)
+    }
+
+    fun `test activate personal calls select with null`() {
+        val selected = mutableListOf<String?>()
+        val p = SessionAccountOverlay(
+            select = { org -> selected.add(org) },
+            profile = {},
+        )
+        val acme = org("org_1", "Acme")
+        val prof = profile(organizations = listOf(acme), currentOrgId = "org_1")
+        edt { p.onEvent(SessionControllerEvent.AccountOverlayChanged.Show(snap(prof))) }
+
+        edt { p.activate(AccountChoice(null, "Personal Account")) }
+
+        assertEquals(listOf<String?>(null), selected)
+    }
+
+    fun `test activate same account does not call select callback`() {
+        val selected = mutableListOf<String?>()
+        val p = SessionAccountOverlay(
+            select = { org -> selected.add(org) },
+            profile = {},
+        )
+        val acme = org("org_1", "Acme")
+        val prof = profile(organizations = listOf(acme), currentOrgId = "org_1")
+        edt { p.onEvent(SessionControllerEvent.AccountOverlayChanged.Show(snap(prof))) }
+
+        // Activating the currently active org should not fire select
+        edt { p.activate(AccountChoice("org_1", "Acme")) }
+
+        assertEquals(0, selected.size)
     }
 }
