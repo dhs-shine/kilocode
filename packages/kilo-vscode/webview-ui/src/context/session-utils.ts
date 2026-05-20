@@ -256,7 +256,8 @@ export function buildFamilyLabelsFromTools(
       if (p.type !== "tool") continue
       const child = childID(p)
       if (!child || !family.has(child)) continue
-      const raw = stringField(p.state?.input?.subagent_type) ?? stringField(p.state?.input?.description) ?? p.tool ?? "task"
+      const raw =
+        stringField(p.state?.input?.subagent_type) ?? stringField(p.state?.input?.description) ?? p.tool ?? "task"
       const desc = raw.length > LABEL_CAP ? raw.slice(0, LABEL_CAP - 2) + "…" : raw
       if (!labels.has(child)) labels.set(child, desc)
     }
