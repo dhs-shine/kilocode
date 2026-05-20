@@ -31,19 +31,25 @@
   ],
   "keywords": [
     "kilo",
-    "claude",
-    "dev",
-    "mcp",
-    "openrouter",
-    "coding",
-    "agent",
-    "autonomous",
-    "chatgpt",
-    "sonnet",
-    "ai",
-    "llama",
     "Kilo Code",
-    "kilocode"
+    "kilocode",
+    "ai",
+    "agent",
+    "agentic",
+    "coding",
+    "coding-agent",
+    "coding-assistant",
+    "autocomplete",
+    "code-completion",
+    "pair-programming",
+    "chat",
+    "terminal",
+    "chatgpt",
+    "claude",
+    "sonnet",
+    "anthropic",
+    "openai",
+    "zoo-code"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -753,11 +759,11 @@
           "type": "string",
           "enum": [
             "mistralai/codestral-2508",
-            "inception/mercury-edit"
+            "inception/mercury-edit-2"
           ],
           "enumDescriptions": [
             "Codestral by Mistral AI (default)",
-            "Mercury Edit by Inception"
+            "Mercury Edit 2 by Inception"
           ],
           "description": "Model to use for inline autocomplete suggestions"
         },
@@ -966,5 +972,6 @@
     "web-tree-sitter": "^0.24.7",
     "yaml": "2.8.3",
     "zod": "^3.24.2"
-  }
+  },
+  "peerDependencies": {}
 }
