@@ -16572,6 +16572,14 @@
                 "description": "Enable the VS Code Agent Manager orchestration tool",
                 "type": "boolean"
               },
+              "speech_to_text": {
+                "description": "Enable speech-to-text voice input in Kilo clients",
+                "type": "boolean"
+              },
+              "speech_to_text_model": {
+                "description": "Speech-to-text transcription model ID to use for voice input",
+                "type": "string"
+              },
               "openTelemetry": {
                 "description": "Enable telemetry. Set to false to opt-out.",
                 "default": true,

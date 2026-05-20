@@ -2090,6 +2090,14 @@ export type Config = {
      */
     agent_manager_tool?: boolean
     /**
+     * Enable speech-to-text voice input in Kilo clients
+     */
+    speech_to_text?: boolean
+    /**
+     * Speech-to-text transcription model ID to use for voice input
+     */
+    speech_to_text_model?: string
+    /**
      * Enable telemetry. Set to false to opt-out.
      */
     openTelemetry?: boolean

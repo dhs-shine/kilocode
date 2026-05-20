@@ -333,14 +333,6 @@ export interface AutocompleteSettingsLoadedMessage {
   }
 }
 
-export interface SpeechToTextSettingsLoadedMessage {
-  type: "speechToTextSettingsLoaded"
-  settings: {
-    enabled: boolean
-    model: string
-  }
-}
-
 export interface ChatCompletionResultMessage {
   type: "chatCompletionResult"
   text: string
@@ -960,7 +952,6 @@ export type ExtensionMessage =
   | SkillsLoadedMessage
   | CommandsLoadedMessage
   | AutocompleteSettingsLoadedMessage
-  | SpeechToTextSettingsLoadedMessage
   | ChatCompletionResultMessage
   | SpeechToTextStartedMessage
   | SpeechToTextCancelledMessage
