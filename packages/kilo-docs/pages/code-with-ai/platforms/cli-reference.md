@@ -154,7 +154,7 @@ Options:
       --fork        fork the session when continuing (use with --continue or --session)  [boolean]
       --cloud-fork  fetch session from cloud and continue locally (use with --session)  [boolean]
   -p, --password    basic auth password (defaults to KILO_SERVER_PASSWORD)  [string]
-  -u, --username    basic auth username (defaults to KILO_SERVER_USERNAME or 'opencode')  [string]
+  -u, --username    basic auth username (defaults to KILO_SERVER_USERNAME or 'kilo')  [string]
 ```
 
 ## kilo run

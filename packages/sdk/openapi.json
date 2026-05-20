@@ -413,8 +413,8 @@
             }
           }
         },
-        "description": "Upgrade opencode to the specified version or latest if not specified.",
-        "summary": "Upgrade opencode",
+        "description": "Upgrade kilo to the specified version or latest if not specified.",
+        "summary": "Upgrade kilo",
         "requestBody": {
           "content": {
             "application/json": {

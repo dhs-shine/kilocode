@@ -6,6 +6,7 @@ const TEAM = {
   tui: ["catrielmuller"],
   desktop_web: ["markijbema"],
   core: ["markijbema", "marius-kilocode", "catrielmuller", "chrarnoldus", "imanolmzd-svg"],
+  jetbrains: ["kirillk"],
   inference: ["chrarnoldus", "markijbema"],
   windows: ["catrielmuller"],
 } as const
@@ -48,8 +49,10 @@ Provide the team that should own the issue. This tool picks a random assignee fr
   },
   async execute(args) {
     const issue = getIssueNumber()
-    const owner = "anomalyco"
-    const repo = "opencode"
+    // kilocode_change start
+    const owner = "Kilo-Org"
+    const repo = "kilocode"
+    // kilocode_change end
     const assignee = pick(TEAM[args.team])
 
     await githubFetch(`/repos/${owner}/${repo}/issues/${issue}/assignees`, {

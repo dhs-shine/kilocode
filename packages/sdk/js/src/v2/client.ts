@@ -107,10 +107,10 @@ export function createKiloClient(config?: Config & { directory?: string; experim
     if (!isEmpty) return error
     const method = request?.method ?? "?"
     const url = request?.url ?? "?"
-    if (!response) return new Error(`opencode server ${method} ${url}: network error (no response)`)
+    if (!response) return new Error(`kilo server ${method} ${url}: network error (no response)`)
     const status = response.status
     const statusText = response.statusText ? " " + response.statusText : ""
-    return new Error(`opencode server ${method} ${url} → ${status}${statusText}: (empty response body)`)
+    return new Error(`kilo server ${method} ${url} → ${status}${statusText}: (empty response body)`)
   })
   return new KiloClient({ client })
 }
