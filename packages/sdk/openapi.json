@@ -16083,6 +16083,12 @@
               "agent_manager_tool": {
                 "type": "boolean"
               },
+              "speech_to_text": {
+                "type": "boolean"
+              },
+              "speech_to_text_model": {
+                "type": "string"
+              },
               "openTelemetry": {
                 "type": "boolean"
               },
