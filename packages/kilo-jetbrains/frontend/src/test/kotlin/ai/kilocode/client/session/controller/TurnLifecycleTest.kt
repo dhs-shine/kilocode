@@ -317,6 +317,63 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         assertTrue(m.model.state is SessionState.LoginRequired)
     }
 
+    fun `test dismissLoginRequired transitions state to idle`() {
+        val (m, _, _) = prompted()
+
+        val body = """{"error":{"code":"PAID_MODEL_AUTH_REQUIRED"}}"""
+        emit(ChatEventDto.Error(
+            "ses_test",
+            MessageErrorDto(type = "APIError", message = "Unauthorized", statusCode = 401, responseBody = body),
+        ))
+        assertTrue(m.model.state is SessionState.LoginRequired)
+
+        edt { m.dismissLoginRequired() }
+        flush()
+
+        assertSession(
+            """
+            [code] [kilo/gpt-5] [idle]
+            """,
+            m,
+        )
+    }
+
+    fun `test dismissLoginRequired clears retry so login does not resume prompt`() {
+        val (m, _, _) = prompted()
+        val msg = MessageDto(
+            id = "msg_user",
+            sessionID = "ses_test",
+            role = "user",
+            time = MessageTimeDto(created = 0.0),
+            agent = "code",
+            providerID = "kilo/openai",
+            modelID = "gpt-5.5",
+        )
+        emit(ChatEventDto.MessageUpdated("ses_test", msg))
+        rpc.prompts.clear()
+
+        val body = """{"error":{"code":"PAID_MODEL_AUTH_REQUIRED"}}"""
+        emit(ChatEventDto.Error(
+            "ses_test",
+            MessageErrorDto(type = "APIError", message = "Unauthorized", statusCode = 401, responseBody = body),
+        ))
+        assertTrue(m.model.state is SessionState.LoginRequired)
+
+        edt { m.dismissLoginRequired() }
+        flush()
+
+        // profile becomes available, but there should be no auto-retry
+        appRpc.state.value = KiloAppStateDto(
+            KiloAppStatusDto.READY,
+            config = ConfigDto(model = "kilo/gpt-5"),
+            profile = ProfileDto(email = "user@example.com"),
+        )
+        flush()
+
+        assertEquals("retry should not have fired after dismiss", 0, rpc.prompts.size)
+        assertTrue("state should be idle after dismiss + profile available", m.model.state is SessionState.Idle)
+    }
+
     fun `test events for wrong session are ignored`() {
         val (m, _, modelEvents) = prompted()
 

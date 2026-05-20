@@ -363,13 +363,10 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
 
     fun `test login required button invokes openProfile callback`() {
         var called = false
-        val lv = LoginRequiredView(openProfile = { called = true })
+        val lv = LoginRequiredView(openProfile = { called = true }, dismiss = {})
         lv.show("Sign in required.")
 
-        // Simulate clicking the button
-        val btn = findCls(lv, javax.swing.JButton::class.java)
-        assertNotNull(btn)
-        btn!!.doClick()
+        lv.openProfileButton.doClick()
 
         assertTrue(called)
     }
@@ -462,7 +459,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         val p = PermissionView(
             reply = { _, _ -> },
         )
-        val l = LoginRequiredView(openProfile = {})
+        val l = LoginRequiredView(openProfile = {}, dismiss = {})
         return SessionMessageListPanel(model, parent, q, p, l)
     }
 

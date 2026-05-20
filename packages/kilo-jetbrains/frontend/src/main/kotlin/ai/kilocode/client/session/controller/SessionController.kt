@@ -939,6 +939,14 @@ class SessionController(
         openProfileAction()
     }
 
+    fun dismissLoginRequired() {
+        assertEdt()
+        loginRetry = null
+        if (model.state is SessionState.LoginRequired) {
+            updateModel { model.setState(SessionState.Idle) }
+        }
+    }
+
     private fun accountSnapshot(): SessionControllerEvent.AccountOverlaySnapshot {
         val state = model.app
         val prof = state.profile

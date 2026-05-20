@@ -14,7 +14,7 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
     // ------ title and message rendering ------
 
     fun `test header title text is in the component tree`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("Sign in required.")
 
         val title = findAll<JBTextArea>(view).firstOrNull { it.text.isNotEmpty() && it.font.isBold }
@@ -22,7 +22,7 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
     }
 
     fun `test description message text is in the component tree after show`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("Sign in required.")
 
         val desc = findAll<JBTextArea>(view).firstOrNull { it.text == "Sign in required." }
@@ -30,7 +30,7 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
     }
 
     fun `test show updates description without recreating title`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("First message.")
 
         val before = findAll<JBTextArea>(view).firstOrNull { it.text == "First message." }
@@ -44,82 +44,111 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
         assertNull("Old description text should not remain", stale)
     }
 
-    // ------ button style ------
+    // ------ open profile button style ------
 
     fun `test open profile button is SessionQuestionButton`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("Sign in required.")
 
-        val btn = findButton(view)
-        assertTrue("Button should be a SessionQuestionButton", btn is SessionQuestionButton)
+        val btn = openProfileButton(view)
+        assertTrue("Open profile button should be a SessionQuestionButton", btn is SessionQuestionButton)
     }
 
     fun `test open profile button is primary`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("Sign in required.")
 
-        val btn = findButton(view) as SessionQuestionButton
-        assertTrue("Button should be primary", btn.primary)
+        val btn = openProfileButton(view) as SessionQuestionButton
+        assertTrue("Open profile button should be primary", btn.primary)
     }
 
     fun `test open profile button has DarculaButtonUI default style key`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("Sign in required.")
 
-        val btn = findButton(view)
+        val btn = openProfileButton(view)
         assertEquals(true, btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
     }
 
     fun `test open profile button uses question surface background`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("Sign in required.")
 
-        val btn = findButton(view)
+        val btn = openProfileButton(view)
         assertEquals(SessionUiStyle.View.surface(), btn.background)
     }
 
-    // ------ callback ------
+    // ------ dismiss button style ------
 
-    fun `test button click invokes openProfile callback`() {
-        var called = false
-        val view = LoginRequiredView(openProfile = { called = true })
+    fun `test dismiss button is SessionQuestionButton`() {
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("Sign in required.")
 
-        findButton(view).doClick()
+        val btn = dismissButton(view)
+        assertTrue("Dismiss button should be a SessionQuestionButton", btn is SessionQuestionButton)
+    }
+
+    fun `test dismiss button is not primary`() {
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
+        view.show("Sign in required.")
+
+        val btn = dismissButton(view) as SessionQuestionButton
+        assertFalse("Dismiss button should not be primary", btn.primary)
+    }
+
+    // ------ callbacks ------
+
+    fun `test open profile button click invokes openProfile callback`() {
+        var called = false
+        val view = LoginRequiredView(openProfile = { called = true }, dismiss = {})
+        view.show("Sign in required.")
+
+        openProfileButton(view).doClick()
 
         assertTrue("openProfile should have been called", called)
+    }
+
+    fun `test dismiss button click invokes dismiss callback`() {
+        var called = false
+        val view = LoginRequiredView(openProfile = {}, dismiss = { called = true })
+        view.show("Sign in required.")
+
+        dismissButton(view).doClick()
+
+        assertTrue("dismiss should have been called", called)
     }
 
     // ------ visibility ------
 
     fun `test view is initially hidden`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         assertFalse(view.isVisible)
     }
 
     fun `test show makes view visible`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("Sign in required.")
         assertTrue(view.isVisible)
     }
 
     fun `test hideView makes view invisible`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.show("Sign in required.")
         view.hideView()
         assertFalse(view.isVisible)
     }
 
     fun `test hideView is idempotent when already hidden`() {
-        val view = LoginRequiredView(openProfile = {})
+        val view = LoginRequiredView(openProfile = {}, dismiss = {})
         view.hideView()
         assertFalse(view.isVisible)
     }
 
     // ------ helpers ------
 
-    private fun findButton(view: LoginRequiredView): JButton =
-        findAll<JButton>(view).first()
+    private fun openProfileButton(view: LoginRequiredView): JButton = view.openProfileButton
+
+    private fun dismissButton(view: LoginRequiredView): JButton = view.dismissButton
 
     private inline fun <reified T> findAll(root: Container): List<T> =
         findAllCls(root, T::class.java)

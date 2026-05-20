@@ -4,12 +4,14 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
 import ai.kilocode.client.session.ui.shared.applyButton
+import ai.kilocode.client.session.ui.shared.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
+import java.awt.Component
 import javax.swing.JPanel
 
 /**
@@ -22,23 +24,29 @@ import javax.swing.JPanel
  */
 class LoginRequiredView(
     private val openProfile: () -> Unit,
+    private val dismiss: () -> Unit,
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SessionView {
 
     override val sessionViewKind = SessionView.Kind.Default
 
     private val card = BaseSessionQuestionPanel()
-    val button = applyButton(KiloBundle.message("session.login.required.button")) { openProfile() }
+    val openProfileButton = applyButton(KiloBundle.message("session.login.required.button")) { openProfile() }
+    val dismissButton = dismissButton(KiloBundle.message("session.login.required.dismiss")) { dismiss() }
 
     init {
         isOpaque = false
         isVisible = false
 
         card.headerText.text = KiloBundle.message("session.login.required.title")
+        card.headerText.alignmentX = Component.LEFT_ALIGNMENT
+        card.descriptionText.alignmentX = Component.LEFT_ALIGNMENT
 
         val footer = JPanel(BorderLayout()).apply {
             isOpaque = false
             border = JBUI.Borders.emptyTop(UiStyle.Gap.lg())
-            add(button, BorderLayout.WEST)
+            alignmentX = Component.LEFT_ALIGNMENT
+            add(dismissButton, BorderLayout.WEST)
+            add(openProfileButton, BorderLayout.EAST)
         }
 
         card.setFooter(footer)

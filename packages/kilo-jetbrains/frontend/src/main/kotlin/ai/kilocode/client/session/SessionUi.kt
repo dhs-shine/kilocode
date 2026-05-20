@@ -181,7 +181,7 @@ class SessionUi(
         permission = PermissionView(
             reply = { id, dto -> controller.replyPermission(id, dto) },
         )
-        login = LoginRequiredView(openProfile = { controller.openProfile() })
+        login = LoginRequiredView(openProfile = { controller.openProfile() }, dismiss = { controller.dismissLoginRequired() })
         messageBody = SessionMessageListPanel(controller.model, this, question, permission, login)
         header = SessionHeaderPanel(controller, this)
 
