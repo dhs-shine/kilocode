@@ -61,7 +61,7 @@ export namespace KiloTask {
 
   type Model = { providerID: ProviderID; modelID: ModelID }
   type Saved = Model & { variant?: string }
-  type Choice = { model: Model; variant?: string; sticky?: boolean }
+  type Choice = { model: Model; variant?: string; sticky?: boolean; direct?: boolean }
 
   function parse(value: string | null | undefined): Model | undefined {
     if (!value) return undefined
@@ -109,12 +109,13 @@ export namespace KiloTask {
             sticky: true,
           }
         : undefined,
-      input.agent.model ? { model: input.agent.model, variant: input.agent.variant } : undefined,
+      input.agent.model ? { model: input.agent.model, variant: input.agent.variant, direct: true } : undefined,
       cfg ? { model: cfg, variant: input.config.subagent_variant ?? undefined } : undefined,
     ]
 
     for (const choice of choices) {
       if (!choice) continue
+      if (choice.direct) return { model: choice.model, variant: choice.variant }
       const full = yield* Effect.tryPromise(() =>
         Provider.getModel(choice.model.providerID, choice.model.modelID),
       ).pipe(
