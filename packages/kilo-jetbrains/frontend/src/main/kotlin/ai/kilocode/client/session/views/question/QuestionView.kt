@@ -5,9 +5,9 @@ import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.ui.SessionView
+import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
-import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.QuestionReplyDto
@@ -48,24 +48,8 @@ class QuestionView(
     private var style = SessionEditorStyle.current()
     private val texts = mutableListOf<Pair<JBTextArea, Boolean>>()
 
-    private val card = object : BorderLayoutPanel() {
-        override fun updateUI() {
-            super.updateUI()
-            isOpaque = true
-            background = SessionUiStyle.View.surface()
-            border = SessionUiStyle.View.card()
-        }
-    }
-    private val root = JPanel().apply {
-        isOpaque = false
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        border = JBUI.Borders.empty(UiStyle.Gap.lg(), UiStyle.Gap.pad(), UiStyle.Gap.lg(), UiStyle.Gap.pad())
-    }
-    private val header = JPanel(BorderLayout()).apply {
-        isOpaque = false
-        border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
-        alignmentX = Component.LEFT_ALIGNMENT
-    }
+    private val card = BaseSessionQuestionPanel()
+
     private val summary = JBLabel()
     private val nav = JPanel().apply {
         isOpaque = false
@@ -84,6 +68,11 @@ class QuestionView(
         disabledIcon = IconLoader.getDisabledIcon(ico)
         toolTipText = KiloBundle.message("session.question.next")
         addActionListener { goForward() }
+    }
+    private val topPanel = JPanel(BorderLayout()).apply {
+        isOpaque = false
+        border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
+        alignmentX = Component.LEFT_ALIGNMENT
     }
     private val body = JPanel().apply {
         isOpaque = false
@@ -109,14 +98,14 @@ class QuestionView(
 
         nav.add(back)
         nav.add(fwd)
-        header.add(summary, BorderLayout.WEST)
-        header.add(nav, BorderLayout.EAST)
+        topPanel.add(summary, BorderLayout.WEST)
+        topPanel.add(nav, BorderLayout.EAST)
         footer.add(dismiss, BorderLayout.WEST)
         footer.add(right, BorderLayout.EAST)
-        root.add(header)
-        root.add(body)
-        root.add(footer)
-        card.add(root, BorderLayout.CENTER)
+
+        card.setTopPanel(topPanel)
+        card.setBody(body)
+        card.setFooter(footer)
         add(card, BorderLayout.CENTER)
     }
 
@@ -147,6 +136,7 @@ class QuestionView(
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
+        card.applyStyle(style)
         val changed = texts.fold(false) { acc, item -> setFont(item.first, item.second) || acc }
         if (!changed) return
         refresh()
@@ -156,7 +146,22 @@ class QuestionView(
         val q = question ?: return
         texts.clear()
         body.removeAll()
-        if (review(q)) addReview(q) else addContent(q.items[idx], selections[idx])
+        if (review(q)) {
+            card.headerText.text = KiloBundle.message("session.question.review.title")
+            card.descriptionText.text = ""
+            card.descriptionText.isVisible = false
+            addReview(q)
+        } else {
+            val item = q.items[idx]
+            card.headerText.text = item.question
+            card.headerText.border = JBUI.Borders.emptyBottom(UiStyle.Gap.xs())
+            card.descriptionText.text = KiloBundle.message(
+                if (item.multiple) "session.question.hint.multi" else "session.question.hint.single"
+            )
+            card.descriptionText.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
+            card.descriptionText.isVisible = true
+            addContent(item, selections[idx])
+        }
         syncHeader(q)
         syncFooter(q)
         syncControls(q)
@@ -217,30 +222,12 @@ class QuestionView(
     }
 
     private fun addContent(item: QuestionItem, set: MutableSet<String>) {
-        val title = text(item.question, UiStyle.Colors.fg(), true)
-        title.border = JBUI.Borders.emptyBottom(UiStyle.Gap.xs())
-        title.alignmentX = Component.LEFT_ALIGNMENT
-        body.add(title)
-
-        val hint = text(
-            KiloBundle.message(if (item.multiple) "session.question.hint.multi" else "session.question.hint.single"),
-            UiStyle.Colors.weak(),
-        )
-        hint.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
-        hint.alignmentX = Component.LEFT_ALIGNMENT
-        body.add(hint)
-
         val opts = optionList(item, set)
         opts.alignmentX = Component.LEFT_ALIGNMENT
         body.add(opts)
     }
 
     private fun addReview(q: Question) {
-        val title = text(KiloBundle.message("session.question.review.title"), UiStyle.Colors.fg(), true)
-        title.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
-        title.alignmentX = Component.LEFT_ALIGNMENT
-        body.add(title)
-
         for ((i, item) in q.items.withIndex()) {
             val row = reviewRow(item, i)
             row.alignmentX = Component.LEFT_ALIGNMENT
