@@ -23,6 +23,7 @@ import ai.kilocode.client.session.SessionRef
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.ConfigWarningDto
 import ai.kilocode.rpc.dto.ConfigUpdateDto
+import ai.kilocode.rpc.dto.PartDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
@@ -113,6 +114,8 @@ class SessionController(
     private var partType: String? = null
     private var tool: String? = null
     private var eventJob: Job? = null
+    private val childJobs: MutableMap<String, Job> = mutableMapOf()
+    private val childIds: MutableSet<String> = mutableSetOf()
     private var sessionLoadState: SessionLoadState = SessionLoadState.Idle
     private var recentsState: RecentsState = RecentsState.Idle
     private var viewState: SessionControllerEvent.ViewChanged? = null
@@ -384,9 +387,12 @@ class SessionController(
 
     private fun drainPermissions() {
         val id = sid ?: return
+        val tracked = childIds.toSet()
         cs.launch {
             try {
-                val pending = sessions.pendingPermissions(directory).filter { it.sessionID == id }
+                val all = sessions.pendingPermissions(directory)
+                val ids = setOf(id) + tracked
+                val pending = all.filter { it.sessionID in ids }
                 for (req in pending) {
                     sessions.replyPermission(req.id, directory, PermissionReplyDto("once"))
                 }
@@ -504,6 +510,7 @@ class SessionController(
                 val session = target.session ?: runCatching { sessions.get(id, directory) }.getOrNull()
                 val items = sessions.messages(id, directory)
                 LOG.debug { "${ChatLogSummary.sid(id)} ${ChatLogSummary.history(items)}" }
+                val discovered = items.flatMap { it.parts }.mapNotNull { childID(it) }.toSet()
                 runEdt {
                     if (disposed) return@runEdt
                     if (sid != id) return@runEdt
@@ -513,6 +520,7 @@ class SessionController(
                     }
                 }
                 recoverPending(id)
+                for (child in discovered) trackChild(child)
                 runEdt {
                     if (disposed) return@runEdt
                     if (sid != id) return@runEdt
@@ -548,6 +556,7 @@ class SessionController(
                 val session = sessions.importCloudSession(id, directory)
                 val items = sessions.messages(session.id, directory)
                 LOG.debug { "${ChatLogSummary.sid(session.id)} ${ChatLogSummary.history(items)}" }
+                val discovered = items.flatMap { it.parts }.mapNotNull { childID(it) }.toSet()
                 runEdt {
                     if (disposed) return@runEdt
                     ref = SessionRef.Local(session)
@@ -558,6 +567,7 @@ class SessionController(
                     }
                 }
                 recoverPending(session.id)
+                for (child in discovered) trackChild(child)
                 runEdt {
                     if (disposed) return@runEdt
                     subscribeEvents()
@@ -597,6 +607,9 @@ class SessionController(
         val id = sid ?: return
         LOG.debug { "${ChatLogSummary.sid(id)} kind=subscription subscribe=true" }
         eventJob?.cancel()
+        childJobs.values.forEach { it.cancel() }
+        childJobs.clear()
+        childIds.clear()
         eventJob = cs.launch {
             try {
                 sessions.events(id, directory).collect { event ->
@@ -610,6 +623,52 @@ class SessionController(
             } finally {
                 LOG.debug { "${ChatLogSummary.sid(id)} kind=subscription subscribe=false" }
             }
+        }
+    }
+
+    private fun subscribeChild(child: String) {
+        if (childJobs.containsKey(child)) return
+        LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-subscription child=$child subscribe=true" }
+        val job = cs.launch {
+            try {
+                sessions.events(child, directory).collect { event ->
+                    if (!isChildPermissionEvent(event, child)) return@collect
+                    LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-event child=$child ${ChatLogSummary.eventBody(event)}" }
+                    updates.enqueue(event)
+                }
+            } finally {
+                LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-subscription child=$child subscribe=false" }
+            }
+        }
+        childJobs[child] = job
+    }
+
+    private fun trackChild(child: String) {
+        if (!childIds.add(child)) return
+        subscribeChild(child)
+        cs.launch { recoverChildPermissions(child) }
+    }
+
+    private suspend fun recoverChildPermissions(child: String) {
+        try {
+            val permissions = sessions.pendingPermissions(directory).filter { it.sessionID == child }
+            if (permissions.isEmpty()) return
+            LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-recovery child=$child permissions=${permissions.size}" }
+            if (auto?.active() == true) {
+                for (req in permissions) {
+                    sessions.replyPermission(req.id, directory, PermissionReplyDto("once"))
+                }
+                return
+            }
+            val last = toPermission(permissions.last())
+            runEdt {
+                if (disposed) return@runEdt
+                // Do not overwrite an existing root or other child AwaitingPermission state
+                if (model.state is SessionState.AwaitingPermission) return@runEdt
+                updateModel { model.setState(SessionState.AwaitingPermission(last)) }
+            }
+        } catch (e: Exception) {
+            LOG.warn("${ChatLogSummary.sid(sid ?: "pending")} kind=child-recovery child=$child dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
         }
     }
 
@@ -691,6 +750,7 @@ class SessionController(
                 if (model.state is SessionState.Busy) {
                     model.setState(SessionState.Busy(status()))
                 }
+                childID(event.part)?.let { child -> trackChild(child) }
             }
 
             is ChatEventDto.PartDelta -> {
@@ -1250,6 +1310,9 @@ class SessionController(
         disposed = true
         connectionDelay.dispose()
         eventJob?.cancel()
+        childJobs.values.forEach { it.cancel() }
+        childJobs.clear()
+        childIds.clear()
         cs.cancel()
     }
 
@@ -1302,6 +1365,19 @@ class SessionController(
 
         return out.joinToString(" ")
     }
+}
+
+/** Extracts the child session ID from a task tool part's metadata, or null if not a task part. */
+private fun childID(part: PartDto): String? {
+    if (part.type != "tool" || part.tool != "task") return null
+    return part.metadata["sessionId"]
+}
+
+/** Returns true when [event] is a permission event for [child] (used by child subscriptions). */
+private fun isChildPermissionEvent(event: ChatEventDto, child: String): Boolean = when (event) {
+    is ChatEventDto.PermissionAsked -> event.sessionID == child
+    is ChatEventDto.PermissionReplied -> event.sessionID == child
+    else -> false
 }
 
 /** Returns true when [event]'s sessionID matches [id] (or event has no sessionID, like Error). */
