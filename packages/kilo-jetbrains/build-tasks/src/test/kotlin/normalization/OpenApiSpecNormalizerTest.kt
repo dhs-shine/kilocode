@@ -105,6 +105,107 @@ class OpenApiSpecNormalizerTest {
     }
 
     @Test
+    fun `makes balance and currentOrgId nullable in kilo profile response`() {
+        val raw = """
+            {
+              "paths": {
+                "/kilo/profile": {
+                  "get": {
+                    "operationId": "kilo.profile",
+                    "responses": {
+                      "200": {
+                        "content": {
+                          "application/json": {
+                            "schema": {
+                              "type": "object",
+                              "properties": {
+                                "profile": { "type": "object", "properties": { "email": { "type": "string" } }, "required": ["email"], "additionalProperties": false },
+                                "balance": { "type": "object", "properties": { "balance": { "type": "number" } }, "required": ["balance"], "additionalProperties": false },
+                                "currentOrgId": { "type": "string" }
+                              },
+                              "required": ["profile", "balance", "currentOrgId"],
+                              "additionalProperties": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val root = obj(OpenApiSpecNormalizer.normalize(raw))
+        val schema = obj(obj(obj(obj(obj(obj(root["paths"])["/kilo/profile"])["get"])["responses"])["200"])["content"])
+        val props = obj(obj(obj(schema["application/json"])["schema"])["properties"])
+
+        // balance must be anyOf [object, null]
+        val balance = obj(props["balance"])
+        val balanceAnyOf = arr(balance["anyOf"])
+        assertEquals(2, balanceAnyOf.size, "balance should have anyOf with 2 entries")
+        val balanceTypes = balanceAnyOf.map { (it as? JsonObject)?.get("type").let { t -> (t as? JsonPrimitive)?.content } }
+        assert("null" in balanceTypes) { "balance anyOf should include null but got $balanceTypes" }
+        assert(balanceAnyOf.any { it is JsonObject && "properties" in it }) { "balance anyOf should include the object schema" }
+
+        // currentOrgId must be anyOf [string, null]
+        val orgId = obj(props["currentOrgId"])
+        val orgIdAnyOf = arr(orgId["anyOf"])
+        assertEquals(2, orgIdAnyOf.size, "currentOrgId should have anyOf with 2 entries")
+        val orgIdTypes = orgIdAnyOf.map { (it as? JsonObject)?.get("type").let { t -> (t as? JsonPrimitive)?.content } }
+        assert("null" in orgIdTypes) { "currentOrgId anyOf should include null but got $orgIdTypes" }
+        assert("string" in orgIdTypes) { "currentOrgId anyOf should include string but got $orgIdTypes" }
+
+        // profile must remain unchanged (not wrapped in anyOf)
+        val profile = obj(props["profile"])
+        assertNull(profile["anyOf"], "profile should not be wrapped in anyOf")
+        assertEquals("object", text(profile["type"]))
+    }
+
+    @Test
+    fun `leaves already-nullable fields unchanged in kilo profile response`() {
+        // If balance already has anyOf (i.e. the spec was generated correctly), normalizer must not double-wrap it.
+        val raw = """
+            {
+              "paths": {
+                "/kilo/profile": {
+                  "get": {
+                    "operationId": "kilo.profile",
+                    "responses": {
+                      "200": {
+                        "content": {
+                          "application/json": {
+                            "schema": {
+                              "type": "object",
+                              "properties": {
+                                "profile": { "type": "object", "properties": { "email": { "type": "string" } }, "required": ["email"], "additionalProperties": false },
+                                "balance": { "anyOf": [{ "type": "object", "properties": { "balance": { "type": "number" } }, "required": ["balance"], "additionalProperties": false }, { "type": "null" }] },
+                                "currentOrgId": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+                              },
+                              "required": ["profile", "balance", "currentOrgId"],
+                              "additionalProperties": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val root = obj(OpenApiSpecNormalizer.normalize(raw))
+        val schema = obj(obj(obj(obj(obj(obj(root["paths"])["/kilo/profile"])["get"])["responses"])["200"])["content"])
+        val props = obj(obj(obj(schema["application/json"])["schema"])["properties"])
+
+        // balance must still have exactly 2 anyOf entries (not wrapped again)
+        val balance = obj(props["balance"])
+        val balanceAnyOf = arr(balance["anyOf"])
+        assertEquals(2, balanceAnyOf.size, "balance should still have exactly 2 anyOf entries, not be double-wrapped")
+    }
+
+    @Test
     fun `deduplicates root-level tags array`() {
         val raw = """
             {

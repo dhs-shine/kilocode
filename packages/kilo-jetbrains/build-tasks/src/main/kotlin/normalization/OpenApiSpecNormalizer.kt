@@ -15,10 +15,13 @@ internal object OpenApiSpecNormalizer {
         //         camelCase equivalents so the spec remains self-consistent.
         // Step 2: Strip operation-level tags so all routes land in DefaultApi.
         // Step 3: Deduplicate the root-level tags array.
+        // Step 4: Fix nullable fields in the /kilo/profile response that Effect's
+        //         OpenAPI generator incorrectly emits as non-nullable.
         val (noDotsRoot, dotMap) = remapDotSchemas(root)
         val stripped = stripTags(noDotsRoot)
         val deduped = dedupRootTags(stripped)
-        return encode(deduped)
+        val fixed = fixProfileNullable(deduped)
+        return encode(fixed)
     }
 
     private fun encode(obj: JsonObject): String {
@@ -99,6 +102,60 @@ internal object OpenApiSpecNormalizer {
             })
         })
         return JsonObject(root + mapOf("paths" to stripped))
+    }
+
+    /**
+     * Fix the `/kilo/profile` GET 200 response schema: Effect's OpenAPI generator
+     * emits `balance` and `currentOrgId` as non-nullable required fields even
+     * though the server schema is `Schema.NullOr(...)`.  Wrap each non-nullable
+     * property in `anyOf: [<original-schema>, {"type": "null"}]` so the generated
+     * Kotlin model uses a nullable type.  Already-nullable properties (those that
+     * already have `anyOf` containing `{"type":"null"}`) are left untouched.
+     */
+    private fun fixProfileNullable(root: JsonObject): JsonObject {
+        val paths = root["paths"] as? JsonObject ?: return root
+        val profileItem = paths["/kilo/profile"] as? JsonObject ?: return root
+        val getOp = profileItem["get"] as? JsonObject ?: return root
+        val schema = getOp["responses"]
+            ?.let { it as? JsonObject }?.get("200")
+            ?.let { it as? JsonObject }?.get("content")
+            ?.let { it as? JsonObject }?.get("application/json")
+            ?.let { it as? JsonObject }?.get("schema")
+            as? JsonObject ?: return root
+        val props = schema["properties"] as? JsonObject ?: return root
+
+        val nullable = setOf("balance", "currentOrgId")
+        val fixed = JsonObject(props.mapValues { (key, value) ->
+            if (key !in nullable) return@mapValues value
+            val obj = value as? JsonObject ?: return@mapValues value
+            // Skip if already wrapped (has anyOf containing {type:null}).
+            val existing = obj["anyOf"] as? JsonArray
+            if (existing != null && existing.any {
+                    (it as? JsonObject)?.get("type")?.let { t -> (t as? JsonPrimitive)?.content } == "null"
+                }) return@mapValues value
+            JsonObject(mapOf("anyOf" to JsonArray(listOf(obj, JsonObject(mapOf("type" to JsonPrimitive("null")))))))
+        })
+
+        // Rebuild nested objects up to root.
+        val newSchema = JsonObject(schema + mapOf("properties" to fixed))
+        val newApp = JsonObject(
+            (getOp["responses"]!!.let { it as JsonObject }["200"]!!.let { it as JsonObject }["content"]!!.let { it as JsonObject }["application/json"]!!
+                .let { it as JsonObject }) + mapOf("schema" to newSchema)
+        )
+        val newContent = JsonObject(
+            (getOp["responses"]!!.let { it as JsonObject }["200"]!!.let { it as JsonObject }["content"]!!
+                .let { it as JsonObject }) + mapOf("application/json" to newApp)
+        )
+        val new200 = JsonObject(
+            (getOp["responses"]!!.let { it as JsonObject }["200"]!!.let { it as JsonObject }) + mapOf("content" to newContent)
+        )
+        val newResponses = JsonObject(
+            (getOp["responses"]!!.let { it as JsonObject }) + mapOf("200" to new200)
+        )
+        val newGet = JsonObject(getOp + mapOf("responses" to newResponses))
+        val newProfile = JsonObject(profileItem + mapOf("get" to newGet))
+        val newPaths = JsonObject(paths + mapOf("/kilo/profile" to newProfile))
+        return JsonObject(root + mapOf("paths" to newPaths))
     }
 
     /**
