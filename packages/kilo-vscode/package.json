@@ -48,7 +48,8 @@
     "claude",
     "sonnet",
     "anthropic",
-    "openai"
+    "openai",
+    "zoo-code"
   ],
   "activationEvents": [
     "onStartupFinished"
