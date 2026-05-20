@@ -171,6 +171,7 @@ For blocking I/O in coroutines, move the dispatcher switch inside the callee usi
 - **Gradle only**: `./gradlew buildPlugin` from `packages/kilo-jetbrains/` (requires CLI binaries already present in `backend/build/generated/cli/`; run `bun run build --prepare-cli` first).
 - **Via Turbo**: `bun turbo build --filter=@kilocode/kilo-jetbrains` from repo root.
 - **Run in sandbox**: `./gradlew runIde` — launches sandboxed IntelliJ with the plugin. Does NOT build CLI binaries.
+- **Run split backend**: `./gradlew runIdeBackend` — if it exits shortly after startup, check for an orphaned Java process from a previous backend run and kill it before restarting.
 - **Test split mode**: `./gradlew generateSplitModeRunConfigurations` creates a "Run IDE (Split Mode)" config that starts both frontend and backend processes locally. Emulate latency via the Split Mode widget (requires internal mode: `-Didea.is.internal=true`).
 
 ## UI Guidelines
