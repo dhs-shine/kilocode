@@ -9,7 +9,17 @@ AI coding agent plugin for JetBrains IDEs.
 ### Prerequisites
 
 - **Bun** -- used to build CLI binaries and run build scripts
-- **JDK 21+** -- required by Gradle and the IntelliJ Platform SDK
+- **JDK 21+** -- required by Gradle and the IntelliJ Platform SDK. Check with `java -version`. The preferred way to install is via [SDKMAN](https://sdkman.io/install):
+
+  ```bash
+  # Install SDKMAN (if not already installed)
+  curl -s "https://get.sdkman.io" | bash
+
+  # Install and activate Java 21 (Eclipse Temurin)
+  sdk install java 21-tem
+  sdk use java 21-tem
+  ```
+
 - **IntelliJ IDEA** -- to run the plugin in a sandboxed IDE
 
 ---
