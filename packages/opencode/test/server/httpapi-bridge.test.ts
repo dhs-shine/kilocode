@@ -230,7 +230,6 @@ describe("HttpApi server", () => {
       "GET /api/session",
       "GET /api/session/{sessionID}/context",
       "GET /api/session/{sessionID}/message",
-      "GET /indexing/status", // kilocode_change - Kilo Effect-only indexing route
       "POST /api/session/{sessionID}/compact",
       "POST /api/session/{sessionID}/prompt",
       "POST /api/session/{sessionID}/wait",

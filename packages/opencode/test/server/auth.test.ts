@@ -22,12 +22,12 @@ describe("ServerAuth", () => {
     expect(ServerAuth.headers()).toBeUndefined()
   })
 
-  test("defaults to the opencode username", () => {
+  test("defaults to the kilo username", () => { // kilocode_change
     Flag.KILO_SERVER_PASSWORD = "secret"
     Flag.KILO_SERVER_USERNAME = undefined
 
     expect(ServerAuth.headers()).toEqual({
-      Authorization: `Basic ${Buffer.from("opencode:secret").toString("base64")}`,
+      Authorization: `Basic ${Buffer.from("kilo:secret").toString("base64")}`, // kilocode_change
     })
   })
 
@@ -54,6 +54,6 @@ describe("ServerAuth", () => {
 
     expect(ServerAuth.required(config)).toBe(true)
     expect(ServerAuth.authorized({ username: "alice", password: Redacted.make("secret") }, config)).toBe(true)
-    expect(ServerAuth.authorized({ username: "opencode", password: Redacted.make("secret") }, config)).toBe(false)
+    expect(ServerAuth.authorized({ username: "kilo", password: Redacted.make("secret") }, config)).toBe(false) // kilocode_change
   })
 })

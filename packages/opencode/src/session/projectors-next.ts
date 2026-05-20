@@ -8,9 +8,21 @@ import { SyncEvent } from "@/sync"
 import { SessionMessageTable, SessionTable } from "./session.sql"
 import type { SessionID } from "./schema"
 import { Schema } from "effect"
+import { Log } from "@opencode-ai/core/util/log" // kilocode_change
 
 const decodeMessage = Schema.decodeUnknownSync(SessionMessage.Message)
 type SessionMessageData = NonNullable<(typeof SessionMessageTable.$inferInsert)["data"]>
+
+// kilocode_change start - tolerate next-message writes that race deleted sessions
+const log = Log.create({ service: "session.projector.next" })
+
+// Duplicated from projectors.ts to minimize merge conflicts and avoid a circular dependency.
+function foreign(err: unknown) {
+  if (typeof err !== "object" || err === null) return false
+  if ("code" in err && err.code === "SQLITE_CONSTRAINT_FOREIGNKEY") return true
+  return "message" in err && typeof err.message === "string" && err.message.includes("FOREIGN KEY constraint failed")
+}
+// kilocode_change end
 
 function encodeDateTimes(value: unknown): unknown {
   if (DateTime.isDateTime(value)) return DateTime.toEpochMillis(value)
@@ -115,7 +127,14 @@ function sqlite(db: Database.TxOrDb, sessionID: SessionID): SessionMessageUpdate
 }
 
 function update(db: Database.TxOrDb, event: SessionEvent.Event) {
-  SessionMessageUpdater.update(sqlite(db, event.data.sessionID), event)
+  // kilocode_change start - tolerate next-message writes that race deleted sessions
+  try {
+    SessionMessageUpdater.update(sqlite(db, event.data.sessionID), event)
+  } catch (err) {
+    if (!foreign(err)) throw err
+    log.warn("ignored late next-message update", { eventID: event.id, sessionID: event.data.sessionID })
+  }
+  // kilocode_change end
 }
 
 export default [

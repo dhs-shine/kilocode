@@ -203,7 +203,6 @@ export namespace KiloIndexing {
       await Bus.publish(Event, { status: current() })
     }
 
-    await publish()
     return {
       current,
       publish,
