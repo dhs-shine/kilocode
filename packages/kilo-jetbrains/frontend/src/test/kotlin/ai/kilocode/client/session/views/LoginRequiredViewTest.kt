@@ -1,6 +1,6 @@
 package ai.kilocode.client.session.views
 
-import ai.kilocode.client.session.ui.shared.SessionQuestionButton
+import ai.kilocode.client.session.views.base.SessionQuestionButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI

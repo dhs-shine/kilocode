@@ -1,4 +1,4 @@
-package ai.kilocode.client.session.views
+package ai.kilocode.client.session.views.base
 
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Generic

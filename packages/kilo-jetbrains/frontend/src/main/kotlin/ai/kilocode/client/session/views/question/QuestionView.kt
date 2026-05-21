@@ -5,10 +5,10 @@ import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.ui.SessionView
-import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
-import ai.kilocode.client.session.ui.shared.SessionQuestionButton
-import ai.kilocode.client.session.ui.shared.applyButton
-import ai.kilocode.client.session.ui.shared.dismissButton
+import ai.kilocode.client.session.views.base.BaseSessionQuestionPanel
+import ai.kilocode.client.session.views.base.SessionQuestionButton
+import ai.kilocode.client.session.views.base.applyButton
+import ai.kilocode.client.session.views.base.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.ui.HoverIcon

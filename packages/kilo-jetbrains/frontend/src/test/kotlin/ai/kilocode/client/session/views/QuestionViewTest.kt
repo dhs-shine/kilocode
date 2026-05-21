@@ -3,7 +3,7 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
-import ai.kilocode.client.session.ui.shared.SessionQuestionButton
+import ai.kilocode.client.session.views.base.SessionQuestionButton
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.question.QuestionView

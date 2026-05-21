@@ -4,10 +4,10 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Permission
 import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.ui.SessionView
-import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
-import ai.kilocode.client.session.ui.shared.SessionQuestionButton
-import ai.kilocode.client.session.ui.shared.applyButton
-import ai.kilocode.client.session.ui.shared.dismissButton
+import ai.kilocode.client.session.views.base.BaseSessionQuestionPanel
+import ai.kilocode.client.session.views.base.SessionQuestionButton
+import ai.kilocode.client.session.views.base.applyButton
+import ai.kilocode.client.session.views.base.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle

@@ -1,4 +1,4 @@
-package ai.kilocode.client.session.ui.shared
+package ai.kilocode.client.session.views.base
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.ui.UiStyle

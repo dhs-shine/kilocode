@@ -2,9 +2,9 @@ package ai.kilocode.client.session.views
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.SessionView
-import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
-import ai.kilocode.client.session.ui.shared.applyButton
-import ai.kilocode.client.session.ui.shared.dismissButton
+import ai.kilocode.client.session.views.base.BaseSessionQuestionPanel
+import ai.kilocode.client.session.views.base.applyButton
+import ai.kilocode.client.session.views.base.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.ui.UiStyle
