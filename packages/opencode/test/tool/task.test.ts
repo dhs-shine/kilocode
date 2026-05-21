@@ -1,5 +1,5 @@
 import { afterEach, describe, expect } from "bun:test"
-import { Effect, Layer } from "effect"
+import { Cause, Effect, Layer } from "effect"
 import { Agent } from "../../src/agent/agent"
 import { Config } from "@/config/config"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
@@ -323,6 +323,60 @@ describe("tool.task", () => {
       }),
     ),
   )
+
+  // kilocode_change start - terminal child assistant errors fail the task tool boundary
+  it.live("execute fails when child prompt returns assistant error", () =>
+    provideTmpdirInstance(() =>
+      Effect.gen(function* () {
+        const { chat, assistant } = yield* seed()
+        const tool = yield* TaskTool
+        const def = yield* tool.init()
+        const promptOps: TaskPromptOps = {
+          cancel() {},
+          resolvePromptParts: (template) => Effect.succeed([{ type: "text" as const, text: template }]),
+          prompt: (input) =>
+            Effect.sync(() => {
+              const result = reply(input, "partial")
+              if (result.info.role !== "assistant") return result
+              return {
+                ...result,
+                info: {
+                  ...result.info,
+                  error: MessageV2.fromError(new Error("child prompt failed"), { providerID: ref.providerID }),
+                },
+              }
+            }),
+        }
+
+        const exit = yield* def
+          .execute(
+            {
+              description: "inspect bug",
+              prompt: "look into the cache key path",
+              subagent_type: "general",
+            },
+            {
+              sessionID: chat.id,
+              messageID: assistant.id,
+              agent: "build",
+              abort: new AbortController().signal,
+              extra: { promptOps },
+              messages: [],
+              metadata: () => Effect.void,
+              ask: () => Effect.void,
+            },
+          )
+          .pipe(Effect.exit)
+
+        expect(exit._tag).toBe("Failure")
+        if (exit._tag !== "Failure") return
+        const err = Cause.squash(exit.cause)
+        expect(err).toBeInstanceOf(Error)
+        expect(err instanceof Error ? err.message : String(err)).toBe("child prompt failed")
+      }),
+    ),
+  )
+  // kilocode_change end
 
   it.live("execute shapes child permissions for task, todowrite, and primary tools", () =>
     provideTmpdirInstance(
