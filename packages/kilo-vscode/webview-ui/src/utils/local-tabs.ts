@@ -22,16 +22,21 @@ export const isPendingTab = (id: string) => id.startsWith(PENDING_TAB_PREFIX)
 
 const unique = (ids: string[]) => [...new Set(ids.filter(Boolean))]
 
-function normalize(ids: string[], active: string | undefined, pending: string): LocalTabState {
+type PendingTabFactory = () => string
+
+function normalize(ids: string[], active: string | undefined, pending: PendingTabFactory): LocalTabState {
   const tabs = unique(ids)
-  if (tabs.length === 0) return { ids: [pending], active: pending }
+  if (tabs.length === 0) {
+    const id = pending()
+    return { ids: [id], active: id }
+  }
   return { ids: tabs, active: active && tabs.includes(active) ? active : tabs[0] }
 }
 
 export function restoreTabs(
   ids: string[] | undefined,
   active: string | undefined,
-  pending: string,
+  pending: PendingTabFactory,
   check: PendingTabCheck = isPendingTab,
 ): LocalTabState {
   const tabs = ids?.filter((id) => !check(id)) ?? []
@@ -39,10 +44,12 @@ export function restoreTabs(
   return normalize(tabs, tab, pending)
 }
 
+// New composers become active immediately even before the backend creates a session.
 export function addPendingTab(state: LocalTabState, id: string): LocalTabState {
   return { ids: unique([...state.ids, id]), active: id }
 }
 
+// Existing sessions use the same state shape, but callers keep their open-or-focus intent explicit.
 export function openSessionTab(state: LocalTabState, id: string): LocalTabState {
   return { ids: unique([...state.ids, id]), active: id }
 }
@@ -61,7 +68,7 @@ export function nextTabAfterClose(ids: readonly string[], id: string): string | 
   return tabs[Math.min(index, tabs.length - 1)]
 }
 
-export function closeTab(state: LocalTabState, id: string, pending: string): LocalTabState {
+export function closeTab(state: LocalTabState, id: string, pending: PendingTabFactory): LocalTabState {
   if (!state.ids.includes(id)) return state
   const ids = state.ids.filter((tab) => tab !== id)
   if (state.active !== id) return normalize(ids, state.active, pending)
@@ -71,7 +78,7 @@ export function closeTab(state: LocalTabState, id: string, pending: string): Loc
 export function reconcileTabs(
   state: LocalTabState,
   loaded: string[],
-  pending: string,
+  pending: PendingTabFactory,
   check: PendingTabCheck = isPendingTab,
 ): LocalTabState {
   const seen = new Set(loaded)

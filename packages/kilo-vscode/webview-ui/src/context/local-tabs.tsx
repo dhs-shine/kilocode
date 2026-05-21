@@ -50,7 +50,7 @@ export const LocalTabsProvider: ParentComponent = (props) => {
   const saved = vscode.getState<LocalTabsState>()
   let count = 0
   const pending = () => `${PENDING_TAB_PREFIX}${++count}`
-  const init = restoreTabs(saved?.sidebarSessionTabIDs, saved?.sidebarActiveSessionTabID, pending())
+  const init = restoreTabs(saved?.sidebarSessionTabIDs, saved?.sidebarActiveSessionTabID, pending)
   const [ids, setIds] = createSignal(init.ids)
   const [active, setActive] = createSignal(init.active)
   const fresh = new Set<string>()
@@ -92,7 +92,7 @@ export const LocalTabsProvider: ParentComponent = (props) => {
 
   const close = (id: string) => {
     const before = active()
-    const next = closeTab(current(), id, pending())
+    const next = closeTab(current(), id, pending)
     apply(next)
     if (before === id || before !== next.active) focus(next.active)
   }
@@ -144,7 +144,7 @@ export const LocalTabsProvider: ParentComponent = (props) => {
         const before = active()
         const listed = message.sessions.map((item) => item.id)
         for (const id of listed) fresh.delete(id)
-        const next = reconcileTabs(current(), [...listed, ...(message.preserveSessionIds ?? []), ...fresh], pending())
+        const next = reconcileTabs(current(), [...listed, ...(message.preserveSessionIds ?? []), ...fresh], pending)
         apply(next)
         if (before !== next.active) focus(next.active)
         return
@@ -152,7 +152,7 @@ export const LocalTabsProvider: ParentComponent = (props) => {
       if (message.type === "sessionDeleted") {
         fresh.delete(message.sessionID)
         const before = active()
-        const next = closeTab(current(), message.sessionID, pending())
+        const next = closeTab(current(), message.sessionID, pending)
         apply(next)
         if (before !== next.active) focus(next.active)
       }

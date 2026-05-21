@@ -13,6 +13,10 @@ import {
 } from "../../webview-ui/src/utils/local-tabs"
 
 const pending = (id = "sidebar-pending:1") => id
+const makePending =
+  (id = "sidebar-pending:1") =>
+  () =>
+    id
 
 function state(ids: string[], active?: string): LocalTabState {
   return { ids, active }
@@ -36,11 +40,11 @@ const inventory = (local: string[], external: string[] = []) => ({ local, extern
 
 describe("local session tabs", () => {
   it("restores a fresh pending tab when no sessions were persisted", () => {
-    expect(restoreTabs(undefined, undefined, pending())).toEqual({ ids: [pending()], active: pending() })
+    expect(restoreTabs(undefined, undefined, makePending())).toEqual({ ids: [pending()], active: pending() })
   })
 
   it("restores persisted local sessions and their active tab", () => {
-    expect(restoreTabs(["s1", "s2"], "s2", pending())).toEqual({ ids: ["s1", "s2"], active: "s2" })
+    expect(restoreTabs(["s1", "s2"], "s2", makePending())).toEqual({ ids: ["s1", "s2"], active: "s2" })
   })
 
   it("promotes a pending tab into the created session without moving it", () => {
@@ -61,18 +65,18 @@ describe("local session tabs", () => {
   })
 
   it("selects the neighboring tab after closing the active one", () => {
-    expect(closeTab(state(["s1", "s2", "s3"], "s2"), "s2", pending())).toEqual({
+    expect(closeTab(state(["s1", "s2", "s3"], "s2"), "s2", makePending())).toEqual({
       ids: ["s1", "s3"],
       active: "s3",
     })
   })
 
   it("keeps an empty chat available after closing the final tab", () => {
-    expect(closeTab(state(["s1"], "s1"), "s1", pending())).toEqual({ ids: [pending()], active: pending() })
+    expect(closeTab(state(["s1"], "s1"), "s1", makePending())).toEqual({ ids: [pending()], active: pending() })
   })
 
   it("drops missing persisted sessions while preserving pending work", () => {
-    expect(reconcileTabs(state(["s1", pending(), "gone"], "gone"), ["s1"], "sidebar-pending:2")).toEqual({
+    expect(reconcileTabs(state(["s1", pending(), "gone"], "gone"), ["s1"], makePending("sidebar-pending:2"))).toEqual({
       ids: ["s1", pending()],
       active: "s1",
     })
