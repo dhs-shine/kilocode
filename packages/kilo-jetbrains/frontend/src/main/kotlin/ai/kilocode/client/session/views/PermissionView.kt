@@ -4,8 +4,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Permission
 import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.ui.SessionView
-import ai.kilocode.client.session.views.base.BaseSessionQuestionPanel
-import ai.kilocode.client.session.views.base.SessionQuestionButton
+import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.views.base.applyButton
 import ai.kilocode.client.session.views.base.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
@@ -41,7 +40,7 @@ class PermissionView(
     private var requestId: String? = null
     private var style = SessionEditorStyle.current()
 
-    private val card = BaseSessionQuestionPanel()
+    private val card = BaseQuestionView()
 
     private val body = JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)

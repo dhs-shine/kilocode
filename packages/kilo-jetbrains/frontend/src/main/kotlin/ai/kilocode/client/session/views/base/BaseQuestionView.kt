@@ -5,6 +5,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
+import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
 import com.intellij.util.concurrency.annotations.RequiresEdt
@@ -17,6 +18,7 @@ import java.awt.Font
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.Icon
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -35,7 +37,7 @@ import javax.swing.JPanel
  * [descriptionText], optional body, optional footer. Call [setTopPanel],
  * [setHeaderIcon], [setBody], or [setFooter] to replace those slots at any time.
  */
-class BaseSessionQuestionPanel : RoundedContentPanel(
+class BaseQuestionView : RoundedContentPanel(
     UiStyle.Gap.lg(),
     UiStyle.Gap.pad(),
 ), SessionEditorStyleTarget {
@@ -225,3 +227,39 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
 
     private fun larger(font: Font): Font = font.deriveFont((font.size + 1).toFloat())
 }
+
+/**
+ * A [javax.swing.JButton] variant used inside session question/login-required panels.
+ *
+ * Primary buttons receive [com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI.DEFAULT_STYLE_KEY] so they use the
+ * platform's default-button accent. Buttons keep the standard Look-and-Feel
+ * border, padding, disabled state, and focus painting, while their component
+ * background follows the question card surface so border/focus chrome blends
+ * into the inline panel instead of the surrounding transcript.
+ */
+class SessionQuestionButton(text: String, val primary: Boolean) : JButton(text) {
+
+    init {
+        if (primary) {
+            putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
+        }
+        syncBackground()
+    }
+
+    override fun updateUI() {
+        super.updateUI()
+        syncBackground()
+    }
+
+    private fun syncBackground() {
+        background = SessionUiStyle.View.surface()
+    }
+}
+
+/** Create a non-primary (secondary) session question button. */
+fun dismissButton(text: String, action: () -> Unit): SessionQuestionButton =
+    SessionQuestionButton(text, primary = false).apply { addActionListener { action() } }
+
+/** Create a primary (default/accent) session question button. */
+fun applyButton(text: String, action: () -> Unit): SessionQuestionButton =
+    SessionQuestionButton(text, primary = true).apply { addActionListener { action() } }

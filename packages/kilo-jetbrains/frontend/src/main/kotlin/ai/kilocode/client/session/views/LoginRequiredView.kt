@@ -2,7 +2,7 @@ package ai.kilocode.client.session.views
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.SessionView
-import ai.kilocode.client.session.views.base.BaseSessionQuestionPanel
+import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.views.base.applyButton
 import ai.kilocode.client.session.views.base.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
@@ -31,7 +31,7 @@ class LoginRequiredView(
 
     override val sessionViewKind = SessionView.Kind.Default
 
-    private val card = BaseSessionQuestionPanel()
+    private val card = BaseQuestionView()
     val openProfileButton = applyButton(KiloBundle.message("session.login.required.button")) { openProfile() }
     val dismissButton = dismissButton(KiloBundle.message("session.login.required.dismiss")) { dismiss() }
 

@@ -5,7 +5,7 @@ import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.ui.SessionView
-import ai.kilocode.client.session.views.base.BaseSessionQuestionPanel
+import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.views.base.SessionQuestionButton
 import ai.kilocode.client.session.views.base.applyButton
 import ai.kilocode.client.session.views.base.dismissButton
@@ -49,7 +49,7 @@ class QuestionView(
     private var style = SessionEditorStyle.current()
     private val texts = mutableListOf<Pair<JBTextArea, Boolean>>()
 
-    private val card = BaseSessionQuestionPanel()
+    private val card = BaseQuestionView()
 
     private val summary = JBLabel()
     private val nav = JPanel().apply {

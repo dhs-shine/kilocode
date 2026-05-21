@@ -8,7 +8,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBTextArea
 import java.awt.Container
-import javax.swing.JButton
 
 @Suppress("UnstableApiUsage")
 class LoginRequiredViewTest : BasePlatformTestCase() {

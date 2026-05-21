@@ -6,7 +6,6 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBTextArea
 import java.awt.BorderLayout
 import java.awt.Container
 import javax.swing.JComponent
@@ -14,13 +13,13 @@ import javax.swing.JLabel
 import javax.swing.JPanel
 
 @Suppress("UnstableApiUsage")
-class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
+class BaseQuestionViewTest : BasePlatformTestCase() {
 
     // ------ initial state ------
 
     fun `test headerText and descriptionText are in the component tree by default`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             assertNotNull("headerText should be present", find(panel, panel.headerText))
             assertNotNull("descriptionText should be present", find(panel, panel.descriptionText))
         }
@@ -28,7 +27,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test header and description have correct initial text`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             assertEquals("", panel.headerText.text)
             assertEquals("", panel.descriptionText.text)
         }
@@ -38,7 +37,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setTopPanel adds component before header`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val top = JLabel("top")
             panel.setTopPanel(top)
 
@@ -52,7 +51,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setTopPanel null removes top component`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val top = JLabel("top")
             panel.setTopPanel(top)
             panel.setTopPanel(null)
@@ -64,7 +63,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setTopPanel replaces previous top without duplicates`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val first = JLabel("first")
             val second = JLabel("second")
             panel.setTopPanel(first)
@@ -79,7 +78,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setBody adds component after descriptionText`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val body = JLabel("body")
             panel.setBody(body)
 
@@ -93,7 +92,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setBody null removes body`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val body = JLabel("body")
             panel.setBody(body)
             panel.setBody(null)
@@ -105,7 +104,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setBody replaces previous body without duplicates`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val first = JLabel("first body")
             val second = JLabel("second body")
             panel.setBody(first)
@@ -120,7 +119,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setFooter adds component after body`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val body = JLabel("body")
             val footer = JLabel("footer")
             panel.setBody(body)
@@ -136,7 +135,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setFooter null removes footer`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val footer = JLabel("footer")
             panel.setFooter(footer)
             panel.setFooter(null)
@@ -148,7 +147,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setFooter replaces existing footer without duplicates`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val first = JLabel("first footer")
             val second = JLabel("second footer")
             panel.setFooter(first)
@@ -163,7 +162,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test all slots appear in correct order top-header-desc-body-footer`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val top = JLabel("top")
             val body = JLabel("body")
             val footer = JLabel("footer")
@@ -187,7 +186,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test header and description survive multiple setBody calls`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             repeat(3) { i -> panel.setBody(JLabel("body $i")) }
             assertNotNull(find(panel, panel.headerText))
             assertNotNull(find(panel, panel.descriptionText))
@@ -198,7 +197,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test col has exactly two children with no optional slots`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val col = findCol(panel)!!
             assertEquals("header row + descriptionText only", 2, col.componentCount)
         }
@@ -208,7 +207,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setHeaderIcon adds icon to the left side of header row`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             panel.setHeaderIcon(AllIcons.General.Warning, "warning")
 
             val header = panel.headerText.parent as JPanel
@@ -224,7 +223,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test setHeaderIcon null hides header icon without removing header row`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             panel.setHeaderIcon(AllIcons.General.Warning)
             panel.setHeaderIcon(null)
 
@@ -237,7 +236,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test col child count includes spacing before body and footer slots`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             panel.setTopPanel(JLabel("top"))
             assertEquals(3, findCol(panel)!!.componentCount)
             panel.setBody(JLabel("body"))
@@ -249,7 +248,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test body and footer spacing use matching standard insets`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val body = JLabel("body")
             val footer = JLabel("footer")
             panel.setBody(body)
@@ -266,7 +265,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test col shrinks back after removing optional slots`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             panel.setTopPanel(JLabel("top"))
             panel.setBody(JLabel("body"))
             panel.setFooter(JLabel("footer"))
@@ -283,7 +282,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test applyStyle applies enlarged boldUiFont to header and enlarged uiFont to description`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val style = SessionEditorStyle.create(family = "Courier New", size = 20)
             panel.applyStyle(style)
 
@@ -296,7 +295,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test description uses next standard top padding`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val ins = panel.descriptionText.border.getBorderInsets(panel.descriptionText)
 
             assertEquals("description top padding should use next standard gap", UiStyle.Gap.sm(), ins.top)
@@ -305,7 +304,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     fun `test applyStyle does not apply editor font family to header or description`() {
         edt {
-            val panel = BaseSessionQuestionPanel()
+            val panel = BaseQuestionView()
             val style = SessionEditorStyle.create(family = "Courier New", size = 20)
             panel.applyStyle(style)
 
@@ -329,7 +328,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
         return result as T
     }
 
-    private fun findCol(panel: BaseSessionQuestionPanel): JPanel? {
+    private fun findCol(panel: BaseQuestionView): JPanel? {
         for (child in panel.components) {
             if (child is JPanel) return child
         }

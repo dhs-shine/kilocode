@@ -4,7 +4,7 @@ import ai.kilocode.client.session.model.Permission
 import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.PermissionRequestState
-import ai.kilocode.client.session.views.base.BaseSessionQuestionPanel
+import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.rpc.dto.PermissionReplyDto
@@ -261,7 +261,7 @@ class PermissionViewTest : BasePlatformTestCase() {
     fun `test view contains BaseSessionQuestionPanel after show`() {
         view.show(permission())
 
-        val panels = findAll<BaseSessionQuestionPanel>(view)
+        val panels = findAll<BaseQuestionView>(view)
         assertTrue("Expected a BaseSessionQuestionPanel after show", panels.isNotEmpty())
     }
 
