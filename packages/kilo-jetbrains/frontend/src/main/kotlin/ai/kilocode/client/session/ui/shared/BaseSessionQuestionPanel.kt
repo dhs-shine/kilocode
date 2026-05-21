@@ -13,6 +13,7 @@ import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
 import java.awt.Dimension
+import java.awt.Font
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.Icon
@@ -48,7 +49,9 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
     val headerText: JBTextArea = makeText("", UiStyle.Colors.fg(), bold = true)
 
     // ---- description text ----
-    val descriptionText: JBTextArea = makeText("", UiStyle.Colors.weak(), bold = false)
+    val descriptionText: JBTextArea = makeText("", UiStyle.Colors.weak(), bold = false).apply {
+        border = JBUI.Borders.emptyTop(UiStyle.Gap.sm())
+    }
 
     private val icon = JBLabel().apply {
         border = JBUI.Borders.emptyRight(UiStyle.Gap.sm())
@@ -215,7 +218,10 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
     }
 
     private fun applyFont(area: JBTextArea, bold: Boolean) {
-        val font = if (bold) style.boldUiFont else style.uiFont
+        val base = if (bold) style.boldUiFont else style.uiFont
+        val font = larger(base)
         if (area.font != font) area.font = font
     }
+
+    private fun larger(font: Font): Font = font.deriveFont((font.size + 1).toFloat())
 }

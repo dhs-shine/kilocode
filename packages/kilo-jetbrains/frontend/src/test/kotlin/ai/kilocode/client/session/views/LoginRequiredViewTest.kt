@@ -189,7 +189,7 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
                 "Title font should not use editor font family",
                 title!!.font.name == "Courier New",
             )
-            assertEquals("Title font size should match editor size", 20, title.font.size)
+            assertEquals("Title font size should use next size", 21, title.font.size)
         }
     }
 
@@ -206,7 +206,7 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
                 "Description font should not use editor font family",
                 desc!!.font.name == "Courier New",
             )
-            assertEquals("Description font size should match editor size", 20, desc.font.size)
+            assertEquals("Description font size should use next size", 21, desc.font.size)
         }
     }
 

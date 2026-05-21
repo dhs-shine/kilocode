@@ -1,6 +1,7 @@
 package ai.kilocode.client.session.ui.shared
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.ui.UiStyle
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -280,14 +281,25 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
 
     // ------ applyStyle: UI fonts ------
 
-    fun `test applyStyle applies boldUiFont to header and uiFont to description`() {
+    fun `test applyStyle applies enlarged boldUiFont to header and enlarged uiFont to description`() {
         edt {
             val panel = BaseSessionQuestionPanel()
             val style = SessionEditorStyle.create(family = "Courier New", size = 20)
             panel.applyStyle(style)
 
-            assertEquals("headerText should use boldUiFont", style.boldUiFont, panel.headerText.font)
-            assertEquals("descriptionText should use uiFont", style.uiFont, panel.descriptionText.font)
+            assertEquals("headerText should keep boldUiFont family", style.boldUiFont.name, panel.headerText.font.name)
+            assertEquals("descriptionText should keep uiFont family", style.uiFont.name, panel.descriptionText.font.name)
+            assertEquals("headerText should use next font size", style.boldUiFont.size + 1, panel.headerText.font.size)
+            assertEquals("descriptionText should use next font size", style.uiFont.size + 1, panel.descriptionText.font.size)
+        }
+    }
+
+    fun `test description uses next standard top padding`() {
+        edt {
+            val panel = BaseSessionQuestionPanel()
+            val ins = panel.descriptionText.border.getBorderInsets(panel.descriptionText)
+
+            assertEquals("description top padding should use next standard gap", UiStyle.Gap.sm(), ins.top)
         }
     }
 

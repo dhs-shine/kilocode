@@ -151,11 +151,9 @@ class QuestionView(
         } else {
             val item = q.items[idx]
             card.headerText.text = item.question
-            card.headerText.border = JBUI.Borders.emptyBottom(UiStyle.Gap.xs())
             card.descriptionText.text = KiloBundle.message(
                 if (item.multiple) "session.question.hint.multi" else "session.question.hint.single"
             )
-            card.descriptionText.border = JBUI.Borders.empty()
             card.descriptionText.isVisible = true
             addContent(item, selections[idx])
         }

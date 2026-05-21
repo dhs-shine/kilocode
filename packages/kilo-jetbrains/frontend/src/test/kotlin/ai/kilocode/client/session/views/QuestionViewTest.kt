@@ -195,8 +195,10 @@ class QuestionViewTest : BasePlatformTestCase() {
         val title = text(view, "Choose approach")
         val hint = text(view, "Select one answer")
 
-        assertEquals(style.boldUiFont, title.font)
-        assertEquals(style.uiFont, hint.font)
+        assertEquals(style.boldUiFont.name, title.font.name)
+        assertEquals(style.uiFont.name, hint.font.name)
+        assertEquals(style.boldUiFont.size + 1, title.font.size)
+        assertEquals(style.uiFont.size + 1, hint.font.size)
     }
 
     // ------ multi-question navigation ------

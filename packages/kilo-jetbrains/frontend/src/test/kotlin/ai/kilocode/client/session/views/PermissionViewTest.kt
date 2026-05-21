@@ -387,7 +387,7 @@ class PermissionViewTest : BasePlatformTestCase() {
         val header = view.headerFontForTest()
         assertFalse("Permission header should not use editor font family", header.name == "Courier New")
         assertTrue("Permission header should be bold", header.isBold)
-        assertEquals("Permission header size should match editor size", 18, header.size)
+        assertEquals("Permission header size should use next size", 19, header.size)
     }
 
     fun `test command code block retains editor font family`() {
