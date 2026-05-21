@@ -1879,7 +1879,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       const agentName = cmd.agent ?? input.agent ?? (yield* agents.defaultAgent())
 
       // kilocode_change start - allow Kilo commands to consume input before template interpolation
-      const resolved = yield* Effect.promise(() =>
+      const resolved = yield* EffectBridge.fromPromise(() =>
         KiloSessionPrompt.resolveCommand({
           command: input.command,
           source: cmd.source,
