@@ -223,7 +223,9 @@ export class OpenRouterEmbedder implements IEmbedder {
             code,
             err: msg,
           })
-          throw new Error(msg ?? "Invalid response from OpenRouter embedding endpoint")
+          const invalid = new Error(msg ?? "Invalid response from OpenRouter embedding endpoint") as HttpError
+          invalid.status = typeof code === "number" ? code : 422
+          throw invalid
         }
 
         // Normalize base64 embeddings if OpenRouter returns them despite the float request.

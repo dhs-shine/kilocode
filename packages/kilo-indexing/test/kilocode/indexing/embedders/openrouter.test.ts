@@ -95,6 +95,20 @@ describe("OpenRouterEmbedder", () => {
       expect(result.usage?.totalTokens).toBe(5)
     })
 
+    test("should not retry invalid responses without embedding data", async () => {
+      mockEmbeddingsCreate.mockResolvedValue({
+        error: {
+          code: 404,
+          message: "No successful provider responses.",
+        },
+      })
+
+      await expect(embedder.createEmbeddings(["test"])).rejects.toThrow(
+        "Embedding request failed after 3 attempts with status 404: No successful provider responses.",
+      )
+      expect(mockEmbeddingsCreate).toHaveBeenCalledTimes(1)
+    })
+
     test("should handle multiple texts", async () => {
       const embedding1 = new Float32Array([0.25, 0.5])
       const embedding2 = new Float32Array([0.75, 1.0])
