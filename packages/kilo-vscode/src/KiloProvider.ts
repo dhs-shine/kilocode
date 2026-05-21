@@ -40,6 +40,7 @@ import {
   resolveContextDirectory,
   resolveNewSessionDirectory,
   resolveWorkspaceDirectory,
+  sameDirectory,
   SessionStreamScheduler,
   type SessionRefreshContext,
 } from "./kilo-provider-utils"
@@ -72,8 +73,6 @@ import {
   validAutocompleteSetting,
   watchAutocompleteConfig,
 } from "./services/autocomplete/settings"
-import { validSpeechToTextSetting } from "./speech-to-text/settings"
-import { sendSpeechToTextSettings, watchSpeechToTextConfig } from "./speech-to-text/config"
 import { routeEarlyMessage } from "./kilo-provider/early-message"
 import * as ModelState from "./kilo-provider/model-state"
 import { handleForkSession } from "./kilo-provider/fork-session"
@@ -234,7 +233,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private webviewMessageDisposable: vscode.Disposable | null = null
   private autocompleteConfigDisposable: vscode.Disposable | null = null
   private telemetryStateDisposable: vscode.Disposable | null = null
-  private speechToTextDisposable: vscode.Disposable | null = null
   private viewStateDisposable: vscode.Disposable | null = null
   private visibilityDisposable: vscode.Disposable | null = null
   private autoApproveBridge: ReturnType<typeof createAutoApproveBridge> | null = null
@@ -611,8 +609,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.webviewMessageDisposable?.dispose()
     this.autocompleteConfigDisposable?.dispose()
     this.autocompleteConfigDisposable = watchAutocompleteConfig((msg) => this.postMessage(msg))
-    this.speechToTextDisposable?.dispose()
-    this.speechToTextDisposable = watchSpeechToTextConfig(this)
     this.telemetryStateDisposable?.dispose()
     this.telemetryStateDisposable = watchTelemetryState((msg) => this.postMessage(msg))
     this.webviewMessageDisposable = webview.onDidReceiveMessage(async (message) => {
@@ -1333,7 +1329,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.postMessage({ type: "gitStatus", repo: this.cachedGitRepo })
       this.sendNotificationSettings()
       this.sendTimelineSetting()
-      this.sendSpeechToTextSettings()
       this.postMessage({ type: "extensionDataReady" })
 
       if (this.cachedGitRepo) this.startStatsPolling()
@@ -1451,6 +1446,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.loadMessagesAbort = abort
       this.refreshSessionDetails(sessionID, dir, abort.signal)
     }
+    const since = mode === "reconcile" ? Date.now() : undefined
     try {
       const page = await fetchMessagePage(this.client, {
         sessionID,
@@ -1482,6 +1478,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         mode,
         cursor: page.cursor,
         hasMore: Boolean(page.cursor),
+        since,
       })
       // Recover any prompts missed while the webview was loading or during an SSE reconnection.
       this.recoverPendingPrompts()
@@ -2403,10 +2400,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     })
   }
 
-  private sendSpeechToTextSettings(): void {
-    sendSpeechToTextSettings(this)
-  }
-
   /** Returns the number of sessions currently in "busy" state. */
   private getBusySessionCount(): number {
     return getBusySessionCount(this.sessionStatusMap)
@@ -3008,17 +3001,26 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     const uri = isAbsolutePath(filePath)
       ? vscode.Uri.file(filePath)
       : vscode.Uri.joinPath(vscode.Uri.file(this.getWorkspaceDirectory(this.currentSession?.id)), filePath)
-    vscode.workspace.openTextDocument(uri).then(
-      (doc) => {
-        const options: vscode.TextDocumentShowOptions = { preview: true }
-        if (line !== undefined && line > 0) {
-          const col = column !== undefined && column > 0 ? column - 1 : 0
-          const pos = new vscode.Position(line - 1, col)
-          options.selection = new vscode.Range(pos, pos)
+    vscode.workspace.fs.stat(uri).then(
+      (stat) => {
+        if (stat.type & vscode.FileType.Directory) {
+          vscode.commands.executeCommand("revealInExplorer", uri)
+          return
         }
-        vscode.window.showTextDocument(doc, options)
+        vscode.workspace.openTextDocument(uri).then(
+          (doc) => {
+            const options: vscode.TextDocumentShowOptions = { preview: true }
+            if (line !== undefined && line > 0) {
+              const col = column !== undefined && column > 0 ? column - 1 : 0
+              const pos = new vscode.Position(line - 1, col)
+              options.selection = new vscode.Range(pos, pos)
+            }
+            vscode.window.showTextDocument(doc, options)
+          },
+          (err) => console.error("[Kilo New] KiloProvider: Failed to open file:", uri.fsPath, err),
+        )
       },
-      (err) => console.error("[Kilo New] KiloProvider: Failed to open file:", uri.fsPath, err),
+      (err) => console.error("[Kilo New] KiloProvider: Path does not exist:", uri.fsPath, err),
     )
   }
 
@@ -3029,7 +3031,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private async handleUpdateSetting(key: string, value: unknown): Promise<void> {
     const { section, leaf } = buildSettingPath(key)
     if (section === "autocomplete" && !validAutocompleteSetting(leaf, value)) return
-    if (section === "speechToText" && !validSpeechToTextSetting(leaf, value)) return
     const config = vscode.workspace.getConfiguration(`kilo-code.new${section ? `.${section}` : ""}`)
     await config.update(leaf, value, vscode.ConfigurationTarget.Global)
   }
@@ -3070,7 +3071,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     // Re-send all settings to the webview so the UI reflects the reset
     this.postMessage(buildAutocompleteSettingsMessage())
-    this.sendSpeechToTextSettings()
     this.sendBrowserSettings()
     this.sendNotificationSettings()
     this.sendTimelineSetting()
@@ -3196,7 +3196,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     if (event.type === "server.instance.disposed") {
       const props = event.properties as Record<string, unknown> | null
       const dir = typeof props?.directory === "string" ? props.directory : undefined
-      if (dir && path.resolve(dir) !== path.resolve(this.getWorkspaceDirectory())) return
+      if (dir && !sameDirectory(dir, this.getWorkspaceDirectory())) return
       void this.reloadAfterAuthChange()
       return
     }
@@ -3243,8 +3243,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     handleNetworkEvent(event.type as string, event.properties as any, this.client, (s) => this.getWorkspaceDirectory(s))
 
     if (event.type === "indexing.status" && directory) {
-      const current = path.resolve(this.getWorkspaceDirectory(this.currentSession?.id))
-      if (path.resolve(directory) !== current) return
+      if (!sameDirectory(directory, this.getWorkspaceDirectory(this.currentSession?.id))) return
     }
 
     const msg = mapSSEEventToWebviewMessage(event, sessionID)
@@ -3572,7 +3571,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.visibilityDisposable?.dispose()
     this.webviewMessageDisposable?.dispose()
     this.autocompleteConfigDisposable?.dispose()
-    this.speechToTextDisposable?.dispose()
     this.telemetryStateDisposable?.dispose()
     this.autoApproveBridge?.dispose()
     ;(this.visibleTaskStreams.clear(), this.streams.dispose())
