@@ -23,7 +23,7 @@ type Scope = "session" | "all"
 type Kind = "stop" | "restart"
 type Theme = ReturnType<typeof useTheme>["theme"]
 
-const stopKey = Keybind.parse("ctrl+x")[0]
+const stopKey = Keybind.parse("ctrl+o")[0]
 const restartKey = Keybind.parse("ctrl+r")[0]
 const allKey = Keybind.parse("ctrl+a")[0]
 
@@ -49,12 +49,12 @@ function label(item: Info) {
   return item.description?.trim() || item.command
 }
 
-function last(item: Info) {
-  return stripAnsi(item.output).trim().split(/\r?\n/).filter(Boolean).at(-1) ?? ""
-}
-
 function short(text: string, max = 64) {
   return Locale.truncate(text, max)
+}
+
+function ports(item: Info) {
+  return item.ports.length > 0 ? item.ports.join(", ") : "none"
 }
 
 function useActions() {
@@ -142,21 +142,14 @@ export function DialogProcessList() {
   const options = createMemo<DialogSelectOption<string>[]>(() => {
     const busy = actions.busy()
     return list().map((item) => {
-      const title = label(item)
-      const tail = last(item)
       const note = mode() === "all" ? session(sync, item.sessionID) : undefined
-      const footer =
-        busy?.id === item.id
-          ? `${busy.kind === "stop" ? "stopping" : "restarting"}...`
-          : `${item.status}${item.pid ? ` pid:${item.pid}` : ""}`
-      const command = note ? `(${short(note, 28)}) ${short(item.command, 40)}` : short(item.command, 58)
+      const footer = busy?.id === item.id ? `${busy.kind === "stop" ? "stopping" : "restarting"}...` : item.pid?.toString()
+      const title = `${note ? `(${note}) ` : ""}${label(item)} - ${item.command}`
 
       return {
-        title: short(title, 61),
+        title: short(title, 92),
         value: item.id,
-        description: tail ? `${command} > ${short(tail, 32)}` : command,
         footer,
-        category: item.status,
         gutter: () => <StatusMark status={item.status} />,
       }
     })
@@ -239,7 +232,7 @@ function DialogProcessDetail(props: { id: string; back: () => void }) {
       props.back()
       return
     }
-    if (keybind.match("ctrl+x", evt)) {
+    if (keybind.match("ctrl+o", evt)) {
       evt.preventDefault()
       evt.stopPropagation()
       if (proc) void actions.run("stop", proc)
@@ -278,23 +271,31 @@ function DialogProcessDetail(props: { id: string; back: () => void }) {
         {(proc) => (
           <>
             <box>
-              <text fg={theme.textMuted}>
-                status{" "}
-                <span style={{ fg: tone(proc().status, theme), attributes: TextAttributes.BOLD }}>{proc().status}</span>
-                {proc().pid ? `  pid ${proc().pid}` : ""}
-                {proc().exitCode !== undefined ? `  exit ${proc().exitCode}` : ""}
-                {proc().signal ? `  signal ${proc().signal}` : ""}
+              <text fg={theme.textMuted} wrapMode="word">
+                Name: {label(proc())}
               </text>
-              <text fg={theme.textMuted}>started {Locale.datetime(proc().time.started)}</text>
-              <text fg={theme.textMuted}>updated {Locale.datetime(proc().time.updated)}</text>
+              <text fg={theme.textMuted}>
+                Status:{" "}
+                <span style={{ fg: tone(proc().status, theme), attributes: TextAttributes.BOLD }}>{proc().status}</span>
+              </text>
+              <text fg={theme.textMuted}>PID: {proc().pid ?? "none"}</text>
+              <text fg={theme.textMuted}>Ports: {ports(proc())}</text>
+              <Show when={proc().exitCode !== undefined}>
+                <text fg={theme.textMuted}>Exit: {proc().exitCode}</text>
+              </Show>
+              <Show when={proc().signal}>
+                {(signal) => <text fg={theme.textMuted}>Signal: {signal()}</text>}
+              </Show>
+              <text fg={theme.textMuted}>Started: {Locale.datetime(proc().time.started)}</text>
+              <text fg={theme.textMuted}>Updated: {Locale.datetime(proc().time.updated)}</text>
               <Show when={proc().time.ended}>
-                {(ended) => <text fg={theme.textMuted}>ended {Locale.datetime(ended())}</text>}
+                {(ended) => <text fg={theme.textMuted}>Ended: {Locale.datetime(ended())}</text>}
               </Show>
               <text fg={theme.textMuted} wrapMode="word">
-                cwd {proc().cwd}
+                CWD: {proc().cwd}
               </text>
               <text fg={theme.textMuted} wrapMode="word">
-                command {proc().command}
+                Command: {proc().command}
               </text>
             </box>
             <box>

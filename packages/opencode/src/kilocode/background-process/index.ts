@@ -14,6 +14,7 @@ import { Context, Effect, Layer, Schema, Types } from "effect"
 import net from "net"
 import path from "path"
 import z from "zod"
+import * as Ports from "./ports"
 
 export namespace BackgroundProcess {
   const log = Log.create({ service: "background-process" })
@@ -21,6 +22,7 @@ export namespace BackgroundProcess {
   const KILL_MS = 3_000
   const READY_MS = 30_000
   const PUBLISH_MS = 500
+  const PORT_MS = 2_000
 
   const idSchema = Schema.String.annotate({ [ZodOverride]: z.string().startsWith("bgp") }).pipe(
     Schema.brand("BackgroundProcessID"),
@@ -61,6 +63,7 @@ export namespace BackgroundProcess {
     command: Schema.String,
     cwd: Schema.String,
     description: optionalOmitUndefined(Schema.String),
+    ports: Schema.mutable(Schema.Array(PositiveInt)),
     status: Status,
     ready: Schema.Boolean,
     exitCode: optionalOmitUndefined(Schema.NullOr(NonNegativeInt)),
@@ -122,6 +125,9 @@ export namespace BackgroundProcess {
     pattern?: RegExp
     resolve?: (ready: boolean) => void
     notify?: ReturnType<typeof setTimeout>
+    poll?: ReturnType<typeof setTimeout>
+    scan?: Promise<boolean>
+    disposed?: boolean
   }
 
   type State = {
@@ -137,6 +143,7 @@ export namespace BackgroundProcess {
   function clone(info: Info): Info {
     return {
       ...info,
+      ports: [...info.ports],
       time: { ...info.time },
     }
   }
@@ -153,7 +160,26 @@ export namespace BackgroundProcess {
     return buf.subarray(start).toString("utf-8")
   }
 
-  function publish(active: Active) {
+  function same(a: number[], b: number[]) {
+    return a.length === b.length && a.every((port, index) => port === b[index])
+  }
+
+  async function refresh(active: Active) {
+    const pid = active.proc.pid
+    if (!pid || terminal(active.info.status)) {
+      const changed = active.info.ports.length > 0
+      active.info.ports = []
+      return changed
+    }
+    const fallback = active.info.ready && active.start.ready?.port ? [active.start.ready.port] : []
+    const next = Array.from(new Set([...(await Ports.list(pid)), ...fallback])).toSorted((a, b) => a - b)
+    if (same(active.info.ports, next)) return false
+    active.info.ports = next
+    active.info.time.updated = Date.now()
+    return true
+  }
+
+  function emit(active: Active) {
     Instance.restore(active.ctx, () => {
       void Bus.publish(Event.Updated, { info: clone(active.info) }).catch((err) => {
         log.warn("failed to publish process update", { err, id: active.info.id })
@@ -161,7 +187,50 @@ export namespace BackgroundProcess {
     })
   }
 
+  function publish(active: Active) {
+    if (active.disposed) return
+    active.scan = (active.scan ?? refresh(active))
+      .then(() => {
+        active.scan = undefined
+        emit(active)
+        poll(active)
+        return false
+      })
+      .catch((err) => {
+        active.scan = undefined
+        log.debug("failed to refresh process ports", { err, id: active.info.id })
+        emit(active)
+        poll(active)
+        return false
+      })
+  }
+
+  function poll(active: Active) {
+    if (active.disposed) return
+    if (terminal(active.info.status)) return
+    if (active.poll) return
+    active.poll = setTimeout(() => {
+      active.poll = undefined
+      if (active.disposed) return
+      if (terminal(active.info.status)) return
+      active.scan = (active.scan ?? refresh(active))
+        .then((changed) => {
+          active.scan = undefined
+          if (changed) emit(active)
+          poll(active)
+          return changed
+        })
+        .catch((err) => {
+          active.scan = undefined
+          log.debug("failed to refresh process ports", { err, id: active.info.id })
+          poll(active)
+          return false
+        })
+    }, PORT_MS)
+  }
+
   function schedule(active: Active) {
+    if (active.disposed) return
     if (active.notify) return
     active.notify = setTimeout(() => {
       active.notify = undefined
@@ -170,6 +239,7 @@ export namespace BackgroundProcess {
   }
 
   function ready(active: Active) {
+    if (active.disposed) return
     if (active.info.ready) return
     active.info.ready = true
     active.info.status = "ready"
@@ -180,6 +250,7 @@ export namespace BackgroundProcess {
   }
 
   function append(active: Active, chunk: string) {
+    if (active.disposed) return
     active.info.output = clamp(active.info.output + chunk)
     active.info.time.updated = Date.now()
     if (active.pattern?.test(active.info.output)) ready(active)
@@ -187,11 +258,15 @@ export namespace BackgroundProcess {
   }
 
   function exited(active: Active, code: number | null, signal: NodeJS.Signals | null) {
+    if (active.disposed) return
     if (terminal(active.info.status)) return
     if (active.notify) clearTimeout(active.notify)
+    if (active.poll) clearTimeout(active.poll)
     active.notify = undefined
+    active.poll = undefined
     active.info.exitCode = code
     active.info.signal = signal
+    active.info.ports = []
     active.info.ready = active.info.ready && code === 0
     active.info.status = active.info.status === "stopping" ? "stopped" : code === 0 ? "exited" : "failed"
     active.info.time.updated = Date.now()
@@ -202,8 +277,18 @@ export namespace BackgroundProcess {
   }
 
   function failed(active: Active, err: unknown) {
+    if (active.disposed) return
     append(active, `\n${err instanceof Error ? err.message : String(err)}\n`)
     exited(active, 1, null)
+  }
+
+  function pattern(input?: string) {
+    if (!input) return
+    try {
+      return new RegExp(input)
+    } catch (err) {
+      throw new Error(`Invalid ready pattern: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
 
   function connected(port: number) {
@@ -325,8 +410,10 @@ export namespace BackgroundProcess {
       if (!terminal(active.info.status)) exited(active, active.proc.exitCode, active.proc.signalCode)
     }
     if (!opts?.remove) return
+    active.disposed = true
     state.processes.delete(active.info.id)
     if (active.notify) clearTimeout(active.notify)
+    if (active.poll) clearTimeout(active.poll)
     active.resolve?.(false)
     active.resolve = undefined
     if (opts.silent) return
@@ -340,7 +427,7 @@ export namespace BackgroundProcess {
   async function launch(state: State, input: StartInput, id = ID.ascending()) {
     const sh = Shell.acceptable()
     const cwd = path.resolve(state.dir, input.cwd ?? state.dir)
-    const pattern = input.ready?.pattern ? new RegExp(input.ready.pattern) : undefined
+    const readyPattern = pattern(input.ready?.pattern)
     const args = Shell.args(sh, input.command, cwd)
     const proc = spawn(sh, args, {
       cwd,
@@ -359,6 +446,7 @@ export namespace BackgroundProcess {
         command: input.command,
         cwd,
         description: input.description,
+        ports: [],
         status: input.ready ? "starting" : "running",
         ready: false,
         output: "",
@@ -369,7 +457,7 @@ export namespace BackgroundProcess {
       },
       proc,
       start: { ...input, cwd },
-      pattern,
+      pattern: readyPattern,
     }
     state.processes.set(id, active)
     proc.stdout?.on("data", (chunk) => append(active, chunk.toString("utf-8")))
@@ -393,7 +481,9 @@ export namespace BackgroundProcess {
           yield* Effect.addFinalizer(() =>
             Effect.promise(async () => {
               await Promise.all(
-                Array.from(state.processes.values()).map((active) => terminate(state, active, { silent: true })),
+                Array.from(state.processes.values()).map((active) =>
+                  terminate(state, active, { remove: true, silent: true }),
+                ),
               )
               state.processes.clear()
             }),

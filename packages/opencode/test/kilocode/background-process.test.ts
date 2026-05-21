@@ -89,4 +89,30 @@ describe("BackgroundProcess", () => {
       }
     }),
   )
+
+  it.instance("rejects invalid readiness patterns before launching", () =>
+    Effect.gen(function* () {
+      const test = yield* TestInstance
+      const sessionID = SessionID.descending()
+
+      const err = yield* Effect.promise(async () => {
+        try {
+          await BackgroundProcess.start({
+            sessionID,
+            command: "printf 'ready\n'",
+            cwd: test.directory,
+            ready: { pattern: "[", timeout: 1_000 },
+          })
+        } catch (err) {
+          return err
+        }
+      })
+
+      expect(err).toBeInstanceOf(Error)
+      expect((err as Error).message).toContain("Invalid ready pattern")
+
+      const list = yield* Effect.promise(() => BackgroundProcess.list({ sessionID }))
+      expect(list).toEqual([])
+    }),
+  )
 })

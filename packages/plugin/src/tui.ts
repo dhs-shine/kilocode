@@ -316,7 +316,7 @@ export type TuiSidebarTodoItem = Pick<Todo, "content" | "status">
 
 export type TuiSidebarBackgroundProcessItem = Pick<
   BackgroundProcessInfo,
-  "id" | "pid" | "command" | "cwd" | "description" | "status" | "output"
+  "id" | "pid" | "command" | "cwd" | "description" | "ports" | "status" | "output"
 >
 
 export type TuiSidebarFileItem = {

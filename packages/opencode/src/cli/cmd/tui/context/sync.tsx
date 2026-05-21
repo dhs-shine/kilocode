@@ -654,6 +654,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
                 if (!next[item.sessionID]) next[item.sessionID] = []
                 next[item.sessionID].push(item)
               }
+              for (const list of Object.values(next)) list.sort((a, b) => a.id.localeCompare(b.id))
               setStore("background_process", reconcile(next))
             }),
             // kilocode_change end

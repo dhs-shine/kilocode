@@ -70,6 +70,15 @@ function invalid(action: Action, message: string) {
   }
 }
 
+function pattern(ready?: BackgroundProcess.Ready) {
+  if (!ready?.pattern) return
+  try {
+    new RegExp(ready.pattern)
+  } catch (err) {
+    return `Invalid ready pattern: ${err instanceof Error ? err.message : String(err)}`
+  }
+}
+
 export const BackgroundProcessTool = Tool.define<typeof Params, Meta, never, "background_process">(
   "background_process",
   Effect.succeed({
@@ -121,6 +130,8 @@ export const BackgroundProcessTool = Tool.define<typeof Params, Meta, never, "ba
 
         const command = params.command
         if (!command?.trim()) return invalid(params.action, "Missing command")
+        const err = pattern(params.ready)
+        if (err) return invalid(params.action, err)
         const inst = yield* InstanceState.context
         const cwd = path.resolve(inst.directory, params.workdir ?? inst.directory)
         if (!containsPath(cwd, inst)) {

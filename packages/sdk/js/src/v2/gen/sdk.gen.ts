@@ -13,8 +13,6 @@ import type {
   AuthRemoveResponses,
   AuthSetErrors,
   AuthSetResponses,
-  BackgroundProcessCreateErrors,
-  BackgroundProcessCreateResponses,
   BackgroundProcessGetErrors,
   BackgroundProcessGetResponses,
   BackgroundProcessListResponses,
@@ -22,7 +20,6 @@ import type {
   BackgroundProcessLogsResponses,
   BackgroundProcessRestartErrors,
   BackgroundProcessRestartResponses,
-  BackgroundProcessStartInput,
   BackgroundProcessStopErrors,
   BackgroundProcessStopResponses,
   BackgroundProcessStopSessionResponses,
@@ -5003,47 +5000,6 @@ export class BackgroundProcess extends HeyApiClient {
       url: "/background-process",
       ...options,
       ...params,
-    })
-  }
-
-  /**
-   * Create background process
-   *
-   * Start a tracked background process.
-   */
-  public create<ThrowOnError extends boolean = false>(
-    parameters?: {
-      directory?: string
-      workspace?: string
-      backgroundProcessStartInput?: BackgroundProcessStartInput
-    },
-    options?: Options<never, ThrowOnError>,
-  ) {
-    const params = buildClientParams(
-      [parameters],
-      [
-        {
-          args: [
-            { in: "query", key: "directory" },
-            { in: "query", key: "workspace" },
-            { key: "backgroundProcessStartInput", map: "body" },
-          ],
-        },
-      ],
-    )
-    return (options?.client ?? this.client).post<
-      BackgroundProcessCreateResponses,
-      BackgroundProcessCreateErrors,
-      ThrowOnError
-    >({
-      url: "/background-process",
-      ...options,
-      ...params,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-        ...params.headers,
-      },
     })
   }
 

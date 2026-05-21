@@ -14,7 +14,6 @@ type Handler = (request: Request, context: Context.Context<unknown>) => Promise<
 
 export function register(app: Hono, handler: Handler, context: Context.Context<unknown>) {
   app.get(BackgroundProcessPaths.list, (c) => handler(c.req.raw, context))
-  app.post(BackgroundProcessPaths.create, (c) => handler(c.req.raw, context))
   app.get(BackgroundProcessPaths.get, (c) => handler(c.req.raw, context))
   app.get(BackgroundProcessPaths.logs, (c) => handler(c.req.raw, context))
   app.post(BackgroundProcessPaths.stop, (c) => handler(c.req.raw, context))

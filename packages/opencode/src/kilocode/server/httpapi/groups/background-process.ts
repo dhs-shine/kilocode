@@ -11,7 +11,6 @@ const root = "/background-process"
 
 export const BackgroundProcessPaths = {
   list: root,
-  create: root,
   get: `${root}/:processID`,
   logs: `${root}/:processID/logs`,
   stop: `${root}/:processID/stop`,
@@ -33,17 +32,6 @@ export const BackgroundProcessApi = HttpApi.make("background-process")
             identifier: "backgroundProcess.list",
             summary: "List background processes",
             description: "List tracked background processes for the current instance.",
-          }),
-        ),
-        HttpApiEndpoint.post("create", BackgroundProcessPaths.create, {
-          payload: BackgroundProcess.StartInput,
-          success: described(BackgroundProcess.Info, "Created background process"),
-          error: HttpApiError.BadRequest,
-        }).annotateMerge(
-          OpenApi.annotations({
-            identifier: "backgroundProcess.create",
-            summary: "Create background process",
-            description: "Start a tracked background process.",
           }),
         ),
         HttpApiEndpoint.get("get", BackgroundProcessPaths.get, {

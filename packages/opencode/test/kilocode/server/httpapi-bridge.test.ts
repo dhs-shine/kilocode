@@ -81,7 +81,6 @@ describe("Kilo HttpApi bridge", () => {
     const effect = new Set(openApiRouteKeys(effectOpenApi()))
     const kilo = [
       `GET ${BackgroundProcessPaths.list}`,
-      `POST ${BackgroundProcessPaths.create}`,
       "GET /background-process/{processID}",
       "GET /background-process/{processID}/logs",
       "POST /background-process/{processID}/stop",
@@ -119,6 +118,8 @@ describe("Kilo HttpApi bridge", () => {
 
     expect(kilo.filter((route) => !hono.has(route))).toEqual([])
     expect(kilo.filter((route) => !effect.has(route))).toEqual([])
+    expect(hono.has("POST /background-process")).toBe(false)
+    expect(effect.has("POST /background-process")).toBe(false)
     expect(effect.has("GET /indexing/status")).toBe(true)
   })
 

@@ -12,12 +12,6 @@ export const backgroundProcessHandlers = HttpApiBuilder.group(InstanceHttpApi, "
       return yield* Effect.promise(() => BackgroundProcess.list())
     })
 
-    const create = Effect.fn("BackgroundProcessHttpApi.create")(function* (ctx: {
-      payload: BackgroundProcess.StartInput
-    }) {
-      return yield* Effect.promise(() => BackgroundProcess.start(ctx.payload))
-    })
-
     const get = Effect.fn("BackgroundProcessHttpApi.get")(function* (ctx: {
       params: { processID: BackgroundProcess.ID }
     }) {
@@ -59,7 +53,6 @@ export const backgroundProcessHandlers = HttpApiBuilder.group(InstanceHttpApi, "
 
     return handlers
       .handle("list", list)
-      .handle("create", create)
       .handle("get", get)
       .handle("logs", logs)
       .handle("stop", stop)

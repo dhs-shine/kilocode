@@ -24,23 +24,6 @@ export const BackgroundProcessRoutes = lazy(() =>
       }),
       async (c) => c.json(await BackgroundProcess.list()),
     )
-    .post(
-      "/",
-      describeRoute({
-        summary: "Create background process",
-        description: "Start a tracked background process.",
-        operationId: "backgroundProcess.create",
-        responses: {
-          200: {
-            description: "Created background process",
-            content: { "application/json": { schema: resolver(BackgroundProcess.Info.zod) } },
-          },
-          ...errors(400),
-        },
-      }),
-      validator("json", BackgroundProcess.StartInput.zod),
-      async (c) => c.json(await BackgroundProcess.start(c.req.valid("json") as BackgroundProcess.StartInput)),
-    )
     .get(
       "/:processID",
       describeRoute({

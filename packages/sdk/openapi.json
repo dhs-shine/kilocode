@@ -8995,67 +8995,6 @@
             "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.backgroundProcess.list({\n  ...\n})"
           }
         ]
-      },
-      "post": {
-        "tags": ["background-process"],
-        "operationId": "backgroundProcess.create",
-        "parameters": [
-          {
-            "name": "directory",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "workspace",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Created background process",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BackgroundProcessInfo"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          }
-        },
-        "description": "Start a tracked background process.",
-        "summary": "Create background process",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BackgroundProcessStartInput"
-              }
-            }
-          }
-        },
-        "x-codeSamples": [
-          {
-            "lang": "js",
-            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.backgroundProcess.create({\n  ...\n})"
-          }
-        ]
       }
     },
     "/background-process/{processID}": {
@@ -13246,6 +13185,13 @@
           "description": {
             "type": "string"
           },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            }
+          },
           "status": {
             "type": "string",
             "enum": ["starting", "running", "ready", "exited", "failed", "stopping", "stopped"]
@@ -13283,7 +13229,7 @@
             "additionalProperties": false
           }
         },
-        "required": ["id", "sessionID", "command", "cwd", "status", "ready", "output", "time"],
+        "required": ["id", "sessionID", "command", "cwd", "ports", "status", "ready", "output", "time"],
         "additionalProperties": false
       },
       "SnapshotFileDiff": {
@@ -18130,46 +18076,6 @@
           }
         },
         "required": ["id", "type", "name", "branch", "directory", "extra", "projectID"],
-        "additionalProperties": false
-      },
-      "BackgroundProcessReady": {
-        "type": "object",
-        "properties": {
-          "pattern": {
-            "type": "string"
-          },
-          "port": {
-            "type": "integer",
-            "exclusiveMinimum": 0
-          },
-          "timeout": {
-            "type": "integer",
-            "exclusiveMinimum": 0
-          }
-        },
-        "additionalProperties": false
-      },
-      "BackgroundProcessStartInput": {
-        "type": "object",
-        "properties": {
-          "sessionID": {
-            "type": "string"
-          },
-          "command": {
-            "type": "string",
-            "description": "Command to run in the configured shell"
-          },
-          "cwd": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "ready": {
-            "$ref": "#/components/schemas/BackgroundProcessReady"
-          }
-        },
-        "required": ["sessionID", "command"],
         "additionalProperties": false
       },
       "BackgroundProcessLogs": {

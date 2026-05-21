@@ -8,10 +8,6 @@ function short(text: string, max = 34) {
   return text.slice(0, max - 3) + "..."
 }
 
-function last(text: string) {
-  return text.trim().split(/\r?\n/).filter(Boolean).at(-1) ?? ""
-}
-
 function tone(item: TuiSidebarBackgroundProcessItem, api: TuiPluginApi) {
   const theme = api.theme.current
   if (item.status === "ready" || item.status === "running") return theme.success
@@ -21,7 +17,7 @@ function tone(item: TuiSidebarBackgroundProcessItem, api: TuiPluginApi) {
 }
 
 function label(item: TuiSidebarBackgroundProcessItem) {
-  return item.description || item.command
+  return item.description?.trim() || item.command
 }
 
 function View(props: { api: TuiPluginApi; session_id: string }) {
@@ -47,13 +43,12 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
                 <text fg={theme().textMuted} wrapMode="none">
                   <span style={{ fg: tone(item, props.api) }}>●</span> {short(label(item))}
                 </text>
-                <text fg={theme().textMuted}>
-                  {item.status}
-                  {item.pid ? ` pid:${item.pid}` : ""}
-                </text>
                 <text fg={theme().textMuted}>{short(item.command)}</text>
-                <Show when={last(item.output)}>
-                  <text fg={theme().textMuted}>{"> " + short(last(item.output))}</text>
+                <Show when={item.pid}>
+                  {(pid) => <text fg={theme().textMuted}>PID: {pid()}</text>}
+                </Show>
+                <Show when={item.ports.length > 0}>
+                  <text fg={theme().textMuted}>PORTS: {item.ports.join(", ")}</text>
                 </Show>
               </box>
             )}

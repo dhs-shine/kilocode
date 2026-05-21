@@ -276,18 +276,36 @@ export function Session() {
   const editor = useEditorContext()
 
   // kilocode_change start - background processes are scoped to the visible session
+  function processGroup(sessionID: string) {
+    const info = sync.session.get(sessionID)
+    return info?.parentID ?? info?.id ?? sessionID
+  }
+
+  function processSessions(sessionID: string) {
+    const group = processGroup(sessionID)
+    const ids = new Set([sessionID, group])
+    for (const item of sync.data.session) {
+      if (item.id === group || item.parentID === group) ids.add(item.id)
+    }
+    return Array.from(ids)
+  }
+
   function stopProcesses(sessionID: string) {
-    void sdk.client.backgroundProcess.stopSession({ sessionID }).catch((err) => {
-      Log.Default.warn("failed to stop session background processes", { sessionID, err })
-    })
+    for (const id of processSessions(sessionID)) {
+      void sdk.client.backgroundProcess.stopSession({ sessionID: id }).catch((err) => {
+        Log.Default.warn("failed to stop session background processes", { sessionID: id, err })
+      })
+    }
   }
 
   let processSessionID = route.sessionID
   createEffect(() => {
     const next = route.sessionID
     if (processSessionID === next) return
-    stopProcesses(processSessionID)
+    const prev = processSessionID
     processSessionID = next
+    if (processGroup(prev) === processGroup(next)) return
+    stopProcesses(prev)
   })
   onCleanup(() => {
     stopProcesses(processSessionID)

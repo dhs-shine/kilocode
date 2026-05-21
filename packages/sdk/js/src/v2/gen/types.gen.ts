@@ -269,6 +269,7 @@ export type BackgroundProcessInfo = {
   command: string
   cwd: string
   description?: string
+  ports: Array<number>
   status: "starting" | "running" | "ready" | "exited" | "failed" | "stopping" | "stopped"
   ready: boolean
   exitCode?: number
@@ -1951,23 +1952,6 @@ export type Workspace = {
   directory: string | null
   extra: unknown | null
   projectID: string
-}
-
-export type BackgroundProcessReady = {
-  pattern?: string
-  port?: number
-  timeout?: number
-}
-
-export type BackgroundProcessStartInput = {
-  sessionID: string
-  /**
-   * Command to run in the configured shell
-   */
-  command: string
-  cwd?: string
-  description?: string
-  ready?: BackgroundProcessReady
 }
 
 export type BackgroundProcessLogs = {
@@ -7322,34 +7306,6 @@ export type BackgroundProcessListResponses = {
 }
 
 export type BackgroundProcessListResponse = BackgroundProcessListResponses[keyof BackgroundProcessListResponses]
-
-export type BackgroundProcessCreateData = {
-  body?: BackgroundProcessStartInput
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/background-process"
-}
-
-export type BackgroundProcessCreateErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-}
-
-export type BackgroundProcessCreateError = BackgroundProcessCreateErrors[keyof BackgroundProcessCreateErrors]
-
-export type BackgroundProcessCreateResponses = {
-  /**
-   * Created background process
-   */
-  200: BackgroundProcessInfo
-}
-
-export type BackgroundProcessCreateResponse = BackgroundProcessCreateResponses[keyof BackgroundProcessCreateResponses]
 
 export type BackgroundProcessGetData = {
   body?: never
