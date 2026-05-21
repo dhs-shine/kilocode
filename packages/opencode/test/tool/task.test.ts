@@ -1,5 +1,5 @@
 import { afterEach, describe, expect } from "bun:test"
-import { Cause, Effect, Layer } from "effect"
+import { Cause, Effect, Layer } from "effect" // kilocode_change - inspect task failure exit causes
 import { Agent } from "../../src/agent/agent"
 import { Config } from "@/config/config"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
