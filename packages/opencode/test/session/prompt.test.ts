@@ -1610,7 +1610,20 @@ unix(
 
           const run = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
           yield* llm.wait(1)
-          yield* Effect.sleep(150)
+          // kilocode_change start
+          yield* waitFor(
+            "large bash output",
+            sessions.messages({ sessionID: chat.id }).pipe(
+              Effect.map((msgs) => {
+                const part = msgs.flatMap((msg) => msg.parts).find((part) => part.type === "tool")
+                if (part?.type !== "tool") return
+                if (part.state.status !== "running") return
+                if (!String(part.state.metadata?.output ?? "").includes("03999")) return
+                return part
+              }),
+            ),
+          )
+          // kilocode_change end
           yield* prompt.cancel(chat.id)
 
           const exit = yield* Fiber.await(run)
