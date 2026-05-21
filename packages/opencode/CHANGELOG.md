@@ -1,5 +1,11 @@
 # @kilocode/cli
 
+## 7.3.7
+
+### Patch Changes
+
+- [#10297](https://github.com/Kilo-Org/kilocode/pull/10297) [`74e8604`](https://github.com/Kilo-Org/kilocode/commit/74e860431f3f9fcbfcea764711b8c1487d9a8f8d) Thanks [@IamCoder18](https://github.com/IamCoder18)! - Vertically center TUI dialogs on screen
+
 ## 7.3.5
 
 ### Patch Changes
