@@ -330,6 +330,9 @@ async function launch() {
   // Strip Electron/VS Code env vars so the spawned instance doesn't attach
   // to the current Electron process (e.g. when launched from a VS Code task).
   const env = cleanEnv(process.env)
+  if (mode === "dev") {
+    env.KILO_INDEXING_LOG = "1"
+  }
   for (const key of Object.keys(env)) {
     if (key.startsWith("ELECTRON_") || key.startsWith("VSCODE_")) delete env[key]
   }

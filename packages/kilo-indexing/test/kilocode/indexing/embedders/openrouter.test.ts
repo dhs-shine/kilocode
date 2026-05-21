@@ -68,14 +68,10 @@ describe("OpenRouterEmbedder", () => {
     })
 
     test("should create embeddings successfully", async () => {
-      // Create base64 encoded embedding with values that can be exactly represented in Float32
-      const testEmbedding = new Float32Array([0.25, 0.5, 0.75])
-      const base64String = Buffer.from(testEmbedding.buffer).toString("base64")
-
       const mockResponse = {
         data: [
           {
-            embedding: base64String,
+            embedding: [0.25, 0.5, 0.75],
           },
         ],
         usage: {
@@ -91,7 +87,7 @@ describe("OpenRouterEmbedder", () => {
       expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
         input: ["test text"],
         model: defaultModel,
-        encoding_format: "base64",
+        encoding_format: "float",
       })
       expect(result.embeddings).toHaveLength(1)
       expect(result.embeddings[0]).toEqual([0.25, 0.5, 0.75])
@@ -156,7 +152,7 @@ describe("OpenRouterEmbedder", () => {
       expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
         input: ["test"],
         model: customModel,
-        encoding_format: "base64",
+        encoding_format: "float",
       })
     })
 
@@ -187,7 +183,7 @@ describe("OpenRouterEmbedder", () => {
       expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
         input: ["test"],
         model: defaultModel,
-        encoding_format: "base64",
+        encoding_format: "float",
         provider: {
           order: [specificProvider],
           only: [specificProvider],
@@ -221,7 +217,7 @@ describe("OpenRouterEmbedder", () => {
       expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
         input: ["test"],
         model: defaultModel,
-        encoding_format: "base64",
+        encoding_format: "float",
         dimensions: 1024,
       })
     })
@@ -257,7 +253,7 @@ describe("OpenRouterEmbedder", () => {
       expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
         input: ["test"],
         model: defaultModel,
-        encoding_format: "base64",
+        encoding_format: "float",
       })
     })
   })
@@ -271,13 +267,10 @@ describe("OpenRouterEmbedder", () => {
     })
 
     test("should validate configuration successfully", async () => {
-      const testEmbedding = new Float32Array([0.25, 0.5])
-      const base64String = Buffer.from(testEmbedding.buffer).toString("base64")
-
       const mockResponse = {
         data: [
           {
-            embedding: base64String,
+            embedding: [0.25, 0.5],
           },
         ],
         usage: {
@@ -296,13 +289,27 @@ describe("OpenRouterEmbedder", () => {
         {
           input: ["test"],
           model: defaultModel,
-          encoding_format: "base64",
+          encoding_format: "float",
         },
         {
           timeout: REMOTE_EMBEDDER_VALIDATION_TIMEOUT_MS,
           maxRetries: REMOTE_EMBEDDER_VALIDATION_MAX_RETRIES,
         },
       )
+    })
+
+    test("should reject responses without embedding data", async () => {
+      mockEmbeddingsCreate.mockResolvedValue({
+        error: {
+          code: 404,
+          message: "No successful provider responses.",
+        },
+      })
+
+      const result = await embedder.validateConfiguration()
+
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe("Invalid response from OpenRouter embedding endpoint")
     })
 
     test("should handle validation failure", async () => {
@@ -346,7 +353,7 @@ describe("OpenRouterEmbedder", () => {
         {
           input: ["test"],
           model: defaultModel,
-          encoding_format: "base64",
+          encoding_format: "float",
           provider: {
             order: [specificProvider],
             only: [specificProvider],
@@ -388,7 +395,7 @@ describe("OpenRouterEmbedder", () => {
         {
           input: ["test"],
           model: defaultModel,
-          encoding_format: "base64",
+          encoding_format: "float",
           dimensions: 1024,
         },
         {
