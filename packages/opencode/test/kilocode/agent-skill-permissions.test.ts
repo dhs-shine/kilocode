@@ -1,12 +1,12 @@
 // kilocode_change - new file
 import { afterEach, test, expect } from "bun:test"
-import { tmpdir } from "../fixture/fixture"
-import { Instance } from "../../src/project/instance"
+import { disposeAllInstances, tmpdir } from "../fixture/fixture"
+import { WithInstance } from "../../src/project/with-instance"
 import { Agent } from "../../src/agent/agent"
 import { Permission } from "../../src/permission"
 
 afterEach(async () => {
-  await Instance.disposeAll()
+  await disposeAllInstances()
 })
 
 function action(name: string, ruleset: Permission.Ruleset) {
@@ -15,7 +15,7 @@ function action(name: string, ruleset: Permission.Ruleset) {
 
 test("skill tool available for non-system native agents and denied for system agents", async () => {
   await using tmp = await tmpdir()
-  await Instance.provide({
+  await WithInstance.provide({
     directory: tmp.path,
     fn: async () => {
       const allow = ["code", "plan", "debug", "orchestrator", "ask", "general", "explore"]

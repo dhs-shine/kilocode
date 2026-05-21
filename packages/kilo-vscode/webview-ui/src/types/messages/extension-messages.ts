@@ -1,4 +1,5 @@
 import type { ProviderAuthAuthorization, ProviderAuthMethod } from "@kilocode/sdk/v2/client"
+import type { DiffSourceCapabilities, DiffSourceDescriptor } from "../../../../src/diff/sources/types"
 import type { PartBatch, PartRemove, PartUpdate } from "../../../../src/shared/stream-messages"
 import type { SessionMode } from "../../context/worktree-mode"
 import type { MarketplaceItem, MarketplaceInstalledMetadata } from "../marketplace"
@@ -9,7 +10,7 @@ import type { PermissionRequest } from "./permissions"
 import type { QuestionRequest, SuggestionRequest, TodoItem } from "./questions"
 import type { ModelSelection, Provider, ProviderAuthState } from "./providers"
 import type { AgentInfo, SkillInfo, SlashCommandInfo } from "./agents"
-import type { BrowserSettings, Config, FeatureFlags, IndexingStatus } from "./config"
+import type { BrowserSettings, Config, FeatureFlags, IndexingStatus, KiloEmbeddingModelCatalog } from "./config"
 import type { KilocodeNotification, ProfileData } from "./profile"
 import type {
   AgentManagerApplyWorktreeDiffConflict,
@@ -173,6 +174,7 @@ export interface MessagesLoadedMessage {
   mode?: Exclude<MessageLoadMode, "focus">
   cursor?: string
   hasMore?: boolean
+  since?: number
 }
 
 export interface MessageCreatedMessage {
@@ -242,6 +244,13 @@ export interface AppendReviewCommentsMessage {
   autoSend?: boolean
 }
 
+export interface AppendReviewCommentsToTerminalMessage {
+  type: "appendReviewCommentsToTerminal"
+  comments: ReviewComment[]
+  autoSend?: boolean
+  targetTerminalId: string
+}
+
 export interface TriggerTaskMessage {
   type: "triggerTask"
   text: string
@@ -281,6 +290,11 @@ export interface NavigateMessage {
 export interface IndexingStatusLoadedMessage {
   type: "indexingStatusLoaded"
   status: IndexingStatus
+}
+
+export interface KiloEmbeddingModelsLoadedMessage {
+  type: "kiloEmbeddingModelsLoaded"
+  catalog: KiloEmbeddingModelCatalog
 }
 
 export interface ProvidersLoadedMessage {
@@ -326,9 +340,32 @@ export interface ChatCompletionResultMessage {
   requestId: string
 }
 
+export interface SpeechToTextResultMessage {
+  type: "speechToTextResult"
+  text: string
+  requestId: string
+}
+
+export interface SpeechToTextStartedMessage {
+  type: "speechToTextStarted"
+  requestId: string
+}
+
+export interface SpeechToTextCancelledMessage {
+  type: "speechToTextCancelled"
+  requestId: string
+}
+
+export interface SpeechToTextErrorMessage {
+  type: "speechToTextError"
+  error: string
+  code?: string
+  requestId: string
+}
+
 export interface FileSearchItem {
   path: string
-  type: "file" | "folder"
+  type: "file" | "folder" | "opened-file"
 }
 
 export interface FileSearchResultMessage {
@@ -408,12 +445,14 @@ export interface ClaudeCompatSettingLoadedMessage {
 export interface ConfigLoadedMessage {
   type: "configLoaded"
   config: Config
+  globalConfig?: Config
   features: FeatureFlags
 }
 
 export interface ConfigUpdatedMessage {
   type: "configUpdated"
   config: Config
+  globalConfig?: Config
   features: FeatureFlags
 }
 
@@ -504,6 +543,7 @@ export interface AgentManagerStateMessage {
   tabOrder?: Record<string, string[]>
   worktreeOrder?: string[]
   sessionsCollapsed?: boolean
+  sidebarCollapsed?: boolean
   reviewDiffStyle?: "unified" | "split"
   reviewMarkdownRender?: boolean
   isGitRepo?: boolean
@@ -685,6 +725,7 @@ export interface AgentManagerSendInitialMessage {
   providerID?: string
   modelID?: string
   agent?: string
+  variant?: string
   files?: Array<{ mime: string; url: string }>
 }
 
@@ -725,9 +766,53 @@ export interface DiffViewerRevertFileResultMessage {
   message: string
 }
 
+export interface DiffViewerDiffFileMessage {
+  type: "diffViewer.diffFile"
+  file: string
+  diff: WorktreeFileDiff | null
+}
+
 export interface DiffViewerMarkdownRenderMessage {
   type: "diffViewer.markdownRender"
   render: boolean
+}
+
+export interface SetAvailableSourcesMessage {
+  type: "setAvailableSources"
+  descriptors: DiffSourceDescriptor[]
+  currentId: string
+}
+
+export interface DiffViewerCapabilitiesMessage {
+  type: "diffViewer.capabilities"
+  capabilities: DiffSourceCapabilities
+}
+
+/**
+ * Well-known notice kinds surfaced by a diff source. The webview maps these
+ * to translated user-facing messages. `undefined` clears any active notice.
+ */
+export type DiffViewerNotice = "snapshots-disabled"
+
+export interface DiffViewerNoticeMessage {
+  type: "diffViewer.notice"
+  notice: DiffViewerNotice | undefined
+}
+
+/**
+ * Branch list and current base state for the workspace source's base picker.
+ * Sent in response to `diffViewer.requestBranches`. `currentBase` is the
+ * active base (override when set, otherwise `autoBase`); `isAuto` is true
+ * when no override is active.
+ */
+export interface DiffViewerBranchesLoadedMessage {
+  type: "diffViewer.branches"
+  branches: BranchInfo[]
+  defaultBranch: string
+  autoBase: string | undefined
+  currentBase: string | undefined
+  isAuto: boolean
+  currentBranch: string | undefined
 }
 
 export interface ClearPendingPromptsMessage {
@@ -736,6 +821,11 @@ export interface ClearPendingPromptsMessage {
 
 export interface ExtensionDataReadyMessage {
   type: "extensionDataReady"
+}
+
+export interface TelemetryStateMessage {
+  type: "telemetryState"
+  enabled: boolean
 }
 
 // ============================================
@@ -857,12 +947,17 @@ export type ExtensionMessage =
   | DeviceAuthCancelledMessage
   | NavigateMessage
   | IndexingStatusLoadedMessage
+  | KiloEmbeddingModelsLoadedMessage
   | ProvidersLoadedMessage
   | AgentsLoadedMessage
   | SkillsLoadedMessage
   | CommandsLoadedMessage
   | AutocompleteSettingsLoadedMessage
   | ChatCompletionResultMessage
+  | SpeechToTextStartedMessage
+  | SpeechToTextCancelledMessage
+  | SpeechToTextResultMessage
+  | SpeechToTextErrorMessage
   | FileSearchResultMessage
   | TerminalContextResultMessage
   | TerminalContextErrorMessage
@@ -898,6 +993,7 @@ export type ExtensionMessage =
   | SetChatBoxMessage
   | AppendChatBoxMessage
   | AppendReviewCommentsMessage
+  | AppendReviewCommentsToTerminalMessage
   | TriggerTaskMessage
   | VariantsLoadedMessage
   | CloudSessionDataLoadedMessage
@@ -932,7 +1028,12 @@ export type ExtensionMessage =
   | DiffViewerDiffsMessage
   | DiffViewerLoadingMessage
   | DiffViewerRevertFileResultMessage
+  | DiffViewerDiffFileMessage
   | DiffViewerMarkdownRenderMessage
+  | SetAvailableSourcesMessage
+  | DiffViewerCapabilitiesMessage
+  | DiffViewerNoticeMessage
+  | DiffViewerBranchesLoadedMessage
   | MarketplaceDataMessage
   | MarketplaceInstallResultMessage
   | MarketplaceRemoveResultMessage
@@ -950,4 +1051,5 @@ export type ExtensionMessage =
   | McpStatusLoadedMessage
   | ClearPendingPromptsMessage
   | ExtensionDataReadyMessage
+  | TelemetryStateMessage
   | RemoteStatusMessage

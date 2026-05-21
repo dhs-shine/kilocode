@@ -13,13 +13,13 @@
 @import "./prompt-input.css";
 @import "./prompt-dropdowns.css";
 @import "./model-selector.css";
-@import "./diff.css";
 @import "./permission-dock.css";
 @import "./dialogs.css";
 @import "./history.css";
 @import "./notifications.css";
 @import "./tool-overrides.css";
 @import "./question-dock.css";
+@import "./plan-exit.css";
 @import "./suggest-bar.css";
 @import "./settings.css";
 @import "./high-contrast.css";

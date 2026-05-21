@@ -1,6 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { FetchHttpClient } from "effect/unstable/http"
-import { expect } from "bun:test"
+import { afterEach, expect, mock, spyOn } from "bun:test" // kilocode_change - spy on review telemetry
+import { Telemetry } from "@kilocode/kilo-telemetry" // kilocode_change - assert review command telemetry
 import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import path from "path"
 import { fileURLToPath } from "url"
@@ -19,6 +20,7 @@ import { ModelID, ProviderID } from "../../src/provider/schema"
 import { Question } from "../../src/question"
 import { Todo } from "../../src/session/todo"
 import { Session } from "@/session/session"
+import { SessionMessageTable } from "../../src/session/session.sql"
 import { LLM } from "../../src/session/llm"
 import { MessageV2 } from "../../src/session/message-v2"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
@@ -31,6 +33,7 @@ import { SessionRevert } from "../../src/session/revert"
 import { SessionRunState } from "../../src/session/run-state"
 import { MessageID, PartID, SessionID } from "../../src/session/schema"
 import { SessionStatus } from "../../src/session/status"
+import { SessionV2 } from "../../src/v2/session"
 import { Skill } from "../../src/skill"
 import { SystemPrompt } from "../../src/session/system"
 import { Shell } from "../../src/shell/shell"
@@ -39,6 +42,7 @@ import { ToolRegistry } from "@/tool/registry"
 import { Truncate } from "@/tool/truncate"
 import * as Log from "@opencode-ai/core/util/log"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
+import * as Database from "../../src/storage/db"
 import { Ripgrep } from "../../src/file/ripgrep"
 import { Format } from "../../src/format"
 import { provideTmpdirInstance, provideTmpdirServer } from "../fixture/fixture"
@@ -216,6 +220,12 @@ function makeHttp() {
 const it = testEffect(makeHttp())
 const unix = process.platform !== "win32" ? it.live : it.live.skip
 
+// kilocode_change start - restore any spies between tests so review telemetry spy never leaks
+afterEach(() => {
+  mock.restore()
+})
+// kilocode_change end
+
 // Config that registers a custom "test" provider with a "test-model" model
 // so provider model lookup succeeds inside the loop.
 const cfg = {
@@ -378,6 +388,47 @@ it.live("loop calls LLM and returns assistant message", () =>
       const parts = result.parts.filter((p) => p.type === "text")
       expect(parts.some((p) => p.type === "text" && p.text === "world")).toBe(true)
       expect(yield* llm.hits).toHaveLength(1)
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+it.live("prompt emits v2 prompted and synthetic events", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* () {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({ title: "Pinned" })
+
+      yield* prompt.prompt({
+        sessionID: chat.id,
+        agent: "build",
+        noReply: true,
+        parts: [
+          { type: "text", text: "hello v2" },
+          {
+            type: "file",
+            mime: "text/plain",
+            filename: "note.txt",
+            url: "data:text/plain;base64,bm90ZSBjb250ZW50",
+          },
+        ],
+      })
+
+      const messages = yield* SessionV2.Service.use((session) => session.messages({ sessionID: chat.id })).pipe(
+        Effect.provide(SessionV2.layer),
+      )
+      const row = Database.use((db) =>
+        db.select().from(SessionMessageTable).where(Database.eq(SessionMessageTable.session_id, chat.id)).get(),
+      )
+      expect(messages.find((message) => message.type === "user")).toMatchObject({ type: "user", text: "hello v2" })
+      expect(typeof row?.data.time.created).toBe("number")
+      expect(messages).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "synthetic", text: expect.stringContaining("Called the Read tool") }),
+          expect.objectContaining({ type: "synthetic", text: "note content" }),
+        ]),
+      )
     }),
     { git: true, config: providerCfg },
   ),
@@ -758,7 +809,8 @@ it.live(
   3_000,
 )
 
-unix( // kilocode_change - skip flaky cancel test on Windows CI
+unix(
+  // kilocode_change - skip flaky cancel test on Windows CI
   "cancel records MessageAbortedError on interrupted process",
   () =>
     provideTmpdirServer(
@@ -961,6 +1013,7 @@ it.live(
         const a = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
         yield* llm.wait(1)
         const b = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
+        yield* Effect.sleep(50) // kilocode_change - let b attach to a's done deferred before gate resolves
         gate.resolve()
 
         const [ea, eb] = yield* Effect.all([Fiber.await(a), Fiber.await(b)])
@@ -1318,6 +1371,7 @@ it.live(
       Effect.fnUntraced(function* ({ llm }) {
         const prompt = yield* SessionPrompt.Service
         const sessions = yield* Session.Service
+        const status = yield* SessionStatus.Service // kilocode_change
         const chat = yield* sessions.create({
           title: "Pinned",
           permission: [{ permission: "*", pattern: "*", action: "allow" }],
@@ -1327,7 +1381,9 @@ it.live(
         const sh = yield* prompt
           .shell({ sessionID: chat.id, agent: "build", command: "sleep 0.2" })
           .pipe(Effect.forkChild)
-        yield* Effect.sleep(50)
+        // kilocode_change start - wait for shell to actually be running before forking loop
+        yield* waitFor("shell busy", status.get(chat.id).pipe(Effect.map((s) => (s.type === "busy" ? s : undefined))))
+        // kilocode_change end
 
         const loop = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
         yield* Effect.sleep(50)
@@ -1356,6 +1412,7 @@ it.live(
       Effect.fnUntraced(function* ({ llm }) {
         const prompt = yield* SessionPrompt.Service
         const sessions = yield* Session.Service
+        const status = yield* SessionStatus.Service // kilocode_change
         const chat = yield* sessions.create({
           title: "Pinned",
           permission: [{ permission: "*", pattern: "*", action: "allow" }],
@@ -1365,7 +1422,9 @@ it.live(
         const sh = yield* prompt
           .shell({ sessionID: chat.id, agent: "build", command: "sleep 0.2" })
           .pipe(Effect.forkChild)
-        yield* Effect.sleep(50)
+        // kilocode_change start - wait for shell to actually be running before forking loop callers
+        yield* waitFor("shell busy", status.get(chat.id).pipe(Effect.map((s) => (s.type === "busy" ? s : undefined))))
+        // kilocode_change end
 
         const a = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
         const b = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
@@ -1465,6 +1524,7 @@ unix(
   30_000,
 )
 
+// kilocode_change start - cancel persists aborted shell result when shell ignores TERM
 unix(
   "cancel persists aborted shell result when shell ignores TERM",
   () =>
@@ -1472,12 +1532,32 @@ unix(
       provideTmpdirInstance(
         (_dir) =>
           Effect.gen(function* () {
-            const { prompt, chat } = yield* boot()
+            const { prompt, chat, sessions } = yield* boot()
 
             const sh = yield* prompt
-              .shell({ sessionID: chat.id, agent: "build", command: "trap '' TERM; sleep 30" })
+              .shell({
+                sessionID: chat.id,
+                agent: "build",
+                command: "trap '' TERM; printf started; sleep 10; printf not-killed",
+              })
               .pipe(Effect.forkChild)
-            yield* Effect.sleep(50)
+            yield* waitFor(
+              "shell start output",
+              sessions
+                .messages({ sessionID: chat.id })
+                .pipe(
+                  Effect.map((msgs) =>
+                    msgs
+                      .flatMap((msg) => msg.parts)
+                      .find(
+                        (part) =>
+                          part.type === "tool" &&
+                          part.state.status === "running" &&
+                          (part.state.metadata?.output ?? "").includes("started"),
+                      ),
+                  ),
+                ),
+            )
 
             yield* prompt.cancel(chat.id)
 
@@ -1487,7 +1567,9 @@ unix(
               expect(exit.value.info.role).toBe("assistant")
               const tool = completedTool(exit.value.parts)
               if (tool) {
+                expect(tool.state.output).toContain("started")
                 expect(tool.state.output).toContain("User aborted the command")
+                expect(tool.state.output).not.toContain("not-killed")
               }
             }
           }),
@@ -1496,6 +1578,7 @@ unix(
     ),
   30_000,
 )
+// kilocode_change end
 
 unix(
   "cancel finalizes interrupted bash tool output through normal truncation",
@@ -1976,6 +2059,41 @@ it.live("applies agent variant only when using agent model", () =>
     },
   ),
 )
+
+// kilocode_change start - /review subtask path tags child completions for telemetry
+it.live(
+  "review command marks child completions with review telemetry",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ llm }) {
+        const trackSpy = spyOn(Telemetry, "trackLlmCompletion")
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const chat = yield* sessions.create({
+          title: "Review telemetry",
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+        })
+
+        // child subagent's first LLM step needs non-zero usage so trackStep fires
+        yield* llm.text("review done", { usage: { input: 100, output: 50 } })
+
+        yield* prompt.command({
+          sessionID: chat.id,
+          command: "review",
+          arguments: "",
+          agent: "general",
+        })
+
+        const tagged = trackSpy.mock.calls
+          .map((args) => args[0] as Parameters<typeof Telemetry.trackLlmCompletion>[0])
+          .find((p) => p.mode === "review" && p.feature === "code_reviews" && p.command === "review")
+        expect(tagged).toBeDefined()
+      }),
+      { git: true, config: providerCfg },
+    ),
+  30_000,
+)
+// kilocode_change end
 
 // Agent / command resolution errors
 

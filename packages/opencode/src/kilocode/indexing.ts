@@ -1,28 +1,25 @@
 import z from "zod"
-import { Schema } from "effect"
 import path from "path"
 import {
   CodeIndexManager,
   type IndexingTelemetryEvent,
   type VectorStoreSearchResult,
 } from "@kilocode/kilo-indexing/engine"
-import { toIndexingConfigInput } from "@kilocode/kilo-indexing/config"
+import { toIndexingConfigInput, type IndexingConfig } from "@kilocode/kilo-indexing/config"
 import { hasIndexingPlugin } from "@kilocode/kilo-indexing/detect"
-import {
-  IndexingStatus,
-  INDEXING_STATUS_STATES,
-  disabledIndexingStatus,
-  normalizeIndexingStatus,
-} from "@kilocode/kilo-indexing/status"
+import { IndexingStatus, disabledIndexingStatus, normalizeIndexingStatus } from "@kilocode/kilo-indexing/status"
 import { Telemetry } from "@kilocode/kilo-telemetry"
+import { fetchKiloEmbeddingModelCatalog } from "@kilocode/kilo-gateway"
 import { Instance } from "@/project/instance"
 import { Bus } from "@/bus"
-import { BusEvent } from "@/bus/bus-event"
 import { Config } from "@/config/config"
+import { Auth } from "@/auth"
 import { registerDisposer } from "@/effect/instance-registry"
 import { Global } from "@opencode-ai/core/global"
 import * as Log from "@opencode-ai/core/util/log"
+import { Event as IndexingEvent } from "./indexing-event"
 import { LanceDBRuntime } from "./lancedb" // kilocode_change
+import { indexingWithKiloDefault, resolveKiloIndexingAuth, type KiloIndexingAuth } from "./indexing-auth" // kilocode_change
 
 const log = Log.create({ service: "kilocode-indexing" })
 const missing = () => disabledIndexingStatus("Indexing plugin is not enabled for this workspace.")
@@ -63,6 +60,39 @@ function pending(): z.infer<typeof IndexingStatus> {
     processedFiles: 0,
     totalFiles: 0,
     percent: 0,
+  }
+}
+
+async function kiloAuth(cfg: Awaited<ReturnType<typeof Config.get>>): Promise<KiloIndexingAuth> {
+  const auth = await Auth.get("kilo")
+  return resolveKiloIndexingAuth({ config: cfg, auth })
+}
+
+function enrichKilo(input: ReturnType<typeof toIndexingConfigInput>, auth: KiloIndexingAuth) {
+  if (input.embedderProvider !== "kilo") return input
+
+  return {
+    ...input,
+    kiloApiKey: input.kiloApiKey ?? auth.apiKey,
+    kiloBaseUrl: input.kiloBaseUrl ?? auth.baseUrl,
+    kiloOrganizationId: input.kiloOrganizationId ?? auth.organizationId,
+  }
+}
+
+async function model(input: ReturnType<typeof toIndexingConfigInput>, auth: KiloIndexingAuth) {
+  if (input.embedderProvider !== "kilo") return input
+  if (input.modelId && input.modelDimension) return input
+
+  const catalog = await fetchKiloEmbeddingModelCatalog({ baseURL: auth.baseUrl, token: auth.apiKey })
+  const id = input.modelId ? (catalog.aliases[input.modelId] ?? input.modelId) : catalog.defaultModel
+  const found = catalog.models.find((item) => item.id === id)
+  if (!found) return { ...input, modelId: id || input.modelId }
+
+  return {
+    ...input,
+    modelId: found.id,
+    modelDimension: input.modelDimension ?? found.dimension,
+    searchMinScore: input.searchMinScore ?? found.scoreThreshold,
   }
 }
 
@@ -141,18 +171,12 @@ export namespace KiloIndexing {
   export const Status = IndexingStatus
   export type Status = z.infer<typeof Status>
 
-  // Mirror of IndexingStatus using Effect Schema for BusEvent.define, which
-  // requires a Schema.Top. The zod form above is kept for consumers that still
-  // depend on the z.infer-derived type.
-  const StateSchema = Schema.Literals(INDEXING_STATUS_STATES).annotate({ identifier: "IndexingStatusState" })
-
-  const StatusSchema = Schema.Struct({
-    state: StateSchema,
-    message: Schema.String,
-    processedFiles: Schema.Number,
-    totalFiles: Schema.Number,
-    percent: Schema.Number,
-  }).annotate({ identifier: "IndexingStatus" })
+  export function input(config?: IndexingConfig, global?: IndexingConfig) {
+    return toIndexingConfigInput({
+      ...config,
+      enabled: config?.enabled === true || global?.enabled === true,
+    })
+  }
 
   type Entry = {
     manager?: CodeIndexManager
@@ -170,12 +194,7 @@ export namespace KiloIndexing {
     disposed?: boolean
   }
 
-  export const Event = BusEvent.define(
-    "indexing.status",
-    Schema.Struct({
-      status: StatusSchema,
-    }),
-  )
+  export const Event = IndexingEvent
 
   const cache = new Map<string, Cache>()
 
@@ -184,7 +203,6 @@ export namespace KiloIndexing {
       await Bus.publish(Event, { status: current() })
     }
 
-    await publish()
     return {
       current,
       publish,
@@ -225,7 +243,13 @@ export namespace KiloIndexing {
     log.info("initializing project indexing", { workspacePath: dir })
     const root = path.join(Global.Path.state, "indexing")
     const manager = new CodeIndexManager(dir, root)
-    const input = toIndexingConfigInput(cfg.indexing)
+    const auth = await kiloAuth(cfg)
+    const globalConfig = await Config.getGlobal()
+    const merged = indexingWithKiloDefault(
+      { ...cfg, indexing: { ...globalConfig.indexing, ...cfg.indexing } },
+      auth,
+    ) as Config.Indexing | undefined
+    const cfgInput = await model(enrichKilo(input(merged, globalConfig.indexing), auth), auth)
     const box = { status: pending() as Status | undefined }
     const current = () => box.status ?? normalizeIndexingStatus(manager)
     let disposed = false
@@ -265,8 +289,8 @@ export namespace KiloIndexing {
     if (hit.disposed) return base
 
     // kilocode_change start
-    const err = await LanceDBRuntime.ensure(input.vectorStoreProvider)
-      .then(() => manager.initialize(input))
+    const err = await LanceDBRuntime.ensure(cfgInput.vectorStoreProvider)
+      .then(() => manager.initialize(cfgInput))
       .then(
         () => undefined,
         (err) => err,
