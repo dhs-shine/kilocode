@@ -590,6 +590,16 @@ const AgentManagerContent: Component = () => {
     return id
   }
 
+  const placeLocal = (id: string, pending: string | undefined, active: string | undefined) => {
+    const next = pending
+      ? replacePendingTab({ ids: localSessionIDs(), active }, pending, id)
+      : openSessionTab({ ids: localSessionIDs(), active }, id)
+    setLocalSessionIDs(next.ids)
+    if (pending) tabOrderSync.replaceOrAppend(LOCAL, pending, id)
+    if (!pending) tabOrderSync.append(LOCAL, id)
+    if (pending && pending === active) setActivePendingId(undefined)
+  }
+
   // Persist local session IDs and sidebar width to webview state for recovery (exclude pending tabs).
   // Debounced to avoid serializing state on every pixel during resize drag.
   let persistTimer: ReturnType<typeof setTimeout> | undefined
@@ -753,7 +763,6 @@ const AgentManagerContent: Component = () => {
     if (reviewActive()) return REVIEW_TAB_ID
     return session.currentSessionID() ?? activePendingId()
   })
-  const tabScroll = useTabScroll(activeTabs, visibleTabId)
 
   const worktreeLabel = (wt: WorktreeState): string => {
     if (wt.label) return wt.label
@@ -1098,18 +1107,9 @@ const AgentManagerContent: Component = () => {
             ? active
             : undefined
       const focus = !pending || pending === active
-      if (pending) {
-        const next = replacePendingTab({ ids: localSessionIDs(), active }, pending, created.session.id)
-        setLocalSessionIDs(next.ids)
-        tabOrderSync.replaceOrAppend(LOCAL, pending, created.session.id)
-        if (pending === active) setActivePendingId(undefined)
-      } else {
-        saveTabMemory()
-        const next = openSessionTab({ ids: localSessionIDs(), active }, created.session.id)
-        setLocalSessionIDs(next.ids)
-        tabOrderSync.append(LOCAL, created.session.id)
-        setSelection(LOCAL)
-      }
+      if (!pending) saveTabMemory()
+      placeLocal(created.session.id, pending, active)
+      if (!pending) setSelection(LOCAL)
       vscode.postMessage({ type: "agentManager.persistSession", sessionId: created.session.id })
       if (focus) session.selectSession(created.session.id)
     })
@@ -1843,17 +1843,7 @@ const AgentManagerContent: Component = () => {
     saveTabMemory()
     expandSidebar()
     const pending = activePendingId()
-    if (pending) {
-      const next = replacePendingTab({ ids: localSessionIDs(), active: pending }, pending, sid)
-      setLocalSessionIDs(next.ids)
-      tabOrderSync.replaceOrAppend(LOCAL, pending, sid)
-      setActivePendingId(undefined)
-    }
-    if (!pending) {
-      const next = openSessionTab({ ids: localSessionIDs(), active: session.currentSessionID() }, sid)
-      setLocalSessionIDs(next.ids)
-      tabOrderSync.append(LOCAL, sid)
-    }
+    placeLocal(sid, pending, pending ?? session.currentSessionID())
     setSelection(LOCAL)
     setReviewActive(false)
     session.selectSession(sid)
@@ -1969,6 +1959,7 @@ const AgentManagerContent: Component = () => {
       worktreeTabOrder()[key],
     ).map((item) => item.id)
   })
+  const tabScroll = useTabScroll(tabIds, visibleTabId)
   const handleDragStart = (event: DragEvent) => {
     const id = event.draggable?.id
     if (typeof id === "string") setDraggingTab(id)
