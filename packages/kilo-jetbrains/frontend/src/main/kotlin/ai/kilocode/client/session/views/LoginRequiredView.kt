@@ -7,10 +7,13 @@ import ai.kilocode.client.session.ui.shared.applyButton
 import ai.kilocode.client.session.ui.shared.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
+import ai.kilocode.client.ui.UiStyle
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
 import java.awt.Component
+import javax.swing.Box
+import javax.swing.BoxLayout
 import javax.swing.JPanel
 
 /**
@@ -43,9 +46,15 @@ class LoginRequiredView(
         val footer = JPanel(BorderLayout()).apply {
             isOpaque = false
             alignmentX = Component.LEFT_ALIGNMENT
-            add(dismissButton, BorderLayout.WEST)
-            add(openProfileButton, BorderLayout.EAST)
         }
+        val actions = JPanel().apply {
+            isOpaque = false
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            add(dismissButton)
+            add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
+            add(openProfileButton)
+        }
+        footer.add(actions, BorderLayout.EAST)
 
         card.setFooter(footer)
 

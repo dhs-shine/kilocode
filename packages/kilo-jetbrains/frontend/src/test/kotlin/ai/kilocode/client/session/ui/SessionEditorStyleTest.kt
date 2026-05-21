@@ -50,4 +50,22 @@ class SessionEditorStyleTest : BasePlatformTestCase() {
         assertTrue(style.smallEditorFont.size < style.editorSize)
         assertEquals(style.editorSize, style.uiFont.size)
     }
+
+    fun `test ui fonts use platform label family not editor family`() {
+        val style = SessionEditorStyle.create(family = "Courier New", size = 22)
+
+        // uiFont / boldUiFont / smallUiFont must NOT use the editor font family
+        assertFalse("uiFont should not use editor font family", style.uiFont.name == "Courier New")
+        assertFalse("boldUiFont should not use editor font family", style.boldUiFont.name == "Courier New")
+        assertFalse("smallUiFont should not use editor font family", style.smallUiFont.name == "Courier New")
+    }
+
+    fun `test ui fonts inherit editor size`() {
+        val style = SessionEditorStyle.create(family = "Courier New", size = 22)
+
+        assertEquals("uiFont size should match editor size", 22, style.uiFont.size)
+        assertEquals("boldUiFont size should match editor size", 22, style.boldUiFont.size)
+        assertTrue("boldUiFont should be bold", style.boldUiFont.isBold)
+        assertTrue("smallUiFont should be smaller than editor size", style.smallUiFont.size < style.editorSize)
+    }
 }

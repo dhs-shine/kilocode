@@ -98,7 +98,6 @@ class QuestionView(
         nav.add(fwd)
         topPanel.add(summary, BorderLayout.WEST)
         topPanel.add(nav, BorderLayout.EAST)
-        footer.add(dismiss, BorderLayout.WEST)
         footer.add(right, BorderLayout.EAST)
 
         card.setTopPanel(topPanel)
@@ -176,9 +175,11 @@ class QuestionView(
 
     private fun syncFooter(q: Question) {
         right.removeAll()
+        right.add(dismiss)
         if (review(q)) {
             val back = dismissButton(KiloBundle.message("session.question.back")) { goBack() }
             val submit = applyButton(KiloBundle.message("session.question.submit")) { doReply() }
+            right.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
             right.add(back)
             right.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
             right.add(submit)
@@ -200,6 +201,7 @@ class QuestionView(
                 }
             }
         }
+        right.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
         right.add(button)
     }
 
@@ -207,8 +209,10 @@ class QuestionView(
         val ready = selections.getOrNull(idx)?.isNotEmpty() == true
         back.isEnabled = idx > 0
         fwd.isEnabled = idx < q.items.size && ready
+        val backLabel = KiloBundle.message("session.question.back")
+        val dismissLabel = KiloBundle.message("session.question.dismiss")
         for (node in right.components) {
-            if (node is SessionQuestionButton && node.text != KiloBundle.message("session.question.back")) {
+            if (node is SessionQuestionButton && node.text != backLabel && node.text != dismissLabel) {
                 node.isEnabled = review(q) || ready
             }
         }
@@ -436,7 +440,7 @@ class QuestionView(
     }
 
     private fun setFont(area: JBTextArea, bold: Boolean): Boolean {
-        val font = if (bold) style.boldEditorFont else style.transcriptFont
+        val font = if (bold) style.boldUiFont else style.uiFont
         if (area.font == font) return false
         area.font = font
         return true

@@ -87,6 +87,31 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertTrue(replies.isEmpty())
     }
 
+    fun `test question action buttons share right-aligned footer group`() {
+        view.show(singleSelectQuestion("req_actions"))
+
+        val dismiss = button(view, "Dismiss")
+        val submit = button(view, "Submit")
+        assertSame("Dismiss and Submit should be in the same right-aligned group", dismiss.parent, submit.parent)
+        assertTrue("Dismiss should appear before Submit", dismiss.parent.components.indexOf(dismiss) < submit.parent.components.indexOf(submit))
+    }
+
+    fun `test review action buttons share right-aligned footer group`() {
+        view.show(twoItemQuestion("req_review_actions"))
+        option<JBRadioButton>(view, "Minimal").doClick()
+        button(view, "Next").doClick()
+        option<JBRadioButton>(view, "Unit").doClick()
+        button(view, "Review").doClick()
+
+        val dismiss = button(view, "Dismiss")
+        val back = button(view, "Back")
+        val submit = button(view, "Submit")
+        assertSame("Dismiss and Back should be in the same right-aligned group", dismiss.parent, back.parent)
+        assertSame("Back and Submit should be in the same right-aligned group", back.parent, submit.parent)
+        assertTrue("Dismiss should appear before Back", dismiss.parent.components.indexOf(dismiss) < back.parent.components.indexOf(back))
+        assertTrue("Back should appear before Submit", back.parent.components.indexOf(back) < submit.parent.components.indexOf(submit))
+    }
+
     // ------ radio options ------
 
     fun `test single question renders radio options`() {
@@ -159,19 +184,19 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertEquals("description should align in the text renderer", label.parent, desc.parent)
 
         val style = SessionEditorStyle.current()
-        assertEquals("option label should use bold editor font", style.boldEditorFont, label.font)
-        assertEquals("description should use transcript font", style.transcriptFont, desc.font)
+        assertEquals("option label should use boldUiFont", style.boldUiFont, label.font)
+        assertEquals("description should use uiFont", style.uiFont, desc.font)
     }
 
-    fun `test question title and hint use editor fonts`() {
+    fun `test question title and hint use UI-family editor-sized fonts`() {
         view.show(singleSelectQuestion("q_fonts"))
 
         val style = SessionEditorStyle.current()
         val title = text(view, "Choose approach")
         val hint = text(view, "Select one answer")
 
-        assertEquals(style.boldEditorFont, title.font)
-        assertEquals(style.transcriptFont, hint.font)
+        assertEquals(style.boldUiFont, title.font)
+        assertEquals(style.uiFont, hint.font)
     }
 
     // ------ multi-question navigation ------

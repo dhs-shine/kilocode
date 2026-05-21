@@ -5,14 +5,17 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
+import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
 import java.awt.Dimension
 import javax.swing.Box
 import javax.swing.BoxLayout
+import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -27,9 +30,9 @@ import javax.swing.JPanel
  * outer card shell so they share the same background, padding, and text
  * styling without duplicating the setup.
  *
- * The column always contains (in order): optional top, [headerText],
+ * The column always contains (in order): optional top, header row with [headerText],
  * [descriptionText], optional body, optional footer. Call [setTopPanel],
- * [setBody], or [setFooter] to replace those slots at any time.
+ * [setHeaderIcon], [setBody], or [setFooter] to replace those slots at any time.
  */
 class BaseSessionQuestionPanel : RoundedContentPanel(
     UiStyle.Gap.lg(),
@@ -38,7 +41,7 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
 
     private var style = SessionEditorStyle.current()
 
-    // All JBTextArea instances that need editor-font updates, paired with bold flag
+    // All JBTextArea instances that need style updates, paired with bold flag
     private val tracked = mutableListOf<Pair<JBTextArea, Boolean>>()
 
     // ---- header text ----
@@ -46,6 +49,23 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
 
     // ---- description text ----
     val descriptionText: JBTextArea = makeText("", UiStyle.Colors.weak(), bold = false)
+
+    private val icon = JBLabel().apply {
+        border = JBUI.Borders.emptyRight(UiStyle.Gap.sm())
+        isVisible = false
+    }
+
+    private val header = object : JPanel(BorderLayout(UiStyle.Gap.sm(), 0)) {
+        override fun getMaximumSize(): Dimension {
+            val size = preferredSize
+            return Dimension(Int.MAX_VALUE, size.height)
+        }
+    }.apply {
+        isOpaque = false
+        alignmentX = Component.LEFT_ALIGNMENT
+        add(icon, BorderLayout.WEST)
+        add(headerText, BorderLayout.CENTER)
+    }
 
     // ---- slot fields ----
     private var top: JComponent? = null
@@ -75,6 +95,19 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
     fun setTopPanel(top: JComponent?) {
         this.top = top
         rebuildCol()
+    }
+
+    /**
+     * Optional icon rendered at the left edge of the header row.
+     * Pass `null` to remove the icon while keeping header text alignment stable.
+     */
+    @RequiresEdt
+    fun setHeaderIcon(icon: Icon?, tooltip: String? = null) {
+        this.icon.icon = icon
+        this.icon.toolTipText = tooltip
+        this.icon.isVisible = icon != null
+        this.icon.revalidate()
+        this.icon.repaint()
     }
 
     /**
@@ -116,7 +149,7 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
     private fun rebuildCol() {
         col.removeAll()
         top?.let { col.add(it) }
-        col.add(headerText)
+        col.add(header)
         col.add(descriptionText)
         body?.let {
             col.add(gap())
@@ -182,7 +215,7 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
     }
 
     private fun applyFont(area: JBTextArea, bold: Boolean) {
-        val font = if (bold) style.boldEditorFont else style.transcriptFont
+        val font = if (bold) style.boldUiFont else style.uiFont
         if (area.font != font) area.font = font
     }
 }

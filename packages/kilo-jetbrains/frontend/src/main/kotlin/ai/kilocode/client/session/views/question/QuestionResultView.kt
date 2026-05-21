@@ -108,7 +108,9 @@ class QuestionResultView(tool: Tool) : PartView() {
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
-        val label = setFont(title, style.boldEditorFont) || setFont(sub, style.smallEditorFont)
+        val t = setFont(title, style.boldUiFont)
+        val s = setFont(sub, style.smallUiFont)
+        val label = t || s
         val body = texts.fold(false) { acc, item -> setFont(item.first, item.second) || acc }
         if (!label && !body) return
         refresh()
@@ -136,6 +138,9 @@ class QuestionResultView(tool: Tool) : PartView() {
     fun bodyCreated(): Boolean = pane != null
 
     fun bodyFonts(): List<Font> = texts.map { it.first.font }
+
+    fun titleFont(): Font = title.font
+    fun subFont(): Font = sub.font
 
     override fun dumpLabel(): String = "QuestionResultView#$contentId(${labelText()})"
 
@@ -268,7 +273,7 @@ class QuestionResultView(tool: Tool) : PartView() {
     }
 
     private fun setFont(area: JBTextArea, bold: Boolean): Boolean {
-        val font = if (bold) style.boldEditorFont else style.transcriptFont
+        val font = if (bold) style.boldUiFont else style.uiFont
         if (area.font == font) return false
         area.font = font
         return true

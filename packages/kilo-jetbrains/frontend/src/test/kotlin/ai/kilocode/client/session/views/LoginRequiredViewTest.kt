@@ -1,6 +1,7 @@
 package ai.kilocode.client.session.views
 
 import ai.kilocode.client.session.ui.shared.SessionQuestionButton
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.openapi.application.ApplicationManager
@@ -105,6 +106,18 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test login action buttons share right-aligned footer group`() {
+        edt {
+            val view = LoginRequiredView(openProfile = {}, dismiss = {})
+            view.show("Sign in required.")
+
+            val dismiss = view.dismissButton
+            val open = view.openProfileButton
+            assertSame("Dismiss and open profile should be in the same right-aligned group", dismiss.parent, open.parent)
+            assertTrue("Dismiss should appear before open profile", dismiss.parent.components.indexOf(dismiss) < open.parent.components.indexOf(open))
+        }
+    }
+
     // ------ callbacks ------
 
     fun `test open profile button click invokes openProfile callback`() {
@@ -158,6 +171,42 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
             val view = LoginRequiredView(openProfile = {}, dismiss = {})
             view.hideView()
             assertFalse(view.isVisible)
+        }
+    }
+
+    // ------ fonts: UI family, editor size ------
+
+    fun `test header uses boldUiFont not editor font family`() {
+        edt {
+            val view = LoginRequiredView(openProfile = {}, dismiss = {})
+            view.show("Sign in required.")
+            val style = SessionEditorStyle.create(family = "Courier New", size = 20)
+            view.applyStyle(style)
+
+            val title = findAll<JBTextArea>(view).firstOrNull { it.font.isBold }
+            assertNotNull("Bold title text area should be present", title)
+            assertFalse(
+                "Title font should not use editor font family",
+                title!!.font.name == "Courier New",
+            )
+            assertEquals("Title font size should match editor size", 20, title.font.size)
+        }
+    }
+
+    fun `test description uses uiFont not editor font family`() {
+        edt {
+            val view = LoginRequiredView(openProfile = {}, dismiss = {})
+            view.show("Sign in required.")
+            val style = SessionEditorStyle.create(family = "Courier New", size = 20)
+            view.applyStyle(style)
+
+            val desc = findAll<JBTextArea>(view).firstOrNull { it.text == "Sign in required." }
+            assertNotNull("Description text area should be present", desc)
+            assertFalse(
+                "Description font should not use editor font family",
+                desc!!.font.name == "Courier New",
+            )
+            assertEquals("Description font size should match editor size", 20, desc.font.size)
         }
     }
 

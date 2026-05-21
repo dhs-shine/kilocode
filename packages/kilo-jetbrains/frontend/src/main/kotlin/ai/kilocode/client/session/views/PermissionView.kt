@@ -14,6 +14,7 @@ import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.rpc.dto.PermissionReplyDto
+import com.intellij.icons.AllIcons
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
@@ -75,6 +76,7 @@ class PermissionView(
         actions.add(run)
         footer.add(actions, BorderLayout.EAST)
 
+        card.setHeaderIcon(AllIcons.General.Warning, KiloBundle.message("session.permission.title"))
         card.setBody(body)
         card.setFooter(footer)
         addToCenter(card)
@@ -239,6 +241,8 @@ class PermissionView(
     // Test helpers
     internal fun runButtonForTest() = run
     internal fun denyButtonForTest() = deny
+    internal fun firstCmdViewForTest() = cmdViews.firstOrNull()
+    internal fun headerFontForTest() = card.headerText.font
 }
 
 /**

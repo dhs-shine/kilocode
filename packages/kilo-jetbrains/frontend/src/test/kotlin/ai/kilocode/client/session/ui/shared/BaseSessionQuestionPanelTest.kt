@@ -1,8 +1,12 @@
 package ai.kilocode.client.session.ui.shared
 
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
+import java.awt.BorderLayout
 import java.awt.Container
 import javax.swing.JComponent
 import javax.swing.JLabel
@@ -40,7 +44,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
             val col = findCol(panel)!!
             val comps = col.components.toList()
             val topIdx = comps.indexOf(top)
-            val headerIdx = comps.indexOf(panel.headerText)
+            val headerIdx = comps.indexOf(panel.headerText.parent)
             assertTrue("top should appear before headerText", topIdx < headerIdx)
         }
     }
@@ -169,7 +173,7 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
             val col = findCol(panel)!!
             val comps = col.components.toList()
             val topIdx = comps.indexOf(top)
-            val headerIdx = comps.indexOf(panel.headerText)
+            val headerIdx = comps.indexOf(panel.headerText.parent)
             val descIdx = comps.indexOf(panel.descriptionText)
             val bodyIdx = comps.indexOf(body)
             val footerIdx = comps.indexOf(footer)
@@ -195,7 +199,38 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
         edt {
             val panel = BaseSessionQuestionPanel()
             val col = findCol(panel)!!
-            assertEquals("headerText + descriptionText only", 2, col.componentCount)
+            assertEquals("header row + descriptionText only", 2, col.componentCount)
+        }
+    }
+
+    // ------ header left icon ------
+
+    fun `test setHeaderIcon adds icon to the left side of header row`() {
+        edt {
+            val panel = BaseSessionQuestionPanel()
+            panel.setHeaderIcon(AllIcons.General.Warning, "warning")
+
+            val header = panel.headerText.parent as JPanel
+            val layout = header.layout as BorderLayout
+            val labels = findAll<JBLabel>(header).filter { it.icon != null }
+            assertEquals("Expected one header icon", 1, labels.size)
+            assertSame(AllIcons.General.Warning, labels[0].icon)
+            assertEquals("warning", labels[0].toolTipText)
+            assertEquals(BorderLayout.WEST, layout.getConstraints(labels[0]))
+            assertEquals(BorderLayout.CENTER, layout.getConstraints(panel.headerText))
+        }
+    }
+
+    fun `test setHeaderIcon null hides header icon without removing header row`() {
+        edt {
+            val panel = BaseSessionQuestionPanel()
+            panel.setHeaderIcon(AllIcons.General.Warning)
+            panel.setHeaderIcon(null)
+
+            val header = panel.headerText.parent as Container
+            val labels = findAll<JBLabel>(header).filter { it.icon != null && it.isVisible }
+            assertTrue("Header icon should be hidden after setHeaderIcon(null)", labels.isEmpty())
+            assertSame(header, panel.headerText.parent)
         }
     }
 
@@ -243,6 +278,36 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
         }
     }
 
+    // ------ applyStyle: UI fonts ------
+
+    fun `test applyStyle applies boldUiFont to header and uiFont to description`() {
+        edt {
+            val panel = BaseSessionQuestionPanel()
+            val style = SessionEditorStyle.create(family = "Courier New", size = 20)
+            panel.applyStyle(style)
+
+            assertEquals("headerText should use boldUiFont", style.boldUiFont, panel.headerText.font)
+            assertEquals("descriptionText should use uiFont", style.uiFont, panel.descriptionText.font)
+        }
+    }
+
+    fun `test applyStyle does not apply editor font family to header or description`() {
+        edt {
+            val panel = BaseSessionQuestionPanel()
+            val style = SessionEditorStyle.create(family = "Courier New", size = 20)
+            panel.applyStyle(style)
+
+            assertFalse(
+                "headerText should not use editor font family",
+                panel.headerText.font.name == "Courier New",
+            )
+            assertFalse(
+                "descriptionText should not use editor font family",
+                panel.descriptionText.font.name == "Courier New",
+            )
+        }
+    }
+
     // ------ helpers ------
 
     private fun <T> edt(block: () -> T): T {
@@ -269,5 +334,16 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
             }
         }
         return null
+    }
+
+    private inline fun <reified T> findAll(root: Container): List<T> = findAllCls(root, T::class.java)
+
+    private fun <T> findAllCls(root: Container, cls: Class<T>): List<T> {
+        val result = mutableListOf<T>()
+        if (cls.isInstance(root)) result.add(cls.cast(root))
+        for (child in root.components) {
+            if (child is Container) result.addAll(findAllCls(child, cls))
+        }
+        return result
     }
 }

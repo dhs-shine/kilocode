@@ -5,11 +5,14 @@ import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.rpc.dto.PermissionReplyDto
+import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBHtmlPane
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import java.awt.Container
 import javax.swing.AbstractButton
@@ -262,6 +265,16 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertTrue("Expected a BaseSessionQuestionPanel after show", panels.isNotEmpty())
     }
 
+    fun `test permission icon is rendered in header`() {
+        view.show(permission())
+
+        val labels = findAll<JBLabel>(view)
+        assertTrue(
+            "Expected permission warning icon in header",
+            labels.any { it.icon == AllIcons.General.Warning },
+        )
+    }
+
     // ------ new: shared button types ------
 
     fun `test run button is SessionQuestionButton with primary true`() {
@@ -353,6 +366,47 @@ class PermissionViewTest : BasePlatformTestCase() {
         val scroll = findAll<JBScrollPane>(view).first { it.verticalScrollBarPolicy == ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED }
         assertEquals(SessionUiStyle.View.headerHover(), scroll.background)
         assertEquals(SessionUiStyle.View.headerHover(), scroll.viewport.background)
+    }
+
+    // ------ fonts: header UI family, command code block editor family ------
+
+    fun `test permission header uses boldUiFont not editor font family`() {
+        view.show(
+            Permission(
+                id = "perm_font",
+                sessionId = "ses",
+                name = "bash",
+                patterns = emptyList(),
+                always = emptyList(),
+                meta = PermissionMeta(command = "ls"),
+            )
+        )
+        val style = SessionEditorStyle.create(family = "Courier New", size = 18)
+        view.applyStyle(style)
+
+        val header = view.headerFontForTest()
+        assertFalse("Permission header should not use editor font family", header.name == "Courier New")
+        assertTrue("Permission header should be bold", header.isBold)
+        assertEquals("Permission header size should match editor size", 18, header.size)
+    }
+
+    fun `test command code block retains editor font family`() {
+        view.show(
+            Permission(
+                id = "perm_codefont",
+                sessionId = "ses",
+                name = "bash",
+                patterns = emptyList(),
+                always = emptyList(),
+                meta = PermissionMeta(command = "git log"),
+            )
+        )
+        val style = SessionEditorStyle.create(family = "Courier New", size = 18)
+        view.applyStyle(style)
+
+        val md = view.firstCmdViewForTest()
+        assertNotNull("Should have at least one command MdView", md)
+        assertEquals("Code block codeFont should use editor family", "Courier New", md!!.codeFont)
     }
 
     private fun permission() = Permission(
