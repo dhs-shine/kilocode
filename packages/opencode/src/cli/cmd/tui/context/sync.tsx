@@ -19,6 +19,7 @@ import type {
   ProviderListResponse,
   ProviderAuthMethod,
   VcsInfo,
+  BackgroundProcessInfo, // kilocode_change
 } from "@kilocode/sdk/v2"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useProject } from "@tui/context/project"
@@ -77,6 +78,11 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       todo: {
         [sessionID: string]: Todo[]
       }
+      // kilocode_change start
+      background_process: {
+        [sessionID: string]: BackgroundProcessInfo[]
+      }
+      // kilocode_change end
       message: {
         [sessionID: string]: Message[]
       }
@@ -119,6 +125,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       session_status: {},
       session_diff: {},
       todo: {},
+      background_process: {}, // kilocode_change
       message: {},
       part: {},
       lsp: [],
@@ -149,6 +156,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           delete draft.session_diff[sessionID]
           delete draft.session_status[sessionID]
           delete draft.todo[sessionID]
+          delete draft.background_process[sessionID] // kilocode_change
           delete draft.permission[sessionID]
           delete draft.question[sessionID]
           delete draft.suggestion[sessionID]
@@ -368,6 +376,45 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           setStore("session_status", event.properties.sessionID, event.properties.status)
           break
         }
+
+        // kilocode_change start
+        case "background_process.updated": {
+          const info = event.properties.info
+          const list = store.background_process[info.sessionID]
+          if (!list) {
+            setStore("background_process", info.sessionID, [info])
+            break
+          }
+          const result = Binary.search(list, info.id, (item) => item.id)
+          if (result.found) {
+            setStore("background_process", info.sessionID, result.index, reconcile(info))
+            break
+          }
+          setStore(
+            "background_process",
+            info.sessionID,
+            produce((draft) => {
+              draft.splice(result.index, 0, info)
+            }),
+          )
+          break
+        }
+
+        case "background_process.deleted": {
+          const list = store.background_process[event.properties.sessionID]
+          if (!list) break
+          const result = Binary.search(list, event.properties.processID, (item) => item.id)
+          if (!result.found) break
+          setStore(
+            "background_process",
+            event.properties.sessionID,
+            produce((draft) => {
+              draft.splice(result.index, 1)
+            }),
+          )
+          break
+        }
+        // kilocode_change end
 
         // kilocode_change start
         case "message.updated": {
@@ -600,6 +647,14 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
                 next[item.sessionID].push(item)
               }
               setStore("network", reconcile(next))
+            }),
+            sdk.client.backgroundProcess.list({ workspace }).then((x) => {
+              const next: Record<string, BackgroundProcessInfo[]> = {}
+              for (const item of x.data ?? []) {
+                if (!next[item.sessionID]) next[item.sessionID] = []
+                next[item.sessionID].push(item)
+              }
+              setStore("background_process", reconcile(next))
             }),
             // kilocode_change end
             sdk.client.session.status({ workspace }).then((x) => {

@@ -8949,6 +8949,417 @@
         ]
       }
     },
+    "/background-process": {
+      "get": {
+        "tags": ["background-process"],
+        "operationId": "backgroundProcess.list",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of background processes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BackgroundProcessInfo"
+                  },
+                  "description": "List of background processes"
+                }
+              }
+            }
+          }
+        },
+        "description": "List tracked background processes for the current instance.",
+        "summary": "List background processes",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.backgroundProcess.list({\n  ...\n})"
+          }
+        ]
+      },
+      "post": {
+        "tags": ["background-process"],
+        "operationId": "backgroundProcess.create",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created background process",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackgroundProcessInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Start a tracked background process.",
+        "summary": "Create background process",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackgroundProcessStartInput"
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.backgroundProcess.create({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/background-process/{processID}": {
+      "get": {
+        "tags": ["background-process"],
+        "operationId": "backgroundProcess.get",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "processID",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Background process info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackgroundProcessInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Get status and retained output for one background process.",
+        "summary": "Get background process",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.backgroundProcess.get({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/background-process/{processID}/logs": {
+      "get": {
+        "tags": ["background-process"],
+        "operationId": "backgroundProcess.logs",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "processID",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Background process logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackgroundProcessLogs"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Get the retained output tail for one background process.",
+        "summary": "Get background process logs",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.backgroundProcess.logs({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/background-process/{processID}/stop": {
+      "post": {
+        "tags": ["background-process"],
+        "operationId": "backgroundProcess.stop",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "processID",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stopped background process",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackgroundProcessInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Terminate a background process and its child process tree.",
+        "summary": "Stop background process",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.backgroundProcess.stop({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/background-process/{processID}/restart": {
+      "post": {
+        "tags": ["background-process"],
+        "operationId": "backgroundProcess.restart",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "processID",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restarted background process",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackgroundProcessInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Stop and restart a background process with its original command.",
+        "summary": "Restart background process",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.backgroundProcess.restart({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/background-process/session/{sessionID}/stop": {
+      "post": {
+        "tags": ["background-process"],
+        "operationId": "backgroundProcess.stopSession",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sessionID",
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stopped session background processes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean",
+                  "description": "Stopped session background processes"
+                }
+              }
+            }
+          }
+        },
+        "description": "Terminate and forget all background processes associated with one session.",
+        "summary": "Stop session background processes",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.backgroundProcess.stopSession({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/commit-message": {
       "post": {
         "tags": ["commit-message"],
@@ -12193,6 +12604,12 @@
             "$ref": "#/components/schemas/EventPermissionReplied"
           },
           {
+            "$ref": "#/components/schemas/EventBackground_processUpdated"
+          },
+          {
+            "$ref": "#/components/schemas/EventBackground_processDeleted"
+          },
+          {
             "$ref": "#/components/schemas/EventSessionTurnOpen"
           },
           {
@@ -12805,6 +13222,68 @@
           }
         },
         "required": ["id", "sessionID", "permission", "patterns", "metadata", "always"],
+        "additionalProperties": false
+      },
+      "BackgroundProcessInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sessionID": {
+            "type": "string"
+          },
+          "pid": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "command": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["starting", "running", "ready", "exited", "failed", "stopping", "stopped"]
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "exitCode": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "signal": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "started": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "updated": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "ended": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": ["started", "updated"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "sessionID", "command", "cwd", "status", "ready", "output", "time"],
         "additionalProperties": false
       },
       "SnapshotFileDiff": {
@@ -14627,6 +15106,12 @@
               },
               {
                 "$ref": "#/components/schemas/EventPermissionReplied"
+              },
+              {
+                "$ref": "#/components/schemas/EventBackground_processUpdated"
+              },
+              {
+                "$ref": "#/components/schemas/EventBackground_processDeleted"
               },
               {
                 "$ref": "#/components/schemas/EventSessionTurnOpen"
@@ -17647,6 +18132,62 @@
         "required": ["id", "type", "name", "branch", "directory", "extra", "projectID"],
         "additionalProperties": false
       },
+      "BackgroundProcessReady": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "timeout": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "BackgroundProcessStartInput": {
+        "type": "object",
+        "properties": {
+          "sessionID": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string",
+            "description": "Command to run in the configured shell"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "ready": {
+            "$ref": "#/components/schemas/BackgroundProcessReady"
+          }
+        },
+        "required": ["sessionID", "command"],
+        "additionalProperties": false
+      },
+      "BackgroundProcessLogs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sessionID": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "sessionID", "output"],
+        "additionalProperties": false
+      },
       "effect_HttpApiError_Unauthorized": {
         "type": "object",
         "properties": {
@@ -19878,6 +20419,57 @@
               }
             },
             "required": ["sessionID", "requestID", "reply"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventBackground_processUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["background_process.updated"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "info": {
+                "$ref": "#/components/schemas/BackgroundProcessInfo"
+              }
+            },
+            "required": ["info"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventBackground_processDeleted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["background_process.deleted"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              },
+              "processID": {
+                "type": "string"
+              }
+            },
+            "required": ["sessionID", "processID"],
             "additionalProperties": false
           }
         },
@@ -22844,6 +23436,10 @@
     {
       "name": "workspace",
       "description": "Experimental HttpApi workspace routes."
+    },
+    {
+      "name": "background-process",
+      "description": "Kilo background process routes."
     },
     {
       "name": "commit-message",

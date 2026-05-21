@@ -32,6 +32,7 @@ import { Permission } from "@/permission"
 import { Global } from "@opencode-ai/core/global"
 // kilocode_change start - legacy promise helpers + kilocode extensions
 import { makeRuntime } from "@/effect/run-service"
+import { BackgroundProcess } from "@/kilocode/background-process"
 import { KiloSession, kiloSessionFork } from "@/kilocode/session"
 import { fn } from "@/util/fn"
 // kilocode_change end
@@ -605,6 +606,7 @@ export const layer: Layer.Layer<Service, never, Bus.Service | Storage.Service | 
         yield* Effect.promise(() => KiloSession.removeSession(sessionID)).pipe(Effect.ignore)
         KiloSession.clearPlatformOverride(sessionID)
         if (hasInstance) {
+          yield* Effect.promise(() => BackgroundProcess.stopSession(sessionID)).pipe(Effect.ignore)
           void Promise.all([import("@/effect/app-runtime"), import("./run-state")]).then(([app, run]) =>
             app.AppRuntime.runPromise(run.SessionRunState.Service.use((svc) => svc.cancel(sessionID))).catch(() => {}),
           )
