@@ -291,8 +291,9 @@ export function Session() {
   }
 
   function stopProcesses(sessionID: string) {
+    const workspace = project.workspace.current()
     for (const id of processSessions(sessionID)) {
-      void sdk.client.backgroundProcess.stopSession({ sessionID: id }).catch((err) => {
+      void sdk.client.backgroundProcess.stopSession({ sessionID: id, workspace }).catch((err) => {
         Log.Default.warn("failed to stop session background processes", { sessionID: id, err })
       })
     }

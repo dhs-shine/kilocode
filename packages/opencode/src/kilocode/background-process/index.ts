@@ -362,6 +362,23 @@ export namespace BackgroundProcess {
     return proc.exitCode !== null || proc.signalCode !== null
   }
 
+  function code(err: unknown) {
+    if (!err || typeof err !== "object" || !("code" in err)) return
+    const value = (err as { code?: unknown }).code
+    return typeof value === "string" ? value : undefined
+  }
+
+  function group(pid: number) {
+    try {
+      process.kill(-pid, 0)
+      return true
+    } catch (err) {
+      if (code(err) === "ESRCH") return false
+      log.debug("failed to probe process group", { err, pid })
+      return true
+    }
+  }
+
   function waitExit(proc: ChildProcess, ms: number) {
     if (stopped(proc)) return Promise.resolve()
     return new Promise<void>((resolve) => {
@@ -398,7 +415,7 @@ export namespace BackgroundProcess {
       active.proc.kill("SIGTERM")
     }
     await waitExit(active.proc, KILL_MS)
-    if (stopped(active.proc)) return
+    if (stopped(active.proc) && !group(pid)) return
     try {
       process.kill(-pid, "SIGKILL")
     } catch (err) {
@@ -434,6 +451,9 @@ export namespace BackgroundProcess {
     const sh = Shell.acceptable()
     const cwd = path.resolve(state.dir, input.cwd ?? state.dir)
     const readyPattern = pattern(input.ready?.pattern)
+    if (input.ready?.port && (await connected(input.ready.port))) {
+      throw new Error(`Ready port is already in use: ${input.ready.port}`)
+    }
     const args = Shell.args(sh, input.command, cwd)
     const proc = spawn(sh, args, {
       cwd,

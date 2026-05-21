@@ -4,6 +4,7 @@ import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { useDialog } from "@tui/ui/dialog"
 import { DialogSelect, type DialogSelectOption } from "@tui/ui/dialog-select"
 import { useKeybind } from "@tui/context/keybind"
+import { useProject } from "@tui/context/project"
 import { useRoute } from "@tui/context/route"
 import { useSDK } from "@tui/context/sdk"
 import { useSync } from "@tui/context/sync"
@@ -58,6 +59,7 @@ function ports(item: Info) {
 }
 
 function useActions() {
+  const project = useProject()
   const sdk = useSDK()
   const toast = useToast()
   const [busy, setBusy] = createSignal<{ id: string; kind: Kind }>()
@@ -67,11 +69,12 @@ function useActions() {
     if (kind === "stop" && terminal(item.status)) return
 
     setBusy({ id: item.id, kind })
+    const workspace = project.workspace.current()
     try {
       const result =
         kind === "stop"
-          ? await sdk.client.backgroundProcess.stop({ processID: item.id })
-          : await sdk.client.backgroundProcess.restart({ processID: item.id })
+          ? await sdk.client.backgroundProcess.stop({ processID: item.id, workspace })
+          : await sdk.client.backgroundProcess.restart({ processID: item.id, workspace })
 
       if (result.error) {
         toast.show({

@@ -70,6 +70,14 @@ function invalid(action: Action, message: string) {
   }
 }
 
+function missing(id: BackgroundProcess.ID) {
+  return {
+    title: "Background process not found",
+    output: `Background process not found: ${id}`,
+    metadata: { processID: id },
+  }
+}
+
 function pattern(ready?: BackgroundProcess.Ready) {
   if (!ready?.pattern) return
   try {
@@ -100,27 +108,24 @@ export const BackgroundProcessTool = Tool.define<typeof Params, Meta, never, "ba
         if (params.action !== "start") {
           const id = params.id
           if (!id) return invalid(params.action, "Missing id")
+          const found = yield* Effect.promise(() => BackgroundProcess.get(id))
+          if (!found || found.sessionID !== ctx.sessionID) return missing(id)
+          if (params.action === "logs") {
+            const logs = yield* Effect.promise(() => BackgroundProcess.logs(id))
+            if (!logs) return missing(id)
+            return {
+              title: `Logs: ${title(found)}`,
+              output: logs.output || "(no output)",
+              metadata: { processID: found.id, status: found.status },
+            }
+          }
           const info =
             params.action === "stop"
               ? yield* Effect.promise(() => BackgroundProcess.stop(id))
               : params.action === "restart"
                 ? yield* Effect.promise(() => BackgroundProcess.restart(id))
-                : yield* Effect.promise(() => BackgroundProcess.get(id))
-          if (!info) {
-            return {
-              title: "Background process not found",
-              output: `Background process not found: ${id}`,
-              metadata: { processID: id },
-            }
-          }
-          if (params.action === "logs") {
-            const logs = yield* Effect.promise(() => BackgroundProcess.logs(id))
-            return {
-              title: `Logs: ${title(info)}`,
-              output: logs?.output || "(no output)",
-              metadata: { processID: info.id, status: info.status },
-            }
-          }
+                : found
+          if (!info) return missing(id)
           return {
             title: `${params.action}: ${title(info)}`,
             output: format(info),
@@ -128,8 +133,8 @@ export const BackgroundProcessTool = Tool.define<typeof Params, Meta, never, "ba
           }
         }
 
-        const command = params.command
-        if (!command?.trim()) return invalid(params.action, "Missing command")
+        const command = params.command?.trim()
+        if (!command) return invalid(params.action, "Missing command")
         const err = pattern(params.ready)
         if (err) return invalid(params.action, err)
         const inst = yield* InstanceState.context
