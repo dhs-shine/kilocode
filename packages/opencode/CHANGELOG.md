@@ -1,5 +1,12 @@
 # @kilocode/cli
 
+## 7.3.5
+
+### Patch Changes
+
+- Updated dependencies [[`205e22e`](https://github.com/Kilo-Org/kilocode/commit/205e22ee4672305d3cb2e0c34b607a4950f8f4e8)]:
+  - @kilocode/kilo-indexing@7.3.5
+
 ## 7.3.3
 
 ### Patch Changes
