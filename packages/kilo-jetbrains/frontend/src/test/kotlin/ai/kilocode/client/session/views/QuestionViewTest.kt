@@ -684,20 +684,7 @@ class QuestionViewTest : BasePlatformTestCase() {
     }
 
     fun `test multi select custom answer combines with selected options`() {
-        view.show(
-            Question(
-                id = "q_multi_custom",
-                items = listOf(
-                    QuestionItem(
-                        question = "Pick features",
-                        header = "Features",
-                        options = listOf(QuestionOption("A", ""), QuestionOption("B", "")),
-                        multiple = true,
-                        custom = true,
-                    )
-                ),
-            )
-        )
+        view.show(customMultiQuestion("q_multi_custom"))
 
         option<JBCheckBox>(view, "A").doClick()
         val customBox = findAll<JBCheckBox>(view).first { it.actionCommand == "" }
@@ -709,6 +696,53 @@ class QuestionViewTest : BasePlatformTestCase() {
         button(view, "Submit").doClick()
 
         assertEquals(listOf(listOf("A", "extra")), replies.single().second.answers)
+    }
+
+    fun `test custom input is trimmed before submit`() {
+        view.show(customSingleQuestion("q_custom_trim"))
+
+        findAll<JBRadioButton>(view).first { it.actionCommand == "" }.doClick()
+        findAll<EditorTextField>(view).first().text = "  trimmed answer  "
+
+        button(view, "Submit").doClick()
+
+        assertEquals(listOf(listOf("trimmed answer")), replies.single().second.answers)
+    }
+
+    fun `test multi select custom answer can be unchecked`() {
+        view.show(customMultiQuestion("q_multi_custom_unchecked"))
+
+        option<JBCheckBox>(view, "A").doClick()
+        findAll<JBCheckBox>(view).first { it.actionCommand == "" }.doClick()
+        findAll<EditorTextField>(view).first().text = "extra"
+
+        findAll<JBCheckBox>(view).first { it.actionCommand == "" }.doClick()
+
+        assertFalse(
+            "Custom checkbox should be unchecked",
+            findAll<JBCheckBox>(view).first { it.actionCommand == "" }.isSelected,
+        )
+        assertTrue("Review should stay enabled because a normal option is selected", button(view, "Review").isEnabled)
+        button(view, "Review").doClick()
+        assertLabelsContain(view, "A")
+        assertLabelsDoNotContain(view, "extra")
+
+        button(view, "Submit").doClick()
+
+        assertEquals(listOf(listOf("A")), replies.single().second.answers)
+    }
+
+    fun `test duplicate custom answer is submitted once`() {
+        view.show(customMultiQuestion("q_multi_custom_duplicate"))
+
+        option<JBCheckBox>(view, "A").doClick()
+        findAll<JBCheckBox>(view).first { it.actionCommand == "" }.doClick()
+        findAll<EditorTextField>(view).first().text = "A"
+
+        button(view, "Review").doClick()
+        button(view, "Submit").doClick()
+
+        assertEquals(listOf(listOf("A")), replies.single().second.answers)
     }
 
     fun `test custom text appears in review`() {
@@ -911,6 +945,19 @@ class QuestionViewTest : BasePlatformTestCase() {
                     QuestionOption("Balanced", "Focused implementation"),
                 ),
                 multiple = false,
+                custom = true,
+            )
+        ),
+    )
+
+    private fun customMultiQuestion(id: String) = Question(
+        id = id,
+        items = listOf(
+            QuestionItem(
+                question = "Pick features",
+                header = "Features",
+                options = listOf(QuestionOption("A", ""), QuestionOption("B", "")),
+                multiple = true,
                 custom = true,
             )
         ),
