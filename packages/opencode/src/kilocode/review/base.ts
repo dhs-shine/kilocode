@@ -30,7 +30,7 @@ export namespace ReviewBranch {
     const parts = split(text)
     if (parts) {
       const base = tokens(parts.before)
-      if (base.length <= 1) {
+      if (base.length === 0 || (base.length === 1 && !/\s/.test(base[0]))) {
         return {
           ...(base[0] ? { base: base[0] } : {}),
           ...(parts.after ? { instructions: parts.after } : {}),
@@ -40,7 +40,7 @@ export namespace ReviewBranch {
     }
 
     const base = tokens(text)
-    if (base.length === 1) return { base: base[0] }
+    if (base.length === 1 && !/\s/.test(base[0])) return { base: base[0] }
     return { instructions: text }
   }
 

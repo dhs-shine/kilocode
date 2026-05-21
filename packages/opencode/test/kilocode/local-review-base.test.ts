@@ -19,6 +19,9 @@ describe("local-review base branch", () => {
     expect(ReviewBranch.resolve({ arguments: "" })).toEqual({})
     expect(ReviewBranch.resolve({ arguments: " release/next " })).toEqual({ base: "release/next" })
     expect(ReviewBranch.resolve({ arguments: "focus on security" })).toEqual({ instructions: "focus on security" })
+    expect(ReviewBranch.resolve({ arguments: '"focus on security"' })).toEqual({
+      instructions: '"focus on security"',
+    })
     expect(ReviewBranch.resolve({ arguments: "release -- focus on tests" })).toEqual({
       base: "release",
       instructions: "focus on tests",
