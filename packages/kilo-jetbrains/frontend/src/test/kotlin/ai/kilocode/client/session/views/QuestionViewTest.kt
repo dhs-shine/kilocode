@@ -10,13 +10,17 @@ import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.rpc.dto.QuestionReplyDto
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBRadioButton
 import com.intellij.ui.components.JBTextArea
+import java.awt.Component
 import java.awt.Container
+import kotlin.math.abs
 import javax.swing.AbstractButton
 import javax.swing.JButton
+import javax.swing.SwingUtilities
 
 @Suppress("UnstableApiUsage")
 class QuestionViewTest : BasePlatformTestCase() {
@@ -29,6 +33,7 @@ class QuestionViewTest : BasePlatformTestCase() {
     override fun setUp() {
         super.setUp()
         view = QuestionView(
+            project = project,
             reply = { id, dto -> replies.add(id to dto) },
             reject = { id -> rejects.add(id) },
             scroll = { scrolls++ },
@@ -185,6 +190,51 @@ class QuestionViewTest : BasePlatformTestCase() {
         val style = SessionEditorStyle.current()
         assertEquals("option label should use boldFont", style.boldFont, label.font)
         assertEquals("description should use regularFont", style.regularFont, desc.font)
+    }
+
+    fun `test option row without description centers button beside label`() {
+        view.show(
+            Question(
+                id = "no_desc_center",
+                items = listOf(
+                    QuestionItem(
+                        question = "Pick one",
+                        header = "Pick",
+                        options = listOf(QuestionOption("Plain", "")),
+                        multiple = false,
+                        custom = false,
+                    )
+                ),
+            )
+        )
+        layout(view)
+
+        val radio = option<JBRadioButton>(view, "Plain")
+        val label = text(view, "Plain")
+        val row = label.parent.parent as Container
+
+        val radioCenter = center(radio, row)
+        val labelCenter = center(label, row)
+        assertTrue(
+            "radio should be vertically centered with a single-line label: radio=$radioCenter label=$labelCenter row=${row.size}",
+            abs(radioCenter - labelCenter) <= 2,
+        )
+    }
+
+    fun `test custom row centers button beside label`() {
+        view.show(customSingleQuestion("custom_center"))
+        layout(view)
+
+        val radio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        val label = text(view, "Add your own response")
+        val row = label.parent.parent as Container
+
+        val radioCenter = center(radio, row)
+        val labelCenter = center(label, row)
+        assertTrue(
+            "custom radio should be vertically centered with the label: radio=$radioCenter label=$labelCenter row=${row.size}",
+            abs(radioCenter - labelCenter) <= 2,
+        )
     }
 
     fun `test question title uses headerFont and hint uses hintFont`() {
@@ -514,6 +564,266 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertEquals(listOf(listOf("A")), replies.single().second.answers)
     }
 
+    // ------ custom question row ------
+
+    fun `test custom row renders when custom is true`() {
+        view.show(customSingleQuestion("q_custom_present"))
+
+        assertLabelsContain(view, "Add your own response")
+    }
+
+    fun `test custom row is absent when custom is false`() {
+        view.show(singleSelectQuestion("q_custom_absent"))
+
+        assertLabelsDoNotContain(view, "Add your own response")
+    }
+
+    fun `test custom single select answer submits as typed text`() {
+        view.show(customSingleQuestion("q_custom_submit"))
+
+        // Click the custom radio button (actionCommand is "")
+        val customRadio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        customRadio.doClick()
+
+        // Find the editor that appeared and type text
+        val ed = findAll<EditorTextField>(view).first()
+        ed.text = "my custom answer"
+
+        button(view, "Submit").doClick()
+
+        assertFalse(view.isVisible)
+        assertEquals(1, replies.size)
+        assertEquals(listOf(listOf("my custom answer")), replies.single().second.answers)
+    }
+
+    fun `test custom editor grows for wrapped input`() {
+        view.show(customSingleQuestion("q_custom_grow"))
+        layout(view, 240)
+
+        val customRadio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        customRadio.doClick()
+        layout(view, 240)
+
+        val ed = findAll<EditorTextField>(view).first()
+        val initial = ed.preferredSize.height
+        ed.text = "wrapped ".repeat(30)
+
+        assertTrue("custom editor should grow when soft-wrapped text needs more lines", ed.preferredSize.height > initial)
+    }
+
+    fun `test blank custom input does not enable submit`() {
+        view.show(customSingleQuestion("q_custom_blank"))
+
+        val customRadio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        customRadio.doClick()
+
+        val submit = button(view, "Submit")
+        assertFalse("Submit should remain disabled when custom text is blank", submit.isEnabled)
+    }
+
+    fun `test selecting normal option after custom input sends option not custom text`() {
+        view.show(customSingleQuestion("q_custom_revert"))
+
+        // Open custom and type something
+        val customRadio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        customRadio.doClick()
+        val ed = findAll<EditorTextField>(view).first()
+        ed.text = "stale custom"
+
+        // Now select a normal option
+        option<JBRadioButton>(view, "Minimal").doClick()
+
+        button(view, "Submit").doClick()
+
+        assertEquals(listOf(listOf("Minimal")), replies.single().second.answers)
+    }
+
+    fun `test selecting normal option after custom input clears custom radio selection`() {
+        view.show(customSingleQuestion("q_custom_clear_radio"))
+
+        val radio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        radio.doClick()
+        val ed = findAll<EditorTextField>(view).first()
+        ed.text = "stale custom"
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+
+        val custom = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        assertFalse("Custom radio should not stay selected after choosing a normal option", custom.isSelected)
+        assertTrue("Normal option should be selected", option<JBRadioButton>(view, "Minimal").isSelected)
+        assertTrue("Custom editor should stay visible for non-empty text", findAll<EditorTextField>(view).any { it.parent != null && it.text == "stale custom" })
+        assertLabelsDoNotContain(view, "stale custom")
+    }
+
+    fun `test empty custom editor is removed after selecting normal option`() {
+        view.show(customSingleQuestion("q_custom_empty_editor"))
+
+        findAll<JBRadioButton>(view).first { it.actionCommand == "" }.doClick()
+        assertNotNull(findAll<EditorTextField>(view).firstOrNull { it.parent != null })
+
+        option<JBRadioButton>(view, "Minimal").doClick()
+
+        assertNull("Empty custom editor should be removed after selecting a normal option", findAll<EditorTextField>(view).firstOrNull { it.parent != null })
+    }
+
+    fun `test focusing retained custom editor reselects custom response`() {
+        view.show(customSingleQuestion("q_custom_focus"))
+
+        findAll<JBRadioButton>(view).first { it.actionCommand == "" }.doClick()
+        findAll<EditorTextField>(view).first().text = "stale custom"
+        option<JBRadioButton>(view, "Minimal").doClick()
+
+        view.testFocusCustomEditor()
+
+        assertTrue("Custom radio should be selected when its editor takes focus", findAll<JBRadioButton>(view).first { it.actionCommand == "" }.isSelected)
+        assertFalse("Normal option should be cleared when custom editor takes focus", option<JBRadioButton>(view, "Minimal").isSelected)
+        assertEquals("Submit should send custom text after focusing retained editor", listOf(listOf("stale custom")), run {
+            button(view, "Submit").doClick()
+            replies.single().second.answers
+        })
+    }
+
+    fun `test multi select custom answer combines with selected options`() {
+        view.show(
+            Question(
+                id = "q_multi_custom",
+                items = listOf(
+                    QuestionItem(
+                        question = "Pick features",
+                        header = "Features",
+                        options = listOf(QuestionOption("A", ""), QuestionOption("B", "")),
+                        multiple = true,
+                        custom = true,
+                    )
+                ),
+            )
+        )
+
+        option<JBCheckBox>(view, "A").doClick()
+        val customBox = findAll<JBCheckBox>(view).first { it.actionCommand == "" }
+        customBox.doClick()
+        val ed = findAll<EditorTextField>(view).first()
+        ed.text = "extra"
+
+        button(view, "Review").doClick()
+        button(view, "Submit").doClick()
+
+        assertEquals(listOf(listOf("A", "extra")), replies.single().second.answers)
+    }
+
+    fun `test custom text appears in review`() {
+        view.show(
+            Question(
+                id = "q_custom_review",
+                items = listOf(
+                    QuestionItem(
+                        question = "How?",
+                        header = "H",
+                        options = listOf(QuestionOption("X", "")),
+                        multiple = false,
+                        custom = true,
+                    ),
+                    QuestionItem(
+                        question = "What?",
+                        header = "W",
+                        options = listOf(QuestionOption("Y", "")),
+                        multiple = false,
+                        custom = false,
+                    ),
+                ),
+            )
+        )
+
+        // Answer first with custom
+        val customRadio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        customRadio.doClick()
+        val ed = findAll<EditorTextField>(view).first()
+        ed.text = "typed answer"
+
+        button(view, "Next").doClick()
+        option<JBRadioButton>(view, "Y").doClick()
+        button(view, "Review").doClick()
+
+        assertLabelsContain(view, "typed answer")
+    }
+
+    fun `test custom text preserved across navigation`() {
+        view.show(
+            Question(
+                id = "q_custom_nav",
+                items = listOf(
+                    QuestionItem(
+                        question = "How?",
+                        header = "H",
+                        options = listOf(QuestionOption("X", "")),
+                        multiple = false,
+                        custom = true,
+                    ),
+                    QuestionItem(
+                        question = "What?",
+                        header = "W",
+                        options = listOf(QuestionOption("Y", "")),
+                        multiple = false,
+                        custom = false,
+                    ),
+                ),
+            )
+        )
+
+        // Open custom on first question and type
+        val customRadio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        customRadio.doClick()
+        val ed = findAll<EditorTextField>(view).first()
+        ed.text = "preserved text"
+
+        // Navigate forward
+        button(view, "Next").doClick()
+        option<JBRadioButton>(view, "Y").doClick()
+
+        // Navigate back
+        navButton(view, "Back").doClick()
+
+        // Custom row should still be open with the preserved text in the editor
+        val editorAfterBack = findAll<EditorTextField>(view).firstOrNull()
+        assertNotNull("Custom editor should still be visible after navigating back", editorAfterBack)
+        assertEquals("Custom editor should have preserved text", "preserved text", editorAfterBack!!.text)
+    }
+
+    fun `test optionless custom question is answerable`() {
+        view.show(
+            Question(
+                id = "q_optionless",
+                items = listOf(
+                    QuestionItem(
+                        question = "Free answer",
+                        header = "Free",
+                        options = emptyList(),
+                        multiple = false,
+                        custom = true,
+                    )
+                ),
+            )
+        )
+
+        // The custom row should be present
+        assertLabelsContain(view, "Add your own response")
+
+        // Open the custom row
+        val customRadio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        customRadio.doClick()
+
+        val ed = findAll<EditorTextField>(view).first()
+        ed.text = "my answer"
+
+        val submit = button(view, "Submit")
+        assertTrue("Submit should be enabled after typing in optionless custom question", submit.isEnabled)
+
+        submit.doClick()
+
+        assertFalse(view.isVisible)
+        assertEquals(listOf(listOf("my answer")), replies.single().second.answers)
+    }
+
     // ------ helpers ------
 
     /**
@@ -532,6 +842,21 @@ class QuestionViewTest : BasePlatformTestCase() {
 
     private fun text(root: Container, value: String): JBTextArea =
         findAll<JBTextArea>(root).first { it.text == value }
+
+    private fun layout(root: Container, width: Int = 400) {
+        root.setSize(width, root.preferredSize.height)
+        layoutTree(root)
+    }
+
+    private fun layoutTree(root: Container) {
+        root.doLayout()
+        for (child in root.components) {
+            if (child is Container) layoutTree(child)
+        }
+    }
+
+    private fun center(component: Component, root: Component): Int =
+        SwingUtilities.convertPoint(component, 0, component.height / 2, root).y
 
     private fun singleSelectQuestion(id: String) = Question(
         id = id,
@@ -572,6 +897,22 @@ class QuestionViewTest : BasePlatformTestCase() {
                 multiple = false,
                 custom = false,
             ),
+        ),
+    )
+
+    private fun customSingleQuestion(id: String) = Question(
+        id = id,
+        items = listOf(
+            QuestionItem(
+                question = "Choose approach",
+                header = "Approach",
+                options = listOf(
+                    QuestionOption("Minimal", "Smallest safe change"),
+                    QuestionOption("Balanced", "Focused implementation"),
+                ),
+                multiple = false,
+                custom = true,
+            )
         ),
     )
 

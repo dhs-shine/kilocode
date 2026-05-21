@@ -180,6 +180,7 @@ class SessionUi(
         load = LoadingPanel()
         progressBody = load
         question = QuestionView(
+            project = project,
             reply = { id, dto -> controller.replyQuestion(id, dto) },
             reject = { id -> controller.rejectQuestion(id) },
             scroll = { scroll.followBottom(true) },
