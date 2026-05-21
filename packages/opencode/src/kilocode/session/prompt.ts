@@ -29,9 +29,10 @@ export namespace KiloSessionPrompt {
     arguments: string
   }) {
     if (input.command === "local-review" && input.source === undefined) {
+      const resolved = ReviewBranch.resolve({ arguments: input.arguments })
       return {
-        template: await ReviewBranch.template({ arguments: input.arguments }),
-        arguments: "",
+        template: await ReviewBranch.template({ arguments: input.arguments, placeholder: true }),
+        arguments: resolved.instructions ?? "",
       }
     }
     return {

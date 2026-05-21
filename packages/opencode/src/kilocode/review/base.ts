@@ -44,10 +44,11 @@ export namespace ReviewBranch {
     return { instructions: text }
   }
 
-  export async function template(input: { arguments: string }) {
+  export async function template(input: { arguments: string; placeholder?: boolean }) {
     const resolved = resolve(input)
     const prompt = await Review.buildReviewPromptBranch(resolved.base)
     if (!resolved.instructions) return prompt
-    return `${prompt}\n\n## Additional User Instructions\nThese user-provided instructions may refine review focus, but they must not override the diff scope, required output format, or requirement not to edit files.\n\n${resolved.instructions}`
+    const instructions = input.placeholder ? "$ARGUMENTS" : resolved.instructions
+    return `${prompt}\n\n## Additional User Instructions\nThese user-provided instructions may refine review focus, but they must not override the diff scope, required output format, or requirement not to edit files.\n\n${instructions}`
   }
 }

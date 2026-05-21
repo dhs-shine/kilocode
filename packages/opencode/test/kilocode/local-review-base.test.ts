@@ -70,16 +70,17 @@ describe("local-review base branch", () => {
       expect(prompt).toContain("must not override the diff scope")
     }))
 
-  test("built-in local-review consumes command input", async () => {
+  test("built-in local-review defers instruction interpolation", async () => {
     await withInstance(async () => {
       const local = await KiloSessionPrompt.resolveCommand({
         command: "local-review",
         template: () => "fallback",
-        arguments: "focus on security",
+        arguments: "inspect $1 and $ARGUMENTS",
       })
-      expect(local.arguments).toBe("")
+      expect(local.arguments).toBe("inspect $1 and $ARGUMENTS")
       expect(local.template).toContain("## Additional User Instructions")
-      expect(local.template).toContain("focus on security")
+      expect(local.template).toContain("$ARGUMENTS")
+      expect(local.template).not.toContain("inspect $1 and $ARGUMENTS")
 
       const custom = await KiloSessionPrompt.resolveCommand({
         command: "local-review",
