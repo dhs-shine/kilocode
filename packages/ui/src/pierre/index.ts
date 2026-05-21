@@ -15,9 +15,14 @@ export type DiffProps<T = {}> = FileDiffOptions<T> & {
 }
 
 const unsafeCSS = `
+:host {
+  --diffs-bg: var(--color-background-stronger);
+  background-color: var(--diffs-bg);
+}
+
 [data-diff],
 [data-file] {
-  --diffs-bg: light-dark(var(--diffs-light-bg), var(--diffs-dark-bg));
+  --diffs-bg: var(--color-background-stronger);
   --diffs-bg-buffer: var(--diffs-bg-buffer-override, light-dark( color-mix(in lab, var(--diffs-bg) 92%, var(--diffs-mixer)), color-mix(in lab, var(--diffs-bg) 92%, var(--diffs-mixer))));
   --diffs-bg-hover: var(--diffs-bg-hover-override, light-dark( color-mix(in lab, var(--diffs-bg) 97%, var(--diffs-mixer)), color-mix(in lab, var(--diffs-bg) 91%, var(--diffs-mixer))));
   --diffs-bg-context: var(--diffs-bg-context-override, light-dark( color-mix(in lab, var(--diffs-bg) 98.5%, var(--diffs-mixer)), color-mix(in lab, var(--diffs-bg) 92.5%, var(--diffs-mixer))));
