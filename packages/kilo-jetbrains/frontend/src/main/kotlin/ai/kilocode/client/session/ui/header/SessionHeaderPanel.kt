@@ -391,7 +391,7 @@ class SessionHeaderPanel(
         expand.accessibleContext.accessibleName = KiloBundle.message(key)
     }
 
-    private fun expanded() = PropertiesComponent.getInstance().getBoolean(EXPANDED_KEY, true)
+    private fun expanded() = PropertiesComponent.getInstance().getBoolean(EXPANDED_KEY, false)
 
     private fun sizeTimeline() {
         val size = timeline.preferredSize
