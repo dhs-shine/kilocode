@@ -1,4 +1,14 @@
-import { createContext, createEffect, createMemo, createSignal, onCleanup, onMount, type Accessor, type ParentComponent, useContext } from "solid-js"
+import {
+  createContext,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+  type Accessor,
+  type ParentComponent,
+  useContext,
+} from "solid-js"
 import { useServer } from "./server"
 import { useSession } from "./session"
 import { useVSCode } from "./vscode"
@@ -134,11 +144,7 @@ export const LocalTabsProvider: ParentComponent = (props) => {
         const before = active()
         const listed = message.sessions.map((item) => item.id)
         for (const id of listed) fresh.delete(id)
-        const next = reconcileTabs(
-          current(),
-          [...listed, ...(message.preserveSessionIds ?? []), ...fresh],
-          pending(),
-        )
+        const next = reconcileTabs(current(), [...listed, ...(message.preserveSessionIds ?? []), ...fresh], pending())
         apply(next)
         if (before !== next.active) focus(next.active)
         return

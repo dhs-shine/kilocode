@@ -25,7 +25,9 @@ export async function routeEarlyMessage(message: { type: string }, ctx: Ctx): Pr
   }
   if (message.type === "sidebar.openSessions") {
     const input = message as { sessionIDs?: unknown }
-    const ids = Array.isArray(input.sessionIDs) ? input.sessionIDs.filter((id): id is string => typeof id === "string") : []
+    const ids = Array.isArray(input.sessionIDs)
+      ? input.sessionIDs.filter((id): id is string => typeof id === "string")
+      : []
     ctx.openSessions(ids)
     return true
   }

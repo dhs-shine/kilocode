@@ -103,22 +103,17 @@ describe("shared close selection", () => {
 
 describe("tracked tab restore", () => {
   it("restores durable local sessions when the current list has no real tabs", () => {
-    expect(restoreTrackedTabs(inventory(["s1", "s2"]), [], undefined, trackedPending, identity)).toEqual([
-      "s1",
-      "s2",
-    ])
+    expect(restoreTrackedTabs(inventory(["s1", "s2"]), [], undefined, trackedPending, identity)).toEqual(["s1", "s2"])
   })
 
   it("skips externally owned sessions while restoring local sessions", () => {
-    expect(
-      restoreTrackedTabs(inventory(["s2"], ["s1", "s3"]), [], undefined, trackedPending, identity),
-    ).toEqual(["s2"])
+    expect(restoreTrackedTabs(inventory(["s2"], ["s1", "s3"]), [], undefined, trackedPending, identity)).toEqual(["s2"])
   })
 
   it("evicts externally owned sessions already in the current local list", () => {
-    expect(
-      restoreTrackedTabs(inventory(["s1"], ["s2"]), ["s1", "s2"], undefined, trackedPending, identity),
-    ).toEqual(["s1"])
+    expect(restoreTrackedTabs(inventory(["s1"], ["s2"]), ["s1", "s2"], undefined, trackedPending, identity)).toEqual([
+      "s1",
+    ])
   })
 
   it("applies durable ordering and merges sessions missing from stale webview state", () => {
@@ -128,7 +123,9 @@ describe("tracked tab restore", () => {
   })
 
   it("does not overwrite an already-restored real list without a change", () => {
-    expect(restoreTrackedTabs(inventory(["s1", "s2"]), ["s1", "s2"], undefined, trackedPending, identity)).toBeUndefined()
+    expect(
+      restoreTrackedTabs(inventory(["s1", "s2"]), ["s1", "s2"], undefined, trackedPending, identity),
+    ).toBeUndefined()
   })
 
   it("restores disk sessions when current tabs are only pending drafts", () => {
