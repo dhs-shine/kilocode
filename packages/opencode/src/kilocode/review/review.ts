@@ -431,6 +431,9 @@ export namespace Review {
         stderr: ancestor.stderr.toString(),
         baseBranch: base,
       })
+      if (baseBranch !== undefined) {
+        throw new Error(`Base branch or ref not found or has no common history: "${base}"`)
+      }
       return { files: [], raw: "" }
     }
     const hash = ancestor.stdout.toString().trim()

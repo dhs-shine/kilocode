@@ -2,17 +2,16 @@ import { $ } from "bun"
 import { describe, expect, test } from "bun:test"
 import path from "path"
 import * as Log from "@opencode-ai/core/util/log"
-import { Instance } from "../../src/project/instance"
 import { ReviewBranch } from "../../src/kilocode/review/base"
 import { KiloSessionPrompt } from "../../src/kilocode/session/prompt"
-import { tmpdir } from "../fixture/fixture"
+import { provideTestInstance, tmpdir } from "../fixture/fixture"
 
 void Log.init({ print: false })
 
 async function withInstance(fn: (dir: string) => Promise<void>) {
   await using tmp = await tmpdir({ git: true })
   await $`git branch main`.cwd(tmp.path).quiet().nothrow()
-  await Instance.provide({ directory: tmp.path, fn: () => fn(tmp.path) })
+  await provideTestInstance({ directory: tmp.path, fn: () => fn(tmp.path) })
 }
 
 describe("local-review base branch", () => {
@@ -44,6 +43,13 @@ describe("local-review base branch", () => {
       expect(prompt).toContain("These are the commits on `feature` since diverging from `release`:")
       expect(prompt).toContain("`git diff release...feature`")
       expect(prompt).toContain("`git log release..feature --oneline`")
+    }))
+
+  test("branch prompt rejects an unknown base branch", () =>
+    withInstance(async () => {
+      await expect(ReviewBranch.template({ arguments: "missing" })).rejects.toThrow(
+        'Base branch or ref not found or has no common history: "missing"',
+      )
     }))
 
   test("branch prompt appends review instructions", () =>
