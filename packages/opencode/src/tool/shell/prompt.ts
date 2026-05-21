@@ -108,7 +108,7 @@ Usage notes:
   - It is very helpful if you write a clear, concise description of what this command does in 5-10 words.
   - If the output exceeds ${limits.maxLines} lines or ${limits.maxBytes} bytes, it will be truncated and the full output will be written to a file. You can use Read with offset/limit to read specific sections or Grep to search the full content. Do NOT use \`head\`, \`tail\`, or other truncation commands to limit output; the full output will already be captured to a file for more precise searching.
 
-  - Avoid using Bash with the \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\`, \`awk\`, or \`echo\` commands, unless explicitly instructed or when these commands are truly necessary for the task. Instead, always prefer using the dedicated tools for these commands:
+  - Avoid using the shell with the \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\`, \`awk\`, or \`echo\` commands, unless explicitly instructed or when these commands are truly necessary for the task. Instead, always prefer using the dedicated tools for these commands:
     - File search: Use Glob (NOT find or ls)
     - Content search: Use Grep (NOT grep or rg)
     - Read files: Use Read (NOT cat/head/tail)
@@ -259,7 +259,7 @@ function profile(name: string, platform: NodeJS.Platform, limits: Limits) {
   }
   return {
     intro:
-      "Executes a given bash command in a persistent shell session with optional timeout, ensuring proper handling and security measures.",
+      "Executes a given command in a persistent shell session with optional timeout, ensuring proper handling and security measures.",
     workdirSection:
       "All commands run in the current working directory by default. Use the `workdir` parameter if you need to run a command in a different directory. AVOID using `cd <directory> && <command>` patterns - use `workdir` instead.",
     commandSection: bashCommandSection(chain, limits),
@@ -276,10 +276,12 @@ function profile(name: string, platform: NodeJS.Platform, limits: Limits) {
 
 export function render(name: string, platform: NodeJS.Platform, limits: Limits) {
   const selected = profile(name, platform, limits)
+  const os =
+    platform === "win32" ? "Windows" : platform === "darwin" ? "macOS" : "Linux"
   return {
     description: renderPrompt(DESCRIPTION, {
       intro: selected.intro,
-      os: platform,
+      os,
       shell: name,
       tmp: Global.Path.tmp,
       workdirSection: selected.workdirSection,
