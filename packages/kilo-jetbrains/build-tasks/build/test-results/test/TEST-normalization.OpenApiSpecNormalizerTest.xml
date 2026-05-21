@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="normalization.OpenApiSpecNormalizerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-05-20T14:57:32.373Z" hostname="MacBook-Pro.local" time="0.052">
+  <properties/>
+  <testcase name="renames configured duplicate tags and linked operations()" classname="normalization.OpenApiSpecNormalizerTest" time="0.043"/>
+  <testcase name="keeps specs without duplicate configured tags unchanged()" classname="normalization.OpenApiSpecNormalizerTest" time="0.0"/>
+  <testcase name="fails when configured operation for renamed tag is absent()" classname="normalization.OpenApiSpecNormalizerTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
