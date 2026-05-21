@@ -11,6 +11,7 @@ import com.intellij.util.ui.JBUI
 import java.awt.Color
 import java.awt.Component
 import java.awt.Dimension
+import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -117,10 +118,20 @@ class BaseSessionQuestionPanel : RoundedContentPanel(
         top?.let { col.add(it) }
         col.add(headerText)
         col.add(descriptionText)
-        body?.let { col.add(it) }
-        footer?.let { col.add(it) }
+        body?.let {
+            col.add(gap())
+            col.add(it)
+        }
+        footer?.let {
+            col.add(gap())
+            col.add(it)
+        }
         col.revalidate()
         col.repaint()
+    }
+
+    private fun gap(): Component = Box.createVerticalStrut(UiStyle.Gap.lg()).apply {
+        setAlignmentX(Component.LEFT_ALIGNMENT)
     }
 
     private fun makeText(value: String, color: Color, bold: Boolean): JBTextArea {

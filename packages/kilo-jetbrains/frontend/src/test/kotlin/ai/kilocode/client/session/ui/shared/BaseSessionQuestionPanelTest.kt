@@ -199,15 +199,32 @@ class BaseSessionQuestionPanelTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test col child count grows by one for each optional slot added`() {
+    fun `test col child count includes spacing before body and footer slots`() {
         edt {
             val panel = BaseSessionQuestionPanel()
             panel.setTopPanel(JLabel("top"))
             assertEquals(3, findCol(panel)!!.componentCount)
             panel.setBody(JLabel("body"))
-            assertEquals(4, findCol(panel)!!.componentCount)
-            panel.setFooter(JLabel("footer"))
             assertEquals(5, findCol(panel)!!.componentCount)
+            panel.setFooter(JLabel("footer"))
+            assertEquals(7, findCol(panel)!!.componentCount)
+        }
+    }
+
+    fun `test body and footer spacing use matching standard insets`() {
+        edt {
+            val panel = BaseSessionQuestionPanel()
+            val body = JLabel("body")
+            val footer = JLabel("footer")
+            panel.setBody(body)
+            panel.setFooter(footer)
+
+            val col = findCol(panel)!!
+            val comps = col.components.toList()
+            val bodyGap = comps[comps.indexOf(body) - 1]
+            val footerGap = comps[comps.indexOf(footer) - 1]
+
+            assertEquals(bodyGap.preferredSize.height, footerGap.preferredSize.height)
         }
     }
 

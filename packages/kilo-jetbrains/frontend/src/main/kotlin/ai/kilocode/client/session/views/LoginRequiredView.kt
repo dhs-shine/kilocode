@@ -7,9 +7,7 @@ import ai.kilocode.client.session.ui.shared.applyButton
 import ai.kilocode.client.session.ui.shared.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
-import ai.kilocode.client.ui.UiStyle
 import com.intellij.util.concurrency.annotations.RequiresEdt
-import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
 import java.awt.Component
@@ -44,7 +42,6 @@ class LoginRequiredView(
 
         val footer = JPanel(BorderLayout()).apply {
             isOpaque = false
-            border = JBUI.Borders.emptyTop(UiStyle.Gap.lg())
             alignmentX = Component.LEFT_ALIGNMENT
             add(dismissButton, BorderLayout.WEST)
             add(openProfileButton, BorderLayout.EAST)

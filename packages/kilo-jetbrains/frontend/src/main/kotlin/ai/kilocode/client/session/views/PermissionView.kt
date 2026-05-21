@@ -2,26 +2,26 @@ package ai.kilocode.client.session.views
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Permission
-import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.ui.SessionView
+import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
+import ai.kilocode.client.session.ui.shared.SessionQuestionButton
+import ai.kilocode.client.session.ui.shared.applyButton
+import ai.kilocode.client.session.ui.shared.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.rpc.dto.PermissionReplyDto
-import com.intellij.icons.AllIcons
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
-import java.awt.FlowLayout
+import java.awt.Component
+import java.awt.Dimension
 import javax.swing.Box
 import javax.swing.BoxLayout
-import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
@@ -40,114 +40,67 @@ class PermissionView(
     private var requestId: String? = null
     private var style = SessionEditorStyle.current()
 
-    private val card = BorderLayoutPanel()
-    private val header = JBLabel()
-    private val details = JPanel()
-    private val actions = JPanel(FlowLayout(FlowLayout.LEFT, UiStyle.Gap.sm(), 0))
-    private val run = JButton(KiloBundle.message("session.permission.run"))
-    private val deny = JButton(KiloBundle.message("session.permission.deny"))
+    private val card = BaseSessionQuestionPanel()
 
-    // Track text areas so we can update their font on style change
-    private val textAreas = mutableListOf<JBTextArea>()
+    private val body = JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        isOpaque = false
+        alignmentX = Component.LEFT_ALIGNMENT
+    }
+
+    private val footer = JPanel(BorderLayout()).apply {
+        isOpaque = false
+        alignmentX = Component.LEFT_ALIGNMENT
+    }
+
+    private val actions = JPanel().apply {
+        isOpaque = false
+        layout = BoxLayout(this, BoxLayout.X_AXIS)
+        alignmentX = Component.LEFT_ALIGNMENT
+    }
+
+    private val run = applyButton(KiloBundle.message("session.permission.run")) { decide("once") }
+    private val deny = dismissButton(KiloBundle.message("session.permission.deny")) { decide("reject") }
+
+    // Track command MdView instances for style updates
+    private val cmdViews = mutableListOf<MdView>()
+    private val cmdScrolls = mutableListOf<JBScrollPane>()
 
     init {
+        isOpaque = false
         isVisible = false
 
-        card.background = SessionUiStyle.View.surface()
-        card.border = JBUI.Borders.compound(
-            SessionUiStyle.View.card(),
-            JBUI.Borders.empty(
-                UiStyle.Gap.sm(),
-                UiStyle.Gap.pad(),
-                UiStyle.Gap.sm(),
-                UiStyle.Gap.pad(),
-            ),
-        )
-
-        val top = JPanel(FlowLayout(FlowLayout.LEFT, UiStyle.Gap.xs(), 0)).apply {
-            isOpaque = false
-            val icon = JBLabel(AllIcons.General.Warning)
-            add(icon)
-            add(Box.createHorizontalStrut(UiStyle.Gap.xs()))
-            header.font = style.boldUiFont
-            add(header)
-        }
-
-        details.layout = BoxLayout(details, BoxLayout.Y_AXIS)
-        details.isOpaque = false
-
-        actions.isOpaque = false
-        actions.add(run)
         actions.add(deny)
+        actions.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
+        actions.add(run)
+        footer.add(actions, BorderLayout.EAST)
 
-        val body = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            isOpaque = false
-            add(top)
-            add(Box.createVerticalStrut(UiStyle.Gap.sm()))
-            add(details)
-            add(Box.createVerticalStrut(UiStyle.Gap.sm()))
-            add(actions)
-        }
-
-        card.add(body, BorderLayout.CENTER)
-        add(card, BorderLayout.CENTER)
-
-        run.addActionListener { decide("once") }
-        deny.addActionListener { decide("reject") }
+        card.setBody(body)
+        card.setFooter(footer)
+        addToCenter(card)
     }
 
     /** Populate the view for [permission] and make it visible. */
     fun show(permission: Permission) {
         requestId = permission.id
 
-        header.text = KiloBundle.message("session.permission.title")
-        header.font = style.boldUiFont
+        card.headerText.text = KiloBundle.message("session.permission.title")
 
-        details.removeAll()
-        textAreas.clear()
+        body.removeAll()
+        cmdViews.clear()
+        cmdScrolls.clear()
 
         val toolName = permission.name
         val cmd = permission.meta.command
-        if (cmd != null || toolName == "bash") {
-            addCommandBlock(cmd ?: "")
-        } else {
-            addPatternBlock(toolName, permission.patterns)
-        }
+        val command = cmd != null || toolName == "bash"
 
-        val msg = permission.message
-        if (!msg.isNullOrBlank()) {
-            val msgLabel = JBLabel(msg).apply {
-                foreground = UIUtil.getContextHelpForeground()
-                font = style.smallUiFont
-            }
-            details.add(Box.createVerticalStrut(UiStyle.Gap.xs()))
-            details.add(msgLabel)
-        }
+        card.descriptionText.text = ""
+        card.descriptionText.isVisible = false
 
-        val diffs = permission.meta.fileDiffs
-        if (diffs.isNotEmpty()) {
-            details.add(Box.createVerticalStrut(UiStyle.Gap.sm()))
-            val diffTitle = JBLabel(KiloBundle.message("session.permission.diff")).apply {
-                font = style.boldUiFont
-            }
-            details.add(diffTitle)
-            for (diff in diffs) {
-                details.add(Box.createVerticalStrut(UiStyle.Gap.xs()))
-                addDiffBlock(diff)
-            }
+        if (command) {
+            addCodeBlock(cmd ?: "")
         } else {
-            val fallbackDiff = permission.meta.diff
-            val fallbackPath = permission.meta.filePath
-            if (fallbackDiff != null) {
-                details.add(Box.createVerticalStrut(UiStyle.Gap.sm()))
-                val diffTitle = JBLabel(KiloBundle.message("session.permission.diff")).apply {
-                    font = style.boldUiFont
-                }
-                details.add(diffTitle)
-                details.add(Box.createVerticalStrut(UiStyle.Gap.xs()))
-                addDiffBlock(PermissionFileDiff(file = fallbackPath ?: "patch", patch = fallbackDiff, additions = 0, deletions = 0))
-            }
+            addCodeBlock(patternText(toolName, permission.patterns))
         }
 
         val responding = permission.state == PermissionRequestState.RESPONDING || permission.state == PermissionRequestState.RESOLVED
@@ -161,107 +114,67 @@ class PermissionView(
     /** Hide this view and clear the active request id. */
     fun hideView() {
         requestId = null
-        details.removeAll()
-        textAreas.clear()
+        body.removeAll()
+        cmdViews.clear()
+        cmdScrolls.clear()
         isVisible = false
         refresh()
     }
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
-        header.font = style.boldUiFont
-        for (area in textAreas) {
-            area.font = style.transcriptFont
-            area.background = style.editorScheme.defaultBackground
+        card.applyStyle(style)
+        for (md in cmdViews) {
+            applyMd(md)
+        }
+        for (scroll in cmdScrolls) {
+            applyScroll(scroll)
         }
     }
 
-    private fun addCommandBlock(cmd: String) {
-        val label = JBLabel(KiloBundle.message("session.permission.command")).apply {
-            font = style.boldUiFont
+    private fun addCodeBlock(text: String) {
+        val md = MdView.html().apply {
+            applyMd(this)
+            component.border = JBUI.Borders.empty()
+            set(fencedBlock(text))
         }
-        details.add(label)
-        details.add(Box.createVerticalStrut(UiStyle.Gap.xs()))
-        val area = JBTextArea(cmd).apply {
-            isEditable = false
-            lineWrap = false
-            font = style.transcriptFont
-            background = style.editorScheme.defaultBackground
-            foreground = UIUtil.getLabelForeground()
+        cmdViews.add(md)
+
+        val scroll = object : JBScrollPane(md.component) {
+            override fun getPreferredSize(): Dimension {
+                val fm = getFontMetrics(style.transcriptFont)
+                val cap = fm.height * SessionUiStyle.View.Permission.COMMAND_LINES + JBUI.scale(SessionUiStyle.View.CARD_BODY_EXTRA_HEIGHT)
+                val ps = super.getPreferredSize()
+                return Dimension(ps.width, minOf(ps.height, cap))
+            }
+
+            override fun getMaximumSize(): Dimension {
+                val fm = getFontMetrics(style.transcriptFont)
+                val cap = fm.height * SessionUiStyle.View.Permission.COMMAND_LINES + JBUI.scale(SessionUiStyle.View.CARD_BODY_EXTRA_HEIGHT)
+                return Dimension(Int.MAX_VALUE, cap)
+            }
+        }.apply {
+            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            applyScroll(this)
         }
-        textAreas.add(area)
-        val scroll = JBScrollPane(area).apply {
-            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
-            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
-            border = JBUI.Borders.customLine(SessionUiStyle.View.line(), 1)
-        }
-        details.add(scroll)
+        scroll.alignmentX = Component.LEFT_ALIGNMENT
+        cmdScrolls.add(scroll)
+        body.add(scroll)
     }
 
-    private fun addPatternBlock(tool: String, patterns: List<String>) {
+    private fun patternText(tool: String, patterns: List<String>): String {
         val lbl = toolLabel(tool)
         val filtered = patterns.filter { it != "*" }
         if (filtered.isEmpty()) {
-            val noDetails = JBLabel(KiloBundle.message("session.permission.no.details", lbl)).apply {
-                font = style.uiFont
-            }
-            details.add(noDetails)
-            return
+            return KiloBundle.message("session.permission.no.details", lbl)
         }
         if (filtered.size == 1) {
-            val row = JBLabel("$lbl  ${filtered[0]}").apply {
-                font = style.uiFont
-            }
-            details.add(row)
-            return
+            return "$lbl  ${filtered[0]}"
         }
-        val title = JBLabel(KiloBundle.message("session.permission.patterns", lbl)).apply {
-            font = style.boldUiFont
-        }
-        details.add(title)
-        for (p in filtered) {
-            details.add(Box.createVerticalStrut(UiStyle.Gap.xs()))
-            val pathLabel = JBLabel(p).apply {
-                font = style.transcriptFont
-                foreground = UIUtil.getContextHelpForeground()
-            }
-            details.add(pathLabel)
-        }
-    }
-
-    private fun addDiffBlock(diff: PermissionFileDiff) {
-        val fileRow = JPanel(FlowLayout(FlowLayout.LEFT, UiStyle.Gap.xs(), 0)).apply {
-            isOpaque = false
-            val fileLabel = JBLabel(diff.file).apply {
-                font = style.transcriptFont
-            }
-            add(fileLabel)
-            if (diff.additions > 0 || diff.deletions > 0) {
-                val summary = JBLabel(KiloBundle.message("session.permission.diff.summary", diff.additions, diff.deletions)).apply {
-                    font = style.smallUiFont
-                    foreground = UIUtil.getContextHelpForeground()
-                }
-                add(summary)
-            }
-        }
-        details.add(fileRow)
-        val patch = diff.patch
-        if (!patch.isNullOrBlank()) {
-            details.add(Box.createVerticalStrut(UiStyle.Gap.xs()))
-            val area = JBTextArea(patch).apply {
-                isEditable = false
-                lineWrap = false
-                font = style.transcriptFont
-                background = style.editorScheme.defaultBackground
-                foreground = UIUtil.getLabelForeground()
-            }
-            textAreas.add(area)
-            val scroll = JBScrollPane(area).apply {
-                horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
-                verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
-                border = JBUI.Borders.customLine(SessionUiStyle.View.line(), 1)
-            }
-            details.add(scroll)
+        return buildString {
+            appendLine(KiloBundle.message("session.permission.patterns", lbl))
+            append(filtered.joinToString("\n"))
         }
     }
 
@@ -294,6 +207,28 @@ class PermissionView(
         reply(id, PermissionReplyDto(reply = value))
     }
 
+    private fun applyMd(md: MdView) {
+        val bg = codeBackground()
+        md.opaque = true
+        md.font = style.transcriptFont
+        md.foreground = style.editorForeground
+        md.background = bg
+        md.preBg = bg
+        md.codeBg = bg
+        md.preFg = style.editorForeground
+        md.codeFont = style.editorFamily
+        md.component.background = bg
+    }
+
+    private fun applyScroll(scroll: JBScrollPane) {
+        val bg = codeBackground()
+        scroll.border = JBUI.Borders.empty()
+        scroll.background = bg
+        scroll.viewport.background = bg
+    }
+
+    private fun codeBackground() = SessionUiStyle.View.headerHover()
+
     private fun refresh() {
         revalidate()
         repaint()
@@ -304,4 +239,20 @@ class PermissionView(
     // Test helpers
     internal fun runButtonForTest() = run
     internal fun denyButtonForTest() = deny
+}
+
+/**
+ * Wrap [cmd] in a fenced Markdown code block. The fence uses at least 3 backticks,
+ * and is extended to be longer than any contiguous run of backticks inside [cmd]
+ * so the fence cannot be broken by content.
+ */
+private fun fencedBlock(cmd: String): String {
+    var max = 2
+    var run = 0
+    for (ch in cmd) {
+        run = if (ch == '`') run + 1 else 0
+        if (run > max) max = run
+    }
+    val fence = "`".repeat(max + 1)
+    return "$fence\n$cmd\n$fence"
 }

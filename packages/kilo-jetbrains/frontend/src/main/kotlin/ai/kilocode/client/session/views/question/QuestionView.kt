@@ -82,7 +82,6 @@ class QuestionView(
     }
     private val footer = JPanel(BorderLayout()).apply {
         isOpaque = false
-        border = JBUI.Borders.emptyTop(UiStyle.Gap.lg())
         alignmentX = Component.LEFT_ALIGNMENT
     }
     private val dismiss = dismissButton(KiloBundle.message("session.question.dismiss")) { doReject() }
@@ -157,7 +156,7 @@ class QuestionView(
             card.descriptionText.text = KiloBundle.message(
                 if (item.multiple) "session.question.hint.multi" else "session.question.hint.single"
             )
-            card.descriptionText.border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
+            card.descriptionText.border = JBUI.Borders.empty()
             card.descriptionText.isVisible = true
             addContent(item, selections[idx])
         }

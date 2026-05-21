@@ -4,10 +4,16 @@ import ai.kilocode.client.session.model.Permission
 import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.PermissionRequestState
+import ai.kilocode.client.session.ui.shared.BaseSessionQuestionPanel
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.rpc.dto.PermissionReplyDto
+import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBHtmlPane
+import com.intellij.ui.components.JBScrollPane
 import java.awt.Container
 import javax.swing.AbstractButton
+import javax.swing.ScrollPaneConstants
 
 @Suppress("UnstableApiUsage")
 class PermissionViewTest : BasePlatformTestCase() {
@@ -106,6 +112,26 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertTrue("Expected command in text, got: $text", text.contains("git status --short"))
     }
 
+    fun `test bash permission shows only header and code block content`() {
+        view.show(
+            Permission(
+                id = "perm4b",
+                sessionId = "ses",
+                name = "bash",
+                patterns = emptyList(),
+                always = emptyList(),
+                meta = PermissionMeta(command = "git status --short"),
+                message = "Run this command?",
+            )
+        )
+
+        val text = allText(view)
+        assertTrue("Expected permission header, got: $text", text.contains("Permission required"))
+        assertTrue("Expected command in text, got: $text", text.contains("git status --short"))
+        assertFalse("Should not show command label, got: $text", text.contains("Command"))
+        assertFalse("Should not show permission message, got: $text", text.contains("Run this command?"))
+    }
+
     fun `test non-bash patterns show tool and path`() {
         view.show(
             Permission(
@@ -120,10 +146,32 @@ class PermissionViewTest : BasePlatformTestCase() {
 
         val text = allText(view)
         assertTrue("Expected 'Read' in text, got: $text", text.contains("Read"))
-        assertTrue("Expected path in text, got: $text", text.contains("src/App.kt"))
+        assertTrue("Expected path in text, got: $text", text.contains("src/"))
+        assertTrue("Expected path in text, got: $text", text.contains("App"))
+        assertTrue("Expected path in text, got: $text", text.contains("kt"))
     }
 
-    fun `test diff preview renders file and patch`() {
+    fun `test non-bash patterns render as fenced code block via MdView`() {
+        view.show(
+            Permission(
+                id = "perm_pattern_md",
+                sessionId = "ses",
+                name = "glob",
+                patterns = listOf("packages/kilo-jetbrains/**/*.kt"),
+                always = emptyList(),
+                meta = PermissionMeta(),
+            )
+        )
+
+        val panes = findAll<JBHtmlPane>(view)
+        assertTrue("Expected at least one JBHtmlPane for pattern details", panes.isNotEmpty())
+        val html = panes.first().text
+        assertTrue("Expected <pre> tag in rendered HTML, got: $html", html.contains("<pre"))
+        assertTrue("Expected tool label in rendered HTML, got: $html", html.contains("Glob Search"))
+        assertTrue("Expected pattern in rendered HTML, got: $html", html.contains("packages/"))
+    }
+
+    fun `test diff preview is not rendered`() {
         view.show(
             Permission(
                 id = "perm6",
@@ -145,10 +193,9 @@ class PermissionViewTest : BasePlatformTestCase() {
         )
 
         val text = allText(view)
-        assertTrue("Expected file name in text, got: $text", text.contains("src/A.kt"))
-        assertTrue("Expected patch in text, got: $text", text.contains("@@"))
-        assertTrue("Expected additions in text, got: $text", text.contains("+1"))
-        assertTrue("Expected deletions in text, got: $text", text.contains("-2"))
+        assertFalse("Should not render diff patch, got: $text", text.contains("@@"))
+        assertFalse("Should not render diff additions, got: $text", text.contains("+1"))
+        assertFalse("Should not render diff deletions, got: $text", text.contains("-2"))
     }
 
     fun `test no rule controls rendered`() {
@@ -206,6 +253,108 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertEquals("reject", replies.single().second.reply)
     }
 
+    // ------ new: shared card shell ------
+
+    fun `test view contains BaseSessionQuestionPanel after show`() {
+        view.show(permission())
+
+        val panels = findAll<BaseSessionQuestionPanel>(view)
+        assertTrue("Expected a BaseSessionQuestionPanel after show", panels.isNotEmpty())
+    }
+
+    // ------ new: shared button types ------
+
+    fun `test run button is SessionQuestionButton with primary true`() {
+        view.show(permission())
+
+        val btn = view.runButtonForTest()
+        assertTrue("Run should be primary", btn.primary)
+    }
+
+    fun `test run button uses default style key`() {
+        view.show(permission())
+
+        val btn = view.runButtonForTest()
+        assertEquals(true, btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
+    }
+
+    fun `test deny button is SessionQuestionButton with primary false`() {
+        view.show(permission())
+
+        val btn = view.denyButtonForTest()
+        assertFalse("Deny should not be primary", btn.primary)
+    }
+
+    fun `test session question buttons use question surface background`() {
+        view.show(permission())
+
+        assertEquals(SessionUiStyle.View.surface(), view.runButtonForTest().background)
+        assertEquals(SessionUiStyle.View.surface(), view.denyButtonForTest().background)
+    }
+
+    // ------ new: command rendered via MdView ------
+
+    fun `test bash command renders as fenced code block via MdView`() {
+        view.show(
+            Permission(
+                id = "perm_md",
+                sessionId = "ses",
+                name = "bash",
+                patterns = emptyList(),
+                always = emptyList(),
+                meta = PermissionMeta(command = "git status --short"),
+            )
+        )
+
+        // Find the JBHtmlPane that MdView uses — it should contain a <pre> block
+        val panes = findAll<JBHtmlPane>(view)
+        assertTrue("Expected at least one JBHtmlPane for the command MdView", panes.isNotEmpty())
+        val html = panes.first().text
+        assertTrue("Expected <pre> tag in rendered HTML, got: $html", html.contains("<pre"))
+        assertTrue("Expected command text in rendered HTML, got: $html", html.contains("git status --short"))
+    }
+
+    // ------ new: command scroll pane height cap ------
+
+    fun `test long command scroll pane uses vertical scrolling and caps height`() {
+        val longCmd = (1..20).joinToString("\n") { "echo line $it" }
+        view.show(
+            Permission(
+                id = "perm_long",
+                sessionId = "ses",
+                name = "bash",
+                patterns = emptyList(),
+                always = emptyList(),
+                meta = PermissionMeta(command = longCmd),
+            )
+        )
+
+        val scrolls = findAll<JBScrollPane>(view)
+        val cmdScroll = scrolls.firstOrNull { it.verticalScrollBarPolicy == ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED }
+        assertNotNull("Expected a JBScrollPane with VERTICAL_SCROLLBAR_AS_NEEDED for the command", cmdScroll)
+
+        val maxH = cmdScroll!!.maximumSize.height
+        assertTrue("Maximum height should be capped (> 0)", maxH > 0)
+        assertTrue("Maximum height should be finite (< Int.MAX_VALUE)", maxH < Int.MAX_VALUE)
+    }
+
+    fun `test code block scroll pane uses code background`() {
+        view.show(
+            Permission(
+                id = "perm_bg",
+                sessionId = "ses",
+                name = "bash",
+                patterns = emptyList(),
+                always = emptyList(),
+                meta = PermissionMeta(command = "pwd"),
+            )
+        )
+
+        val scroll = findAll<JBScrollPane>(view).first { it.verticalScrollBarPolicy == ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED }
+        assertEquals(SessionUiStyle.View.headerHover(), scroll.background)
+        assertEquals(SessionUiStyle.View.headerHover(), scroll.viewport.background)
+    }
+
     private fun permission() = Permission(
         id = "perm1",
         sessionId = "ses_test",
@@ -231,5 +380,19 @@ class PermissionViewTest : BasePlatformTestCase() {
             }
         }
         collect(root)
+    }
+
+    private inline fun <reified T> findAll(root: Container): List<T> = findAllCls(root, T::class.java)
+
+    private fun <T> findAllCls(root: Container, cls: Class<T>): List<T> {
+        val result = mutableListOf<T>()
+        if (cls.isInstance(root)) result.add(cls.cast(root))
+        for (child in root.components) {
+            if (cls.isInstance(child)) result.add(cls.cast(child))
+            if (child is Container && child !is AbstractButton) {
+                result.addAll(findAllCls(child, cls))
+            }
+        }
+        return result
     }
 }
