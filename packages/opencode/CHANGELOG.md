@@ -1,5 +1,11 @@
 # @kilocode/cli
 
+## 7.3.3
+
+### Patch Changes
+
+- [#10155](https://github.com/Kilo-Org/kilocode/pull/10155) [`371b7e8`](https://github.com/Kilo-Org/kilocode/commit/371b7e8ae6057f0fefae3982eee6923f2c0a61f0) - Resolve bundled tree-sitter WASM resources from the installed CLI layout so codebase indexing works in packaged CLI and VS Code builds.
+
 ## 7.3.2
 
 ## 7.3.1
