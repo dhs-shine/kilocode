@@ -210,9 +210,7 @@ export class SdkSSEAdapter {
       }
 
       const wait = delay
-      delay = ready
-        ? SdkSSEAdapter.RECONNECT_DELAY_MS
-        : Math.min(delay * 2, SdkSSEAdapter.MAX_RECONNECT_DELAY_MS)
+      delay = ready ? SdkSSEAdapter.RECONNECT_DELAY_MS : Math.min(delay * 2, SdkSSEAdapter.MAX_RECONNECT_DELAY_MS)
       console.log(`[Kilo New] SSE: 🔄 Reconnecting in ${wait}ms...`)
       this.notifyState("connecting")
       await new Promise((resolve) => setTimeout(resolve, wait))
