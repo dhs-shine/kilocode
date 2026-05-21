@@ -192,12 +192,14 @@ export namespace BackgroundProcess {
     active.scan = (active.scan ?? refresh(active))
       .then(() => {
         active.scan = undefined
+        if (active.disposed) return false
         emit(active)
         poll(active)
         return false
       })
       .catch((err) => {
         active.scan = undefined
+        if (active.disposed) return false
         log.debug("failed to refresh process ports", { err, id: active.info.id })
         emit(active)
         poll(active)
@@ -216,12 +218,14 @@ export namespace BackgroundProcess {
       active.scan = (active.scan ?? refresh(active))
         .then((changed) => {
           active.scan = undefined
+          if (active.disposed) return false
           if (changed) emit(active)
           poll(active)
           return changed
         })
         .catch((err) => {
           active.scan = undefined
+          if (active.disposed) return false
           log.debug("failed to refresh process ports", { err, id: active.info.id })
           poll(active)
           return false
@@ -264,8 +268,10 @@ export namespace BackgroundProcess {
     if (active.poll) clearTimeout(active.poll)
     active.notify = undefined
     active.poll = undefined
-    active.info.exitCode = code
-    active.info.signal = signal
+    if (code === null) delete active.info.exitCode
+    else active.info.exitCode = code
+    if (signal === null) delete active.info.signal
+    else active.info.signal = signal
     active.info.ports = []
     active.info.ready = active.info.ready && code === 0
     active.info.status = active.info.status === "stopping" ? "stopped" : code === 0 ? "exited" : "failed"

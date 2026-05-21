@@ -56,6 +56,8 @@ describe("BackgroundProcess", () => {
 
       const stopped = yield* Effect.promise(() => BackgroundProcess.stop(info.id))
       expect(stopped?.status).toBe("stopped")
+      expect(stopped?.exitCode).toBeUndefined()
+      expect(stopped?.signal).toBe("SIGTERM")
 
       yield* Effect.promise(() => BackgroundProcess.stopSession(sessionID))
       const next = yield* Effect.promise(() => BackgroundProcess.list({ sessionID }))
