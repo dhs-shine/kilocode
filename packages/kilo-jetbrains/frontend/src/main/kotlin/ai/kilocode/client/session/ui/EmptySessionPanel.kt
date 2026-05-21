@@ -303,8 +303,8 @@ class EmptySessionPanel(
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
-        welcomeLabel.font = style.uiFont
-        recentTitle.font = style.smallUiFont
+        welcomeLabel.font = style.regularFont
+        recentTitle.font = style.smallFont
         revalidate()
         repaint()
     }

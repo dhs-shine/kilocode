@@ -6,9 +6,6 @@ import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.views.base.BaseQuestionView
-import ai.kilocode.client.session.views.base.SessionQuestionButton
-import ai.kilocode.client.session.views.base.applyButton
-import ai.kilocode.client.session.views.base.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.ui.HoverIcon
@@ -80,15 +77,11 @@ class QuestionView(
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         alignmentX = Component.LEFT_ALIGNMENT
     }
-    private val footer = JPanel(BorderLayout()).apply {
-        isOpaque = false
-        alignmentX = Component.LEFT_ALIGNMENT
-    }
-    private val dismiss = dismissButton(KiloBundle.message("session.question.dismiss")) { doReject() }
-    private val right = JPanel().apply {
-        isOpaque = false
-        layout = BoxLayout(this, BoxLayout.X_AXIS)
-    }
+
+    // Stable action ids for setActionEnabled calls
+    private val ID_DISMISS = "dismiss"
+    private val ID_BACK = "back"
+    private val ID_MAIN = "main"  // next / review / submit
 
     init {
         isOpaque = false
@@ -98,11 +91,9 @@ class QuestionView(
         nav.add(fwd)
         topPanel.add(summary, BorderLayout.WEST)
         topPanel.add(nav, BorderLayout.EAST)
-        footer.add(right, BorderLayout.EAST)
 
         card.setTopPanel(topPanel)
-        card.setBody(body)
-        card.setFooter(footer)
+        card.setContent(body)
         add(card, BorderLayout.CENTER)
     }
 
@@ -126,7 +117,7 @@ class QuestionView(
         selections = emptyList()
         texts.clear()
         body.removeAll()
-        right.removeAll()
+        card.setActions(emptyList())
         isVisible = false
         refresh()
     }
@@ -144,17 +135,14 @@ class QuestionView(
         texts.clear()
         body.removeAll()
         if (review(q)) {
-            card.headerText.text = KiloBundle.message("session.question.review.title")
-            card.descriptionText.text = ""
-            card.descriptionText.isVisible = false
+            card.setHeader(KiloBundle.message("session.question.review.title"))
             addReview(q)
         } else {
             val item = q.items[idx]
-            card.headerText.text = item.question
-            card.descriptionText.text = KiloBundle.message(
+            val hint = KiloBundle.message(
                 if (item.multiple) "session.question.hint.multi" else "session.question.hint.single"
             )
-            card.descriptionText.isVisible = true
+            card.setHeader(item.question, hint)
             addContent(item, selections[idx])
         }
         syncHeader(q)
@@ -172,48 +160,35 @@ class QuestionView(
     }
 
     private fun syncFooter(q: Question) {
-        right.removeAll()
-        right.add(dismiss)
-        if (review(q)) {
-            val back = dismissButton(KiloBundle.message("session.question.back")) { goBack() }
-            val submit = applyButton(KiloBundle.message("session.question.submit")) { doReply() }
-            right.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
-            right.add(back)
-            right.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
-            right.add(submit)
-            return
-        }
+        val actions = mutableListOf<BaseQuestionView.Action>()
+        actions.add(BaseQuestionView.Action(ID_DISMISS, KiloBundle.message("session.question.dismiss"), primary = false) { doReject() })
 
-        val label = when {
-            direct(q) -> KiloBundle.message("session.question.submit")
-            lastItem(q) -> KiloBundle.message("session.question.review")
-            else -> KiloBundle.message("session.question.next")
-        }
-        val isPrimary = direct(q) || lastItem(q)
-        val button = SessionQuestionButton(label, isPrimary).apply {
-            addActionListener {
+        if (review(q)) {
+            actions.add(BaseQuestionView.Action(ID_BACK, KiloBundle.message("session.question.back"), primary = false) { goBack() })
+            actions.add(BaseQuestionView.Action(ID_MAIN, KiloBundle.message("session.question.submit"), primary = true) { doReply() })
+        } else {
+            val label = when {
+                direct(q) -> KiloBundle.message("session.question.submit")
+                lastItem(q) -> KiloBundle.message("session.question.review")
+                else -> KiloBundle.message("session.question.next")
+            }
+            val isPrimary = direct(q) || lastItem(q)
+            actions.add(BaseQuestionView.Action(ID_MAIN, label, isPrimary) {
                 when {
                     direct(q) -> doReply()
                     lastItem(q) -> goReview()
                     else -> goForward()
                 }
-            }
+            })
         }
-        right.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
-        right.add(button)
+        card.setActions(actions)
     }
 
     private fun syncControls(q: Question) {
         val ready = selections.getOrNull(idx)?.isNotEmpty() == true
         back.isEnabled = idx > 0
         fwd.isEnabled = idx < q.items.size && ready
-        val backLabel = KiloBundle.message("session.question.back")
-        val dismissLabel = KiloBundle.message("session.question.dismiss")
-        for (node in right.components) {
-            if (node is SessionQuestionButton && node.text != backLabel && node.text != dismissLabel) {
-                node.isEnabled = review(q) || ready
-            }
-        }
+        card.setActionEnabled(ID_MAIN, review(q) || ready)
     }
 
     private fun addContent(item: QuestionItem, set: MutableSet<String>) {
@@ -228,6 +203,8 @@ class QuestionView(
             row.alignmentX = Component.LEFT_ALIGNMENT
             body.add(row)
         }
+        // Remove bottom padding on the last review row to match the top gap.
+        (body.components.lastOrNull() as? JPanel)?.border = JBUI.Borders.empty()
     }
 
     private fun reviewRow(item: QuestionItem, i: Int): JPanel {
@@ -258,10 +235,13 @@ class QuestionView(
         }
         if (item.multiple) {
             for (opt in item.options) panel.add(checkboxRow(opt, set))
-            return panel
+        } else {
+            val group = ButtonGroup()
+            for (opt in item.options) panel.add(radioRow(opt, set, group))
         }
-        val group = ButtonGroup()
-        for (opt in item.options) panel.add(radioRow(opt, set, group))
+        // Remove bottom padding on the last option so the gap before the action
+        // footer matches the gap above the options (both use Gap.lg).
+        (panel.components.lastOrNull() as? JPanel)?.border = JBUI.Borders.empty()
         return panel
     }
 
@@ -438,7 +418,7 @@ class QuestionView(
     }
 
     private fun setFont(area: JBTextArea, bold: Boolean): Boolean {
-        val font = if (bold) style.boldUiFont else style.uiFont
+        val font = if (bold) style.boldFont else style.regularFont
         if (area.font == font) return false
         area.font = font
         return true

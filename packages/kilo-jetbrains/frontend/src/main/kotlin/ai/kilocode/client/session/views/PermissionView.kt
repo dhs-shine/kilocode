@@ -5,8 +5,6 @@ import ai.kilocode.client.session.model.Permission
 import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.views.base.BaseQuestionView
-import ai.kilocode.client.session.views.base.applyButton
-import ai.kilocode.client.session.views.base.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
@@ -17,10 +15,8 @@ import com.intellij.icons.AllIcons
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
-import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
-import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
@@ -48,36 +44,23 @@ class PermissionView(
         alignmentX = Component.LEFT_ALIGNMENT
     }
 
-    private val footer = JPanel(BorderLayout()).apply {
-        isOpaque = false
-        alignmentX = Component.LEFT_ALIGNMENT
-    }
-
-    private val actions = JPanel().apply {
-        isOpaque = false
-        layout = BoxLayout(this, BoxLayout.X_AXIS)
-        alignmentX = Component.LEFT_ALIGNMENT
-    }
-
-    private val run = applyButton(KiloBundle.message("session.permission.run")) { decide("once") }
-    private val deny = dismissButton(KiloBundle.message("session.permission.deny")) { decide("reject") }
-
     // Track command MdView instances for style updates
     private val cmdViews = mutableListOf<MdView>()
     private val cmdScrolls = mutableListOf<JBScrollPane>()
+
+    private val ID_DENY = "deny"
+    private val ID_RUN = "run"
 
     init {
         isOpaque = false
         isVisible = false
 
-        actions.add(deny)
-        actions.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
-        actions.add(run)
-        footer.add(actions, BorderLayout.EAST)
-
         card.setHeaderIcon(AllIcons.General.Warning, KiloBundle.message("session.permission.title"))
-        card.setBody(body)
-        card.setFooter(footer)
+        card.setContent(body)
+        card.setActions(listOf(
+            BaseQuestionView.Action(ID_DENY, KiloBundle.message("session.permission.deny"), primary = false) { decide("reject") },
+            BaseQuestionView.Action(ID_RUN, KiloBundle.message("session.permission.run"), primary = true) { decide("once") },
+        ))
         addToCenter(card)
     }
 
@@ -85,7 +68,7 @@ class PermissionView(
     fun show(permission: Permission) {
         requestId = permission.id
 
-        card.headerText.text = KiloBundle.message("session.permission.title")
+        card.setHeader(KiloBundle.message("session.permission.title"))
 
         body.removeAll()
         cmdViews.clear()
@@ -95,9 +78,6 @@ class PermissionView(
         val cmd = permission.meta.command
         val command = cmd != null || toolName == "bash"
 
-        card.descriptionText.text = ""
-        card.descriptionText.isVisible = false
-
         if (command) {
             addCodeBlock(cmd ?: "")
         } else {
@@ -105,8 +85,8 @@ class PermissionView(
         }
 
         val responding = permission.state == PermissionRequestState.RESPONDING || permission.state == PermissionRequestState.RESOLVED
-        run.isEnabled = !responding
-        deny.isEnabled = !responding
+        card.setActionEnabled(ID_RUN, !responding)
+        card.setActionEnabled(ID_DENY, !responding)
 
         isVisible = true
         refresh()
@@ -203,8 +183,8 @@ class PermissionView(
 
     private fun decide(value: String) {
         val id = requestId ?: return
-        run.isEnabled = false
-        deny.isEnabled = false
+        card.setActionEnabled(ID_RUN, false)
+        card.setActionEnabled(ID_DENY, false)
         reply(id, PermissionReplyDto(reply = value))
     }
 
@@ -238,10 +218,10 @@ class PermissionView(
     }
 
     // Test helpers
-    internal fun runButtonForTest() = run
-    internal fun denyButtonForTest() = deny
+    internal fun runButtonForTest() = card.actionButtonsForTest()[ID_RUN]!!
+    internal fun denyButtonForTest() = card.actionButtonsForTest()[ID_DENY]!!
     internal fun firstCmdViewForTest() = cmdViews.firstOrNull()
-    internal fun headerFontForTest() = card.headerText.font
+    internal fun headerFontForTest() = card.headerFont()
 }
 
 /**

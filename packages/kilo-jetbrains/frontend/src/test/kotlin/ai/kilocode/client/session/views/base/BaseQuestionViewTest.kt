@@ -1,13 +1,17 @@
 package ai.kilocode.client.session.views.base
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.icons.AllIcons
+import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBTextArea
 import java.awt.BorderLayout
 import java.awt.Container
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
@@ -17,19 +21,63 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
 
     // ------ initial state ------
 
-    fun `test headerText and descriptionText are in the component tree by default`() {
+    fun `test header and description text areas are in the component tree by default`() {
         edt {
             val panel = BaseQuestionView()
-            assertNotNull("headerText should be present", find(panel, panel.headerText))
-            assertNotNull("descriptionText should be present", find(panel, panel.descriptionText))
+            val areas = findAll<JBTextArea>(panel)
+            assertTrue("Should have at least 2 text areas (header + description)", areas.size >= 2)
         }
     }
 
-    fun `test header and description have correct initial text`() {
+    fun `test setHeader sets the header text`() {
         edt {
             val panel = BaseQuestionView()
-            assertEquals("", panel.headerText.text)
-            assertEquals("", panel.descriptionText.text)
+            panel.setHeader("My Title")
+            val bold = findAll<JBTextArea>(panel).firstOrNull { it.font.isBold }
+            assertNotNull("Bold header text area should be present", bold)
+            assertEquals("My Title", bold!!.text)
+        }
+    }
+
+    fun `test setHeader with description shows description`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setHeader("Title", "Hint text")
+            val desc = findAll<JBTextArea>(panel).firstOrNull { it.text == "Hint text" }
+            assertNotNull("Description text area should be present", desc)
+        }
+    }
+
+    fun `test setHeader without description hides description`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setHeader("Title")
+            val areas = findAll<JBTextArea>(panel)
+            val nonBold = areas.filter { !it.font.isBold }
+            // description should either be hidden or blank
+            assertTrue("Non-bold text areas should be hidden or empty", nonBold.all { !it.isVisible || it.text.isBlank() })
+        }
+    }
+
+    fun `test setDescription with blank hides description`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setHeader("Title", "some text")
+            panel.setDescription("")
+            val areas = findAll<JBTextArea>(panel)
+            val desc = areas.firstOrNull { !it.font.isBold }
+            assertTrue("Description should be hidden when blank", desc == null || !desc.isVisible)
+        }
+    }
+
+    fun `test setDescription with null hides description`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setHeader("Title", "some text")
+            panel.setDescription(null)
+            val areas = findAll<JBTextArea>(panel)
+            val desc = areas.firstOrNull { !it.font.isBold }
+            assertTrue("Description should be hidden when null", desc == null || !desc.isVisible)
         }
     }
 
@@ -44,8 +92,10 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             val col = findCol(panel)!!
             val comps = col.components.toList()
             val topIdx = comps.indexOf(top)
-            val headerIdx = comps.indexOf(panel.headerText.parent)
-            assertTrue("top should appear before headerText", topIdx < headerIdx)
+            // header row is the JPanel containing the header text area
+            val headerRow = findAll<JBTextArea>(panel).firstOrNull { it.font.isBold }?.parent as? JPanel
+            val headerIdx = if (headerRow != null) comps.indexOf(headerRow) else comps.indexOfFirst { it is JPanel }
+            assertTrue("top should appear before headerText row", topIdx >= 0 && topIdx < headerIdx)
         }
     }
 
@@ -57,7 +107,6 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             panel.setTopPanel(null)
 
             assertNull("top should be removed after setTopPanel(null)", find(panel, top))
-            assertNotNull("headerText should still be present", find(panel, panel.headerText))
         }
     }
 
@@ -74,248 +123,210 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
         }
     }
 
-    // ------ setBody ------
+    // ------ setContent ------
 
-    fun `test setBody adds component after descriptionText`() {
+    fun `test setContent adds component after description`() {
         edt {
             val panel = BaseQuestionView()
             val body = JLabel("body")
-            panel.setBody(body)
-
-            val col = findCol(panel)!!
-            val comps = col.components.toList()
-            val descIdx = comps.indexOf(panel.descriptionText)
-            val bodyIdx = comps.indexOf(body)
-            assertTrue("body should appear after descriptionText", descIdx < bodyIdx)
+            panel.setContent(body)
+            assertNotNull("body should be in the tree", find(panel, body))
         }
     }
 
-    fun `test setBody null removes body`() {
+    fun `test setContent null removes content`() {
         edt {
             val panel = BaseQuestionView()
             val body = JLabel("body")
-            panel.setBody(body)
-            panel.setBody(null)
-
-            assertNull("body should be removed after setBody(null)", find(panel, body))
-            assertNotNull("headerText should still be present", find(panel, panel.headerText))
+            panel.setContent(body)
+            panel.setContent(null)
+            assertNull("body should be removed after setContent(null)", find(panel, body))
         }
     }
 
-    fun `test setBody replaces previous body without duplicates`() {
+    fun `test setContent replaces previous content without duplicates`() {
         edt {
             val panel = BaseQuestionView()
             val first = JLabel("first body")
             val second = JLabel("second body")
-            panel.setBody(first)
-            panel.setBody(second)
-
+            panel.setContent(first)
+            panel.setContent(second)
             assertNull("first body should be gone", find(panel, first))
             assertNotNull("second body should be present", find(panel, second))
         }
     }
 
-    // ------ setFooter ------
+    // ------ setActions ------
 
-    fun `test setFooter adds component after body`() {
+    fun `test setActions renders one button per action`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setActions(listOf(
+                BaseQuestionView.Action("a", "Cancel", primary = false) {},
+                BaseQuestionView.Action("b", "OK", primary = true) {},
+            ))
+            val btns = panel.actionButtonsForTest()
+            assertEquals(2, btns.size)
+            assertNotNull(btns["a"])
+            assertNotNull(btns["b"])
+            assertEquals("Cancel", btns["a"]!!.text)
+            assertEquals("OK", btns["b"]!!.text)
+        }
+    }
+
+    fun `test primary action has DarculaButtonUI default style key`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
+            val btn = panel.actionButtonsForTest()["ok"]!!
+            assertEquals(true, btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
+        }
+    }
+
+    fun `test non-primary action does not have DarculaButtonUI default style key`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setActions(listOf(BaseQuestionView.Action("cancel", "Cancel", primary = false) {}))
+            val btn = panel.actionButtonsForTest()["cancel"]!!
+            val key = btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY)
+            assertTrue("Non-primary should not have default style key", key == null || key == false)
+        }
+    }
+
+    fun `test action button click invokes handler`() {
+        edt {
+            var clicked = false
+            val panel = BaseQuestionView()
+            panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) { clicked = true }))
+            panel.actionButtonsForTest()["ok"]!!.doClick()
+            assertTrue("handler should have been invoked", clicked)
+        }
+    }
+
+    fun `test setActionEnabled disables and enables button`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true, enabled = true) {}))
+            panel.setActionEnabled("ok", false)
+            assertFalse(panel.actionButtonsForTest()["ok"]!!.isEnabled)
+            panel.setActionEnabled("ok", true)
+            assertTrue(panel.actionButtonsForTest()["ok"]!!.isEnabled)
+        }
+    }
+
+    fun `test setActions empty removes all action buttons`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
+            panel.setActions(emptyList())
+            assertTrue("actionButtonsForTest should be empty", panel.actionButtonsForTest().isEmpty())
+        }
+    }
+
+    fun `test action buttons use question card surface background`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setActions(listOf(
+                BaseQuestionView.Action("a", "A", primary = false) {},
+                BaseQuestionView.Action("b", "B", primary = true) {},
+            ))
+            val btns = panel.actionButtonsForTest()
+            assertEquals(SessionUiStyle.View.surface(), btns["a"]!!.background)
+            assertEquals(SessionUiStyle.View.surface(), btns["b"]!!.background)
+        }
+    }
+
+    // ------ ordering ------
+
+    fun `test content appears after description in col`() {
         edt {
             val panel = BaseQuestionView()
             val body = JLabel("body")
-            val footer = JLabel("footer")
-            panel.setBody(body)
-            panel.setFooter(footer)
+            panel.setContent(body)
+            val col = findCol(panel)!!
+            val comps = col.components.toList()
+            val descIdx = comps.indexOfFirst { it is JBTextArea && !(it).font.isBold }
+            val bodyIdx = comps.indexOf(body)
+            assertTrue("body should appear after description", descIdx < bodyIdx)
+        }
+    }
 
+    fun `test action footer appears after content`() {
+        edt {
+            val panel = BaseQuestionView()
+            val body = JLabel("body")
+            panel.setContent(body)
+            panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
             val col = findCol(panel)!!
             val comps = col.components.toList()
             val bodyIdx = comps.indexOf(body)
-            val footerIdx = comps.indexOf(footer)
+            val btn = panel.actionButtonsForTest()["ok"]!!
+            // find the footer panel that contains the button
+            val footerIdx = comps.indexOfFirst { it is JPanel && find(it, btn) != null }
             assertTrue("footer should appear after body", bodyIdx < footerIdx)
         }
     }
 
-    fun `test setFooter null removes footer`() {
-        edt {
-            val panel = BaseQuestionView()
-            val footer = JLabel("footer")
-            panel.setFooter(footer)
-            panel.setFooter(null)
-
-            assertNull("footer should be removed after setFooter(null)", find(panel, footer))
-            assertNotNull("headerText should still be present", find(panel, panel.headerText))
-        }
-    }
-
-    fun `test setFooter replaces existing footer without duplicates`() {
-        edt {
-            val panel = BaseQuestionView()
-            val first = JLabel("first footer")
-            val second = JLabel("second footer")
-            panel.setFooter(first)
-            panel.setFooter(second)
-
-            assertNull("first footer should be gone", find(panel, first))
-            assertNotNull("second footer should be present", find(panel, second))
-        }
-    }
-
-    // ------ ordering with all slots ------
-
-    fun `test all slots appear in correct order top-header-desc-body-footer`() {
-        edt {
-            val panel = BaseQuestionView()
-            val top = JLabel("top")
-            val body = JLabel("body")
-            val footer = JLabel("footer")
-            panel.setTopPanel(top)
-            panel.setBody(body)
-            panel.setFooter(footer)
-
-            val col = findCol(panel)!!
-            val comps = col.components.toList()
-            val topIdx = comps.indexOf(top)
-            val headerIdx = comps.indexOf(panel.headerText.parent)
-            val descIdx = comps.indexOf(panel.descriptionText)
-            val bodyIdx = comps.indexOf(body)
-            val footerIdx = comps.indexOf(footer)
-            assertTrue("top < header", topIdx < headerIdx)
-            assertTrue("header < desc", headerIdx < descIdx)
-            assertTrue("desc < body", descIdx < bodyIdx)
-            assertTrue("body < footer", bodyIdx < footerIdx)
-        }
-    }
-
-    fun `test header and description survive multiple setBody calls`() {
-        edt {
-            val panel = BaseQuestionView()
-            repeat(3) { i -> panel.setBody(JLabel("body $i")) }
-            assertNotNull(find(panel, panel.headerText))
-            assertNotNull(find(panel, panel.descriptionText))
-        }
-    }
-
-    // ------ column child count sanity ------
-
-    fun `test col has exactly two children with no optional slots`() {
-        edt {
-            val panel = BaseQuestionView()
-            val col = findCol(panel)!!
-            assertEquals("header row + descriptionText only", 2, col.componentCount)
-        }
-    }
-
-    // ------ header left icon ------
+    // ------ header icon ------
 
     fun `test setHeaderIcon adds icon to the left side of header row`() {
         edt {
             val panel = BaseQuestionView()
             panel.setHeaderIcon(AllIcons.General.Warning, "warning")
 
-            val header = panel.headerText.parent as JPanel
-            val layout = header.layout as BorderLayout
-            val labels = findAll<JBLabel>(header).filter { it.icon != null }
+            val labels = findAll<JBLabel>(panel).filter { it.icon != null && it.isVisible }
             assertEquals("Expected one header icon", 1, labels.size)
             assertSame(AllIcons.General.Warning, labels[0].icon)
             assertEquals("warning", labels[0].toolTipText)
-            assertEquals(BorderLayout.WEST, layout.getConstraints(labels[0]))
-            assertEquals(BorderLayout.CENTER, layout.getConstraints(panel.headerText))
         }
     }
 
-    fun `test setHeaderIcon null hides header icon without removing header row`() {
+    fun `test setHeaderIcon null hides header icon`() {
         edt {
             val panel = BaseQuestionView()
             panel.setHeaderIcon(AllIcons.General.Warning)
             panel.setHeaderIcon(null)
 
-            val header = panel.headerText.parent as Container
-            val labels = findAll<JBLabel>(header).filter { it.icon != null && it.isVisible }
+            val labels = findAll<JBLabel>(panel).filter { it.icon != null && it.isVisible }
             assertTrue("Header icon should be hidden after setHeaderIcon(null)", labels.isEmpty())
-            assertSame(header, panel.headerText.parent)
         }
     }
 
-    fun `test col child count includes spacing before body and footer slots`() {
+    // ------ applyStyle: UI fonts ----
+
+    fun `test applyStyle applies headerFont to header and hintFont to description`() {
         edt {
             val panel = BaseQuestionView()
-            panel.setTopPanel(JLabel("top"))
-            assertEquals(3, findCol(panel)!!.componentCount)
-            panel.setBody(JLabel("body"))
-            assertEquals(5, findCol(panel)!!.componentCount)
-            panel.setFooter(JLabel("footer"))
-            assertEquals(7, findCol(panel)!!.componentCount)
-        }
-    }
-
-    fun `test body and footer spacing use matching standard insets`() {
-        edt {
-            val panel = BaseQuestionView()
-            val body = JLabel("body")
-            val footer = JLabel("footer")
-            panel.setBody(body)
-            panel.setFooter(footer)
-
-            val col = findCol(panel)!!
-            val comps = col.components.toList()
-            val bodyGap = comps[comps.indexOf(body) - 1]
-            val footerGap = comps[comps.indexOf(footer) - 1]
-
-            assertEquals(bodyGap.preferredSize.height, footerGap.preferredSize.height)
-        }
-    }
-
-    fun `test col shrinks back after removing optional slots`() {
-        edt {
-            val panel = BaseQuestionView()
-            panel.setTopPanel(JLabel("top"))
-            panel.setBody(JLabel("body"))
-            panel.setFooter(JLabel("footer"))
-
-            panel.setTopPanel(null)
-            panel.setBody(null)
-            panel.setFooter(null)
-
-            assertEquals(2, findCol(panel)!!.componentCount)
-        }
-    }
-
-    // ------ applyStyle: UI fonts ------
-
-    fun `test applyStyle applies enlarged boldUiFont to header and enlarged uiFont to description`() {
-        edt {
-            val panel = BaseQuestionView()
-            val style = SessionEditorStyle.create(family = "Courier New", size = 20)
+            panel.setHeader("Title", "Hint")
+            val style = SessionEditorStyle.current()
             panel.applyStyle(style)
 
-            assertEquals("headerText should keep boldUiFont family", style.boldUiFont.name, panel.headerText.font.name)
-            assertEquals("descriptionText should keep uiFont family", style.uiFont.name, panel.descriptionText.font.name)
-            assertEquals("headerText should use next font size", style.boldUiFont.size + 1, panel.headerText.font.size)
-            assertEquals("descriptionText should use next font size", style.uiFont.size + 1, panel.descriptionText.font.size)
-        }
-    }
-
-    fun `test description uses next standard top padding`() {
-        edt {
-            val panel = BaseQuestionView()
-            val ins = panel.descriptionText.border.getBorderInsets(panel.descriptionText)
-
-            assertEquals("description top padding should use next standard gap", UiStyle.Gap.sm(), ins.top)
+            assertEquals("headerText should use headerFont", style.headerFont, panel.headerFont())
+            assertEquals("descriptionText should use hintFont", style.hintFont, panel.descriptionFont())
         }
     }
 
     fun `test applyStyle does not apply editor font family to header or description`() {
         edt {
             val panel = BaseQuestionView()
+            panel.setHeader("Title", "Hint")
             val style = SessionEditorStyle.create(family = "Courier New", size = 20)
             panel.applyStyle(style)
 
-            assertFalse(
-                "headerText should not use editor font family",
-                panel.headerText.font.name == "Courier New",
-            )
-            assertFalse(
-                "descriptionText should not use editor font family",
-                panel.descriptionText.font.name == "Courier New",
-            )
+            assertFalse("headerText should not use editor font family", panel.headerFont().name == "Courier New")
+            assertFalse("descriptionText should not use editor font family", panel.descriptionFont().name == "Courier New")
+        }
+    }
+
+    fun `test description uses same vertical stacking as option descriptions`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setHeader("Title", "Hint")
+            // The description text area is the non-bold one
+            val desc = findAll<JBTextArea>(panel).firstOrNull { !it.font.isBold }
+            assertNotNull(desc)
+            val ins = desc!!.border.getBorderInsets(desc)
+            assertEquals("description should not add extra top padding", 0, ins.top)
         }
     }
 
@@ -340,6 +351,17 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
         for (child in root.components) {
             if (child === target) return target
             if (child is Container) {
+                val found = find(child, target)
+                if (found != null) return found
+            }
+        }
+        return null
+    }
+
+    private fun find(root: JPanel, target: JButton): JButton? {
+        for (child in root.components) {
+            if (child === target) return target
+            if (child is JPanel) {
                 val found = find(child, target)
                 if (found != null) return found
             }

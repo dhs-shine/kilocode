@@ -277,13 +277,6 @@ class PermissionViewTest : BasePlatformTestCase() {
 
     // ------ new: shared button types ------
 
-    fun `test run button is SessionQuestionButton with primary true`() {
-        view.show(permission())
-
-        val btn = view.runButtonForTest()
-        assertTrue("Run should be primary", btn.primary)
-    }
-
     fun `test run button uses default style key`() {
         view.show(permission())
 
@@ -291,11 +284,12 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertEquals(true, btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
     }
 
-    fun `test deny button is SessionQuestionButton with primary false`() {
+    fun `test deny button does not have default style key`() {
         view.show(permission())
 
         val btn = view.denyButtonForTest()
-        assertFalse("Deny should not be primary", btn.primary)
+        val key = btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY)
+        assertTrue("Deny should not be primary", key == null || key == false)
     }
 
     fun `test session question buttons use question surface background`() {
@@ -370,7 +364,7 @@ class PermissionViewTest : BasePlatformTestCase() {
 
     // ------ fonts: header UI family, command code block editor family ------
 
-    fun `test permission header uses boldUiFont not editor font family`() {
+    fun `test permission header uses headerFont not editor font family`() {
         view.show(
             Permission(
                 id = "perm_font",
@@ -387,7 +381,7 @@ class PermissionViewTest : BasePlatformTestCase() {
         val header = view.headerFontForTest()
         assertFalse("Permission header should not use editor font family", header.name == "Courier New")
         assertTrue("Permission header should be bold", header.isBold)
-        assertEquals("Permission header size should use next size", 19, header.size)
+        assertEquals("Permission header should equal headerFont", style.headerFont, header)
     }
 
     fun `test command code block retains editor font family`() {

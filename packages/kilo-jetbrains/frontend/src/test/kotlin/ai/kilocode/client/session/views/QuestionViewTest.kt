@@ -3,7 +3,6 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
-import ai.kilocode.client.session.views.base.SessionQuestionButton
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.question.QuestionView
@@ -184,21 +183,19 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertEquals("description should align in the text renderer", label.parent, desc.parent)
 
         val style = SessionEditorStyle.current()
-        assertEquals("option label should use boldUiFont", style.boldUiFont, label.font)
-        assertEquals("description should use uiFont", style.uiFont, desc.font)
+        assertEquals("option label should use boldFont", style.boldFont, label.font)
+        assertEquals("description should use regularFont", style.regularFont, desc.font)
     }
 
-    fun `test question title and hint use UI-family editor-sized fonts`() {
+    fun `test question title uses headerFont and hint uses hintFont`() {
         view.show(singleSelectQuestion("q_fonts"))
 
         val style = SessionEditorStyle.current()
         val title = text(view, "Choose approach")
         val hint = text(view, "Select one answer")
 
-        assertEquals(style.boldUiFont.name, title.font.name)
-        assertEquals(style.uiFont.name, hint.font.name)
-        assertEquals(style.boldUiFont.size + 1, title.font.size)
-        assertEquals(style.uiFont.size + 1, hint.font.size)
+        assertEquals("title should use headerFont", style.headerFont, title.font)
+        assertEquals("hint should use hintFont", style.hintFont, hint.font)
     }
 
     // ------ multi-question navigation ------
@@ -393,22 +390,19 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertEquals(true, submit.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
     }
 
-    fun `test submit is SessionQuestionButton with primary true`() {
+    fun `test submit has DarculaButtonUI default style key`() {
         view.show(singleSelectQuestion("q_btn_type"))
 
         val submit = button(view, "Submit")
-
-        assertTrue("Submit should be SessionQuestionButton", submit is SessionQuestionButton)
-        assertTrue("Submit should be primary", (submit as SessionQuestionButton).primary)
+        assertEquals("Submit should be primary (default style key)", true, submit.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
     }
 
-    fun `test dismiss is SessionQuestionButton with primary false`() {
+    fun `test dismiss does not have default style key`() {
         view.show(singleSelectQuestion("q_dismiss_type"))
 
         val dismiss = button(view, "Dismiss")
-
-        assertTrue("Dismiss should be SessionQuestionButton", dismiss is SessionQuestionButton)
-        assertFalse("Dismiss should not be primary", (dismiss as SessionQuestionButton).primary)
+        val key = dismiss.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY)
+        assertTrue("Dismiss should not be primary", key == null || key == false)
     }
 
     fun `test session question buttons use question surface background`() {
@@ -421,7 +415,7 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertEquals(SessionUiStyle.View.surface(), submit.background)
     }
 
-    fun `test review submit and back buttons are correct types on review page`() {
+    fun `test review submit and back buttons have correct primary state on review page`() {
         view.show(twoItemQuestion("q_review_types"))
 
         option<JBRadioButton>(view, "Minimal").doClick()
@@ -432,10 +426,9 @@ class QuestionViewTest : BasePlatformTestCase() {
         val submit = button(view, "Submit")
         val back = button(view, "Back")
 
-        assertTrue("Submit on review page should be SessionQuestionButton", submit is SessionQuestionButton)
-        assertTrue("Submit on review page should be primary", (submit as SessionQuestionButton).primary)
-        assertTrue("Back on review page should be SessionQuestionButton", back is SessionQuestionButton)
-        assertFalse("Back on review page should not be primary", (back as SessionQuestionButton).primary)
+        assertEquals("Submit on review page should be primary", true, submit.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
+        val backKey = back.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY)
+        assertTrue("Back on review page should not be primary", backKey == null || backKey == false)
     }
 
     fun `test next button is not primary before last item`() {
@@ -443,8 +436,8 @@ class QuestionViewTest : BasePlatformTestCase() {
 
         val next = button(view, "Next")
 
-        assertTrue(next is SessionQuestionButton)
-        assertFalse("Next should not be primary on first question", (next as SessionQuestionButton).primary)
+        val key = next.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY)
+        assertTrue("Next should not be primary on first question", key == null || key == false)
     }
 
     fun `test review button is primary on last item`() {
@@ -454,8 +447,7 @@ class QuestionViewTest : BasePlatformTestCase() {
 
         val review = button(view, "Review")
 
-        assertTrue(review is SessionQuestionButton)
-        assertTrue("Review should be primary on last question", (review as SessionQuestionButton).primary)
+        assertEquals("Review should be primary on last question", true, review.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
     }
 
     fun `test single question hides header nav`() {

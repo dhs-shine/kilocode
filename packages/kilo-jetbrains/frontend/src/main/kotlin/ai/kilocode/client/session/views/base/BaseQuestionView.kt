@@ -14,7 +14,6 @@ import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
 import java.awt.Dimension
-import java.awt.Font
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.Icon
@@ -26,39 +25,47 @@ import javax.swing.JPanel
  * Shared rounded background panel for session inline views that follow the
  * question-view visual style: a card surface with a header text area, a
  * description text area, an optional component above the header, and slots
- * for view-specific body and footer content.
+ * for view-specific content and a base-owned action-button footer.
  *
  * Both [ai.kilocode.client.session.views.question.QuestionView] and
  * [ai.kilocode.client.session.views.LoginRequiredView] use this as their
  * outer card shell so they share the same background, padding, and text
  * styling without duplicating the setup.
  *
- * The column always contains (in order): optional top, header row with [headerText],
- * [descriptionText], optional body, optional footer. Call [setTopPanel],
- * [setHeaderIcon], [setBody], or [setFooter] to replace those slots at any time.
+ * The column always contains (in order): optional top, header row with the
+ * header text, description text, optional content, optional action footer.
+ * Call [setTopPanel], [setHeaderIcon], [setHeader], [setDescription],
+ * [setContent], [setActions], or [setActionEnabled] to configure the card.
  */
 class BaseQuestionView : RoundedContentPanel(
     UiStyle.Gap.lg(),
     UiStyle.Gap.pad(),
 ), SessionEditorStyleTarget {
 
+    // ---- Action descriptor ----
+
+    /**
+     * Describes a button to render in the card's action footer.
+     *
+     * @param id     Stable identifier so [setActionEnabled] can target a specific button.
+     * @param text   Button label shown to the user.
+     * @param primary True → rendered as the platform default (accent) button.
+     * @param enabled Initial enabled state.
+     * @param handler Called when the button is clicked.
+     */
+    data class Action(
+        val id: String,
+        val text: String,
+        val primary: Boolean,
+        val enabled: Boolean = true,
+        val handler: () -> Unit,
+    )
+
+    // ---- private state ----
+
     private var style = SessionEditorStyle.current()
 
-    // All JBTextArea instances that need style updates, paired with bold flag
     private val tracked = mutableListOf<Pair<JBTextArea, Boolean>>()
-
-    // ---- header text ----
-    val headerText: JBTextArea = makeText("", UiStyle.Colors.fg(), bold = true)
-
-    // ---- description text ----
-    val descriptionText: JBTextArea = makeText("", UiStyle.Colors.weak(), bold = false).apply {
-        border = JBUI.Borders.emptyTop(UiStyle.Gap.sm())
-    }
-
-    private val icon = JBLabel().apply {
-        border = JBUI.Borders.emptyRight(UiStyle.Gap.sm())
-        isVisible = false
-    }
 
     private val header = object : JPanel(BorderLayout(UiStyle.Gap.sm(), 0)) {
         override fun getMaximumSize(): Dimension {
@@ -68,33 +75,64 @@ class BaseQuestionView : RoundedContentPanel(
     }.apply {
         isOpaque = false
         alignmentX = Component.LEFT_ALIGNMENT
-        add(icon, BorderLayout.WEST)
-        add(headerText, BorderLayout.CENTER)
     }
 
-    // ---- slot fields ----
-    private var top: JComponent? = null
-    private var body: JComponent? = null
-    private var footer: JComponent? = null
+    private val icon = JBLabel().apply {
+        border = JBUI.Borders.emptyRight(UiStyle.Gap.sm())
+        isVisible = false
+    }
 
-    // ---- inner layout ----
+    private val headerText: JBTextArea = makeText("", UiStyle.Colors.fg(), bold = true)
+    private val descriptionText: JBTextArea = makeText("", UiStyle.Colors.weak(), bold = false)
+
+    private var top: JComponent? = null
+    private var content: JComponent? = null
+
+    // action buttons keyed by id for enabled-state updates
+    private val actionButtons = mutableMapOf<String, JButton>()
+    private var actionFooter: JComponent? = null
+
     private val col = JPanel().apply {
         isOpaque = false
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
     }
 
     init {
+        header.add(icon, BorderLayout.WEST)
+        header.add(headerText, BorderLayout.CENTER)
         addToCenter(col)
         rebuildCol()
     }
+
+    // ---- public text API ----
+
+    /**
+     * Set the header text and, optionally, the description text in one call.
+     * Pass `null` or an empty string for [description] to hide the description row.
+     */
+    @RequiresEdt
+    fun setHeader(text: String, description: String? = null) {
+        headerText.text = text
+        setDescription(description)
+    }
+
+    /**
+     * Set or clear the description text below the header.
+     * The description row is visible only when [text] is non-null and non-blank.
+     */
+    @RequiresEdt
+    fun setDescription(text: String?) {
+        descriptionText.text = text ?: ""
+        descriptionText.isVisible = !text.isNullOrBlank()
+    }
+
+    // ---- public slot API ----
 
     /**
      * Optional panel rendered above the header row (e.g. summary + nav in
      * [ai.kilocode.client.session.views.question.QuestionView]).  When set,
      * it is inserted as the first child of the column; calling with `null`
      * removes a previously set component.
-     *
-     * The header/description text areas follow immediately after.
      */
     @RequiresEdt
     fun setTopPanel(top: JComponent?) {
@@ -116,23 +154,59 @@ class BaseQuestionView : RoundedContentPanel(
     }
 
     /**
-     * Replace the body slot that comes after the header/description.
-     * Pass `null` to remove the current body.
+     * Replace the view-specific content slot that comes after the header/description.
+     * Pass `null` to remove the current content.
      */
     @RequiresEdt
-    fun setBody(body: JComponent?) {
-        this.body = body
+    fun setContent(content: JComponent?) {
+        this.content = content
         rebuildCol()
     }
 
     /**
-     * Replace the footer slot that comes after the body.
-     * Pass `null` to remove the current footer.
+     * Configure the action buttons shown in the card's right-aligned footer.
+     *
+     * All buttons are created fresh; stable button references across calls can be
+     * maintained by the caller through [setActionEnabled] using the [Action.id].
+     * Pass an empty list to remove the footer entirely.
      */
     @RequiresEdt
-    fun setFooter(footer: JComponent?) {
-        this.footer = footer
+    fun setActions(actions: List<Action>) {
+        actionButtons.clear()
+        actionFooter = if (actions.isEmpty()) {
+            null
+        } else {
+            val row = JPanel().apply {
+                isOpaque = false
+                layout = BoxLayout(this, BoxLayout.X_AXIS)
+                alignmentX = Component.LEFT_ALIGNMENT
+            }
+            for ((idx, action) in actions.withIndex()) {
+                if (idx > 0) row.add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
+                val btn = makeButton(action.text, action.primary).apply {
+                    isEnabled = action.enabled
+                    addActionListener { action.handler() }
+                }
+                actionButtons[action.id] = btn
+                row.add(btn)
+            }
+            val footer = JPanel(BorderLayout()).apply {
+                isOpaque = false
+                alignmentX = Component.LEFT_ALIGNMENT
+            }
+            footer.add(row, BorderLayout.EAST)
+            footer
+        }
         rebuildCol()
+    }
+
+    /**
+     * Enable or disable a specific action button identified by [id].
+     * No-ops if the id is not found (e.g. before [setActions] is called).
+     */
+    @RequiresEdt
+    fun setActionEnabled(id: String, enabled: Boolean) {
+        actionButtons[id]?.isEnabled = enabled
     }
 
     // ---- SessionEditorStyleTarget ----
@@ -149,18 +223,29 @@ class BaseQuestionView : RoundedContentPanel(
 
     override fun outlineColor(): Color = SessionUiStyle.View.line()
 
-    // ---- helpers ----
+    // ---- internal test helpers ----
+
+    /** Returns the font currently applied to the header text area. For tests only. */
+    internal fun headerFont() = headerText.font
+
+    /** Returns the font currently applied to the description text area. For tests only. */
+    internal fun descriptionFont() = descriptionText.font
+
+    /** Returns all action buttons as generic JButton, keyed by their action id. For tests only. */
+    internal fun actionButtonsForTest(): Map<String, JButton> = actionButtons.toMap()
+
+    // ---- private helpers ----
 
     private fun rebuildCol() {
         col.removeAll()
         top?.let { col.add(it) }
         col.add(header)
         col.add(descriptionText)
-        body?.let {
+        content?.let {
             col.add(gap())
             col.add(it)
         }
-        footer?.let {
+        actionFooter?.let {
             col.add(gap())
             col.add(it)
         }
@@ -220,46 +305,26 @@ class BaseQuestionView : RoundedContentPanel(
     }
 
     private fun applyFont(area: JBTextArea, bold: Boolean) {
-        val base = if (bold) style.boldUiFont else style.uiFont
-        val font = larger(base)
+        val font = if (bold) style.headerFont else style.hintFont
         if (area.font != font) area.font = font
     }
 
-    private fun larger(font: Font): Font = font.deriveFont((font.size + 1).toFloat())
-}
+    private fun makeButton(text: String, primary: Boolean): JButton {
+        val btn = object : JButton(text) {
+            init {
+                if (primary) putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
+                syncBackground()
+            }
 
-/**
- * A [javax.swing.JButton] variant used inside session question/login-required panels.
- *
- * Primary buttons receive [com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI.DEFAULT_STYLE_KEY] so they use the
- * platform's default-button accent. Buttons keep the standard Look-and-Feel
- * border, padding, disabled state, and focus painting, while their component
- * background follows the question card surface so border/focus chrome blends
- * into the inline panel instead of the surrounding transcript.
- */
-class SessionQuestionButton(text: String, val primary: Boolean) : JButton(text) {
+            override fun updateUI() {
+                super.updateUI()
+                syncBackground()
+            }
 
-    init {
-        if (primary) {
-            putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
+            private fun syncBackground() {
+                background = SessionUiStyle.View.surface()
+            }
         }
-        syncBackground()
-    }
-
-    override fun updateUI() {
-        super.updateUI()
-        syncBackground()
-    }
-
-    private fun syncBackground() {
-        background = SessionUiStyle.View.surface()
+        return btn
     }
 }
-
-/** Create a non-primary (secondary) session question button. */
-fun dismissButton(text: String, action: () -> Unit): SessionQuestionButton =
-    SessionQuestionButton(text, primary = false).apply { addActionListener { action() } }
-
-/** Create a primary (default/accent) session question button. */
-fun applyButton(text: String, action: () -> Unit): SessionQuestionButton =
-    SessionQuestionButton(text, primary = true).apply { addActionListener { action() } }

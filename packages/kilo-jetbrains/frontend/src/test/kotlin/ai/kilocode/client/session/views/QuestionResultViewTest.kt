@@ -177,8 +177,8 @@ class QuestionResultViewTest : BasePlatformTestCase() {
         view.applyStyle(style)
         view.toggle()
 
-        assertTrue(view.bodyFonts().contains(style.uiFont))
-        assertTrue(view.bodyFonts().contains(style.boldUiFont))
+        assertTrue(view.bodyFonts().contains(style.regularFont))
+        assertTrue(view.bodyFonts().contains(style.boldFont))
         assertFalse("Body should not use editor transcript font", view.bodyFonts().any { it.name == "Courier New" })
     }
 
@@ -192,8 +192,8 @@ class QuestionResultViewTest : BasePlatformTestCase() {
 
         view.applyStyle(style)
 
-        assertEquals("Title should use boldUiFont", style.boldUiFont, view.titleFont())
-        assertEquals("Subtitle should use smallUiFont", style.smallUiFont, view.subFont())
+        assertEquals("Title should use boldFont", style.boldFont, view.titleFont())
+        assertEquals("Subtitle should use smallFont", style.smallFont, view.subFont())
         assertFalse("Title should not use editor font family", view.titleFont().name == "Courier New")
         assertFalse("Subtitle should not use editor font family", view.subFont().name == "Courier New")
     }

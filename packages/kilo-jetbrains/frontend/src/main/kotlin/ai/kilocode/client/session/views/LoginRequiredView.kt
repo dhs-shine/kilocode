@@ -3,18 +3,10 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.views.base.BaseQuestionView
-import ai.kilocode.client.session.views.base.applyButton
-import ai.kilocode.client.session.views.base.dismissButton
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
-import ai.kilocode.client.ui.UiStyle
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.components.BorderLayoutPanel
-import java.awt.BorderLayout
-import java.awt.Component
-import javax.swing.Box
-import javax.swing.BoxLayout
-import javax.swing.JPanel
 
 /**
  * Retained inline view shown at the bottom of the transcript when a session
@@ -32,31 +24,19 @@ class LoginRequiredView(
     override val sessionViewKind = SessionView.Kind.Default
 
     private val card = BaseQuestionView()
-    val openProfileButton = applyButton(KiloBundle.message("session.login.required.button")) { openProfile() }
-    val dismissButton = dismissButton(KiloBundle.message("session.login.required.dismiss")) { dismiss() }
+
+    private val ID_DISMISS = "dismiss"
+    private val ID_OPEN = "open"
 
     init {
         isOpaque = false
         isVisible = false
 
-        card.headerText.text = KiloBundle.message("session.login.required.title")
-        card.headerText.alignmentX = Component.LEFT_ALIGNMENT
-        card.descriptionText.alignmentX = Component.LEFT_ALIGNMENT
-
-        val footer = JPanel(BorderLayout()).apply {
-            isOpaque = false
-            alignmentX = Component.LEFT_ALIGNMENT
-        }
-        val actions = JPanel().apply {
-            isOpaque = false
-            layout = BoxLayout(this, BoxLayout.X_AXIS)
-            add(dismissButton)
-            add(Box.createHorizontalStrut(UiStyle.Gap.sm()))
-            add(openProfileButton)
-        }
-        footer.add(actions, BorderLayout.EAST)
-
-        card.setFooter(footer)
+        card.setHeader(KiloBundle.message("session.login.required.title"))
+        card.setActions(listOf(
+            BaseQuestionView.Action(ID_DISMISS, KiloBundle.message("session.login.required.dismiss"), primary = false) { dismiss() },
+            BaseQuestionView.Action(ID_OPEN, KiloBundle.message("session.login.required.button"), primary = true) { openProfile() },
+        ))
 
         addToCenter(card)
     }
@@ -64,7 +44,7 @@ class LoginRequiredView(
     /** Make the view visible with [message] shown as the description. */
     @RequiresEdt
     fun show(message: String) {
-        card.descriptionText.text = message
+        card.setDescription(message)
         isVisible = true
         refresh()
     }
@@ -81,6 +61,10 @@ class LoginRequiredView(
     override fun applyStyle(style: SessionEditorStyle) {
         card.applyStyle(style)
     }
+
+    // Test helpers — return generic JButton to keep SessionQuestionButton internal
+    internal fun openProfileButton() = card.actionButtonsForTest()[ID_OPEN]!!
+    internal fun dismissButton() = card.actionButtonsForTest()[ID_DISMISS]!!
 
     private fun refresh() {
         revalidate()

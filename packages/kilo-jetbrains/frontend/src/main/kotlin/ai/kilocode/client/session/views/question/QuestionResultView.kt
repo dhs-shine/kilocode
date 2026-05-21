@@ -108,8 +108,8 @@ class QuestionResultView(tool: Tool) : PartView() {
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
-        val t = setFont(title, style.boldUiFont)
-        val s = setFont(sub, style.smallUiFont)
+        val t = setFont(title, style.boldFont)
+        val s = setFont(sub, style.smallFont)
         val label = t || s
         val body = texts.fold(false) { acc, item -> setFont(item.first, item.second) || acc }
         if (!label && !body) return
@@ -273,7 +273,7 @@ class QuestionResultView(tool: Tool) : PartView() {
     }
 
     private fun setFont(area: JBTextArea, bold: Boolean): Boolean {
-        val font = if (bold) style.boldUiFont else style.uiFont
+        val font = if (bold) style.boldFont else style.regularFont
         if (area.font == font) return false
         area.font = font
         return true
