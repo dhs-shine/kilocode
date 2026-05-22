@@ -7,10 +7,10 @@
  * then collects per-module JUnit XML results into .artifacts/unit/junit.xml
  * so mikepenz/action-junit-report can find them at the standard path.
  *
- * Always exits 0 — test failures are surfaced as JUnit report annotations,
- * not as CI job failures. The suite runs on both Linux and Windows but
- * IntelliJ Swing/coroutine tests are inherently flaky on Windows, so failing
- * the job on test failures would be noisy.
+ * Exits with Gradle's exit code on Linux/macOS so test failures fail the
+ * repo-wide `bun turbo test:ci` run. On Windows, exits 0 regardless — IntelliJ
+ * Swing/coroutine tests are inherently flaky on Windows and failing the job
+ * there would be noisy; failures remain visible via JUnit report annotations.
  */
 
 import { $ } from "bun"
@@ -45,4 +45,5 @@ writeFileSync(out, `<?xml version="1.0" encoding="UTF-8"?>\n<testsuites>\n${suit
 console.log(`[jetbrains-test] collected ${suites.length} suite(s) -> ${out}`)
 if (result.exitCode !== 0) {
   console.log(`[jetbrains-test] Gradle exited ${result.exitCode} — failures visible in JUnit report`)
+  if (process.platform !== "win32") process.exit(result.exitCode)
 }
