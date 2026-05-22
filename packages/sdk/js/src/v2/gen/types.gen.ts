@@ -1000,7 +1000,7 @@ export type GlobalEvent = {
 export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR"
 
 /**
- * Server configuration for kilo serve and web commands
+ * Server configuration for the kilo serve command
  */
 export type ServerConfig = {
   port?: number
@@ -1237,15 +1237,12 @@ export type ProviderConfig = {
 }
 
 export type McpLocalConfig = {
-  /**
-   * Type of MCP server connection
-   */
   type: "local"
-  /**
-   * Command and arguments to run the MCP server
-   */
   command: Array<string>
   environment?: {
+    [key: string]: string
+  }
+  env?: {
     [key: string]: string
   }
   enabled?: boolean
