@@ -27,6 +27,8 @@ export type Event =
   | EventMessagePartDelta
   | EventPermissionAsked
   | EventPermissionReplied
+  | EventBackgroundProcessUpdated
+  | EventBackgroundProcessDeleted
   | EventSessionTurnOpen
   | EventSessionTurnClose
   | EventSessionDiff
@@ -256,6 +258,26 @@ export type PermissionRequest = {
   tool?: {
     messageID: string
     callID: string
+  }
+}
+
+export type BackgroundProcessInfo = {
+  id: string
+  sessionID: string
+  pid?: number
+  command: string
+  cwd: string
+  description?: string
+  ports: Array<number>
+  status: "starting" | "running" | "ready" | "exited" | "failed" | "stopping" | "stopped"
+  ready: boolean
+  exitCode?: number
+  signal?: string
+  output: string
+  time: {
+    started: number
+    updated: number
+    ended?: number
   }
 }
 
@@ -872,6 +894,8 @@ export type GlobalEvent = {
     | EventMessagePartDelta
     | EventPermissionAsked
     | EventPermissionReplied
+    | EventBackgroundProcessUpdated
+    | EventBackgroundProcessDeleted
     | EventSessionTurnOpen
     | EventSessionTurnClose
     | EventSessionDiff
@@ -1947,6 +1971,12 @@ export type Workspace = {
   projectID: string
 }
 
+export type BackgroundProcessLogs = {
+  id: string
+  sessionID: string
+  output: string
+}
+
 export type WorkspaceWarpError = {
   name: "WorkspaceWarpError"
   data: {
@@ -2633,6 +2663,23 @@ export type EventPermissionReplied = {
     sessionID: string
     requestID: string
     reply: "once" | "always" | "reject"
+  }
+}
+
+export type EventBackgroundProcessUpdated = {
+  id: string
+  type: "background_process.updated"
+  properties: {
+    info: BackgroundProcessInfo
+  }
+}
+
+export type EventBackgroundProcessDeleted = {
+  id: string
+  type: "background_process.deleted"
+  properties: {
+    sessionID: string
+    processID: string
   }
 }
 
@@ -7345,6 +7392,168 @@ export type ExperimentalWorkspaceWarpResponses = {
 
 export type ExperimentalWorkspaceWarpResponse =
   ExperimentalWorkspaceWarpResponses[keyof ExperimentalWorkspaceWarpResponses]
+
+export type BackgroundProcessListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/background-process"
+}
+
+export type BackgroundProcessListResponses = {
+  /**
+   * List of background processes
+   */
+  200: Array<BackgroundProcessInfo>
+}
+
+export type BackgroundProcessListResponse = BackgroundProcessListResponses[keyof BackgroundProcessListResponses]
+
+export type BackgroundProcessGetData = {
+  body?: never
+  path: {
+    processID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/background-process/{processID}"
+}
+
+export type BackgroundProcessGetErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type BackgroundProcessGetError = BackgroundProcessGetErrors[keyof BackgroundProcessGetErrors]
+
+export type BackgroundProcessGetResponses = {
+  /**
+   * Background process info
+   */
+  200: BackgroundProcessInfo
+}
+
+export type BackgroundProcessGetResponse = BackgroundProcessGetResponses[keyof BackgroundProcessGetResponses]
+
+export type BackgroundProcessLogsData = {
+  body?: never
+  path: {
+    processID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/background-process/{processID}/logs"
+}
+
+export type BackgroundProcessLogsErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type BackgroundProcessLogsError = BackgroundProcessLogsErrors[keyof BackgroundProcessLogsErrors]
+
+export type BackgroundProcessLogsResponses = {
+  /**
+   * Background process logs
+   */
+  200: BackgroundProcessLogs
+}
+
+export type BackgroundProcessLogsResponse = BackgroundProcessLogsResponses[keyof BackgroundProcessLogsResponses]
+
+export type BackgroundProcessStopData = {
+  body?: never
+  path: {
+    processID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/background-process/{processID}/stop"
+}
+
+export type BackgroundProcessStopErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type BackgroundProcessStopError = BackgroundProcessStopErrors[keyof BackgroundProcessStopErrors]
+
+export type BackgroundProcessStopResponses = {
+  /**
+   * Stopped background process
+   */
+  200: BackgroundProcessInfo
+}
+
+export type BackgroundProcessStopResponse = BackgroundProcessStopResponses[keyof BackgroundProcessStopResponses]
+
+export type BackgroundProcessRestartData = {
+  body?: never
+  path: {
+    processID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/background-process/{processID}/restart"
+}
+
+export type BackgroundProcessRestartErrors = {
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type BackgroundProcessRestartError = BackgroundProcessRestartErrors[keyof BackgroundProcessRestartErrors]
+
+export type BackgroundProcessRestartResponses = {
+  /**
+   * Restarted background process
+   */
+  200: BackgroundProcessInfo
+}
+
+export type BackgroundProcessRestartResponse =
+  BackgroundProcessRestartResponses[keyof BackgroundProcessRestartResponses]
+
+export type BackgroundProcessStopSessionData = {
+  body?: never
+  path: {
+    sessionID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/background-process/session/{sessionID}/stop"
+}
+
+export type BackgroundProcessStopSessionResponses = {
+  /**
+   * Stopped session background processes
+   */
+  200: boolean
+}
+
+export type BackgroundProcessStopSessionResponse =
+  BackgroundProcessStopSessionResponses[keyof BackgroundProcessStopSessionResponses]
 
 export type CommitMessageGenerateData = {
   body?: {

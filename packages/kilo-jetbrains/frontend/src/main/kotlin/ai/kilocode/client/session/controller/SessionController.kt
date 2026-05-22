@@ -25,6 +25,8 @@ import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
+import ai.kilocode.rpc.dto.ProfileDto
+import ai.kilocode.rpc.dto.ProfileStatusDto
 import ai.kilocode.rpc.dto.PermissionAlwaysRulesDto
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
@@ -74,7 +76,10 @@ class SessionController(
   private val beforeUpdate: () -> Boolean = { false },
   private val afterUpdate: (Boolean) -> Unit = {},
   private val loaded: (Boolean) -> Unit = {},
+  private val openProfileAction: () -> Unit = {},
 ) : Disposable {
+
+    private data class OrganizationTarget(val org: String?)
 
     companion object {
         private val LOG = KiloLog.create(SessionController::class.java)
@@ -111,6 +116,12 @@ class SessionController(
     private var connectionState: SessionControllerEvent.ConnectionChanged? = null
     private var connectionTargetState: SessionControllerEvent.ConnectionChanged? = null
     private val connectionDelay = DelayedState(displayMs)
+    private var acctState: SessionControllerEvent.AccountOverlayChanged =
+        SessionControllerEvent.AccountOverlayChanged.Hide
+    private var acctAllowed = false
+    private var lastProfile: ProfileDto? = null
+    private var target: OrganizationTarget? = null
+    private var loginRetry: PromptDto? = null
 
     val ready: Boolean get() = model.isReady()
     internal val blank: Boolean get() = ref == null && model.isEmpty() && !model.showSession
@@ -369,8 +380,12 @@ class SessionController(
                 fire(SessionControllerEvent.AppChanged) {
                     model.app = state
                     model.version = app.version
+                    if (model.state is SessionState.LoginRequired && state.profile != null) {
+                        resumeAfterLogin()
+                    }
                     syncModelSelection()
                     syncConnectionState()
+                    refreshAccountOverlay()
                 }
             }
         }
@@ -648,7 +663,7 @@ class SessionController(
                 tool = null
                 // "completed" always transitions to idle.
                 // Other reasons: don't clobber a more specific terminal state (Error,
-                // AwaitingPermission, AwaitingQuestion) that arrived just before close.
+                // AwaitingPermission, AwaitingQuestion, LoginRequired) that arrived just before close.
                 val current = model.state
                 val clobberOk = event.reason == "completed"
                     || current is SessionState.Busy
@@ -660,8 +675,14 @@ class SessionController(
             is ChatEventDto.Error -> {
                 partType = null
                 tool = null
-                val msg = event.error?.message ?: event.error?.type ?: KiloBundle.message("session.error.unknown")
-                model.setState(SessionState.Error(msg, event.error?.type))
+                if (isPaidModelAuthRequired(event.error)) {
+                    loginRetry = retryPrompt()
+                    showSession()
+                    model.setState(SessionState.LoginRequired(KiloBundle.message("session.login.required.description")))
+                } else {
+                    val msg = event.error?.message ?: event.error?.type ?: KiloBundle.message("session.error.unknown")
+                    model.setState(SessionState.Error(msg, event.error?.type))
+                }
             }
 
             is ChatEventDto.MessageRemoved -> {
@@ -699,7 +720,11 @@ class SessionController(
 
             is ChatEventDto.SessionStatusChanged -> {
                 val state = when (event.status.type) {
-                    "idle" -> SessionState.Idle
+                    "idle" -> {
+                        val current = model.state
+                        if (current is SessionState.LoginRequired) return
+                        SessionState.Idle
+                    }
                     "busy" -> {
                         val current = model.state
                         if (current is SessionState.Idle || current is SessionState.Error)
@@ -729,6 +754,7 @@ class SessionController(
                 if (current !is SessionState.Error
                     && current !is SessionState.AwaitingPermission
                     && current !is SessionState.AwaitingQuestion
+                    && current !is SessionState.LoginRequired
                 ) {
                     model.setState(SessionState.Idle)
                 }
@@ -737,6 +763,48 @@ class SessionController(
             is ChatEventDto.SessionCompacted -> model.markCompacted()
             is ChatEventDto.SessionDiffChanged -> model.setDiff(event.diff)
             is ChatEventDto.TodoUpdated -> model.setTodos(event.todos)
+        }
+    }
+
+    private fun retryPrompt(): PromptDto? {
+        val msg = model.messages().lastOrNull { it.info.role == "user" } ?: return null
+        return PromptDto(
+            parts = emptyList(),
+            messageID = msg.info.id,
+            providerID = msg.info.providerID,
+            modelID = msg.info.modelID,
+            agent = msg.info.agent,
+            variant = model.variant?.takeIf { it in model.variants },
+            noReply = false,
+        )
+    }
+
+    private fun resumeAfterLogin() {
+        assertEdt()
+        val retry = loginRetry
+        loginRetry = null
+        if (retry == null) {
+            model.setState(SessionState.Idle)
+            return
+        }
+        val id = sid
+        if (id == null) {
+            model.setState(SessionState.Idle)
+            return
+        }
+        model.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
+        cs.launch {
+            try {
+                sessions.prompt(id, directory, retry)
+                LOG.debug { "${ChatLogSummary.sid(id)} kind=login-resume dispatched=true" }
+            } catch (e: Exception) {
+                LOG.warn("${ChatLogSummary.sid(id)} kind=login-resume dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
+                edt {
+                    if (disposed) return@edt
+                    val msg = e.message ?: KiloBundle.message("session.error.prompt")
+                    model.setState(SessionState.Error(msg))
+                }
+            }
         }
     }
 
@@ -845,6 +913,87 @@ class SessionController(
         else -> KiloBundle.message("session.status.considering")
     }
 
+    fun selectOrganization(org: String?) {
+        assertEdt()
+        val next = OrganizationTarget(org)
+        if (target == next) return
+        target = next
+        refreshAccountOverlay()
+        cs.launch {
+            try {
+                app.setOrganization(org)
+            } catch (e: Exception) {
+                LOG.warn("account switch failed org=$org message=${e.message}", e)
+                edt {
+                    if (disposed) return@edt
+                    target = null
+                    refreshAccountOverlay()
+                }
+            }
+        }
+    }
+
+    fun openProfile() {
+        assertEdt()
+        openProfileAction()
+    }
+
+    fun dismissLoginRequired() {
+        assertEdt()
+        loginRetry = null
+        if (model.state is SessionState.LoginRequired) {
+            updateModel { model.setState(SessionState.Idle) }
+        }
+    }
+
+    private fun accountSnapshot(): SessionControllerEvent.AccountOverlaySnapshot {
+        val state = model.app
+        val prof = state.profile
+        val pending = prof == null && state.progress?.profile == ProfileStatusDto.PENDING
+        val current = when {
+            prof != null -> prof
+            pending -> lastProfile
+            else -> null
+        }
+        if (prof != null) {
+            lastProfile = prof
+            if (target?.org == prof.currentOrgId) target = null
+        }
+        if (!pending && prof == null) {
+            lastProfile = null
+            target = null
+        }
+        return SessionControllerEvent.AccountOverlaySnapshot(
+            status = state.status,
+            profile = current,
+            transient = pending,
+            switching = target != null,
+            targetOrgId = target?.org,
+        )
+    }
+
+    private fun showAccountOverlay() {
+        acctAllowed = true
+        setAccountOverlayState(SessionControllerEvent.AccountOverlayChanged.Show(accountSnapshot()))
+    }
+
+    private fun hideAccountOverlay() {
+        acctAllowed = false
+        setAccountOverlayState(SessionControllerEvent.AccountOverlayChanged.Hide)
+    }
+
+    private fun refreshAccountOverlay() {
+        if (!acctAllowed) return
+        setAccountOverlayState(SessionControllerEvent.AccountOverlayChanged.Show(accountSnapshot()))
+    }
+
+    private fun setAccountOverlayState(event: SessionControllerEvent.AccountOverlayChanged) {
+        if (acctState == event) return
+        fire(event) {
+            acctState = event
+        }
+    }
+
     fun refreshRecents(force: Boolean = false) {
         assertEdt()
         if (!canUseRecents()) return
@@ -895,6 +1044,11 @@ class SessionController(
                 setSessionLoadState(SessionLoadState.Idle)
                 setRecentSessionsState(RecentsState.Idle)
             }
+        }
+        when (event) {
+            is SessionControllerEvent.ViewChanged.ShowRecents -> showAccountOverlay()
+            is SessionControllerEvent.ViewChanged.ShowProgress -> hideAccountOverlay()
+            is SessionControllerEvent.ViewChanged.ShowSession -> hideAccountOverlay()
         }
     }
 
@@ -1004,6 +1158,7 @@ class SessionController(
         val block: () -> Unit = {
             if (!disposed) {
                 viewState?.let(listener::onEvent)
+                listener.onEvent(acctState)
                 connectionState?.let(listener::onEvent)
             }
         }
@@ -1081,6 +1236,10 @@ class SessionController(
             }
             is SessionState.Error -> {
                 out.add("[error]")
+                out.add("[${state.message}]")
+            }
+            is SessionState.LoginRequired -> {
+                out.add("[login-required]")
                 out.add("[${state.message}]")
             }
         }
