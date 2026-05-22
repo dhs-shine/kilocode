@@ -121,7 +121,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   // True when the user has changed the model from the session/config default
   const overridden = createMemo(() => {
     const sel = model()
-    const cfg = session.selected()
+    const cfg = session.configModel()
     if (!sel || !cfg) return false
     return sel.providerID !== cfg.providerID || sel.modelID !== cfg.modelID
   })
@@ -441,7 +441,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                         <Button
                           variant="ghost"
                           size="small"
-                          onClick={() => setModel(session.selected())}
+                          onClick={() => setModel(session.configModel())}
                           aria-label={t("prompt.action.resetModel")}
                         >
                           <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
