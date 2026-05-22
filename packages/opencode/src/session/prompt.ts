@@ -1878,20 +1878,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       }
       const agentName = cmd.agent ?? input.agent ?? (yield* agents.defaultAgent())
 
-      // kilocode_change start - allow Kilo commands to consume input before template interpolation
-      const resolved = yield* EffectBridge.fromPromise(() =>
-        KiloSessionPrompt.resolveCommand({
-          command: input.command,
-          source: cmd.source,
-          template: () => cmd.template,
-          arguments: input.arguments,
-        }),
-      )
-      const templateCommand = resolved.template
-      const text = resolved.arguments
-      // kilocode_change end
-      const raw = text.match(argsRegex) ?? [] // kilocode_change
+      const raw = input.arguments.match(argsRegex) ?? []
       const args = raw.map((arg) => arg.replace(quoteTrimRegex, ""))
+      const templateCommand = yield* Effect.promise(async () => cmd.template)
 
       const placeholders = templateCommand.match(placeholderRegex) ?? []
       let last = 0
@@ -1908,10 +1897,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         return args[argIndex]
       })
       const usesArgumentsPlaceholder = templateCommand.includes("$ARGUMENTS")
-      let template = withArgs.replaceAll("$ARGUMENTS", text) // kilocode_change
+      let template = withArgs.replaceAll("$ARGUMENTS", input.arguments)
 
-      if (placeholders.length === 0 && !usesArgumentsPlaceholder && text.trim()) { // kilocode_change
-        template = template + "\n\n" + text // kilocode_change
+      if (placeholders.length === 0 && !usesArgumentsPlaceholder && input.arguments.trim()) {
+        template = template + "\n\n" + input.arguments
       }
 
       const shellMatches = ConfigMarkdown.shell(template)
