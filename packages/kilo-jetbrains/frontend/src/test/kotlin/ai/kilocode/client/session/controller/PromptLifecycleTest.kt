@@ -1,6 +1,5 @@
 package ai.kilocode.client.session.controller
 
-import ai.kilocode.client.app.KiloAutoApproveService
 import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.SessionState
@@ -213,27 +212,6 @@ class PromptLifecycleTest : SessionControllerTestBase() {
         assertEquals(1, rpc.permissionReplies.size)
     }
 
-    fun `test auto-approve live event replies once without showing prompt`() {
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(
-            ai.kilocode.rpc.dto.KiloAppStatusDto.READY,
-            config = ai.kilocode.rpc.dto.ConfigDto(model = "kilo/gpt-5"),
-        )
-        projectRpc.state.value = workspaceReady()
-        val svc = KiloAutoApproveService()
-        svc.set(true)
-        val m = controller(flushMs = Long.MAX_VALUE, auto = svc)
-        edt { m.prompt("go") }
-        flush()
-
-        emit(ChatEventDto.PermissionAsked("ses_test", permission("perm_auto")))
-
-        assertFalse(m.model.state is SessionState.AwaitingPermission)
-        assertEquals(1, rpc.permissionReplies.size)
-        assertEquals("once", rpc.permissionReplies[0].third.reply)
-
-        svc.set(false)
-    }
-
     // ------ Child session (subagent) permission bubbling ------
 
     fun `test task part with child sessionId causes controller to track child`() {
@@ -313,28 +291,6 @@ class PromptLifecycleTest : SessionControllerTestBase() {
         // No extra model state events from child non-permission events
         val stateEvents = modelEvents.filterIsInstance<ai.kilocode.client.session.model.SessionModelEvent.StateChanged>()
         assertTrue("Root state must not be changed by child non-permission events", stateEvents.isEmpty())
-    }
-
-    fun `test child permission with auto-approve replies once without showing prompt`() {
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(
-            ai.kilocode.rpc.dto.KiloAppStatusDto.READY,
-            config = ai.kilocode.rpc.dto.ConfigDto(model = "kilo/gpt-5"),
-        )
-        projectRpc.state.value = workspaceReady()
-        val svc = KiloAutoApproveService()
-        svc.set(true)
-        val m = controller(flushMs = Long.MAX_VALUE, auto = svc)
-        edt { m.prompt("go") }
-        flush()
-
-        emit(taskPart("ses_child"), flush = false)
-        emit(ChatEventDto.PermissionAsked("ses_child", childPermission("child_auto")))
-
-        assertFalse(m.model.state is SessionState.AwaitingPermission)
-        assertEquals(1, rpc.permissionReplies.size)
-        assertEquals("once", rpc.permissionReplies[0].third.reply)
-
-        svc.set(false)
     }
 
     fun `test root permission event is not processed as child permission`() {

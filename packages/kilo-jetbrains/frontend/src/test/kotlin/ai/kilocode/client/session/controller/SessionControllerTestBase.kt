@@ -1,7 +1,6 @@
 package ai.kilocode.client.session.controller
 
 import ai.kilocode.client.app.KiloAppService
-import ai.kilocode.client.app.KiloAutoApproveService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionModelEvent
@@ -129,9 +128,8 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         id: String? = null,
         flushMs: Long = Long.MAX_VALUE,
         displayMs: Long = Long.MAX_VALUE,
-        auto: KiloAutoApproveService? = null,
     ): SessionController {
-        return controller(id, flushMs, true, displayMs = displayMs, auto = auto)
+        return controller(id, flushMs, true, displayMs = displayMs)
     }
 
     protected fun controller(
@@ -151,7 +149,6 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         beforeUpdate: () -> Boolean = { false },
         afterUpdate: (Boolean) -> Unit = {},
         ref: SessionRef? = if (session != null) SessionRef.Local(session) else SessionRef.from(id),
-        auto: KiloAutoApproveService? = null,
     ): SessionController {
         val root = Root()
         val m = SessionController(
@@ -167,7 +164,6 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
             displayMs,
             beforeUpdate = beforeUpdate,
             afterUpdate = afterUpdate,
-            auto = auto,
         )
         controllers.add(m)
         roots[m] = root

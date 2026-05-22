@@ -1,6 +1,5 @@
 package ai.kilocode.client.session.controller
 
-import ai.kilocode.client.app.KiloAutoApproveService
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.PartDto
@@ -236,31 +235,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
         )
     }
 
-    fun `test auto-approve recovery replies once and does not show awaiting permission`() {
-        rpc.pendingPermissionList.add(
-            PermissionRequestDto(
-                id = "perm_auto",
-                sessionID = "ses_test",
-                permission = "read",
-                patterns = listOf("*.json"),
-            )
-        )
-
-        val svc = KiloAutoApproveService()
-        svc.set(true)
-
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY, config = ai.kilocode.rpc.dto.ConfigDto(model = "kilo/gpt-5"))
-        projectRpc.state.value = workspaceReady()
-        val m = controller("ses_test", auto = svc)
-        flush()
-
-        assertFalse(m.model.state is SessionState.AwaitingPermission)
-        assertEquals(1, rpc.permissionReplies.size)
-        assertEquals("once", rpc.permissionReplies[0].third.reply)
-
-        svc.set(false)
-    }
-
     // ------ Child session permission recovery from history ------
 
     fun `test history with task part and pending child permission recovers to AwaitingPermission`() {
@@ -297,46 +271,6 @@ class SessionRecoveryTest : SessionControllerTestBase() {
         val perm = (m.model.state as SessionState.AwaitingPermission).permission
         assertEquals("child_perm_1", perm.id)
         assertEquals("ses_child", perm.sessionId)
-    }
-
-    fun `test auto-approve child permission recovery replies once without showing prompt`() {
-        rpc.history.add(
-            MessageWithPartsDto(
-                info = msg("msg1", "ses_test", "assistant"),
-                parts = listOf(
-                    PartDto(
-                        id = "part_task",
-                        sessionID = "ses_test",
-                        messageID = "msg1",
-                        type = "tool",
-                        tool = "task",
-                        metadata = mapOf("sessionId" to "ses_child"),
-                    ),
-                ),
-            )
-        )
-        rpc.pendingPermissionList.add(
-            PermissionRequestDto(
-                id = "child_perm_auto",
-                sessionID = "ses_child",
-                permission = "edit",
-                patterns = listOf("*.kt"),
-            )
-        )
-
-        val svc = KiloAutoApproveService()
-        svc.set(true)
-
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
-        projectRpc.state.value = workspaceReady()
-        val m = controller("ses_test", auto = svc)
-        flush()
-
-        assertFalse(m.model.state is SessionState.AwaitingPermission)
-        assertEquals(1, rpc.permissionReplies.size)
-        assertEquals("once", rpc.permissionReplies[0].third.reply)
-
-        svc.set(false)
     }
 
     fun `test pending child permission from unrelated session is ignored`() {

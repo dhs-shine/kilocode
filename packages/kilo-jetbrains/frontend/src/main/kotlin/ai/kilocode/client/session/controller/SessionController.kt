@@ -1,7 +1,6 @@
 package ai.kilocode.client.session.controller
 
 import ai.kilocode.client.app.KiloAppService
-import ai.kilocode.client.app.KiloAutoApproveService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.plugin.KiloBundle
@@ -79,7 +78,6 @@ class SessionController(
   private val beforeUpdate: () -> Boolean = { false },
   private val afterUpdate: (Boolean) -> Unit = {},
   private val loaded: (Boolean) -> Unit = {},
-  private val auto: KiloAutoApproveService? = null,
   private val openProfileAction: () -> Unit = {},
 ) : Disposable {
 
@@ -378,31 +376,6 @@ class SessionController(
         }
     }
 
-    fun toggleAutoApprove(): Boolean {
-        assertEdt()
-        val next = auto?.toggle() ?: false
-        if (next) drainPermissions()
-        return next
-    }
-
-    private fun drainPermissions() {
-        val id = sid ?: return
-        val tracked = childIds.toSet()
-        cs.launch {
-            try {
-                val all = sessions.pendingPermissions(directory)
-                val ids = setOf(id) + tracked
-                val pending = all.filter { it.sessionID in ids }
-                for (req in pending) {
-                    sessions.replyPermission(req.id, directory, PermissionReplyDto("once"))
-                }
-                LOG.debug { "${ChatLogSummary.sid(id)} kind=auto-approve drain count=${pending.size}" }
-            } catch (e: Exception) {
-                LOG.warn("${ChatLogSummary.sid(id)} kind=auto-approve drain failed message=${e.message}", e)
-            }
-        }
-    }
-
     init {
         (ref as? SessionRef.Local)?.session?.let { model.setSession(it) }
         when (val item = ref) {
@@ -654,12 +627,6 @@ class SessionController(
             val permissions = sessions.pendingPermissions(directory).filter { it.sessionID == child }
             if (permissions.isEmpty()) return
             LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-recovery child=$child permissions=${permissions.size}" }
-            if (auto?.active() == true) {
-                for (req in permissions) {
-                    sessions.replyPermission(req.id, directory, PermissionReplyDto("once"))
-                }
-                return
-            }
             val last = toPermission(permissions.last())
             runEdt {
                 if (disposed) return@runEdt
@@ -686,12 +653,6 @@ class SessionController(
             }
             LOG.debug {
                 "${ChatLogSummary.sid(id)} kind=recovery permissions=${permissions.size} questions=${questions.size} status=${status?.type ?: "none"} branch=$branch"
-            }
-            if (permissions.isNotEmpty() && auto?.active() == true) {
-                for (req in permissions) {
-                    sessions.replyPermission(req.id, directory, PermissionReplyDto("once"))
-                }
-                return
             }
             runEdt {
                 if (disposed) return@runEdt
@@ -802,10 +763,6 @@ class SessionController(
 
             is ChatEventDto.PermissionAsked -> {
                 val perm = toPermission(event.request)
-                if (auto?.active() == true) {
-                    replyPermission(perm.id, PermissionReplyDto("once"))
-                    return
-                }
                 model.setState(SessionState.AwaitingPermission(perm))
             }
 

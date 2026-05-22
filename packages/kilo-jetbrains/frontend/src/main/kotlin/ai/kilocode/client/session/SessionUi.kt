@@ -1,7 +1,6 @@
 package ai.kilocode.client.session
 
 import ai.kilocode.client.app.KiloAppService
-import ai.kilocode.client.app.KiloAutoApproveService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.session.model.SessionModelEvent
@@ -33,7 +32,6 @@ import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.Disposable
@@ -74,7 +72,6 @@ class SessionUi(
 
     private val project = project
     private val app = app
-    private val auto = service<KiloAutoApproveService>()
     private var opening = ref != null
     private var pending = false
     private var loaded: Boolean? = null
@@ -93,7 +90,6 @@ class SessionUi(
         beforeUpdate = { if (opening) false else scroll.atBottom() },
         afterUpdate = { if (!opening) scroll.followBottom(it) },
         loaded = ::onSessionLoaded,
-        auto = auto,
         openProfileAction = ::openProfileSettings,
     )
 
@@ -199,8 +195,6 @@ class SessionUi(
             project = project,
             onSend = { text -> sendPrompt(text) },
             onAbort = { controller.abort() },
-            autoApprove = { auto.active() },
-            onAutoApproveToggle = { controller.toggleAutoApprove() },
         )
 
         sessionContent.add(header, BorderLayout.NORTH)
@@ -298,15 +292,6 @@ class SessionUi(
                 is SessionModelEvent.HeaderUpdated,
                 is SessionModelEvent.Compacted,
                 is SessionModelEvent.Cleared -> Unit
-            }
-        }
-
-        prompt.setAutoApprove(auto.active())
-        cs.launch {
-            auto.enabled.collect { value ->
-                ApplicationManager.getApplication().invokeLater {
-                    if (!Disposer.isDisposed(this@SessionUi)) prompt.setAutoApprove(value)
-                }
             }
         }
     }

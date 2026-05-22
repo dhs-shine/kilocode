@@ -120,54 +120,6 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertSame(shell, panel.mode.parent.parent)
     }
 
-    fun `test auto-approve button initializes with disabled tooltip`() {
-        val panel = PromptPanel(project, {}, {}, autoApprove = { false }, onAutoApproveToggle = { true })
-
-        assertEquals(
-            "Auto-approve disabled. Click to auto-approve permission requests.",
-            panel.autoApproveButtonForTest().toolTipText,
-        )
-    }
-
-    fun `test clicking auto-approve button toggles state`() {
-        var enabled = false
-        val panel = PromptPanel(
-            project, {}, {},
-            autoApprove = { enabled },
-            onAutoApproveToggle = { enabled = !enabled; enabled },
-        )
-
-        panel.autoApproveButtonForTest().doClick()
-
-        assertEquals(
-            "Auto-approve enabled. Permission requests will be approved once automatically.",
-            panel.autoApproveButtonForTest().toolTipText,
-        )
-    }
-
-    fun `test setAutoApprove updates tooltip to enabled`() {
-        val panel = PromptPanel(project, {}, {})
-
-        panel.setAutoApprove(true)
-
-        assertEquals(
-            "Auto-approve enabled. Permission requests will be approved once automatically.",
-            panel.autoApproveButtonForTest().toolTipText,
-        )
-    }
-
-    fun `test setAutoApprove updates tooltip to disabled`() {
-        val panel = PromptPanel(project, {}, {})
-        panel.setAutoApprove(true)
-
-        panel.setAutoApprove(false)
-
-        assertEquals(
-            "Auto-approve disabled. Click to auto-approve permission requests.",
-            panel.autoApproveButtonForTest().toolTipText,
-        )
-    }
-
     private class TestSink : DataSink {
         var send: Any? = null
 
