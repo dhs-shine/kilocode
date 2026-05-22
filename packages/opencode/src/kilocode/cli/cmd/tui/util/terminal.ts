@@ -1,3 +1,5 @@
+import fs from "node:fs"
+
 /**
  * Write escape sequences to disable terminal input modes and reset terminal state.
  * This is a safety net to ensure the terminal is clean after exit, even if the renderer's
@@ -23,11 +25,16 @@ export function kitty() {
 
 export function sequences() {
   return [
+    "\x1b[?9l", // disable X10 mouse tracking
     "\x1b[?1000l", // disable normal mouse tracking
+    "\x1b[?1001l", // disable highlight mouse tracking
     "\x1b[?1002l", // disable button-event mouse tracking
     "\x1b[?1003l", // disable any-event mouse tracking (all movement)
+    "\x1b[?1005l", // disable UTF-8 extended mouse mode
     "\x1b[?1006l", // disable SGR extended mouse mode
+    "\x1b[?1007l", // disable alternate scroll mode
     "\x1b[?1015l", // disable RXVT mouse mode
+    "\x1b[?1016l", // disable SGR pixel mouse mode
     "\x1b[?2004l", // disable bracketed paste
     "\x1b[?1004l", // disable focus tracking
     "\x1b[?1l", // disable application cursor keys
@@ -42,7 +49,7 @@ export function sequences() {
 
 export function resetTerminalState() {
   try {
-    process.stdout.write(sequences().join(""))
+    fs.writeSync(process.stdout.fd, sequences().join(""))
   } catch (err) {
     console.error("resetTerminalState failed", err)
   }
