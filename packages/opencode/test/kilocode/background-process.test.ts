@@ -2,9 +2,26 @@ import { describe, expect } from "bun:test"
 import { Bus } from "@/bus"
 import { BackgroundProcess } from "@/kilocode/background-process"
 import { SessionID } from "@/session/schema"
+import { Shell } from "@/shell/shell"
 import { Effect } from "effect"
+import path from "path"
 import { TestInstance } from "../fixture/fixture"
 import { it } from "../lib/effect"
+
+function quote(input: string) {
+  const value = input.replaceAll("\\", "/")
+  if (process.platform === "win32") return `"${value.replaceAll('"', '""')}"`
+  return `'${value.replaceAll("'", "'\\''")}'`
+}
+
+async function script(dir: string, name: string, source: string) {
+  const file = path.join(dir, name)
+  await Bun.write(file, source)
+  const bin = quote(process.execPath)
+  const arg = quote(file)
+  if (Shell.ps(Shell.acceptable())) return `& ${bin} ${arg}`
+  return `${bin} ${arg}`
+}
 
 function update(sessionID: SessionID) {
   const state: { off?: () => void; timer?: ReturnType<typeof setTimeout> } = {}
@@ -36,7 +53,15 @@ describe("BackgroundProcess", () => {
     Effect.gen(function* () {
       const test = yield* TestInstance
       const sessionID = SessionID.descending()
-      const command = "printf 'ready\\n'; while true; do sleep 1; done"
+      const command = yield* Effect.promise(() =>
+        script(
+          test.directory,
+          "ready.mjs",
+          `console.log("ready")
+setInterval(() => {}, 1_000)
+`,
+        ),
+      )
 
       const info = yield* Effect.promise(() =>
         BackgroundProcess.start({
@@ -56,8 +81,10 @@ describe("BackgroundProcess", () => {
 
       const stopped = yield* Effect.promise(() => BackgroundProcess.stop(info.id))
       expect(stopped?.status).toBe("stopped")
-      expect(stopped?.exitCode).toBeUndefined()
-      expect(stopped?.signal).toBe("SIGTERM")
+      if (process.platform !== "win32") {
+        expect(stopped?.exitCode).toBeUndefined()
+        expect(stopped?.signal).toBe("SIGTERM")
+      }
 
       yield* Effect.promise(() => BackgroundProcess.stopSession(sessionID))
       const next = yield* Effect.promise(() => BackgroundProcess.list({ sessionID }))
@@ -69,7 +96,16 @@ describe("BackgroundProcess", () => {
     Effect.gen(function* () {
       const test = yield* TestInstance
       const sessionID = SessionID.descending()
-      const command = "printf 'ready\n'; sleep 0.2; printf 'tick\n'; while true; do sleep 1; done"
+      const command = yield* Effect.promise(() =>
+        script(
+          test.directory,
+          "tick.mjs",
+          `console.log("ready")
+setTimeout(() => console.log("tick"), 200)
+setInterval(() => {}, 1_000)
+`,
+        ),
+      )
       const wait = update(sessionID)
       const info = yield* Effect.promise(() =>
         BackgroundProcess.start({
