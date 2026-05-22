@@ -31,6 +31,7 @@ import { SessionProcessor } from "../../src/session/processor"
 import { SessionPrompt } from "../../src/session/prompt"
 import { SessionRevert } from "../../src/session/revert"
 import { SessionRunState } from "../../src/session/run-state"
+import { Suggestion } from "../../src/kilocode/suggestion" // kilocode_change - accept suggestion in telemetry test
 import { MessageID, PartID, SessionID } from "../../src/session/schema"
 import { SessionStatus } from "../../src/session/status"
 import { SessionV2 } from "../../src/v2/session"
@@ -2137,6 +2138,59 @@ it.live(
         const tagged = trackSpy.mock.calls
           .map((args) => args[0] as Parameters<typeof Telemetry.trackLlmCompletion>[0])
           .find((p) => p.mode === "review" && p.feature === "code_reviews" && p.command === "review")
+        expect(tagged).toBeDefined()
+      }),
+      { git: true, config: providerCfg },
+    ),
+  30_000,
+)
+
+it.live(
+  "accepted suggest tool marks following completion with review telemetry",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ llm }) {
+        const trackSpy = spyOn(Telemetry, "trackLlmCompletion")
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const chat = yield* sessions.create({
+          title: "Suggest telemetry",
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+        })
+
+        yield* llm.tool("suggest", {
+          suggest: "Run a local review?",
+          actions: [{ label: "Review", prompt: "/local-review-uncommitted --focus telemetry" }],
+        })
+        yield* llm.text("review done", { usage: { input: 100, output: 50 } })
+
+        const fiber = yield* prompt
+          .prompt({
+            sessionID: chat.id,
+            agent: "build",
+            model: ref,
+            parts: [{ type: "text", text: "Suggest a review action." }],
+          })
+          .pipe(Effect.forkChild)
+        const request = yield* waitFor(
+          "suggestion request",
+          Effect.promise(() => Suggestion.list()).pipe(
+            Effect.map((items) => items.find((item) => item.sessionID === chat.id)),
+          ),
+        )
+
+        yield* Effect.promise(() => Suggestion.accept({ requestID: request.id, index: 0 }))
+        yield* Fiber.join(fiber)
+
+        const tagged = trackSpy.mock.calls
+          .map((args) => args[0] as Parameters<typeof Telemetry.trackLlmCompletion>[0])
+          .find(
+            (p) =>
+              p.mode === "review" &&
+              p.feature === "code_reviews" &&
+              p.command === "local-review-uncommitted" &&
+              p.tool === "suggest",
+          )
         expect(tagged).toBeDefined()
       }),
       { git: true, config: providerCfg },
