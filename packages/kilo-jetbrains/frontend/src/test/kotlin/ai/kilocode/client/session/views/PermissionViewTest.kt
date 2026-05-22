@@ -11,12 +11,9 @@ import ai.kilocode.rpc.dto.PermissionReplyDto
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBScrollPane
 import java.awt.Container
 import javax.swing.AbstractButton
-import javax.swing.ScrollPaneConstants
 
 @Suppress("UnstableApiUsage")
 class PermissionViewTest : BasePlatformTestCase() {
@@ -64,7 +61,7 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertFalse(view.isVisible)
     }
 
-    fun `test blank patterns display no-details fallback`() {
+    fun `test blank patterns show only action label with no code fragment`() {
         view.show(
             Permission(
                 id = "perm2",
@@ -77,12 +74,13 @@ class PermissionViewTest : BasePlatformTestCase() {
         )
 
         assertTrue(view.isVisible)
-        // Should have text saying edit requires permission
         val text = allText(view)
         assertTrue("Expected tool label in text, got: $text", text.contains("Edit"))
+        // No code label should be added when there is no target
+        assertTrue("Expected no code labels for empty patterns", view.codeLabelsForTest().isEmpty())
     }
 
-    fun `test star-only patterns use no-details fallback`() {
+    fun `test star-only patterns show action label with no code fragment`() {
         view.show(
             Permission(
                 id = "perm3",
@@ -97,9 +95,10 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertTrue(view.isVisible)
         val text = allText(view)
         assertTrue("Expected Read label in text, got: $text", text.contains("Read"))
+        assertTrue("Expected no code labels for star-only patterns", view.codeLabelsForTest().isEmpty())
     }
 
-    fun `test bash permission shows command`() {
+    fun `test bash permission shows action and command on same row`() {
         view.show(
             Permission(
                 id = "perm4",
@@ -112,10 +111,14 @@ class PermissionViewTest : BasePlatformTestCase() {
         )
 
         val text = allText(view)
+        assertTrue("Expected Shell action label in text, got: $text", text.contains("Shell"))
         assertTrue("Expected command in text, got: $text", text.contains("git status --short"))
+        val labels = view.codeLabelsForTest()
+        assertEquals("Expected exactly one target pane for command", 1, labels.size)
+        assertTrue("Expected command in target pane, got: ${labels[0].text}", labels[0].text.contains("git status --short"))
     }
 
-    fun `test bash permission shows only header and code block content`() {
+    fun `test bash permission shows only header and compact detail`() {
         view.show(
             Permission(
                 id = "perm4b",
@@ -131,11 +134,11 @@ class PermissionViewTest : BasePlatformTestCase() {
         val text = allText(view)
         assertTrue("Expected permission header, got: $text", text.contains("Permission required"))
         assertTrue("Expected command in text, got: $text", text.contains("git status --short"))
-        assertFalse("Should not show command label, got: $text", text.contains("Command"))
-        assertFalse("Should not show permission message, got: $text", text.contains("Run this command?"))
+        // State message should not appear for PENDING state
+        assertFalse("Should not show state message for PENDING, got: $text", text.contains("Run this command?"))
     }
 
-    fun `test non-bash patterns show tool and path`() {
+    fun `test non-bash patterns show action and path as separate labels`() {
         view.show(
             Permission(
                 id = "perm5",
@@ -149,32 +152,32 @@ class PermissionViewTest : BasePlatformTestCase() {
 
         val text = allText(view)
         assertTrue("Expected 'Read' in text, got: $text", text.contains("Read"))
-        assertTrue("Expected path in text, got: $text", text.contains("src/"))
-        assertTrue("Expected path in text, got: $text", text.contains("App"))
-        assertTrue("Expected path in text, got: $text", text.contains("kt"))
+        assertTrue("Expected path in text, got: $text", text.containsPath("src/App.kt"))
+
+        val labels = view.codeLabelsForTest()
+        assertEquals("Expected exactly one target pane for the pattern", 1, labels.size)
+        assertTrue("Expected path in target pane, got: ${labels[0].text}", labels[0].text.containsPath("src/App.kt"))
     }
 
-    fun `test non-bash patterns render as fenced code block via MdView`() {
+    fun `test multiple patterns joined in code label`() {
         view.show(
             Permission(
-                id = "perm_pattern_md",
+                id = "perm_multi",
                 sessionId = "ses",
                 name = "glob",
-                patterns = listOf("packages/kilo-jetbrains/**/*.kt"),
+                patterns = listOf("src/*.kt", "test/*.kt"),
                 always = emptyList(),
                 meta = PermissionMeta(),
             )
         )
 
-        val panes = findAll<JBHtmlPane>(view)
-        assertTrue("Expected at least one JBHtmlPane for pattern details", panes.isNotEmpty())
-        val html = panes.first().text
-        assertTrue("Expected <pre> tag in rendered HTML, got: $html", html.contains("<pre"))
-        assertTrue("Expected tool label in rendered HTML, got: $html", html.contains("Glob Search"))
-        assertTrue("Expected pattern in rendered HTML, got: $html", html.contains("packages/"))
+        val labels = view.codeLabelsForTest()
+        assertEquals("Expected one combined code label for multiple patterns", 1, labels.size)
+        assertTrue("Expected both patterns in label, got: ${labels[0].text}", labels[0].text.contains("src/*.kt"))
+        assertTrue("Expected both patterns in label, got: ${labels[0].text}", labels[0].text.contains("test/*.kt"))
     }
 
-    fun `test diff preview is not rendered`() {
+    fun `test diff preview renders only stat badge without duplicate file path`() {
         view.show(
             Permission(
                 id = "perm6",
@@ -186,7 +189,7 @@ class PermissionViewTest : BasePlatformTestCase() {
                     fileDiffs = listOf(
                         PermissionFileDiff(
                             file = "src/A.kt",
-                            patch = "@@ -1 +1 @@",
+                            patch = "@@ -1 +1 @@\n-old\n+new",
                             additions = 1,
                             deletions = 2,
                         )
@@ -196,9 +199,88 @@ class PermissionViewTest : BasePlatformTestCase() {
         )
 
         val text = allText(view)
-        assertFalse("Should not render diff patch, got: $text", text.contains("@@"))
-        assertFalse("Should not render diff additions, got: $text", text.contains("+1"))
-        assertFalse("Should not render diff deletions, got: $text", text.contains("-2"))
+        assertTrue("Should render target file once, got: $text", text.containsPath("src/A.kt"))
+        assertEquals("Should not duplicate target file path, got: $text", 1, pathOccurrences(text, "src/A.kt"))
+        // Patch markers should NOT appear — no diff content is shown
+        assertFalse("Should not render patch content, got: $text", text.contains("@@"))
+        assertFalse("Should not render old line, got: $text", text.contains("-old"))
+        assertFalse("Should not render new line, got: $text", text.contains("+new"))
+
+        val diffs = view.diffViewsForTest()
+        assertEquals("Expected one diff view", 1, diffs.size)
+        val badge = diffs[0].badgeForTest()
+        assertEquals("-2", badge.removedLabelForTest().text)
+        assertEquals("+1", badge.addedLabelForTest().text)
+        assertNotSame("Removed and added labels should use different colors", badge.removedLabelForTest().foreground, badge.addedLabelForTest().foreground)
+    }
+
+    fun `test diff preview shows no unavailable fallback text`() {
+        view.show(
+            Permission(
+                id = "perm_no_patch",
+                sessionId = "ses",
+                name = "edit",
+                patterns = listOf("src/A.kt"),
+                always = emptyList(),
+                meta = PermissionMeta(
+                    fileDiffs = listOf(
+                        PermissionFileDiff(
+                            file = "src/A.kt",
+                            patch = null,
+                            additions = 3,
+                            deletions = 1,
+                        )
+                    ),
+                ),
+            )
+        )
+
+        val text = allText(view)
+        assertTrue("Should render target file once, got: $text", text.containsPath("src/A.kt"))
+        assertEquals("Should not duplicate target file path, got: $text", 1, pathOccurrences(text, "src/A.kt"))
+        // No "unavailable" fallback text expected in new design
+        assertFalse("Should not render unavailable fallback, got: $text", text.contains("unavailable"))
+        val badge = view.diffViewsForTest().single().badgeForTest()
+        assertEquals("-1", badge.removedLabelForTest().text)
+        assertEquals("+3", badge.addedLabelForTest().text)
+    }
+
+    fun `test multiple diffs render each file separately`() {
+        view.show(
+            Permission(
+                id = "perm_multi_diff",
+                sessionId = "ses",
+                name = "edit",
+                patterns = listOf("src/A.kt", "src/B.kt"),
+                always = emptyList(),
+                meta = PermissionMeta(
+                    fileDiffs = listOf(
+                        PermissionFileDiff(
+                            file = "src/A.kt",
+                            patch = "@@ -1 +1 @@\n-a\n+b",
+                            additions = 1,
+                            deletions = 1,
+                        ),
+                        PermissionFileDiff(
+                            file = "src/B.kt",
+                            patch = "@@ -2 +2 @@\n-c\n+d",
+                            additions = 2,
+                            deletions = 3,
+                        ),
+                    ),
+                ),
+            )
+        )
+
+        val diffs = view.diffViewsForTest()
+        assertEquals("Expected two diff views", 2, diffs.size)
+        assertEquals("-1", diffs[0].badgeForTest().removedLabelForTest().text)
+        assertEquals("+1", diffs[0].badgeForTest().addedLabelForTest().text)
+        assertEquals("-3", diffs[1].badgeForTest().removedLabelForTest().text)
+        assertEquals("+2", diffs[1].badgeForTest().addedLabelForTest().text)
+        // Patch content should not be in text
+        val text = allText(view)
+        assertFalse("Should not render patch markers, got: $text", text.contains("@@"))
     }
 
     fun `test no rule controls rendered`() {
@@ -237,6 +319,62 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertFalse(view.denyButtonForTest().isEnabled)
     }
 
+    fun `test responding state shows responding message`() {
+        view.show(
+            Permission(
+                id = "perm_responding",
+                sessionId = "ses",
+                name = "edit",
+                patterns = listOf("*.kt"),
+                always = emptyList(),
+                meta = PermissionMeta(),
+                state = PermissionRequestState.RESPONDING,
+            )
+        )
+
+        val text = allText(view)
+        assertTrue("Should show responding message, got: $text", text.contains("Sending response"))
+    }
+
+    fun `test error state shows error message`() {
+        view.show(
+            Permission(
+                id = "perm_error",
+                sessionId = "ses",
+                name = "edit",
+                patterns = listOf("*.kt"),
+                always = emptyList(),
+                meta = PermissionMeta(),
+                message = "Boom",
+                state = PermissionRequestState.ERROR,
+            )
+        )
+
+        val text = allText(view)
+        assertTrue("Should show error message, got: $text", text.contains("Boom"))
+        // ERROR state should keep buttons enabled so user can retry
+        assertTrue(view.runButtonForTest().isEnabled)
+        assertTrue(view.denyButtonForTest().isEnabled)
+    }
+
+    fun `test error state shows fallback error text when no message`() {
+        view.show(
+            Permission(
+                id = "perm_error_fallback",
+                sessionId = "ses",
+                name = "edit",
+                patterns = listOf("*.kt"),
+                always = emptyList(),
+                meta = PermissionMeta(),
+                message = null,
+                state = PermissionRequestState.ERROR,
+            )
+        )
+
+        val text = allText(view)
+        assertTrue("Should show fallback error text, got: $text", text.contains("Failed to send"))
+    }
+
     fun `test allow button uses bundle text and replies once`() {
         view.show(permission())
 
@@ -256,7 +394,7 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertEquals("reject", replies.single().second.reply)
     }
 
-    // ------ new: shared card shell ------
+    // ------ shared card shell ------
 
     fun `test view contains BaseSessionQuestionPanel after show`() {
         view.show(permission())
@@ -275,7 +413,7 @@ class PermissionViewTest : BasePlatformTestCase() {
         )
     }
 
-    // ------ new: shared button types ------
+    // ------ button types ------
 
     fun `test run button uses default style key`() {
         view.show(permission())
@@ -299,70 +437,26 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertEquals(SessionUiStyle.View.surface(), view.denyButtonForTest().background)
     }
 
-    // ------ new: command rendered via MdView ------
+    // ------ code labels use editor style ------
 
-    fun `test bash command renders as fenced code block via MdView`() {
+    fun `test code label uses editor font family after applyStyle`() {
         view.show(
             Permission(
-                id = "perm_md",
+                id = "perm_codefont",
                 sessionId = "ses",
                 name = "bash",
                 patterns = emptyList(),
                 always = emptyList(),
-                meta = PermissionMeta(command = "git status --short"),
+                meta = PermissionMeta(command = "git log"),
             )
         )
+        val style = SessionEditorStyle.create(family = "Courier New", size = 18)
+        view.applyStyle(style)
 
-        // Find the JBHtmlPane that MdView uses — it should contain a <pre> block
-        val panes = findAll<JBHtmlPane>(view)
-        assertTrue("Expected at least one JBHtmlPane for the command MdView", panes.isNotEmpty())
-        val html = panes.first().text
-        assertTrue("Expected <pre> tag in rendered HTML, got: $html", html.contains("<pre"))
-        assertTrue("Expected command text in rendered HTML, got: $html", html.contains("git status --short"))
+        val labels = view.codeLabelsForTest()
+        assertNotNull("Should have at least one code label for command", labels.firstOrNull())
+        assertEquals("Code label font family should use editor family", "Courier New", labels[0].font.name)
     }
-
-    // ------ new: command scroll pane height cap ------
-
-    fun `test long command scroll pane uses vertical scrolling and caps height`() {
-        val longCmd = (1..20).joinToString("\n") { "echo line $it" }
-        view.show(
-            Permission(
-                id = "perm_long",
-                sessionId = "ses",
-                name = "bash",
-                patterns = emptyList(),
-                always = emptyList(),
-                meta = PermissionMeta(command = longCmd),
-            )
-        )
-
-        val scrolls = findAll<JBScrollPane>(view)
-        val cmdScroll = scrolls.firstOrNull { it.verticalScrollBarPolicy == ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED }
-        assertNotNull("Expected a JBScrollPane with VERTICAL_SCROLLBAR_AS_NEEDED for the command", cmdScroll)
-
-        val maxH = cmdScroll!!.maximumSize.height
-        assertTrue("Maximum height should be capped (> 0)", maxH > 0)
-        assertTrue("Maximum height should be finite (< Int.MAX_VALUE)", maxH < Int.MAX_VALUE)
-    }
-
-    fun `test code block scroll pane uses code background`() {
-        view.show(
-            Permission(
-                id = "perm_bg",
-                sessionId = "ses",
-                name = "bash",
-                patterns = emptyList(),
-                always = emptyList(),
-                meta = PermissionMeta(command = "pwd"),
-            )
-        )
-
-        val scroll = findAll<JBScrollPane>(view).first { it.verticalScrollBarPolicy == ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED }
-        assertEquals(SessionUiStyle.View.headerHover(), scroll.background)
-        assertEquals(SessionUiStyle.View.headerHover(), scroll.viewport.background)
-    }
-
-    // ------ fonts: header UI family, command code block editor family ------
 
     fun `test permission header uses headerFont not editor font family`() {
         view.show(
@@ -384,23 +478,21 @@ class PermissionViewTest : BasePlatformTestCase() {
         assertEquals("Permission header should equal headerFont", style.headerFont, header)
     }
 
-    fun `test command code block retains editor font family`() {
+    fun `test code label uses code background`() {
         view.show(
             Permission(
-                id = "perm_codefont",
+                id = "perm_bg",
                 sessionId = "ses",
                 name = "bash",
                 patterns = emptyList(),
                 always = emptyList(),
-                meta = PermissionMeta(command = "git log"),
+                meta = PermissionMeta(command = "pwd"),
             )
         )
-        val style = SessionEditorStyle.create(family = "Courier New", size = 18)
-        view.applyStyle(style)
 
-        val md = view.firstCmdViewForTest()
-        assertNotNull("Should have at least one command MdView", md)
-        assertEquals("Code block codeFont should use editor family", "Courier New", md!!.codeFont)
+        val labels = view.codeLabelsForTest()
+        assertFalse("Expected code labels", labels.isEmpty())
+        assertEquals(SessionUiStyle.View.headerHover(), labels[0].background)
     }
 
     private fun permission() = Permission(
@@ -429,6 +521,15 @@ class PermissionViewTest : BasePlatformTestCase() {
         }
         collect(root)
     }
+
+    private fun occurrences(text: String, token: String): Int {
+        if (token.isEmpty()) return 0
+        return text.split(token).size - 1
+    }
+
+    private fun String.containsPath(path: String) = pathOccurrences(this, path) > 0
+
+    private fun pathOccurrences(text: String, path: String): Int = occurrences(text.replace("<wbr>", ""), path)
 
     private inline fun <reified T> findAll(root: Container): List<T> = findAllCls(root, T::class.java)
 

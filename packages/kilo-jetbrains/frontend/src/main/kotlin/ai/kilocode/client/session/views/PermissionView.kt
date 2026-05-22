@@ -2,31 +2,39 @@ package ai.kilocode.client.session.views
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Permission
+import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.ui.style.SessionUiStyle.View.CARD_LAYOUT_GAP
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import com.intellij.icons.AllIcons
-import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.ColorUtil
+import com.intellij.ui.components.JBHtmlPane
+import com.intellij.ui.components.JBHtmlPaneConfiguration
+import com.intellij.ui.components.JBHtmlPaneStyleConfiguration
+import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
+import com.intellij.xml.util.XmlStringUtil
+import java.awt.BorderLayout
 import java.awt.Component
-import java.awt.Dimension
+import java.awt.FlowLayout
 import javax.swing.BoxLayout
+import javax.swing.JComponent
 import javax.swing.JPanel
-import javax.swing.ScrollPaneConstants
+import javax.swing.text.html.StyleSheet
 
 /**
  * Transcript-style permission view — rendered inside [ai.kilocode.client.session.ui.SessionMessageListPanel]
  * at the end of the transcript when the session is in
  * [ai.kilocode.client.session.model.SessionState.AwaitingPermission].
  *
- * Shows a rich card with command/pattern/diff details and Run/Deny actions.
+ * Shows a compact row with action label and target as an inline code fragment, plus diff badges.
  */
 class PermissionView(
     private val reply: (String, PermissionReplyDto) -> Unit,
@@ -44,9 +52,9 @@ class PermissionView(
         alignmentX = Component.LEFT_ALIGNMENT
     }
 
-    // Track command MdView instances for style updates
-    private val cmdViews = mutableListOf<MdView>()
-    private val cmdScrolls = mutableListOf<JBScrollPane>()
+    // Track target panes for style updates
+    private val panes = mutableListOf<JBHtmlPane>()
+    private val diffViews = mutableListOf<PermissionDiffView>()
 
     private val ID_DENY = "deny"
     private val ID_RUN = "run"
@@ -71,18 +79,16 @@ class PermissionView(
         card.setHeader(KiloBundle.message("session.permission.title"))
 
         body.removeAll()
-        cmdViews.clear()
-        cmdScrolls.clear()
+        panes.clear()
+        diffViews.clear()
 
-        val toolName = permission.name
+        val tool = permission.name
         val cmd = permission.meta.command
-        val command = cmd != null || toolName == "bash"
 
-        if (command) {
-            addCodeBlock(cmd ?: "")
-        } else {
-            addCodeBlock(patternText(toolName, permission.patterns))
-        }
+        val action = toolLabel(tool)
+        val target = cmd ?: resolveTarget(permission)
+        addDetailRow(action, target, permission.meta.fileDiffs)
+        addStateMessage(permission)
 
         val responding = permission.state == PermissionRequestState.RESPONDING || permission.state == PermissionRequestState.RESOLVED
         card.setActionEnabled(ID_RUN, !responding)
@@ -96,8 +102,8 @@ class PermissionView(
     fun hideView() {
         requestId = null
         body.removeAll()
-        cmdViews.clear()
-        cmdScrolls.clear()
+        panes.clear()
+        diffViews.clear()
         isVisible = false
         refresh()
     }
@@ -105,58 +111,110 @@ class PermissionView(
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         card.applyStyle(style)
-        for (md in cmdViews) {
-            applyMd(md)
+        for (pane in panes) {
+            applyTargetPane(pane)
         }
-        for (scroll in cmdScrolls) {
-            applyScroll(scroll)
+        for (dv in diffViews) {
+            dv.applyStyle(style)
         }
     }
 
-    private fun addCodeBlock(text: String) {
-        val md = MdView.html().apply {
-            applyMd(this)
-            component.border = JBUI.Borders.empty()
-            set(fencedBlock(text))
+    /** Adds a three-column permission detail row: tool, target, and changes. */
+    private fun addDetailRow(action: String, target: String?, diffs: List<PermissionFileDiff>) {
+        val row = JPanel(BorderLayout(CARD_LAYOUT_GAP, 0)).apply {
+            isOpaque = false
+            alignmentX = Component.LEFT_ALIGNMENT
         }
-        cmdViews.add(md)
 
-        val scroll = object : JBScrollPane(md.component) {
-            override fun getPreferredSize(): Dimension {
-                val fm = getFontMetrics(style.transcriptFont)
-                val cap = fm.height * SessionUiStyle.View.Permission.COMMAND_LINES + JBUI.scale(SessionUiStyle.View.CARD_BODY_EXTRA_HEIGHT)
-                val ps = super.getPreferredSize()
-                return Dimension(ps.width, minOf(ps.height, cap))
-            }
-
-            override fun getMaximumSize(): Dimension {
-                val fm = getFontMetrics(style.transcriptFont)
-                val cap = fm.height * SessionUiStyle.View.Permission.COMMAND_LINES + JBUI.scale(SessionUiStyle.View.CARD_BODY_EXTRA_HEIGHT)
-                return Dimension(Int.MAX_VALUE, cap)
-            }
-        }.apply {
-            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-            applyScroll(this)
+        val actionLbl = JBLabel(action).apply {
+            font = UiStyle.Fonts.bold()
+            alignmentY = Component.CENTER_ALIGNMENT
         }
-        scroll.alignmentX = Component.LEFT_ALIGNMENT
-        cmdScrolls.add(scroll)
-        body.add(scroll)
+        row.add(actionLbl, BorderLayout.WEST)
+
+        if (!target.isNullOrBlank()) {
+            val pane = targetPane(target)
+            panes.add(pane)
+            row.add(pane, BorderLayout.CENTER)
+        }
+
+        if (diffs.isNotEmpty()) {
+            val changes = JPanel(FlowLayout(FlowLayout.CENTER, 0, 0)).apply {
+                isOpaque = false
+                alignmentY = Component.CENTER_ALIGNMENT
+            }
+            for (diff in diffs) {
+                val dv = PermissionDiffView(diff)
+                diffViews.add(dv)
+                changes.add(dv)
+            }
+            row.add(changes, BorderLayout.EAST)
+        }
+
+        body.add(row)
     }
 
-    private fun patternText(tool: String, patterns: List<String>): String {
-        val lbl = toolLabel(tool)
-        val filtered = patterns.filter { it != "*" }
-        if (filtered.isEmpty()) {
-            return KiloBundle.message("session.permission.no.details", lbl)
+    private fun JComponent.withGap(left: Int, right: Boolean) = JBUI.Panels.simplePanel(this).apply {
+        isOpaque = false
+        border = JBUI.Borders.empty(0, left, 0, if (right) UiStyle.Gap.sm() else 0)
+    }
+
+    private fun targetPane(text: String) = JBHtmlPane(
+        JBHtmlPaneStyleConfiguration {},
+        JBHtmlPaneConfiguration {
+            customStyleSheetProvider { targetSheet() }
+        },
+    ).apply {
+        isEditable = false
+        isOpaque = true
+        this.text = "<html><body><pre>${XmlStringUtil.escapeString(text)}</pre></body></html>"
+        applyTargetPane(this)
+    }
+
+    private fun applyTargetPane(pane: JBHtmlPane) {
+        pane.font = style.transcriptFont
+        pane.foreground = style.editorForeground
+        pane.background = SessionUiStyle.View.headerHover()
+        pane.reloadCssStylesheets()
+    }
+
+    private fun targetSheet(): StyleSheet {
+        val sheet = StyleSheet()
+        val font = style.transcriptFont
+        val fg = ColorUtil.toHtmlColor(style.editorForeground)
+        val bg = ColorUtil.toHtmlColor(SessionUiStyle.View.headerHover())
+        val family = font.name.replace("\\", "\\\\").replace("'", "\\'")
+        sheet.addRule("body { margin: 0; color: $fg; background: $bg; font-family: '$family', monospace; font-size: ${font.size}pt }")
+        sheet.addRule("pre { margin: 0; white-space: pre-wrap; font-family: '$family', monospace; font-size: ${font.size}pt }")
+        return sheet
+    }
+
+    private fun resolveTarget(permission: Permission): String? {
+        val path = permission.meta.filePath
+        if (!path.isNullOrBlank()) return path
+
+        val filtered = permission.patterns.filter { it != "*" }
+        return when {
+            filtered.size == 1 -> filtered[0]
+            filtered.size > 1 -> filtered.joinToString(", ")
+            else -> null
         }
-        if (filtered.size == 1) {
-            return "$lbl  ${filtered[0]}"
+    }
+
+    private fun addStateMessage(permission: Permission) {
+        val msg = when (permission.state) {
+            PermissionRequestState.ERROR ->
+                permission.message ?: KiloBundle.message("session.permission.error")
+            PermissionRequestState.RESPONDING ->
+                KiloBundle.message("session.permission.responding")
+            else -> null
+        } ?: return
+
+        val label = JBLabel(msg).apply {
+            border = JBUI.Borders.empty(UiStyle.Gap.sm(), 0, 0, 0)
+            alignmentX = Component.LEFT_ALIGNMENT
         }
-        return buildString {
-            appendLine(KiloBundle.message("session.permission.patterns", lbl))
-            append(filtered.joinToString("\n"))
-        }
+        body.add(label)
     }
 
     private fun toolLabel(tool: String): String = when (tool) {
@@ -188,28 +246,6 @@ class PermissionView(
         reply(id, PermissionReplyDto(reply = value))
     }
 
-    private fun applyMd(md: MdView) {
-        val bg = codeBackground()
-        md.opaque = true
-        md.font = style.transcriptFont
-        md.foreground = style.editorForeground
-        md.background = bg
-        md.preBg = bg
-        md.codeBg = bg
-        md.preFg = style.editorForeground
-        md.codeFont = style.editorFamily
-        md.component.background = bg
-    }
-
-    private fun applyScroll(scroll: JBScrollPane) {
-        val bg = codeBackground()
-        scroll.border = JBUI.Borders.empty()
-        scroll.background = bg
-        scroll.viewport.background = bg
-    }
-
-    private fun codeBackground() = SessionUiStyle.View.headerHover()
-
     private fun refresh() {
         revalidate()
         repaint()
@@ -220,22 +256,7 @@ class PermissionView(
     // Test helpers
     internal fun runButtonForTest() = card.actionButtonsForTest()[ID_RUN]!!
     internal fun denyButtonForTest() = card.actionButtonsForTest()[ID_DENY]!!
-    internal fun firstCmdViewForTest() = cmdViews.firstOrNull()
+    internal fun codeLabelsForTest() = panes.toList()
+    internal fun diffViewsForTest() = diffViews.toList()
     internal fun headerFontForTest() = card.headerFont()
-}
-
-/**
- * Wrap [cmd] in a fenced Markdown code block. The fence uses at least 3 backticks,
- * and is extended to be longer than any contiguous run of backticks inside [cmd]
- * so the fence cannot be broken by content.
- */
-private fun fencedBlock(cmd: String): String {
-    var max = 2
-    var run = 0
-    for (ch in cmd) {
-        run = if (ch == '`') run + 1 else 0
-        if (run > max) max = run
-    }
-    val fence = "`".repeat(max + 1)
-    return "$fence\n$cmd\n$fence"
 }

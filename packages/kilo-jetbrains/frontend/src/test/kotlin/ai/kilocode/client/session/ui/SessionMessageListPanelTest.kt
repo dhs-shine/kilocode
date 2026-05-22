@@ -366,7 +366,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         val lv = LoginRequiredView(openProfile = { called = true }, dismiss = {})
         lv.show("Sign in required.")
 
-        lv.openProfileButton.doClick()
+        lv.openProfileButton().doClick()
 
         assertTrue(called)
     }
@@ -453,6 +453,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
 
     private fun panelWithPrompts(): SessionMessageListPanel {
         val q = QuestionView(
+            project = project,
             reply = { _, _ -> },
             reject = { _ -> },
         )
