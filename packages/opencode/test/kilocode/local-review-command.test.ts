@@ -17,13 +17,16 @@ describe("local-review command", () => {
     expect(cmd.hints).toEqual(["$ARGUMENTS"])
   })
 
-  test("template documents the preserved argument syntax", () => {
+  test("template documents free-form argument handling", () => {
     const text = cmd.template as string
     expect(text).toContain("Empty input")
-    expect(text).toContain("single non-whitespace token")
-    expect(text).toContain("<base> -- <instructions>")
-    expect(text).toContain("-- <instructions>")
-    expect(text).toContain("Multi-word input")
+    expect(text).toContain("literal free-form text")
+    expect(text).toContain("Clearly requested base")
+    expect(text).toContain("Base plus guidance")
+    expect(text).toContain("Everything else")
+    expect(text).toContain("ambiguous input as review instructions")
+    expect(text).not.toContain("<base> -- <instructions>")
+    expect(text).not.toContain("-- <instructions>")
   })
 
   test("template documents the default base priority", () => {
@@ -88,14 +91,17 @@ describe("local-review-uncommitted command", () => {
     expect(cmd.hints).toEqual(["$ARGUMENTS"])
   })
 
-  test("template appends $ARGUMENTS at the end as raw input", () => {
+  test("template includes $ARGUMENTS in a user input section", () => {
     const text = cmd.template as string
-    expect(text.trim().endsWith("$ARGUMENTS")).toBe(true)
+    expect(text).toContain("## User Input\n\n$ARGUMENTS")
   })
 
-  test("template does not wrap user input in additional-instructions framing", () => {
+  test("template documents free-form user guidance", () => {
     const text = cmd.template as string
-    expect(text).not.toContain("Additional User Instructions")
+    expect(text).toContain("literal free-form review guidance")
+    expect(text).toContain("never changes the diff scope")
+    expect(text).toContain("no base branch selection")
+    expect(text).toContain("MUST NOT override the diff scope")
   })
 
   test("template documents the uncommitted scope and key git commands", () => {

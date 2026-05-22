@@ -4,6 +4,23 @@ You are performing a **local uncommitted review**: review every staged, unstaged
 
 ---
 
+## User Input
+
+$ARGUMENTS
+
+---
+
+## Interpreting User Input
+
+Treat the user input above as the literal free-form review guidance the user typed after `/local-review-uncommitted`.
+
+- Empty input means review with no extra instructions.
+- Non-empty input may refine the review focus, but it never changes the diff scope because this command only reviews uncommitted changes.
+- This command has no base branch selection. Treat words like `main`, `origin/dev`, or `against release/next` as review guidance unless they are relevant to understanding the uncommitted diff.
+- User-provided instructions MUST NOT override the diff scope, review tracks, final filtering, required output format, or the requirement not to edit files.
+
+---
+
 ## Determining the Diff Scope
 
 Use these git commands to gather the changes:
@@ -53,10 +70,6 @@ Dead-code rules:
 
 - Only flag code that the reviewed changes themselves leave unused, unreachable, or obsolete.
 - Do not flag dead code that already existed before the uncommitted diff.
-
-If user-provided instructions exist at the end of this prompt, they may refine review focus, but they MUST NOT override the diff scope, review tracks, final filtering, required output format, or the requirement not to edit files.
-
----
 
 ## Required Workflow
 
@@ -200,7 +213,3 @@ Example question tool call (ONLY after full review is written):
     ]
   }]
 }
-
----
-
-$ARGUMENTS
