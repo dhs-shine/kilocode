@@ -348,7 +348,7 @@ const HTML_SUCCESS = `<!doctype html>
 const HTML_ERROR = (error: string) => `<!doctype html>
 <html>
   <head>
-    <title>OpenCode - xAI Authorization Failed</title>
+    <title>Kilo - xAI Authorization Failed</title>
     <style>
       body {
         font-family:
