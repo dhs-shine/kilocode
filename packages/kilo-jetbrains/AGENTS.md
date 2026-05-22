@@ -366,6 +366,44 @@ For common spacing lookups, prefer `JBUI.CurrentTheme` area-specific insets (e.g
 | Simple `BorderLayout` panels | `JBUI.Panels.simplePanel(...)`, `BorderLayoutPanel` |
 | Simple vertical custom Swing groups | `VerticalLayout` |
 | Fluent platform panels | `JBPanel.withBorder(...)`, `.andTransparent()`, `.andOpaque()`, `.withBackground(...)` |
+| Single-component alignment wrapper | `ai.kilocode.client.ui.Align` — see section below |
+
+### Align — Single-Component Alignment Wrapper
+
+Use `Align` (`ai.kilocode.client.ui.Align`) when a single Swing component must be positioned inside available space without adding visual chrome. It is a transparent, no-border, no-color `JPanel(null)` that lays out its one child according to independent horizontal (`HAlign`) and vertical (`VAlign`) modes. `CenterShrinkPanel` has been removed; use `child.alignCenter()` as a direct replacement.
+
+**Alignment modes:**
+
+| Mode | Axis | Layout behavior | Wrapper size contribution |
+|---|---|---|---|
+| `HAlign.TRACK` / `VAlign.TRACK` | either | Child always fills all available space; ignores child min/preferred/max | Zero (wrapper reports insets only on that axis) |
+| `HAlign.FIT` / `VAlign.FIT` | either | Child fills available space clamped to child's effective `[min, max]` range | Child min/preferred/max respected |
+| `HAlign.LEFT` / `VAlign.TOP` | H / V | Child placed at left/top edge at bounded preferred size; shrinks to available when necessary | Child min/preferred/max respected |
+| `HAlign.CENTER` / `VAlign.CENTER` | H / V | Child centered at bounded preferred size; shrinks to available when necessary | Child min/preferred/max respected |
+| `HAlign.RIGHT` / `VAlign.BOTTOM` | H / V | Child placed at right/bottom edge at bounded preferred size; shrinks to available when necessary | Child min/preferred/max respected |
+
+"Bounded preferred" means the child's preferred size coerced into the effective `[min, max]` range. If available space is smaller than the effective minimum, the layout shrinks the child to available space to avoid overflow.
+
+**Kotlin-style factory extensions** on `Component`:
+
+```kotlin
+child.align(HAlign.LEFT, VAlign.TOP)   // explicit modes
+child.alignCenter()                     // CENTER / CENTER (replaces CenterShrinkPanel)
+child.alignLeft(VAlign.CENTER)          // LEFT + custom V
+child.alignRight(VAlign.CENTER)         // RIGHT + custom V
+child.alignTop(HAlign.CENTER)           // TOP + custom H
+child.alignBottom()                     // BOTTOM + FIT horizontal
+child.track()                           // TRACK / TRACK — always fills all space
+child.trackX(VAlign.TOP)               // TRACK horizontal, TOP vertical
+child.trackY(HAlign.CENTER)            // CENTER horizontal, TRACK vertical
+```
+
+**Rules:**
+
+- Prefer the factory extensions over creating one-off `JPanel(FlowLayout(...))` or `BorderLayoutPanel` wrappers just to control alignment.
+- Use `TRACK` when the child must occupy all available space on an axis and must not reserve any space in the parent's size negotiation on that axis. Use `FIT` when you want to fill available space but still respect child min/max constraints.
+- All non-TRACK modes include the child's min, preferred, and max sizes in the wrapper's own min/preferred/max size. This means parent layout managers see the child constraints through the wrapper.
+- Do not use `Align` for spacing, padding, borders, colors, or multi-child layout — use `JBUI.Borders.empty(...)`, `UiStyle.Gap`, or an appropriate layout manager for those concerns.
 
 ### IntelliJ UI Surfaces
 

@@ -10,8 +10,9 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.controller.SessionController
-import ai.kilocode.client.ui.CenterShrinkPanel
+import ai.kilocode.client.ui.Align
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.alignCenter
 import ai.kilocode.rpc.dto.SessionDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
@@ -44,7 +45,7 @@ import javax.swing.ListSelectionModel
  * Empty-session panel.
  *
  * The content is a BorderLayout panel, wrapped in a
- * [CenterShrinkPanel] (exposed as [view]) so callers need not know about centering.
+ * [Align] (exposed as [view]) so callers need not know about centering.
  */
 class EmptySessionPanel(
     parent: Disposable,
@@ -52,7 +53,7 @@ class EmptySessionPanel(
     recents: List<SessionDto>,
     private val history: () -> Unit = {},
 ) : BorderLayoutPanel(), Disposable, SessionEditorStyleTarget {
-    val view: CenterShrinkPanel = CenterShrinkPanel(this)
+    val view: Align = alignCenter()
 
     private val model = DefaultListModel<LocalHistoryItem>()
     private var hover = -1
@@ -133,7 +134,7 @@ class EmptySessionPanel(
         val header = BorderLayoutPanel(0, gap).apply {
             isOpaque = false
             add(logo, BorderLayout.NORTH)
-            add(CenterShrinkPanel(description), BorderLayout.CENTER)
+            add(description.alignCenter(), BorderLayout.CENTER)
         }
 
         val recent = BorderLayoutPanel().apply {
