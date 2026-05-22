@@ -10,7 +10,7 @@ import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.model.ToolCallRef
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.LoginRequiredView
-import ai.kilocode.client.session.views.PermissionView
+import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionResultView
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.session.views.TextView
@@ -366,7 +366,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         val lv = LoginRequiredView(openProfile = { called = true }, dismiss = {})
         lv.show("Sign in required.")
 
-        lv.openProfileButton.doClick()
+        lv.openProfileButton().doClick()
 
         assertTrue(called)
     }
@@ -453,6 +453,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
 
     private fun panelWithPrompts(): SessionMessageListPanel {
         val q = QuestionView(
+            project = project,
             reply = { _, _ -> },
             reject = { _ -> },
         )

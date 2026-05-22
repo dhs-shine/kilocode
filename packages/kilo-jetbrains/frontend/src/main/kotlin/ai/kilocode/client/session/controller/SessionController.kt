@@ -11,6 +11,7 @@ import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.model.Permission
+import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.model.Question
@@ -21,6 +22,7 @@ import ai.kilocode.client.session.SessionRef
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.ConfigWarningDto
 import ai.kilocode.rpc.dto.ConfigUpdateDto
+import ai.kilocode.rpc.dto.PartDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
@@ -110,6 +112,8 @@ class SessionController(
     private var partType: String? = null
     private var tool: String? = null
     private var eventJob: Job? = null
+    private val childJobs: MutableMap<String, Job> = mutableMapOf()
+    private val childIds: MutableSet<String> = mutableSetOf()
     private var sessionLoadState: SessionLoadState = SessionLoadState.Idle
     private var recentsState: RecentsState = RecentsState.Idle
     private var viewState: SessionControllerEvent.ViewChanged? = null
@@ -315,6 +319,7 @@ class SessionController(
     fun replyPermission(requestId: String, reply: PermissionReplyDto, rules: PermissionAlwaysRulesDto? = null) {
         assertEdt()
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission rid=$requestId reply=${reply.reply}" }
+        updatePermission(requestId, PermissionRequestState.RESPONDING)
         cs.launch {
             try {
                 if (rules != null) sessions.savePermissionRules(requestId, directory, rules)
@@ -322,8 +327,27 @@ class SessionController(
                 LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission rid=$requestId ok=true" }
             } catch (e: Exception) {
                 LOG.warn("${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission rid=$requestId reply=${reply.reply} dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
+                edt {
+                    updatePermission(
+                        requestId,
+                        PermissionRequestState.ERROR,
+                        e.message ?: KiloBundle.message("session.permission.error"),
+                    )
+                }
             }
         }
+    }
+
+    private fun updatePermission(id: String, state: PermissionRequestState, message: String? = null) {
+        assertEdt()
+        val current = model.state
+        if (current !is SessionState.AwaitingPermission) return
+        if (current.permission.id != id) return
+        val perm = current.permission.copy(
+            state = state,
+            message = message ?: current.permission.message,
+        )
+        updateModel { model.setState(SessionState.AwaitingPermission(perm)) }
     }
 
     fun replyQuestion(requestId: String, answers: QuestionReplyDto) {
@@ -459,6 +483,7 @@ class SessionController(
                 val session = target.session ?: runCatching { sessions.get(id, directory) }.getOrNull()
                 val items = sessions.messages(id, directory)
                 LOG.debug { "${ChatLogSummary.sid(id)} ${ChatLogSummary.history(items)}" }
+                val discovered = items.flatMap { it.parts }.mapNotNull { childID(it) }.toSet()
                 runEdt {
                     if (disposed) return@runEdt
                     if (sid != id) return@runEdt
@@ -471,6 +496,7 @@ class SessionController(
                 runEdt {
                     if (disposed) return@runEdt
                     if (sid != id) return@runEdt
+                    for (child in discovered) trackChild(child)
                     showSession()
                     loaded(!model.isEmpty())
                 }
@@ -503,6 +529,7 @@ class SessionController(
                 val session = sessions.importCloudSession(id, directory)
                 val items = sessions.messages(session.id, directory)
                 LOG.debug { "${ChatLogSummary.sid(session.id)} ${ChatLogSummary.history(items)}" }
+                val discovered = items.flatMap { it.parts }.mapNotNull { childID(it) }.toSet()
                 runEdt {
                     if (disposed) return@runEdt
                     ref = SessionRef.Local(session)
@@ -515,6 +542,7 @@ class SessionController(
                 recoverPending(session.id)
                 runEdt {
                     if (disposed) return@runEdt
+                    for (child in discovered) trackChild(child)
                     subscribeEvents()
                     showSession()
                     loaded(!model.isEmpty())
@@ -552,6 +580,9 @@ class SessionController(
         val id = sid ?: return
         LOG.debug { "${ChatLogSummary.sid(id)} kind=subscription subscribe=true" }
         eventJob?.cancel()
+        childJobs.values.forEach { it.cancel() }
+        childJobs.clear()
+        childIds.clear()
         eventJob = cs.launch {
             try {
                 sessions.events(id, directory).collect { event ->
@@ -565,6 +596,46 @@ class SessionController(
             } finally {
                 LOG.debug { "${ChatLogSummary.sid(id)} kind=subscription subscribe=false" }
             }
+        }
+    }
+
+    private fun subscribeChild(child: String) {
+        if (childJobs.containsKey(child)) return
+        LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-subscription child=$child subscribe=true" }
+        val job = cs.launch {
+            try {
+                sessions.events(child, directory).collect { event ->
+                    if (!isChildPermissionEvent(event, child)) return@collect
+                    LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-event child=$child ${ChatLogSummary.eventBody(event)}" }
+                    updates.enqueue(event)
+                }
+            } finally {
+                LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-subscription child=$child subscribe=false" }
+            }
+        }
+        childJobs[child] = job
+    }
+
+    private fun trackChild(child: String) {
+        if (!childIds.add(child)) return
+        subscribeChild(child)
+        cs.launch { recoverChildPermissions(child) }
+    }
+
+    private suspend fun recoverChildPermissions(child: String) {
+        try {
+            val permissions = sessions.pendingPermissions(directory).filter { it.sessionID == child }
+            if (permissions.isEmpty()) return
+            LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-recovery child=$child permissions=${permissions.size}" }
+            val last = toPermission(permissions.last())
+            runEdt {
+                if (disposed) return@runEdt
+                // Do not overwrite an existing root or other child AwaitingPermission state
+                if (model.state is SessionState.AwaitingPermission) return@runEdt
+                updateModel { model.setState(SessionState.AwaitingPermission(last)) }
+            }
+        } catch (e: Exception) {
+            LOG.warn("${ChatLogSummary.sid(sid ?: "pending")} kind=child-recovery child=$child dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
         }
     }
 
@@ -640,6 +711,7 @@ class SessionController(
                 if (model.state is SessionState.Busy) {
                     model.setState(SessionState.Busy(status()))
                 }
+                childID(event.part)?.let { child -> trackChild(child) }
             }
 
             is ChatEventDto.PartDelta -> {
@@ -690,7 +762,8 @@ class SessionController(
             }
 
             is ChatEventDto.PermissionAsked -> {
-                model.setState(SessionState.AwaitingPermission(toPermission(event.request)))
+                val perm = toPermission(event.request)
+                model.setState(SessionState.AwaitingPermission(perm))
             }
 
             is ChatEventDto.PermissionReplied -> {
@@ -1194,6 +1267,9 @@ class SessionController(
         disposed = true
         connectionDelay.dispose()
         eventJob?.cancel()
+        childJobs.values.forEach { it.cancel() }
+        childJobs.clear()
+        childIds.clear()
         cs.cancel()
     }
 
@@ -1246,6 +1322,19 @@ class SessionController(
 
         return out.joinToString(" ")
     }
+}
+
+/** Extracts the child session ID from a task tool part's metadata, or null if not a task part. */
+private fun childID(part: PartDto): String? {
+    if (part.type != "tool" || part.tool != "task") return null
+    return part.metadata["sessionId"]
+}
+
+/** Returns true when [event] is a permission event for [child] (used by child subscriptions). */
+private fun isChildPermissionEvent(event: ChatEventDto, child: String): Boolean = when (event) {
+    is ChatEventDto.PermissionAsked -> event.sessionID == child
+    is ChatEventDto.PermissionReplied -> event.sessionID == child
+    else -> false
 }
 
 /** Returns true when [event]'s sessionID matches [id] (or event has no sessionID, like Error). */
@@ -1372,17 +1461,40 @@ private fun ConfigWarningDto.toDetailLine(): String {
 
 private fun toPermission(dto: PermissionRequestDto): Permission {
     val ref = dto.tool?.let { ToolCallRef(it.messageID, it.callID) }
-    val file = dto.metadata["file"] ?: dto.metadata["path"]
     val state = dto.metadata["state"]?.let { raw ->
         PermissionRequestState.values().firstOrNull { item -> item.name.equals(raw, ignoreCase = true) }
     } ?: PermissionRequestState.PENDING
+    val diffs = dto.fileDiffs.map {
+        PermissionFileDiff(
+            file = it.file,
+            patch = it.patch,
+            before = it.before,
+            after = it.after,
+            additions = it.additions,
+            deletions = it.deletions,
+        )
+    }
+    val file = dto.filePath
+        ?: dto.metadata["filepath"]
+        ?: dto.metadata["filePath"]
+        ?: dto.metadata["file"]
+        ?: dto.metadata["path"]
     return Permission(
         id = dto.id,
         sessionId = dto.sessionID,
         name = dto.permission,
         patterns = dto.patterns,
         always = dto.always,
-        meta = PermissionMeta(filePath = file, raw = dto.metadata),
+        meta = PermissionMeta(
+            command = dto.command ?: dto.metadata["command"],
+            rules = dto.rules,
+            diff = dto.metadata["diff"],
+            filePath = file,
+            fileDiff = diffs.firstOrNull(),
+            fileDiffs = diffs,
+            raw = dto.metadata,
+        ),
+        message = dto.message ?: dto.metadata["message"],
         tool = ref,
         state = state,
     )

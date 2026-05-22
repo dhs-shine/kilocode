@@ -1,13 +1,12 @@
 package ai.kilocode.client.session.views
 
-import ai.kilocode.client.session.ui.shared.SessionQuestionButton
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBTextArea
 import java.awt.Container
-import javax.swing.JButton
 
 @Suppress("UnstableApiUsage")
 class LoginRequiredViewTest : BasePlatformTestCase() {
@@ -49,29 +48,11 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
 
     // ------ open profile button style ------
 
-    fun `test open profile button is SessionQuestionButton`() {
-        edt {
-            val view = LoginRequiredView(openProfile = {}, dismiss = {})
-            view.show("Sign in required.")
-            val btn = view.openProfileButton
-            assertTrue("Open profile button should be a SessionQuestionButton", btn is SessionQuestionButton)
-        }
-    }
-
     fun `test open profile button is primary`() {
         edt {
             val view = LoginRequiredView(openProfile = {}, dismiss = {})
             view.show("Sign in required.")
-            val btn = view.openProfileButton as SessionQuestionButton
-            assertTrue("Open profile button should be primary", btn.primary)
-        }
-    }
-
-    fun `test open profile button has DarculaButtonUI default style key`() {
-        edt {
-            val view = LoginRequiredView(openProfile = {}, dismiss = {})
-            view.show("Sign in required.")
-            val btn = view.openProfileButton
+            val btn = view.openProfileButton()
             assertEquals(true, btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
         }
     }
@@ -80,28 +61,32 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
         edt {
             val view = LoginRequiredView(openProfile = {}, dismiss = {})
             view.show("Sign in required.")
-            val btn = view.openProfileButton
+            val btn = view.openProfileButton()
             assertEquals(SessionUiStyle.View.surface(), btn.background)
         }
     }
 
     // ------ dismiss button style ------
 
-    fun `test dismiss button is SessionQuestionButton`() {
+    fun `test dismiss button does not have default style key`() {
         edt {
             val view = LoginRequiredView(openProfile = {}, dismiss = {})
             view.show("Sign in required.")
-            val btn = view.dismissButton
-            assertTrue("Dismiss button should be a SessionQuestionButton", btn is SessionQuestionButton)
+            val btn = view.dismissButton()
+            val key = btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY)
+            assertTrue("Dismiss should not be primary", key == null || key == false)
         }
     }
 
-    fun `test dismiss button is not primary`() {
+    fun `test login action buttons share right-aligned footer group`() {
         edt {
             val view = LoginRequiredView(openProfile = {}, dismiss = {})
             view.show("Sign in required.")
-            val btn = view.dismissButton as SessionQuestionButton
-            assertFalse("Dismiss button should not be primary", btn.primary)
+
+            val dismiss = view.dismissButton()
+            val open = view.openProfileButton()
+            assertSame("Dismiss and open profile should be in the same right-aligned group", dismiss.parent, open.parent)
+            assertTrue("Dismiss should appear before open profile", dismiss.parent.components.indexOf(dismiss) < open.parent.components.indexOf(open))
         }
     }
 
@@ -112,7 +97,7 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
         edt {
             val view = LoginRequiredView(openProfile = { called = true }, dismiss = {})
             view.show("Sign in required.")
-            view.openProfileButton.doClick()
+            view.openProfileButton().doClick()
         }
         assertTrue("openProfile should have been called", called)
     }
@@ -122,7 +107,7 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
         edt {
             val view = LoginRequiredView(openProfile = {}, dismiss = { called = true })
             view.show("Sign in required.")
-            view.dismissButton.doClick()
+            view.dismissButton().doClick()
         }
         assertTrue("dismiss should have been called", called)
     }
@@ -158,6 +143,42 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
             val view = LoginRequiredView(openProfile = {}, dismiss = {})
             view.hideView()
             assertFalse(view.isVisible)
+        }
+    }
+
+    // ------ fonts: standard UI family, not editor ------
+
+    fun `test header uses headerFont not editor font family`() {
+        edt {
+            val view = LoginRequiredView(openProfile = {}, dismiss = {})
+            view.show("Sign in required.")
+            val style = SessionEditorStyle.create(family = "Courier New", size = 20)
+            view.applyStyle(style)
+
+            val title = findAll<JBTextArea>(view).firstOrNull { it.font.isBold }
+            assertNotNull("Bold title text area should be present", title)
+            assertFalse(
+                "Title font should not use editor font family",
+                title!!.font.name == "Courier New",
+            )
+            assertEquals("Title font should equal headerFont", style.headerFont, title.font)
+        }
+    }
+
+    fun `test description uses hintFont not editor font family`() {
+        edt {
+            val view = LoginRequiredView(openProfile = {}, dismiss = {})
+            view.show("Sign in required.")
+            val style = SessionEditorStyle.create(family = "Courier New", size = 20)
+            view.applyStyle(style)
+
+            val desc = findAll<JBTextArea>(view).firstOrNull { it.text == "Sign in required." }
+            assertNotNull("Description text area should be present", desc)
+            assertFalse(
+                "Description font should not use editor font family",
+                desc!!.font.name == "Courier New",
+            )
+            assertEquals("Description font should equal hintFont", style.hintFont, desc.font)
         }
     }
 

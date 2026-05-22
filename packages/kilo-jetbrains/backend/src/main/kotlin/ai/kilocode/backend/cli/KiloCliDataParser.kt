@@ -18,6 +18,7 @@ import ai.kilocode.rpc.dto.ModelSelectionDto
 import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.PartDto
 import ai.kilocode.rpc.dto.PermissionAlwaysRulesDto
+import ai.kilocode.rpc.dto.PermissionFileDiffDto
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
 import ai.kilocode.rpc.dto.PartTimeDto
@@ -511,11 +512,27 @@ object KiloCliDataParser {
         val permission = obj.str("permission") ?: return null
         val patterns = obj["patterns"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
         val always = obj["always"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
-        val meta = obj["metadata"]?.jsonObject?.let { m ->
-            m.entries.associate { (k, v) -> k to (v.jsonPrimitive.contentOrNull ?: "") }
-        } ?: emptyMap()
-        val ref = toolRef(obj)
-        return PermissionRequestDto(id, sid, permission, patterns, meta, always, ref)
+        val metaObj = obj["metadata"].obj()
+        val meta = metaObj?.entries?.mapNotNull { (key, value) ->
+            val text = value.scalar() ?: return@mapNotNull null
+            key to text
+        }?.toMap() ?: emptyMap()
+        val path = metaObj.path()
+        val diffs = metaObj.permissionDiffs(path)
+        return PermissionRequestDto(
+            id = id,
+            sessionID = sid,
+            permission = permission,
+            patterns = patterns,
+            metadata = meta,
+            always = always,
+            tool = toolRef(obj),
+            message = obj.str("message") ?: metaObj?.str("message"),
+            command = metaObj?.str("command") ?: obj.str("command"),
+            rules = metaObj.rules(),
+            filePath = path,
+            fileDiffs = diffs,
+        )
     }
 
     internal fun parseQuestionRequest(obj: JsonObject): QuestionRequestDto? {
@@ -702,6 +719,11 @@ object KiloCliDataParser {
     /**
      * Build the JSON body for `POST /permission/{requestID}/reply`.
      */
+    internal fun parseRulesJson(text: String): List<String> {
+        val arr = runCatching { json.parseToJsonElement(text).jsonArray }.getOrNull() ?: return listOf(text)
+        return arr.mapNotNull { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+    }
+
     fun buildPermissionReplyJson(reply: PermissionReplyDto): String {
         val sb = StringBuilder()
         sb.append("""{"reply":${escape(reply.reply)}""")
@@ -768,6 +790,70 @@ object KiloCliDataParser {
             .replace("\t", "\\t")
         return "\"$escaped\""
     }
+}
+
+// Permission metadata helpers
+
+private fun JsonElement?.obj(): JsonObject? = runCatching { this?.jsonObject }.getOrNull()
+private fun JsonElement?.arr(): JsonArray? = runCatching { this?.jsonArray }.getOrNull()
+
+private fun JsonObject?.path(): String? {
+    if (this == null) return null
+    return str("filepath") ?: str("filePath") ?: str("file") ?: str("path")
+}
+
+private fun JsonObject?.rules(): List<String> {
+    if (this == null) return emptyList()
+    val raw = this["rules"] ?: return emptyList()
+    val arr = raw.arr()
+    if (arr != null) {
+        return arr.mapNotNull { it.jsonPrimitive.contentOrNull }
+    }
+    val text = runCatching { raw.jsonPrimitive.contentOrNull }.getOrNull() ?: return emptyList()
+    if (text.startsWith("[")) {
+        return runCatching {
+            KiloCliDataParser.parseRulesJson(text)
+        }.getOrElse { listOf(text) }
+    }
+    return listOf(text)
+}
+
+private fun JsonObject?.permissionDiffs(path: String?): List<PermissionFileDiffDto> {
+    if (this == null) return emptyList()
+    val filediff = this["filediff"].obj()
+    if (filediff != null) {
+        val file = filediff.str("file") ?: filediff.str("relativePath") ?: path ?: return emptyList()
+        return listOf(
+            PermissionFileDiffDto(
+                file = file,
+                patch = filediff.str("patch"),
+                before = filediff.str("before"),
+                after = filediff.str("after"),
+                additions = filediff.long("additions")?.safeInt() ?: 0,
+                deletions = filediff.long("deletions")?.safeInt() ?: 0,
+            )
+        )
+    }
+    val files = this["files"].arr()
+    if (files != null) {
+        return files.mapNotNull { elem ->
+            val item = elem.obj() ?: return@mapNotNull null
+            val file = item.str("relativePath") ?: item.str("filePath") ?: item.str("file") ?: return@mapNotNull null
+            PermissionFileDiffDto(
+                file = file,
+                patch = item.str("patch"),
+                before = item.str("before"),
+                after = item.str("after"),
+                additions = item.long("additions")?.safeInt() ?: 0,
+                deletions = item.long("deletions")?.safeInt() ?: 0,
+            )
+        }
+    }
+    val diff = str("diff")
+    if (diff != null) {
+        return listOf(PermissionFileDiffDto(file = path ?: "patch", patch = diff))
+    }
+    return emptyList()
 }
 
 // JsonObject convenience extensions

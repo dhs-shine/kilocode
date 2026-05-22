@@ -1,4 +1,4 @@
-package ai.kilocode.client.session.views
+package ai.kilocode.client.session.views.base
 
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Generic
@@ -36,8 +36,8 @@ class GenericView(content: Generic) : PartView() {
     fun labelText(): String = label.text
 
     override fun applyStyle(style: SessionEditorStyle) {
-        if (label.font == style.smallUiFont) return
-        label.font = style.smallUiFont
+        if (label.font == style.smallFont) return
+        label.font = style.smallFont
         revalidate()
         repaint()
     }

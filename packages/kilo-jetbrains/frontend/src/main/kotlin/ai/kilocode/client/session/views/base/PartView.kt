@@ -1,4 +1,4 @@
-package ai.kilocode.client.session.views
+package ai.kilocode.client.session.views.base
 
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
@@ -10,7 +10,7 @@ import javax.swing.JPanel
  *
  * Each subclass wraps one [Content] subtype and knows how to display
  * and update it. Subclasses extend [JPanel] so they can be added directly
- * to [MessageView] without an extra component wrapper.
+ * to [ai.kilocode.client.session.views.MessageView] without an extra component wrapper.
  *
  * All methods must be called on the EDT.
  */
@@ -27,8 +27,8 @@ abstract class PartView : JPanel(), SessionEditorStyleTarget {
 
     /**
      * Append a streaming delta to the existing content.
-     * Only meaningful for text-bearing renderers ([TextView], [ReasoningView]);
-     * others ignore deltas by default.
+     * Only meaningful for text-bearing renderers ([ai.kilocode.client.session.views.TextView],
+     * [ai.kilocode.client.session.views.ReasoningView]); others ignore deltas by default.
      */
     open fun appendDelta(delta: String) {}
 

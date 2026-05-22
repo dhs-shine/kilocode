@@ -130,6 +130,21 @@ object UiStyle {
 
         /** Prominent short content, e.g. device auth code. Maps to [JBFont.h2] bold. */
         fun large(): JBFont = JBFont.h2().asBold()
+
+        /** Card/question header font — bold at heading level 4. */
+        fun header(): JBFont = JBFont.h4().asBold()
+
+        /** Hint or description font — plain regular size. */
+        fun hint(): JBFont = JBFont.regular()
+
+        /** Standard body/label text. */
+        fun regular(): JBFont = JBFont.regular()
+
+        /** Bold body/label text. */
+        fun bold(): JBFont = JBFont.regular().asBold()
+
+        /** Small secondary text, e.g. metadata labels. */
+        fun small(): JBFont = JBFont.small()
     }
 
     /** Small component helpers that keep repeated Swing setup in one place. */
