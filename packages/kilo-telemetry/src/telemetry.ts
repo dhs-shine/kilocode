@@ -157,6 +157,7 @@ export namespace Telemetry {
     mode?: "review"
     feature?: "code_reviews"
     command?: "review" | "local-review" | "local-review-uncommitted"
+    tool?: "suggest"
     apiProvider: string
     modelId: string
     inputTokens?: number
@@ -185,6 +186,16 @@ export namespace Telemetry {
 
   export function trackPlanFollowup(sessionId: string, choice: "new_session" | "continue" | "custom" | "dismissed") {
     track(TelemetryEvent.PLAN_FOLLOWUP, { sessionId, choice })
+  }
+
+  export function trackSuggestionAccepted(properties: {
+    sessionId: string
+    requestId: string
+    index: number
+    tool: "suggest"
+    command: "review" | "local-review" | "local-review-uncommitted"
+  }) {
+    track(TelemetryEvent.SUGGESTION_ACCEPTED, properties)
   }
 
   export function trackIndexingStarted(properties: IndexingTelemetryProperties) {

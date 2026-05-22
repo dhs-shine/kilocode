@@ -4,12 +4,19 @@ import { Identifier } from "../../id/id"
 import { SessionID } from "../../session/schema"
 import { ZodOverride } from "../../util/effect-zod"
 import * as Log from "@opencode-ai/core/util/log"
+import { Telemetry } from "@kilocode/kilo-telemetry"
 import z from "zod"
 import { Schema } from "effect"
 import { KiloSessionPromptQueue } from "../session/prompt-queue"
 
 export namespace Suggestion {
   const log = Log.create({ service: "suggestion" })
+
+  function command(prompt: string): "review" | "local-review" | "local-review-uncommitted" | undefined {
+    if (!prompt.startsWith("/")) return
+    const name = prompt.slice(1).split(/\s/, 1)[0]
+    if (name === "review" || name === "local-review" || name === "local-review-uncommitted") return name
+  }
 
   export const Action = z
     .object({
@@ -175,6 +182,17 @@ export namespace Suggestion {
     delete s.pending[input.requestID]
 
     log.info("accepted", { requestID: input.requestID, index: input.index, label: action.label })
+
+    const cmd = command(action.prompt)
+    if (cmd) {
+      Telemetry.trackSuggestionAccepted({
+        sessionId: existing.info.sessionID,
+        requestId: existing.info.id,
+        index: input.index,
+        tool: "suggest",
+        command: cmd,
+      })
+    }
 
     Bus.publish(Event.Accepted, {
       sessionID: SessionID.make(existing.info.sessionID),
