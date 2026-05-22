@@ -28,7 +28,7 @@ Use these git commands to gather the changes:
 - `git -c core.quotepath=false diff HEAD` — staged + unstaged changes for tracked files.
 - `git -c core.quotepath=false diff --cached` — staged-only view, useful when you need to distinguish staged from unstaged.
 - `git -c core.quotepath=false diff` — unstaged-only view, useful for the same reason.
-- `git ls-files --others --exclude-standard` — list of untracked files. Read their contents with the read tool and treat them as added files.
+- `git ls-files --others --exclude-standard` — list of untracked files. Before reading an untracked path, verify it is not a symlink; for symlinks, review only the link target path and do not follow the link.
 - `git status --short` — quick overview of file states.
 
 ONLY review the changes shown by the commands above. Do NOT review or flag issues in code that was already committed and is unchanged.

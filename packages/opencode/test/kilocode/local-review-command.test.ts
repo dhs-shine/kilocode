@@ -1,5 +1,15 @@
 import { describe, expect, test } from "bun:test"
-import { localReviewCommand, localReviewUncommittedCommand } from "../../src/kilocode/review/command"
+import { localReviewCommand, localReviewUncommittedCommand, parseReviewCommand } from "../../src/kilocode/review/command"
+
+describe("review command parsing", () => {
+  test("parses review slash commands", () => {
+    expect(parseReviewCommand("/review")).toBe("review")
+    expect(parseReviewCommand("/local-review -- focus tests")).toBe("local-review")
+    expect(parseReviewCommand("/local-review-uncommitted focus tests")).toBe("local-review-uncommitted")
+    expect(parseReviewCommand("/test")).toBeUndefined()
+    expect(parseReviewCommand("local-review")).toBeUndefined()
+  })
+})
 
 describe("local-review command", () => {
   const cmd = localReviewCommand()
@@ -47,6 +57,12 @@ describe("local-review command", () => {
     const text = cmd.template as string
     expect(text).toContain("git merge-base HEAD <base>")
     expect(text).toMatch(/no common history|not found/i)
+  })
+
+  test("template avoids dereferencing untracked symlinks", () => {
+    const text = cmd.template as string
+    expect(text).toContain("verify it is not a symlink")
+    expect(text).toContain("do not follow the link")
   })
 
   test("template tells the model not to edit files", () => {
@@ -109,6 +125,12 @@ describe("local-review-uncommitted command", () => {
     expect(text).toMatch(/git\b[^\n]*\bdiff HEAD/)
     expect(text).toMatch(/git\b[^\n]*\bdiff --cached/)
     expect(text).toContain("git ls-files --others --exclude-standard")
+  })
+
+  test("template avoids dereferencing untracked symlinks", () => {
+    const text = cmd.template as string
+    expect(text).toContain("verify it is not a symlink")
+    expect(text).toContain("do not follow the link")
   })
 
   test("template tells the model not to edit files", () => {
