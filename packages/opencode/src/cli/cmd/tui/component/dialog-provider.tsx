@@ -126,13 +126,13 @@ export function createDialogProviderOptions() {
         const connected = sync.data.provider_next.connected.includes(providerID)
         // kilocode_change start
         const failed = sync.data.provider_next.failed ?? []
-        const failedGutter = KiloProvider.renderGutter(provider.id, failed, theme)
-        const failedDesc = KiloProvider.failedDescription(provider.id, failed)
-        const baseDesc = KiloProvider.PROVIDER_DESCRIPTIONS[provider.id]
+        const failedGutter = KiloProvider.renderGutter(providerID, failed, theme)
+        const failedDesc = KiloProvider.failedDescription(providerID, failed)
+        const baseDesc = KiloProvider.PROVIDER_DESCRIPTIONS[providerID]
         // kilocode_change end
 
         return {
-          title: KiloProvider.PROVIDER_TITLES[provider.id] ?? provider.title, // kilocode_change
+          title: KiloProvider.PROVIDER_TITLES[providerID] ?? provider.title, // kilocode_change
           value: provider.value,
           description: failedDesc ?? baseDesc ?? provider.description, // kilocode_change
           footer: consoleManaged ? sync.data.console_state.activeOrgName : undefined,
@@ -199,7 +199,7 @@ export function createDialogProviderOptions() {
               if (result.data?.method === "auto") {
                 // kilocode_change start
                 const kilo = KiloProvider.renderAutoMethod({
-                  providerID: provider.id,
+                  providerID,
                   title: method.label,
                   index,
                   authorization: result.data!,

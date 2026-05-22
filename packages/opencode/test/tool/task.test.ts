@@ -11,7 +11,7 @@ import { ModelID, ProviderID } from "../../src/provider/schema"
 import { TaskTool, type TaskPromptOps } from "../../src/tool/task"
 import { Truncate } from "@/tool/truncate"
 import { ToolRegistry } from "@/tool/registry"
-import { disposeAllInstances } from "../fixture/fixture"
+import { disposeAllInstances, provideTmpdirInstance } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 
 afterEach(async () => {
@@ -614,7 +614,7 @@ describe("tool.task cost propagation", () => {
         const abort = new AbortController()
         // Stub that persists a partial cost, then aborts — mimics interrupted run after tokens billed.
         const ops: TaskPromptOps = {
-          cancel() {},
+          cancel: () => Effect.void,
           resolvePromptParts: (template) => Effect.succeed([{ type: "text" as const, text: template }]),
           prompt: (input) =>
             Effect.gen(function* () {
