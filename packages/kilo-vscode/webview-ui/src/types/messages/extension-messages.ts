@@ -174,6 +174,7 @@ export interface MessagesLoadedMessage {
   mode?: Exclude<MessageLoadMode, "focus">
   cursor?: string
   hasMore?: boolean
+  since?: number
 }
 
 export interface MessageCreatedMessage {
