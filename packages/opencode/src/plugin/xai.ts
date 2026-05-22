@@ -306,7 +306,7 @@ export async function pollDeviceCodeToken(
 const HTML_SUCCESS = `<!doctype html>
 <html>
   <head>
-    <title>OpenCode - xAI Authorization Successful</title>
+    <title>Kilo - xAI Authorization Successful</title>
     <style>
       body {
         font-family:
