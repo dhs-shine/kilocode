@@ -20,8 +20,10 @@ const _typeCheck: _AssertAgentImplementsACPAgent = true
  * The SDK's router checks `if (!agent.methodName)` and throws MethodNotFound if missing.
  */
 describe("acp.agent interface compliance", () => {
-  // Extract method names from the ACPAgent interface type
-  type ACPAgentMethods = keyof ACPAgent
+  // kilocode_change start
+  // Extract method names from the ACPAgent interface, plus runtime compatibility methods
+  type ACPAgentMethods = keyof ACPAgent | "resumeSession" | "closeSession"
+  // kilocode_change end
 
   // Methods that the SDK's router explicitly checks for at runtime
   const sdkCheckedMethods: ACPAgentMethods[] = [
