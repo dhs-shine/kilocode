@@ -9275,7 +9275,8 @@
             "name": "processID",
             "in": "path",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^bgp.*"
             },
             "required": true
           }
@@ -9337,7 +9338,8 @@
             "name": "processID",
             "in": "path",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^bgp.*"
             },
             "required": true
           }
@@ -9399,7 +9401,8 @@
             "name": "processID",
             "in": "path",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^bgp.*"
             },
             "required": true
           }
@@ -9461,7 +9464,8 @@
             "name": "processID",
             "in": "path",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^bgp.*"
             },
             "required": true
           }
