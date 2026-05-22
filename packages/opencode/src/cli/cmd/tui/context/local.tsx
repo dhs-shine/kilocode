@@ -476,6 +476,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         duration: 3000,
       })
     })
+    // kilocode_change end
 
     const result = {
       model,
