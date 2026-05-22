@@ -1971,18 +1971,17 @@ export type Workspace = {
   projectID: string
 }
 
-<<<<<<< dynamic-department
 export type BackgroundProcessLogs = {
   id: string
   sessionID: string
   output: string
-=======
+}
+
 export type WorkspaceWarpError = {
   name: "WorkspaceWarpError"
   data: {
     message: string
   }
->>>>>>> main
 }
 
 export type EffectHttpApiErrorUnauthorized = {
