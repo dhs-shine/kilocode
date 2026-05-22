@@ -322,8 +322,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
         edt {
             val panel = BaseQuestionView()
             panel.setHeader("Title", "Hint")
-            // The description text area is the non-bold one
-            val desc = findAll<JBTextArea>(panel).firstOrNull { !it.font.isBold }
+            val desc = findAll<JBTextArea>(panel).firstOrNull { it.text == "Hint" }
             assertNotNull(desc)
             val ins = desc!!.border.getBorderInsets(desc)
             assertEquals("description should not add extra top padding", 0, ins.top)
