@@ -179,7 +179,7 @@ class PermissionView(
         val fg = ColorUtil.toHtmlColor(style.editorForeground)
         val bg = ColorUtil.toHtmlColor(SessionUiStyle.View.headerHover())
         val family = font.name.replace("\\", "\\\\").replace("'", "\\'")
-        sheet.addRule("body { margin: 0; color: $fg; background: $bg; font-family: '$family', monospace; font-size: ${font.size}pt }")
+        sheet.addRule("body { margin: 0; padding: 0 ${UiStyle.Gap.xs()}px; color: $fg; background: $bg; font-family: '$family', monospace; font-size: ${font.size}pt }")
         sheet.addRule("pre { margin: 0; white-space: pre-wrap; font-family: '$family', monospace; font-size: ${font.size}pt }")
         return sheet
     }
