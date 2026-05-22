@@ -366,11 +366,11 @@ For common spacing lookups, prefer `JBUI.CurrentTheme` area-specific insets (e.g
 | Simple `BorderLayout` panels | `JBUI.Panels.simplePanel(...)`, `BorderLayoutPanel` |
 | Simple vertical custom Swing groups | `VerticalLayout` |
 | Fluent platform panels | `JBPanel.withBorder(...)`, `.andTransparent()`, `.andOpaque()`, `.withBackground(...)` |
-| Single-component alignment wrapper | `ai.kilocode.client.ui.Align` — see section below |
+| Single-component alignment wrapper | `ai.kilocode.client.ui.layout.Align` — see section below |
 
 ### Align — Single-Component Alignment Wrapper
 
-Use `Align` (`ai.kilocode.client.ui.Align`) when a single Swing component must be positioned inside available space without adding visual chrome. It is a transparent, no-border, no-color `JPanel(null)` that lays out its one child according to independent horizontal (`HAlign`) and vertical (`VAlign`) modes. `CenterShrinkPanel` has been removed; use `child.alignCenter()` as a direct replacement.
+Use `Align` (`ai.kilocode.client.ui.layout.Align`) when a single Swing component must be positioned inside available space without adding visual chrome. It is a transparent, no-border, no-color `JPanel(null)` that lays out its one child according to independent horizontal (`HAlign`) and vertical (`VAlign`) modes. `CenterShrinkPanel` has been removed; use `child.align(HAlign.CENTER, VAlign.CENTER)` as a direct replacement.
 
 **Alignment modes:**
 

@@ -493,10 +493,10 @@ class SessionController(
                     }
                 }
                 recoverPending(id)
-                for (child in discovered) trackChild(child)
                 runEdt {
                     if (disposed) return@runEdt
                     if (sid != id) return@runEdt
+                    for (child in discovered) trackChild(child)
                     showSession()
                     loaded(!model.isEmpty())
                 }
@@ -540,9 +540,9 @@ class SessionController(
                     }
                 }
                 recoverPending(session.id)
-                for (child in discovered) trackChild(child)
                 runEdt {
                     if (disposed) return@runEdt
+                    for (child in discovered) trackChild(child)
                     subscribeEvents()
                     showSession()
                     loaded(!model.isEmpty())
