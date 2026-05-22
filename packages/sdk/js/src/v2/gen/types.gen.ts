@@ -46,6 +46,7 @@ export type Event =
   | EventProjectUpdated
   | EventKilocodeAgentManagerStart
   | EventVcsBranchUpdated
+  | EventKiloSessionsRemoteStatusChanged
   | EventWorkspaceReady
   | EventWorkspaceFailed
   | EventWorkspaceStatus
@@ -88,7 +89,6 @@ export type Event =
   | EventSessionNextCompactionStarted
   | EventSessionNextCompactionDelta
   | EventSessionNextCompactionEnded
-  | EventKiloSessionsRemoteStatusChanged
   | EventIndexingStatus
 
 export type OAuth = {
@@ -891,6 +891,7 @@ export type GlobalEvent = {
     | EventProjectUpdated
     | EventKilocodeAgentManagerStart
     | EventVcsBranchUpdated
+    | EventKiloSessionsRemoteStatusChanged
     | EventWorkspaceReady
     | EventWorkspaceFailed
     | EventWorkspaceStatus
@@ -933,7 +934,6 @@ export type GlobalEvent = {
     | EventSessionNextCompactionStarted
     | EventSessionNextCompactionDelta
     | EventSessionNextCompactionEnded
-    | EventKiloSessionsRemoteStatusChanged
     | EventIndexingStatus
     | SyncEventMessageUpdated
     | SyncEventMessageRemoved
@@ -1950,17 +1950,25 @@ export type Workspace = {
   projectID: string
 }
 
-export type KilocodeSessionImportResult = {
-  ok: boolean
-  id: string
-  skipped?: boolean
-}
-
 export type WorkspaceWarpError = {
   name: "WorkspaceWarpError"
   data: {
     message: string
   }
+}
+
+export type EffectHttpApiErrorUnauthorized = {
+  _tag: "Unauthorized"
+}
+
+export type EffectHttpApiErrorServiceUnavailable = {
+  _tag: "ServiceUnavailable"
+}
+
+export type KilocodeSessionImportResult = {
+  ok: boolean
+  id: string
+  skipped?: boolean
 }
 
 export type SyncEventMessageUpdated = {
@@ -2817,6 +2825,15 @@ export type EventVcsBranchUpdated = {
   }
 }
 
+export type EventKiloSessionsRemoteStatusChanged = {
+  id: string
+  type: "kilo-sessions.remote-status-changed"
+  properties: {
+    enabled: boolean
+    connected: boolean
+  }
+}
+
 export type EventWorkspaceReady = {
   id: string
   type: "workspace.ready"
@@ -3323,15 +3340,6 @@ export type EventSessionNextCompactionEnded = {
     sessionID: string
     text: string
     include?: string
-  }
-}
-
-export type EventKiloSessionsRemoteStatusChanged = {
-  id: string
-  type: "kilo-sessions.remote-status-changed"
-  properties: {
-    enabled: boolean
-    connected: boolean
   }
 }
 
