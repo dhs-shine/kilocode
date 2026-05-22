@@ -1,5 +1,11 @@
 # kilo-code
 
+## 7.3.8
+
+### Patch Changes
+
+- [#10117](https://github.com/Kilo-Org/kilocode/pull/10117) [`8502012`](https://github.com/Kilo-Org/kilocode/commit/85020124b6a56acd093e0b1abf709b420ca863e1) Thanks [@shssoichiro](https://github.com/shssoichiro)! - Fix token usage display to show usage for entire session
+
 ## 7.3.7
 
 ## 7.3.5
