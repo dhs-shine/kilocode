@@ -1,3 +1,4 @@
+// kilocode_change - new file
 import { describe, expect, test } from "bun:test"
 import { accessTokenIsExpiring, buildAuthorizeUrl, escapeHtml, pollDeviceCodeToken, requestDeviceCode, XaiAuthPlugin } from "../../src/plugin/xai"
 import { OAUTH_DUMMY_KEY } from "../../src/auth"
@@ -87,7 +88,7 @@ describe("plugin.xai", () => {
       expect(params.get("state")).toBe("state-abc")
       expect(params.get("nonce")).toBe("nonce-xyz")
       expect(params.get("plan")).toBe("generic")
-      expect(params.get("referrer")).toBe("opencode")
+      expect(params.get("referrer")).toBe("kilocode")
     })
 
     test("supports endpoint override for local integration tests", () => {
@@ -142,7 +143,7 @@ describe("plugin.xai", () => {
 
       expect(captured[0].get("authorization")).toBe("Bearer live-token")
       expect(captured[0].get("x-keep")).toBe("yes")
-      expect(captured[0].get("user-agent")).toMatch(/^opencode\//)
+      expect(captured[0].get("user-agent")).toMatch(/^kilocode\//)
     })
 
     test("does not mutate caller headers and supports HeadersInit shapes", async () => {
@@ -173,7 +174,7 @@ describe("plugin.xai", () => {
       expect(captured.map((headers) => headers.get("x-trace"))).toEqual(["plain-object", "tuple-array", "headers-instance"])
       for (const headers of captured) {
         expect(headers.get("authorization")).toBe("Bearer tok")
-        expect(headers.get("user-agent")).toMatch(/^opencode\//)
+        expect(headers.get("user-agent")).toMatch(/^kilocode\//)
       }
     })
 
@@ -425,7 +426,7 @@ describe("plugin.xai", () => {
         expect(request.method).toBe("POST")
         expect(request.headers.get("content-type")).toBe("application/x-www-form-urlencoded")
         expect(request.headers.get("accept")).toBe("application/json")
-        expect(request.headers.get("user-agent")).toMatch(/^opencode\//)
+        expect(request.headers.get("user-agent")).toMatch(/^kilocode\//)
         capturedBody = await request.text()
         return Response.json({ device_code: "DC", user_code: "UC", verification_uri: "https://x.ai/device" })
       })
