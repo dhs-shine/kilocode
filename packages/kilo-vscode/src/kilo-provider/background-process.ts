@@ -1,6 +1,10 @@
 import type { KiloClient } from "@kilocode/sdk/v2/client"
 
-export async function stopSessionProcesses(client: KiloClient | null, sessionID: string, directory: string): Promise<void> {
+export async function stopSessionProcesses(
+  client: KiloClient | null,
+  sessionID: string,
+  directory: string,
+): Promise<void> {
   if (!client) return
   await client.backgroundProcess
     .stopSession({ sessionID, directory })

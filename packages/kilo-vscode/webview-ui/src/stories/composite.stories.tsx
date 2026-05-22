@@ -208,10 +208,7 @@ const backgroundLogsCompleted: ToolPart = {
   state: {
     status: "completed",
     input: { action: "logs", id: "bgp_01hv8devserver" },
-    output: [
-      "VITE v5.4.0 ready in 318 ms",
-      "Local: http://127.0.0.1:5173/",
-    ].join("\n"),
+    output: ["VITE v5.4.0 ready in 318 ms", "Local: http://127.0.0.1:5173/"].join("\n"),
     title: "Logs: Dev server",
     metadata: { processID: "bgp_01hv8devserver", status: "ready" },
     time: { start: now - 1800, end: now - 1200 },

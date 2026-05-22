@@ -51,9 +51,7 @@ function ready(input: Record<string, unknown>) {
   const value = input.ready
   if (!value || typeof value !== "object") return []
   const data = value as Record<string, unknown>
-  return [
-    text(data.port) ? ["Ports", text(data.port)!] : undefined,
-  ].filter((item): item is [string, string] => !!item)
+  return [text(data.port) ? ["Ports", text(data.port)!] : undefined].filter((item): item is [string, string] => !!item)
 }
 
 function structured(raw: string | undefined, enabled: boolean) {
@@ -110,9 +108,7 @@ function BackgroundProcessTool(props: ToolProps) {
       cwd() ? ["Cwd", cwd()!] : undefined,
       !cwd() && text(props.input.workdir) ? ["Workdir", text(props.input.workdir)!] : undefined,
       ...ready(props.input),
-      ...data().rows.filter(
-        (row) => !["Command", "Process id", "Status", "Cwd"].includes(row[0]),
-      ),
+      ...data().rows.filter((row) => !["Command", "Process id", "Status", "Cwd"].includes(row[0])),
     ].filter((item): item is [string, string] => !!item),
   )
 
