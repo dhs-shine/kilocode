@@ -33,7 +33,7 @@ import { Global } from "@opencode-ai/core/global"
 import { makeRuntime } from "@/effect/run-service"
 import { KiloSession, kiloSessionFork } from "@/kilocode/session"
 import { fn } from "@/util/fn"
-import z from "zod"
+import { z } from "zod"
 // kilocode_change end
 import { Effect, Layer, Option, Context, Schema, Types } from "effect"
 import { zod } from "@/util/effect-zod"
