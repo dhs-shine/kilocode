@@ -384,23 +384,18 @@ Use `Align` (`ai.kilocode.client.ui.Align`) when a single Swing component must b
 
 "Bounded preferred" means the child's preferred size coerced into the effective `[min, max]` range. If available space is smaller than the effective minimum, the layout shrinks the child to available space to avoid overflow.
 
-**Kotlin-style factory extensions** on `Component`:
+**Factory extension** on `Component`:
 
 ```kotlin
-child.align(HAlign.LEFT, VAlign.TOP)   // explicit modes
-child.alignCenter()                     // CENTER / CENTER (replaces CenterShrinkPanel)
-child.alignLeft(VAlign.CENTER)          // LEFT + custom V
-child.alignRight(VAlign.CENTER)         // RIGHT + custom V
-child.alignTop(HAlign.CENTER)           // TOP + custom H
-child.alignBottom()                     // BOTTOM + FIT horizontal
-child.track()                           // TRACK / TRACK — always fills all space
-child.trackX(VAlign.TOP)               // TRACK horizontal, TOP vertical
-child.trackY(HAlign.CENTER)            // CENTER horizontal, TRACK vertical
+child.align(HAlign.LEFT, VAlign.TOP)      // left-aligned, top-pinned
+child.align(HAlign.CENTER, VAlign.CENTER) // centered (replaces CenterShrinkPanel)
+child.align(HAlign.TRACK, VAlign.CENTER)  // fill width, center vertically
+child.align(HAlign.TRACK, VAlign.TRACK)   // fill all available space
 ```
 
 **Rules:**
 
-- Prefer the factory extensions over creating one-off `JPanel(FlowLayout(...))` or `BorderLayoutPanel` wrappers just to control alignment.
+- Prefer `child.align(h, v)` over creating one-off `JPanel(FlowLayout(...))` or `BorderLayoutPanel` wrappers just to control alignment.
 - Use `TRACK` when the child must occupy all available space on an axis and must not reserve any space in the parent's size negotiation on that axis. Use `FIT` when you want to fill available space but still respect child min/max constraints.
 - All non-TRACK modes include the child's min, preferred, and max sizes in the wrapper's own min/preferred/max size. This means parent layout managers see the child constraints through the wrapper.
 - Do not use `Align` for spacing, padding, borders, colors, or multi-child layout — use `JBUI.Borders.empty(...)`, `UiStyle.Gap`, or an appropriate layout manager for those concerns.

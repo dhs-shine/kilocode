@@ -23,13 +23,12 @@ enum class VAlign { TRACK, FIT, TOP, CENTER, BOTTOM }
  * Wrapper min/preferred/max sizes are computed by combining the per-axis child contribution
  * (zero for TRACK axes) with the panel insets.
  *
- * Use the Kotlin-style factory extensions for concise call sites:
+ * Use the factory extension for concise call sites:
  * ```
- * label.alignCenter()
- * button.alignRight(VAlign.CENTER)
+ * label.align(HAlign.CENTER, VAlign.CENTER)
+ * button.align(HAlign.RIGHT, VAlign.CENTER)
  * panel.align(HAlign.LEFT, VAlign.TOP)
- * content.track()
- * scrollable.trackX(VAlign.TOP)
+ * scrollable.align(HAlign.TRACK, VAlign.TOP)
  * ```
  */
 class Align(
@@ -130,23 +129,7 @@ private fun placeAxis(mode: Any, avail: Int, min: Int, pref: Int, max: Int): Pai
 private fun bounded(value: Int, min: Int, max: Int) = value.coerceIn(min, maxOf(min, max))
 
 // ---------------------------------------------------------------------------
-// Kotlin-style factory extensions
+// Factory extension
 // ---------------------------------------------------------------------------
 
-fun Component.align(h: HAlign = HAlign.FIT, v: VAlign = VAlign.FIT) = Align(this, h, v)
-
-fun Component.alignCenter() = Align(this, HAlign.CENTER, VAlign.CENTER)
-
-fun Component.alignLeft(v: VAlign = VAlign.FIT) = Align(this, HAlign.LEFT, v)
-
-fun Component.alignRight(v: VAlign = VAlign.FIT) = Align(this, HAlign.RIGHT, v)
-
-fun Component.alignTop(h: HAlign = HAlign.FIT) = Align(this, h, VAlign.TOP)
-
-fun Component.alignBottom(h: HAlign = HAlign.FIT) = Align(this, h, VAlign.BOTTOM)
-
-fun Component.track() = Align(this, HAlign.TRACK, VAlign.TRACK)
-
-fun Component.trackX(v: VAlign = VAlign.FIT) = Align(this, HAlign.TRACK, v)
-
-fun Component.trackY(h: HAlign = HAlign.FIT) = Align(this, h, VAlign.TRACK)
+fun Component.align(h: HAlign, v: VAlign) = Align(this, h, v)

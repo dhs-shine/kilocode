@@ -298,56 +298,56 @@ class AlignTest : BasePlatformTestCase() {
         assertEquals(30 + ins.top + ins.bottom, ps.height)
     }
 
-    // ------ factory helpers ------
+    // ------ align() factory ------
 
     fun `test align extension returns Align wrapping child`() {
         val child = JBLabel("x")
         assertSame(child, child.align(HAlign.LEFT, VAlign.TOP).getComponent(0))
     }
 
-    fun `test alignCenter produces CENTER CENTER`() {
+    fun `test align CENTER CENTER produces centered layout`() {
         val child = child(pref = 40 x 20)
-        val wrap = child.alignCenter()
+        val wrap = child.align(HAlign.CENTER, VAlign.CENTER)
         wrap.setBounds(0, 0, 200, 100)
         wrap.doLayout()
         assertBounds(80, 40, 40, 20, child)
     }
 
-    fun `test alignRight produces RIGHT with given VAlign`() {
+    fun `test align RIGHT TOP positions at top-right`() {
         val child = child(pref = 40 x 20)
-        val wrap = child.alignRight(VAlign.TOP)
+        val wrap = child.align(HAlign.RIGHT, VAlign.TOP)
         wrap.setBounds(0, 0, 200, 100)
         wrap.doLayout()
         assertBounds(160, 0, 40, 20, child)
     }
 
-    fun `test alignLeft with default FIT vertical fills height`() {
+    fun `test align LEFT FIT fills height`() {
         val child = child(pref = 40 x 20)
-        val wrap = child.alignLeft()
+        val wrap = child.align(HAlign.LEFT, VAlign.FIT)
         wrap.setBounds(0, 0, 200, 100)
         wrap.doLayout()
         assertBounds(0, 0, 40, 100, child)
     }
 
-    fun `test alignTop with CENTER horizontal centers and pins to top`() {
+    fun `test align CENTER TOP centers horizontally and pins to top`() {
         val child = child(pref = 40 x 20)
-        val wrap = child.alignTop(HAlign.CENTER)
+        val wrap = child.align(HAlign.CENTER, VAlign.TOP)
         wrap.setBounds(0, 0, 200, 100)
         wrap.doLayout()
         assertBounds(80, 0, 40, 20, child)
     }
 
-    fun `test alignBottom with default FIT horizontal fills width and pins to bottom`() {
+    fun `test align FIT BOTTOM fills width and pins to bottom`() {
         val child = child(pref = 40 x 20)
-        val wrap = child.alignBottom()
+        val wrap = child.align(HAlign.FIT, VAlign.BOTTOM)
         wrap.setBounds(0, 0, 200, 100)
         wrap.doLayout()
         assertBounds(0, 80, 200, 20, child)
     }
 
-    fun `test track fills all space and wrapper preferred is inset-only`() {
+    fun `test align TRACK TRACK fills all space and wrapper preferred is inset-only`() {
         val child = child(pref = 40 x 20, max = 60 x 30)
-        val wrap = child.track()
+        val wrap = child.align(HAlign.TRACK, VAlign.TRACK)
         wrap.setBounds(0, 0, 200, 100)
         wrap.doLayout()
         assertBounds(0, 0, 200, 100, child)
@@ -356,17 +356,17 @@ class AlignTest : BasePlatformTestCase() {
         assertEquals(ins.top + ins.bottom, wrap.preferredSize.height)
     }
 
-    fun `test trackX fills width only, V respects preferred`() {
+    fun `test align TRACK TOP fills width only, V respects preferred`() {
         val child = child(pref = 40 x 20)
-        val wrap = child.trackX(VAlign.TOP)
+        val wrap = child.align(HAlign.TRACK, VAlign.TOP)
         wrap.setBounds(0, 0, 200, 100)
         wrap.doLayout()
         assertBounds(0, 0, 200, 20, child)
     }
 
-    fun `test trackY fills height only, H respects preferred`() {
+    fun `test align CENTER TRACK fills height only, H respects preferred`() {
         val child = child(pref = 40 x 20)
-        val wrap = child.trackY(HAlign.CENTER)
+        val wrap = child.align(HAlign.CENTER, VAlign.TRACK)
         wrap.setBounds(0, 0, 200, 100)
         wrap.doLayout()
         assertBounds(80, 0, 40, 100, child)

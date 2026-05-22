@@ -10,7 +10,10 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle.View.CARD_LAYOUT_GAP
+import ai.kilocode.client.ui.HAlign
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.VAlign
+import ai.kilocode.client.ui.align
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import com.intellij.icons.AllIcons
 import com.intellij.ui.ColorUtil
@@ -25,7 +28,6 @@ import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.FlowLayout
 import javax.swing.BoxLayout
-import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.text.html.StyleSheet
 
@@ -128,35 +130,28 @@ class PermissionView(
 
         val actionLbl = JBLabel(action).apply {
             font = UiStyle.Fonts.bold()
-            alignmentY = Component.CENTER_ALIGNMENT
         }
-        row.add(actionLbl, BorderLayout.WEST)
+        row.add(actionLbl.align(HAlign.LEFT, VAlign.CENTER), BorderLayout.WEST)
 
         if (!target.isNullOrBlank()) {
             val pane = targetPane(target)
             panes.add(pane)
-            row.add(pane, BorderLayout.CENTER)
+            row.add(pane.align(HAlign.TRACK, VAlign.CENTER), BorderLayout.CENTER)
         }
 
         if (diffs.isNotEmpty()) {
-            val changes = JPanel(FlowLayout(FlowLayout.CENTER, 0, 0)).apply {
+            val changes = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
                 isOpaque = false
-                alignmentY = Component.CENTER_ALIGNMENT
             }
             for (diff in diffs) {
                 val dv = PermissionDiffView(diff)
                 diffViews.add(dv)
                 changes.add(dv)
             }
-            row.add(changes, BorderLayout.EAST)
+            row.add(changes.align(HAlign.RIGHT, VAlign.CENTER), BorderLayout.EAST)
         }
 
         body.add(row)
-    }
-
-    private fun JComponent.withGap(left: Int, right: Boolean) = JBUI.Panels.simplePanel(this).apply {
-        isOpaque = false
-        border = JBUI.Borders.empty(0, left, 0, if (right) UiStyle.Gap.sm() else 0)
     }
 
     private fun targetPane(text: String) = JBHtmlPane(

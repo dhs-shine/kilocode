@@ -11,8 +11,10 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.ui.Align
+import ai.kilocode.client.ui.HAlign
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.client.ui.alignCenter
+import ai.kilocode.client.ui.VAlign
+import ai.kilocode.client.ui.align
 import ai.kilocode.rpc.dto.SessionDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
@@ -53,7 +55,7 @@ class EmptySessionPanel(
     recents: List<SessionDto>,
     private val history: () -> Unit = {},
 ) : BorderLayoutPanel(), Disposable, SessionEditorStyleTarget {
-    val view: Align = alignCenter()
+    val view: Align = align(HAlign.CENTER, VAlign.CENTER)
 
     private val model = DefaultListModel<LocalHistoryItem>()
     private var hover = -1
@@ -134,7 +136,7 @@ class EmptySessionPanel(
         val header = BorderLayoutPanel(0, gap).apply {
             isOpaque = false
             add(logo, BorderLayout.NORTH)
-            add(description.alignCenter(), BorderLayout.CENTER)
+            add(description.align(HAlign.CENTER, VAlign.CENTER), BorderLayout.CENTER)
         }
 
         val recent = BorderLayoutPanel().apply {
