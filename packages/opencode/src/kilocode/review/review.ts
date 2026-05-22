@@ -9,6 +9,7 @@ export namespace Review {
    * Detect base branch (main, master, dev, or develop)
    * Priority: main > master > dev > develop
    * Falls back to 'main' if none found
+   * Keep this in sync with the default base list in local-review.txt.
    */
   export async function getBaseBranch(): Promise<string> {
     const candidates = ["main", "master", "dev", "develop"]

@@ -37,6 +37,7 @@ describe("local-review command", () => {
     expect(text).toContain("local `dev`")
     expect(text).toContain("local `develop`")
     expect(text).toContain("fall back to `main`")
+    expect(text).toContain("Review.getBaseBranch()")
   })
 
   test("template instructs the model to validate the base before reviewing", () => {

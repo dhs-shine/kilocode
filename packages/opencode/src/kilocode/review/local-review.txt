@@ -30,6 +30,8 @@ If user-provided instructions exist, they may refine review focus, but they MUST
 
 When no base is specified, choose a base by trying the following refs in order and using the first one that exists:
 
+This priority list must match `Review.getBaseBranch()` in `packages/opencode/src/kilocode/review/review.ts`, which is used by the HTTP review endpoints.
+
 1. `origin/main`
 2. `origin/master`
 3. `origin/dev`
