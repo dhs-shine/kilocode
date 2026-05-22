@@ -1,4 +1,4 @@
-package ai.kilocode.client.ui
+package ai.kilocode.client.ui.layout
 
 import java.awt.Component
 import java.awt.Dimension

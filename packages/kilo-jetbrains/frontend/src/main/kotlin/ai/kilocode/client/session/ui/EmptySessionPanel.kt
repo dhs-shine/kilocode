@@ -10,11 +10,11 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.controller.SessionController
-import ai.kilocode.client.ui.Align
-import ai.kilocode.client.ui.HAlign
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.client.ui.VAlign
-import ai.kilocode.client.ui.align
+import ai.kilocode.client.ui.layout.Align
+import ai.kilocode.client.ui.layout.HAlign
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
 import ai.kilocode.rpc.dto.SessionDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable

@@ -1,4 +1,4 @@
-package ai.kilocode.client.session.views
+package ai.kilocode.client.session.views.permission
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Permission
@@ -10,10 +10,10 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle.View.CARD_LAYOUT_GAP
-import ai.kilocode.client.ui.HAlign
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.client.ui.VAlign
-import ai.kilocode.client.ui.align
+import ai.kilocode.client.ui.layout.HAlign
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import com.intellij.icons.AllIcons
 import com.intellij.ui.ColorUtil

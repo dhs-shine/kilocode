@@ -1,4 +1,4 @@
-package ai.kilocode.client.ui
+package ai.kilocode.client.ui.layout
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel

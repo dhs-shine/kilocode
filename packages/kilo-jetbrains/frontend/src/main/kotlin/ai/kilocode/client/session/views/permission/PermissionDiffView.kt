@@ -1,4 +1,4 @@
-package ai.kilocode.client.session.views
+package ai.kilocode.client.session.views.permission
 
 import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
