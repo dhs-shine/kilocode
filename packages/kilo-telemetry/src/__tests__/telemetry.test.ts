@@ -50,6 +50,7 @@ describe("TelemetryEvent", () => {
     expect(TelemetryEvent.COMMAND_USED).toBeDefined()
     expect(TelemetryEvent.TOOL_USED).toBeDefined()
     expect(TelemetryEvent.AGENT_USED).toBeDefined()
+    expect(TelemetryEvent.SUGGESTION_SHOWN).toBeDefined()
     expect(TelemetryEvent.SUGGESTION_ACCEPTED).toBeDefined()
   })
 
@@ -91,6 +92,7 @@ describe("Telemetry", () => {
   })
 
   test("suggestion helper is exposed", () => {
+    expect(typeof Telemetry.trackSuggestionShown).toBe("function")
     expect(typeof Telemetry.trackSuggestionAccepted).toBe("function")
   })
 })

@@ -10,6 +10,8 @@ export interface TelemetryProperties {
   vscodeVersion?: string
 }
 
+export type ReviewCommand = "review" | "local-review" | "local-review-uncommitted"
+
 export interface IndexingTelemetryProperties extends Record<string, unknown> {
   source: "scan" | "watcher"
   provider: string
@@ -156,7 +158,7 @@ export namespace Telemetry {
     taskId?: string
     mode?: "review"
     feature?: "code_reviews"
-    command?: "review" | "local-review" | "local-review-uncommitted"
+    command?: ReviewCommand
     tool?: "suggest"
     apiProvider: string
     modelId: string
@@ -193,9 +195,21 @@ export namespace Telemetry {
     requestId: string
     index: number
     tool: "suggest"
-    command: "review" | "local-review" | "local-review-uncommitted"
+    command: ReviewCommand
+    actionCount?: number
   }) {
     track(TelemetryEvent.SUGGESTION_ACCEPTED, properties)
+  }
+
+  export function trackSuggestionShown(properties: {
+    sessionId: string
+    requestId: string
+    index: number
+    tool: "suggest"
+    command: ReviewCommand
+    actionCount?: number
+  }) {
+    track(TelemetryEvent.SUGGESTION_SHOWN, properties)
   }
 
   export function trackIndexingStarted(properties: IndexingTelemetryProperties) {
