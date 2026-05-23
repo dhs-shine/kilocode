@@ -302,7 +302,7 @@ Use the Kilo-maintained [Pi provider extension](https://github.com/Kilo-Org/kilo
 pi install git:github.com/Kilo-Org/kilo-pi-provider
 ```
 
-Start Pi and run `/login kilo` to connect your Kilo account, or use free models without signing in. The provider also supports organization accounts, Kilo reasoning variants, and responses-only models.
+Run `/login kilo` in Pi to connect your account, or use supported free models without signing in. See the provider repository for organization configuration and model-specific behavior.
 
 ### LangChain example
 
