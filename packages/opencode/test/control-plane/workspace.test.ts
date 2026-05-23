@@ -116,6 +116,7 @@ async function withInstance<T>(fn: (dir: string) => T | Promise<T>) {
 async function initGitRepo(dir: string) {
   await fs.mkdir(dir, { recursive: true })
   await $`git init`.cwd(dir).quiet()
+  await $`git config core.autocrlf false`.cwd(dir).quiet() // kilocode_change - align test repos with Git service patch behavior
   await $`git config core.fsmonitor false`.cwd(dir).quiet()
   await $`git config commit.gpgsign false`.cwd(dir).quiet()
   await $`git config user.email "test@opencode.test"`.cwd(dir).quiet()
