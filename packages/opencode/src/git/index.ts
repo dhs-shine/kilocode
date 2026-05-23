@@ -1,9 +1,5 @@
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
-import { randomUUID } from "crypto" // kilocode_change
 import { Effect, Layer, Context, Stream } from "effect"
-import fs from "fs/promises" // kilocode_change
-import os from "os" // kilocode_change
-import path from "path" // kilocode_change
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { makeRuntime } from "@/effect/run-service" // kilocode_change
 
@@ -303,38 +299,6 @@ export const layer = Layer.effect(
       file: string,
       options?: PatchOptions,
     ) {
-      // kilocode_change start - avoid Windows-fragile /dev/null no-index patches for normal repos
-      if (yield* hasHead(cwd)) {
-        const idx = path.resolve(cwd, out(yield* run(["rev-parse", "--git-path", "index"], { cwd })))
-        const tmp = path.join(os.tmpdir(), `opencode-git-index-${randomUUID()}`)
-        return yield* Effect.acquireUseRelease(
-          Effect.promise(async () => {
-            await fs.copyFile(idx, tmp)
-            return tmp
-          }),
-          (tmp) =>
-            Effect.gen(function* () {
-              const env = { GIT_INDEX_FILE: tmp }
-              yield* run(["add", "--intent-to-add", "--", file], { cwd, env })
-              const result = yield* run(
-                [
-                  "diff",
-                  "--patch",
-                  "--no-ext-diff",
-                  "--no-renames",
-                  `--unified=${options?.context ?? 3}`,
-                  "HEAD",
-                  "--",
-                  file,
-                ],
-                { cwd, env, maxOutputBytes: options?.maxOutputBytes },
-              )
-              return { text: result.truncated ? "" : result.text(), truncated: result.truncated } satisfies Patch
-            }),
-          (tmp) => Effect.promise(() => fs.rm(tmp, { force: true })).pipe(Effect.ignore),
-        )
-      }
-      // kilocode_change end
       const result = yield* run(
         [
           "diff",

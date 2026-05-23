@@ -673,6 +673,7 @@ describe("workspace-old CRUD", () => {
       await initGitRepo(targetDir)
       await fs.writeFile(path.join(previousDir, "tracked.txt"), "changed\n")
       await fs.writeFile(path.join(previousDir, "new.txt"), "new\n")
+      await $`git add new.txt`.cwd(previousDir).quiet() // kilocode_change - avoid unrelated untracked patch path
 
       const previous = workspaceInfo(Instance.project.id, previousType)
       const target = workspaceInfo(Instance.project.id, targetType)
