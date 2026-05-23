@@ -24,7 +24,7 @@ import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.session.controller.SessionControllerEvent
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.LoginRequiredView
-import ai.kilocode.client.session.views.PermissionView
+import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.log.ChatLogSummary
@@ -39,9 +39,11 @@ import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurableWithId
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.registry.Registry
 import java.util.function.Predicate
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
 import javax.swing.JComponent
@@ -58,7 +60,7 @@ class SessionUi(
     workspace: Workspace,
     sessions: KiloSessionService,
     app: KiloAppService,
-    cs: CoroutineScope,
+    private val cs: CoroutineScope,
     ref: SessionRef? = null,
     displayMs: Long = SessionController.DISPLAY_DELAY_MS,
     private val manager: SessionManager? = null,
@@ -174,6 +176,7 @@ class SessionUi(
         load = LoadingPanel()
         progressBody = load
         question = QuestionView(
+            project = project,
             reply = { id, dto -> controller.replyQuestion(id, dto) },
             reject = { id -> controller.rejectQuestion(id) },
             scroll = { scroll.followBottom(true) },
