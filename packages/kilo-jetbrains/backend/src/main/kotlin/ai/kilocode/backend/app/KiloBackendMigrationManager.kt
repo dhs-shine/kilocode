@@ -9,6 +9,7 @@ import ai.kilocode.backend.migration.LegacyMigrationHttpBackend
 import ai.kilocode.backend.migration.LegacyMigrationReport
 import ai.kilocode.backend.migration.LegacyMigrationSelections
 import ai.kilocode.backend.migration.LegacyMigrationSink
+import ai.kilocode.backend.migration.LegacyMigrationStatus
 import ai.kilocode.backend.migration.LegacyMigrationStore
 import okhttp3.OkHttpClient
 
@@ -25,6 +26,12 @@ class KiloBackendMigrationManager(
 ) {
     private fun base() = "http://127.0.0.1:$port"
     private fun httpBackend(): LegacyMigrationBackend = LegacyMigrationHttpBackend(client, base())
+
+    fun status(store: LegacyMigrationStore): LegacyMigrationStatus? =
+        LegacyMigrationEngine(store, httpBackend()).status()
+
+    fun mark(store: LegacyMigrationStore, status: LegacyMigrationStatus) =
+        LegacyMigrationEngine(store, httpBackend()).mark(status)
 
     fun detect(store: LegacyMigrationStore): LegacyMigrationDetection =
         LegacyMigrationEngine(store, httpBackend()).detect()

@@ -14,16 +14,35 @@ class SessionRootPanel : JLayeredPane() {
 
     val overlay = Overlay()
 
+    val blocker = Blocker()
+
     init {
         layout = null
         add(content)
         setLayer(content, DEFAULT_LAYER)
         add(overlay)
         setLayer(overlay, PALETTE_LAYER)
+        add(blocker)
+        setLayer(blocker, MODAL_LAYER)
+        blocker.isVisible = false
     }
 
     fun addOverlay(child: JComponent, bounds: (JPanel, JComponent) -> Rectangle) {
         overlay.addOverlay(child, bounds)
+    }
+
+    fun setBlocker(child: JComponent) {
+        blocker.removeAll()
+        blocker.add(child)
+        blocker.revalidate()
+        blocker.repaint()
+    }
+
+    fun setBlocked(value: Boolean) {
+        blocker.isVisible = value
+        if (value) blocker.requestFocusInWindow()
+        revalidate()
+        repaint()
     }
 
     override fun doLayout() {
@@ -36,8 +55,9 @@ class SessionRootPanel : JLayeredPane() {
     }
 
     override fun getPreferredSize(): Dimension {
-        val w = components.maxOfOrNull { it.preferredSize.width } ?: 0
-        val h = components.maxOfOrNull { it.preferredSize.height } ?: 0
+        // Only content and overlay contribute to preferred size; blocker is invisible by default.
+        val w = listOf(content, overlay).maxOfOrNull { it.preferredSize.width } ?: 0
+        val h = listOf(content, overlay).maxOfOrNull { it.preferredSize.height } ?: 0
         return JBDimension(w, h)
     }
 
@@ -75,6 +95,24 @@ class SessionRootPanel : JLayeredPane() {
             val w = maxOf(pref.width, components.maxOfOrNull { it.preferredSize.width } ?: 0)
             val h = maxOf(pref.height, components.maxOfOrNull { it.preferredSize.height } ?: 0)
             return JBDimension(w, h)
+        }
+    }
+
+    /**
+     * Full-area blocking overlay rendered above the scroll overlay at MODAL_LAYER.
+     * When visible: consumes all mouse events across the full panel area.
+     * When hidden: passes all mouse events through (isVisible=false).
+     */
+    class Blocker : JPanel() {
+        init {
+            layout = java.awt.BorderLayout()
+            isOpaque = false
+            isFocusable = true
+        }
+
+        override fun contains(x: Int, y: Int): Boolean {
+            if (!isVisible) return false
+            return super.contains(x, y)
         }
     }
 }

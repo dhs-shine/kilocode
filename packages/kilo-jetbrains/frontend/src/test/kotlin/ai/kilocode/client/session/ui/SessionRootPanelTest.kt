@@ -9,17 +9,24 @@ import javax.swing.JLayeredPane
 @Suppress("UnstableApiUsage")
 class SessionRootPanelTest : BasePlatformTestCase() {
 
-    fun `test root owns content and overlay layers`() {
+    fun `test root owns content overlay and blocker layers`() {
         val root = SessionRootPanel()
 
-        assertEquals(2, root.componentCount)
+        assertEquals(3, root.componentCount)
         assertSame(root.content, root.components.first { it === root.content })
         assertSame(root.overlay, root.components.first { it === root.overlay })
+        assertSame(root.blocker, root.components.first { it === root.blocker })
         assertEquals(JLayeredPane.DEFAULT_LAYER, root.getLayer(root.content))
         assertEquals(JLayeredPane.PALETTE_LAYER, root.getLayer(root.overlay))
+        assertEquals(JLayeredPane.MODAL_LAYER, root.getLayer(root.blocker))
     }
 
-    fun `test root layout fills immediate children`() {
+    fun `test blocker is hidden by default`() {
+        val root = SessionRootPanel()
+        assertFalse(root.blocker.isVisible)
+    }
+
+    fun `test root layout fills all immediate children`() {
         val root = SessionRootPanel().apply {
             setSize(320, 180)
         }
@@ -28,9 +35,10 @@ class SessionRootPanelTest : BasePlatformTestCase() {
 
         assertEquals(Rectangle(0, 0, 320, 180), root.content.bounds)
         assertEquals(Rectangle(0, 0, 320, 180), root.overlay.bounds)
+        assertEquals(Rectangle(0, 0, 320, 180), root.blocker.bounds)
     }
 
-    fun `test root preferred size is max of immediate children`() {
+    fun `test root preferred size is max of content and overlay`() {
         val root = SessionRootPanel().apply {
             content.preferredSize = Dimension(300, 120)
             overlay.preferredSize = Dimension(180, 220)
@@ -53,6 +61,35 @@ class SessionRootPanelTest : BasePlatformTestCase() {
 
         assertEquals(Rectangle(12, 34, 80, 24), child.bounds)
         assertTrue(child.laid)
+    }
+
+    fun `test setBlocked makes blocker visible and setBlocked false hides it`() {
+        val root = SessionRootPanel().apply { setSize(200, 100) }
+        root.doLayout()
+
+        assertFalse(root.blocker.isVisible)
+
+        root.setBlocked(true)
+        assertTrue(root.blocker.isVisible)
+
+        root.setBlocked(false)
+        assertFalse(root.blocker.isVisible)
+    }
+
+    fun `test blocker contains returns false when hidden`() {
+        val root = SessionRootPanel().apply { setSize(200, 100) }
+        root.doLayout()
+
+        root.setBlocked(false)
+        assertFalse(root.blocker.contains(50, 50))
+    }
+
+    fun `test blocker contains returns true when visible`() {
+        val root = SessionRootPanel().apply { setSize(200, 100) }
+        root.doLayout()
+
+        root.setBlocked(true)
+        assertTrue(root.blocker.contains(50, 50))
     }
 
     private class Probe : BorderLayoutPanel() {

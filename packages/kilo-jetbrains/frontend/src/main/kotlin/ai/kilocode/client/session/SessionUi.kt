@@ -3,6 +3,10 @@ package ai.kilocode.client.session
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.migration.KiloMigrationService
+import ai.kilocode.client.migration.MigrationUiController
+import ai.kilocode.client.migration.MigrationUiState
+import ai.kilocode.client.migration.ui.MigrationOverlayPanel
 import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.scroll.SessionScroll
@@ -25,14 +29,19 @@ import ai.kilocode.client.session.views.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
+import ai.kilocode.rpc.dto.KiloAppStatusDto
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.registry.Registry
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
 import javax.swing.JComponent
@@ -53,6 +62,7 @@ class SessionUi(
     ref: SessionRef? = null,
     displayMs: Long = SessionController.DISPLAY_DELAY_MS,
     private val manager: SessionManager? = null,
+    private val migration: MigrationUiController = service<KiloMigrationService>(),
 ) : JPanel(BorderLayout()), Disposable, SessionEditorStyleTarget {
 
     companion object {
@@ -61,6 +71,9 @@ class SessionUi(
 
     private val project = project
     private val app = app
+    private val cs = cs
+    private val sessions = sessions
+    private val workspace = workspace
     private var opening = ref != null
     private var pending = false
     private var loaded: Boolean? = null
@@ -102,6 +115,7 @@ class SessionUi(
 
     private lateinit var prompt: PromptPanel
     private lateinit var load: LoadingPanel
+    private lateinit var migrationOverlay: MigrationOverlayPanel
     private var style = SessionEditorStyle.current()
 
     init {
@@ -109,6 +123,7 @@ class SessionUi(
         scroll.show(body(controller.model.state))
         bindUi()
         bindStyle()
+        bindMigration()
         applyStyle(style)
         onStateChanged(controller.model.state)
         loaded?.let(::finishOpen)
@@ -116,6 +131,7 @@ class SessionUi(
 
     override fun addNotify() {
         super.addNotify()
+        migration.check()
         resumeOpen()
     }
 
@@ -132,10 +148,25 @@ class SessionUi(
 
     internal fun currentStyle() = style
 
-    val defaultFocusedComponent: JComponent get() = prompt.defaultFocusedComponent
+    val defaultFocusedComponent: JComponent get() {
+        val state = migration.state.value
+        if (state !is MigrationUiState.Hidden && root.blocker.isVisible) {
+            return migrationOverlay.preferredFocusComponent()
+        }
+        return prompt.defaultFocusedComponent
+    }
 
     private fun buildUi() {
         root = SessionRootPanel()
+
+        migrationOverlay = MigrationOverlayPanel().apply {
+            onSkip = { migration.skip() }
+            onDone = { migration.finish(); sessions.refresh(workspace.directory) }
+            onContinueFromError = { migration.finish(); sessions.refresh(workspace.directory) }
+            onStart = { sel -> migration.start(sel) }
+            onForce = { ids -> migration.force(ids) }
+        }
+        root.setBlocker(migrationOverlay)
 
         sessionContent = JPanel(BorderLayout())
 
@@ -228,7 +259,13 @@ class SessionUi(
                     scroll.show(messageBody)
                 }
 
-                is SessionControllerEvent.AppChanged,
+                is SessionControllerEvent.AppChanged -> {
+                    prompt.setReady(controller.model.isReady())
+                    if (app.state.value.status == KiloAppStatusDto.READY) {
+                        migration.check()
+                    }
+                }
+
                 is SessionControllerEvent.WorkspaceChanged -> {
                     prompt.setReady(controller.model.isReady())
                 }
@@ -258,6 +295,28 @@ class SessionUi(
                 is SessionModelEvent.HeaderUpdated,
                 is SessionModelEvent.Compacted,
                 is SessionModelEvent.Cleared -> Unit
+            }
+        }
+    }
+
+    private fun bindMigration() {
+        cs.launch {
+            migration.state.collect { state ->
+                withContext(Dispatchers.Main) {
+                    applyMigrationState(state)
+                }
+            }
+        }
+    }
+
+    private fun applyMigrationState(state: MigrationUiState) {
+        when (state) {
+            is MigrationUiState.Hidden -> {
+                root.setBlocked(false)
+            }
+            is MigrationUiState.Needed -> {
+                migrationOverlay.update(state)
+                root.setBlocked(true)
             }
         }
     }

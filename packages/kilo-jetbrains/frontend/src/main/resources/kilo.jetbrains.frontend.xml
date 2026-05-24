@@ -7,6 +7,8 @@
     <resource-bundle>messages.KiloBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceImplementation="ai.kilocode.client.migration.KiloMigrationService"/>
+
         <toolWindow id="Kilo Code"
                     anchor="left"
                     icon="/icons/kilo.svg"
