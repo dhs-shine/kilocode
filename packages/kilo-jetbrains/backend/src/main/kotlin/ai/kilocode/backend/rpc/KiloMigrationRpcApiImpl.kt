@@ -17,6 +17,7 @@ import ai.kilocode.rpc.dto.LegacyMigrationEventDto
 import ai.kilocode.rpc.dto.LegacyMigrationSelectionsDto
 import ai.kilocode.rpc.dto.LegacyMigrationStatusDto
 import ai.kilocode.backend.app.KiloBackendMigrationManager
+import ai.kilocode.log.KiloLog
 import com.intellij.openapi.components.service
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.trySendBlocking
@@ -25,6 +26,10 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.withContext
 
 class KiloMigrationRpcApiImpl : KiloMigrationRpcApi {
+
+    companion object {
+        private val LOG = KiloLog.create(KiloMigrationRpcApiImpl::class.java)
+    }
 
     private val app: KiloBackendAppService get() = service()
     private val storeService: KiloBackendLegacyMigrationStoreService get() = service()
@@ -36,20 +41,23 @@ class KiloMigrationRpcApiImpl : KiloMigrationRpcApi {
     }
 
     override suspend fun status(): LegacyMigrationStatusDto? {
-        val mgr = manager()
         val store = storeService.store()
-        val status = mgr.status(store) ?: return null
+        val status = withContext(Dispatchers.IO) { store.status() } ?: return null
+        LOG.info("Migration RPC status: status=$status")
         return MigrationRpcMapper.toDto(status)
     }
 
     override suspend fun detect(): LegacyMigrationDetectionDto {
+        LOG.info("Migration RPC detect: started")
         val mgr = manager()
         val store = storeService.store()
         val detection = withContext(Dispatchers.IO) { mgr.detect(store) }
+        LOG.info("Migration RPC detect: completed hasData=${detection.hasData} providers=${detection.providers.size} mcp=${detection.mcpServers.size} modes=${detection.customModes.size} sessions=${detection.sessions.size}")
         return MigrationRpcMapper.toDto(detection)
     }
 
     override suspend fun migrate(selections: LegacyMigrationSelectionsDto): Flow<LegacyMigrationEventDto> {
+        LOG.info("Migration RPC migrate: starting ${selectionSummary(selections)}")
         val mgr = manager()
         val domainSelections = MigrationRpcMapper.fromDto(selections)
         val store = storeService.store()
@@ -57,9 +65,11 @@ class KiloMigrationRpcApiImpl : KiloMigrationRpcApi {
             withContext(Dispatchers.IO) {
                 val sink = object : LegacyMigrationSink {
                     override fun item(progress: ai.kilocode.backend.migration.LegacyMigrationItemProgress) {
+                        LOG.info("Migration RPC item: item=${progress.item} status=${progress.status} message=${progress.message}")
                         trySendBlocking(LegacyMigrationEventDto.Item(MigrationRpcMapper.toDto(progress)))
                     }
                     override fun session(progress: ai.kilocode.backend.migration.LegacyMigrationSessionProgress) {
+                        LOG.info("Migration RPC session: phase=${progress.phase} session=${progress.session?.id} error=${progress.error}")
                         trySendBlocking(LegacyMigrationEventDto.Session(MigrationRpcMapper.toDto(progress)))
                     }
                 }
@@ -67,6 +77,7 @@ class KiloMigrationRpcApiImpl : KiloMigrationRpcApi {
                     mgr.migrate(store, domainSelections, sink)
                 }.getOrElse { e ->
                     val msg = e.message ?: "Migration failed"
+                    LOG.warn("Migration RPC migrate: failed message=$msg", e)
                     val errItem = LegacyMigrationResultItem(
                         item = "Migration",
                         category = MigrationItemCategory.settings,
@@ -76,29 +87,40 @@ class KiloMigrationRpcApiImpl : KiloMigrationRpcApi {
                     trySendBlocking(LegacyMigrationEventDto.Complete(listOf(MigrationRpcMapper.toDto(errItem))))
                     return@withContext
                 }
+                LOG.info("Migration RPC migrate: complete items=${report.items.size} errors=${report.items.count { it.status == MigrationItemStatus.error }}")
                 trySendBlocking(LegacyMigrationEventDto.Complete(report.items.map(MigrationRpcMapper::toDto)))
             }
         }
     }
 
     override suspend fun skip() {
-        val mgr = manager()
+        LOG.info("Migration RPC skip: marking skipped")
         val store = storeService.store()
-        mgr.mark(store, LegacyMigrationStatus.Skipped)
+        withContext(Dispatchers.IO) { store.mark(LegacyMigrationStatus.Skipped) }
+        app.resumeAfterMigration()
+        LOG.info("Migration RPC skip: resumed app load")
     }
 
     override suspend fun finalize(status: LegacyMigrationStatusDto) {
-        val mgr = manager()
+        LOG.info("Migration RPC finalize: status=$status")
         val store = storeService.store()
         val domain = MigrationRpcMapper.fromDto(status)
-        if (domain == LegacyMigrationStatus.Skipped) return
-        mgr.mark(store, domain)
+        if (domain != LegacyMigrationStatus.Skipped) {
+            withContext(Dispatchers.IO) { store.mark(domain) }
+        }
+        app.resumeAfterMigration()
+        LOG.info("Migration RPC finalize: resumed app load")
     }
 
     override suspend fun cleanup(targets: LegacyCleanupTargetsDto): LegacyCleanupReportDto {
+        LOG.info("Migration RPC cleanup: providerProfiles=${targets.providerProfiles} mcp=${targets.mcpSettings} modes=${targets.customModes} state=${targets.globalState} history=${targets.taskHistory}")
         val mgr = manager()
         val store = storeService.store()
         val report = withContext(Dispatchers.IO) { mgr.cleanup(store, MigrationRpcMapper.fromDto(targets)) }
+        LOG.info("Migration RPC cleanup: cleaned=${report.cleaned.size} errors=${report.errors.size}")
         return MigrationRpcMapper.toDto(report)
     }
+
+    private fun selectionSummary(selections: LegacyMigrationSelectionsDto): String =
+        "providers=${selections.providers.size} mcp=${selections.mcpServers.size} modes=${selections.customModes.size} sessions=${selections.sessions.size} model=${selections.defaultModel} settings=true"
 }

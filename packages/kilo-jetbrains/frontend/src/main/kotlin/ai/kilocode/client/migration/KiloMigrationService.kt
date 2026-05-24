@@ -2,8 +2,11 @@
 
 package ai.kilocode.client.migration
 
+import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.KiloMigrationRpcApi
+import ai.kilocode.rpc.dto.KiloAppStateDto
+import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.LegacyMigrationEventDto
 import ai.kilocode.rpc.dto.LegacyMigrationResultItemDto
 import ai.kilocode.rpc.dto.LegacyMigrationStatusDto
@@ -45,10 +48,13 @@ interface MigrationUiController {
 class KiloMigrationService internal constructor(
     private val cs: CoroutineScope,
     private val rpc: KiloMigrationRpcApi?,
+    appState: StateFlow<KiloAppStateDto>?,
 ) : MigrationUiController {
 
     /** Platform constructor — resolves RPC lazily. */
-    constructor(cs: CoroutineScope) : this(cs, null)
+    constructor(cs: CoroutineScope) : this(cs, null, service<KiloAppService>().state)
+
+    internal constructor(cs: CoroutineScope, rpc: KiloMigrationRpcApi?) : this(cs, rpc, null)
 
     companion object {
         private val LOG = KiloLog.create(KiloMigrationService::class.java)
@@ -59,9 +65,14 @@ class KiloMigrationService internal constructor(
     private val _state = MutableStateFlow<MigrationUiState>(MigrationUiState.Hidden)
     override val state: StateFlow<MigrationUiState> = _state.asStateFlow()
 
-    private val checking = AtomicBoolean(false)
     private val migrating = AtomicBoolean(false)
     private val migrateJob = AtomicReference<Job?>(null)
+
+    init {
+        if (appState != null) {
+            cs.launch { appState.collect(::onAppState) }
+        }
+    }
 
     // ------ RPC helper ------
 
@@ -72,47 +83,18 @@ class KiloMigrationService internal constructor(
 
     // ------ MigrationUiController ------
 
-    /**
-     * Check if migration is needed. Idempotent and in-flight guarded.
-     * Calls status first; if status exists, hides. Then calls detect; if no data, hides.
-     * Detection failures log and leave state unchanged.
-     */
-    override fun check() {
-        if (!checking.compareAndSet(false, true)) return
-        cs.launch {
-            try {
-                val status = try {
-                    call { status() }
-                } catch (e: Exception) {
-                    LOG.warn("migration status check failed", e)
-                    checking.set(false)
-                    return@launch
-                }
-                if (status != null) {
-                    _state.value = MigrationUiState.Hidden
-                    checking.set(false)
-                    return@launch
-                }
-                val detection = try {
-                    call { detect() }
-                } catch (e: Exception) {
-                    LOG.warn("migration detect failed", e)
-                    checking.set(false)
-                    return@launch
-                }
-                _state.value = if (detection.hasData) MigrationUiState.Needed(detection) else MigrationUiState.Hidden
-            } finally {
-                checking.set(false)
-            }
-        }
-    }
+    override fun check() = Unit
 
     /**
      * Start migration for the given user selections.
      */
     override fun start(selections: MigrationUiSelections) {
         val current = _state.value as? MigrationUiState.Needed ?: return
-        if (!migrating.compareAndSet(false, true)) return
+        if (!migrating.compareAndSet(false, true)) {
+            LOG.info("Migration wizard: start ignored because migration is already running")
+            return
+        }
+        LOG.info("Migration wizard: user started migration ${selectionSummary(selections)}")
 
         val dto = MigrationSelectionBuilder.toDto(selections)
         val initialProgress = buildInitialProgress(selections, current.detection)
@@ -148,7 +130,11 @@ class KiloMigrationService internal constructor(
      */
     override fun force(ids: List<String>) {
         val current = _state.value as? MigrationUiState.Needed ?: return
-        if (!migrating.compareAndSet(false, true)) return
+        if (!migrating.compareAndSet(false, true)) {
+            LOG.info("Migration wizard: force re-import ignored because migration is already running")
+            return
+        }
+        LOG.info("Migration wizard: user forced session re-import sessions=${ids.size} ids=${ids.joinToString(",")}")
 
         val dto = MigrationSelectionBuilder.forceSessionsDto(ids)
         val initialProgress = ids.map {
@@ -186,6 +172,7 @@ class KiloMigrationService internal constructor(
      * Skip migration — marks status and hides for all observers.
      */
     override fun skip() {
+        LOG.info("Migration wizard: user chose skip")
         cs.launch {
             try {
                 call { skip() }
@@ -201,11 +188,13 @@ class KiloMigrationService internal constructor(
      */
     override fun finish() {
         val current = _state.value as? MigrationUiState.Needed ?: run {
+            LOG.info("Migration wizard: finish requested while hidden")
             _state.value = MigrationUiState.Hidden
             return
         }
         val hasErrors = current.results.any { it.status == MigrationItemStatusDto.error }
         val status = if (hasErrors) LegacyMigrationStatusDto.completed_with_errors else LegacyMigrationStatusDto.completed
+        LOG.info("Migration wizard: user finished migration status=$status results=${current.results.size} errors=${current.results.count { it.status == MigrationItemStatusDto.error }}")
         cs.launch {
             try {
                 call { finalize(status) }
@@ -223,6 +212,7 @@ class KiloMigrationService internal constructor(
         when (event) {
             is LegacyMigrationEventDto.Item -> {
                 val p = event.progress
+                LOG.info("Migration wizard: item progress item=${p.item} status=${p.status} message=${p.message}")
                 val updated = current.progress.map {
                     if (it.item == p.item) it.copy(status = p.status, message = p.message) else it
                 }
@@ -231,6 +221,7 @@ class KiloMigrationService internal constructor(
             is LegacyMigrationEventDto.Session -> {
                 val sp = event.progress
                 val phase = sp.phase
+                LOG.info("Migration wizard: session progress phase=$phase session=${sp.session?.id} error=${sp.error}")
 
                 // Update session summary buckets
                 val summary = when (phase) {
@@ -268,6 +259,7 @@ class KiloMigrationService internal constructor(
                 val items = event.items
                 val hasErrors = items.any { it.status == MigrationItemStatusDto.error }
                 val phase = if (hasErrors) MigrationUiPhase.error else MigrationUiPhase.done
+                LOG.info("Migration wizard: migration complete phase=$phase items=${items.size} errors=${items.count { it.status == MigrationItemStatusDto.error }}")
                 _state.value = current.copy(
                     running = false,
                     phase = phase,
@@ -275,9 +267,26 @@ class KiloMigrationService internal constructor(
                 )
             }
             is LegacyMigrationEventDto.Error -> {
+                LOG.warn("Migration wizard: migration error message=${event.message}")
                 finishWithError(event.message)
             }
         }
+    }
+
+    private fun onAppState(state: KiloAppStateDto) {
+        val migration = state.migration
+        if (state.status == KiloAppStatusDto.MIGRATION_REQUIRED && migration != null) {
+            val current = _state.value
+            if (current is MigrationUiState.Needed && current.detection == migration && current.phase != MigrationUiPhase.selecting) return
+            LOG.info("Migration wizard: showing because backend requires migration ${detectionSummary(migration)}")
+            _state.value = MigrationUiState.Needed(migration)
+            return
+        }
+        if (migrating.get()) return
+        if (_state.value !is MigrationUiState.Hidden) {
+            LOG.info("Migration wizard: hiding because backend status=${state.status}")
+        }
+        _state.value = MigrationUiState.Hidden
     }
 
     private fun finishWithError(msg: String) {
@@ -294,6 +303,15 @@ class KiloMigrationService internal constructor(
             results = listOf(errItem),
         )
     }
+
+    private fun selectionSummary(selections: MigrationUiSelections): String =
+        "providers=${selections.providers.size}:${selections.providers.joinToString(",")} mcp=${selections.mcpServers.size}:${selections.mcpServers.joinToString(",")} modes=${selections.customModes.size}:${selections.customModes.joinToString(",")} sessions=${selections.sessions.size} model=${selections.defaultModel} settings=${settingsSummary(selections.settings)}"
+
+    private fun settingsSummary(settings: MigrationSettingsUiSelections): String =
+        "commandRules=${settings.autoApproval.commandRules},read=${settings.autoApproval.readPermission},write=${settings.autoApproval.writePermission},execute=${settings.autoApproval.executePermission},mcp=${settings.autoApproval.mcpPermission},task=${settings.autoApproval.taskPermission},language=${settings.language},autocomplete=${settings.autocomplete}"
+
+    private fun detectionSummary(detection: ai.kilocode.rpc.dto.LegacyMigrationDetectionDto): String =
+        "providers=${detection.providers.size} mcp=${detection.mcpServers.size} modes=${detection.customModes.size} sessions=${detection.sessions.size} model=${detection.defaultModel != null} settings=${detection.settings != null}"
 
     private fun buildInitialProgress(
         selections: MigrationUiSelections,

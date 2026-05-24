@@ -1,50 +1,104 @@
 package ai.kilocode.backend.migration
 
-import com.intellij.ide.util.PropertiesComponent
+import ai.kilocode.backend.cli.KiloBackendCliManager
+import ai.kilocode.backend.cli.KiloCliConfigPath
+import ai.kilocode.log.KiloLog
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.io.File
 
-/**
- * Provides the production [LegacyMigrationStore] for use by the migration RPC implementation.
- *
- * Status persistence uses [PropertiesComponent] (app-level JetBrains persistent store).
- * Raw legacy source acquisition is not yet implemented; the store returns null for all
- * data accessors, so [LegacyMigrationEngine.detect] will report hasData=false and the
- * migration wizard will remain hidden until a real source adapter is plugged in.
- */
+/** Provides the production [LegacyMigrationStore] backed by the CLI Kilo config directory. */
 @Service(Service.Level.APP)
 class KiloBackendLegacyMigrationStoreService {
 
     companion object {
-        private const val STATUS_KEY = "kilo.legacyMigrationStatus"
-
         fun getInstance(): KiloBackendLegacyMigrationStoreService = service()
+
+        internal fun store(log: KiloLog): LegacyMigrationStore {
+            val env = KiloBackendCliManager(log).buildEnv("migration")
+            val file = KiloCliConfigPath.legacySettingsFile(env)
+            log.info("Migration store: file=${file.absolutePath}")
+            return LegacySettingsFileMigrationStore(file) { msg, err ->
+                if (err == null) log.warn(msg) else log.warn(msg, err)
+            }
+        }
     }
 
-    fun store(): LegacyMigrationStore = PersistentStatusStore()
+    private val log = KiloLog.create(KiloBackendLegacyMigrationStoreService::class.java)
 
-    private inner class PersistentStatusStore : LegacyMigrationStore {
-        override fun status(): LegacyMigrationStatus? {
-            val raw = PropertiesComponent.getInstance().getValue(STATUS_KEY) ?: return null
-            return runCatching { LegacyMigrationStatus.valueOf(raw) }.getOrNull()
+    fun store(): LegacyMigrationStore = store(log)
+}
+
+class LegacySettingsFileMigrationStore(
+    private val file: File,
+    private val warn: (String, Throwable?) -> Unit = { _, _ -> },
+) : LegacyMigrationStore {
+    companion object {
+        private val json = Json { prettyPrint = true }
+        private const val STATUS = "migrationStatus"
+    }
+
+    override fun status(): LegacyMigrationStatus? {
+        val raw = read()?.get(STATUS)?.jsonPrimitive?.content ?: return null
+        return runCatching { LegacyMigrationStatus.valueOf(raw) }.getOrNull()
+    }
+
+    override fun mark(status: LegacyMigrationStatus) {
+        val root = read().orEmpty().toMutableMap()
+        root[STATUS] = JsonPrimitive(status.name)
+        write(JsonObject(root))
+    }
+
+    override fun providerProfilesRaw(): String? = string("providerProfiles")
+    override fun oauthRaw(key: String): String? = (read()?.get("oauth") as? JsonObject)?.get(key)?.jsonPrimitive?.content
+    override fun mcpSettingsRaw(): String? = string("mcpSettings")
+    override fun customModesRaw(): String? = string("customModes")
+    override fun customModePromptsRaw(): String? = string("customModePrompts")
+    override fun autocompleteRaw(): String? = string("autocomplete")
+    override fun globalStateValue(key: String): JsonElement? = (read()?.get("globalState") as? JsonObject)?.get(key)
+    override fun taskHistoryRaw(): String? = string("taskHistory")
+    override fun taskConversationRaw(id: String): String? = (read()?.get("conversations") as? JsonObject)?.get(id)?.jsonPrimitive?.content
+
+    override fun cleanup(targets: LegacyCleanupTargets): LegacyCleanupReport {
+        val root = read()?.toMutableMap() ?: return LegacyCleanupReport(cleaned = emptyList(), errors = emptyList())
+        val cleaned = mutableListOf<String>()
+        if (targets.providerProfiles && root.remove("providerProfiles") != null) cleaned.add("providerProfiles")
+        if (targets.mcpSettings && root.remove("mcpSettings") != null) cleaned.add("mcpSettings")
+        if (targets.customModes && root.remove("customModes") != null) cleaned.add("customModes")
+        if (targets.globalState && root.remove("globalState") != null) cleaned.add("globalState")
+        if (targets.taskHistory) {
+            val history = root.remove("taskHistory") != null
+            val conv = root.remove("conversations") != null
+            if (history || conv) cleaned.add("taskHistory")
         }
+        val err = runCatching { write(JsonObject(root)) }.exceptionOrNull()?.message
+        return LegacyCleanupReport(cleaned = if (err == null) cleaned else emptyList(), errors = listOfNotNull(err))
+    }
 
-        override fun mark(status: LegacyMigrationStatus) {
-            PropertiesComponent.getInstance().setValue(STATUS_KEY, status.name)
+    private fun string(key: String): String? = read()?.get(key)?.jsonPrimitive?.content
+
+    private fun read(): JsonObject? {
+        if (!file.isFile) return null
+        return try {
+            json.parseToJsonElement(file.readText()).jsonObject
+        } catch (e: SerializationException) {
+            warn("Malformed legacy migration settings at ${file.absolutePath}", e)
+            null
+        } catch (e: IllegalArgumentException) {
+            warn("Malformed legacy migration settings at ${file.absolutePath}", e)
+            null
         }
+    }
 
-        // Legacy source adapters — not yet implemented; return null to suppress migration UI.
-        override fun providerProfilesRaw(): String? = null
-        override fun oauthRaw(key: String): String? = null
-        override fun mcpSettingsRaw(): String? = null
-        override fun customModesRaw(): String? = null
-        override fun customModePromptsRaw(): String? = null
-        override fun autocompleteRaw(): String? = null
-        override fun globalStateValue(key: String) = null
-        override fun taskHistoryRaw(): String? = null
-        override fun taskConversationRaw(id: String): String? = null
-
-        override fun cleanup(targets: LegacyCleanupTargets): LegacyCleanupReport =
-            LegacyCleanupReport(cleaned = emptyList(), errors = emptyList())
+    private fun write(root: JsonObject) {
+        file.parentFile?.mkdirs()
+        file.writeText(json.encodeToString(JsonObject.serializer(), root))
     }
 }

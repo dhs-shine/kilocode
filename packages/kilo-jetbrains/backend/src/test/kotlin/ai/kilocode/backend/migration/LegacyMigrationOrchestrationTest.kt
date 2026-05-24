@@ -11,10 +11,11 @@ import kotlin.test.assertTrue
  */
 class LegacyMigrationOrchestrationTest {
 
-    private fun setup(configure: InMemoryLegacyMigrationStore.() -> Unit = {}): Triple<LegacyMigrationEngine, InMemoryLegacyMigrationStore, NoopLegacyMigrationBackend> {
-        val store = InMemoryLegacyMigrationStore().apply(configure)
+    private fun setup(configure: LegacySettingsFileFixture.() -> Unit = {}): Triple<LegacyMigrationEngine, LegacySettingsFileFixture, NoopLegacyMigrationBackend> {
+        val fixture = LegacySettingsFileFixture().apply(configure)
+        val store = fixture.store()
         val backend = NoopLegacyMigrationBackend()
-        return Triple(LegacyMigrationEngine(store, backend), store, backend)
+        return Triple(LegacyMigrationEngine(store, backend), fixture, backend)
     }
 
     private fun noSelections() = LegacyMigrationSelections(

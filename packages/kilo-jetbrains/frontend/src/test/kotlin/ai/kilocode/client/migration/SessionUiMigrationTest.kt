@@ -18,20 +18,6 @@ class SessionUiMigrationTest : SessionUiTestBase() {
         layout()
     }
 
-    fun `test addNotify calls migration check`() {
-        // SessionUi.addNotify should call migration.check().
-        // Use a fresh UI with the same fakeMigration to track the call.
-        val fresh = newUi(migration = fakeMigration)
-        val before = fakeMigration.checks.size
-        try {
-            fresh.addNotify()
-            assertTrue("addNotify should call migration.check()", fakeMigration.checks.size > before)
-        } finally {
-            fresh.removeNotify()
-            com.intellij.openapi.util.Disposer.dispose(fresh)
-        }
-    }
-
     fun `test hidden migration state keeps blocker hidden`() {
         val root = find<SessionRootPanel>(ui)
         fakeMigration._state.value = MigrationUiState.Hidden

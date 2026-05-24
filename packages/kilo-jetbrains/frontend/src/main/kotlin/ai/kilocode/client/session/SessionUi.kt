@@ -34,7 +34,6 @@ import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.log.ChatLogSummary
 import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
-import ai.kilocode.rpc.dto.KiloAppStatusDto
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -81,7 +80,6 @@ class SessionUi(
 
     private val project = project
     private val app = app
-    private val cs = cs
     private val sessions = sessions
     private val workspace = workspace
     private var opening = ref != null
@@ -144,7 +142,6 @@ class SessionUi(
 
     override fun addNotify() {
         super.addNotify()
-        migration.check()
         resumeOpen()
     }
 
@@ -174,8 +171,8 @@ class SessionUi(
 
         migrationOverlay = MigrationOverlayPanel().apply {
             onSkip = { migration.skip() }
-            onDone = { migration.finish(); sessions.refresh(workspace.directory) }
-            onContinueFromError = { migration.finish(); sessions.refresh(workspace.directory) }
+            onDone = { migration.finish() }
+            onContinueFromError = { migration.finish() }
             onStart = { sel -> migration.start(sel) }
             onForce = { ids -> migration.force(ids) }
         }
@@ -292,9 +289,6 @@ class SessionUi(
 
                 is SessionControllerEvent.AppChanged -> {
                     prompt.setReady(controller.model.isReady())
-                    if (app.state.value.status == KiloAppStatusDto.READY) {
-                        migration.check()
-                    }
                 }
 
                 is SessionControllerEvent.WorkspaceChanged -> {
@@ -345,9 +339,11 @@ class SessionUi(
     private fun applyMigrationState(state: MigrationUiState) {
         when (state) {
             is MigrationUiState.Hidden -> {
+                if (root.blocker.isVisible) LOG.info("Migration wizard: overlay hidden session=${id ?: cacheKey ?: "new"}")
                 root.setBlocked(false)
             }
             is MigrationUiState.Needed -> {
+                if (!root.blocker.isVisible) LOG.info("Migration wizard: overlay shown session=${id ?: cacheKey ?: "new"} phase=${state.phase}")
                 migrationOverlay.update(state)
                 root.setBlocked(true)
             }

@@ -9,14 +9,15 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Tests for LegacyMigrationEngine.detect() using InMemoryLegacyMigrationStore.
+ * Tests for LegacyMigrationEngine.detect() using the production file-backed store.
  */
 class LegacyMigrationDetectionTest {
 
-    private fun engine(configure: InMemoryLegacyMigrationStore.() -> Unit = {}): Pair<LegacyMigrationEngine, InMemoryLegacyMigrationStore> {
-        val store = InMemoryLegacyMigrationStore().apply(configure)
+    private fun engine(configure: LegacySettingsFileFixture.() -> Unit = {}): Pair<LegacyMigrationEngine, LegacySettingsFileFixture> {
+        val fixture = LegacySettingsFileFixture().apply(configure)
+        val store = fixture.store()
         val backend = NoopLegacyMigrationBackend()
-        return LegacyMigrationEngine(store, backend) to store
+        return LegacyMigrationEngine(store, backend) to fixture
     }
 
     // -----------------------------------------------------------------------
@@ -265,6 +266,7 @@ customModes:
         assertNull(eng.status())
         eng.mark(LegacyMigrationStatus.Completed)
         assertEquals(LegacyMigrationStatus.Completed, eng.status())
+        store.refresh()
         assertEquals(LegacyMigrationStatus.Completed, store.migrationStatus)
     }
 }

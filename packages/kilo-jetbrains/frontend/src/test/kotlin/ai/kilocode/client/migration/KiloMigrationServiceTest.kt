@@ -1,6 +1,8 @@
 package ai.kilocode.client.migration
 
 import ai.kilocode.client.testing.FakeMigrationRpcApi
+import ai.kilocode.rpc.dto.KiloAppStateDto
+import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.LegacyMigrationDetectionDto
 import ai.kilocode.rpc.dto.LegacyMigrationEventDto
 import ai.kilocode.rpc.dto.LegacyMigrationResultItemDto
@@ -15,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 
 @Suppress("UnstableApiUsage")
@@ -23,12 +26,14 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
     private lateinit var scope: CoroutineScope
     private lateinit var rpc: FakeMigrationRpcApi
     private lateinit var service: KiloMigrationService
+    private lateinit var app: MutableStateFlow<KiloAppStateDto>
 
     override fun setUp() {
         super.setUp()
         scope = CoroutineScope(SupervisorJob())
         rpc = FakeMigrationRpcApi()
-        service = KiloMigrationService(scope, rpc)
+        app = MutableStateFlow(KiloAppStateDto(KiloAppStatusDto.DISCONNECTED))
+        service = KiloMigrationService(scope, rpc, app)
     }
 
     override fun tearDown() {
@@ -46,54 +51,36 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test check calls status before detect`() {
-        rpc.statusResult = null
-        rpc.detectResult = FakeMigrationRpcApi.emptyDetection()
-        service.check()
+    fun `test migration required app state shows needed without polling`() {
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         settle()
-        assertEquals(1, rpc.statusCalls.size)
-        assertEquals(1, rpc.detectCalls.size)
-    }
-
-    fun `test existing status hides state and does not call detect`() {
-        rpc.statusResult = LegacyMigrationStatusDto.completed
-        service.check()
-        settle()
-        assertEquals(1, rpc.statusCalls.size)
+        assertEquals(0, rpc.statusCalls.size)
         assertEquals(0, rpc.detectCalls.size)
-        assertEquals(MigrationUiState.Hidden, service.state.value)
-    }
-
-    fun `test no data hides state`() {
-        rpc.statusResult = null
-        rpc.detectResult = FakeMigrationRpcApi.emptyDetection()
-        service.check()
-        settle()
-        assertEquals(MigrationUiState.Hidden, service.state.value)
-    }
-
-    fun `test detected data sets needed state`() {
-        rpc.statusResult = null
-        rpc.detectResult = sampleDetection()
-        service.check()
-        settle()
         assertTrue("state should be Needed", service.state.value is MigrationUiState.Needed)
     }
 
-    fun `test duplicate check while in flight makes one rpc call`() {
-        rpc.statusResult = null
-        rpc.detectResult = FakeMigrationRpcApi.emptyDetection()
-        service.check()
-        service.check()
+    fun `test ready app state hides migration`() {
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         settle()
-        // Due to in-flight guard only one pair of calls should happen
-        assertEquals(1, rpc.statusCalls.size)
+        app.value = KiloAppStateDto(KiloAppStatusDto.READY)
+        settle()
+        assertEquals(MigrationUiState.Hidden, service.state.value)
+    }
+
+    fun `test duplicate migration required does not reset running migration`() {
+        val detection = sampleDetection()
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = detection)
+        settle()
+        service.start(MigrationUiSelections(providers = listOf("profile1")))
+        settle()
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = detection)
+        settle()
+        val state = service.state.value as MigrationUiState.Needed
+        assertEquals(MigrationUiPhase.migrating, state.phase)
     }
 
     fun `test skip marks status and hides`() {
-        rpc.statusResult = null
-        rpc.detectResult = sampleDetection()
-        service.check()
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         settle()
         service.skip()
         settle()
@@ -102,9 +89,7 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
     }
 
     fun `test finish calls finalize and hides`() {
-        rpc.statusResult = null
-        rpc.detectResult = sampleDetection()
-        service.check()
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         settle()
         service.finish()
         settle()
@@ -114,9 +99,7 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
     }
 
     fun `test start emits migrating state and initial pending progress`() = runBlocking {
-        rpc.statusResult = null
-        rpc.detectResult = sampleDetection()
-        service.check()
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         delay(100)
         UIUtil.dispatchAllInvocationEvents()
 
@@ -134,9 +117,7 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
     }
 
     fun `test complete event without errors sets done phase`() = runBlocking {
-        rpc.statusResult = null
-        rpc.detectResult = sampleDetection()
-        service.check()
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         delay(100)
         UIUtil.dispatchAllInvocationEvents()
 
@@ -157,9 +138,7 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
     }
 
     fun `test complete event with errors sets error phase`() = runBlocking {
-        rpc.statusResult = null
-        rpc.detectResult = sampleDetection()
-        service.check()
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         delay(100)
         UIUtil.dispatchAllInvocationEvents()
 
@@ -179,9 +158,7 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
     }
 
     fun `test force sends only session selections with force true`() = runBlocking {
-        rpc.statusResult = null
-        rpc.detectResult = sampleDetection()
-        service.check()
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         delay(100)
         UIUtil.dispatchAllInvocationEvents()
 
