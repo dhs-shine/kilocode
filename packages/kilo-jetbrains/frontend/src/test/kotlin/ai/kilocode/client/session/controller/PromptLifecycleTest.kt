@@ -3,6 +3,7 @@ package ai.kilocode.client.session.controller
 import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.SessionState
+import ai.kilocode.client.session.SessionRef
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.PartDto
 import ai.kilocode.rpc.dto.PermissionAlwaysRulesDto
@@ -167,6 +168,112 @@ class PromptLifecycleTest : SessionControllerTestBase() {
 
         assertEquals(1, rpc.questionReplies.size)
         assertEquals("q1", rpc.questionReplies[0].first)
+    }
+
+    fun `test plan follow-up question enters awaiting state`() {
+        val (m, _, _) = prompted()
+
+        emit(ChatEventDto.QuestionAsked("ses_test", planQuestion("q_plan")))
+
+        assertSession(
+            """
+            question#q_plan
+            tool: <none>
+            header: Implement
+            prompt: Ready to implement?
+            option: Start new session - Implement in a fresh session with a clean context
+            option: Continue here - Implement the plan in this session
+            multiple: false
+            custom: true
+
+            [code] [kilo/gpt-5] [awaiting-question]
+            """,
+            m,
+        )
+    }
+
+    fun `test continue here switches mode and sends canonical reply`() {
+        val (m, _, _) = prompted()
+        edt { m.model.agent = "plan" }
+        emit(ChatEventDto.QuestionAsked("ses_test", planQuestion("q_plan")))
+
+        edt {
+            m.replyQuestion(
+                "q_plan",
+                QuestionReplyDto(listOf(listOf("Continue here"))),
+                listOf(listOf("Continue here")),
+            )
+        }
+        flush()
+
+        assertEquals("code", m.model.agent)
+        assertEquals("code", rpc.configs.last().second.agent)
+        assertQuestionReply("q_plan /test [[Continue here]]", rpc.questionReplies)
+    }
+
+    fun `test custom plan follow-up answer does not switch mode`() {
+        val (m, _, _) = prompted()
+        edt { m.model.agent = "plan" }
+        emit(ChatEventDto.QuestionAsked("ses_test", planQuestion("q_plan")))
+
+        edt {
+            m.replyQuestion(
+                "q_plan",
+                QuestionReplyDto(listOf(listOf("Need to adjust scope"))),
+                listOf(emptyList()),
+            )
+        }
+        flush()
+
+        assertEquals("plan", m.model.agent)
+        assertTrue(rpc.configs.none { it.second.agent == "code" })
+        assertQuestionReply("q_plan /test [[Need to adjust scope]]", rpc.questionReplies)
+    }
+
+    fun `test start new session adopts matching created session`() {
+        val opened = mutableListOf<SessionRef>()
+        val m = controller(open = { opened.add(it) })
+        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY, config = ai.kilocode.rpc.dto.ConfigDto(model = "kilo/gpt-5"))
+        projectRpc.state.value = workspaceReady()
+        flush()
+        edt { m.prompt("go") }
+        flush()
+        emit(ChatEventDto.QuestionAsked("ses_test", planQuestion("q_plan")))
+
+        edt {
+            m.replyQuestion(
+                "q_plan",
+                QuestionReplyDto(listOf(listOf("Start new session"))),
+                listOf(listOf("Start new session")),
+            )
+        }
+        emit(ChatEventDto.SessionCreated("ses_new", session("ses_new", dir = "/test")))
+        flush()
+
+        assertEquals("ses_new", (opened.last() as SessionRef.Local).id)
+        assertEquals(1, rpc.prompts.size)
+    }
+
+    fun `test unrelated session created is ignored`() {
+        val opened = mutableListOf<SessionRef>()
+        val m = controller(open = { opened.add(it) })
+        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY, config = ai.kilocode.rpc.dto.ConfigDto(model = "kilo/gpt-5"))
+        projectRpc.state.value = workspaceReady()
+        flush()
+        edt { m.prompt("go") }
+        flush()
+        emit(ChatEventDto.QuestionAsked("ses_test", planQuestion("q_plan")))
+        edt {
+            m.replyQuestion(
+                "q_plan",
+                QuestionReplyDto(listOf(listOf("Start new session"))),
+                listOf(listOf("Start new session")),
+            )
+        }
+
+        emit(ChatEventDto.SessionCreated("ses_new", session("ses_new", dir = "/other")))
+
+        assertTrue(opened.none { it is SessionRef.Local && it.id == "ses_new" })
     }
 
     fun `test rejectQuestion calls RPC`() {
@@ -347,5 +454,22 @@ class PromptLifecycleTest : SessionControllerTestBase() {
             ),
         ),
         tool = ToolRefDto("msg1", "call1"),
+    )
+
+    private fun planQuestion(id: String) = QuestionRequestDto(
+        id = id,
+        sessionID = "ses_test",
+        questions = listOf(
+            QuestionInfoDto(
+                question = "Ready to implement?",
+                header = "Implement",
+                options = listOf(
+                    QuestionOptionDto("Start new session", "Implement in a fresh session with a clean context"),
+                    QuestionOptionDto("Continue here", "Implement the plan in this session", mode = "code"),
+                ),
+                multiple = false,
+                custom = true,
+            ),
+        ),
     )
 }

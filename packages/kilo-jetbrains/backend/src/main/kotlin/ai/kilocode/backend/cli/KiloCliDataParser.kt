@@ -132,6 +132,13 @@ object KiloCliDataParser {
                 ChatEventDto.TurnClose(sid, reason)
             }
 
+            "session.created" -> {
+                val info = props["info"]?.jsonObject ?: return null
+                val dto = parseSessionObject(info)
+                val sid = props.str("sessionID") ?: dto.id.takeIf { it.isNotBlank() } ?: return null
+                ChatEventDto.SessionCreated(sid, dto)
+            }
+
             "session.error" -> {
                 val sid = props.str("sessionID")
                 val err = props["error"]?.jsonObject?.let { parseError(it) }
@@ -540,20 +547,28 @@ object KiloCliDataParser {
         val sid = obj.str("sessionID") ?: return null
         val questions = obj["questions"]?.jsonArray?.map { q ->
             val qo = q.jsonObject
-            val options = qo["options"]?.jsonArray?.map { o ->
-                val oo = o.jsonObject
-                QuestionOptionDto(oo.str("label") ?: "", oo.str("description") ?: "")
+                val options = qo["options"]?.jsonArray?.map { o ->
+                    val oo = o.jsonObject
+                    QuestionOptionDto(
+                        label = oo.str("label") ?: "",
+                        description = oo.str("description") ?: "",
+                        labelKey = oo.str("labelKey"),
+                        descriptionKey = oo.str("descriptionKey"),
+                        mode = oo.str("mode"),
+                    )
+                } ?: emptyList()
+                QuestionInfoDto(
+                    question = qo.str("question") ?: "",
+                    header = qo.str("header") ?: "",
+                    options = options,
+                    multiple = qo.flag("multiple", false),
+                    custom = qo.flag("custom", true),
+                    questionKey = qo.str("questionKey"),
+                    headerKey = qo.str("headerKey"),
+                )
             } ?: emptyList()
-            QuestionInfoDto(
-                question = qo.str("question") ?: "",
-                header = qo.str("header") ?: "",
-                options = options,
-                multiple = qo.str("multiple") == "true",
-                custom = qo.str("custom") != "false",
-            )
-        } ?: emptyList()
-        val ref = toolRef(obj)
-        return QuestionRequestDto(id, sid, questions, ref)
+            val ref = toolRef(obj)
+        return QuestionRequestDto(id, sid, questions, ref, blocking = obj.flag("blocking", false))
     }
 
     internal fun parseModelFavorites(raw: JsonElement?): List<ModelSelectionDto> {
@@ -868,6 +883,11 @@ private fun JsonObject.long(key: String): Long? =
 
 private fun JsonObject?.bool(key: String): Boolean =
     this?.get(key)?.jsonPrimitive?.booleanOrNull ?: false
+
+private fun JsonObject.flag(key: String, default: Boolean): Boolean {
+    val prim = this[key]?.jsonPrimitive ?: return default
+    return prim.booleanOrNull ?: prim.contentOrNull?.toBooleanStrictOrNull() ?: default
+}
 
 private fun Long.safeInt() = coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 

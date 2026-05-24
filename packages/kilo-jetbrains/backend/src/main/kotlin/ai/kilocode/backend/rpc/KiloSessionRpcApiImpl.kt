@@ -116,6 +116,7 @@ class KiloSessionRpcApiImpl : KiloSessionRpcApi {
                 is ChatEventDto.PartRemoved -> event.sessionID
                 is ChatEventDto.TurnOpen -> event.sessionID
                 is ChatEventDto.TurnClose -> event.sessionID
+                is ChatEventDto.SessionCreated -> event.sessionID
                 is ChatEventDto.Error -> event.sessionID
                 is ChatEventDto.MessageRemoved -> event.sessionID
                 is ChatEventDto.PermissionAsked -> event.sessionID
@@ -130,7 +131,7 @@ class KiloSessionRpcApiImpl : KiloSessionRpcApi {
                 is ChatEventDto.SessionDiffChanged -> event.sessionID
                 is ChatEventDto.TodoUpdated -> event.sessionID
             }
-            val passes = sid == null || sid == id
+            val passes = event is ChatEventDto.SessionCreated || sid == null || sid == id
             if (passes) LOG.debug { "${ChatLogSummary.sid(id)} pass=true ${ChatLogSummary.eventBody(event)}" }
             else LOG.debug { "${ChatLogSummary.sid(id)} pass=false srcSid=$sid ${ChatLogSummary.eventBody(event)}" }
             passes

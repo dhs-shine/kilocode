@@ -177,7 +177,7 @@ class SessionUi(
         progressBody = load
         question = QuestionView(
             project = project,
-            reply = { id, dto -> controller.replyQuestion(id, dto) },
+            reply = { id, dto, opts -> controller.replyQuestion(id, dto, opts) },
             reject = { id -> controller.rejectQuestion(id) },
             scroll = { scroll.followBottom(true) },
         )

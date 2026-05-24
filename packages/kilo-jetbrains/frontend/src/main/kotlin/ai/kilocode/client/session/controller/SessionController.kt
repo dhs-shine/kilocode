@@ -50,6 +50,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.awt.Component
+import java.nio.file.Path
 
 /**
  * Session lifecycle orchestrator for a single session.
@@ -82,11 +83,14 @@ class SessionController(
 ) : Disposable {
 
     private data class OrganizationTarget(val org: String?)
+    private data class Followup(val dir: String, val time: Long)
 
     companion object {
         private val LOG = KiloLog.create(SessionController::class.java)
         internal const val RECENT_LIMIT = 5
         internal const val DISPLAY_DELAY_MS = 1_000L
+        private const val FOLLOWUP_TTL_MS = 30_000L
+        private const val FOLLOWUP_NEW_SESSION = "Start new session"
     }
 
     init {
@@ -126,6 +130,7 @@ class SessionController(
     private var lastProfile: ProfileDto? = null
     private var target: OrganizationTarget? = null
     private var loginRetry: PromptDto? = null
+    private var followup: Followup? = null
 
     val ready: Boolean get() = model.isReady()
     internal val blank: Boolean get() = ref == null && model.isEmpty() && !model.showSession
@@ -350,14 +355,23 @@ class SessionController(
         updateModel { model.setState(SessionState.AwaitingPermission(perm)) }
     }
 
-    fun replyQuestion(requestId: String, answers: QuestionReplyDto) {
+    fun replyQuestion(requestId: String, answers: QuestionReplyDto, options: List<List<String>> = answers.answers) {
         assertEdt()
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=question rid=$requestId answers=${answers.answers.size}" }
+        val current = model.state
+        val mode = if (current is SessionState.AwaitingQuestion && current.question.id == requestId) {
+            selectedMode(current.question, options)
+        } else null
+        if (!mode.isNullOrBlank() && mode != model.agent) selectAgent(mode)
+        followup = if (answers.answers.firstOrNull()?.firstOrNull()?.trim() == FOLLOWUP_NEW_SESSION) {
+            Followup(directory, System.currentTimeMillis())
+        } else null
         cs.launch {
             try {
                 sessions.replyQuestion(requestId, directory, answers)
                 LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=question rid=$requestId ok=true" }
             } catch (e: Exception) {
+                edt { followup = null }
                 LOG.warn("${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=question rid=$requestId answers=${answers.answers.size} dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
             }
         }
@@ -365,6 +379,7 @@ class SessionController(
 
     fun rejectQuestion(requestId: String) {
         assertEdt()
+        followup = null
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=question rid=$requestId rejected=true" }
         cs.launch {
             try {
@@ -737,12 +752,13 @@ class SessionController(
                 // Other reasons: don't clobber a more specific terminal state (Error,
                 // AwaitingPermission, AwaitingQuestion, LoginRequired) that arrived just before close.
                 val current = model.state
-                val clobberOk = event.reason == "completed"
-                    || current is SessionState.Busy
+                val clobberOk = current is SessionState.Busy
                     || current is SessionState.Retry
                     || current is SessionState.Offline
                 if (clobberOk) model.setState(SessionState.Idle)
             }
+
+            is ChatEventDto.SessionCreated -> adoptFollowup(event.info)
 
             is ChatEventDto.Error -> {
                 partType = null
@@ -953,6 +969,29 @@ class SessionController(
         updateModel {
             for (event in events) handle(event)
         }
+    }
+
+    private fun selectedMode(question: Question, options: List<List<String>>): String? {
+        for ((idx, labels) in options.withIndex()) {
+            val item = question.items.getOrNull(idx) ?: continue
+            for (label in labels) {
+                val mode = item.options.firstOrNull { it.label == label }?.mode
+                if (!mode.isNullOrBlank()) return mode
+            }
+        }
+        return null
+    }
+
+    private fun adoptFollowup(session: SessionDto) {
+        assertEdt()
+        val item = followup ?: return
+        if (System.currentTimeMillis() - item.time > FOLLOWUP_TTL_MS) {
+            followup = null
+            return
+        }
+        if (pathKey(item.dir) != pathKey(session.directory)) return
+        followup = null
+        open(SessionRef.Local(session))
     }
 
     private fun updateModel(block: () -> Unit) {
@@ -1345,6 +1384,7 @@ private fun matchesSession(event: ChatEventDto, id: String): Boolean = when (eve
     is ChatEventDto.PartRemoved -> event.sessionID == id
     is ChatEventDto.TurnOpen -> event.sessionID == id
     is ChatEventDto.TurnClose -> event.sessionID == id
+    is ChatEventDto.SessionCreated -> true
     is ChatEventDto.Error -> event.sessionID == null || event.sessionID == id
     is ChatEventDto.MessageRemoved -> event.sessionID == id
     is ChatEventDto.PermissionAsked -> event.sessionID == id
@@ -1411,6 +1451,12 @@ private fun parseModel(value: String): Pair<String, String>? {
     val slash = value.indexOf('/')
     if (slash <= 0 || slash >= value.length - 1) return null
     return value.substring(0, slash) to value.substring(slash + 1)
+}
+
+private fun pathKey(value: String): String = runCatching {
+    Path.of(value).normalize().toString().trimEnd('/', '\\')
+}.getOrElse {
+    value.replace('\\', '/').trimEnd('/')
 }
 
 private sealed interface RecentsState {
@@ -1506,12 +1552,22 @@ private fun toQuestion(dto: QuestionRequestDto): Question {
         QuestionItem(
             question = it.question,
             header = it.header,
-            options = it.options.map { opt -> QuestionOption(opt.label, opt.description) },
+            options = it.options.map { opt ->
+                QuestionOption(
+                    label = opt.label,
+                    description = opt.description,
+                    labelKey = opt.labelKey,
+                    descriptionKey = opt.descriptionKey,
+                    mode = opt.mode,
+                )
+            },
             multiple = it.multiple,
             custom = it.custom,
+            questionKey = it.questionKey,
+            headerKey = it.headerKey,
         )
     }
-    return Question(id = dto.id, items = items, tool = ref)
+    return Question(id = dto.id, items = items, tool = ref, blocking = dto.blocking)
 }
 
 private fun String.toDumpText(): String {

@@ -454,7 +454,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
     private fun panelWithPrompts(): SessionMessageListPanel {
         val q = QuestionView(
             project = project,
-            reply = { _, _ -> },
+            reply = { _, _, _ -> },
             reject = { _ -> },
         )
         val p = PermissionView(

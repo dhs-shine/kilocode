@@ -23,7 +23,11 @@ object ViewFactory {
     fun create(content: Content): PartView = when (content) {
         is Text -> TextView(content)
         is Reasoning -> ReasoningView(content)
-        is Tool -> if (QuestionResultView.canRender(content)) QuestionResultView(content) else ToolView(content)
+        is Tool -> when {
+            PlanExitView.canRender(content) -> PlanExitView(content)
+            QuestionResultView.canRender(content) -> QuestionResultView(content)
+            else -> ToolView(content)
+        }
         is Compaction -> CompactionView(content)
         is StepFinish -> error("step-finish is timeline-only")
         is Generic -> GenericView(content)
@@ -36,6 +40,8 @@ object ViewFactory {
      */
     fun shouldReplace(view: PartView, content: Content): Boolean {
         if (content !is Tool) return false
+        if (view is PlanExitView) return !PlanExitView.canRender(content)
+        if (view !is PlanExitView && PlanExitView.canRender(content)) return true
         if (view is QuestionResultView) return !QuestionResultView.canRender(content)
         if (view is ToolView) return QuestionResultView.canRender(content)
         return false

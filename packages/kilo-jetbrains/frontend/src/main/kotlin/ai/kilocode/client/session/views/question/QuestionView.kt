@@ -42,7 +42,7 @@ import com.intellij.openapi.editor.event.DocumentListener
 /** Question tool form rendered inside the session transcript. */
 class QuestionView(
     private val project: Project,
-    private val reply: (String, QuestionReplyDto) -> Unit,
+    private val reply: (String, QuestionReplyDto, List<List<String>>) -> Unit,
     private val reject: (String) -> Unit,
     private val scroll: () -> Unit = {},
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SessionView {
@@ -254,6 +254,8 @@ class QuestionView(
             else sel.toList()
         }
     }
+
+    private fun optionAnswers(i: Int): List<String> = selections.getOrNull(i)?.toList() ?: emptyList()
 
     private fun addContent(item: QuestionItem, set: MutableSet<String>) {
         val opts = optionList(item, set)
@@ -709,7 +711,8 @@ class QuestionView(
         val id = request ?: return
         if ((question?.items?.indices ?: return).any { !isReady(it) }) return
         val answers = (question?.items?.indices ?: return).map { effectiveAnswers(it) }
-        reply(id, QuestionReplyDto(answers))
+        val opts = (question?.items?.indices ?: return).map { optionAnswers(it) }
+        reply(id, QuestionReplyDto(answers), opts)
         hideView()
     }
 

@@ -416,6 +416,30 @@ class KiloCliDataParserTest {
         }
 
         @Test
+        fun `parseChatEvent - session created`() {
+            val data = globalEvent("""
+                "type": "session.created",
+                "properties": {
+                    "sessionID": "ses_new",
+                    "info": {
+                        "id": "ses_new",
+                        "projectID": "proj_1",
+                        "directory": "/test",
+                        "title": "Implementation",
+                        "version": "1",
+                        "time": { "created": 1.0, "updated": 2.0 }
+                    }
+                }
+            """)
+
+            val result = KiloCliDataParser.parseChatEvent("session.created", data)
+            assertNotNull(result)
+            assertTrue(result is ChatEventDto.SessionCreated)
+            assertEquals("ses_new", result.sessionID)
+            assertEquals("/test", result.info.directory)
+        }
+
+        @Test
         fun `parseChatEvent - session diff`() {
             val data = globalEvent("""
                 "type": "session.diff",
@@ -598,6 +622,48 @@ class KiloCliDataParserTest {
         }
 
         @Test
+        fun `parseChatEvent - plan follow-up question preserves fields`() {
+            val data = globalEvent("""
+                "type": "question.asked",
+                "properties": {
+                    "id": "q_plan",
+                    "sessionID": "ses_1",
+                    "blocking": true,
+                    "questions": [{
+                        "question": "Ready to implement?",
+                        "questionKey": "plan.followup.question",
+                        "header": "Implement",
+                        "headerKey": "plan.followup.header",
+                        "multiple": false,
+                        "custom": true,
+                        "options": [{
+                            "label": "Continue here",
+                            "labelKey": "plan.followup.answer.continue",
+                            "description": "Implement the plan in this session",
+                            "descriptionKey": "plan.followup.answer.continue.description",
+                            "mode": "code"
+                        }]
+                    }],
+                    "tool": null
+                }
+            """)
+
+            val result = KiloCliDataParser.parseChatEvent("question.asked", data)
+            assertNotNull(result)
+            assertTrue(result is ChatEventDto.QuestionAsked)
+            assertEquals(true, result.request.blocking)
+            val item = result.request.questions.single()
+            assertEquals("plan.followup.question", item.questionKey)
+            assertEquals("plan.followup.header", item.headerKey)
+            assertEquals(false, item.multiple)
+            assertEquals(true, item.custom)
+            val opt = item.options.single()
+            assertEquals("plan.followup.answer.continue", opt.labelKey)
+            assertEquals("plan.followup.answer.continue.description", opt.descriptionKey)
+            assertEquals("code", opt.mode)
+        }
+
+        @Test
         fun `parseChatEvent - question replied`() {
             val data = globalEvent("""
                 "type": "question.replied",
@@ -732,11 +798,16 @@ class KiloCliDataParserTest {
         @Test
         fun `parseQuestionRequests - parses list`() {
             val raw = """[
-                {"id": "q1", "sessionID": "s1", "questions": [{"question": "pick", "header": "h", "options": []}]}
+                {"id": "q1", "sessionID": "s1", "blocking": true, "questions": [{"question": "pick", "questionKey": "q.key", "header": "h", "headerKey": "h.key", "multiple": true, "custom": false, "options": [{"label": "A", "description": "B", "mode": "code"}]}]}
             ]"""
             val result = KiloCliDataParser.parseQuestionRequests(raw)
             assertEquals(1, result.size)
             assertEquals("q1", result[0].id)
+            assertEquals(true, result[0].blocking)
+            assertEquals("q.key", result[0].questions[0].questionKey)
+            assertEquals(true, result[0].questions[0].multiple)
+            assertEquals(false, result[0].questions[0].custom)
+            assertEquals("code", result[0].questions[0].options[0].mode)
         }
     }
 
