@@ -17,6 +17,7 @@ import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.SessionMessageListPanel
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
@@ -25,9 +26,13 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.controller.EVENT_FLUSH_MS
 import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.session.controller.SessionControllerEvent
-import ai.kilocode.client.session.views.PermissionView
+import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.LoginRequiredView
+import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
+import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.log.ChatLogSummary
+import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import com.intellij.ide.ui.LafManagerListener
@@ -36,8 +41,13 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.options.ConfigurableWithId
+import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.registry.Registry
+import java.util.function.Predicate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,7 +68,7 @@ class SessionUi(
     workspace: Workspace,
     sessions: KiloSessionService,
     app: KiloAppService,
-    cs: CoroutineScope,
+    private val cs: CoroutineScope,
     ref: SessionRef? = null,
     displayMs: Long = SessionController.DISPLAY_DELAY_MS,
     private val manager: SessionManager? = null,
@@ -92,10 +102,12 @@ class SessionUi(
         beforeUpdate = { if (opening) false else scroll.atBottom() },
         afterUpdate = { if (!opening) scroll.followBottom(it) },
         loaded = ::onSessionLoaded,
+        openProfileAction = ::openProfileSettings,
     )
 
 
     private lateinit var root: SessionRootPanel
+    private lateinit var account: SessionAccountOverlay
 
     private lateinit var sessionContent: JPanel
 
@@ -111,6 +123,7 @@ class SessionUi(
 
     private lateinit var question: QuestionView
     private lateinit var permission: PermissionView
+    private lateinit var login: LoginRequiredView
     private lateinit var connection: ConnectionPanel
 
     private lateinit var prompt: PromptPanel
@@ -168,6 +181,22 @@ class SessionUi(
         }
         root.setBlocker(migrationOverlay)
 
+        account = SessionAccountOverlay(
+            select = { org -> controller.selectOrganization(org) },
+            profile = { controller.openProfile() },
+        )
+        root.addOverlay(account) { pane, child ->
+            val size = child.preferredSize
+            val top = JBUI.scale(SessionUiStyle.View.Prompt.PANEL_VERTICAL_PADDING)
+            val right = JBUI.scale(SessionUiStyle.View.Prompt.PANEL_HORIZONTAL_PADDING)
+            java.awt.Rectangle(
+                pane.width - size.width - right,
+                top,
+                size.width,
+                size.height,
+            )
+        }
+
         sessionContent = JPanel(BorderLayout())
 
         blankBody = JPanel(BorderLayout()).apply {
@@ -177,6 +206,7 @@ class SessionUi(
         load = LoadingPanel()
         progressBody = load
         question = QuestionView(
+            project = project,
             reply = { id, dto -> controller.replyQuestion(id, dto) },
             reject = { id -> controller.rejectQuestion(id) },
             scroll = { scroll.followBottom(true) },
@@ -184,7 +214,8 @@ class SessionUi(
         permission = PermissionView(
             reply = { id, dto -> controller.replyPermission(id, dto) },
         )
-        messageBody = SessionMessageListPanel(controller.model, this, question, permission)
+        login = LoginRequiredView(openProfile = { controller.openProfile() }, dismiss = { controller.dismissLoginRequired() })
+        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login)
         header = SessionHeaderPanel(controller, this)
 
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
@@ -271,6 +302,8 @@ class SessionUi(
                 }
 
                 is SessionControllerEvent.ConnectionChanged -> Unit
+
+                is SessionControllerEvent.AccountOverlayChanged -> account.onEvent(event)
             }
         }
 
@@ -397,6 +430,16 @@ class SessionUi(
         prompt.applyStyle(style)
         scroll.applyStyle(style)
         refresh()
+    }
+
+    private fun openProfileSettings() {
+        ShowSettingsUtil.getInstance().showSettingsDialog(
+            project,
+            Predicate { cfg: Configurable ->
+                cfg is ConfigurableWithId && cfg.getId() == UserProfileConfigurable.ID
+            },
+            { cfg: Configurable -> cfg.focusOn(UserProfileConfigurable.FOCUS_ACCOUNT_COMBO) },
+        )
     }
 
     override fun dispose() {}
