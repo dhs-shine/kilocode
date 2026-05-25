@@ -128,6 +128,12 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertTrue(findAll<JBCheckBox>(view).isEmpty())
     }
 
+    fun `test single question hides progress summary`() {
+        view.show(singleSelectQuestion("req_summary"))
+
+        assertTrue(findAll<JBLabel>(view).none { it.text == "1 of 1 questions" && it.isVisible })
+    }
+
     fun `test single question submit sends selected answer`() {
         view.show(singleSelectQuestion("req_2"))
 

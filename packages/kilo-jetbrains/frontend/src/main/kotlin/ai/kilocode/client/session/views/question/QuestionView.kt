@@ -185,7 +185,9 @@ class QuestionView(
         val shown = minOf(idx + 1, total)
         summary.text = KiloBundle.message("session.question.summary", shown, total)
         summary.foreground = UiStyle.Colors.weak()
+        summary.isVisible = total > 1
         nav.isVisible = total > 1
+        topPanel.isVisible = total > 1
     }
 
     private fun syncFooter(q: Question) {
