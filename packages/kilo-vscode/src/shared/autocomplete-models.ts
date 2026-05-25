@@ -7,12 +7,20 @@
  */
 
 export interface AutocompleteModelDef {
-  /** Full model ID sent to the gateway, e.g. "mistralai/codestral-2508" */
+  /** Stable setting value. */
   readonly id: string
+  /** Model ID displayed under the selector provider group. */
+  readonly modelID: string
   /** Human-readable label shown in the settings dropdown */
   readonly label: string
+  /** Provider ID used by the selector group. */
+  readonly providerID: string
   /** Provider display name for status bar / telemetry */
   readonly provider: string
+  /** Full model ID sent to the FIM API. */
+  readonly requestModel: string
+  /** Provider key to use for direct BYOK FIM. Empty means Kilo Gateway. */
+  readonly directProvider?: "mistral" | "inception"
   /** FIM request temperature */
   readonly temperature: number
 }
@@ -20,14 +28,40 @@ export interface AutocompleteModelDef {
 const models: AutocompleteModelDef[] = [
   {
     id: "mistralai/codestral-2508",
-    label: "Codestral (Mistral AI)",
-    provider: "Mistral AI",
+    modelID: "mistralai/codestral-2508",
+    label: "Codestral",
+    providerID: "kilo",
+    provider: "Kilo Gateway",
+    requestModel: "mistralai/codestral-2508",
     temperature: 0.2,
   },
   {
     id: "inception/mercury-edit-2",
-    label: "Mercury Edit 2 (Inception)",
+    modelID: "inception/mercury-edit-2",
+    label: "Mercury Edit 2",
+    providerID: "kilo",
+    provider: "Kilo Gateway",
+    requestModel: "inception/mercury-edit-2",
+    temperature: 0,
+  },
+  {
+    id: "mistral/codestral-2508",
+    modelID: "codestral-2508",
+    label: "Codestral",
+    providerID: "mistral",
+    provider: "Mistral",
+    requestModel: "codestral-2508",
+    directProvider: "mistral",
+    temperature: 0.2,
+  },
+  {
+    id: "inception-direct/mercury-edit-2",
+    modelID: "mercury-edit-2",
+    label: "Mercury Edit 2",
+    providerID: "inception",
     provider: "Inception",
+    requestModel: "mercury-edit-2",
+    directProvider: "inception",
     temperature: 0,
   },
 ]

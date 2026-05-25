@@ -7,7 +7,11 @@ import { parseModelString } from "../../../../src/shared/provider-model"
 import { DEFAULT_AUTOCOMPLETE_MODEL } from "../../../../src/shared/autocomplete-models"
 import { ModelSelectorBase } from "../shared/ModelSelector"
 import SettingsRow from "./SettingsRow"
-import { AUTOCOMPLETE_PROVIDER_ID, AUTOCOMPLETE_SELECTOR_MODELS } from "./autocomplete-model-selector"
+import {
+  AUTOCOMPLETE_SELECTOR_MODELS,
+  getAutocompleteSelection,
+  getAutocompleteSettingID,
+} from "./autocomplete-model-selector"
 
 const ModelsTab: Component = () => {
   const { config, settings, updateConfig, updateSetting } = useConfig()
@@ -39,8 +43,9 @@ const ModelsTab: Component = () => {
   }
 
   function handleAutocompleteModelSelect(providerID: string, modelID: string) {
-    if (providerID !== AUTOCOMPLETE_PROVIDER_ID || !modelID) return
-    updateSetting("autocomplete.model", modelID)
+    const id = getAutocompleteSettingID(providerID, modelID)
+    if (!id) return
+    updateSetting("autocomplete.model", id)
   }
 
   return (
@@ -77,7 +82,7 @@ const ModelsTab: Component = () => {
           last
         >
           <ModelSelectorBase
-            value={{ providerID: AUTOCOMPLETE_PROVIDER_ID, modelID: autocompleteModel() }}
+            value={getAutocompleteSelection(autocompleteModel())}
             onSelect={handleAutocompleteModelSelect}
             placement="bottom-start"
             models={AUTOCOMPLETE_SELECTOR_MODELS}

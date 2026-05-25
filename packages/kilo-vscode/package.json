@@ -753,11 +753,15 @@
           "type": "string",
           "enum": [
             "mistralai/codestral-2508",
-            "inception/mercury-edit-2"
+            "inception/mercury-edit-2",
+            "mistral/codestral-2508",
+            "inception-direct/mercury-edit-2"
           ],
           "enumDescriptions": [
-            "Codestral by Mistral AI (default)",
-            "Mercury Edit 2 by Inception"
+            "Codestral via Kilo Gateway (default)",
+            "Mercury Edit 2 via Kilo Gateway",
+            "Codestral via your connected Mistral provider API key",
+            "Mercury Edit 2 via your connected Inception provider API key"
           ],
           "description": "Model to use for inline autocomplete suggestions"
         },

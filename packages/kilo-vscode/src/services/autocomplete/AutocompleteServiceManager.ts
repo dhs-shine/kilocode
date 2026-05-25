@@ -319,7 +319,7 @@ export class AutocompleteServiceManager {
   }
 
   private getCurrentModelName(): string {
-    return this.inlineCompletionProvider.getModelId()
+    return getAutocompleteModel(this.inlineCompletionProvider.getModelId()).label
   }
 
   private getCurrentProviderName(): string {
