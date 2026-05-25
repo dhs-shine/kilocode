@@ -135,6 +135,7 @@ internal object MigrationRpcMapper {
             sessions = dto.sessions.map(::fromDto),
             defaultModel = dto.defaultModel,
             settings = fromDto(dto.settings),
+            keepLegacySettingsFile = dto.keepLegacySettingsFile,
         )
 
     private fun fromDto(dto: MigrationSessionSelectionDto): MigrationSessionSelection =
@@ -223,6 +224,7 @@ internal object MigrationRpcMapper {
             customModes = dto.customModes,
             globalState = dto.globalState,
             taskHistory = dto.taskHistory,
+            legacySettingsFile = dto.legacySettingsFile,
         )
 
     fun toDto(r: LegacyCleanupReport): LegacyCleanupReportDto =

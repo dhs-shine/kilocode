@@ -34,6 +34,7 @@ data class MigrationUiSelections(
     val sessions: List<String> = emptyList(),
     val defaultModel: Boolean = false,
     val settings: MigrationSettingsUiSelections = MigrationSettingsUiSelections(),
+    val keepLegacySettingsFile: Boolean = true,
 )
 
 // ---------------------------------------------------------------------------

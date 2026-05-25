@@ -113,7 +113,7 @@ class KiloMigrationRpcApiImpl : KiloMigrationRpcApi {
     }
 
     override suspend fun cleanup(targets: LegacyCleanupTargetsDto): LegacyCleanupReportDto {
-        LOG.info("Migration RPC cleanup: providerProfiles=${targets.providerProfiles} mcp=${targets.mcpSettings} modes=${targets.customModes} state=${targets.globalState} history=${targets.taskHistory}")
+        LOG.info("Migration RPC cleanup: providerProfiles=${targets.providerProfiles} mcp=${targets.mcpSettings} modes=${targets.customModes} state=${targets.globalState} history=${targets.taskHistory} file=${targets.legacySettingsFile}")
         val mgr = manager()
         val store = storeService.store()
         val report = withContext(Dispatchers.IO) { mgr.cleanup(store, MigrationRpcMapper.fromDto(targets)) }
@@ -122,5 +122,5 @@ class KiloMigrationRpcApiImpl : KiloMigrationRpcApi {
     }
 
     private fun selectionSummary(selections: LegacyMigrationSelectionsDto): String =
-        "providers=${selections.providers.size} mcp=${selections.mcpServers.size} modes=${selections.customModes.size} sessions=${selections.sessions.size} model=${selections.defaultModel} settings=true"
+        "providers=${selections.providers.size} mcp=${selections.mcpServers.size} modes=${selections.customModes.size} sessions=${selections.sessions.size} model=${selections.defaultModel} settings=true keepFile=${selections.keepLegacySettingsFile}"
 }

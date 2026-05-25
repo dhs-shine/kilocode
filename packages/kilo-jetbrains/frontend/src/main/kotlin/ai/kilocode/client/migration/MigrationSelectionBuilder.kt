@@ -56,6 +56,7 @@ object MigrationSelectionBuilder {
             sessions = sessions,
             defaultModel = defaultModel,
             settings = settingsSel,
+            keepLegacySettingsFile = true,
         )
     }
 
@@ -83,6 +84,7 @@ object MigrationSelectionBuilder {
             language = selections.settings.language,
             autocomplete = selections.settings.autocomplete,
         ),
+        keepLegacySettingsFile = selections.keepLegacySettingsFile,
     )
 
     /**
@@ -106,5 +108,6 @@ object MigrationSelectionBuilder {
             language = false,
             autocomplete = false,
         ),
+        keepLegacySettingsFile = true,
     )
 }

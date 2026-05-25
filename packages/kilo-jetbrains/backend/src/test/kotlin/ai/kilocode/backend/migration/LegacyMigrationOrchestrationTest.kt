@@ -1,9 +1,11 @@
 package ai.kilocode.backend.migration
 
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -142,10 +144,13 @@ class LegacyMigrationOrchestrationTest {
         val sessionId = ai.kilocode.backend.migration.session.LegacySessionIds.createSessionId("t1")
         backend.existingSessionIds = setOf(sessionId)
         val sel = noSelections().copy(sessions = listOf(MigrationSessionSelection("t1", force = false)))
-        val report = eng.migrate(sel)
+        val items = mutableListOf<LegacyMigrationItemProgress>()
+        val report = eng.migrate(sel, itemSink(items))
         val item = report.items.find { it.category == MigrationItemCategory.session }
         assertNotNull(item)
         assertTrue(item!!.message?.contains("skipped", ignoreCase = true) == true)
+        assertEquals(listOf(MigrationItemProgressStatus.migrating, MigrationItemProgressStatus.success), items.map { it.status })
+        assertTrue(items[1].message?.contains("skipped", ignoreCase = true) == true)
         assertEquals(0, backend.projectCalls.size)
     }
 
@@ -173,9 +178,42 @@ class LegacyMigrationOrchestrationTest {
         }
         backend.sessionImportSkipped = true
         val sel = noSelections().copy(sessions = listOf(MigrationSessionSelection("t1")))
-        eng.migrate(sel)
+        val items = mutableListOf<LegacyMigrationItemProgress>()
+        eng.migrate(sel, itemSink(items))
         assertEquals(0, backend.messageCalls.size)
         assertEquals(0, backend.partCalls.size)
+        assertEquals(listOf(MigrationItemProgressStatus.migrating, MigrationItemProgressStatus.success), items.map { it.status })
+        assertTrue(items[1].message?.contains("skipped", ignoreCase = true) == true)
+    }
+
+    @Test
+    fun `migrate - missing session conversation emits terminal error progress`() {
+        val (eng, _, _) = setup {
+            taskHistory = """[{"id":"t1","task":"Test"}]"""
+        }
+        val sel = noSelections().copy(sessions = listOf(MigrationSessionSelection("t1")))
+        val items = mutableListOf<LegacyMigrationItemProgress>()
+        eng.migrate(sel, itemSink(items))
+        assertEquals(listOf(MigrationItemProgressStatus.migrating, MigrationItemProgressStatus.error), items.map { it.status })
+        assertEquals("Conversation file not found", items[1].message)
+    }
+
+    @Test
+    fun `migrate - autocomplete settings report success`() {
+        val (eng, _, _) = setup {
+            globalState["ghostServiceSettings"] = kotlinx.serialization.json.JsonObject(
+                mapOf(
+                    "enableAutoTrigger" to JsonPrimitive(true),
+                    "enableSmartInlineTaskKeybinding" to JsonPrimitive(true),
+                    "enableChatAutocomplete" to JsonPrimitive(true),
+                )
+            )
+        }
+        val sel = noSelections().copy(settings = noSelections().settings.copy(autocomplete = true))
+        val report = eng.migrate(sel)
+        val item = report.items.single { it.item == "Autocomplete settings" }
+        assertEquals(MigrationItemStatus.success, item.status)
+        assertEquals(null, item.message)
     }
 
     // -----------------------------------------------------------------------
@@ -210,8 +248,39 @@ class LegacyMigrationOrchestrationTest {
     }
 
     // -----------------------------------------------------------------------
+    // Cleanup
+    // -----------------------------------------------------------------------
+
+    @Test
+    fun `cleanup - legacy settings file target deletes file`() {
+        val (eng, fixture, _) = setup {
+            providerProfiles = """{"currentApiConfigName":"p","apiConfigs":{}}"""
+        }
+        val report = eng.cleanup(LegacyCleanupTargets(legacySettingsFile = true))
+        assertEquals(listOf("legacySettingsFile"), report.cleaned)
+        assertEquals(emptyList<String>(), report.errors)
+        assertFalse(fixture.exists())
+    }
+
+    @Test
+    fun `cleanup - data target preserves legacy settings file`() {
+        val (eng, fixture, _) = setup {
+            providerProfiles = """{"currentApiConfigName":"p","apiConfigs":{}}"""
+        }
+        val report = eng.cleanup(LegacyCleanupTargets(providerProfiles = true))
+        assertEquals(listOf("providerProfiles"), report.cleaned)
+        assertEquals(emptyList<String>(), report.errors)
+        assertTrue(fixture.exists())
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
     private fun assertNotNull(actual: Any?) = kotlin.test.assertNotNull(actual)
+
+    private fun itemSink(items: MutableList<LegacyMigrationItemProgress>) = object : LegacyMigrationSink {
+        override fun item(progress: LegacyMigrationItemProgress) { items.add(progress) }
+        override fun session(progress: LegacyMigrationSessionProgress) = Unit
+    }
 }

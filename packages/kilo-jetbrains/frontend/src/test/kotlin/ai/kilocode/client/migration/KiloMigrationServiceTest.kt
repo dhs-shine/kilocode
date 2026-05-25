@@ -3,10 +3,12 @@ package ai.kilocode.client.migration
 import ai.kilocode.client.testing.FakeMigrationRpcApi
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
+import ai.kilocode.rpc.dto.LegacyAutocompleteSettingsDto
 import ai.kilocode.rpc.dto.LegacyMigrationDetectionDto
 import ai.kilocode.rpc.dto.LegacyMigrationEventDto
 import ai.kilocode.rpc.dto.LegacyMigrationResultItemDto
 import ai.kilocode.rpc.dto.LegacyMigrationStatusDto
+import ai.kilocode.rpc.dto.LegacySettingsDto
 import ai.kilocode.rpc.dto.MigrationItemCategoryDto
 import ai.kilocode.rpc.dto.MigrationItemProgressStatusDto
 import ai.kilocode.rpc.dto.MigrationItemStatusDto
@@ -27,13 +29,15 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
     private lateinit var rpc: FakeMigrationRpcApi
     private lateinit var service: KiloMigrationService
     private lateinit var app: MutableStateFlow<KiloAppStateDto>
+    private val autocomplete = mutableListOf<LegacyAutocompleteSettingsDto>()
 
     override fun setUp() {
         super.setUp()
         scope = CoroutineScope(SupervisorJob())
         rpc = FakeMigrationRpcApi()
         app = MutableStateFlow(KiloAppStateDto(KiloAppStatusDto.DISCONNECTED))
-        service = KiloMigrationService(scope, rpc, app)
+        autocomplete.clear()
+        service = KiloMigrationService(scope, rpc, app) { autocomplete.add(it) }
     }
 
     override fun tearDown() {
@@ -95,7 +99,28 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
         settle()
         assertEquals(1, rpc.finalizeCalls.size)
         assertEquals(LegacyMigrationStatusDto.completed, rpc.finalizeCalls[0])
+        assertEquals(0, rpc.cleanupCalls.size)
         assertEquals(MigrationUiState.Hidden, service.state.value)
+    }
+
+    fun `test finish after unchecked keep file cleans up legacy settings file`() {
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
+        settle()
+        service.start(MigrationUiSelections(providers = listOf("profile1"), keepLegacySettingsFile = false))
+        settle()
+
+        service.finish()
+        settle()
+
+        assertEquals(1, rpc.finalizeCalls.size)
+        assertEquals(1, rpc.cleanupCalls.size)
+        val targets = rpc.cleanupCalls[0]
+        assertTrue(targets.providerProfiles)
+        assertTrue(targets.mcpSettings)
+        assertTrue(targets.customModes)
+        assertTrue(targets.globalState)
+        assertTrue(targets.taskHistory)
+        assertTrue(targets.legacySettingsFile)
     }
 
     fun `test start emits migrating state and initial pending progress`() = runBlocking {
@@ -172,6 +197,40 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
         assertEquals(2, dto.sessions.size)
         assertTrue(dto.sessions.all { it.force })
         assertEquals(listOf("ses_1", "ses_2"), dto.sessions.map { it.id })
+        assertTrue(dto.keepLegacySettingsFile)
+    }
+
+    fun `test start persists selected legacy autocomplete settings`() {
+        val detection = sampleDetection().copy(
+            settings = LegacySettingsDto(
+                autoApprovalEnabled = null,
+                allowedCommands = null,
+                deniedCommands = null,
+                alwaysAllowReadOnly = null,
+                alwaysAllowReadOnlyOutsideWorkspace = null,
+                alwaysAllowWrite = null,
+                alwaysAllowExecute = null,
+                alwaysAllowMcp = null,
+                alwaysAllowModeSwitch = null,
+                alwaysAllowSubtasks = null,
+                language = null,
+                autocomplete = LegacyAutocompleteSettingsDto(
+                    enableAutoTrigger = true,
+                    enableSmartInlineTaskKeybinding = false,
+                    enableChatAutocomplete = true,
+                ),
+            )
+        )
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = detection)
+        settle()
+
+        service.start(MigrationUiSelections(settings = MigrationSettingsUiSelections(autocomplete = true)))
+        settle()
+
+        assertEquals(1, autocomplete.size)
+        assertEquals(true, autocomplete[0].enableAutoTrigger)
+        assertEquals(false, autocomplete[0].enableSmartInlineTaskKeybinding)
+        assertEquals(true, autocomplete[0].enableChatAutocomplete)
     }
 
     private fun sampleDetection() = LegacyMigrationDetectionDto(

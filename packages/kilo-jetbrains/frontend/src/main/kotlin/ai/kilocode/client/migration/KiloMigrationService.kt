@@ -3,10 +3,13 @@
 package ai.kilocode.client.migration
 
 import ai.kilocode.client.app.KiloAppService
+import ai.kilocode.client.autocomplete.KiloAutocompleteSettingsService
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.KiloMigrationRpcApi
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
+import ai.kilocode.rpc.dto.LegacyAutocompleteSettingsDto
+import ai.kilocode.rpc.dto.LegacyCleanupTargetsDto
 import ai.kilocode.rpc.dto.LegacyMigrationEventDto
 import ai.kilocode.rpc.dto.LegacyMigrationResultItemDto
 import ai.kilocode.rpc.dto.LegacyMigrationStatusDto
@@ -49,12 +52,19 @@ class KiloMigrationService internal constructor(
     private val cs: CoroutineScope,
     private val rpc: KiloMigrationRpcApi?,
     appState: StateFlow<KiloAppStateDto>?,
+    private val autocomplete: ((LegacyAutocompleteSettingsDto) -> Unit)?,
 ) : MigrationUiController {
 
     /** Platform constructor — resolves RPC lazily. */
-    constructor(cs: CoroutineScope) : this(cs, null, service<KiloAppService>().state)
+    constructor(cs: CoroutineScope) : this(cs, null, service<KiloAppService>().state, null)
 
-    internal constructor(cs: CoroutineScope, rpc: KiloMigrationRpcApi?) : this(cs, rpc, null)
+    internal constructor(cs: CoroutineScope, rpc: KiloMigrationRpcApi?) : this(cs, rpc, null, null)
+
+    internal constructor(
+        cs: CoroutineScope,
+        rpc: KiloMigrationRpcApi?,
+        appState: StateFlow<KiloAppStateDto>?,
+    ) : this(cs, rpc, appState, null)
 
     companion object {
         private val LOG = KiloLog.create(KiloMigrationService::class.java)
@@ -67,6 +77,7 @@ class KiloMigrationService internal constructor(
 
     private val migrating = AtomicBoolean(false)
     private val migrateJob = AtomicReference<Job?>(null)
+    private val lastSelections = AtomicReference<MigrationUiSelections?>(null)
 
     init {
         if (appState != null) {
@@ -95,9 +106,11 @@ class KiloMigrationService internal constructor(
             return
         }
         LOG.info("Migration wizard: user started migration ${selectionSummary(selections)}")
+        lastSelections.set(selections)
 
         val dto = MigrationSelectionBuilder.toDto(selections)
         val initialProgress = buildInitialProgress(selections, current.detection)
+        applyAutocomplete(selections, current.detection)
 
         _state.value = current.copy(
             phase = MigrationUiPhase.migrating,
@@ -194,10 +207,14 @@ class KiloMigrationService internal constructor(
         }
         val hasErrors = current.results.any { it.status == MigrationItemStatusDto.error }
         val status = if (hasErrors) LegacyMigrationStatusDto.completed_with_errors else LegacyMigrationStatusDto.completed
+        val selections = lastSelections.get()
         LOG.info("Migration wizard: user finished migration status=$status results=${current.results.size} errors=${current.results.count { it.status == MigrationItemStatusDto.error }}")
         cs.launch {
             try {
                 call { finalize(status) }
+                if (selections?.keepLegacySettingsFile == false) {
+                    call { cleanup(cleanupTargets()) }
+                }
             } catch (e: Exception) {
                 LOG.warn("migration finalize failed", e)
             }
@@ -304,8 +321,27 @@ class KiloMigrationService internal constructor(
         )
     }
 
+    private fun applyAutocomplete(
+        selections: MigrationUiSelections,
+        detection: ai.kilocode.rpc.dto.LegacyMigrationDetectionDto,
+    ) {
+        if (!selections.settings.autocomplete) return
+        val settings = detection.settings?.autocomplete ?: return
+        val apply = autocomplete ?: { KiloAutocompleteSettingsService.getInstance().applyLegacy(it) }
+        apply(settings)
+    }
+
     private fun selectionSummary(selections: MigrationUiSelections): String =
-        "providers=${selections.providers.size}:${selections.providers.joinToString(",")} mcp=${selections.mcpServers.size}:${selections.mcpServers.joinToString(",")} modes=${selections.customModes.size}:${selections.customModes.joinToString(",")} sessions=${selections.sessions.size} model=${selections.defaultModel} settings=${settingsSummary(selections.settings)}"
+        "providers=${selections.providers.size}:${selections.providers.joinToString(",")} mcp=${selections.mcpServers.size}:${selections.mcpServers.joinToString(",")} modes=${selections.customModes.size}:${selections.customModes.joinToString(",")} sessions=${selections.sessions.size} model=${selections.defaultModel} settings=${settingsSummary(selections.settings)} keepFile=${selections.keepLegacySettingsFile}"
+
+    private fun cleanupTargets() = LegacyCleanupTargetsDto(
+        providerProfiles = true,
+        mcpSettings = true,
+        customModes = true,
+        globalState = true,
+        taskHistory = true,
+        legacySettingsFile = true,
+    )
 
     private fun settingsSummary(settings: MigrationSettingsUiSelections): String =
         "commandRules=${settings.autoApproval.commandRules},read=${settings.autoApproval.readPermission},write=${settings.autoApproval.writePermission},execute=${settings.autoApproval.executePermission},mcp=${settings.autoApproval.mcpPermission},task=${settings.autoApproval.taskPermission},language=${settings.language},autocomplete=${settings.autocomplete}"

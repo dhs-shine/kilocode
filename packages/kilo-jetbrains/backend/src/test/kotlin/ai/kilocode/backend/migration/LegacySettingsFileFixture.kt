@@ -28,6 +28,8 @@ internal class LegacySettingsFileFixture {
         migrationStatus = LegacySettingsFileMigrationStore(file).status()
     }
 
+    fun exists() = file.exists()
+
     private fun flush() {
         val root = mutableMapOf<String, JsonElement>()
         migrationStatus?.let { root["migrationStatus"] = JsonPrimitive(it.name) }

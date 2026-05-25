@@ -125,6 +125,7 @@ data class LegacyMigrationSelectionsDto(
     val sessions: List<MigrationSessionSelectionDto>,
     val defaultModel: Boolean,
     val settings: MigrationSettingsSelectionsDto,
+    val keepLegacySettingsFile: Boolean = true,
 )
 
 // ---------------------------------------------------------------------------
@@ -201,6 +202,7 @@ data class LegacyCleanupTargetsDto(
     val customModes: Boolean = false,
     val globalState: Boolean = false,
     val taskHistory: Boolean = false,
+    val legacySettingsFile: Boolean = false,
 )
 
 @Serializable

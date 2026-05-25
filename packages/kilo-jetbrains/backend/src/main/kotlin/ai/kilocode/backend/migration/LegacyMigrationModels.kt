@@ -155,6 +155,7 @@ data class LegacyMigrationSelections(
     val sessions: List<MigrationSessionSelection>,
     val defaultModel: Boolean,
     val settings: MigrationSettingsSelections,
+    val keepLegacySettingsFile: Boolean = true,
 )
 
 // ---------------------------------------------------------------------------
@@ -219,6 +220,7 @@ data class LegacyCleanupTargets(
     val customModes: Boolean = false,
     val globalState: Boolean = false,
     val taskHistory: Boolean = false,
+    val legacySettingsFile: Boolean = false,
 )
 
 data class LegacyCleanupReport(

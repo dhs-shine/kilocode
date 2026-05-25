@@ -68,6 +68,15 @@ class LegacySettingsFileMigrationStore(
 
     override fun cleanup(targets: LegacyCleanupTargets): LegacyCleanupReport {
         val root = read()?.toMutableMap() ?: return LegacyCleanupReport(cleaned = emptyList(), errors = emptyList())
+        if (targets.legacySettingsFile) {
+            val err = runCatching {
+                if (file.delete()) null else "Failed to delete ${file.absolutePath}"
+            }.getOrElse { it.message ?: "Failed to delete ${file.absolutePath}" }
+            return LegacyCleanupReport(
+                cleaned = if (err == null) listOf("legacySettingsFile") else emptyList(),
+                errors = listOfNotNull(err),
+            )
+        }
         val cleaned = mutableListOf<String>()
         if (targets.providerProfiles && root.remove("providerProfiles") != null) cleaned.add("providerProfiles")
         if (targets.mcpSettings && root.remove("mcpSettings") != null) cleaned.add("mcpSettings")

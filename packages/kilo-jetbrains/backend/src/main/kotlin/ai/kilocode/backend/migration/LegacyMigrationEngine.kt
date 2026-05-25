@@ -218,15 +218,19 @@ class LegacyMigrationEngine(
 
             // Check if already exists (unless force)
             if (!sel.force && backend.sessionExists(sessionId)) {
+                val msg = "Session already exists, skipped"
                 val progress = LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.skipped)
                 sink.session(progress)
-                results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.success, "Session already exists, skipped"))
+                results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.success, msg))
+                sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.success, msg))
                 continue
             }
 
             if (conversationRaw == null) {
-                sink.session(LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.error, "Conversation file not found"))
-                results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.error, "Conversation file not found"))
+                val msg = "Conversation file not found"
+                sink.session(LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.error, msg))
+                results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.error, msg))
+                sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.error, msg))
                 continue
             }
 
@@ -238,6 +242,7 @@ class LegacyMigrationEngine(
                 val msg = e.message ?: "Parse error"
                 sink.session(LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.error, msg))
                 results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.error, msg))
+                sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.error, msg))
                 null
             } ?: continue
 
@@ -247,6 +252,7 @@ class LegacyMigrationEngine(
                 val msg = e.message ?: "Project import failed"
                 sink.session(LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.error, msg))
                 results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.error, msg))
+                sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.error, msg))
                 null
             } ?: continue
 
@@ -267,12 +273,15 @@ class LegacyMigrationEngine(
                 val msg = e.message ?: "Session import failed"
                 sink.session(LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.error, msg))
                 results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.error, msg))
+                sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.error, msg))
                 null
             } ?: continue
 
             if (importResult.skipped) {
+                val msg = "Session already exists, skipped"
                 sink.session(LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.skipped))
-                results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.success, "Session already exists, skipped"))
+                results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.success, msg))
+                sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.success, msg))
                 continue
             }
 
@@ -339,11 +348,11 @@ class LegacyMigrationEngine(
             }
         }
 
-        // Autocomplete — report skipped/warning (no JetBrains equivalent known yet)
+        // Autocomplete settings are persisted by the JetBrains frontend before backend migration starts.
         if (selections.settings.autocomplete && settings.autocomplete != null) {
             sink.item(LegacyMigrationItemProgress("Autocomplete settings", MigrationItemProgressStatus.migrating))
-            results.add(LegacyMigrationResultItem("Autocomplete settings", MigrationItemCategory.settings, MigrationItemStatus.warning, "Autocomplete settings migration is not yet available for JetBrains"))
-            sink.item(LegacyMigrationItemProgress("Autocomplete settings", MigrationItemProgressStatus.warning, "Autocomplete settings migration is not yet available for JetBrains"))
+            results.add(LegacyMigrationResultItem("Autocomplete settings", MigrationItemCategory.settings, MigrationItemStatus.success))
+            sink.item(LegacyMigrationItemProgress("Autocomplete settings", MigrationItemProgressStatus.success))
         }
 
         return LegacyMigrationReport(results)
