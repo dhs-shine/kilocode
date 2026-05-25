@@ -1,7 +1,12 @@
 package ai.kilocode.client.session.ui
 
+import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.layout.HAlign
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.components.BorderLayoutPanel
+import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Rectangle
 import javax.swing.JComponent
@@ -31,11 +36,15 @@ class SessionRootPanel : JLayeredPane() {
         overlay.addOverlay(child, bounds)
     }
 
-    fun setBlocker(child: JComponent) {
+    fun setModalContent(child: JComponent?) {
         blocker.removeAll()
-        blocker.add(child)
+        if (child != null) blocker.add(child.align(HAlign.CENTER, VAlign.CENTER), BorderLayout.CENTER)
+        blocker.isVisible = child != null
+        if (child != null) blocker.requestFocusInWindow()
         blocker.revalidate()
         blocker.repaint()
+        revalidate()
+        repaint()
     }
 
     fun setBlocked(value: Boolean) {
@@ -105,14 +114,24 @@ class SessionRootPanel : JLayeredPane() {
      */
     class Blocker : JPanel() {
         init {
-            layout = java.awt.BorderLayout()
-            isOpaque = false
+            layout = BorderLayout()
             isFocusable = true
+        }
+
+        override fun updateUI() {
+            super.updateUI()
+            background = UiStyle.Colors.bg()
+            isOpaque = true
         }
 
         override fun contains(x: Int, y: Int): Boolean {
             if (!isVisible) return false
             return super.contains(x, y)
+        }
+
+        override fun doLayout() {
+            super.doLayout()
+            components.forEach { it.doLayout() }
         }
     }
 }

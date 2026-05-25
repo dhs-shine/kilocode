@@ -127,6 +127,7 @@ class SessionUi(
     private lateinit var prompt: PromptPanel
     private lateinit var load: LoadingPanel
     private lateinit var migrationOverlay: MigrationOverlayPanel
+    private var modalFocus: (() -> JComponent)? = null
     private var style = SessionEditorStyle.current()
 
     init {
@@ -159,11 +160,13 @@ class SessionUi(
     internal fun currentStyle() = style
 
     val defaultFocusedComponent: JComponent get() {
-        val state = migration.state.value
-        if (state !is MigrationUiState.Hidden && root.blocker.isVisible) {
-            return migrationOverlay.preferredFocusComponent()
-        }
+        modalFocus?.invoke()?.let { return it }
         return prompt.defaultFocusedComponent
+    }
+
+    internal fun setModalContent(content: JComponent?, focus: (() -> JComponent)? = null) {
+        modalFocus = if (content == null) null else focus
+        root.setModalContent(content)
     }
 
     private fun buildUi() {
@@ -176,7 +179,12 @@ class SessionUi(
             onStart = { sel -> migration.start(sel) }
             onForce = { ids -> migration.force(ids) }
         }
-        root.setBlocker(migrationOverlay)
+        migrationOverlay.border = JBUI.Borders.empty(
+            JBUI.scale(SessionUiStyle.View.Prompt.PANEL_VERTICAL_PADDING),
+            JBUI.scale(SessionUiStyle.View.Prompt.PANEL_HORIZONTAL_PADDING),
+            JBUI.scale(SessionUiStyle.View.Prompt.PANEL_VERTICAL_PADDING),
+            JBUI.scale(SessionUiStyle.View.Prompt.PANEL_HORIZONTAL_PADDING),
+        )
 
         account = SessionAccountOverlay(
             select = { org -> controller.selectOrganization(org) },
@@ -336,12 +344,12 @@ class SessionUi(
         when (state) {
             is MigrationUiState.Hidden -> {
                 if (root.blocker.isVisible) LOG.info("Migration wizard: overlay hidden session=${id ?: cacheKey ?: "new"}")
-                root.setBlocked(false)
+                setModalContent(null)
             }
             is MigrationUiState.Needed -> {
                 if (!root.blocker.isVisible) LOG.info("Migration wizard: overlay shown session=${id ?: cacheKey ?: "new"} phase=${state.phase}")
                 migrationOverlay.update(state)
-                root.setBlocked(true)
+                setModalContent(migrationOverlay) { migrationOverlay.preferredFocusComponent() }
             }
         }
     }

@@ -2,8 +2,12 @@ package ai.kilocode.client.migration
 
 import ai.kilocode.client.session.SessionUiTestBase
 import ai.kilocode.client.session.ui.SessionRootPanel
+import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.migration.ui.MigrationOverlayPanel
+import ai.kilocode.client.migration.ui.MigrationWizardPanel
 import ai.kilocode.rpc.dto.LegacyMigrationDetectionDto
 import ai.kilocode.rpc.dto.MigrationProviderInfoDto
+import java.awt.Rectangle
 
 @Suppress("UnstableApiUsage")
 class SessionUiMigrationTest : SessionUiTestBase() {
@@ -29,7 +33,19 @@ class SessionUiMigrationTest : SessionUiTestBase() {
         val root = find<SessionRootPanel>(ui)
         fakeMigration._state.value = MigrationUiState.Needed(detection = sampleDetection())
         settle()
+        layout()
         assertTrue("blocker should be visible", root.blocker.isVisible)
+        assertTrue("blocker should be opaque", root.blocker.isOpaque)
+        assertEquals(Rectangle(0, 0, root.width, root.height), root.blocker.bounds)
+        assertEquals(1, root.blocker.componentCount)
+    }
+
+    fun `test migration opens on selection screen with keep file checked`() {
+        fakeMigration._state.value = MigrationUiState.Needed(detection = sampleDetection())
+        settle()
+
+        val wizard = find<MigrationWizardPanel>(ui)
+        assertTrue(wizard.keepLegacySettingsFileSelectedForTest())
     }
 
     fun `test hidden state after visible hides blocker`() {
@@ -41,6 +57,7 @@ class SessionUiMigrationTest : SessionUiTestBase() {
         fakeMigration._state.value = MigrationUiState.Hidden
         settle()
         assertFalse(root.blocker.isVisible)
+        assertEquals(0, root.blocker.componentCount)
     }
 
     fun `test two session UIs sharing one controller both react to state change`() {
@@ -64,9 +81,20 @@ class SessionUiMigrationTest : SessionUiTestBase() {
         settle()
         val root = find<SessionRootPanel>(ui)
         assertTrue("blocker should be visible for defaultFocused test", root.blocker.isVisible)
-        // defaultFocusedComponent should not throw and should not be the prompt editor
-        val focused = ui.defaultFocusedComponent
-        assertNotNull(focused)
+        val overlay = find<MigrationOverlayPanel>(ui)
+        assertSame(overlay.preferredFocusComponent(), ui.defaultFocusedComponent)
+        assertNotSame(find<PromptPanel>(ui).defaultFocusedComponent, ui.defaultFocusedComponent)
+    }
+
+    fun `test migration modal covers prompt with opaque background`() {
+        fakeMigration._state.value = MigrationUiState.Needed(detection = sampleDetection())
+        settle()
+        layout()
+        val root = find<SessionRootPanel>(ui)
+
+        assertTrue(root.blocker.isVisible)
+        assertTrue(root.blocker.isOpaque)
+        assertEquals(Rectangle(0, 0, root.width, root.height), root.blocker.bounds)
     }
 
     private fun sampleDetection() = LegacyMigrationDetectionDto(

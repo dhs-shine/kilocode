@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.ui
 
+import ai.kilocode.client.ui.UiStyle
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.Dimension
@@ -24,6 +25,13 @@ class SessionRootPanelTest : BasePlatformTestCase() {
     fun `test blocker is hidden by default`() {
         val root = SessionRootPanel()
         assertFalse(root.blocker.isVisible)
+    }
+
+    fun `test blocker is opaque and uses panel background`() {
+        val root = SessionRootPanel()
+
+        assertTrue(root.blocker.isOpaque)
+        assertEquals(UiStyle.Colors.bg(), root.blocker.background)
     }
 
     fun `test root layout fills all immediate children`() {
@@ -74,6 +82,29 @@ class SessionRootPanelTest : BasePlatformTestCase() {
 
         root.setBlocked(false)
         assertFalse(root.blocker.isVisible)
+    }
+
+    fun `test modal content is centered inside blocker`() {
+        val root = SessionRootPanel().apply { setSize(200, 100) }
+        val child = Probe()
+
+        root.setModalContent(child)
+        root.doLayout()
+
+        assertTrue(root.blocker.isVisible)
+        assertEquals(1, root.blocker.componentCount)
+        assertEquals(Rectangle(60, 38, 80, 24), child.bounds)
+    }
+
+    fun `test clearing modal content hides and removes blocker children`() {
+        val root = SessionRootPanel().apply { setSize(200, 100) }
+        root.setModalContent(Probe())
+        root.doLayout()
+
+        root.setModalContent(null)
+
+        assertFalse(root.blocker.isVisible)
+        assertEquals(0, root.blocker.componentCount)
     }
 
     fun `test blocker contains returns false when hidden`() {
