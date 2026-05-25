@@ -2,6 +2,7 @@ package ai.kilocode.client.session
 
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
+import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
@@ -35,6 +36,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.components.service
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurableWithId
 import com.intellij.openapi.options.ShowSettingsUtil
@@ -64,6 +66,7 @@ class SessionUi(
     ref: SessionRef? = null,
     displayMs: Long = SessionController.DISPLAY_DELAY_MS,
     private val manager: SessionManager? = null,
+    private val workspaces: KiloWorkspaceService = service(),
 ) : JPanel(BorderLayout()), Disposable, SessionEditorStyleTarget {
 
     companion object {
@@ -71,6 +74,7 @@ class SessionUi(
     }
 
     private val project = project
+    private val workspace = workspace
     private val app = app
     private var opening = ref != null
     private var pending = false
@@ -185,7 +189,7 @@ class SessionUi(
             reply = { id, dto -> controller.replyPermission(id, dto) },
         )
         login = LoginRequiredView(openProfile = { controller.openProfile() }, dismiss = { controller.dismissLoginRequired() })
-        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login)
+        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login, ::openFile)
         header = SessionHeaderPanel(controller, this)
 
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
@@ -352,6 +356,12 @@ class SessionUi(
         }
         controller.prompt(text)
         prompt.clear()
+    }
+
+    private fun openFile(path: String) {
+        cs.launch {
+            workspaces.openPath(workspace.directory, path)
+        }
     }
 
     private fun onStateChanged(state: SessionState) {

@@ -88,7 +88,13 @@ abstract class SessionUiTestBase : BasePlatformTestCase() {
                 override fun openSession(ref: SessionRef) = fn(ref)
             }
         }
-        return SessionUi(project, workspace, sessions, app, scope, ref = SessionRef.from(id), displayMs = displayMs, manager = manager).apply {
+        return SessionUi(
+            project, workspace, sessions, app, scope,
+            ref = SessionRef.from(id),
+            displayMs = displayMs,
+            manager = manager,
+            workspaces = workspaces,
+        ).apply {
             setSize(800, 600)
         }
     }

@@ -20,11 +20,11 @@ import ai.kilocode.client.session.model.Tool
  * 3. Add a branch here — the exhaustive `when` will surface the gap as a compile error.
  */
 object ViewFactory {
-    fun create(content: Content): PartView = when (content) {
+    fun create(content: Content, openFile: (String) -> Unit): PartView = when (content) {
         is Text -> TextView(content)
         is Reasoning -> ReasoningView(content)
         is Tool -> when {
-            PlanExitView.canRender(content) -> PlanExitView(content)
+            PlanExitView.canRender(content) -> PlanExitView(content, openFile)
             QuestionResultView.canRender(content) -> QuestionResultView(content)
             else -> ToolView(content)
         }

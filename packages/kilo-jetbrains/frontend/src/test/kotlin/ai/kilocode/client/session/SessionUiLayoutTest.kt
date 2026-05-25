@@ -280,7 +280,12 @@ class SessionUiLayoutTest : SessionUiTestBase() {
     fun `test existing session history shows header above scroll pane`() {
         rpc.history.add(MessageWithPartsDto(message("msg1"), emptyList()))
 
-        ui = SessionUi(project, workspace, sessions, app, scope, ref = SessionRef.Local("ses_test"), displayMs = 0).apply {
+        ui = SessionUi(
+            project, workspace, sessions, app, scope,
+            ref = SessionRef.Local("ses_test"),
+            displayMs = 0,
+            workspaces = workspaces,
+        ).apply {
             setSize(800, 600)
         }
         settle()

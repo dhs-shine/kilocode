@@ -10,6 +10,7 @@ import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.model.ToolCallRef
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.LoginRequiredView
+import ai.kilocode.client.session.views.PlanExitView
 import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionResultView
 import ai.kilocode.client.session.views.question.QuestionView
@@ -37,12 +38,13 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
     private lateinit var model: SessionModel
     private lateinit var parent: Disposable
     private lateinit var panel: SessionMessageListPanel
+    private val openFile: (String) -> Unit = {}
 
     override fun setUp() {
         super.setUp()
         parent = Disposer.newDisposable("test")
         model = SessionModel()
-        panel = SessionMessageListPanel(model, parent)
+        panel = SessionMessageListPanel(model, parent, openFile = openFile)
     }
 
     override fun tearDown() {
@@ -449,6 +451,29 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertEquals(listOf("tp1"), mv.partIds())
     }
 
+    fun `test completed plan update replaces tool view and keeps open file action`() {
+        val opened = mutableListOf<String>()
+        val item = SessionMessageListPanel(model, parent, openFile = { opened.add(it) })
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", toolPart("tp1", "a1", "plan_exit", "call1", state = "running"))
+
+        val mv = item.findMessage("a1")!!
+        assertTrue(mv.part("tp1") is ToolView)
+
+        model.updateContent(
+            "a1",
+            toolPart(
+                "tp1", "a1", "plan_exit", "call1", state = "completed",
+                metadata = mapOf("plan" to ".kilo/plans/x.md"),
+            ),
+        )
+
+        val view = mv.part("tp1") as PlanExitView
+        view.simulateLink(".kilo/plans/x.md")
+
+        assertEquals(listOf(".kilo/plans/x.md"), opened)
+    }
+
     // ------ helpers ------
 
     private fun panelWithPrompts(): SessionMessageListPanel {
@@ -461,7 +486,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
             reply = { _, _ -> },
         )
         val l = LoginRequiredView(openProfile = {}, dismiss = {})
-        return SessionMessageListPanel(model, parent, q, p, l)
+        return SessionMessageListPanel(model, parent, q, p, l, openFile)
     }
 
     private inline fun <reified T> find(root: Container): T? = findCls(root, T::class.java)

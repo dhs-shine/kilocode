@@ -12,14 +12,14 @@ class PlanExitViewTest : BasePlatformTestCase() {
             metadata = mapOf("plan" to ".kilo/plans/x.md")
         }
 
-        val view = PlanExitView(tool)
+        val view = PlanExitView(tool) {}
 
         assertEquals("Plan is ready [.kilo/plans/x.md](.kilo/plans/x.md)", view.markdown())
     }
 
     fun `test view factory replaces running tool with plan exit view when completed`() {
         val running = tool(ToolExecState.RUNNING)
-        val existing = ViewFactory.create(running)
+        val existing = ViewFactory.create(running) {}
         assertTrue(existing is ToolView)
 
         val done = tool(ToolExecState.COMPLETED).apply {
@@ -27,7 +27,19 @@ class PlanExitViewTest : BasePlatformTestCase() {
         }
 
         assertTrue(ViewFactory.shouldReplace(existing, done))
-        assertTrue(ViewFactory.create(done) is PlanExitView)
+        assertTrue(ViewFactory.create(done) {} is PlanExitView)
+    }
+
+    fun `test clicking plan link opens href`() {
+        val opened = mutableListOf<String>()
+        val tool = tool(ToolExecState.COMPLETED).apply {
+            metadata = mapOf("plan" to ".kilo/plans/my%20plan.md")
+        }
+
+        val view = PlanExitView(tool) { opened.add(it) }
+        view.simulateLink(".kilo/plans/my%20plan.md")
+
+        assertEquals(listOf(".kilo/plans/my%20plan.md"), opened)
     }
 
     private fun tool(state: ToolExecState) = Tool("prt_plan", "plan_exit", toolKind("plan_exit")).apply {
