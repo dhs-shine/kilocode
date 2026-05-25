@@ -1,12 +1,11 @@
 package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.client.ui.layout.HAlign
-import ai.kilocode.client.ui.layout.VAlign
-import ai.kilocode.client.ui.layout.align
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
+import java.awt.Container
 import java.awt.Dimension
 import java.awt.Rectangle
 import javax.swing.JComponent
@@ -36,20 +35,32 @@ class SessionRootPanel : JLayeredPane() {
         overlay.addOverlay(child, bounds)
     }
 
+    @RequiresEdt
     fun setModalContent(child: JComponent?) {
         blocker.removeAll()
-        if (child != null) blocker.add(child.align(HAlign.CENTER, VAlign.CENTER), BorderLayout.CENTER)
+        if (child != null) blocker.add(child, BorderLayout.CENTER)
         blocker.isVisible = child != null
         if (child != null) blocker.requestFocusInWindow()
+        invalidate()
+        blocker.invalidate()
+        child?.invalidate()
+        if (width > 0 && height > 0) {
+            doLayout()
+            child?.let(::layoutTree)
+        }
         blocker.revalidate()
         blocker.repaint()
         revalidate()
         repaint()
     }
 
+    @RequiresEdt
     fun setBlocked(value: Boolean) {
         blocker.isVisible = value
         if (value) blocker.requestFocusInWindow()
+        invalidate()
+        blocker.invalidate()
+        if (width > 0 && height > 0) doLayout()
         revalidate()
         repaint()
     }
@@ -131,7 +142,12 @@ class SessionRootPanel : JLayeredPane() {
 
         override fun doLayout() {
             super.doLayout()
-            components.forEach { it.doLayout() }
+            components.forEach { layoutTree(it) }
         }
     }
+}
+
+private fun layoutTree(comp: java.awt.Component) {
+    comp.doLayout()
+    if (comp is Container) comp.components.forEach { layoutTree(it) }
 }

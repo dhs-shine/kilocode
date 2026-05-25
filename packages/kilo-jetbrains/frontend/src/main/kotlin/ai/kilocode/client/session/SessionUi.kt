@@ -47,6 +47,7 @@ import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.registry.Registry
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import java.util.function.Predicate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -339,6 +340,7 @@ class SessionUi(
         }
     }
 
+    @RequiresEdt
     private fun applyMigrationState(state: MigrationUiState) {
         when (state) {
             is MigrationUiState.Hidden -> {
@@ -349,6 +351,8 @@ class SessionUi(
                 if (!root.blocker.isVisible) LOG.info("Migration wizard: overlay shown session=${id ?: cacheKey ?: "new"} phase=${state.phase}")
                 migrationOverlay.update(state)
                 setModalContent(migrationOverlay) { migrationOverlay.preferredFocusComponent() }
+                migrationOverlay.revalidate()
+                migrationOverlay.repaint()
             }
         }
     }
