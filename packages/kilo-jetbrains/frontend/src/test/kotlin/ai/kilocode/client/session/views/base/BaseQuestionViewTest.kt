@@ -24,6 +24,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
     fun `test header and description text areas are in the component tree by default`() {
         edt {
             val panel = BaseQuestionView()
+            assertTrue("Root layout should be BorderLayout", panel.layout is BorderLayout)
             val areas = findAll<JBTextArea>(panel)
             assertTrue("Should have at least 2 text areas (header + description)", areas.size >= 2)
         }
@@ -89,11 +90,10 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             val top = JLabel("top")
             panel.setTopPanel(top)
 
-            val col = findCol(panel)!!
-            val comps = col.components.toList()
+            val north = region(panel, BorderLayout.NORTH) as Container
+            val comps = north.components.toList()
             val topIdx = comps.indexOf(top)
-            // header row is the JPanel containing the header text area
-            val headerRow = findAll<JBTextArea>(panel).firstOrNull { it.font.isBold }?.parent as? JPanel
+            val headerRow = headerRow(panel)
             val headerIdx = if (headerRow != null) comps.indexOf(headerRow) else comps.indexOfFirst { it is JPanel }
             assertTrue("top should appear before headerText row", topIdx >= 0 && topIdx < headerIdx)
         }
@@ -131,6 +131,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             val body = JLabel("body")
             panel.setContent(body)
             assertNotNull("body should be in the tree", find(panel, body))
+            assertSame("body should be in root center", body, region(panel, BorderLayout.CENTER))
         }
     }
 
@@ -153,6 +154,18 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             panel.setContent(second)
             assertNull("first body should be gone", find(panel, first))
             assertNotNull("second body should be present", find(panel, second))
+        }
+    }
+
+    fun `test setContent adds header spacer in north stack`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setContent(JLabel("body"))
+
+            val north = region(panel, BorderLayout.NORTH) as Container
+            val filler = north.components.last()
+            assertEquals(UiStyle.Gap.pad(), filler.preferredSize.height)
+            assertEquals(0, filler.preferredSize.width)
         }
     }
 
@@ -220,6 +233,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
             panel.setActions(emptyList())
             assertTrue("actionButtonsForTest should be empty", panel.actionButtonsForTest().isEmpty())
+            assertNull("footer should be removed when empty", region(panel, BorderLayout.SOUTH))
         }
     }
 
@@ -236,34 +250,48 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
         }
     }
 
-    // ------ ordering ------
+    // ------ structure ------
 
-    fun `test content appears after description in col`() {
+    fun `test header row uses icon west and text stack center`() {
         edt {
             val panel = BaseQuestionView()
-            val body = JLabel("body")
-            panel.setContent(body)
-            val col = findCol(panel)!!
-            val comps = col.components.toList()
-            val descIdx = comps.indexOfFirst { it is JBTextArea && !(it).font.isBold }
-            val bodyIdx = comps.indexOf(body)
-            assertTrue("body should appear after description", descIdx < bodyIdx)
+            val header = headerRow(panel)!!
+            val layout = header.layout as BorderLayout
+            val west = layout.getLayoutComponent(BorderLayout.WEST)
+            val center = layout.getLayoutComponent(BorderLayout.CENTER) as Container
+            assertTrue("icon should be a JBLabel", west is JBLabel)
+            assertTrue("center should contain header and description text", findAll<JBTextArea>(center).size >= 2)
         }
     }
 
-    fun `test action footer appears after content`() {
+    fun `test action footer is in south with buttons east`() {
         edt {
             val panel = BaseQuestionView()
-            val body = JLabel("body")
-            panel.setContent(body)
             panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
-            val col = findCol(panel)!!
-            val comps = col.components.toList()
-            val bodyIdx = comps.indexOf(body)
             val btn = panel.actionButtonsForTest()["ok"]!!
-            // find the footer panel that contains the button
-            val footerIdx = comps.indexOfFirst { it is JPanel && find(it, btn) != null }
-            assertTrue("footer should appear after body", bodyIdx < footerIdx)
+            val footer = region(panel, BorderLayout.SOUTH) as JPanel
+            val row = (footer.layout as BorderLayout).getLayoutComponent(BorderLayout.EAST) as JPanel
+            assertNotNull("button should be in footer east row", find(row, btn))
+        }
+    }
+
+    fun `test action left alone attaches footer west`() {
+        edt {
+            val panel = BaseQuestionView()
+            val left = JLabel("left")
+            panel.setActionLeft(left)
+            val footer = region(panel, BorderLayout.SOUTH) as JPanel
+            val west = (footer.layout as BorderLayout).getLayoutComponent(BorderLayout.WEST)
+            assertSame("action left should be in footer west", left, west)
+        }
+    }
+
+    fun `test setActionLeft null removes left-only footer`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setActionLeft(JLabel("left"))
+            panel.setActionLeft(null)
+            assertNull("footer should be removed when action left is cleared", region(panel, BorderLayout.SOUTH))
         }
     }
 
@@ -338,11 +366,11 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
         return result as T
     }
 
-    private fun findCol(panel: BaseQuestionView): JPanel? {
-        for (child in panel.components) {
-            if (child is JPanel) return child
-        }
-        return null
+    private fun region(panel: BaseQuestionView, region: String) = (panel.layout as BorderLayout).getLayoutComponent(region)
+
+    private fun headerRow(panel: BaseQuestionView): JPanel? {
+        val north = region(panel, BorderLayout.NORTH) as? Container ?: return null
+        return north.components.filterIsInstance<JPanel>().firstOrNull { it.layout is BorderLayout }
     }
 
     private fun find(root: Container, target: JComponent): JComponent? {

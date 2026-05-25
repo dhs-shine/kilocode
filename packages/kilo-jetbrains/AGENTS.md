@@ -396,14 +396,26 @@ Stack.vertical(gap = UiStyle.Gap.sm())
     .next(summary)
     .gap(UiStyle.Gap.lg())
     .next(details)
+
+Stack.vertical()
+    .next(header)
+    .fill(UiStyle.Gap.pad())
+    .next(body)
+
+Stack.horizontal()
+    .next(icon)
+    .fill(UiStyle.Gap.sm())
+    .next(label)
 ```
 
 **Rules:**
 
 - Prefer `Stack.vertical(...)` or `Stack.horizontal(...)` over one-off `JPanel` + `BoxLayout` or simple single-line `FlowLayout` rows/columns.
-- Use the constructor `gap` for the normal spacing between adjacent visible children. Use `gap(size)` for an explicit one-off gap before the next visible child.
+- Use the constructor `gap` for the normal spacing between adjacent visible children.
+- Use `gap(size)` for an explicit one-off gap only when the next added child is the next visible child. It is ignored when it is trailing or when a hidden component appears before the next visible child.
+- Use `fill(size)`, `Stack.verticalFiller(size)`, or `Stack.horizontalFiller(size)` for persistent leading, trailing, or interstitial whitespace. Do not use `Box` or `gap(size)` for persistent spacing.
 - Use `Stack` for simple retained Swing rows/columns where children should track the cross-axis size. Use `Align` for positioning one child inside available space.
-- Do not use `Stack` for padding, borders, colors, wrapping rows, flexible glue/spacers, or transcript components that need width-aware HTML reflow. Use `JBUI.Borders.empty(...)`, `UiStyle.Gap`, purpose-built layouts, or `SessionLayout` for those concerns.
+- Do not use `Stack` for padding, borders, colors, wrapping rows, flexible glue, or transcript components that need width-aware HTML reflow. Use `JBUI.Borders.empty(...)`, `UiStyle.Gap`, purpose-built layouts, or `SessionLayout` for those concerns.
 
 ### Align — Single-Component Alignment Wrapper
 

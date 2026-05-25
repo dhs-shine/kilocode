@@ -78,6 +78,70 @@ class StackTest : BasePlatformTestCase() {
         assertBounds(0, 16, 100, 7, b)
     }
 
+    fun `test vertical explicit gap is ignored across invisible child`() {
+        val a = child(pref = 10 x 5)
+        val b = child(pref = 20 x 7).apply { isVisible = false }
+        val c = child(pref = 30 x 9)
+        val stack = Stack.vertical(gap = 3).apply {
+            next(a)
+            gap(11)
+            next(b)
+            gap(13)
+            next(c)
+        }
+
+        stack.setBounds(0, 0, 100, 50)
+        stack.doLayout()
+
+        assertBounds(0, 0, 100, 5, a)
+        assertBounds(0, 8, 100, 9, c)
+    }
+
+    fun `test vertical trailing gap is ignored`() {
+        val a = child(pref = 10 x 5)
+        val stack = Stack.vertical().apply {
+            next(a)
+            gap(11)
+        }
+
+        assertEquals(10 x 5, stack.preferredSize)
+    }
+
+    fun `test removeAll clears explicit gaps`() {
+        val a = child(pref = 10 x 5)
+        val b = child(pref = 20 x 7)
+        val stack = Stack.vertical().apply {
+            next(a)
+            gap(11)
+            removeAll()
+            next(b)
+        }
+
+        stack.setBounds(0, 0, 100, 50)
+        stack.doLayout()
+
+        assertBounds(0, 0, 100, 7, b)
+    }
+
+    fun `test vertical filler contributes fixed height and tracks width`() {
+        val a = child(pref = 10 x 5)
+        val b = child(pref = 20 x 7)
+        val stack = Stack.vertical().apply {
+            next(a)
+            fill(11)
+            next(b)
+        }
+
+        stack.setBounds(0, 0, 100, 50)
+        stack.doLayout()
+
+        val filler = stack.getComponent(1)
+        assertEquals(20 x 23, stack.preferredSize)
+        assertBounds(0, 0, 100, 5, a)
+        assertBounds(0, 5, 100, 11, filler)
+        assertBounds(0, 16, 100, 7, b)
+    }
+
     fun `test vertical fills width ignoring child width constraints`() {
         val a = child(min = 30 x 4, pref = 40 x 5, max = 50 x 6)
         val stack = Stack.vertical().apply { next(a) }
@@ -146,6 +210,70 @@ class StackTest : BasePlatformTestCase() {
 
         assertBounds(0, 0, 10, 50, a)
         assertBounds(13, 0, 30, 50, c)
+    }
+
+    fun `test horizontal explicit gap overrides default next gap`() {
+        val a = child(pref = 10 x 5)
+        val b = child(pref = 20 x 7)
+        val stack = Stack.horizontal(gap = 3).apply {
+            next(a)
+            gap(11)
+            next(b)
+        }
+
+        stack.setBounds(0, 0, 100, 50)
+        stack.doLayout()
+
+        assertBounds(0, 0, 10, 50, a)
+        assertBounds(21, 0, 20, 50, b)
+    }
+
+    fun `test horizontal explicit gap is ignored across invisible child`() {
+        val a = child(pref = 10 x 5)
+        val b = child(pref = 20 x 7).apply { isVisible = false }
+        val c = child(pref = 30 x 9)
+        val stack = Stack.horizontal(gap = 3).apply {
+            next(a)
+            gap(11)
+            next(b)
+            gap(13)
+            next(c)
+        }
+
+        stack.setBounds(0, 0, 100, 50)
+        stack.doLayout()
+
+        assertBounds(0, 0, 10, 50, a)
+        assertBounds(13, 0, 30, 50, c)
+    }
+
+    fun `test horizontal trailing gap is ignored`() {
+        val a = child(pref = 10 x 5)
+        val stack = Stack.horizontal().apply {
+            next(a)
+            gap(11)
+        }
+
+        assertEquals(10 x 5, stack.preferredSize)
+    }
+
+    fun `test horizontal filler contributes fixed width and tracks height`() {
+        val a = child(pref = 10 x 5)
+        val b = child(pref = 20 x 7)
+        val stack = Stack.horizontal().apply {
+            next(a)
+            fill(11)
+            next(b)
+        }
+
+        stack.setBounds(0, 0, 100, 50)
+        stack.doLayout()
+
+        val filler = stack.getComponent(1)
+        assertEquals(41 x 7, stack.preferredSize)
+        assertBounds(0, 0, 10, 50, a)
+        assertBounds(10, 0, 11, 50, filler)
+        assertBounds(21, 0, 20, 50, b)
     }
 
     fun `test horizontal fills height ignoring child height constraints`() {
