@@ -10,6 +10,7 @@ import ai.kilocode.client.session.model.Reasoning
 import ai.kilocode.client.session.model.StepFinish
 import ai.kilocode.client.session.model.Text
 import ai.kilocode.client.session.model.Tool
+import ai.kilocode.client.session.views.todo.TodoWriteView
 
 /**
  * Creates the appropriate [PartView] for a given [Content] subtype.
@@ -24,6 +25,7 @@ object ViewFactory {
         is Text -> TextView(content)
         is Reasoning -> ReasoningView(content)
         is Tool -> when {
+            TodoWriteView.canRender(content) -> TodoWriteView(content)
             PlanExitView.canRender(content) -> PlanExitView(content, openFile)
             QuestionResultView.canRender(content) -> QuestionResultView(content)
             else -> ToolView(content)
@@ -40,6 +42,8 @@ object ViewFactory {
      */
     fun shouldReplace(view: PartView, content: Content): Boolean {
         if (content !is Tool) return false
+        if (view is TodoWriteView) return !TodoWriteView.canRender(content)
+        if (view !is TodoWriteView && TodoWriteView.canRender(content)) return true
         if (view is PlanExitView) return !PlanExitView.canRender(content)
         if (view !is PlanExitView && PlanExitView.canRender(content)) return true
         if (view is QuestionResultView) return !QuestionResultView.canRender(content)

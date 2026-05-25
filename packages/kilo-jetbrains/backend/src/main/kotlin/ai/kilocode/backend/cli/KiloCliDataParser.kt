@@ -32,6 +32,7 @@ import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.SessionSummaryDto
 import ai.kilocode.rpc.dto.SessionTimeDto
 import ai.kilocode.rpc.dto.TodoDto
+import ai.kilocode.rpc.dto.TodoViewDto
 import ai.kilocode.rpc.dto.TokensDto
 import ai.kilocode.rpc.dto.ToolRefDto
 import kotlinx.serialization.json.Json
@@ -223,14 +224,7 @@ object KiloCliDataParser {
 
             "todo.updated" -> {
                 val sid = props.str("sessionID") ?: return null
-                val todos = props["todos"]?.jsonArray?.map { elem ->
-                    val t = elem.jsonObject
-                    TodoDto(
-                        content = t.str("content") ?: "",
-                        status = t.str("status") ?: "pending",
-                        priority = t.str("priority") ?: "medium",
-                    )
-                } ?: emptyList()
+                val todos = parseTodos(props["todos"])
                 ChatEventDto.TodoUpdated(sid, todos)
             }
 
@@ -467,6 +461,15 @@ object KiloCliDataParser {
         val tokens = obj["tokens"]?.jsonObject
         val top = obj.map("metadata")
         val meta = state.map("metadata") + top
+        val input = state?.get("input").obj()
+        val stateMeta = state?.get("metadata").obj()
+        val topMeta = obj["metadata"].obj()
+        val todos = sequenceOf(topMeta?.get("todos"), stateMeta?.get("todos"), input?.get("todos"))
+            .firstNotNullOfOrNull(::parseTodosOrNull)
+            ?: emptyList()
+        val view = sequenceOf(topMeta?.get("view"), stateMeta?.get("view"))
+            .mapNotNull(::parseTodoView)
+            .firstOrNull()
         return PartDto(
             id = obj.str("id") ?: "",
             sessionID = obj.str("sessionID") ?: "",
@@ -482,9 +485,43 @@ object KiloCliDataParser {
             output = state?.str("output"),
             error = state?.str("error"),
             time = obj.time("time") ?: state.time("time"),
+            todos = todos,
+            todoView = view,
             reason = obj.str("reason"),
             cost = obj.num("cost"),
             tokens = tokens?.let(::parseTokens),
+        )
+    }
+
+    internal fun parseTodos(raw: JsonElement?): List<TodoDto> {
+        return parseTodosOrNull(raw) ?: emptyList()
+    }
+
+    private fun parseTodosOrNull(raw: JsonElement?): List<TodoDto>? {
+        val arr = runCatching { raw?.jsonArray }.getOrNull() ?: return null
+        return arr.mapNotNull { elem ->
+            val obj = runCatching { elem.jsonObject }.getOrNull() ?: return@mapNotNull null
+            parseTodo(obj)
+        }
+    }
+
+    private fun parseTodo(obj: JsonObject) = TodoDto(
+        content = obj.str("content") ?: "",
+        status = obj.str("status") ?: "pending",
+        priority = obj.str("priority") ?: "medium",
+        changed = obj.flag("changed", false),
+    )
+
+    internal fun parseTodoView(raw: JsonElement?): TodoViewDto? {
+        val obj = runCatching { raw?.jsonObject }.getOrNull() ?: return null
+        val rawTodos = runCatching { obj["todos"]?.jsonArray }.getOrNull() ?: return null
+        val todos = parseTodos(rawTodos)
+        return TodoViewDto(
+            mode = obj.str("mode") ?: "full",
+            todos = todos,
+            hiddenBefore = obj.long("hiddenBefore")?.safeInt() ?: 0,
+            hiddenAfter = obj.long("hiddenAfter")?.safeInt() ?: 0,
+            changed = obj.long("changed")?.safeInt() ?: 0,
         )
     }
 

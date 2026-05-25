@@ -128,8 +128,10 @@ class MessageView(
      * pending/running question tool part linked to the active question.
      */
     private fun isHidden(content: Content): Boolean {
-        val ref = hidden ?: return false
         if (content !is Tool) return false
+        if (content.name == "todoread") return true
+        if (content.name == "todowrite" && content.state != ToolExecState.COMPLETED) return true
+        val ref = hidden ?: return false
         if (content.name != "question") return false
         if (content.state != ToolExecState.PENDING && content.state != ToolExecState.RUNNING) return false
         return msg.info.id == ref.messageId && content.callId == ref.callId

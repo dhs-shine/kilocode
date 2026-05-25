@@ -67,6 +67,8 @@ data class PartDto(
     val output: String? = null,
     val error: String? = null,
     val time: PartTimeDto? = null,
+    val todos: List<TodoDto> = emptyList(),
+    val todoView: TodoViewDto? = null,
     val reason: String? = null,
     val cost: Double? = null,
     val tokens: TokensDto? = null,
@@ -333,6 +335,16 @@ data class TodoDto(
     val content: String,
     val status: String,
     val priority: String,
+    val changed: Boolean = false,
+)
+
+@Serializable
+data class TodoViewDto(
+    val mode: String = "full",
+    val todos: List<TodoDto> = emptyList(),
+    val hiddenBefore: Int = 0,
+    val hiddenAfter: Int = 0,
+    val changed: Int = 0,
 )
 
 // --- Diff DTO ---

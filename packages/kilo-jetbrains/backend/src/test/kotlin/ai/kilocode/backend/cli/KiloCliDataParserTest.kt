@@ -200,6 +200,93 @@ class KiloCliDataParserTest {
         }
 
         @Test
+        fun `parseChatEvent - todowrite part parses typed todo metadata`() {
+            val data = globalEvent("""
+                "type": "message.part.updated",
+                "properties": {
+                    "sessionID": "ses_1",
+                    "part": {
+                        "id": "part_todo",
+                        "sessionID": "ses_1",
+                        "messageID": "msg_1",
+                        "type": "tool",
+                        "tool": "todowrite",
+                        "callID": "call_todo",
+                        "metadata": {
+                            "todos": [
+                                {"content": "Top wins", "status": "completed", "priority": "high", "changed": true}
+                            ],
+                            "view": {
+                                "mode": "compact",
+                                "hiddenBefore": 1,
+                                "hiddenAfter": 2,
+                                "changed": 1,
+                                "todos": [
+                                    {"content": "Visible", "status": "pending", "priority": "medium", "changed": true}
+                                ]
+                            }
+                        },
+                        "state": {
+                            "status": "completed",
+                            "input": {
+                                "todos": [
+                                    {"content": "Input fallback", "status": "pending", "priority": "low"}
+                                ]
+                            },
+                            "metadata": {
+                                "todos": [
+                                    {"content": "State fallback", "status": "in_progress", "priority": "medium"}
+                                ]
+                            }
+                        }
+                    }
+                }
+            """)
+
+            val result = KiloCliDataParser.parseChatEvent("message.part.updated", data) as ChatEventDto.PartUpdated
+            assertEquals("Top wins", result.part.todos.single().content)
+            assertEquals(true, result.part.todos.single().changed)
+            assertEquals("compact", result.part.todoView?.mode)
+            assertEquals(1, result.part.todoView?.hiddenBefore)
+            assertEquals(2, result.part.todoView?.hiddenAfter)
+            assertEquals(1, result.part.todoView?.changed)
+            assertEquals("Visible", result.part.todoView?.todos?.single()?.content)
+            assertEquals(true, result.part.todoView?.todos?.single()?.changed)
+            assertEquals("[{\"content\":\"Input fallback\",\"status\":\"pending\",\"priority\":\"low\"}]", result.part.input["todos"])
+            assertTrue(result.part.metadata["view"]?.contains("compact") == true)
+        }
+
+        @Test
+        fun `parseChatEvent - empty top metadata todos overrides fallback todos`() {
+            val data = globalEvent("""
+                "type": "message.part.updated",
+                "properties": {
+                    "sessionID": "ses_1",
+                    "part": {
+                        "id": "part_todo",
+                        "sessionID": "ses_1",
+                        "messageID": "msg_1",
+                        "type": "tool",
+                        "tool": "todowrite",
+                        "metadata": { "todos": [] },
+                        "state": {
+                            "status": "completed",
+                            "metadata": {
+                                "todos": [
+                                    {"content": "Fallback", "status": "pending", "priority": "medium"}
+                                ]
+                            }
+                        }
+                    }
+                }
+            """)
+
+            val result = KiloCliDataParser.parseChatEvent("message.part.updated", data) as ChatEventDto.PartUpdated
+
+            assertEquals(emptyList(), result.part.todos)
+        }
+
+        @Test
         fun `parseChatEvent - bash tool part preserves command output and error`() {
             val data = globalEvent("""
                 "type": "message.part.updated",
@@ -479,7 +566,7 @@ class KiloCliDataParserTest {
                 "properties": {
                     "sessionID": "ses_1",
                     "todos": [
-                        {"content": "Write tests", "status": "in_progress", "priority": "high"},
+                        {"content": "Write tests", "status": "in_progress", "priority": "high", "changed": true},
                         {"content": "Review PR", "status": "pending", "priority": "medium"}
                     ]
                 }
@@ -492,6 +579,8 @@ class KiloCliDataParserTest {
             assertEquals(2, result.todos.size)
             assertEquals("Write tests", result.todos[0].content)
             assertEquals("high", result.todos[0].priority)
+            assertEquals(true, result.todos[0].changed)
+            assertEquals(false, result.todos[1].changed)
         }
 
         // ---- session status events ----

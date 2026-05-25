@@ -16,10 +16,12 @@ import ai.kilocode.client.session.views.question.QuestionResultView
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.session.views.TextView
 import ai.kilocode.client.session.views.ToolView
+import ai.kilocode.client.session.views.todo.TodoWriteView
 import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.PartDto
+import ai.kilocode.rpc.dto.TodoDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -428,6 +430,27 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertTrue(mv.part("tp1") is ToolView)
     }
 
+    fun `test todo tools are suppressed until todowrite completes`() {
+        val item = panelWithPrompts()
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", toolPart("read", "a1", "todoread", "call1", state = "completed"))
+        model.updateContent("a1", toolPart("write", "a1", "todowrite", "call2", state = "running"))
+
+        val mv = item.findMessage("a1")!!
+        assertEquals(emptyList<String>(), mv.partIds())
+
+        model.updateContent(
+            "a1",
+            toolPart(
+                "write", "a1", "todowrite", "call2", state = "completed",
+                todos = listOf(TodoDto("Done", "completed", "high")),
+            ),
+        )
+
+        assertEquals(listOf("write"), mv.partIds())
+        assertTrue(mv.part("write") is TodoWriteView)
+    }
+
     fun `test completed question update replaces generic tool view with question result view`() {
         val item = panelWithPrompts()
         model.upsertMessage(msg("a1", "assistant"))
@@ -542,8 +565,9 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         state: String = "running",
         input: Map<String, String> = emptyMap(),
         metadata: Map<String, String> = emptyMap(),
+        todos: List<TodoDto> = emptyList(),
     ) = PartDto(
         id = id, sessionID = "ses", messageID = mid, type = "tool", tool = tool, callID = callId, state = state,
-        input = input, metadata = metadata,
+        input = input, metadata = metadata, todos = todos,
     )
 }
