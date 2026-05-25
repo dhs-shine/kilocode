@@ -1,4 +1,5 @@
 import { HEADER_FEATURE, KILO_API_BASE } from "../api/constants.js"
+import { getAutocompleteModel } from "../autocomplete.js"
 import { buildKiloHeaders } from "../headers.js"
 
 type Auth = any
@@ -18,13 +19,14 @@ const CODESTRAL_FIM_URL = "https://codestral.mistral.ai/v1/fim/completions"
 const INCEPTION_FIM_URL = "https://api.inceptionlabs.ai/v1/fim/completions"
 
 export function resolveFimTarget(model?: string): FimTarget {
-  if (model === "mistral/codestral-2508") {
-    return { provider: "mistral", model: "codestral-2508", urls: [MISTRAL_FIM_URL, CODESTRAL_FIM_URL] }
+  const info = getAutocompleteModel(model ?? "")
+  if (info.directProvider === "mistral") {
+    return { provider: "mistral", model: info.requestModel, urls: [MISTRAL_FIM_URL, CODESTRAL_FIM_URL] }
   }
-  if (model === "inception-direct/mercury-edit-2") {
-    return { provider: "inception", model: "mercury-edit-2", urls: [INCEPTION_FIM_URL] }
+  if (info.directProvider === "inception") {
+    return { provider: "inception", model: info.requestModel, urls: [INCEPTION_FIM_URL] }
   }
-  return { provider: "kilo", model: model ?? "mistralai/codestral-2501", urls: [KILO_FIM_URL] }
+  return { provider: "kilo", model: info.requestModel, urls: [KILO_FIM_URL] }
 }
 
 async function getProxyAuth(Auth: Auth) {

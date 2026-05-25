@@ -3,12 +3,12 @@ import { resolveFimTarget } from "../src/server/fim"
 
 describe("FIM target resolution", () => {
   test("keeps gateway autocomplete models on Kilo Gateway", () => {
-    expect(resolveFimTarget("mistralai/codestral-2508")).toEqual({
+    expect(resolveFimTarget("kilo/mistralai/codestral-2508")).toEqual({
       provider: "kilo",
       model: "mistralai/codestral-2508",
       urls: ["https://api.kilo.ai/api/fim/completions"],
     })
-    expect(resolveFimTarget("inception/mercury-edit-2")).toEqual({
+    expect(resolveFimTarget("kilo/inception/mercury-edit-2")).toEqual({
       provider: "kilo",
       model: "inception/mercury-edit-2",
       urls: ["https://api.kilo.ai/api/fim/completions"],
@@ -21,10 +21,23 @@ describe("FIM target resolution", () => {
       model: "codestral-2508",
       urls: ["https://api.mistral.ai/v1/fim/completions", "https://codestral.mistral.ai/v1/fim/completions"],
     })
-    expect(resolveFimTarget("inception-direct/mercury-edit-2")).toEqual({
+    expect(resolveFimTarget("inception/mercury-edit-2")).toEqual({
       provider: "inception",
       model: "mercury-edit-2",
       urls: ["https://api.inceptionlabs.ai/v1/fim/completions"],
+    })
+  })
+
+  test("maps legacy gateway IDs to explicit Kilo Gateway targets", () => {
+    expect(resolveFimTarget("mistralai/codestral-2508")).toEqual({
+      provider: "kilo",
+      model: "mistralai/codestral-2508",
+      urls: ["https://api.kilo.ai/api/fim/completions"],
+    })
+    expect(resolveFimTarget("inception/mercury-edit")).toEqual({
+      provider: "kilo",
+      model: "inception/mercury-edit-2",
+      urls: ["https://api.kilo.ai/api/fim/completions"],
     })
   })
 })

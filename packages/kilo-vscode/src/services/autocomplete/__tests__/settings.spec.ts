@@ -34,21 +34,21 @@ describe("autocomplete settings", () => {
   it("defaults to codestral when no model is set", async () => {
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
-    expect(buildAutocompleteSettingsMessage().settings.model).toBe("mistralai/codestral-2508")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("kilo/mistralai/codestral-2508")
   })
 
   it("defaults to codestral when stored model is no longer supported", async () => {
     state.set("model", "some/removed-model")
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
-    expect(buildAutocompleteSettingsMessage().settings.model).toBe("mistralai/codestral-2508")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("kilo/mistralai/codestral-2508")
   })
 
-  it("maps legacy inception/mercury-edit to inception/mercury-edit-2", async () => {
+  it("maps legacy inception/mercury-edit to Kilo Gateway Mercury", async () => {
     state.set("model", "inception/mercury-edit")
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
-    expect(buildAutocompleteSettingsMessage().settings.model).toBe("inception/mercury-edit-2")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("kilo/inception/mercury-edit-2")
   })
 
   it("validates supported model updates", async () => {
