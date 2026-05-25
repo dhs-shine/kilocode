@@ -31,6 +31,7 @@ import ai.kilocode.client.session.views.LoginRequiredView
 import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
+import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.log.ChatLogSummary
 import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
@@ -52,7 +53,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
-import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -227,11 +227,7 @@ class SessionUi(
         sessionContent.add(header, BorderLayout.NORTH)
         sessionContent.add(scroll.component, BorderLayout.CENTER)
         root.content.add(sessionContent, BorderLayout.CENTER)
-        root.content.add(JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            add(connection)
-            add(prompt)
-        }, BorderLayout.SOUTH)
+        root.content.add(Stack.vertical().next(connection).next(prompt), BorderLayout.SOUTH)
         add(root, BorderLayout.CENTER)
     }
 

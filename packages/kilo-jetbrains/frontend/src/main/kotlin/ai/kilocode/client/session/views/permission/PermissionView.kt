@@ -12,6 +12,7 @@ import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle.View.CARD_LAYOUT_GAP
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.HAlign
+import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
 import ai.kilocode.rpc.dto.PermissionReplyDto
@@ -25,9 +26,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import com.intellij.xml.util.XmlStringUtil
 import java.awt.BorderLayout
-import java.awt.Component
 import java.awt.FlowLayout
-import javax.swing.BoxLayout
 import javax.swing.JPanel
 import javax.swing.text.html.StyleSheet
 
@@ -48,11 +47,7 @@ class PermissionView(
 
     private val card = BaseQuestionView()
 
-    private val body = JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        isOpaque = false
-        alignmentX = Component.LEFT_ALIGNMENT
-    }
+    private val body = Stack.vertical()
 
     // Track target panes for style updates
     private val panes = mutableListOf<JBHtmlPane>()
@@ -125,7 +120,6 @@ class PermissionView(
     private fun addDetailRow(action: String, target: String?, diffs: List<PermissionFileDiff>) {
         val row = JPanel(BorderLayout(CARD_LAYOUT_GAP, 0)).apply {
             isOpaque = false
-            alignmentX = Component.LEFT_ALIGNMENT
         }
 
         val actionLbl = JBLabel(action).apply {
@@ -207,7 +201,6 @@ class PermissionView(
 
         val label = JBLabel(msg).apply {
             border = JBUI.Borders.empty(UiStyle.Gap.sm(), 0, 0, 0)
-            alignmentX = Component.LEFT_ALIGNMENT
         }
         body.add(label)
     }

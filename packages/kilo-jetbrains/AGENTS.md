@@ -364,9 +364,46 @@ For common spacing lookups, prefer `JBUI.CurrentTheme` area-specific insets (e.g
 | Side separators | `JBUI.Borders.customLineTop(...)`, `customLineBottom(...)` |
 | Composed borders | `JBUI.Borders.compound(...)`, `JBUI.Borders.merge(...)` |
 | Simple `BorderLayout` panels | `JBUI.Panels.simplePanel(...)`, `BorderLayoutPanel` |
-| Simple vertical custom Swing groups | `VerticalLayout` |
+| One-dimensional multi-component rows/columns | `ai.kilocode.client.ui.layout.Stack` — see section below |
 | Fluent platform panels | `JBPanel.withBorder(...)`, `.andTransparent()`, `.andOpaque()`, `.withBackground(...)` |
 | Single-component alignment wrapper | `ai.kilocode.client.ui.layout.Align` — see section below |
+
+### Stack — One-Dimensional Multi-Component Layout
+
+Use `Stack` (`ai.kilocode.client.ui.layout.Stack`) when multiple Swing components should be laid out as one vertical column or one horizontal row without visual chrome. It is a transparent, no-border, no-color `JPanel(null)` that lays out visible children in insertion order.
+
+**Behavior:**
+
+| Mode | Layout behavior | Size contribution |
+|---|---|---|
+| `Stack.vertical(gap)` | Children are placed top-to-bottom; each child fills the available container width; each child keeps its bounded preferred height | Width is max child width; height is summed child heights plus gaps |
+| `Stack.horizontal(gap)` | Children are placed left-to-right; each child fills the available container height; each child keeps its bounded preferred width | Width is summed child widths plus gaps; height is max child height |
+
+"Bounded preferred" means the child's preferred size on the stack axis is coerced into the effective `[min, max]` range. On the cross axis, layout tracks the container size even if that ignores an individual child's preferred/minimum/maximum size.
+
+**Factories and fluent additions:**
+
+```kotlin
+Stack.vertical()
+    .next(header)
+    .next(body)
+
+Stack.horizontal(gap = UiStyle.Gap.md())
+    .next(icon)
+    .next(label)
+
+Stack.vertical(gap = UiStyle.Gap.sm())
+    .next(summary)
+    .gap(UiStyle.Gap.lg())
+    .next(details)
+```
+
+**Rules:**
+
+- Prefer `Stack.vertical(...)` or `Stack.horizontal(...)` over one-off `JPanel` + `BoxLayout` or simple single-line `FlowLayout` rows/columns.
+- Use the constructor `gap` for the normal spacing between adjacent visible children. Use `gap(size)` for an explicit one-off gap before the next visible child.
+- Use `Stack` for simple retained Swing rows/columns where children should track the cross-axis size. Use `Align` for positioning one child inside available space.
+- Do not use `Stack` for padding, borders, colors, wrapping rows, flexible glue/spacers, or transcript components that need width-aware HTML reflow. Use `JBUI.Borders.empty(...)`, `UiStyle.Gap`, purpose-built layouts, or `SessionLayout` for those concerns.
 
 ### Align — Single-Component Alignment Wrapper
 

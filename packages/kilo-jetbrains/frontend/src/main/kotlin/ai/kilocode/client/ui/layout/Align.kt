@@ -20,6 +20,10 @@ enum class VAlign { TRACK, FIT, TOP, CENTER, BOTTOM }
  * child uses its bounded preferred size (coerced into [min, max]) and is placed at the
  * corresponding edge or centered. Shrinks to available space when necessary.
  *
+ * During layout, the child is first sized to the available container space before
+ * preferred size is read. This mirrors Swing layouts such as [java.awt.BorderLayout]
+ * and lets wrapping components report a preferred height for the final width.
+ *
  * Wrapper min/preferred/max sizes are computed by combining the per-axis child contribution
  * (zero for TRACK axes) with the panel insets.
  *
@@ -53,8 +57,13 @@ class Align(
         val availW = maxOf(0, width - ins.left - ins.right)
         val availH = maxOf(0, height - ins.top - ins.bottom)
 
-        val (w, cx) = placeAxis(h, availW, child.minimumSize.width, child.preferredSize.width, child.maximumSize.width)
-        val (ht, cy) = placeAxis(v, availH, child.minimumSize.height, child.preferredSize.height, child.maximumSize.height)
+        val min = child.minimumSize
+        val max = child.maximumSize
+        child.setSize(probe(h, availW, min.width, max.width), probe(v, availH, min.height, max.height))
+        val pref = child.preferredSize
+
+        val (w, cx) = placeAxis(h, availW, min.width, pref.width, max.width)
+        val (ht, cy) = placeAxis(v, availH, min.height, pref.height, max.height)
 
         child.setBounds(ins.left + cx, ins.top + cy, w, ht)
     }
@@ -76,8 +85,19 @@ class Align(
         if (componentCount == 0) return super.getPreferredSize()
         val child = getComponent(0)
         val ins = insets
-        val cw = if (h == HAlign.TRACK) 0 else bounded(child.preferredSize.width, child.minimumSize.width, child.maximumSize.width)
-        val ch = if (v == VAlign.TRACK) 0 else bounded(child.preferredSize.height, child.minimumSize.height, child.maximumSize.height)
+        val min = child.minimumSize
+        val max = child.maximumSize
+        val availW = maxOf(0, width - ins.left - ins.right)
+        val availH = maxOf(0, height - ins.top - ins.bottom)
+        if (availW > 0 || availH > 0) {
+            child.setSize(
+                if (availW > 0) probe(h, availW, min.width, max.width) else child.width,
+                if (availH > 0) probe(v, availH, min.height, max.height) else child.height,
+            )
+        }
+        val pref = child.preferredSize
+        val cw = if (h == HAlign.TRACK) 0 else bounded(pref.width, min.width, max.width)
+        val ch = if (v == VAlign.TRACK) 0 else bounded(pref.height, min.height, max.height)
         return Dimension(cw + ins.left + ins.right, ch + ins.top + ins.bottom)
     }
 
@@ -127,6 +147,11 @@ private fun placeAxis(mode: Any, avail: Int, min: Int, pref: Int, max: Int): Pai
 }
 
 private fun bounded(value: Int, min: Int, max: Int) = value.coerceIn(min, maxOf(min, max))
+
+private fun probe(mode: Any, avail: Int, min: Int, max: Int): Int {
+    if (mode == HAlign.FIT || mode == VAlign.FIT) return minOf(avail, maxOf(min, max))
+    return avail
+}
 
 // ---------------------------------------------------------------------------
 // Factory extension
