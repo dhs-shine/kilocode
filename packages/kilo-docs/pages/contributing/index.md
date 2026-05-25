@@ -103,6 +103,8 @@ Key reminders:
 - Manually verify extension behavior with `bun run extension`.
 - For manual documentation validation, preview the affected page and check changed links and rendered content.
 
+Before marking a PR ready for review, include testing evidence in the PR template. See [Testing Evidence for Pull Requests](/docs/contributing/development-environment#testing-evidence-for-pull-requests) for the full standard, including docs/config-only verification and blocked command fallback requirements.
+
 ### Creating a Pull Request
 
 1. Push your changes to your fork:
@@ -120,7 +122,9 @@ Key reminders:
 5. Fill out the PR template with:
    - A clear description of the changes
    - Any related issues
-   - Testing steps
+   - Testing evidence, including commands run and results
+   - Manual/local verification performed
+   - Any command blocker plus substitute verification
    - Screenshots (if applicable)
 
 ## Contributing to the Kilo Marketplace
