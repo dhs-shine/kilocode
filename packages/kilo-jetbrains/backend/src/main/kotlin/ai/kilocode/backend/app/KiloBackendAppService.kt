@@ -34,7 +34,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -68,6 +70,7 @@ class KiloBackendAppService private constructor(
   private val cs: CoroutineScope,
   private val server: CliServer,
   private val log: KiloLog,
+  private val loadTimeoutMs: Long,
 ) : Disposable {
 
     /** IntelliJ service injection entry point. */
@@ -75,24 +78,27 @@ class KiloBackendAppService private constructor(
         cs,
         KiloBackendCliManager(),
       KiloLog.create(KiloBackendAppService::class.java),
+        APP_LOAD_TIMEOUT_MS,
     )
 
     companion object {
         private const val MAX_RETRIES = 3
         private const val RETRY_DELAY_MS = 1000L
+        private const val APP_LOAD_TIMEOUT_MS = 30_000L
 
         /** Test factory — no IntelliJ deps needed. */
         internal fun create(
           cs: CoroutineScope,
           server: CliServer,
           log: KiloLog,
-        ) = KiloBackendAppService(cs, server, log)
+          loadTimeoutMs: Long = APP_LOAD_TIMEOUT_MS,
+        ) = KiloBackendAppService(cs, server, log, loadTimeoutMs)
     }
 
     private val mutex = Mutex()
     private val connection = KiloConnectionService(cs, server, onReconnect = {
         cs.launch { reconnect() }
-    }, log = log)
+    }, appLoadTimeoutMs = loadTimeoutMs, log = log)
 
     private var watcher: Job? = null
     private var eventWatcher: Job? = null
@@ -250,7 +256,8 @@ class KiloBackendAppService private constructor(
                 var warns: List<ConfigWarning> = emptyList()
 
                 try {
-                    coroutineScope {
+                    withTimeout(loadTimeoutMs) {
+                        coroutineScope {
                         launch {
                             val result = fetchProfile()
                             val status = when {
@@ -291,10 +298,10 @@ class KiloBackendAppService private constructor(
                                 throw LoadFailure(err)
                             }
                         }
-                        launch {
-                            warns = fetchWarnings()
                         }
                     }
+
+                    warns = fetchWarnings()
 
                     ensureActive()
                     profile = prof
@@ -313,6 +320,16 @@ class KiloBackendAppService private constructor(
                     )
                     log.info("Application started — config, profile, notifications loaded")
                     startWatchingGlobalSseEvents()
+                } catch (e: TimeoutCancellationException) {
+                    val err = LoadError(
+                        resource = "app",
+                        detail = "Timed out loading app data after ${loadTimeoutMs}ms",
+                    )
+                    log.warn("Application start timed out after ${loadTimeoutMs}ms")
+                    setAppError(
+                        message = "Failed to load required data",
+                        errors = errors.toList() + err,
+                    )
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -336,7 +353,7 @@ class KiloBackendAppService private constructor(
      * as failures.
      */
     private suspend fun fetchProfile(): FetchResult<KiloProfile200Response?> {
-        val client = connection.api
+        val client = connection.appLoadApi
             ?: return FetchResult.ok(null)
         return try {
             val response = client.kiloProfile()
@@ -364,7 +381,7 @@ class KiloBackendAppService private constructor(
     }
 
     private suspend fun fetchConfig(): FetchResult<Config> {
-        val client = connection.api
+        val client = connection.appLoadApi
             ?: return FetchResult.fail("config", detail = "Not connected")
         return try {
             FetchResult.ok(client.globalConfigGet())
@@ -376,7 +393,7 @@ class KiloBackendAppService private constructor(
     }
 
     private suspend fun fetchNotifications(): FetchResult<List<KiloNotifications200ResponseInner>> {
-        val client = connection.api
+        val client = connection.appLoadApi
             ?: return FetchResult.fail("notifications", detail = "Not connected")
         return try {
             FetchResult.ok(client.kiloNotifications())
@@ -388,7 +405,7 @@ class KiloBackendAppService private constructor(
     }
 
     private suspend fun fetchWarnings(): List<ConfigWarning> {
-        val client = connection.api ?: return emptyList()
+        val client = connection.appLoadApi ?: return emptyList()
         return try {
             client.configWarnings().map(::warning)
         } catch (e: Exception) {
