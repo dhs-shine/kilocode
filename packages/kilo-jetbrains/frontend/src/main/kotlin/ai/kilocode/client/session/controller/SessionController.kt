@@ -26,6 +26,8 @@ import ai.kilocode.rpc.dto.PartDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
+import ai.kilocode.rpc.dto.MessageDto
+import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
 import ai.kilocode.rpc.dto.ProfileDto
 import ai.kilocode.rpc.dto.ProfileStatusDto
@@ -84,6 +86,7 @@ class SessionController(
 
     private data class OrganizationTarget(val org: String?)
     private data class Followup(val dir: String, val time: Long)
+    private data class Pref(val agent: String?, val model: String?, val variants: List<String>, val variant: String?, val reset: Boolean)
 
     companion object {
         private val LOG = KiloLog.create(SessionController::class.java)
@@ -131,6 +134,10 @@ class SessionController(
     private var target: OrganizationTarget? = null
     private var loginRetry: PromptDto? = null
     private var followup: Followup? = null
+    private var agentTime: Double? = null
+    private var prefModel: String? = null
+    private var prefAgent: String? = null
+    private var modelTime: Double? = null
 
     val ready: Boolean get() = model.isReady()
     internal val blank: Boolean get() = ref == null && model.isEmpty() && !model.showSession
@@ -276,6 +283,10 @@ class SessionController(
     fun selectAgent(name: String) {
         assertEdt()
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config agent=$name" }
+        agentTime = null
+        modelTime = null
+        prefModel = null
+        prefAgent = null
         cs.launch {
             try {
                 sessions.updateConfig(directory, ConfigUpdateDto(agent = name))
@@ -295,6 +306,9 @@ class SessionController(
         val agent = model.agent ?: return
         val key = "$provider/$id"
         if (item(key) == null && model.workspace.providers != null) return
+        modelTime = null
+        prefModel = null
+        prefAgent = null
         app.selectModel(agent, provider, id)
         selectResolvedModel(key)
         model.modelOverride = model.defaultModel != model.model
@@ -359,11 +373,10 @@ class SessionController(
         assertEdt()
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=question rid=$requestId answers=${answers.answers.size}" }
         val current = model.state
-        val mode = if (current is SessionState.AwaitingQuestion && current.question.id == requestId) {
-            selectedMode(current.question, options)
-        } else null
-        if (!mode.isNullOrBlank() && mode != model.agent) selectAgent(mode)
-        followup = if (answers.answers.firstOrNull()?.firstOrNull()?.trim() == FOLLOWUP_NEW_SESSION) {
+        followup = if (current is SessionState.AwaitingQuestion
+            && current.question.id == requestId
+            && options.any { labels -> labels.any { it.trim() == FOLLOWUP_NEW_SESSION } }
+        ) {
             Followup(directory, System.currentTimeMillis())
         } else null
         cs.launch {
@@ -504,6 +517,7 @@ class SessionController(
                     if (sid != id) return@runEdt
                     updateModel {
                         this@SessionController.model.loadHistory(items)
+                        syncHistoryAgent(items)
                         if (session != null) this@SessionController.model.setSession(session)
                     }
                 }
@@ -551,6 +565,7 @@ class SessionController(
                     setRecentSessionsState(RecentsState.Idle)
                     updateModel {
                         this@SessionController.model.loadHistory(items)
+                        syncHistoryAgent(items)
                         this@SessionController.model.setSession(session)
                     }
                 }
@@ -716,6 +731,7 @@ class SessionController(
         when (event) {
             is ChatEventDto.MessageUpdated -> {
                 val added = model.upsertMessage(event.info)
+                syncMessagePrefs(event.info)
                 if (added) showSession()
             }
 
@@ -916,10 +932,11 @@ class SessionController(
         val selected = selectedModel(agent, auto)
         model.defaultModel = auto
         selectResolvedModel(selected)
-        model.modelOverride = selected != auto
+        model.modelOverride = messageSelection(agent) == null && selected != auto
     }
 
     private fun selectedModel(agent: String, auto: String?): String? {
+        messageSelection(agent)?.let { return it.key }
         val saved = app.models.value.model[agent]
         val cfg = model.app.config
         if (cfg != null) return resolveModelSelection(
@@ -965,21 +982,15 @@ class SessionController(
 
     private fun item(key: String): ModelItem? = model.models.firstOrNull { it.key == key }
 
+    private fun messageSelection(agent: String): ModelSelectionDto? {
+        if (prefAgent != null && prefAgent != agent) return null
+        return valid(model.workspace.providers, prefModel?.let(::selection))
+    }
+
     private fun handle(events: List<ChatEventDto>) {
         updateModel {
             for (event in events) handle(event)
         }
-    }
-
-    private fun selectedMode(question: Question, options: List<List<String>>): String? {
-        for ((idx, labels) in options.withIndex()) {
-            val item = question.items.getOrNull(idx) ?: continue
-            for (label in labels) {
-                val mode = item.options.firstOrNull { it.label == label }?.mode
-                if (!mode.isNullOrBlank()) return mode
-            }
-        }
-        return null
     }
 
     private fun adoptFollowup(session: SessionDto) {
@@ -993,6 +1004,61 @@ class SessionController(
         followup = null
         open(SessionRef.Local(session))
     }
+
+    private fun syncHistoryAgent(items: List<MessageWithPartsDto>) {
+        val before = model.prefs()
+        val agent = items
+            .map { it.info }
+            .filter { messageAgent(it) != null }
+            .maxByOrNull { it.time.created }
+        val msg = items
+            .map { it.info }
+            .filter { it.role == "user" && messageModel(it) != null }
+            .maxByOrNull { it.time.created }
+        agentTime = agent?.time?.created
+        modelTime = msg?.time?.created
+        messageAgent(agent)?.let { model.agent = it }
+        prefModel = messageModel(msg)
+        prefAgent = messageAgent(msg) ?: model.agent
+        syncModelSelection()
+        if (model.prefs() != before) fire(SessionControllerEvent.WorkspaceReady)
+    }
+
+    private fun syncMessagePrefs(info: MessageDto) {
+        val before = model.prefs()
+        val agent = messageAgent(info)
+        val prior = agentTime
+        if (agent != null && (info.time.created >= (prior ?: Double.NEGATIVE_INFINITY))) {
+            agentTime = info.time.created
+            model.agent = agent
+        }
+        val key = messageModel(info)
+        val last = modelTime
+        if (info.role == "user" && key != null && (info.time.created >= (last ?: Double.NEGATIVE_INFINITY))) {
+            modelTime = info.time.created
+            prefModel = key
+            prefAgent = agent ?: model.agent
+        }
+        syncModelSelection()
+        if (model.prefs() != before) fire(SessionControllerEvent.WorkspaceReady)
+    }
+
+    private fun messageAgent(info: MessageDto?): String? {
+        val agent = info?.agent?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (model.agents.isNotEmpty() && model.agents.none { it.name == agent }) return null
+        return agent
+    }
+
+    private fun messageModel(info: MessageDto?): String? {
+        val msg = info ?: return null
+        val provider = msg.providerID?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val id = msg.modelID?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val key = "$provider/$id"
+        if (item(key) == null && model.workspace.providers != null) return null
+        return key
+    }
+
+    private fun SessionModel.prefs(): Pref = Pref(agent, model, variants, variant, modelOverride)
 
     private fun updateModel(block: () -> Unit) {
         assertEdt()
