@@ -3,7 +3,6 @@ package ai.kilocode.client.session.views.base
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.client.ui.layout.Align
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.openapi.application.ApplicationManager
@@ -179,12 +178,10 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
                 BaseQuestionView.Action("a", "Cancel", primary = false) {},
                 BaseQuestionView.Action("b", "OK", primary = true) {},
             ))
-            val btns = panel.actionButtonsForTest()
+            val btns = actionButtons(panel)
             assertEquals(2, btns.size)
-            assertNotNull(btns["a"])
-            assertNotNull(btns["b"])
-            assertEquals("Cancel", btns["a"]!!.text)
-            assertEquals("OK", btns["b"]!!.text)
+            assertNotNull(btns["Cancel"])
+            assertNotNull(btns["OK"])
         }
     }
 
@@ -192,7 +189,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
         edt {
             val panel = BaseQuestionView()
             panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
-            val btn = panel.actionButtonsForTest()["ok"]!!
+            val btn = actionButton(panel, "OK")
             assertEquals(true, btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY))
         }
     }
@@ -201,7 +198,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
         edt {
             val panel = BaseQuestionView()
             panel.setActions(listOf(BaseQuestionView.Action("cancel", "Cancel", primary = false) {}))
-            val btn = panel.actionButtonsForTest()["cancel"]!!
+            val btn = actionButton(panel, "Cancel")
             val key = btn.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY)
             assertTrue("Non-primary should not have default style key", key == null || key == false)
         }
@@ -212,7 +209,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             var clicked = false
             val panel = BaseQuestionView()
             panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) { clicked = true }))
-            panel.actionButtonsForTest()["ok"]!!.doClick()
+            actionButton(panel, "OK").doClick()
             assertTrue("handler should have been invoked", clicked)
         }
     }
@@ -222,9 +219,9 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             val panel = BaseQuestionView()
             panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true, enabled = true) {}))
             panel.setActionEnabled("ok", false)
-            assertFalse(panel.actionButtonsForTest()["ok"]!!.isEnabled)
+            assertFalse(actionButton(panel, "OK").isEnabled)
             panel.setActionEnabled("ok", true)
-            assertTrue(panel.actionButtonsForTest()["ok"]!!.isEnabled)
+            assertTrue(actionButton(panel, "OK").isEnabled)
         }
     }
 
@@ -233,7 +230,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             val panel = BaseQuestionView()
             panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
             panel.setActions(emptyList())
-            assertTrue("actionButtonsForTest should be empty", panel.actionButtonsForTest().isEmpty())
+            assertTrue("action buttons should be removed", actionButtons(panel).isEmpty())
             assertNull("footer should be removed when empty", region(panel, BorderLayout.SOUTH))
         }
     }
@@ -245,9 +242,8 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
                 BaseQuestionView.Action("a", "A", primary = false) {},
                 BaseQuestionView.Action("b", "B", primary = true) {},
             ))
-            val btns = panel.actionButtonsForTest()
-            assertEquals(SessionUiStyle.View.surface(), btns["a"]!!.background)
-            assertEquals(SessionUiStyle.View.surface(), btns["b"]!!.background)
+            assertEquals(SessionUiStyle.View.surface(), actionButton(panel, "A").background)
+            assertEquals(SessionUiStyle.View.surface(), actionButton(panel, "B").background)
         }
     }
 
@@ -261,8 +257,10 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             val layout = header.layout as BorderLayout
             val west = layout.getLayoutComponent(BorderLayout.WEST)
             val center = layout.getLayoutComponent(BorderLayout.CENTER) as Container
-            assertTrue("icon should be top-aligned", west is Align)
-            assertTrue("icon wrapper should contain a JBLabel", findAll<JBLabel>(west as Container).isNotEmpty())
+            assertTrue("icon should be the direct west component", west is JBLabel)
+            val icon = west as JBLabel
+            assertEquals("icon should be horizontally centered", JBLabel.CENTER, icon.horizontalAlignment)
+            assertEquals("icon should be vertically centered", JBLabel.CENTER, icon.verticalAlignment)
             assertTrue("center should contain header and description text", findAll<JBTextArea>(center).size >= 2)
         }
     }
@@ -280,10 +278,21 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
         edt {
             val panel = BaseQuestionView()
             panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
-            val btn = panel.actionButtonsForTest()["ok"]!!
+            val btn = actionButton(panel, "OK")
             val footer = region(panel, BorderLayout.SOUTH) as JPanel
             val row = (footer.layout as BorderLayout).getLayoutComponent(BorderLayout.EAST) as JPanel
             assertNotNull("button should be in footer east row", find(row, btn))
+        }
+    }
+
+    fun `test action footer has top gap matching panel vertical padding`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
+
+            val footer = region(panel, BorderLayout.SOUTH) as JPanel
+            val ins = footer.border.getBorderInsets(footer)
+            assertEquals(UiStyle.Gap.lg(), ins.top)
         }
     }
 
@@ -363,9 +372,12 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             panel.setHeader("Title", "Hint")
             val style = SessionEditorStyle.current()
             panel.applyStyle(style)
+            val areas = findAll<JBTextArea>(panel)
+            val header = areas.first { it.text == "Title" }
+            val desc = areas.first { it.text == "Hint" }
 
-            assertEquals("headerText should use heading font", UiStyle.Fonts.heading(), panel.headerFont())
-            assertEquals("descriptionText should use hintFont", style.hintFont, panel.descriptionFont())
+            assertEquals("headerText should use heading font", UiStyle.Fonts.heading(), header.font)
+            assertEquals("descriptionText should use hintFont", style.hintFont, desc.font)
         }
     }
 
@@ -375,9 +387,12 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             panel.setHeader("Title", "Hint")
             val style = SessionEditorStyle.create(family = "Courier New", size = 20)
             panel.applyStyle(style)
+            val areas = findAll<JBTextArea>(panel)
+            val header = areas.first { it.text == "Title" }
+            val desc = areas.first { it.text == "Hint" }
 
-            assertFalse("headerText should not use editor font family", panel.headerFont().name == "Courier New")
-            assertFalse("descriptionText should not use editor font family", panel.descriptionFont().name == "Courier New")
+            assertFalse("headerText should not use editor font family", header.font.name == "Courier New")
+            assertFalse("descriptionText should not use editor font family", desc.font.name == "Courier New")
         }
     }
 
@@ -430,6 +445,10 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
         }
         return null
     }
+
+    private fun actionButton(panel: BaseQuestionView, text: String): JButton = actionButtons(panel)[text]!!
+
+    private fun actionButtons(panel: BaseQuestionView): Map<String, JButton> = findAll<JButton>(panel).associateBy { it.text }
 
     private inline fun <reified T> findAll(root: Container): List<T> = findAllCls(root, T::class.java)
 

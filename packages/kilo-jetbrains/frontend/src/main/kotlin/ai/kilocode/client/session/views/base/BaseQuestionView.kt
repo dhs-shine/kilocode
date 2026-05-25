@@ -5,10 +5,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.Stack
-import ai.kilocode.client.ui.layout.VAlign
-import ai.kilocode.client.ui.layout.align
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
@@ -83,11 +80,10 @@ class BaseQuestionView : RoundedContentPanel(
     }
 
     private val icon = JBLabel().apply {
-        border = JBUI.Borders.emptyRight(UiStyle.Gap.sm())
+        horizontalAlignment = JBLabel.CENTER
+        verticalAlignment = JBLabel.CENTER
         isVisible = false
     }
-
-    private val iconWrap = icon.align(HAlign.LEFT, VAlign.TOP)
 
     private val headerText: JBTextArea = makeText("", UiStyle.Colors.fg(), bold = true)
     private val descriptionText: JBTextArea = makeText("", UiStyle.Colors.weak(), bold = false)
@@ -106,6 +102,7 @@ class BaseQuestionView : RoundedContentPanel(
 
     private val footer = JPanel(BorderLayout()).apply {
         isOpaque = false
+        border = JBUI.Borders.emptyTop(UiStyle.Gap.lg())
     }
 
     init {
@@ -159,9 +156,9 @@ class BaseQuestionView : RoundedContentPanel(
         this.icon.icon = icon
         this.icon.toolTipText = tooltip
         this.icon.isVisible = icon != null
-        val attached = this.iconWrap.parent === header
-        if (icon != null && !attached) header.add(iconWrap, BorderLayout.WEST)
-        if (icon == null && attached) header.remove(iconWrap)
+        val attached = this.icon.parent === header
+        if (icon != null && !attached) header.add(this.icon, BorderLayout.WEST)
+        if (icon == null && attached) header.remove(this.icon)
         this.icon.revalidate()
         this.icon.repaint()
         header.revalidate()
@@ -254,6 +251,10 @@ class BaseQuestionView : RoundedContentPanel(
         btn.text = text
     }
 
+    /** Returns the retained action component for focus management, or this card when absent. */
+    @RequiresEdt
+    fun preferredActionComponent(id: String): JComponent = actionButtons[id] ?: this
+
     // ---- SessionEditorStyleTarget ----
 
     @RequiresEdt
@@ -267,17 +268,6 @@ class BaseQuestionView : RoundedContentPanel(
     override fun contentColor(): Color = SessionUiStyle.View.surface()
 
     override fun outlineColor(): Color = SessionUiStyle.View.line()
-
-    // ---- internal test helpers ----
-
-    /** Returns the font currently applied to the header text area. For tests only. */
-    internal fun headerFont() = headerText.font
-
-    /** Returns the font currently applied to the description text area. For tests only. */
-    internal fun descriptionFont() = descriptionText.font
-
-    /** Returns all action buttons as generic JButton, keyed by their action id. For tests only. */
-    internal fun actionButtonsForTest(): Map<String, JButton> = actionButtons.toMap()
 
     // ---- private helpers ----
 

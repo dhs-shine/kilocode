@@ -167,7 +167,7 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
     }
 
     @RequiresEdt
-    fun preferredFocusComponent(): JComponent = question.actionButtonsForTest()[ACTION_MIGRATE] ?: question
+    fun preferredFocusComponent(): JComponent = question.preferredActionComponent(ACTION_MIGRATE)
 
     internal fun keepLegacySettingsFileSelectedForTest() = keepBox.isSelected
 

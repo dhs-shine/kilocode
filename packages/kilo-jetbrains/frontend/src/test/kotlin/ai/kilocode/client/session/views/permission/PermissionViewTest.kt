@@ -7,6 +7,7 @@ import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
@@ -475,7 +476,7 @@ class PermissionViewTest : BasePlatformTestCase() {
         val header = view.headerFontForTest()
         assertFalse("Permission header should not use editor font family", header.name == "Courier New")
         assertTrue("Permission header should be bold", header.isBold)
-        assertEquals("Permission header should equal headerFont", style.headerFont, header)
+        assertEquals("Permission header should equal heading font", UiStyle.Fonts.heading(), header)
     }
 
     fun `test code label uses code background`() {

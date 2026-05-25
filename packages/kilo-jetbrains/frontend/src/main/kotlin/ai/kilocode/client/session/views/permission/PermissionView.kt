@@ -22,11 +22,14 @@ import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBHtmlPaneConfiguration
 import com.intellij.ui.components.JBHtmlPaneStyleConfiguration
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import com.intellij.xml.util.XmlStringUtil
 import java.awt.BorderLayout
+import java.awt.Container
 import java.awt.FlowLayout
+import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.text.html.StyleSheet
 
@@ -242,9 +245,27 @@ class PermissionView(
     }
 
     // Test helpers
-    internal fun runButtonForTest() = card.actionButtonsForTest()[ID_RUN]!!
-    internal fun denyButtonForTest() = card.actionButtonsForTest()[ID_DENY]!!
+    internal fun runButtonForTest() = buttons(card).first { it.text == KiloBundle.message("session.permission.run") }
+    internal fun denyButtonForTest() = buttons(card).first { it.text == KiloBundle.message("session.permission.deny") }
     internal fun codeLabelsForTest() = panes.toList()
     internal fun diffViewsForTest() = diffViews.toList()
-    internal fun headerFontForTest() = card.headerFont()
+    internal fun headerFontForTest() = textAreas(card).first { it.font.isBold }.font
+
+    private fun buttons(root: Container): List<JButton> {
+        val result = mutableListOf<JButton>()
+        if (root is JButton) result.add(root)
+        for (child in root.components) {
+            if (child is Container) result.addAll(buttons(child))
+        }
+        return result
+    }
+
+    private fun textAreas(root: Container): List<JBTextArea> {
+        val result = mutableListOf<JBTextArea>()
+        if (root is JBTextArea) result.add(root)
+        for (child in root.components) {
+            if (child is Container) result.addAll(textAreas(child))
+        }
+        return result
+    }
 }
