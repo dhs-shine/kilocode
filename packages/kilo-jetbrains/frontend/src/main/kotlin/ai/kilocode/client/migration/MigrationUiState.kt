@@ -54,7 +54,6 @@ data class MigrationItemUiProgress(
 
 data class SessionMigrationSummary(
     val imported: List<LegacyMigrationResultItemDto> = emptyList(),
-    val skipped: List<LegacyMigrationResultItemDto> = emptyList(),
     val errored: List<LegacyMigrationResultItemDto> = emptyList(),
 )
 

@@ -38,7 +38,6 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
     // ------ Callbacks ------
     var onSkip: (() -> Unit)? = null
     var onStart: ((MigrationUiSelections) -> Unit)? = null
-    var onForce: ((List<String>) -> Unit)? = null
     var onDone: (() -> Unit)? = null
     var onContinueFromError: (() -> Unit)? = null
 
@@ -102,8 +101,6 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
         )
         question.setActionLeft(keepBox)
 
-        sessionSummary.onForceReimport = { ids -> onForce?.invoke(ids) }
-
         add(question, BorderLayout.CENTER)
         updateButtons(MigrationUiPhase.selecting, running = false)
     }
@@ -114,8 +111,7 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
     fun update(state: MigrationUiState.Needed) {
         val det = state.detection
         // Detection and default selections are set once on first update and are stable for the
-        // lifetime of a single wizard session. The service never re-detects mid-session;
-        // force re-import uses existing session IDs without changing detection data.
+        // lifetime of a single wizard session. The service never re-detects mid-session.
         if (detection == null || detection != det) {
             detection = det
             selections = MigrationSelectionBuilder.defaults(det)

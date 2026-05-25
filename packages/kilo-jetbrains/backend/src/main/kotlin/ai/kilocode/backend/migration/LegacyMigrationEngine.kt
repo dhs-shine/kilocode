@@ -6,6 +6,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import ai.kilocode.log.KiloLog
 import ai.kilocode.backend.migration.LegacyMigrationConverters.convertAutoApproval
 import ai.kilocode.backend.migration.LegacyMigrationConverters.convertCustomMode
 import ai.kilocode.backend.migration.LegacyMigrationConverters.convertCustomModePermissions
@@ -34,6 +35,10 @@ class LegacyMigrationEngine(
     private val store: LegacyMigrationStore,
     private val backend: LegacyMigrationBackend,
 ) {
+
+    companion object {
+        private val LOG = KiloLog.create(LegacyMigrationEngine::class.java)
+    }
 
     // -----------------------------------------------------------------------
     // Status
@@ -208,23 +213,21 @@ class LegacyMigrationEngine(
         }
 
         // Sessions
+        var sessionProgressEmitted = false
         for ((idx, sel) in selections.sessions.withIndex()) {
-            sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.migrating))
             val info = sessions.find { it.id == sel.id }
             val historyItem = historyItems.find { it.id == sel.id }
             val conversationRaw = store.taskConversationRaw(sel.id)
 
             val sessionId = LegacySessionIds.createSessionId(sel.id)
 
-            // Check if already exists (unless force)
-            if (!sel.force && backend.sessionExists(sessionId)) {
-                val msg = "Session already exists, skipped"
-                val progress = LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.skipped)
-                sink.session(progress)
-                results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.success, msg))
-                sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.success, msg))
+            if (backend.sessionExists(sessionId)) {
+                LOG.info("Migration session duplicate skipped legacy=${sel.id} session=$sessionId title=${info?.title}")
                 continue
             }
+
+            sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.migrating))
+            sessionProgressEmitted = true
 
             if (conversationRaw == null) {
                 val msg = "Conversation file not found"
@@ -256,17 +259,9 @@ class LegacyMigrationEngine(
                 null
             } ?: continue
 
-            val sessionPayload = if (sel.force) {
-                buildJsonObject {
-                    parsed.session.entries.forEach { (k, v) -> put(k, v) }
-                    put("projectID", projectId)
-                    put("force", true)
-                }
-            } else {
-                buildJsonObject {
-                    parsed.session.entries.forEach { (k, v) -> put(k, v) }
-                    put("projectID", projectId)
-                }
+            val sessionPayload = buildJsonObject {
+                parsed.session.entries.forEach { (k, v) -> put(k, v) }
+                put("projectID", projectId)
             }
 
             val importResult = runCatching { backend.importSession(sessionPayload) }.getOrElse { e ->
@@ -278,10 +273,7 @@ class LegacyMigrationEngine(
             } ?: continue
 
             if (importResult.skipped) {
-                val msg = "Session already exists, skipped"
-                sink.session(LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.skipped))
-                results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.success, msg))
-                sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.success, msg))
+                LOG.info("Migration session import duplicate skipped legacy=${sel.id} session=${importResult.id}")
                 continue
             }
 
@@ -298,7 +290,7 @@ class LegacyMigrationEngine(
         }
 
         // Summary progress for sessions
-        if (selections.sessions.isNotEmpty()) {
+        if (sessionProgressEmitted) {
             val last = sessions.find { it.id == selections.sessions.last().id }
             sink.session(LegacyMigrationSessionProgress(last, selections.sessions.size, selections.sessions.size, MigrationSessionPhase.summary))
         }

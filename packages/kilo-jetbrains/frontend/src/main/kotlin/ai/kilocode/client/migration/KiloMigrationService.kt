@@ -36,7 +36,6 @@ interface MigrationUiController {
     val state: StateFlow<MigrationUiState>
     fun check()
     fun start(selections: MigrationUiSelections)
-    fun force(ids: List<String>)
     fun skip()
     fun finish()
 }
@@ -139,49 +138,6 @@ class KiloMigrationService internal constructor(
     }
 
     /**
-     * Force re-import selected sessions (skipped sessions).
-     */
-    override fun force(ids: List<String>) {
-        val current = _state.value as? MigrationUiState.Needed ?: return
-        if (!migrating.compareAndSet(false, true)) {
-            LOG.info("Migration wizard: force re-import ignored because migration is already running")
-            return
-        }
-        LOG.info("Migration wizard: user forced session re-import sessions=${ids.size} ids=${ids.joinToString(",")}")
-
-        val dto = MigrationSelectionBuilder.forceSessionsDto(ids)
-        val initialProgress = ids.map {
-            MigrationItemUiProgress(it, MigrationItemCategoryDto.session, MigrationItemProgressStatusDto.migrating)
-        }
-
-        // Keep non-session results, reset session progress
-        val nonSession = current.progress.filter { it.category != MigrationItemCategoryDto.session }
-        _state.value = current.copy(
-            phase = MigrationUiPhase.migrating,
-            running = true,
-            progress = nonSession + initialProgress,
-            sessionProgress = null,
-            sessionSummary = SessionMigrationSummary(),
-        )
-
-        val job = cs.launch {
-            try {
-                val flow = try {
-                    call { migrate(dto) }
-                } catch (e: Exception) {
-                    LOG.warn("force migration start failed", e)
-                    finishWithError(e.message ?: "Migration failed")
-                    return@launch
-                }
-                flow.collect { event -> handleEvent(event) }
-            } finally {
-                migrating.set(false)
-            }
-        }
-        migrateJob.set(job)
-    }
-
-    /**
      * Skip migration — marks status and hides for all observers.
      */
     override fun skip() {
@@ -250,15 +206,6 @@ class KiloMigrationService internal constructor(
                         )
                         current.sessionSummary.copy(imported = current.sessionSummary.imported + item)
                     }
-                    MigrationSessionPhaseDto.skipped -> {
-                        val item = LegacyMigrationResultItemDto(
-                            item = sp.session?.id ?: "",
-                            category = ai.kilocode.rpc.dto.MigrationItemCategoryDto.session,
-                            status = MigrationItemStatusDto.success,
-                            message = "skipped",
-                        )
-                        current.sessionSummary.copy(skipped = current.sessionSummary.skipped + item)
-                    }
                     MigrationSessionPhaseDto.error -> {
                         val item = LegacyMigrationResultItemDto(
                             item = sp.session?.id ?: "",
@@ -276,10 +223,12 @@ class KiloMigrationService internal constructor(
                 val items = event.items
                 val hasErrors = items.any { it.status == MigrationItemStatusDto.error }
                 val phase = if (hasErrors) MigrationUiPhase.error else MigrationUiPhase.done
+                val progress = if (hasErrors) current.progress else finishSilentProgress(current.progress)
                 LOG.info("Migration wizard: migration complete phase=$phase items=${items.size} errors=${items.count { it.status == MigrationItemStatusDto.error }}")
                 _state.value = current.copy(
                     running = false,
                     phase = phase,
+                    progress = progress,
                     results = items,
                 )
             }
@@ -381,5 +330,10 @@ class KiloMigrationService internal constructor(
         if (selections.settings.language) list.add(MigrationItemUiProgress("Language preference", MigrationItemCategoryDto.settings))
         if (selections.settings.autocomplete) list.add(MigrationItemUiProgress("Autocomplete settings", MigrationItemCategoryDto.settings))
         return list
+    }
+
+    private fun finishSilentProgress(items: List<MigrationItemUiProgress>) = items.map {
+        if (it.status == MigrationItemProgressStatusDto.migrating) it.copy(status = MigrationItemProgressStatusDto.success)
+        else it
     }
 }

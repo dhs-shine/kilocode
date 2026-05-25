@@ -13,6 +13,7 @@ import ai.kilocode.rpc.dto.MigrationItemCategoryDto
 import ai.kilocode.rpc.dto.MigrationItemProgressStatusDto
 import ai.kilocode.rpc.dto.MigrationItemStatusDto
 import ai.kilocode.rpc.dto.MigrationProviderInfoDto
+import ai.kilocode.rpc.dto.MigrationSessionInfoDto
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CoroutineScope
@@ -182,22 +183,25 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
         assertEquals(MigrationUiPhase.error, state!!.phase)
     }
 
-    fun `test force sends only session selections with force true`() = runBlocking {
-        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
+    fun `test complete event without items finalizes pending session progress`() = runBlocking {
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection().copy(
+            sessions = listOf(MigrationSessionInfoDto("ses_1", "Session", "/tmp", 1L)),
+        ))
         delay(100)
         UIUtil.dispatchAllInvocationEvents()
 
-        service.force(listOf("ses_1", "ses_2"))
+        service.start(MigrationUiSelections(sessions = listOf("ses_1")))
         delay(50)
         UIUtil.dispatchAllInvocationEvents()
 
-        assertEquals(1, rpc.migrateCalls.size)
-        val dto = rpc.migrateCalls[0]
-        assertEquals(emptyList<String>(), dto.providers)
-        assertEquals(2, dto.sessions.size)
-        assertTrue(dto.sessions.all { it.force })
-        assertEquals(listOf("ses_1", "ses_2"), dto.sessions.map { it.id })
-        assertTrue(dto.keepLegacySettingsFile)
+        rpc.events.emit(LegacyMigrationEventDto.Complete(emptyList()))
+        delay(100)
+        UIUtil.dispatchAllInvocationEvents()
+
+        val state = service.state.value as MigrationUiState.Needed
+        assertEquals(MigrationUiPhase.done, state.phase)
+        assertFalse(state.running)
+        assertEquals(MigrationItemProgressStatusDto.success, state.progress.single { it.item == "ses_1" }.status)
     }
 
     fun `test start persists selected legacy autocomplete settings`() {

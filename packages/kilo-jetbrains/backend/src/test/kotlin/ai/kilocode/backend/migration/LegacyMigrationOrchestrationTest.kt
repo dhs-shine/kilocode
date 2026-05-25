@@ -6,6 +6,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -136,38 +137,22 @@ class LegacyMigrationOrchestrationTest {
     }
 
     @Test
-    fun `migrate - session skipped when already exists and no force`() {
+    fun `migrate - duplicate session is silently skipped`() {
         val (eng, _, backend) = setup {
             taskHistory = """[{"id":"t1","task":"Test"}]"""
             conversations["t1"] = """[{"role":"user","content":"hello"}]"""
         }
         val sessionId = ai.kilocode.backend.migration.session.LegacySessionIds.createSessionId("t1")
         backend.existingSessionIds = setOf(sessionId)
-        val sel = noSelections().copy(sessions = listOf(MigrationSessionSelection("t1", force = false)))
+        val sel = noSelections().copy(sessions = listOf(MigrationSessionSelection("t1")))
         val items = mutableListOf<LegacyMigrationItemProgress>()
-        val report = eng.migrate(sel, itemSink(items))
-        val item = report.items.find { it.category == MigrationItemCategory.session }
-        assertNotNull(item)
-        assertTrue(item!!.message?.contains("skipped", ignoreCase = true) == true)
-        assertEquals(listOf(MigrationItemProgressStatus.migrating, MigrationItemProgressStatus.success), items.map { it.status })
-        assertTrue(items[1].message?.contains("skipped", ignoreCase = true) == true)
+        val sessions = mutableListOf<LegacyMigrationSessionProgress>()
+        val report = eng.migrate(sel, sink(items, sessions))
+        assertNull(report.items.find { it.category == MigrationItemCategory.session })
+        assertEquals(emptyList(), items)
+        assertEquals(emptyList(), sessions)
         assertEquals(0, backend.projectCalls.size)
-    }
-
-    @Test
-    fun `migrate - force reimports existing session`() {
-        val (eng, _, backend) = setup {
-            taskHistory = """[{"id":"t1","task":"Test"}]"""
-            conversations["t1"] = """[{"role":"user","content":"hello"}]"""
-        }
-        val sessionId = ai.kilocode.backend.migration.session.LegacySessionIds.createSessionId("t1")
-        backend.existingSessionIds = setOf(sessionId)
-        val sel = noSelections().copy(sessions = listOf(MigrationSessionSelection("t1", force = true)))
-        eng.migrate(sel)
-        assertEquals(1, backend.sessionCalls.size)
-        // Force flag should be in session payload
-        val sessionPayload = backend.sessionCalls[0]
-        assertEquals("true", sessionPayload["force"]?.jsonPrimitive?.content)
+        assertEquals(0, backend.sessionCalls.size)
     }
 
     @Test
@@ -179,11 +164,13 @@ class LegacyMigrationOrchestrationTest {
         backend.sessionImportSkipped = true
         val sel = noSelections().copy(sessions = listOf(MigrationSessionSelection("t1")))
         val items = mutableListOf<LegacyMigrationItemProgress>()
-        eng.migrate(sel, itemSink(items))
+        val sessions = mutableListOf<LegacyMigrationSessionProgress>()
+        val report = eng.migrate(sel, sink(items, sessions))
+        assertNull(report.items.find { it.category == MigrationItemCategory.session })
         assertEquals(0, backend.messageCalls.size)
         assertEquals(0, backend.partCalls.size)
-        assertEquals(listOf(MigrationItemProgressStatus.migrating, MigrationItemProgressStatus.success), items.map { it.status })
-        assertTrue(items[1].message?.contains("skipped", ignoreCase = true) == true)
+        assertEquals(listOf(MigrationItemProgressStatus.migrating), items.map { it.status })
+        assertEquals(listOf(MigrationSessionPhase.preparing, MigrationSessionPhase.storing, MigrationSessionPhase.summary), sessions.map { it.phase })
     }
 
     @Test
@@ -282,5 +269,13 @@ class LegacyMigrationOrchestrationTest {
     private fun itemSink(items: MutableList<LegacyMigrationItemProgress>) = object : LegacyMigrationSink {
         override fun item(progress: LegacyMigrationItemProgress) { items.add(progress) }
         override fun session(progress: LegacyMigrationSessionProgress) = Unit
+    }
+
+    private fun sink(
+        items: MutableList<LegacyMigrationItemProgress>,
+        sessions: MutableList<LegacyMigrationSessionProgress>,
+    ) = object : LegacyMigrationSink {
+        override fun item(progress: LegacyMigrationItemProgress) { items.add(progress) }
+        override fun session(progress: LegacyMigrationSessionProgress) { sessions.add(progress) }
     }
 }

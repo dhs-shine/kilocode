@@ -177,7 +177,6 @@ class SessionUi(
             onDone = { migration.finish() }
             onContinueFromError = { migration.finish() }
             onStart = { sel -> migration.start(sel) }
-            onForce = { ids -> migration.force(ids) }
         }
         migrationOverlay.border = JBUI.Borders.empty(
             JBUI.scale(SessionUiStyle.View.Prompt.PANEL_VERTICAL_PADDING),

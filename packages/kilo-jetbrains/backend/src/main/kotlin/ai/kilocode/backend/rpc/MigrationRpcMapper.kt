@@ -139,7 +139,7 @@ internal object MigrationRpcMapper {
         )
 
     private fun fromDto(dto: MigrationSessionSelectionDto): MigrationSessionSelection =
-        MigrationSessionSelection(id = dto.id, force = dto.force)
+        MigrationSessionSelection(id = dto.id)
 
     private fun fromDto(dto: MigrationSettingsSelectionsDto): MigrationSettingsSelections =
         MigrationSettingsSelections(

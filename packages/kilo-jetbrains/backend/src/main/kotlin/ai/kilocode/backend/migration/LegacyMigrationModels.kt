@@ -145,7 +145,6 @@ data class MigrationSettingsSelections(
 
 data class MigrationSessionSelection(
     val id: String,
-    val force: Boolean = false,
 )
 
 data class LegacyMigrationSelections(

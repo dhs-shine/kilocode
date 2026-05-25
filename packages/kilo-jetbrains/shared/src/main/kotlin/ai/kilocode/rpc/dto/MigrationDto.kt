@@ -114,7 +114,6 @@ data class MigrationSettingsSelectionsDto(
 @Serializable
 data class MigrationSessionSelectionDto(
     val id: String,
-    val force: Boolean = false,
 )
 
 @Serializable

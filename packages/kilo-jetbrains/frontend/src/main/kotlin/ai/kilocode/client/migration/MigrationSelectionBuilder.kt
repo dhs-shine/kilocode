@@ -63,14 +63,11 @@ object MigrationSelectionBuilder {
     /**
      * Convert UI selections into the wire DTO, taking only supported+apiKey providers.
      */
-    fun toDto(
-        selections: MigrationUiSelections,
-        sessionForce: Boolean = false,
-    ): LegacyMigrationSelectionsDto = LegacyMigrationSelectionsDto(
+    fun toDto(selections: MigrationUiSelections): LegacyMigrationSelectionsDto = LegacyMigrationSelectionsDto(
         providers = selections.providers,
         mcpServers = selections.mcpServers,
         customModes = selections.customModes,
-        sessions = selections.sessions.map { MigrationSessionSelectionDto(it, force = sessionForce) },
+        sessions = selections.sessions.map { MigrationSessionSelectionDto(it) },
         defaultModel = selections.defaultModel,
         settings = MigrationSettingsSelectionsDto(
             autoApproval = MigrationAutoApprovalSelectionsDto(
@@ -85,29 +82,5 @@ object MigrationSelectionBuilder {
             autocomplete = selections.settings.autocomplete,
         ),
         keepLegacySettingsFile = selections.keepLegacySettingsFile,
-    )
-
-    /**
-     * Build a session-only selection with specific IDs and force=true.
-     */
-    fun forceSessionsDto(ids: List<String>): LegacyMigrationSelectionsDto = LegacyMigrationSelectionsDto(
-        providers = emptyList(),
-        mcpServers = emptyList(),
-        customModes = emptyList(),
-        sessions = ids.map { MigrationSessionSelectionDto(it, force = true) },
-        defaultModel = false,
-        settings = MigrationSettingsSelectionsDto(
-            autoApproval = MigrationAutoApprovalSelectionsDto(
-                commandRules = false,
-                readPermission = false,
-                writePermission = false,
-                executePermission = false,
-                mcpPermission = false,
-                taskPermission = false,
-            ),
-            language = false,
-            autocomplete = false,
-        ),
-        keepLegacySettingsFile = true,
     )
 }
