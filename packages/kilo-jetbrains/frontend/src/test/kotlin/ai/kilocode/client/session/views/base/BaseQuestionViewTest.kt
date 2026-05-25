@@ -3,6 +3,7 @@ package ai.kilocode.client.session.views.base
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.layout.Align
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.openapi.application.ApplicationManager
@@ -164,7 +165,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
 
             val north = region(panel, BorderLayout.NORTH) as Container
             val filler = north.components.last()
-            assertEquals(UiStyle.Gap.pad(), filler.preferredSize.height)
+            assertEquals(UiStyle.Gap.md(), filler.preferredSize.height)
             assertEquals(0, filler.preferredSize.width)
         }
     }
@@ -255,12 +256,23 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
     fun `test header row uses icon west and text stack center`() {
         edt {
             val panel = BaseQuestionView()
+            panel.setHeaderIcon(AllIcons.General.Warning)
             val header = headerRow(panel)!!
             val layout = header.layout as BorderLayout
             val west = layout.getLayoutComponent(BorderLayout.WEST)
             val center = layout.getLayoutComponent(BorderLayout.CENTER) as Container
-            assertTrue("icon should be a JBLabel", west is JBLabel)
+            assertTrue("icon should be top-aligned", west is Align)
+            assertTrue("icon wrapper should contain a JBLabel", findAll<JBLabel>(west as Container).isNotEmpty())
             assertTrue("center should contain header and description text", findAll<JBTextArea>(center).size >= 2)
+        }
+    }
+
+    fun `test header row has no west icon gap by default`() {
+        edt {
+            val panel = BaseQuestionView()
+            val header = headerRow(panel)!!
+            val west = (header.layout as BorderLayout).getLayoutComponent(BorderLayout.WEST)
+            assertNull("header should not reserve icon space when icon is absent", west)
         }
     }
 
@@ -281,8 +293,31 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             val left = JLabel("left")
             panel.setActionLeft(left)
             val footer = region(panel, BorderLayout.SOUTH) as JPanel
-            val west = (footer.layout as BorderLayout).getLayoutComponent(BorderLayout.WEST)
-            assertSame("action left should be in footer west", left, west)
+            val west = (footer.layout as BorderLayout).getLayoutComponent(BorderLayout.WEST) as Container
+            assertNotNull("action left should be in footer west", find(west, left))
+        }
+    }
+
+    fun `test action left component is transparent`() {
+        edt {
+            val panel = BaseQuestionView()
+            val left = JPanel()
+            panel.setActionLeft(left)
+            assertFalse("action left should be transparent", left.isOpaque)
+        }
+    }
+
+    fun `test footer adds bottom padding gap after side actions`() {
+        edt {
+            val panel = BaseQuestionView()
+            panel.setActionLeft(JLabel("left"))
+            panel.setActions(listOf(BaseQuestionView.Action("ok", "OK", primary = true) {}))
+
+            val footer = region(panel, BorderLayout.SOUTH) as JPanel
+            val west = (footer.layout as BorderLayout).getLayoutComponent(BorderLayout.WEST) as Container
+            val filler = west.components.toList().firstOrNull { it.preferredSize.width == UiStyle.Gap.pad() }
+            assertNotNull("side actions should include trailing gap", filler)
+            assertEquals(0, filler!!.preferredSize.height)
         }
     }
 
@@ -329,7 +364,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             val style = SessionEditorStyle.current()
             panel.applyStyle(style)
 
-            assertEquals("headerText should use headerFont", style.headerFont, panel.headerFont())
+            assertEquals("headerText should use heading font", UiStyle.Fonts.heading(), panel.headerFont())
             assertEquals("descriptionText should use hintFont", style.hintFont, panel.descriptionFont())
         }
     }

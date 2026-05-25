@@ -3,8 +3,10 @@ package ai.kilocode.client.migration
 import ai.kilocode.client.session.SessionUiTestBase
 import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.migration.ui.MigrationItemRow
 import ai.kilocode.client.migration.ui.MigrationOverlayPanel
 import ai.kilocode.client.migration.ui.MigrationWizardPanel
+import ai.kilocode.client.ui.layout.Align
 import ai.kilocode.rpc.dto.LegacyMigrationDetectionDto
 import ai.kilocode.rpc.dto.MigrationProviderInfoDto
 import java.awt.Rectangle
@@ -40,12 +42,39 @@ class SessionUiMigrationTest : SessionUiTestBase() {
         assertEquals(1, root.blocker.componentCount)
     }
 
+    fun `test visible migration state lays out content before resize`() {
+        fakeMigration._state.value = MigrationUiState.Needed(detection = sampleDetection())
+        settle()
+
+        val row = find<MigrationItemRow>(ui)
+        assertTrue("migration row should be visible", row.isVisible)
+        assertTrue("migration row width should be laid out before resize: ${row.bounds}", row.width > 0)
+        assertTrue("migration row height should be laid out before resize: ${row.bounds}", row.height > 0)
+    }
+
     fun `test migration opens on selection screen with keep file checked`() {
         fakeMigration._state.value = MigrationUiState.Needed(detection = sampleDetection())
         settle()
 
         val wizard = find<MigrationWizardPanel>(ui)
         assertTrue(wizard.keepLegacySettingsFileSelectedForTest())
+    }
+
+    fun `test migration wizard is centered in overlay`() {
+        fakeMigration._state.value = MigrationUiState.Needed(detection = sampleDetection())
+        settle()
+        layout()
+
+        val overlay = find<MigrationOverlayPanel>(ui)
+        overlay.doLayout()
+        val align = find<Align>(overlay)
+        align.doLayout()
+        val wizard = find<MigrationWizardPanel>(overlay)
+
+        assertTrue("align wrapper should fill most overlay width", align.width > overlay.width / 2)
+        assertTrue("align wrapper should fill most overlay height", align.height > overlay.height / 2)
+        assertTrue("wizard should be horizontally centered: ${wizard.bounds} in ${align.bounds}", kotlin.math.abs(wizard.x - (align.width - wizard.width) / 2) <= 1)
+        assertTrue("wizard should be vertically centered: ${wizard.bounds} in ${align.bounds}", kotlin.math.abs(wizard.y - (align.height - wizard.height) / 2) <= 1)
     }
 
     fun `test hidden state after visible hides blocker`() {
@@ -108,4 +137,5 @@ class SessionUiMigrationTest : SessionUiTestBase() {
         settings = null,
         hasData = true,
     )
+
 }

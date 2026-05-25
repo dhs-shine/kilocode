@@ -3,15 +3,18 @@ package ai.kilocode.client.migration.ui
 import ai.kilocode.client.migration.MigrationUiSelections
 import ai.kilocode.client.migration.MigrationUiState
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.layout.HAlign
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
 import com.intellij.ui.components.JBPanel
-import com.intellij.util.ui.JBUI
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import java.awt.BorderLayout
 import javax.swing.JComponent
 
 /**
  * Outer container for the migration wizard rendered inside the blocker layer.
  *
- * Wraps [MigrationWizardPanel] in a bordered overlay with a panel background.
+ * Wraps [MigrationWizardPanel] in the blocker layer.
  * Build once; call [update] on every state change.
  */
 class MigrationOverlayPanel : JBPanel<MigrationOverlayPanel>(BorderLayout()) {
@@ -40,13 +43,16 @@ class MigrationOverlayPanel : JBPanel<MigrationOverlayPanel>(BorderLayout()) {
 
     init {
         withBackground(UiStyle.Colors.bg())
-        border = JBUI.Borders.customLine(com.intellij.ui.JBColor.border(), 1)
-        add(wizard, BorderLayout.CENTER)
+        add(wizard.align(HAlign.CENTER, VAlign.CENTER), BorderLayout.CENTER)
     }
 
+    @RequiresEdt
     fun update(state: MigrationUiState.Needed) {
         wizard.update(state)
+        revalidate()
+        repaint()
     }
 
+    @RequiresEdt
     fun preferredFocusComponent(): JComponent = wizard.preferredFocusComponent()
 }

@@ -1,7 +1,9 @@
 package ai.kilocode.client.ui.layout
 
 import java.awt.Component
+import java.awt.Container
 import java.awt.Dimension
+import java.awt.LayoutManager2
 import javax.swing.JPanel
 
 enum class HAlign { TRACK, FIT, LEFT, CENTER, RIGHT }
@@ -37,77 +39,91 @@ enum class VAlign { TRACK, FIT, TOP, CENTER, BOTTOM }
  */
 class Align(
     child: Component,
-    private val h: HAlign = HAlign.FIT,
-    private val v: VAlign = VAlign.FIT,
-) : JPanel(null) {
+    h: HAlign = HAlign.FIT,
+    v: VAlign = VAlign.FIT,
+) : JPanel(Layout(h, v)) {
 
     init {
         isOpaque = false
         add(child)
     }
 
-    // -----------------------------------------------------------------------
-    // Layout
-    // -----------------------------------------------------------------------
+    private class Layout(
+        private val h: HAlign,
+        private val v: VAlign,
+    ) : LayoutManager2 {
 
-    override fun doLayout() {
-        if (componentCount == 0) return
-        val child = getComponent(0)
-        val ins = insets
-        val availW = maxOf(0, width - ins.left - ins.right)
-        val availH = maxOf(0, height - ins.top - ins.bottom)
+        override fun addLayoutComponent(comp: Component, constraints: Any?) = Unit
+        override fun addLayoutComponent(name: String?, comp: Component) = Unit
+        override fun removeLayoutComponent(comp: Component) = Unit
 
-        val min = child.minimumSize
-        val max = child.maximumSize
-        child.setSize(probe(h, availW, min.width, max.width), probe(v, availH, min.height, max.height))
-        val pref = child.preferredSize
+        override fun layoutContainer(parent: Container) {
+            if (parent.componentCount == 0) return
+            val child = parent.getComponent(0)
+            val ins = parent.insets
+            val availW = maxOf(0, parent.width - ins.left - ins.right)
+            val availH = maxOf(0, parent.height - ins.top - ins.bottom)
 
-        val (w, cx) = placeAxis(h, availW, min.width, pref.width, max.width)
-        val (ht, cy) = placeAxis(v, availH, min.height, pref.height, max.height)
+            val min = child.minimumSize
+            val max = child.maximumSize
+            child.setSize(probe(h, availW, min.width, max.width), probe(v, availH, min.height, max.height))
+            val pref = child.preferredSize
 
-        child.setBounds(ins.left + cx, ins.top + cy, w, ht)
-    }
+            val (w, cx) = place(h, availW, min.width, pref.width, max.width)
+            val (ht, cy) = place(v, availH, min.height, pref.height, max.height)
 
-    // -----------------------------------------------------------------------
-    // Wrapper size negotiation
-    // -----------------------------------------------------------------------
-
-    override fun getMinimumSize(): Dimension {
-        if (componentCount == 0) return super.getMinimumSize()
-        val child = getComponent(0)
-        val ins = insets
-        val cw = if (h == HAlign.TRACK) 0 else child.minimumSize.width
-        val ch = if (v == VAlign.TRACK) 0 else child.minimumSize.height
-        return Dimension(cw + ins.left + ins.right, ch + ins.top + ins.bottom)
-    }
-
-    override fun getPreferredSize(): Dimension {
-        if (componentCount == 0) return super.getPreferredSize()
-        val child = getComponent(0)
-        val ins = insets
-        val min = child.minimumSize
-        val max = child.maximumSize
-        val availW = maxOf(0, width - ins.left - ins.right)
-        val availH = maxOf(0, height - ins.top - ins.bottom)
-        if (availW > 0 || availH > 0) {
-            child.setSize(
-                if (availW > 0) probe(h, availW, min.width, max.width) else child.width,
-                if (availH > 0) probe(v, availH, min.height, max.height) else child.height,
-            )
+            child.setBounds(ins.left + cx, ins.top + cy, w, ht)
         }
-        val pref = child.preferredSize
-        val cw = if (h == HAlign.TRACK) 0 else bounded(pref.width, min.width, max.width)
-        val ch = if (v == VAlign.TRACK) 0 else bounded(pref.height, min.height, max.height)
-        return Dimension(cw + ins.left + ins.right, ch + ins.top + ins.bottom)
-    }
 
-    override fun getMaximumSize(): Dimension {
-        if (componentCount == 0) return super.getMaximumSize()
-        val child = getComponent(0)
-        val ins = insets
-        val cw = if (h == HAlign.TRACK) super.getMaximumSize().width else maxOf(child.minimumSize.width, child.maximumSize.width) + ins.left + ins.right
-        val ch = if (v == VAlign.TRACK) super.getMaximumSize().height else maxOf(child.minimumSize.height, child.maximumSize.height) + ins.top + ins.bottom
-        return Dimension(cw, ch)
+        override fun minimumLayoutSize(parent: Container): Dimension {
+            if (parent.componentCount == 0) return Dimension(0, 0)
+            val child = parent.getComponent(0)
+            val ins = parent.insets
+            val cw = if (h == HAlign.TRACK) 0 else child.minimumSize.width
+            val ch = if (v == VAlign.TRACK) 0 else child.minimumSize.height
+            return Dimension(cw + ins.left + ins.right, ch + ins.top + ins.bottom)
+        }
+
+        override fun preferredLayoutSize(parent: Container): Dimension {
+            if (parent.componentCount == 0) return Dimension(0, 0)
+            val child = parent.getComponent(0)
+            val ins = parent.insets
+            val min = child.minimumSize
+            val max = child.maximumSize
+            val availW = maxOf(0, parent.width - ins.left - ins.right)
+            val availH = maxOf(0, parent.height - ins.top - ins.bottom)
+            if (availW > 0 || availH > 0) {
+                child.setSize(
+                    if (availW > 0) probe(h, availW, min.width, max.width) else child.width,
+                    if (availH > 0) probe(v, availH, min.height, max.height) else child.height,
+                )
+            }
+            val pref = child.preferredSize
+            val cw = if (h == HAlign.TRACK) 0 else bounded(pref.width, min.width, max.width)
+            val ch = if (v == VAlign.TRACK) 0 else bounded(pref.height, min.height, max.height)
+            return Dimension(cw + ins.left + ins.right, ch + ins.top + ins.bottom)
+        }
+
+        override fun maximumLayoutSize(target: Container): Dimension {
+            if (target.componentCount == 0) return Dimension(Int.MAX_VALUE, Int.MAX_VALUE)
+            val child = target.getComponent(0)
+            val ins = target.insets
+            val cw = if (h == HAlign.TRACK) {
+                Int.MAX_VALUE
+            } else {
+                maxOf(child.minimumSize.width, child.maximumSize.width) + ins.left + ins.right
+            }
+            val ch = if (v == VAlign.TRACK) {
+                Int.MAX_VALUE
+            } else {
+                maxOf(child.minimumSize.height, child.maximumSize.height) + ins.top + ins.bottom
+            }
+            return Dimension(cw, ch)
+        }
+
+        override fun getLayoutAlignmentX(target: Container) = 0.5f
+        override fun getLayoutAlignmentY(target: Container) = 0.5f
+        override fun invalidateLayout(target: Container) = Unit
     }
 }
 
@@ -121,7 +137,7 @@ class Align(
  * - FIT: size = clamp(avail, min, max), offset = 0
  * - edge/center: size = clamp(boundedPref, 0, avail), offset positions according to alignment
  */
-private fun placeAxis(mode: Any, avail: Int, min: Int, pref: Int, max: Int): Pair<Int, Int> {
+private fun place(mode: Any, avail: Int, min: Int, pref: Int, max: Int): Pair<Int, Int> {
     val effMax = maxOf(min, max)
     return when (mode) {
         HAlign.TRACK, VAlign.TRACK -> avail to 0

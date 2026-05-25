@@ -9,34 +9,27 @@ import ai.kilocode.client.migration.MigrationUiState
 import ai.kilocode.client.migration.SessionMigrationSummary
 import ai.kilocode.client.migration.groupStatus
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.rpc.dto.LegacyMigrationDetectionDto
-import ai.kilocode.rpc.dto.LegacyMigrationSessionProgressDto
 import ai.kilocode.rpc.dto.MigrationItemCategoryDto
-import ai.kilocode.rpc.dto.MigrationItemProgressStatusDto
 import ai.kilocode.rpc.dto.MigrationSessionPhaseDto
-import com.intellij.icons.AllIcons
-import com.intellij.ide.BrowserUtil
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBScrollPane
-import com.intellij.util.ui.JBFont
-import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.components.BorderLayoutPanel
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import java.awt.BorderLayout
-import java.awt.CardLayout
-import java.awt.FlowLayout
-import java.awt.GridBagConstraints
-import java.awt.GridBagLayout
-import javax.swing.JButton
+import java.awt.Component
+import javax.swing.JComponent
 import javax.swing.JPanel
-import javax.swing.JButton as JBtn
 
-private const val CARD_WHATS_NEW = "whats-new"
-private const val CARD_MIGRATE = "migrate"
+private const val ACTION_SKIP = "skip"
+private const val ACTION_MIGRATE = "migrate"
+private const val ACTION_DONE = "done"
+private const val ACTION_CONTINUE = "continue"
 
 /**
- * Two-screen migration wizard: "What's New" → "Migrate Your Settings".
+ * Migration selection wizard.
  *
  * Build once; call [update] for every state change. Does not rebuild the component tree.
  */
@@ -49,13 +42,6 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
     var onDone: (() -> Unit)? = null
     var onContinueFromError: (() -> Unit)? = null
 
-    // ------ Card layout ------
-    private val cards = CardLayout()
-    private val cardPanel = JPanel(cards)
-
-    // ------ What's New screen ------
-    private val whatsNewPanel = buildWhatsNewPanel()
-
     // ------ Migrate screen row state ------
     private val rows = mutableMapOf<MigrationItemCategoryDto, MigrationItemRow>()
     private val settingsRow = MigrationItemRow(KiloBundle.message("migration.row.settings"), MigrationItemCategoryDto.settings)
@@ -67,12 +53,8 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
 
     private val sessionProgress = SessionMigrationProgressPanel()
     private val sessionSummary = SessionMigrationSummaryPanel()
-
-    private val migrateBtn = JButton(KiloBundle.message("migration.button.migrate"))
-    private val backBtn = JButton(KiloBundle.message("migration.button.back"))
-    private val skipBtn = JButton(KiloBundle.message("migration.button.skip"))
-    private val doneBtn = JButton(KiloBundle.message("migration.button.done"))
-    private val continueBtn = JButton(KiloBundle.message("migration.button.continue"))
+    private val question = BaseQuestionView()
+    private val keepBox = JBCheckBox(KiloBundle.message("migration.keep_legacy_settings"), true)
 
     private val emptyLabel = JBLabel(KiloBundle.message("migration.empty")).apply {
         foreground = UiStyle.Colors.weak()
@@ -80,6 +62,8 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
 
     private var detection: LegacyMigrationDetectionDto? = null
     private var selections = MigrationUiSelections()
+    private var phase = MigrationUiPhase.selecting
+    private var running = false
 
     init {
         isOpaque = false
@@ -95,25 +79,38 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
             row.onSelectionChanged = { _ -> updateMigrateButtonEnabled() }
         }
 
-        migrateBtn.addActionListener { onStart?.invoke(currentSelections()) }
-        backBtn.addActionListener { cards.show(cardPanel, CARD_WHATS_NEW) }
-        skipBtn.addActionListener { onSkip?.invoke() }
-        doneBtn.addActionListener { onDone?.invoke() }
-        continueBtn.addActionListener { onContinueFromError?.invoke() }
+        question.setHeader(
+            KiloBundle.message("migration.migrate.title"),
+            KiloBundle.message("migration.migrate.subtitle"),
+        )
+        question.setContent(buildContent())
+        question.setActions(
+            listOf(
+                BaseQuestionView.Action(ACTION_SKIP, KiloBundle.message("migration.button.skip"), primary = false) {
+                    onSkip?.invoke()
+                },
+                BaseQuestionView.Action(ACTION_MIGRATE, KiloBundle.message("migration.button.migrate"), primary = true) {
+                    onStart?.invoke(currentSelections())
+                },
+                BaseQuestionView.Action(ACTION_DONE, KiloBundle.message("migration.button.done"), primary = true) {
+                    onDone?.invoke()
+                },
+                BaseQuestionView.Action(ACTION_CONTINUE, KiloBundle.message("migration.button.continue"), primary = true) {
+                    onContinueFromError?.invoke()
+                },
+            ),
+        )
+        question.setActionLeft(keepBox)
 
         sessionSummary.onForceReimport = { ids -> onForce?.invoke(ids) }
 
-        cardPanel.isOpaque = false
-        cardPanel.add(whatsNewPanel, CARD_WHATS_NEW)
-        cardPanel.add(buildMigratePanel(), CARD_MIGRATE)
-
-        add(cardPanel, BorderLayout.CENTER)
-
-        cards.show(cardPanel, CARD_WHATS_NEW)
+        add(question, BorderLayout.CENTER)
+        updateButtons(MigrationUiPhase.selecting, running = false)
     }
 
     // ------ Public update ------
 
+    @RequiresEdt
     fun update(state: MigrationUiState.Needed) {
         val det = state.detection
         // Detection and default selections are set once on first update and are stable for the
@@ -125,7 +122,8 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
             applyDefaults(det)
         }
 
-        val phase = state.phase
+        phase = state.phase
+        running = state.running
 
         // Update row visibility based on what data exists
         providerRow.isVisible = det.providers.any { it.supported }
@@ -164,11 +162,18 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
             sessionSummary.isVisible = false
         }
 
-        updateButtons(phase, state.running)
+        updateButtons(phase, running)
         updateMigrateButtonEnabled()
+        question.revalidate()
+        question.repaint()
+        revalidate()
+        repaint()
     }
 
-    fun preferredFocusComponent() = migrateBtn
+    @RequiresEdt
+    fun preferredFocusComponent(): JComponent = question.actionButtonsForTest()[ACTION_MIGRATE] ?: question
+
+    internal fun keepLegacySettingsFileSelectedForTest() = keepBox.isSelected
 
     // ------ Internal helpers ------
 
@@ -187,6 +192,7 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
                 defaults.settings.autoApproval.taskPermission ||
                 defaults.settings.language ||
                 defaults.settings.autocomplete
+        keepBox.isSelected = defaults.keepLegacySettingsFile
     }
 
     private fun updateRowProgress(category: MigrationItemCategoryDto, items: List<MigrationItemUiProgress>) {
@@ -201,22 +207,24 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
     }
 
     private fun updateButtons(phase: MigrationUiPhase, running: Boolean) {
-        backBtn.isVisible = phase == MigrationUiPhase.selecting
-        skipBtn.isVisible = phase == MigrationUiPhase.selecting
-        migrateBtn.isVisible = phase == MigrationUiPhase.selecting || phase == MigrationUiPhase.migrating
-        migrateBtn.isEnabled = !running && phase == MigrationUiPhase.selecting
-        migrateBtn.text = if (running) KiloBundle.message("migration.button.migrating") else KiloBundle.message("migration.button.migrate")
-        doneBtn.isVisible = phase == MigrationUiPhase.done
-        continueBtn.isVisible = phase == MigrationUiPhase.error
+        question.setActionVisible(ACTION_SKIP, phase == MigrationUiPhase.selecting)
+        question.setActionVisible(ACTION_MIGRATE, phase == MigrationUiPhase.selecting || phase == MigrationUiPhase.migrating)
+        question.setActionText(
+            ACTION_MIGRATE,
+            if (running) KiloBundle.message("migration.button.migrating") else KiloBundle.message("migration.button.migrate"),
+        )
+        question.setActionVisible(ACTION_DONE, phase == MigrationUiPhase.done)
+        question.setActionVisible(ACTION_CONTINUE, phase == MigrationUiPhase.error)
+        keepBox.isVisible = phase == MigrationUiPhase.selecting
     }
 
     private fun updateMigrateButtonEnabled() {
         val any = rows.values.any { it.isVisible && it.selected }
-        migrateBtn.isEnabled = any && migrateBtn.text == KiloBundle.message("migration.button.migrate")
+        question.setActionEnabled(ACTION_MIGRATE, any && phase == MigrationUiPhase.selecting && !running)
     }
 
     private fun currentSelections(): MigrationUiSelections {
-        val det = detection ?: return MigrationUiSelections()
+        val det = detection ?: return MigrationUiSelections(keepLegacySettingsFile = keepBox.isSelected)
         val providers = if (providerRow.selected) det.providers.filter { it.supported && it.hasApiKey }.map { it.profileName } else emptyList()
         val mcpServers = if (mcpRow.selected) det.mcpServers.map { it.name } else emptyList()
         val modes = if (modesRow.selected) det.customModes.map { it.slug } else emptyList()
@@ -229,116 +237,22 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
             sessions = sessions,
             defaultModel = modelRow.selected,
             settings = if (settingsRow.selected) defaults.settings else MigrationSettingsUiSelections(),
+            keepLegacySettingsFile = keepBox.isSelected,
         )
     }
 
-    private fun buildWhatsNewPanel(): JPanel {
-        val panel = JPanel(BorderLayout()).apply { isOpaque = false }
-
-        val title = JBLabel(KiloBundle.message("migration.whats_new.title")).apply {
-            font = JBFont.h2().asBold()
-            border = JBUI.Borders.emptyBottom(UiStyle.Gap.sm())
+    private fun buildContent(): JComponent {
+        return Stack.vertical(gap = UiStyle.Gap.xs()).apply {
+            alignmentX = Component.LEFT_ALIGNMENT
         }
-        val subtitle = JBLabel(KiloBundle.message("migration.whats_new.subtitle")).apply {
-            foreground = UiStyle.Colors.weak()
-            border = JBUI.Borders.emptyBottom(UiStyle.Gap.md())
-        }
-
-        val features = listOf(
-            KiloBundle.message("migration.whats_new.feature.performance"),
-            KiloBundle.message("migration.whats_new.feature.interface"),
-            KiloBundle.message("migration.whats_new.feature.agent_manager"),
-            KiloBundle.message("migration.whats_new.feature.foundation"),
-        )
-
-        val featurePanel = JPanel(GridBagLayout()).apply { isOpaque = false }
-        val gc = GridBagConstraints().apply {
-            fill = GridBagConstraints.HORIZONTAL
-            weightx = 1.0
-            gridx = 0
-        }
-        for (f in features) {
-            val row = JPanel(FlowLayout(FlowLayout.LEFT, UiStyle.Gap.xs(), 0)).apply {
-                isOpaque = false
-                add(JBLabel(AllIcons.General.InspectionsOK))
-                add(JBLabel(f))
-            }
-            featurePanel.add(row, gc)
-        }
-
-        val content = JPanel(GridBagLayout()).apply {
-            isOpaque = false
-            border = JBUI.Borders.empty(UiStyle.Gap.pad())
-            val c = GridBagConstraints().apply { fill = GridBagConstraints.HORIZONTAL; weightx = 1.0; gridx = 0 }
-            add(title, c)
-            add(subtitle, c)
-            add(featurePanel, c)
-        }
-
-        val continueWnBtn = JButton(KiloBundle.message("migration.button.continue_to_migrate")).apply {
-            addActionListener { cards.show(cardPanel, CARD_MIGRATE) }
-        }
-        val footer = JPanel(FlowLayout(FlowLayout.RIGHT, UiStyle.Gap.sm(), 0)).apply {
-            isOpaque = false
-            add(continueWnBtn)
-        }
-
-        panel.add(JBScrollPane(content).apply { border = JBUI.Borders.empty() }, BorderLayout.CENTER)
-        panel.add(footer, BorderLayout.SOUTH)
-        return panel
-    }
-
-    private fun buildMigratePanel(): JPanel {
-        val panel = JPanel(BorderLayout()).apply { isOpaque = false }
-
-        val title = JBLabel(KiloBundle.message("migration.migrate.title")).apply {
-            font = JBFont.h2().asBold()
-            border = JBUI.Borders.emptyBottom(UiStyle.Gap.sm())
-        }
-        val subtitle = JBLabel(KiloBundle.message("migration.migrate.subtitle")).apply {
-            foreground = UiStyle.Colors.weak()
-            border = JBUI.Borders.emptyBottom(UiStyle.Gap.md())
-        }
-        val sectionLabel = JBLabel(KiloBundle.message("migration.migrate.section")).apply {
-            font = JBFont.medium()
-            border = JBUI.Borders.emptyBottom(UiStyle.Gap.xs())
-        }
-
-        val rowsPanel = JPanel(GridBagLayout()).apply {
-            isOpaque = false
-            val gc = GridBagConstraints().apply { fill = GridBagConstraints.HORIZONTAL; weightx = 1.0; gridx = 0 }
-            add(emptyLabel, gc)
-            add(providerRow, gc)
-            add(mcpRow, gc)
-            add(modesRow, gc)
-            add(sessionsRow, gc)
-            add(modelRow, gc)
-            add(settingsRow, gc)
-            add(sessionProgress, gc)
-            add(sessionSummary, gc)
-        }
-
-        val content = JPanel(GridBagLayout()).apply {
-            isOpaque = false
-            border = JBUI.Borders.empty(UiStyle.Gap.pad())
-            val gc = GridBagConstraints().apply { fill = GridBagConstraints.HORIZONTAL; weightx = 1.0; gridx = 0 }
-            add(title, gc)
-            add(subtitle, gc)
-            add(sectionLabel, gc)
-            add(rowsPanel, gc)
-        }
-
-        val footer = JPanel(FlowLayout(FlowLayout.RIGHT, UiStyle.Gap.sm(), 0)).apply {
-            isOpaque = false
-            add(backBtn)
-            add(skipBtn)
-            add(migrateBtn)
-            add(doneBtn)
-            add(continueBtn)
-        }
-
-        panel.add(JBScrollPane(content).apply { border = JBUI.Borders.empty() }, BorderLayout.CENTER)
-        panel.add(footer, BorderLayout.SOUTH)
-        return panel
+            .next(emptyLabel)
+            .next(providerRow)
+            .next(mcpRow)
+            .next(modesRow)
+            .next(sessionsRow)
+            .next(modelRow)
+            .next(settingsRow)
+            .next(sessionProgress)
+            .next(sessionSummary)
     }
 }

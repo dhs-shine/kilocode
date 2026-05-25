@@ -5,7 +5,10 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
@@ -84,6 +87,8 @@ class BaseQuestionView : RoundedContentPanel(
         isVisible = false
     }
 
+    private val iconWrap = icon.align(HAlign.LEFT, VAlign.TOP)
+
     private val headerText: JBTextArea = makeText("", UiStyle.Colors.fg(), bold = true)
     private val descriptionText: JBTextArea = makeText("", UiStyle.Colors.weak(), bold = false)
 
@@ -95,14 +100,15 @@ class BaseQuestionView : RoundedContentPanel(
     private val actionButtons = mutableMapOf<String, JButton>()
     private val actionOrder = mutableListOf<String>()
 
-    private val actions = Stack.horizontal(gap = UiStyle.Gap.sm())
+    private val mainActions = Stack.horizontal(gap = UiStyle.Gap.sm())
+
+    private val sideActions = Stack.horizontal()
 
     private val footer = JPanel(BorderLayout()).apply {
         isOpaque = false
     }
 
     init {
-        header.add(icon, BorderLayout.WEST)
         text.next(headerText).next(descriptionText)
         header.add(text, BorderLayout.CENTER)
         syncNorth()
@@ -153,8 +159,13 @@ class BaseQuestionView : RoundedContentPanel(
         this.icon.icon = icon
         this.icon.toolTipText = tooltip
         this.icon.isVisible = icon != null
+        val attached = this.iconWrap.parent === header
+        if (icon != null && !attached) header.add(iconWrap, BorderLayout.WEST)
+        if (icon == null && attached) header.remove(iconWrap)
         this.icon.revalidate()
         this.icon.repaint()
+        header.revalidate()
+        header.repaint()
     }
 
     /**
@@ -182,7 +193,7 @@ class BaseQuestionView : RoundedContentPanel(
     fun setActions(actions: List<Action>) {
         actionButtons.clear()
         actionOrder.clear()
-        this.actions.removeAll()
+        mainActions.removeAll()
         for (action in actions) {
             val btn = makeButton(action.text, action.primary).apply {
                 isEnabled = action.enabled
@@ -190,7 +201,7 @@ class BaseQuestionView : RoundedContentPanel(
             }
             actionButtons[action.id] = btn
             actionOrder.add(action.id)
-            this.actions.next(btn)
+            mainActions.next(btn)
         }
         syncFooter()
     }
@@ -211,9 +222,11 @@ class BaseQuestionView : RoundedContentPanel(
     @RequiresEdt
     fun setActionLeft(component: JComponent?) {
         actionLeft = component
-        val old = (footer.layout as BorderLayout).getLayoutComponent(BorderLayout.WEST)
-        if (old != null) footer.remove(old)
-        component?.let { footer.add(it, BorderLayout.WEST) }
+        sideActions.removeAll()
+        component?.let {
+            it.isOpaque = false
+            sideActions.next(it).fill(UiStyle.Gap.pad())
+        }
         syncFooter()
     }
 
@@ -226,8 +239,8 @@ class BaseQuestionView : RoundedContentPanel(
         val btn = actionButtons[id] ?: return
         if (btn.isVisible == visible) return
         btn.isVisible = visible
-        actions.revalidate()
-        actions.repaint()
+        mainActions.revalidate()
+        mainActions.repaint()
     }
 
     /**
@@ -279,11 +292,17 @@ class BaseQuestionView : RoundedContentPanel(
 
     private fun syncFooter() {
         val layout = footer.layout as BorderLayout
+        val west = layout.getLayoutComponent(BorderLayout.WEST)
         val east = layout.getLayoutComponent(BorderLayout.EAST)
+        if (actionLeft == null) {
+            if (west != null) footer.remove(west)
+        } else if (west == null) {
+            footer.add(sideActions, BorderLayout.WEST)
+        }
         if (actionOrder.isEmpty()) {
             if (east != null) footer.remove(east)
         } else if (east == null) {
-            footer.add(actions, BorderLayout.EAST)
+            footer.add(mainActions, BorderLayout.EAST)
         }
 
         val root = this.layout as BorderLayout
@@ -345,7 +364,7 @@ class BaseQuestionView : RoundedContentPanel(
     }
 
     private fun applyFont(area: JBTextArea, bold: Boolean) {
-        val font = if (bold) style.headerFont else style.hintFont
+        val font = if (bold) UiStyle.Fonts.heading() else style.hintFont
         if (area.font != font) area.font = font
     }
 
