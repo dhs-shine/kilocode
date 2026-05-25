@@ -47,7 +47,7 @@ const models: AutocompleteModelDef[] = [
     temperature: 0.2,
   },
   {
-    id: "inception/mercury-edit-2",
+    id: "inception/provider/mercury-edit-2",
     modelID: "mercury-edit-2",
     label: "Mercury Edit 2",
     providerID: "inception",
@@ -65,6 +65,7 @@ export const DEFAULT_AUTOCOMPLETE_MODEL: AutocompleteModelDef = models[0]!
 const aliases: Record<string, string> = {
   "mistralai/codestral-2508": "kilo/mistralai/codestral-2508",
   "inception/mercury-edit": "kilo/inception/mercury-edit-2",
+  "inception/mercury-edit-2": "kilo/inception/mercury-edit-2",
 }
 
 export function getAutocompleteModel(id: string): AutocompleteModelDef {

@@ -755,7 +755,7 @@
             "kilo/mistralai/codestral-2508",
             "kilo/inception/mercury-edit-2",
             "mistral/codestral-2508",
-            "inception/mercury-edit-2"
+            "inception/provider/mercury-edit-2"
           ],
           "enumDescriptions": [
             "Codestral via Kilo Gateway (default)",

@@ -21,7 +21,7 @@ describe("FIM target resolution", () => {
       model: "codestral-2508",
       urls: ["https://api.mistral.ai/v1/fim/completions", "https://codestral.mistral.ai/v1/fim/completions"],
     })
-    expect(resolveFimTarget("inception/mercury-edit-2")).toEqual({
+    expect(resolveFimTarget("inception/provider/mercury-edit-2")).toEqual({
       provider: "inception",
       model: "mercury-edit-2",
       urls: ["https://api.inceptionlabs.ai/v1/fim/completions"],
@@ -35,6 +35,11 @@ describe("FIM target resolution", () => {
       urls: ["https://api.kilo.ai/api/fim/completions"],
     })
     expect(resolveFimTarget("inception/mercury-edit")).toEqual({
+      provider: "kilo",
+      model: "inception/mercury-edit-2",
+      urls: ["https://api.kilo.ai/api/fim/completions"],
+    })
+    expect(resolveFimTarget("inception/mercury-edit-2")).toEqual({
       provider: "kilo",
       model: "inception/mercury-edit-2",
       urls: ["https://api.kilo.ai/api/fim/completions"],
