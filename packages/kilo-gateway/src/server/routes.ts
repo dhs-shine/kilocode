@@ -29,6 +29,14 @@ type Auth = any
 type ModelCache = { clear: (providerID: string) => void }
 type Z = any
 
+type FimProvider = "kilo" | "mistral" | "inception"
+
+interface FimTarget {
+  provider: FimProvider
+  model: string
+  urls: string[]
+}
+
 interface KiloRoutesDeps extends ImportDeps {
   Hono: new () => Hono
   describeRoute: DescribeRoute
@@ -42,6 +50,20 @@ interface KiloRoutesDeps extends ImportDeps {
 }
 
 const FIM_TIMEOUT_MS = 30_000
+const KILO_FIM_URL = KILO_API_BASE + "/api/fim/completions"
+const MISTRAL_FIM_URL = "https://api.mistral.ai/v1/fim/completions"
+const CODESTRAL_FIM_URL = "https://codestral.mistral.ai/v1/fim/completions"
+const INCEPTION_FIM_URL = "https://api.inceptionlabs.ai/v1/fim/completions"
+
+export function resolveFimTarget(model?: string): FimTarget {
+  if (model === "mistral/codestral-2508") {
+    return { provider: "mistral", model: "codestral-2508", urls: [MISTRAL_FIM_URL, CODESTRAL_FIM_URL] }
+  }
+  if (model === "inception-direct/mercury-edit-2") {
+    return { provider: "inception", model: "mercury-edit-2", urls: [INCEPTION_FIM_URL] }
+  }
+  return { provider: "kilo", model: model ?? "mistralai/codestral-2501", urls: [KILO_FIM_URL] }
+}
 
 /**
  * Create Kilo Gateway routes with OpenCode dependencies injected
@@ -145,6 +167,52 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
       token,
       organizationId: auth?.type === "oauth" ? auth.accountId : undefined,
     }
+  }
+
+  const getProviderKey = async (provider: FimProvider) => {
+    const auth = await Auth.get(provider)
+    return auth?.type === "api" ? auth.key : undefined
+  }
+
+  const fetchFim = async (
+    target: FimTarget,
+    url: string,
+    fallbacks: string[],
+    key: string,
+    input: {
+      prefix: string
+      suffix: string
+      maxTokens: number
+      temperature: number
+      signal: AbortSignal
+      organizationId?: string
+    },
+  ): Promise<Response> => {
+    console.info(`[FIM] request provider=${target.provider} model=${target.model} url=${url}`)
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+        ...(target.provider === "kilo"
+          ? buildKiloHeaders(undefined, { kilocodeOrganizationId: input.organizationId })
+          : {}),
+        ...(target.provider === "kilo" ? { [HEADER_FEATURE]: "autocomplete" } : {}),
+      },
+      signal: input.signal,
+      body: JSON.stringify({
+        model: target.model,
+        prompt: input.prefix,
+        suffix: input.suffix,
+        max_tokens: input.maxTokens,
+        temperature: input.temperature,
+        stream: true,
+      }),
+    })
+
+    const [next] = fallbacks
+    if (response.status === 401 && next) return fetchFim(target, next, fallbacks.slice(1), key, input)
+    return response
   }
 
   return new Hono()
@@ -339,47 +407,38 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
         }),
       ),
       async (c: any) => {
-        const proxy = await getProxyAuth()
+        const { prefix, suffix, model, maxTokens, temperature } = c.req.valid("json")
+        const target = resolveFimTarget(model)
+        const fimMaxTokens = maxTokens ?? 256
+        const fimTemperature = temperature ?? 0.2
+        const proxy = target.provider === "kilo" ? await getProxyAuth() : undefined
+        const token = target.provider === "kilo" ? proxy?.token : await getProviderKey(target.provider)
 
-        if (!proxy.auth) {
+        if (target.provider === "kilo" && !proxy?.auth) {
           return c.json({ error: "Not authenticated with Kilo Gateway" }, 401)
         }
 
-        if (!proxy.token) {
+        if (target.provider === "kilo" && !token) {
           return c.json({ error: "No valid token found" }, 401)
         }
 
-        const { prefix, suffix, model, maxTokens, temperature } = c.req.valid("json")
-        const fimModel = model ?? "mistralai/codestral-2501"
-        const fimMaxTokens = maxTokens ?? 256
-        const fimTemperature = temperature ?? 0.2
-
-        const baseApiUrl = KILO_API_BASE + "/api/"
-        const endpoint = new URL("fim/completions", baseApiUrl)
-
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${proxy.token}`,
-          ...buildKiloHeaders(undefined, { kilocodeOrganizationId: proxy.organizationId }),
-          [HEADER_FEATURE]: "autocomplete",
+        if (!token) {
+          return c.json({ error: `Missing ${target.provider} provider API key` }, 401)
         }
 
         const signal = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(FIM_TIMEOUT_MS)])
 
         let response: Response
         try {
-          response = await fetch(endpoint, {
-            method: "POST",
-            headers,
+          const [url] = target.urls
+          if (!url) return c.json({ error: "No FIM endpoint configured" }, 500 as any)
+          response = await fetchFim(target, url, target.urls.slice(1), token, {
+            prefix,
+            suffix,
+            maxTokens: fimMaxTokens,
+            temperature: fimTemperature,
             signal,
-            body: JSON.stringify({
-              model: fimModel,
-              prompt: prefix,
-              suffix,
-              max_tokens: fimMaxTokens,
-              temperature: fimTemperature,
-              stream: true,
-            }),
+            organizationId: proxy?.organizationId,
           })
         } catch (err) {
           if (err instanceof DOMException && err.name === "TimeoutError")
