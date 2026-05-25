@@ -107,7 +107,7 @@ afterEach(async () => {
   await resetDatabase()
 })
 
-describeProvider("provider HttpApi", () => {
+describeProvider("provider HttpApi", () => { // kilocode_change
   it.live(
     "matches legacy OAuth authorize response shapes",
     withProviderProject((dir) =>
