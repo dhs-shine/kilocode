@@ -7,15 +7,14 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 @Suppress("UnstableApiUsage")
 class PlanExitViewTest : BasePlatformTestCase() {
-    fun `test completed plan exit renders ready text and path`() {
+    fun `test completed plan exit renders ready transcript text and path`() {
         val tool = tool(ToolExecState.COMPLETED).apply {
             metadata = mapOf("plan" to ".kilo/plans/x.md")
         }
 
         val view = PlanExitView(tool)
 
-        assertTrue(view.labelText().contains("Plan is ready"))
-        assertTrue(view.labelText().contains(".kilo/plans/x.md"))
+        assertEquals("Plan is ready [.kilo/plans/x.md](.kilo/plans/x.md)", view.markdown())
     }
 
     fun `test view factory replaces running tool with plan exit view when completed`() {

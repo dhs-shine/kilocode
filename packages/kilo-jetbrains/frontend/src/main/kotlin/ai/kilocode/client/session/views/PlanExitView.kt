@@ -5,15 +5,9 @@ import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
-import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.PartView
-import ai.kilocode.client.ui.UiStyle
-import com.intellij.icons.AllIcons
-import com.intellij.ui.components.JBLabel
-import com.intellij.util.ui.JBUI
+import ai.kilocode.client.ui.md.MdView
 import java.awt.BorderLayout
-import javax.swing.BoxLayout
-import javax.swing.JPanel
 
 class PlanExitView(tool: Tool) : PartView() {
     companion object {
@@ -23,33 +17,12 @@ class PlanExitView(tool: Tool) : PartView() {
     override val contentId: String = tool.id
 
     private var item = tool
-
-    private val title = JBLabel(KiloBundle.message("session.part.plan.ready"), AllIcons.Actions.Checked, JBLabel.LEFT)
-    private val path = JBLabel().apply {
-        foreground = JBUI.CurrentTheme.Link.Foreground.ENABLED
-        setCopyable(true)
-    }
-    private val body = JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        isOpaque = false
-    }
-    private val root = JPanel(BorderLayout()).apply {
-        isOpaque = true
-        background = SessionUiStyle.View.surface()
-        border = SessionUiStyle.View.card()
-    }
+    private val md = MdView.html()
 
     init {
         layout = BorderLayout()
         isOpaque = false
-        body.border = JBUI.Borders.empty(
-            JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
-            JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
-        )
-        body.add(title)
-        body.add(path)
-        root.add(body, BorderLayout.CENTER)
-        add(root, BorderLayout.CENTER)
+        add(md.component, BorderLayout.CENTER)
         applyStyle(SessionEditorStyle.current())
         sync()
     }
@@ -61,20 +34,30 @@ class PlanExitView(tool: Tool) : PartView() {
     }
 
     override fun applyStyle(style: SessionEditorStyle) {
-        title.font = style.boldEditorFont
-        path.font = style.smallEditorFont
+        val changed = md.font != style.transcriptFont || md.codeFont != style.editorFamily
+        if (md.font != style.transcriptFont) md.font = style.transcriptFont
+        if (md.codeFont != style.editorFamily) md.codeFont = style.editorFamily
+        if (!changed) return
+        refresh()
     }
 
-    fun labelText(): String = listOf(title.text, path.text).filter { it.isNotBlank() }.joinToString(" ")
+    fun markdown(): String = md.markdown()
 
     private fun sync() {
-        title.foreground = UiStyle.Colors.fg()
         val plan = plan(item)
-        path.text = plan
-        path.isVisible = plan.isNotBlank()
+        val text = listOf(KiloBundle.message("session.part.plan.ready"), link(plan))
+            .filterNotNull()
+            .joinToString(" ")
+        md.set(text)
+        refresh()
     }
 
-    override fun dumpLabel() = "PlanExitView#$contentId(${labelText()})"
+    private fun refresh() {
+        revalidate()
+        repaint()
+    }
+
+    override fun dumpLabel() = "PlanExitView#$contentId"
 }
 
 private fun plan(tool: Tool): String {
@@ -86,4 +69,11 @@ private fun plan(tool: Tool): String {
         ?.getOrNull(1)
         ?.trim()
         ?: ""
+}
+
+private fun link(plan: String): String? {
+    if (plan.isBlank()) return null
+    val text = plan.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
+    val href = plan.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
+    return "[$text]($href)"
 }
