@@ -2,4 +2,4 @@
 "@kilocode/cli": patch
 ---
 
-`/local-review` and `/local-review-uncommitted` now pass user input through regular command arguments. Type any extra review focus after the slash command without special separators and it is passed to the prompt as `$ARGUMENTS`.
+Support optional review focus for `/local-review` and `/local-review-uncommitted`, optional base selection for `/local-review`, and focus both prompts on high-confidence security, performance, business logic, deploy safety, duplication, and dead-code findings.
