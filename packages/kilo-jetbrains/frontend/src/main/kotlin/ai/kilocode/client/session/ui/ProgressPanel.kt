@@ -52,6 +52,7 @@ class ProgressPanel(
         when (state) {
             is SessionState.Busy -> {
                 label.text = state.text
+                label.foreground = UiStyle.Colors.weak()
                 isVisible = true
             }
             is SessionState.Loading -> isVisible = false

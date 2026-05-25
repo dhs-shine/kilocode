@@ -227,6 +227,37 @@ class SessionUiLayoutTest : SessionUiTestBase() {
         assertSame(find<SessionMessageListPanel>(ui), scrollView())
     }
 
+    fun `test retry status renders in loading panel instead of message body`() {
+        rpc.history.addAll(history(1))
+        ui = newUi(id = "ses_test")
+        settle()
+
+        controller().model.setState(SessionState.Retry("Cannot connect to API", attempt = 2, next = 1_234L))
+        layout()
+
+        val panel = find<LoadingPanel>(ui)
+        assertSame(panel, scrollView())
+        assertEquals("Cannot connect to API", panel.labelText())
+
+        controller().model.setState(SessionState.Idle)
+        layout()
+
+        assertSame(find<SessionMessageListPanel>(ui), scrollView())
+    }
+
+    fun `test offline status renders in loading panel with fallback`() {
+        rpc.history.addAll(history(1))
+        ui = newUi(id = "ses_test")
+        settle()
+
+        controller().model.setState(SessionState.Offline("", requestId = "req1"))
+        layout()
+
+        val panel = find<LoadingPanel>(ui)
+        assertSame(panel, scrollView())
+        assertEquals("Connection offline", panel.labelText())
+    }
+
     fun `test empty explicit session id shows message body`() {
         rpc.recent.add(session("ses_recent"))
         settle()

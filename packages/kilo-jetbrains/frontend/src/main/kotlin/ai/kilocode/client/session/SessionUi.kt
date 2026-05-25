@@ -378,6 +378,7 @@ class SessionUi(
     }
 
     private fun body(state: SessionState): JPanel {
+        if (state is SessionState.Retry || state is SessionState.Offline) return progressBody
         if (controller.model.showSession) return messageBody
         if (state is SessionState.Loading) return progressBody
         return blankBody
@@ -417,6 +418,8 @@ class SessionUi(
 
     private fun onStateChanged(state: SessionState) {
         prompt.setBusy(state.isBusy())
+        load.setState(state)
+        scroll.show(body(state))
         refresh()
     }
 

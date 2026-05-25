@@ -141,6 +141,12 @@ class KiloSessionRpcApiImpl : KiloSessionRpcApi {
             val passes = sid == null || sid == id
             if (passes) LOG.debug { "${ChatLogSummary.sid(id)} pass=true ${ChatLogSummary.eventBody(event)}" }
             else LOG.debug { "${ChatLogSummary.sid(id)} pass=false srcSid=$sid ${ChatLogSummary.eventBody(event)}" }
+            if (passes && event is ChatEventDto.SessionStatusChanged && event.status.type != "busy") {
+                LOG.info(
+                    "${ChatLogSummary.sid(id)} kind=status route=rpc-events pass=true " +
+                        ChatLogSummary.status(event.status),
+                )
+            }
             passes
         }
 
