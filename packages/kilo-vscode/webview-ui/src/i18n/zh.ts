@@ -1224,7 +1224,8 @@ export const dict = {
   "settings.experimental.agentManagerTool.description": "允许智能体通过工具调用启动 Agent Manager 本地会话和工作树会话",
   "settings.experimental.speechToText.title": "语音转文本",
   "settings.experimental.speechToText.description": "通过 Kilo Gateway 使用您的 Kilo 帐户在提示词字段中启用语音输入。",
-  "settings.experimental.speechToText.disabledDescription": "启用并登录 Kilo provider 以在提示词字段中使用语音输入。",
+  "settings.experimental.speechToText.disabledDescription":
+    "启用并登录 Kilo 提供商以使用 Speech to Text。Speech to Text 目前仅支持通过 Kilo Gateway 使用。",
   "settings.experimental.speechToTextModel.title": "语音转文本模型",
   "settings.experimental.speechToTextModel.description": "选择用于语音输入的 Kilo Gateway 转录模型。",
   "settings.experimental.continueOnDeny.title": "拒绝后继续",

@@ -1255,7 +1255,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Увімкніть голосове введення в полях запитів, використовуючи ваш обліковий запис Kilo через Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Увімкніть Kilo provider і увійдіть, щоб використовувати голосове введення в полях запитів.",
+    "Увімкніть провайдер Kilo та виконайте вхід, щоб використовувати Speech to Text. Наразі Speech to Text підтримується лише з Kilo Gateway.",
   "settings.experimental.speechToTextModel.title": "Модель мовлення в текст",
   "settings.experimental.speechToTextModel.description":
     "Виберіть модель транскрипції Kilo Gateway для голосового введення.",

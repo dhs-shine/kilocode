@@ -1266,7 +1266,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Omogućite glasovni unos u poljima za promptove koristeći vaš Kilo račun preko Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Omogućite i prijavite se na Kilo provider da koristite glasovni unos u poljima za promptove.",
+    "Omogućite i prijavite se na Kilo provajder da biste koristili Speech to Text. Speech to Text je trenutno podržan samo uz Kilo Gateway.",
   "settings.experimental.speechToTextModel.title": "Model govora u tekst",
   "settings.experimental.speechToTextModel.description":
     "Odaberite Kilo Gateway model za transkripciju za glasovni unos.",
