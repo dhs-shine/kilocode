@@ -33,6 +33,7 @@ import com.intellij.openapi.keymap.KeymapManagerListener
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.xml.util.XmlStringUtil
 import com.intellij.util.ui.JBValue
 import com.intellij.util.ui.JBDimension
@@ -183,28 +184,34 @@ class PromptPanel(
         syncTooltip()
     }
 
+    @RequiresEdt
     fun setReady(value: Boolean) {
         ready = value
     }
 
+    @RequiresEdt
     fun setBusy(value: Boolean) {
         busy = value
         button.icon = if (value) STOP_ICON else SEND_ICON
         syncTooltip()
     }
 
+    @RequiresEdt
     fun setResetVisible(value: Boolean) {
         reset.isVisible = value
         revalidate()
         repaint()
     }
 
+    @RequiresEdt
     fun text(): String = editor.text.trim()
 
+    @RequiresEdt
     override fun send() {
         submit("action")
     }
 
+    @RequiresEdt
     override fun stop() {
         if (!isStopEnabled) return
         onAbort()
@@ -222,6 +229,7 @@ class PromptPanel(
 
     internal val defaultFocusedComponent: JComponent get() = editor
 
+    @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         editor.font = style.transcriptFont
@@ -235,10 +243,12 @@ class PromptPanel(
         repaint()
     }
 
+    @RequiresEdt
     fun clear() {
         editor.text = ""
     }
 
+    @RequiresEdt
     fun focus() {
         editor.requestFocusInWindow()
     }
@@ -254,6 +264,7 @@ class PromptPanel(
         super.removeNotify()
     }
 
+    @RequiresEdt
     private fun submit(src: String) {
         if (!isSendEnabled) return
         val txt = text()
@@ -263,6 +274,7 @@ class PromptPanel(
         }
     }
 
+    @RequiresEdt
     private fun bindKeymap() {
         if (bus != null) return
         val connection = ApplicationManager.getApplication().messageBus.connect()
@@ -283,6 +295,7 @@ class PromptPanel(
         })
     }
 
+    @RequiresEdt
     private fun syncTooltip() {
         button.toolTipText = tooltip()
     }

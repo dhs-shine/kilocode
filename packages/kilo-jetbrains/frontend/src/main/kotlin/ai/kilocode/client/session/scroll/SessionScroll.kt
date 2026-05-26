@@ -9,6 +9,7 @@ import ai.kilocode.client.ui.UiStyle
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.Cursor
 import java.awt.Point
@@ -50,6 +51,7 @@ internal class SessionScroll(
     private var stable = -1
     private var seq = 0
     private var user = false
+    private var value = 0
 
     init {
         jump = JBLabel(ScrollButtonIcon.create()).apply {
@@ -81,6 +83,7 @@ internal class SessionScroll(
         }
     }
 
+    @RequiresEdt
     fun show(panel: JPanel) {
         if (component.viewport.view === panel) return
         (panel as? SessionEditorStyleTarget)?.applyStyle(style)
@@ -89,6 +92,7 @@ internal class SessionScroll(
         updateJump()
     }
 
+    @RequiresEdt
     fun atBottom(): Boolean {
         val bar = component.verticalScrollBar
         return when {
@@ -98,12 +102,14 @@ internal class SessionScroll(
         }
     }
 
+    @RequiresEdt
     fun followBottom(follow: Boolean) {
         if (!follow) {
             seq++
             updateJump()
             return
         }
+        user = false
         tail = true
         stable = -1
         auto = true
@@ -119,17 +125,21 @@ internal class SessionScroll(
         }
     }
 
+    @RequiresEdt
     fun followTail() {
         followBottom(component.viewport.view === messages && tail)
     }
 
+    @RequiresEdt
     fun following(): Boolean {
         return component.viewport.view === messages && tail
     }
 
+    @RequiresEdt
     fun openBottom(done: () -> Unit) {
         opening = true
         stable = -1
+        user = false
         tail = true
         auto = true
         show(messages)
@@ -140,10 +150,12 @@ internal class SessionScroll(
         }
     }
 
+    @RequiresEdt
     fun refresh() {
         updateJump()
     }
 
+    @RequiresEdt
     fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         jump.icon = ScrollButtonIcon.create()
@@ -153,9 +165,11 @@ internal class SessionScroll(
         refresh()
     }
 
+    @RequiresEdt
     private fun jumpBottom() {
         opening = false
         stable = -1
+        user = false
         tail = true
         auto = true
         show(messages)
@@ -166,6 +180,7 @@ internal class SessionScroll(
         }
     }
 
+    @RequiresEdt
     private fun followPass(id: Int, remaining: Int) {
         if (id != seq || !tail) return
         auto = true
@@ -177,6 +192,7 @@ internal class SessionScroll(
         } finally {
             auto = false
         }
+        syncValue()
         if (remaining <= 0) {
             stable = -1
             return
@@ -189,6 +205,7 @@ internal class SessionScroll(
         }
     }
 
+    @RequiresEdt
     private fun openPass(id: Int, remaining: Int, done: () -> Unit) {
         if (id != seq) {
             opening = false
@@ -205,6 +222,7 @@ internal class SessionScroll(
         } finally {
             auto = false
         }
+        syncValue()
         if (remaining <= 0) {
             opening = false
             stable = -1
@@ -219,10 +237,12 @@ internal class SessionScroll(
         }
     }
 
+    @RequiresEdt
     private fun layoutScroll() {
         root.validate()
     }
 
+    @RequiresEdt
     private fun scrollToBottom() {
         val view = component.viewport.view ?: return
         val y = (view.height - component.viewport.extentSize.height).coerceAtLeast(0)
@@ -232,12 +252,16 @@ internal class SessionScroll(
         bar.value = bottom()
     }
 
+    @RequiresEdt
     private fun bottom(): Int {
         val bar = component.verticalScrollBar
         return (bar.maximum - bar.visibleAmount).coerceAtLeast(bar.minimum)
     }
 
+    @RequiresEdt
     private fun onScroll() {
+        val moved = bar.value != value
+        syncValue()
         if (auto || opening) {
             updateJump()
             return
@@ -250,7 +274,8 @@ internal class SessionScroll(
                 updateJump()
                 return
             }
-            if (tail && !user) {
+            if (tail && (!user || !moved)) {
+                user = false
                 followBottom(true)
                 return
             }
@@ -261,11 +286,17 @@ internal class SessionScroll(
         updateJump()
     }
 
+    @RequiresEdt
     private fun updateJump() {
         val visible = component.viewport.view === messages && !atBottom()
         if (jump.isVisible == visible) return
         jump.isVisible = visible
         root.overlay.revalidate()
         root.overlay.repaint()
+    }
+
+    @RequiresEdt
+    private fun syncValue() {
+        value = bar.value
     }
 }

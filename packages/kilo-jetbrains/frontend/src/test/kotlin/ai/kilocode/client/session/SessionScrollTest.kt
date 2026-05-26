@@ -144,6 +144,22 @@ class SessionScrollTest : SessionUiTestBase() {
         assertBottom(bar)
     }
 
+    fun `test no-op wheel at bottom does not cancel following`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        setBottom(bar)
+        wheelNoop()
+
+        emit(ChatEventDto.MessageUpdated("ses_test", message("noop_wheel_tail")), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", part("noop_wheel_part", "noop_wheel_tail", "text", "tail line\n".repeat(120))), flush = false)
+        forceFlush()
+        drainScroll()
+
+        assertBottom(bar)
+        assertFalse(jumpButton().isVisible)
+    }
+
     fun `test part delta follows bottom after height growth`() {
         showMessages()
         fillTranscript(24)
@@ -259,6 +275,38 @@ class SessionScrollTest : SessionUiTestBase() {
 
         assertBottom(bar)
         assertFalse(jumpButton().isVisible)
+    }
+
+    fun `test prompt editor growth preserves middle scroll position`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        setValue(bar, bottom(bar) / 2)
+        val value = bar.value
+
+        findAll<EditorTextField>(ui).first().text = "prompt line\n".repeat(80)
+        drainScroll()
+
+        assertEquals(value, bar.value)
+        assertTrue(jumpButton().isVisible)
+    }
+
+    fun `test prompt editor growth in middle does not resume following`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        setValue(bar, bottom(bar) / 2)
+        findAll<EditorTextField>(ui).first().text = "prompt line\n".repeat(80)
+        drainScroll()
+        val value = bar.value
+
+        emit(ChatEventDto.MessageUpdated("ses_test", message("prompt_growth_middle")), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", part("prompt_growth_part", "prompt_growth_middle", "text", "tail line\n".repeat(80))), flush = false)
+        forceFlush()
+        drainScroll()
+
+        assertEquals(value, bar.value)
+        assertTrue(jumpButton().isVisible)
     }
 
     fun `test large question after reasoning stays at bottom`() {
@@ -508,6 +556,78 @@ class SessionScrollTest : SessionUiTestBase() {
         assertFalse(jumpButton().isVisible)
     }
 
+    fun `test question top forward icon follows immediately from middle`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        emit(ChatEventDto.QuestionAsked("ses_test", multiQuestion("q_icon_next_middle")))
+        drainScroll()
+        setValue(bar, bottom(bar) / 2)
+
+        option<JBRadioButton>("Minimal").doClick()
+        icon(KiloBundle.message("session.question.next")).doClick()
+
+        assertBottom(bar)
+        assertFalse(jumpButton().isVisible)
+    }
+
+    fun `test question review navigation follows immediately from middle`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        emit(ChatEventDto.QuestionAsked("ses_test", multiQuestion("q_review_middle")))
+        drainScroll()
+
+        option<JBRadioButton>("Minimal").doClick()
+        button("Next").doClick()
+        drainScroll()
+        option<JBRadioButton>("Unit").doClick()
+        setValue(bar, bottom(bar) / 2)
+        button("Review").doClick()
+
+        assertBottom(bar)
+        assertFalse(jumpButton().isVisible)
+    }
+
+    fun `test question review back footer follows immediately from middle`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        emit(ChatEventDto.QuestionAsked("ses_test", multiQuestion("q_review_back_middle")))
+        drainScroll()
+
+        option<JBRadioButton>("Minimal").doClick()
+        button("Next").doClick()
+        drainScroll()
+        option<JBRadioButton>("Unit").doClick()
+        button("Review").doClick()
+        drainScroll()
+        setValue(bar, bottom(bar) / 2)
+        button("Back").doClick()
+
+        assertBottom(bar)
+        assertFalse(jumpButton().isVisible)
+    }
+
+    fun `test forced question navigation resumes following subsequent updates`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        emit(ChatEventDto.QuestionAsked("ses_test", multiQuestion("q_nav_resume_follow")))
+        drainScroll()
+        setValue(bar, bottom(bar) / 2)
+
+        option<JBRadioButton>("Minimal").doClick()
+        icon(KiloBundle.message("session.question.next")).doClick()
+        emit(ChatEventDto.MessageUpdated("ses_test", message("q_nav_resume_tail")), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", part("q_nav_resume_part", "q_nav_resume_tail", "text", "tail line\n".repeat(80))), flush = false)
+        forceFlush()
+        drainScroll()
+
+        assertBottom(bar)
+        assertFalse(jumpButton().isVisible)
+    }
+
     fun `test question carousel back to large question follows immediately`() {
         showMessages()
         fillTranscript(24)
@@ -598,6 +718,26 @@ class SessionScrollTest : SessionUiTestBase() {
         assertTrue(jumpButton().isVisible)
     }
 
+    fun `test question option selection in middle does not resume following`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        emit(ChatEventDto.QuestionAsked("ses_test", question("q_select_middle")))
+        drainScroll()
+        setValue(bar, bottom(bar) / 2)
+        val value = bar.value
+
+        option<JBRadioButton>("A").doClick()
+        drainScroll()
+        emit(ChatEventDto.MessageUpdated("ses_test", message("q_select_tail")), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", part("q_select_part", "q_select_tail", "text", "tail line\n".repeat(80))), flush = false)
+        forceFlush()
+        drainScroll()
+
+        assertEquals(value, bar.value)
+        assertTrue(jumpButton().isVisible)
+    }
+
     fun `test login required appearing at bottom keeps scroll at bottom`() {
         showMessages()
         fillTranscript(24)
@@ -642,8 +782,11 @@ class SessionScrollTest : SessionUiTestBase() {
         val out = mutableListOf<T>()
         if (cls.isInstance(root)) out.add(cls.cast(root))
         for (child in root.components) {
-            if (cls.isInstance(child)) out.add(cls.cast(child))
-            if (child is Container && child !is AbstractButton) out.addAll(findAll(child, cls))
+            if (child is Container && child !is AbstractButton) {
+                out.addAll(findAll(child, cls))
+            } else if (cls.isInstance(child)) {
+                out.add(cls.cast(child))
+            }
         }
         return out
     }
