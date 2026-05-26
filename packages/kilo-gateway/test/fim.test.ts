@@ -28,7 +28,12 @@ describe("FIM target resolution", () => {
     })
   })
 
-  test("maps legacy gateway IDs to explicit Kilo Gateway targets", () => {
+  test("preserves gateway model pass-through behavior", () => {
+    expect(resolveFimTarget()).toEqual({
+      provider: "kilo",
+      model: "mistralai/codestral-2501",
+      urls: ["https://api.kilo.ai/api/fim/completions"],
+    })
     expect(resolveFimTarget(undefined, "mistralai/codestral-2508")).toEqual({
       provider: "kilo",
       model: "mistralai/codestral-2508",
@@ -36,12 +41,12 @@ describe("FIM target resolution", () => {
     })
     expect(resolveFimTarget(undefined, "inception/mercury-edit")).toEqual({
       provider: "kilo",
-      model: "inception/mercury-edit-2",
+      model: "inception/mercury-edit",
       urls: ["https://api.kilo.ai/api/fim/completions"],
     })
-    expect(resolveFimTarget(undefined, "inception/mercury-edit-2")).toEqual({
+    expect(resolveFimTarget("kilo", "custom/fim-model")).toEqual({
       provider: "kilo",
-      model: "inception/mercury-edit-2",
+      model: "custom/fim-model",
       urls: ["https://api.kilo.ai/api/fim/completions"],
     })
   })
