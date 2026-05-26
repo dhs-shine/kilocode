@@ -34,7 +34,7 @@ runs:
       run: echo "dir=$(bun pm cache)" >> "$GITHUB_OUTPUT"
 
     - name: Cache Bun dependencies
-      uses: actions/cache@v5 # kilocode_change
+      uses: actions/cache@v4
       with:
         path: ${{ steps.cache.outputs.dir }}
         key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
