@@ -90,7 +90,7 @@ async function fetchFim(
     })
   }
 
-  if (target.provider === "mistral") return requestMistralFim(key, run)
+  if (target.provider === "mistral") return requestMistralFim(run)
 
   const [url] = target.urls
   if (!url) throw new Error("No FIM endpoint configured")

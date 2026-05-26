@@ -145,7 +145,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
               }),
             })
           }
-          if (target.provider === "mistral") return requestMistralFim(token, run)
+          if (target.provider === "mistral") return requestMistralFim(run)
           return run(target.urls[0]!)
         } catch (err) {
           if (err instanceof DOMException && err.name === "TimeoutError")

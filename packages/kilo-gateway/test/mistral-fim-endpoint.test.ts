@@ -12,14 +12,14 @@ function response(status: number) {
 }
 
 describe("Mistral FIM endpoint cache", () => {
-  test("caches Codestral endpoint after successful fallback", async () => {
+  test("remembers Codestral endpoint after successful fallback", async () => {
     clearMistralFimEndpointCache()
     const urls: string[] = []
-    const first = await requestMistralFim("key-a", async (url) => {
+    const first = await requestMistralFim(async (url) => {
       urls.push(url)
       return response(url === MISTRAL_FIM_URL ? 401 : 200)
     })
-    const second = await requestMistralFim("key-a", async (url) => {
+    const second = await requestMistralFim(async (url) => {
       urls.push(url)
       return response(200)
     })
@@ -27,50 +27,49 @@ describe("Mistral FIM endpoint cache", () => {
     expect(first.ok).toBe(true)
     expect(second.ok).toBe(true)
     expect(urls).toEqual([MISTRAL_FIM_URL, CODESTRAL_FIM_URL, CODESTRAL_FIM_URL])
-    expect(getCachedMistralFimEndpoint("key-a")).toBe(CODESTRAL_FIM_URL)
+    expect(getCachedMistralFimEndpoint()).toBe(CODESTRAL_FIM_URL)
   })
 
-  test("does not cache fallback for invalid credentials", async () => {
+  test("does not remember fallback for invalid credentials", async () => {
     clearMistralFimEndpointCache()
     const urls: string[] = []
-    const res = await requestMistralFim("key-b", async (url) => {
+    const res = await requestMistralFim(async (url) => {
       urls.push(url)
       return response(401)
     })
 
     expect(res.status).toBe(401)
     expect(urls).toEqual([MISTRAL_FIM_URL, CODESTRAL_FIM_URL])
-    expect(getCachedMistralFimEndpoint("key-b")).toBeUndefined()
+    expect(getCachedMistralFimEndpoint()).toBeUndefined()
   })
 
-  test("keeps endpoint preference scoped to credential fingerprint", async () => {
+  test("uses one process-local endpoint preference", async () => {
     clearMistralFimEndpointCache()
     const urls: string[] = []
-    await requestMistralFim("key-c", async (url) => {
+    await requestMistralFim(async (url) => {
       urls.push(url)
       return response(url === MISTRAL_FIM_URL ? 403 : 200)
     })
-    await requestMistralFim("key-d", async (url) => {
+    await requestMistralFim(async (url) => {
       urls.push(url)
       return response(200)
     })
 
-    expect(urls).toEqual([MISTRAL_FIM_URL, CODESTRAL_FIM_URL, MISTRAL_FIM_URL])
-    expect(getCachedMistralFimEndpoint("key-c")).toBe(CODESTRAL_FIM_URL)
-    expect(getCachedMistralFimEndpoint("key-d")).toBeUndefined()
+    expect(urls).toEqual([MISTRAL_FIM_URL, CODESTRAL_FIM_URL, CODESTRAL_FIM_URL])
+    expect(getCachedMistralFimEndpoint()).toBe(CODESTRAL_FIM_URL)
   })
 
   test("clears stale preference and probes alternate endpoint", async () => {
     clearMistralFimEndpointCache()
     const urls: string[] = []
-    await requestMistralFim("key-e", async (url) => response(url === MISTRAL_FIM_URL ? 401 : 200))
-    const res = await requestMistralFim("key-e", async (url) => {
+    await requestMistralFim(async (url) => response(url === MISTRAL_FIM_URL ? 401 : 200))
+    const res = await requestMistralFim(async (url) => {
       urls.push(url)
       return response(url === CODESTRAL_FIM_URL ? 401 : 200)
     })
 
     expect(res.ok).toBe(true)
     expect(urls).toEqual([CODESTRAL_FIM_URL, MISTRAL_FIM_URL])
-    expect(getCachedMistralFimEndpoint("key-e")).toBe(MISTRAL_FIM_URL)
+    expect(getCachedMistralFimEndpoint()).toBe(MISTRAL_FIM_URL)
   })
 })
