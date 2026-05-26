@@ -282,7 +282,7 @@ export const dict = {
   "prompt.action.enhanceDescription":
     "زر «حسّن الموجه» يطوّر موجهك بإضافة سياق أو توضيح أو إعادة صياغة. جرّب اكتب موجه هنا ثم اضغط الزر مرة ثانية وشوف النتيجة.",
 
-  "speechToText.tooltip.start": "بدء الإدخال الصوتي",
+  "speechToText.tooltip.start": "بدء الإدخال الصوتي باستخدام Kilo Gateway",
   "speechToText.tooltip.stop": "إيقاف التقاط الصوت",
   "speechToText.tooltip.transcribing": "جاري تحويل الصوت إلى نص... انقر للإلغاء.",
   "speechToText.tooltip.error": "فشل الإدخال الصوتي. انقر للمسح.",

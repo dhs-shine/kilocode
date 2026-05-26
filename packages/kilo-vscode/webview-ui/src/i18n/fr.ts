@@ -288,7 +288,7 @@ export const dict = {
     "Le bouton 'Améliorer la requête' aide à améliorer votre demande en fournissant un contexte supplémentaire, des clarifications ou des reformulations. Essayez de taper une demande ici et cliquez à nouveau sur le bouton pour voir comment cela fonctionne.",
   "prompt.action.indexing": "Paramètres d'indexation",
 
-  "speechToText.tooltip.start": "Démarrer la saisie vocale",
+  "speechToText.tooltip.start": "Démarrer la saisie vocale avec Kilo Gateway",
   "speechToText.tooltip.stop": "Arrêter la capture audio",
   "speechToText.tooltip.transcribing": "Transcription en cours... Cliquez pour annuler.",
   "speechToText.tooltip.error": "La saisie vocale a échoué. Cliquez pour effacer.",

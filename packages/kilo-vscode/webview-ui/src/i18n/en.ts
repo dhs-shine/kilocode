@@ -284,7 +284,7 @@ export const dict = {
   "prompt.action.resetModel": "Reset model to default",
   "prompt.action.enhanceDescription":
     "The 'Enhance Prompt' button helps improve your prompt by providing additional context, clarification, or rephrasing. Try typing a prompt in here and clicking the button again to see how it works.",
-  "speechToText.tooltip.start": "Start voice input",
+  "speechToText.tooltip.start": "Start voice input with Kilo Gateway",
   "speechToText.tooltip.stop": "Stop capturing",
   "speechToText.tooltip.transcribing": "Transcribing... Click to cancel.",
   "speechToText.tooltip.error": "Speech input failed. Click to clear.",

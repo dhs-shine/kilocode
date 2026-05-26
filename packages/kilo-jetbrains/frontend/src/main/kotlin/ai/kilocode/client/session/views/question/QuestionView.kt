@@ -125,6 +125,7 @@ class QuestionView(
         customTexts = List(q.items.size) { "" }
         customOpen = List(q.items.size) { false }
         isVisible = true
+        applyStyle(SessionEditorStyle.current())
         syncPage()
     }
 
