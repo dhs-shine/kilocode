@@ -9,6 +9,7 @@ import { Config } from "@/config/config"
 import { KiloTask } from "../kilocode/tool/task" // kilocode_change
 import { KiloCostPropagation } from "../kilocode/session/cost-propagation" // kilocode_change
 import { KiloSessionProcessor } from "../kilocode/session/processor" // kilocode_change
+import { errorMessage } from "@/util/error" // kilocode_change
 import { Effect, Exit, Schema } from "effect"
 import { EffectBridge } from "@/effect/bridge"
 
@@ -179,6 +180,12 @@ export const TaskTool = Tool.define(
               },
               parts,
             })
+
+            // kilocode_change start - expose terminal child assistant errors through the task tool boundary
+            if (result.info.role === "assistant" && result.info.error) {
+              return yield* Effect.fail(new Error(errorMessage(result.info.error)))
+            }
+            // kilocode_change end
 
             return {
               title: params.description,
