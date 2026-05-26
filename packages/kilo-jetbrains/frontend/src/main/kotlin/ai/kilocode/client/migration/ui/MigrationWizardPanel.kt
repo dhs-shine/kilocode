@@ -6,7 +6,6 @@ import ai.kilocode.client.migration.MigrationSettingsUiSelections
 import ai.kilocode.client.migration.MigrationUiPhase
 import ai.kilocode.client.migration.MigrationUiSelections
 import ai.kilocode.client.migration.MigrationUiState
-import ai.kilocode.client.migration.SessionMigrationSummary
 import ai.kilocode.client.migration.groupStatus
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.views.base.BaseQuestionView
@@ -14,7 +13,6 @@ import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.rpc.dto.LegacyMigrationDetectionDto
 import ai.kilocode.rpc.dto.MigrationItemCategoryDto
-import ai.kilocode.rpc.dto.MigrationSessionPhaseDto
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.annotations.RequiresEdt
@@ -50,8 +48,6 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
     private val sessionsRow = MigrationItemRow(KiloBundle.message("migration.row.sessions"), MigrationItemCategoryDto.session)
     private val modelRow = MigrationItemRow(KiloBundle.message("migration.row.model"), MigrationItemCategoryDto.defaultModel)
 
-    private val sessionProgress = SessionMigrationProgressPanel()
-    private val sessionSummary = SessionMigrationSummaryPanel()
     private val question = BaseQuestionView()
     private val keepBox = JBCheckBox(KiloBundle.message("migration.keep_legacy_settings"), true)
 
@@ -143,21 +139,6 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
         updateRowProgress(MigrationItemCategoryDto.defaultModel, state.progress)
         updateRowProgress(MigrationItemCategoryDto.settings, state.progress)
 
-        // Session progress/summary
-        val sp = state.sessionProgress
-        if (sp != null && sp.phase != MigrationSessionPhaseDto.summary) {
-            sessionProgress.update(sp)
-            sessionProgress.isVisible = true
-            sessionSummary.isVisible = false
-        } else if (sp != null && sp.phase == MigrationSessionPhaseDto.summary) {
-            sessionSummary.update(state.sessionSummary)
-            sessionProgress.isVisible = false
-            sessionSummary.isVisible = true
-        } else {
-            sessionProgress.isVisible = false
-            sessionSummary.isVisible = false
-        }
-
         updateButtons(phase, running)
         updateMigrateButtonEnabled()
         question.revalidate()
@@ -248,7 +229,5 @@ class MigrationWizardPanel : JPanel(BorderLayout()) {
             .next(sessionsRow)
             .next(modelRow)
             .next(settingsRow)
-            .next(sessionProgress)
-            .next(sessionSummary)
     }
 }

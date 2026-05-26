@@ -8,8 +8,18 @@ import ai.kilocode.client.migration.ui.MigrationOverlayPanel
 import ai.kilocode.client.migration.ui.MigrationWizardPanel
 import ai.kilocode.client.ui.layout.Align
 import ai.kilocode.rpc.dto.LegacyMigrationDetectionDto
+import ai.kilocode.rpc.dto.LegacyMigrationResultItemDto
+import ai.kilocode.rpc.dto.LegacyMigrationSessionProgressDto
+import ai.kilocode.rpc.dto.MigrationItemCategoryDto
+import ai.kilocode.rpc.dto.MigrationItemProgressStatusDto
+import ai.kilocode.rpc.dto.MigrationItemStatusDto
 import ai.kilocode.rpc.dto.MigrationProviderInfoDto
+import ai.kilocode.rpc.dto.MigrationSessionInfoDto
+import ai.kilocode.rpc.dto.MigrationSessionPhaseDto
+import java.awt.Container
 import java.awt.Rectangle
+import javax.swing.AbstractButton
+import javax.swing.JLabel
 
 @Suppress("UnstableApiUsage")
 class SessionUiMigrationTest : SessionUiTestBase() {
@@ -126,6 +136,120 @@ class SessionUiMigrationTest : SessionUiTestBase() {
         assertEquals(Rectangle(0, 0, root.width, root.height), root.blocker.bounds)
     }
 
+    fun `test migration row keeps preferred height and identity while migrating`() {
+        val det = sampleDetection()
+        fakeMigration._state.value = MigrationUiState.Needed(detection = det)
+        settle()
+
+        val wizard = find<MigrationWizardPanel>(ui)
+        val row = find<MigrationItemRow>(wizard)
+        val count = row.componentCount
+        val height = row.preferredSize.height
+
+        fakeMigration._state.value = MigrationUiState.Needed(
+            detection = det,
+            phase = MigrationUiPhase.migrating,
+            running = true,
+            progress = listOf(
+                MigrationItemUiProgress(
+                    item = "profile1",
+                    category = MigrationItemCategoryDto.provider,
+                    status = MigrationItemProgressStatusDto.migrating,
+                ),
+            ),
+        )
+        settle()
+
+        assertSame(wizard, find<MigrationWizardPanel>(ui))
+        assertSame(row, find<MigrationItemRow>(wizard))
+        assertEquals(count, row.componentCount)
+        assertEquals(height, row.preferredSize.height)
+
+        fakeMigration._state.value = MigrationUiState.Needed(
+            detection = det,
+            phase = MigrationUiPhase.done,
+            progress = listOf(
+                MigrationItemUiProgress(
+                    item = "profile1",
+                    category = MigrationItemCategoryDto.provider,
+                    status = MigrationItemProgressStatusDto.success,
+                ),
+            ),
+        )
+        settle()
+
+        assertSame(wizard, find<MigrationWizardPanel>(ui))
+        assertSame(row, find<MigrationItemRow>(wizard))
+        assertEquals(count, row.componentCount)
+        assertEquals(height, row.preferredSize.height)
+    }
+
+    fun `test session migration progress does not show separate counter`() {
+        val det = sampleDetection().copy(
+            sessions = listOf(MigrationSessionInfoDto("ses_1", "Session", "/tmp", 1L)),
+        )
+        fakeMigration._state.value = MigrationUiState.Needed(
+            detection = det,
+            phase = MigrationUiPhase.migrating,
+            running = true,
+            progress = listOf(
+                MigrationItemUiProgress(
+                    item = "ses_1",
+                    category = MigrationItemCategoryDto.session,
+                    status = MigrationItemProgressStatusDto.migrating,
+                ),
+            ),
+            sessionProgress = LegacyMigrationSessionProgressDto(
+                session = det.sessions.single(),
+                index = 0,
+                total = 1,
+                phase = MigrationSessionPhaseDto.preparing,
+            ),
+        )
+        settle()
+
+        val wizard = find<MigrationWizardPanel>(ui)
+        assertFalse(hasText(wizard, "Migrating 1 of 1"))
+    }
+
+    fun `test session migration summary does not show separate report UI`() {
+        val det = sampleDetection().copy(
+            sessions = listOf(MigrationSessionInfoDto("ses_1", "Session", "/tmp", 1L)),
+        )
+        fakeMigration._state.value = MigrationUiState.Needed(
+            detection = det,
+            phase = MigrationUiPhase.done,
+            progress = listOf(
+                MigrationItemUiProgress(
+                    item = "ses_1",
+                    category = MigrationItemCategoryDto.session,
+                    status = MigrationItemProgressStatusDto.success,
+                ),
+            ),
+            sessionProgress = LegacyMigrationSessionProgressDto(
+                session = null,
+                index = 1,
+                total = 1,
+                phase = MigrationSessionPhaseDto.summary,
+            ),
+            sessionSummary = SessionMigrationSummary(
+                imported = listOf(
+                    LegacyMigrationResultItemDto(
+                        item = "ses_1",
+                        category = MigrationItemCategoryDto.session,
+                        status = MigrationItemStatusDto.success,
+                    ),
+                ),
+            ),
+        )
+        settle()
+
+        val wizard = find<MigrationWizardPanel>(ui)
+        assertFalse(hasText(wizard, "1 imported"))
+        assertFalse(hasText(wizard, "0 errored"))
+        assertFalse(hasText(wizard, "Copy Report"))
+    }
+
     private fun sampleDetection() = LegacyMigrationDetectionDto(
         providers = listOf(
             MigrationProviderInfoDto("profile1", "anthropic", "claude-3", true, true, "anthropic"),
@@ -137,5 +261,16 @@ class SessionUiMigrationTest : SessionUiTestBase() {
         settings = null,
         hasData = true,
     )
+
+    private fun hasText(root: Container, text: String): Boolean {
+        if (root is JLabel && root.text == text) return true
+        if (root is AbstractButton && root.text == text) return true
+        for (child in root.components) {
+            if (child is JLabel && child.text == text) return true
+            if (child is AbstractButton && child.text == text) return true
+            if (child is Container && hasText(child, text)) return true
+        }
+        return false
+    }
 
 }
