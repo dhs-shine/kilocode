@@ -19,6 +19,7 @@ import java.awt.event.MouseWheelListener
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JScrollBar
+import javax.swing.SwingUtilities
 
 internal class SessionScroll(
     private val root: SessionRootPanel,
@@ -109,6 +110,10 @@ internal class SessionScroll(
         show(messages)
         auto = false
         val id = ++seq
+        if (SwingUtilities.isEventDispatchThread()) {
+            followPass(id, FOLLOW_PASSES)
+            return
+        }
         ApplicationManager.getApplication().invokeLater {
             followPass(id, FOLLOW_PASSES)
         }

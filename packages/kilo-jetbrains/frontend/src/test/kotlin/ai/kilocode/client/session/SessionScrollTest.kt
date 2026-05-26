@@ -10,6 +10,7 @@ import ai.kilocode.rpc.dto.QuestionRequestDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.ToolRefDto
 import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.plugin.KiloBundle
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBRadioButton
 import com.intellij.util.ui.JBUI
@@ -491,21 +492,38 @@ class SessionScrollTest : SessionUiTestBase() {
         assertFalse(jumpButton().isVisible)
     }
 
-    fun `test question carousel navigation preserves middle scroll position`() {
+    fun `test question carousel navigation follows even when transcript is in middle`() {
         showMessages()
         fillTranscript(24)
         val bar = scrollBar()
         emit(ChatEventDto.QuestionAsked("ses_test", multiQuestion("q_nav_middle")))
         drainScroll()
         setValue(bar, bottom(bar) / 2)
-        val value = bar.value
 
         option<JBRadioButton>("Minimal").doClick()
         button("Next").doClick()
         drainScroll()
 
-        assertEquals(value, bar.value)
-        assertTrue(jumpButton().isVisible)
+        assertBottom(bar)
+        assertFalse(jumpButton().isVisible)
+    }
+
+    fun `test question carousel back to large question follows immediately`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        emit(ChatEventDto.QuestionAsked("ses_test", largeQuestion("q_nav_large")))
+        drainScroll()
+        setValue(bar, bottom(bar) / 2)
+
+        option<JBRadioButton>("Go").doClick()
+        button("Next").doClick()
+        drainScroll()
+        setValue(bar, bottom(bar) / 2)
+        icon(KiloBundle.message("session.question.back")).doClick()
+
+        assertBottom(bar)
+        assertFalse(jumpButton().isVisible)
     }
 
     fun `test question reply follows after card hides when transcript is at bottom`() {
@@ -612,6 +630,8 @@ class SessionScrollTest : SessionUiTestBase() {
     // ------ helpers ------
 
     private fun button(text: String): JButton = findAll<JButton>(ui).first { it.text == text }
+
+    private fun icon(text: String): JButton = findAll<JButton>(ui).first { it.toolTipText == text }
 
     private inline fun <reified T> option(label: String): T where T : AbstractButton =
         findAll<T>(ui).first { it.actionCommand == label }

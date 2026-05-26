@@ -681,7 +681,7 @@ class QuestionView(
         if (idx <= 0) return
         idx--
         syncPage()
-        scroll(follow())
+        scroll(true)
     }
 
     private fun goForward() {
@@ -694,7 +694,7 @@ class QuestionView(
         if (!toReview) {
             idx++
             syncPage()
-            scroll(follow())
+            scroll(true)
         }
     }
 
@@ -703,7 +703,7 @@ class QuestionView(
         if (idx == q.items.size - 1 && isReady(idx)) {
             idx = q.items.size
             syncPage()
-            scroll(follow())
+            scroll(true)
         }
     }
 
