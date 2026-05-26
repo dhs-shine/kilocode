@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Fake [MigrationUiController] for UI tests.
  *
  * Push state changes by setting [_state].
- * Track calls via [checks], [starts], [forces], [skips], [finishes].
+ * Track calls via [checks], [starts], [skips], [finishes].
  */
 class FakeMigrationUiController : MigrationUiController {
 
@@ -16,7 +16,6 @@ class FakeMigrationUiController : MigrationUiController {
 
     val checks = mutableListOf<Unit>()
     val starts = mutableListOf<MigrationUiSelections>()
-    val forces = mutableListOf<List<String>>()
     val skips = mutableListOf<Unit>()
     val finishes = mutableListOf<Unit>()
 
@@ -26,10 +25,6 @@ class FakeMigrationUiController : MigrationUiController {
 
     override fun start(selections: MigrationUiSelections) {
         starts.add(selections)
-    }
-
-    override fun force(ids: List<String>) {
-        forces.add(ids)
     }
 
     override fun skip() {
