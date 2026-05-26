@@ -389,10 +389,19 @@ class SessionController(
     private fun approve(id: String, restore: () -> Permission) {
         assertEdt()
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission-auto rid=$id" }
-        model.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
         cs.launch {
             try {
-                if (!autoApprove) return@launch
+                if (!autoApprove) {
+                    edt {
+                        if (disposed) return@edt
+                        model.setState(SessionState.AwaitingPermission(restore()))
+                    }
+                    return@launch
+                }
+                edt {
+                    if (disposed) return@edt
+                    model.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
+                }
                 sessions.replyPermission(id, directory, PermissionReplyDto("once"))
                 LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission-auto rid=$id ok=true" }
             } catch (e: Exception) {

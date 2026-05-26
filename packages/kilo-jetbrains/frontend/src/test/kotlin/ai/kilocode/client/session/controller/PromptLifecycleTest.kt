@@ -147,6 +147,32 @@ class PromptLifecycleTest : SessionControllerTestBase() {
         )
     }
 
+    fun `test disabling auto approve before reply restores awaiting permission`() {
+        val (m, _, _) = prompted()
+
+        edt { m.setAutoApprove(true) }
+        emit(ChatEventDto.PermissionAsked("ses_test", permission("perm1")), flush = false)
+        edt { m.setAutoApprove(false) }
+        flush()
+
+        assertTrue(rpc.permissionReplies.isEmpty())
+        assertSession(
+            """
+            permission#perm1
+            tool: msg1/call1
+            name: edit
+            patterns: *.kt
+            always: <none>
+            file: src/A.kt
+            state: RESPONDING
+            metadata: kind=edit
+
+            [code] [kilo/gpt-5] [awaiting-permission]
+            """,
+            m,
+        )
+    }
+
     fun `test enabling auto approve drains current permission`() {
         val (m, _, _) = prompted()
         emit(ChatEventDto.PermissionAsked("ses_test", permission("perm1")))
