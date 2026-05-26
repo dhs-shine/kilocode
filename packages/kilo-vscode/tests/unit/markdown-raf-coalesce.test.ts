@@ -57,5 +57,6 @@ describe("Markdown rAF-coalesced parse — regression guard", () => {
     expect(src).toContain("preserveStreamingHighlight(fromEl, toEl, local.streaming ?? false)")
     expect(body).toContain("export function preserveStreamingHighlight")
     expect(body).toMatch(/continues\(before, after\)[\s\S]*queue\(from, after, lang\)/)
+    expect(body).toMatch(/const done = \(\) => \{\s*job\.busy = false\s*if \(!pre\.isConnected\) return/)
   })
 })

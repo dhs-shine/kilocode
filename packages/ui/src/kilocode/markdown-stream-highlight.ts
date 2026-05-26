@@ -61,13 +61,12 @@ function run(pre: HTMLPreElement, job: Job) {
   const lang = job.lang
   job.busy = true
   const done = () => {
+    job.busy = false
     if (!pre.isConnected) return
     if (job.code !== code || job.lang !== lang) {
-      job.busy = false
       run(pre, job)
       return
     }
-    job.busy = false
   }
   void refresh(pre, code, lang).then(done, done)
 }
