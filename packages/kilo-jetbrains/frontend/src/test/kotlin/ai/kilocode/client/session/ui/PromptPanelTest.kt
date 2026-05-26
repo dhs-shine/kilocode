@@ -8,6 +8,7 @@ import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.EditorTextField
 import com.intellij.util.ui.EmptyIcon
 import javax.swing.SwingUtilities
 
@@ -39,6 +40,42 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals("Courier New", panel.inputFont().name)
         assertEquals(26, panel.inputFont().size)
         assertTrue(panel.preferredSize.height >= 26)
+    }
+
+    fun `test prompt editor grows when lines are added`() {
+        val panel = PromptPanel(project, {}, {})
+        val editor = panel.defaultFocusedComponent as EditorTextField
+        val min = editor.preferredSize.height
+
+        editor.text = "one\ntwo\nthree\nfour\nfive"
+
+        assertTrue(editor.preferredSize.height > min)
+    }
+
+    fun `test prompt editor shrinks when lines are removed`() {
+        val panel = PromptPanel(project, {}, {})
+        val editor = panel.defaultFocusedComponent as EditorTextField
+        val min = editor.preferredSize.height
+
+        editor.text = "one\ntwo\nthree\nfour\nfive"
+        assertTrue(editor.preferredSize.height > min)
+
+        editor.text = "one"
+
+        assertEquals(min, editor.preferredSize.height)
+    }
+
+    fun `test prompt editor shrinks after clear`() {
+        val panel = PromptPanel(project, {}, {})
+        val editor = panel.defaultFocusedComponent as EditorTextField
+        val min = editor.preferredSize.height
+
+        editor.text = "one\ntwo\nthree\nfour\nfive"
+        assertTrue(editor.preferredSize.height > min)
+
+        panel.clear()
+
+        assertEquals(min, editor.preferredSize.height)
     }
 
     fun `test reasoning picker hides when variants are empty`() {

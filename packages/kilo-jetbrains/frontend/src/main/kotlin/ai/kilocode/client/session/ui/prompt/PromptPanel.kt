@@ -160,6 +160,7 @@ class PromptPanel(
         editor.text = ""
         editor.addDocumentListener(object : DocumentListener {
             override fun documentChanged(e: DocumentEvent) {
+                syncEditorHeight()
                 onChange()
             }
         })
@@ -235,17 +236,13 @@ class PromptPanel(
         editor.font = style.transcriptFont
         editor.getEditor(false)?.let(style::applyToEditor)
         editor.background = style.editorScheme.defaultBackground
-        val height = style.transcriptFont.size * SessionUiStyle.View.Prompt.EDITOR_LINES + JBUI.scale(
-            SessionUiStyle.View.Prompt.EDITOR_CHROME)
-        editor.preferredSize = JBDimension(0, height)
-        editor.minimumSize = JBDimension(0, height)
-        revalidate()
-        repaint()
+        syncEditorHeight()
     }
 
     @RequiresEdt
     fun clear() {
         editor.text = ""
+        syncEditorHeight()
     }
 
     @RequiresEdt
@@ -326,6 +323,20 @@ class PromptPanel(
         if (send.isNotEmpty()) return KiloBundle.message("prompt.placeholder.with.send", send)
         if (line.isNotEmpty()) return KiloBundle.message("prompt.placeholder.with.newline", line)
         return KiloBundle.message("prompt.placeholder")
+    }
+
+    @RequiresEdt
+    private fun syncEditorHeight() {
+        val lines = (editor.document.lineCount + SessionUiStyle.View.Prompt.EDITOR_SPARE_LINES).coerceIn(
+            SessionUiStyle.View.Prompt.EDITOR_LINES,
+            SessionUiStyle.View.Prompt.EDITOR_MAX_LINES,
+        )
+        val height = style.transcriptFont.size * lines + JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_CHROME)
+        if (editor.preferredSize.height == height && editor.minimumSize.height == height) return
+        editor.preferredSize = JBDimension(0, height)
+        editor.minimumSize = JBDimension(0, height)
+        revalidate()
+        repaint()
     }
 
     private inner class SendButton : JButton(), UiDataProvider {
