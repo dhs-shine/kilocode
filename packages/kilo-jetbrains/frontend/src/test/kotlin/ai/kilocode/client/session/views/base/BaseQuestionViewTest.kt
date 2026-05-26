@@ -376,7 +376,7 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
             val header = areas.first { it.text == "Title" }
             val desc = areas.first { it.text == "Hint" }
 
-            assertEquals("headerText should use heading font", UiStyle.Fonts.heading(), header.font)
+            assertEquals("headerText should use headerFont", style.headerFont, header.font)
             assertEquals("descriptionText should use hintFont", style.hintFont, desc.font)
         }
     }

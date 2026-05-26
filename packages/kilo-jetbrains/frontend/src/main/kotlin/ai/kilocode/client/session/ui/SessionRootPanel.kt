@@ -1,6 +1,9 @@
 package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.layout.HAlign
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.components.BorderLayoutPanel
@@ -38,7 +41,7 @@ class SessionRootPanel : JLayeredPane() {
     @RequiresEdt
     fun setModalContent(child: JComponent?) {
         blocker.removeAll()
-        if (child != null) blocker.add(child, BorderLayout.CENTER)
+        if (child != null) blocker.add(child.align(HAlign.CENTER, VAlign.CENTER), BorderLayout.CENTER)
         blocker.isVisible = child != null
         if (child != null) blocker.requestFocusInWindow()
         invalidate()

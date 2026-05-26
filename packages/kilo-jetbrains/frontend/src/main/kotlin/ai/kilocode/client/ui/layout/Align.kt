@@ -22,9 +22,10 @@ enum class VAlign { TRACK, FIT, TOP, CENTER, BOTTOM }
  * child uses its bounded preferred size (coerced into [min, max]) and is placed at the
  * corresponding edge or centered. Shrinks to available space when necessary.
  *
- * During layout, the child is first sized to the available container space before
- * preferred size is read. This mirrors Swing layouts such as [java.awt.BorderLayout]
- * and lets wrapping components report a preferred height for the final width.
+ * During layout, the child is first sized on TRACK/FIT axes before preferred size
+ * is read. This mirrors Swing layouts such as [java.awt.BorderLayout] where the
+ * parent axis is constrained, while preserving ordinary preferred-size behavior
+ * for edge/center axes.
  *
  * Wrapper min/preferred/max sizes are computed by combining the per-axis child contribution
  * (zero for TRACK axes) with the panel insets.
@@ -66,7 +67,12 @@ class Align(
 
             val min = child.minimumSize
             val max = child.maximumSize
-            child.setSize(probe(h, availW, min.width, max.width), probe(v, availH, min.height, max.height))
+            if (probes(h) || probes(v)) {
+                child.setSize(
+                    if (probes(h)) probe(h, availW, min.width, max.width) else child.width,
+                    if (probes(v)) probe(v, availH, min.height, max.height) else child.height,
+                )
+            }
             val pref = child.preferredSize
 
             val (w, cx) = place(h, availW, min.width, pref.width, max.width)
@@ -92,10 +98,10 @@ class Align(
             val max = child.maximumSize
             val availW = maxOf(0, parent.width - ins.left - ins.right)
             val availH = maxOf(0, parent.height - ins.top - ins.bottom)
-            if (availW > 0 || availH > 0) {
+            if ((availW > 0 && probes(h)) || (availH > 0 && probes(v))) {
                 child.setSize(
-                    if (availW > 0) probe(h, availW, min.width, max.width) else child.width,
-                    if (availH > 0) probe(v, availH, min.height, max.height) else child.height,
+                    if (availW > 0 && probes(h)) probe(h, availW, min.width, max.width) else child.width,
+                    if (availH > 0 && probes(v)) probe(v, availH, min.height, max.height) else child.height,
                 )
             }
             val pref = child.preferredSize
@@ -163,6 +169,8 @@ private fun place(mode: Any, avail: Int, min: Int, pref: Int, max: Int): Pair<In
 }
 
 private fun bounded(value: Int, min: Int, max: Int) = value.coerceIn(min, maxOf(min, max))
+
+private fun probes(mode: Any) = mode == HAlign.TRACK || mode == HAlign.FIT || mode == VAlign.TRACK || mode == VAlign.FIT
 
 private fun probe(mode: Any, avail: Int, min: Int, max: Int): Int {
     if (mode == HAlign.FIT || mode == VAlign.FIT) return minOf(avail, maxOf(min, max))

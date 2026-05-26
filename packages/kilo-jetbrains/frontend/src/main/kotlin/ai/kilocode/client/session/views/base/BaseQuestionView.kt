@@ -354,7 +354,7 @@ class BaseQuestionView : RoundedContentPanel(
     }
 
     private fun applyFont(area: JBTextArea, bold: Boolean) {
-        val font = if (bold) UiStyle.Fonts.heading() else style.hintFont
+        val font = if (bold) style.headerFont else style.hintFont
         if (area.font != font) area.font = font
     }
 

@@ -476,7 +476,7 @@ class PermissionViewTest : BasePlatformTestCase() {
         val header = view.headerFontForTest()
         assertFalse("Permission header should not use editor font family", header.name == "Courier New")
         assertTrue("Permission header should be bold", header.isBold)
-        assertEquals("Permission header should equal heading font", UiStyle.Fonts.heading(), header)
+        assertEquals("Permission header should equal headerFont", style.headerFont, header)
     }
 
     fun `test code label uses code background`() {

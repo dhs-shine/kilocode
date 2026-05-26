@@ -162,7 +162,7 @@ class LoginRequiredViewTest : BasePlatformTestCase() {
                 "Title font should not use editor font family",
                 title!!.font.name == "Courier New",
             )
-            assertEquals("Title font should equal heading font", UiStyle.Fonts.heading(), title.font)
+            assertEquals("Title font should equal headerFont", style.headerFont, title.font)
         }
     }
 
