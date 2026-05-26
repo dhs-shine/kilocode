@@ -1,103 +1,322 @@
-import { For, Show } from "solid-js"
+import { createMemo, For, Show, type JSX } from "solid-js"
+import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { Button } from "@kilocode/kilo-ui/button"
+import { IconButton } from "@kilocode/kilo-ui/icon-button"
 import { Tag } from "@kilocode/kilo-ui/tag"
-import { toMode, toAction } from "../../shared/utils"
+import { useConfig } from "../../context/config"
+import { toAction, toMode, toolCapabilities, toolName } from "../../shared/utils"
 import { ConfigPage, SourceBadge } from "./ConfigPage"
-import { snippets, useAgentBuilder } from "./state/agents"
+import {
+  agentEditable,
+  agentTitle,
+  snippets,
+  useAgentBuilder,
+  type AgentEntry,
+  type AgentItem,
+} from "./state/agents"
+
+type Row = { item: AgentItem; entry?: AgentEntry; rank: number }
+
+function base(input: string) {
+  const index = input.indexOf("/settings")
+  if (index > 0) return `${input.slice(0, index)}/settings`
+  if (input.startsWith("/config")) return "/config"
+  return "/settings"
+}
+
+function desc(item: AgentItem) {
+  return item.description ?? "No description available."
+}
+
+function label(rank: number) {
+  if (rank === 0) return "Project Agents"
+  return "Global Agents"
+}
+
+function useAgentLinks() {
+  const loc = useLocation()
+  const nav = useNavigate()
+  const href = (id?: string) => {
+    const suffix = id ? `/${encodeURIComponent(id)}` : ""
+    return `${base(loc.pathname)}/agents${suffix}${loc.search}`
+  }
+  return { href, nav }
+}
+
+function countTools(input: string[]) {
+  if (input.length === 1) return "1 tool"
+  return `${input.length} tools`
+}
+
+function FieldCard(props: { label: string; actions?: JSX.Element; children: JSX.Element }) {
+  return (
+    <article class="resolved-card default-model-card agent-field-card">
+      <header class="default-model-header">
+        <span>{props.label}</span>
+        <Show when={props.actions}>
+          <div class="tags default-model-actions">{props.actions}</div>
+        </Show>
+      </header>
+      <div class="default-model-value">{props.children}</div>
+    </article>
+  )
+}
 
 export function AgentsRoute() {
-  const state = useAgentBuilder()
+  const links = useAgentLinks()
+  const ctx = useConfig()
+  const snap = () => ctx.data()
+  const rows = createMemo(() => {
+    const data = snap()
+    if (!data) return []
+    const scope = ctx.query()?.scope ?? "global"
+    const entries = new Map((data.overlay.collections.agent ?? []).map((entry) => [entry.key, entry]))
+    const local = new Set(
+      (data.overlay.collections.agent ?? []).filter((entry) => entry.source === "project").map((entry) => entry.key),
+    )
+    return data.agents
+      .filter((item) => {
+        const entry = entries.get(item.name)
+        if (scope === "global") return !entry?.local
+        return local.has(item.name) || !entry?.local
+      })
+      .map((item) => ({ item, entry: entries.get(item.name), rank: local.has(item.name) ? 0 : 1 }))
+      .sort((a, b) => a.rank - b.rank || agentTitle(a.item).localeCompare(agentTitle(b.item)))
+  })
+  const groups = createMemo(() => [0, 1].map((rank) => rows().filter((row) => row.rank === rank)).filter((row) => row.length))
+
+  return (
+    <Show when={snap()}>
+      {(data) => (
+        <ConfigPage
+          title="Agents"
+          actions={
+            <>
+              <Button variant="primary" onClick={() => links.nav(links.href("new"))}>
+                New Agent
+              </Button>
+              <Tag>{rows().length}</Tag>
+            </>
+          }
+        >
+          <div class="agents">
+            <Show when={groups().length} fallback={<p class="empty">No agents loaded.</p>}>
+              <For each={groups()}>
+                {(group) => (
+                  <section class="agent-section">
+                    <Show when={ctx.query()?.scope === "project"}>
+                      <h2>{label(group[0]?.rank ?? 1)}</h2>
+                    </Show>
+                    <For each={group}>
+                      {(row) => (
+                        <article class="model agent-card" classList={{ inherited: row.entry?.inherited }}>
+                          <div class="model-main">
+                            <div class="model-title">
+                              <div>
+                                <strong>{agentTitle(row.item)}</strong>
+                                <span>{row.item.name}</span>
+                              </div>
+                            </div>
+                            <Button variant="secondary" onClick={() => links.nav(links.href(row.item.name))}>
+                              {agentEditable(row.item, row.entry) ? "Edit" : "Inspect"}
+                            </Button>
+                          </div>
+                          <p class="model-description">{desc(row.item)}</p>
+                          <div class="tags agent-tags">
+                            <Tag>{row.item.mode}</Tag>
+                            <Tag>{row.item.native ? "Native" : "Custom"}</Tag>
+                            <Show when={row.item.hidden}>
+                              <Tag>Hidden</Tag>
+                            </Show>
+                            <Show when={row.item.deprecated}>
+                              <Tag>Deprecated</Tag>
+                            </Show>
+                            <Show when={row.entry}>
+                              {(entry) => (
+                                <SourceBadge
+                                  source={entry().source}
+                                  inherited={entry().inherited}
+                                  overridden={entry().overridden}
+                                />
+                              )}
+                            </Show>
+                          </div>
+                        </article>
+                      )}
+                    </For>
+                  </section>
+                )}
+              </For>
+            </Show>
+          </div>
+        </ConfigPage>
+      )}
+    </Show>
+  )
+}
+
+export function AgentBuilderRoute() {
+  const links = useAgentLinks()
+  const params = useParams()
+  const agent = () => (params.agentID === "new" ? undefined : params.agentID)
+  const state = useAgentBuilder(agent)
+  const title = createMemo(() => {
+    if (!agent()) return "Agent Builder"
+    if (state.locked()) return "Inspect Agent"
+    return "Edit Agent"
+  })
 
   return (
     <Show when={state.snap()}>
-      {(data) => (
-        <ConfigPage title="Agent Builder" actions={<Tag>{data().agents.length}</Tag>}>
+      {(_data) => (
+        <ConfigPage
+          title={title()}
+          actions={
+            <>
+              <Button variant="secondary" disabled={Boolean(state.ctx.saving()) || !state.ready()} onClick={state.openMarkdown}>
+                Markdown
+              </Button>
+              <Show when={!state.locked()}>
+                <Button variant="primary" disabled={Boolean(state.ctx.saving()) || !state.ready()} onClick={state.save}>
+                  Save
+                </Button>
+              </Show>
+              <IconButton
+                icon="close"
+                variant="secondary"
+                aria-label="Close agent builder"
+                onClick={() => links.nav(links.href())}
+              />
+            </>
+          }
+        >
           <div class="builder">
             <section class="builder-form">
-              <div class="builder-grid">
-                <label>
-                  Scope
-                  <select
-                    value={state.scope()}
-                    onChange={(event) => state.setScope(event.currentTarget.value === "global" ? "global" : "project")}
-                  >
-                    <option value="project">Project</option>
-                    <option value="global">Global</option>
-                  </select>
-                </label>
-                <label>
-                  Agent id
+              <div class="resolved-grid model-defaults agent-fields">
+                <FieldCard label="Agent id">
                   <input
                     value={state.id()}
                     placeholder="reviewer"
+                    readOnly={state.locked()}
                     spellcheck={false}
                     onInput={(event) => state.setId(event.currentTarget.value)}
                   />
-                </label>
-                <label>
-                  Mode
-                  <select value={state.mode()} onChange={(event) => state.setMode(toMode(event.currentTarget.value))}>
+                </FieldCard>
+                <FieldCard label="Description">
+                  <input
+                    value={state.desc()}
+                    placeholder="Review code and report risks"
+                    readOnly={state.locked()}
+                    onInput={(event) => state.setDesc(event.currentTarget.value)}
+                  />
+                </FieldCard>
+                <FieldCard label="Mode">
+                  <select
+                    value={state.mode()}
+                    disabled={state.locked()}
+                    onChange={(event) => state.setMode(toMode(event.currentTarget.value))}
+                  >
                     <option value="primary">Primary</option>
                     <option value="subagent">Subagent</option>
                     <option value="all">Both</option>
                   </select>
-                </label>
-                <label>
-                  Model
-                  <input
-                    list="agent-model-list"
-                    value={state.model()}
-                    placeholder="provider/model or inherit default"
-                    spellcheck={false}
-                    onInput={(event) => state.setModel(event.currentTarget.value)}
-                  />
-                </label>
-                <label>
-                  Description
-                  <input
-                    value={state.desc()}
-                    placeholder="Review code and report risks"
-                    onInput={(event) => state.setDesc(event.currentTarget.value)}
-                  />
-                </label>
-                <label>
-                  Color
+                </FieldCard>
+                <FieldCard
+                  label="Model"
+                  actions={
+                    <>
+                      <Show when={!state.locked() && state.model()}>
+                        <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={state.clearModel}>
+                          Use Default
+                        </Button>
+                      </Show>
+                      <IconButton
+                        icon="edit"
+                        variant="secondary"
+                        aria-label="Edit agent model"
+                        disabled={Boolean(state.ctx.saving()) || state.locked()}
+                        onClick={state.openModel}
+                      />
+                    </>
+                  }
+                >
+                  <Show
+                    when={state.selected()}
+                    fallback={
+                      <>
+                        <strong>{state.model() || "Inherit default model"}</strong>
+                        <Show when={state.model()}>{(value) => <span class="default-model-id">{value()}</span>}</Show>
+                      </>
+                    }
+                  >
+                    {(model) => (
+                      <>
+                        <strong>{`${model().provider.name} / ${model().model.name}`}</strong>
+                        <span class="default-model-id">{model().id}</span>
+                      </>
+                    )}
+                  </Show>
+                </FieldCard>
+                <FieldCard label="Color">
                   <input
                     value={state.color()}
                     placeholder="blue"
+                    readOnly={state.locked()}
                     onInput={(event) => state.setColor(event.currentTarget.value)}
                   />
-                </label>
-                <label>
-                  Max steps
+                </FieldCard>
+                <FieldCard label="Max steps">
                   <input
                     value={state.steps()}
                     placeholder="optional"
                     inputMode="numeric"
+                    readOnly={state.locked()}
                     onInput={(event) => state.setSteps(event.currentTarget.value)}
                   />
-                </label>
-                <label class="wide">
-                  Tool ids
-                  <input
-                    value={state.tools().join(", ")}
-                    placeholder="read, grep, bash"
-                    spellcheck={false}
-                    onInput={(event) => state.setTools(event.currentTarget.value)}
-                  />
-                </label>
-                <label class="wide prompt-field">
-                  Prompt
+                </FieldCard>
+                <FieldCard
+                  label="Tool Access"
+                  actions={
+                    <>
+                      <Show when={!state.locked() && state.tools().length}>
+                        <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={state.clearTools}>
+                          Clear
+                        </Button>
+                      </Show>
+                      <IconButton
+                        icon="edit"
+                        variant="secondary"
+                        aria-label="Edit tool access"
+                        disabled={Boolean(state.ctx.saving()) || state.locked()}
+                        onClick={state.openTools}
+                      />
+                    </>
+                  }
+                >
+                  <Show
+                    when={state.tools().length}
+                    fallback={
+                      <>
+                        <strong>No tools selected</strong>
+                        <span class="default-model-id">No allow permissions will be written.</span>
+                      </>
+                    }
+                  >
+                    <strong>{countTools(state.tools())}</strong>
+                    <div class="tag-cloud agent-tool-summary">
+                      <For each={state.tools()}>{(tool) => <Tag>{tool}</Tag>}</For>
+                    </div>
+                  </Show>
+                </FieldCard>
+                <FieldCard label="Prompt">
                   <textarea
                     value={state.prompt()}
                     placeholder="Describe how this agent should behave."
+                    readOnly={state.locked()}
                     onInput={(event) => state.setPrompt(event.currentTarget.value)}
                   />
-                </label>
+                </FieldCard>
               </div>
-              <datalist id="agent-model-list">
-                <For each={state.all()}>{(item) => <option value={item.id}>{item.model.name}</option>}</For>
-              </datalist>
 
               <div class="builder-block">
                 <div class="block-title">
@@ -109,30 +328,10 @@ export function AgentsRoute() {
                     {(snippet) => (
                       <Button
                         variant="secondary"
-                        disabled={Boolean(state.ctx.saving())}
+                        disabled={Boolean(state.ctx.saving()) || state.locked()}
                         onClick={() => state.insert(snippet)}
                       >
                         {snippet}
-                      </Button>
-                    )}
-                  </For>
-                </div>
-              </div>
-
-              <div class="builder-block">
-                <div class="block-title">
-                  <strong>Tool Access</strong>
-                  <span>Selected tools are written as allow permissions in the agent frontmatter.</span>
-                </div>
-                <div class="tool-picks">
-                  <For each={data().tools.slice(0, 32)}>
-                    {(tool) => (
-                      <Button
-                        variant={state.picked().has(tool) ? "primary" : "secondary"}
-                        disabled={Boolean(state.ctx.saving())}
-                        onClick={() => state.toggleTool(tool)}
-                      >
-                        {tool}
                       </Button>
                     )}
                   </For>
@@ -150,6 +349,7 @@ export function AgentsRoute() {
                     <input
                       value={state.permTool()}
                       placeholder="bash"
+                      readOnly={state.locked()}
                       onInput={(event) => state.setPermTool(event.currentTarget.value)}
                     />
                   </label>
@@ -158,6 +358,7 @@ export function AgentsRoute() {
                     <input
                       value={state.permPattern()}
                       placeholder="optional pattern"
+                      readOnly={state.locked()}
                       onInput={(event) => state.setPermPattern(event.currentTarget.value)}
                     />
                   </label>
@@ -165,6 +366,7 @@ export function AgentsRoute() {
                     Action
                     <select
                       value={state.permAction()}
+                      disabled={state.locked()}
                       onChange={(event) => state.setPermAction(toAction(event.currentTarget.value))}
                     >
                       <option value="ask">Ask</option>
@@ -172,7 +374,7 @@ export function AgentsRoute() {
                       <option value="deny">Deny</option>
                     </select>
                   </label>
-                  <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={state.addPermission}>
+                  <Button variant="secondary" disabled={Boolean(state.ctx.saving()) || state.locked()} onClick={state.addPermission}>
                     Add Override
                   </Button>
                 </div>
@@ -188,63 +390,157 @@ export function AgentsRoute() {
                   </For>
                 </div>
               </div>
-
-              <div class="builder-actions">
-                <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={state.preview}>
-                  Preview Markdown
-                </Button>
-                <Button variant="primary" disabled={Boolean(state.ctx.saving())} onClick={state.save}>
-                  Save Agent
-                </Button>
-              </div>
             </section>
+          </div>
 
-            <section class="builder-side">
-              <div class="builder-block">
-                <div class="block-title">
-                  <strong>Existing Agents</strong>
-                  <span>Reloads after save so the CLI selector sees the new file.</span>
+          <Show when={state.panel() === "model"}>
+            <div class="drawer-scrim" onClick={state.close} />
+            <aside class="provider-drawer" aria-label="Agent model selector">
+              <header class="drawer-header">
+                <div>
+                  <h2>Choose Model</h2>
+                  <span>Favorites are listed first, then models are sorted alphabetically.</span>
                 </div>
-                <div class="mini-list">
-                  <Show when={data().agents.length} fallback={<p class="empty">No agents loaded.</p>}>
-                    <For each={data().agents.slice(0, 12)}>
-                      {(item) => {
-                        const meta = () => data().overlay.collections.agent.find((entry) => entry.key === item.name)
-                        return (
-                          <article class="mini-item simple" classList={{ inherited: meta()?.inherited }}>
-                            <strong>{item.displayName ?? item.name}</strong>
-                            <span>{item.description ?? item.name}</span>
-                            <div class="tags">
-                              <Tag>{item.mode}</Tag>
-                              <Show when={meta()}>
-                                {(entry) => (
-                                  <SourceBadge
-                                    source={entry().source}
-                                    inherited={entry().inherited}
-                                    overridden={entry().overridden}
-                                  />
-                                )}
-                              </Show>
-                            </div>
-                          </article>
-                        )
-                      }}
-                    </For>
-                  </Show>
-                </div>
+                <Button variant="ghost" aria-label="Close model selector" onClick={state.close}>
+                  X
+                </Button>
+              </header>
+
+              <label class="drawer-search">
+                Filter models
+                <input
+                  type="search"
+                  value={state.picker()}
+                  placeholder="Search by name, provider, or ID"
+                  onInput={(event) => state.setPicker(event.currentTarget.value)}
+                />
+              </label>
+
+              <div class="provider-picker model-picker">
+                <Show when={state.models().length} fallback={<p class="empty">No models match this filter.</p>}>
+                  <For each={state.models()}>
+                    {(item) => (
+                      <button
+                        class="provider-option model-option"
+                        classList={{ selected: state.choice() === item.id }}
+                        type="button"
+                        onClick={() => state.selectModel(item)}
+                      >
+                        <span class="model-star" classList={{ active: state.fav(item) }} aria-hidden="true" />
+                        <div>
+                          <strong>{item.model.name}</strong>
+                          <span>{item.id}</span>
+                        </div>
+                        <div class="tags">
+                          <Tag>{item.provider.name}</Tag>
+                          <Tag>{item.model.isFree ? "free" : "paid"}</Tag>
+                        </div>
+                      </button>
+                    )}
+                  </For>
+                </Show>
               </div>
 
-              <div class="builder-block preview-card">
-                <div class="block-title">
-                  <strong>Markdown Preview</strong>
-                  <span>{state.draft()?.path ?? "Preview or save to generate a path."}</span>
+              <footer class="drawer-footer">
+                <Button variant="secondary" onClick={state.close}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={Boolean(state.ctx.saving()) || state.locked() || !state.choice()}
+                  onClick={state.saveModel}
+                >
+                  Save
+                </Button>
+              </footer>
+            </aside>
+          </Show>
+
+          <Show when={state.panel() === "tools"}>
+            <div class="drawer-scrim" onClick={state.close} />
+            <aside class="provider-drawer" aria-label="Agent tool access selector">
+              <header class="drawer-header">
+                <div>
+                  <h2>Choose Tool Access</h2>
+                  <span>Selected tools are written as allow permissions in the agent frontmatter.</span>
                 </div>
-                <Show when={state.draft()} fallback={<p class="empty">No preview generated yet.</p>}>
+                <Button variant="ghost" aria-label="Close tool selector" onClick={state.close}>
+                  X
+                </Button>
+              </header>
+
+              <label class="drawer-search">
+                Filter tools
+                <input
+                  type="search"
+                  value={state.search()}
+                  placeholder="Search by tool name, ID, or capability"
+                  onInput={(event) => state.setSearch(event.currentTarget.value)}
+                />
+              </label>
+
+              <div class="provider-picker tool-picker">
+                <Show when={state.options().length} fallback={<p class="empty">No tools match this filter.</p>}>
+                  <For each={state.options()}>
+                    {(tool) => (
+                      <button
+                        class="provider-option tool-option"
+                        classList={{ selected: state.pickedDraft().has(tool.id) }}
+                        aria-pressed={state.pickedDraft().has(tool.id)}
+                        type="button"
+                        onClick={() => state.toggleTool(tool.id)}
+                      >
+                        <div class="model-main tool-main">
+                          <div class="model-title">
+                            <div>
+                              <strong>{toolName(tool.id)}</strong>
+                              <span>{tool.id}</span>
+                            </div>
+                          </div>
+                          <div class="tags">
+                            <Tag>{state.pickedDraft().has(tool.id) ? "Allowed" : "Off"}</Tag>
+                          </div>
+                        </div>
+                        <ul class="tool-capabilities">
+                          <For each={toolCapabilities(tool)}>{(cap) => <li>{cap}</li>}</For>
+                        </ul>
+                      </button>
+                    )}
+                  </For>
+                </Show>
+              </div>
+
+              <footer class="drawer-footer">
+                <Button variant="secondary" onClick={state.close}>
+                  Cancel
+                </Button>
+                <Button variant="primary" disabled={Boolean(state.ctx.saving()) || state.locked()} onClick={state.saveTools}>
+                  Save
+                </Button>
+              </footer>
+            </aside>
+          </Show>
+
+          <Show when={state.panel() === "markdown"}>
+            <div class="drawer-scrim" onClick={state.close} />
+            <aside class="provider-drawer" aria-label="Generated agent markdown">
+              <header class="drawer-header">
+                <div>
+                  <h2>Markdown</h2>
+                  <span>{state.draft()?.path ?? "Previewing the current agent configuration."}</span>
+                </div>
+                <Button variant="ghost" aria-label="Close markdown preview" onClick={state.close}>
+                  X
+                </Button>
+              </header>
+
+              <div class="provider-picker markdown-picker">
+                <Show when={state.draft()} fallback={<p class="empty">Generating markdown preview...</p>}>
                   {(draft) => <pre class="markdown-preview">{draft().markdown}</pre>}
                 </Show>
               </div>
-            </section>
-          </div>
+            </aside>
+          </Show>
         </ConfigPage>
       )}
     </Show>

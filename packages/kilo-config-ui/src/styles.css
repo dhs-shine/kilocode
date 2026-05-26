@@ -1046,6 +1046,7 @@ textarea:focus {
 
 .providers,
 .models,
+.agents,
 .tools {
   display: grid;
   gap: 0.5rem;
@@ -1261,6 +1262,20 @@ textarea:focus {
 .model-option.selected {
   border-color: var(--border-focus);
   background: color-mix(in srgb, var(--surface-brand-base) 16%, var(--surface-base));
+}
+
+.tool-option {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.tool-option.selected {
+  border-color: var(--border-focus);
+  background: color-mix(in srgb, var(--surface-brand-base) 16%, var(--surface-base));
+}
+
+.tool-option .tool-capabilities {
+  text-align: left;
 }
 
 .model-option .model-star {
@@ -1483,6 +1498,23 @@ select.invalid {
   padding-left: 0;
 }
 
+.agent-card .agent-tags {
+  justify-content: flex-start;
+}
+
+.agent-section {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.agent-section h2 {
+  margin: 0.5rem 0 0;
+  color: var(--text-weaker);
+  font-size: var(--font-size-small);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .tool-capabilities {
   display: grid;
   gap: 0.35rem;
@@ -1559,13 +1591,12 @@ select.invalid {
 
 .builder {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.85fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
 
 .builder-form,
-.builder-side,
 .builder-block {
   display: grid;
   gap: 0.75rem;
@@ -1575,6 +1606,35 @@ select.invalid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
+}
+
+.agent-fields {
+  gap: 0.75rem;
+}
+
+.agent-field-card {
+  gap: 0.75rem;
+}
+
+.agent-field-card textarea {
+  min-height: 14rem;
+}
+
+.agent-field-card input[readonly],
+.agent-field-card textarea[readonly],
+.builder-block input[readonly] {
+  border-color: var(--border-weak-base);
+  background: color-mix(in srgb, var(--surface-base) 72%, transparent);
+  color: var(--text-weak);
+  cursor: default;
+}
+
+.agent-field-card .tag-cloud {
+  justify-content: flex-start;
+}
+
+.agent-tool-summary {
+  margin-top: 0.15rem;
 }
 
 .builder-grid label,
@@ -1614,7 +1674,6 @@ select.invalid {
 }
 
 .tool-picks,
-.builder-actions,
 .snippet-list {
   display: flex;
   gap: 0.5rem;
@@ -1626,12 +1685,7 @@ select.invalid {
   white-space: normal;
 }
 
-.preview-card {
-  min-height: 18rem;
-}
-
 .markdown-preview {
-  max-height: 28rem;
   margin: 0;
   overflow: auto;
   border: 1px solid var(--border-weak-base);
@@ -1642,6 +1696,10 @@ select.invalid {
   line-height: 1.5;
   padding: 1rem;
   white-space: pre-wrap;
+}
+
+.markdown-picker .markdown-preview {
+  min-height: 100%;
 }
 
 .advanced h3 {

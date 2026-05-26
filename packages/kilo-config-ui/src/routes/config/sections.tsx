@@ -1,6 +1,6 @@
 import type { Component } from "solid-js"
 import type { IconProps } from "@kilocode/kilo-ui/icon"
-import { AgentsRoute } from "./AgentsRoute"
+import { AgentBuilderRoute, AgentsRoute } from "./AgentsRoute"
 import { CliUiRoute } from "./CliUiRoute"
 import { FormattersRoute } from "./FormattersRoute"
 import { KeybindsRoute } from "./KeybindsRoute"
@@ -112,5 +112,7 @@ function sections(item: ConfigNode) {
 
 export const configSections = [
   ...configNav.flatMap(sections),
+  { path: "/agents/new", href: "/settings/agents/new", icon: "task", label: "New Agent", component: AgentBuilderRoute },
+  { path: "/agents/:agentID", href: "/settings/agents", icon: "task", label: "Edit Agent", component: AgentBuilderRoute },
   { path: "/models", href: "/settings/models/default", icon: "models", label: "Models", component: ModelsRoute },
 ]

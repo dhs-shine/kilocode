@@ -17,7 +17,7 @@ export function ConfigSidebar() {
     return rest || "/"
   })
   const href = (path: string) => `${path === "/" ? base() : `${base()}${path}`}${loc.search}`
-  const current = (path: string) => path === active()
+  const current = (path: string) => path === active() || (path !== "/" && active().startsWith(`${path}/`))
   const group = (item: ConfigNode): item is ConfigGroup => "items" in item
   const marked = (group: ConfigGroup) => group.items.some((item) => current(item.path))
   const expanded = (group: ConfigGroup) => marked(group) || Boolean(open()[group.id])

@@ -1,12 +1,18 @@
 import { createEffect, createMemo, createSignal } from "solid-js"
-import type { AgentBuilderPreviewResponse } from "@kilocode/sdk/v2/client"
-import { previewAgent, saveAgent, type AgentPayload, type Scope } from "../../../client"
+import type { Accessor } from "solid-js"
+import type { AgentBuilderPreviewResponse, Model, Provider } from "@kilocode/sdk/v2/client"
+import { previewAgent, saveAgent, type AgentPayload, type Scope, type Snapshot } from "../../../client"
 import { useConfig } from "../../../context/config"
-import { catalog, clean, sorted, text } from "../../../shared/utils"
+import { clean, friendly, sorted, text, toMode, toolCapabilities, toolName } from "../../../shared/utils"
 
 type Mode = AgentPayload["mode"]
 type Permission = NonNullable<AgentPayload["permission"]>
 type Draft = AgentBuilderPreviewResponse
+type Panel = "closed" | "model" | "tools" | "markdown"
+type Favorite = Snapshot["modelState"]["favorite"][number]
+type Item = { id: string; provider: Provider; model: Model }
+export type AgentItem = Snapshot["agents"][number]
+export type AgentEntry = Snapshot["overlay"]["collections"][string][number]
 
 export const snippets = [
   "Review the current diff and report risks, regressions, and missing tests.",
@@ -14,6 +20,17 @@ export const snippets = [
   "Inspect relevant files first, then summarize the root cause before editing.",
   "Run the smallest relevant validation checks and report any remaining failures.",
 ]
+
+function order(a: Provider, b: Provider) {
+  if (a.id === "kilo") return -1
+  if (b.id === "kilo") return 1
+  return a.name.localeCompare(b.name)
+}
+
+function same(item: Item, ref: Favorite) {
+  if (item.provider.id === ref.providerID && item.model.id === ref.modelID) return true
+  return item.model.providerID === ref.providerID && item.model.id === ref.modelID
+}
 
 function maybe(input: string) {
   const value = clean(input)
@@ -27,11 +44,78 @@ function count(input: string) {
   return undefined
 }
 
-export function useAgentBuilder() {
+function record(input: unknown): Record<string, unknown> {
+  if (input && typeof input === "object" && !Array.isArray(input)) return input as Record<string, unknown>
+  return {}
+}
+
+function string(input: unknown) {
+  if (typeof input === "string") return input
+  return ""
+}
+
+function number(input: unknown) {
+  if (typeof input === "number" && Number.isFinite(input)) return input
+  return undefined
+}
+
+function source(item: AgentItem) {
+  const value = item.options.source
+  if (typeof value === "string") return value
+  return undefined
+}
+
+function split(input: unknown) {
+  const entries = Object.entries(perms(input))
+  return {
+    tools: sorted(entries.filter(([, value]) => value === "allow").map(([key]) => key)),
+    permission: Object.fromEntries(entries.filter(([, value]) => value !== "allow")) as Permission,
+  }
+}
+
+function perms(input: unknown): Permission {
+  if (!Array.isArray(input)) return record(input) as Permission
+  return input.reduce((result, item) => {
+    const rule = record(item)
+    const tool = string(rule.permission)
+    const action = string(rule.action)
+    if (!tool || !action) return result
+    const pattern = string(rule.pattern) || "*"
+    if (pattern === "*") return { ...result, [tool]: action }
+    const cur = result[tool]
+    const map = cur && typeof cur === "object" && !Array.isArray(cur) ? cur : {}
+    return { ...result, [tool]: { ...map, [pattern]: action } }
+  }, {} as Permission)
+}
+
+export function agentMeta(data: Snapshot, id: string) {
+  return (data.overlay.collections.agent ?? []).find((entry) => entry.key === id)
+}
+
+export function agentTitle(item: AgentItem) {
+  return item.displayName ?? friendly(item.name)
+}
+
+export function agentModel(item: AgentItem) {
+  if (!item.model) return ""
+  return `${item.model.providerID}/${item.model.modelID}`
+}
+
+export function agentEditable(item: AgentItem, entry?: AgentEntry) {
+  if (item.native) return false
+  if (entry?.inherited) return false
+  if (entry?.editable === false) return false
+  if (source(item) === "organization") return false
+  return true
+}
+
+export function useAgentBuilder(agent?: Accessor<string | undefined>) {
   const ctx = useConfig()
   const snap = () => ctx.data()
-  const [scope, setScope] = createSignal<Scope>(ctx.query()?.scope ?? "project")
-  const [dirty, setDirty] = createSignal(false)
+  const scope = createMemo<Scope>(() => ctx.query()?.scope ?? "project")
+  const [loaded, setLoaded] = createSignal<string>()
+  const [ready, setReady] = createSignal(true)
+  const [locked, setLocked] = createSignal(false)
   const [id, setId] = createSignal("reviewer")
   const [desc, setDesc] = createSignal("")
   const [mode, setMode] = createSignal<Mode>("subagent")
@@ -45,14 +129,72 @@ export function useAgentBuilder() {
   const [permAction, setPermAction] = createSignal<"ask" | "allow" | "deny">("ask")
   const [permission, setPermission] = createSignal<Permission>({})
   const [draft, setDraft] = createSignal<Draft>()
+  const [panel, setPanel] = createSignal<Panel>("closed")
+  const [picker, setPicker] = createSignal("")
+  const [choice, setChoice] = createSignal("")
+  const [search, setSearch] = createSignal("")
+  const [chosen, setChosen] = createSignal<string[]>([])
 
-  const all = createMemo(() => {
+  const providers = createMemo(() => {
     const data = snap()
     if (!data) return []
-    return catalog(data)
+    const ids = new Set([...Object.keys(data.effective.provider ?? {}), ...data.providers.connected])
+    return data.providers.all
+      .filter((provider) => ids.has(provider.id))
+      .filter((provider) => Object.keys(provider.models).length > 0)
+      .sort(order)
   })
 
-  const picked = createMemo(() => new Set(tools()))
+  const all = createMemo(() => {
+    return providers().flatMap((provider) =>
+      Object.values(provider.models).map((model) => ({
+        id: `${provider.id}/${model.id}`,
+        provider,
+        model,
+      })),
+    )
+  })
+
+  const favorites = createMemo(() => snap()?.modelState.favorite ?? [])
+  const fav = (item: Item) => favorites().some((ref) => same(item, ref))
+  const models = createMemo(() => {
+    const term = picker().trim().toLowerCase()
+    return all()
+      .filter((item) => {
+        if (!term) return true
+        return `${item.id} ${item.model.name} ${item.provider.name}`.toLowerCase().includes(term)
+      })
+      .sort((a, b) => {
+        const ranked = Number(fav(b)) - Number(fav(a))
+        if (ranked !== 0) return ranked
+        const named = a.model.name.localeCompare(b.model.name)
+        if (named !== 0) return named
+        const provider = a.provider.name.localeCompare(b.provider.name)
+        if (provider !== 0) return provider
+        return a.id.localeCompare(b.id)
+      })
+  })
+  const item = (value: unknown) => {
+    if (typeof value !== "string") return undefined
+    return all().find((model) => model.id === value || `${model.model.providerID}/${model.model.id}` === value)
+  }
+  const selected = createMemo(() => item(model()))
+
+  const options = createMemo(() => {
+    const data = snap()
+    if (!data) return []
+    const term = search().trim().toLowerCase()
+    const details = new Map(data.toolDetails.map((item) => [item.id, item]))
+    return data.tools
+      .map((id) => ({ id, detail: details.get(id) }))
+      .filter((tool) => {
+        if (!term) return true
+        return `${tool.id} ${toolName(tool.id)} ${toolCapabilities(tool).join(" ")}`.toLowerCase().includes(term)
+      })
+      .sort((a, b) => toolName(a.id).localeCompare(toolName(b.id)))
+  })
+
+  const pickedDraft = createMemo(() => new Set(chosen()))
   const rules = createMemo(() =>
     Object.entries(permission()).flatMap(([tool, rule]) => {
       if (rule && typeof rule === "object" && !Array.isArray(rule)) {
@@ -66,35 +208,144 @@ export function useAgentBuilder() {
     }),
   )
 
-  createEffect(() => {
-    if (dirty()) return
-    const query = ctx.query()
-    if (!query) return
-    setScope(query.scope)
-  })
-
-  function updateScope(value: Scope) {
-    setDirty(true)
-    setScope(value)
+  function reset(value = "reviewer") {
+    setId(value)
+    setDesc("")
+    setMode("subagent")
+    setModel("")
+    setColor("")
+    setSteps("")
+    setTools([])
+    setPrompt("")
+    setPermission({})
+    setDraft(undefined)
+    setLocked(false)
+    setPanel("closed")
+    setPicker("")
+    setChoice("")
+    setSearch("")
+    setChosen([])
   }
 
-  function setToolList(value: string) {
-    setTools(
-      value
-        .split(",")
-        .map((word) => word.trim())
-        .filter(Boolean),
-    )
+  createEffect(() => {
+    const value = agent?.()
+    if (value) return
+    if (loaded() === "") return
+    reset()
+    setReady(true)
+    setLoaded("")
+  })
+
+  createEffect(() => {
+    const data = snap()
+    const key = agent?.()
+    if (!data || !key) return
+    if (loaded() === key) return
+
+    reset(key)
+    setReady(false)
+    setLoaded(key)
+
+    const item = data.agents.find((item) => item.name === key)
+    if (!item) {
+      ctx.fail(`Agent not found: ${key}`)
+      return
+    }
+
+    const entry = agentMeta(data, key)
+    const edit = agentEditable(item, entry)
+
+    ctx.fail("")
+    setReady(true)
+    setLocked(!edit)
+    const cfg = record(entry?.value)
+    const parts = split(cfg.permission ?? (edit ? undefined : item.permission))
+    const step = number(cfg.steps) ?? item.steps
+
+    setId(item.name)
+    setDesc(string(cfg.description) || item.description || "")
+    setMode(toMode(string(cfg.mode) || item.mode))
+    setModel(string(cfg.model) || agentModel(item))
+    setColor(string(cfg.color) || item.color || "")
+    setSteps(step ? String(step) : "")
+    setTools(parts.tools)
+    setPermission(parts.permission)
+    setPrompt(string(cfg.prompt) || item.prompt || "")
+  })
+
+  function close() {
+    setPanel("closed")
+  }
+
+  function guard() {
+    if (!locked()) return true
+    ctx.fail("Inspected agents are read-only.")
+    return false
+  }
+
+  function openMarkdown() {
+    const payload = build()
+    if (!payload) return
+    setDraft(undefined)
+    setPanel("markdown")
+    ctx.run("Previewing agent", () => previewAgent(ctx.target(), payload).then(setDraft), { refetch: false })
+  }
+
+  function openModel() {
+    if (!guard()) return
+    setPicker("")
+    setChoice(model())
+    setPanel("model")
+  }
+
+  function selectModel(item: Item) {
+    setChoice(item.id)
+  }
+
+  function saveModel() {
+    if (!guard()) return
+    const id = choice()
+    if (!id) {
+      ctx.fail("Select a model before saving the agent model field.")
+      return
+    }
+    setModel(id)
+    close()
+  }
+
+  function clearModel() {
+    if (!guard()) return
+    setModel("")
+  }
+
+  function openTools() {
+    if (!guard()) return
+    setSearch("")
+    setChosen(tools())
+    setPanel("tools")
   }
 
   function toggleTool(id: string) {
-    const values = new Set(tools())
+    if (!guard()) return
+    const values = new Set(chosen())
     if (values.has(id)) values.delete(id)
     else values.add(id)
-    setTools(sorted(values))
+    setChosen(sorted(values))
+  }
+
+  function saveTools() {
+    if (!guard()) return
+    setTools(chosen())
+    close()
+  }
+
+  function clearTools() {
+    if (!guard()) return
+    setTools([])
   }
 
   function addPermission() {
+    if (!guard()) return
     const tool = clean(permTool())
     if (!tool) {
       ctx.fail("Enter an agent permission tool key before adding an override.")
@@ -115,11 +366,17 @@ export function useAgentBuilder() {
   }
 
   function insert(value: string) {
+    if (!guard()) return
     const cur = clean(prompt())
     setPrompt(cur ? `${cur}\n\n${value}` : value)
   }
 
   function build(): AgentPayload | undefined {
+    if (!ready()) {
+      ctx.fail("Select an agent before previewing or saving.")
+      return undefined
+    }
+
     const name = clean(id())
     const body = clean(prompt())
     if (!name || !body) {
@@ -141,13 +398,8 @@ export function useAgentBuilder() {
     }
   }
 
-  function preview() {
-    const payload = build()
-    if (!payload) return
-    ctx.run("Previewing agent", () => previewAgent(ctx.target(), payload).then(setDraft), { refetch: false })
-  }
-
   function save() {
+    if (!guard()) return
     const payload = build()
     if (!payload) return
     ctx.run("Saving agent", () => saveAgent(ctx.target(), payload).then(setDraft))
@@ -156,9 +408,7 @@ export function useAgentBuilder() {
   return {
     ctx,
     snap,
-    all,
     scope,
-    setScope: updateScope,
     id,
     setId,
     desc,
@@ -172,7 +422,6 @@ export function useAgentBuilder() {
     steps,
     setSteps,
     tools,
-    setTools: setToolList,
     prompt,
     setPrompt,
     permTool,
@@ -182,12 +431,32 @@ export function useAgentBuilder() {
     permAction,
     setPermAction,
     draft,
-    picked,
+    ready,
+    locked,
+    panel,
+    close,
+    openMarkdown,
+    picker,
+    setPicker,
+    choice,
+    models,
+    selected,
+    fav,
+    openModel,
+    selectModel,
+    saveModel,
+    clearModel,
+    search,
+    setSearch,
+    options,
+    pickedDraft,
+    openTools,
     rules,
     toggleTool,
+    saveTools,
+    clearTools,
     addPermission,
     insert,
-    preview,
     save,
   }
 }

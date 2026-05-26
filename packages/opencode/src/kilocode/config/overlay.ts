@@ -2,6 +2,7 @@ import path from "path"
 import { existsSync } from "fs"
 import z from "zod"
 import { Global } from "@opencode-ai/core/global"
+import { ConfigAgent } from "@/config/agent"
 import { Config } from "@/config/config"
 import { ConfigParse } from "@/config/parse"
 import { ConfigVariable } from "@/config/variable"
@@ -107,7 +108,8 @@ export namespace KilocodeConfigOverlay {
   }
 
   export async function resolve(input: Input): Promise<Result> {
-    const local = await project(input)
+    const local = await withAgents(await project(input), await projectDirs(input))
+    const global = await withAgents(input.global, globalDirs())
     const targets = {
       global: globalTarget(),
       project: await projectTarget(input),
@@ -116,18 +118,18 @@ export namespace KilocodeConfigOverlay {
     return {
       scope: input.scope,
       effective: input.effective,
-      global: input.global,
+      global,
       project: local,
       sources: input.sources,
       targets,
       fields: Object.fromEntries(
         fieldPaths.map((parts) => [
           parts.join("."),
-          field(input.scope, input.effective, input.global, local, [...parts]),
+          field(input.scope, input.effective, global, local, [...parts]),
         ]),
       ),
       collections: Object.fromEntries(
-        collectionPaths.map((key) => [key, collection(input.scope, input.effective, input.global, local, key)]),
+        collectionPaths.map((key) => [key, collection(input.scope, input.effective, global, local, key)]),
       ),
     }
   }
@@ -146,6 +148,29 @@ export namespace KilocodeConfigOverlay {
       [...roots, ...nested].map(async (file) => ({ file, exists: await Bun.file(file).exists() })),
     )
     return [...new Set(checks.filter((item) => item.exists).map((item) => item.file))]
+  }
+
+  async function projectDirs(input: { directory: string; worktree?: string }) {
+    return Filesystem.findUp([...dirs], input.directory, input.worktree)
+  }
+
+  function globalDirs() {
+    return [
+      Global.Path.config,
+      path.join(Global.Path.home, ".kilocode"),
+      path.join(Global.Path.home, ".kilo"),
+      path.join(Global.Path.home, ".opencode"),
+    ]
+  }
+
+  async function withAgents(input: Config.Info, dirs: string[]): Promise<Config.Info> {
+    const [dir, ...rest] = dirs
+    if (!dir) return input
+    if (!existsSync(dir)) return withAgents(input, rest)
+    const agent = await ConfigAgent.load(dir)
+    const mode = await ConfigAgent.loadMode(dir)
+    const next = KilocodeConfig.mergeConfig(KilocodeConfig.mergeConfig(input, { agent }), { agent: mode })
+    return withAgents(next, rest)
   }
 
   async function load(file: string): Promise<Config.Info> {
