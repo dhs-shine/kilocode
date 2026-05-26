@@ -1262,7 +1262,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Schakel spraakinvoer in promptvelden in met uw Kilo-account via Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Schakel Kilo provider in en meld u aan om spraakinvoer in promptvelden te gebruiken.",
+    "Schakel de Kilo-provider in en meld u aan om Speech to Text te gebruiken. Speech to Text wordt momenteel alleen ondersteund met Kilo Gateway.",
   "settings.experimental.speechToTextModel.title": "Spraak-naar-tekst-model",
   "settings.experimental.speechToTextModel.description": "Kies het Kilo Gateway-transcriptiemodel voor spraakinvoer.",
   "settings.experimental.continueOnDeny.title": "Doorgaan bij weigering",
@@ -1450,6 +1450,9 @@ export const dict = {
   "settings.providers.smallModel.title": "Klein Model",
   "settings.providers.smallModel.description":
     "Lichtgewicht model voor het genereren van titels, commit-berichten, promptverbetering en andere snelle taken",
+  "settings.providers.subagentModel.title": "Subagentmodel",
+  "settings.providers.subagentModel.description":
+    "Standaardmodel en redeneerinspanning voor task-tool subagenten. Laat leeg om het model van de aanroepende agent over te nemen.",
   "settings.providers.modeModels": "Model per Modus",
   "settings.providers.modeModels.description":
     "Overschrijf het standaard model voor specifieke modi. Indien niet ingesteld, wordt het globale standaard model gebruikt.",
