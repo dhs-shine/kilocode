@@ -1,43 +1,11 @@
-import { HEADER_FEATURE, KILO_API_BASE } from "../api/constants.js"
-import {
-  getAutocompleteModel,
-  type AutocompleteProviderID,
-  type DirectAutocompleteProviderID,
-} from "../autocomplete.js"
-import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL, requestMistralFim } from "../mistral-fim-endpoint.js"
+import { HEADER_FEATURE } from "../api/constants.js"
+import { DIRECT_FIM_ENV, requestMistralFim, resolveFimTarget, type FimTarget } from "../fim.js"
 import { buildKiloHeaders } from "../headers.js"
+import type { AuthStore } from "./handlers.js"
 
-type Auth = any
-
-const DIRECT_FIM_ENV: Record<DirectAutocompleteProviderID, string[]> = {
-  mistral: ["MISTRAL_API_KEY"],
-  inception: ["INCEPTION_API_KEY"],
-}
-
-interface FimTarget {
-  provider: AutocompleteProviderID
-  model: string
-  urls: string[]
-}
+type Auth = Pick<AuthStore, "get">
 
 const FIM_TIMEOUT_MS = 30_000
-const KILO_FIM_URL = KILO_API_BASE + "/api/fim/completions"
-const INCEPTION_FIM_URL = "https://api.inceptionlabs.ai/v1/fim/completions"
-
-export function resolveFimTarget(provider?: string, model?: string): FimTarget {
-  if (!provider || provider === "kilo") {
-    return { provider: "kilo", model: model ?? "mistralai/codestral-2501", urls: [KILO_FIM_URL] }
-  }
-
-  const info = getAutocompleteModel(provider, model)
-  if (info.directProvider === "mistral") {
-    return { provider: "mistral", model: info.requestModel, urls: [MISTRAL_FIM_URL, CODESTRAL_FIM_URL] }
-  }
-  if (info.directProvider === "inception") {
-    return { provider: "inception", model: info.requestModel, urls: [INCEPTION_FIM_URL] }
-  }
-  return { provider: "kilo", model: model ?? "mistralai/codestral-2501", urls: [KILO_FIM_URL] }
-}
 
 async function getProxyAuth(Auth: Auth) {
   const auth = await Auth.get("kilo")
@@ -49,7 +17,7 @@ async function getProxyAuth(Auth: Auth) {
   }
 }
 
-async function getProviderKey(Auth: Auth, provider: AutocompleteProviderID) {
+async function getProviderKey(Auth: Auth, provider: FimTarget["provider"]) {
   const auth = await Auth.get(provider)
   if (auth?.type === "api") return auth.key
   if (provider === "kilo") return undefined
@@ -122,15 +90,27 @@ export function createFimHandler(Auth: Auth) {
 
     const signal = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(FIM_TIMEOUT_MS)])
 
-    let response: Response
     try {
-      response = await fetchFim(target, token, {
+      const response = await fetchFim(target, token, {
         prefix,
         suffix,
         maxTokens: fimMaxTokens,
         temperature: fimTemperature,
         signal,
         organizationId: proxy?.organizationId,
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        return c.json({ error: `FIM request failed: ${response.status} ${text}` }, response.status as any)
+      }
+
+      return new Response(response.body, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
       })
     } catch (err) {
       if (err instanceof DOMException && err.name === "TimeoutError") {
@@ -139,18 +119,5 @@ export function createFimHandler(Auth: Auth) {
       if (signal.aborted) return c.json({ error: "FIM request canceled" }, 499 as any)
       throw err
     }
-
-    if (!response.ok) {
-      const text = await response.text()
-      return c.json({ error: `FIM request failed: ${response.status} ${text}` }, response.status as any)
-    }
-
-    return new Response(response.body, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    })
   }
 }

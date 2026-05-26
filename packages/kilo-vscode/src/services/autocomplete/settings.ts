@@ -1,6 +1,5 @@
 import * as vscode from "vscode"
 import {
-  DEFAULT_AUTOCOMPLETE_MODEL,
   getAutocompleteModel,
   validAutocompleteModel,
   validAutocompleteProvider,
@@ -51,7 +50,7 @@ export function validAutocompleteSetting(key: string, value: unknown) {
   }
 
   if (key === "provider") {
-    return validAutocompleteProvider(value ?? DEFAULT_AUTOCOMPLETE_MODEL.providerID)
+    return validAutocompleteProvider(value)
   }
 
   if (key === "enableAutoTrigger") return typeof value === "boolean"

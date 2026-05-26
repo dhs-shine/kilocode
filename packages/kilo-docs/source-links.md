@@ -7,8 +7,6 @@
 - <https://api.apertis.ai/v1>
   <!-- packages/opencode/src/provider/model-cache.ts -->
   <!-- packages/opencode/src/provider/models.ts -->
-- <https://api.inceptionlabs.ai/v1/fim/completions>
-  <!-- packages/opencode/src/kilocode/server/httpapi/handlers/kilo-gateway.ts -->
 - <https://api.kilo.ai>
   <!-- packages/opencode/src/cli/cmd/github.ts -->
 - <https://api.x.ai/v1>

@@ -79,10 +79,12 @@ describe("autocomplete settings", () => {
     expect(validAutocompleteSetting("provider", "inception")).toBe(true)
   })
 
-  it("rejects unsupported model updates", async () => {
+  it("rejects unsupported autocomplete updates", async () => {
     const { validAutocompleteSetting } = await import("../settings")
 
     expect(validAutocompleteSetting("model", "other/model")).toBe(false)
+    expect(validAutocompleteSetting("provider", undefined)).toBe(false)
+    expect(validAutocompleteSetting("provider", null)).toBe(false)
   })
 
   it("rejects non-boolean toggle updates", async () => {

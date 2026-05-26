@@ -19,8 +19,7 @@ import {
   fetchOrganizationModes,
   fetchProfile,
 } from "@kilocode/kilo-gateway"
-import { getAutocompleteModel } from "@kilocode/kilo-gateway/autocomplete"
-import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL, requestMistralFim } from "@kilocode/kilo-gateway/mistral-fim-endpoint"
+import { DIRECT_FIM_ENV, requestMistralFim, resolveFimTarget } from "@kilocode/kilo-gateway/fim"
 import { buildKiloHeaders } from "@kilocode/kilo-gateway"
 import { Effect } from "effect"
 import * as Stream from "effect/Stream"
@@ -40,30 +39,6 @@ import { Database } from "@/storage/db"
 import { AudioTranscriptionsBody, FimBody } from "../groups/kilo-gateway"
 
 const FIM_TIMEOUT_MS = 30_000
-const KILO_FIM_URL = KILO_API_BASE + "/api/fim/completions"
-const INCEPTION_FIM_URL = "https://api.inceptionlabs.ai/v1/fim/completions"
-
-type FimProvider = "kilo" | "mistral" | "inception"
-
-const DIRECT_FIM_ENV: Record<Exclude<FimProvider, "kilo">, string[]> = {
-  mistral: ["MISTRAL_API_KEY"],
-  inception: ["INCEPTION_API_KEY"],
-}
-
-function resolveFimTarget(provider?: string, model?: string) {
-  if (!provider || provider === "kilo") {
-    return { provider: "kilo" as const, model: model ?? "mistralai/codestral-2501", urls: [KILO_FIM_URL] }
-  }
-
-  const info = getAutocompleteModel(provider, model)
-  if (info.directProvider === "mistral") {
-    return { provider: "mistral" as const, model: info.requestModel, urls: [MISTRAL_FIM_URL, CODESTRAL_FIM_URL] }
-  }
-  if (info.directProvider === "inception") {
-    return { provider: "inception" as const, model: info.requestModel, urls: [INCEPTION_FIM_URL] }
-  }
-  return { provider: "kilo" as const, model: model ?? "mistralai/codestral-2501", urls: [KILO_FIM_URL] }
-}
 
 export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo", (handlers) =>
   Effect.gen(function* () {

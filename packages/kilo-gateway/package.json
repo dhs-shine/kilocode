@@ -18,7 +18,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./autocomplete": "./src/autocomplete.ts",
-    "./mistral-fim-endpoint": "./src/mistral-fim-endpoint.ts",
+    "./fim": "./src/fim.ts",
     "./tui": "./src/tui.ts"
   },
   "files": [

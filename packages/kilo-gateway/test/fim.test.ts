@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { resolveFimTarget } from "../src/server/fim"
+import { resolveFimTarget } from "../src/fim"
 
 describe("FIM target resolution", () => {
   test("keeps gateway autocomplete models on Kilo Gateway", () => {
