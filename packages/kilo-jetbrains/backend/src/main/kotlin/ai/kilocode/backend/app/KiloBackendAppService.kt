@@ -2,6 +2,8 @@ package ai.kilocode.backend.app
 
 import ai.kilocode.backend.cli.CliServer
 import ai.kilocode.backend.cli.KiloBackendCliManager
+import ai.kilocode.backend.migration.KiloBackendLegacyMigrationStoreService
+import ai.kilocode.backend.migration.LegacyMigrationDetection
 import ai.kilocode.log.KiloLog
 import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
 import ai.kilocode.jetbrains.api.client.DefaultApi
@@ -133,7 +135,7 @@ class KiloBackendAppService private constructor(
     suspend fun connect() {
         mutex.withLock {
             val current = _appState.value
-            if (current is KiloAppState.Ready || current is KiloAppState.Connecting || current is KiloAppState.Loading) return
+            if (current is KiloAppState.Ready || current is KiloAppState.Connecting || current is KiloAppState.Loading || current is KiloAppState.MigrationRequired) return
             ensureWatcher()
             connection.connect()
         }
@@ -162,6 +164,10 @@ class KiloBackendAppService private constructor(
                 }
                 KiloAppState.Connecting,
                 is KiloAppState.Loading -> Unit
+                is KiloAppState.MigrationRequired -> {
+                    log.info("retry: rerunning migration detection")
+                    load()
+                }
                 is KiloAppState.Ready -> {
                     if (current.data.warnings.isEmpty()) return
                     log.info("retry: refreshing config warnings")
@@ -196,10 +202,25 @@ class KiloBackendAppService private constructor(
         return HealthDto(healthy = response.healthy, version = response.version)
     }
 
+    fun requireReady() {
+        when (_appState.value) {
+            is KiloAppState.Ready -> return
+            is KiloAppState.MigrationRequired -> throw IllegalStateException("Migration required")
+            else -> throw IllegalStateException("Kilo backend is not ready")
+        }
+    }
+
+    internal suspend fun resumeAfterMigration() {
+        mutex.withLock {
+            if (_appState.value !is KiloAppState.MigrationRequired) return
+            load()
+        }
+    }
+
     private suspend fun reconnect() {
         mutex.withLock {
             val current = _appState.value
-            if (current is KiloAppState.Ready || current is KiloAppState.Connecting || current is KiloAppState.Loading) {
+            if (current is KiloAppState.Ready || current is KiloAppState.Connecting || current is KiloAppState.Loading || current is KiloAppState.MigrationRequired) {
                 log.info("reconnect: already ${current::class.simpleName} — skipping")
                 return
             }
@@ -216,7 +237,6 @@ class KiloBackendAppService private constructor(
                     ConnectionState.Disconnected -> _appState.value = KiloAppState.Disconnected
                     ConnectionState.Connecting -> _appState.value = KiloAppState.Connecting
                     is ConnectionState.Connected -> {
-                        models.start(connection.apiClient ?: return@collect, next.port)
                         load()
                     }
                     is ConnectionState.Error -> setAppError(
@@ -248,6 +268,18 @@ class KiloBackendAppService private constructor(
                 log.info("Application starting — loading config, profile, notifications")
                 val progress = AtomicReference(LoadProgress())
                 _appState.value = KiloAppState.Loading(progress.get())
+
+                val migration = detectMigration()
+                if (migration != null) {
+                    stopRuntime()
+                    profile = null
+                    config = null
+                    notifications = emptyList()
+                    warnings = emptyList()
+                    _appState.value = KiloAppState.MigrationRequired(migration)
+                    log.info("Application paused — legacy migration required")
+                    return@launch
+                }
 
                 val errors = CopyOnWriteArrayList<LoadError>()
                 var cfg: Config? = null
@@ -307,6 +339,7 @@ class KiloBackendAppService private constructor(
                     profile = prof
                     config = cfg
                     notifications = notifs
+                    models.start(connection.apiClient!!, connection.port)
                     sessions.start(connection.api!!, connection.apiClient!!, connection.port, connection.events)
                     chat.start(connection.apiClient!!, connection.port, connection.events)
                     workspaces.start(connection.api!!, connection.apiClient!!, connection.port, connection.events)
@@ -341,6 +374,29 @@ class KiloBackendAppService private constructor(
                 }
             }
         }
+    }
+
+    private suspend fun detectMigration(): LegacyMigrationDetection? = withContext(Dispatchers.IO) {
+        val http = connection.apiClient ?: run {
+            log.info("Migration check: skipped because CLI HTTP client is not connected")
+            return@withContext null
+        }
+        log.info("Migration check: started")
+        val store = KiloBackendLegacyMigrationStoreService.store(log)
+        val status = store.status()
+        if (status != null) {
+            log.info("Migration check: skipped because status=$status")
+            return@withContext null
+        }
+        val detection = KiloBackendMigrationManager(http, connection.port).detect(store)
+        log.info("Migration check: completed hasData=${detection.hasData} ${migrationSummary(detection)}")
+        if (detection.hasData) detection else null
+    }
+
+    private fun migrationSummary(detection: LegacyMigrationDetection): String {
+        val providers = detection.providers.count { it.supported }
+        val unsupported = detection.providers.size - providers
+        return "providers=$providers unsupportedProviders=$unsupported mcp=${detection.mcpServers.size} modes=${detection.customModes.size} sessions=${detection.sessions.size} model=${detection.defaultModel != null} settings=${detection.settings != null}"
     }
 
     /**
@@ -567,15 +623,19 @@ class KiloBackendAppService private constructor(
             loader?.cancel()
             eventWatcher?.cancel()
         }
-        workspaces.stop()
-        models.stop()
-        chat.stop()
-        sessions.stop()
+        stopRuntime()
         profile = null
         config = null
         notifications = emptyList()
         warnings = emptyList()
         _appState.value = KiloAppState.Disconnected
+    }
+
+    private fun stopRuntime() {
+        workspaces.stop()
+        models.stop()
+        chat.stop()
+        sessions.stop()
     }
 
     /**
