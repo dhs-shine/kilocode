@@ -868,6 +868,9 @@ export const dict = {
   "settings.providers.connected.environmentDescription": "Connecté depuis vos variables d'environnement",
   "settings.providers.action.signInChatGPT": "Se connecter avec ChatGPT",
   "settings.providers.custom.description": "Ajoutez un fournisseur compatible OpenAI par URL de base.",
+  "settings.providers.subagentModel.title": "Modèle de sous-agent",
+  "settings.providers.subagentModel.description":
+    "Modèle par défaut et effort de raisonnement pour les sous-agents du task-tool. Laissez vide pour hériter du modèle de l'agent appelant.",
   "settings.providers.modeModels": "Modèle par mode",
   "settings.providers.custom.note": "Ajoutez un fournisseur compatible OpenAI par URL de base.",
   "settings.providers.modeModels.description":
@@ -1282,7 +1285,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Activez la saisie vocale dans les champs de prompt en utilisant votre compte Kilo via Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Activez Kilo provider et connectez-vous pour utiliser la saisie vocale dans les champs de prompt.",
+    "Activez et connectez-vous au fournisseur Kilo pour utiliser Speech to Text. Speech to Text n'est actuellement pris en charge qu'avec Kilo Gateway.",
   "settings.experimental.speechToTextModel.title": "Modèle de transcription vocale",
   "settings.experimental.speechToTextModel.description":
     "Choisissez le modèle de transcription Kilo Gateway pour la saisie vocale.",
@@ -1308,6 +1311,8 @@ export const dict = {
   "settings.agentBehaviour.selectAgent.description": "Sélectionner un agent à configurer…",
   "settings.agentBehaviour.modelOverride.title": "Remplacement du modèle",
   "settings.agentBehaviour.modelOverride.description": "Remplacer le modèle par défaut pour cet agent",
+  "settings.agentBehaviour.variantOverride.title": "Remplacement de la variante",
+  "settings.agentBehaviour.variantOverride.description": "Remplacer la variante du modèle pour cet agent",
   "settings.agentBehaviour.prompt.title": "Prompt personnalisé",
   "settings.agentBehaviour.prompt.description": "Prompt système supplémentaire pour cet agent",
   "settings.agentBehaviour.temperature.title": "Température",

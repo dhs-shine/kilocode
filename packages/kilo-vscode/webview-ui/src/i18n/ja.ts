@@ -850,6 +850,9 @@ export const dict = {
   "settings.providers.connected.environmentDescription": "環境変数から接続されています",
   "settings.providers.action.signInChatGPT": "ChatGPT でサインイン",
   "settings.providers.custom.description": "ベースURLでOpenAI互換プロバイダーを追加します。",
+  "settings.providers.subagentModel.title": "サブエージェントモデル",
+  "settings.providers.subagentModel.description":
+    "task-tool サブエージェントのデフォルトモデルと推論の労力。呼び出し元のエージェントのモデルを継承する場合は未設定のままにしてください。",
   "settings.providers.modeModels": "モードごとのモデル",
   "settings.providers.custom.note": "Base URL で OpenAI 互換プロバイダーを追加します。",
   "settings.providers.modeModels.description":
@@ -1251,7 +1254,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Kilo Gateway経由でKiloアカウントを使用して、プロンプトフィールドでの音声入力を有効にします。",
   "settings.experimental.speechToText.disabledDescription":
-    "プロンプトフィールドで音声入力を使用するには、Kilo providerを有効にしてサインインしてください。",
+    "Speech to Text を使用するには、Kilo プロバイダーを有効にしてサインインしてください。現在、Speech to Text は Kilo Gateway でのみサポートされています。",
   "settings.experimental.speechToTextModel.title": "音声認識モデル",
   "settings.experimental.speechToTextModel.description": "音声入力に使用するKilo Gateway文字起こしモデルを選択します。",
   "settings.experimental.continueOnDeny.title": "拒否時に続行",
@@ -1275,6 +1278,8 @@ export const dict = {
   "settings.agentBehaviour.selectAgent.description": "設定するエージェントを選択…",
   "settings.agentBehaviour.modelOverride.title": "モデルオーバーライド",
   "settings.agentBehaviour.modelOverride.description": "このエージェントのデフォルトモデルを上書き",
+  "settings.agentBehaviour.variantOverride.title": "バリアントオーバーライド",
+  "settings.agentBehaviour.variantOverride.description": "このエージェントのモデルバリアントを上書き",
   "settings.agentBehaviour.prompt.title": "カスタムプロンプト",
   "settings.agentBehaviour.prompt.description": "このエージェントの追加システムプロンプト",
   "settings.agentBehaviour.temperature.title": "温度",
