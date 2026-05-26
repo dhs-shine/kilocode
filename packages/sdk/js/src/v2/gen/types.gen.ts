@@ -7739,6 +7739,7 @@ export type KiloFimData = {
   body?: {
     prefix: string
     suffix: string
+    provider?: string
     model?: string
     maxTokens?: number
     temperature?: number

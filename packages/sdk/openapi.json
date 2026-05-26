@@ -10118,6 +10118,9 @@
                   "suffix": {
                     "type": "string"
                   },
+                  "provider": {
+                    "type": "string"
+                  },
                   "model": {
                     "type": "string"
                   },
