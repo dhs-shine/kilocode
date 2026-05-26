@@ -764,11 +764,11 @@ class SessionController(
             is ChatEventDto.TurnClose -> {
                 partType = null
                 tool = null
-                // "completed" always transitions to idle.
-                // Other reasons: don't clobber a more specific terminal state (Error,
-                // AwaitingPermission, AwaitingQuestion, LoginRequired) that arrived just before close.
+                // Keep pending questions visible for follow-up flows that arrive just before close.
                 val current = model.state
-                val clobberOk = current is SessionState.Busy
+                if (current is SessionState.AwaitingQuestion) return
+                val clobberOk = event.reason == "completed"
+                    || current is SessionState.Busy
                     || current is SessionState.Retry
                     || current is SessionState.Offline
                 if (clobberOk) model.setState(SessionState.Idle)

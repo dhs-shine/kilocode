@@ -584,27 +584,27 @@ object KiloCliDataParser {
         val sid = obj.str("sessionID") ?: return null
         val questions = obj["questions"]?.jsonArray?.map { q ->
             val qo = q.jsonObject
-                val options = qo["options"]?.jsonArray?.map { o ->
-                    val oo = o.jsonObject
-                    QuestionOptionDto(
-                        label = oo.str("label") ?: "",
-                        description = oo.str("description") ?: "",
-                        labelKey = oo.str("labelKey"),
-                        descriptionKey = oo.str("descriptionKey"),
-                        mode = oo.str("mode"),
-                    )
-                } ?: emptyList()
-                QuestionInfoDto(
-                    question = qo.str("question") ?: "",
-                    header = qo.str("header") ?: "",
-                    options = options,
-                    multiple = qo.flag("multiple", false),
-                    custom = qo.flag("custom", true),
-                    questionKey = qo.str("questionKey"),
-                    headerKey = qo.str("headerKey"),
+            val options = qo["options"]?.jsonArray?.map { o ->
+                val oo = o.jsonObject
+                QuestionOptionDto(
+                    label = oo.str("label") ?: "",
+                    description = oo.str("description") ?: "",
+                    labelKey = oo.str("labelKey"),
+                    descriptionKey = oo.str("descriptionKey"),
+                    mode = oo.str("mode"),
                 )
             } ?: emptyList()
-            val ref = toolRef(obj)
+            QuestionInfoDto(
+                question = qo.str("question") ?: "",
+                header = qo.str("header") ?: "",
+                options = options,
+                multiple = qo.flag("multiple", false),
+                custom = qo.flag("custom", true),
+                questionKey = qo.str("questionKey"),
+                headerKey = qo.str("headerKey"),
+            )
+        } ?: emptyList()
+        val ref = toolRef(obj)
         return QuestionRequestDto(id, sid, questions, ref, blocking = obj.flag("blocking", false))
     }
 
