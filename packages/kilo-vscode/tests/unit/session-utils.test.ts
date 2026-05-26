@@ -3,6 +3,7 @@ import {
   computeStatus,
   calcTotalCost,
   calcContextUsage,
+  calcTokenUsage,
   buildFamilyCosts,
   buildFamilyParents,
   buildFamilyParentsFromTools,
@@ -15,6 +16,7 @@ import {
   removeSessionToolPart,
   removeSessionToolPartsForMessage,
   upsertSessionToolPart,
+  recentSessions,
 } from "../../webview-ui/src/context/session-utils"
 import type { Message, Part, ToolPart } from "../../webview-ui/src/types/messages"
 
@@ -90,6 +92,36 @@ describe("computeStatus", () => {
   })
 })
 
+describe("recentSessions", () => {
+  const at = (day: number) => `2026-01-${String(day).padStart(2, "0")}T00:00:00.000Z`
+  const info = (id: string, day: number, parentID?: string | null) => ({
+    id,
+    updatedAt: at(day),
+    ...(parentID === undefined ? {} : { parentID }),
+  })
+
+  it("keeps the newest root sessions after removing sub-agents", () => {
+    const result = recentSessions([
+      info("old-root", 1),
+      info("child", 6, "old-root"),
+      info("new-root", 5),
+      info("blank-parent", 4, ""),
+      info("mid-root", 3, null),
+      info("fourth-root", 2),
+    ])
+
+    expect(result.map((session) => session.id)).toEqual(["new-root", "mid-root", "fourth-root"])
+  })
+
+  it("does not mutate the session list while sorting recents", () => {
+    const sessions = [info("old", 1), info("new", 3), info("mid", 2)]
+
+    recentSessions(sessions)
+
+    expect(sessions.map((session) => session.id)).toEqual(["old", "new", "mid"])
+  })
+})
+
 describe("calcTotalCost", () => {
   it("returns 0 for empty messages", () => {
     expect(calcTotalCost([])).toBe(0)
@@ -144,6 +176,35 @@ describe("calcContextUsage", () => {
     const result = calcContextUsage({ input: 100, output: 0 }, 1000)
     expect(result.tokens).toBe(100)
     expect(result.percentage).toBe(10)
+  })
+})
+
+describe("calcTokenUsage", () => {
+  it("sums assistant message input, output, and cache read tokens", () => {
+    const result = calcTokenUsage([
+      { role: "assistant", tokens: { input: 100, output: 40, reasoning: 8, cache: { read: 10, write: 5 } } },
+      { role: "assistant", tokens: { input: 25, output: 15, cache: { read: 7, write: 3 } } },
+    ])
+
+    expect(result).toEqual({ input: 125, output: 55, cached: 17 })
+  })
+
+  it("ignores user messages, missing tokens, reasoning tokens, and cache writes", () => {
+    const result = calcTokenUsage([
+      { role: "user", tokens: { input: 999, output: 999, cache: { read: 999, write: 999 } } },
+      { role: "assistant" },
+      { role: "assistant", tokens: { input: 10, output: 4, reasoning: 30, cache: { read: 2, write: 20 } } },
+    ])
+
+    expect(result).toEqual({ input: 10, output: 4, cached: 2 })
+  })
+
+  it("returns undefined when there are no displayed token counts", () => {
+    const result = calcTokenUsage([
+      { role: "assistant", tokens: { input: 0, output: 0, reasoning: 12, cache: { read: 0, write: 6 } } },
+    ])
+
+    expect(result).toBeUndefined()
   })
 })
 

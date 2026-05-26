@@ -14,6 +14,21 @@ export function snapshotProgress(part: SnapshotPart | undefined): boolean {
   return (part.text ?? "").includes("Initializing snapshot")
 }
 
+type ParentSession = { parentID?: string | null }
+
+type RecentSession = ParentSession & { updatedAt: string }
+
+export function isRootSession(session: ParentSession): boolean {
+  return session.parentID === undefined || session.parentID === null
+}
+
+export function recentSessions<T extends RecentSession>(sessions: T[]): T[] {
+  return [...sessions]
+    .filter(isRootSession)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 3)
+}
+
 /** Minimal message shape for cost breakdown helpers. */
 export type CostMessage = { id: string; role: string; cost?: number }
 
@@ -153,6 +168,35 @@ export function calcContextUsage(
     tokens.input + tokens.output + (tokens.reasoning ?? 0) + (tokens.cache?.read ?? 0) + (tokens.cache?.write ?? 0)
   const percentage = contextLimit ? Math.round((total / contextLimit) * 100) : null
   return { tokens: total, percentage }
+}
+
+export type TokenUsageMessage = {
+  role: string
+  tokens?: {
+    input: number
+    output: number
+    reasoning?: number
+    cache?: { read: number; write: number }
+  }
+}
+
+export function calcTokenUsage(
+  messages: TokenUsageMessage[],
+): { input: number; output: number; cached: number } | undefined {
+  const total = messages.reduce(
+    (sum, m) => {
+      if (m.role !== "assistant" || !m.tokens) return sum
+      return {
+        input: sum.input + m.tokens.input,
+        output: sum.output + m.tokens.output,
+        cached: sum.cached + (m.tokens.cache?.read ?? 0),
+      }
+    },
+    { input: 0, output: 0, cached: 0 },
+  )
+
+  if (total.input > 0 || total.output > 0 || total.cached > 0) return total
+  return undefined
 }
 
 /**
