@@ -2,6 +2,7 @@ package ai.kilocode.client.session
 
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
+import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.migration.KiloMigrationService
 import ai.kilocode.client.migration.MigrationUiController
@@ -36,11 +37,11 @@ import ai.kilocode.log.ChatLogSummary
 import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
 import com.intellij.ide.ui.LafManagerListener
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurableWithId
 import com.intellij.openapi.options.ShowSettingsUtil
@@ -72,6 +73,7 @@ class SessionUi(
     ref: SessionRef? = null,
     displayMs: Long = SessionController.DISPLAY_DELAY_MS,
     private val manager: SessionManager? = null,
+    private val workspaces: KiloWorkspaceService = service(),
     private val migration: MigrationUiController = service<KiloMigrationService>(),
 ) : JPanel(BorderLayout()), Disposable, SessionEditorStyleTarget {
 
@@ -212,7 +214,7 @@ class SessionUi(
         progressBody = load
         question = QuestionView(
             project = project,
-            reply = { id, dto -> controller.replyQuestion(id, dto) },
+            reply = { id, dto, opts -> controller.replyQuestion(id, dto, opts) },
             reject = { id -> controller.rejectQuestion(id) },
             scroll = { scroll.followBottom(true) },
         )
@@ -220,7 +222,7 @@ class SessionUi(
             reply = { id, dto -> controller.replyPermission(id, dto) },
         )
         login = LoginRequiredView(openProfile = { controller.openProfile() }, dismiss = { controller.dismissLoginRequired() })
-        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login)
+        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login, ::openFile)
         header = SessionHeaderPanel(controller, this)
 
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
@@ -414,6 +416,12 @@ class SessionUi(
         }
         controller.prompt(text)
         prompt.clear()
+    }
+
+    private fun openFile(path: String) {
+        cs.launch {
+            workspaces.openPath(workspace.directory, path)
+        }
     }
 
     private fun onStateChanged(state: SessionState) {

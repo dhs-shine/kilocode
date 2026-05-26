@@ -48,6 +48,7 @@ class KiloBackendChatManager(
             "message.part.removed",
             "session.turn.open",
             "session.turn.close",
+            "session.created",
             "session.error",
             "session.status",
             "session.updated",
