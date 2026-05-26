@@ -216,7 +216,8 @@ class SessionUi(
             project = project,
             reply = { id, dto, opts -> controller.replyQuestion(id, dto, opts) },
             reject = { id -> controller.rejectQuestion(id) },
-            scroll = { scroll.followBottom(true) },
+            follow = { scroll.following() },
+            scroll = { scroll.followBottom(it) },
         )
         permission = PermissionView(
             reply = { id, dto -> controller.replyPermission(id, dto) },
@@ -246,6 +247,7 @@ class SessionUi(
         prompt.model.onSelect = { item -> controller.selectModel(item.provider, item.id) }
         prompt.reasoning.onSelect = { item -> controller.selectVariant(item.id) }
         prompt.onReset = { controller.clearModelOverride() }
+        prompt.onChange = { scroll.followTail() }
         prompt.model.favorites = { app.favorites.value }
         prompt.model.onFavoriteToggle = { item -> app.toggleModelFavorite(item.provider, item.id) }
 
@@ -414,8 +416,10 @@ class SessionUi(
             val model = controller.model.model ?: "none"
             "${ChatLogSummary.prompt(text)} agent=$agent model=$model ready=${controller.ready}"
         }
-        controller.prompt(text)
         prompt.clear()
+        val follow = scroll.atBottom()
+        controller.prompt(text)
+        scroll.followBottom(follow)
     }
 
     private fun openFile(path: String) {

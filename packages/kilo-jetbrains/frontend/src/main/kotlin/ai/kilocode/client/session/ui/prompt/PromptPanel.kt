@@ -26,6 +26,8 @@ import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.editor.event.DocumentEvent
+import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.keymap.Keymap
 import com.intellij.openapi.keymap.KeymapManagerListener
 import com.intellij.openapi.keymap.KeymapUtil
@@ -74,6 +76,7 @@ class PromptPanel(
     val model = ModelPicker()
     val reasoning = ReasoningPicker()
     var onReset: () -> Unit = {}
+    var onChange: () -> Unit = {}
     private var style = SessionEditorStyle.current()
     private val shell = PromptShell()
     private var bus: MessageBusConnection? = null
@@ -153,6 +156,12 @@ class PromptPanel(
         )
 
         applyStyle(style)
+        editor.text = ""
+        editor.addDocumentListener(object : DocumentListener {
+            override fun documentChanged(e: DocumentEvent) {
+                onChange()
+            }
+        })
         shell.add(editor, BorderLayout.CENTER)
 
         val bar = BorderLayoutPanel().apply {

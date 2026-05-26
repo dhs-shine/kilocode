@@ -15,6 +15,7 @@ import java.awt.Point
 import java.awt.Rectangle
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.awt.event.MouseWheelListener
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JScrollBar
@@ -47,6 +48,7 @@ internal class SessionScroll(
     private var opening = false
     private var stable = -1
     private var seq = 0
+    private var user = false
 
     init {
         jump = JBLabel(ScrollButtonIcon.create()).apply {
@@ -59,6 +61,12 @@ internal class SessionScroll(
                 }
             })
         }
+        component.addMouseWheelListener(MouseWheelListener { user = true })
+        component.verticalScrollBar.addMouseListener(object : MouseAdapter() {
+            override fun mousePressed(e: MouseEvent) {
+                user = true
+            }
+        })
         component.verticalScrollBar.addAdjustmentListener { onScroll() }
         root.addOverlay(jump) { _, child ->
             val size = child.preferredSize
@@ -104,6 +112,14 @@ internal class SessionScroll(
         ApplicationManager.getApplication().invokeLater {
             followPass(id, FOLLOW_PASSES)
         }
+    }
+
+    fun followTail() {
+        followBottom(component.viewport.view === messages && tail)
+    }
+
+    fun following(): Boolean {
+        return component.viewport.view === messages && tail
     }
 
     fun openBottom(done: () -> Unit) {
@@ -222,8 +238,20 @@ internal class SessionScroll(
             return
         }
         if (component.viewport.view === messages) {
-            tail = atBottom()
-            if (!tail) seq++
+            val bottom = atBottom()
+            if (bottom) {
+                tail = true
+                user = false
+                updateJump()
+                return
+            }
+            if (tail && !user) {
+                followBottom(true)
+                return
+            }
+            tail = false
+            user = false
+            seq++
         }
         updateJump()
     }

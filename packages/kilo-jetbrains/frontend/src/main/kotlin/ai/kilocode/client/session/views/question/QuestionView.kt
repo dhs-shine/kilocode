@@ -44,7 +44,8 @@ class QuestionView(
     private val project: Project,
     private val reply: (String, QuestionReplyDto, List<List<String>>) -> Unit,
     private val reject: (String) -> Unit,
-    private val scroll: () -> Unit = {},
+    private val follow: () -> Boolean = { true },
+    private val scroll: (Boolean) -> Unit = {},
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SessionView {
     override val sessionViewKind = SessionView.Kind.Default
 
@@ -121,12 +122,14 @@ class QuestionView(
         request = q.id
         question = q
         idx = 0
+        val tail = follow()
         selections = List(q.items.size) { mutableSetOf() }
         customTexts = List(q.items.size) { "" }
         customOpen = List(q.items.size) { false }
         isVisible = true
         applyStyle(SessionEditorStyle.current())
         syncPage()
+        scroll(tail)
     }
 
     fun hideView() {
@@ -491,7 +494,7 @@ class QuestionView(
                 syncEditorHeight(ed)
                 question?.let(::syncControls)
                 refresh()
-                scroll()
+                scroll(follow())
             }
         })
 
@@ -541,7 +544,7 @@ class QuestionView(
             customEditor?.requestFocusInWindow()
         }
         syncControls(q)
-        scroll()
+        scroll(follow())
     }
 
     private fun radioRow(opt: QuestionOption, set: MutableSet<String>, group: ButtonGroup): JPanel {
@@ -678,7 +681,7 @@ class QuestionView(
         if (idx <= 0) return
         idx--
         syncPage()
-        scroll()
+        scroll(follow())
     }
 
     private fun goForward() {
@@ -691,7 +694,7 @@ class QuestionView(
         if (!toReview) {
             idx++
             syncPage()
-            scroll()
+            scroll(follow())
         }
     }
 
@@ -700,14 +703,14 @@ class QuestionView(
         if (idx == q.items.size - 1 && isReady(idx)) {
             idx = q.items.size
             syncPage()
-            scroll()
+            scroll(follow())
         }
     }
 
     private fun refreshSelection() {
         question?.let(::syncControls)
         refresh()
-        scroll()
+        scroll(follow())
     }
 
     private fun doReply() {
@@ -717,12 +720,14 @@ class QuestionView(
         val opts = (question?.items?.indices ?: return).map { optionAnswers(it) }
         reply(id, QuestionReplyDto(answers), opts)
         hideView()
+        scroll(follow())
     }
 
     private fun doReject() {
         val id = request ?: return
         reject(id)
         hideView()
+        scroll(follow())
     }
 
     private fun setFont(area: JBTextArea, bold: Boolean): Boolean {
