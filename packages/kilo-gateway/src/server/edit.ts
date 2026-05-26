@@ -1,4 +1,5 @@
-import { DIRECT_EDIT_ENV, resolveEditTarget, type EditTarget } from "../edit.js"
+import { DIRECT_EDIT_ENV, extractFencedBody, resolveEditTarget, type EditTarget, type EditUpstreamResponse } from "../edit.js"
+import type { DirectAutocompleteProviderID } from "../autocomplete.js"
 import type { AuthStore } from "./handlers.js"
 
 type Auth = Pick<AuthStore, "get">
@@ -6,37 +7,10 @@ type Auth = Pick<AuthStore, "get">
 const EDIT_TIMEOUT_MS = 30_000
 const MAX_TOKENS_DEFAULT = 512
 
-async function getProviderKey(Auth: Auth, provider: "inception" | "mistral"): Promise<string | undefined> {
+async function getProviderKey(Auth: Auth, provider: DirectAutocompleteProviderID): Promise<string | undefined> {
   const auth = await Auth.get(provider)
   if (auth?.type === "api") return auth.key
   return DIRECT_EDIT_ENV[provider].map((key) => process.env[key]).find(Boolean)
-}
-
-/**
- * Extract the rewritten code from Mercury's reply. Mercury always wraps the
- * editable region in a triple-backtick fence, sometimes with a language tag
- * and sometimes with `<|code_to_edit|>` markers inside. Mirrors the parser the
- * VSCode side used to run; doing it gateway-side keeps the Mercury contract
- * in one place.
- */
-function extractFencedBody(message: string): string {
-  if (!message) return ""
-  const fenceOpen = message.indexOf("```")
-  if (fenceOpen === -1) return message
-  const afterFenceOpen = message.indexOf("\n", fenceOpen + 3)
-  if (afterFenceOpen === -1) return ""
-  const fenceClose = message.lastIndexOf("```")
-  if (fenceClose <= afterFenceOpen) return ""
-  let body = message.slice(afterFenceOpen + 1, fenceClose)
-  if (body.endsWith("\n")) body = body.slice(0, -1)
-  body = body.replace(/^<\|code_to_edit\|>\n?/, "")
-  body = body.replace(/\n?<\|\/code_to_edit\|>$/, "")
-  return body
-}
-
-interface UpstreamResponse {
-  choices?: Array<{ message?: { content?: string } }>
-  usage?: { prompt_tokens?: number; completion_tokens?: number }
 }
 
 export function createEditHandler(Auth: Auth) {
@@ -86,7 +60,7 @@ export function createEditHandler(Auth: Auth) {
       return c.json({ error: `Edit request failed: ${response.status} ${text}` }, response.status as any)
     }
 
-    const json = (await response.json()) as UpstreamResponse
+    const json = (await response.json()) as EditUpstreamResponse
     const replyContent = json.choices?.[0]?.message?.content ?? ""
     const body = extractFencedBody(replyContent)
     return c.json({

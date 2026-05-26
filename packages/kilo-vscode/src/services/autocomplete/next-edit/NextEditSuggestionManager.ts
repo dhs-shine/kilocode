@@ -182,6 +182,15 @@ export class NextEditSuggestionManager implements vscode.Disposable {
 
     let ok = false
     if (p.kind === "insert") {
+      // Re-validate before applying: the anchor line must still hold its
+      // original text. Without this, edits between the anchor and the insertion
+      // point can shift line numbers and land the insert in the wrong place.
+      const anchorLine = Math.min(p.diffStartLine, editor.document.lineCount - 1)
+      const anchorText = anchorLine >= 0 ? editor.document.lineAt(anchorLine).text : undefined
+      if (anchorText !== p.originalText) {
+        nesLog(`document drifted since suggestion was made — dropping insert at line ${p.diffStartLine}`)
+        return
+      }
       const pos = new vscode.Position(p.diffStartLine, 0)
       ok = await editor.edit((b) => b.insert(pos, p.replacement))
       nesLog(`applied insert at line ${pos.line} (${p.replacement.length} chars, ok=${ok})`)

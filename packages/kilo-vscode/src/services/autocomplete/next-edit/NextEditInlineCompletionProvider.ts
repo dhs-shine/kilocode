@@ -31,6 +31,16 @@ export interface NextEditSuggestionEvent {
   outputTokens?: number
 }
 
+/** A parsed Mercury suggestion plus the editable region it targets. */
+type SuggestionResult = {
+  replacement: string
+  editableRegionStartLine: number
+  editableRegionEndLine: number
+  latencyMs: number
+  inputTokens?: number
+  outputTokens?: number
+}
+
 export class NextEditInlineCompletionProvider implements vscode.InlineCompletionItemProvider, vscode.Disposable {
   private readonly editHistoryTracker: EditHistoryTracker
   private debounceTimer: NodeJS.Timeout | null = null
@@ -109,7 +119,7 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
   private toCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
-    suggestion: { replacement: string; editableRegionStartLine: number; editableRegionEndLine: number; latencyMs: number; inputTokens?: number; outputTokens?: number },
+    suggestion: SuggestionResult,
   ): vscode.InlineCompletionItem[] | undefined {
     const endLine = Math.min(suggestion.editableRegionEndLine, document.lineCount - 1)
     const fullRange = new vscode.Range(
@@ -118,13 +128,7 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     )
     const currentText = document.getText(fullRange)
     if (currentText === suggestion.replacement) {
-      this.deps.onSuggestion?.({
-        shown: false,
-        latencyMs: suggestion.latencyMs,
-        status: "no-replacement",
-        inputTokens: suggestion.inputTokens,
-        outputTokens: suggestion.outputTokens,
-      })
+      this.emitNotShown(suggestion)
       return undefined
     }
 
@@ -163,47 +167,40 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     // Same-line diff: clear any prior off-cursor pending state so we don't render
     // two competing affordances.
     this.deps.suggestionManager?.clear()
+    return this.renderSameLineItem(document, position, proposedLines, prefixLines, suffixLines, diffStartLineInFile, diffEndLineInFile, trimmedReplacement, suggestion)
+  }
 
-    // Same-line diff: build a range that starts at the cursor's exact position
-    // and provide insertText for everything from the cursor onward.
+  /** Build the cursor-position ghost-text item for a same-line diff. */
+  private renderSameLineItem(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    proposedLines: string[],
+    prefixLines: number,
+    suffixLines: number,
+    diffStartLine: number,
+    diffEndLine: number,
+    trimmedReplacement: string,
+    suggestion: SuggestionResult,
+  ): vscode.InlineCompletionItem[] | undefined {
     const cursorLineText = document.lineAt(position.line).text
     const cursorLineCurrent = cursorLineText.slice(position.character)
     const cursorLineProposed = proposedLines[prefixLines]
-    // Guard: if the proposal has fewer lines than the prefix consumed (a pure
-    // deletion at the trim seam), there's no cursor-line replacement to show.
-    if (cursorLineProposed === undefined) {
-      nesLog(`skipping render — proposal has no line at the cursor's index after trim`)
-      this.deps.onSuggestion?.({
-        shown: false,
-        latencyMs: suggestion.latencyMs,
-        status: "no-replacement",
-        inputTokens: suggestion.inputTokens,
-        outputTokens: suggestion.outputTokens,
-      })
-      return undefined
-    }
-    if (!cursorLineProposed.startsWith(cursorLineText.slice(0, position.character))) {
-      // The model wants to change characters BEFORE the cursor on the same line —
-      // can't render that as ghost text either. Skip for v0.
-      nesLog(`skipping render — diff edits characters before cursor on its line`)
-      this.deps.onSuggestion?.({
-        shown: false,
-        latencyMs: suggestion.latencyMs,
-        status: "no-replacement",
-        inputTokens: suggestion.inputTokens,
-        outputTokens: suggestion.outputTokens,
-      })
+    // No cursor-line replacement (pure deletion at the trim seam), or the model
+    // wants to change characters BEFORE the cursor — neither renders as ghost text.
+    if (cursorLineProposed === undefined || !cursorLineProposed.startsWith(cursorLineText.slice(0, position.character))) {
+      this.emitNotShown(suggestion)
       return undefined
     }
     const insertText = [cursorLineProposed.slice(position.character), ...proposedLines.slice(prefixLines + 1, proposedLines.length - suffixLines)].join("\n")
-    const renderEndLine = pickRenderEndLine(document, position.line, diffEndLineInFile, insertText)
-    const renderRange = new vscode.Range(position, new vscode.Position(renderEndLine, document.lineAt(renderEndLine).range.end.character))
-    // Compute the existing text from cursor → end of diff region for sanity.
-    const _existingFromCursor = document.getText(renderRange)
-    if (_existingFromCursor === cursorLineCurrent && cursorLineCurrent === insertText) {
-      nesLog(`post-trim no-op`)
+    const renderEndLine = pickRenderEndLine(document, position.line, diffEndLine, insertText)
+    // A single-line insert spanning non-blank lines below the cursor can't be
+    // represented as inline ghost text — route it to the decoration path.
+    if (renderEndLine > position.line && !insertText.includes("\n")) {
+      this.stashOffCursorSuggestion(document, diffStartLine, diffEndLine, trimmedReplacement, false, suggestion)
       return undefined
     }
+    const renderRange = new vscode.Range(position, new vscode.Position(renderEndLine, document.lineAt(renderEndLine).range.end.character))
+    if (document.getText(renderRange) === cursorLineCurrent && cursorLineCurrent === insertText) return undefined
 
     const item = new vscode.InlineCompletionItem(insertText, renderRange, {
       command: INLINE_COMPLETION_ACCEPTED_COMMAND,
@@ -220,26 +217,30 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     return [item]
   }
 
+  private emitNotShown(suggestion: SuggestionResult): void {
+    this.deps.onSuggestion?.({
+      shown: false,
+      latencyMs: suggestion.latencyMs,
+      status: "no-replacement",
+      inputTokens: suggestion.inputTokens,
+      outputTokens: suggestion.outputTokens,
+    })
+  }
+
   private stashOffCursorSuggestion(
     document: vscode.TextDocument,
     diffStartLine: number,
     diffEndLine: number,
     trimmedReplacement: string,
     isPureInsertion: boolean,
-    suggestion: { latencyMs: number; inputTokens?: number; outputTokens?: number },
+    suggestion: SuggestionResult,
   ): void {
     const mgr = this.deps.suggestionManager
     if (!mgr) {
       // Manager wasn't wired — fall through silently. The classic path
       // already covers same-line completions; this branch only matters in
       // tests or misconfigured embeds.
-      this.deps.onSuggestion?.({
-        shown: false,
-        latencyMs: suggestion.latencyMs,
-        status: "no-replacement",
-        inputTokens: suggestion.inputTokens,
-        outputTokens: suggestion.outputTokens,
-      })
+      this.emitNotShown(suggestion)
       return
     }
     if (isPureInsertion) {

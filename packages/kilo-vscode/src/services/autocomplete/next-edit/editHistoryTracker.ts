@@ -25,6 +25,18 @@ export class EditHistoryTracker implements vscode.Disposable {
   ) {
     const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
 
+    // Seed snapshots on open so the FIRST edit in a freshly-opened file is
+    // captured in the diff history (otherwise the common "open, type, trigger"
+    // flow ships an empty edit-history block).
+    this.subscriptions.push(
+      vscode.workspace.onDidOpenTextDocument((doc) => {
+        if (doc.uri.scheme !== "file") return
+        if (!this.snapshots.has(doc.uri.fsPath)) this.snapshots.set(doc.uri.fsPath, doc.getText())
+      }),
+    )
+    for (const doc of vscode.workspace.textDocuments) {
+      if (doc.uri.scheme === "file") this.snapshots.set(doc.uri.fsPath, doc.getText())
+    }
     this.subscriptions.push(
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (event.document.uri.scheme !== "file") return
@@ -71,9 +83,9 @@ export class EditHistoryTracker implements vscode.Disposable {
   private scheduleSnapshotDiff(document: vscode.TextDocument, debounceMs: number): void {
     const key = document.uri.fsPath
     if (!this.snapshots.has(key)) {
-      // Seed the snapshot lazily — the first change is lost (we never saw
-      // the pre-edit state) but every subsequent edit window produces a
-      // useful diff.
+      // Fallback seed for documents we never saw open (e.g. opened before the
+      // tracker existed). The triggering change is lost, but subsequent edits
+      // produce useful diffs.
       this.snapshots.set(key, document.getText())
       return
     }

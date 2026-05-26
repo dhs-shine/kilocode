@@ -7,6 +7,8 @@ const MERCURY_MAX_TOKENS = 512
 const PROVIDER_ID = "inception"
 const MODEL_ID = "mercury-next-edit"
 
+type EditResponseData = { content?: string; usage?: { prompt_tokens?: number; completion_tokens?: number } }
+
 export interface MercuryEditProviderOptions {
   connectionService: KiloConnectionService
   /** AbortSignal for cancellation (cursor moves, escape, etc.). */
@@ -14,11 +16,10 @@ export interface MercuryEditProviderOptions {
 }
 
 /**
- * Thin wrapper around the SDK's `client.kilo.edit(...)` SSE endpoint.
- * The gateway (in `packages/kilo-gateway/src/server/edit.ts`) handles auth,
- * routing to Mercury's `/v1/edit/completions`, and unwrapping the
- * triple-backtick fence from the model response — so the VSCode side only
- * deals in already-parsed code.
+ * Thin wrapper around the SDK's `client.kilo.edit(...)` endpoint (non-streaming).
+ * The gateway (`packages/kilo-gateway/src/server/edit.ts`) handles auth, routing
+ * to Mercury's `/v1/edit/completions`, and unwrapping the triple-backtick fence —
+ * so the VSCode side only deals in already-parsed code.
  */
 export class MercuryEditProvider {
   constructor(private readonly options: MercuryEditProviderOptions) {}
@@ -32,7 +33,7 @@ export class MercuryEditProvider {
 
     const client = await this.options.connectionService.getClientAsync()
     try {
-      const { data, error } = await client.kilo.edit(
+      const { data, error, response } = await client.kilo.edit(
         {
           content: userContent,
           provider: PROVIDER_ID,
@@ -43,9 +44,10 @@ export class MercuryEditProvider {
       )
       const latencyMs = Date.now() - start
       if (error) {
-        const status = typeof (error as any)?.status === "number" ? (error as any).status : null
+        // HTTP status lives on the Response object, not the parsed error body.
+        const status = typeof response?.status === "number" ? response.status : null
         nesWarn(`<- error ${status ?? "?"} (${latencyMs}ms): ${safeStringify(error)}`)
-        throw new MercuryEditError(`Edit request failed: ${safeStringify(error)}`, status)
+        throw new MercuryEditError(`Edit request failed: ${status ?? "?"} ${safeStringify(error)}`, status)
       }
       return this.parseSuccess(ctx, data, latencyMs)
     } catch (err) {
@@ -59,7 +61,7 @@ export class MercuryEditProvider {
 
   private parseSuccess(
     ctx: MercuryEditRequestContext,
-    data: { content?: string; usage?: { prompt_tokens?: number; completion_tokens?: number } } | undefined,
+    data: EditResponseData | undefined,
     latencyMs: number,
   ): MercuryEditSuggestion | null {
     const replacement = data?.content ?? null

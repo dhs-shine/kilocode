@@ -205,6 +205,11 @@
         "category": "Kilo Code"
       },
       {
+        "command": "kilo-code.autocomplete.next-edit.accepted",
+        "title": "Next Edit: Suggestion Accepted (internal)",
+        "category": "Kilo Code"
+      },
+      {
         "command": "kilo-code.new.agentManager.previousSession",
         "title": "Agent Manager: Previous Session",
         "category": "Kilo Code"
@@ -846,13 +851,15 @@
             "mistralai/codestral-2508",
             "inception/mercury-edit-2",
             "codestral-2508",
-            "mercury-edit-2"
+            "mercury-edit-2",
+            "mercury-next-edit"
           ],
           "enumDescriptions": [
             "Codestral via Kilo Gateway (default)",
             "Mercury Edit 2 via Kilo Gateway",
             "Codestral via your connected Mistral provider API key",
-            "Mercury Edit 2 via your connected Inception provider API key"
+            "Mercury Edit 2 (FIM) via your connected Inception provider API key",
+            "Mercury Next Edit (multi-line edit predictions with jump-to-edit UX) via your connected Inception provider API key"
           ],
           "description": "Model to use for inline autocomplete suggestions"
         },

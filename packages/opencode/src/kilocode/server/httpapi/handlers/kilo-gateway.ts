@@ -20,7 +20,7 @@ import {
   fetchProfile,
 } from "@kilocode/kilo-gateway"
 import { DIRECT_FIM_ENV, requestMistralFim, resolveFimTarget } from "@kilocode/kilo-gateway/fim"
-import { DIRECT_EDIT_ENV, resolveEditTarget } from "@kilocode/kilo-gateway/edit"
+import { DIRECT_EDIT_ENV, extractFencedBody, resolveEditTarget } from "@kilocode/kilo-gateway/edit"
 import { buildKiloHeaders } from "@kilocode/kilo-gateway"
 import { Effect } from "effect"
 import * as Stream from "effect/Stream"
@@ -40,25 +40,6 @@ import { Database } from "@/storage/db"
 import { AudioTranscriptionsBody, EditBody, FimBody } from "../groups/kilo-gateway"
 
 const FIM_TIMEOUT_MS = 30_000
-
-/**
- * Strip Mercury's triple-backtick fence (and any `<|code_to_edit|>` sentinels
- * inside) so the gateway's NES response is just the rewritten code.
- */
-function extractFencedBody(message: string): string {
-  if (!message) return ""
-  const fenceOpen = message.indexOf("```")
-  if (fenceOpen === -1) return message
-  const afterFenceOpen = message.indexOf("\n", fenceOpen + 3)
-  if (afterFenceOpen === -1) return ""
-  const fenceClose = message.lastIndexOf("```")
-  if (fenceClose <= afterFenceOpen) return ""
-  let body = message.slice(afterFenceOpen + 1, fenceClose)
-  if (body.endsWith("\n")) body = body.slice(0, -1)
-  body = body.replace(/^<\|code_to_edit\|>\n?/, "")
-  body = body.replace(/\n?<\|\/code_to_edit\|>$/, "")
-  return body
-}
 
 export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo", (handlers) =>
   Effect.gen(function* () {
@@ -210,7 +191,14 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       })
 
       if (!response.ok) {
-        return yield* Effect.fail(new HttpApiError.BadRequest({}))
+        // Pass the upstream status through (mirrors the FIM handler) so the
+        // client can distinguish auth/credit/rate-limit/server failures
+        // instead of collapsing everything to 400.
+        const text = yield* Effect.promise(() => response.text())
+        return HttpServerResponse.jsonUnsafe(
+          { error: `Edit request failed: ${response.status} ${text}` },
+          { status: response.status },
+        )
       }
 
       const json = yield* Effect.promise(() => response.json() as Promise<{
