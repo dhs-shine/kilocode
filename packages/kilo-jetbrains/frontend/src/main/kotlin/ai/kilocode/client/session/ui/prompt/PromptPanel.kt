@@ -12,7 +12,6 @@ import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.client.ui.colorizeIfPossible
 import ai.kilocode.client.ui.iconButton
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
@@ -299,12 +298,7 @@ class PromptPanel(
 
     private fun syncAutoApprove() {
         auto.isSelected = autoApprove
-        auto.icon = if (autoApprove) {
-            val color = SessionUiStyle.View.Prompt.autoApproveActive()
-            SHIELD_ICON.colorizeIfPossible(color, color)
-        } else {
-            SHIELD_ICON
-        }
+        auto.icon = SHIELD_ICON
         auto.toolTipText = if (autoApprove) {
             KiloBundle.message("prompt.action.autoApprove.enabled.tooltip")
         } else {

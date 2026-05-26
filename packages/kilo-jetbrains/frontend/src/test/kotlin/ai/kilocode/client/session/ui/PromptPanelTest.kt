@@ -122,6 +122,7 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertFalse(button.isSelected)
         assertEquals(KiloBundle.message("prompt.action.autoApprove.enable"), button.accessibleContext.accessibleName)
         assertEquals(KiloBundle.message("prompt.action.autoApprove.disabled.tooltip"), button.toolTipText)
+        val icon = button.icon
 
         button.doClick()
 
@@ -130,6 +131,7 @@ class PromptPanelTest : BasePlatformTestCase() {
         panel.setAutoApprove(true)
 
         assertTrue(button.isSelected)
+        assertSame(icon, button.icon)
         assertEquals(KiloBundle.message("prompt.action.autoApprove.disable"), button.accessibleContext.accessibleName)
         assertEquals(KiloBundle.message("prompt.action.autoApprove.enabled.tooltip"), button.toolTipText)
 
