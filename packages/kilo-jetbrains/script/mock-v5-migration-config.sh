@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: ./mock-v5-migration-config.sh seed|clean
+Usage: ./script/mock-v5-migration-config.sh seed|clean
 
 Creates or removes local legacy migration data for JetBrains plugin migration testing.
 This script does not touch VS Code storage.
@@ -34,8 +34,8 @@ if [[ $# -gt 0 ]]; then
   esac
 fi
 
-repo="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-dir="${KILO_CONFIG_DIR:-$repo/.kilo-dev/config/kilo}"
+pkg="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+dir="${KILO_CONFIG_DIR:-$pkg/.kilo-dev/config/kilo}"
 config="$dir/kilo.json"
 legacy="$dir/legacy-settings.json"
 
@@ -74,7 +74,7 @@ JSON
   rm -f "$config"
   rm -f "$dir/opencode.json"
   echo "Seeded mock legacy migration file: $legacy"
-  echo "JetBrains dev isolation should pick this up via XDG_CONFIG_HOME=$repo/.kilo-dev/config"
+  echo "JetBrains dev isolation should pick this up via XDG_CONFIG_HOME=$pkg/.kilo-dev/config"
 }
 
 clean() {

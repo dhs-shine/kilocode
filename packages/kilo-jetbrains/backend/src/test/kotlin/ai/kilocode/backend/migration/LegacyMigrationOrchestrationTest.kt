@@ -174,6 +174,21 @@ class LegacyMigrationOrchestrationTest {
     }
 
     @Test
+    fun `migrate - child import failure produces warning result`() {
+        val (eng, _, backend) = setup {
+            taskHistory = """[{"id":"t1","task":"Test"}]"""
+            conversations["t1"] = """[{"role":"user","content":"hello"}]"""
+        }
+        backend.messageError = RuntimeException("message failed")
+        val items = mutableListOf<LegacyMigrationItemProgress>()
+        val report = eng.migrate(noSelections().copy(sessions = listOf(MigrationSessionSelection("t1"))), itemSink(items))
+        val item = report.items.single { it.category == MigrationItemCategory.session }
+        assertEquals(MigrationItemStatus.warning, item.status)
+        assertEquals("message failed", item.message)
+        assertEquals(MigrationItemProgressStatus.warning, items.last().status)
+    }
+
+    @Test
     fun `migrate - missing session conversation emits terminal error progress`() {
         val (eng, _, _) = setup {
             taskHistory = """[{"id":"t1","task":"Test"}]"""

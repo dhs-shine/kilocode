@@ -44,6 +44,8 @@ class NoopLegacyMigrationBackend : LegacyMigrationBackend {
 
     var existingSessionIds: Set<String> = emptySet()
     var sessionImportSkipped = false
+    var messageError: RuntimeException? = null
+    var partError: RuntimeException? = null
 
     override fun setAuth(provider: String, auth: JsonObject) { authCalls.add(provider to auth) }
     override fun updateGlobalConfig(config: JsonObject) { configCalls.add(config) }
@@ -57,6 +59,12 @@ class NoopLegacyMigrationBackend : LegacyMigrationBackend {
         val id = session["id"]?.toString()?.trim('"') ?: "ses_test"
         return LegacyImportResult(id = id, skipped = sessionImportSkipped)
     }
-    override fun importMessage(message: JsonObject) { messageCalls.add(message) }
-    override fun importPart(part: JsonObject) { partCalls.add(part) }
+    override fun importMessage(message: JsonObject) {
+        messageError?.let { throw it }
+        messageCalls.add(message)
+    }
+    override fun importPart(part: JsonObject) {
+        partError?.let { throw it }
+        partCalls.add(part)
+    }
 }

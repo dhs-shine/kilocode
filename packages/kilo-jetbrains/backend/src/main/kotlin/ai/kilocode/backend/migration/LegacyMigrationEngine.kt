@@ -277,16 +277,27 @@ class LegacyMigrationEngine(
                 continue
             }
 
+            val errors = mutableListOf<String>()
             for (msg in parsed.messages) {
-                runCatching { backend.importMessage(msg) }.getOrElse {  }
+                runCatching { backend.importMessage(msg) }.getOrElse { e ->
+                    val err = e.message ?: "Message import failed"
+                    LOG.warn("Migration message import failed legacy=${sel.id}: $err")
+                    errors.add(err)
+                }
             }
             for (part in parsed.parts) {
-                runCatching { backend.importPart(part) }.getOrElse {  }
+                runCatching { backend.importPart(part) }.getOrElse { e ->
+                    val err = e.message ?: "Part import failed"
+                    LOG.warn("Migration part import failed legacy=${sel.id}: $err")
+                    errors.add(err)
+                }
             }
 
-            sink.session(LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.done))
-            results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, MigrationItemStatus.success))
-            sink.item(LegacyMigrationItemProgress(sel.id, MigrationItemProgressStatus.success))
+            val status = if (errors.isEmpty()) MigrationItemStatus.success else MigrationItemStatus.warning
+            val msg = errors.firstOrNull()
+            sink.session(LegacyMigrationSessionProgress(info, idx, selections.sessions.size, MigrationSessionPhase.done, msg))
+            results.add(LegacyMigrationResultItem(sel.id, MigrationItemCategory.session, status, msg))
+            sink.item(LegacyMigrationItemProgress(sel.id, status.toProgressStatus(), msg))
         }
 
         // Summary progress for sessions
