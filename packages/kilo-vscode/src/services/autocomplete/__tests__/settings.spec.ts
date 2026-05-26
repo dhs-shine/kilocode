@@ -25,43 +25,50 @@ describe("autocomplete settings", () => {
   })
 
   it("includes the configured direct provider model in loaded settings", async () => {
-    state.set("model", "inception/provider/mercury-edit-2")
+    state.set("provider", "inception")
+    state.set("model", "mercury-edit-2")
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
-    expect(buildAutocompleteSettingsMessage().settings.model).toBe("inception/provider/mercury-edit-2")
+    expect(buildAutocompleteSettingsMessage().settings.provider).toBe("inception")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("mercury-edit-2")
   })
 
   it("defaults to codestral when no model is set", async () => {
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
-    expect(buildAutocompleteSettingsMessage().settings.model).toBe("kilo/mistralai/codestral-2508")
+    expect(buildAutocompleteSettingsMessage().settings.provider).toBe("kilo")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("mistralai/codestral-2508")
   })
 
   it("defaults to codestral when stored model is no longer supported", async () => {
     state.set("model", "some/removed-model")
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
-    expect(buildAutocompleteSettingsMessage().settings.model).toBe("kilo/mistralai/codestral-2508")
+    expect(buildAutocompleteSettingsMessage().settings.provider).toBe("kilo")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("mistralai/codestral-2508")
   })
 
   it("maps legacy inception/mercury-edit to Kilo Gateway Mercury", async () => {
     state.set("model", "inception/mercury-edit")
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
-    expect(buildAutocompleteSettingsMessage().settings.model).toBe("kilo/inception/mercury-edit-2")
+    expect(buildAutocompleteSettingsMessage().settings.provider).toBe("kilo")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("inception/mercury-edit-2")
   })
 
   it("maps legacy inception/mercury-edit-2 to Kilo Gateway Mercury", async () => {
     state.set("model", "inception/mercury-edit-2")
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
-    expect(buildAutocompleteSettingsMessage().settings.model).toBe("kilo/inception/mercury-edit-2")
+    expect(buildAutocompleteSettingsMessage().settings.provider).toBe("kilo")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("inception/mercury-edit-2")
   })
 
   it("validates supported model updates", async () => {
     const { validAutocompleteSetting } = await import("../settings")
 
-    expect(validAutocompleteSetting("model", "inception/provider/mercury-edit-2")).toBe(true)
+    expect(validAutocompleteSetting("model", "mercury-edit-2")).toBe(true)
+    expect(validAutocompleteSetting("provider", "inception")).toBe(true)
   })
 
   it("rejects unsupported model updates", async () => {

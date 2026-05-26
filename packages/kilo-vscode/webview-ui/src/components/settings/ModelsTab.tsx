@@ -7,18 +7,16 @@ import { parseModelString } from "../../../../src/shared/provider-model"
 import { DEFAULT_AUTOCOMPLETE_MODEL } from "../../../../src/shared/autocomplete-models"
 import { ModelSelectorBase } from "../shared/ModelSelector"
 import SettingsRow from "./SettingsRow"
-import {
-  AUTOCOMPLETE_SELECTOR_MODELS,
-  getAutocompleteSelection,
-  getAutocompleteSettingID,
-} from "./autocomplete-model-selector"
+import { AUTOCOMPLETE_SELECTOR_MODELS, getAutocompleteSelection } from "./autocomplete-model-selector"
 
 const ModelsTab: Component = () => {
   const { config, settings, updateConfig, updateSetting } = useConfig()
   const language = useLanguage()
   const session = useSession()
 
-  const autocompleteModel = () => String(settings()["autocomplete.model"] ?? DEFAULT_AUTOCOMPLETE_MODEL.id)
+  const autocompleteProvider = () =>
+    String(settings()["autocomplete.provider"] ?? DEFAULT_AUTOCOMPLETE_MODEL.providerID)
+  const autocompleteModel = () => String(settings()["autocomplete.model"] ?? DEFAULT_AUTOCOMPLETE_MODEL.modelID)
 
   function handleModelSelect(configKey: "model" | "small_model") {
     return (providerID: string, modelID: string) => {
@@ -43,9 +41,9 @@ const ModelsTab: Component = () => {
   }
 
   function handleAutocompleteModelSelect(providerID: string, modelID: string) {
-    const id = getAutocompleteSettingID(providerID, modelID)
-    if (!id) return
-    updateSetting("autocomplete.model", id)
+    if (!providerID || !modelID) return
+    updateSetting("autocomplete.provider", providerID)
+    updateSetting("autocomplete.model", modelID)
   }
 
   return (
@@ -82,7 +80,7 @@ const ModelsTab: Component = () => {
           last
         >
           <ModelSelectorBase
-            value={getAutocompleteSelection(autocompleteModel())}
+            value={getAutocompleteSelection(autocompleteProvider(), autocompleteModel())}
             onSelect={handleAutocompleteModelSelect}
             placement="bottom-start"
             models={AUTOCOMPLETE_SELECTOR_MODELS}

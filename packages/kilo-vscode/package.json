@@ -752,10 +752,10 @@
         "kilo-code.new.autocomplete.model": {
           "type": "string",
           "enum": [
-            "kilo/mistralai/codestral-2508",
-            "kilo/inception/mercury-edit-2",
-            "mistral/codestral-2508",
-            "inception/provider/mercury-edit-2"
+            "mistralai/codestral-2508",
+            "inception/mercury-edit-2",
+            "codestral-2508",
+            "mercury-edit-2"
           ],
           "enumDescriptions": [
             "Codestral via Kilo Gateway (default)",
@@ -764,6 +764,20 @@
             "Mercury Edit 2 via your connected Inception provider API key"
           ],
           "description": "Model to use for inline autocomplete suggestions"
+        },
+        "kilo-code.new.autocomplete.provider": {
+          "type": "string",
+          "enum": [
+            "kilo",
+            "mistral",
+            "inception"
+          ],
+          "enumDescriptions": [
+            "Use autocomplete models through Kilo Gateway",
+            "Use autocomplete models through your connected Mistral provider API key",
+            "Use autocomplete models through your connected Inception provider API key"
+          ],
+          "description": "Provider to use for inline autocomplete suggestions. If unset, Kilo Gateway is used."
         },
         "kilo-code.new.autocomplete.enableAutoTrigger": {
           "type": "boolean",

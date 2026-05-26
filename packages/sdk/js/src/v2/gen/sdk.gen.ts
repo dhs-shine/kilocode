@@ -6017,6 +6017,7 @@ export class Kilo extends HeyApiClient {
       workspace?: string
       prefix?: string
       suffix?: string
+      provider?: string
       model?: string
       maxTokens?: number
       temperature?: number
@@ -6032,6 +6033,7 @@ export class Kilo extends HeyApiClient {
             { in: "query", key: "workspace" },
             { in: "body", key: "prefix" },
             { in: "body", key: "suffix" },
+            { in: "body", key: "provider" },
             { in: "body", key: "model" },
             { in: "body", key: "maxTokens" },
             { in: "body", key: "temperature" },

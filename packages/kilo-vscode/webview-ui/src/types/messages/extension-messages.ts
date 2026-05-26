@@ -329,6 +329,7 @@ export interface AutocompleteSettingsLoadedMessage {
     enableAutoTrigger: boolean
     enableSmartInlineTaskKeybinding: boolean
     enableChatAutocomplete: boolean
+    provider: string
     model: string
   }
 }

@@ -332,6 +332,7 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
         z.object({
           prefix: z.string(),
           suffix: z.string(),
+          provider: z.string().optional(),
           model: z.string().optional(),
           maxTokens: z.number().optional(),
           temperature: z.number().optional(),

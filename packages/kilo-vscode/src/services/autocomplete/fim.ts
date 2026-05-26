@@ -35,7 +35,8 @@ export async function generateFim(
     {
       prefix,
       suffix,
-      model: info.id,
+      provider: info.providerID,
+      model: info.modelID,
       maxTokens: FIM_MAX_TOKENS,
       temperature: info.temperature,
     },

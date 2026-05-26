@@ -18,8 +18,8 @@ const MISTRAL_FIM_URL = "https://api.mistral.ai/v1/fim/completions"
 const CODESTRAL_FIM_URL = "https://codestral.mistral.ai/v1/fim/completions"
 const INCEPTION_FIM_URL = "https://api.inceptionlabs.ai/v1/fim/completions"
 
-export function resolveFimTarget(model?: string): FimTarget {
-  const info = getAutocompleteModel(model ?? "")
+export function resolveFimTarget(provider?: string, model?: string): FimTarget {
+  const info = getAutocompleteModel(provider, model)
   if (info.directProvider === "mistral") {
     return { provider: "mistral", model: info.requestModel, urls: [MISTRAL_FIM_URL, CODESTRAL_FIM_URL] }
   }
@@ -64,7 +64,9 @@ async function fetchFim(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${key}`,
-      ...(target.provider === "kilo" ? buildKiloHeaders(undefined, { kilocodeOrganizationId: input.organizationId }) : {}),
+      ...(target.provider === "kilo"
+        ? buildKiloHeaders(undefined, { kilocodeOrganizationId: input.organizationId })
+        : {}),
       ...(target.provider === "kilo" ? { [HEADER_FEATURE]: "autocomplete" } : {}),
     },
     signal: input.signal,
@@ -85,8 +87,8 @@ async function fetchFim(
 
 export function createFimHandler(Auth: Auth) {
   return async (c: any) => {
-    const { prefix, suffix, model, maxTokens, temperature } = c.req.valid("json")
-    const target = resolveFimTarget(model)
+    const { prefix, suffix, provider, model, maxTokens, temperature } = c.req.valid("json")
+    const target = resolveFimTarget(provider, model)
     const fimMaxTokens = maxTokens ?? 256
     const fimTemperature = temperature ?? 0.2
     const proxy = target.provider === "kilo" ? await getProxyAuth(Auth) : undefined
