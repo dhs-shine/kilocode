@@ -68,28 +68,24 @@ const aliases: Record<string, string> = {
   "inception/mercury-edit": "inception/mercury-edit-2",
 }
 
+function inferProvider(model?: string): AutocompleteProviderID {
+  if (model === "codestral-2508") return "mistral"
+  if (model === "mercury-edit-2") return "inception"
+  return "kilo"
+}
+
 export function getAutocompleteModel(provider?: string, model?: string): AutocompleteModelDef {
-  if (model === undefined) {
-    const id = provider ?? ""
-    for (const m of models) {
-      if (m.id === id) return m
-    }
-    const mid = aliases[id] ?? id
-    for (const m of models) {
-      if (m.providerID === "kilo" && m.modelID === mid) return m
-    }
-    return DEFAULT_AUTOCOMPLETE_MODEL
-  }
-
-  if (!provider) {
-    const direct = models.find((m) => m.directProvider && m.modelID === model)
-    if (direct) return direct
-  }
-
-  const pid = provider || "kilo"
+  const pid = provider ?? inferProvider(model)
   const mid = aliases[model ?? ""] ?? model
   for (const m of models) {
     if (m.providerID === pid && m.modelID === mid) return m
+  }
+  return DEFAULT_AUTOCOMPLETE_MODEL
+}
+
+export function getAutocompleteModelById(id: string): AutocompleteModelDef {
+  for (const m of models) {
+    if (m.id === id) return m
   }
   return DEFAULT_AUTOCOMPLETE_MODEL
 }

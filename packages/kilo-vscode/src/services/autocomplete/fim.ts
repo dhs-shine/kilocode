@@ -1,6 +1,6 @@
 import { ResponseMetaData } from "./types"
 import type { KiloConnectionService } from "../cli-backend"
-import { getAutocompleteModel } from "../../shared/autocomplete-models"
+import { getAutocompleteModelById } from "../../shared/autocomplete-models"
 
 const FIM_MAX_TOKENS = 256
 
@@ -19,7 +19,7 @@ export async function generateFim(
   signal?: AbortSignal,
 ): Promise<ResponseMetaData> {
   const client = await connectionService.getClientAsync()
-  const info = getAutocompleteModel(modelId)
+  const info = getAutocompleteModelById(modelId)
   let cost = 0
   let inputTokens = 0
   let outputTokens = 0
