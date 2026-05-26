@@ -1,4 +1,5 @@
 export type AutocompleteProviderID = "kilo" | "mistral" | "inception"
+export type DirectAutocompleteProviderID = Exclude<AutocompleteProviderID, "kilo">
 
 export interface AutocompleteModelDef {
   /** Stable combined value for internal comparisons. */
@@ -14,7 +15,7 @@ export interface AutocompleteModelDef {
   /** Full model ID sent upstream by the FIM route. */
   readonly requestModel: string
   /** Provider key to use for direct BYOK FIM. Empty means Kilo Gateway. */
-  readonly directProvider?: "mistral" | "inception"
+  readonly directProvider?: DirectAutocompleteProviderID
   /** FIM request temperature. */
   readonly temperature: number
 }

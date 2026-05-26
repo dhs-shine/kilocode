@@ -1,19 +1,21 @@
 import { HEADER_FEATURE, KILO_API_BASE } from "../api/constants.js"
-import { getAutocompleteModel } from "../autocomplete.js"
+import {
+  getAutocompleteModel,
+  type AutocompleteProviderID,
+  type DirectAutocompleteProviderID,
+} from "../autocomplete.js"
 import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL, requestMistralFim } from "../mistral-fim-endpoint.js"
 import { buildKiloHeaders } from "../headers.js"
 
 type Auth = any
 
-type FimProvider = "kilo" | "mistral" | "inception"
-
-const DIRECT_FIM_ENV: Record<Exclude<FimProvider, "kilo">, string[]> = {
+const DIRECT_FIM_ENV: Record<DirectAutocompleteProviderID, string[]> = {
   mistral: ["MISTRAL_API_KEY"],
   inception: ["INCEPTION_API_KEY"],
 }
 
 interface FimTarget {
-  provider: FimProvider
+  provider: AutocompleteProviderID
   model: string
   urls: string[]
 }
@@ -47,7 +49,7 @@ async function getProxyAuth(Auth: Auth) {
   }
 }
 
-async function getProviderKey(Auth: Auth, provider: FimProvider) {
+async function getProviderKey(Auth: Auth, provider: AutocompleteProviderID) {
   const auth = await Auth.get(provider)
   if (auth?.type === "api") return auth.key
   if (provider === "kilo") return undefined
