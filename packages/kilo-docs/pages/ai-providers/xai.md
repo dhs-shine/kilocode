@@ -46,7 +46,7 @@ SuperGrok subscription access works with Kilo Code's core functionality (VS Code
 {% /tab %}
 {% tab label="VSCode" %}
 
-Open **Settings** (gear icon) and go to the **Providers** tab. Select the xAI provider and choose the **xAI Grok OAuth (SuperGrok Subscription)** sign-in option. Complete the OAuth flow in your browser.
+Open **Settings** (gear icon) and go to the **Providers** tab. Click **Show more providers**, then search for or select **xAI**. Choose the **xAI Grok OAuth (SuperGrok Subscription)** sign-in option and complete the OAuth flow in your browser.
 
 For headless or remote environments (VPS, SSH, Docker, WSL) where a browser redirect to `127.0.0.1` is not reachable, choose **xAI Grok OAuth (Headless / Remote / VPS)** instead. You will be shown a short code to enter at a URL you open on any device with a browser.
 
@@ -109,7 +109,7 @@ If you prefer pay-as-you-go access or do not have a SuperGrok subscription, you 
 {% /tab %}
 {% tab label="VSCode" %}
 
-Open **Settings** (gear icon) and go to the **Providers** tab to add xAI and enter your API key.
+Open **Settings** (gear icon) and go to the **Providers** tab. Click **Show more providers**, then search for or select **xAI** and enter your API key.
 
 The extension stores this in your `kilo.json` config file. You can also edit the config file directly — see the **CLI** tab for the file format.
 
