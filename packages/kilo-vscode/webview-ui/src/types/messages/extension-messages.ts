@@ -174,6 +174,7 @@ export interface MessagesLoadedMessage {
   mode?: Exclude<MessageLoadMode, "focus">
   cursor?: string
   hasMore?: boolean
+  since?: number
 }
 
 export interface MessageCreatedMessage {
@@ -330,14 +331,6 @@ export interface AutocompleteSettingsLoadedMessage {
     enableSmartInlineTaskKeybinding: boolean
     enableChatAutocomplete: boolean
     provider: string
-    model: string
-  }
-}
-
-export interface SpeechToTextSettingsLoadedMessage {
-  type: "speechToTextSettingsLoaded"
-  settings: {
-    enabled: boolean
     model: string
   }
 }
@@ -961,7 +954,6 @@ export type ExtensionMessage =
   | SkillsLoadedMessage
   | CommandsLoadedMessage
   | AutocompleteSettingsLoadedMessage
-  | SpeechToTextSettingsLoadedMessage
   | ChatCompletionResultMessage
   | SpeechToTextStartedMessage
   | SpeechToTextCancelledMessage

@@ -34,9 +34,11 @@ a.out
 target
 .scripts
 .direnv/
+packages/kilo-jetbrains/build-tasks/.gradle/
 
 # Local dev files
 opencode-dev
+.kilo-dev/
 UPCOMING_CHANGELOG.md
 logs/
 *.bun-build
