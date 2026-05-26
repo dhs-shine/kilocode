@@ -1242,7 +1242,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "เปิดใช้งานการป้อนข้อมูลด้วยเสียงในช่องพรอมต์โดยใช้บัญชี Kilo ของคุณผ่าน Kilo Gateway",
   "settings.experimental.speechToText.disabledDescription":
-    "เปิดใช้งานและลงชื่อเข้าใช้ผู้ให้บริการ Kilo เพื่อใช้ Speech to Text ขณะนี้ Speech to Text รองรับเฉพาะกับ Kilo เท่านั้น",
+    "เปิดใช้งานและลงชื่อเข้าใช้ผู้ให้บริการ Kilo เพื่อใช้ Speech to Text ปัจจุบัน Speech to Text รองรับเฉพาะกับ Kilo Gateway เท่านั้น",
   "settings.experimental.speechToTextModel.title": "โมเดลแปลงเสียงเป็นข้อความ",
   "settings.experimental.speechToTextModel.description":
     "เลือกโมเดลการถอดเสียง Kilo Gateway สำหรับการป้อนข้อมูลด้วยเสียง",

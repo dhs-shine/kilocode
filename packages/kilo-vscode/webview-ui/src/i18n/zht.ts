@@ -1192,7 +1192,7 @@ export const dict = {
   "settings.experimental.speechToText.title": "語音轉文字",
   "settings.experimental.speechToText.description": "透過 Kilo Gateway 使用您的 Kilo 帳戶在提示詞欄位中啟用語音輸入。",
   "settings.experimental.speechToText.disabledDescription":
-    "啟用並登入 Kilo 提供者以使用 Speech to Text。目前 Speech to Text 僅支援使用 Kilo。",
+    "啟用並登入 Kilo 供應商以使用 Speech to Text。Speech to Text 目前僅支援透過 Kilo Gateway 使用。",
   "settings.experimental.speechToTextModel.title": "語音轉文字模型",
   "settings.experimental.speechToTextModel.description": "選擇用於語音輸入的 Kilo Gateway 轉錄模型。",
   "settings.experimental.continueOnDeny.title": "拒絕後繼續",
