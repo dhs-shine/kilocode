@@ -1,3 +1,5 @@
+import type * as vscode from "vscode"
+
 type Meta = { sessionId?: string }
 
 type State = {
@@ -45,6 +47,14 @@ export class VisibleTaskStreams {
     if (this.active === active) return
     this.active = active
     for (const id of this.refs.keys()) this.set(id, active)
+  }
+
+  bindPanel(panel: vscode.WebviewPanel, focus: () => void): vscode.Disposable {
+    this.setActive(panel.active)
+    return panel.onDidChangeViewState(() => {
+      this.setActive(panel.active)
+      focus()
+    })
   }
 
   handle(message: unknown): boolean {

@@ -200,13 +200,13 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private promptRecovery: Promise<void> | null = null
   private trackedSessionIds: Set<string> = new Set()
   private syncedChildSessions: Set<string> = new Set()
-  private sessionStatusMap = new Map<string, SessionStatus["type"]>()
-  private sessionDirectories = new Map<string, string>()
+  private sessionStatusMap = new Map<string, SessionStatus["type"]>() // Latest status used for destructive config warnings.
+  private sessionDirectories = new Map<string, string>() // Per-session directory overrides, such as Agent Manager worktrees.
   private permissionDirectories = new Map<string, string>()
-  private projectID: string | undefined
-  private loadMessagesAbort: AbortController | null = null
-  private lastReconciledAt = new Map<string, number>()
-  private pendingSessionRefresh = false
+  private projectID: string | undefined // Current workspace project ID used to filter sessions.
+  private loadMessagesAbort: AbortController | null = null // Current load request cancellation.
+  private lastReconciledAt = new Map<string, number>() // Per-session focus-mode reconcile timestamp.
+  private pendingSessionRefresh = false // Refresh requested before the client is ready.
   private readonly streams = new SessionStreamScheduler((msg) => this.postMessage(msg))
   private readonly visibleTaskStreams = new VisibleTaskStreams((id, visible) => this.streams.setVisible(id, visible))
   private readonly confirmations = new MessageConfirmation()
@@ -305,6 +305,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   public setStreamVisibility(active: boolean): void {
     this.visibleTaskStreams.setActive(active)
   }
+
   public setProjectDirectory(directory: string | null): void {
     if (this.projectDirectory === directory) return
     this.projectDirectory = directory
@@ -453,11 +454,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.setupWebviewMessageHandler(webviewView.webview)
 
     this.setSidebarVisible(webviewView.visible)
-    this.setStreamVisibility(webviewView.visible)
     this.visibilityDisposable?.dispose()
     this.visibilityDisposable = webviewView.onDidChangeVisibility(() => {
       this.setSidebarVisible(webviewView.visible)
-      this.setStreamVisibility(webviewView.visible)
       if (this.statsPoller) {
         this.statsPoller.setEnabled(webviewView.visible)
         this.statsPoller.setVisible(webviewView.visible)
@@ -468,10 +467,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   }
 
   private setSidebarVisible(visible: boolean): void {
+    this.setStreamVisibility(visible)
     vscode.commands.executeCommand("setContext", "kilo-code.new.sidebarVisible", visible)
     this.opts.onSidebarVisibilityChange?.(visible)
   }
 
+  /** Resolve a WebviewPanel for displaying Kilo in an editor tab. */
   public resolveWebviewPanel(panel: vscode.WebviewPanel): void {
     // WebviewPanel can be restored/reloaded; ensure we don't treat it as ready prematurely.
     this.isWebviewReady = false
@@ -485,12 +486,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     panel.webview.html = this._getHtmlForWebview(panel.webview)
 
     this.setupWebviewMessageHandler(panel.webview)
-    this.setStreamVisibility(panel.active)
     this.viewStateDisposable?.dispose()
-    this.viewStateDisposable = panel.onDidChangeViewState(() => {
-      this.setStreamVisibility(panel.active)
-      this.focusSession(panel.active ? this.currentSession?.id : undefined)
-    })
+    this.viewStateDisposable = this.visibleTaskStreams.bindPanel(panel, () =>
+      this.focusSession(panel.active ? this.currentSession?.id : undefined),
+    )
     this.initializeConnection()
   }
 
