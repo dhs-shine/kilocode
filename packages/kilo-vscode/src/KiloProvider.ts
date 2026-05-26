@@ -305,7 +305,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   public setStreamVisibility(active: boolean): void {
     this.visibleTaskStreams.setActive(active)
   }
-
   public setProjectDirectory(directory: string | null): void {
     if (this.projectDirectory === directory) return
     this.projectDirectory = directory
@@ -3584,7 +3583,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.autocompleteConfigDisposable?.dispose()
     this.telemetryStateDisposable?.dispose()
     this.autoApproveBridge?.dispose()
-    ;(this.visibleTaskStreams.clear(), this.streams.dispose())
+    this.visibleTaskStreams.clear()
+    this.streams.dispose()
     this.isWebviewReady = false
     this.promptRecoveryQueued = false
     clearNetworkWaits(this.trackedSessionIds)
