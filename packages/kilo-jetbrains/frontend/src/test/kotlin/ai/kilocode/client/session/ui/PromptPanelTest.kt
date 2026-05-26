@@ -131,13 +131,17 @@ class PromptPanelTest : BasePlatformTestCase() {
         panel.setAutoApprove(true)
 
         assertTrue(button.isSelected)
-        assertSame(icon, button.icon)
+        assertNotSame(icon, button.icon)
         assertEquals(KiloBundle.message("prompt.action.autoApprove.disable"), button.accessibleContext.accessibleName)
         assertEquals(KiloBundle.message("prompt.action.autoApprove.enabled.tooltip"), button.toolTipText)
 
         button.doClick()
 
         assertEquals(false, seen)
+
+        panel.setAutoApprove(false)
+
+        assertSame(icon, button.icon)
     }
 
     fun `test auto approve button sits next to send button`() {

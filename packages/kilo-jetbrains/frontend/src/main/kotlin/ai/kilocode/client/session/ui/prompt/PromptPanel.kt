@@ -69,6 +69,7 @@ class PromptPanel(
         private val SEND_ICON: Icon = IconLoader.getIcon("/icons/send.svg", PromptPanel::class.java)
         private val STOP_ICON: Icon = IconLoader.getIcon("/icons/stop.svg", PromptPanel::class.java)
         private val SHIELD_ICON: Icon = IconLoader.getIcon("/icons/shield.svg", PromptPanel::class.java)
+        private val SHIELD_FILLED_ICON: Icon = IconLoader.getIcon("/icons/shield-filled.svg", PromptPanel::class.java)
     }
 
     val mode = ModePicker()
@@ -298,7 +299,7 @@ class PromptPanel(
 
     private fun syncAutoApprove() {
         auto.isSelected = autoApprove
-        auto.icon = SHIELD_ICON
+        auto.icon = if (autoApprove) SHIELD_FILLED_ICON else SHIELD_ICON
         auto.toolTipText = if (autoApprove) {
             KiloBundle.message("prompt.action.autoApprove.enabled.tooltip")
         } else {
@@ -421,7 +422,6 @@ class PromptPanel(
         override fun paintComponent(g: Graphics) {
             if (over) paintHover(g)
             super.paintComponent(g)
-            if (autoApprove) paintDot(g)
         }
 
         private fun paintHover(g: Graphics) {
@@ -431,24 +431,6 @@ class PromptPanel(
                 g2.color = JBUI.CurrentTheme.ActionButton.hoverBackground()
                 val arc = JBUI.scale(JBUI.getInt("Button.arc", SessionUiStyle.View.Prompt.CORNER_ARC))
                 g2.fillRoundRect(0, 0, width, height, arc, arc)
-            } finally {
-                g2.dispose()
-            }
-        }
-
-        private fun paintDot(g: Graphics) {
-            val dot = JBUI.scale(SessionUiStyle.View.Prompt.AUTO_DOT_SIZE)
-            val off = JBUI.scale(SessionUiStyle.View.Prompt.AUTO_DOT_OFFSET)
-            val outline = JBUI.scale(SessionUiStyle.View.Prompt.AUTO_DOT_OUTLINE)
-            val x = width - dot - off
-            val y = height - dot - off
-            val g2 = g.create() as Graphics2D
-            try {
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-                g2.color = style.editorScheme.defaultBackground
-                g2.fillOval(x - outline, y - outline, dot + outline * 2, dot + outline * 2)
-                g2.color = SessionUiStyle.View.Prompt.autoApproveActive()
-                g2.fillOval(x, y, dot, dot)
             } finally {
                 g2.dispose()
             }
