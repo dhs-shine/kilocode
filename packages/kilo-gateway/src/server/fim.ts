@@ -1,5 +1,6 @@
 import { HEADER_FEATURE, KILO_API_BASE } from "../api/constants.js"
 import { getAutocompleteModel } from "../autocomplete.js"
+import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL, requestMistralFim } from "../fim-endpoint.js"
 import { buildKiloHeaders } from "../headers.js"
 
 type Auth = any
@@ -19,8 +20,6 @@ interface FimTarget {
 
 const FIM_TIMEOUT_MS = 30_000
 const KILO_FIM_URL = KILO_API_BASE + "/api/fim/completions"
-const MISTRAL_FIM_URL = "https://api.mistral.ai/v1/fim/completions"
-const CODESTRAL_FIM_URL = "https://codestral.mistral.ai/v1/fim/completions"
 const INCEPTION_FIM_URL = "https://api.inceptionlabs.ai/v1/fim/completions"
 
 export function resolveFimTarget(provider?: string, model?: string): FimTarget {
@@ -57,8 +56,6 @@ async function getProviderKey(Auth: Auth, provider: FimProvider) {
 
 async function fetchFim(
   target: FimTarget,
-  url: string,
-  fallbacks: string[],
   key: string,
   input: {
     prefix: string
@@ -69,31 +66,35 @@ async function fetchFim(
     organizationId?: string
   },
 ): Promise<Response> {
-  console.info(`[FIM] request provider=${target.provider} model=${target.model} url=${url}`)
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-      ...(target.provider === "kilo"
-        ? buildKiloHeaders(undefined, { kilocodeOrganizationId: input.organizationId })
-        : {}),
-      ...(target.provider === "kilo" ? { [HEADER_FEATURE]: "autocomplete" } : {}),
-    },
-    signal: input.signal,
-    body: JSON.stringify({
-      model: target.model,
-      prompt: input.prefix,
-      suffix: input.suffix,
-      max_tokens: input.maxTokens,
-      temperature: input.temperature,
-      stream: true,
-    }),
-  })
+  const run = async (url: string) => {
+    console.info(`[FIM] request provider=${target.provider} model=${target.model} url=${url}`)
+    return fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+        ...(target.provider === "kilo"
+          ? buildKiloHeaders(undefined, { kilocodeOrganizationId: input.organizationId })
+          : {}),
+        ...(target.provider === "kilo" ? { [HEADER_FEATURE]: "autocomplete" } : {}),
+      },
+      signal: input.signal,
+      body: JSON.stringify({
+        model: target.model,
+        prompt: input.prefix,
+        suffix: input.suffix,
+        max_tokens: input.maxTokens,
+        temperature: input.temperature,
+        stream: true,
+      }),
+    })
+  }
 
-  const [next] = fallbacks
-  if (response.status === 401 && next) return fetchFim(target, next, fallbacks.slice(1), key, input)
-  return response
+  if (target.provider === "mistral") return requestMistralFim(key, run)
+
+  const [url] = target.urls
+  if (!url) throw new Error("No FIM endpoint configured")
+  return run(url)
 }
 
 export function createFimHandler(Auth: Auth) {
@@ -121,9 +122,7 @@ export function createFimHandler(Auth: Auth) {
 
     let response: Response
     try {
-      const [url] = target.urls
-      if (!url) return c.json({ error: "No FIM endpoint configured" }, 500 as any)
-      response = await fetchFim(target, url, target.urls.slice(1), token, {
+      response = await fetchFim(target, token, {
         prefix,
         suffix,
         maxTokens: fimMaxTokens,

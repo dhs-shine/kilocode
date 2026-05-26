@@ -18,6 +18,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./autocomplete": "./src/autocomplete.ts",
+    "./fim-endpoint": "./src/fim-endpoint.ts",
     "./tui": "./src/tui.ts"
   },
   "files": [

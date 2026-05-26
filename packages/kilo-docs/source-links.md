@@ -11,8 +11,6 @@
   <!-- packages/opencode/src/kilocode/server/httpapi/handlers/kilo-gateway.ts -->
 - <https://api.kilo.ai>
   <!-- packages/opencode/src/cli/cmd/github.ts -->
-- <https://api.mistral.ai/v1/fim/completions>
-  <!-- packages/opencode/src/kilocode/server/httpapi/handlers/kilo-gateway.ts -->
 - <https://api.x.ai/v1>
   <!-- packages/opencode/src/plugin/xai.ts -->
 - <https://app.kilo.ai>
@@ -47,8 +45,6 @@
   <!-- packages/kilo-vscode/src/agent-manager/WorktreeManager.ts -->
 - <https://cloudflare.com/cdn-cgi/trace>
   <!-- packages/opencode/src/session/network.ts -->
-- <https://codestral.mistral.ai/v1/fim/completions>
-  <!-- packages/opencode/src/kilocode/server/httpapi/handlers/kilo-gateway.ts -->
 - <https://cookbook.openai.com/examples/using_logprobs>
   <!-- packages/opencode/src/provider/sdk/copilot/responses/openai-responses-language-model.ts -->
 - <https://docs.github.com/en/actions/how-tos/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services>

@@ -20,6 +20,7 @@ import {
   fetchProfile,
 } from "@kilocode/kilo-gateway"
 import { getAutocompleteModel } from "@kilocode/kilo-gateway/autocomplete"
+import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL, requestMistralFim } from "@kilocode/kilo-gateway/fim-endpoint"
 import { buildKiloHeaders } from "@kilocode/kilo-gateway"
 import { Effect } from "effect"
 import * as Stream from "effect/Stream"
@@ -40,8 +41,6 @@ import { AudioTranscriptionsBody, FimBody } from "../groups/kilo-gateway"
 
 const FIM_TIMEOUT_MS = 30_000
 const KILO_FIM_URL = KILO_API_BASE + "/api/fim/completions"
-const MISTRAL_FIM_URL = "https://api.mistral.ai/v1/fim/completions"
-const CODESTRAL_FIM_URL = "https://codestral.mistral.ai/v1/fim/completions"
 const INCEPTION_FIM_URL = "https://api.inceptionlabs.ai/v1/fim/completions"
 
 type FimProvider = "kilo" | "mistral" | "inception"
@@ -123,9 +122,9 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
           : AbortSignal.timeout(FIM_TIMEOUT_MS)
       const response = yield* Effect.promise(async () => {
         try {
-          const run = async (url: string, fallbacks: string[]): Promise<Response> => {
+          const run = async (url: string): Promise<Response> => {
             console.info(`[FIM] request provider=${target.provider} model=${target.model} url=${url}`)
-            const response = await fetch(url, {
+            return fetch(url, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -145,11 +144,9 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
                 stream: true,
               }),
             })
-            const [next] = fallbacks
-            if (response.status === 401 && next) return run(next, fallbacks.slice(1))
-            return response
           }
-          return run(target.urls[0]!, target.urls.slice(1))
+          if (target.provider === "mistral") return requestMistralFim(token, run)
+          return run(target.urls[0]!)
         } catch (err) {
           if (err instanceof DOMException && err.name === "TimeoutError")
             return Response.json({ error: "FIM request timed out" }, { status: 504 })
