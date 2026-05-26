@@ -49,6 +49,9 @@ object SessionUiStyle {
             const val EDITOR_LINES = 3
             const val EDITOR_CHROME = 16
             const val SEND_BUTTON_SIZE = 24
+            const val AUTO_DOT_SIZE = 6
+            const val AUTO_DOT_OFFSET = 2
+            const val AUTO_DOT_OUTLINE = 2
             const val CORNER_ARC = 6
             const val FOCUS_WIDTH = 2
             const val PANEL_VERTICAL_PADDING = 8
@@ -56,6 +59,11 @@ object SessionUiStyle {
             const val CONTROL_GAP = 4
             const val SHELL_VERTICAL_PADDING = 6
             const val SHELL_HORIZONTAL_PADDING = 8
+
+            fun autoApproveActive(): Color = JBColor.namedColor(
+                "Kilo.Prompt.autoApproveActiveForeground",
+                Color(0x73, 0xc9, 0x91),
+            )
         }
 
         /** Reasoning block preview sizing. */
