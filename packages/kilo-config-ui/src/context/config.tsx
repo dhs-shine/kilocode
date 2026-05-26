@@ -17,7 +17,6 @@ export type Ctx = {
   run: (label: string, job: () => Promise<unknown>, task?: Task) => void
   save: (patch: Partial<ConfigPatch>) => void
   unset: (paths: ConfigUnset) => void
-  rules: (content: string) => void
   tui: (patch: TuiPatch) => void
 }
 

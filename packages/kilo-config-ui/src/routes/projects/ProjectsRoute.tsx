@@ -6,12 +6,12 @@ import {
   forgetCached,
   healthy,
   loadCached,
-  loadProjects,
+  loadVisibleProjects,
   saveCached,
   type ProjectItem,
   type ProjectQuery,
 } from "../../client"
-import { clean, errMsg } from "../../shared/utils"
+import { clean, errMsg, friendly } from "../../shared/utils"
 
 const search = new URLSearchParams(window.location.search)
 const ui = new Set(["3017", "3018"])
@@ -36,7 +36,7 @@ function repo(input: string) {
 }
 
 function name(item: ProjectItem) {
-  return item.name?.trim() || repo(item.worktree) || item.id.slice(0, 8)
+  return friendly(item.name?.trim() || repo(item.worktree) || item.id.slice(0, 8))
 }
 
 function mark(item: ProjectItem) {
@@ -78,7 +78,7 @@ export function ProjectsRoute() {
     if (!target) return undefined
     return { url: target, dir: "" }
   })
-  const [items] = createResource(query, loadProjects)
+  const [items] = createResource(query, loadVisibleProjects)
   const rows = createMemo(() => [...(items() ?? [])].sort((a, b) => b.time.updated - a.time.updated))
 
   createEffect(() => {

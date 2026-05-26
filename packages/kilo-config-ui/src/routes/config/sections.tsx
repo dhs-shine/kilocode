@@ -9,7 +9,6 @@ import { ModelsAvailableRoute, ModelsDefaultRoute, ModelsRoute } from "./ModelsR
 import { OverviewRoute } from "./OverviewRoute"
 import { PermissionsRoute } from "./PermissionsRoute"
 import { ProvidersRoute } from "./ProvidersRoute"
-import { RulesRoute } from "./RulesRoute"
 import { ServersRoute } from "./ServersRoute"
 import { SourcesRoute } from "./SourcesRoute"
 import { ToolsRoute } from "./ToolsRoute"
@@ -47,7 +46,6 @@ const permissions = {
   label: "Permissions",
   component: PermissionsRoute,
 }
-const rules = { path: "/rules", href: "/settings/rules", icon: "archive", label: "Rules", component: RulesRoute }
 
 export const configNav: ConfigNode[] = [
   {
@@ -55,7 +53,6 @@ export const configNav: ConfigNode[] = [
     label: "General",
     items: [
       { path: "/", href: "/settings", icon: "home", label: "Overview", component: OverviewRoute },
-      { path: "/servers", href: "/settings/servers", icon: "server", label: "Servers", component: ServersRoute },
     ],
   },
   providers,
@@ -83,7 +80,6 @@ export const configNav: ConfigNode[] = [
   tools,
   mcp,
   permissions,
-  rules,
   {
     id: "cli",
     label: "CLI",
@@ -103,6 +99,7 @@ export const configNav: ConfigNode[] = [
     id: "advanced",
     label: "Advanced",
     items: [
+      { path: "/servers", href: "/settings/servers", icon: "server", label: "Servers", component: ServersRoute },
       { path: "/sources", href: "/settings/sources", icon: "archive", label: "Sources", component: SourcesRoute },
     ],
   },

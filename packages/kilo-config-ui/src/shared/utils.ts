@@ -28,6 +28,18 @@ export function words(input: string) {
     .filter(Boolean)
 }
 
+export function friendly(input: string) {
+  return input
+    .trim()
+    .split(/[\s._/-]+/)
+    .filter(Boolean)
+    .map((part) => {
+      if (/^[A-Z0-9]+$/.test(part) && part.length <= 4) return part
+      return `${part[0]?.toUpperCase() ?? ""}${part.slice(1).toLowerCase()}`
+    })
+    .join(" ")
+}
+
 export function csv(input: string) {
   return input
     .split(",")

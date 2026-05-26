@@ -116,43 +116,42 @@ export function ModelsDefaultRoute() {
               const field = () => state.snap()?.overlay.fields[item.key]
               const model = () => state.item(field()?.value)
               return (
-                <article class="resolved-card" classList={{ inherited: field()?.inherited }}>
-                  <div>
+                <article class="resolved-card default-model-card" classList={{ inherited: field()?.inherited }}>
+                  <header class="default-model-header">
                     <span>{item.label}</span>
+                    <div class="tags default-model-actions">
+                      <SourceBadge
+                        source={field()?.source}
+                        inherited={field()?.inherited}
+                        overridden={field()?.overridden}
+                      />
+                      <Show when={state.ctx.query()?.scope === "project" && field()?.overridden}>
+                        <Button
+                          variant="secondary"
+                          disabled={Boolean(state.ctx.saving())}
+                          onClick={() => state.ctx.unset([[item.key]])}
+                        >
+                          Revert
+                        </Button>
+                      </Show>
+                      <IconButton
+                        icon="edit"
+                        variant="secondary"
+                        aria-label={`Edit ${item.label}`}
+                        disabled={Boolean(state.ctx.saving())}
+                        onClick={() => state.edit(item.key)}
+                      />
+                    </div>
+                  </header>
+                  <div class="default-model-value">
                     <Show when={model()} fallback={<strong>{text(field()?.value)}</strong>}>
                       {(selected) => (
                         <>
-                          <strong>{selected().model.name}</strong>
-                          <div class="default-model-meta">
-                            <Tag>{selected().provider.name}</Tag>
-                            <span>{selected().id}</span>
-                          </div>
+                          <strong>{`${selected().provider.name} / ${selected().model.name}`}</strong>
+                          <span class="default-model-id">{selected().id}</span>
                         </>
                       )}
                     </Show>
-                  </div>
-                  <div class="tags">
-                    <SourceBadge
-                      source={field()?.source}
-                      inherited={field()?.inherited}
-                      overridden={field()?.overridden}
-                    />
-                    <Show when={state.ctx.query()?.scope === "project" && field()?.overridden}>
-                      <Button
-                        variant="secondary"
-                        disabled={Boolean(state.ctx.saving())}
-                        onClick={() => state.ctx.unset([[item.key]])}
-                      >
-                        Revert
-                      </Button>
-                    </Show>
-                    <IconButton
-                      icon="edit"
-                      variant="secondary"
-                      aria-label={`Edit ${item.label}`}
-                      disabled={Boolean(state.ctx.saving())}
-                      onClick={() => state.edit(item.key)}
-                    />
                   </div>
                 </article>
               )

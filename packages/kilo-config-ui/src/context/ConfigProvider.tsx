@@ -9,7 +9,6 @@ import {
   loadProjects,
   saveCached,
   saveConfig,
-  saveRules,
   saveTui,
   unsetConfig,
   type ConfigPatch,
@@ -143,10 +142,6 @@ export function ConfigProvider(props: { children?: JSX.Element }) {
     run("Saving config", () => unsetConfig(target(), paths))
   }
 
-  function rules(content: string) {
-    run("Saving rules", () => saveRules(target(), content))
-  }
-
   function tui(patch: TuiPatch) {
     run("Saving TUI config", () => saveTui(target(), patch))
   }
@@ -161,7 +156,6 @@ export function ConfigProvider(props: { children?: JSX.Element }) {
     run,
     save,
     unset,
-    rules,
     tui,
   }
 

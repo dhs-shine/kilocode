@@ -6,7 +6,6 @@ import type {
   AppAgentsResponse,
   ConfigOverlayResponse,
   ConfigModelStateResponse,
-  ConfigRulesResponse,
   ConfigSourcesResponse,
   FormatterStatusResponse,
   GlobalHealthResponse,
@@ -17,6 +16,7 @@ import type {
   ProviderAuthResponse,
   ProviderListResponse,
   ToolIdsResponse,
+  ToolListResponse,
   TuiConfigGetResponse,
 } from "@kilocode/sdk/v2/client"
 
@@ -31,18 +31,21 @@ export type Query = {
 export type ProjectQuery = Pick<Query, "url" | "dir">
 
 export type ProjectItem = KiloProject
+export type RecentProjectItem = ProjectItem & {
+  sessions: number
+}
 
 export type Snapshot = {
   health: GlobalHealthResponse
   effective: EffectiveConfig
   overlay: ConfigOverlayResponse
   sources: ConfigSourcesResponse
-  rules?: ConfigRulesResponse
   modelState: ConfigModelStateResponse
   providers: ProviderListResponse
   authMethods: ProviderAuthResponse
   tui: TuiConfigGetResponse
   tools: ToolIdsResponse
+  toolDetails: ToolListResponse
   mcp: McpStatusResponse
   lsp: LspStatusResponse
   formatter: FormatterStatusResponse
@@ -75,6 +78,8 @@ type Result<T> = {
 }
 
 const ports = Array.from({ length: 20 }, (_, index) => 4097 + index)
+const day = 24 * 60 * 60 * 1000
+const hidden = new Set(["global"])
 const key = "kilo.config.server"
 const auth = `Basic ${btoa("kilo:kilo")}`
 
@@ -108,6 +113,28 @@ function demand<T>(label: string, result: Result<T>) {
   if (result.error) throw new Error(`${label}: ${message(result.error)}`)
   if (result.data === undefined) throw new Error(`${label}: empty response`)
   return result.data
+}
+
+async function maybe<T>(label: string, result: Promise<Result<T>>) {
+  return await result
+    .then((value) => {
+      if (value.error) {
+        console.warn(`${label}: ${message(value.error)}`)
+        return undefined
+      }
+      return value.data
+    })
+    .catch((err) => {
+      console.warn(`${label}: ${message(err)}`)
+      return undefined
+    })
+}
+
+function model(input: unknown) {
+  if (typeof input !== "string") return undefined
+  const index = input.indexOf("/")
+  if (index <= 0 || index >= input.length - 1) return undefined
+  return { provider: input.slice(0, index), model: input.slice(index + 1) }
 }
 
 async function probe(url: string) {
@@ -150,34 +177,34 @@ export async function discover() {
 
 export async function load(input: Query): Promise<Snapshot> {
   const sdk = client(input)
-  const [health, overlay, modelState, providers, authMethods, tui, tools, mcp, lsp, formatter, agents, rules] =
-    await Promise.all([
-      sdk.global.health(),
-      sdk.config.overlay({ scope: input.scope }),
-      sdk.config.modelState(),
-      sdk.provider.list(),
-      sdk.provider.auth(),
-      sdk.tui.config.get(),
-      sdk.tool.ids(),
-      sdk.mcp.status(),
-      sdk.lsp.status(),
-      sdk.formatter.status(),
-      sdk.app.agents(),
-      input.scope === "project" ? sdk.config.rules() : Promise.resolve({ data: undefined }),
-    ])
+  const [health, overlay, modelState, providers, authMethods, tui, tools, mcp, lsp, formatter, agents] = await Promise.all([
+    sdk.global.health(),
+    sdk.config.overlay({ scope: input.scope }),
+    sdk.config.modelState(),
+    sdk.provider.list(),
+    sdk.provider.auth(),
+    sdk.tui.config.get(),
+    sdk.tool.ids(),
+    sdk.mcp.status(),
+    sdk.lsp.status(),
+    sdk.formatter.status(),
+    sdk.app.agents(),
+  ])
   const resolved = demand("Config overlay", overlay)
+  const ref = model(resolved.effective.model)
+  const info = ref ? await maybe("Tool metadata", sdk.tool.list(ref)) : undefined
 
   return {
     health: demand("Health", health),
     effective: resolved.effective,
     overlay: resolved,
     sources: { sources: resolved.sources },
-    rules: input.scope === "project" ? demand("Rules", rules) : undefined,
     modelState: demand("Model state", modelState),
     providers: demand("Providers", providers),
     authMethods: demand("Provider auth methods", authMethods),
     tui: demand("TUI config", tui),
     tools: demand("Tools", tools),
+    toolDetails: info ?? [],
     mcp: demand("MCP status", mcp),
     lsp: demand("LSP status", lsp),
     formatter: demand("Formatter status", formatter),
@@ -192,6 +219,29 @@ export async function loadProjects(input: ProjectQuery): Promise<ProjectItem[]> 
   return demand("Projects", result)
 }
 
+export async function loadVisibleProjects(input: ProjectQuery): Promise<ProjectItem[]> {
+  const items = await loadProjects(input)
+  return items.filter((item) => !hidden.has(item.id))
+}
+
+export async function loadRecentProjects(input: ProjectQuery): Promise<RecentProjectItem[]> {
+  const sdk = client(input)
+  const [items, sessions] = await Promise.all([
+    loadVisibleProjects(input),
+    sdk.experimental.session.list({ archived: false, start: Date.now() - day, limit: 500 }),
+  ])
+  const rows = demand("Recent sessions", sessions)
+  const counts = new Map<string, number>()
+
+  for (const row of rows) {
+    counts.set(row.projectID, (counts.get(row.projectID) ?? 0) + 1)
+  }
+
+  return items
+    .map((item) => ({ ...item, sessions: counts.get(item.id) ?? 0 }))
+    .filter((item) => item.sessions > 0)
+}
+
 export async function saveConfig(input: Query, patch: Partial<ConfigPatch>) {
   const sdk = client(input)
   const result = await sdk.config.overlayUpdate({ scope: input.scope, set: patch })
@@ -202,12 +252,6 @@ export async function unsetConfig(input: Query, unset: ConfigUnset) {
   const sdk = client(input)
   const result = await sdk.config.overlayUpdate({ scope: input.scope, unset })
   return demand("Update config", result)
-}
-
-export async function saveRules(input: Query, content: string) {
-  const sdk = client(input)
-  const result = await sdk.config.rulesUpdate({ content })
-  return demand("Update rules", result)
 }
 
 export async function saveModelState(input: Query, favorite: ModelRef[]) {
