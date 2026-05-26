@@ -6,6 +6,11 @@ type Auth = any
 
 type FimProvider = "kilo" | "mistral" | "inception"
 
+const DIRECT_FIM_ENV: Record<Exclude<FimProvider, "kilo">, string[]> = {
+  mistral: ["MISTRAL_API_KEY"],
+  inception: ["INCEPTION_API_KEY"],
+}
+
 interface FimTarget {
   provider: FimProvider
   model: string
@@ -41,7 +46,9 @@ async function getProxyAuth(Auth: Auth) {
 
 async function getProviderKey(Auth: Auth, provider: FimProvider) {
   const auth = await Auth.get(provider)
-  return auth?.type === "api" ? auth.key : undefined
+  if (auth?.type === "api") return auth.key
+  if (provider === "kilo") return undefined
+  return DIRECT_FIM_ENV[provider].map((key) => process.env[key]).find(Boolean)
 }
 
 async function fetchFim(

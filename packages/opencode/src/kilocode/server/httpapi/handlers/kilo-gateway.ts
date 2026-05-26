@@ -46,6 +46,11 @@ const INCEPTION_FIM_URL = "https://api.inceptionlabs.ai/v1/fim/completions"
 
 type FimProvider = "kilo" | "mistral" | "inception"
 
+const DIRECT_FIM_ENV: Record<Exclude<FimProvider, "kilo">, string[]> = {
+  mistral: ["MISTRAL_API_KEY"],
+  inception: ["INCEPTION_API_KEY"],
+}
+
 function resolveFimTarget(provider?: string, model?: string) {
   const info = getAutocompleteModel(provider, model)
   if (info.directProvider === "mistral") {
@@ -100,7 +105,8 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       const token = yield* Effect.gen(function* () {
         if (target.provider === "kilo") return info?.token
         const item = yield* auth.get(target.provider).pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
-        return item?.type === "api" ? item.key : undefined
+        if (item?.type === "api") return item.key
+        return DIRECT_FIM_ENV[target.provider].map((key) => process.env[key]).find(Boolean)
       })
 
       if (target.provider === "kilo" && !info?.auth) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
