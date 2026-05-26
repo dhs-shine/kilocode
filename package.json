@@ -10,6 +10,7 @@
     "dev:storybook": "bun --cwd packages/storybook storybook",
     "lint": "oxlint",
     "typecheck": "bun turbo typecheck",
+    "test:ci": "bun turbo test:ci",
     "postinstall": "bun run --cwd packages/opencode fix-node-pty && bun run script/setup-git.ts",
     "prepare": "husky",
     "random": "echo 'Random script'",
@@ -36,7 +37,7 @@
       "ulid": "3.0.1",
       "@kobalte/core": "0.13.11",
       "@types/luxon": "3.7.1",
-      "@types/node": "22.13.9",
+      "@types/node": "24.12.2",
       "@types/semver": "7.7.1",
       "@tsconfig/node22": "22.0.2",
       "@tsconfig/bun": "1.0.9",
@@ -145,6 +146,6 @@
     "@standard-community/standard-openapi@0.2.9": "patches/@standard-community%2Fstandard-openapi@0.2.9.patch",
     "solid-js@1.9.10": "patches/solid-js@1.9.10.patch"
   },
-  "version": "7.3.7",
+  "version": "7.3.10",
   "peerDependencies": {}
 }

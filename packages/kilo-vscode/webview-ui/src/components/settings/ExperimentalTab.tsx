@@ -1,5 +1,6 @@
 import { Component, For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import { Switch } from "@kilocode/kilo-ui/switch"
+import { Tooltip } from "@kilocode/kilo-ui/tooltip"
 import { Select } from "@kilocode/kilo-ui/select"
 import { TextField } from "@kilocode/kilo-ui/text-field"
 import { Card } from "@kilocode/kilo-ui/card"
@@ -210,14 +211,20 @@ const ExperimentalTab: Component = () => {
               : language.t("settings.experimental.speechToText.disabledDescription")
           }
         >
-          <Switch
-            checked={experimental().speech_to_text ?? false}
-            onChange={(checked) => updateExperimental("speech_to_text", checked)}
-            disabled={!kiloReady()}
-            hideLabel
+          <Tooltip
+            value={language.t("settings.experimental.speechToText.disabledDescription")}
+            placement="top"
+            inactive={kiloReady()}
           >
-            {language.t("settings.experimental.speechToText.title")}
-          </Switch>
+            <Switch
+              checked={experimental().speech_to_text ?? false}
+              onChange={(checked) => updateExperimental("speech_to_text", checked)}
+              disabled={!kiloReady()}
+              hideLabel
+            >
+              {language.t("settings.experimental.speechToText.title")}
+            </Switch>
+          </Tooltip>
         </SettingsRow>
 
         <SettingsRow
