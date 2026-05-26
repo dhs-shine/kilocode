@@ -5,7 +5,7 @@ import {
   clearMistralFimEndpointCache,
   getCachedMistralFimEndpoint,
   requestMistralFim,
-} from "../src/fim-endpoint"
+} from "../src/mistral-fim-endpoint"
 
 function response(status: number) {
   return new Response(null, { status })

@@ -20,7 +20,7 @@ import {
   fetchProfile,
 } from "@kilocode/kilo-gateway"
 import { getAutocompleteModel } from "@kilocode/kilo-gateway/autocomplete"
-import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL, requestMistralFim } from "@kilocode/kilo-gateway/fim-endpoint"
+import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL, requestMistralFim } from "@kilocode/kilo-gateway/mistral-fim-endpoint"
 import { buildKiloHeaders } from "@kilocode/kilo-gateway"
 import { Effect } from "effect"
 import * as Stream from "effect/Stream"

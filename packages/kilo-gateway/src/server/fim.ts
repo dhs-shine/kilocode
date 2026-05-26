@@ -1,6 +1,6 @@
 import { HEADER_FEATURE, KILO_API_BASE } from "../api/constants.js"
 import { getAutocompleteModel } from "../autocomplete.js"
-import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL, requestMistralFim } from "../fim-endpoint.js"
+import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL, requestMistralFim } from "../mistral-fim-endpoint.js"
 import { buildKiloHeaders } from "../headers.js"
 
 type Auth = any
