@@ -85,6 +85,7 @@ function chainGuidance(name: string) {
   return "If the commands depend on each other and must run sequentially, use a single Bash call with '&&' to chain them together (e.g., `git add . && git commit -m \"message\" && git push`). For instance, if one operation must complete before another starts (like mkdir before cp, Write before Bash for git operations, or git add before git commit), run these operations sequentially instead."
 }
 
+// kilocode_change start
 function bashCommandSection(chain: string, limits: Limits) {
   return `Before executing the command, please follow these steps:
 
@@ -128,6 +129,7 @@ Usage notes:
     cd /foo/bar && pytest tests
     </bad-example>`
 }
+// kilocode_change end
 
 function powershellCommandSection(name: string, chain: string, pathSep: string, limits: Limits) {
   return `${powershellNotes(name)}
@@ -258,8 +260,10 @@ function profile(name: string, platform: NodeJS.Platform, limits: Limits) {
     }
   }
   return {
+    // kilocode_change start
     intro:
       "Executes a given command in a persistent shell session with optional timeout, ensuring proper handling and security measures.",
+    // kilocode_change end
     workdirSection:
       "All commands run in the current working directory by default. Use the `workdir` parameter if you need to run a command in a different directory. AVOID using `cd <directory> && <command>` patterns - use `workdir` instead.",
     commandSection: bashCommandSection(chain, limits),
@@ -276,12 +280,10 @@ function profile(name: string, platform: NodeJS.Platform, limits: Limits) {
 
 export function render(name: string, platform: NodeJS.Platform, limits: Limits) {
   const selected = profile(name, platform, limits)
-  const os =
-    platform === "win32" ? "Windows" : platform === "darwin" ? "macOS" : "Linux"
   return {
     description: renderPrompt(DESCRIPTION, {
       intro: selected.intro,
-      os,
+      os: platform,
       shell: name,
       tmp: Global.Path.tmp,
       workdirSection: selected.workdirSection,
