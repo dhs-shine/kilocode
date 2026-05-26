@@ -1,5 +1,44 @@
 # kilo-code
 
+## 7.3.10
+
+### Patch Changes
+
+- [#10509](https://github.com/Kilo-Org/kilocode/pull/10509) [`c944aac`](https://github.com/Kilo-Org/kilocode/commit/c944aacf9577a6dc51ed06abf33d4d66a2a5cf1f) Thanks [@johnnyeric](https://github.com/johnnyeric)! - Keep `.agents/skills` discovery enabled in VS Code when Claude Code Compatibility is disabled.
+
+## 7.3.9
+
+### Minor Changes
+
+- [#10513](https://github.com/Kilo-Org/kilocode/pull/10513) [`cd009c3`](https://github.com/Kilo-Org/kilocode/commit/cd009c3d8f5cc1101b30d1967e48e565cbda6ae4) - Support tracked background processes in the CLI and VS Code so agents can start long-running dev servers and clean them up when sessions change or end. The CLI also includes process management UI, status, and logs.
+
+### Patch Changes
+
+- [#10513](https://github.com/Kilo-Org/kilocode/pull/10513) [`06a6bf7`](https://github.com/Kilo-Org/kilocode/commit/06a6bf715d4390daf28e82bd3953c4c5deb2bb87) - Show detected ports for tracked background processes in the TUI sidebar and process detail dialog.
+
+## 7.3.8
+
+### Patch Changes
+
+- [#10117](https://github.com/Kilo-Org/kilocode/pull/10117) [`8502012`](https://github.com/Kilo-Org/kilocode/commit/85020124b6a56acd093e0b1abf709b420ca863e1) Thanks [@shssoichiro](https://github.com/shssoichiro)! - Fix token usage display to show usage for entire session
+
+## 7.3.7
+
+## 7.3.5
+
+### Patch Changes
+
+- [#10481](https://github.com/Kilo-Org/kilocode/pull/10481) [`15bdd0f`](https://github.com/Kilo-Org/kilocode/commit/15bdd0f96f3f6713b552436806f6e218528443ab) - Prevent VS Code local CLI reconnect flapping while the event stream is unavailable.
+
+- [#10479](https://github.com/Kilo-Org/kilocode/pull/10479) [`048338a`](https://github.com/Kilo-Org/kilocode/commit/048338a31422fd057bcaefc8db6c397cf33adff1) - Clear Agent Manager file diff previews stuck on `Loading diff...` when the active diff source stops or changes.
+
+- [#10480](https://github.com/Kilo-Org/kilocode/pull/10480) [`9067de0`](https://github.com/Kilo-Org/kilocode/commit/9067de039ed820eab757d1e798abe264315c6f02) - Improve VS Code diff rendering stability across review and chat surfaces.
+
+- Updated dependencies [[`205e22e`](https://github.com/Kilo-Org/kilocode/commit/205e22ee4672305d3cb2e0c34b607a4950f8f4e8), [`9067de0`](https://github.com/Kilo-Org/kilocode/commit/9067de039ed820eab757d1e798abe264315c6f02)]:
+  - @kilocode/kilo-indexing@7.3.5
+  - @kilocode/kilo-ui@7.3.5
+  - @opencode-ai/ui@7.3.5
+
 ## 7.3.3
 
 ### Minor Changes
