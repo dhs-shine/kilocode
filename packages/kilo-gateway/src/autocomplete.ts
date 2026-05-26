@@ -83,6 +83,11 @@ export function getAutocompleteModel(provider?: string, model?: string): Autocom
     return DEFAULT_AUTOCOMPLETE_MODEL
   }
 
+  if (!provider) {
+    const direct = models.find((m) => m.directProvider && m.modelID === model)
+    if (direct) return direct
+  }
+
   const pid = provider || "kilo"
   const mid = aliases[model ?? ""] ?? model
   for (const m of models) {

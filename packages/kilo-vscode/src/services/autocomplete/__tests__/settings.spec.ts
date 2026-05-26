@@ -33,6 +33,14 @@ describe("autocomplete settings", () => {
     expect(buildAutocompleteSettingsMessage().settings.model).toBe("mercury-edit-2")
   })
 
+  it("infers direct provider from native direct model choices", async () => {
+    state.set("model", "mercury-edit-2")
+    const { buildAutocompleteSettingsMessage } = await import("../settings")
+
+    expect(buildAutocompleteSettingsMessage().settings.provider).toBe("inception")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("mercury-edit-2")
+  })
+
   it("defaults to codestral when no model is set", async () => {
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
