@@ -1255,7 +1255,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Kilo Gateway üzerinden Kilo hesabınızı kullanarak komut alanlarında sesli girişi etkinleştirin.",
   "settings.experimental.speechToText.disabledDescription":
-    "Komut alanlarında sesli girişi kullanmak için Kilo provider'ı etkinleştirin ve giriş yapın.",
+    "Speech to Text kullanmak için Kilo sağlayıcısını etkinleştirin ve giriş yapın. Speech to Text şu anda yalnızca Kilo ile desteklenmektedir.",
   "settings.experimental.speechToTextModel.title": "Sesten metne modeli",
   "settings.experimental.speechToTextModel.description": "Sesli giriş için Kilo Gateway transkripsiyon modelini seçin.",
   "settings.experimental.continueOnDeny.title": "Reddetme Durumunda Devam Et",

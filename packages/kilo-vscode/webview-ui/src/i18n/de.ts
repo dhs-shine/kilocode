@@ -1278,7 +1278,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Aktivieren Sie die Spracheingabe in Prompt-Feldern mit Ihrem Kilo-Konto über Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Aktivieren Sie Kilo provider und melden Sie sich an, um die Spracheingabe in Prompt-Feldern zu verwenden.",
+    "Aktivieren Sie den Kilo-Anbieter und melden Sie sich an, um Speech to Text zu verwenden. Speech to Text wird derzeit nur mit Kilo unterstützt.",
   "settings.experimental.speechToTextModel.title": "Sprache-zu-Text-Modell",
   "settings.experimental.speechToTextModel.description":
     "Wählen Sie das Kilo Gateway-Transkriptionsmodell für die Spracheingabe.",

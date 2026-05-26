@@ -1282,7 +1282,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Activez la saisie vocale dans les champs de prompt en utilisant votre compte Kilo via Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Activez Kilo provider et connectez-vous pour utiliser la saisie vocale dans les champs de prompt.",
+    "Activez le fournisseur Kilo et connectez-vous pour utiliser Speech to Text. Speech to Text n'est actuellement pris en charge qu'avec Kilo.",
   "settings.experimental.speechToTextModel.title": "Modèle de transcription vocale",
   "settings.experimental.speechToTextModel.description":
     "Choisissez le modèle de transcription Kilo Gateway pour la saisie vocale.",

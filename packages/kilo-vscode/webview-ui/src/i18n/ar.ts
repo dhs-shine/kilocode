@@ -1234,7 +1234,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "تمكين الإدخال الصوتي في حقول المطالبة باستخدام حساب Kilo الخاص بك من خلال Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "قم بتمكين وتسجيل الدخول إلى Kilo provider لاستخدام الإدخال الصوتي في حقول المطالبة.",
+    "قم بتمكين مزود Kilo وتسجيل الدخول إليه لاستخدام Speech to Text. ميزة Speech to Text مدعومة حاليًا مع Kilo فقط.",
   "settings.experimental.speechToTextModel.title": "نموذج تحويل الصوت إلى نص",
   "settings.experimental.speechToTextModel.description": "اختر نموذج نسخ Kilo Gateway للإدخال الصوتي.",
   "settings.experimental.continueOnDeny.title": "المتابعة عند الرفض",

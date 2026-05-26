@@ -1259,7 +1259,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Включите голосовой ввод в полях запросов, используя вашу учетную запись Kilo через Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Включите Kilo provider и войдите в него, чтобы использовать голосовой ввод в полях запросов.",
+    "Включите провайдер Kilo и войдите в него, чтобы использовать Speech to Text. Сейчас Speech to Text поддерживается только в Kilo.",
   "settings.experimental.speechToTextModel.title": "Модель речи в текст",
   "settings.experimental.speechToTextModel.description":
     "Выберите модель транскрипции Kilo Gateway для голосового ввода.",

@@ -1222,7 +1222,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Aktiver taleinndata i prompt-felt ved å bruke din Kilo-konto gjennom Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Aktiver Kilo provider og logg på for å bruke taleinndata i prompt-felt.",
+    "Aktiver Kilo-leverandøren og logg inn for å bruke Speech to Text. Speech to Text støttes for øyeblikket kun med Kilo.",
   "settings.experimental.speechToTextModel.title": "Tale-til-tekst-modell",
   "settings.experimental.speechToTextModel.description": "Velg Kilo Gateway-transkripsjonsmodellen for taleinndata.",
   "settings.experimental.continueOnDeny.title": "Fortsett ved avvisning",

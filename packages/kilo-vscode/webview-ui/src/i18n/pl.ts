@@ -1221,7 +1221,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Włącz wprowadzanie głosowe w polach promptów przy użyciu konta Kilo za pośrednictwem Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Włącz Kilo provider i zaloguj się, aby korzystać z wprowadzania głosowego w polach promptów.",
+    "Włącz dostawcę Kilo i zaloguj się, aby używać Speech to Text. Funkcja Speech to Text jest obecnie obsługiwana tylko przez Kilo.",
   "settings.experimental.speechToTextModel.title": "Model mowy na tekst",
   "settings.experimental.speechToTextModel.description":
     "Wybierz model transkrypcji Kilo Gateway dla wprowadzania głosowego.",

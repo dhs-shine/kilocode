@@ -1246,7 +1246,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Enable voice input in prompt fields using your Kilo account through Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Enable and sign in to the Kilo provider to use voice input in prompt fields.",
+    "Enable and sign in to the Kilo provider to use Speech to Text. Speech to Text is currently only supported with Kilo.",
   "settings.experimental.speechToTextModel.title": "Speech to Text Model",
   "settings.experimental.speechToTextModel.description": "Choose the Kilo Gateway transcription model for voice input.",
   "settings.experimental.continueOnDeny.title": "Continue on Deny",

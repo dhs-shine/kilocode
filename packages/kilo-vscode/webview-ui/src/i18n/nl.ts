@@ -1262,7 +1262,7 @@ export const dict = {
   "settings.experimental.speechToText.description":
     "Schakel spraakinvoer in promptvelden in met uw Kilo-account via Kilo Gateway.",
   "settings.experimental.speechToText.disabledDescription":
-    "Schakel Kilo provider in en meld u aan om spraakinvoer in promptvelden te gebruiken.",
+    "Schakel de Kilo-provider in en meld u aan om Speech to Text te gebruiken. Speech to Text wordt momenteel alleen ondersteund door Kilo.",
   "settings.experimental.speechToTextModel.title": "Spraak-naar-tekst-model",
   "settings.experimental.speechToTextModel.description": "Kies het Kilo Gateway-transcriptiemodel voor spraakinvoer.",
   "settings.experimental.continueOnDeny.title": "Doorgaan bij weigering",
