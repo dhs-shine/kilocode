@@ -18,6 +18,12 @@ export interface AutocompleteModelDef {
   readonly directProvider?: DirectAutocompleteProviderID
   /** FIM request temperature. */
   readonly temperature: number
+  /**
+   * Which gateway endpoint this model targets. Defaults to "fim" if omitted
+   * (back-compat with existing entries). Models with `kind: "edit"` route
+   * through `/kilo/edit` and use Mercury's Next Edit pipeline.
+   */
+  readonly kind?: "fim" | "edit"
 }
 
 const models: AutocompleteModelDef[] = [
@@ -58,6 +64,20 @@ const models: AutocompleteModelDef[] = [
     requestModel: "mercury-edit-2",
     directProvider: "inception",
     temperature: 0,
+  },
+  {
+    // Same wire-level model as `mercury-edit-2`, but routed through the
+    // Mercury Next Edit endpoint instead of FIM. Picked by users who want
+    // multi-line next-edit predictions with the jump-to-edit UX.
+    id: "inception/mercury-next-edit",
+    modelID: "mercury-next-edit",
+    label: "Mercury Next Edit",
+    providerID: "inception",
+    provider: "Inception",
+    requestModel: "mercury-edit-2",
+    directProvider: "inception",
+    temperature: 0,
+    kind: "edit",
   },
 ]
 

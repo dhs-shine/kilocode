@@ -11,6 +11,7 @@ import { KILO_API_BASE, HEADER_FEATURE, HEADER_ORGANIZATIONID } from "../api/con
 import { buildKiloHeaders } from "../headers.js"
 import type { ImportDeps, DrizzleDb } from "../cloud-sessions.js"
 import { fetchCloudSession, fetchCloudSessionForImport, importSessionToDb } from "../cloud-sessions.js"
+import { createEditHandler } from "./edit.js"
 import { createFimHandler } from "./fim.js"
 import {
   GatewayError,
@@ -110,6 +111,16 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
     profile: Profile,
     balance: Balance.nullable(),
     currentOrgId: z.string().nullable(),
+  })
+
+  const EditCompletionResponse = z.object({
+    content: z.string(),
+    usage: z
+      .object({
+        prompt_tokens: z.number().optional(),
+        completion_tokens: z.number().optional(),
+      })
+      .optional(),
   })
 
   const FimStreamChunk = z.object({
@@ -324,6 +335,37 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
         }),
       ),
       createFimHandler(Auth),
+    )
+    .post(
+      "/edit",
+      describeRoute({
+        summary: "Next Edit completion",
+        description:
+          "Proxy a Mercury-style Next Edit request. The user supplies the already-templated " +
+          "sentinel-tagged prompt in `content`; the gateway forwards to the upstream edit endpoint.",
+        operationId: "kilo.edit",
+        responses: {
+          200: {
+            description: "Next Edit completion",
+            content: {
+              "application/json": {
+                schema: resolver(EditCompletionResponse),
+              },
+            },
+          },
+          ...errors(400, 401),
+        },
+      }),
+      validator(
+        "json",
+        z.object({
+          content: z.string(),
+          provider: z.string().optional(),
+          model: z.string().optional(),
+          maxTokens: z.number().optional(),
+        }),
+      ),
+      createEditHandler(Auth),
     )
     .post(
       "/audio/transcriptions",

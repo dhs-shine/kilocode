@@ -6,6 +6,9 @@ import { AutocompleteStatusBar } from "./AutocompleteStatusBar"
 import { AutocompleteCodeActionProvider } from "./AutocompleteCodeActionProvider"
 import { AutocompleteInlineCompletionProvider } from "./classic-auto-complete/AutocompleteInlineCompletionProvider"
 import { AutocompleteTelemetry } from "./classic-auto-complete/AutocompleteTelemetry"
+import { NextEditInlineCompletionProvider } from "./next-edit/NextEditInlineCompletionProvider"
+import { NextEditSuggestionManager } from "./next-edit/NextEditSuggestionManager"
+import { toMercuryRecentSnippets } from "./next-edit/recentSnippetsAdapter"
 import type { KiloConnectionService } from "../cli-backend"
 import { hasValidCredentials } from "./fim"
 import { DEFAULT_AUTOCOMPLETE_MODEL, getAutocompleteModel } from "../../shared/autocomplete-models"
@@ -61,7 +64,10 @@ export class AutocompleteServiceManager {
   // VSCode Providers
   public readonly codeActionProvider: AutocompleteCodeActionProvider
   public readonly inlineCompletionProvider: AutocompleteInlineCompletionProvider
+  public readonly nextEditProvider: NextEditInlineCompletionProvider
+  public readonly nextEditSuggestionManager: NextEditSuggestionManager
   private inlineCompletionProviderDisposable: vscode.Disposable | null = null
+  private inlineCompletionProviderKind: "classic" | "next-edit" | null = null
   private unsubscribeState: (() => void) | null = null
   private unsubscribeEvent: (() => void) | null = null
 
@@ -90,6 +96,36 @@ export class AutocompleteServiceManager {
       new AutocompleteTelemetry(),
       (status) => this.handleFatalAutocompleteError(status),
     )
+
+    this.nextEditSuggestionManager = new NextEditSuggestionManager()
+    this.nextEditProvider = new NextEditInlineCompletionProvider({
+      connectionService,
+      suggestionManager: this.nextEditSuggestionManager,
+      getRecentlyViewedSnippets: () => {
+        // Reuse the LRU populated by the classic provider — keeps a single
+        // RecentlyVisitedRangesService instance instead of double-tracking.
+        const raw = this.inlineCompletionProvider.recentlyVisitedRangesService.getSnippets()
+        return toMercuryRecentSnippets(raw)
+      },
+      onFatalError: (status) => this.handleFatalAutocompleteError(status),
+      onSuggestion: (event) => {
+        const eventName =
+          event.status === "error"
+            ? TelemetryEventName.AUTOCOMPLETE_LLM_REQUEST_FAILED
+            : event.shown
+              ? TelemetryEventName.AUTOCOMPLETE_LLM_SUGGESTION_RETURNED
+              : TelemetryEventName.AUTOCOMPLETE_LLM_REQUEST_COMPLETED
+        TelemetryProxy.capture(eventName, {
+          mode: "next-edit",
+          model: "inception/mercury-next-edit",
+          latencyMs: event.latencyMs,
+          inputTokens: event.inputTokens,
+          outputTokens: event.outputTokens,
+          shown: event.shown,
+          errorStatus: event.errorStatus,
+        })
+      },
+    })
 
     // Reload when CLI backend connection state changes so autocomplete
     // picks up the connected state even if it wasn't ready at startup.
@@ -136,25 +172,43 @@ export class AutocompleteServiceManager {
    */
   private async ensureInlineCompletionProviderRegistration() {
     const shouldBeRegistered = (this.settings?.enableAutoTrigger ?? false) && !this.isSnoozed()
-    const isRegistered = this.inlineCompletionProviderDisposable !== null
+    const info = getAutocompleteModel(this.settings?.provider, this.settings?.model)
+    const desiredKind: "classic" | "next-edit" = info.kind === "edit" ? "next-edit" : "classic"
 
-    // Already in the correct state — nothing to do
-    if (shouldBeRegistered === isRegistered) {
-      return
+    // Mode change while still enabled requires a swap: tear down the old
+    // registration so the new provider takes over.
+    if (
+      shouldBeRegistered &&
+      this.inlineCompletionProviderKind !== null &&
+      this.inlineCompletionProviderKind !== desiredKind
+    ) {
+      this.inlineCompletionProviderDisposable?.dispose()
+      this.inlineCompletionProviderDisposable = null
+      this.inlineCompletionProviderKind = null
     }
+
+    const isRegistered = this.inlineCompletionProviderDisposable !== null
+    if (shouldBeRegistered === isRegistered) return
 
     if (!shouldBeRegistered) {
       this.inlineCompletionProviderDisposable!.dispose()
       this.inlineCompletionProviderDisposable = null
+      this.inlineCompletionProviderKind = null
       return
     }
 
-    // Register classic provider (tracked via this.inlineCompletionProviderDisposable,
-    // not context.subscriptions, so re-registration on reconnect doesn't leak)
+    const provider: vscode.InlineCompletionItemProvider =
+      desiredKind === "next-edit" ? this.nextEditProvider : this.inlineCompletionProvider
     this.inlineCompletionProviderDisposable = vscode.languages.registerInlineCompletionItemProvider(
       { scheme: "file" },
-      this.inlineCompletionProvider,
+      provider,
     )
+    this.inlineCompletionProviderKind = desiredKind
+  }
+
+  /** Which provider is currently registered (`null` if none). */
+  public get currentMode(): "classic" | "next-edit" | null {
+    return this.inlineCompletionProviderKind
   }
 
   public async disable() {
@@ -410,10 +464,17 @@ export class AutocompleteServiceManager {
     if (this.inlineCompletionProviderDisposable) {
       this.inlineCompletionProviderDisposable.dispose()
       this.inlineCompletionProviderDisposable = null
+      this.inlineCompletionProviderKind = null
     }
 
     // Dispose inline completion provider resources
     this.inlineCompletionProvider.dispose()
+    this.nextEditProvider.dispose()
+    this.nextEditSuggestionManager.dispose()
+
+    // Drop the dedicated Next Edit OutputChannel so it doesn't leak across
+    // extension reloads.
+    void import("./next-edit/log").then((m) => m.disposeLog()).catch(() => undefined)
 
     // Clear singleton instance
     AutocompleteServiceManager._instance = null

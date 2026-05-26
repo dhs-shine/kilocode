@@ -20,6 +20,7 @@ import {
   fetchProfile,
 } from "@kilocode/kilo-gateway"
 import { DIRECT_FIM_ENV, requestMistralFim, resolveFimTarget } from "@kilocode/kilo-gateway/fim"
+import { DIRECT_EDIT_ENV, resolveEditTarget } from "@kilocode/kilo-gateway/edit"
 import { buildKiloHeaders } from "@kilocode/kilo-gateway"
 import { Effect } from "effect"
 import * as Stream from "effect/Stream"
@@ -36,9 +37,28 @@ import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 import { MessageTable, PartTable, SessionTable } from "@/session/session.sql"
 import { Session } from "@/session/session"
 import { Database } from "@/storage/db"
-import { AudioTranscriptionsBody, FimBody } from "../groups/kilo-gateway"
+import { AudioTranscriptionsBody, EditBody, FimBody } from "../groups/kilo-gateway"
 
 const FIM_TIMEOUT_MS = 30_000
+
+/**
+ * Strip Mercury's triple-backtick fence (and any `<|code_to_edit|>` sentinels
+ * inside) so the gateway's NES response is just the rewritten code.
+ */
+function extractFencedBody(message: string): string {
+  if (!message) return ""
+  const fenceOpen = message.indexOf("```")
+  if (fenceOpen === -1) return message
+  const afterFenceOpen = message.indexOf("\n", fenceOpen + 3)
+  if (afterFenceOpen === -1) return ""
+  const fenceClose = message.lastIndexOf("```")
+  if (fenceClose <= afterFenceOpen) return ""
+  let body = message.slice(afterFenceOpen + 1, fenceClose)
+  if (body.endsWith("\n")) body = body.slice(0, -1)
+  body = body.replace(/^<\|code_to_edit\|>\n?/, "")
+  body = body.replace(/\n?<\|\/code_to_edit\|>$/, "")
+  return body
+}
 
 export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo", (handlers) =>
   Effect.gen(function* () {
@@ -151,6 +171,63 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
           },
         },
       )
+    })
+
+    const edit = Effect.fn("KiloGatewayHttpApi.edit")(function* (ctx: { payload: typeof EditBody.Type }) {
+      const target = resolveEditTarget(ctx.payload.provider, ctx.payload.model)
+      if (target.provider !== "inception") {
+        return yield* Effect.fail(new HttpApiError.BadRequest({}))
+      }
+      const token = yield* Effect.gen(function* () {
+        const item = yield* auth.get(target.provider).pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
+        if (item?.type === "api") return item.key
+        return DIRECT_EDIT_ENV[target.provider].map((key) => process.env[key]).find(Boolean)
+      })
+      if (!token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const signal =
+        request.source instanceof Request
+          ? AbortSignal.any([request.source.signal, AbortSignal.timeout(FIM_TIMEOUT_MS)])
+          : AbortSignal.timeout(FIM_TIMEOUT_MS)
+
+      const response = yield* Effect.promise(async () => {
+        console.info(`[EDIT] request provider=${target.provider} model=${target.model} chars=${ctx.payload.content.length}`)
+        return fetch(target.url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          signal,
+          body: JSON.stringify({
+            model: target.model,
+            max_tokens: ctx.payload.maxTokens ?? 512,
+            // Mercury rejects role:"system" on this endpoint — must be a single user message.
+            messages: [{ role: "user", content: ctx.payload.content }],
+          }),
+        })
+      })
+
+      if (!response.ok) {
+        return yield* Effect.fail(new HttpApiError.BadRequest({}))
+      }
+
+      const json = yield* Effect.promise(() => response.json() as Promise<{
+        choices?: Array<{ message?: { content?: string } }>
+        usage?: { prompt_tokens?: number; completion_tokens?: number }
+      }>)
+      const raw = json.choices?.[0]?.message?.content ?? ""
+      const body = extractFencedBody(raw)
+      return {
+        content: body,
+        usage: json.usage
+          ? {
+              prompt_tokens: json.usage.prompt_tokens,
+              completion_tokens: json.usage.completion_tokens,
+            }
+          : undefined,
+      }
     })
 
     const audioTranscriptions = Effect.fn("KiloGatewayHttpApi.audioTranscriptions")(function* (ctx: {
@@ -321,6 +398,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       .handle("profile", profile)
       .handle("modes", modes)
       .handle("fim", fim)
+      .handle("edit", edit)
       .handle("audioTranscriptions", audioTranscriptions)
       .handle("notifications", notifications)
       .handle("organization", organization)

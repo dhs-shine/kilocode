@@ -144,6 +144,27 @@ export const FimBody = Schema.Struct({
   temperature: Schema.optional(Schema.Finite),
 })
 
+// Next Edit (NES) — non-streaming. The VSCode side builds the sentinel-tagged
+// prompt (Mercury contract is documented at
+// https://docs.inceptionlabs.ai/capabilities/next-edit) and the gateway just
+// forwards the message to the upstream edit endpoint.
+export const EditBody = Schema.Struct({
+  content: Schema.String,
+  provider: Schema.optional(Schema.String),
+  model: Schema.optional(Schema.String),
+  maxTokens: Schema.optional(Schema.Finite),
+})
+
+export const EditResponse = Schema.Struct({
+  content: Schema.String,
+  usage: Schema.optional(
+    Schema.Struct({
+      prompt_tokens: Schema.optional(Schema.Finite),
+      completion_tokens: Schema.optional(Schema.Finite),
+    }),
+  ),
+})
+
 export const AudioTranscriptionsBody = Schema.Struct({
   model: Schema.String,
   input_audio: Schema.Struct({
@@ -195,6 +216,7 @@ export const KiloGatewayPaths = {
   modes: `${root}/modes`,
   profile: `${root}/profile`,
   fim: `${root}/fim`,
+  edit: `${root}/edit`,
   audioTranscriptions: `${root}/audio/transcriptions`,
   notifications: `${root}/notifications`,
   organization: `${root}/organization`,
@@ -237,6 +259,20 @@ export const KiloGatewayApi = HttpApi.make("kilo")
             identifier: "kilo.fim",
             summary: "FIM completion",
             description: "Proxy a Fill-in-the-Middle completion request to the Kilo Gateway",
+          }),
+        ),
+        HttpApiEndpoint.post("edit", KiloGatewayPaths.edit, {
+          payload: EditBody,
+          success: described(EditResponse, "Next Edit completion"),
+          error: [HttpApiError.BadRequest, HttpApiError.Unauthorized],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "kilo.edit",
+            summary: "Next Edit completion",
+            description:
+              "Proxy a Mercury-style Next Edit request. The user supplies the already-templated " +
+              "sentinel-tagged prompt in `content`; the gateway forwards to the upstream edit endpoint " +
+              "(currently Inception's /v1/edit/completions) and returns the unwrapped reply.",
           }),
         ),
         HttpApiEndpoint.post("audioTranscriptions", KiloGatewayPaths.audioTranscriptions, {

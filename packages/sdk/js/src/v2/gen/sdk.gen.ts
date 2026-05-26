@@ -97,6 +97,8 @@ import type {
   KilocodeSessionImportProjectResponses,
   KilocodeSessionImportSessionErrors,
   KilocodeSessionImportSessionResponses,
+  KiloEditErrors,
+  KiloEditResponses,
   KiloFimErrors,
   KiloFimResponses,
   KiloModesResponses,
@@ -5787,6 +5789,49 @@ export class Kilo extends HeyApiClient {
     )
     return (options?.client ?? this.client).sse.post<KiloFimResponses, KiloFimErrors, ThrowOnError>({
       url: "/kilo/fim",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Next Edit completion
+   *
+   * Proxy a Mercury-style Next Edit request. The user supplies the already-templated sentinel-tagged prompt in `content`; the gateway forwards to the upstream edit endpoint (currently Inception's /v1/edit/completions) and returns the unwrapped reply.
+   */
+  public edit<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      content?: string
+      provider?: string
+      model?: string
+      maxTokens?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "content" },
+            { in: "body", key: "provider" },
+            { in: "body", key: "model" },
+            { in: "body", key: "maxTokens" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<KiloEditResponses, KiloEditErrors, ThrowOnError>({
+      url: "/kilo/edit",
       ...options,
       ...params,
       headers: {

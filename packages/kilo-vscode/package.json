@@ -195,6 +195,16 @@
         "category": "Kilo Code"
       },
       {
+        "command": "kilo-code.next-edit.acceptOrJump",
+        "title": "Next Edit: Accept or Jump to Suggested Edit",
+        "category": "Kilo Code"
+      },
+      {
+        "command": "kilo-code.next-edit.dismiss",
+        "title": "Next Edit: Dismiss Pending Suggestion",
+        "category": "Kilo Code"
+      },
+      {
         "command": "kilo-code.new.agentManager.previousSession",
         "title": "Agent Manager: Previous Session",
         "category": "Kilo Code"
@@ -756,6 +766,16 @@
         "key": "ctrl+l",
         "mac": "cmd+l",
         "when": "editorTextFocus && !editorTabMovesFocus && !inSnippetMode && kilocode.autocomplete.enableSmartInlineTaskKeybinding && github.copilot.completions.enabled"
+      },
+      {
+        "command": "kilo-code.next-edit.acceptOrJump",
+        "key": "tab",
+        "when": "editorTextFocus && !editorTabMovesFocus && !inSnippetMode && !suggestWidgetVisible && kilo-code.nextEdit.hasPendingSuggestion"
+      },
+      {
+        "command": "kilo-code.next-edit.dismiss",
+        "key": "escape",
+        "when": "editorTextFocus && !editorTabMovesFocus && !inSnippetMode && kilo-code.nextEdit.hasPendingSuggestion"
       }
     ],
     "configuration": {

@@ -19,6 +19,7 @@
     ".": "./src/index.ts",
     "./autocomplete": "./src/autocomplete.ts",
     "./fim": "./src/fim.ts",
+    "./edit": "./src/edit.ts",
     "./tui": "./src/tui.ts"
   },
   "files": [
