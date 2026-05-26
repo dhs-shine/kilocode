@@ -1137,7 +1137,6 @@ export const SessionProvider: ParentComponent = (props) => {
 
       for (const msg of messages) {
         const parts = msg.parts ?? []
-        if (parts.length > 0) loadedParts[msg.id] = parts
         if (mode === "reconcile" && store.parts[msg.id]) {
           // Reconcile on a message already hydrated into the reactive store:
           // write parts directly so visible turns pick up server corrections,
@@ -1148,6 +1147,7 @@ export const SessionProvider: ParentComponent = (props) => {
           continue
         }
         if (parts.length > 0) {
+          loadedParts[msg.id] = parts
           // Stash parts outside the reactive store. They hydrate on demand
           // when the virtualizer renders the corresponding turn.
           stash.put(msg.id, parts)
@@ -1474,6 +1474,11 @@ export const SessionProvider: ParentComponent = (props) => {
     }
   }
 
+  function visibleToolParts(sessionID: string, messages: Message[]): ToolPart[] {
+    const ids = new Set(messages.map((msg) => msg.id))
+    return (store.toolParts[sessionID] ?? []).filter((part) => !part.messageID || ids.has(part.messageID))
+  }
+
   /**
    * BFS walk over message parts to discover all session IDs in a session's
    * family tree (self + subagents + sub-subagents). Reads directly from the
@@ -1484,9 +1489,7 @@ export const SessionProvider: ParentComponent = (props) => {
     const queue = [rootID]
     while (queue.length > 0) {
       const sid = queue.pop()!
-      const visible = new Set(source(sid).map((msg) => msg.id))
-      for (const p of store.toolParts[sid] ?? []) {
-        if (p.messageID && !visible.has(p.messageID)) continue
+      for (const p of visibleToolParts(sid, source(sid))) {
         // Webview ToolState omits runtime metadata; task parts still carry it from the backend.
         const child = childID(
           p as {
@@ -2351,7 +2354,7 @@ export const SessionProvider: ParentComponent = (props) => {
     const family = visibleFamily(id)
     const msgs: Record<string, Message[]> = {}
     for (const sid of family) msgs[sid] = visible(sid)
-    const parents = buildFamilyParentsFromTools(family, (sid) => store.toolParts[sid] ?? [])
+    const parents = buildFamilyParentsFromTools(family, (sid) => visibleToolParts(sid, msgs[sid] ?? []))
     return buildFamilyCosts(family, msgs, store.sessions, parents)
   })
 
@@ -2362,7 +2365,7 @@ export const SessionProvider: ParentComponent = (props) => {
     const family = visibleFamily(id)
     const msgs: Record<string, Message[]> = {}
     for (const sid of family) msgs[sid] = visible(sid)
-    return buildFamilyLabelsFromTools(family, (sid) => store.toolParts[sid] ?? [])
+    return buildFamilyLabelsFromTools(family, (sid) => visibleToolParts(sid, msgs[sid] ?? []))
   })
 
   /** Combined cost breakdown with labels. */
