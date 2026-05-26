@@ -65,8 +65,6 @@ export const AUTOCOMPLETE_MODELS: readonly AutocompleteModelDef[] = models
 export const DEFAULT_AUTOCOMPLETE_MODEL: AutocompleteModelDef = models[0]!
 
 const aliases: Record<string, string> = {
-  "kilo/mistralai/codestral-2508": "mistralai/codestral-2508",
-  "kilo/inception/mercury-edit-2": "inception/mercury-edit-2",
   "inception/mercury-edit": "inception/mercury-edit-2",
 }
 
