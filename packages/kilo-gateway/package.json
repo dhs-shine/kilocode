@@ -17,6 +17,7 @@
   ],
   "exports": {
     ".": "./src/index.ts",
+    "./autocomplete": "./src/autocomplete.ts",
     "./tui": "./src/tui.ts"
   },
   "files": [

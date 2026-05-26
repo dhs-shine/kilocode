@@ -6,4 +6,4 @@ export {
   validAutocompleteProvider,
   type AutocompleteModelDef,
   type AutocompleteProviderID,
-} from "@kilocode/kilo-gateway"
+} from "@kilocode/kilo-gateway/autocomplete"
