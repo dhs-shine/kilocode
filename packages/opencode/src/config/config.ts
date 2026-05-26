@@ -357,9 +357,6 @@ export const Info = Schema.Struct({
       agent_manager_tool: Schema.optional(Schema.Boolean).annotate({
         description: "Enable the VS Code Agent Manager orchestration tool",
       }),
-      speech_to_text: Schema.optional(Schema.Boolean).annotate({
-        description: "Enable speech-to-text voice input in Kilo clients",
-      }),
       speech_to_text_model: Schema.optional(Schema.String).annotate({
         description: "Speech-to-text transcription model ID to use for voice input",
       }),

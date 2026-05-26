@@ -1429,7 +1429,6 @@ export type Config = {
     codebase_search?: boolean
     semantic_indexing?: boolean
     agent_manager_tool?: boolean
-    speech_to_text?: boolean
     speech_to_text_model?: string
     openTelemetry?: boolean
     primary_tools?: Array<string>
@@ -7739,6 +7738,7 @@ export type KiloFimData = {
   body?: {
     prefix: string
     suffix: string
+    provider?: string
     model?: string
     maxTokens?: number
     temperature?: number
