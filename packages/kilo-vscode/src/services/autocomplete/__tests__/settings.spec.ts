@@ -33,12 +33,14 @@ describe("autocomplete settings", () => {
     expect(buildAutocompleteSettingsMessage().settings.model).toBe("mercury-edit-2")
   })
 
-  it("infers direct provider from native direct model choices", async () => {
+  it("does not infer direct provider from a bare model name when provider is unset", async () => {
+    // Safety: a legacy `model` setting alone must never silently route to a
+    // direct BYOK provider. Direct providers require an explicit `provider`.
     state.set("model", "mercury-edit-2")
     const { buildAutocompleteSettingsMessage } = await import("../settings")
 
-    expect(buildAutocompleteSettingsMessage().settings.provider).toBe("inception")
-    expect(buildAutocompleteSettingsMessage().settings.model).toBe("mercury-edit-2")
+    expect(buildAutocompleteSettingsMessage().settings.provider).toBe("kilo")
+    expect(buildAutocompleteSettingsMessage().settings.model).toBe("mistralai/codestral-2508")
   })
 
   it("defaults to codestral when no model is set", async () => {

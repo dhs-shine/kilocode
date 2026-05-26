@@ -69,14 +69,12 @@ const aliases: Record<string, string> = {
   "inception/mercury-edit": "inception/mercury-edit-2",
 }
 
-function inferProvider(model?: string): AutocompleteProviderID {
-  if (model === "codestral-2508") return "mistral"
-  if (model === "mercury-edit-2") return "inception"
-  return "kilo"
-}
-
 export function getAutocompleteModel(provider?: string, model?: string): AutocompleteModelDef {
-  const pid = provider ?? inferProvider(model)
+  // When provider is unset, always default to Kilo Gateway. Direct-provider
+  // use must be opted into explicitly via the provider setting — never inferred
+  // from a model name, since the same plain model id can exist on multiple
+  // providers and we don't want to silently route legacy settings to BYOK.
+  const pid = provider ?? "kilo"
   const mid = aliases[model ?? ""] ?? model
   for (const m of models) {
     if (m.providerID === pid && m.modelID === mid) return m
