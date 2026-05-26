@@ -1,4 +1,5 @@
 import { HEADER_FEATURE } from "../api/constants.js"
+import type { DirectAutocompleteProviderID } from "../autocomplete.js"
 import { DIRECT_FIM_ENV, requestMistralFim, resolveFimTarget, type FimTarget } from "../fim.js"
 import { buildKiloHeaders } from "../headers.js"
 import type { AuthStore } from "./handlers.js"
@@ -17,10 +18,9 @@ async function getProxyAuth(Auth: Auth) {
   }
 }
 
-async function getProviderKey(Auth: Auth, provider: FimTarget["provider"]) {
+async function getProviderKey(Auth: Auth, provider: DirectAutocompleteProviderID) {
   const auth = await Auth.get(provider)
   if (auth?.type === "api") return auth.key
-  if (provider === "kilo") return undefined
   return DIRECT_FIM_ENV[provider].map((key) => process.env[key]).find(Boolean)
 }
 
@@ -61,10 +61,7 @@ async function fetchFim(
   }
 
   if (target.provider === "mistral") return requestMistralFim(run)
-
-  const [url] = target.urls
-  if (!url) throw new Error("No FIM endpoint configured")
-  return run(url)
+  return run(target.url)
 }
 
 export function createFimHandler(Auth: Auth) {

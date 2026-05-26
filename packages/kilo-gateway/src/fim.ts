@@ -1,6 +1,5 @@
 import { KILO_API_BASE } from "./api/constants.js"
-import { getAutocompleteModel, type AutocompleteProviderID, type DirectAutocompleteProviderID } from "./autocomplete.js"
-import { CODESTRAL_FIM_URL, MISTRAL_FIM_URL } from "./mistral-fim-endpoint.js"
+import { getAutocompleteModel, type DirectAutocompleteProviderID } from "./autocomplete.js"
 
 export { requestMistralFim } from "./mistral-fim-endpoint.js"
 
@@ -9,26 +8,27 @@ export const DIRECT_FIM_ENV: Record<DirectAutocompleteProviderID, string[]> = {
   inception: ["INCEPTION_API_KEY"],
 }
 
-export interface FimTarget {
-  provider: AutocompleteProviderID
-  model: string
-  urls: string[]
-}
+export type FimTarget =
+  | { provider: "kilo"; model: string; url: string }
+  | { provider: "inception"; model: string; url: string }
+  | { provider: "mistral"; model: string }
 
 const KILO_FIM_URL = KILO_API_BASE + "/api/fim/completions"
 const INCEPTION_FIM_URL = "https://api.inceptionlabs.ai/v1/fim/completions"
 
+function kiloTarget(model?: string): FimTarget {
+  return { provider: "kilo", model: model ?? "mistralai/codestral-2501", url: KILO_FIM_URL }
+}
+
 export function resolveFimTarget(provider?: string, model?: string): FimTarget {
-  if (!provider || provider === "kilo") {
-    return { provider: "kilo", model: model ?? "mistralai/codestral-2501", urls: [KILO_FIM_URL] }
-  }
+  if (!provider || provider === "kilo") return kiloTarget(model)
 
   const info = getAutocompleteModel(provider, model)
   if (info.directProvider === "mistral") {
-    return { provider: "mistral", model: info.requestModel, urls: [MISTRAL_FIM_URL, CODESTRAL_FIM_URL] }
+    return { provider: "mistral", model: info.requestModel }
   }
   if (info.directProvider === "inception") {
-    return { provider: "inception", model: info.requestModel, urls: [INCEPTION_FIM_URL] }
+    return { provider: "inception", model: info.requestModel, url: INCEPTION_FIM_URL }
   }
-  return { provider: "kilo", model: model ?? "mistralai/codestral-2501", urls: [KILO_FIM_URL] }
+  return kiloTarget(model)
 }

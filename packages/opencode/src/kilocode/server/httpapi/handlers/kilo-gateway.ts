@@ -121,7 +121,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
             })
           }
           if (target.provider === "mistral") return requestMistralFim(run)
-          return run(target.urls[0]!)
+          return run(target.url)
         } catch (err) {
           if (err instanceof DOMException && err.name === "TimeoutError")
             return Response.json({ error: "FIM request timed out" }, { status: 504 })

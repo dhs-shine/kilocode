@@ -6,12 +6,12 @@ describe("FIM target resolution", () => {
     expect(resolveFimTarget("kilo", "mistralai/codestral-2508")).toEqual({
       provider: "kilo",
       model: "mistralai/codestral-2508",
-      urls: ["https://api.kilo.ai/api/fim/completions"],
+      url: "https://api.kilo.ai/api/fim/completions",
     })
     expect(resolveFimTarget("kilo", "inception/mercury-edit-2")).toEqual({
       provider: "kilo",
       model: "inception/mercury-edit-2",
-      urls: ["https://api.kilo.ai/api/fim/completions"],
+      url: "https://api.kilo.ai/api/fim/completions",
     })
   })
 
@@ -19,12 +19,11 @@ describe("FIM target resolution", () => {
     expect(resolveFimTarget("mistral", "codestral-2508")).toEqual({
       provider: "mistral",
       model: "codestral-2508",
-      urls: ["https://api.mistral.ai/v1/fim/completions", "https://codestral.mistral.ai/v1/fim/completions"],
     })
     expect(resolveFimTarget("inception", "mercury-edit-2")).toEqual({
       provider: "inception",
       model: "mercury-edit-2",
-      urls: ["https://api.inceptionlabs.ai/v1/fim/completions"],
+      url: "https://api.inceptionlabs.ai/v1/fim/completions",
     })
   })
 
@@ -32,22 +31,22 @@ describe("FIM target resolution", () => {
     expect(resolveFimTarget()).toEqual({
       provider: "kilo",
       model: "mistralai/codestral-2501",
-      urls: ["https://api.kilo.ai/api/fim/completions"],
+      url: "https://api.kilo.ai/api/fim/completions",
     })
     expect(resolveFimTarget(undefined, "mistralai/codestral-2508")).toEqual({
       provider: "kilo",
       model: "mistralai/codestral-2508",
-      urls: ["https://api.kilo.ai/api/fim/completions"],
+      url: "https://api.kilo.ai/api/fim/completions",
     })
     expect(resolveFimTarget(undefined, "inception/mercury-edit")).toEqual({
       provider: "kilo",
       model: "inception/mercury-edit",
-      urls: ["https://api.kilo.ai/api/fim/completions"],
+      url: "https://api.kilo.ai/api/fim/completions",
     })
     expect(resolveFimTarget("kilo", "custom/fim-model")).toEqual({
       provider: "kilo",
       model: "custom/fim-model",
-      urls: ["https://api.kilo.ai/api/fim/completions"],
+      url: "https://api.kilo.ai/api/fim/completions",
     })
   })
 })
