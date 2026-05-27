@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import { nesLog } from "./log"
 
 const PENDING_CONTEXT_KEY = "kilo-code.nextEdit.hasPendingSuggestion"
+const CHAIN_DELAY_MS = 60
 
 export type PendingNextEdit =
   | {
@@ -325,7 +326,7 @@ export class NextEditSuggestionManager implements vscode.Disposable {
  * `provideInlineCompletionItems`, and gives the user a moment to abandon the
  * chain by typing or moving the cursor.
  */
-export function chainNextPrediction(delayMs = 60): void {
+export function chainNextPrediction(delayMs = CHAIN_DELAY_MS): void {
   setTimeout(() => {
     void vscode.commands.executeCommand("editor.action.inlineSuggest.trigger")
   }, delayMs)
