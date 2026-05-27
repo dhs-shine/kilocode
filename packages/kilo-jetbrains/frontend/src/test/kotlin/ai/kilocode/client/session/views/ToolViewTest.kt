@@ -6,6 +6,7 @@ import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.toolKind
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import javax.swing.ScrollPaneConstants
 
@@ -77,6 +78,20 @@ class ToolViewTest : BasePlatformTestCase() {
         view.toggle()
         assertTrue(view.bodyVisible())
         assertTrue(view.bodyCreated())
+    }
+
+    fun `test bash tool uses secondary chrome`() {
+        val view = ToolView(tool("p1", "bash", ToolExecState.COMPLETED))
+        val base: Any = view
+
+        assertTrue(base is SecondarySessionPartView)
+    }
+
+    fun `test unknown tool uses secondary chrome`() {
+        val view = ToolView(tool("p1", "mystery", ToolExecState.COMPLETED))
+        val base: Any = view
+
+        assertTrue(base is SecondarySessionPartView)
     }
 
     fun `test bash toggle collapses and expands`() {

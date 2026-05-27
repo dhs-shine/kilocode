@@ -4,6 +4,7 @@ import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.toolKind
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
+import ai.kilocode.client.ui.UiStyle
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import javax.swing.ScrollPaneConstants
 
@@ -47,6 +48,8 @@ class ReadToolViewTest : BasePlatformTestCase() {
         assertTrue(view.linkVisible())
         assertEquals("SessionUiLayoutTest.kt", view.linkText())
         assertEquals(path, view.linkHref())
+        assertTrue(view.linkMarkup().contains("<u>SessionUiLayoutTest.kt</u>"))
+        assertEquals(UiStyle.Colors.weak().rgb, view.linkForeground().rgb)
         assertTrue(view.labelText().contains("SessionUiLayoutTest.kt"))
 
         view.openLink()

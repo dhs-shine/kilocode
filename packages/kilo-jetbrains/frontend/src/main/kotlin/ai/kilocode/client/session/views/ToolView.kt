@@ -9,11 +9,9 @@ import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.ToolKind
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
-import ai.kilocode.client.session.views.base.PrimarySessionPartView
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.icons.AllIcons
-import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
@@ -22,8 +20,11 @@ import com.intellij.xml.util.XmlStringUtil
 import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.Color
+import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.Font
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import javax.swing.Box
 import javax.swing.Icon
 import javax.swing.JComponent
@@ -32,7 +33,7 @@ import javax.swing.ScrollPaneConstants
 
 /** Renders non-read tool calls with VS Code-inspired rows/cards. */
 class ToolView(tool: Tool, private val parts: ToolParts = toolParts(tool)) :
-    PrimarySessionPartView(parts.header, parts.scroll) {
+    SecondarySessionPartView(parts.header, parts.scroll) {
 
     override val contentId: String = tool.id
 
@@ -189,7 +190,9 @@ class ReadToolView(
     internal fun horizontalPolicy() = parts.scroll.horizontalScrollBarPolicy
     internal fun bodyMaxRows() = SessionUiStyle.View.Tool.BODY_LINES
     internal fun linkVisible() = parts.link.isVisible
-    internal fun linkText() = parts.link.text ?: ""
+    internal fun linkText() = parts.label
+    internal fun linkMarkup() = parts.link.text ?: ""
+    internal fun linkForeground() = parts.link.foreground
     internal fun linkHref() = parts.href
     internal fun openLink() = parts.openLink()
 
@@ -227,7 +230,7 @@ class ReadToolView(
                 parts.href = target.path
                 changed = true
             }
-            changed = setText(parts.link, tail(target.path).ifBlank { target.path }) || changed
+            changed = setLinkText(parts, tail(target.path).ifBlank { target.path }) || changed
             changed = show(parts, true) || changed
             return changed
         }
@@ -265,7 +268,7 @@ class ToolParts(
     val glyph: JBLabel,
     val title: JBLabel,
     val sub: JBLabel,
-    val link: ActionLink,
+    val link: JBLabel,
     val slot: JPanel,
     val state: JBLabel,
     val center: JPanel,
@@ -275,6 +278,7 @@ class ToolParts(
     private val open: ((String) -> Unit)? = null,
 ) {
     var href: String? = null
+    var label: String = ""
 
     fun openLink() {
         val value = href ?: return
@@ -290,10 +294,17 @@ private fun toolParts(tool: Tool, openFile: ((String) -> Unit)? = null): ToolPar
     val glyph = JBLabel()
     val title = JBLabel()
     val sub = JBLabel().apply { foreground = UiStyle.Colors.weak() }
-    val link = ActionLink("") { parts.openLink() }.apply {
+    val link = JBLabel().apply {
         isVisible = false
         isFocusable = false
+        foreground = UiStyle.Colors.weak()
+        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         setRequestFocusEnabled(false)
+        addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+                parts.openLink()
+            }
+        })
     }
     val slot = JPanel(CardLayout()).apply {
         isOpaque = false
@@ -368,9 +379,11 @@ private fun setText(label: JBLabel, text: String): Boolean {
     return true
 }
 
-private fun setText(link: ActionLink, text: String): Boolean {
-    if (link.text == text) return false
-    link.text = text
+private fun setLinkText(parts: ToolParts, text: String): Boolean {
+    val value = if (text.isBlank()) "" else XmlStringUtil.wrapInHtml("<u>${XmlStringUtil.escapeString(text)}</u>")
+    if (parts.label == text && parts.link.text == value) return false
+    parts.label = text
+    parts.link.text = value
     return true
 }
 
@@ -380,7 +393,7 @@ private fun show(parts: ToolParts, link: Boolean): Boolean {
     return true
 }
 
-private fun subtitleText(parts: ToolParts): String = if (parts.link.isVisible) parts.link.text ?: "" else parts.sub.text
+private fun subtitleText(parts: ToolParts): String = if (parts.link.isVisible) parts.label else parts.sub.text
 
 private fun setIcon(label: JBLabel, icon: Icon): Boolean {
     if (label.icon === icon) return false

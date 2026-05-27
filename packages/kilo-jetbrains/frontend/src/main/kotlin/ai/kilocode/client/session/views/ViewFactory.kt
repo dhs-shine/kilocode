@@ -36,6 +36,11 @@ object ViewFactory {
         is Generic -> GenericView(content)
     }
 
+    fun createUser(content: Content, openFile: (String) -> Unit): PartView = when (content) {
+        is Text -> TextView(content, transparent = true)
+        else -> create(content, openFile)
+    }
+
     /**
      * Returns true when [view] must be replaced by a new renderer for [content].
      * This happens when a running question tool (rendered as [ToolView]) completes
