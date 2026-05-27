@@ -190,10 +190,15 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     const cursorLineText = document.lineAt(position.line).text
     const cursorLineCurrent = cursorLineText.slice(position.character)
     const cursorLineProposed = proposedLines[prefixLines]
-    // No cursor-line replacement (pure deletion at the trim seam), or the model
-    // wants to change characters BEFORE the cursor — neither renders as ghost text.
-    if (cursorLineProposed === undefined || !cursorLineProposed.startsWith(cursorLineText.slice(0, position.character))) {
+    // A pure deletion at the trim seam has no cursor-line replacement to render.
+    if (cursorLineProposed === undefined) {
       this.emitNotShown(suggestion)
+      return undefined
+    }
+    // Native ghost text cannot alter text before the cursor; present that edit
+    // through the decoration/apply flow rather than silently discarding it.
+    if (!cursorLineProposed.startsWith(cursorLineText.slice(0, position.character))) {
+      this.stashOffCursorSuggestion(document, diffStartLine, diffEndLine, trimmedReplacement, false, suggestion)
       return undefined
     }
     const insertText = [cursorLineProposed.slice(position.character), ...proposedLines.slice(prefixLines + 1, proposedLines.length - suffixLines)].join("\n")
