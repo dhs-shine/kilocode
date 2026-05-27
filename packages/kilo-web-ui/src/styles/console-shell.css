@@ -29,6 +29,10 @@
   backdrop-filter: none;
 }
 
+.omni-search-open .kilo-console .app-header {
+  z-index: 10000;
+}
+
 .kilo-console .header-brand {
   grid-column: 1;
   display: inline-flex;
@@ -116,7 +120,7 @@
   position: fixed;
   top: calc((var(--app-header-height) - 2.5rem) / 2);
   left: 50%;
-  z-index: 80;
+  z-index: 10001;
   display: grid;
   grid-template-rows: auto auto auto;
   width: min(35rem, calc(100vw - 2rem));

@@ -131,6 +131,12 @@ export function OmniSearch() {
   const filtered = createMemo(() => entries().filter((item) => matches(item, term())))
   const server = createMemo(() => query()?.url ?? fallback())
 
+  createEffect(() => {
+    document.body.classList.toggle("omni-search-open", open())
+  })
+
+  onCleanup(() => document.body.classList.remove("omni-search-open"))
+
   function close() {
     setOpen(false)
     setTerm("")
