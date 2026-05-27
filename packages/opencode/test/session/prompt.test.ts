@@ -1578,30 +1578,12 @@ unix(
       provideTmpdirInstance(
         (_dir) =>
           Effect.gen(function* () {
-            const { prompt, run, chat, sessions } = yield* boot()
+            const { prompt, run, chat } = yield* boot()
 
             const sh = yield* prompt
-              .shell({ sessionID: chat.id, agent: "build", command: "printf started; sleep 30" }) // kilocode_change
+              .shell({ sessionID: chat.id, agent: "build", command: "sleep 30" })
               .pipe(Effect.forkChild)
-            // kilocode_change start - avoid cancelling before the shell process is ready on slower CI hosts
-            yield* waitFor(
-              "shell start output",
-              sessions
-                .messages({ sessionID: chat.id })
-                .pipe(
-                  Effect.map((msgs) =>
-                    msgs
-                      .flatMap((msg) => msg.parts)
-                      .find(
-                        (part) =>
-                          part.type === "tool" &&
-                          part.state.status === "running" &&
-                          (part.state.metadata?.output ?? "").includes("started"),
-                      ),
-                  ),
-                ),
-            )
-            // kilocode_change end
+            yield* Effect.sleep(50)
 
             yield* prompt.cancel(chat.id)
 
