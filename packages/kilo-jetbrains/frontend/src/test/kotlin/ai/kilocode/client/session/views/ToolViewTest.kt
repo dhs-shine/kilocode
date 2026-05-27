@@ -57,15 +57,6 @@ class ToolViewTest : BasePlatformTestCase() {
         assertTrue(view.labelText().contains("Shell"))
     }
 
-    fun `test read tool shows filename`() {
-        val t = tool("p1", "read", ToolExecState.COMPLETED).also { it.input = mapOf("filePath" to "README.MD") }
-
-        val view = ToolView(t)
-
-        assertTrue(view.labelText().contains("Read"))
-        assertTrue(view.labelText().contains("README.MD"))
-    }
-
     fun `test bash tool shows subtitle command and output`() {
         val t = tool("p1", "bash", ToolExecState.COMPLETED).also {
             it.input = mapOf("command" to "git remote -v", "description" to "View remotes")
@@ -195,16 +186,6 @@ class ToolViewTest : BasePlatformTestCase() {
         assertFalse(view.bodyVisible())
         view.toggle()
         assertTrue(view.bodyVisible())
-    }
-
-    fun `test read tool handles windows path`() {
-        val t = tool("p1", "read", ToolExecState.COMPLETED).also {
-            it.input = mapOf("filePath" to "C:\\repo\\README.MD")
-        }
-
-        val view = ToolView(t)
-
-        assertTrue(view.labelText().contains("README.MD"))
     }
 
     fun `test bash output uses editor font settings`() {

@@ -28,6 +28,7 @@ object ViewFactory {
             TodoWriteView.canRender(content) -> TodoWriteView(content)
             PlanExitView.canRender(content) -> PlanExitView(content, openFile)
             QuestionResultView.canRender(content) -> QuestionResultView(content)
+            ReadToolView.canRender(content) -> ReadToolView(content)
             else -> ToolView(content)
         }
         is Compaction -> CompactionView(content)
@@ -47,6 +48,8 @@ object ViewFactory {
         if (view is PlanExitView) return !PlanExitView.canRender(content)
         if (view !is PlanExitView && PlanExitView.canRender(content)) return true
         if (view is QuestionResultView) return !QuestionResultView.canRender(content)
+        if (view is ReadToolView) return !ReadToolView.canRender(content) || QuestionResultView.canRender(content)
+        if (view is ToolView && ReadToolView.canRender(content)) return true
         if (view is ToolView) return QuestionResultView.canRender(content)
         return false
     }

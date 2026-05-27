@@ -2,6 +2,7 @@ package ai.kilocode.client.session.views
 
 import ai.kilocode.client.session.model.Reasoning
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import javax.swing.ScrollPaneConstants
 
@@ -10,8 +11,10 @@ class ReasoningViewTest : BasePlatformTestCase() {
 
     fun `test completed reasoning is collapsed by default`() {
         val view = ReasoningView(reasoning("p1", done = true, text = "one\ntwo\nthree\nfour"))
+        val base: Any = view
 
         assertFalse(view.isExpanded())
+        assertTrue(base is SecondarySessionPartView)
         assertEquals("Reasoning", view.headerText())
         assertEquals("one\ntwo\nthree\nfour", view.markdown())
         assertTrue(view.hasToggle())
