@@ -28,7 +28,8 @@
   ],
   "scripts": {
     "typecheck": "tsgo --noEmit",
-    "build": "tsc"
+    "build": "tsc",
+    "test:ci": "mkdir -p .artifacts/unit && bun test test --reporter=junit --reporter-outfile=.artifacts/unit/junit.xml"
   },
   "dependencies": {
     "@kilocode/plugin": "workspace:*",
