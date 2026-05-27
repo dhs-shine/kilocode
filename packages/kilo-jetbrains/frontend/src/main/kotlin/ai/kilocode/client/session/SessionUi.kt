@@ -473,6 +473,7 @@ class SessionUi(
     private fun onStateChanged(state: SessionState) {
         prompt.setBusy(state.isBusy())
         load.setState(state)
+        scroll.setQuestionPending(questionPending(state))
         scroll.show(body(state))
         manager?.activityChanged()
         refresh()
@@ -511,6 +512,11 @@ class SessionUi(
 }
 
 private fun variantTitle(value: String): String = value.replaceFirstChar { it.titlecase() }
+
+private fun questionPending(state: SessionState): Boolean {
+    if (state !is SessionState.AwaitingQuestion) return false
+    return state.question.items.none { it.planFollowup() }
+}
 
 private fun ai.kilocode.client.session.model.QuestionItem.planFollowup() =
     questionKey == "plan.followup.question" || headerKey == "plan.followup.header"
