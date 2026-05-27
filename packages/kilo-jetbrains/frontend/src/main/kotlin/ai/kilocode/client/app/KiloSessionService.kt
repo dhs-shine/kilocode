@@ -235,5 +235,3 @@ class KiloSessionService internal constructor(
     suspend fun pendingQuestions(dir: String): List<QuestionRequestDto> =
         call { pendingQuestions(dir) }
 }
-
-private infix fun <T> Set<T>.xor(other: Set<T>): Set<T> = (this - other) + (other - this)
