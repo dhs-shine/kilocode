@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, mock } from "bun:test"
 import * as vscode from "vscode"
 import type { KiloConnectionService } from "../../src/services/cli-backend"
 import {
@@ -6,35 +6,6 @@ import {
   type NextEditProviderDeps,
 } from "../../src/services/autocomplete/next-edit/NextEditInlineCompletionProvider"
 import type { NextEditSuggestionManager } from "../../src/services/autocomplete/next-edit/NextEditSuggestionManager"
-
-vi.mock("vscode", () => {
-  class Position {
-    constructor(
-      public line: number,
-      public character: number,
-    ) {}
-  }
-  class Range {
-    constructor(
-      public start: Position,
-      public end: Position,
-    ) {}
-  }
-  return {
-    Position,
-    Range,
-    InlineCompletionItem: class {},
-    workspace: {
-      textDocuments: [],
-      onDidOpenTextDocument: () => ({ dispose: vi.fn() }),
-      onDidChangeTextDocument: () => ({ dispose: vi.fn() }),
-      onDidCloseTextDocument: () => ({ dispose: vi.fn() }),
-    },
-    window: {
-      createOutputChannel: () => ({ appendLine: vi.fn(), dispose: vi.fn() }),
-    },
-  }
-})
 
 type Subject = {
   toCompletionItems(
@@ -64,7 +35,7 @@ function doc(text: string): vscode.TextDocument {
 
 describe("NextEditInlineCompletionProvider", () => {
   it("does not send a document when the access policy is missing at runtime", async () => {
-    const connection = { getClientAsync: vi.fn() }
+    const connection = { getClientAsync: mock() }
     const provider = new NextEditInlineCompletionProvider({
       connectionService: connection,
     } as unknown as NextEditProviderDeps)
@@ -82,7 +53,7 @@ describe("NextEditInlineCompletionProvider", () => {
   })
 
   it("does not send a document when the access policy fails", async () => {
-    const connection = { getClientAsync: vi.fn() }
+    const connection = { getClientAsync: mock() }
     const provider = new NextEditInlineCompletionProvider({
       connectionService: connection as unknown as KiloConnectionService,
       isFileAllowed: async () => Promise.reject(new Error("unavailable")),
@@ -101,7 +72,7 @@ describe("NextEditInlineCompletionProvider", () => {
   })
 
   it("stashes same-line rewrites before the cursor for decorated acceptance", () => {
-    const mgr = { clear: vi.fn(), setPending: vi.fn() }
+    const mgr = { clear: mock(), setPending: mock() }
     const provider = new NextEditInlineCompletionProvider({
       connectionService: {} as KiloConnectionService,
       isFileAllowed: async () => true,
@@ -129,7 +100,7 @@ describe("NextEditInlineCompletionProvider", () => {
   })
 
   it("stashes complete-line deletion intent for acceptance", () => {
-    const mgr = { clear: vi.fn(), setPending: vi.fn() }
+    const mgr = { clear: mock(), setPending: mock() }
     const provider = new NextEditInlineCompletionProvider({
       connectionService: {} as KiloConnectionService,
       isFileAllowed: async () => true,
@@ -155,7 +126,7 @@ describe("NextEditInlineCompletionProvider", () => {
   })
 
   it("does not classify a blank-line rewrite as deletion", () => {
-    const mgr = { clear: vi.fn(), setPending: vi.fn() }
+    const mgr = { clear: mock(), setPending: mock() }
     const provider = new NextEditInlineCompletionProvider({
       connectionService: {} as KiloConnectionService,
       isFileAllowed: async () => true,
