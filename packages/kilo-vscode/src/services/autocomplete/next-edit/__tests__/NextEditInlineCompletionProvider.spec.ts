@@ -46,6 +46,18 @@ type Subject = {
   ): vscode.InlineCompletionItem[] | undefined
 }
 
+function doc(text: string): vscode.TextDocument {
+  const lines = text.split("\n")
+  return {
+    lineCount: lines.length,
+    lineAt: (line: number) => ({
+      text: lines[line],
+      range: { end: new vscode.Position(line, lines[line].length) },
+    }),
+    getText: () => text,
+  } as unknown as vscode.TextDocument
+}
+
 describe("NextEditInlineCompletionProvider", () => {
   it("stashes same-line rewrites before the cursor for decorated acceptance", () => {
     const mgr = { clear: vi.fn(), setPending: vi.fn() }
@@ -70,6 +82,48 @@ describe("NextEditInlineCompletionProvider", () => {
     expect(out).toBeUndefined()
     expect(mgr.setPending).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "replace", replacement: "const newName = make()" }),
+    )
+    provider.dispose()
+  })
+
+  it("stashes complete-line deletion intent for acceptance", () => {
+    const mgr = { clear: vi.fn(), setPending: vi.fn() }
+    const provider = new NextEditInlineCompletionProvider({
+      connectionService: {} as KiloConnectionService,
+      suggestionManager: mgr as unknown as NextEditSuggestionManager,
+    })
+
+    const out = (provider as unknown as Subject).toCompletionItems(doc("before\nremove\nafter"), new vscode.Position(1, 0), {
+      replacement: "before\nafter",
+      editableRegionStartLine: 0,
+      editableRegionEndLine: 2,
+      latencyMs: 1,
+    })
+
+    expect(out).toBeUndefined()
+    expect(mgr.setPending).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "replace", replacement: "", removesLines: true }),
+    )
+    provider.dispose()
+  })
+
+  it("does not classify a blank-line rewrite as deletion", () => {
+    const mgr = { clear: vi.fn(), setPending: vi.fn() }
+    const provider = new NextEditInlineCompletionProvider({
+      connectionService: {} as KiloConnectionService,
+      suggestionManager: mgr as unknown as NextEditSuggestionManager,
+    })
+
+    const out = (provider as unknown as Subject).toCompletionItems(doc("before\nremove\nafter"), new vscode.Position(0, 0), {
+      replacement: "before\n\nafter",
+      editableRegionStartLine: 0,
+      editableRegionEndLine: 2,
+      latencyMs: 1,
+    })
+
+    expect(out).toBeUndefined()
+    expect(mgr.setPending).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "replace", replacement: "", removesLines: false }),
     )
     provider.dispose()
   })

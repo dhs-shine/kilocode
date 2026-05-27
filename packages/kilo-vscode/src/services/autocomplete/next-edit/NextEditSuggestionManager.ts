@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 import { nesLog } from "./log"
-import { planInsertion } from "./pendingEdit"
+import { planInsertion, planReplacement } from "./pendingEdit"
 
 const PENDING_CONTEXT_KEY = "kilo-code.nextEdit.hasPendingSuggestion"
 const CHAIN_DELAY_MS = 60
@@ -15,6 +15,8 @@ export type PendingNextEdit =
       diffEndLine: number
       /** New text to substitute for [diffStartLine, diffEndLine]. */
       replacement: string
+      /** Whether the suggestion omits complete lines rather than rewriting one as blank. */
+      removesLines: boolean
       /** Snapshot of the original text — used to detect drift. */
       originalText: string
     }
@@ -210,7 +212,15 @@ export class NextEditSuggestionManager implements vscode.Disposable {
         nesLog(`document drifted since suggestion was made — dropping range [${p.diffStartLine}..${p.diffEndLine}]`)
         return
       }
-      ok = await editor.edit((b) => b.replace(range, p.replacement))
+      const edit = planReplacement(p, {
+        lineCount: editor.document.lineCount,
+        end: (line) => editor.document.lineAt(line).range.end.character,
+      })
+      const target = new vscode.Range(
+        new vscode.Position(edit.start.line, edit.start.character),
+        new vscode.Position(edit.end.line, edit.end.character),
+      )
+      ok = await editor.edit((b) => b.replace(target, edit.text))
       nesLog(`applied replace at lines [${p.diffStartLine}..${p.diffEndLine}] (ok=${ok})`)
     }
     if (ok) chainNextPrediction()
