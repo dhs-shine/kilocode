@@ -169,7 +169,9 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     const trimmedLines = proposedLines.slice(prefixLines, proposedLines.length - suffixLines)
     const trimmedReplacement = trimmedLines.join("\n")
 
-    nesLog(`diff at lines [${diffStartLineInFile}..${diffEndLineInFile}], cursor at line ${position.line}, ${trimmedReplacement.length} chars`)
+    nesLog(
+      `diff at lines [${diffStartLineInFile}..${diffEndLineInFile}], cursor at line ${position.line}, ${trimmedReplacement.length} chars`,
+    )
 
     // VSCode's inline ghost text only renders when the diff starts on the cursor's line.
     // For off-cursor diffs, stash the suggestion in the manager — it renders a
@@ -177,13 +179,31 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     const isPureInsertion = diffEndLineInFile < diffStartLineInFile
     const removesLines = trimmedLines.length === 0
     if (isPureInsertion || removesLines || diffStartLineInFile !== position.line) {
-      this.stashOffCursorSuggestion(document, diffStartLineInFile, diffEndLineInFile, trimmedReplacement, isPureInsertion, removesLines, suggestion)
+      this.stashOffCursorSuggestion(
+        document,
+        diffStartLineInFile,
+        diffEndLineInFile,
+        trimmedReplacement,
+        isPureInsertion,
+        removesLines,
+        suggestion,
+      )
       return undefined
     }
     // Same-line diff: clear any prior off-cursor pending state so we don't render
     // two competing affordances.
     this.deps.suggestionManager?.clear()
-    return this.renderSameLineItem(document, position, proposedLines, prefixLines, suffixLines, diffStartLineInFile, diffEndLineInFile, trimmedReplacement, suggestion)
+    return this.renderSameLineItem(
+      document,
+      position,
+      proposedLines,
+      prefixLines,
+      suffixLines,
+      diffStartLineInFile,
+      diffEndLineInFile,
+      trimmedReplacement,
+      suggestion,
+    )
   }
 
   /** Build the cursor-position ghost-text item for a same-line diff. */
@@ -212,7 +232,10 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
       this.stashOffCursorSuggestion(document, diffStartLine, diffEndLine, trimmedReplacement, false, false, suggestion)
       return undefined
     }
-    const insertText = [cursorLineProposed.slice(position.character), ...proposedLines.slice(prefixLines + 1, proposedLines.length - suffixLines)].join("\n")
+    const insertText = [
+      cursorLineProposed.slice(position.character),
+      ...proposedLines.slice(prefixLines + 1, proposedLines.length - suffixLines),
+    ].join("\n")
     const renderEndLine = pickRenderEndLine(document, position.line, diffEndLine, insertText)
     // A single-line insert spanning non-blank lines below the cursor can't be
     // represented as inline ghost text — route it to the decoration path.
@@ -220,14 +243,19 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
       this.stashOffCursorSuggestion(document, diffStartLine, diffEndLine, trimmedReplacement, false, false, suggestion)
       return undefined
     }
-    const renderRange = new vscode.Range(position, new vscode.Position(renderEndLine, document.lineAt(renderEndLine).range.end.character))
+    const renderRange = new vscode.Range(
+      position,
+      new vscode.Position(renderEndLine, document.lineAt(renderEndLine).range.end.character),
+    )
     if (document.getText(renderRange) === cursorLineCurrent && cursorLineCurrent === insertText) return undefined
 
     const item = new vscode.InlineCompletionItem(insertText, renderRange, {
       command: INLINE_COMPLETION_ACCEPTED_COMMAND,
       title: "Next Edit Accepted",
     })
-    nesLog(`RENDER range=[${renderRange.start.line}:${renderRange.start.character}..${renderRange.end.line}:${renderRange.end.character}] insertChars=${insertText.length}`)
+    nesLog(
+      `RENDER range=[${renderRange.start.line}:${renderRange.start.character}..${renderRange.end.line}:${renderRange.end.character}] insertChars=${insertText.length}`,
+    )
     this.deps.onSuggestion?.({
       shown: true,
       latencyMs: suggestion.latencyMs,
@@ -284,7 +312,9 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
         replacement: trimmedReplacement + "\n",
         originalText: document.lineAt(anchorLine).text,
       })
-      nesLog(`insert suggestion stashed at line ${diffStartLine} (anchor=${anchorLine}, eof=${isEof}, ${trimmedReplacement.length} chars)`)
+      nesLog(
+        `insert suggestion stashed at line ${diffStartLine} (anchor=${anchorLine}, eof=${isEof}, ${trimmedReplacement.length} chars)`,
+      )
     } else {
       const originalRange = new vscode.Range(
         new vscode.Position(diffStartLine, 0),

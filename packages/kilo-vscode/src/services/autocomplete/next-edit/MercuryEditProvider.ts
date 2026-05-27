@@ -86,7 +86,10 @@ export class MercuryEditProvider {
 }
 
 export class MercuryEditError extends Error {
-  constructor(message: string, public readonly status: number | null) {
+  constructor(
+    message: string,
+    public readonly status: number | null,
+  ) {
     super(message)
     this.name = "MercuryEditError"
   }

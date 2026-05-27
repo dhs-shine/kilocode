@@ -288,8 +288,7 @@ export class NextEditSuggestionManager implements vscode.Disposable {
     // Hint anchor + cursor check use the active editor if it's one of ours,
     // else fall back to the first visible editor for this document.
     const active = vscode.window.activeTextEditor
-    const referenceEditor =
-      active && editors.includes(active) ? active : editors[0]
+    const referenceEditor = active && editors.includes(active) ? active : editors[0]
     const hintAnchor = Math.min(p.diffStartLine, p.document.lineCount - 1)
     const hintLineEnd = p.document.lineAt(Math.max(0, hintAnchor)).range.end
     const cursor = referenceEditor.selection.active
@@ -297,9 +296,7 @@ export class NextEditSuggestionManager implements vscode.Disposable {
       p.kind === "replace"
         ? cursor.line >= p.diffStartLine && cursor.line <= p.diffEndLine
         : cursor.line === p.diffStartLine || cursor.line === p.diffStartLine - 1
-    const hintText = cursorAtDiff
-      ? "  ↳ Tab to apply · Esc to dismiss"
-      : "  ↳ Tab to jump here · Esc to dismiss"
+    const hintText = cursorAtDiff ? "  ↳ Tab to apply · Esc to dismiss" : "  ↳ Tab to jump here · Esc to dismiss"
     const hintOptions: vscode.DecorationOptions[] = [
       {
         range: new vscode.Range(hintLineEnd, hintLineEnd),

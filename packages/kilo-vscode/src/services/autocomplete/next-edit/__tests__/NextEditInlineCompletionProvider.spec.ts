@@ -62,7 +62,9 @@ function doc(text: string): vscode.TextDocument {
 describe("NextEditInlineCompletionProvider", () => {
   it("does not send a document when the access policy is missing at runtime", async () => {
     const connection = { getClientAsync: vi.fn() }
-    const provider = new NextEditInlineCompletionProvider({ connectionService: connection } as unknown as NextEditProviderDeps)
+    const provider = new NextEditInlineCompletionProvider({
+      connectionService: connection,
+    } as unknown as NextEditProviderDeps)
 
     const out = await provider.provideInlineCompletionItems(
       doc("const value = 1"),
@@ -131,12 +133,16 @@ describe("NextEditInlineCompletionProvider", () => {
       suggestionManager: mgr as unknown as NextEditSuggestionManager,
     })
 
-    const out = (provider as unknown as Subject).toCompletionItems(doc("before\nremove\nafter"), new vscode.Position(1, 0), {
-      replacement: "before\nafter",
-      editableRegionStartLine: 0,
-      editableRegionEndLine: 2,
-      latencyMs: 1,
-    })
+    const out = (provider as unknown as Subject).toCompletionItems(
+      doc("before\nremove\nafter"),
+      new vscode.Position(1, 0),
+      {
+        replacement: "before\nafter",
+        editableRegionStartLine: 0,
+        editableRegionEndLine: 2,
+        latencyMs: 1,
+      },
+    )
 
     expect(out).toBeUndefined()
     expect(mgr.setPending).toHaveBeenCalledWith(
@@ -153,12 +159,16 @@ describe("NextEditInlineCompletionProvider", () => {
       suggestionManager: mgr as unknown as NextEditSuggestionManager,
     })
 
-    const out = (provider as unknown as Subject).toCompletionItems(doc("before\nremove\nafter"), new vscode.Position(0, 0), {
-      replacement: "before\n\nafter",
-      editableRegionStartLine: 0,
-      editableRegionEndLine: 2,
-      latencyMs: 1,
-    })
+    const out = (provider as unknown as Subject).toCompletionItems(
+      doc("before\nremove\nafter"),
+      new vscode.Position(0, 0),
+      {
+        replacement: "before\n\nafter",
+        editableRegionStartLine: 0,
+        editableRegionEndLine: 2,
+        latencyMs: 1,
+      },
+    )
 
     expect(out).toBeUndefined()
     expect(mgr.setPending).toHaveBeenCalledWith(
