@@ -1,4 +1,5 @@
 import { IconButton } from "@kilocode/kilo-web-ui/icon-button"
+import { OmniSearch } from "./OmniSearch"
 
 export function AppHeader() {
   return (
@@ -13,10 +14,7 @@ export function AppHeader() {
         </span>
       </a>
 
-      <form class="omni-search" role="search">
-        <span aria-hidden="true">⌘K</span>
-        <input type="search" placeholder="Search projects, config, providers..." aria-label="Omni search" />
-      </form>
+      <OmniSearch />
 
       <nav class="notification-zone" aria-label="Notifications and status">
         <IconButton icon="bubble-5" variant="ghost" aria-label="Notifications" />
