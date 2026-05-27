@@ -100,10 +100,6 @@ export class EditHistoryTracker implements vscode.Disposable {
   private async seed(document: vscode.TextDocument): Promise<void> {
     const key = document.uri.fsPath
     if (this.snapshots.has(key)) return
-    if (!this.options.isFileAllowed) {
-      this.snapshots.set(key, document.getText())
-      return
-    }
     if (!(await this.allowed(key))) {
       this.reject(key)
       return

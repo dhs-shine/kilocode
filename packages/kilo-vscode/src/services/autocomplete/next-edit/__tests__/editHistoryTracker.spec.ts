@@ -41,6 +41,8 @@ describe("EditHistoryTracker", () => {
 
     open(a)
     open(b)
+    await Promise.resolve()
+    await Promise.resolve()
     a.setText("const a = 2\n")
     await tracker.flush(a)
     b.setText("const b = 2\n")
