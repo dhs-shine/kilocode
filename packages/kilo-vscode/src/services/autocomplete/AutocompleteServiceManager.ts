@@ -131,7 +131,7 @@ export class AutocompleteServiceManager {
               : TelemetryEventName.AUTOCOMPLETE_LLM_REQUEST_COMPLETED
         TelemetryProxy.capture(eventName, {
           mode: "next-edit",
-          model: "inception/mercury-next-edit",
+          model: getAutocompleteModel(this.settings?.provider, this.settings?.model).id,
           latencyMs: event.latencyMs,
           inputTokens: event.inputTokens,
           outputTokens: event.outputTokens,
