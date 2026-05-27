@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import * as vscode from "vscode"
-import { EditHistoryTracker } from "../editHistoryTracker"
+import { EditHistoryTracker } from "../../src/services/autocomplete/next-edit/editHistoryTracker"
 
 vi.mock("vscode", () => {
   const opens: Array<(doc: unknown) => void> = []

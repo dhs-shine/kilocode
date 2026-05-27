@@ -1,4 +1,4 @@
-import { toMercuryRecentSnippets } from "../recentSnippetsAdapter"
+import { toMercuryRecentSnippets } from "../../src/services/autocomplete/next-edit/recentSnippetsAdapter"
 
 describe("toMercuryRecentSnippets", () => {
   it("returns an empty array when no snippets are supplied", () => {

@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 import * as vscode from "vscode"
-import type { KiloConnectionService } from "../../../cli-backend"
-import { NextEditInlineCompletionProvider, type NextEditProviderDeps } from "../NextEditInlineCompletionProvider"
-import type { NextEditSuggestionManager } from "../NextEditSuggestionManager"
+import type { KiloConnectionService } from "../../src/services/cli-backend"
+import {
+  NextEditInlineCompletionProvider,
+  type NextEditProviderDeps,
+} from "../../src/services/autocomplete/next-edit/NextEditInlineCompletionProvider"
+import type { NextEditSuggestionManager } from "../../src/services/autocomplete/next-edit/NextEditSuggestionManager"
 
 vi.mock("vscode", () => {
   class Position {

@@ -1,5 +1,5 @@
-import { MAX_EDITABLE_REGION_LINES } from "../constants"
-import { computeEditableRegion } from "../editableRegion"
+import { MAX_EDITABLE_REGION_LINES } from "../../src/services/autocomplete/next-edit/constants"
+import { computeEditableRegion } from "../../src/services/autocomplete/next-edit/editableRegion"
 
 describe("computeEditableRegion", () => {
   it("returns the default [-5, +10] window around the cursor", () => {
