@@ -23,7 +23,7 @@ abstract class AbstractSessionPartView(
 
     protected val arrow = JBLabel()
     protected val row = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0))
-    private val bound = mutableListOf<Component>()
+    private val bound = linkedSetOf<Component>()
 
     private val click = object : MouseAdapter() {
         override fun mouseClicked(e: MouseEvent) {
