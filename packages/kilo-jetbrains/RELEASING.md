@@ -1,14 +1,16 @@
 # Releasing the JetBrains Plugin
 
-JetBrains releases use a release PR. The PR is where maintainers review and edit the version and changelog before anything is published.
+JetBrains releases are locked by an immediate `jetbrains/v<version>` tag, then gated by a reviewed release PR. The tag fixes the exact source code that will be published; the PR is where maintainers review and edit the version and changelog before publishing starts.
 
-## Create a Release PR
+The published code comes from `jetbrains/v<version>`. Marketplace and GitHub release notes come from the reviewed changelog merged in the release PR.
+
+## Create Release Tag And PR
 
 1. Open the GitHub Actions workflow:
 
 [https://github.com/Kilo-Org/kilocode/actions/workflows/prepare-jetbrains-release.yml](https://github.com/Kilo-Org/kilocode/actions/workflows/prepare-jetbrains-release.yml)
 
-2. Click **Run workflow**.
+2. Click **Run workflow**. This immediately creates `jetbrains/v<version>` at the current `origin/main` commit, then creates or updates the release PR.
 
 3. Fill the inputs:
 
@@ -32,7 +34,7 @@ version=7.3.13
 
 ## Changelog Range Defaults
 
-The workflow chooses a changelog base automatically:
+The workflow chooses a changelog base automatically and generates notes against the locked release commit:
 
 | Release | Default `from_tag` |
 |---|---|
@@ -40,7 +42,7 @@ The workflow chooses a changelog base automatically:
 | Later RC, e.g. `7.3.13-rc.2` | Previous RC for the same base version. |
 | Stable, e.g. `7.3.13` | Latest stable JetBrains tag, ignoring RCs. |
 
-Use `from_tag` only to override this comparison range.
+Use `from_tag` only to override this comparison range. It does not change the release target commit.
 
 For the first stable JetBrains release, there may be no previous stable tag yet. In that case, pass the last RC or another reviewed JetBrains tag as `from_tag`.
 
@@ -61,15 +63,17 @@ The PR updates:
 
 Review and edit `packages/kilo-jetbrains/CHANGELOG.md` before merging. This changelog entry is rendered into JetBrains `<change-notes>`, so it appears on the Marketplace and inside IntelliJ plugin UI.
 
+The PR can change release metadata such as `packages/kilo-jetbrains/package.json` and `packages/kilo-jetbrains/CHANGELOG.md`, but it does not change the tagged source code that will be built.
+
 ## Merge and Publish
 
-When the release PR is merged, the `tag-jetbrains-release` workflow validates it and creates:
+When the release PR is merged, the `publish-jetbrains` workflow validates the existing tag and release PR markers:
 
 ```text
 jetbrains/v<version>
 ```
 
-That tag triggers the `publish-jetbrains` workflow:
+Then it publishes from that tag:
 
 [https://github.com/Kilo-Org/kilocode/actions/workflows/publish-jetbrains.yml](https://github.com/Kilo-Org/kilocode/actions/workflows/publish-jetbrains.yml)
 
@@ -80,7 +84,7 @@ Publishing behavior:
 | `x.y.z-rc.n` | `eap` | Prerelease |
 | `x.y.z` | default | Stable release |
 
-The workflow verifies, signs, and publishes the plugin ZIP, then uploads the ZIP to the matching GitHub Release.
+The workflow checks out `jetbrains/v<version>` for verification, signing, and Marketplace publishing. It overlays the reviewed `packages/kilo-jetbrains/CHANGELOG.md` from the merged PR before rendering release notes and before `publishPlugin`, so Marketplace metadata and the GitHub Release use the reviewed changelog.
 
 ## Installing RC Builds
 
@@ -98,22 +102,28 @@ https://plugins.jetbrains.com/plugins/list?channel=eap&pluginId=28350
 
 ## Manual Recovery
 
-If the PR was merged but the tag workflow failed after validation, create the tag manually at the merge commit:
+If the prepare workflow created the tag but failed before creating or updating the PR, rerun the workflow for the same version. It reuses the tag if it still points to the same locked commit.
+
+If publish validation says the tag points to the wrong SHA, stop and inspect manually. Do not move, delete, or recreate release tags casually.
+
+If publish failed after merge, rerun the failed `publish-jetbrains` workflow if the failure happened before Marketplace accepted the version. Marketplace may reject a duplicate version after a successful publish.
+
+If Marketplace publishing succeeded but GitHub Release upload failed, manually create or edit the GitHub Release for the existing tag. Use the reviewed release notes from `packages/kilo-jetbrains/CHANGELOG.md` in the merged release PR.
+
+If the immediate tag must be created manually because the prepare workflow could not push it, create it at the intended locked `origin/main` commit before merging the release PR:
 
 ```bash
 git fetch origin main
-git tag jetbrains/v7.3.13 <merge-sha>
+git tag jetbrains/v7.3.13 <locked-main-sha>
 git push origin jetbrains/v7.3.13
 ```
-
-Do not create a tag before the release PR is merged unless intentionally bypassing the release-PR flow.
 
 ## Required GitHub Actions Secrets
 
 | Secret | Purpose |
 |---|---|
-| `KILO_MAINTAINER_APP_ID` | GitHub App ID used to create/update release PRs and tags. |
-| `KILO_MAINTAINER_APP_SECRET` | GitHub App private key used to create/update release PRs and tags. |
+| `KILO_MAINTAINER_APP_ID` | GitHub App ID used to create/update release PRs and immediate release tags. |
+| `KILO_MAINTAINER_APP_SECRET` | GitHub App private key used to create/update release PRs and immediate release tags. |
 | `JETBRAINS_MARKETPLACE_TOKEN` | Marketplace API token for publishing. |
 | `JETBRAINS_CERTIFICATE_CHAIN` | PEM certificate chain for plugin signing. |
 | `JETBRAINS_PRIVATE_KEY` | PEM private key for plugin signing. |

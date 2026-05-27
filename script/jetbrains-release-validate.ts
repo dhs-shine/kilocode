@@ -2,6 +2,7 @@
 // kilocode_change - new file
 
 import { $ } from "bun"
+import { appendFileSync } from "node:fs"
 import semver from "semver"
 import { parseArgs } from "util"
 
@@ -17,7 +18,10 @@ const { values } = parseArgs({
 
 if (values.help) {
   console.log(`
-Usage: bun script/jetbrains-release-tag.ts --pr <number> [--dry]
+Usage: bun script/jetbrains-release-validate.ts --pr <number> [--dry]
+
+Validates a merged JetBrains release PR and the pre-created immutable release tag.
+This helper never creates, moves, deletes, or pushes tags.
 `)
   process.exit(0)
 }
@@ -40,11 +44,25 @@ if (!data.headRefName.startsWith("jetbrains/release/")) throw new Error("PR head
 if (data.isCrossRepository) throw new Error("JetBrains release PR must come from this repository")
 if (!data.mergeCommit?.oid) throw new Error("PR has no merge commit")
 
-const ver = marker(data.body, "JetBrains-Version") ?? data.headRefName.replace(/^jetbrains\/release\/v/, "")
-const tag = marker(data.body, "JetBrains-Tag") ?? `jetbrains/v${ver}`
+const ver = need(data.body, "JetBrains-Version")
+const kind = need(data.body, "JetBrains-Kind")
+const tag = need(data.body, "JetBrains-Tag")
+const commit = need(data.body, "JetBrains-Commit")
+
 if (!semver.valid(ver)) throw new Error(`Invalid JetBrains version: ${ver}`)
+if (kind !== "rc" && kind !== "stable") throw new Error(`Invalid JetBrains kind: ${kind}`)
+if (kind === "rc" && !/^\d+\.\d+\.\d+-rc\.\d+$/.test(ver)) throw new Error("RC versions must match x.y.z-rc.n")
+if (kind === "stable" && !/^\d+\.\d+\.\d+$/.test(ver)) throw new Error("Stable versions must match x.y.z")
 if (tag !== `jetbrains/v${ver}`) throw new Error(`Tag ${tag} does not match version ${ver}`)
 if (!/^jetbrains\/v\d+\.\d+\.\d+(-rc\.\d+)?$/.test(tag)) throw new Error(`Invalid JetBrains tag: ${tag}`)
+if (!/^[0-9a-f]{40}$/i.test(commit)) throw new Error(`Invalid JetBrains commit: ${commit}`)
+
+await $`git fetch origin --tags`
+const existing = await $`git rev-parse -q --verify ${`refs/tags/${tag}`}`.nothrow()
+if (existing.exitCode !== 0) throw new Error(`${tag} does not exist`)
+
+const sha = (await $`git rev-list -n 1 ${tag}`.text()).trim()
+if (sha !== commit) throw new Error(`${tag} points at ${sha}, expected ${commit}`)
 
 const pkg = await Bun.file("packages/kilo-jetbrains/package.json").json()
 if (pkg.version !== ver) throw new Error(`packages/kilo-jetbrains/package.json version is ${pkg.version}, expected ${ver}`)
@@ -52,27 +70,30 @@ if (pkg.version !== ver) throw new Error(`packages/kilo-jetbrains/package.json v
 const changelog = await Bun.file("packages/kilo-jetbrains/CHANGELOG.md").text()
 if (!changelog.includes(`## [${ver}]`)) throw new Error(`CHANGELOG.md is missing section for ${ver}`)
 
-await $`git fetch origin --tags`
-const existing = await $`git rev-parse -q --verify ${`refs/tags/${tag}`}`.nothrow()
-if (existing.exitCode === 0) {
-  const sha = (await $`git rev-list -n 1 ${tag}`.text()).trim()
-  if (sha === data.mergeCommit.oid) {
-    console.log(`${tag} already exists at ${sha}`)
-    process.exit(0)
-  }
-  throw new Error(`${tag} already exists at ${sha}, expected ${data.mergeCommit.oid}`)
+const marketplace = kind === "rc" ? "eap" : "default"
+const cli = kind === "rc" ? "rc" : "latest"
+const output = {
+  version: ver,
+  kind,
+  tag,
+  commit,
+  merge: data.mergeCommit.oid,
+  marketplace_channel: marketplace,
+  cli_channel: cli,
 }
 
-console.log(`Creating ${tag} at ${data.mergeCommit.oid}`)
-if (values.dry) {
-  console.log("Dry run complete. No tag was created.")
-  process.exit(0)
+for (const [key, value] of Object.entries(output)) console.log(`${key}=${value}`)
+if (process.env.GITHUB_OUTPUT && !values.dry) {
+  appendFileSync(process.env.GITHUB_OUTPUT, Object.entries(output).map(([key, value]) => `${key}=${value}\n`).join(""))
 }
-
-await $`git tag ${tag} ${data.mergeCommit.oid}`
-await $`git push origin ${tag}`
 
 function marker(body: string, key: string) {
   const line = body.split(/\r?\n/).find((item) => item.startsWith(`${key}:`))
   return line?.slice(key.length + 1).trim()
+}
+
+function need(body: string, key: string) {
+  const value = marker(body, key)
+  if (!value) throw new Error(`PR body is missing ${key}`)
+  return value
 }

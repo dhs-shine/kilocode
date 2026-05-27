@@ -45,24 +45,28 @@ await $`git fetch origin main --tags`
 
 const tag = `jetbrains/v${ver}`
 const branch = `jetbrains/release/v${ver}`
+const sha = (await $`git rev-parse origin/main`.text()).trim()
 const from = values["from-tag"] ?? (await base(ver, kind))
-const notes = await release(from, tag)
+const state = await lock(tag, sha, dry)
+const notes = await release(from, tag, sha)
 const entry = section(ver, notes)
 
 console.log(`JetBrains ${kind} release PR`)
 console.log(`version: ${ver}`)
 console.log(`base: ${from}`)
 console.log(`tag: ${tag}`)
+console.log(`commit: ${sha}`)
 console.log(`branch: ${branch}`)
+console.log(`tag state: ${state}`)
 
 if (dry) {
   console.log("\nGenerated changelog entry:\n")
   console.log(entry)
-  console.log("\nDry run complete. No branch, commit, push, or PR was created.")
+  console.log("\nDry run complete. No tag, branch, commit, push, or PR was created.")
   process.exit(0)
 }
 
-await $`git checkout -B ${branch} origin/main`
+await $`git checkout -B ${branch} ${sha}`
 await writepkg(ver)
 await writelog(ver, entry)
 await $`git add packages/kilo-jetbrains/package.json packages/kilo-jetbrains/CHANGELOG.md`
@@ -72,7 +76,7 @@ if (changed.exitCode !== 0) await $`git commit -m ${`release(jetbrains): v${ver}
 
 await $`git push --force-with-lease origin ${branch}`
 
-const text = body(ver, kind, from, tag, notes)
+const text = body(ver, kind, from, tag, sha, notes)
 const view = await $`gh pr view ${branch} --repo ${repo} --json number --jq .number`.nothrow()
 if (view.exitCode === 0 && view.stdout.toString().trim()) {
   const num = view.stdout.toString().trim()
@@ -120,13 +124,29 @@ async function base(ver: string, kind: "rc" | "stable") {
   return hit.tag
 }
 
-async function release(from: string, tag: string) {
-  const res = await $`gh api repos/${repo}/releases/generate-notes --method POST -f tag_name=${tag} -f target_commitish=main -f previous_tag_name=${from} --jq .body`
+async function lock(tag: string, sha: string, dry: boolean) {
+  const res = await $`git rev-parse -q --verify ${`refs/tags/${tag}`}`.nothrow()
+  if (res.exitCode === 0) {
+    const got = (await $`git rev-list -n 1 ${tag}`.text()).trim()
+    if (got === sha) return "exists"
+    throw new Error(`${tag} already exists at ${got}, expected ${sha}`)
+  }
+  if (dry) return "would-create"
+  await $`git tag ${tag} ${sha}`
+  await $`git push origin ${tag}`
+  return "created"
+}
+
+async function release(from: string, tag: string, sha: string) {
+  const res = await $`gh api repos/${repo}/releases/generate-notes --method POST -f tag_name=${tag} -f target_commitish=${sha} -f previous_tag_name=${from} --jq .body`
     .quiet()
     .nothrow()
   if (res.exitCode === 0) return res.stdout.toString().trim()
 
-  const text = await $`git log --format=%s ${from}..origin/main`.text()
+  const base = await $`git rev-parse -q --verify ${from}`.nothrow()
+  if (base.exitCode !== 0) throw new Error(`Previous JetBrains tag not found: ${from}`)
+
+  const text = await $`git log --format=%s ${from}..${sha}`.text()
   const lines = text
     .split(/\r?\n/)
     .map((item) => item.trim())
@@ -197,7 +217,7 @@ function regex(ver: string) {
   return new RegExp(`\\n?## \\[${safe}\\][\\s\\S]*?(?=\\n## \\[|$)`)
 }
 
-function body(ver: string, kind: string, from: string, tag: string, notes: string) {
+function body(ver: string, kind: string, from: string, tag: string, sha: string, notes: string) {
   return `## Summary
 - Prepare JetBrains ${kind} release ${ver}.
 - Review and edit \`packages/kilo-jetbrains/CHANGELOG.md\` before merging.
@@ -206,6 +226,7 @@ JetBrains-Version: ${ver}
 JetBrains-Kind: ${kind}
 JetBrains-From-Tag: ${from}
 JetBrains-Tag: ${tag}
+JetBrains-Commit: ${sha}
 
 ## Generated Notes
 ${notes || "No notable changes."}

@@ -49,7 +49,7 @@ jobs:
           kilo-maintainer-app-id: ${{ secrets.KILO_MAINTAINER_APP_ID }}
           kilo-maintainer-app-secret: ${{ secrets.KILO_MAINTAINER_APP_SECRET }}
 
-      - name: Create or update release PR
+      - name: Create release tag and PR
         run: |
           args=(--kind "$KIND" --version "$VERSION")
           if [[ -n "$FROM_TAG" ]]; then
