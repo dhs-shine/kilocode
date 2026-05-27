@@ -197,11 +197,15 @@ export class AutocompleteServiceManager {
       this.inlineCompletionProviderKind !== null &&
       this.inlineCompletionProviderKind !== desiredKind
     ) {
+      if (this.inlineCompletionProviderKind === "next-edit") this.nextEditSuggestionManager.clear()
       this.inlineCompletionProviderDisposable?.dispose()
       this.inlineCompletionProviderDisposable = null
       this.inlineCompletionProviderKind = null
     }
 
+    if (!shouldBeRegistered && this.inlineCompletionProviderKind === "next-edit") {
+      this.nextEditSuggestionManager.clear()
+    }
     const isRegistered = this.inlineCompletionProviderDisposable !== null
     if (shouldBeRegistered === isRegistered) return
 
