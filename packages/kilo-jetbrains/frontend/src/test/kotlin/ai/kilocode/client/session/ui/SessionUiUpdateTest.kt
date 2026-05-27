@@ -135,6 +135,7 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
         assertNotNull(gv)
         assertTrue(gv is ai.kilocode.client.session.views.base.GenericView)
         assertTrue((gv as ai.kilocode.client.session.views.base.GenericView).labelText().contains("snapshot"))
+        assertNull(gv.border)
     }
 
     // ------ silent part types ------

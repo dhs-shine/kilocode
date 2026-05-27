@@ -13,7 +13,7 @@ import com.intellij.ui.components.JBLabel
  * confusing empty gaps), this shows a dim label with the raw type name.
  * This makes it easy to spot new part types that need a proper renderer.
  */
-class GenericView(content: Generic) : PrimarySessionPartView(JBLabel("[${content.type}]"), JBLabel()) {
+class GenericView(content: Generic) : SecondarySessionPartView(JBLabel("[${content.type}]"), JBLabel()) {
 
     override val contentId: String = content.id
 

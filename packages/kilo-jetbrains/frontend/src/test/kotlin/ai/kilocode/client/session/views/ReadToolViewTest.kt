@@ -45,13 +45,17 @@ class ReadToolViewTest : BasePlatformTestCase() {
         assertTrue(view.bodyVisible())
     }
 
-    fun `test view factory routes read to read tool view`() {
+    fun `test view factory routes read kind tools to read tool view`() {
         assertTrue(ViewFactory.create(tool(), openFile = {}) is ReadToolView)
+        assertTrue(ViewFactory.create(Tool("p2", "grep", toolKind("grep")), openFile = {}) is ReadToolView)
+        assertTrue(ViewFactory.create(Tool("p3", "glob", toolKind("glob")), openFile = {}) is ReadToolView)
     }
 
-    fun `test canRender matches read tools only`() {
+    fun `test canRender matches read kind tools only`() {
         assertTrue(ReadToolView.canRender(tool()))
-        assertFalse(ReadToolView.canRender(Tool("p2", "grep", toolKind("grep"))))
+        assertTrue(ReadToolView.canRender(Tool("p2", "grep", toolKind("grep"))))
+        assertTrue(ReadToolView.canRender(Tool("p3", "glob", toolKind("glob"))))
+        assertFalse(ReadToolView.canRender(Tool("p4", "bash", toolKind("bash"))))
     }
 
     private fun tool() = Tool("p1", "read", toolKind("read")).also { it.state = ToolExecState.COMPLETED }

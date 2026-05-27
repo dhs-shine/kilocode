@@ -2,6 +2,7 @@ package ai.kilocode.client.session.views.base
 
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import com.intellij.util.ui.JBUI
+import java.awt.Color
 import javax.swing.JComponent
 
 abstract class PrimarySessionPartView(
@@ -22,4 +23,9 @@ abstract class PrimarySessionPartView(
     }
 
     override fun hoverColor(value: Boolean) = if (value) SessionUiStyle.View.headerHover() else SessionUiStyle.View.header()
+
+    override fun applyHover(value: Boolean, color: Color) {
+        border = if (value) SessionUiStyle.View.card(SessionUiStyle.View.hoverLine()) else SessionUiStyle.View.card()
+        repaint()
+    }
 }

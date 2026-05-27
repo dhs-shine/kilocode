@@ -94,10 +94,13 @@ abstract class AbstractSessionPartView(
 
     protected open fun hoverColor(value: Boolean): Color? = null
 
+    protected open fun applyHover(value: Boolean, color: Color) {}
+
     private fun setHover(value: Boolean) {
         val color = hoverColor(value) ?: return
         if (row.background?.rgb == color.rgb) return
         row.background = color
+        applyHover(value, color)
         row.repaint()
     }
 

@@ -6,6 +6,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
+import ai.kilocode.client.session.model.ToolKind
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.PrimarySessionPartView
@@ -141,7 +142,7 @@ class ReadToolView(tool: Tool, private val parts: ToolParts = toolParts(tool)) :
     SecondarySessionPartView(parts.header, parts.scroll) {
 
     companion object {
-        fun canRender(tool: Tool): Boolean = tool.name == "read"
+        fun canRender(tool: Tool): Boolean = tool.kind == ToolKind.READ
     }
 
     override val contentId: String = tool.id
