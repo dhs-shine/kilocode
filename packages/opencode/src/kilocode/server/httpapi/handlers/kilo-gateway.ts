@@ -187,7 +187,6 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       })
 
       const response = yield* Effect.promise(async () => {
-        console.info(`[EDIT] request provider=${target.provider} model=${target.model} chars=${content.length}`)
         return fetch(target.url, {
           method: "POST",
           headers: {

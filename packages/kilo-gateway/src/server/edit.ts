@@ -32,7 +32,6 @@ export function createEditHandler(Auth: Auth) {
     // structured editor context.
     const content = buildMercuryEditPrompt(context as MercuryEditContext)
     const signal = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(EDIT_TIMEOUT_MS)])
-    console.info(`[EDIT] request provider=${target.provider} model=${target.model} url=${target.url} chars=${content.length}`)
 
     let response: Response
     try {

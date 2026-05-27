@@ -68,10 +68,7 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     if (this.deps.suggestionManager?.isPending()) return undefined
 
     // Never send an ignored file (.env, secrets, etc.) to the model.
-    if (this.deps.isFileAllowed && !(await this.deps.isFileAllowed(document.uri.fsPath))) {
-      nesLog("skip — file is gitignore/kilocodeignore-excluded")
-      return undefined
-    }
+    if (this.deps.isFileAllowed && !(await this.deps.isFileAllowed(document.uri.fsPath))) return undefined
 
     const isExplicit = context.triggerKind === vscode.InlineCompletionTriggerKind.Invoke
     if (!isExplicit) {
