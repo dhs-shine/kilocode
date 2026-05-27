@@ -116,10 +116,11 @@ export class AutocompleteServiceManager {
       getRecentlyViewedSnippets: () => {
         // Reuse the LRU populated by the classic provider — keeps a single
         // RecentlyVisitedRangesService instance instead of double-tracking.
-        // Snippets are filtered against the ignore controller before sending.
+        // Suppress snippets until access checks are available, then include
+        // only content explicitly approved by the ignore controller.
         const raw = this.inlineCompletionProvider.recentlyVisitedRangesService.getSnippets()
         const ignore = this.ignoreControllerSync
-        const allowed = ignore ? raw.filter((s) => ignore.validateAccess(s.filepath)) : raw
+        const allowed = ignore ? raw.filter((s) => ignore.validateAccess(s.filepath)) : []
         return toMercuryRecentSnippets(allowed)
       },
       onFatalError: (status) => this.handleFatalAutocompleteError(status),

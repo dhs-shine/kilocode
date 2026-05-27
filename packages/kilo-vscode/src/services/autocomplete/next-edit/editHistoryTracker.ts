@@ -7,7 +7,7 @@ const DEFAULT_MAX_DIFFS = 5
 type Options = {
   debounceMs?: number
   maxDiffs?: number
-  isFileAllowed?: (fsPath: string) => Promise<boolean>
+  isFileAllowed: (fsPath: string) => Promise<boolean>
 }
 
 type Diff = {
@@ -30,7 +30,7 @@ export class EditHistoryTracker implements vscode.Disposable {
   private readonly diffs: Diff[] = []
   private readonly subscriptions: vscode.Disposable[] = []
 
-  constructor(private readonly options: Options = {}) {
+  constructor(private readonly options: Options) {
     const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
 
     // Seed snapshots on open so the FIRST edit in a freshly-opened file is
@@ -152,8 +152,9 @@ export class EditHistoryTracker implements vscode.Disposable {
   }
 
   private async allowed(key: string): Promise<boolean> {
-    if (!this.options.isFileAllowed) return true
-    return this.options.isFileAllowed(key).catch(() => false)
+    const allow = this.options.isFileAllowed
+    if (!allow) return false
+    return allow(key).catch(() => false)
   }
 
   private reject(key: string): void {

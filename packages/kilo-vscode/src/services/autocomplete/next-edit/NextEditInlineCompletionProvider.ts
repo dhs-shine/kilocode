@@ -16,7 +16,7 @@ export interface NextEditProviderDeps {
   /** Optional source of recently-viewed snippets (kilocode's VisibleCodeTracker can adapt to this). */
   getRecentlyViewedSnippets?: (document: vscode.TextDocument) => MercuryRecentSnippet[]
   /** Returns false for files that must not be sent to a server (.env etc). */
-  isFileAllowed?: (fsPath: string) => Promise<boolean>
+  isFileAllowed: (fsPath: string) => Promise<boolean>
   /** Telemetry hook fired on every suggestion result. */
   onSuggestion?: (event: NextEditSuggestionEvent) => void
   onFatalError?: (status: number | null) => void
@@ -67,8 +67,8 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     if (document.uri.scheme !== "file") return undefined
     if (this.deps.suggestionManager?.isPending()) return undefined
 
-    // Never send an ignored file (.env, secrets, etc.) to the model.
-    if (this.deps.isFileAllowed && !(await this.deps.isFileAllowed(document.uri.fsPath))) return undefined
+    // Never send a file unless the access policy explicitly approves it.
+    if (!(await this.allowed(document.uri.fsPath))) return undefined
 
     const isExplicit = context.triggerKind === vscode.InlineCompletionTriggerKind.Invoke
     if (!isExplicit) {
@@ -93,6 +93,12 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     } catch (err) {
       return this.handleError(err)
     }
+  }
+
+  private async allowed(path: string): Promise<boolean> {
+    const allow = this.deps.isFileAllowed
+    if (!allow) return false
+    return allow(path).catch(() => false)
   }
 
   private swapAbortController(token: vscode.CancellationToken): AbortController {

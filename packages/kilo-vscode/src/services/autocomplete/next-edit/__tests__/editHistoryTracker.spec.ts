@@ -34,13 +34,14 @@ function doc(path: string, initial: string): Doc {
 
 describe("EditHistoryTracker", () => {
   it("retains chronological edits across files for Mercury context", async () => {
-    const tracker = new EditHistoryTracker()
+    const tracker = new EditHistoryTracker({ isFileAllowed: async () => true })
     const a = doc("/workspace/a.ts", "const a = 1\n")
     const b = doc("/workspace/b.ts", "const b = 1\n")
     const open = (vscode.workspace as unknown as { open(doc: vscode.TextDocument): void }).open
 
     open(a)
     open(b)
+    await Promise.resolve()
     await Promise.resolve()
     await Promise.resolve()
     a.setText("const a = 2\n")
@@ -55,6 +56,21 @@ describe("EditHistoryTracker", () => {
     expect(diffs[1]).toContain("b.ts")
     expect(diffs[1]).toContain("+const b = 2")
 
+    tracker.dispose()
+  })
+
+  it("does not retain edits when the access policy is missing at runtime", async () => {
+    const tracker = new EditHistoryTracker({} as { isFileAllowed: (path: string) => Promise<boolean> })
+    const a = doc("/workspace/a.ts", "const a = 1\n")
+    const open = (vscode.workspace as unknown as { open(doc: vscode.TextDocument): void }).open
+
+    open(a)
+    await Promise.resolve()
+    await Promise.resolve()
+    a.setText("const a = 2\n")
+    await tracker.flush(a)
+
+    expect(await tracker.getRecentDiffs()).toEqual([])
     tracker.dispose()
   })
 

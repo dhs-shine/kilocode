@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import * as vscode from "vscode"
 import type { KiloConnectionService } from "../../../cli-backend"
-import { NextEditInlineCompletionProvider } from "../NextEditInlineCompletionProvider"
+import { NextEditInlineCompletionProvider, type NextEditProviderDeps } from "../NextEditInlineCompletionProvider"
 import type { NextEditSuggestionManager } from "../NextEditSuggestionManager"
 
 vi.mock("vscode", () => {
@@ -55,14 +55,51 @@ function doc(text: string): vscode.TextDocument {
       range: { end: new vscode.Position(line, lines[line].length) },
     }),
     getText: () => text,
+    uri: { fsPath: "/workspace/test.ts", scheme: "file" },
   } as unknown as vscode.TextDocument
 }
 
 describe("NextEditInlineCompletionProvider", () => {
+  it("does not send a document when the access policy is missing at runtime", async () => {
+    const connection = { getClientAsync: vi.fn() }
+    const provider = new NextEditInlineCompletionProvider({ connectionService: connection } as unknown as NextEditProviderDeps)
+
+    const out = await provider.provideInlineCompletionItems(
+      doc("const value = 1"),
+      new vscode.Position(0, 0),
+      {} as vscode.InlineCompletionContext,
+      {} as vscode.CancellationToken,
+    )
+
+    expect(out).toBeUndefined()
+    expect(connection.getClientAsync).not.toHaveBeenCalled()
+    provider.dispose()
+  })
+
+  it("does not send a document when the access policy fails", async () => {
+    const connection = { getClientAsync: vi.fn() }
+    const provider = new NextEditInlineCompletionProvider({
+      connectionService: connection as unknown as KiloConnectionService,
+      isFileAllowed: async () => Promise.reject(new Error("unavailable")),
+    })
+
+    const out = await provider.provideInlineCompletionItems(
+      doc("const value = 1"),
+      new vscode.Position(0, 0),
+      {} as vscode.InlineCompletionContext,
+      {} as vscode.CancellationToken,
+    )
+
+    expect(out).toBeUndefined()
+    expect(connection.getClientAsync).not.toHaveBeenCalled()
+    provider.dispose()
+  })
+
   it("stashes same-line rewrites before the cursor for decorated acceptance", () => {
     const mgr = { clear: vi.fn(), setPending: vi.fn() }
     const provider = new NextEditInlineCompletionProvider({
       connectionService: {} as KiloConnectionService,
+      isFileAllowed: async () => true,
       suggestionManager: mgr as unknown as NextEditSuggestionManager,
     })
     const text = "const oldName = make()"
@@ -90,6 +127,7 @@ describe("NextEditInlineCompletionProvider", () => {
     const mgr = { clear: vi.fn(), setPending: vi.fn() }
     const provider = new NextEditInlineCompletionProvider({
       connectionService: {} as KiloConnectionService,
+      isFileAllowed: async () => true,
       suggestionManager: mgr as unknown as NextEditSuggestionManager,
     })
 
@@ -111,6 +149,7 @@ describe("NextEditInlineCompletionProvider", () => {
     const mgr = { clear: vi.fn(), setPending: vi.fn() }
     const provider = new NextEditInlineCompletionProvider({
       connectionService: {} as KiloConnectionService,
+      isFileAllowed: async () => true,
       suggestionManager: mgr as unknown as NextEditSuggestionManager,
     })
 
