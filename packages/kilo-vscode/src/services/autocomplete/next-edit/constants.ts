@@ -1,28 +1,8 @@
 /**
- * Sentinel tokens used to template the prompt for Mercury Edit 2 via the
- * Inception `/v1/edit/completions` endpoint. The tag set is defined by the
- * model and must be reproduced verbatim — see
- * https://docs.inceptionlabs.ai/capabilities/next-edit
- */
-
-export const MERCURY_RECENTLY_VIEWED_CODE_SNIPPETS_OPEN = "<|recently_viewed_code_snippets|>"
-export const MERCURY_RECENTLY_VIEWED_CODE_SNIPPETS_CLOSE = "<|/recently_viewed_code_snippets|>"
-export const MERCURY_RECENTLY_VIEWED_CODE_SNIPPET_OPEN = "<|recently_viewed_code_snippet|>"
-export const MERCURY_RECENTLY_VIEWED_CODE_SNIPPET_CLOSE = "<|/recently_viewed_code_snippet|>"
-export const MERCURY_CURRENT_FILE_CONTENT_OPEN = "<|current_file_content|>"
-export const MERCURY_CURRENT_FILE_CONTENT_CLOSE = "<|/current_file_content|>"
-export const MERCURY_CODE_TO_EDIT_OPEN = "<|code_to_edit|>"
-export const MERCURY_CODE_TO_EDIT_CLOSE = "<|/code_to_edit|>"
-export const MERCURY_EDIT_DIFF_HISTORY_OPEN = "<|edit_diff_history|>"
-export const MERCURY_EDIT_DIFF_HISTORY_CLOSE = "<|/edit_diff_history|>"
-export const MERCURY_CURSOR = "<|cursor|>"
-
-/** Token Mercury Edit uses to distinguish next-edit calls from regular chat. */
-export const MERCURY_UNIQUE_TOKEN = "<|!@#IS_NEXT_EDIT!@#|>"
-
-/**
- * Per docs: editable region size dominates output latency. Centering around
- * the cursor with [-5, +10] is the recommended starting point.
+ * Editable-region sizing for Next Edit. Per the Mercury docs, region size
+ * dominates output latency; centering [-5, +10] around the cursor is the
+ * recommended starting point. (The Mercury prompt sentinel tokens live in the
+ * gateway — see packages/kilo-gateway/src/edit-prompt.ts.)
  */
 export const DEFAULT_EDITABLE_REGION_TOP_MARGIN = 5
 export const DEFAULT_EDITABLE_REGION_BOTTOM_MARGIN = 10

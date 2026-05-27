@@ -7783,10 +7783,20 @@ export type KiloFimResponse = KiloFimResponses[keyof KiloFimResponses]
 
 export type KiloEditData = {
   body?: {
-    content: string
     provider?: string
     model?: string
     maxTokens?: number
+    currentFilePath: string
+    currentFileContent: string
+    cursorLine: number
+    cursorCharacter: number
+    editableRegionStartLine: number
+    editableRegionEndLine: number
+    recentlyViewedSnippets: Array<{
+      filepath: string
+      content: string
+    }>
+    editDiffHistory: Array<string>
   }
   path?: never
   query?: {

@@ -1,6 +1,5 @@
 import type { KiloConnectionService } from "../../cli-backend"
 import { nesLog, nesWarn } from "./log"
-import { buildMercuryEditPrompt } from "./mercuryPromptTemplate"
 import type { MercuryEditRequestContext, MercuryEditSuggestion } from "./types"
 
 const MERCURY_MAX_TOKENS = 512
@@ -25,20 +24,27 @@ export class MercuryEditProvider {
   constructor(private readonly options: MercuryEditProviderOptions) {}
 
   async suggest(ctx: MercuryEditRequestContext): Promise<MercuryEditSuggestion | null> {
-    const userContent = buildMercuryEditPrompt(ctx)
     const start = Date.now()
     nesLog(
-      `-> /kilo/edit model=${MODEL_ID} promptChars=${userContent.length} region=[${ctx.editableRegionStartLine},${ctx.editableRegionEndLine}] diffs=${ctx.editDiffHistory.length} snippets=${ctx.recentlyViewedSnippets.length}`,
+      `-> /kilo/edit model=${MODEL_ID} region=[${ctx.editableRegionStartLine},${ctx.editableRegionEndLine}] diffs=${ctx.editDiffHistory.length} snippets=${ctx.recentlyViewedSnippets.length}`,
     )
 
     const client = await this.options.connectionService.getClientAsync()
     try {
+      // Send structured editor context; the gateway assembles the Mercury prompt.
       const { data, error, response } = await client.kilo.edit(
         {
-          content: userContent,
           provider: PROVIDER_ID,
           model: MODEL_ID,
           maxTokens: MERCURY_MAX_TOKENS,
+          currentFilePath: ctx.currentFilePath,
+          currentFileContent: ctx.currentFileContent,
+          cursorLine: ctx.cursorLine,
+          cursorCharacter: ctx.cursorCharacter,
+          editableRegionStartLine: ctx.editableRegionStartLine,
+          editableRegionEndLine: ctx.editableRegionEndLine,
+          recentlyViewedSnippets: ctx.recentlyViewedSnippets,
+          editDiffHistory: ctx.editDiffHistory,
         },
         { signal: this.options.signal, throwOnError: false },
       )

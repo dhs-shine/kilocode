@@ -70,6 +70,9 @@ export class AutocompleteServiceManager {
   private inlineCompletionProviderKind: "classic" | "next-edit" | null = null
   private unsubscribeState: (() => void) | null = null
   private unsubscribeEvent: (() => void) | null = null
+  // Resolved copy of the classic provider's ignore controller for synchronous
+  // snippet filtering. Null until the async initialize() resolves.
+  private ignoreControllerSync: { validateAccess(fsPath: string): boolean } | null = null
 
   constructor(context: vscode.ExtensionContext, connectionService: KiloConnectionService) {
     if (AutocompleteServiceManager._instance) {
@@ -96,16 +99,27 @@ export class AutocompleteServiceManager {
       new AutocompleteTelemetry(),
       (status) => this.handleFatalAutocompleteError(status),
     )
+    // Cache the resolved ignore controller for synchronous snippet filtering.
+    void this.inlineCompletionProvider.ignoreController.then((ic) => {
+      this.ignoreControllerSync = ic
+    })
 
     this.nextEditSuggestionManager = new NextEditSuggestionManager()
     this.nextEditProvider = new NextEditInlineCompletionProvider({
       connectionService,
       suggestionManager: this.nextEditSuggestionManager,
+      isFileAllowed: async (fsPath) => {
+        const ignore = await this.inlineCompletionProvider.ignoreController
+        return ignore.validateAccess(fsPath)
+      },
       getRecentlyViewedSnippets: () => {
         // Reuse the LRU populated by the classic provider — keeps a single
         // RecentlyVisitedRangesService instance instead of double-tracking.
+        // Snippets are filtered against the ignore controller before sending.
         const raw = this.inlineCompletionProvider.recentlyVisitedRangesService.getSnippets()
-        return toMercuryRecentSnippets(raw)
+        const ignore = this.ignoreControllerSync
+        const allowed = ignore ? raw.filter((s) => ignore.validateAccess(s.filepath)) : raw
+        return toMercuryRecentSnippets(allowed)
       },
       onFatalError: (status) => this.handleFatalAutocompleteError(status),
       onSuggestion: (event) => {

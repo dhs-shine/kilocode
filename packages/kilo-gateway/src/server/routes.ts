@@ -341,8 +341,8 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
       describeRoute({
         summary: "Next Edit completion",
         description:
-          "Proxy a Mercury-style Next Edit request. The user supplies the already-templated " +
-          "sentinel-tagged prompt in `content`; the gateway forwards to the upstream edit endpoint.",
+          "Proxy a Mercury-style Next Edit request. The client supplies structured editor " +
+          "context; the gateway assembles the sentinel-tagged prompt and forwards to the upstream edit endpoint.",
         operationId: "kilo.edit",
         responses: {
           200: {
@@ -359,10 +359,17 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
       validator(
         "json",
         z.object({
-          content: z.string(),
           provider: z.string().optional(),
           model: z.string().optional(),
           maxTokens: z.number().optional(),
+          currentFilePath: z.string(),
+          currentFileContent: z.string(),
+          cursorLine: z.number(),
+          cursorCharacter: z.number(),
+          editableRegionStartLine: z.number(),
+          editableRegionEndLine: z.number(),
+          recentlyViewedSnippets: z.array(z.object({ filepath: z.string(), content: z.string() })),
+          editDiffHistory: z.array(z.string()),
         }),
       ),
       createEditHandler(Auth),

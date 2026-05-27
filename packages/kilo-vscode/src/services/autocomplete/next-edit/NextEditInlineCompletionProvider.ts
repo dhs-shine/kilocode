@@ -15,6 +15,8 @@ export interface NextEditProviderDeps {
   connectionService: KiloConnectionService
   /** Optional source of recently-viewed snippets (kilocode's VisibleCodeTracker can adapt to this). */
   getRecentlyViewedSnippets?: (document: vscode.TextDocument) => MercuryRecentSnippet[]
+  /** Returns false for files that must not be sent to a server (.env etc). */
+  isFileAllowed?: (fsPath: string) => Promise<boolean>
   /** Telemetry hook fired on every suggestion result. */
   onSuggestion?: (event: NextEditSuggestionEvent) => void
   onFatalError?: (status: number | null) => void
@@ -64,6 +66,12 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
   ): Promise<vscode.InlineCompletionItem[] | vscode.InlineCompletionList | undefined> {
     if (document.uri.scheme !== "file") return undefined
     if (this.deps.suggestionManager?.isPending()) return undefined
+
+    // Never send an ignored file (.env, secrets, etc.) to the model.
+    if (this.deps.isFileAllowed && !(await this.deps.isFileAllowed(document.uri.fsPath))) {
+      nesLog("skip — file is gitignore/kilocodeignore-excluded")
+      return undefined
+    }
 
     const isExplicit = context.triggerKind === vscode.InlineCompletionTriggerKind.Invoke
     if (!isExplicit) {

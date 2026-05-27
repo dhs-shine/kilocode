@@ -1,4 +1,5 @@
 import { DIRECT_EDIT_ENV, extractFencedBody, resolveEditTarget, type EditTarget, type EditUpstreamResponse } from "../edit.js"
+import { buildMercuryEditPrompt, type MercuryEditContext } from "../edit-prompt.js"
 import type { DirectAutocompleteProviderID } from "../autocomplete.js"
 import type { AuthStore } from "./handlers.js"
 
@@ -15,7 +16,7 @@ async function getProviderKey(Auth: Auth, provider: DirectAutocompleteProviderID
 
 export function createEditHandler(Auth: Auth) {
   return async (c: any) => {
-    const { content, provider, model, maxTokens } = c.req.valid("json")
+    const { provider, model, maxTokens, ...context } = c.req.valid("json")
     const target = resolveEditTarget(provider, model)
 
     if (target.provider !== "inception") {
@@ -27,6 +28,9 @@ export function createEditHandler(Auth: Auth) {
       return c.json({ error: `Missing ${target.provider} provider API key` }, 401 as any)
     }
 
+    // Build the Mercury sentinel prompt here so every client only sends
+    // structured editor context.
+    const content = buildMercuryEditPrompt(context as MercuryEditContext)
     const signal = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(EDIT_TIMEOUT_MS)])
     console.info(`[EDIT] request provider=${target.provider} model=${target.model} url=${target.url} chars=${content.length}`)
 

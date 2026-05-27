@@ -5808,10 +5808,20 @@ export class Kilo extends HeyApiClient {
     parameters?: {
       directory?: string
       workspace?: string
-      content?: string
       provider?: string
       model?: string
       maxTokens?: number
+      currentFilePath?: string
+      currentFileContent?: string
+      cursorLine?: number
+      cursorCharacter?: number
+      editableRegionStartLine?: number
+      editableRegionEndLine?: number
+      recentlyViewedSnippets?: Array<{
+        filepath: string
+        content: string
+      }>
+      editDiffHistory?: Array<string>
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -5822,10 +5832,17 @@ export class Kilo extends HeyApiClient {
           args: [
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
-            { in: "body", key: "content" },
             { in: "body", key: "provider" },
             { in: "body", key: "model" },
             { in: "body", key: "maxTokens" },
+            { in: "body", key: "currentFilePath" },
+            { in: "body", key: "currentFileContent" },
+            { in: "body", key: "cursorLine" },
+            { in: "body", key: "cursorCharacter" },
+            { in: "body", key: "editableRegionStartLine" },
+            { in: "body", key: "editableRegionEndLine" },
+            { in: "body", key: "recentlyViewedSnippets" },
+            { in: "body", key: "editDiffHistory" },
           ],
         },
       ],

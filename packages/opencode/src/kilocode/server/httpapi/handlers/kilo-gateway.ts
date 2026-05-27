@@ -21,6 +21,7 @@ import {
 } from "@kilocode/kilo-gateway"
 import { DIRECT_FIM_ENV, requestMistralFim, resolveFimTarget } from "@kilocode/kilo-gateway/fim"
 import { DIRECT_EDIT_ENV, extractFencedBody, resolveEditTarget } from "@kilocode/kilo-gateway/edit"
+import { buildMercuryEditPrompt } from "@kilocode/kilo-gateway/edit-prompt"
 import { buildKiloHeaders } from "@kilocode/kilo-gateway"
 import { Effect } from "effect"
 import * as Stream from "effect/Stream"
@@ -172,8 +173,21 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
           ? AbortSignal.any([request.source.signal, AbortSignal.timeout(FIM_TIMEOUT_MS)])
           : AbortSignal.timeout(FIM_TIMEOUT_MS)
 
+      // Assemble the Mercury sentinel prompt from the structured context the
+      // client sent — same builder every editor frontend shares.
+      const content = buildMercuryEditPrompt({
+        currentFilePath: ctx.payload.currentFilePath,
+        currentFileContent: ctx.payload.currentFileContent,
+        cursorLine: ctx.payload.cursorLine,
+        cursorCharacter: ctx.payload.cursorCharacter,
+        editableRegionStartLine: ctx.payload.editableRegionStartLine,
+        editableRegionEndLine: ctx.payload.editableRegionEndLine,
+        recentlyViewedSnippets: [...ctx.payload.recentlyViewedSnippets],
+        editDiffHistory: [...ctx.payload.editDiffHistory],
+      })
+
       const response = yield* Effect.promise(async () => {
-        console.info(`[EDIT] request provider=${target.provider} model=${target.model} chars=${ctx.payload.content.length}`)
+        console.info(`[EDIT] request provider=${target.provider} model=${target.model} chars=${content.length}`)
         return fetch(target.url, {
           method: "POST",
           headers: {
@@ -185,7 +199,7 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
             model: target.model,
             max_tokens: ctx.payload.maxTokens ?? 512,
             // Mercury rejects role:"system" on this endpoint — must be a single user message.
-            messages: [{ role: "user", content: ctx.payload.content }],
+            messages: [{ role: "user", content }],
           }),
         })
       })

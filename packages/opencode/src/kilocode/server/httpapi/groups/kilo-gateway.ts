@@ -144,15 +144,22 @@ export const FimBody = Schema.Struct({
   temperature: Schema.optional(Schema.Finite),
 })
 
-// Next Edit (NES) — non-streaming. The VSCode side builds the sentinel-tagged
-// prompt (Mercury contract is documented at
-// https://docs.inceptionlabs.ai/capabilities/next-edit) and the gateway just
-// forwards the message to the upstream edit endpoint.
+// Next Edit (NES) — non-streaming. Clients send structured editor context; the
+// gateway assembles the Mercury sentinel-tagged prompt (contract documented at
+// https://docs.inceptionlabs.ai/capabilities/next-edit) so the prompt format
+// lives in one place and is shared across editors.
 export const EditBody = Schema.Struct({
-  content: Schema.String,
   provider: Schema.optional(Schema.String),
   model: Schema.optional(Schema.String),
   maxTokens: Schema.optional(Schema.Finite),
+  currentFilePath: Schema.String,
+  currentFileContent: Schema.String,
+  cursorLine: Schema.Finite,
+  cursorCharacter: Schema.Finite,
+  editableRegionStartLine: Schema.Finite,
+  editableRegionEndLine: Schema.Finite,
+  recentlyViewedSnippets: Schema.Array(Schema.Struct({ filepath: Schema.String, content: Schema.String })),
+  editDiffHistory: Schema.Array(Schema.String),
 })
 
 export const EditResponse = Schema.Struct({

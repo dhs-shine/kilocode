@@ -117,7 +117,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
   /** The pending request associated with the current debounce timer (if any) */
   private debouncedPendingRequest: PendingRequest | null = null
   private isFirstCall: boolean = true
-  private ignoreController: Promise<FileIgnoreController>
+  public readonly ignoreController: Promise<FileIgnoreController>
   /** Abort controller for the current in-flight FIM request */
   private fimAbortController: AbortController | null = null
   private acceptedCommand: vscode.Disposable | null = null
