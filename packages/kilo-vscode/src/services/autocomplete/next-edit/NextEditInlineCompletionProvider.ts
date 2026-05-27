@@ -49,7 +49,7 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
   private currentAbort: AbortController | null = null
 
   constructor(private readonly deps: NextEditProviderDeps) {
-    this.editHistoryTracker = new EditHistoryTracker()
+    this.editHistoryTracker = new EditHistoryTracker({ isFileAllowed: deps.isFileAllowed })
   }
 
   dispose(): void {
@@ -77,7 +77,7 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     }
 
     const abort = this.swapAbortController(token)
-    const ctx = this.buildRequestContext(document, position)
+    const ctx = await this.buildRequestContext(document, position)
     const provider = new MercuryEditProvider({
       connectionService: this.deps.connectionService,
       signal: abort.signal,
@@ -103,12 +103,15 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     return abort
   }
 
-  private buildRequestContext(document: vscode.TextDocument, position: vscode.Position): MercuryEditRequestContext {
+  private async buildRequestContext(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+  ): Promise<MercuryEditRequestContext> {
     const { startLine, endLine } = computeEditableRegion({
       cursorLine: position.line,
       totalLines: document.lineCount,
     })
-    this.editHistoryTracker.flush(document)
+    await this.editHistoryTracker.flush(document)
     return {
       currentFilePath: document.uri.fsPath,
       currentFileContent: document.getText(),
@@ -117,7 +120,7 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
       editableRegionStartLine: startLine,
       editableRegionEndLine: endLine,
       recentlyViewedSnippets: this.deps.getRecentlyViewedSnippets?.(document) ?? [],
-      editDiffHistory: this.editHistoryTracker.getRecentDiffs(),
+      editDiffHistory: await this.editHistoryTracker.getRecentDiffs(),
     }
   }
 

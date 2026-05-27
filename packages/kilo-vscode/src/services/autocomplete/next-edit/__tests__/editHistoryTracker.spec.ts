@@ -33,7 +33,7 @@ function doc(path: string, initial: string): Doc {
 }
 
 describe("EditHistoryTracker", () => {
-  it("retains chronological edits across files for Mercury context", () => {
+  it("retains chronological edits across files for Mercury context", async () => {
     const tracker = new EditHistoryTracker()
     const a = doc("/workspace/a.ts", "const a = 1\n")
     const b = doc("/workspace/b.ts", "const b = 1\n")
@@ -42,16 +42,43 @@ describe("EditHistoryTracker", () => {
     open(a)
     open(b)
     a.setText("const a = 2\n")
-    tracker.flush(a)
+    await tracker.flush(a)
     b.setText("const b = 2\n")
-    tracker.flush(b)
+    await tracker.flush(b)
 
-    const diffs = tracker.getRecentDiffs()
+    const diffs = await tracker.getRecentDiffs()
     expect(diffs).toHaveLength(2)
     expect(diffs[0]).toContain("a.ts")
     expect(diffs[0]).toContain("+const a = 2")
     expect(diffs[1]).toContain("b.ts")
     expect(diffs[1]).toContain("+const b = 2")
+
+    tracker.dispose()
+  })
+
+  it("never returns edits from denied documents", async () => {
+    const denied = new Set(["/workspace/.env"])
+    const tracker = new EditHistoryTracker({ isFileAllowed: async (path) => !denied.has(path) })
+    const safe = doc("/workspace/app.ts", "const safe = 1\n")
+    const secret = doc("/workspace/.env", "TOKEN=old\n")
+    const open = (vscode.workspace as unknown as { open(doc: vscode.TextDocument): void }).open
+
+    open(safe)
+    open(secret)
+    await Promise.resolve()
+    await Promise.resolve()
+    secret.setText("TOKEN=secret\n")
+    await tracker.flush(secret)
+    safe.setText("const safe = 2\n")
+    await tracker.flush(safe)
+
+    const diffs = await tracker.getRecentDiffs()
+    expect(diffs).toHaveLength(1)
+    expect(diffs[0]).toContain("app.ts")
+    expect(diffs[0]).not.toContain("TOKEN=secret")
+
+    denied.add("/workspace/app.ts")
+    expect(await tracker.getRecentDiffs()).toEqual([])
 
     tracker.dispose()
   })
