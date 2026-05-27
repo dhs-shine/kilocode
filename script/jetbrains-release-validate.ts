@@ -34,14 +34,17 @@ type Pull = {
   headRefName: string
   isCrossRepository: boolean
   labels: { name: string }[]
+  mergedAt: string | null
   mergeCommit: { oid: string } | null
+  state: string
 }
 
-const data = (await $`gh pr view ${pr} --repo ${repo} --json body,headRefName,isCrossRepository,labels,mergeCommit`.json()) as Pull
+const data = (await $`gh pr view ${pr} --repo ${repo} --json body,headRefName,isCrossRepository,labels,mergedAt,mergeCommit,state`.json()) as Pull
 const labels = new Set(data.labels.map((item) => item.name))
 if (!labels.has("jetbrains-release")) throw new Error("PR is missing jetbrains-release label")
 if (!data.headRefName.startsWith("jetbrains/release/")) throw new Error("PR head branch must start with jetbrains/release/")
 if (data.isCrossRepository) throw new Error("JetBrains release PR must come from this repository")
+if (data.state !== "MERGED" || !data.mergedAt) throw new Error("JetBrains release PR must be merged")
 if (!data.mergeCommit?.oid) throw new Error("PR has no merge commit")
 
 const ver = need(data.body, "JetBrains-Version")
