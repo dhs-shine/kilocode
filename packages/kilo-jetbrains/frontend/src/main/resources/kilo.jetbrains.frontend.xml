@@ -80,6 +80,10 @@
                 description="Send the current Kilo prompt">
             <keyboard-shortcut keymap="$default"
                                first-keystroke="ENTER"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+"
+                               first-keystroke="meta ENTER"/>
+            <keyboard-shortcut keymap="$default"
+                               first-keystroke="control ENTER"/>
         </action>
 
         <action id="Kilo.StopSession"

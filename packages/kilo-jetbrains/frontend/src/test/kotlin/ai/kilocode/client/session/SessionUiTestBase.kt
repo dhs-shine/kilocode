@@ -34,6 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.awt.Container
 import java.awt.event.MouseEvent
+import java.awt.event.MouseWheelEvent
 import javax.swing.JLabel
 import javax.swing.JComponent
 import javax.swing.JScrollBar
@@ -189,7 +190,17 @@ abstract class SessionUiTestBase : BasePlatformTestCase() {
     }
 
     protected fun setValue(bar: JScrollBar, value: Int) {
+        wheelNoop()
+        setValuePassive(bar, value)
+    }
+
+    protected fun setValuePassive(bar: JScrollBar, value: Int) {
         bar.value = value.coerceIn(bar.minimum, bottom(bar))
+    }
+
+    protected fun wheelNoop() {
+        val event = MouseWheelEvent(scrollComponent(), MouseEvent.MOUSE_WHEEL, System.currentTimeMillis(), 0, 1, 1, 0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL, 1, 1)
+        for (listener in scrollComponent().mouseWheelListeners) listener.mouseWheelMoved(event)
     }
 
     protected fun assertBottom(bar: JScrollBar) {
