@@ -8,6 +8,55 @@
   grid-template-columns: 1fr;
 }
 
+.kilo-console .model-default-fields {
+  gap: 0.5rem;
+}
+
+.kilo-console .model-default-fields .default-model-card {
+  gap: 0;
+  border-color: var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  padding: 1rem;
+}
+
+.kilo-console .model-default-fields .default-model-header {
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.kilo-console .model-default-fields .default-model-header > span {
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1rem;
+  text-transform: none;
+}
+
+.kilo-console .model-default-fields .default-model-actions {
+  gap: 0.375rem;
+  margin-top: -0.125rem;
+}
+
+.kilo-console .model-default-fields .default-model-value {
+  gap: 0.25rem;
+}
+
+.kilo-console .model-default-fields .default-model-value strong {
+  color: var(--foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.kilo-console .model-default-fields .default-model-value .default-model-id {
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
 .kilo-console .resolved-card {
   display: flex;
   gap: 1rem;
@@ -25,7 +74,7 @@
   min-width: 0;
 }
 
-.kilo-console .resolved-card span {
+.kilo-console .resolved-card span:where(:not([data-component="tag"]):not([data-slot="source-badge"])) {
   color: var(--text-weaker);
   font-size: var(--font-size-small);
   font-weight: 700;

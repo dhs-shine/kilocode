@@ -110,8 +110,8 @@ export function ModelsDefaultRoute() {
 
   return (
     <Show when={state.snap()}>
-      <ConfigPage title="Defaults" actions={<Tag>{`${state.providers().length} providers`}</Tag>}>
-        <div class="resolved-grid model-defaults">
+      <ConfigPage title="Model defaults" description="The models Kilo uses when an agent or command doesn't pin its own.">
+        <div class="resolved-grid model-defaults model-default-fields">
           <For each={slots}>
             {(item) => {
               const field = () => state.snap()?.overlay.fields[item.key]
@@ -137,7 +137,7 @@ export function ModelsDefaultRoute() {
                       </Show>
                       <IconButton
                         icon="edit"
-                        variant="secondary"
+                        variant="ghost"
                         aria-label={`Edit ${item.label}`}
                         disabled={Boolean(state.ctx.saving())}
                         onClick={() => state.edit(item.key)}
