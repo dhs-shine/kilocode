@@ -7,6 +7,7 @@ import { AutocompleteCodeActionProvider } from "./AutocompleteCodeActionProvider
 import { AutocompleteInlineCompletionProvider } from "./classic-auto-complete/AutocompleteInlineCompletionProvider"
 import { AutocompleteTelemetry } from "./classic-auto-complete/AutocompleteTelemetry"
 import { NextEditInlineCompletionProvider } from "./next-edit/NextEditInlineCompletionProvider"
+import { disposeLog } from "./next-edit/log"
 import { NextEditSuggestionManager } from "./next-edit/NextEditSuggestionManager"
 import { toMercuryRecentSnippets } from "./next-edit/recentSnippetsAdapter"
 import type { KiloConnectionService } from "../cli-backend"
@@ -488,7 +489,7 @@ export class AutocompleteServiceManager {
 
     // Drop the dedicated Next Edit OutputChannel so it doesn't leak across
     // extension reloads.
-    void import("./next-edit/log").then((m) => m.disposeLog()).catch(() => undefined)
+    disposeLog()
 
     // Clear singleton instance
     AutocompleteServiceManager._instance = null
