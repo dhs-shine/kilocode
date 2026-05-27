@@ -100,50 +100,6 @@ const policyError: NonNullable<AssistantMessage["error"]> = {
   },
 }
 
-function BeforeErrorDisplay() {
-  return (
-    <div
-      style={{
-        "box-sizing": "border-box",
-        width: "100%",
-        padding: "8px 8px 0",
-        border: "1px solid var(--border-critical-base)",
-        "border-radius": "2px",
-        background: "var(--surface-critical-base)",
-        color: "rgba(218, 51, 25, 0.6)",
-        "font-family": "var(--font-family-sans)",
-        "font-size": "var(--font-size-small)",
-        "font-style": "normal",
-        "font-weight": "var(--font-weight-regular)",
-        "line-height": "var(--line-height-large)",
-        "letter-spacing": "var(--letter-spacing-normal)",
-      }}
-    >
-      <div style={{ "overflow-wrap": "anywhere" }}>{policyMessage}</div>
-      <div style={{ margin: "8px 0 0" }}>
-        <button
-          type="button"
-          style={{
-            display: "inline-flex",
-            "align-items": "center",
-            gap: "4px",
-            height: "32px",
-            padding: 0,
-            border: "none",
-            background: "none",
-            color: "inherit",
-            "font-size": "var(--font-size-small)",
-            opacity: 0.85,
-            cursor: "pointer",
-          }}
-        >
-          Details
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Meta
 // ---------------------------------------------------------------------------
@@ -305,29 +261,6 @@ export const ErrorDisplayDataPolicy: Story = {
     <StoryProviders sessionID={SESSION_ID}>
       <div style={{ width: "min(720px, 100%)" }}>
         <ErrorDisplay error={policyError} />
-      </div>
-    </StoryProviders>
-  ),
-}
-
-export const ErrorDisplayBeforeAfter: Story = {
-  name: "ErrorDisplay — before / after",
-  render: () => (
-    <StoryProviders sessionID={SESSION_ID}>
-      <div style={{ width: "min(960px, 100%)", display: "grid", gap: "16px" }}>
-        <div style={{ color: "var(--text-weak)", "font-size": "var(--font-size-small)" }}>
-          Compare the previous error treatment reconstructed from pre-change CSS with the updated readable card.
-        </div>
-        <div style={{ display: "grid", gap: "16px", "grid-template-columns": "repeat(2, minmax(0, 1fr))" }}>
-          <section style={{ display: "grid", gap: "8px", "align-content": "start" }}>
-            <h3 style={{ margin: 0, color: "var(--text-strong)", "font-size": "var(--font-size-base)" }}>Before</h3>
-            <BeforeErrorDisplay />
-          </section>
-          <section style={{ display: "grid", gap: "8px", "align-content": "start" }}>
-            <h3 style={{ margin: 0, color: "var(--text-strong)", "font-size": "var(--font-size-base)" }}>After</h3>
-            <ErrorDisplay error={policyError} />
-          </section>
-        </div>
       </div>
     </StoryProviders>
   ),
