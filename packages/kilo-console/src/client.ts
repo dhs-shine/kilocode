@@ -9,13 +9,18 @@ import type {
   ConfigSourcesResponse,
   FormatterStatusResponse,
   GlobalHealthResponse,
+  GlobalEvent,
   LspStatusResponse,
   McpStatusResponse,
   Pty as PtyInfo,
+  PermissionRequest,
   Project as KiloProject,
+  QuestionRequest,
   ProviderAuthAuthorization,
   ProviderAuthResponse,
   ProviderListResponse,
+  Session as KiloSession,
+  SessionStatus,
   ToolIdsResponse,
   ToolListResponse,
   TuiConfigGetResponse,
@@ -55,7 +60,11 @@ export type ProjectDiffItem = WorktreeDiffItem
 export type ProjectPtyInfo = PtyInfo
 export type ProjectTerminalItem = ProjectPtyInfo & {
   directory: string
+  session?: KiloSession
+  sessionStatus?: SessionStatus
+  attention?: "permission" | "question"
 }
+export type ProjectConsoleEvent = GlobalEvent
 
 export type Snapshot = {
   health: GlobalHealthResponse
@@ -339,8 +348,46 @@ export async function resetProjectWorktree(input: Query, dir: string) {
 
 export async function loadProjectTerminals(input: ProjectQuery, dir: string): Promise<ProjectTerminalItem[]> {
   const sdk = client({ url: input.url, dir })
-  const result = await sdk.pty.list({ directory: dir })
-  return demand("Terminals", result).map((item) => ({ ...item, directory: dir }))
+  const [result, statusResult, permissionResult, questionResult] = await Promise.all([
+    sdk.pty.list({ directory: dir }),
+    maybe("Session status", sdk.session.status({ directory: dir })),
+    maybe("Pending permissions", sdk.permission.list({ directory: dir })),
+    maybe("Pending questions", sdk.question.list({ directory: dir })),
+  ])
+  const rows = demand("Terminals", result)
+  const status = statusResult ?? {}
+  const permissions = pending(permissionResult ?? [])
+  const questions = pending(questionResult ?? [])
+  const sessions = new Map<string, KiloSession>()
+
+  await Promise.all(
+    rows.map(async (item) => {
+      if (!item.sessionID || sessions.has(item.sessionID)) return
+      const session = await maybe("Session", sdk.session.get({ directory: dir, sessionID: item.sessionID }))
+      if (session) sessions.set(item.sessionID, session)
+    }),
+  )
+
+  return rows.map((item) => {
+    const session = item.sessionID ? sessions.get(item.sessionID) : undefined
+    return {
+      ...item,
+      directory: dir,
+      session,
+      sessionStatus: item.sessionID ? status[item.sessionID] : undefined,
+      attention: item.sessionID ? attention(item.sessionID, permissions, questions) : undefined,
+    }
+  })
+}
+
+function pending(items: Array<PermissionRequest | QuestionRequest>) {
+  return new Set(items.map((item) => item.sessionID))
+}
+
+function attention(id: string, permissions: Set<string>, questions: Set<string>) {
+  if (permissions.has(id)) return "permission"
+  if (questions.has(id)) return "question"
+  return undefined
 }
 
 export async function loadProjectDiff(input: Query, dir: string): Promise<ProjectDiffItem[]> {
@@ -359,6 +406,33 @@ export async function createProjectPty(input: Query, dir: string, title = "Kilo 
   const sdk = client({ url: input.url, dir })
   const result = await sdk.pty.create({ directory: dir, command: "kilo", cwd: dir, title })
   return demand("Create terminal", result)
+}
+
+export async function removeProjectPty(input: Query, pty: string) {
+  const sdk = client({ url: input.url, dir: input.dir })
+  const result = await sdk.pty.remove({ directory: input.dir, ptyID: pty })
+  return demand("Remove terminal", result)
+}
+
+export async function viewProjectSessions(input: ProjectQuery, focused: string[], open: string[]) {
+  const sdk = client(input)
+  const result = await sdk.session.viewed({ directory: input.dir, focused, open })
+  return demand("Viewed sessions", result)
+}
+
+export function subscribeProjectEvents(input: ProjectQuery, handler: (event: ProjectConsoleEvent) => void) {
+  const sdk = client(input)
+  const ctl = new AbortController()
+  void (async () => {
+    const events = await sdk.global.event({ signal: ctl.signal, sseMaxRetryAttempts: 0 })
+    for await (const event of events.stream) {
+      if (ctl.signal.aborted) return
+      handler(event)
+    }
+  })().catch((err) => {
+    if (!ctl.signal.aborted) console.warn(`Project events: ${message(err)}`)
+  })
+  return () => ctl.abort()
 }
 
 export async function resizeProjectPty(input: Query, pty: string, cols: number, rows: number) {

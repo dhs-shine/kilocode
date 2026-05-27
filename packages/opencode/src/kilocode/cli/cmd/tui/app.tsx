@@ -67,10 +67,27 @@ export function useSessionEffects(deps: {
   sdk: ReturnType<typeof useSDK>
   sync: ReturnType<typeof useSync>
 }) {
+  const pty = process.env.KILO_PTY_ID
+  const state = { prev: "" }
+
   // Notify server which session the user is viewing
   createEffect(() => {
     const sessionID = deps.route.data.type === "session" ? deps.route.data.sessionID : undefined
     deps.sdk.client.session.viewed({ focused: sessionID ? [sessionID] : [] }).catch(() => {})
+
+    if (!pty) return
+    const session = sessionID ? deps.sync.session.get(sessionID) : undefined
+    const key = [sessionID ?? "", session?.title ?? ""].join("\n")
+    if (key === state.prev) return
+    state.prev = key
+
+    deps.sdk.client.pty
+      .update({
+        ptyID: pty,
+        sessionID: sessionID ?? null,
+        ...(session?.title ? { title: session.title } : {}),
+      })
+      .catch(() => {})
   })
 
   // Evict per-session data from store when navigating away

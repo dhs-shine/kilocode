@@ -688,6 +688,7 @@ export type Pty = {
   cwd: string
   status: "running" | "exited"
   pid: number
+  sessionID?: string | null
 }
 
 export type EventPtyCreated = {
@@ -3319,6 +3320,7 @@ export type PtyGetResponse = PtyGetResponses[keyof PtyGetResponses]
 export type PtyUpdateData = {
   body?: {
     title?: string
+    sessionID?: string | null
     size?: {
       rows: number
       cols: number

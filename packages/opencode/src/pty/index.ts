@@ -13,6 +13,7 @@ import { PtyID } from "./schema"
 import { Effect, Layer, Context, Schema, Types } from "effect"
 import { zod } from "@/util/effect-zod"
 import { NonNegativeInt, PositiveInt, withStatics } from "@/util/schema"
+import { SessionID } from "@/session/schema" // kilocode_change
 
 const log = Log.create({ service: "pty" })
 
@@ -63,6 +64,7 @@ export const Info = Schema.Struct({
   cwd: Schema.String,
   status: Schema.Literals(["running", "exited"]),
   pid: PositiveInt,
+  sessionID: Schema.optional(Schema.NullOr(SessionID)), // kilocode_change
 })
   .annotate({ identifier: "Pty" })
   .pipe(withStatics((s) => ({ zod: zod(s) })))
@@ -81,6 +83,7 @@ export type CreateInput = Types.DeepMutable<Schema.Schema.Type<typeof CreateInpu
 
 export const UpdateInput = Schema.Struct({
   title: Schema.optional(Schema.String),
+  sessionID: Schema.optional(Schema.NullOr(SessionID)), // kilocode_change
   size: Schema.optional(
     Schema.Struct({
       rows: PositiveInt,
@@ -176,14 +179,16 @@ export const layer = Layer.effect(
 
     const create = Effect.fn("Pty.create")(function* (input: CreateInput) {
       const s = yield* InstanceState.get(state)
+      // kilocode_change start
       const bridge = yield* EffectBridge.make()
       const cfg = yield* config.get()
       const id = PtyID.ascending()
+      // kilocode_change end
       const resolved = KiloPtySelfCommand.resolve(input) // kilocode_change
       const command = resolved.command || Shell.preferred(cfg.shell)
-      const args = resolved.args || []
+      const args = resolved.args || [] // kilocode_change
       if (Shell.login(command)) {
-        args.push("-l")
+        args.push("-l") // kilocode_change
       }
 
       const cwd = resolved.cwd || s.dir // kilocode_change
@@ -194,6 +199,7 @@ export const layer = Layer.effect(
         ...shell.env,
         TERM: "xterm-256color",
         KILO_TERMINAL: "1",
+        KILO_PTY_ID: id, // kilocode_change
       } as Record<string, string>
       // kilocode_change start
       // Don't leak the kilo server's auth credential into user shells.
@@ -283,6 +289,11 @@ export const layer = Layer.effect(
       if (input.title) {
         session.info.title = input.title
       }
+      // kilocode_change start
+      if ("sessionID" in input) {
+        session.info.sessionID = input.sessionID ?? undefined
+      }
+      // kilocode_change end
       if (input.size) {
         session.process.resize(input.size.cols, input.size.rows)
       }

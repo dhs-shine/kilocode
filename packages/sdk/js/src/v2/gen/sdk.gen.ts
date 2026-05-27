@@ -1347,6 +1347,7 @@ export class Pty extends HeyApiClient {
       directory?: string
       workspace?: string
       title?: string
+      sessionID?: string | null
       size?: {
         rows: number
         cols: number
@@ -1363,6 +1364,7 @@ export class Pty extends HeyApiClient {
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
             { in: "body", key: "title" },
+            { in: "body", key: "sessionID" },
             { in: "body", key: "size" },
           ],
         },
