@@ -353,6 +353,3 @@ function visualize(line: string): string {
   const collapsed = line.replace(/\s+$/g, "").replace(/^\t+/, (t) => "  ".repeat(t.length))
   return collapsed.length > 120 ? collapsed.slice(0, 117) + "…" : collapsed
 }
-
-export const NEXT_EDIT_ACCEPT_OR_JUMP_COMMAND = "kilo-code.next-edit.acceptOrJump"
-export const NEXT_EDIT_DISMISS_COMMAND = "kilo-code.next-edit.dismiss"

@@ -195,12 +195,12 @@
         "category": "Kilo Code"
       },
       {
-        "command": "kilo-code.next-edit.acceptOrJump",
+        "command": "kilo-code.new.autocomplete.nextEdit.acceptOrJump",
         "title": "Next Edit: Accept or Jump to Suggested Edit",
         "category": "Kilo Code"
       },
       {
-        "command": "kilo-code.next-edit.dismiss",
+        "command": "kilo-code.new.autocomplete.nextEdit.dismiss",
         "title": "Next Edit: Dismiss Pending Suggestion",
         "category": "Kilo Code"
       },
@@ -768,12 +768,12 @@
         "when": "editorTextFocus && !editorTabMovesFocus && !inSnippetMode && kilocode.autocomplete.enableSmartInlineTaskKeybinding && github.copilot.completions.enabled"
       },
       {
-        "command": "kilo-code.next-edit.acceptOrJump",
+        "command": "kilo-code.new.autocomplete.nextEdit.acceptOrJump",
         "key": "tab",
         "when": "editorTextFocus && !editorTabMovesFocus && !inSnippetMode && !suggestWidgetVisible && kilo-code.nextEdit.hasPendingSuggestion"
       },
       {
-        "command": "kilo-code.next-edit.dismiss",
+        "command": "kilo-code.new.autocomplete.nextEdit.dismiss",
         "key": "escape",
         "when": "editorTextFocus && !editorTabMovesFocus && !inSnippetMode && kilo-code.nextEdit.hasPendingSuggestion"
       }
