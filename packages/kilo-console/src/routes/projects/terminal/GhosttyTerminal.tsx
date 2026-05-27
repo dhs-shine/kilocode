@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { FitAddon, init, Terminal } from "ghostty-web"
 import { ptyWsUrl, resizeProjectPty, type Query } from "../../../client"
 
@@ -51,15 +51,24 @@ function theme(el: Element) {
   }
 }
 
-export function GhosttyTerminal(props: { query: Query; pty: string; onExit?: () => void }) {
+export function GhosttyTerminal(props: { query: Query; pty: string; active?: boolean; onExit?: () => void }) {
   let host!: HTMLDivElement
+  let term: Terminal | undefined
+  let fit: FitAddon | undefined
   const [failure, setFailure] = createSignal<string | undefined>()
+  const [shown, setShown] = createSignal(false)
+
+  createEffect(() => {
+    if (!props.active || !shown()) return
+    requestAnimationFrame(() => {
+      fit?.fit()
+      term?.focus()
+    })
+  })
 
   onMount(() => {
     let disposed = false
     let ws: WebSocket | undefined
-    let term: Terminal | undefined
-    let fit: FitAddon | undefined
     let data: { dispose: () => void } | undefined
     let size: { dispose: () => void } | undefined
     let replay = false
@@ -67,10 +76,14 @@ export function GhosttyTerminal(props: { query: Query; pty: string; onExit?: () 
     const done = (input: Uint8Array) => {
       if (input[0] !== 0) return false
       replay = true
+      requestAnimationFrame(() => {
+        if (!disposed) setShown(true)
+      })
       return true
     }
 
     const run = async () => {
+      host.replaceChildren()
       await ready()
       if (disposed) return
 
@@ -87,6 +100,8 @@ export function GhosttyTerminal(props: { query: Query; pty: string; onExit?: () 
       term.loadAddon(fit)
       host.replaceChildren()
       term.open(host)
+      term.reset()
+      term.clear()
       data = term.onData((input) => {
         if (replay && ws?.readyState === WebSocket.OPEN) ws.send(input)
       })
@@ -99,13 +114,13 @@ export function GhosttyTerminal(props: { query: Query; pty: string; onExit?: () 
       fit.observeResize()
       requestAnimationFrame(() => {
         fit?.fit()
-        term?.focus()
+        if (props.active) term?.focus()
       })
 
       ws = new WebSocket(ptyWsUrl(props.query, props.pty))
       ws.binaryType = "arraybuffer"
       ws.onmessage = (event) => {
-        if (!term) return
+        if (disposed || !term) return
         if (typeof event.data === "string") {
           term.write(event.data)
           return
@@ -118,9 +133,10 @@ export function GhosttyTerminal(props: { query: Query; pty: string; onExit?: () 
         }
         if (event.data instanceof Blob) {
           void event.data.arrayBuffer().then((buffer) => {
+            if (disposed || !term) return
             const bytes = new Uint8Array(buffer)
             if (done(bytes)) return
-            term?.write(bytes)
+            term.write(bytes)
           })
         }
       }
@@ -144,11 +160,14 @@ export function GhosttyTerminal(props: { query: Query; pty: string; onExit?: () 
       fit?.dispose()
       ws?.close()
       term?.dispose()
+      host.replaceChildren()
+      fit = undefined
+      term = undefined
     })
   })
 
   return (
-    <div class="project-terminal">
+    <div class="project-terminal" classList={{ shown: shown() }}>
       <div ref={host} class="project-terminal-host" />
       <Show when={failure()}>
         {(msg) => <div class="project-terminal-error">{msg()}</div>}

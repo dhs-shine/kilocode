@@ -104,6 +104,10 @@ function refreshEvent(event: ProjectConsoleEvent) {
   return false
 }
 
+function terminalKey(url: string, item: ProjectTerminalItem) {
+  return `${url}\n${item.directory}\n${item.id}`
+}
+
 export function ProjectConsoleRoute() {
   const loc = useLocation()
   const params = useParams()
@@ -117,6 +121,7 @@ export function ProjectConsoleRoute() {
   const [saving, setSaving] = createSignal<string | undefined>()
   const [failure, setFailure] = createSignal<string | undefined>()
   const [unread, setUnread] = createSignal(new Set<string>())
+  const [closing, setClosing] = createSignal(new Set<string>())
   const [labelRev, setLabelRev] = createSignal(0)
   const events = { timer: undefined as number | undefined }
   const project = () => params.project ?? ""
@@ -137,10 +142,13 @@ export function ProjectConsoleRoute() {
   })
   const terminals = createMemo(() => {
     const items = new Map<string, ProjectTerminalItem>()
+    const closed = closing()
     for (const item of local()) {
+      if (closed.has(item.id)) continue
       if (item.status === "running") items.set(item.id, item)
     }
     for (const item of snap()?.terminals ?? []) {
+      if (closed.has(item.id)) continue
       if (item.status === "running") items.set(item.id, item)
     }
     return Array.from(items.values())
@@ -179,14 +187,16 @@ export function ProjectConsoleRoute() {
     const item = activeTerminal()
     const base = query()
     if (!item || !base) return undefined
-    return `${base.url}\n${item.directory}\n${item.id}`
+    return terminalKey(base.url, item)
   })
-  const terminalTarget = createMemo<Query | undefined>(() => {
-    const item = activeTerminal()
+  const terminalMap = createMemo(() => {
+    const items = new Map<string, ProjectTerminalItem>()
     const base = query()
-    if (!item || !base) return undefined
-    return { url: base.url, dir: item.directory, scope: "project" }
+    if (!base) return items
+    for (const item of terminals()) items.set(terminalKey(base.url, item), item)
+    return items
   })
+  const terminalKeys = createMemo(() => Array.from(terminalMap().keys()))
   const [detail] = createResource(detailKey, (item) => loadProjectDiffFile(item.input, item.dir, item.file))
   const settings = createMemo(() => {
     const q = search().toString()
@@ -351,10 +361,28 @@ export function ProjectConsoleRoute() {
   function closeTerminal(item: ProjectTerminalItem) {
     const input = { url: query()?.url ?? "", dir: item.directory, scope: "project" as const }
     if (!input.url) return
-    run("Closing terminal", async () => {
-      await removeProjectPty(input, item.id)
-      forgetTerminal(item.id)
-    })
+    setClosing((old) => new Set([...old, item.id]))
+    forgetTerminal(item.id)
+    setSaving("Closing terminal")
+    setFailure(undefined)
+    void removeProjectPty(input, item.id)
+      .then(() => refetch())
+      .then(() => {
+        setClosing((old) => {
+          const next = new Set(old)
+          next.delete(item.id)
+          return next
+        })
+      })
+      .catch((err) => {
+        setClosing((old) => {
+          const next = new Set(old)
+          next.delete(item.id)
+          return next
+        })
+        setFailure(errMsg(err))
+      })
+      .finally(() => setSaving(undefined))
   }
 
   function renameWorktree(item: Context) {
@@ -653,14 +681,42 @@ export function ProjectConsoleRoute() {
             <span>{failure() ?? errMsg(snap.error)}</span>
           </Card>
         </Show>
-        <Show keyed when={terminal()}>
-          {(_) => {
-            const item = terminalTarget()
-            const pty = activeTerminal()
-            if (!item || !pty) return null
-            return <GhosttyTerminal query={item} pty={pty.id} onExit={() => dropTerminal(pty.id)} />
+        <For each={terminalKeys()}>
+          {(key) => {
+            const pty = createMemo(() => terminalMap().get(key))
+            const input = createMemo<Query | undefined>(() => {
+              const item = pty()
+              const base = query()
+              if (!item || !base) return undefined
+              return { url: base.url, dir: item.directory, scope: "project" }
+            })
+            return (
+              <Show keyed when={input()}>
+                {(target) => {
+                  const item = pty()
+                  if (!item) return null
+                  return (
+                    <div
+                      class="project-terminal-frame"
+                      classList={{ active: terminal() === key }}
+                      aria-hidden={terminal() !== key}
+                    >
+                      <GhosttyTerminal
+                        query={target}
+                        pty={item.id}
+                        active={terminal() === key}
+                        onExit={() => {
+                          const next = pty()
+                          if (next) dropTerminal(next.id)
+                        }}
+                      />
+                    </div>
+                  )
+                }}
+              </Show>
+            )
           }}
-        </Show>
+        </For>
         <Show when={!terminal() && !snap.loading && !snap.error && !failure()}>
           <div class="project-terminal-empty">
             <strong>No terminal session selected</strong>
