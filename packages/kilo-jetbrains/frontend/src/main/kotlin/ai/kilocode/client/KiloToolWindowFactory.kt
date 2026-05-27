@@ -65,10 +65,7 @@ class KiloToolWindowFactory : ToolWindowFactory, DumbAware {
             manager.newSession()
 
             val toolbar = ActionManager.getInstance().getAction("Kilo.ToolWindowToolbar")
-            if (toolbar is ActionGroup) {
-                val actions = toolbar.getChildren(null).toList()
-                toolWindow.setTitleActions(actions)
-            }
+            if (toolbar is ActionGroup) toolWindow.setTitleActions(toolbar.getChildren(null).toList())
         } catch (e: Exception) {
             LOG.error("Failed to set up Kilo tool window content", e)
         }

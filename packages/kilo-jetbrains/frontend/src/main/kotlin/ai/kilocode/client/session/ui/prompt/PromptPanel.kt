@@ -26,6 +26,7 @@ import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.keymap.Keymap
@@ -363,7 +364,8 @@ class PromptPanel(
 
     @RequiresEdt
     private fun syncEditorHeight() {
-        val lines = (editor.document.lineCount + SessionUiStyle.View.Prompt.EDITOR_SPARE_LINES).coerceIn(
+        val count = ReadAction.computeBlocking<Int, RuntimeException> { editor.document.lineCount }
+        val lines = (count + SessionUiStyle.View.Prompt.EDITOR_SPARE_LINES).coerceIn(
             SessionUiStyle.View.Prompt.EDITOR_LINES,
             SessionUiStyle.View.Prompt.EDITOR_MAX_LINES,
         )

@@ -17,6 +17,14 @@ object SessionUiStyle {
         const val SCROLL_INCREMENT = 16
     }
 
+    /** Literal source palette values used by session scroll SVG assets before runtime colorization. */
+    object ScrollIcon {
+        const val BOTTOM_LIGHT = 0x384F6B
+        const val BOTTOM_DARK = 0x233143
+        const val QUESTION = 0xE08800
+        const val FOREGROUND = 0xFFFFFF
+    }
+
     /** Shared tokens for individual transcript views and cards. */
     object View {
         const val CARD_LAYOUT_GAP = 6

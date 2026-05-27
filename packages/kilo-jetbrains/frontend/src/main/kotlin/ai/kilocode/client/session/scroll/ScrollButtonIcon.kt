@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.scroll
 
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.colorizeIfPossible
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.openapi.util.IconLoader
@@ -16,16 +17,16 @@ internal object ScrollButtonIcon {
             return prompt.colorizeIfPossible(
                 fillColor = UiStyle.Colors.warningLabelForeground(),
                 borderColor = Color.WHITE,
-                fillId = "ScrollQuestion.Background",
-                strokeId = "ScrollQuestion.Foreground",
+                fillColors = listOf(SessionUiStyle.ScrollIcon.QUESTION),
+                borderColors = listOf(SessionUiStyle.ScrollIcon.FOREGROUND),
             )
         }
 
         return bottom.colorizeIfPossible(
             fillColor = JBUI.CurrentTheme.Button.defaultButtonColorStart(),
             borderColor = JBUI.CurrentTheme.Button.defaultButtonForeground(),
-            fillId = "ScrollButton.Background",
-            strokeId = "ScrollButton.Foreground",
+            fillColors = listOf(SessionUiStyle.ScrollIcon.BOTTOM_LIGHT, SessionUiStyle.ScrollIcon.BOTTOM_DARK),
+            borderColors = listOf(SessionUiStyle.ScrollIcon.FOREGROUND),
         )
     }
 }
