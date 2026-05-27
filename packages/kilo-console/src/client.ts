@@ -199,6 +199,38 @@ function model(input: unknown) {
   return { provider: input.slice(0, index), model: input.slice(index + 1) }
 }
 
+function norm(input: string) {
+  const text = input.replace(/\\/g, "/").replace(/\/+$/, "")
+  return text || "/"
+}
+
+function inside(root: string, input: string) {
+  const base = norm(root)
+  const dir = norm(input)
+  if (dir === base) return true
+  return dir.startsWith(`${base}/`)
+}
+
+function score(item: ProjectItem, dir: string) {
+  return [item.worktree, ...item.sandboxes].reduce((best, root) => {
+    if (!inside(root, dir)) return best
+    return Math.max(best, norm(root).length)
+  }, -1)
+}
+
+function owner(items: ProjectItem[], session: Pick<KiloSession, "projectID" | "directory">) {
+  const exact = items.find((item) => item.id === session.projectID)
+  if (exact) return exact
+  return items.reduce<{ item?: ProjectItem; score: number }>(
+    (best, item) => {
+      const next = score(item, session.directory)
+      if (next <= best.score) return best
+      return { item, score: next }
+    },
+    { score: -1 },
+  ).item
+}
+
 async function probe(url: string) {
   const ctl = new AbortController()
   const timer = window.setTimeout(() => ctl.abort(), 400)
@@ -297,7 +329,9 @@ export async function loadRecentProjects(input: ProjectQuery): Promise<RecentPro
   const counts = new Map<string, number>()
 
   for (const row of rows) {
-    counts.set(row.projectID, (counts.get(row.projectID) ?? 0) + 1)
+    const item = owner(items, row)
+    if (!item) continue
+    counts.set(item.id, (counts.get(item.id) ?? 0) + 1)
   }
 
   return items
@@ -382,6 +416,23 @@ export async function loadProjectTerminals(input: ProjectQuery, dir: string): Pr
 
 function pending(items: Array<PermissionRequest | QuestionRequest>) {
   return new Set(items.map((item) => item.sessionID))
+}
+
+export type ProjectLiveStatus = {
+  busy: boolean
+  attention: boolean
+}
+
+export async function loadProjectLiveStatus(input: ProjectQuery, dir: string): Promise<ProjectLiveStatus> {
+  const sdk = client({ url: input.url, dir })
+  const [status, permissions, questions] = await Promise.all([
+    maybe("Session status", sdk.session.status({ directory: dir })),
+    maybe("Pending permissions", sdk.permission.list({ directory: dir })),
+    maybe("Pending questions", sdk.question.list({ directory: dir })),
+  ])
+  const busy = Object.values(status ?? {}).some((s) => s.type !== "idle")
+  const attention = (permissions ?? []).length > 0 || (questions ?? []).length > 0
+  return { busy, attention }
 }
 
 function attention(id: string, permissions: Set<string>, questions: Set<string>) {

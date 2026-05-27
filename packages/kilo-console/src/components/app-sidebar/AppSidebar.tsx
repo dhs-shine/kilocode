@@ -5,13 +5,30 @@ import {
   forgetCached,
   healthy,
   loadRecentProjects,
+  loadProjectLiveStatus,
   loadCached,
   saveCached,
+  subscribeProjectEvents,
+  type ProjectConsoleEvent,
   type RecentProjectItem,
   type ProjectQuery,
 } from "../../client"
 import { type Path } from "../../shared/navigation"
 import { clean, friendly } from "../../shared/utils"
+import {
+  projectStatus,
+  projectForDir,
+  eventTypeName,
+  eventSessionId,
+  markError,
+  clearError,
+  markAttention,
+  clearAttention,
+  markUnread,
+  clearBusy,
+  markBusy,
+  type GlobalEvent,
+} from "../../shared/terminal-status"
 
 const ports = new Set(["3017", "3018"])
 
@@ -54,8 +71,10 @@ function tail(input: URLSearchParams) {
 }
 
 function href(item: RecentProjectItem, input: URLSearchParams) {
-  return `/projects/${encodeURIComponent(item.id)}/settings${tail(input)}`
+  return `/projects/${encodeURIComponent(item.id)}${tail(input)}`
 }
+
+// ─── component ────────────────────────────────────────────────────────────────
 
 type Props = {
   path: Path
@@ -93,18 +112,26 @@ export function AppSidebar(props: Props) {
   const discoverable = () => shouldDiscover(params())
   const fallback = () => base(params())
   const [url, setUrl] = createSignal(fallback())
+  const timers = { refetch: undefined as number | undefined }
+
   const query = createMemo<ProjectQuery | undefined>(() => {
     const target = clean(url()) || fallback()
     if (!target) return undefined
     return { url: target, dir: "" }
   })
   const [items, { refetch }] = createResource(query, loadRecentProjects)
-  const settings = () => {
-    return `/settings${tail(params())}`
-  }
-  const selected = (item: RecentProjectItem) => {
-    return loc.pathname.startsWith(`/projects/${encodeURIComponent(item.id)}/`)
-  }
+
+  // project currently rendered by ProjectConsoleRoute — it owns unread tracking for its terminals
+  const activeProject = createMemo(() => {
+    const match = loc.pathname.match(/^\/projects\/([^/]+)/)
+    return match ? decodeURIComponent(match[1]) : undefined
+  })
+
+  const settings = () => `/settings${tail(params())}`
+  const selected = (item: RecentProjectItem) =>
+    loc.pathname.startsWith(`/projects/${encodeURIComponent(item.id)}/`) ||
+    loc.pathname === `/projects/${encodeURIComponent(item.id)}`
+
   const nav = () => [
     { href: "/projects", label: "Projects", name: "projects", path: "/projects" },
   ] as const
@@ -112,6 +139,16 @@ export function AppSidebar(props: Props) {
     { href: "/profile", label: "Profile", name: "profile", path: "/profile" },
     { href: settings(), label: "Settings", name: "settings", path: "/settings" },
   ] as const
+
+  function scheduleRefetch() {
+    if (timers.refetch) return
+    timers.refetch = window.setTimeout(() => {
+      timers.refetch = undefined
+      void refetch()
+    }, 150)
+  }
+
+  // ── server URL tracking ──────────────────────────────────────────────────────
 
   createEffect(() => {
     const next = params().get("server")
@@ -153,10 +190,115 @@ export function AppSidebar(props: Props) {
     })
   })
 
+  // ── polling fallback ─────────────────────────────────────────────────────────
+
   createEffect(() => {
     if (!query()) return
     const timer = window.setInterval(() => void refetch(), 5000)
     onCleanup(() => window.clearInterval(timer))
+  })
+
+  // ── initial status hydration ─────────────────────────────────────────────────
+  // Called whenever items reload. Fills busy + attention from server state.
+  // Unread is written by ProjectConsoleRoute (same-project) and SSE turn.close (cross-project).
+
+  createEffect(() => {
+    const list = items()
+    const current = query()
+    if (!list || !current) return
+    for (const item of list) {
+      void loadProjectLiveStatus(current, item.worktree)
+        .then((s) => {
+          // busy: project has at least one non-idle session
+          // we don't have per-session IDs here, use a sentinel "__hydrated__"
+          if (s.busy) markBusy(item.id, "__hydrated__")
+          else clearBusy(item.id, "__hydrated__")
+          if (s.attention) markAttention(item.id, "__hydrated__")
+          else clearAttention(item.id, "__hydrated__")
+        })
+        .catch(() => {})
+    }
+  })
+
+  // ── SSE event handler ────────────────────────────────────────────────────────
+
+  createEffect(() => {
+    const current = query()
+    if (!current) return
+
+    const stop = subscribeProjectEvents(current, (event) => {
+      const ge = event as unknown as GlobalEvent
+      const list = items() ?? []
+
+      // refresh project list on session lifecycle events
+      const t = eventTypeName(ge)
+      if (t.startsWith("session.created") || t.startsWith("session.updated") || t.startsWith("session.deleted")) {
+        scheduleRefetch()
+      }
+
+      if (!list.length || !ge.directory) return
+      const proj = projectForDir(list, ge.directory)
+      if (!proj) return
+
+      const sid = eventSessionId(ge) ?? "__unknown__"
+
+      // session.turn.close: error | completed
+      if (t === "session.turn.close") {
+        const payload = (ge.payload as Record<string, unknown>).properties as
+          | { reason?: string }
+          | undefined
+        if (payload?.reason === "error") {
+          markError(proj.id, sid)
+        } else {
+          clearError(proj.id, sid)
+          if (payload?.reason === "completed") {
+            // When the user is on this project, ProjectConsoleRoute owns unread tracking
+            // with per-terminal awareness (it knows which terminal is active).
+            // AppSidebar only handles cross-project: projects the user is NOT currently viewing.
+            if (proj.id !== activeProject()) {
+              markUnread(proj.id, sid)
+            }
+          }
+        }
+        return
+      }
+
+      // permission / question → attention
+      if (t === "permission.asked" || t === "question.asked") {
+        markAttention(proj.id, sid)
+        return
+      }
+      if (
+        t === "permission.replied" ||
+        t === "permission.rejected" ||
+        t === "question.replied" ||
+        t === "question.rejected"
+      ) {
+        clearAttention(proj.id, sid)
+        return
+      }
+
+      // session.status → busy / idle
+      if (t === "session.status") {
+        const sstatus = (ge.payload as Record<string, unknown>).properties as
+          | { status?: { type?: string } }
+          | undefined
+        const stype = sstatus?.status?.type
+        if (stype === "busy" || stype === "retry") {
+          markBusy(proj.id, sid)
+        } else if (stype === "idle") {
+          clearBusy(proj.id, sid)
+          clearError(proj.id, sid)
+        }
+        return
+      }
+    })
+
+    onCleanup(stop)
+  })
+
+  onCleanup(() => {
+    if (timers.refetch) window.clearTimeout(timers.refetch)
   })
 
   return (
@@ -180,18 +322,27 @@ export function AppSidebar(props: Props) {
 
       <div class="rail-favorites" aria-label="Projects with recent sessions">
         <For each={items() ?? []}>
-          {(item) => (
-            <A
-              class="favorite-project"
-              classList={{ active: selected(item) }}
-              href={href(item, params())}
-              aria-label={name(item)}
-              aria-current={selected(item) ? "page" : undefined}
-              title={name(item)}
-            >
-              {mark(item)}
-            </A>
-          )}
+          {(item) => {
+            const status = () => projectStatus(item.id)
+            return (
+              <A
+                class="favorite-project"
+                classList={{
+                  active: selected(item),
+                  "status-error": status() === "error",
+                  "status-attention": status() === "attention",
+                  "status-unread": status() === "unread",
+                  "status-busy": status() === "busy",
+                }}
+                href={href(item, params())}
+                aria-label={name(item)}
+                aria-current={selected(item) ? "page" : undefined}
+                title={name(item)}
+              >
+                {mark(item)}
+              </A>
+            )
+          }}
         </For>
       </div>
 

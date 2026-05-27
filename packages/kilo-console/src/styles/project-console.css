@@ -359,6 +359,10 @@
   background: var(--project-terminal-background);
 }
 
+.kilo-console .project-terminal-host textarea {
+  left: -1px !important;
+}
+
 .kilo-console .project-terminal-host canvas {
   background: var(--project-terminal-background);
   display: block;

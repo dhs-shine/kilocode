@@ -24,6 +24,7 @@ import {
   type Query,
 } from "../../client"
 import { clean, errMsg, friendly } from "../../shared/utils"
+import { markUnread as storeMarkUnread, clearUnread as storeClearUnread, sessionHasUnread } from "../../shared/terminal-status"
 import { GhosttyTerminal } from "./terminal/GhosttyTerminal"
 
 const ui = new Set(["3017", "3018"])
@@ -242,6 +243,8 @@ export function ProjectConsoleRoute() {
       next.delete(id)
       return next
     })
+    const pid = snap()?.project.id
+    if (pid && id) storeClearUnread(pid, id)
   }
 
   function markUnread(id: string) {
@@ -250,6 +253,8 @@ export function ProjectConsoleRoute() {
       if (old.has(id)) return old
       return new Set([...old, id])
     })
+    const pid = snap()?.project.id
+    if (pid) storeMarkUnread(pid, id)
   }
 
   function scheduleRefetch() {
