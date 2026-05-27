@@ -29,11 +29,53 @@ class ReadToolViewTest : BasePlatformTestCase() {
         assertTrue(view.labelText().contains("README.MD"))
     }
 
-    fun `test read output is secondary collapsible body`() {
+    fun `test read file output renders filename hyperlink`() {
+        val opened = mutableListOf<String>()
+        val path = "/Users/kirillk/work/kilocode/.kilo/worktrees/agreeable-marlin/packages/kilo-jetbrains/frontend/src/test/kotlin/ai/kilocode/client/session/SessionUiLayoutTest.kt"
+        val t = tool().also {
+            it.output = """
+                <path>$path</path>
+                <type>file</type>
+                <content>
+                content
+                </content>
+            """.trimIndent()
+        }
+
+        val view = ReadToolView(t, openFile = { opened.add(it) })
+
+        assertTrue(view.linkVisible())
+        assertEquals("SessionUiLayoutTest.kt", view.linkText())
+        assertEquals(path, view.linkHref())
+        assertTrue(view.labelText().contains("SessionUiLayoutTest.kt"))
+
+        view.openLink()
+
+        assertEquals(listOf(path), opened)
+    }
+
+    fun `test read directory output remains plain text`() {
+        val path = "/Users/kirillk/work/kilocode/packages/kilo-jetbrains"
+        val t = tool().also {
+            it.output = """
+                <path>$path</path>
+                <type>directory</type>
+                <content></content>
+            """.trimIndent()
+        }
+
+        val view = ReadToolView(t)
+
+        assertFalse(view.linkVisible())
+        assertNull(view.linkHref())
+        assertTrue(view.labelText().contains(path))
+    }
+
+    fun `test read output is secondary non expandable summary`() {
         val t = tool().also { it.output = "file contents" }
         val view = ReadToolView(t)
 
-        assertTrue(view.hasToggle())
+        assertFalse(view.hasToggle())
         assertFalse(view.isExpanded())
         assertFalse(view.bodyVisible())
         assertEquals("file contents", view.bodyText())
@@ -41,8 +83,8 @@ class ReadToolViewTest : BasePlatformTestCase() {
 
         view.toggle()
 
-        assertTrue(view.isExpanded())
-        assertTrue(view.bodyVisible())
+        assertFalse(view.isExpanded())
+        assertFalse(view.bodyVisible())
     }
 
     fun `test view factory routes read kind tools to read tool view`() {

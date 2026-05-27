@@ -18,6 +18,7 @@ abstract class AbstractSessionPartView(
     header: JComponent,
     protected val body: JComponent,
     expanded: Boolean = false,
+    private val expandable: Boolean = true,
 ) : PartView() {
 
     protected val arrow = JBLabel()
@@ -48,14 +49,14 @@ abstract class AbstractSessionPartView(
         row.add(arrow, BorderLayout.EAST)
         add(row, BorderLayout.NORTH)
         bindHeader(row, header, arrow)
-        if (expanded) add(body, BorderLayout.CENTER)
-        syncArrow()
+        if (expanded && expandable) add(body, BorderLayout.CENTER)
+        if (!expandable) syncExpandable(false) else syncArrow()
     }
 
     fun isExpanded(): Boolean = body.parent === this
 
     fun toggle() {
-        if (!arrow.isVisible) return
+        if (!expandable || !arrow.isVisible) return
         val changed = if (isExpanded()) collapse() else expand()
         if (!changed) return
         syncArrow()
@@ -63,6 +64,7 @@ abstract class AbstractSessionPartView(
     }
 
     fun expand(): Boolean {
+        if (!expandable) return false
         if (isExpanded()) return false
         add(body, BorderLayout.CENTER)
         return true
@@ -75,9 +77,10 @@ abstract class AbstractSessionPartView(
     }
 
     fun syncExpandable(expandable: Boolean): Boolean {
-        val changed = setVisible(arrow, expandable)
-        val detached = if (expandable) false else collapse()
-        val cursor = if (expandable) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else Cursor.getDefaultCursor()
+        val active = this.expandable && expandable
+        val changed = setVisible(arrow, active)
+        val detached = if (active) false else collapse()
+        val cursor = if (active) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else Cursor.getDefaultCursor()
         val moved = syncCursor(cursor)
         val icon = syncArrow()
         return changed || detached || moved || icon

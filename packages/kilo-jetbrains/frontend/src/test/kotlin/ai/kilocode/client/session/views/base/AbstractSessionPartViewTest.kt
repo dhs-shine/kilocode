@@ -53,6 +53,22 @@ class AbstractSessionPartViewTest : BasePlatformTestCase() {
         assertNull(content.parent)
     }
 
+    fun `test fixed non expandable ignores expansion`() {
+        val content = JLabel("body")
+        val view = TestView(content = content, expanded = true, expandable = false)
+
+        assertFalse(view.isExpanded())
+        assertFalse(view.arrowVisible())
+        assertNull(content.parent)
+
+        view.syncExpandable(true)
+        view.toggle()
+
+        assertFalse(view.isExpanded())
+        assertFalse(view.arrowVisible())
+        assertNull(content.parent)
+    }
+
     fun `test header hover is subtler than hover outline`() {
         assertNotSameColor(SessionUiStyle.View.headerHover(), SessionUiStyle.View.hoverLine())
         assertNotSameColor(SessionUiStyle.View.headerHover(), SessionUiStyle.View.line())
@@ -70,11 +86,12 @@ class AbstractSessionPartViewTest : BasePlatformTestCase() {
         assertEquals(SessionUiStyle.View.line().rgb, paint(view.border).rgb)
     }
 
-    private class TestView(content: JLabel, expanded: Boolean = false) :
-        PrimarySessionPartView(JLabel("header"), content, expanded) {
+    private class TestView(content: JLabel, expanded: Boolean = false, expandable: Boolean = true) :
+        PrimarySessionPartView(JLabel("header"), content, expanded, expandable) {
 
         override val contentId = "test"
         override fun update(content: Content) {}
+        fun arrowVisible() = arrow.isVisible
     }
 
     private fun TestView.component(index: Int): Component = components[index]

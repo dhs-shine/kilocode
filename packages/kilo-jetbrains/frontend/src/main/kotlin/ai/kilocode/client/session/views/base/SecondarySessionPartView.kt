@@ -8,7 +8,8 @@ abstract class SecondarySessionPartView(
     header: JComponent,
     content: JComponent,
     expanded: Boolean = false,
-) : AbstractSessionPartView(header, content, expanded) {
+    expandable: Boolean = true,
+) : AbstractSessionPartView(header, content, expanded, expandable) {
     init {
         row.isOpaque = true
         row.background = SessionUiStyle.View.header()

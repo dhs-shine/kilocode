@@ -2,4 +2,4 @@
 "@kilocode/kilo-jetbrains": patch
 ---
 
-Use a subtler platform hover color for JetBrains session cards and match hovered card borders to it.
+Refine JetBrains session card hover styling and link completed read file rows to files in the IDE.

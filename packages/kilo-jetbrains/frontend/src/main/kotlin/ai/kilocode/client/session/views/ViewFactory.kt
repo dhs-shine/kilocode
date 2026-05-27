@@ -28,7 +28,7 @@ object ViewFactory {
             TodoWriteView.canRender(content) -> TodoWriteView(content)
             PlanExitView.canRender(content) -> PlanExitView(content, openFile)
             QuestionResultView.canRender(content) -> QuestionResultView(content)
-            ReadToolView.canRender(content) -> ReadToolView(content)
+            ReadToolView.canRender(content) -> ReadToolView(content, openFile)
             else -> ToolView(content)
         }
         is Compaction -> CompactionView(content)
