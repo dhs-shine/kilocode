@@ -277,9 +277,8 @@ export const KiloGatewayApi = HttpApi.make("kilo")
             identifier: "kilo.edit",
             summary: "Next Edit completion",
             description:
-              "Proxy a Mercury-style Next Edit request. The user supplies the already-templated " +
-              "sentinel-tagged prompt in `content`; the gateway forwards to the upstream edit endpoint " +
-              "(currently Inception's /v1/edit/completions) and returns the unwrapped reply.",
+              "Proxy a Mercury-style Next Edit request. The client supplies structured editor " +
+              "context; the gateway assembles the sentinel-tagged prompt and forwards to the upstream edit endpoint.",
           }),
         ),
         HttpApiEndpoint.post("audioTranscriptions", KiloGatewayPaths.audioTranscriptions, {
