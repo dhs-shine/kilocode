@@ -7,7 +7,7 @@ import { MercuryEditError, MercuryEditProvider } from "./MercuryEditProvider"
 import type { NextEditSuggestionManager } from "./NextEditSuggestionManager"
 import type { MercuryEditRequestContext, MercuryRecentSnippet } from "./types"
 
-const INLINE_COMPLETION_ACCEPTED_COMMAND = "kilo-code.autocomplete.next-edit.accepted"
+const INLINE_COMPLETION_ACCEPTED_COMMAND = "kilo-code.new.autocomplete.nextEdit.accepted"
 const DEFAULT_DEBOUNCE_MS = 250
 
 export interface NextEditProviderDeps {
