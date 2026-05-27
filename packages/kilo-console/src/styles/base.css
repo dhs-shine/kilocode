@@ -53,6 +53,16 @@ body {
   padding-right: 2.5rem;
 }
 
+.kilo-console select option {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.kilo-console select option:checked {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
 .kilo-console input:focus,
 .kilo-console select:focus,
 .kilo-console textarea:focus {

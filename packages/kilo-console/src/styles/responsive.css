@@ -1,6 +1,7 @@
 @media (max-width: 980px) {
   .kilo-console .config-page-header,
   .kilo-console .config-toolbar,
+  .kilo-console .models-filter-primary,
   .kilo-console .details,
   .kilo-console .model-controls,
   .kilo-console .builder,
@@ -42,6 +43,7 @@
   }
 
   .kilo-console .compact,
+  .kilo-console .model-defaults,
   .kilo-console .mini-list.columns,
   .kilo-console .mini-item,
   .kilo-console .mini-item.simple {
@@ -51,9 +53,30 @@
   .kilo-console .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .kilo-console .models-filter-secondary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .kilo-console .models-context-filter,
+  .kilo-console .models-capabilities-filter {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
 
 @media (max-width: 560px) {
+  .kilo-console .explore-models,
+  .kilo-console .model-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kilo-console .models-capabilities-filter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .kilo-console .metrics {
     grid-template-columns: 1fr;
   }

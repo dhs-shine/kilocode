@@ -5,24 +5,13 @@ import { Tag } from "@kilocode/kilo-web-ui/tag"
 import type { Model } from "@kilocode/sdk/v2/client"
 import { SearchField } from "../../components/SearchField"
 import { text } from "../../shared/utils"
-import { ConfigPage, ConfigToolbar, SourceBadge } from "./ConfigPage"
+import { ConfigPage, SourceBadge } from "./ConfigPage"
 import { type Capability, type ModelField, useModelSettings } from "./state/models"
 
-function fmtPrice(n: number) {
-  if (n === 0) return "Free"
-  if (n < 0.01) return `$${n.toFixed(4)}/1M`
-  return `$${n.toFixed(2)}/1M`
-}
-
-function fmtCachedPrice(cost: Model["cost"]) {
-  if (cost.cache.read > 0) return fmtPrice(cost.cache.read)
-  if (cost.input === 0) return fmtPrice(0)
-  return null
-}
-
-function avgPrice(cost: Model["cost"]) {
-  if (cost.cache.read > 0) return cost.cache.read * 0.7 + cost.input * 0.2 + cost.output * 0.1
-  return cost.input * 0.9 + cost.output * 0.1
+function money(n: number) {
+  if (n === 0) return "$0.00"
+  if (n < 0.01) return `$${n.toFixed(4)}`
+  return `$${n.toFixed(2)}`
 }
 
 function fmtContext(n: number) {
@@ -41,32 +30,19 @@ function title(input: string) {
   return input.charAt(0).toUpperCase() + input.slice(1)
 }
 
-function mods(input: Record<string, boolean>) {
-  const values = Object.entries(input)
-    .filter(([key, value]) => value && key !== "text")
-    .map(([key]) => title(key))
-  return values.length > 0 ? values.join(", ") : "Text only"
-}
-
 function desc(model: Model) {
   const value = model.options?.description
   if (typeof value === "string" && value.trim()) return value
   return null
 }
 
-function capLabel(cap: Capability) {
-  if (cap === "toolcall") return "Tools"
-  if (cap === "attachment") return "Attachments"
-  if (cap === "temperature") return "Temperature"
-  if (cap === "interleaved") return "Interleaved"
-  if (cap === "input:audio") return "Input audio"
-  if (cap === "input:image") return "Input image"
-  if (cap === "input:video") return "Input video"
-  if (cap === "input:pdf") return "Input PDF"
-  if (cap === "output:audio") return "Output audio"
-  if (cap === "output:image") return "Output image"
-  if (cap === "output:video") return "Output video"
-  return "Output PDF"
+function chips(model: Model) {
+  const list: string[] = []
+  if (model.capabilities.toolcall) list.push("toolcall")
+  if (model.capabilities.attachment) list.push("attachment")
+  if (model.capabilities.input.image) list.push("vision")
+  if (model.capabilities.input.audio || model.capabilities.output.audio) list.push("audio")
+  return list
 }
 
 function step(max: number) {
@@ -96,9 +72,63 @@ function point(event: PointerEvent, root: HTMLElement, max: number) {
   return snap(ratio * max, max)
 }
 
-function rangeLabel(low: number, high: number, max: number) {
-  const top = high >= max && max > 0 ? `${fmtContext(high)}+` : fmtContext(high)
-  return `${fmtContext(low)} - ${top}`
+function Stat(props: { label: string; value: string; sub?: string; mono?: boolean }) {
+  return (
+    <div class="model-stat">
+      <span>{props.label}</span>
+      <strong classList={{ mono: props.mono }}>
+        {props.value}
+        <Show when={props.sub}>{(sub) => <small>{sub()}</small>}</Show>
+      </strong>
+    </div>
+  )
+}
+
+const caps = [
+  { key: "toolcall", label: "toolcall" },
+  { key: "attachment", label: "attachment" },
+  { key: "input:image", label: "vision" },
+  { key: "input:audio", label: "audio" },
+] satisfies { key: Capability; label: string }[]
+
+type Option = { value: string; label: string }
+
+function FilterSelect(props: { label: string; value: string; options: Option[]; onSelect: (value: string) => void }) {
+  const current = () => props.options.find((option) => option.value === props.value)?.label ?? props.value
+
+  function choose(value: string, event: MouseEvent & { currentTarget: HTMLButtonElement }) {
+    props.onSelect(value)
+    event.currentTarget.closest("details")?.removeAttribute("open")
+  }
+
+  function toggle(event: Event & { currentTarget: HTMLDetailsElement }) {
+    if (!event.currentTarget.open) return
+    event.currentTarget.parentElement?.querySelectorAll(".models-select[open]").forEach((node) => {
+      if (node !== event.currentTarget) node.removeAttribute("open")
+    })
+  }
+
+  return (
+    <details class="models-select" onToggle={toggle}>
+      <summary aria-label={props.label}>{current()}</summary>
+      <div class="models-select-menu" role="listbox" aria-label={props.label}>
+        <For each={props.options}>
+          {(option) => (
+            <button
+              class="models-select-option"
+              classList={{ selected: option.value === props.value }}
+              type="button"
+              role="option"
+              aria-selected={option.value === props.value}
+              onClick={(event) => choose(option.value, event)}
+            >
+              {option.label}
+            </button>
+          )}
+        </For>
+      </div>
+    </details>
+  )
 }
 
 export function ModelsRoute() {
@@ -209,7 +239,7 @@ export function ModelsDefaultRoute() {
             </div>
 
             <footer class="drawer-footer">
-              <Button variant="secondary" onClick={state.close}>
+              <Button variant="ghost" onClick={state.close}>
                 Cancel
               </Button>
               <Button variant="primary" disabled={Boolean(state.ctx.saving()) || !state.choice()} onClick={state.save}>
@@ -261,104 +291,113 @@ export function ModelsAvailableRoute() {
 
   return (
     <Show when={state.snap()}>
-      <ConfigPage title="Explore" actions={<Tag>{state.models().length}</Tag>}>
-        <ConfigToolbar title="Model Filters" description="Search and filter configured provider models.">
-          <label>
-            <span>Search</span>
-            <input
-              value={state.search()}
-              placeholder="Model name"
-              onInput={(event) => state.setSearch(event.currentTarget.value)}
+      <ConfigPage
+        title={
+          <span class="config-title-count">
+            Explore models
+            <Tag>{state.models().length}</Tag>
+          </span>
+        }
+        description="All models exposed by configured providers. Set defaults under Models > Defaults."
+      >
+        <section class="models-filter-card">
+          <div class="models-filter-row models-filter-primary">
+            <label class="models-filter-field models-search-field">
+              <span>Search</span>
+              <input
+                value={state.search()}
+                placeholder="Search by name or ID..."
+                onInput={(event) => state.setSearch(event.currentTarget.value)}
+              />
+            </label>
+            <FilterSelect
+              label="Provider"
+              value={state.filter()}
+              options={[{ value: "all", label: "All providers" }, ...state.providers().map((provider) => ({ value: provider.id, label: provider.name }))]}
+              onSelect={state.setFilter}
             />
-          </label>
-          <label>
-            <span>Provider</span>
-            <select value={state.filter()} onChange={(event) => state.setFilter(event.currentTarget.value)}>
-              <option value="all">All providers</option>
-              <For each={state.providers()}>{(provider) => <option value={provider.id}>{provider.name}</option>}</For>
-            </select>
-          </label>
-          <label>
-            <span>Cost</span>
-            <select value={state.price()} onChange={(event) => state.setPrice(event.currentTarget.value)}>
-              <option value="all">Free and paid</option>
-              <option value="free">Free only</option>
-              <option value="paid">Paid only</option>
-            </select>
-          </label>
-          <label>
-            <span>Reasoning</span>
-            <select value={state.reason()} onChange={(event) => state.setReason(event.currentTarget.value)}>
-              <option value="all">Any reasoning</option>
-              <option value="reasoning">Reasoning only</option>
-              <option value="standard">No reasoning</option>
-            </select>
-          </label>
-          <label>
-            <span>Favorites</span>
-            <select
-              value={state.starred() ? "favorites" : "all"}
-              onChange={(event) => state.setStarred(event.currentTarget.value === "favorites")}
+            <FilterSelect
+              label="Cost"
+              value={state.price()}
+              options={[
+                { value: "all", label: "Any cost" },
+                { value: "free", label: "Free" },
+                { value: "paid", label: "Paid" },
+              ]}
+              onSelect={state.setPrice}
+            />
+            <FilterSelect
+              label="Reasoning"
+              value={state.reason()}
+              options={[
+                { value: "all", label: "Reasoning · any" },
+                { value: "reasoning", label: "Reasoning · yes" },
+                { value: "standard", label: "Reasoning · no" },
+              ]}
+              onSelect={state.setReason}
+            />
+            <button
+              class="models-favorite-filter"
+              classList={{ selected: state.starred() }}
+              type="button"
+              aria-pressed={state.starred()}
+              onClick={() => state.setStarred(!state.starred())}
             >
-              <option value="all">All models</option>
-              <option value="favorites">Favorites only</option>
-            </select>
-          </label>
-          <label class="context-filter">
-            <span>Context</span>
-            <div
-              class="context-range"
-              style={`--context-min: ${pct(state.low(), state.max())}%; --context-max: ${pct(state.top(), state.max())}%;`}
-            >
-              <span class="context-track" aria-hidden="true" />
-              <span class="context-fill" aria-hidden="true" />
-              <button
-                class="context-min"
-                aria-label="Minimum context"
-                aria-valuemin="0"
-                aria-valuemax={state.top()}
-                aria-valuenow={state.low()}
-                disabled={state.max() === 0}
-                role="slider"
-                type="button"
-                onKeyDown={(event) => key("min", event)}
-                onPointerDown={(event) => drag("min", event)}
-              />
-              <button
-                class="context-max"
-                aria-label="Maximum context"
-                aria-valuemin={state.low()}
-                aria-valuemax={state.max()}
-                aria-valuenow={state.top()}
-                disabled={state.max() === 0}
-                role="slider"
-                type="button"
-                onKeyDown={(event) => key("max", event)}
-                onPointerDown={(event) => drag("max", event)}
-              />
-            </div>
-            <small>{rangeLabel(state.low(), state.top(), state.max())}</small>
-          </label>
-          <details class="multi-check">
-            <summary>{state.caps().length ? `${state.caps().length} capabilities` : "Capabilities"}</summary>
-            <div class="multi-check-menu">
-              <For each={state.capabilities}>
-                {(cap) => (
-                  <label>
-                    <input type="checkbox" checked={state.caps().includes(cap)} onChange={() => state.toggle(cap)} />
-                    <span>{capLabel(cap)}</span>
-                  </label>
-                )}
-              </For>
-            </div>
-          </details>
-        </ConfigToolbar>
+              <span class="model-star" classList={{ active: state.starred() }} aria-hidden="true" />
+              Favorites
+            </button>
+          </div>
 
-        <div class="models">
+          <div class="models-filter-row models-filter-secondary">
+            <div class="models-context-filter">
+              <span>Context max</span>
+              <div
+                class="context-range"
+                style={`--context-min: 0%; --context-max: ${pct(state.top(), state.max())}%;`}
+              >
+                <span class="context-track" aria-hidden="true" />
+                <span class="context-fill" aria-hidden="true" />
+                <button
+                  class="context-max"
+                  aria-label="Maximum context"
+                  aria-valuemin="0"
+                  aria-valuemax={state.max()}
+                  aria-valuenow={state.top()}
+                  disabled={state.max() === 0}
+                  role="slider"
+                  type="button"
+                  onKeyDown={(event) => key("max", event)}
+                  onPointerDown={(event) => drag("max", event)}
+                />
+              </div>
+              <strong class="models-context-value mono">{fmtContext(state.top())}</strong>
+            </div>
+            <div class="models-capabilities-filter">
+              <span>Capabilities</span>
+              <div class="models-capabilities-list">
+                <For each={caps}>
+                  {(cap) => (
+                    <button
+                      class="models-capability-toggle"
+                      classList={{ selected: state.caps().includes(cap.key) }}
+                      type="button"
+                      aria-pressed={state.caps().includes(cap.key)}
+                      onClick={() => state.toggle(cap.key)}
+                    >
+                      {cap.label}
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="models explore-models">
           <Show when={state.models().length} fallback={<p class="empty">No models match the current filters.</p>}>
             <For each={state.models()}>
               {(item) => (
-                <article class="model">
+                <article class="model explore-model-card">
                   <div class="model-main">
                     <div class="model-title">
                       <button
@@ -374,62 +413,25 @@ export function ModelsAvailableRoute() {
                         <span>{item.id}</span>
                       </div>
                     </div>
-                    <div class="tags">
-                      <Tag>{item.provider.name}</Tag>
-                      <Tag>{item.model.isFree ? "free" : "paid"}</Tag>
+                    <div class="tags model-tags">
+                      <Tag tone="brand">{item.provider.id}</Tag>
+                      <Tag tone={item.model.isFree ? "success" : "neutral"}>{item.model.isFree ? "free" : "paid"}</Tag>
                     </div>
                   </div>
                   <Show when={desc(item.model)}>{(value) => <p class="model-description">{value()}</p>}</Show>
                   <div class="model-info-grid">
-                    <Show when={item.model.family}>
-                      <div class="model-stat">
-                        <span>Family</span>
-                        <strong>{title(item.model.family!)}</strong>
-                      </div>
-                    </Show>
-                    <Show when={item.model.release_date}>
-                      <div class="model-stat">
-                        <span>Released</span>
-                        <strong>{fmtDate(item.model.release_date)}</strong>
-                      </div>
-                    </Show>
-                    <div class="model-stat">
-                      <span>Input</span>
-                      <strong>{fmtPrice(item.model.cost.input)}</strong>
-                    </div>
-                    <div class="model-stat">
-                      <span>Output</span>
-                      <strong>{fmtPrice(item.model.cost.output)}</strong>
-                    </div>
-                    <Show when={fmtCachedPrice(item.model.cost)}>
-                      {(value) => (
-                        <div class="model-stat">
-                          <span>Cached</span>
-                          <strong>{value()}</strong>
-                        </div>
-                      )}
-                    </Show>
-                    <div class="model-stat">
-                      <span>Avg Cost</span>
-                      <strong>{fmtPrice(avgPrice(item.model.cost))}</strong>
-                    </div>
-                    <div class="model-stat">
-                      <span>Context</span>
-                      <strong>{fmtContext(item.model.limit.context)}</strong>
-                    </div>
-                    <div class="model-stat">
-                      <span>Reasoning</span>
-                      <strong>{item.model.capabilities.reasoning ? "Yes" : "No"}</strong>
-                    </div>
-                    <div class="model-stat">
-                      <span>Input caps</span>
-                      <strong>{mods(item.model.capabilities.input)}</strong>
-                    </div>
-                    <div class="model-stat">
-                      <span>Output caps</span>
-                      <strong>{mods(item.model.capabilities.output)}</strong>
-                    </div>
+                    <Stat label="Family" value={item.model.family ? title(item.model.family) : "Unknown"} />
+                    <Stat label="Released" value={item.model.release_date ? fmtDate(item.model.release_date) : "Unknown"} />
+                    <Stat label="Context" value={fmtContext(item.model.limit.context)} mono />
+                    <Stat label="Input" value={money(item.model.cost.input)} sub="/ 1M tok" mono />
+                    <Stat label="Output" value={money(item.model.cost.output)} sub="/ 1M tok" mono />
+                    <Stat label="Reasoning" value={item.model.capabilities.reasoning ? "Yes" : "No"} />
                   </div>
+                  <Show when={chips(item.model).length}>
+                    <div class="tags model-capabilities">
+                      <For each={chips(item.model)}>{(cap) => <Tag>{cap}</Tag>}</For>
+                    </div>
+                  </Show>
                 </article>
               )}
             </For>

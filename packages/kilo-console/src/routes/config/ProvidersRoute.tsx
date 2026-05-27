@@ -96,7 +96,7 @@ export function ProvidersRoute() {
                 when={state.mode() === "form"}
                 fallback={
                   <>
-                    <header class="drawer-header add-provider-header">
+                    <header class="drawer-header">
                       <div>
                         <h2>Add provider</h2>
                         <span>Choose a provider, then enter credentials.</span>
@@ -155,7 +155,7 @@ export function ProvidersRoute() {
                         </Show>
                       </Card>
                     </div>
-                    <footer class="drawer-footer add-provider-footer">
+                    <footer class="drawer-footer">
                       <Button variant="ghost" onClick={state.close}>
                         Cancel
                       </Button>
@@ -280,7 +280,7 @@ export function ProvidersRoute() {
                       </div>
 
                       <footer class="drawer-footer">
-                        <Button variant="secondary" onClick={state.close}>
+                        <Button variant="ghost" onClick={state.close}>
                           Cancel
                         </Button>
                         <Button variant="primary" disabled={Boolean(state.ctx.saving())} onClick={state.save}>
@@ -387,7 +387,7 @@ export function ProvidersRoute() {
                   </div>
 
                   <footer class="drawer-footer">
-                    <Button variant="secondary" onClick={state.close}>
+                    <Button variant="ghost" onClick={state.close}>
                       Cancel
                     </Button>
                     <Show when={state.method()?.type === "api"}>

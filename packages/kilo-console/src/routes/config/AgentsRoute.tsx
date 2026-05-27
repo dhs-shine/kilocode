@@ -443,7 +443,7 @@ export function AgentBuilderRoute() {
               </div>
 
               <footer class="drawer-footer">
-                <Button variant="secondary" onClick={state.close}>
+                <Button variant="ghost" onClick={state.close}>
                   Cancel
                 </Button>
                 <Button
@@ -512,7 +512,7 @@ export function AgentBuilderRoute() {
               </div>
 
               <footer class="drawer-footer">
-                <Button variant="secondary" onClick={state.close}>
+                <Button variant="ghost" onClick={state.close}>
                   Cancel
                 </Button>
                 <Button variant="primary" disabled={Boolean(state.ctx.saving()) || state.locked()} onClick={state.saveTools}>
