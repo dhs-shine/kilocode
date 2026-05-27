@@ -5,10 +5,9 @@ const DEFAULT_DEBOUNCE_MS = 1500
 const DEFAULT_MAX_DIFFS = 5
 
 /**
- * Per-file snapshot tracker that emits range-based unidiffs after a short
- * idle window — matching the Mercury docs' guidance: "if a user made multiple
- * modifications in the same area, combine them into a single unidiff rather
- * than many granular diffs."
+ * Tracks per-file snapshots and emits a workspace-wide chronological stream
+ * of range-based unidiffs after a short idle window. Cross-file history is
+ * intentional: Mercury uses recent edits from any file to infer user intent.
  *
  * Diffs are produced lazily; the tracker holds the previously-emitted state
  * per file and computes the diff against the current document content when
@@ -68,7 +67,7 @@ export class EditHistoryTracker implements vscode.Disposable {
     this.emitDiffNow(document)
   }
 
-  /** Oldest → newest, matching the Mercury prompt-history convention. */
+  /** Workspace-wide oldest to newest, matching the Mercury prompt-history convention. */
   public getRecentDiffs(): string[] {
     return [...this.diffs]
   }
