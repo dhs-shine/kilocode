@@ -36,6 +36,7 @@ import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.log.ChatLogSummary
 import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
+import com.intellij.ide.BrowserUtil
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -249,7 +250,7 @@ class SessionUi(
             reply = { id, dto -> controller.replyPermission(id, dto) },
         )
         login = LoginRequiredView(openProfile = { controller.openProfile() }, dismiss = { controller.dismissLoginRequired() })
-        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login, ::openFile)
+        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login, ::openFile, ::openUrl)
         header = SessionHeaderPanel(controller, this)
 
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
@@ -468,6 +469,10 @@ class SessionUi(
         cs.launch {
             workspaces.openPath(workspace.directory, path)
         }
+    }
+
+    private fun openUrl(url: String) {
+        BrowserUtil.browse(url)
     }
 
     private fun onStateChanged(state: SessionState) {
