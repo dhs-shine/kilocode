@@ -32,6 +32,10 @@ function doc(path: string, initial: string): Doc {
   } as unknown as Doc
 }
 
+function settle(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
 describe("EditHistoryTracker", () => {
   it("retains chronological edits across files for Mercury context", async () => {
     const tracker = new EditHistoryTracker({ isFileAllowed: async () => true })
@@ -41,9 +45,7 @@ describe("EditHistoryTracker", () => {
 
     open(a)
     open(b)
-    await Promise.resolve()
-    await Promise.resolve()
-    await Promise.resolve()
+    await settle()
     a.setText("const a = 2\n")
     await tracker.flush(a)
     b.setText("const b = 2\n")
@@ -65,8 +67,7 @@ describe("EditHistoryTracker", () => {
     const open = (vscode.workspace as unknown as { open(doc: vscode.TextDocument): void }).open
 
     open(a)
-    await Promise.resolve()
-    await Promise.resolve()
+    await settle()
     a.setText("const a = 2\n")
     await tracker.flush(a)
 
@@ -83,8 +84,7 @@ describe("EditHistoryTracker", () => {
 
     open(safe)
     open(secret)
-    await Promise.resolve()
-    await Promise.resolve()
+    await settle()
     secret.setText("TOKEN=secret\n")
     await tracker.flush(secret)
     safe.setText("const safe = 2\n")
