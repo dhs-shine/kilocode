@@ -114,7 +114,12 @@ jobs:
 
       - name: Render release notes
         working-directory: packages/kilo-jetbrains
-        run: ./gradlew getChangelog --project-version "$VERSION" --no-header --no-empty-sections --output-file=build/release-notes.md
+        run: |
+          if ! grep -Fq "## [$VERSION]" CHANGELOG.md; then
+            echo "Missing packages/kilo-jetbrains/CHANGELOG.md entry for $VERSION. Create a release PR or add the changelog section before tagging." >&2
+            exit 1
+          fi
+          ./gradlew getChangelog --project-version "$VERSION" --no-header --no-empty-sections --output-file=build/release-notes.md
         env:
           VERSION: ${{ steps.version.outputs.version }}
 

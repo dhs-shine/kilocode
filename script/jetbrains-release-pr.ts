@@ -95,7 +95,7 @@ async function base(ver: string, kind: "rc" | "stable") {
     .map((item) => ({ tag: item, ver: item.replace(/^jetbrains\/v/, "") }))
     .filter((item) => semver.valid(item.ver))
 
-  const target = semver.parse(ver)!
+  const want = semver.parse(ver)!
   const stable = tags
     .filter((item) => !semver.prerelease(item.ver) && semver.lt(item.ver, ver))
     .sort((a, b) => semver.rcompare(a.ver, b.ver))
@@ -110,7 +110,7 @@ async function base(ver: string, kind: "rc" | "stable") {
     .filter((item) => {
       const parsed = semver.parse(item.ver)
       if (!parsed) return false
-      if (parsed.major !== target.major || parsed.minor !== target.minor || parsed.patch !== target.patch) return false
+      if (parsed.major !== want.major || parsed.minor !== want.minor || parsed.patch !== want.patch) return false
       return Boolean(semver.prerelease(item.ver)) && semver.lt(item.ver, ver)
     })
     .sort((a, b) => semver.rcompare(a.ver, b.ver))
@@ -137,17 +137,41 @@ async function release(from: string, tag: string) {
 
 function section(ver: string, notes: string) {
   const date = new Date().toISOString().slice(0, 10)
-  const lines = bullets(notes)
-  return [`## [${ver}] - ${date}`, "", "### Changed", ...lines, ""].join("\n")
+  const groups = entries(notes)
+  const lines = [`## [${ver}] - ${date}`, ""]
+  for (const title of ["Added", "Fixed", "Changed"] as const) {
+    const items = groups.get(title)
+    if (!items?.length) continue
+    lines.push(`### ${title}`, ...items, "")
+  }
+  if (lines.length === 2) lines.push("### Changed", "- No notable changes.", "")
+  return lines.join("\n")
 }
 
-function bullets(notes: string) {
-  const lines = notes
+function entries(notes: string) {
+  const groups = new Map<string, string[]>([
+    ["Added", []],
+    ["Fixed", []],
+    ["Changed", []],
+  ])
+  for (const line of notes
     .split(/\r?\n/)
     .map((item) => item.trim())
     .filter((item) => item.startsWith("- ") || item.startsWith("* "))
-    .map((item) => `- ${item.slice(2).trim()}`)
-  return lines.length > 0 ? lines : ["- No notable changes."]
+    .map((item) => item.slice(2).trim())) {
+    if (line.startsWith("@") && line.includes(" made their first contribution ")) continue
+    const text = `- ${line}`
+    if (/^(feat|add)(\(.+\))?:/i.test(line)) {
+      groups.get("Added")!.push(text)
+      continue
+    }
+    if (/^(fix|bug)(\(.+\))?:/i.test(line)) {
+      groups.get("Fixed")!.push(text)
+      continue
+    }
+    groups.get("Changed")!.push(text)
+  }
+  return groups
 }
 
 async function writepkg(ver: string) {
@@ -157,7 +181,10 @@ async function writepkg(ver: string) {
 }
 
 async function writelog(ver: string, entry: string) {
-  const current = await Bun.file(log).text().catch(() => "# Changelog\n\n## [Unreleased]\n")
+  const current = await Bun.file(log).text().catch((err: NodeJS.ErrnoException) => {
+    if (err.code === "ENOENT") return "# Changelog\n\n## [Unreleased]\n"
+    throw err
+  })
   const clean = current.replace(regex(ver), "").replace(/\n{3,}/g, "\n\n")
   const marker = "## [Unreleased]"
   if (!clean.includes(marker)) throw new Error("CHANGELOG.md must contain ## [Unreleased]")
@@ -167,7 +194,7 @@ async function writelog(ver: string, entry: string) {
 
 function regex(ver: string) {
   const safe = ver.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  return new RegExp(`\\n?## \\[${safe}\\][\\s\\S]*?(?=\\n## \\[|$)`, "m")
+  return new RegExp(`\\n?## \\[${safe}\\][\\s\\S]*?(?=\\n## \\[|$)`)
 }
 
 function body(ver: string, kind: string, from: string, tag: string, notes: string) {

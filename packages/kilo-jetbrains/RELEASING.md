@@ -42,6 +42,8 @@ The workflow chooses a changelog base automatically:
 
 Use `from_tag` only to override this comparison range.
 
+For the first stable JetBrains release, there may be no previous stable tag yet. In that case, pass the last RC or another reviewed JetBrains tag as `from_tag`.
+
 ## Review the PR
 
 The workflow creates or updates a branch like:
