@@ -1,0 +1,28 @@
+{
+  "name": "@kilocode/kilo-console",
+  "version": "7.2.52",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 3017",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 3018",
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@kilocode/kilo-web-ui": "workspace:*",
+    "@kilocode/sdk": "workspace:*",
+    "@opencode-ai/ui": "workspace:*",
+    "@solidjs/router": "catalog:",
+    "ghostty-web": "0.4.0",
+    "solid-js": "catalog:"
+  },
+  "devDependencies": {
+    "@tsconfig/node22": "catalog:",
+    "@types/bun": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:"
+  }
+}

@@ -1,0 +1,60 @@
+@media (max-width: 980px) {
+  .kilo-console .config-page-header,
+  .kilo-console .config-toolbar,
+  .kilo-console .details,
+  .kilo-console .model-controls,
+  .kilo-console .builder,
+  .kilo-console .provider-form {
+    grid-template-columns: 1fr;
+  }
+
+  .kilo-console .confirm-body {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .kilo-console .confirm-actions {
+    justify-content: stretch;
+  }
+
+  .kilo-console .confirm-actions [data-component="button"] {
+    flex: 1 1 auto;
+  }
+
+  .kilo-console .provider,
+  .kilo-console .configured-provider {
+    grid-template-columns: 1fr;
+  }
+
+  .kilo-console .config-page-actions,
+  .kilo-console .provider-actions {
+    justify-content: flex-start;
+  }
+
+  .kilo-console .config-page-header {
+    align-items: end;
+    padding-block: 0.75rem;
+  }
+
+  .kilo-console .server-draft {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .kilo-console .compact,
+  .kilo-console .mini-list.columns,
+  .kilo-console .mini-item,
+  .kilo-console .mini-item.simple {
+    grid-template-columns: 1fr;
+  }
+
+  .kilo-console .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .kilo-console .metrics {
+    grid-template-columns: 1fr;
+  }
+}

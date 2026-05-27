@@ -66,14 +66,15 @@
         "@types/semver": "catalog:",
       },
     },
-    "packages/kilo-config-ui": {
-      "name": "@kilocode/kilo-config-ui",
+    "packages/kilo-console": {
+      "name": "@kilocode/kilo-console",
       "version": "7.2.52",
       "dependencies": {
-        "@kilocode/kilo-ui": "workspace:*",
+        "@kilocode/kilo-web-ui": "workspace:*",
         "@kilocode/sdk": "workspace:*",
         "@opencode-ai/ui": "workspace:*",
         "@solidjs/router": "catalog:",
+        "ghostty-web": "0.4.0",
         "solid-js": "catalog:",
       },
       "devDependencies": {
@@ -307,6 +308,21 @@
         "typescript-eslint": "^8.54.0",
         "vite": "7.3.2",
         "vite-plugin-solid": "2.11.10",
+      },
+    },
+    "packages/kilo-web-ui": {
+      "name": "@kilocode/kilo-web-ui",
+      "version": "7.2.52",
+      "dependencies": {
+        "@kilocode/kilo-ui": "workspace:*",
+        "@kobalte/core": "catalog:",
+        "solid-js": "catalog:",
+      },
+      "devDependencies": {
+        "@tsconfig/node22": "catalog:",
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
+        "typescript": "catalog:",
       },
     },
     "packages/opencode": {
@@ -1297,7 +1313,7 @@
 
     "@kilocode/cli": ["@kilocode/cli@workspace:packages/opencode"],
 
-    "@kilocode/kilo-config-ui": ["@kilocode/kilo-config-ui@workspace:packages/kilo-config-ui"],
+    "@kilocode/kilo-console": ["@kilocode/kilo-console@workspace:packages/kilo-console"],
 
     "@kilocode/kilo-docs": ["@kilocode/kilo-docs@workspace:packages/kilo-docs"],
 
@@ -1312,6 +1328,8 @@
     "@kilocode/kilo-telemetry": ["@kilocode/kilo-telemetry@workspace:packages/kilo-telemetry"],
 
     "@kilocode/kilo-ui": ["@kilocode/kilo-ui@workspace:packages/kilo-ui"],
+
+    "@kilocode/kilo-web-ui": ["@kilocode/kilo-web-ui@workspace:packages/kilo-web-ui"],
 
     "@kilocode/plugin": ["@kilocode/plugin@workspace:packages/plugin"],
 
@@ -3098,6 +3116,8 @@
     "get-stream": ["get-stream@8.0.1", "", {}, "sha512-VaUJspBffn/LMCJVoMvSAdmscJyS1auj5Zulnn5UoYcY531UWmdwhRWkcGKnGU93m5HSXP9LP2usOryrBtQowA=="],
 
     "get-tsconfig": ["get-tsconfig@4.14.0", "", { "dependencies": { "resolve-pkg-maps": "^1.0.0" } }, "sha512-yTb+8DXzDREzgvYmh6s9vHsSVCHeC0G3PI5bEXNBHtmshPnO+S5O7qgLEOn0I5QvMy6kpZN8K1NKGyilLb93wA=="],
+
+    "ghostty-web": ["ghostty-web@0.4.0", "", {}, "sha512-0puDBik2qapbD/QQBW9o5ZHfXnZBqZWx/ctBiVtKZ6ZLds4NYb+wZuw1cRLXZk9zYovIQ908z3rvFhexAvc5Hg=="],
 
     "gifwrap": ["gifwrap@0.10.1", "", { "dependencies": { "image-q": "^4.0.0", "omggif": "^1.0.10" } }, "sha512-2760b1vpJHNmLzZ/ubTtNnEx5WApN/PYWJvXvgS+tL1egTTthayFYIQQNi136FLEDcN/IyEY2EcGpIITD6eYUw=="],
 

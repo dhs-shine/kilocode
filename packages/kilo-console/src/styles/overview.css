@@ -1,0 +1,82 @@
+.kilo-console .grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.kilo-console .metrics {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.kilo-console .metric,
+.kilo-console .panel {
+  background: var(--card);
+  padding: 1rem;
+}
+
+.kilo-console .metric {
+  display: grid;
+  gap: 0.5rem;
+  min-height: 6.5rem;
+  border-color: var(--border);
+}
+
+.kilo-console .metric span,
+.kilo-console .facts dt {
+  color: var(--muted-foreground);
+}
+
+.kilo-console .metric strong {
+  align-self: end;
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 1.15rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kilo-console .details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.kilo-console .title {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.kilo-console .title h2 {
+  margin: 0;
+  color: var(--text-strong);
+}
+
+.kilo-console .title p {
+  margin: 0.25rem 0 0;
+  color: var(--text-weaker);
+}
+
+.kilo-console .facts {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.kilo-console .facts div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.kilo-console .facts dt {
+  font-size: var(--font-size-small);
+}
+
+.kilo-console .facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

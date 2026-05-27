@@ -6,6 +6,7 @@ import { EffectBridge } from "@/effect/bridge"
 import { lazy } from "@opencode-ai/core/util/lazy"
 import { Plugin } from "@/plugin"
 import { Shell } from "@/shell/shell"
+import { KiloPtySelfCommand } from "@/kilocode/pty/self-command" // kilocode_change
 import type { Proc } from "#pty"
 import * as Log from "@opencode-ai/core/util/log"
 import { PtyID } from "./schema"
@@ -178,13 +179,14 @@ export const layer = Layer.effect(
       const bridge = yield* EffectBridge.make()
       const cfg = yield* config.get()
       const id = PtyID.ascending()
-      const command = input.command || Shell.preferred(cfg.shell)
-      const args = input.args || []
+      const resolved = KiloPtySelfCommand.resolve(input) // kilocode_change
+      const command = resolved.command || Shell.preferred(cfg.shell)
+      const args = resolved.args || []
       if (Shell.login(command)) {
         args.push("-l")
       }
 
-      const cwd = input.cwd || s.dir
+      const cwd = resolved.cwd || s.dir // kilocode_change
       const shell = yield* plugin.trigger("shell.env", { cwd }, { env: {} })
       const env = {
         ...process.env,
