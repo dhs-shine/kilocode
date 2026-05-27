@@ -9,7 +9,7 @@ import { AutocompleteTelemetry } from "./classic-auto-complete/AutocompleteTelem
 import { NextEditInlineCompletionProvider } from "./next-edit/NextEditInlineCompletionProvider"
 import { disposeLog } from "./next-edit/log"
 import { NextEditSuggestionManager } from "./next-edit/NextEditSuggestionManager"
-import { toMercuryRecentSnippets } from "./next-edit/recentSnippetsAdapter"
+import { toAllowedMercuryRecentSnippets } from "./next-edit/recentSnippetsAdapter"
 import type { KiloConnectionService } from "../cli-backend"
 import { hasValidCredentials } from "./fim"
 import { DEFAULT_AUTOCOMPLETE_MODEL, getAutocompleteModel } from "../../shared/autocomplete-models"
@@ -120,8 +120,8 @@ export class AutocompleteServiceManager {
         // only content explicitly approved by the ignore controller.
         const raw = this.inlineCompletionProvider.recentlyVisitedRangesService.getSnippets()
         const ignore = this.ignoreControllerSync
-        const allowed = ignore ? raw.filter((s) => ignore.validateAccess(s.filepath)) : []
-        return toMercuryRecentSnippets(allowed)
+        if (!ignore) return []
+        return toAllowedMercuryRecentSnippets(raw, (path) => ignore.validateAccess(path))
       },
       onFatalError: (status) => this.handleFatalAutocompleteError(status),
       onSuggestion: (event) => {

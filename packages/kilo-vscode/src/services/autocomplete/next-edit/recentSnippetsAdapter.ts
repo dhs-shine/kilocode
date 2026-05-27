@@ -26,6 +26,13 @@ export function toMercuryRecentSnippets(
     }))
 }
 
+export function toAllowedMercuryRecentSnippets(
+  snippets: ReadonlyArray<Pick<AutocompleteCodeSnippet, "filepath" | "content">>,
+  allowed: (filepath: string) => boolean,
+): MercuryRecentSnippet[] {
+  return toMercuryRecentSnippets(snippets.filter((snippet) => allowed(snippet.filepath)))
+}
+
 function trimToLines(content: string, maxLines: number): string {
   const lines = content.split("\n")
   if (lines.length <= maxLines) return content

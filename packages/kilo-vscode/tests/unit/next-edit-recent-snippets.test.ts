@@ -1,4 +1,7 @@
-import { toMercuryRecentSnippets } from "../../src/services/autocomplete/next-edit/recentSnippetsAdapter"
+import {
+  toAllowedMercuryRecentSnippets,
+  toMercuryRecentSnippets,
+} from "../../src/services/autocomplete/next-edit/recentSnippetsAdapter"
 
 describe("toMercuryRecentSnippets", () => {
   it("returns an empty array when no snippets are supplied", () => {
@@ -35,5 +38,18 @@ describe("toMercuryRecentSnippets", () => {
   it("passes through filepath verbatim when not a parsable URI", () => {
     const [out] = toMercuryRecentSnippets([{ filepath: "not a uri", content: "x" }])
     expect(out.filepath).toBe("not a uri")
+  })
+
+  it("excludes denied snippets before constructing next edit request context", () => {
+    const out = toAllowedMercuryRecentSnippets(
+      [
+        { filepath: "secrets/.env", content: "TOKEN=do-not-send" },
+        { filepath: "src/app.ts", content: "const safe = true" },
+      ],
+      (path) => !path.endsWith(".env"),
+    )
+
+    expect(out).toEqual([{ filepath: "src/app.ts", content: "const safe = true" }])
+    expect(JSON.stringify(out)).not.toContain("do-not-send")
   })
 })
