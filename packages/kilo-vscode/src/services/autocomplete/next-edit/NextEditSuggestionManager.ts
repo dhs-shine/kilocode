@@ -341,4 +341,3 @@ function visualize(line: string): string {
 
 export const NEXT_EDIT_ACCEPT_OR_JUMP_COMMAND = "kilo-code.next-edit.acceptOrJump"
 export const NEXT_EDIT_DISMISS_COMMAND = "kilo-code.next-edit.dismiss"
-export const NEXT_EDIT_PENDING_CONTEXT_KEY = PENDING_CONTEXT_KEY
