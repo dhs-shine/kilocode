@@ -205,11 +205,6 @@
         "category": "Kilo Code"
       },
       {
-        "command": "kilo-code.autocomplete.next-edit.accepted",
-        "title": "Next Edit: Suggestion Accepted (internal)",
-        "category": "Kilo Code"
-      },
-      {
         "command": "kilo-code.new.agentManager.previousSession",
         "title": "Agent Manager: Previous Session",
         "category": "Kilo Code"
