@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -73,8 +75,7 @@ jobs:
               echo "marketplace_channel=default"
               echo "cli_channel=latest"
             } >> "$GITHUB_OUTPUT"
-            echo "Stable JetBrains Marketplace publishing is implemented but intentionally disabled; use an rc tag such as jetbrains/v7.0.1-rc.1." >&2
-            exit 1
+            exit 0
           fi
 
           echo "Unsupported JetBrains plugin version '$version'. Expected jetbrains/vx.y.z-rc.n or jetbrains/vx.y.z." >&2
@@ -110,6 +111,12 @@ jobs:
         run: ./gradlew verifyPlugin -Pproduction=true -Pkilo.channel="$CHANNEL"
         env:
           CHANNEL: ${{ steps.version.outputs.marketplace_channel }}
+
+      - name: Render release notes
+        working-directory: packages/kilo-jetbrains
+        run: ./gradlew getChangelog --project-version "$VERSION" --no-header --no-empty-sections --output-file=build/release-notes.md
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
 
       - name: Publish to JetBrains Marketplace
         working-directory: packages/kilo-jetbrains
@@ -147,16 +154,22 @@ jobs:
         run: |
           tag="$GITHUB_REF_NAME"
           title="JetBrains $VERSION"
-          notes="JetBrains plugin $VERSION."
+          flags=(--title "$title" --notes-file "$NOTES")
+          if [[ "$KIND" == "rc" ]]; then
+            flags+=(--prerelease)
+          fi
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$tag" "$ARCHIVE" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$tag" "${flags[@]}" --repo "$GITHUB_REPOSITORY"
             exit 0
           fi
-          gh release create "$tag" "$ARCHIVE" --title "$title" --notes "$notes" --prerelease --repo "$GITHUB_REPOSITORY"
+          gh release create "$tag" "$ARCHIVE" "${flags[@]}" --repo "$GITHUB_REPOSITORY"
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
+          KIND: ${{ steps.version.outputs.kind }}
           ARCHIVE: ${{ steps.archive.outputs.path }}
+          NOTES: packages/kilo-jetbrains/build/release-notes.md
 
       - name: Upload workflow artifact
         if: always()
