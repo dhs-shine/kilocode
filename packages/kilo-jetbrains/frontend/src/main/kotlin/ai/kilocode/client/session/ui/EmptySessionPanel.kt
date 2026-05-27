@@ -1,8 +1,9 @@
 package ai.kilocode.client.session.ui
 
-import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.session.SessionActivityKind
 import ai.kilocode.client.session.SessionRef
+import ai.kilocode.client.session.history.HistoryActivitySnapshot
 import ai.kilocode.client.session.history.HistoryTime
 import ai.kilocode.client.session.history.LocalHistoryItem
 import ai.kilocode.client.session.history.itemAt
@@ -58,16 +59,17 @@ import javax.swing.Timer
 class EmptySessionPanel(
     parent: Disposable,
     private val controller: SessionController,
-    private val sessions: KiloSessionService,
     recents: List<SessionDto>,
     private val history: () -> Unit = {},
+    private val activity: () -> Map<String, SessionActivityKind> = { emptyMap() },
+    private val titles: () -> Map<String, String> = { emptyMap() },
 ) : BorderLayoutPanel(), Disposable, SessionEditorStyleTarget {
     val view: Align = align(HAlign.CENTER, VAlign.CENTER)
 
     private val model = DefaultListModel<LocalHistoryItem>()
     private var hover = -1
     private var style = SessionEditorStyle.current()
-    private var active = emptySet<String>()
+    private var snapshot = HistoryActivitySnapshot()
     private val timer = Timer(ACTIVITY_MS) { syncActivity() }
 
     private val recentTitle = JBLabel(KiloBundle.message("session.empty.recent")).apply {
@@ -240,9 +242,10 @@ class EmptySessionPanel(
 
     @RequiresEdt
     internal fun syncActivity() {
-        val snap = sessions.activity(active)
-        active = snap.active
-        repaintRows(snap.changed)
+        val next = HistoryActivitySnapshot(activity(), titles())
+        val changed = snapshot.changed(next)
+        snapshot = next
+        repaintRows(changed)
     }
 
     private fun repaintRows(ids: Set<String>) {
@@ -263,13 +266,7 @@ class EmptySessionPanel(
 
     private inner class SessionRenderer : BorderLayoutPanel(), ListCellRenderer<LocalHistoryItem> {
         private val title = JBLabel()
-        private val badge = JBLabel(
-            FilledBadgeIcon(
-                KiloBundle.message("session.part.tool.running"),
-                UiStyle.Colors.runningBadgeBg(),
-                UiStyle.Colors.runningBadgeFg(),
-            )
-        ).apply {
+        private val badge = JBLabel().apply {
             border = JBUI.Borders.emptyLeft(JBUI.CurrentTheme.ActionsList.elementIconGap())
         }
         private val time = JBLabel()
@@ -302,10 +299,15 @@ class EmptySessionPanel(
             background = if (over) list.selectionBackground else list.background
             title.foreground = if (over) list.selectionForeground else UIUtil.getLabelForeground()
             time.foreground = if (over) list.selectionForeground else UIUtil.getContextHelpForeground()
-            title.text = value?.let(::title) ?: ""
+            title.text = value?.let { snapshot.titles[it.id] ?: title(it) } ?: ""
             time.text = value?.let(HistoryTime::relative) ?: ""
-            badge.isVisible = value?.id in active
+            setBadge(value?.id?.let(snapshot.activity::get))
             return this
+        }
+
+        private fun setBadge(kind: SessionActivityKind?) {
+            badge.isVisible = kind != null
+            badge.icon = kind?.let { FilledBadgeIcon(it.label(), it.bg(), it.fg()) }
         }
     }
 
@@ -369,6 +371,10 @@ class EmptySessionPanel(
     )
 
     private companion object {
-        const val ACTIVITY_MS = 10_000
+        const val ACTIVITY_MS = 3_000
     }
+}
+
+private fun Map<String, String>.changed(next: Map<String, String>) = (keys + next.keys).filterTo(mutableSetOf()) {
+    this[it] != next[it]
 }

@@ -62,7 +62,7 @@ class HistoryPanel(
 ) : BorderLayoutPanel(), Disposable, DataProvider {
     private val localSearch = search(controller.local)
     private val cloudSearch = search(controller.cloud)
-    private var active = emptySet<String>()
+    private var snapshot = HistoryActivitySnapshot()
     private val localList = localList()
     private val cloudList = cloudList()
     private val more = LoadMoreButton()
@@ -222,7 +222,7 @@ class HistoryPanel(
     private fun localList() = JBList(controller.local).apply {
         selectionMode = ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         isFocusable = true
-        cellRenderer = LocalHistoryRenderer(controller.local) { active }
+        cellRenderer = LocalHistoryRenderer(controller.local, { snapshot.activity }, { snapshot.titles })
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         emptyText.text = KiloBundle.message("history.empty")
         addMouseListener(object : MouseAdapter() {
@@ -250,7 +250,7 @@ class HistoryPanel(
     private fun cloudList() = JBList(controller.cloud).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
         isFocusable = true
-        cellRenderer = CloudHistoryRenderer(controller.cloud) { active }
+        cellRenderer = CloudHistoryRenderer(controller.cloud) { snapshot.activity }
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         emptyText.text = KiloBundle.message("history.empty")
         addMouseListener(object : MouseAdapter() {
@@ -293,10 +293,14 @@ class HistoryPanel(
 
     @RequiresEdt
     internal fun syncActivity() {
-        val snap = controller.activity(active)
-        active = snap.active
-        repaintRows(localList, controller.local, snap.changed)
-        repaintRows(cloudList, controller.cloud, snap.changed)
+        val next = HistoryActivitySnapshot(
+            activity = manager?.activity() ?: controller.activity(),
+            titles = manager?.titles().orEmpty(),
+        )
+        val changed = snapshot.changed(next)
+        snapshot = next
+        repaintRows(localList, controller.local, changed)
+        repaintRows(cloudList, controller.cloud, changed)
     }
 
     private fun <T : HistoryItem> repaintRows(list: JBList<T>, model: HistoryModel<T>, ids: Set<String>) {
@@ -442,14 +446,31 @@ class HistoryPanel(
     }
 
     internal fun runningBadgeVisible(index: Int): Boolean {
+        return badgeText(index) != null
+    }
+
+    internal fun badgeText(index: Int): String? {
         val list = activeList()
-        val item = list.model.getElementAt(index) ?: return false
+        val item = list.model.getElementAt(index) ?: return null
         @Suppress("UNCHECKED_CAST")
         val renderer = list.cellRenderer as javax.swing.ListCellRenderer<HistoryItem>
         @Suppress("UNCHECKED_CAST")
         val typed = list as JList<HistoryItem>
         val view = renderer.getListCellRendererComponent(typed, item, index, false, false)
-        return view is HistoryRenderer<*> && view.runningVisible()
+        if (view !is HistoryRenderer<*>) return null
+        return view.badgeText()
+    }
+
+    internal fun titleText(index: Int): String? {
+        val list = activeList()
+        val item = list.model.getElementAt(index) ?: return null
+        @Suppress("UNCHECKED_CAST")
+        val renderer = list.cellRenderer as javax.swing.ListCellRenderer<HistoryItem>
+        @Suppress("UNCHECKED_CAST")
+        val typed = list as JList<HistoryItem>
+        val view = renderer.getListCellRendererComponent(typed, item, index, false, false)
+        if (view !is HistoryRenderer<*>) return null
+        return view.titleText()
     }
 
     internal fun repoOnlyVisible() = repoOnly.isVisible
@@ -530,6 +551,6 @@ class HistoryPanel(
     private companion object {
         const val CARD_LOAD = "load"
         const val CARD_TABS = "tabs"
-        const val ACTIVITY_MS = 10_000
+        const val ACTIVITY_MS = 3_000
     }
 }

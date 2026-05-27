@@ -130,6 +130,7 @@ class SessionUi(
     private lateinit var prompt: PromptPanel
     private lateinit var load: LoadingPanel
     private lateinit var migrationOverlay: MigrationOverlayPanel
+    private var empty: EmptySessionPanel? = null
     private var modalFocus: (() -> JComponent)? = null
     private var style = SessionEditorStyle.current()
 
@@ -161,6 +162,31 @@ class SessionUi(
     internal val cacheKey: String? get() = controller.refKey
 
     internal fun currentStyle() = style
+
+    @RequiresEdt
+    internal fun canDisposeInactive(): Boolean = controller.model.state is SessionState.Idle
+
+    @RequiresEdt
+    internal fun activityKind(): SessionActivityKind? = when (val state = controller.model.state) {
+        is SessionState.Idle,
+        is SessionState.Loading,
+        is SessionState.Busy,
+        is SessionState.Retry,
+        is SessionState.Offline,
+        is SessionState.Error -> null
+        is SessionState.LoginRequired -> SessionActivityKind.LOGIN_REQUIRED
+        is SessionState.AwaitingPermission -> SessionActivityKind.PERMISSION
+        is SessionState.AwaitingQuestion ->
+            SessionActivityKind.PLAN.takeIf { state.question.items.any { it.planFollowup() } } ?: SessionActivityKind.QUESTION
+    }
+
+    @RequiresEdt
+    internal fun title(): String? = controller.model.session?.title?.takeIf { it.isNotBlank() }
+
+    @RequiresEdt
+    internal fun syncActivity() {
+        empty?.syncActivity()
+    }
 
     val defaultFocusedComponent: JComponent get() {
         modalFocus?.invoke()?.let { return it }
@@ -288,15 +314,25 @@ class SessionUi(
                 }
 
                 is SessionControllerEvent.ViewChanged.ShowProgress -> {
+                    empty = null
                     scroll.show(progressBody)
                 }
 
                 is SessionControllerEvent.ViewChanged.ShowRecents -> {
-                    val panel = EmptySessionPanel(this, controller, sessions, event.recents) { manager?.showHistory() }
+                    val panel = EmptySessionPanel(
+                        this,
+                        controller,
+                        event.recents,
+                        history = { manager?.showHistory() },
+                        activity = { manager?.activity() ?: sessions.activity() },
+                        titles = { manager?.titles().orEmpty() },
+                    )
+                    empty = panel
                     scroll.show(panel.view)
                 }
 
                 is SessionControllerEvent.ViewChanged.ShowSession -> {
+                    empty = null
                     scroll.show(messageBody)
                 }
 
@@ -318,6 +354,8 @@ class SessionUi(
             when (event) {
                 is SessionModelEvent.StateChanged -> onStateChanged(event.state)
 
+                is SessionModelEvent.SessionUpdated -> onSessionUpdated()
+
                 is SessionModelEvent.TurnAdded,
                 is SessionModelEvent.TurnUpdated,
                 is SessionModelEvent.ContentAdded,
@@ -331,7 +369,6 @@ class SessionUi(
                 is SessionModelEvent.ContentRemoved,
                 is SessionModelEvent.DiffUpdated,
                 is SessionModelEvent.TodosUpdated,
-                is SessionModelEvent.SessionUpdated,
                 is SessionModelEvent.HeaderUpdated,
                 is SessionModelEvent.Compacted,
                 is SessionModelEvent.Cleared -> Unit
@@ -437,7 +474,12 @@ class SessionUi(
         prompt.setBusy(state.isBusy())
         load.setState(state)
         scroll.show(body(state))
+        manager?.activityChanged()
         refresh()
+    }
+
+    private fun onSessionUpdated() {
+        manager?.activityChanged()
     }
 
     private fun refresh() {
@@ -469,3 +511,6 @@ class SessionUi(
 }
 
 private fun variantTitle(value: String): String = value.replaceFirstChar { it.titlecase() }
+
+private fun ai.kilocode.client.session.model.QuestionItem.planFollowup() =
+    questionKey == "plan.followup.question" || headerKey == "plan.followup.header"

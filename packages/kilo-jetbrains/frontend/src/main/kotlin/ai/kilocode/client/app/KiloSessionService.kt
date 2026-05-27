@@ -4,6 +4,7 @@ package ai.kilocode.client.app
 
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.rpc.KiloSessionRpcApi
+import ai.kilocode.client.session.SessionActivityKind
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.CloudSessionListDto
 import ai.kilocode.rpc.dto.ConfigUpdateDto
@@ -31,11 +32,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
-internal data class SessionActivitySnapshot(
-    val active: Set<String>,
-    val changed: Set<String>,
-)
 
 /**
  * Project-level frontend service for session management.
@@ -90,13 +86,10 @@ class KiloSessionService internal constructor(
         }
     }
 
-    internal fun activity(previous: Set<String>): SessionActivitySnapshot {
-        val active = statuses.value
+    internal fun activity(): Map<String, SessionActivityKind> =
+        statuses.value
             .filterValues { it.type == "busy" }
-            .keys
-            .toSet()
-        return SessionActivitySnapshot(active, active xor previous)
-    }
+            .mapValues { SessionActivityKind.RUNNING }
 
     suspend fun list(dir: String): SessionListDto {
         val result = call { list(dir) }

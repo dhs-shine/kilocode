@@ -80,6 +80,16 @@ object UiStyle {
             JBColor(Color.BLACK, Color.WHITE),
         )
 
+        fun activityBadgeBg(): Color = JBColor.namedColor(
+            "Kilo.History.activityBadgeBackground",
+            JBUI.CurrentTheme.Link.Foreground.ENABLED,
+        )
+
+        fun activityBadgeFg(): Color = JBColor.namedColor(
+            "Kilo.History.activityBadgeForeground",
+            Color.WHITE,
+        )
+
         /** Card border color shared across profile cards. */
         fun cardBorder(): Color = JBColor.namedColor("Component.borderColor", JBColor.border())
 

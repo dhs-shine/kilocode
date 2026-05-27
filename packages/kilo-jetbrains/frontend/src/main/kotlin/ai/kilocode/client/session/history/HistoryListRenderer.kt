@@ -1,7 +1,7 @@
 package ai.kilocode.client.session.history
 
 import ai.kilocode.client.session.ui.PickerRow
-import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.session.SessionActivityKind
 import ai.kilocode.client.ui.FilledBadgeIcon
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.icons.AllIcons
@@ -28,7 +28,8 @@ private const val DELETE_AREA_WIDTH = 32
 internal open class HistoryRenderer<T : HistoryItem>(
     private val model: HistoryModel<T>,
     private val deletable: Boolean,
-    private val active: () -> Set<String>,
+    private val activity: () -> Map<String, SessionActivityKind>,
+    private val titles: () -> Map<String, String> = { emptyMap() },
 ) : JPanel(BorderLayout()), ListCellRenderer<T> {
     companion object {
         private val icon: Icon = AllIcons.Actions.GC
@@ -80,6 +81,7 @@ internal open class HistoryRenderer<T : HistoryItem>(
         if (deletable) add(del, BorderLayout.EAST)
     }
     private val wrap = PickerRow()
+    private var text = ""
 
     init {
         isOpaque = true
@@ -110,13 +112,14 @@ internal open class HistoryRenderer<T : HistoryItem>(
         top.isVisible = sep.caption != null
 
         title.clear()
+        text = value?.let { titles()[it.id] ?: title(it) }.orEmpty()
         title.append(
-            value?.let(::title).orEmpty(),
+            text,
             SimpleTextAttributes(SimpleTextAttributes.STYLE_BOLD, fg),
         )
         time.text = value?.let(HistoryTime::relative).orEmpty()
         time.foreground = weak
-        badge.isVisible = value?.id in active()
+        badge.setKind(value?.id?.let(activity()::get))
         if (deletable) del.icon = if (selected) icon else empty
 
         top.invalidate()
@@ -125,26 +128,34 @@ internal open class HistoryRenderer<T : HistoryItem>(
 
     internal fun runningVisible() = badge.isVisible
 
-    private class BadgeLabel : JBLabel(
-        FilledBadgeIcon(
-            KiloBundle.message("session.part.tool.running"),
-            UiStyle.Colors.runningBadgeBg(),
-            UiStyle.Colors.runningBadgeFg(),
-        )
-    ) {
+    internal fun badgeText() = badge.kind?.label()
+
+    internal fun titleText() = text
+
+    private class BadgeLabel : JBLabel() {
+        var kind: SessionActivityKind? = null
+            private set
+
         init {
             border = JBUI.Borders.emptyLeft(JBUI.CurrentTheme.ActionsList.elementIconGap())
             alignmentY = Component.CENTER_ALIGNMENT
+        }
+
+        fun setKind(value: SessionActivityKind?) {
+            kind = value
+            isVisible = value != null
+            icon = value?.let { FilledBadgeIcon(it.label(), it.bg(), it.fg()) }
         }
     }
 }
 
 internal class LocalHistoryRenderer(
     model: HistoryModel<LocalHistoryItem>,
-    active: () -> Set<String> = { emptySet() },
-) : HistoryRenderer<LocalHistoryItem>(model, deletable = true, active)
+    activity: () -> Map<String, SessionActivityKind> = { emptyMap() },
+    titles: () -> Map<String, String> = { emptyMap() },
+) : HistoryRenderer<LocalHistoryItem>(model, deletable = true, activity, titles)
 
 internal class CloudHistoryRenderer(
     model: HistoryModel<CloudHistoryItem>,
-    active: () -> Set<String> = { emptySet() },
-) : HistoryRenderer<CloudHistoryItem>(model, deletable = false, active)
+    activity: () -> Map<String, SessionActivityKind> = { emptyMap() },
+) : HistoryRenderer<CloudHistoryItem>(model, deletable = false, activity)

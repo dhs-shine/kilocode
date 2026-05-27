@@ -4,6 +4,8 @@ import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.session.SessionActivityKind
 import ai.kilocode.client.session.SessionRef
 import ai.kilocode.client.session.history.HistoryTime
 import ai.kilocode.client.session.history.LocalHistoryItem
@@ -201,6 +203,34 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
         assertEquals("Untitled", label?.text)
     }
 
+    fun `test renderer uses title overlay`() {
+        val panel = panel(
+            recents = listOf(session("ses_1", title = "Stored")),
+            titles = { mapOf("ses_1" to "Live") },
+        )
+
+        panel.syncActivity()
+        val cell = panel.rendererComponent(session("ses_1", title = "Stored")) as BorderLayoutPanel
+
+        assertEquals("Live", titleText(cell))
+    }
+
+    fun `test sync activity removes title overlay`() {
+        var title = "Live"
+        val panel = panel(
+            recents = listOf(session("ses_1", title = "Stored")),
+            titles = { title.takeIf { it.isNotBlank() }?.let { mapOf("ses_1" to it) }.orEmpty() },
+        )
+
+        panel.syncActivity()
+        assertEquals("Live", titleText(panel.rendererComponent(session("ses_1", title = "Stored")) as BorderLayoutPanel))
+
+        title = ""
+        panel.syncActivity()
+
+        assertEquals("Stored", titleText(panel.rendererComponent(session("ses_1", title = "Stored")) as BorderLayoutPanel))
+    }
+
     fun `test renderer shows running badge for busy recent session`() {
         val panel = panel(listOf(session("ses_1")))
         rpc.statuses.value = mapOf("ses_1" to SessionStatusDto("busy"))
@@ -209,7 +239,45 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
 
         val cell = panel.rendererComponent(session("ses_1")) as BorderLayoutPanel
 
-        assertTrue(runningVisible(cell))
+        assertEquals(KiloBundle.message("session.part.tool.running"), badgeText(cell))
+    }
+
+    fun `test renderer shows overlay badge for active recent session`() {
+        val panel = panel(
+            recents = listOf(session("ses_1")),
+            activity = { sessions.activity() + mapOf("ses_1" to SessionActivityKind.QUESTION) },
+        )
+        rpc.statuses.value = mapOf("ses_1" to SessionStatusDto("busy"))
+        flush()
+        panel.syncActivity()
+
+        val cell = panel.rendererComponent(session("ses_1")) as BorderLayoutPanel
+
+        assertEquals(KiloBundle.message("history.badge.question"), badgeText(cell))
+    }
+
+    fun `test sync activity updates recent badge kind change`() {
+        var kind: SessionActivityKind? = null
+        val panel = panel(
+            recents = listOf(session("ses_1")),
+            activity = { sessions.activity() + kind?.let { mapOf("ses_1" to it) }.orEmpty() },
+        )
+        rpc.statuses.value = mapOf("ses_1" to SessionStatusDto("busy"))
+        flush()
+
+        panel.syncActivity()
+        assertEquals(
+            KiloBundle.message("session.part.tool.running"),
+            badgeText(panel.rendererComponent(session("ses_1")) as BorderLayoutPanel),
+        )
+
+        kind = SessionActivityKind.QUESTION
+        panel.syncActivity()
+
+        assertEquals(
+            KiloBundle.message("history.badge.question"),
+            badgeText(panel.rendererComponent(session("ses_1")) as BorderLayoutPanel),
+        )
     }
 
     fun `test renderer hides running badge for idle recent session`() {
@@ -220,7 +288,7 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
 
         val cell = panel.rendererComponent(session("ses_1")) as BorderLayoutPanel
 
-        assertFalse(runningVisible(cell))
+        assertNull(badgeText(cell))
     }
 
     fun `test timestamp normalization handles seconds and milliseconds`() {
@@ -238,17 +306,28 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
         assertEquals("4d ago", panel.text(session("ses_1", now - 345_600_000), now))
     }
 
-    private fun panel(recents: List<SessionDto> = emptyList(), history: () -> Unit = {}) =
-        EmptySessionPanel(testRootDisposable, controller, sessions, recents, history)
+    private fun panel(
+        recents: List<SessionDto> = emptyList(),
+        history: () -> Unit = {},
+        activity: () -> Map<String, SessionActivityKind> = { sessions.activity() },
+        titles: () -> Map<String, String> = { emptyMap() },
+    ) = EmptySessionPanel(testRootDisposable, controller, recents, history, activity, titles)
 
     private fun flush() = runBlocking {
         delay(100)
         UIUtil.dispatchAllInvocationEvents()
     }
 
-    private fun runningVisible(cell: BorderLayoutPanel): Boolean = UIUtil.uiTraverser(cell)
+    private fun badgeText(cell: BorderLayoutPanel): String? = UIUtil.uiTraverser(cell)
         .filter(JBLabel::class.java)
-        .any { it.isVisible && it.icon is FilledBadgeIcon }
+        .mapNotNull { (it.icon as? FilledBadgeIcon)?.takeIf { _ -> it.isVisible }?.text }
+        .firstOrNull()
+
+    private fun titleText(cell: BorderLayoutPanel): String? = UIUtil.uiTraverser(cell)
+        .filter(JBLabel::class.java)
+        .filter { it.icon == null }
+        .firstOrNull()
+        ?.text
 
     private fun session(id: String, updated: Long = 2_000L, title: String = "Title $id") = SessionDto(
         id = id,
