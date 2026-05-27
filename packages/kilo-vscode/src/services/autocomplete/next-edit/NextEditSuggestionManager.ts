@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 import { nesLog } from "./log"
+import { planInsertion } from "./pendingEdit"
 
 const PENDING_CONTEXT_KEY = "kilo-code.nextEdit.hasPendingSuggestion"
 const CHAIN_DELAY_MS = 60
@@ -20,7 +21,7 @@ export type PendingNextEdit =
   | {
       kind: "insert"
       document: vscode.TextDocument
-      /** Existing line BEFORE which the new content will be inserted. */
+      /** Existing line before insertion, or `lineCount` when appending at EOF. */
       diffStartLine: number
       /** Same as diffStartLine for hint/jump-target purposes. */
       diffEndLine: number
@@ -192,9 +193,13 @@ export class NextEditSuggestionManager implements vscode.Disposable {
         nesLog(`document drifted since suggestion was made — dropping insert at line ${p.diffStartLine}`)
         return
       }
-      const pos = new vscode.Position(p.diffStartLine, 0)
-      ok = await editor.edit((b) => b.insert(pos, p.replacement))
-      nesLog(`applied insert at line ${pos.line} (${p.replacement.length} chars, ok=${ok})`)
+      const edit = planInsertion(p, {
+        lineCount: editor.document.lineCount,
+        end: (line) => editor.document.lineAt(line).range.end.character,
+      })
+      const pos = new vscode.Position(edit.line, edit.character)
+      ok = await editor.edit((b) => b.insert(pos, edit.text))
+      nesLog(`applied insert at line ${pos.line} (${edit.text.length} chars, ok=${ok})`)
     } else {
       const range = new vscode.Range(
         new vscode.Position(p.diffStartLine, 0),
