@@ -119,7 +119,10 @@ export class NextEditInlineCompletionProvider implements vscode.InlineCompletion
     })
     await this.editHistoryTracker.flush(document)
     return {
-      currentFilePath: document.uri.fsPath,
+      // Mirror classic autocomplete's policy: never send an absolute fsPath upstream.
+      // Mercury only needs the path for language/context hints, and the workspace-relative
+      // form is what `recentlyViewedSnippets` already uses (see recentSnippetsAdapter.ts).
+      currentFilePath: vscode.workspace.asRelativePath(document.uri, false),
       currentFileContent: document.getText(),
       cursorLine: position.line,
       cursorCharacter: position.character,
