@@ -163,6 +163,17 @@ class ReasoningViewTest : BasePlatformTestCase() {
         assertTrue(view.preferredSize.height > 0)
     }
 
+    fun `test link opens url callback`() {
+        val urls = mutableListOf<String>()
+        val view = ReasoningView(reasoning("p1", done = true, text = "[docs](https://kilocode.ai/docs)"), openUrl = {
+            urls.add(it)
+        })
+
+        view.md.simulateLink("https://kilocode.ai/docs")
+
+        assertEquals(listOf("https://kilocode.ai/docs"), urls)
+    }
+
     private fun assertEditorSheet(sheet: String, style: SessionEditorStyle) {
         assertTrue(sheet.contains(style.editorFamily))
         assertTrue(sheet.contains("${style.editorSize}pt"))

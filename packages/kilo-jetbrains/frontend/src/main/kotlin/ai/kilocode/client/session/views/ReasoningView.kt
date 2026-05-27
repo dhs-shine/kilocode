@@ -23,7 +23,11 @@ import javax.swing.ScrollPaneConstants
 import javax.swing.Scrollable
 
 /** Renders reasoning as a secondary collapsible block. */
-class ReasoningView(reasoning: Reasoning, private val parts: ReasoningParts = reasoningParts()) :
+class ReasoningView(
+    reasoning: Reasoning,
+    openUrl: (String) -> Unit = {},
+    private val parts: ReasoningParts = reasoningParts(),
+) :
     SecondarySessionPartView(parts.header, parts.scroll) {
 
     override val contentId: String = reasoning.id
@@ -37,6 +41,7 @@ class ReasoningView(reasoning: Reasoning, private val parts: ReasoningParts = re
         bindHeader(parts.title, parts.icon)
         applyStyle(style)
         md.opaque = false
+        md.addLinkListener { openUrl(it.href) }
         md.set(source)
         parts.panel.add(md.component, BorderLayout.CENTER)
         sync()

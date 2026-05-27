@@ -21,9 +21,13 @@ import ai.kilocode.client.session.views.todo.TodoWriteView
  * 3. Add a branch here — the exhaustive `when` will surface the gap as a compile error.
  */
 object ViewFactory {
-    fun create(content: Content, openFile: (String) -> Unit): PartView = when (content) {
-        is Text -> TextView(content)
-        is Reasoning -> ReasoningView(content)
+    fun create(
+        content: Content,
+        openFile: (String) -> Unit,
+        openUrl: (String) -> Unit = {},
+    ): PartView = when (content) {
+        is Text -> TextView(content, openUrl = openUrl)
+        is Reasoning -> ReasoningView(content, openUrl = openUrl)
         is Tool -> when {
             TodoWriteView.canRender(content) -> TodoWriteView(content)
             PlanExitView.canRender(content) -> PlanExitView(content, openFile)
@@ -36,9 +40,13 @@ object ViewFactory {
         is Generic -> GenericView(content)
     }
 
-    fun createUser(content: Content, openFile: (String) -> Unit): PartView = when (content) {
-        is Text -> TextView(content, transparent = true)
-        else -> create(content, openFile)
+    fun createUser(
+        content: Content,
+        openFile: (String) -> Unit,
+        openUrl: (String) -> Unit = {},
+    ): PartView = when (content) {
+        is Text -> TextView(content, transparent = true, openUrl = openUrl)
+        else -> create(content, openFile, openUrl)
     }
 
     /**

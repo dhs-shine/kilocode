@@ -189,10 +189,14 @@ class ReadToolView(
     internal fun hasToggle() = arrow.isVisible
     internal fun horizontalPolicy() = parts.scroll.horizontalScrollBarPolicy
     internal fun bodyMaxRows() = SessionUiStyle.View.Tool.BODY_LINES
+    internal fun bodyFont() = parts.text.font
     internal fun linkVisible() = parts.link.isVisible
     internal fun linkText() = parts.label
     internal fun linkMarkup() = parts.link.text ?: ""
     internal fun linkForeground() = parts.link.foreground
+    internal fun linkFont() = parts.link.font
+    internal fun subtitleForeground() = parts.sub.foreground
+    internal fun subtitleFont() = parts.sub.font
     internal fun linkHref() = parts.href
     internal fun openLink() = parts.openLink()
 
@@ -200,8 +204,8 @@ class ReadToolView(
         this.style = style
         var changed = false
         changed = setFont(parts.title, style.boldEditorFont) || changed
-        changed = setFont(parts.sub, style.smallEditorFont) || changed
-        changed = setFont(parts.link, style.smallEditorFont) || changed
+        changed = setFont(parts.sub, style.transcriptFont) || changed
+        changed = setFont(parts.link, style.transcriptFont) || changed
         changed = setFont(parts.state, style.smallEditorFont) || changed
         changed = setFont(parts.text, style.transcriptFont) || changed
         if (changed) refresh()
@@ -216,6 +220,8 @@ class ReadToolView(
         changed = setText(parts.title, title(item)) || changed
         changed = syncSubtitle() || changed
         changed = setForeground(parts.title, titleColor(item)) || changed
+        changed = setForeground(parts.sub, UiStyle.Colors.fg()) || changed
+        changed = setForeground(parts.link, UiStyle.Colors.fg()) || changed
         changed = setText(parts.state, stateText(item)) || changed
         changed = setForeground(parts.state, color(item)) || changed
         changed = setForeground(parts.text, bodyColor()) || changed
@@ -297,7 +303,7 @@ private fun toolParts(tool: Tool, openFile: ((String) -> Unit)? = null): ToolPar
     val link = JBLabel().apply {
         isVisible = false
         isFocusable = false
-        foreground = UiStyle.Colors.weak()
+        foreground = UiStyle.Colors.fg()
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         setRequestFocusEnabled(false)
         addMouseListener(object : MouseAdapter() {

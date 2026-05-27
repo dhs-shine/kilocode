@@ -49,7 +49,8 @@ class ReadToolViewTest : BasePlatformTestCase() {
         assertEquals("SessionUiLayoutTest.kt", view.linkText())
         assertEquals(path, view.linkHref())
         assertTrue(view.linkMarkup().contains("<u>SessionUiLayoutTest.kt</u>"))
-        assertEquals(UiStyle.Colors.weak().rgb, view.linkForeground().rgb)
+        assertEquals(UiStyle.Colors.fg().rgb, view.linkForeground().rgb)
+        assertEquals(view.linkFont(), view.bodyFont())
         assertTrue(view.labelText().contains("SessionUiLayoutTest.kt"))
 
         view.openLink()
@@ -71,6 +72,8 @@ class ReadToolViewTest : BasePlatformTestCase() {
 
         assertFalse(view.linkVisible())
         assertNull(view.linkHref())
+        assertEquals(UiStyle.Colors.fg().rgb, view.subtitleForeground().rgb)
+        assertEquals(view.subtitleFont(), view.bodyFont())
         assertTrue(view.labelText().contains(path))
     }
 

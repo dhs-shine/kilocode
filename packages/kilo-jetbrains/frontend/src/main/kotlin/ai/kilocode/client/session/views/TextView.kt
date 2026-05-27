@@ -12,7 +12,11 @@ import java.awt.BorderLayout
  *
  * Supports both full-replacement ([update]) and streaming append ([appendDelta]).
  */
-class TextView(text: Text, transparent: Boolean = false) : PartView() {
+class TextView(
+    text: Text,
+    transparent: Boolean = false,
+    openUrl: (String) -> Unit = {},
+) : PartView() {
 
     override val contentId: String = text.id
 
@@ -22,6 +26,7 @@ class TextView(text: Text, transparent: Boolean = false) : PartView() {
         layout = BorderLayout()
         isOpaque = false
         md.opaque = !transparent
+        md.addLinkListener { openUrl(it.href) }
         applyStyle(SessionEditorStyle.current())
         add(md.component, BorderLayout.CENTER)
         if (text.content.isNotEmpty()) md.set(text.content.toString())
