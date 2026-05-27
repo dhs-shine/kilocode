@@ -12,6 +12,7 @@ import ai.kilocode.rpc.dto.CloudSessionDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.SessionDto
+import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.SessionTimeDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -113,6 +114,56 @@ class HistoryControllerTest : BasePlatformTestCase() {
 
         assertEquals(listOf("ses_1" to "/test"), rpc.deletes)
         assertTrue(controller.local.items.isEmpty())
+    }
+
+    fun `test activity returns busy ids and changed ids`() {
+        rpc.statuses.value = mapOf(
+            "ses_busy" to SessionStatusDto("busy"),
+            "ses_idle" to SessionStatusDto("idle"),
+            "ses_retry" to SessionStatusDto("retry"),
+            "ses_offline" to SessionStatusDto("offline"),
+        )
+        flush()
+
+        val snap = sessions.activity(setOf("ses_old", "ses_busy"))
+
+        assertEquals(setOf("ses_busy"), snap.active)
+        assertEquals(setOf("ses_old"), snap.changed)
+    }
+
+    fun `test local history renderer shows running badge for active id`() {
+        val item = LocalHistoryItem(session("ses_1", "Running"))
+        val controller = controller()
+        controller.local.replace(listOf(item))
+        val renderer = LocalHistoryRenderer(controller.local) { setOf("ses_1") }
+
+        renderer.getListCellRendererComponent(javax.swing.JList(arrayOf(item)), item, 0, false, false)
+
+        assertTrue(renderer.runningVisible())
+    }
+
+    fun `test cloud history renderer hides running badge for inactive id`() {
+        val item = CloudHistoryItem(cloud("cloud_1", "Cloud"))
+        val controller = controller()
+        controller.cloud.replace(listOf(item), null)
+        val renderer = CloudHistoryRenderer(controller.cloud) { emptySet() }
+
+        renderer.getListCellRendererComponent(javax.swing.JList(arrayOf(item)), item, 0, false, false)
+
+        assertFalse(renderer.runningVisible())
+    }
+
+    fun `test history panel sync updates running badges`() {
+        rpc.listed += session("ses_1", "Local One")
+        val panel = HistoryPanel(parent, controller())
+        flush()
+        assertFalse(panel.runningBadgeVisible(0))
+
+        rpc.statuses.value = mapOf("ses_1" to SessionStatusDto("busy"))
+        flush()
+        panel.syncActivity()
+
+        assertTrue(panel.runningBadgeVisible(0))
     }
 
     fun `test panel filters and switches source`() {

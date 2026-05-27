@@ -9,6 +9,7 @@ import ai.kilocode.client.session.history.HistoryTime
 import ai.kilocode.client.session.history.LocalHistoryItem
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.controller.SessionController
+import ai.kilocode.client.ui.FilledBadgeIcon
 import ai.kilocode.client.testing.FakeAppRpcApi
 import ai.kilocode.client.testing.FakeSessionRpcApi
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
@@ -17,6 +18,7 @@ import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.SessionDto
+import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.SessionTimeDto
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
@@ -25,6 +27,8 @@ import com.intellij.util.ui.components.BorderLayoutPanel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import java.awt.BorderLayout
 import java.awt.Cursor
 
@@ -34,6 +38,8 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
     private lateinit var app: KiloAppService
     private lateinit var workspace: Workspace
     private lateinit var controller: SessionController
+    private lateinit var rpc: FakeSessionRpcApi
+    private lateinit var sessions: KiloSessionService
     private val opened = mutableListOf<String>()
 
     override fun setUp() {
@@ -46,10 +52,12 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
             it.state.value = KiloWorkspaceStateDto(KiloWorkspaceStatusDto.READY)
         })
         workspace = workspaces.workspace("/test")
+        rpc = FakeSessionRpcApi()
+        sessions = KiloSessionService(project, scope, rpc)
         controller = SessionController(
             parent = testRootDisposable,
             ref = null,
-            sessions = KiloSessionService(project, scope, FakeSessionRpcApi()),
+            sessions = sessions,
             workspace = workspace,
             app = app,
             cs = scope,
@@ -193,6 +201,28 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
         assertEquals("Untitled", label?.text)
     }
 
+    fun `test renderer shows running badge for busy recent session`() {
+        val panel = panel(listOf(session("ses_1")))
+        rpc.statuses.value = mapOf("ses_1" to SessionStatusDto("busy"))
+        flush()
+        panel.syncActivity()
+
+        val cell = panel.rendererComponent(session("ses_1")) as BorderLayoutPanel
+
+        assertTrue(runningVisible(cell))
+    }
+
+    fun `test renderer hides running badge for idle recent session`() {
+        val panel = panel(listOf(session("ses_1")))
+        rpc.statuses.value = mapOf("ses_1" to SessionStatusDto("idle"))
+        flush()
+        panel.syncActivity()
+
+        val cell = panel.rendererComponent(session("ses_1")) as BorderLayoutPanel
+
+        assertFalse(runningVisible(cell))
+    }
+
     fun `test timestamp normalization handles seconds and milliseconds`() {
         assertEquals(1_700_000_000_000L, HistoryTime.millis(LocalHistoryItem(session("ses_1", 1_700_000_000))))
         assertEquals(1_700_000_000_000L, HistoryTime.millis(LocalHistoryItem(session("ses_1", 1_700_000_000_000))))
@@ -209,7 +239,16 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
     }
 
     private fun panel(recents: List<SessionDto> = emptyList(), history: () -> Unit = {}) =
-        EmptySessionPanel(testRootDisposable, controller, recents, history)
+        EmptySessionPanel(testRootDisposable, controller, sessions, recents, history)
+
+    private fun flush() = runBlocking {
+        delay(100)
+        UIUtil.dispatchAllInvocationEvents()
+    }
+
+    private fun runningVisible(cell: BorderLayoutPanel): Boolean = UIUtil.uiTraverser(cell)
+        .filter(JBLabel::class.java)
+        .any { it.isVisible && it.icon is FilledBadgeIcon }
 
     private fun session(id: String, updated: Long = 2_000L, title: String = "Title $id") = SessionDto(
         id = id,

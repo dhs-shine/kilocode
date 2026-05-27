@@ -72,7 +72,7 @@ class SessionUiFactoryTest : BasePlatformTestCase() {
         val rpc = session("ses_1")
         val ui = SessionUi(project, workspace, sessions, app, scope, manager = manager, workspaces = workspaces)
         val controller = controller(ui)
-        val panel = ai.kilocode.client.session.ui.EmptySessionPanel(testRootDisposable, controller, listOf(rpc))
+        val panel = ai.kilocode.client.session.ui.EmptySessionPanel(testRootDisposable, controller, sessions, listOf(rpc))
 
         panel.clickRecent(0)
 
@@ -87,6 +87,7 @@ class SessionUiFactoryTest : BasePlatformTestCase() {
         val panel = ai.kilocode.client.session.ui.EmptySessionPanel(
             testRootDisposable,
             controller,
+            sessions,
             emptyList(),
         ) { manager.showHistory() }
 

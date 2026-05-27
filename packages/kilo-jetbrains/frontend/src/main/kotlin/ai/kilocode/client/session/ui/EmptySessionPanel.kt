@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.ui
 
+import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.SessionRef
 import ai.kilocode.client.session.history.HistoryTime
@@ -10,6 +11,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.controller.SessionController
+import ai.kilocode.client.ui.FilledBadgeIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Align
 import ai.kilocode.client.ui.layout.HAlign
@@ -20,6 +22,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.IconLoader
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.util.ui.Centerizer
@@ -31,9 +34,11 @@ import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Cursor
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
+import java.awt.event.HierarchyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseMotionAdapter
@@ -42,6 +47,7 @@ import javax.swing.JButton
 import javax.swing.JList
 import javax.swing.ListCellRenderer
 import javax.swing.ListSelectionModel
+import javax.swing.Timer
 
 /**
  * Empty-session panel.
@@ -52,6 +58,7 @@ import javax.swing.ListSelectionModel
 class EmptySessionPanel(
     parent: Disposable,
     private val controller: SessionController,
+    private val sessions: KiloSessionService,
     recents: List<SessionDto>,
     private val history: () -> Unit = {},
 ) : BorderLayoutPanel(), Disposable, SessionEditorStyleTarget {
@@ -60,6 +67,8 @@ class EmptySessionPanel(
     private val model = DefaultListModel<LocalHistoryItem>()
     private var hover = -1
     private var style = SessionEditorStyle.current()
+    private var active = emptySet<String>()
+    private val timer = Timer(ACTIVITY_MS) { syncActivity() }
 
     private val recentTitle = JBLabel(KiloBundle.message("session.empty.recent")).apply {
         foreground = UIUtil.getContextHelpForeground()
@@ -124,6 +133,15 @@ class EmptySessionPanel(
         isOpaque = false
         applyStyle(SessionEditorStyle.current())
         setSessions(recents)
+        addHierarchyListener { e ->
+            if (e.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong() == 0L) return@addHierarchyListener
+            if (isShowing) {
+                syncActivity()
+                timer.start()
+                return@addHierarchyListener
+            }
+            timer.stop()
+        }
 
         val gap = UiStyle.Gap.pad()
         layout = BorderLayout(0, gap)
@@ -220,6 +238,21 @@ class EmptySessionPanel(
         }
     }
 
+    @RequiresEdt
+    internal fun syncActivity() {
+        val snap = sessions.activity(active)
+        active = snap.active
+        repaintRows(snap.changed)
+    }
+
+    private fun repaintRows(ids: Set<String>) {
+        if (ids.isEmpty()) return
+        repeat(model.size()) { index ->
+            if (model.getElementAt(index).id !in ids) return@repeat
+            list.getCellBounds(index, index)?.let(list::repaint)
+        }
+    }
+
     private fun index(e: MouseEvent): Int {
         val idx = list.locationToIndex(e.point)
         if (idx < 0) return -1
@@ -230,12 +263,30 @@ class EmptySessionPanel(
 
     private inner class SessionRenderer : BorderLayoutPanel(), ListCellRenderer<LocalHistoryItem> {
         private val title = JBLabel()
+        private val badge = JBLabel(
+            FilledBadgeIcon(
+                KiloBundle.message("session.part.tool.running"),
+                UiStyle.Colors.runningBadgeBg(),
+                UiStyle.Colors.runningBadgeFg(),
+            )
+        ).apply {
+            border = JBUI.Borders.emptyLeft(JBUI.CurrentTheme.ActionsList.elementIconGap())
+        }
         private val time = JBLabel()
+        private val head = BorderLayoutPanel().apply {
+            add(BorderLayoutPanel().apply {
+                layout = FlowLayout(FlowLayout.LEFT, 0, 0)
+                isOpaque = false
+                add(title)
+                add(badge)
+            }, BorderLayout.CENTER)
+        }
 
         init {
             layout = BorderLayout(UiStyle.Gap.pad(), 0)
             border = JBUI.Borders.empty(UiStyle.Gap.lg(), UiStyle.Gap.lg(), UiStyle.Gap.lg(), UiStyle.Gap.lg())
-            add(title, BorderLayout.CENTER)
+            head.isOpaque = false
+            add(head, BorderLayout.CENTER)
             add(time, BorderLayout.EAST)
         }
 
@@ -246,13 +297,14 @@ class EmptySessionPanel(
             selected: Boolean,
             focus: Boolean,
         ): Component {
-            val active = selected || hover == index
-            isOpaque = active
-            background = if (active) list.selectionBackground else list.background
-            title.foreground = if (active) list.selectionForeground else UIUtil.getLabelForeground()
-            time.foreground = if (active) list.selectionForeground else UIUtil.getContextHelpForeground()
+            val over = selected || hover == index
+            isOpaque = over
+            background = if (over) list.selectionBackground else list.background
+            title.foreground = if (over) list.selectionForeground else UIUtil.getLabelForeground()
+            time.foreground = if (over) list.selectionForeground else UIUtil.getContextHelpForeground()
             title.text = value?.let(::title) ?: ""
             time.text = value?.let(HistoryTime::relative) ?: ""
+            badge.isVisible = value?.id in active
             return this
         }
     }
@@ -301,7 +353,7 @@ class EmptySessionPanel(
     }
 
     override fun dispose() {
-        // no-op
+        timer.stop()
     }
 
     override fun applyStyle(style: SessionEditorStyle) {
@@ -315,4 +367,8 @@ class EmptySessionPanel(
     private fun welcomeHtml() = XmlStringUtil.wrapInHtml(
         "<div style='text-align:center'>${XmlStringUtil.escapeString(KiloBundle.message("session.empty.welcome"))}</div>"
     )
+
+    private companion object {
+        const val ACTIVITY_MS = 10_000
+    }
 }

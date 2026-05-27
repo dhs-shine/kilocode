@@ -70,6 +70,16 @@ object UiStyle {
         /** Filled badge text color paired with [badgeBg]. */
         fun badgeFg(): Color = JBColor(Color.BLACK, UIUtil.getLabelForeground())
 
+        fun runningBadgeBg(): Color = JBColor.namedColor(
+            "Kilo.History.runningBadgeBackground",
+            JBColor(0xF5C542, 0x7A5A00),
+        )
+
+        fun runningBadgeFg(): Color = JBColor.namedColor(
+            "Kilo.History.runningBadgeForeground",
+            JBColor(Color.BLACK, Color.WHITE),
+        )
+
         /** Card border color shared across profile cards. */
         fun cardBorder(): Color = JBColor.namedColor("Component.borderColor", JBColor.border())
 

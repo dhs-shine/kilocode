@@ -60,6 +60,8 @@ class HistoryController(
         reloadCloud()
     }
 
+    internal fun activity(previous: Set<String>) = sessions.activity(previous)
+
     fun reloadLocal() {
         edt { local.start() }
         cs.launch {

@@ -32,6 +32,11 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+internal data class SessionActivitySnapshot(
+    val active: Set<String>,
+    val changed: Set<String>,
+)
+
 /**
  * Project-level frontend service for session management.
  *
@@ -83,6 +88,14 @@ class KiloSessionService internal constructor(
                 LOG.warn("kind=session-list dir=${ChatLogSummary.dir(dir)} failed message=${e.message}", e)
             }
         }
+    }
+
+    internal fun activity(previous: Set<String>): SessionActivitySnapshot {
+        val active = statuses.value
+            .filterValues { it.type == "busy" }
+            .keys
+            .toSet()
+        return SessionActivitySnapshot(active, active xor previous)
     }
 
     suspend fun list(dir: String): SessionListDto {
@@ -229,3 +242,5 @@ class KiloSessionService internal constructor(
     suspend fun pendingQuestions(dir: String): List<QuestionRequestDto> =
         call { pendingQuestions(dir) }
 }
+
+private infix fun <T> Set<T>.xor(other: Set<T>): Set<T> = (this - other) + (other - this)
