@@ -47,9 +47,8 @@ describe("extractFencedBody", () => {
     expect(extractFencedBody("")).toBe("")
   })
 
-  test("takes the rest when the closing fence is missing (truncated output)", () => {
-    // max_tokens hit mid-stream → no closing ``` — keep what we have.
-    expect(extractFencedBody("```\nconst x = 1\nconst y = ")).toBe("const x = 1\nconst y = ")
+  test("suppresses a replacement when the closing fence is missing", () => {
+    expect(extractFencedBody("```\nconst x = 1\nconst y = ")).toBe("")
   })
 
   test("preserves internal blank lines and indentation", () => {

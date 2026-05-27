@@ -49,10 +49,11 @@ export function extractFencedBody(message: string): string {
   if (fenceOpen === -1) return message
   const afterFenceOpen = message.indexOf("\n", fenceOpen + 3)
   if (afterFenceOpen === -1) return ""
-  // A missing closing fence means the response was truncated (max_tokens hit).
-  // Take everything after the opening fence rather than dropping the suggestion.
+  // A missing closing fence means the replacement was truncated. Applying a
+  // partial editable region can delete valid trailing code, so suppress it.
   const fenceClose = message.indexOf("```", afterFenceOpen + 1)
-  let body = fenceClose === -1 ? message.slice(afterFenceOpen + 1) : message.slice(afterFenceOpen + 1, fenceClose)
+  if (fenceClose === -1) return ""
+  let body = message.slice(afterFenceOpen + 1, fenceClose)
   if (body.endsWith("\n")) body = body.slice(0, -1)
   body = body.replace(/^<\|code_to_edit\|>\n?/, "")
   body = body.replace(/\n?<\|\/code_to_edit\|>$/, "")
