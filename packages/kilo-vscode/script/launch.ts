@@ -271,8 +271,10 @@ function settings(keep: boolean, enabled: boolean) {
   }
 
   mkdirSync(dir, { recursive: true })
-  const cfg = keep && existsSync(file) ? { ...defaults, ...load(file) } : defaults
-  if (enabled) cfg["editor.accessibilitySupport"] = "on"
+  const cfg =
+    keep && existsSync(file)
+      ? { ...defaults, ...load(file), ...(enabled ? { "editor.accessibilitySupport": "on" } : {}) }
+      : defaults
 
   writeFileSync(file, JSON.stringify(cfg, null, 2) + "\n")
 }

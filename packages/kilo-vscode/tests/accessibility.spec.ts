@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright"
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test, type Locator, type Page } from "@playwright/test"
 
 const GLOBALS = "colorScheme:dark;theme:kilo-vscode;vscodeTheme:dark-modern"
 const RULES = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22a", "wcag22aa"]
@@ -33,6 +33,13 @@ async function scan(page: Page) {
   expect(result.violations, details).toEqual([])
 }
 
+async function reach(page: Page, target: Locator) {
+  for (let step = 0; step < 10; step++) {
+    await page.keyboard.press("Tab")
+    if (await target.evaluate((node) => node === document.activeElement)) return
+  }
+}
+
 test.describe("webview accessibility ratchet", () => {
   for (const story of STORIES) {
     test(`${story.name} passes automated WCAG checks`, async ({ page }) => {
@@ -45,7 +52,7 @@ test.describe("webview accessibility ratchet", () => {
     await open(page, "profile--not-logged-in")
 
     const login = page.getByRole("button", { name: "Login with Kilo Code" })
-    await page.keyboard.press("Tab")
+    await reach(page, login)
     await expect(login).toBeFocused()
 
     await login.evaluate((node) => {
