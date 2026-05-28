@@ -40,7 +40,6 @@ import com.intellij.ide.BrowserUtil
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
@@ -257,13 +256,11 @@ class SessionUi(
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
         connection = ConnectionPanel(this, controller)
 
-        prompt = ReadAction.computeBlocking<PromptPanel, RuntimeException> {
-            PromptPanel(
-                project = project,
-                onSend = { text -> sendPrompt(text) },
-                onAbort = { controller.abort() },
-            )
-        }
+        prompt = PromptPanel(
+            project = project,
+            onSend = { text -> sendPrompt(text) },
+            onAbort = { controller.abort() },
+        )
 
         sessionContent.add(header, BorderLayout.NORTH)
         sessionContent.add(scroll.component, BorderLayout.CENTER)
