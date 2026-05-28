@@ -169,8 +169,8 @@ export function queuedUserMessageIDs(messages: Message[], status: SessionStatusI
 
 export function partitionTurns(turns: MessageTurn[], ids: ReadonlySet<string>, queued: ReadonlySet<string>) {
   const visible = turns.filter((turn) => !queued.has(turn.user.id))
-  const pending = turns.filter((turn) => queued.has(turn.user.id))
+  const waiting = turns.filter((turn) => queued.has(turn.user.id))
   const idx = visible.findIndex((turn) => ids.has(turn.user.id))
-  if (idx === -1) return { virtual: visible, direct: [] as MessageTurn[], queued: pending }
-  return { virtual: visible.slice(0, idx), direct: visible.slice(idx), queued: pending }
+  if (idx === -1) return { virtual: visible, direct: [] as MessageTurn[], queued: waiting }
+  return { virtual: visible.slice(0, idx), direct: visible.slice(idx), queued: waiting }
 }
