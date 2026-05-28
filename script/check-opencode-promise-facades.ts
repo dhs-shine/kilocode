@@ -48,14 +48,27 @@ for (const file of glob.scanSync({ cwd: DIR, onlyFiles: true })) {
 }
 
 const invalid = hits.filter((hit) => !allow[hit.file])
-if (invalid.length > 0) {
-  console.error("Found unclassified service-local Effect runtimes in shared opencode modules:")
-  for (const hit of invalid) console.error(`  packages/opencode/src/${hit.file}:${hit.line}`)
-  console.error("")
+const drift = Object.entries(allow).flatMap(([file, reason]) => {
+  const count = hits.filter((hit) => hit.file === file).length
+  if (count === 1) return []
+  return [`  packages/opencode/src/${file}: expected 1 classified site, found ${count} (${reason})`]
+})
+
+if (invalid.length > 0 || drift.length > 0) {
+  if (invalid.length > 0) {
+    console.error("Found unclassified service-local Effect runtimes in shared opencode modules:")
+    for (const hit of invalid) console.error(`  packages/opencode/src/${hit.file}:${hit.line}`)
+    console.error("")
+  }
+  if (drift.length > 0) {
+    console.error("Classified service-local runtime exceptions no longer match the current source:")
+    for (const item of drift) console.error(item)
+    console.error("")
+  }
   console.error("Do not add Promise facades to shared Effect services.")
   console.error("Yield the service directly, or bridge at an existing AppRuntime or Kilo-owned boundary.")
-  console.error("If a runtime is intentional, classify it with a reason in script/check-opencode-promise-facades.ts.")
+  console.error("Remove migrated exceptions, or classify intentional runtime changes with an explicit reason.")
   process.exit(1)
 }
 
-console.log(`check-opencode-promise-facades: ${hits.length} classified runtime site(s), no unclassified facade added.`)
+console.log(`check-opencode-promise-facades: ${hits.length} classified runtime site(s), no facade drift found.`)
