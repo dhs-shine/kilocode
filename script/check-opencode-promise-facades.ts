@@ -27,7 +27,6 @@ const allow: Record<string, string> = {
   "session/compaction.ts": "existing compaction facade outside #10655",
   "session/prompt.ts": "transitional facade tracked by #10655",
   "session/session.ts": "transitional facade tracked by #10655",
-  "session/summary.ts": "transitional facade removed by #10620",
   "sync/index.ts": "sync event runtime boundary",
   "tool/registry.ts": "transitional facade removed by #10620",
 }
