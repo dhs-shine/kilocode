@@ -1,8 +1,9 @@
-import { createMemo, For, Show, type JSX } from "solid-js"
+import { createMemo, createSignal, For, Show, type JSX } from "solid-js"
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { Button } from "@kilocode/kilo-web-ui/button"
+import { ConfigRow, SectionTitle } from "@kilocode/kilo-web-ui/console"
 import { IconButton } from "@kilocode/kilo-web-ui/icon-button"
-import { Tag } from "@kilocode/kilo-web-ui/tag"
+import { CountTag, Tag } from "@kilocode/kilo-web-ui/tag"
 import { SearchField } from "../../components/SearchField"
 import { useConfig } from "../../context/config"
 import { toAction, toMode, toolCapabilities, toolName } from "../../shared/utils"
@@ -66,6 +67,7 @@ function FieldCard(props: { label: string; actions?: JSX.Element; children: JSX.
 export function AgentsRoute() {
   const links = useAgentLinks()
   const ctx = useConfig()
+  const [search, setSearch] = createSignal("")
   const snap = () => ctx.data()
   const rows = createMemo(() => {
     const data = snap()
@@ -84,65 +86,87 @@ export function AgentsRoute() {
       .map((item) => ({ item, entry: entries.get(item.name), rank: local.has(item.name) ? 0 : 1 }))
       .sort((a, b) => a.rank - b.rank || agentTitle(a.item).localeCompare(agentTitle(b.item)))
   })
-  const groups = createMemo(() => [0, 1].map((rank) => rows().filter((row) => row.rank === rank)).filter((row) => row.length))
+  const visible = createMemo(() => {
+    const q = search().trim().toLowerCase()
+    if (!q) return rows()
+    return rows().filter((row) => `${agentTitle(row.item)} ${row.item.name} ${desc(row.item)}`.toLowerCase().includes(q))
+  })
+  const groups = createMemo(() => [0, 1].map((rank) => visible().filter((row) => row.rank === rank)).filter((row) => row.length))
+  const empty = createMemo(() => {
+    if (!rows().length) return "No agents loaded."
+    return "No agents match this filter."
+  })
 
   return (
     <Show when={snap()}>
-      {(data) => (
+      {(_data) => (
         <ConfigPage
-          title="Agents"
+          title={
+            <span class="config-title-count">
+              Agents
+              <CountTag>{rows().length}</CountTag>
+            </span>
+          }
+          description="Agents are reusable model, prompt, and tool configurations. Primary agents drive sessions; subagents are delegated to."
           actions={
-            <>
-              <Button variant="primary" onClick={() => links.nav(links.href("new"))}>
-                New Agent
-              </Button>
-              <Tag>{rows().length}</Tag>
-            </>
+            <Button icon="plus" variant="primary" onClick={() => links.nav(links.href("new"))}>
+              New agent
+            </Button>
           }
         >
+          <SearchField label="Filter agents" value={search()} placeholder="Filter by name or ID..." onValue={setSearch} />
+
           <div class="agents">
-            <Show when={groups().length} fallback={<p class="empty">No agents loaded.</p>}>
+            <Show when={groups().length} fallback={<p class="empty">{empty()}</p>}>
               <For each={groups()}>
                 {(group) => (
                   <section class="agent-section">
                     <Show when={ctx.query()?.scope === "project"}>
-                      <h2>{label(group[0]?.rank ?? 1)}</h2>
+                      <SectionTitle>{label(group[0]?.rank ?? 1)}</SectionTitle>
                     </Show>
                     <For each={group}>
                       {(row) => (
-                        <article class="model agent-card" classList={{ inherited: row.entry?.inherited }}>
-                          <div class="model-main">
-                            <div class="model-title">
-                              <div>
-                                <strong>{agentTitle(row.item)}</strong>
-                                <span>{row.item.name}</span>
+                        <div classList={{ inherited: row.entry?.inherited }}>
+                          <ConfigRow
+                            leading={<span class="agent-mode-dot" data-mode={row.item.mode} aria-hidden="true" />}
+                            title={agentTitle(row.item)}
+                            subtitle={
+                              <span class="agent-subtitle">
+                                <span class="agent-id">{row.item.name}</span>
+                                <span class="agent-description">{desc(row.item)}</span>
+                              </span>
+                            }
+                            status={
+                              <div class="tags agent-tags">
+                                <Tag tone={row.item.mode === "primary" ? "brand" : "neutral"}>{row.item.mode}</Tag>
+                                <Tag>{row.item.native ? "Native" : "Custom"}</Tag>
+                                <Show when={row.item.hidden}>
+                                  <Tag>Hidden</Tag>
+                                </Show>
+                                <Show when={row.item.deprecated}>
+                                  <Tag>Deprecated</Tag>
+                                </Show>
+                                <Show when={row.entry}>
+                                  {(entry) => (
+                                    <SourceBadge
+                                      source={entry().source}
+                                      inherited={entry().inherited}
+                                      overridden={entry().overridden}
+                                    />
+                                  )}
+                                </Show>
                               </div>
-                            </div>
-                            <Button variant="secondary" onClick={() => links.nav(links.href(row.item.name))}>
-                              {agentEditable(row.item, row.entry) ? "Edit" : "Inspect"}
-                            </Button>
-                          </div>
-                          <p class="model-description">{desc(row.item)}</p>
-                          <div class="tags agent-tags">
-                            <Tag>{row.item.mode}</Tag>
-                            <Tag>{row.item.native ? "Native" : "Custom"}</Tag>
-                            <Show when={row.item.hidden}>
-                              <Tag>Hidden</Tag>
-                            </Show>
-                            <Show when={row.item.deprecated}>
-                              <Tag>Deprecated</Tag>
-                            </Show>
-                            <Show when={row.entry}>
-                              {(entry) => (
-                                <SourceBadge
-                                  source={entry().source}
-                                  inherited={entry().inherited}
-                                  overridden={entry().overridden}
-                                />
-                              )}
-                            </Show>
-                          </div>
-                        </article>
+                            }
+                            actions={
+                              <IconButton
+                                icon={agentEditable(row.item, row.entry) ? "edit" : "eye"}
+                                variant="ghost"
+                                aria-label={`${agentEditable(row.item, row.entry) ? "Edit" : "Inspect"} ${agentTitle(row.item)}`}
+                                onClick={() => links.nav(links.href(row.item.name))}
+                              />
+                            }
+                          />
+                        </div>
                       )}
                     </For>
                   </section>

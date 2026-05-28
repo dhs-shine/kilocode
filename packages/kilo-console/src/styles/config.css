@@ -46,6 +46,11 @@
   justify-content: flex-end;
 }
 
+.kilo-console .config-page-actions [data-component="button"][data-variant="primary"] [data-component="icon"],
+.kilo-console .config-page-actions [data-component="button"][data-variant="primary"] [data-slot="icon-svg"] {
+  color: var(--primary-foreground);
+}
+
 .kilo-console .config-toolbar {
   display: flex;
   gap: 0.5rem;

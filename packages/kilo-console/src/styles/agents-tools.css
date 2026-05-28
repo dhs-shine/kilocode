@@ -1,6 +1,7 @@
 .kilo-console .agents {
-  display: grid;
-  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .kilo-console .tools {
@@ -9,21 +10,61 @@
   gap: 0.25rem;
 }
 
-.kilo-console .agent-card .agent-tags {
-  justify-content: flex-start;
-}
-
-.kilo-console .agent-section {
-  display: grid;
+.kilo-console .agent-tags {
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.kilo-console .agent-section h2 {
-  margin: 0.5rem 0 0;
-  color: var(--text-weaker);
-  font-size: var(--font-size-small);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.kilo-console .agents [data-component="config-row"] {
+  align-items: flex-start;
+}
+
+.kilo-console .agents [data-slot="config-row-subtitle"] {
+  overflow: visible;
+  white-space: normal;
+}
+
+.kilo-console .agent-subtitle {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.kilo-console .agent-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kilo-console .agent-description {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.kilo-console .agent-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.kilo-console .agent-section [data-component="section-title"] {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.kilo-console .agent-mode-dot {
+  margin-top: 0.45rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--muted-foreground);
+}
+
+.kilo-console .agent-mode-dot[data-mode="primary"] {
+  background: var(--primary);
+}
+
+.kilo-console .agent-mode-dot[data-mode="all"] {
+  background: var(--info);
 }
 
 .kilo-console .tool-summary {
