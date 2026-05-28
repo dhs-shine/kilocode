@@ -1,5 +1,5 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
-import { FitAddon, init, Terminal } from "ghostty-web"
+import { CellFlags, FitAddon, init, Terminal, type GhosttyCell } from "ghostty-web"
 import { ptyWsUrl, resizeProjectPty, type Query } from "../../../client"
 
 let boot: Promise<void> | undefined
@@ -48,6 +48,159 @@ function theme(el: Element) {
     brightMagenta: "#d8b4fe",
     brightCyan: "#67e8f9",
     brightWhite: "#fafafa",
+  }
+}
+
+type View = {
+  ctx: CanvasRenderingContext2D
+  devicePixelRatio: number
+  metrics: { width: number; height: number }
+  theme: { selectionForeground: string }
+  renderCellText: (cell: GhosttyCell, x: number, y: number, over?: string) => void
+  rgbToCSS: (r: number, g: number, b: number) => string
+  isInSelection: (x: number, y: number) => boolean
+}
+
+function rect(view: View, x: number, y: number, w: number, h: number) {
+  const ratio = view.devicePixelRatio || window.devicePixelRatio || 1
+  const left = Math.floor(x * ratio) / ratio
+  const top = Math.floor(y * ratio) / ratio
+  const right = Math.ceil((x + w) * ratio) / ratio
+  const bottom = Math.ceil((y + h) * ratio) / ratio
+  view.ctx.fillRect(left, top, right - left, bottom - top)
+}
+
+function fill(view: View, cp: number, x: number, y: number, w: number, h: number) {
+  const ew = w / 8
+  const eh = h / 8
+  const hw = w / 2
+  const hh = h / 2
+
+  if (cp >= 0x2581 && cp <= 0x2587) {
+    const n = cp - 0x2580
+    rect(view, x, y + h - eh * n, w, eh * n)
+    return true
+  }
+
+  if (cp >= 0x2589 && cp <= 0x258f) {
+    const n = 8 - (cp - 0x2588)
+    rect(view, x, y, ew * n, h)
+    return true
+  }
+
+  if (cp === 0x2580) {
+    rect(view, x, y, w, hh)
+    return true
+  }
+
+  if (cp === 0x2588) {
+    rect(view, x, y, w, h)
+    return true
+  }
+
+  if (cp === 0x2590) {
+    rect(view, x + hw, y, hw, h)
+    return true
+  }
+
+  if (cp === 0x2594) {
+    rect(view, x, y, w, eh)
+    return true
+  }
+
+  if (cp === 0x2595) {
+    rect(view, x + w - ew, y, ew, h)
+    return true
+  }
+
+  if (cp === 0x2596) {
+    rect(view, x, y + hh, hw, hh)
+    return true
+  }
+
+  if (cp === 0x2597) {
+    rect(view, x + hw, y + hh, hw, hh)
+    return true
+  }
+
+  if (cp === 0x2598) {
+    rect(view, x, y, hw, hh)
+    return true
+  }
+
+  if (cp === 0x2599) {
+    rect(view, x, y, hw, h)
+    rect(view, x + hw, y + hh, hw, hh)
+    return true
+  }
+
+  if (cp === 0x259a) {
+    rect(view, x, y, hw, hh)
+    rect(view, x + hw, y + hh, hw, hh)
+    return true
+  }
+
+  if (cp === 0x259b) {
+    rect(view, x, y, w, hh)
+    rect(view, x, y + hh, hw, hh)
+    return true
+  }
+
+  if (cp === 0x259c) {
+    rect(view, x, y, w, hh)
+    rect(view, x + hw, y + hh, hw, hh)
+    return true
+  }
+
+  if (cp === 0x259d) {
+    rect(view, x + hw, y, hw, hh)
+    return true
+  }
+
+  if (cp === 0x259e) {
+    rect(view, x + hw, y, hw, hh)
+    rect(view, x, y + hh, hw, hh)
+    return true
+  }
+
+  if (cp === 0x259f) {
+    rect(view, x + hw, y, hw, h)
+    rect(view, x, y + hh, hw, hh)
+    return true
+  }
+
+  return false
+}
+
+function color(view: View, cell: GhosttyCell, x: number, y: number, over?: string) {
+  if (over) return over
+  if (view.isInSelection(x, y)) return view.theme.selectionForeground
+  if (cell.flags & CellFlags.INVERSE) return view.rgbToCSS(cell.bg_r, cell.bg_g, cell.bg_b)
+  return view.rgbToCSS(cell.fg_r, cell.fg_g, cell.fg_b)
+}
+
+function patch(renderer: Terminal["renderer"]) {
+  if (!renderer) return
+  const view = renderer as unknown as View
+  const original = view.renderCellText.bind(renderer)
+
+  view.renderCellText = (cell, x, y, over) => {
+    if (
+      !(cell.flags & CellFlags.INVISIBLE) &&
+      cell.grapheme_len === 0 &&
+      cell.codepoint >= 0x2580 &&
+      cell.codepoint <= 0x259f
+    ) {
+      const w = view.metrics.width * cell.width
+      const h = view.metrics.height
+      view.ctx.fillStyle = color(view, cell, x, y, over)
+      if (cell.flags & CellFlags.FAINT) view.ctx.globalAlpha = 0.5
+      const drawn = fill(view, cell.codepoint, x * view.metrics.width, y * h, w, h)
+      if (cell.flags & CellFlags.FAINT) view.ctx.globalAlpha = 1
+      if (drawn) return
+    }
+
+    original(cell, x, y, over)
   }
 }
 
@@ -100,6 +253,7 @@ export function GhosttyTerminal(props: { query: Query; pty: string; active?: boo
       term.loadAddon(fit)
       host.replaceChildren()
       term.open(host)
+      patch(term.renderer)
       term.reset()
       term.clear()
       data = term.onData((input) => {

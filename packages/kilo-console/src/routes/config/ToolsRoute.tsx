@@ -56,20 +56,20 @@ export function ToolsRoute() {
           <SearchField
             label="Filter tools"
             value={search()}
-            placeholder="Filter by tool or ID..."
+            placeholder="Filter by name, ID, or description..."
             onValue={setSearch}
           />
 
-          <div class="tools">
+          <div class="tools tool-grid">
             <Show when={visible().length} fallback={<p class="empty">{empty()}</p>}>
               <For each={visible()}>
                 {(tool) => (
                   <ConfigRow
                     title={toolName(tool.id)}
-                    subtitle={tool.id}
-                    status={
-                      <span class="tool-summary" title={tool.caps.join(" ")}>
-                        {tool.caps.join(" ")}
+                    subtitle={
+                      <span class="tool-subtitle">
+                        <span class="tool-id">{tool.id}</span>
+                        <span class="tool-description">{tool.caps.join(" ")}</span>
                       </span>
                     }
                   />

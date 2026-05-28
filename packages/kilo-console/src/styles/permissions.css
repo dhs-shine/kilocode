@@ -1,0 +1,64 @@
+.kilo-console .permissions,
+.kilo-console .permission-group,
+.kilo-console .permission-rules {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.kilo-console .permission-group [data-component="section-title"] {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.kilo-console .permission-row-meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.kilo-console .permission-action-select {
+  width: 7.5rem;
+  min-height: 2rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+}
+
+.kilo-console .permission-pattern {
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-mono);
+}
+
+.kilo-console .permission-subtitle {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.kilo-console .permissions [data-component="config-row"] {
+  align-items: flex-start;
+}
+
+.kilo-console .permissions [data-slot="config-row-subtitle"] {
+  overflow: visible;
+  white-space: normal;
+}
+
+.kilo-console .permission-empty {
+  margin: 0;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  padding: 0.75rem;
+}
+
+.kilo-console .permission-form {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  padding: 1rem;
+}
+
+.kilo-console .permission-form .wide {
+  grid-column: 1;
+}

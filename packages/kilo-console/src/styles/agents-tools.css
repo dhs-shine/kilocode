@@ -1,13 +1,22 @@
 .kilo-console .agents {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 
 .kilo-console .tools {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
+}
+
+.kilo-console .tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.kilo-console .tools [data-component="config-row"] {
+  align-items: flex-start;
 }
 
 .kilo-console .agent-tags {
@@ -44,7 +53,7 @@
 .kilo-console .agent-section {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 
 .kilo-console .agent-section [data-component="section-title"] {
@@ -67,16 +76,26 @@
   background: var(--info);
 }
 
-.kilo-console .tool-summary {
-  display: block;
+.kilo-console .tools [data-slot="config-row-subtitle"] {
+  overflow: visible;
+  white-space: normal;
+}
+
+.kilo-console .tool-subtitle {
+  display: grid;
+  gap: 0.125rem;
   min-width: 0;
-  max-width: min(34rem, 42vw);
+}
+
+.kilo-console .tool-id {
   overflow: hidden;
-  color: var(--muted-foreground);
-  font-size: 0.6875rem;
-  line-height: 1.45;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.kilo-console .tool-description {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .kilo-console .tool-section {
@@ -85,9 +104,9 @@
   margin-top: 1rem;
 }
 
-@media (max-width: 760px) {
-  .kilo-console .tool-summary {
-    max-width: 100%;
+@media (max-width: 980px) {
+  .kilo-console .tool-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
