@@ -1,6 +1,6 @@
 package ai.kilocode.client.ui.md
 
-import ai.kilocode.client.session.ui.SessionStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import java.awt.Color
 import java.awt.Font
 import java.awt.Point
@@ -13,7 +13,7 @@ interface MdView {
     fun set(text: String)
     fun append(delta: String)
     fun clear()
-    fun applyStyle(style: SessionStyle)
+    fun applyStyle(style: SessionEditorStyle)
     fun resetStyles()
     fun addLinkListener(listener: LinkListener)
     fun removeLinkListener(listener: LinkListener)

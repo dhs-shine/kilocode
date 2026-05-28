@@ -51,6 +51,18 @@ const mockDiffs: WorktreeFileDiff[] = [
   },
 ]
 
+const context = Array.from({ length: 36 }, (_, i) => `  const item${i} = values[${i}]\n`).join("")
+const foldedDiffs: WorktreeFileDiff[] = [
+  {
+    file: "src/components/chat/LongReview.ts",
+    status: "modified",
+    additions: 2,
+    deletions: 2,
+    before: `export function review(values: string[]) {\n  const title = "Draft"\n${context}  return title\n}\n`,
+    after: `export function review(values: string[]) {\n  const title = "Ready"\n${context}  return title.toUpperCase()\n}\n`,
+  },
+]
+
 // ---------------------------------------------------------------------------
 // Meta
 // ---------------------------------------------------------------------------
@@ -192,6 +204,25 @@ export const FullScreenDiffWithChanges: Story = {
       <div style={{ width: "420px", height: "700px", display: "flex" }}>
         <FullScreenDiffView
           diffs={mockDiffs}
+          loading={false}
+          diffStyle="unified"
+          onDiffStyleChange={() => {}}
+          comments={[]}
+          onCommentsChange={() => {}}
+          onClose={() => {}}
+        />
+      </div>
+    </StoryProviders>
+  ),
+}
+
+export const FullScreenDiffWithCollapsedContext: Story = {
+  name: "FullScreenDiffView - collapsed unchanged context",
+  render: () => (
+    <StoryProviders>
+      <div style={{ width: "420px", height: "700px", display: "flex" }}>
+        <FullScreenDiffView
+          diffs={foldedDiffs}
           loading={false}
           diffStyle="unified"
           onDiffStyleChange={() => {}}
@@ -563,11 +594,38 @@ const MockReviewTab = (props: { active?: boolean }) => (
   </div>
 )
 
+const MockTabsSearchButton = () => (
+  <button class="am-tabs-menu-trigger" type="button" aria-label="Search open tabs">
+    <svg class="am-tabs-search-icon" viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="6.8" cy="6.8" r="4.3" />
+      <path d="M10.2 10.2L13.5 13.5" />
+    </svg>
+  </button>
+)
+
+const MockTabLeading = () => (
+  <div class="am-tab-leading">
+    <MockTabsSearchButton />
+  </div>
+)
+
+const MockTabAdd = () => (
+  <div class="am-tab-add-wrap">
+    <div class="am-tab-add-separator" />
+    <div class="am-split-button am-tab-add-split">
+      <TooltipKeybind title="New session" keybind="⌘T" placement="bottom">
+        <IconButton icon="plus" size="small" variant="ghost" label="New session" class="am-tab-add" />
+      </TooltipKeybind>
+    </div>
+  </div>
+)
+
 export const TabBarMultipleTabs: Story = {
   name: "TabBar — multiple tabs with active",
   render: () => (
     <StoryProviders noPadding>
       <div class="am-tab-bar">
+        <MockTabLeading />
         <div class="am-tab-scroll-area">
           <div class="am-tab-list-wrap">
             <div class="am-tab-list" style={{ "--tab-count": "3" } as JSX.CSSProperties}>
@@ -575,13 +633,9 @@ export const TabBarMultipleTabs: Story = {
               <MockTab title="Fix button styles" />
               <MockTab title="Add unit tests" />
             </div>
-            <div class="am-split-button am-tab-add-split">
-              <TooltipKeybind title="New session" keybind="⌘T" placement="bottom">
-                <IconButton icon="plus" size="small" variant="ghost" label="New session" class="am-tab-add" />
-              </TooltipKeybind>
-            </div>
           </div>
         </div>
+        <MockTabAdd />
         <div class="am-tab-actions">
           <button class="am-diff-toggle-btn am-diff-toggle-has-changes">
             <Icon name="layers" size="small" />
@@ -603,19 +657,16 @@ export const TabBarWithReviewTab: Story = {
   render: () => (
     <StoryProviders noPadding>
       <div class="am-tab-bar">
+        <MockTabLeading />
         <div class="am-tab-scroll-area">
           <div class="am-tab-list-wrap">
             <div class="am-tab-list" style={{ "--tab-count": "2" } as JSX.CSSProperties}>
               <MockTab title="Implement auth" />
               <MockReviewTab active />
             </div>
-            <div class="am-split-button am-tab-add-split">
-              <TooltipKeybind title="New session" keybind="⌘T" placement="bottom">
-                <IconButton icon="plus" size="small" variant="ghost" label="New session" class="am-tab-add" />
-              </TooltipKeybind>
-            </div>
           </div>
         </div>
+        <MockTabAdd />
         <div class="am-tab-actions">
           <IconButton icon="expand" size="small" variant="ghost" label="Review" class="am-tab-diff-btn-active" />
           <IconButton icon="console" size="small" variant="ghost" label="Terminal" />
@@ -630,18 +681,15 @@ export const TabBarSingleTab: Story = {
   render: () => (
     <StoryProviders noPadding>
       <div class="am-tab-bar">
+        <MockTabLeading />
         <div class="am-tab-scroll-area">
           <div class="am-tab-list-wrap">
             <div class="am-tab-list" style={{ "--tab-count": "1" } as JSX.CSSProperties}>
               <MockTab title="PR #6966 worktree checkout" active />
             </div>
-            <div class="am-split-button am-tab-add-split">
-              <TooltipKeybind title="New session" keybind="⌘T" placement="bottom">
-                <IconButton icon="plus" size="small" variant="ghost" label="New session" class="am-tab-add" />
-              </TooltipKeybind>
-            </div>
           </div>
         </div>
+        <MockTabAdd />
         <div class="am-tab-actions">
           <button class="am-diff-toggle-btn am-diff-toggle-has-changes">
             <Icon name="layers" size="small" />

@@ -1,6 +1,6 @@
 package ai.kilocode.client.ui.md
 
-import ai.kilocode.client.session.ui.SessionStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBScrollPane
 import javax.swing.JPanel
@@ -43,7 +43,7 @@ class MdViewHybridTest : BasePlatformTestCase() {
     }
 
     fun `test applyStyle updates current and future blocks`() {
-        val style = SessionStyle.create(family = "Courier New", size = 21)
+        val style = SessionEditorStyle.create(family = "Courier New", size = 21)
 
         view.applyStyle(style)
         view.set("hello")

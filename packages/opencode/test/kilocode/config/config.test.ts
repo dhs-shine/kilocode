@@ -11,9 +11,11 @@ import { Npm } from "@opencode-ai/core/npm"
 import { Account } from "../../../src/account/account"
 import { Auth } from "../../../src/auth"
 import { Config } from "../../../src/config/config"
+import { ConfigMarkdown } from "../../../src/config/markdown"
 import { Env } from "../../../src/env"
 import { KiloIndexing } from "../../../src/kilocode/indexing"
-import { Instance } from "../../../src/project/instance"
+import { KilocodeConfig } from "../../../src/kilocode/config/config"
+import { WithInstance } from "../../../src/project/with-instance"
 import { Filesystem } from "../../../src/util/filesystem"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 
@@ -43,8 +45,8 @@ const layer = Config.layer.pipe(
 )
 
 const load = () => Effect.runPromise(Config.Service.use((svc) => svc.get()).pipe(Effect.scoped, Effect.provide(layer)))
-const clear = (wait = false) =>
-  Effect.runPromise(Config.Service.use((svc) => svc.invalidate(wait)).pipe(Effect.scoped, Effect.provide(layer)))
+const clear = () =>
+  Effect.runPromise(Config.Service.use((svc) => svc.invalidate()).pipe(Effect.scoped, Effect.provide(layer)))
 
 async function writeConfig(dir: string, config: object, name = "kilo.json") {
   await Filesystem.write(path.join(dir, name), JSON.stringify(config))
@@ -64,19 +66,41 @@ const cfg: Partial<Config.Info> = {
   },
 }
 
-describe("kilocode indexing config", () => {
-  afterEach(async () => {
-    await disposeAllInstances()
-    await clear(true)
-  })
+afterEach(async () => {
+  delete process.env.KILO_MD_TEST
+  await clear()
+  await disposeAllInstances()
+})
 
+describe("markdown substitutions", () => {
+  test("applies file and env substitutions to parsed markdown body", async () => {
+    process.env.KILO_MD_TEST = "env content"
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Filesystem.write(path.join(dir, "body.md"), "file content")
+        await Filesystem.write(
+          path.join(dir, "SKILL.md"),
+          ["---", "name: test", "description: Test", "---", "{file:body.md}", "{env:KILO_MD_TEST}"].join("\n"),
+        )
+      },
+    })
+
+    const md = await ConfigMarkdown.parse(path.join(tmp.path, "SKILL.md"))
+
+    expect(md.content).toContain("file content")
+    expect(md.content).toContain("env content")
+  })
+})
+
+describe("kilocode indexing config", () => {
   test("keeps global indexing enabled in global config", async () => {
     await using globalTmp = await tmpdir()
     await using tmp = await tmpdir()
 
     const prev = Global.Path.config
     ;(Global.Path as { config: string }).config = globalTmp.path
-    await clear(true)
+    await clear()
+    await disposeAllInstances()
 
     try {
       await writeConfig(globalTmp.path, {
@@ -87,7 +111,7 @@ describe("kilocode indexing config", () => {
         },
       })
 
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         fn: async () => {
           const config = await load()
@@ -101,7 +125,8 @@ describe("kilocode indexing config", () => {
       })
     } finally {
       ;(Global.Path as { config: string }).config = prev
-      await clear(true)
+      await clear()
+      await disposeAllInstances()
     }
   })
 
@@ -111,7 +136,8 @@ describe("kilocode indexing config", () => {
 
     const prev = Global.Path.config
     ;(Global.Path as { config: string }).config = globalTmp.path
-    await clear(true)
+    await clear()
+    await disposeAllInstances()
 
     try {
       await writeConfig(globalTmp.path, {
@@ -121,7 +147,7 @@ describe("kilocode indexing config", () => {
         },
       })
 
-      await Instance.provide({
+      await WithInstance.provide({
         directory: tmp.path,
         fn: async () => {
           const global = await Effect.runPromise(
@@ -134,12 +160,32 @@ describe("kilocode indexing config", () => {
       })
     } finally {
       ;(Global.Path as { config: string }).config = prev
-      await clear(true)
+      await clear()
+      await disposeAllInstances()
     }
   })
 
   test("global indexing enabled applies when project indexing is disabled", async () => {
     const input = KiloIndexing.input({ enabled: false }, { enabled: true })
     expect(input.enabled).toBe(true)
+  })
+
+  test("accepts delete sentinels for indexing model overrides", () => {
+    const patch = Config.Info.zod.parse({ indexing: { model: null, dimension: null } })
+    const merged = KilocodeConfig.mergeConfig(
+      {
+        indexing: {
+          provider: "openai",
+          model: "text-embedding-3-large",
+          dimension: 3072,
+        },
+      },
+      patch,
+    )
+    const input = KiloIndexing.input(patch.indexing)
+
+    expect(merged.indexing).toEqual({ provider: "openai" })
+    expect(input.modelId).toBeUndefined()
+    expect(input.modelDimension).toBeUndefined()
   })
 })

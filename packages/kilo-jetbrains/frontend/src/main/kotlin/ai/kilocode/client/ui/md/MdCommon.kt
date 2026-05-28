@@ -1,6 +1,6 @@
 package ai.kilocode.client.ui.md
 
-import ai.kilocode.client.session.ui.SessionStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import java.awt.Color
 
 internal object MdCommon {
@@ -45,7 +45,7 @@ internal object MdCommon {
         return rules.toString().trim()
     }
 
-    fun defaults(style: SessionStyle) = MdStyle(
+    fun defaults(style: SessionEditorStyle) = MdStyle(
         font = style.transcriptFont,
         foreground = com.intellij.util.ui.UIUtil.getLabelForeground(),
         background = style.editorScheme.defaultBackground,

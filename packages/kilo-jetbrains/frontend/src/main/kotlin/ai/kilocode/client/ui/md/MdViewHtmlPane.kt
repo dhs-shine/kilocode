@@ -1,6 +1,6 @@
 package ai.kilocode.client.ui.md
 
-import ai.kilocode.client.session.ui.SessionStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.log.KiloLog
 import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBHtmlPaneConfiguration
@@ -18,7 +18,7 @@ import javax.swing.text.html.StyleSheet
 
 @Suppress("UnstableApiUsage")
 internal class MdViewHtmlPane(
-    style: SessionStyle = SessionStyle.current(),
+    style: SessionEditorStyle = SessionEditorStyle.current(),
 ) : MdView {
     companion object {
         private val LOG = KiloLog.create(MdViewHtmlPane::class.java)
@@ -178,7 +178,7 @@ internal class MdViewHtmlPane(
             markDirty()
         }
 
-    override fun applyStyle(style: SessionStyle) {
+    override fun applyStyle(style: SessionEditorStyle) {
         if (this.style == style) return
         this.style = style
         if (opaqueState) pane.background = background

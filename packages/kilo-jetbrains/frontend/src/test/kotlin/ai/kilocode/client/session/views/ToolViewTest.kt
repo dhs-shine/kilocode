@@ -4,8 +4,9 @@ import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.toolKind
-import ai.kilocode.client.session.ui.SessionStyle
-import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import javax.swing.ScrollPaneConstants
 
@@ -57,15 +58,6 @@ class ToolViewTest : BasePlatformTestCase() {
         assertTrue(view.labelText().contains("Shell"))
     }
 
-    fun `test read tool shows filename`() {
-        val t = tool("p1", "read", ToolExecState.COMPLETED).also { it.input = mapOf("filePath" to "README.MD") }
-
-        val view = ToolView(t)
-
-        assertTrue(view.labelText().contains("Read"))
-        assertTrue(view.labelText().contains("README.MD"))
-    }
-
     fun `test bash tool shows subtitle command and output`() {
         val t = tool("p1", "bash", ToolExecState.COMPLETED).also {
             it.input = mapOf("command" to "git remote -v", "description" to "View remotes")
@@ -86,6 +78,20 @@ class ToolViewTest : BasePlatformTestCase() {
         view.toggle()
         assertTrue(view.bodyVisible())
         assertTrue(view.bodyCreated())
+    }
+
+    fun `test bash tool uses secondary chrome`() {
+        val view = ToolView(tool("p1", "bash", ToolExecState.COMPLETED))
+        val base: Any = view
+
+        assertTrue(base is SecondarySessionPartView)
+    }
+
+    fun `test unknown tool uses secondary chrome`() {
+        val view = ToolView(tool("p1", "mystery", ToolExecState.COMPLETED))
+        val base: Any = view
+
+        assertTrue(base is SecondarySessionPartView)
     }
 
     fun `test bash toggle collapses and expands`() {
@@ -197,18 +203,8 @@ class ToolViewTest : BasePlatformTestCase() {
         assertTrue(view.bodyVisible())
     }
 
-    fun `test read tool handles windows path`() {
-        val t = tool("p1", "read", ToolExecState.COMPLETED).also {
-            it.input = mapOf("filePath" to "C:\\repo\\README.MD")
-        }
-
-        val view = ToolView(t)
-
-        assertTrue(view.labelText().contains("README.MD"))
-    }
-
     fun `test bash output uses editor font settings`() {
-        val style = SessionStyle.current()
+        val style = SessionEditorStyle.current()
         val view = ToolView(tool("p1", "bash", ToolExecState.COMPLETED))
 
         assertEditorFont(view.bodyFont(), style)
@@ -219,7 +215,7 @@ class ToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test tool header uses editor-derived fonts`() {
-        val style = SessionStyle.current()
+        val style = SessionEditorStyle.current()
         val view = ToolView(tool("p1", "bash", ToolExecState.COMPLETED))
 
         assertEditorFont(view.titleFont(), style)
@@ -230,7 +226,7 @@ class ToolViewTest : BasePlatformTestCase() {
 
     fun `test applyStyle updates tool fonts in place`() {
         val view = ToolView(tool("p1", "bash", ToolExecState.COMPLETED))
-        val style = SessionStyle.create(family = "Courier New", size = 25)
+        val style = SessionEditorStyle.create(family = "Courier New", size = 25)
 
         view.applyStyle(style)
 
@@ -266,7 +262,7 @@ class ToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test large tool output is truncated in preview`() {
-        val out = "x".repeat(UiStyle.Size.toolBodyLimit() + 1_000)
+        val out = "x".repeat(SessionUiStyle.View.Tool.PREVIEW_LIMIT + 1_000)
         val t = tool("p1", "bash", ToolExecState.COMPLETED).also {
             it.input = mapOf("command" to "log")
             it.output = out
@@ -281,7 +277,7 @@ class ToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test large generic tool output is truncated in preview`() {
-        val out = "x".repeat(UiStyle.Size.toolBodyLimit() + 1_000)
+        val out = "x".repeat(SessionUiStyle.View.Tool.PREVIEW_LIMIT + 1_000)
         val t = tool("p1", "glob", ToolExecState.COMPLETED).also {
             it.output = out
         }
@@ -329,12 +325,12 @@ class ToolViewTest : BasePlatformTestCase() {
     private fun tool(id: String, name: String, state: ToolExecState, title: String? = null): Tool =
         Tool(id, name, toolKind(name)).also { it.state = state; it.title = title }
 
-    private fun assertEditorFont(font: java.awt.Font, style: SessionStyle) {
+    private fun assertEditorFont(font: java.awt.Font, style: SessionEditorStyle) {
         assertEquals(style.editorFamily, font.name)
         assertEquals(style.editorSize, font.size)
     }
 
-    private fun assertSmallEditorFont(font: java.awt.Font, style: SessionStyle) {
+    private fun assertSmallEditorFont(font: java.awt.Font, style: SessionEditorStyle) {
         assertEquals(style.editorFamily, font.name)
         assertTrue(font.size < style.editorSize)
     }

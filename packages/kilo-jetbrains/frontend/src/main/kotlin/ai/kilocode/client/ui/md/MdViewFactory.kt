@@ -1,11 +1,11 @@
 package ai.kilocode.client.ui.md
 
-import ai.kilocode.client.session.ui.SessionStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 
 object MdViewFactory {
-    fun create(style: SessionStyle = SessionStyle.current()): MdView = hybrid(style)
+    fun create(style: SessionEditorStyle = SessionEditorStyle.current()): MdView = hybrid(style)
 
-    fun hybrid(style: SessionStyle = SessionStyle.current()): MdView = MdViewHybrid(style)
+    fun hybrid(style: SessionEditorStyle = SessionEditorStyle.current()): MdView = MdViewHybrid(style)
 
-    fun html(style: SessionStyle = SessionStyle.current()): MdView = MdViewHtmlPane(style)
+    fun html(style: SessionEditorStyle = SessionEditorStyle.current()): MdView = MdViewHtmlPane(style)
 }

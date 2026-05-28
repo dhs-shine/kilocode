@@ -1,6 +1,6 @@
 package ai.kilocode.client.ui.md
 
-import ai.kilocode.client.session.ui.SessionStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.log.KiloLog
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
@@ -35,7 +35,7 @@ import javax.swing.text.html.StyleSheet
 
 @Suppress("UnstableApiUsage")
 internal class MdViewHybrid(
-    style: SessionStyle = SessionStyle.current(),
+    style: SessionEditorStyle = SessionEditorStyle.current(),
 ) : MdView {
     companion object {
         private val LOG = KiloLog.create(MdViewHybrid::class.java)
@@ -177,7 +177,7 @@ internal class MdViewHybrid(
             syncStyle()
         }
 
-    override fun applyStyle(style: SessionStyle) {
+    override fun applyStyle(style: SessionEditorStyle) {
         if (this.style == style) return
         this.style = style
         syncStyle()

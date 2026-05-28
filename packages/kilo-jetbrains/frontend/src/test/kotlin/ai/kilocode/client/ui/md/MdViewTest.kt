@@ -1,6 +1,6 @@
 package ai.kilocode.client.ui.md
 
-import ai.kilocode.client.session.ui.SessionStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.awt.Color
 import java.awt.Font
@@ -215,7 +215,7 @@ class MdViewTest : BasePlatformTestCase() {
     // ---- style overrides ----
 
     fun `test override sheet includes session style defaults`() {
-        val style = SessionStyle.current()
+        val style = SessionEditorStyle.current()
 
         assertTrue(view.overrideSheet().contains(style.editorFamily))
         assertTrue(view.overrideSheet().contains("${style.editorSize}pt"))
@@ -247,6 +247,7 @@ class MdViewTest : BasePlatformTestCase() {
         view.set("```\ncode\n```")
         val sheet = view.overrideSheet()
         assertTrue(sheet.contains("#0a0b0c"))
+        assertTrue(sheet.contains("pre {"))
         assertTrue(sheet.contains("#d0e0f0"))
     }
 
@@ -316,13 +317,13 @@ class MdViewTest : BasePlatformTestCase() {
     // ---- default codeFont uses session style ----
 
     fun `test default codeFont is session editor font`() {
-        val style = SessionStyle.current()
+        val style = SessionEditorStyle.current()
 
         assertEquals(style.editorFamily, view.codeFont)
     }
 
     fun `test default override sheet includes session style before any set`() {
-        assertTrue(view.overrideSheet().contains(SessionStyle.current().editorFamily))
+        assertTrue(view.overrideSheet().contains(SessionEditorStyle.current().editorFamily))
     }
 
     // ---- background sets component background ----
@@ -405,7 +406,7 @@ class MdViewTest : BasePlatformTestCase() {
         view.resetStyles()
         val sheet = view.overrideSheet()
         assertFalse(sheet.contains("Arial"))
-        assertTrue(sheet.contains(SessionStyle.current().editorFamily))
+        assertTrue(sheet.contains(SessionEditorStyle.current().editorFamily))
     }
 
     fun `test resetStyles restores opaque to true`() {
@@ -420,4 +421,5 @@ class MdViewTest : BasePlatformTestCase() {
         view.resetStyles()
         assertTrue(view.html().contains("<strong>"))
     }
+
 }

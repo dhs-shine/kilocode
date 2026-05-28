@@ -1,6 +1,6 @@
 package ai.kilocode.client.ui.md
 
-import ai.kilocode.client.session.ui.SessionStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class MdViewFactoryTest : BasePlatformTestCase() {
@@ -17,7 +17,7 @@ class MdViewFactoryTest : BasePlatformTestCase() {
     }
 
     fun `test create applies supplied session style`() {
-        val style = SessionStyle.create(family = "Courier New", size = 22)
+        val style = SessionEditorStyle.create(family = "Courier New", size = 22)
         val view = MdViewFactory.create(style)
 
         assertEquals("Courier New", view.font.name)
