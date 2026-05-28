@@ -40,8 +40,18 @@ class MockCliServer : AutoCloseable {
     @Volatile var warningsStatus = 200
     @Volatile var notificationsStatus = 200
 
+    // Auth / OAuth responses
+    @Volatile var authorizeResponse = """{"url":"https://auth.kilo.ai/device","method":"code","instructions":"Open URL and enter code: TEST-1234"}"""
+    @Volatile var authorizeStatus = 200
+    @Volatile var callbackStatus = 200
+    @Volatile var authRemoveStatus = 200
+    @Volatile var organizationSetStatus = 200
+    @Volatile var lastAuthorizeBody: String? = null
+    @Volatile var lastCallbackBody: String? = null
+    @Volatile var lastOrganizationSetBody: String? = null
+
     // Project-scoped REST responses
-    @Volatile var providers = """{"all":[],"default":{},"connected":[]}"""
+    @Volatile var providers = """{"all":[],"default":{},"connected":[],"failed":[]}"""
     @Volatile var agents = "[]"
     @Volatile var commands = "[]"
     @Volatile var skills = "[]"
@@ -72,9 +82,20 @@ class MockCliServer : AutoCloseable {
     @Volatile var summarizeStatus = 200
     @Volatile var lastSummarizePath: String? = null
     @Volatile var lastSummarizeBody: String? = null
+    @Volatile var sessionRenameStatus = 200
+    @Volatile var sessionRenameResponse = """{"id":"ses_test","slug":"test","projectID":"prj_test","directory":"/test","title":"Renamed","version":"1.0.0","time":{"created":1000,"updated":2000}}"""
+    @Volatile var lastSessionRenamePath: String? = null
+    @Volatile var lastSessionRenameBody: String? = null
+    @Volatile var lastSessionRenameMethod: String? = null
 
     /** Configurable delay for all endpoint responses (ms). 0 = no delay. */
     @Volatile var responseDelay: Long = 0
+
+    /** Optional gate for REST responses; SSE stays unblocked so the app can enter Loading. */
+    @Volatile var responseGate: CountDownLatch? = null
+
+    /** Optional gate for config warnings only. */
+    @Volatile var warningsGate: CountDownLatch? = null
 
     /** Request counts by bare path (e.g. "/session" or "/global/config"). Thread-safe. */
     private val counts = ConcurrentHashMap<String, AtomicInteger>()
@@ -204,18 +225,35 @@ class MockCliServer : AutoCloseable {
             // Optional delay for race condition testing
             val delay = responseDelay
             if (delay > 0) Thread.sleep(delay)
+            if (bare != "/global/event") responseGate?.await()
+            if (bare.startsWith("/config/warnings")) warningsGate?.await()
 
             when {
                 path == "/global/health" -> respond(output, 200, health)
                 path == "/global/config" -> respond(output, configStatus, config)
                 path.startsWith("/config/warnings") -> respond(output, warningsStatus, warnings)
                 path.startsWith("/kilo/notifications") -> respond(output, notificationsStatus, notifications)
-                path.startsWith("/kilo/profile") -> {
+                path.startsWith("/kilo/profile") && method == "GET" -> {
                     if (profileStatus == 401) {
                         respond(output, 401, """{"message":"Unauthorized"}""")
                     } else {
                         respond(output, profileStatus, profile)
                     }
+                }
+                path.matches(Regex("/provider/[^/]+/oauth/authorize.*")) && method == "POST" -> {
+                    lastAuthorizeBody = body
+                    respond(output, authorizeStatus, authorizeResponse)
+                }
+                path.matches(Regex("/provider/[^/]+/oauth/callback.*")) && method == "POST" -> {
+                    lastCallbackBody = body
+                    respond(output, callbackStatus, "true")
+                }
+                bare.matches(Regex("/auth/[^/]+")) && method == "DELETE" -> {
+                    respond(output, authRemoveStatus, "true")
+                }
+                bare == "/kilo/organization" && method == "POST" -> {
+                    lastOrganizationSetBody = body
+                    respond(output, organizationSetStatus, "true")
                 }
                 path == "/global/event" -> handleSse(output)
                 path == "/path" -> respond(output, 200, this.path)
@@ -239,10 +277,16 @@ class MockCliServer : AutoCloseable {
                 bare == "/session/status" -> respond(output, sessionStatusesStatus, sessionStatuses)
                 bare == "/session" && method == "GET" -> respond(output, sessionsStatus, sessions)
                 bare == "/session" && method == "POST" -> respond(output, sessionCreateStatus, sessionCreate)
-                bare.matches(Regex("/session/ses_[^/]+")) && method == "GET" ->
+                bare.matches(Regex("/session/ses_.+")) && !bare.contains("/summarize") && method == "GET" ->
                     respond(output, sessionGetStatus, sessionCreate)
-                bare.matches(Regex("/session/ses_[^/]+")) && method == "DELETE" ->
+                bare.matches(Regex("/session/ses_.+")) && !bare.contains("/summarize") && method == "DELETE" ->
                     respond(output, sessionDeleteStatus, "true")
+                bare.matches(Regex("/session/ses_.+")) && !bare.contains("/summarize") && method == "PATCH" -> {
+                    lastSessionRenamePath = path
+                    lastSessionRenameBody = body
+                    lastSessionRenameMethod = method
+                    respond(output, sessionRenameStatus, sessionRenameResponse)
+                }
                 bare.matches(Regex("/session/ses_[^/]+/summarize")) && method == "POST" -> {
                     lastSummarizePath = path
                     lastSummarizeBody = body

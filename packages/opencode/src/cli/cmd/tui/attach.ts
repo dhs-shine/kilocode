@@ -7,6 +7,7 @@ import { createKiloClient } from "@kilocode/sdk/v2" // kilocode_change
 import { importCloudSession, validateCloudFork } from "@/kilocode/cloud-session" // kilocode_change
 import { errorMessage } from "@/util/error"
 import { validateSession } from "./validate-session"
+import { ServerAuth } from "@/server/auth"
 
 export const AttachCommand = cmd({
   command: "attach <url>",
@@ -44,6 +45,11 @@ export const AttachCommand = cmd({
         alias: ["p"],
         type: "string",
         describe: "basic auth password (defaults to KILO_SERVER_PASSWORD)",
+      })
+      .option("username", {
+        alias: ["u"],
+        type: "string",
+        describe: "basic auth username (defaults to KILO_SERVER_USERNAME or 'kilo')", // kilocode_change
       }),
   handler: async (args) => {
     const unguard = win32InstallCtrlCGuard()
@@ -75,15 +81,7 @@ export const AttachCommand = cmd({
           return args.dir
         }
       })()
-      const headers = (() => {
-        const password = args.password ?? process.env.KILO_SERVER_PASSWORD
-        if (!password) return undefined
-        // kilocode_change start - align attach auth with Kilo server defaults
-        const username = process.env.KILO_SERVER_USERNAME ?? "kilo"
-        const auth = `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`
-        // kilocode_change end
-        return { Authorization: auth }
-      })()
+      const headers = ServerAuth.headers({ password: args.password, username: args.username })
       // kilocode_change start - import cloud session before TUI renders
       if (args.cloudFork && args.session) {
         UI.println("Importing session from cloud...")

@@ -1,6 +1,7 @@
 import type { Argv } from "yargs"
 import { cmd } from "@/cli/cmd/cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "@/cli/network"
+import { AppRuntime } from "@/effect/app-runtime"
 import { Daemon } from "@/kilocode/daemon/daemon"
 
 function withJson<T>(yargs: Argv<T>) {
@@ -58,7 +59,7 @@ const StartCommand = cmd({
   describe: "start the local kilo daemon",
   builder: (yargs) => withJson(withNetworkOptions(yargs)),
   handler: async (args) => {
-    const opts = await resolveNetworkOptions(args)
+    const opts = await AppRuntime.runPromise(resolveNetworkOptions(args))
     const result = await Daemon.start(opts)
     if (args.json) {
       print(result, true)
@@ -97,7 +98,7 @@ const RestartCommand = cmd({
   describe: "restart the local kilo daemon",
   builder: (yargs) => withJson(withNetworkOptions(yargs)),
   handler: async (args) => {
-    const opts = await resolveNetworkOptions(args)
+    const opts = await AppRuntime.runPromise(resolveNetworkOptions(args))
     const result = await Daemon.restart(opts)
     if (args.json) {
       print(result, true)

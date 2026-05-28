@@ -92,6 +92,7 @@ export const dict = {
   "command.session.share.description": "Del denne session og kopier URL'en til udklipsholderen",
   "command.session.unshare": "Stop deling af session",
   "command.session.unshare.description": "Stop med at dele denne session",
+  "command.session.export": "Eksporter sessionsudskrift",
 
   "palette.search.placeholder": "Søg i filer, kommandoer og sessioner",
   "palette.empty": "Ingen resultater fundet",
@@ -176,6 +177,8 @@ export const dict = {
   "model.tag.latest": "Nyeste",
   "model.group.recommended": "Anbefalet",
   "model.group.favorites": "Favoritter",
+  "model.group.collapse": "Skjul {{group}}",
+  "model.group.expand": "Vis {{group}}",
   "model.favorite.add": "Føj til favoritter",
   "model.favorite.remove": "Fjern fra favoritter",
 
@@ -269,6 +272,7 @@ export const dict = {
   "prompt.attachment.remove": "Fjern vedhæftning",
   "prompt.action.send": "Send",
   "prompt.action.send.blocked": "Besvar eller afvis det afventende spørgsmål først",
+  "prompt.action.send.recording": "Transskriber og send",
   "prompt.action.stop": "Stop",
   "prompt.action.enhance": "Forbedr prompt",
   "prompt.action.autoApprove.enable": "Aktiver automatisk godkendelse",
@@ -280,6 +284,20 @@ export const dict = {
   "prompt.action.resetModel": "Nulstil model til standard",
   "prompt.action.enhanceDescription":
     "Knappen 'Forbedr prompt' hjælper med at forbedre din forespørgsel ved at give ekstra kontekst, præcisering eller omformulering. Prøv at skrive en forespørgsel her og klik på knappen igen for at se hvordan det virker.",
+
+  "speechToText.tooltip.start": "Start stemmeinput med Kilo Gateway",
+  "speechToText.tooltip.stop": "Stop lydoptagelse",
+  "speechToText.tooltip.transcribing": "Transskriberer... Klik for at annullere.",
+  "speechToText.tooltip.error": "Stemmeinput mislykkedes. Klik for at rydde.",
+  "speechToText.error.title": "Stemmeinput mislykkedes",
+  "speechToText.error.loginRequired": "Log ind på Kilo for at bruge stemmeinput.",
+  "speechToText.error.permission": "Mikrofontilladelse blev nægtet.",
+  "speechToText.error.microphone": "Kunne ikke starte mikrofonen.",
+  "speechToText.error.recording": "Optagelse mislykkedes.",
+  "speechToText.error.emptyRecording": "Ingen lyd blev optaget.",
+  "speechToText.error.emptyTranscript": "Ingen tale blev registreret.",
+  "speechToText.error.encoding": "Kunne ikke kode optagelsen.",
+  "speechToText.toast.transcribed": "Transskription indsat",
 
   "prompt.toast.pasteUnsupported.title": "Ikke understøttet indsæt",
   "prompt.toast.pasteUnsupported.description": "Kun billeder eller PDF'er kan indsættes her.",
@@ -433,6 +451,7 @@ export const dict = {
   "toast.session.unshare.failed.title": "Kunne ikke stoppe deling af session",
   "toast.session.unshare.failed.description": "Der opstod en fejl under stop af sessionsdeling",
 
+  "toast.session.rename.invalid.title": "Ugyldig sessionstitel",
   "toast.session.listFailed.title": "Kunne ikke indlæse sessioner for {{project}}",
 
   "toast.update.title": "Opdatering tilgængelig",
@@ -836,6 +855,9 @@ export const dict = {
   "settings.providers.connected.environmentDescription": "Forbundet fra dine miljøvariabler",
   "settings.providers.action.signInChatGPT": "Log ind med ChatGPT",
   "settings.providers.custom.description": "Tilføj en OpenAI-kompatibel udbyder via basis-URL.",
+  "settings.providers.subagentModel.title": "Underagentmodel",
+  "settings.providers.subagentModel.description":
+    "Standardmodel og ræsonnementsindsats for task-tool-underagenter. Lad den være tom for at nedarve den kaldende agents model.",
   "settings.providers.modeModels": "Model pr. tilstand",
   "settings.providers.custom.note": "Tilføj en OpenAI-kompatibel udbyder via basis-URL.",
   "settings.providers.modeModels.description":
@@ -1103,6 +1125,14 @@ export const dict = {
   "session.status.retrying": "Prøver igen (forsøg {{ attempt }})… {{ message }}",
   "session.status.working": "Arbejder…",
   "session.status.offline": "Netværk afbrudt — genopretter forbindelse...",
+  "session.outcome.incomplete": "Tur afsluttet, {{count}} to-dos tilbage",
+  "session.outcome.limit": "Svarbegrænsning nået før fuldførelse",
+  "session.outcome.unknown": "Tur afsluttet uden en model-afslutningsårsag",
+  "session.outcome.filtered": "Udbyderen stoppede dette svar på grund af et indholdsfilter.",
+  "session.outcome.unexpected": "Svaret sluttede uventet og kan være ufuldstændigt.",
+  "session.outcome.interrupted": "Tur afbrudt",
+  "session.outcome.error": "Tur mislykkedes",
+  "session.outcome.finish": "Afslutningsårsag: {{reason}}",
 
   "ui.sessionTurn.cancel": "Annuller",
   "ui.sessionTurn.status.thinking": "Tænker...",
@@ -1166,7 +1196,6 @@ export const dict = {
     'Telemetri styres af VS Codes indbyggede telemetriindstilling. For at deaktivere den, gå til Indstillinger > Telemetry > Telemetry Level og sæt den til "off". Genstart VS Code for at anvende ændringen.',
   "settings.aboutKiloCode.telemetry.openSettings": "Åbn telemetriindstillinger",
 
-  "settings.agentBehaviour.subtab.modes": "Tilstande",
   "settings.agentBehaviour.subtab.agents": "Agenter",
   "settings.agentBehaviour.subtab.mcpServers": "MCP-servere",
   "settings.agentBehaviour.subtab.rules": "Regler",
@@ -1231,9 +1260,13 @@ export const dict = {
     "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Kodesøgning",
   "settings.experimental.codebaseSearch.description": "Aktiver AI-drevet naturlig sprogsøgning på tværs af kodebasen",
-  "settings.experimental.agentManagerTool.title": "Agent Manager-værktøj",
-  "settings.experimental.agentManagerTool.description":
-    "Tillad agenter at starte lokale Agent Manager-sessioner og worktree-sessioner fra et værktøjskald",
+  "settings.experimental.speechToText.title": "Tale til tekst",
+  "settings.experimental.speechToText.description":
+    "Aktivér stemmeinput i prompt-felter ved hjælp af din Kilo-konto gennem Kilo Gateway.",
+  "settings.experimental.speechToText.disabledDescription":
+    "Aktivér og log ind på Kilo-udbyderen for at bruge Speech to Text. Speech to Text understøttes i øjeblikket kun med Kilo Gateway.",
+  "settings.experimental.speechToTextModel.title": "Model til tale til tekst",
+  "settings.experimental.speechToTextModel.description": "Vælg Kilo Gateway-transskriptionsmodellen til stemmeinput.",
   "settings.experimental.continueOnDeny.title": "Fortsæt ved afvisning",
   "settings.experimental.continueOnDeny.description": "Fortsæt agentløkken, når en tilladelse afvises",
   "settings.experimental.mcpTimeout.title": "MCP-timeout (ms)",
@@ -1255,6 +1288,8 @@ export const dict = {
   "settings.agentBehaviour.selectAgent.description": "Vælg en agent at konfigurere…",
   "settings.agentBehaviour.modelOverride.title": "Modeloverstyring",
   "settings.agentBehaviour.modelOverride.description": "Tilsidesæt standardmodellen for denne agent",
+  "settings.agentBehaviour.variantOverride.title": "Variantoverstyring",
+  "settings.agentBehaviour.variantOverride.description": "Tilsidesæt modelvarianten for denne agent",
   "settings.agentBehaviour.prompt.title": "Brugerdefineret prompt",
   "settings.agentBehaviour.prompt.description": "Yderligere systemprompt for denne agent",
   "settings.agentBehaviour.temperature.title": "Temperatur",
@@ -1274,7 +1309,7 @@ export const dict = {
   "settings.agentBehaviour.noSkillsFound":
     "Ingen skills fundet. Tilføj skill-mappestier eller URL'er nedenfor for at gøre skills tilgængelige.",
   "settings.agentBehaviour.availableModes": "Tilgængelige brugerdefinerede tilstande",
-  "settings.agentBehaviour.noModesFound": "Ingen tilstande fundet.",
+  "settings.agentBehaviour.noAgentsFound": "Ingen agenter fundet.",
   "settings.agentBehaviour.createMode": "Opret ny tilstand",
   "settings.agentBehaviour.createMode.name": "Navn",
   "settings.agentBehaviour.createMode.name.placeholder": "f.eks. reviewer",
@@ -1317,10 +1352,10 @@ export const dict = {
   "settings.agentBehaviour.permissions.copy": "Kopiér tilladelser som JSON",
   "settings.agentBehaviour.permissions.hint":
     "Reglerne evalueres i rækkefølge — den sidst matchende regel vinder. Dette er det endelige regelsæt fra CLI-backenden.",
-  "settings.agentBehaviour.removeMode.title": "Fjern tilstand",
-  "settings.agentBehaviour.removeMode.confirm":
-    'Vil du fjerne tilstanden "{{name}}"? Dette vil deaktivere tilstanden ved at opdatere din konfiguration.',
-  "settings.agentBehaviour.removeMode.button": "Fjern",
+  "settings.agentBehaviour.removeAgent.title": "Fjern agent",
+  "settings.agentBehaviour.removeAgent.confirm":
+    'Fjern agent "{{name}}"? Dette deaktiverer agenten ved at opdatere din konfiguration.',
+  "settings.agentBehaviour.removeAgent.button": "Fjern",
   "settings.agentBehaviour.removeMcp.title": "Fjern MCP-server",
   "settings.agentBehaviour.removeMcp.confirm":
     'Vil du fjerne MCP-serveren "{{name}}"? Dette vil fjerne den fra din konfiguration.',
@@ -1405,7 +1440,10 @@ export const dict = {
   "settings.checkpoints.enable.title": "Aktiver snapshots",
   "settings.checkpoints.enable.description": "Opret kontrolpunkter før filredigeringer",
   "settings.context.autoCompaction.title": "Automatisk komprimering",
-  "settings.context.autoCompaction.description": "Komprimér automatisk kontekst, når den er fuld",
+  "settings.context.autoCompaction.description": "Komprimér automatisk kontekst, før den når grænsen",
+  "settings.context.compactionLimit.title": "Grænse for automatisk komprimering",
+  "settings.context.compactionLimit.description":
+    "Komprimér, når konteksten når denne procentdel af modelvinduet. Lad feltet være tomt for kun at bruge sikkerhedsbufferen.",
   "settings.context.prune.title": "Fjern gamle output",
   "settings.context.prune.description": "Fjern gamle værktøjsoutput under komprimering",
   "settings.context.watcherPatterns": "Filvagt-ignormønstre",
@@ -1588,4 +1626,5 @@ export const dict = {
   "diffViewer.baseBranch.empty": "No matching branches",
   "diffViewer.baseBranch.loading": "Loading branches…",
   "diffViewer.baseBranch.none": "—",
+  "plan.exit.ready": "Planen er klar:",
 }

@@ -24,6 +24,8 @@ import { DbCommand } from "../cli/cmd/db"
 import { ConfigCommand as ConfigCLICommand } from "../cli/cmd/config"
 import { PluginCommand } from "../cli/cmd/plug"
 import { DevSetupCommand, DevAliasCommand } from "./cli/dev-setup"
+import { RollCallCommand } from "./cli/cmd/roll-call"
+import { DaemonCommand } from "./cli/cmd/daemon"
 import { HelpCommand } from "./help-command"
 import { InstallationBuildKind } from "@opencode-ai/core/installation/version"
 
@@ -55,12 +57,14 @@ export const commands = [
   UninstallCommand,
   ServeCommand,
   ModelsCommand,
+  RollCallCommand,
   StatsCommand,
   ExportCommand,
   ImportCommand,
   PrCommand,
   SessionCommand,
   RemoteCommand,
+  DaemonCommand,
   DbCommand,
   ConfigCLICommand,
   ...dev,

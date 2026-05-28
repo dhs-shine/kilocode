@@ -94,8 +94,13 @@ describe("daemon manager", () => {
     expect(started.state?.port).toBeGreaterThanOrEqual(Daemon.PortRange.start)
     expect(started.state?.port).toBeLessThanOrEqual(Daemon.PortRange.end)
 
-    const blocked = await fetch(`${started.state!.url}/global/health`)
+    const blocked = await fetch(`${started.state!.url}/config?directory=${encodeURIComponent(tmp.path)}`)
     expect(blocked.status).toBe(401)
+
+    const config = await fetch(`${started.state!.url}/config?directory=${encodeURIComponent(tmp.path)}`, {
+      headers: { authorization: `Basic ${started.state!.token}` },
+    })
+    expect(config.status).toBe(200)
 
     const health = await fetch(`${started.state!.url}/global/health`, {
       headers: { authorization: `Basic ${started.state!.token}` },
