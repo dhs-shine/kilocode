@@ -8,11 +8,13 @@
  * session activity) and a context window progress bar.
  */
 
-import { Component, For, Show, createMemo, createSignal, onMount, onCleanup } from "solid-js"
+import { Component, For, Show, createMemo, createSignal, createEffect, onMount, onCleanup } from "solid-js"
 import { IconButton } from "@kilocode/kilo-ui/icon-button"
 import { Tooltip } from "@kilocode/kilo-ui/tooltip"
 import { Icon } from "@kilocode/kilo-ui/icon"
 import { Checkbox } from "@kilocode/kilo-ui/checkbox"
+import { InlineInput } from "@kilocode/kilo-ui/inline-input"
+import { showToast } from "@kilocode/kilo-ui/toast"
 import { useSession } from "../../context/session"
 import { calcTokenUsage, collapseCostBreakdown } from "../../context/session-utils"
 import { useLanguage } from "../../context/language"
@@ -21,6 +23,7 @@ import { TaskTimeline } from "./TaskTimeline"
 import { ContextProgress } from "./ContextProgress"
 import { target as todoTarget } from "../../context/todo-revert"
 import type { Part, TodoItem, ExtensionMessage } from "../../types/messages"
+import { parseSessionTitle, SESSION_TITLE_LIMIT } from "../../../../src/shared/session-title"
 
 interface TaskHeaderProps {
   readonly?: boolean
@@ -31,6 +34,7 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
   const language = useLanguage()
 
   const title = createMemo(() => session.currentSession()?.title ?? language.t("command.session.new"))
+  const canRename = createMemo(() => !props.readonly && !!session.currentSession())
   const hasMessages = createMemo(() => session.messages().length > 0)
   const busy = createMemo(() => session.status() === "busy")
   const canCompact = createMemo(() => !busy() && session.visibleMessages().length > 0 && !!session.selected())
@@ -114,6 +118,45 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
   })
 
   const [todosOpen, setTodosOpen] = createSignal(false)
+  const [renaming, setRenaming] = createSignal<{ id: string; title: string }>()
+  const [renameValue, setRenameValue] = createSignal("")
+  const [cancelled, setCancelled] = createSignal(false)
+
+  const startRename = () => {
+    if (props.readonly) return
+    const info = session.currentSession()
+    if (!info) return
+    setCancelled(false)
+    setRenameValue(info.title ?? "")
+    setRenaming({ id: info.id, title: info.title ?? "" })
+  }
+
+  const commitRename = () => {
+    const info = renaming()
+    if (!info) return
+    if (cancelled()) {
+      setCancelled(false)
+      return
+    }
+    const result = parseSessionTitle(renameValue())
+    if ("error" in result) {
+      showToast({ variant: "error", title: language.t("toast.session.rename.invalid.title") })
+      return
+    }
+    setRenaming(undefined)
+    if (result.value === info.title) return
+    session.renameSession(info.id, result.value)
+  }
+
+  const cancelRename = () => {
+    setCancelled(true)
+    setRenaming(undefined)
+  }
+
+  createEffect(() => {
+    const info = renaming()
+    if (info && session.currentSession()?.id !== info.id) setRenaming(undefined)
+  })
 
   const donePart = (idx: number): Part | undefined =>
     todoTarget({ messages: session.messages(), parts: session.allParts() }, idx)
@@ -128,8 +171,55 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
   return (
     <Show when={hasMessages()}>
       <div data-component="task-header">
-        <div data-slot="task-header-title" title={title()}>
-          {title()}
+        <div data-slot="task-header-title">
+          <Show
+            when={!renaming()}
+            fallback={
+              <span data-slot="task-header-title-editor">
+                <InlineInput
+                  class="task-header-rename-input"
+                  aria-label={language.t("common.rename")}
+                  value={renameValue()}
+                  size={Math.min(Math.max(renameValue().length + 2, 14), 48)}
+                  maxLength={SESSION_TITLE_LIMIT}
+                  onInput={(e) => setRenameValue(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      commitRename()
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault()
+                      cancelRename()
+                    }
+                  }}
+                  onBlur={commitRename}
+                  ref={(el) =>
+                    requestAnimationFrame(() => {
+                      el.focus()
+                      el.select()
+                    })
+                  }
+                />
+              </span>
+            }
+          >
+            <span
+              data-slot="task-header-title-trigger"
+              data-renamable={canRename() ? "" : undefined}
+              title={canRename() ? language.t("agentManager.worktree.doubleClickRename") : title()}
+              tabIndex={canRename() ? 0 : undefined}
+              role={canRename() ? "button" : undefined}
+              onDblClick={startRename}
+              onKeyDown={(e) => {
+                if (!canRename() || (e.key !== "Enter" && e.key !== " ")) return
+                e.preventDefault()
+                startRename()
+              }}
+            >
+              <span data-slot="task-header-title-label">{title()}</span>
+            </span>
+          </Show>
         </div>
         <div data-slot="task-header-stats">
           <Show when={cost()}>

@@ -12,11 +12,13 @@ import { Dialog } from "@kilocode/kilo-ui/dialog"
 import { Button } from "@kilocode/kilo-ui/button"
 import { IconButton } from "@kilocode/kilo-ui/icon-button"
 import { InlineInput } from "@kilocode/kilo-ui/inline-input"
+import { showToast } from "@kilocode/kilo-ui/toast"
 import { useDialog } from "@kilocode/kilo-ui/context/dialog"
 import { useSession } from "../../context/session"
 import { useLanguage } from "../../context/language"
 import { formatRelativeDate } from "../../utils/date"
 import type { SessionInfo } from "../../types/messages"
+import { parseSessionTitle, SESSION_TITLE_LIMIT } from "../../../../src/shared/session-title"
 
 const DATE_GROUP_KEYS = ["time.today", "time.yesterday", "time.thisWeek", "time.thisMonth", "time.older"] as const
 
@@ -65,14 +67,15 @@ const SessionList: Component<SessionListProps> = (props) => {
 
   function saveRename() {
     const id = renamingId()
-    const title = renameValue().trim()
-    if (!id || !title) {
-      cancelRename()
+    if (!id) return
+    const result = parseSessionTitle(renameValue())
+    if ("error" in result) {
+      showToast({ variant: "error", title: language.t("toast.session.rename.invalid.title") })
       return
     }
     const existing = session.sessions().find((s) => s.id === id)
-    if (!existing || title !== (existing.title || "")) {
-      session.renameSession(id, title)
+    if (!existing || result.value !== (existing.title || "")) {
+      session.renameSession(id, result.value)
     }
     setRenamingId(null)
     setRenameValue("")
@@ -180,6 +183,7 @@ const SessionList: Component<SessionListProps> = (props) => {
             <InlineInput
               ref={(el) => requestAnimationFrame(() => el?.focus())}
               value={renameValue()}
+              maxLength={SESSION_TITLE_LIMIT}
               onInput={(e) => setRenameValue(e.currentTarget.value)}
               onKeyDown={(e) => {
                 e.stopPropagation()
