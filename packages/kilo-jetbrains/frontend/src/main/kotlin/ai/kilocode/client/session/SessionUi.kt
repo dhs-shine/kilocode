@@ -96,7 +96,13 @@ class SessionUi(
             ?: EVENT_FLUSH_MS
 
     private val controller = SessionController(
-        this, ref, sessions, workspace, app, cs, comp = this,
+        parent = this,
+        ref = ref,
+        sessions = sessions,
+        workspace = workspace,
+        app = app,
+        cs = cs,
+        comp = this,
         flushMs = flushMs,
         condense = Registry.`is`("kilo.session.condense", true),
         displayMs = displayMs,
