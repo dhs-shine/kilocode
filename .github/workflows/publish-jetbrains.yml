@@ -107,8 +107,9 @@ jobs:
 
       - name: Verify plugin
         working-directory: packages/kilo-jetbrains
-        run: ./gradlew verifyPlugin -Pproduction=true -Pkilo.channel="$CHANNEL"
+        run: ./gradlew verifyPlugin -Pproduction=true -Pkilo.version="$VERSION" -Pkilo.channel="$CHANNEL"
         env:
+          VERSION: ${{ steps.release.outputs.version }}
           CHANNEL: ${{ steps.release.outputs.marketplace_channel }}
 
       - name: Render release notes
@@ -124,8 +125,9 @@ jobs:
 
       - name: Publish to JetBrains Marketplace
         working-directory: packages/kilo-jetbrains
-        run: ./gradlew publishPlugin -Pproduction=true -Pkilo.channel="$CHANNEL"
+        run: ./gradlew publishPlugin -Pproduction=true -Pkilo.version="$VERSION" -Pkilo.channel="$CHANNEL"
         env:
+          VERSION: ${{ steps.release.outputs.version }}
           CHANNEL: ${{ steps.release.outputs.marketplace_channel }}
           JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
           JETBRAINS_CERTIFICATE_CHAIN: ${{ secrets.JETBRAINS_CERTIFICATE_CHAIN }}

@@ -42,7 +42,6 @@ type Pull = {
 const data = (await $`gh pr view ${pr} --repo ${repo} --json body,headRefName,isCrossRepository,labels,mergedAt,mergeCommit,state`.json()) as Pull
 const labels = new Set(data.labels.map((item) => item.name))
 if (!labels.has("jetbrains-release")) throw new Error("PR is missing jetbrains-release label")
-if (!data.headRefName.startsWith("jetbrains/release/")) throw new Error("PR head branch must start with jetbrains/release/")
 if (data.isCrossRepository) throw new Error("JetBrains release PR must come from this repository")
 if (data.state !== "MERGED" || !data.mergedAt) throw new Error("JetBrains release PR must be merged")
 if (!data.mergeCommit?.oid) throw new Error("PR has no merge commit")
@@ -56,6 +55,9 @@ if (!semver.valid(ver)) throw new Error(`Invalid JetBrains version: ${ver}`)
 if (kind !== "rc" && kind !== "stable") throw new Error(`Invalid JetBrains kind: ${kind}`)
 if (kind === "rc" && !/^\d+\.\d+\.\d+-rc\.\d+$/.test(ver)) throw new Error("RC versions must match x.y.z-rc.n")
 if (kind === "stable" && !/^\d+\.\d+\.\d+$/.test(ver)) throw new Error("Stable versions must match x.y.z")
+if (data.headRefName !== `jetbrains/release/v${ver}`) {
+  throw new Error(`PR head branch ${data.headRefName} does not match version ${ver}`)
+}
 if (tag !== `jetbrains/v${ver}`) throw new Error(`Tag ${tag} does not match version ${ver}`)
 if (!/^jetbrains\/v\d+\.\d+\.\d+(-rc\.\d+)?$/.test(tag)) throw new Error(`Invalid JetBrains tag: ${tag}`)
 if (!/^[0-9a-f]{40}$/i.test(commit)) throw new Error(`Invalid JetBrains commit: ${commit}`)

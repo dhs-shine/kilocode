@@ -75,19 +75,22 @@ const changed = await $`git diff --cached --quiet`.nothrow()
 if (changed.exitCode !== 0) await $`git commit -m ${`release(jetbrains): v${ver}`}`
 
 await $`git push --force-with-lease origin ${branch}`
+await label("jetbrains-release", "5319e7", "Required gate for JetBrains release publishing")
 
 const text = body(ver, kind, from, tag, sha, notes)
 const view = await $`gh pr view ${branch} --repo ${repo} --json number --jq .number`.nothrow()
 if (view.exitCode === 0 && view.stdout.toString().trim()) {
   const num = view.stdout.toString().trim()
   await $`gh pr edit ${num} --repo ${repo} --title ${`release(jetbrains): v${ver}`} --body ${text}`
-  await $`gh pr edit ${num} --repo ${repo} --add-label jetbrains-release --add-label release`.nothrow()
+  await $`gh pr edit ${num} --repo ${repo} --add-label jetbrains-release`
+  await $`gh pr edit ${num} --repo ${repo} --add-label release`.nothrow()
   console.log(`Updated PR #${num}`)
   process.exit(0)
 }
 
 const create = await $`gh pr create --repo ${repo} --base main --head ${branch} --title ${`release(jetbrains): v${ver}`} --body ${text}`.text()
-await $`gh pr edit ${branch} --repo ${repo} --add-label jetbrains-release --add-label release`.nothrow()
+await $`gh pr edit ${branch} --repo ${repo} --add-label jetbrains-release`
+await $`gh pr edit ${branch} --repo ${repo} --add-label release`.nothrow()
 console.log(create.trim())
 
 async function base(ver: string, kind: "rc" | "stable") {
@@ -153,6 +156,12 @@ async function release(from: string, tag: string, sha: string) {
     .filter(Boolean)
     .filter((item) => !/^(chore|ci|test|release)(\(|:)/i.test(item))
   return lines.map((item) => `- ${item}`).join("\n") || "- No notable changes."
+}
+
+async function label(name: string, color: string, desc: string) {
+  const labels = (await $`gh label list --repo ${repo} --json name --limit 1000`.json()) as { name: string }[]
+  if (labels.some((item) => item.name === name)) return
+  await $`gh label create ${name} --repo ${repo} --color ${color} --description ${desc}`
 }
 
 function section(ver: string, notes: string) {
