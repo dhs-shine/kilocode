@@ -168,6 +168,8 @@ internal class SessionScroll(
     @RequiresEdt
     fun applyStyle(style: SessionEditorStyle) {
         this.style = style
+        component.background = style.editorBackground
+        component.viewport.background = style.editorBackground
         syncIcon()
         messages.applyStyle(style)
         val view = component.viewport.view

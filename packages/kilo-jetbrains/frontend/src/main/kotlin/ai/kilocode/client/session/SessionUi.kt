@@ -59,6 +59,7 @@ import java.awt.BorderLayout
 import java.awt.event.HierarchyEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.UIManager
 
 /**
  * Top-level session UI composition root.
@@ -135,6 +136,8 @@ class SessionUi(
     private var empty: EmptySessionPanel? = null
     private var modalFocus: (() -> JComponent)? = null
     private var style = SessionEditorStyle.current()
+    private var editorTheme = style.editorScheme
+    private var colorTheme = UIManager.getLookAndFeel()
 
     init {
         buildUi()
@@ -409,7 +412,7 @@ class SessionUi(
         addHierarchyListener { event ->
             if ((event.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong()) == 0L) return@addHierarchyListener
             if (!isShowing) return@addHierarchyListener
-            applyStyle(SessionEditorStyle.current())
+            applyStyleIfThemeChanged()
         }
 
         val bus = ApplicationManager.getApplication().messageBus.connect(this)
@@ -503,11 +506,24 @@ class SessionUi(
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
+        editorTheme = style.editorScheme
+        colorTheme = UIManager.getLookAndFeel()
+        background = style.editorBackground
+        root.content.background = style.editorBackground
+        sessionContent.background = style.editorBackground
+        blankBody.background = style.editorBackground
         load.applyStyle(style)
         header.applyStyle(style)
         prompt.applyStyle(style)
         scroll.applyStyle(style)
         refresh()
+    }
+
+    private fun applyStyleIfThemeChanged() {
+        val next = SessionEditorStyle.current()
+        val laf = UIManager.getLookAndFeel()
+        if (editorTheme === next.editorScheme && colorTheme == laf) return
+        applyStyle(next)
     }
 
     private fun openProfileSettings() {
