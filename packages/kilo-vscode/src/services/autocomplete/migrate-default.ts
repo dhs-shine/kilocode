@@ -13,6 +13,9 @@ const FLAG = "kilo.autocomplete.defaultClearMigrationV1"
  *
  * Users who picked a different model are untouched. The migration runs once
  * per machine and is gated on a globalState flag.
+ *
+ * TODO(2026-09): remove this migration. By September 2026 the cohort that
+ * needed it will either have migrated already or be fine staying pinned.
  */
 export async function migrateDefaultAutocompleteSettings(context: vscode.ExtensionContext): Promise<void> {
   if (context.globalState.get<boolean>(FLAG)) return
