@@ -7,13 +7,15 @@ import { INLINE_COMPLETION_ACCEPTED_COMMAND as NEXT_EDIT_ACCEPTED_COMMAND } from
 import { chainNextPrediction } from "./next-edit/NextEditSuggestionManager"
 import type { KiloConnectionService } from "../cli-backend"
 
-export const registerAutocompleteProvider = (
+export const registerAutocompleteProvider = async (
   context: vscode.ExtensionContext,
   connectionService: KiloConnectionService,
 ) => {
   // Run before constructing the manager so its initial readSettings() sees
-  // the cleared state and behaves as "Not set."
-  void migrateDefaultAutocompleteSettings(context)
+  // the cleared state and behaves as "Not set." Awaited because the manager's
+  // constructor synchronously kicks off readSettings() via load(), which would
+  // otherwise race with the migration.
+  await migrateDefaultAutocompleteSettings(context)
 
   const autocompleteManager = new AutocompleteServiceManager(context, connectionService)
   context.subscriptions.push(autocompleteManager)
