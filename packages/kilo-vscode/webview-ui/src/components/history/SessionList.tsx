@@ -46,6 +46,7 @@ const SessionList: Component<SessionListProps> = (props) => {
   const dialog = useDialog()
 
   const [renamingId, setRenamingId] = createSignal<string | null>(null)
+  const [pendingRenameId, setPendingRenameId] = createSignal<string | null>(null)
 
   onMount(() => {
     console.log("[Kilo New] SessionList mounted, loading sessions")
@@ -107,10 +108,13 @@ const SessionList: Component<SessionListProps> = (props) => {
         <ContextMenu.Portal>
           <ContextMenu.Content
             onCloseAutoFocus={(event) => {
-              if (renamingId() === item.id) event.preventDefault()
+              if (pendingRenameId() !== item.id) return
+              event.preventDefault()
+              setPendingRenameId(null)
+              startRename(item)
             }}
           >
-            <ContextMenu.Item onSelect={() => startRename(item)}>
+            <ContextMenu.Item onSelect={() => setPendingRenameId(item.id)}>
               <ContextMenu.ItemLabel>{language.t("common.rename")}</ContextMenu.ItemLabel>
             </ContextMenu.Item>
             <ContextMenu.Item onSelect={() => session.exportSessionTranscript(item.id)}>
