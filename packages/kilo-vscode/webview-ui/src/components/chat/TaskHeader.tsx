@@ -120,13 +120,11 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
   const [todosOpen, setTodosOpen] = createSignal(false)
   const [renaming, setRenaming] = createSignal<{ id: string; title: string }>()
   const [renameValue, setRenameValue] = createSignal("")
-  const [cancelled, setCancelled] = createSignal(false)
 
   const startRename = () => {
     if (props.readonly) return
     const info = session.currentSession()
     if (!info) return
-    setCancelled(false)
     setRenameValue(info.title ?? "")
     setRenaming({ id: info.id, title: info.title ?? "" })
   }
@@ -134,10 +132,6 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
   const commitRename = () => {
     const info = renaming()
     if (!info) return
-    if (cancelled()) {
-      setCancelled(false)
-      return
-    }
     const result = parseSessionTitle(renameValue())
     if ("error" in result) {
       showToast({ variant: "error", title: language.t("toast.session.rename.invalid.title") })
@@ -149,7 +143,6 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
   }
 
   const cancelRename = () => {
-    setCancelled(true)
     setRenaming(undefined)
   }
 
