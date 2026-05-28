@@ -1,46 +1,86 @@
 package ai.kilocode.client.ui
 
-import com.intellij.ui.icons.CachedImageIcon
-import com.intellij.ui.svg.SvgAttributePatcher
-import com.intellij.util.SVGLoader
+import com.intellij.ui.JBColor
 import java.awt.Color
+import java.awt.Component
+import java.awt.Graphics
+import java.awt.image.BufferedImage
 import javax.swing.Icon
 
 private const val OPAQUE_ALPHA = 255
+private const val RGB_MASK = 0x00FFFFFF
 
 internal fun Icon.colorizeIfPossible(
     fillColor: Color,
     borderColor: Color = fillColor,
-    fillId: String? = null,
-    strokeId: String? = null,
-): Icon = (this as? CachedImageIcon)?.createWithPatcher(
-    colorPatcher = object : SVGLoader.SvgElementColorPatcherProvider, SvgAttributePatcher {
-        private val digest = longArrayOf(0L, 440413911775177385)
+    fillColors: Collection<Int>,
+    borderColors: Collection<Int>,
+): Icon = ColorizedIcon(
+    source = this,
+    fill = fillColor,
+    border = borderColor,
+    fills = fillColors.map { it and RGB_MASK }.toSet(),
+    borders = borderColors.map { it and RGB_MASK }.toSet(),
+)
 
-        override fun digest(): LongArray {
-            digest[0] = toLong(fillColor.rgb, borderColor.rgb)
-            return digest
-        }
+private data class Key(
+    val width: Int,
+    val height: Int,
+    val fill: Int,
+    val border: Int,
+    val bright: Boolean,
+)
 
-        override fun patchColors(attributes: MutableMap<String, String>) {
-            val id = attributes["id"]
-            if (fillId == null || id == fillId) setAttribute(attributes, "fill", fillColor)
-            if (strokeId == null || id == strokeId) setAttribute(attributes, "stroke", borderColor)
-        }
+private class ColorizedIcon(
+    private val source: Icon,
+    private val fill: Color,
+    private val border: Color,
+    private val fills: Set<Int>,
+    private val borders: Set<Int>,
+) : Icon {
+    private val cache = mutableMapOf<Key, BufferedImage>()
 
-        override fun attributeForPath(path: String) = this
+    override fun getIconWidth(): Int = source.iconWidth
 
-        private fun setAttribute(attributes: MutableMap<String, String>, key: String, color: Color) {
-            if (!attributes.containsKey(key) || attributes[key] == "none") return
-            attributes[key] = "rgb(${color.red},${color.green},${color.blue})"
-            val alpha = color.alpha
-            if (alpha != OPAQUE_ALPHA) {
-                attributes["$key-opacity"] = "${alpha / OPAQUE_ALPHA.toFloat()}"
+    override fun getIconHeight(): Int = source.iconHeight
+
+    override fun paintIcon(c: Component?, g: Graphics, x: Int, y: Int) {
+        val img = image(c)
+        if (img == null) return
+        g.drawImage(img, x, y, null)
+    }
+
+    private fun image(c: Component?): BufferedImage? {
+        val width = iconWidth
+        val height = iconHeight
+        if (width <= 0 || height <= 0) return null
+
+        val key = Key(width, height, fill.rgb, border.rgb, JBColor.isBright())
+        return cache.getOrPut(key) {
+            val img = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+            val g = img.createGraphics()
+            try {
+                source.paintIcon(c, g, 0, 0)
+            } finally {
+                g.dispose()
             }
-        }
 
-        private fun toLong(high: Int, low: Int): Long {
-            return (high.toLong() shl 32) or (low.toLong() and 0xFFFFFFFFL)
+            for (py in 0 until height) {
+                for (px in 0 until width) {
+                    val argb = img.getRGB(px, py)
+                    val rgb = argb and RGB_MASK
+                    if (fills.contains(rgb)) img.setRGB(px, py, replace(argb, fill))
+                    if (borders.contains(rgb)) img.setRGB(px, py, replace(argb, border))
+                }
+            }
+
+            img
         }
-    },
-) ?: this
+    }
+
+    private fun replace(argb: Int, color: Color): Int {
+        val alpha = argb ushr 24
+        val mixed = alpha * color.alpha / OPAQUE_ALPHA
+        return (mixed shl 24) or (color.rgb and RGB_MASK)
+    }
+}
