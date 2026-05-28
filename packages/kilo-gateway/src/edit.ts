@@ -21,12 +21,12 @@ export interface EditUpstreamResponse {
 }
 
 const INCEPTION_EDIT_URL = "https://api.inceptionlabs.ai/v1/edit/completions"
-const KILO_NEXTEDIT_URL = KILO_API_BASE + "/api/nextedit/completions"
+const KILO_NEXTEDIT_URL = KILO_API_BASE + "/api/edit/completions"
 
 /**
  * Pick the upstream edit endpoint for a (provider, model) pair. Today this is
  * either Inception's `/v1/edit/completions` (direct BYOK) or the Kilo Gateway's
- * `/api/nextedit/completions` proxy, which forwards to Inception server-side.
+ * `/api/edit/completions` proxy, which forwards to Inception server-side.
  * Mistral does not expose a comparable surface.
  */
 export function resolveEditTarget(provider?: string, model?: string): EditTarget {
