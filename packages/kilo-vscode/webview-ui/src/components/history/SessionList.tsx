@@ -115,7 +115,7 @@ const SessionList: Component<SessionListProps> = (props) => {
           {node}
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
-          <ContextMenu.Content>
+          <ContextMenu.Content class="session-list-menu">
             <ContextMenu.Item onSelect={() => startRename(item)}>
               <ContextMenu.ItemLabel>{language.t("common.rename")}</ContextMenu.ItemLabel>
             </ContextMenu.Item>
