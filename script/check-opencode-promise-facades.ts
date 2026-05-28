@@ -30,7 +30,6 @@ const allow: Record<string, string> = {
   "session/summary.ts": "transitional facade removed by #10620",
   "storage/storage.ts": "transitional facade tracked by #10659",
   "sync/index.ts": "sync event runtime boundary",
-  "tool/registry.ts": "transitional facade removed by #10620",
 }
 
 const owned = (file: string) => file.startsWith("kilocode/") || file.startsWith("kilo-sessions/")
