@@ -5,7 +5,7 @@ import type { SessionMode } from "../../context/worktree-mode"
 import type { MarketplaceItem, MarketplaceInstalledMetadata } from "../marketplace"
 import type { ConnectionState, ServerInfo, SessionStatus } from "./connection"
 import type { FileAttachment, Part } from "./parts"
-import type { CloudSessionInfo, Message, MessageLoadMode, SessionInfo } from "./sessions"
+import type { CloudSessionInfo, Message, MessageLoadMode, SessionCloseReason, SessionInfo } from "./sessions"
 import type { PermissionRequest } from "./permissions"
 import type { QuestionRequest, SuggestionRequest, TodoItem } from "./questions"
 import type { ModelSelection, Provider, ProviderAuthState } from "./providers"
@@ -110,6 +110,12 @@ export interface SessionStatusMessage {
   attempt?: number
   message?: string
   next?: number
+}
+
+export interface SessionTurnClosedMessage {
+  type: "sessionTurnClosed"
+  sessionID: string
+  reason: SessionCloseReason
 }
 
 export interface SessionErrorMessage {
@@ -925,6 +931,7 @@ export type ExtensionMessage =
   | PartsUpdatedMessage
   | PartRemovedMessage
   | SessionStatusMessage
+  | SessionTurnClosedMessage
   | SessionErrorMessage
   | PermissionRequestMessage
   | PermissionResolvedMessage
