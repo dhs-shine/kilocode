@@ -40,7 +40,6 @@ export function ConfigSidebar() {
       <div class="config-sidebar-title">
         <span>Settings</span>
         <span class="config-sidebar-scope">
-          <span class="config-sidebar-dot" data-scope={project() ? "project" : "global"} aria-hidden="true" />
           <span>{scope()}</span>
         </span>
       </div>

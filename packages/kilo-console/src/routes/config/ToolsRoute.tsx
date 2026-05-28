@@ -1,63 +1,99 @@
-import { createMemo, For, Show } from "solid-js"
-import { Tag } from "@kilocode/kilo-web-ui/tag"
+import { createMemo, createSignal, For, Show } from "solid-js"
+import { ConfigRow, SectionTitle, StatusTag } from "@kilocode/kilo-web-ui/console"
+import { CountTag } from "@kilocode/kilo-web-ui/tag"
+import { SearchField } from "../../components/SearchField"
 import { useConfig } from "../../context/config"
 import { toolCapabilities, toolName } from "../../shared/utils"
-import { ConfigPage, ConfigToolbar } from "./ConfigPage"
+import { ConfigPage } from "./ConfigPage"
 
 export function ToolsRoute() {
   const ctx = useConfig()
+  const [search, setSearch] = createSignal("")
   const snap = () => ctx.data()
   const rows = createMemo(() => {
     const data = snap()
     if (!data) return []
     const details = new Map(data.toolDetails.map((item) => [item.id, item]))
     return data.tools
-      .map((id) => ({ id, detail: details.get(id) }))
+      .map((id) => {
+        const item = { id, detail: details.get(id) }
+        return { ...item, caps: toolCapabilities(item) }
+      })
       .sort((a, b) => toolName(a.id).localeCompare(toolName(b.id)))
+  })
+  const visible = createMemo(() => {
+    const q = search().trim().toLowerCase()
+    if (!q) return rows()
+    return rows().filter((tool) => `${toolName(tool.id)} ${tool.id} ${tool.caps.join(" ")}`.toLowerCase().includes(q))
+  })
+  const servers = createMemo(() => {
+    const data = snap()
+    if (!data) return []
+    return Object.entries(data.mcp).sort(([a], [b]) => a.localeCompare(b))
+  })
+  const visibleServers = createMemo(() => {
+    const q = search().trim().toLowerCase()
+    if (!q) return servers()
+    return servers().filter(([name, status]) => `${name} ${status.status}`.toLowerCase().includes(q))
+  })
+  const empty = createMemo(() => {
+    if (!rows().length) return "No tools registered."
+    return "No tools match this filter."
   })
 
   return (
     <Show when={snap()}>
       {(data) => (
-        <ConfigPage title="Tool Inventory" actions={<Tag>{data().tools.length}</Tag>}>
-          <ConfigToolbar
-            title="Registered Tools"
-            description="All registered tools and MCP server connection status."
+        <ConfigPage
+          title={
+            <span class="config-title-count">
+              Tools
+              <CountTag>{data().tools.length}</CountTag>
+            </span>
+          }
+          description="Built-in tools available to agents, including file access, terminal execution, search, fetch, and orchestration tools."
+        >
+          <SearchField
+            label="Filter tools"
+            value={search()}
+            placeholder="Filter by tool or ID..."
+            onValue={setSearch}
           />
 
           <div class="tools">
-            <Show when={rows().length} fallback={<p class="empty">No tools registered.</p>}>
-              <For each={rows()}>
+            <Show when={visible().length} fallback={<p class="empty">{empty()}</p>}>
+              <For each={visible()}>
                 {(tool) => (
-                  <article class="model tool-card">
-                    <div class="model-main tool-main">
-                      <div class="model-title">
-                        <div>
-                          <strong>{toolName(tool.id)}</strong>
-                          <span>{tool.id}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <ul class="tool-capabilities">
-                      <For each={toolCapabilities(tool)}>{(cap) => <li>{cap}</li>}</For>
-                    </ul>
-                  </article>
+                  <ConfigRow
+                    title={toolName(tool.id)}
+                    subtitle={tool.id}
+                    status={
+                      <span class="tool-summary" title={tool.caps.join(" ")}>
+                        {tool.caps.join(" ")}
+                      </span>
+                    }
+                  />
                 )}
               </For>
             </Show>
           </div>
 
-          <Show when={Object.keys(data().mcp).length}>
-            <div class="mini-list spaced">
-              <For each={Object.entries(data().mcp)}>
-                {([name, status]) => (
-                  <article class="mini-item simple">
-                    <strong>{name}</strong>
-                    <span>{status.status}</span>
-                  </article>
-                )}
-              </For>
-            </div>
+          <Show when={visibleServers().length}>
+            <section class="tool-section">
+              <SectionTitle
+                trailing={<CountTag>{visibleServers().length}</CountTag>}
+                description="MCP server connection status available to agents."
+              >
+                MCP Servers
+              </SectionTitle>
+              <div class="tools">
+                <For each={visibleServers()}>
+                  {([name, status]) => (
+                    <ConfigRow title={name} subtitle="MCP server" status={<StatusTag status={status.status} />} />
+                  )}
+                </For>
+              </div>
+            </section>
           </Show>
         </ConfigPage>
       )}
