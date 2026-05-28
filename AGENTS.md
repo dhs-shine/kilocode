@@ -164,24 +164,7 @@ try {
 
 ### Prefer single word naming
 
-Try your best to find a single word name for your variables, functions, etc.
-Only use multiple words if you cannot.
-
-Good:
-
-```ts
-const foo = 1
-const bar = 2
-const baz = 3
-```
-
-Bad:
-
-```ts
-const fooBar = 1
-const barBaz = 2
-const bazFoo = 3
-```
+Default to a single-word name for variables, parameters, and helper functions. Reach for a multi-word name only when a single word would be genuinely ambiguous in context — not just because the longer name "reads nicer". The rule is about meaning, not character count: don't introduce camelCase compounds like `inputPID`, `existingClient`, `connectTimeout`, or `workerPath` when `pid`, `client`, `timeout`, or `path` is already clear from the surrounding code. See the "Naming Enforcement" section above for the preferred vocabulary.
 
 ## Testing
 
