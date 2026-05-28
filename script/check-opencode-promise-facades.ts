@@ -28,7 +28,6 @@ const allow: Record<string, string> = {
   "session/prompt.ts": "transitional facade tracked by #10655",
   "session/session.ts": "transitional facade tracked by #10655",
   "session/summary.ts": "transitional facade removed by #10620",
-  "storage/storage.ts": "transitional facade tracked by #10659",
   "sync/index.ts": "sync event runtime boundary",
 }
 
