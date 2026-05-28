@@ -598,8 +598,8 @@ export class LanceDBVectorStore implements IVectorStore {
   private async _persistEmbeddingProfile(metadataTable: Table): Promise<void> {
     await this._upsertMetadata(metadataTable, KEY.provider, this.profile.provider)
     await this._upsertMetadata(metadataTable, KEY.model, this.profile.modelId)
-    await this._upsertMetadata(metadataTable, KEY.dimension, String(this.profile.dimension))
-    await this._upsertMetadata(metadataTable, KEY.size, String(this.vectorSize))
+    await this._upsertMetadata(metadataTable, KEY.dimension, this.profile.dimension)
+    await this._upsertMetadata(metadataTable, KEY.size, this.vectorSize)
   }
 
   /**
