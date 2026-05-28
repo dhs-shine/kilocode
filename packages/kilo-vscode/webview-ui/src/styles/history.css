@@ -39,17 +39,17 @@ body.vscode-light
 body.vscode-light
   .session-list
   [data-slot="list-item"][data-active="true"]
-  [data-slot="session-delete-button"]
+  [data-slot="session-row-action"]
   [data-slot="icon-svg"],
 body.vscode-light
   .session-list
   [data-slot="list-item"][data-selected="true"]
-  [data-slot="session-delete-button"]
+  [data-slot="session-row-action"]
   [data-slot="icon-svg"] {
   color: var(--text-on-interactive-base, white);
 }
 
-.session-list [data-slot="session-delete-button"] {
+.session-list [data-slot="session-row-action"] {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
@@ -58,8 +58,9 @@ body.vscode-light
   transition: opacity 0.15s;
 }
 
-.session-list [data-slot="list-item"]:hover [data-slot="session-delete-button"],
-.session-list [data-slot="list-item"][data-active="true"] [data-slot="session-delete-button"] {
+.session-list [data-slot="list-item"]:hover [data-slot="session-row-action"],
+.session-list [data-slot="list-item"][data-active="true"] [data-slot="session-row-action"],
+.session-list [data-slot="session-row-action"]:focus-within {
   opacity: 1;
 }
 

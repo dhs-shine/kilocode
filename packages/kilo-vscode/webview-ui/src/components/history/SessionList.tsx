@@ -160,7 +160,16 @@ const SessionList: Component<SessionListProps> = (props) => {
                 <span data-slot="list-item-title">{s.title || language.t("session.untitled")}</span>
                 <span data-slot="list-item-description">{formatRelativeDate(s.updatedAt)}</span>
                 <span
-                  data-slot="session-delete-button"
+                  data-slot="session-row-action"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    startRename(s)
+                  }}
+                >
+                  <IconButton icon="edit" size="small" variant="ghost" aria-label={language.t("common.rename")} />
+                </span>
+                <span
+                  data-slot="session-row-action"
                   onClick={(e) => {
                     e.stopPropagation()
                     confirmDelete(s)
