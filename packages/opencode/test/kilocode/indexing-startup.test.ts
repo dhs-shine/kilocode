@@ -292,7 +292,7 @@ describe("indexing startup degradation", () => {
     await WithInstance.provide({
       directory: tmp.path,
       fn: async () => {
-        const status = await KiloIndexing.current()
+        const status = await wait(() => KiloIndexing.current(), "Disabled")
 
         expect(status).toMatchObject({
           state: "Disabled",
