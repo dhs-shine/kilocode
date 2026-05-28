@@ -109,6 +109,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "Anbefalt",
   "dialog.provider.opencode.note": "Utvalgte modeller inkludert Claude, GPT, Gemini og flere",
   "dialog.provider.anthropic.note": "Koble til med Claude Pro/Max eller API-nøkkel",
+  "dialog.provider.deepseek.note": "DeepSeek-modeller for resonnering og kodeoppgaver",
   "dialog.provider.openai.note": "Koble til med ChatGPT Pro/Plus eller API-nøkkel",
   "dialog.provider.google.note": "Gemini-modeller for raske, strukturerte svar",
   "dialog.provider.openrouter.note": "Tilgang til alle støttede modeller fra én leverandør",
@@ -454,6 +455,7 @@ export const dict = {
   "toast.session.unshare.failed.title": "Kunne ikke stoppe deling av sesjon",
   "toast.session.unshare.failed.description": "Det oppstod en feil da delingen av sesjonen skulle stoppes",
 
+  "toast.session.rename.invalid.title": "Ugyldig sesjonstittel",
   "toast.session.listFailed.title": "Kunne ikke laste sesjoner for {{project}}",
 
   "toast.update.title": "Oppdatering tilgjengelig",
@@ -1091,6 +1093,14 @@ export const dict = {
   "session.status.retrying": "Prøver på nytt (forsøk {{ attempt }})… {{ message }}",
   "session.status.working": "Arbeider…",
   "session.status.offline": "Nettverk frakoblet — kobler til på nytt...",
+  "session.outcome.incomplete": "Runden ble avsluttet med {{count}} oppgaver igjen",
+  "session.outcome.limit": "Svarsgrensen ble nådd før fullføring",
+  "session.outcome.unknown": "Runden ble avsluttet uten avslutningsårsak fra modellen",
+  "session.outcome.filtered": "Leverandøren stoppet denne responsen på grunn av et innholdsfilter.",
+  "session.outcome.unexpected": "Responsen ble avsluttet uventet og kan være ufullstendig.",
+  "session.outcome.interrupted": "Runde avbrutt",
+  "session.outcome.error": "Runden feilet",
+  "session.outcome.finish": "Avslutningsårsak: {{reason}}",
 
   "ui.sessionTurn.cancel": "Avbryt",
   "ui.sessionTurn.status.thinking": "Tenker...",
@@ -1153,7 +1163,6 @@ export const dict = {
     'Telemetri styres av den innebygde telemetri-innstillingen i VS Code. For å deaktivere den, gå til Innstillinger > Telemetry > Telemetry Level og sett den til "off". Start VS Code på nytt for å ta i bruk endringen.',
   "settings.aboutKiloCode.telemetry.openSettings": "Åpne innstillinger for telemetri",
 
-  "settings.agentBehaviour.subtab.modes": "Moduser",
   "settings.agentBehaviour.subtab.agents": "Agenter",
   "settings.agentBehaviour.subtab.mcpServers": "MCP-servere",
   "settings.agentBehaviour.subtab.rules": "Regler",
@@ -1301,7 +1310,7 @@ export const dict = {
   "settings.agentBehaviour.noSkillsFound":
     "Ingen ferdigheter funnet. Legg til ferdighetsmappestier eller URLer nedenfor for å gjøre ferdigheter tilgjengelige.",
   "settings.agentBehaviour.availableModes": "Tilgjengelige egendefinerte moduser",
-  "settings.agentBehaviour.noModesFound": "Ingen moduser funnet.",
+  "settings.agentBehaviour.noAgentsFound": "Ingen agenter funnet.",
   "settings.agentBehaviour.createMode": "Opprett ny modus",
   "settings.agentBehaviour.createMode.name": "Navn",
   "settings.agentBehaviour.createMode.name.placeholder": "f.eks. reviewer",
@@ -1344,10 +1353,10 @@ export const dict = {
   "settings.agentBehaviour.permissions.copy": "Kopier tillatelser som JSON",
   "settings.agentBehaviour.permissions.hint":
     "Reglene evalueres i rekkefølge — siste matchende regel vinner. Dette er det gjeldende regelsettet fra CLI-backenden.",
-  "settings.agentBehaviour.removeMode.title": "Fjern modus",
-  "settings.agentBehaviour.removeMode.confirm":
-    'Vil du fjerne modusen "{{name}}"? Dette vil deaktivere modusen ved å oppdatere konfigurasjonen din.',
-  "settings.agentBehaviour.removeMode.button": "Fjern",
+  "settings.agentBehaviour.removeAgent.title": "Fjern agent",
+  "settings.agentBehaviour.removeAgent.confirm":
+    'Fjern agent "{{name}}"? Dette deaktiverer agenten ved å oppdatere konfigurasjonen din.',
+  "settings.agentBehaviour.removeAgent.button": "Fjern",
   "settings.agentBehaviour.removeMcp.title": "Fjern MCP-server",
   "settings.agentBehaviour.removeMcp.confirm":
     'Vil du fjerne MCP-serveren "{{name}}"? Dette vil fjerne den fra konfigurasjonen din.',

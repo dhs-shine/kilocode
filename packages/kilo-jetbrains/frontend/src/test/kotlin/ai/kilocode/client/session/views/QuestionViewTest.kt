@@ -515,6 +515,7 @@ class QuestionViewTest : BasePlatformTestCase() {
 
     fun `test selection requests scroll to bottom`() {
         view.show(singleSelectQuestion("q_scroll"))
+        scrolls = 0
 
         option<JBRadioButton>(view, "Minimal").doClick()
 
@@ -523,6 +524,7 @@ class QuestionViewTest : BasePlatformTestCase() {
 
     fun `test question navigation requests scroll to bottom`() {
         view.show(twoItemQuestion("q_nav_scroll"))
+        scrolls = 0
 
         option<JBRadioButton>(view, "Minimal").doClick()
         button(view, "Next").doClick()
