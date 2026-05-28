@@ -29,7 +29,6 @@ const allow: Record<string, string> = {
   "session/session.ts": "transitional facade tracked by #10655",
   "session/summary.ts": "transitional facade removed by #10620",
   "snapshot/index.ts": "transitional facade tracked by #10660",
-  "storage/storage.ts": "transitional facade tracked by #10659",
   "sync/index.ts": "sync event runtime boundary",
   "tool/registry.ts": "transitional facade removed by #10620",
 }
