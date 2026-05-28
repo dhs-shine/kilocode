@@ -56,6 +56,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
+import java.awt.event.HierarchyEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -274,7 +275,7 @@ class SessionUi(
         prompt.model.onSelect = { item -> controller.selectModel(item.provider, item.id) }
         prompt.reasoning.onSelect = { item -> controller.selectVariant(item.id) }
         prompt.onReset = { controller.clearModelOverride() }
-        prompt.onChange = { scroll.followTail() }
+        prompt.onChange = { scroll.refresh() }
         prompt.onAutoApproveToggle = { value ->
             controller.setAutoApprove(value)
             prompt.setAutoApprove(controller.autoApprove)
@@ -405,6 +406,12 @@ class SessionUi(
     }
 
     private fun bindStyle() {
+        addHierarchyListener { event ->
+            if ((event.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong()) == 0L) return@addHierarchyListener
+            if (!isShowing) return@addHierarchyListener
+            applyStyle(SessionEditorStyle.current())
+        }
+
         val bus = ApplicationManager.getApplication().messageBus.connect(this)
         bus.subscribe(EditorColorsManager.TOPIC, EditorColorsListener {
             ApplicationManager.getApplication().invokeLater {
