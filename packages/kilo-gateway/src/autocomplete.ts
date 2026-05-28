@@ -46,6 +46,19 @@ const models: AutocompleteModelDef[] = [
     temperature: 0,
   },
   {
+    // Same wire-level model as `kilo/inception/mercury-edit-2`, but routed
+    // through the Kilo Gateway's Next Edit endpoint instead of FIM. Picked by
+    // users who want multi-line next-edit predictions with the jump-to-edit UX.
+    id: "kilo/inception/mercury-next-edit",
+    modelID: "inception/mercury-next-edit",
+    label: "Mercury Next Edit",
+    providerID: "kilo",
+    provider: "Kilo Gateway",
+    requestModel: "inception/mercury-edit-2",
+    temperature: 0,
+    kind: "edit",
+  },
+  {
     id: "mistral/codestral-2508",
     modelID: "codestral-2508",
     label: "Codestral",
