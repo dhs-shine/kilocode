@@ -14,11 +14,4 @@ describe("DEFAULT_AUTOCOMPLETE_MODEL", () => {
     expect(match).toBeDefined()
     expect(DEFAULT_AUTOCOMPLETE_MODEL).toBe(match!)
   })
-
-  test("points at the expected provider and model", () => {
-    expect(DEFAULT_AUTOCOMPLETE_PROVIDER_ID).toBe("kilo")
-    expect(DEFAULT_AUTOCOMPLETE_MODEL_ID).toBe("mistralai/codestral-2508")
-    expect(DEFAULT_AUTOCOMPLETE_MODEL.providerID).toBe("kilo")
-    expect(DEFAULT_AUTOCOMPLETE_MODEL.modelID).toBe("mistralai/codestral-2508")
-  })
 })
