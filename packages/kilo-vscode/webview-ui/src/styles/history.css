@@ -61,28 +61,6 @@ body.vscode-light
   opacity: 1;
 }
 
-.session-list-menu {
-  min-width: 180px;
-  border: 1px solid color-mix(in oklch, var(--border-base) 50%, transparent) !important;
-  box-shadow: var(--shadow-md) !important;
-
-  [data-slot="context-menu-item"] {
-    padding: 6px 10px;
-    font-size: var(--font-size-small);
-    line-height: var(--line-height-large);
-    transition: none;
-
-    &:hover,
-    &[data-highlighted] {
-      background: var(--surface-raised-base-hover);
-    }
-  }
-
-  [data-slot="context-menu-separator"] {
-    margin: 4px 0;
-  }
-}
-
 /* History View (unified Local + Cloud tabs) */
 .history-view {
   display: flex;
