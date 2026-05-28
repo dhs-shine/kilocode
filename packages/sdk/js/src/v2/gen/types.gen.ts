@@ -1023,8 +1023,8 @@ export type IndexingConfig = {
     | "bedrock"
     | "openrouter"
     | "voyage"
-  model?: string
-  dimension?: number
+  model?: string | null
+  dimension?: number | null
   vectorStore?: "lancedb" | "qdrant"
   kilo?: {
     apiKey?: string
@@ -7779,6 +7779,55 @@ export type KiloFimResponses = {
 }
 
 export type KiloFimResponse = KiloFimResponses[keyof KiloFimResponses]
+
+export type KiloEditData = {
+  body?: {
+    provider?: string
+    model?: string
+    maxTokens?: number
+    currentFilePath: string
+    currentFileContent: string
+    cursorLine: number
+    cursorCharacter: number
+    editableRegionStartLine: number
+    editableRegionEndLine: number
+    recentlyViewedSnippets: Array<{
+      filepath: string
+      content: string
+    }>
+    editDiffHistory: Array<string>
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/kilo/edit"
+}
+
+export type KiloEditErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type KiloEditError = KiloEditErrors[keyof KiloEditErrors]
+
+export type KiloEditResponses = {
+  /**
+   * Next Edit completion
+   */
+  200: {
+    content: string
+    usage?: {
+      prompt_tokens?: number
+      completion_tokens?: number
+    }
+  }
+}
+
+export type KiloEditResponse = KiloEditResponses[keyof KiloEditResponses]
 
 export type KiloAudioTranscriptionsData = {
   body?: {

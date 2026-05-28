@@ -106,6 +106,7 @@ export const dict = {
   "dialog.provider.tag.recommended": "Zalecane",
   "dialog.provider.opencode.note": "Wybrane modele, w tym Claude, GPT, Gemini i więcej",
   "dialog.provider.anthropic.note": "Połącz z Claude Pro/Max lub kluczem API",
+  "dialog.provider.deepseek.note": "Modele DeepSeek do zadań wymagających rozumowania i kodowania",
   "dialog.provider.openai.note": "Połącz z ChatGPT Pro/Plus lub kluczem API",
   "dialog.provider.google.note": "Modele Gemini do szybkich, strukturalnych odpowiedzi",
   "dialog.provider.openrouter.note": "Dostęp do wszystkich obsługiwanych modeli od jednego dostawcy",
@@ -452,6 +453,7 @@ export const dict = {
   "toast.session.unshare.failed.title": "Nie udało się zatrzymać udostępniania sesji",
   "toast.session.unshare.failed.description": "Wystąpił błąd podczas zatrzymywania udostępniania sesji",
 
+  "toast.session.rename.invalid.title": "Nieprawidłowy tytuł sesji",
   "toast.session.listFailed.title": "Nie udało się załadować sesji dla {{project}}",
 
   "toast.update.title": "Dostępna aktualizacja",
@@ -1090,6 +1092,14 @@ export const dict = {
   "session.status.retrying": "Ponawiam próbę ({{ attempt }})… {{ message }}",
   "session.status.working": "Pracuję…",
   "session.status.offline": "Odłączono od sieci — ponowne łączenie...",
+  "session.outcome.incomplete": "Tura zakończona, pozostało {{count}} to-dos",
+  "session.outcome.limit": "Osiągnięto limit odpowiedzi przed ukończeniem",
+  "session.outcome.unknown": "Tura zakończona bez powodu zakończenia od modelu",
+  "session.outcome.filtered": "Dostawca zatrzymał tę odpowiedź z powodu filtru treści.",
+  "session.outcome.unexpected": "Odpowiedź zakończyła się nieoczekiwanie i może być niekompletna.",
+  "session.outcome.interrupted": "Tura przerwana",
+  "session.outcome.error": "Tura nie powiodła się",
+  "session.outcome.finish": "Powód zakończenia: {{reason}}",
 
   "ui.sessionTurn.cancel": "Anuluj",
   "ui.sessionTurn.status.thinking": "Myślę...",
@@ -1153,7 +1163,6 @@ export const dict = {
     'Telemetria jest kontrolowana przez wbudowane ustawienie telemetrii VS Code. Aby ją wyłączyć, przejdź do Ustawienia > Telemetria > Poziom telemetrii i ustaw na "off". Uruchom ponownie VS Code, aby zastosować zmianę.',
   "settings.aboutKiloCode.telemetry.openSettings": "Otwórz ustawienia telemetrii",
 
-  "settings.agentBehaviour.subtab.modes": "Tryby",
   "settings.agentBehaviour.subtab.agents": "Agenci",
   "settings.agentBehaviour.subtab.mcpServers": "Serwery MCP",
   "settings.agentBehaviour.subtab.rules": "Reguły",
@@ -1302,7 +1311,7 @@ export const dict = {
   "settings.agentBehaviour.noSkillsFound":
     "Nie znaleziono umiejętności. Dodaj ścieżki folderów lub adresy URL poniżej, aby udostępnić umiejętności.",
   "settings.agentBehaviour.availableModes": "Dostępne tryby niestandardowe",
-  "settings.agentBehaviour.noModesFound": "Nie znaleziono trybów.",
+  "settings.agentBehaviour.noAgentsFound": "Nie znaleziono agentów.",
   "settings.agentBehaviour.createMode": "Utwórz nowy tryb",
   "settings.agentBehaviour.createMode.name": "Nazwa",
   "settings.agentBehaviour.createMode.name.placeholder": "np. reviewer",
@@ -1347,10 +1356,10 @@ export const dict = {
   "settings.agentBehaviour.permissions.copy": "Kopiuj uprawnienia jako JSON",
   "settings.agentBehaviour.permissions.hint":
     "Reguły są sprawdzane po kolei — ostatnia pasująca reguła wygrywa. To jest wynikowy zestaw reguł z backendu CLI.",
-  "settings.agentBehaviour.removeMode.title": "Usuń tryb",
-  "settings.agentBehaviour.removeMode.confirm":
-    'Usunąć tryb "{{name}}"? Spowoduje to wyłączenie trybu poprzez aktualizację konfiguracji.',
-  "settings.agentBehaviour.removeMode.button": "Usuń",
+  "settings.agentBehaviour.removeAgent.title": "Usuń agenta",
+  "settings.agentBehaviour.removeAgent.confirm":
+    'Usunąć agenta "{{name}}"? Spowoduje to jego wyłączenie przez aktualizację konfiguracji.',
+  "settings.agentBehaviour.removeAgent.button": "Usuń",
   "settings.agentBehaviour.removeMcp.title": "Usuń serwer MCP",
   "settings.agentBehaviour.removeMcp.confirm":
     'Usunąć serwer MCP "{{name}}"? Spowoduje to usunięcie go z konfiguracji.',
