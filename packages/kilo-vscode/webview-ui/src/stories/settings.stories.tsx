@@ -71,6 +71,17 @@ export const ModelsAutocompleteOpen: Story = {
   ),
 }
 
+export const ModelsAccessibleLabels: Story = {
+  name: "ModelsTab — accessible model labels",
+  render: () => (
+    <StoryProviders config={{} as any}>
+      <div style={{ "max-height": "700px", overflow: "auto" }}>
+        <ModelsTab />
+      </div>
+    </StoryProviders>
+  ),
+}
+
 function OpenModelPicker(props: { children: any }) {
   let ref: HTMLDivElement | undefined
   onMount(() => {
