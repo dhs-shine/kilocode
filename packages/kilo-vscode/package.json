@@ -805,7 +805,8 @@
             "bs",
             "tr",
             "nl",
-            "uk"
+            "uk",
+            "it"
           ],
           "enumDescriptions": [
             "Auto (VS Code language)",
@@ -827,7 +828,8 @@
             "Bosanski",
             "Türkçe",
             "Nederlands",
-            "Українська"
+            "Українська",
+            "Italiano"
           ]
         },
         "kilo-code.new.model.providerID": {
