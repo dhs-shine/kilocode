@@ -1255,9 +1255,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "Resumér ikke stort indsat indhold",
   "settings.experimental.batch.title": "Batchværktøj",
   "settings.experimental.batch.description": "Aktiver batchbehandling af flere værktøjskald",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Kodesøgning",
   "settings.experimental.codebaseSearch.description": "Aktiver AI-drevet naturlig sprogsøgning på tværs af kodebasen",
   "settings.experimental.speechToText.title": "Tale til tekst",

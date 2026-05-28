@@ -1250,9 +1250,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "大量のペーストコンテンツを要約しない",
   "settings.experimental.batch.title": "バッチツール",
   "settings.experimental.batch.description": "複数のツール呼び出しのバッチ処理を有効にする",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "コードベース検索",
   "settings.experimental.codebaseSearch.description": "コードベース全体でAIによる自然言語検索を有効にする",
   "settings.experimental.speechToText.title": "音声認識",

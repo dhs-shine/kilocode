@@ -1241,9 +1241,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "ไม่สรุปเนื้อหาที่วางขนาดใหญ่",
   "settings.experimental.batch.title": "เครื่องมือแบทช์",
   "settings.experimental.batch.description": "เปิดใช้งานการประมวลผลแบทช์ของการเรียกเครื่องมือ",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "ค้นหาโค้ดเบส",
   "settings.experimental.codebaseSearch.description": "เปิดใช้งานการค้นหาด้วยภาษาธรรมชาติโดย AI ทั่วทั้งโค้ดเบส",
   "settings.experimental.speechToText.title": "แปลงเสียงเป็นข้อความ",

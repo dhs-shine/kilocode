@@ -1244,9 +1244,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "대량 붙여넣기 콘텐츠를 요약하지 않음",
   "settings.experimental.batch.title": "배치 도구",
   "settings.experimental.batch.description": "여러 도구 호출의 배치 처리 활성화",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "코드베이스 검색",
   "settings.experimental.codebaseSearch.description": "코드베이스 전체에서 AI 기반 자연어 검색 활성화",
   "settings.experimental.speechToText.title": "음성 텍스트 변환",

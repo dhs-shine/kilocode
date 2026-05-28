@@ -1262,9 +1262,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "Ne sažimaj veliki zalijepljeni sadržaj",
   "settings.experimental.batch.title": "Batch alat",
   "settings.experimental.batch.description": "Omogući batch obradu poziva alata",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Pretraga koda",
   "settings.experimental.codebaseSearch.description": "Omogući AI pretragu prirodnim jezikom kroz bazu koda",
   "settings.experimental.speechToText.title": "Govor u tekst",

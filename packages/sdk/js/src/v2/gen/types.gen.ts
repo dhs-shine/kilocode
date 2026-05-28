@@ -1427,7 +1427,6 @@ export type Config = {
     disable_paste_summary?: boolean
     batch_tool?: boolean
     codebase_search?: boolean
-    semantic_indexing?: boolean
     speech_to_text_model?: string
     openTelemetry?: boolean
     primary_tools?: Array<string>

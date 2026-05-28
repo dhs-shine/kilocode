@@ -1268,9 +1268,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "No resumir contenido pegado grande",
   "settings.experimental.batch.title": "Herramienta por lotes",
   "settings.experimental.batch.description": "Habilitar procesamiento por lotes de llamadas a herramientas",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Búsqueda de código",
   "settings.experimental.codebaseSearch.description":
     "Habilitar búsqueda por lenguaje natural con IA en toda la base de código",
