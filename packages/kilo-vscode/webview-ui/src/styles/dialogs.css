@@ -9,7 +9,24 @@
 .dialog-confirm-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 8px;
+}
+
+.provider-connect-byok-link {
+  margin-right: auto;
+  font-size: var(--kilo-font-size-12);
+  color: var(--text-weak-base);
+  text-decoration: none;
+}
+
+.provider-connect-byok-link:hover {
+  color: var(--text-base);
+}
+
+.provider-connect-byok-link span {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: underline;
 }
 
 /* Provider Connect Dialog */
