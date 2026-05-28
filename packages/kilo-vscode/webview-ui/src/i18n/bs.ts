@@ -1029,6 +1029,8 @@ export const dict = {
   "session.delete.confirm": 'Izbriši sesiju "{{name}}"?',
   "session.delete.button": "Izbriši sesiju",
   "session.untitled": "Bez naslova",
+  "session.current": "Trenutna sesija",
+  "session.history.sources": "Izvor historije",
   "session.recent": "Nedavne",
   "session.showHistory": "Prikaži historiju",
   "session.search.placeholder": "Pretraži sesije...",

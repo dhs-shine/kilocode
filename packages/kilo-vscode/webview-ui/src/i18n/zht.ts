@@ -964,6 +964,8 @@ export const dict = {
   "session.delete.confirm": '刪除工作階段 "{{name}}"?',
   "session.delete.button": "刪除工作階段",
   "session.untitled": "未命名",
+  "session.current": "目前的工作階段",
+  "session.history.sources": "歷史記錄來源",
   "session.recent": "最近",
   "session.showHistory": "顯示歷史",
   "session.search.placeholder": "搜尋工作階段...",

@@ -996,6 +996,8 @@ export const dict = {
   "session.delete.confirm": '删除会话 "{{name}}"？',
   "session.delete.button": "删除会话",
   "session.untitled": "无标题",
+  "session.current": "当前会话",
+  "session.history.sources": "历史记录来源",
   "session.recent": "最近",
   "session.showHistory": "显示历史",
   "session.search.placeholder": "搜索会话...",

@@ -972,6 +972,8 @@ export const dict = {
   "session.delete.confirm": 'حذف الجلسة "{{name}}"؟',
   "session.delete.button": "حذف الجلسة",
   "session.untitled": "بدون عنوان",
+  "session.current": "الجلسة الحالية",
+  "session.history.sources": "مصدر السجل",
   "session.recent": "الأخيرة",
   "session.showHistory": "عرض السجل",
   "session.search.placeholder": "البحث في الجلسات...",

@@ -977,6 +977,8 @@ export const dict = {
   "session.delete.confirm": '"{{name}}" 세션을 삭제하시겠습니까?',
   "session.delete.button": "세션 삭제",
   "session.untitled": "제목 없음",
+  "session.current": "현재 세션",
+  "session.history.sources": "기록 출처",
   "session.recent": "최근",
   "session.showHistory": "기록 보기",
   "session.search.placeholder": "세션 검색...",

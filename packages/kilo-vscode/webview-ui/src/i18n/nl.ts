@@ -984,6 +984,8 @@ export const dict = {
   "session.delete.confirm": 'Sessie "{{name}}" verwijderen?',
   "session.delete.button": "Verwijder sessie",
   "session.untitled": "Naamloos",
+  "session.current": "Huidige sessie",
+  "session.history.sources": "Geschiedenisbron",
   "session.recent": "Recent",
   "session.showHistory": "Geschiedenis weergeven",
   "session.search.placeholder": "Zoek sessies...",

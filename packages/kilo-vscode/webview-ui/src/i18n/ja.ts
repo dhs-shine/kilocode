@@ -1015,6 +1015,8 @@ export const dict = {
   "session.delete.confirm": 'セッション "{{name}}" を削除しますか？',
   "session.delete.button": "セッションを削除",
   "session.untitled": "無題",
+  "session.current": "現在のセッション",
+  "session.history.sources": "履歴のソース",
   "session.recent": "最近",
   "session.showHistory": "履歴を表示",
   "session.search.placeholder": "セッションを検索...",
