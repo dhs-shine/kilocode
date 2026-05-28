@@ -50,29 +50,6 @@
   white-space: nowrap;
 }
 
-[data-slot="task-header-title-editor"] {
-  display: inline-flex;
-  max-width: 100%;
-  min-width: min(140px, 100%);
-  padding: 4px 8px;
-  box-sizing: border-box;
-  border: 1px solid var(--border-focus, var(--vscode-focusBorder));
-  border-radius: var(--radius-md);
-  background-color: var(--input-base, var(--vscode-input-background));
-}
-
-.task-header-rename-input {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  color: var(--text-strong);
-  background-color: transparent;
-}
-
-[data-slot="task-header-title-editor"] [data-component="inline-input"]:focus {
-  box-shadow: none;
-}
-
 /* ============================================
    Task Header Todos
    ============================================ */

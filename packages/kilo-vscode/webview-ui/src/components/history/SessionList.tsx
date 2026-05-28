@@ -11,14 +11,12 @@ import { ContextMenu } from "@kilocode/kilo-ui/context-menu"
 import { Dialog } from "@kilocode/kilo-ui/dialog"
 import { Button } from "@kilocode/kilo-ui/button"
 import { IconButton } from "@kilocode/kilo-ui/icon-button"
-import { InlineInput } from "@kilocode/kilo-ui/inline-input"
-import { showToast } from "@kilocode/kilo-ui/toast"
 import { useDialog } from "@kilocode/kilo-ui/context/dialog"
 import { useSession } from "../../context/session"
 import { useLanguage } from "../../context/language"
 import { formatRelativeDate } from "../../utils/date"
 import type { SessionInfo } from "../../types/messages"
-import { parseSessionTitle, SESSION_TITLE_LIMIT } from "../../../../src/shared/session-title"
+import { SessionRenameEditor } from "../shared/SessionRenameEditor"
 
 const DATE_GROUP_KEYS = ["time.today", "time.yesterday", "time.thisWeek", "time.thisMonth", "time.older"] as const
 
@@ -48,7 +46,6 @@ const SessionList: Component<SessionListProps> = (props) => {
   const dialog = useDialog()
 
   const [renamingId, setRenamingId] = createSignal<string | null>(null)
-  const [renameValue, setRenameValue] = createSignal("")
 
   onMount(() => {
     console.log("[Kilo New] SessionList mounted, loading sessions")
@@ -62,28 +59,18 @@ const SessionList: Component<SessionListProps> = (props) => {
 
   function startRename(s: SessionInfo) {
     setRenamingId(s.id)
-    setRenameValue(s.title || "")
   }
 
-  function saveRename() {
+  function saveRename(title: string) {
     const id = renamingId()
     if (!id) return
-    const result = parseSessionTitle(renameValue())
-    if ("error" in result) {
-      showToast({ variant: "error", title: language.t("toast.session.rename.invalid.title") })
-      return
-    }
     const existing = session.sessions().find((s) => s.id === id)
-    if (!existing || result.value !== (existing.title || "")) {
-      session.renameSession(id, result.value)
-    }
+    if (!existing || title !== (existing.title || "")) session.renameSession(id, title)
     setRenamingId(null)
-    setRenameValue("")
   }
 
   function cancelRename() {
     setRenamingId(null)
-    setRenameValue("")
   }
 
   function confirmDelete(s: SessionInfo) {
@@ -118,7 +105,7 @@ const SessionList: Component<SessionListProps> = (props) => {
           {node}
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
-          <ContextMenu.Content>
+          <ContextMenu.Content class="session-list-menu">
             <ContextMenu.Item onSelect={() => startRename(item)}>
               <ContextMenu.ItemLabel>{language.t("common.rename")}</ContextMenu.ItemLabel>
             </ContextMenu.Item>
@@ -180,25 +167,7 @@ const SessionList: Component<SessionListProps> = (props) => {
               </>
             }
           >
-            <InlineInput
-              ref={(el) => requestAnimationFrame(() => el?.focus())}
-              value={renameValue()}
-              maxLength={SESSION_TITLE_LIMIT}
-              onInput={(e) => setRenameValue(e.currentTarget.value)}
-              onKeyDown={(e) => {
-                e.stopPropagation()
-                if (e.key === "Enter") {
-                  e.preventDefault()
-                  saveRename()
-                }
-                if (e.key === "Escape") {
-                  e.preventDefault()
-                  cancelRename()
-                }
-              }}
-              onBlur={() => saveRename()}
-              style={{ width: "100%" }}
-            />
+            <SessionRenameEditor title={s.title || ""} fill stop onSave={saveRename} onCancel={cancelRename} />
           </Show>
         )}
       </List>

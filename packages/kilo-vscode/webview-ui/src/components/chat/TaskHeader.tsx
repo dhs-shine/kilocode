@@ -13,17 +13,15 @@ import { IconButton } from "@kilocode/kilo-ui/icon-button"
 import { Tooltip } from "@kilocode/kilo-ui/tooltip"
 import { Icon } from "@kilocode/kilo-ui/icon"
 import { Checkbox } from "@kilocode/kilo-ui/checkbox"
-import { InlineInput } from "@kilocode/kilo-ui/inline-input"
-import { showToast } from "@kilocode/kilo-ui/toast"
 import { useSession } from "../../context/session"
 import { calcTokenUsage, collapseCostBreakdown } from "../../context/session-utils"
 import { useLanguage } from "../../context/language"
 import { useVSCode } from "../../context/vscode"
 import { TaskTimeline } from "./TaskTimeline"
 import { ContextProgress } from "./ContextProgress"
+import { SessionRenameEditor } from "../shared/SessionRenameEditor"
 import { target as todoTarget } from "../../context/todo-revert"
 import type { Part, TodoItem, ExtensionMessage } from "../../types/messages"
-import { parseSessionTitle, SESSION_TITLE_LIMIT } from "../../../../src/shared/session-title"
 
 interface TaskHeaderProps {
   readonly?: boolean
@@ -119,27 +117,20 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
 
   const [todosOpen, setTodosOpen] = createSignal(false)
   const [renaming, setRenaming] = createSignal<{ id: string; title: string }>()
-  const [renameValue, setRenameValue] = createSignal("")
 
   const startRename = () => {
     if (props.readonly) return
     const info = session.currentSession()
     if (!info) return
-    setRenameValue(info.title ?? "")
     setRenaming({ id: info.id, title: info.title ?? "" })
   }
 
-  const commitRename = () => {
+  const commitRename = (title: string) => {
     const info = renaming()
     if (!info) return
-    const result = parseSessionTitle(renameValue())
-    if ("error" in result) {
-      showToast({ variant: "error", title: language.t("toast.session.rename.invalid.title") })
-      return
-    }
     setRenaming(undefined)
-    if (result.value === info.title) return
-    session.renameSession(info.id, result.value)
+    if (title === info.title) return
+    session.renameSession(info.id, title)
   }
 
   const cancelRename = () => {
@@ -168,33 +159,12 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
           <Show
             when={!renaming()}
             fallback={
-              <span data-slot="task-header-title-editor">
-                <InlineInput
-                  class="task-header-rename-input"
-                  aria-label={language.t("common.rename")}
-                  value={renameValue()}
-                  size={Math.min(Math.max(renameValue().length + 2, 14), 48)}
-                  maxLength={SESSION_TITLE_LIMIT}
-                  onInput={(e) => setRenameValue(e.currentTarget.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      commitRename()
-                    }
-                    if (e.key === "Escape") {
-                      e.preventDefault()
-                      cancelRename()
-                    }
-                  }}
-                  onBlur={commitRename}
-                  ref={(el) =>
-                    requestAnimationFrame(() => {
-                      el.focus()
-                      el.select()
-                    })
-                  }
-                />
-              </span>
+              <SessionRenameEditor
+                title={renaming()?.title ?? ""}
+                autosize
+                onSave={commitRename}
+                onCancel={cancelRename}
+              />
             }
           >
             <span
