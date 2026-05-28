@@ -19,6 +19,8 @@
     ".": "./src/index.ts",
     "./autocomplete": "./src/autocomplete.ts",
     "./fim": "./src/fim.ts",
+    "./edit": "./src/edit.ts",
+    "./edit-prompt": "./src/edit-prompt.ts",
     "./tui": "./src/tui.ts"
   },
   "files": [
@@ -26,7 +28,8 @@
   ],
   "scripts": {
     "typecheck": "tsgo --noEmit",
-    "build": "tsc"
+    "build": "tsc",
+    "test:ci": "mkdir -p .artifacts/unit && bun test test --reporter=junit --reporter-outfile=.artifacts/unit/junit.xml"
   },
   "dependencies": {
     "@kilocode/plugin": "workspace:*",

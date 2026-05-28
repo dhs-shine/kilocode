@@ -353,9 +353,6 @@ export const Info = Schema.Struct({
       semantic_indexing: Schema.optional(Schema.Boolean).annotate({
         description: "Enable semantic codebase indexing and the semantic_search tool",
       }),
-      agent_manager_tool: Schema.optional(Schema.Boolean).annotate({
-        description: "Enable the VS Code Agent Manager orchestration tool",
-      }),
       speech_to_text_model: Schema.optional(Schema.String).annotate({
         description: "Speech-to-text transcription model ID to use for voice input",
       }),
@@ -580,7 +577,7 @@ export const layer = Layer.effect(
         yield* fs
           .writeFileString(
             gitignore,
-            // kilocode_change start - added pnpm-lock.yaml and yarn.lock (not in upstream)
+            // kilocode_change start - added pnpm-lock.yaml, yarn.lock, agent-manager.json (not in upstream)
             [
               "node_modules",
               "package.json",
@@ -589,6 +586,7 @@ export const layer = Layer.effect(
               "bun.lock",
               "yarn.lock",
               ".gitignore",
+              "agent-manager.json",
             ].join("\n"),
             // kilocode_change end
           )

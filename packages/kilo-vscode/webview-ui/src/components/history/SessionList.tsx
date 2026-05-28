@@ -107,6 +107,7 @@ const SessionList: Component<SessionListProps> = (props) => {
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
           <ContextMenu.Content
+            class="session-list-menu"
             onCloseAutoFocus={(event) => {
               if (pendingRenameId() !== item.id) return
               event.preventDefault()
