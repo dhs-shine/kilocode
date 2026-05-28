@@ -84,17 +84,31 @@ function enrichKilo(input: ReturnType<typeof toIndexingConfigInput>, auth: KiloI
 
 async function model(input: ReturnType<typeof toIndexingConfigInput>, auth: KiloIndexingAuth) {
   if (input.embedderProvider !== "kilo") return input
-  if (input.modelId && input.modelDimension) return input
 
   const catalog = await fetchKiloEmbeddingModelCatalog({ baseURL: auth.baseUrl, token: auth.apiKey })
   const id = input.modelId ? (catalog.aliases[input.modelId] ?? input.modelId) : catalog.defaultModel
-  const found = catalog.models.find((item) => item.id === id)
-  if (!found) return { ...input, modelId: id || input.modelId }
+  const chosen = catalog.models.find((item) => item.id === id)
+  const fallback = catalog.aliases[catalog.defaultModel] ?? catalog.defaultModel
+  const found = chosen ?? catalog.models.find((item) => item.id === fallback)
+
+  if (!found) {
+    if (input.modelId || input.modelDimension) {
+      log.warn("ignoring unsupported Kilo embedding model configuration", { model: input.modelId })
+    }
+    return { ...input, modelId: undefined, modelDimension: undefined }
+  }
+
+  if (input.modelId && !chosen) {
+    log.warn("using default Kilo embedding model instead of unsupported configuration", {
+      model: input.modelId,
+      fallback: found.id,
+    })
+  }
 
   return {
     ...input,
     modelId: found.id,
-    modelDimension: input.modelDimension ?? found.dimension,
+    modelDimension: chosen ? (input.modelDimension ?? found.dimension) : found.dimension,
     searchMinScore: input.searchMinScore ?? found.scoreThreshold,
   }
 }
