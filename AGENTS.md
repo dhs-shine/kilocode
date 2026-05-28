@@ -85,23 +85,7 @@ Turborepo + Bun workspaces. The packages you'll work with most:
 
 ### Avoid let statements
 
-We don't like `let` statements, especially combined with if/else statements.
-Prefer `const`.
-
-Good:
-
-```ts
-const foo = condition ? 1 : 2
-```
-
-Bad:
-
-```ts
-let foo
-
-if (condition) foo = 1
-else foo = 2
-```
+Prefer `const`. Replace `let` + if/else assignment with a ternary or an IIFE. Reassignment is the only legitimate reason to reach for `let`.
 
 ### Naming Enforcement (Read This)
 
@@ -116,25 +100,7 @@ THIS RULE IS MANDATORY FOR AGENT WRITTEN CODE.
 
 ### Avoid else statements
 
-Prefer early returns or using an `iife` to avoid else statements.
-
-Good:
-
-```ts
-function foo() {
-  if (condition) return 1
-  return 2
-}
-```
-
-Bad:
-
-```ts
-function foo() {
-  if (condition) return 1
-  else return 2
-}
-```
+Prefer early returns (or an IIFE) over `else`. After an `if` that returns/throws, the `else` is redundant.
 
 ### No empty catch blocks
 
@@ -142,25 +108,7 @@ Never leave a `catch` block empty. An empty `catch` silently swallows errors and
 
 1. Is the `try`/`catch` even needed? (prefer removing it)
 2. Should the error be handled explicitly? (recover, retry, rethrow)
-3. At minimum, log it so failures are visible
-
-Good:
-
-```ts
-try {
-  await save(data)
-} catch (err) {
-  log.error("save failed", { err })
-}
-```
-
-Bad:
-
-```ts
-try {
-  await save(data)
-} catch {}
-```
+3. At minimum, log it via `log.error("...", { err })` so failures are visible — never `catch {}` or `catch (e) {}` with no body.
 
 ### Prefer single word naming
 
