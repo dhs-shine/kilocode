@@ -50,6 +50,8 @@ body.vscode-light
 }
 
 .session-list [data-slot="session-delete-button"] {
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
   margin-left: 4px;
   opacity: 0;
