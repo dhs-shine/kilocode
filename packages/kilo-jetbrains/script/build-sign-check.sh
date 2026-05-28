@@ -3,6 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 <version> [--skip-verification]" >&2
+  echo "Example: $0 7.0.1" >&2
   echo "Example: $0 7.0.1-rc.1" >&2
   echo "Example: $0 v7.0.1-rc.1 --skip-verification" >&2
   echo "Builds/signs the current checkout without creating or validating a git tag." >&2
@@ -42,8 +43,8 @@ if [[ -z "$raw" ]]; then
 fi
 
 version="${raw#v}"
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]]; then
-  echo "Unsupported version '$raw'. Expected x.y.z-rc.n, for example 7.0.1-rc.1." >&2
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+  echo "Unsupported version '$raw'. Expected x.y.z or x.y.z-rc.n, for example 7.0.1 or 7.0.1-rc.1." >&2
   exit 1
 fi
 
