@@ -63,16 +63,14 @@ body.vscode-light
 
 .session-list-menu {
   min-width: 180px;
-  border: 1px solid color-mix(in oklch, var(--border-base) 50%, transparent) !important;
-  box-shadow: var(--shadow-md) !important;
+  border: 1px solid color-mix(in oklch, var(--border-base) 50%, transparent);
+  box-shadow: var(--shadow-md);
 
   [data-slot="context-menu-item"] {
     padding: 6px 10px;
-    font-size: var(--font-size-small);
     line-height: var(--line-height-large);
     transition: none;
 
-    &:hover,
     &[data-highlighted] {
       background: var(--surface-raised-base-hover);
     }
