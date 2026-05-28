@@ -20,18 +20,13 @@ const allow: Record<string, string> = {
   "cli/cmd/tui/config/tui.ts": "separately tracked TUI config facade",
   "installation/index.ts": "existing installation facade outside #10655",
   "permission/index.ts": "transitional facade removed by #10620",
-  "project/project.ts": "transitional facade removed by #10620",
   "project/vcs.ts": "transitional facade removed by #10620",
   "provider/provider.ts": "transitional facade tracked by #10655",
   "question/index.ts": "transitional facade deferred for upstream reconciliation in #10655",
   "session/compaction.ts": "existing compaction facade outside #10655",
   "session/prompt.ts": "transitional facade tracked by #10655",
   "session/session.ts": "transitional facade tracked by #10655",
-  "session/summary.ts": "transitional facade removed by #10620",
-  "snapshot/index.ts": "transitional facade tracked by #10660",
-  "storage/storage.ts": "transitional facade tracked by #10659",
   "sync/index.ts": "sync event runtime boundary",
-  "tool/registry.ts": "transitional facade removed by #10620",
 }
 
 const owned = (file: string) => file.startsWith("kilocode/") || file.startsWith("kilo-sessions/")
