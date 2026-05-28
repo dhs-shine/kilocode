@@ -305,8 +305,7 @@
 }
 
 .kilo-console .omni-label.mono,
-.kilo-console .omni-sub,
-.kilo-console .omni-server {
+.kilo-console .omni-sub {
   font-family: var(--font-family-mono, "SFMono-Regular", Consolas, monospace);
 }
 
@@ -351,13 +350,6 @@
   height: 1.25rem;
   border-radius: var(--radius-sm);
   font-size: 0.6875rem;
-}
-
-.kilo-console .omni-server {
-  overflow: hidden;
-  margin-left: auto;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .kilo-console .notification-zone {

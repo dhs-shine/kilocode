@@ -129,7 +129,6 @@ export function OmniSearch() {
   const [items] = createResource(query, loadVisibleProjects)
   const entries = createMemo(() => [...nav(params()), ...[...(items() ?? [])].map((item) => project(item, params()))])
   const filtered = createMemo(() => entries().filter((item) => matches(item, term())))
-  const server = createMemo(() => query()?.url ?? fallback())
 
   createEffect(() => {
     document.body.classList.toggle("omni-search-open", open())
@@ -341,7 +340,6 @@ export function OmniSearch() {
             <span class="omni-kbd">↵</span>
             Open
           </span>
-          <span class="omni-server">{server()}</span>
         </footer>
       </Show>
     </form>

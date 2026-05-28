@@ -109,8 +109,7 @@
   }
 
   .kilo-console .omni-sub,
-  .kilo-console .omni-enter,
-  .kilo-console .omni-server {
+  .kilo-console .omni-enter {
     display: none;
   }
 
