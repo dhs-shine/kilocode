@@ -20,7 +20,6 @@ const allow: Record<string, string> = {
   "cli/cmd/tui/config/tui.ts": "separately tracked TUI config facade",
   "installation/index.ts": "existing installation facade outside #10655",
   "permission/index.ts": "transitional facade removed by #10620",
-  "project/project.ts": "transitional facade removed by #10620",
   "project/vcs.ts": "transitional facade removed by #10620",
   "provider/provider.ts": "transitional facade tracked by #10655",
   "question/index.ts": "transitional facade deferred for upstream reconciliation in #10655",
