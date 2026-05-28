@@ -39,7 +39,8 @@ fun gitTag(): String? {
 }
 
 val release = providers.gradleProperty("production").map { it.toBoolean() }.orElse(false).get()
-val ver = if (release) checked(
+val override = providers.gradleProperty("kilo.version").orNull?.trim()?.takeIf { it.isNotEmpty() }
+val ver = override?.let(::checked) ?: if (release) checked(
     gitTag()?.removePrefix("jetbrains/v")
         ?: error("Missing JetBrains plugin version. Publish builds must run from a jetbrains/v<version> tag."),
 ) else checked(gitTag()?.removePrefix("jetbrains/v") ?: "0.0.0-dev")

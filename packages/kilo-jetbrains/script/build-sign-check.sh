@@ -49,9 +49,8 @@ if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
 fi
 
 script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-root="$(git -C "$script" rev-parse --show-toplevel)"
 plugin="$(cd "${script}/.." && pwd)"
-secrets="${root}/.secrets"
+secrets="${HOME}/.secrets/jetbrains"
 chain="${secrets}/chain.crt"
 key="${secrets}/private.pem"
 encrypted_key="${secrets}/private_encrypted.pem"
