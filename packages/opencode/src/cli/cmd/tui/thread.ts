@@ -89,7 +89,7 @@ export function resolveThreadDirectory(project?: string, envPWD = process.env.PW
   const root = envPWD && Filesystem.resolve(envPWD) === real ? Filesystem.resolve(envPWD) : real
   // kilocode_change end
   if (project) return Filesystem.resolve(path.isAbsolute(project) ? project : path.join(root, project))
-  return real
+  return real // kilocode_change
 }
 
 export const TuiThreadCommand = cmd({
@@ -363,7 +363,7 @@ export const TuiThreadCommand = cmd({
 
       try {
         await validateSession({
-          url: transport.url,
+          url: transport.url, // kilocode_change
           sessionID: args.session,
           directory: cwd,
           fetch: transport.fetch,
@@ -398,9 +398,8 @@ export const TuiThreadCommand = cmd({
         }
         // kilocode_change end
 
-        await start({
-          // kilocode_change
-          url: transport.url,
+        await start({ // kilocode_change
+          url: transport.url, // kilocode_change
           async onSnapshot() {
             const tui = writeHeapSnapshot("tui.heapsnapshot")
             const server = await client.call("snapshot", undefined)

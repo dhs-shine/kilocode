@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { describeRoute, resolver, validator } from "hono-openapi"
 import { AgentBuilder } from "@/kilocode/agent/builder"
+import { AppRuntime } from "@/effect/app-runtime"
 import { Instance } from "@/project/instance"
 import { InstanceStore } from "@/project/instance-store"
 import { errors } from "@/server/error"
@@ -53,7 +54,7 @@ export const AgentBuilderRoutes = lazy(() =>
         const body = c.req.valid("json")
         const input = AgentBuilder.Input.parse({ ...body, id: c.req.valid("param").id })
         const output = await AgentBuilder.save(context(), input)
-        await InstanceStore.disposeInstance(Instance.current)
+        await AppRuntime.runPromise(InstanceStore.Service.use((svc) => svc.dispose(Instance.current)))
         return c.json(output)
       },
     ),

@@ -185,7 +185,7 @@ export const layer = Layer.effect(
       const id = PtyID.ascending()
       // kilocode_change end
       const resolved = KiloPtySelfCommand.resolve(input) // kilocode_change
-      const command = resolved.command || Shell.preferred(cfg.shell)
+      const command = resolved.command || Shell.preferred(cfg.shell) // kilocode_change
       const args = resolved.args || [] // kilocode_change
       if (Shell.login(command)) {
         args.push("-l") // kilocode_change

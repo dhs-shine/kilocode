@@ -70,11 +70,43 @@ function rect(view: View, x: number, y: number, w: number, h: number) {
   view.ctx.fillRect(left, top, right - left, bottom - top)
 }
 
+function sextant(view: View, mask: number, x: number, y: number, w: number, h: number) {
+  const sw = w / 2
+  const sh = h / 3
+
+  for (const n of [1, 2, 3, 4, 5, 6]) {
+    if (!(mask & (1 << (n - 1)))) continue
+    const dx = n % 2 === 1 ? 0 : sw
+    const dy = Math.floor((n - 1) / 2) * sh
+    rect(view, x + dx, y + dy, sw, sh)
+  }
+}
+
 function fill(view: View, cp: number, x: number, y: number, w: number, h: number) {
   const ew = w / 8
   const eh = h / 8
   const hw = w / 2
   const hh = h / 2
+
+  if (cp === 0x1fb01) {
+    sextant(view, 0b000010, x, y, w, h)
+    return true
+  }
+
+  if (cp === 0x1fb0f) {
+    sextant(view, 0b010000, x, y, w, h)
+    return true
+  }
+
+  if (cp === 0x1fb2c) {
+    sextant(view, 0b101111, x, y, w, h)
+    return true
+  }
+
+  if (cp === 0x1fb3a) {
+    sextant(view, 0b111101, x, y, w, h)
+    return true
+  }
 
   if (cp >= 0x2581 && cp <= 0x2587) {
     const n = cp - 0x2580
@@ -187,9 +219,11 @@ function patch(renderer: Terminal["renderer"]) {
   view.renderCellText = (cell, x, y, over) => {
     if (
       !(cell.flags & CellFlags.INVISIBLE) &&
-      cell.grapheme_len === 0 &&
-      cell.codepoint >= 0x2580 &&
-      cell.codepoint <= 0x259f
+      ((cell.codepoint >= 0x2580 && cell.codepoint <= 0x259f) ||
+        cell.codepoint === 0x1fb01 ||
+        cell.codepoint === 0x1fb0f ||
+        cell.codepoint === 0x1fb2c ||
+        cell.codepoint === 0x1fb3a)
     ) {
       const w = view.metrics.width * cell.width
       const h = view.metrics.height
@@ -244,7 +278,8 @@ export function GhosttyTerminal(props: { query: Query; pty: string; active?: boo
         cols: 100,
         rows: 30,
         cursorBlink: true,
-        fontFamily: "'FiraCode Nerd Font', 'FiraCode Nerd Font Mono', 'Fira Code', Menlo, Monaco, 'Courier New', monospace",
+        fontFamily:
+          "'FiraCode Nerd Font', 'FiraCode Nerd Font Mono', 'Fira Code', Menlo, Monaco, 'Courier New', monospace",
         fontSize: Math.max(14, px(host, "--font-size-base", 14)),
         scrollback: 5000,
         theme: theme(host),
@@ -323,9 +358,7 @@ export function GhosttyTerminal(props: { query: Query; pty: string; active?: boo
   return (
     <div class="project-terminal" classList={{ shown: shown() }}>
       <div ref={host} class="project-terminal-host" />
-      <Show when={failure()}>
-        {(msg) => <div class="project-terminal-error">{msg()}</div>}
-      </Show>
+      <Show when={failure()}>{(msg) => <div class="project-terminal-error">{msg()}</div>}</Show>
     </div>
   )
 }

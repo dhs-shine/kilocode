@@ -31,8 +31,14 @@ const LocalInput = Schema.Struct({
 })
 
 const normalizeLocal = (input: Schema.Schema.Type<typeof LocalInput>): Schema.Schema.Type<typeof LocalCanonical> => {
-  const { env, environment, ...rest } = input
-  return { ...rest, environment: environment ?? env }
+  const env = input.environment ?? input.env
+  return {
+    type: input.type,
+    command: input.command,
+    ...(env === undefined ? {} : { environment: env }),
+    ...("enabled" in input ? { enabled: input.enabled } : {}),
+    ...("timeout" in input ? { timeout: input.timeout } : {}),
+  }
 }
 
 export const Local = LocalInput.pipe(

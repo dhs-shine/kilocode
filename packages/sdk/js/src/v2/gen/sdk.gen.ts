@@ -3,6 +3,10 @@
 import { client } from "./client.gen.js"
 import { buildClientParams, type Client, type Options as Options2, type TDataShape } from "./client/index.js"
 import type {
+  AgentBuilderPreviewErrors,
+  AgentBuilderPreviewResponses,
+  AgentBuilderSaveErrors,
+  AgentBuilderSaveResponses,
   AgentPartInput,
   AppAgentsResponses,
   AppLogErrors,
@@ -26,9 +30,15 @@ import type {
   CommandListResponses,
   CommitMessageGenerateErrors,
   CommitMessageGenerateResponses,
-  Config as Config3,
+  Config as Config4,
+  ConfigEffectiveResponses,
   ConfigGetResponses,
+  ConfigModelStateResponses,
+  ConfigModelStateUpdateResponses,
+  ConfigOverlayResponses,
+  ConfigOverlayUpdateResponses,
   ConfigProvidersResponses,
+  ConfigSourcesResponses,
   ConfigUpdateErrors,
   ConfigUpdateResponses,
   ConfigWarningsResponses,
@@ -254,6 +264,9 @@ import type {
   TuiAppendPromptErrors,
   TuiAppendPromptResponses,
   TuiClearPromptResponses,
+  TuiConfigGetResponses,
+  TuiConfigUpdateErrors,
+  TuiConfigUpdateResponses,
   TuiControlNextResponses,
   TuiControlResponseResponses,
   TuiExecuteCommandErrors,
@@ -526,7 +539,7 @@ export class Config extends HeyApiClient {
    */
   public update<ThrowOnError extends boolean = false>(
     parameters?: {
-      config?: Config3
+      config?: Config4
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -683,7 +696,7 @@ export class Config2 extends HeyApiClient {
     parameters?: {
       directory?: string
       workspace?: string
-      config?: Config3
+      config?: Config4
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -768,6 +781,211 @@ export class Config2 extends HeyApiClient {
       url: "/config/providers",
       ...options,
       ...params,
+    })
+  }
+
+  /**
+   * Get config overlay
+   *
+   * Resolve global, project, and effective config values with source metadata for inheritance-aware settings UI.
+   */
+  public overlay<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "global" | "project"
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "scope" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigOverlayResponses, unknown, ThrowOnError>({
+      url: "/config/overlay",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Patch config overlay
+   *
+   * Apply a minimal global or project config patch, including unset paths for reverting local overrides.
+   */
+  public overlayUpdate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "global" | "project"
+      set?: {
+        [key: string]: unknown
+      }
+      unset?: Array<Array<string>>
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "scope" },
+            { in: "body", key: "set" },
+            { in: "body", key: "unset" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<ConfigOverlayUpdateResponses, unknown, ThrowOnError>({
+      url: "/config/overlay",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * List config sources
+   *
+   * List config source metadata in load order without exposing config contents or secrets.
+   */
+  public sources<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigSourcesResponses, unknown, ThrowOnError>({
+      url: "/config/sources",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get effective configuration
+   *
+   * Retrieve effective config for the current instance directory.
+   */
+  public effective<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigEffectiveResponses, unknown, ThrowOnError>({
+      url: "/config/effective",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get model state
+   *
+   * Retrieve TUI-compatible recent and favorite model selections.
+   */
+  public modelState<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigModelStateResponses, unknown, ThrowOnError>({
+      url: "/config/model-state",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update model state
+   *
+   * Patch TUI-compatible model selections shared with Kilo Console.
+   */
+  public modelStateUpdate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      favorite?: Array<{
+        providerID: string
+        modelID: string
+      }>
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "favorite" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<ConfigModelStateUpdateResponses, unknown, ThrowOnError>({
+      url: "/config/model-state",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 }
@@ -2639,7 +2857,7 @@ export class Pty extends HeyApiClient {
       directory?: string
       workspace?: string
       title?: string
-      sessionID?: string
+      sessionID?: string | null
       size?: {
         rows: number
         cols: number
@@ -4748,6 +4966,107 @@ export class Control extends HeyApiClient {
   }
 }
 
+export class Config3 extends HeyApiClient {
+  /**
+   * Get TUI configuration
+   *
+   * Retrieve the effective TUI configuration for the current instance directory.
+   */
+  public get<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<TuiConfigGetResponses, unknown, ThrowOnError>({
+      url: "/tui/config",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update TUI configuration
+   *
+   * Patch global or project TUI configuration and return the effective TUI configuration.
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "global" | "project"
+      $schema?: string
+      theme?: string
+      keybinds?: {
+        [key: string]: string
+      }
+      plugin?: Array<
+        | string
+        | [
+            string,
+            {
+              [key: string]: unknown
+            },
+          ]
+      >
+      plugin_enabled?: {
+        [key: string]: boolean
+      }
+      scroll_speed?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      scroll_acceleration?: {
+        enabled: boolean
+      }
+      diff_style?: "auto" | "stacked"
+      mouse?: boolean
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "scope" },
+            { in: "body", key: "$schema" },
+            { in: "body", key: "theme" },
+            { in: "body", key: "keybinds" },
+            { in: "body", key: "plugin" },
+            { in: "body", key: "plugin_enabled" },
+            { in: "body", key: "scroll_speed" },
+            { in: "body", key: "scroll_acceleration" },
+            { in: "body", key: "diff_style" },
+            { in: "body", key: "mouse" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<TuiConfigUpdateResponses, TuiConfigUpdateErrors, ThrowOnError>({
+      url: "/tui/config",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+}
+
 export class Tui extends HeyApiClient {
   /**
    * Append TUI prompt
@@ -5123,6 +5442,139 @@ export class Tui extends HeyApiClient {
   private _control?: Control
   get control(): Control {
     return (this._control ??= new Control({ client: this.client }))
+  }
+
+  private _config?: Config3
+  get config(): Config3 {
+    return (this._config ??= new Config3({ client: this.client }))
+  }
+}
+
+export class AgentBuilder extends HeyApiClient {
+  /**
+   * Preview agent markdown
+   *
+   * Validate an agent builder payload and return the canonical agent markdown without writing it.
+   */
+  public preview<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      id?: string
+      scope?: "global" | "project"
+      description?: string
+      mode?: "primary" | "subagent" | "all"
+      model?: string
+      color?: string
+      steps?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      tools?: Array<string>
+      permission?: {
+        [key: string]: unknown
+      }
+      prompt?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "id" },
+            { in: "body", key: "scope" },
+            { in: "body", key: "description" },
+            { in: "body", key: "mode" },
+            { in: "body", key: "model" },
+            { in: "body", key: "color" },
+            { in: "body", key: "steps" },
+            { in: "body", key: "tools" },
+            { in: "body", key: "permission" },
+            { in: "body", key: "prompt" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<AgentBuilderPreviewResponses, AgentBuilderPreviewErrors, ThrowOnError>(
+      {
+        url: "/agent-builder/preview",
+        ...options,
+        ...params,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+          ...params.headers,
+        },
+      },
+    )
+  }
+
+  /**
+   * Save agent markdown
+   *
+   * Save an agent builder payload as a canonical agent markdown file.
+   */
+  public save<ThrowOnError extends boolean = false>(
+    parameters: {
+      path_id: string
+      directory?: string
+      workspace?: string
+      body_id?: string
+      scope?: "global" | "project"
+      description?: string
+      mode?: "primary" | "subagent" | "all"
+      model?: string
+      color?: string
+      steps?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      tools?: Array<string>
+      permission?: {
+        [key: string]: unknown
+      }
+      prompt?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            {
+              in: "path",
+              key: "path_id",
+              map: "id",
+            },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            {
+              in: "body",
+              key: "body_id",
+              map: "id",
+            },
+            { in: "body", key: "scope" },
+            { in: "body", key: "description" },
+            { in: "body", key: "mode" },
+            { in: "body", key: "model" },
+            { in: "body", key: "color" },
+            { in: "body", key: "steps" },
+            { in: "body", key: "tools" },
+            { in: "body", key: "permission" },
+            { in: "body", key: "prompt" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).put<AgentBuilderSaveResponses, AgentBuilderSaveErrors, ThrowOnError>({
+      url: "/agent-builder/{id}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
   }
 }
 
@@ -6972,6 +7424,11 @@ export class KiloClient extends HeyApiClient {
   private _tui?: Tui
   get tui(): Tui {
     return (this._tui ??= new Tui({ client: this.client }))
+  }
+
+  private _agentBuilder?: AgentBuilder
+  get agentBuilder(): AgentBuilder {
+    return (this._agentBuilder ??= new AgentBuilder({ client: this.client }))
   }
 
   private _backgroundProcess?: BackgroundProcess

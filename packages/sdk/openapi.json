@@ -3773,7 +3773,14 @@
                     "type": "string"
                   },
                   "sessionID": {
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "size": {
                     "type": "object",
@@ -9205,6 +9212,294 @@
         ]
       }
     },
+    "/agent-builder/preview": {
+      "post": {
+        "tags": ["agent-builder"],
+        "operationId": "agentBuilder.preview",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent markdown preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": ["global", "project"]
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "markdown": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["id", "scope", "path", "markdown"],
+                  "additionalProperties": false,
+                  "description": "Agent markdown preview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Validate an agent builder payload and return the canonical agent markdown without writing it.",
+        "summary": "Preview agent markdown",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": ["global", "project"]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": ["primary", "subagent", "all"]
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["NaN"]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["Infinity"]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["-Infinity"]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["Infinity", "-Infinity", "NaN"]
+                      }
+                    ]
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "permission": {
+                    "type": "object"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  }
+                },
+                "required": ["id", "prompt"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.agentBuilder.preview({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/agent-builder/{id}": {
+      "put": {
+        "tags": ["agent-builder"],
+        "operationId": "agentBuilder.save",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saved agent markdown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": ["global", "project"]
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "markdown": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["id", "scope", "path", "markdown"],
+                  "additionalProperties": false,
+                  "description": "Saved agent markdown"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Save an agent builder payload as a canonical agent markdown file.",
+        "summary": "Save agent markdown",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": ["global", "project"]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": ["primary", "subagent", "all"]
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["NaN"]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["Infinity"]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["-Infinity"]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["Infinity", "-Infinity", "NaN"]
+                      }
+                    ]
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "permission": {
+                    "type": "object"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  }
+                },
+                "required": ["prompt"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.agentBuilder.save({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/background-process": {
       "get": {
         "tags": ["background-process"],
@@ -9643,6 +9938,529 @@
           {
             "lang": "js",
             "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.commitMessage.generate({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/config/overlay": {
+      "get": {
+        "tags": ["config-console"],
+        "operationId": "config.overlay",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["global", "project"]
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resolved config overlay",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigOverlayResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Resolve global, project, and effective config values with source metadata for inheritance-aware settings UI.",
+        "summary": "Get config overlay",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.overlay({\n  ...\n})"
+          }
+        ]
+      },
+      "patch": {
+        "tags": ["config-console"],
+        "operationId": "config.overlayUpdate",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Effective configuration after patch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Config"
+                }
+              }
+            }
+          }
+        },
+        "description": "Apply a minimal global or project config patch, including unset paths for reverting local overrides.",
+        "summary": "Patch config overlay",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": ["global", "project"]
+                  },
+                  "set": {
+                    "type": "object"
+                  },
+                  "unset": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.overlayUpdate({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/config/sources": {
+      "get": {
+        "tags": ["config-console"],
+        "operationId": "config.sources",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Config source inventory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigSourcesResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "List config source metadata in load order without exposing config contents or secrets.",
+        "summary": "List config sources",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.sources({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/config/effective": {
+      "get": {
+        "tags": ["config-console"],
+        "operationId": "config.effective",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Effective config info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Config"
+                }
+              }
+            }
+          }
+        },
+        "description": "Retrieve effective config for the current instance directory.",
+        "summary": "Get effective configuration",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.effective({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/config/model-state": {
+      "get": {
+        "tags": ["config-console"],
+        "operationId": "config.modelState",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Model state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigModelStateResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Retrieve TUI-compatible recent and favorite model selections.",
+        "summary": "Get model state",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.modelState({\n  ...\n})"
+          }
+        ]
+      },
+      "patch": {
+        "tags": ["config-console"],
+        "operationId": "config.modelStateUpdate",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated model state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigModelStateResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Patch TUI-compatible model selections shared with Kilo Console.",
+        "summary": "Update model state",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "favorite": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "providerID": {
+                          "type": "string"
+                        },
+                        "modelID": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["providerID", "modelID"],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.config.modelStateUpdate({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/tui/config": {
+      "get": {
+        "tags": ["config-console"],
+        "operationId": "tui.config.get",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Effective TUI configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TuiConfigGetResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Retrieve the effective TUI configuration for the current instance directory.",
+        "summary": "Get TUI configuration",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.tui.config.get({\n  ...\n})"
+          }
+        ]
+      },
+      "patch": {
+        "tags": ["config-console"],
+        "operationId": "tui.config.update",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["global", "project"]
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Effective TUI configuration after the update",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TuiConfigGetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Patch global or project TUI configuration and return the effective TUI configuration.",
+        "summary": "Update TUI configuration",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "$schema": {
+                    "type": "string"
+                  },
+                  "theme": {
+                    "type": "string"
+                  },
+                  "keybinds": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "plugin": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "array",
+                          "prefixItems": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "object"
+                            }
+                          ],
+                          "maxItems": 2,
+                          "minItems": 2
+                        }
+                      ]
+                    }
+                  },
+                  "plugin_enabled": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "boolean"
+                    }
+                  },
+                  "scroll_speed": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["NaN"]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["Infinity"]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["-Infinity"]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["Infinity", "-Infinity", "NaN"]
+                      }
+                    ]
+                  },
+                  "scroll_acceleration": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["enabled"],
+                    "additionalProperties": false
+                  },
+                  "diff_style": {
+                    "type": "string",
+                    "enum": ["auto", "stacked"]
+                  },
+                  "mouse": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.tui.config.update({\n  ...\n})"
           }
         ]
       }
@@ -14074,7 +14892,14 @@
             "exclusiveMinimum": 0
           },
           "sessionID": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": ["id", "title", "command", "args", "cwd", "status", "pid"],
@@ -18602,6 +19427,389 @@
           }
         },
         "required": ["id", "sessionID", "output"],
+        "additionalProperties": false
+      },
+      "ConfigOverlayResponse": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": ["global", "project"]
+          },
+          "effective": {
+            "$ref": "#/components/schemas/Config"
+          },
+          "global": {
+            "$ref": "#/components/schemas/Config"
+          },
+          "project": {
+            "$ref": "#/components/schemas/Config"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "order": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "enum": ["NaN"]
+                    },
+                    {
+                      "type": "string",
+                      "enum": ["Infinity"]
+                    },
+                    {
+                      "type": "string",
+                      "enum": ["-Infinity"]
+                    },
+                    {
+                      "type": "string",
+                      "enum": ["Infinity", "-Infinity", "NaN"]
+                    }
+                  ]
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "exists": {
+                  "type": "boolean"
+                },
+                "editable": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": ["order", "kind", "scope", "label", "source", "exists", "editable"],
+              "additionalProperties": false
+            }
+          },
+          "targets": {
+            "type": "object",
+            "properties": {
+              "global": {
+                "type": "string"
+              },
+              "project": {
+                "type": "string"
+              },
+              "active": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "value": {},
+                "global": {},
+                "local": {},
+                "source": {
+                  "type": "string",
+                  "enum": ["project", "global", "system", "default"]
+                },
+                "inherited": {
+                  "type": "boolean"
+                },
+                "overridden": {
+                  "type": "boolean"
+                },
+                "editable": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": ["key", "path", "source", "inherited", "overridden", "editable"],
+              "additionalProperties": false
+            }
+          },
+          "collections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "value": {},
+                  "global": {},
+                  "local": {},
+                  "source": {
+                    "type": "string",
+                    "enum": ["project", "global", "system", "default"]
+                  },
+                  "inherited": {
+                    "type": "boolean"
+                  },
+                  "overridden": {
+                    "type": "boolean"
+                  },
+                  "editable": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": ["key", "path", "source", "inherited", "overridden", "editable"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "required": ["scope", "effective", "global", "project", "sources", "targets", "fields", "collections"],
+        "additionalProperties": false
+      },
+      "ConfigSourcesResponse": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "order": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "enum": ["NaN"]
+                    },
+                    {
+                      "type": "string",
+                      "enum": ["Infinity"]
+                    },
+                    {
+                      "type": "string",
+                      "enum": ["-Infinity"]
+                    },
+                    {
+                      "type": "string",
+                      "enum": ["Infinity", "-Infinity", "NaN"]
+                    }
+                  ]
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "exists": {
+                  "type": "boolean"
+                },
+                "editable": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": ["order", "kind", "scope", "label", "source", "exists", "editable"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["sources"],
+        "additionalProperties": false
+      },
+      "ConfigModelStateResponse": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "providerID": {
+                  "type": "string"
+                },
+                "modelID": {
+                  "type": "string"
+                }
+              },
+              "required": ["providerID", "modelID"],
+              "additionalProperties": false
+            }
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "providerID": {
+                  "type": "string"
+                },
+                "modelID": {
+                  "type": "string"
+                }
+              },
+              "required": ["providerID", "modelID"],
+              "additionalProperties": false
+            }
+          },
+          "favorite": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "providerID": {
+                  "type": "string"
+                },
+                "modelID": {
+                  "type": "string"
+                }
+              },
+              "required": ["providerID", "modelID"],
+              "additionalProperties": false
+            }
+          },
+          "variant": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["model", "recent", "favorite", "variant"],
+        "additionalProperties": false
+      },
+      "TuiConfigGetResponse": {
+        "type": "object",
+        "properties": {
+          "$schema": {
+            "type": "string"
+          },
+          "theme": {
+            "type": "string"
+          },
+          "keybinds": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "plugin": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ],
+                  "maxItems": 2,
+                  "minItems": 2
+                }
+              ]
+            }
+          },
+          "plugin_enabled": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "scroll_speed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "enum": ["NaN"]
+              },
+              {
+                "type": "string",
+                "enum": ["Infinity"]
+              },
+              {
+                "type": "string",
+                "enum": ["-Infinity"]
+              },
+              {
+                "type": "string",
+                "enum": ["Infinity", "-Infinity", "NaN"]
+              }
+            ]
+          },
+          "scroll_acceleration": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": ["enabled"],
+            "additionalProperties": false
+          },
+          "diff_style": {
+            "type": "string",
+            "enum": ["auto", "stacked"]
+          },
+          "mouse": {
+            "type": "boolean"
+          }
+        },
         "additionalProperties": false
       },
       "effect_HttpApiError_Unauthorized": {
@@ -23768,12 +24976,20 @@
       "description": "Experimental HttpApi workspace routes."
     },
     {
+      "name": "agent-builder",
+      "description": "Kilo agent builder routes."
+    },
+    {
       "name": "background-process",
       "description": "Kilo background process routes."
     },
     {
       "name": "commit-message",
       "description": "Kilo commit message routes."
+    },
+    {
+      "name": "config-console",
+      "description": "Kilo Console config routes."
     },
     {
       "name": "enhance-prompt",

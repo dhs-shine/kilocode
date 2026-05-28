@@ -20,7 +20,7 @@ type Overlay = {
 
 afterEach(async () => {
   ;(Global.Path as { config: string }).config = original
-  await AppRuntime.runPromise(Config.Service.use((svc) => svc.invalidate(true)))
+  await AppRuntime.runPromise(Config.Service.use((svc) => svc.invalidate()))
   await disposeAllInstances()
   await resetDatabase()
 })
@@ -45,7 +45,7 @@ async function config(dir: string, value: unknown) {
 }
 
 async function invalidate() {
-  await AppRuntime.runPromise(Config.Service.use((svc) => svc.invalidate(true)))
+  await AppRuntime.runPromise(Config.Service.use((svc) => svc.invalidate()))
 }
 
 describe("config overlay routes", () => {

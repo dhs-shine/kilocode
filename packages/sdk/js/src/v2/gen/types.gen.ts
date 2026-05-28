@@ -438,7 +438,7 @@ export type Pty = {
   cwd: string
   status: "running" | "exited"
   pid: number
-  sessionID?: string
+  sessionID?: string | null
 }
 
 export type OutputFormatText = {
@@ -1983,6 +1983,117 @@ export type BackgroundProcessLogs = {
   id: string
   sessionID: string
   output: string
+}
+
+export type ConfigOverlayResponse = {
+  scope: "global" | "project"
+  effective: Config
+  global: Config
+  project: Config
+  sources: Array<{
+    order: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    kind: string
+    scope: string
+    label: string
+    source: string
+    path?: string
+    exists: boolean
+    editable: boolean
+    reason?: string
+  }>
+  targets: {
+    global?: string
+    project?: string
+    active?: string
+  }
+  fields: {
+    [key: string]: {
+      key: string
+      path: Array<string>
+      value?: unknown
+      global?: unknown
+      local?: unknown
+      source: "project" | "global" | "system" | "default"
+      inherited: boolean
+      overridden: boolean
+      editable: boolean
+      reason?: string
+    }
+  }
+  collections: {
+    [key: string]: Array<{
+      key: string
+      path: Array<string>
+      value?: unknown
+      global?: unknown
+      local?: unknown
+      source: "project" | "global" | "system" | "default"
+      inherited: boolean
+      overridden: boolean
+      editable: boolean
+      reason?: string
+    }>
+  }
+}
+
+export type ConfigSourcesResponse = {
+  sources: Array<{
+    order: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    kind: string
+    scope: string
+    label: string
+    source: string
+    path?: string
+    exists: boolean
+    editable: boolean
+    reason?: string
+  }>
+}
+
+export type ConfigModelStateResponse = {
+  model: {
+    [key: string]: {
+      providerID: string
+      modelID: string
+    }
+  }
+  recent: Array<{
+    providerID: string
+    modelID: string
+  }>
+  favorite: Array<{
+    providerID: string
+    modelID: string
+  }>
+  variant: {
+    [key: string]: string
+  }
+}
+
+export type TuiConfigGetResponse = {
+  $schema?: string
+  theme?: string
+  keybinds?: {
+    [key: string]: string
+  }
+  plugin?: Array<
+    | string
+    | [
+        string,
+        {
+          [key: string]: unknown
+        },
+      ]
+  >
+  plugin_enabled?: {
+    [key: string]: boolean
+  }
+  scroll_speed?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  scroll_acceleration?: {
+    enabled: boolean
+  }
+  diff_style?: "auto" | "stacked"
+  mouse?: boolean
 }
 
 export type EffectHttpApiErrorUnauthorized = {
@@ -5211,7 +5322,7 @@ export type PtyGetResponse = PtyGetResponses[keyof PtyGetResponses]
 export type PtyUpdateData = {
   body?: {
     title?: string
-    sessionID?: string
+    sessionID?: string | null
     size?: {
       rows: number
       cols: number
@@ -7395,6 +7506,100 @@ export type ExperimentalWorkspaceWarpResponses = {
 export type ExperimentalWorkspaceWarpResponse =
   ExperimentalWorkspaceWarpResponses[keyof ExperimentalWorkspaceWarpResponses]
 
+export type AgentBuilderPreviewData = {
+  body?: {
+    id: string
+    scope?: "global" | "project"
+    description?: string
+    mode?: "primary" | "subagent" | "all"
+    model?: string
+    color?: string
+    steps?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    tools?: Array<string>
+    permission?: {
+      [key: string]: unknown
+    }
+    prompt: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/agent-builder/preview"
+}
+
+export type AgentBuilderPreviewErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type AgentBuilderPreviewError = AgentBuilderPreviewErrors[keyof AgentBuilderPreviewErrors]
+
+export type AgentBuilderPreviewResponses = {
+  /**
+   * Agent markdown preview
+   */
+  200: {
+    id: string
+    scope: "global" | "project"
+    path: string
+    markdown: string
+  }
+}
+
+export type AgentBuilderPreviewResponse = AgentBuilderPreviewResponses[keyof AgentBuilderPreviewResponses]
+
+export type AgentBuilderSaveData = {
+  body?: {
+    id?: string
+    scope?: "global" | "project"
+    description?: string
+    mode?: "primary" | "subagent" | "all"
+    model?: string
+    color?: string
+    steps?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    tools?: Array<string>
+    permission?: {
+      [key: string]: unknown
+    }
+    prompt: string
+  }
+  path: {
+    id: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/agent-builder/{id}"
+}
+
+export type AgentBuilderSaveErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type AgentBuilderSaveError = AgentBuilderSaveErrors[keyof AgentBuilderSaveErrors]
+
+export type AgentBuilderSaveResponses = {
+  /**
+   * Saved agent markdown
+   */
+  200: {
+    id: string
+    scope: "global" | "project"
+    path: string
+    markdown: string
+  }
+}
+
+export type AgentBuilderSaveResponse = AgentBuilderSaveResponses[keyof AgentBuilderSaveResponses]
+
 export type BackgroundProcessListData = {
   body?: never
   path?: never
@@ -7593,6 +7798,204 @@ export type CommitMessageGenerateResponses = {
 }
 
 export type CommitMessageGenerateResponse = CommitMessageGenerateResponses[keyof CommitMessageGenerateResponses]
+
+export type ConfigOverlayData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    scope?: "global" | "project"
+  }
+  url: "/config/overlay"
+}
+
+export type ConfigOverlayResponses = {
+  /**
+   * Resolved config overlay
+   */
+  200: ConfigOverlayResponse
+}
+
+export type ConfigOverlayResponse2 = ConfigOverlayResponses[keyof ConfigOverlayResponses]
+
+export type ConfigOverlayUpdateData = {
+  body?: {
+    scope?: "global" | "project"
+    set?: {
+      [key: string]: unknown
+    }
+    unset?: Array<Array<string>>
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/overlay"
+}
+
+export type ConfigOverlayUpdateResponses = {
+  /**
+   * Effective configuration after patch
+   */
+  200: Config
+}
+
+export type ConfigOverlayUpdateResponse = ConfigOverlayUpdateResponses[keyof ConfigOverlayUpdateResponses]
+
+export type ConfigSourcesData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/sources"
+}
+
+export type ConfigSourcesResponses = {
+  /**
+   * Config source inventory
+   */
+  200: ConfigSourcesResponse
+}
+
+export type ConfigSourcesResponse2 = ConfigSourcesResponses[keyof ConfigSourcesResponses]
+
+export type ConfigEffectiveData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/effective"
+}
+
+export type ConfigEffectiveResponses = {
+  /**
+   * Effective config info
+   */
+  200: Config
+}
+
+export type ConfigEffectiveResponse = ConfigEffectiveResponses[keyof ConfigEffectiveResponses]
+
+export type ConfigModelStateData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/model-state"
+}
+
+export type ConfigModelStateResponses = {
+  /**
+   * Model state
+   */
+  200: ConfigModelStateResponse
+}
+
+export type ConfigModelStateResponse2 = ConfigModelStateResponses[keyof ConfigModelStateResponses]
+
+export type ConfigModelStateUpdateData = {
+  body?: {
+    favorite?: Array<{
+      providerID: string
+      modelID: string
+    }>
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/model-state"
+}
+
+export type ConfigModelStateUpdateResponses = {
+  /**
+   * Updated model state
+   */
+  200: ConfigModelStateResponse
+}
+
+export type ConfigModelStateUpdateResponse = ConfigModelStateUpdateResponses[keyof ConfigModelStateUpdateResponses]
+
+export type TuiConfigGetData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/tui/config"
+}
+
+export type TuiConfigGetResponses = {
+  /**
+   * Effective TUI configuration
+   */
+  200: TuiConfigGetResponse
+}
+
+export type TuiConfigGetResponse2 = TuiConfigGetResponses[keyof TuiConfigGetResponses]
+
+export type TuiConfigUpdateData = {
+  body?: {
+    $schema?: string
+    theme?: string
+    keybinds?: {
+      [key: string]: string
+    }
+    plugin?: Array<
+      | string
+      | [
+          string,
+          {
+            [key: string]: unknown
+          },
+        ]
+    >
+    plugin_enabled?: {
+      [key: string]: boolean
+    }
+    scroll_speed?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    scroll_acceleration?: {
+      enabled: boolean
+    }
+    diff_style?: "auto" | "stacked"
+    mouse?: boolean
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    scope?: "global" | "project"
+  }
+  url: "/tui/config"
+}
+
+export type TuiConfigUpdateErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type TuiConfigUpdateError = TuiConfigUpdateErrors[keyof TuiConfigUpdateErrors]
+
+export type TuiConfigUpdateResponses = {
+  /**
+   * Effective TUI configuration after the update
+   */
+  200: TuiConfigGetResponse
+}
+
+export type TuiConfigUpdateResponse = TuiConfigUpdateResponses[keyof TuiConfigUpdateResponses]
 
 export type EnhancePromptEnhanceData = {
   body?: {

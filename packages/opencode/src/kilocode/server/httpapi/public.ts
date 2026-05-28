@@ -12,21 +12,18 @@ type Response = {
   description?: string
 }
 
+type Operation = {
+  requestBody?: {
+    content?: Record<string, { schema?: Schema }>
+  }
+  responses?: Record<string, Response>
+}
+
 type Spec = {
   components?: {
     schemas?: Record<string, Schema>
   }
-  paths?: Record<
-    string,
-    {
-      post?: {
-        requestBody?: {
-          content?: Record<string, { schema?: Schema }>
-        }
-        responses?: Record<string, Response>
-      }
-    }
-  >
+  paths?: Record<string, Partial<Record<"post" | "put", Operation>>>
 }
 
 export function matchLegacyKiloOpenApi(input: Record<string, unknown>) {
@@ -39,6 +36,14 @@ export function matchLegacyKiloOpenApi(input: Record<string, unknown>) {
   const provider = spec.components?.schemas?.Config?.properties?.provider
   if (provider?.additionalProperties && typeof provider.additionalProperties === "object")
     provider.additionalProperties = nullable(provider.additionalProperties)
+
+  const pty = spec.components?.schemas?.Pty?.properties
+  if (pty?.sessionID) pty.sessionID = nullable(pty.sessionID)
+
+  const update = spec.paths?.["/pty/{ptyID}"]?.put?.requestBody?.content?.["application/json"]?.schema
+  const name = update?.$ref?.replace("#/components/schemas/", "")
+  const fields = name ? spec.components?.schemas?.[name]?.properties : update?.properties
+  if (fields?.sessionID) fields.sessionID = nullable(fields.sessionID)
 
   const fim = spec.paths?.["/kilo/fim"]?.post?.responses
   if (!fim) return
