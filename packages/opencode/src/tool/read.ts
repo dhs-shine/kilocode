@@ -15,6 +15,7 @@ import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
 // kilocode_change start
 import * as Encoding from "../kilocode/encoding"
 import * as TextStream from "../kilocode/text-stream"
+import * as Docx from "../kilocode/tool/read-docx"
 // kilocode_change end
 
 const DEFAULT_READ_LIMIT = 2000
@@ -300,9 +301,11 @@ export const ReadTool = Tool.define(
         }
       }
 
-      if (isBinaryFile(filepath, sample)) {
+      // kilocode_change start - extract DOCX as text
+      if (!Docx.accepts(filepath) && isBinaryFile(filepath, sample)) {
         return yield* Effect.fail(new Error(`Cannot read binary file: ${filepath}`))
       }
+      // kilocode_change end
 
       const file = yield* Effect.promise(() =>
         lines(filepath, { limit: params.limit ?? DEFAULT_READ_LIMIT, offset: params.offset || 1 }),
@@ -358,6 +361,7 @@ export const ReadTool = Tool.define(
 // routed through TextStream.withFallback so non-UTF-8 files are decoded via
 // iconv. The body otherwise matches upstream.
 export async function lines(filepath: string, opts: { limit: number; offset: number }) {
+  if (Docx.accepts(filepath)) return readLines(await Docx.open(filepath), opts) // kilocode_change
   return TextStream.withFallback(filepath, (stream) => readLines(stream, opts))
 }
 
