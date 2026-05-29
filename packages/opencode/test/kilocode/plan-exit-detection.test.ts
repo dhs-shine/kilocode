@@ -6,8 +6,7 @@ import { SessionID, MessageID, PartID } from "../../src/session/schema"
 import { ModelID, ProviderID } from "../../src/provider/schema"
 import { Instance } from "../../src/project/instance"
 import { WithInstance } from "../../src/project/with-instance"
-import { PlanFollowup } from "../../src/kilocode/plan-followup"
-import { Question } from "../../src/question"
+import { PlanFollowup, PlanFollowupRuntime } from "../../src/kilocode/plan-followup"
 import { Session } from "../../src/session/session"
 import { MessageV2 } from "../../src/session/message-v2"
 import { SessionPrompt } from "../../src/session/prompt"
@@ -109,7 +108,7 @@ async function seed(input: {
 
 async function waitQuestion(sessionID: string) {
   for (let i = 0; i < 50; i++) {
-    const list = await Question.list()
+    const list = await PlanFollowupRuntime.question.list()
     const question = list.find((item) => item.sessionID === sessionID)
     if (question) return question
     await Bun.sleep(10)
@@ -141,7 +140,7 @@ describe("plan_exit detection", () => {
       expect(question).toBeDefined()
       if (!question) return
       expect(question.questions[0].header).toBe("Implement")
-      await Question.reject(question.id)
+      await PlanFollowupRuntime.question.reject(question.id)
       await expect(pending).resolves.toBe("break")
     }))
 
@@ -180,7 +179,7 @@ describe("plan_exit detection", () => {
           PlanFollowup.ANSWER_CONTINUE,
         ])
         expect(question.questions[0].options.find((item) => item.label === PlanFollowup.ANSWER_CONTINUE)?.mode).toBe("code")
-        await Question.reject(question.id)
+        await PlanFollowupRuntime.question.reject(question.id)
         await expect(pending).resolves.toBe("break")
       } finally {
         if (prev === undefined) delete process.env.KILO_CLIENT
@@ -210,7 +209,7 @@ describe("plan_exit detection", () => {
       const question = await waitQuestion(seeded.sessionID)
       expect(question).toBeDefined()
       if (!question) return
-      await Question.reply({
+      await PlanFollowupRuntime.question.reply({
         requestID: question.id,
         answers: [[PlanFollowup.ANSWER_CONTINUE]],
       })
@@ -233,7 +232,7 @@ describe("plan_exit detection", () => {
         text: "Here is a partial plan, I have questions",
       })
       expect(SessionPrompt.shouldAskPlanFollowup({ messages: seeded.messages, abort: AbortSignal.any([]) })).toBe(false)
-      const list = await Question.list()
+      const list = await PlanFollowupRuntime.question.list()
       expect(list).toHaveLength(0)
     }))
 
@@ -312,7 +311,7 @@ describe("plan_exit detection", () => {
       expect(SessionPrompt.shouldAskPlanFollowup({ messages, abort: AbortSignal.any([]) })).toBe(false)
 
       // Confirm no questions were posted
-      const list = await Question.list()
+      const list = await PlanFollowupRuntime.question.list()
       expect(list).toHaveLength(0)
     }))
 
@@ -426,7 +425,7 @@ describe("plan_exit detection", () => {
       const question = await waitQuestion(seeded.sessionID)
       expect(question).toBeDefined()
       if (!question) return
-      await Question.reply({
+      await PlanFollowupRuntime.question.reply({
         requestID: question.id,
         answers: [[PlanFollowup.ANSWER_CONTINUE]],
       })
@@ -529,7 +528,7 @@ describe("plan_exit detection", () => {
       expect(question).toBeDefined()
       if (!question) return
       expect(question.questions[0].header).toBe("Implement")
-      await Question.reply({
+      await PlanFollowupRuntime.question.reply({
         requestID: question.id,
         answers: [[PlanFollowup.ANSWER_CONTINUE]],
       })
