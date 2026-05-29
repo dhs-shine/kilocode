@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Children, isValidElement, ReactNode, ReactElement } from "react"
+import React, { useState, useEffect, useRef, Children, isValidElement, ReactNode, ReactElement } from "react"
 
 const TAB_SYNC_EVENT = "kilo-tab-select"
 
@@ -50,15 +50,24 @@ export function Tabs({ children }: TabsProps) {
   }
 
   const [activeIndex, setActiveIndex] = useState(0)
+  const scroll = useRef(false)
 
   useEffect(() => {
-    setActiveIndex(indexFromHash())
-    const onHashChange = () => setActiveIndex(indexFromHash())
+    const activate = () => {
+      const hash = window.location.hash.slice(1)
+      const index = indexFromHash()
+      scroll.current = Boolean(hash && contains(tabs[index]?.props.children, hash))
+      setActiveIndex(index)
+    }
+
+    activate()
+    const onHashChange = activate
     window.addEventListener("hashchange", onHashChange)
 
     const onSync = (e: Event) => {
       const label = (e as CustomEvent<string>).detail
       const found = tabs.findIndex((tab) => tab.props.label === label)
+      scroll.current = false
       if (found >= 0) setActiveIndex(found)
     }
     window.addEventListener(TAB_SYNC_EVENT, onSync)
@@ -71,8 +80,9 @@ export function Tabs({ children }: TabsProps) {
 
   useEffect(() => {
     const hash = window.location.hash.slice(1)
-    if (!hash) return
+    if (!hash || !scroll.current) return
 
+    scroll.current = false
     requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView())
   }, [activeIndex])
 

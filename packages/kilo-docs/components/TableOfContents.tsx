@@ -3,17 +3,18 @@ import Link from "next/link"
 
 const TAB_SYNC_EVENT = "kilo-tab-select"
 
+function slugify(label: string) {
+  return label
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+}
+
 export function TableOfContents({ toc }) {
   const [tab, setTab] = useState("")
   const [activeHash, setActiveHash] = useState("")
   const items = toc.filter((item) => {
     if (!item.id || (item.level !== 2 && item.level !== 3)) return false
-    if (
-      tab === "jetbrains" &&
-      ["manual-installations", "open-vsx-registry", "via-vsix", "troubleshooting"].includes(item.id)
-    ) {
-      return false
-    }
 
     return !item.tab || item.tab.slug === tab
   })
@@ -28,9 +29,8 @@ export function TableOfContents({ toc }) {
 
     const sync = (e: Event) => {
       const label = (e as CustomEvent<string>).detail
-      const item = toc.find((entry) => entry.tab?.label === label)
       setActiveHash(window.location.hash)
-      setTab(item?.tab?.slug ?? "")
+      setTab(slugify(label))
     }
 
     update()
