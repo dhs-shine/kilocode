@@ -487,8 +487,6 @@ This instructs the AI to proceed without user input.
     kilo run "Implement the new feature" --auto
 ```
 
-When `KILO_API_KEY` is available, non-interactive sessions sync to your private Kilo session history so they can be inspected after a CI run. Set `KILO_DISABLE_SESSION_INGEST=1` for automation that should call the Kilo Gateway without retaining its session transcript in Kilo.
-
 ## Session Continuation
 
 Resume your last conversation from the current workspace using the `--continue` (or `-c`) flag:
@@ -572,6 +570,8 @@ The CLI supports overriding config values with environment variables. The suppor
 - `KILO_PROVIDER`: Override the active provider ID
 - For `kilocode` provider: `KILOCODE_<FIELD_NAME>` (e.g., `KILOCODE_MODEL` → `kilocodeModel`)
 - For other providers: `KILO_<FIELD_NAME>` (e.g., `KILO_API_KEY` → `apiKey`)
+
+When `KILO_API_KEY` authenticates the CLI, sessions created in both interactive mode and `kilo run` sync to your private Kilo session history. Set `KILO_DISABLE_SESSION_INGEST=1` to call the Kilo Gateway without retaining session transcripts in Kilo.
 
 ## Using the CLI in an Organization
 
