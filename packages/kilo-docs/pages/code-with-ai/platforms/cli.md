@@ -487,6 +487,8 @@ This instructs the AI to proceed without user input.
     kilo run "Implement the new feature" --auto
 ```
 
+When `KILO_API_KEY` is available, non-interactive sessions sync to your private Kilo session history so they can be inspected after a CI run. Set `KILO_DISABLE_SESSION_INGEST=1` for automation that should call the Kilo Gateway without retaining its session transcript in Kilo.
+
 ## Session Continuation
 
 Resume your last conversation from the current workspace using the `--continue` (or `-c`) flag:
