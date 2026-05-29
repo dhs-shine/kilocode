@@ -989,6 +989,8 @@ export const dict = {
   "session.delete.confirm": 'Slette sesjonen "{{name}}"?',
   "session.delete.button": "Slett sesjon",
   "session.untitled": "Uten tittel",
+  "session.current": "Gjeldende økt",
+  "session.history.sources": "Historikkilde",
   "session.recent": "Nylige",
   "session.showHistory": "Vis historikk",
   "session.search.placeholder": "Søk i sesjoner...",

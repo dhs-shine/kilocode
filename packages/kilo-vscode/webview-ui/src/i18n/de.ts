@@ -1037,6 +1037,8 @@ export const dict = {
   "session.delete.confirm": 'Sitzung "{{name}}" löschen?',
   "session.delete.button": "Sitzung löschen",
   "session.untitled": "Unbenannt",
+  "session.current": "Aktuelle Sitzung",
+  "session.history.sources": "Quelle des Verlaufs",
   "session.recent": "Kürzlich",
   "session.showHistory": "Verlauf anzeigen",
   "session.search.placeholder": "Sitzungen suchen...",

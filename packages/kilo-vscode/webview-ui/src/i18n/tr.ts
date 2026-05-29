@@ -983,6 +983,8 @@ export const dict = {
   "session.delete.confirm": '"{{name}}" oturumu silinsin mi?',
   "session.delete.button": "Oturumu sil",
   "session.untitled": "Adsız",
+  "session.current": "Geçerli oturum",
+  "session.history.sources": "Geçmiş kaynağı",
   "session.recent": "Son",
   "session.showHistory": "Geçmişi Göster",
   "session.search.placeholder": "Oturum ara...",

@@ -988,6 +988,8 @@ export const dict = {
   "session.delete.confirm": 'Usunąć sesję "{{name}}"?',
   "session.delete.button": "Usuń sesję",
   "session.untitled": "Bez tytułu",
+  "session.current": "Bieżąca sesja",
+  "session.history.sources": "Źródło historii",
   "session.recent": "Ostatnie",
   "session.showHistory": "Pokaż historię",
   "session.search.placeholder": "Szukaj sesji...",
