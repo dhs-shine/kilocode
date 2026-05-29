@@ -652,6 +652,24 @@ export async function completeProvider(input: Query, id: string, method: number,
   await sdk.global.dispose()
 }
 
+export async function connectMcp(input: Query, name: string) {
+  const sdk = client(input)
+  const result = await sdk.mcp.connect({ name })
+  return demand("Connect MCP server", result)
+}
+
+export async function disconnectMcp(input: Query, name: string) {
+  const sdk = client(input)
+  const result = await sdk.mcp.disconnect({ name })
+  return demand("Disconnect MCP server", result)
+}
+
+export async function authenticateMcp(input: Query, name: string) {
+  const sdk = client(input)
+  const result = await sdk.mcp.auth.authenticate({ name })
+  return demand("Authenticate MCP server", result)
+}
+
 export async function saveTui(input: Query, patch: TuiPatch) {
   const sdk = client(input)
   const result = await sdk.tui.config.update({ scope: input.scope, ...patch })

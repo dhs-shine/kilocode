@@ -5,9 +5,10 @@ import { Card } from "@kilocode/kilo-web-ui/card"
 import { ConfigRow, SectionTitle } from "@kilocode/kilo-web-ui/console"
 import { IconButton } from "@kilocode/kilo-web-ui/icon-button"
 import { CountTag, Tag } from "@kilocode/kilo-web-ui/tag"
+import { CustomSelect, type SelectOption } from "../../components/CustomSelect"
 import { SearchField } from "../../components/SearchField"
 import { useConfig } from "../../context/config"
-import { toMode, toolCapabilities, toolName } from "../../shared/utils"
+import { toolCapabilities, toolName } from "../../shared/utils"
 import { ConfigPage, SourceBadge } from "./ConfigPage"
 import { ActionSelect, label as actionLabel, tone as actionTone } from "./PermissionsRoute"
 import {
@@ -23,6 +24,11 @@ import type { PermissionAction } from "./state/permissions"
 type Row = { item: AgentItem; entry?: AgentEntry; rank: number }
 
 const colors = ["#0e639c", "#89d185", "#cca700", "#f14c4c", "#3794ff", "#c586c0", "#9cdcfe"]
+const modes = [
+  { value: "primary", label: "Primary" },
+  { value: "subagent", label: "Subagent" },
+  { value: "all", label: "Both" },
+] satisfies SelectOption<"primary" | "subagent" | "all">[]
 
 function base(input: string) {
   const index = input.indexOf("/settings")
@@ -261,15 +267,13 @@ export function AgentBuilderRoute() {
                     />
                   </FieldCard>
                   <FieldCard label="Mode">
-                    <select
+                    <CustomSelect
+                      label="Agent mode"
                       value={state.mode()}
+                      options={modes}
                       disabled={state.locked()}
-                      onChange={(event) => state.setMode(toMode(event.currentTarget.value))}
-                    >
-                      <option value="primary">Primary</option>
-                      <option value="subagent">Subagent</option>
-                      <option value="all">Both</option>
-                    </select>
+                      onSelect={state.setMode}
+                    />
                   </FieldCard>
                   <FieldCard label="Color">
                     <div class="agent-color-control">

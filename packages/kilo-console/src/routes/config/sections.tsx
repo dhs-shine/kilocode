@@ -3,7 +3,7 @@ import type { IconProps } from "@kilocode/kilo-web-ui/icon"
 import { AgentBuilderRoute, AgentsRoute } from "./AgentsRoute"
 import { CliNotificationsRoute } from "./CliNotificationsRoute"
 import { CliUiRoute } from "./CliUiRoute"
-import { FormattersRoute } from "./FormattersRoute"
+import { FormattersRoute, LspRoute } from "./FormattersRoute"
 import { KeybindsRoute } from "./KeybindsRoute"
 import { McpRoute } from "./McpRoute"
 import { ModelsAvailableRoute, ModelsDefaultRoute, ModelsRoute } from "./ModelsRoute"
@@ -54,6 +54,13 @@ const formatters = {
   label: "Formatters",
   component: FormattersRoute,
 }
+const lsp = {
+  path: "/lsp",
+  href: "/settings/lsp",
+  icon: "server",
+  label: "LSP Servers",
+  component: LspRoute,
+}
 
 export const configNav: ConfigNode[] = [
   {
@@ -87,7 +94,7 @@ export const configNav: ConfigNode[] = [
   {
     id: "behaviour",
     label: "Behaviour",
-    items: [agents, tools, permissions, mcp, formatters],
+    items: [agents, tools, permissions, mcp, formatters, lsp],
   },
   {
     id: "cli",

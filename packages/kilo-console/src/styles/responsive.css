@@ -10,7 +10,9 @@
   .kilo-console .ui-form,
   .kilo-console .model-controls,
   .kilo-console .builder,
-  .kilo-console .provider-form {
+  .kilo-console .provider-form,
+  .kilo-console .mcp-market-filters,
+  .kilo-console .mcp-market-grid {
     grid-template-columns: 1fr;
   }
 
@@ -34,6 +36,7 @@
 
   .kilo-console .config-page-actions,
   .kilo-console .provider-actions,
+  .kilo-console .mcp-server-tags,
   .kilo-console .ui-card-header,
   .kilo-console .theme-footer {
     justify-content: flex-start;

@@ -6,6 +6,7 @@ import { ProviderIcon } from "@kilocode/kilo-web-ui/provider-icon"
 import { CountTag } from "@kilocode/kilo-web-ui/tag"
 import { StatusTag } from "@kilocode/kilo-web-ui/status-tag"
 import { ConfirmDialog } from "../../components/ConfirmDialog"
+import { CustomSelect } from "../../components/CustomSelect"
 import { SearchField } from "../../components/SearchField"
 import { ConfigPage, SourceBadge } from "./ConfigPage"
 import { useProviderSettings } from "./state/providers"
@@ -339,20 +340,23 @@ export function ProvidersRoute() {
                                 />
                               }
                             >
-                              <select
+                              <CustomSelect
+                                label={prompt.message}
                                 value={state.fields()[prompt.key] ?? ""}
-                                classList={{ invalid: state.authField() === prompt.key }}
-                                onInput={(event) => state.setField(prompt.key, event.currentTarget.value)}
-                              >
-                                <option value="">Select an option</option>
-                                <For each={prompt.type === "select" ? prompt.options : []}>
-                                  {(option) => (
-                                    <option value={option.value}>
-                                      {option.hint ? `${option.label} (${option.hint})` : option.label}
-                                    </option>
-                                  )}
-                                </For>
-                              </select>
+                                options={
+                                  prompt.type === "select"
+                                    ? [
+                                        { value: "", label: "Select an option" },
+                                        ...prompt.options.map((option) => ({
+                                          value: option.value,
+                                          label: option.hint ? `${option.label} (${option.hint})` : option.label,
+                                        })),
+                                      ]
+                                    : []
+                                }
+                                invalid={state.authField() === prompt.key}
+                                onSelect={(value) => state.setField(prompt.key, value)}
+                              />
                             </Show>
                           </label>
                         )}

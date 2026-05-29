@@ -16,7 +16,8 @@
     "@opencode-ai/ui": "workspace:*",
     "@solidjs/router": "catalog:",
     "ghostty-web": "0.4.0",
-    "solid-js": "catalog:"
+    "solid-js": "catalog:",
+    "yaml": "2.8.3"
   },
   "devDependencies": {
     "@tsconfig/node22": "catalog:",

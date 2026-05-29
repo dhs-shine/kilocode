@@ -97,6 +97,15 @@
   outline: 0;
 }
 
+.kilo-console .models-select.disabled summary {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.kilo-console .models-select.invalid summary {
+  border-color: var(--status-error-base);
+}
+
 .kilo-console .models-select-menu {
   position: absolute;
   z-index: 35;
@@ -139,6 +148,11 @@
 .kilo-console .models-select-option.selected {
   background: color-mix(in oklab, var(--primary) 20%, transparent);
   color: var(--foreground);
+}
+
+.kilo-console .models-select-option.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .kilo-console .models-favorite-filter,

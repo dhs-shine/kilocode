@@ -2,9 +2,15 @@ import { For, Show } from "solid-js"
 import { Button } from "@kilocode/kilo-web-ui/button"
 import { Card } from "@kilocode/kilo-web-ui/card"
 import { Tag } from "@kilocode/kilo-web-ui/tag"
+import { CustomSelect, type SelectOption } from "../../components/CustomSelect"
 import { SearchField } from "../../components/SearchField"
 import { ConfigPage } from "./ConfigPage"
 import { type Theme, themeTitle, useTuiUiSettings } from "./state/ui"
+
+const diffs = [
+  { value: "auto", label: "Auto" },
+  { value: "stacked", label: "Stacked" },
+] satisfies SelectOption<"auto" | "stacked">[]
 
 function ThemeSwatches(props: { swatches: string[] }) {
   return (
@@ -90,13 +96,12 @@ export function CliUiRoute() {
           <div class="ui-form">
             <label class="ui-field">
               <span>Diff style</span>
-              <select
+              <CustomSelect
+                label="Diff style"
                 value={state.diff()}
-                onInput={(event) => state.setDiff(event.currentTarget.value as "auto" | "stacked")}
-              >
-                <option value="auto">Auto</option>
-                <option value="stacked">Stacked</option>
-              </select>
+                options={diffs}
+                onSelect={state.setDiff}
+              />
               <small>Auto adapts to terminal width; stacked always uses a single-column diff.</small>
             </label>
 
