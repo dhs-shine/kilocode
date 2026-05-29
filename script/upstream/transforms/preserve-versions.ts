@@ -76,6 +76,8 @@ export async function preserveAllVersions(options: PreserveOptions = {}): Promis
   info(`Target version: ${targetVersion}`)
 
   for await (const path of glob.scan({ absolute: true })) {
+    if (path.endsWith("/packages/kilo-jetbrains/package.json")) continue
+
     // Skip excluded paths
     if (excludes.some((ex) => path.includes(ex.replace(/\*\*/g, "")))) {
       continue

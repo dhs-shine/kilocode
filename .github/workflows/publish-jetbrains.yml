@@ -46,8 +46,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
 
-      - name: Save reviewed changelog
-        run: cp packages/kilo-jetbrains/CHANGELOG.md "$RUNNER_TEMP/jetbrains-CHANGELOG.md"
+      - name: Save reviewed release metadata
+        run: |
+          cp packages/kilo-jetbrains/CHANGELOG.md "$RUNNER_TEMP/jetbrains-CHANGELOG.md"
+          cp packages/kilo-jetbrains/package.json "$RUNNER_TEMP/jetbrains-package.json"
 
       - name: Checkout release tag
         uses: actions/checkout@v6
@@ -55,8 +57,10 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.release.outputs.tag }}
 
-      - name: Restore reviewed changelog
-        run: cp "$RUNNER_TEMP/jetbrains-CHANGELOG.md" packages/kilo-jetbrains/CHANGELOG.md
+      - name: Restore reviewed release metadata
+        run: |
+          cp "$RUNNER_TEMP/jetbrains-CHANGELOG.md" packages/kilo-jetbrains/CHANGELOG.md
+          cp "$RUNNER_TEMP/jetbrains-package.json" packages/kilo-jetbrains/package.json
 
       - name: Setup Node
         uses: actions/setup-node@v4
