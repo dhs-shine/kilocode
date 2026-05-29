@@ -44,10 +44,10 @@ class KiloToolWindowFactory : ToolWindowFactory, DumbAware {
                 withContext(Dispatchers.Main) {
                     setup(project, toolWindow, workspace)
                 }
-                Telemetry.send("JetBrains Tool Window Opened", mapOf("projectResolved" to dir.isNotBlank().toString()))
+                Telemetry.send("Tool Window Opened", mapOf("projectResolved" to dir.isNotBlank().toString()))
             }
         } catch (e: Exception) {
-            Telemetry.send("JetBrains Tool Window Setup Failed", mapOf("stage" to "create", "errorClass" to e::class.java.name))
+            Telemetry.send("Tool Window Setup Failed", mapOf("stage" to "create", "errorClass" to e::class.java.name))
             LOG.error("Failed to create Kilo tool window content", e)
         }
     }
@@ -74,7 +74,7 @@ class KiloToolWindowFactory : ToolWindowFactory, DumbAware {
             )
             toolWindow.setTitleActions(actions)
         } catch (e: Exception) {
-            Telemetry.send("JetBrains Tool Window Setup Failed", mapOf("stage" to "setup", "errorClass" to e::class.java.name))
+            Telemetry.send("Tool Window Setup Failed", mapOf("stage" to "setup", "errorClass" to e::class.java.name))
             LOG.error("Failed to set up Kilo tool window content", e)
         }
     }

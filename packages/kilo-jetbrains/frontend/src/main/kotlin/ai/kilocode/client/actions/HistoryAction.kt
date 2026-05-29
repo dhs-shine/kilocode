@@ -14,7 +14,7 @@ class HistoryAction : AnAction(
     AllIcons.Vcs.History,
 ), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
-        Telemetry.send("JetBrains History Opened", mapOf("surface" to "tool_window"))
+        Telemetry.send("History Opened", mapOf("surface" to "tool_window"))
         e.getData(SessionManager.KEY)?.showHistory()
     }
 

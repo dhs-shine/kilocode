@@ -4,6 +4,7 @@ import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.SessionRef
+import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.rpc.dto.CloudSessionDto
 import ai.kilocode.rpc.dto.SessionDto
 import com.intellij.openapi.application.ApplicationManager
@@ -103,6 +104,7 @@ class HistoryController(
                     edt {
                         deleting.remove(item.id)
                         local.remove(item.id)
+                        Telemetry.send("History Session Deleted", mapOf("sessionId" to item.id))
                         deleted(item.id)
                     }
                 } catch (e: Exception) {
@@ -120,7 +122,10 @@ class HistoryController(
         cs.launch {
             try {
                 val updated = sessions.renameSession(item.id, dir, title)
-                edt { local.update(LocalHistoryItem(updated)) }
+                edt {
+                    local.update(LocalHistoryItem(updated))
+                    Telemetry.send("History Session Renamed", mapOf("sessionId" to item.id))
+                }
             } catch (e: Exception) {
                 edt { local.fail(e.message ?: KiloBundle.message("history.error.local.rename")) }
             }

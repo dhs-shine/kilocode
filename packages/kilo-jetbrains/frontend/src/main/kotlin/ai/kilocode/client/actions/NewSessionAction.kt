@@ -14,7 +14,7 @@ class NewSessionAction : AnAction(
     AllIcons.General.Add,
 ), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
-        Telemetry.send("JetBrains New Session Clicked", mapOf("surface" to "tool_window"))
+        Telemetry.send("New Session Clicked", mapOf("surface" to "tool_window"))
         e.getData(SessionManager.KEY)?.newSession()
     }
 

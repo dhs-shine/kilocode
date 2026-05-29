@@ -345,7 +345,7 @@ class KiloBackendAppService private constructor(
                     chat.start(connection.apiClient!!, connection.port, connection.events)
                     workspaces.start(connection.api!!, connection.apiClient!!, connection.port, connection.events)
                     service<KiloBackendTelemetry>().setEnabled(connection.apiClient, connection.port, true)
-                    service<KiloBackendTelemetry>().capture(connection.apiClient, connection.port, "JetBrains Backend Connected", mapOf("portKnown" to "true"))
+                    service<KiloBackendTelemetry>().capture(connection.apiClient, connection.port, "Backend Connected", mapOf("portKnown" to "true"))
                     setAppReady(
                         AppData(
                             profile = prof,

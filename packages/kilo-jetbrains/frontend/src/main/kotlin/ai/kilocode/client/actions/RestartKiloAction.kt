@@ -9,7 +9,7 @@ import com.intellij.openapi.project.DumbAware
 
 class RestartKiloAction : AnAction(), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
-        Telemetry.send("JetBrains CLI Restart Clicked", mapOf("surface" to "settings"))
+        Telemetry.send("CLI Restart Clicked", mapOf("surface" to "settings"))
         service<KiloAppService>().restartAsync()
     }
 

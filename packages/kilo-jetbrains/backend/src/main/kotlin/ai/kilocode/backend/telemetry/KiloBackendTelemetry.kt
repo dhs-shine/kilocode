@@ -63,7 +63,6 @@ class KiloBackendTelemetry(
     ).toString()
 
     private fun base(): Map<String, JsonPrimitive> = buildMap {
-        put("appName", JsonPrimitive("kilo-code"))
         put("platform", JsonPrimitive("jetbrains"))
         put("client", JsonPrimitive("jetbrains"))
         put("feature", JsonPrimitive("jetbrains-plugin"))

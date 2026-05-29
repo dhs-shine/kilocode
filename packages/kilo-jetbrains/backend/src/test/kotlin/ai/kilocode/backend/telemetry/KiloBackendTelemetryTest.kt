@@ -23,7 +23,10 @@ class KiloBackendTelemetryTest {
             assertEquals("/telemetry/capture", req.path)
             assertTrue(req.getHeader("Authorization")?.startsWith("Basic ") == true)
             val body = req.body.readUtf8()
-            assertTrue(body.contains("Test Event"))
+            assertTrue(body.contains("\"event\":\"Test Event\""))
+            assertTrue(!body.contains("JetBrains"))
+            assertTrue(body.contains("\"platform\":\"jetbrains\""))
+            assertTrue(!body.contains("appName"))
             assertTrue(body.contains("source"))
         } finally {
             KiloBackendHttpClients.shutdown(http)

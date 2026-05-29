@@ -9,7 +9,7 @@ import com.intellij.openapi.project.DumbAware
 
 class ReinstallKiloAction : AnAction(), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
-        Telemetry.send("JetBrains CLI Reinstall Clicked", mapOf("surface" to "settings"))
+        Telemetry.send("CLI Reinstall Clicked", mapOf("surface" to "settings"))
         service<KiloAppService>().reinstallAsync()
     }
 

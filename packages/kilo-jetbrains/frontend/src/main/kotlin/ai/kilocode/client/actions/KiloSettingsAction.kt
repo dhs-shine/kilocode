@@ -23,7 +23,7 @@ class KiloSettingsAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val component = e.inputEvent?.component ?: return
         val group = ActionManager.getInstance().getAction(GROUP_ID) as? ActionGroup ?: return
-        Telemetry.send("JetBrains Settings Opened", mapOf("surface" to "tool_window"))
+        Telemetry.send("Settings Opened", mapOf("surface" to "tool_window"))
 
         JBPopupFactory.getInstance()
             .createActionGroupPopup(

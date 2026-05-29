@@ -215,10 +215,10 @@ class SessionController(
                     session.id
                 }
                 sessions.prompt(id, directory, dto)
-                capture("Conversation Message", sessionProps(id) + mapOf("source" to "user", "hasExistingSession" to exists.toString()))
+                capture("Conversation Message", sessionProps(id) + mapOf("source" to "user", "hasExistingSession" to exists.toString()) + promptProps())
                 LOG.debug { "${ChatLogSummary.sid(id)} kind=prompt dispatched=true" }
             } catch (e: Exception) {
-                capture("JetBrains Session Error", sessionProps(sid ?: ref?.key ?: start) + mapOf("context" to "prompt", "errorClass" to e::class.java.name))
+                capture("Session Error", sessionProps(sid ?: ref?.key ?: start) + mapOf("context" to "prompt", "errorClass" to e::class.java.name))
                 LOG.warn("${ChatLogSummary.sid(sid ?: ref?.key ?: start)} kind=prompt dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
                 edt {
                     if (disposed) return@edt
@@ -238,10 +238,10 @@ class SessionController(
         cs.launch {
             try {
                 sessions.abort(id, directory)
-                capture("JetBrains Session Stopped", sessionProps(id))
+                capture("Session Stopped", sessionProps(id))
                 LOG.debug { "${ChatLogSummary.sid(id)} kind=abort ok=true" }
             } catch (e: Exception) {
-                capture("JetBrains Session Error", sessionProps(id) + mapOf("context" to "abort", "errorClass" to e::class.java.name))
+                capture("Session Error", sessionProps(id) + mapOf("context" to "abort", "errorClass" to e::class.java.name))
                 LOG.warn("${ChatLogSummary.sid(id)} kind=abort dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
             }
         }
@@ -250,7 +250,7 @@ class SessionController(
     fun setAutoApprove(value: Boolean) {
         assertEdt()
         KiloPluginSettings.setAutoApprove(value)
-        capture("JetBrains Auto Approve Toggled", mapOf("enabled" to value.toString()))
+        capture("Auto Approve Toggled", mapOf("enabled" to value.toString()))
         if (!value) {
             drainJob?.cancel()
             drainJob = null
@@ -280,7 +280,7 @@ class SessionController(
                 capture("Context Condensed", sessionProps(id) + mapOf("provider" to sel.providerID, "modelId" to sel.modelID))
                 LOG.debug { "${ChatLogSummary.sid(id)} kind=compact ok=true" }
             } catch (e: Exception) {
-                capture("JetBrains Session Error", sessionProps(id) + mapOf("context" to "compact", "errorClass" to e::class.java.name))
+                capture("Session Error", sessionProps(id) + mapOf("context" to "compact", "errorClass" to e::class.java.name))
                 LOG.warn("${ChatLogSummary.sid(id)} kind=compact dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
                 edt {
                     updateModel {
@@ -346,7 +346,7 @@ class SessionController(
         app.selectModel(agent, provider, id)
         selectResolvedModel(key)
         model.modelOverride = model.defaultModel != model.model
-        capture("JetBrains Model Selected", sessionProps() + mapOf("agent" to agent, "provider" to provider, "modelId" to id, "isOverride" to "true"))
+        capture("Model Selected", sessionProps() + mapOf("agent" to agent, "provider" to provider, "modelId" to id, "isOverride" to "true"))
     }
 
     fun clearModelOverride() {
@@ -357,7 +357,7 @@ class SessionController(
         val auto = configModel(agent) ?: providerModel(agent)
         selectResolvedModel(auto)
         model.modelOverride = false
-        capture("JetBrains Model Override Cleared", sessionProps() + mapOf("agent" to agent))
+        capture("Model Override Cleared", sessionProps() + mapOf("agent" to agent))
     }
 
     fun selectVariant(value: String) {
@@ -367,7 +367,7 @@ class SessionController(
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config variant=$key/$value" }
         app.selectVariant(key, value)
         model.variant = value
-        capture("JetBrains Reasoning Variant Selected", sessionProps() + mapOf("model" to key, "variant" to value))
+        capture("Reasoning Variant Selected", sessionProps() + mapOf("model" to key, "variant" to value))
     }
 
     // ------ permission / question resolution ------
@@ -391,7 +391,7 @@ class SessionController(
                 ))
                 LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission rid=$requestId ok=true" }
             } catch (e: Exception) {
-                capture("JetBrains Session Error", sessionProps() + mapOf("context" to "permission", "errorClass" to e::class.java.name))
+                capture("Session Error", sessionProps() + mapOf("context" to "permission", "errorClass" to e::class.java.name))
                 LOG.warn("${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission rid=$requestId reply=${reply.reply} dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
                 edt {
                     updatePermission(
@@ -429,7 +429,7 @@ class SessionController(
                     model.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
                 }
                 sessions.replyPermission(id, directory, PermissionReplyDto("once"))
-                capture("JetBrains Permission Auto Approved", sessionProps() + mapOf("tool" to restore().name, "source" to "single"))
+                capture("Permission Auto Approved", sessionProps() + mapOf("tool" to restore().name, "source" to "single"))
                 LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission-auto rid=$id ok=true" }
             } catch (e: Exception) {
                 LOG.warn("${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=permission-auto rid=$id dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
@@ -471,7 +471,7 @@ class SessionController(
         for (request in permissions) {
             if (!autoApprove) return count
             sessions.replyPermission(request.id, directory, PermissionReplyDto("once"))
-            capture("JetBrains Permission Auto Approved", sessionProps(request.sessionID) + mapOf("tool" to request.permission, "source" to "drain"))
+            capture("Permission Auto Approved", sessionProps(request.sessionID) + mapOf("tool" to request.permission, "source" to "drain"))
             count++
         }
         return count
@@ -503,7 +503,7 @@ class SessionController(
         cs.launch {
             try {
                 sessions.replyQuestion(requestId, directory, answers)
-                capture("JetBrains Question Answered", sessionProps() + mapOf(
+                capture("Question Answered", sessionProps() + mapOf(
                     "requestId" to requestId,
                     "answerCount" to answers.answers.size.toString(),
                     "hasFollowupNewSession" to follow.toString(),
@@ -523,7 +523,7 @@ class SessionController(
         cs.launch {
             try {
                 sessions.rejectQuestion(requestId, directory)
-                capture("JetBrains Question Rejected", sessionProps() + mapOf("requestId" to requestId))
+                capture("Question Rejected", sessionProps() + mapOf("requestId" to requestId))
                 LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=question rid=$requestId ok=true" }
             } catch (e: Exception) {
                 LOG.warn("${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=question rid=$requestId rejected=true dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
@@ -922,7 +922,7 @@ class SessionController(
             is ChatEventDto.SessionCreated -> adoptFollowup(event.info)
 
             is ChatEventDto.Error -> {
-                capture("JetBrains Session Error", sessionProps(event.sessionID) + mapOf("context" to "event", "errorClass" to (event.error?.type ?: "unknown")))
+                capture("Session Error", sessionProps(event.sessionID) + mapOf("context" to "event", "errorClass" to (event.error?.type ?: "unknown")))
                 error(event, true)
             }
 
@@ -1320,9 +1320,9 @@ class SessionController(
         cs.launch {
             try {
                 app.setOrganization(org)
-                capture("JetBrains Organization Switched", mapOf("target" to if (org == null) "personal" else "organization"))
+                capture("Organization Switched", mapOf("target" to if (org == null) "personal" else "organization"))
             } catch (e: Exception) {
-                capture("JetBrains Account Connect Failed", mapOf("stage" to "organization", "errorClass" to e::class.java.name))
+                capture("Account Connect Failed", mapOf("stage" to "organization", "errorClass" to e::class.java.name))
                 LOG.warn("account switch failed org=$org message=${e.message}", e)
                 edt {
                     if (disposed) return@edt
@@ -1335,7 +1335,7 @@ class SessionController(
 
     fun openProfile() {
         assertEdt()
-        capture("JetBrains Profile Settings Opened", mapOf("surface" to "session_overlay"))
+        capture("Profile Settings Opened", mapOf("surface" to "session_overlay"))
         openProfileAction()
     }
 
@@ -1349,6 +1349,18 @@ class SessionController(
             model.agent?.let { put("agent", it) }
             model.model?.let { put("model", it) }
         }
+    }
+
+    private fun promptProps(): Map<String, String> = buildMap {
+        model.agent?.let { put("agent", it) }
+        model.model?.let { key ->
+            put("model", key)
+            parseModel(key)?.let { sel ->
+                put("provider", sel.first)
+                put("modelId", sel.second)
+            }
+        }
+        model.variant?.takeIf { it in model.variants }?.let { put("variant", it) }
     }
 
     fun dismissLoginRequired() {

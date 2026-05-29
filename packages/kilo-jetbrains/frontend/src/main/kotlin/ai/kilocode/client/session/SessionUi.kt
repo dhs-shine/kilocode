@@ -288,7 +288,7 @@ class SessionUi(
         prompt.model.favorites = { app.favorites.value }
         prompt.model.onFavoriteToggle = { item ->
             Telemetry.send(
-                "JetBrains Model Favorite Toggled",
+                "Model Favorite Toggled",
                 mapOf("provider" to item.provider, "modelId" to item.id),
             )
             app.toggleModelFavorite(item.provider, item.id)

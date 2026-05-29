@@ -106,7 +106,7 @@ class KiloMigrationService internal constructor(
             return
         }
         LOG.info("Migration wizard: user started migration ${selectionSummary(selections)}")
-        telemetry("JetBrains Migration Started", selectionProps(selections))
+        telemetry("Migration Started", selectionProps(selections))
         lastSelections.set(selections)
 
         val dto = MigrationSelectionBuilder.toDto(selections)
@@ -127,7 +127,7 @@ class KiloMigrationService internal constructor(
                 val flow = try {
                     call { migrate(dto) }
                 } catch (e: Exception) {
-                    telemetry("JetBrains Migration Failed", mapOf("itemCount" to initialProgress.size.toString(), "errorCount" to "1", "stage" to "start"))
+                    telemetry("Migration Failed", mapOf("itemCount" to initialProgress.size.toString(), "errorCount" to "1", "stage" to "start"))
                     LOG.warn("migration start failed", e)
                     finishWithError(e.message ?: "Migration failed")
                     return@launch
@@ -146,7 +146,7 @@ class KiloMigrationService internal constructor(
     override fun skip() {
         LOG.info("Migration wizard: user chose skip")
         val current = _state.value as? MigrationUiState.Needed
-        if (current != null) telemetry("JetBrains Migration Skipped", detectionProps(current.detection))
+        if (current != null) telemetry("Migration Skipped", detectionProps(current.detection))
         cs.launch {
             try {
                 call { skip() }
@@ -170,7 +170,7 @@ class KiloMigrationService internal constructor(
         val status = if (hasErrors) LegacyMigrationStatusDto.completed_with_errors else LegacyMigrationStatusDto.completed
         val selections = lastSelections.get()
         LOG.info("Migration wizard: user finished migration status=$status results=${current.results.size} errors=${current.results.count { it.status == MigrationItemStatusDto.error }}")
-        telemetry("JetBrains Migration Finished", mapOf("status" to status.name, "cleanupRequested" to (selections?.keepLegacySettingsFile == false).toString()))
+        telemetry("Migration Finished", mapOf("status" to status.name, "cleanupRequested" to (selections?.keepLegacySettingsFile == false).toString()))
         cs.launch {
             try {
                 call { finalize(status) }
@@ -232,9 +232,9 @@ class KiloMigrationService internal constructor(
                 val progress = if (hasErrors) current.progress else finishSilentProgress(current.progress)
                 LOG.info("Migration wizard: migration complete phase=$phase items=${items.size} errors=${items.count { it.status == MigrationItemStatusDto.error }}")
                 if (hasErrors) {
-                    telemetry("JetBrains Migration Failed", mapOf("itemCount" to items.size.toString(), "errorCount" to items.count { it.status == MigrationItemStatusDto.error }.toString(), "stage" to "complete"))
+                    telemetry("Migration Failed", mapOf("itemCount" to items.size.toString(), "errorCount" to items.count { it.status == MigrationItemStatusDto.error }.toString(), "stage" to "complete"))
                 } else {
-                    telemetry("JetBrains Migration Completed", mapOf("itemCount" to items.size.toString(), "sessionImportedCount" to current.sessionSummary.imported.size.toString()))
+                    telemetry("Migration Completed", mapOf("itemCount" to items.size.toString(), "sessionImportedCount" to current.sessionSummary.imported.size.toString()))
                 }
                 _state.value = current.copy(
                     running = false,
@@ -245,7 +245,7 @@ class KiloMigrationService internal constructor(
             }
             is LegacyMigrationEventDto.Error -> {
                 LOG.warn("Migration wizard: migration error message=${event.message}")
-                telemetry("JetBrains Migration Failed", mapOf("itemCount" to current.progress.size.toString(), "errorCount" to "1", "stage" to "event"))
+                telemetry("Migration Failed", mapOf("itemCount" to current.progress.size.toString(), "errorCount" to "1", "stage" to "event"))
                 finishWithError(event.message)
             }
         }
@@ -257,7 +257,7 @@ class KiloMigrationService internal constructor(
             val current = _state.value
             if (current is MigrationUiState.Needed && current.detection == migration && current.phase != MigrationUiPhase.selecting) return
             LOG.info("Migration wizard: showing because backend requires migration ${detectionSummary(migration)}")
-            telemetry("JetBrains Migration Shown", detectionProps(migration))
+            telemetry("Migration Shown", detectionProps(migration))
             _state.value = MigrationUiState.Needed(migration)
             return
         }

@@ -35,7 +35,7 @@ class KiloCliStartupTelemetry(
                 val body = JsonObject(
                     mapOf(
                         "api_key" to JsonPrimitive("phc_GK2Pxl0HPj5ZPfwhLRjXrtdz8eD7e9MKnXiFrOqnB6z"),
-                        "event" to JsonPrimitive("JetBrains CLI Startup Failed"),
+                        "event" to JsonPrimitive("CLI Startup Failed"),
                         "distinct_id" to JsonPrimitive(props["machineId"] ?: "jetbrains-unknown"),
                         "properties" to JsonObject(props.mapValues { JsonPrimitive(it.value) }),
                     ),
@@ -59,7 +59,6 @@ class KiloCliStartupTelemetry(
     }
 
     private fun base(): Map<String, String> = buildMap {
-        put("appName", "kilo-code")
         put("platform", "jetbrains")
         put("client", "jetbrains")
         put("feature", "jetbrains-plugin")

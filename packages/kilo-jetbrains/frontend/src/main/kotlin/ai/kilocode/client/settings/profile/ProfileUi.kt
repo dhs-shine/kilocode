@@ -55,7 +55,7 @@ internal class ProfileUi(
     )
     private val account = LoggedInProfileUi(
         dashboard = {
-            telemetry("JetBrains Dashboard Opened", mapOf("surface" to "settings"))
+            telemetry("Dashboard Opened", mapOf("surface" to "settings"))
             browse(DASHBOARD_URL)
         },
         logout = ::logout,
@@ -206,7 +206,7 @@ internal class ProfileUi(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                telemetry("JetBrains Account Connect Failed", mapOf("stage" to "complete", "errorClass" to e::class.java.name))
+                telemetry("Account Connect Failed", mapOf("stage" to "complete", "errorClass" to e::class.java.name))
                 withContext(edt) {
                     if (id != attempt) return@withContext
                     login = LoginState.Error(compactLoginError(e))
@@ -219,7 +219,7 @@ internal class ProfileUi(
     private fun cancel() {
         attempt++
         login = LoginState.Idle
-        telemetry("JetBrains Account Connect Failed", mapOf("stage" to "cancel", "errorClass" to "cancelled"))
+        telemetry("Account Connect Failed", mapOf("stage" to "cancel", "errorClass" to "cancelled"))
         sync()
     }
 
@@ -248,7 +248,7 @@ internal class ProfileUi(
         cs.launch {
             try {
                 val profile = app.setOrganization(org)
-                telemetry("JetBrains Organization Switched", mapOf("target" to if (org == null) "personal" else "organization"))
+                telemetry("Organization Switched", mapOf("target" to if (org == null) "personal" else "organization"))
                 val state = app.state.value
                 withContext(edt) {
                     update(profile ?: state.profile, state.status)

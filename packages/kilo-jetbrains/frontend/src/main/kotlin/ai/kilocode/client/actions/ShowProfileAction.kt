@@ -25,7 +25,7 @@ class ShowProfileAction : DumbAwareAction(
 ) {
 
     override fun actionPerformed(e: AnActionEvent) {
-        Telemetry.send("JetBrains Profile Settings Opened", mapOf("surface" to "tool_window"))
+        Telemetry.send("Profile Settings Opened", mapOf("surface" to "tool_window"))
         ShowSettingsUtil.getInstance().showSettingsDialog(
             e.project,
             Predicate { cfg: Configurable ->
