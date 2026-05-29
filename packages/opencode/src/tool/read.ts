@@ -15,6 +15,7 @@ import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
 // kilocode_change start
 import * as Encoding from "../kilocode/encoding"
 import * as TextStream from "../kilocode/text-stream"
+import * as Notebook from "../kilocode/tool/notebook"
 import * as Docx from "../kilocode/tool/read-docx"
 // kilocode_change end
 
@@ -362,6 +363,8 @@ export const ReadTool = Tool.define(
 // iconv. The body otherwise matches upstream.
 export async function lines(filepath: string, opts: { limit: number; offset: number }) {
   if (Docx.accepts(filepath)) return readLines(await Docx.open(filepath), opts) // kilocode_change
+  const extracted = await Notebook.open(filepath) // kilocode_change - extract readable notebook cells before paging
+  if (extracted) return readLines(extracted, opts) // kilocode_change
   return TextStream.withFallback(filepath, (stream) => readLines(stream, opts))
 }
 
