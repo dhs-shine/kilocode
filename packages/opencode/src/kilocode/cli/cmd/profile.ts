@@ -2,7 +2,10 @@ import type { Argv } from "yargs"
 import { cmd } from "../../../cli/cmd/cmd"
 import { UI } from "../../../cli/ui"
 import { Auth, type Info as AuthInfo } from "../../../auth"
+import { makeRuntime } from "../../../effect/run-service"
 import { fetchBalance, fetchProfile, type KilocodeBalance, type KilocodeProfile } from "@kilocode/kilo-gateway"
+
+const runtime = makeRuntime(Auth.Service, Auth.defaultLayer)
 
 interface Info {
   name: string | null
@@ -61,7 +64,8 @@ export const ProfileCommand = cmd({
 })
 
 export async function handle(args: Args) {
-  const auth = await (args.getAuth ?? Auth.get)("kilo")
+  const get = args.getAuth ?? ((id: string) => runtime.runPromise((svc) => svc.get(id)))
+  const auth = await get("kilo")
   const error = args.error ?? UI.error
   const exit = args.exit ?? ((code: number) => (process.exitCode = code))
 
