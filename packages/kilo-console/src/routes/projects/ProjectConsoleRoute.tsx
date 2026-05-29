@@ -518,10 +518,14 @@ export function ProjectConsoleRoute() {
     <section class="project-console">
       <aside class="project-console-sidebar" aria-label="Project console sections">
         <div class="project-console-title">
-          <span>Project</span>
+          <span class="project-console-heading">
+            <span>Project</span>
+            <A class="project-title-settings" href={settings()} title="Project Settings" aria-label="Project Settings">
+              <Icon name="settings-gear" size="small" />
+            </A>
+          </span>
           <span class="project-console-scope">
-            <span class="project-console-dot" aria-hidden="true" />
-            <span>
+            <span class="project-console-name">
               {snap()?.project.name ? friendly(snap()?.project.name ?? "") : title(snap()?.project.worktree ?? project())}
             </span>
           </span>
@@ -651,7 +655,7 @@ export function ProjectConsoleRoute() {
         </div>
         <div class="project-sidebar-bottom">
           <A class="project-settings-link" href={settings()}>
-            <span>Settings</span>
+            <span>Project Settings</span>
             <small>Project configuration</small>
           </A>
         </div>

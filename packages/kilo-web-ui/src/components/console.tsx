@@ -6,7 +6,16 @@ import { Tag, CountTag } from "./tag"
 export { CountTag }
 
 type Tone = "neutral" | "success" | "warning" | "critical" | "info" | "brand"
-type Source = "default" | "inherited" | "local override" | string | undefined
+type Source = "default" | "global" | "project" | "system" | "inherited" | "local override" | string | undefined
+type Kind = "default" | "global" | "project"
+
+function kind(input: { source?: Source; inherited?: boolean; overridden?: boolean }): Kind {
+  if (input.source === "project" || input.source === "local override") return "project"
+  if (input.source === "global" || input.source === "inherited") return "global"
+  if (input.overridden) return "project"
+  if (input.inherited) return "global"
+  return "default"
+}
 
 export function StatusDot(props: { tone: Exclude<Tone, "brand" | "info"> }) {
   return <span data-slot="status-dot" data-tone={props.tone} aria-hidden="true" />
@@ -28,14 +37,9 @@ export function StatusTag(props: { status: "connected" | "failed" | "running" | 
 }
 
 export function SourceBadge(props: { source?: Source; inherited?: boolean; overridden?: boolean }) {
-  const source = () => {
-    if (props.overridden) return "local override"
-    if (props.inherited) return "inherited"
-    return props.source ?? "default"
-  }
-  if (source() === "default") return null
-  if (source() === "inherited") return <span data-slot="source-badge" data-source="inherited">inherited</span>
-  return <Tag class="mono" tone={source() === "local override" ? "info" : "neutral"}>{source()}</Tag>
+  const source = () => kind(props)
+  const label = () => source().toUpperCase()
+  return <Tag class="mono" tone={source() === "project" ? "info" : "neutral"}>{label()}</Tag>
 }
 
 export function PageHeader(props: { title: JSX.Element; actions?: JSX.Element; description?: JSX.Element; meta?: JSX.Element }) {
@@ -108,7 +112,7 @@ export function ConfigRow(props: {
   href?: string
   onClick?: () => void
 }) {
-  const override = () => props.source === "local override" || props.highlightOverride
+  const override = () => kind({ source: props.source }) === "project" || props.highlightOverride
   const body = () => (
     <>
       <Show when={override()}><span data-slot="config-row-accent" /></Show>
@@ -118,7 +122,9 @@ export function ConfigRow(props: {
         <Show when={props.subtitle}>{(subtitle) => <div data-slot="config-row-subtitle">{subtitle()}</div>}</Show>
       </div>
       <div data-slot="config-row-trailing">
-        <SourceBadge source={props.source} />
+        <Show when={props.source !== undefined}>
+          <SourceBadge source={props.source} />
+        </Show>
         {props.status}
         <Show when={props.actions}>{(actions) => <div data-slot="config-row-actions">{actions()}</div>}</Show>
       </div>
