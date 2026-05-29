@@ -22,7 +22,7 @@
 <p align="center">
   <a href="https://kilo.ai">Website</a> ·
   <a href="https://kilo.ai/install">Install</a> ·
-  <a href="https://kilo.ai/install">IDE</a> ·
+  <a href="https://kilo.ai/landing/vs-code">IDE</a> ·
   <a href="https://kilo.ai/cli">CLI</a> ·
   <a href="https://kilo.ai/docs">Docs</a> ·
   <a href="https://kilo.ai/leaderboard">Models</a> ·
