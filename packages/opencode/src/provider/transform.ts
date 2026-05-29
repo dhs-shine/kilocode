@@ -542,10 +542,11 @@ function openaiReasoningEfforts(apiId: string, releaseDate: string): string[] | 
 }
 
 function anthropicAdaptiveEfforts(apiId: string): string[] | null {
+  // kilocode_change start - treat opus-4.8 like opus-4.7
   if (["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"].some((v) => apiId.includes(v))) {
-    // kilocode_change - treat opus-4.8 like opus-4.7
     return ["low", "medium", "high", "xhigh", "max"]
   }
+  // kilocode_change end
   if (["opus-4-6", "opus-4.6", "sonnet-4-6", "sonnet-4.6"].some((v) => apiId.includes(v))) {
     return ["low", "medium", "high", "max"]
   }
@@ -781,10 +782,11 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
       if (adaptiveEfforts) {
         let efforts = [...adaptiveEfforts]
         if (model.providerID === "github-copilot") {
-          if (model.api.id.includes("opus-4.7") || model.api.id.includes("opus-4.8")) {
-            // kilocode_change - treat opus-4.8 like opus-4.7
+          // kilocode_change start - treat opus-4.8 like opus-4.7
+          if (["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"].some((v) => model.api.id.includes(v))) {
             efforts = ["medium"]
           }
+          // kilocode_change end
           // Efforts currently supported are: low, medium, high
           efforts = efforts.filter((v) => v !== "max" && v !== "xhigh")
         }
@@ -794,10 +796,11 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
             {
               thinking: {
                 type: "adaptive",
-                // kilocode_change - treat opus-4.8 like opus-4.7
+                // kilocode_change start - treat opus-4.8 like opus-4.7
                 ...(["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"].some((v) => model.api.id.includes(v))
                   ? { display: "summarized" }
                   : {}),
+                // kilocode_change end
               },
               effort,
             },
@@ -830,10 +833,11 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
               reasoningConfig: {
                 type: "adaptive",
                 maxReasoningEffort: effort,
-                // kilocode_change - treat opus-4.8 like opus-4.7
+                // kilocode_change start - treat opus-4.8 like opus-4.7
                 ...(["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"].some((v) => model.api.id.includes(v))
                   ? { display: "summarized" }
                   : {}),
+                // kilocode_change end
               },
             },
           ]),

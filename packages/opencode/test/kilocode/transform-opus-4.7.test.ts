@@ -30,7 +30,7 @@ function mockModel(overrides: Partial<any> = {}): any {
   }
 }
 
-describe("ProviderTransform.variants - Claude Opus 4.7", () => {
+describe("ProviderTransform.variants - Claude Opus 4.7 / 4.8", () => {
   test("opus-4-7 returns adaptive thinking variants including xhigh (native anthropic)", () => {
     const model = mockModel({
       api: {
