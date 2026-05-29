@@ -42,5 +42,5 @@ export async function open(filepath: string): Promise<Readable | undefined> {
     cells.push(render(cell.cell_type, text))
   }
 
-  return Readable.from([cells.join("\n\n")])
+  return Readable.from([cells.length ? cells.join("\n\n") : "(Notebook contains no markdown or code cell content.)"])
 }

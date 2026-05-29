@@ -114,6 +114,29 @@ describe("kilocode notebook reads", () => {
     }),
   )
 
+  it.live("reports valid notebooks with no readable cells without exposing payloads", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
+      const filepath = path.join(dir, "empty-content.ipynb")
+      const content = JSON.stringify({
+        metadata: { marker: "NOTEBOOK_METADATA_SHOULD_NOT_APPEAR" },
+        cells: [
+          null,
+          { cell_type: "raw", source: ["RAW_CONTENT_SHOULD_NOT_APPEAR"] },
+          { cell_type: "code", source: null, outputs: ["INVALID_OUTPUT_SHOULD_NOT_APPEAR"] },
+        ],
+      })
+      yield* put(filepath, content)
+
+      const result = yield* run(dir, { filePath: filepath })
+
+      expect(result.output).toContain("Notebook contains no markdown or code cell content")
+      expect(result.output).not.toContain("NOTEBOOK_METADATA_SHOULD_NOT_APPEAR")
+      expect(result.output).not.toContain("RAW_CONTENT_SHOULD_NOT_APPEAR")
+      expect(result.output).not.toContain("INVALID_OUTPUT_SHOULD_NOT_APPEAR")
+    }),
+  )
+
   it.live("applies read pagination to extracted cell text", () =>
     Effect.gen(function* () {
       const dir = yield* tmpdirScoped()
