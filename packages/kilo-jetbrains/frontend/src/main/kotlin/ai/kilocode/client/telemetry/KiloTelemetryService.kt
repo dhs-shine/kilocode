@@ -30,10 +30,6 @@ class KiloTelemetryService internal constructor(
         fun getInstance(): KiloTelemetryService = service()
     }
 
-    fun capture(event: String, properties: Map<String, String> = emptyMap()) {
-        send(event, properties)
-    }
-
     fun send(event: String, properties: Map<String, String> = emptyMap()) {
         cs.launch {
             try {

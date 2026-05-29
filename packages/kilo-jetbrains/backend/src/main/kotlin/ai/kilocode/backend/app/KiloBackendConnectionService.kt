@@ -3,8 +3,6 @@ package ai.kilocode.backend.app
 import ai.kilocode.backend.cli.KiloBackendHttpClients
 import ai.kilocode.backend.cli.KiloCliDataParser
 import ai.kilocode.backend.cli.CliServer
-import ai.kilocode.backend.telemetry.CliStartupTelemetry
-import ai.kilocode.backend.telemetry.NoopCliStartupTelemetry
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
 import ai.kilocode.jetbrains.api.client.DefaultApi
@@ -64,29 +62,20 @@ class KiloConnectionService(
   private val onReconnect: () -> Unit,
   private val log: KiloLog,
   private val appLoadTimeoutMs: Long,
-  private val telemetry: CliStartupTelemetry,
 ) {
 
     constructor(
       cs: CoroutineScope,
       server: CliServer,
       onReconnect: () -> Unit,
-    ) : this(cs, server, onReconnect, KiloLog.create(KiloConnectionService::class.java), 30_000L, NoopCliStartupTelemetry)
+    ) : this(cs, server, onReconnect, KiloLog.create(KiloConnectionService::class.java), 30_000L)
 
     constructor(
       cs: CoroutineScope,
       server: CliServer,
       onReconnect: () -> Unit,
       log: KiloLog,
-    ) : this(cs, server, onReconnect, log, 30_000L, NoopCliStartupTelemetry)
-
-    constructor(
-      cs: CoroutineScope,
-      server: CliServer,
-      onReconnect: () -> Unit,
-      log: KiloLog,
-      telemetry: CliStartupTelemetry,
-    ) : this(cs, server, onReconnect, log, 30_000L, telemetry)
+    ) : this(cs, server, onReconnect, log, 30_000L)
 
     companion object {
         private const val HEARTBEAT_TIMEOUT_MS = 15_000L
@@ -272,12 +261,6 @@ class KiloConnectionService(
             } else {
                 log.warn("SSE: failure (HTTP ${response?.code}) — scheduling reconnect")
             }
-            report("sse", mapOf(
-                "message" to (t?.message ?: "SSE connection failed (HTTP ${response?.code})"),
-                "details" to detail.orEmpty(),
-                "httpStatus" to (response?.code?.toString() ?: ""),
-                "errorClass" to (t?.javaClass?.name ?: ""),
-            ))
             setState(ConnectionState.Error(t?.message ?: "SSE connection failed (HTTP ${response?.code})", detail))
             scheduleReconnect()
         }
@@ -319,7 +302,6 @@ class KiloConnectionService(
                 val elapsed = System.currentTimeMillis() - lastEvent.get()
                 if (elapsed > HEARTBEAT_TIMEOUT_MS) {
                     log.warn("SSE: heartbeat timeout (${elapsed}ms) — forcing reconnect")
-                    report("heartbeat", mapOf("elapsedMs" to elapsed.toString()))
                     source.getAndSet(null)?.cancel()
                     scheduleReconnect()
                 }
@@ -334,7 +316,6 @@ class KiloConnectionService(
             val ok = checkHealth()
             if (!ok && _state.value is ConnectionState.Connected) {
                 log.warn("Health check failed — forcing SSE reconnect")
-                report("health", mapOf("message" to "Health check failed"))
                 source.getAndSet(null)?.cancel()
                 scheduleReconnect()
             }
@@ -360,7 +341,6 @@ class KiloConnectionService(
         server.exited(proc)
         val code = proc.exitValue()
         log.warn("CLI process exited with code $code")
-        report("process", mapOf("exitCode" to code.toString(), "message" to "CLI process exited"))
         source.getAndSet(null)?.cancel()
         setState(ConnectionState.Error("CLI process exited with code $code"))
         scheduleReconnect()
@@ -380,16 +360,6 @@ class KiloConnectionService(
     private fun setState(next: ConnectionState) {
         if (disposed) return
         _state.value = next
-    }
-
-    private fun report(stage: String, props: Map<String, String>) {
-        cs.launch {
-            telemetry.report("CLI Connection Failed", base() + props + mapOf("stage" to stage))
-        }
-    }
-
-    private fun base(): Map<String, String> = buildMap {
-        put("port", port.toString())
     }
 
     fun dispose() {

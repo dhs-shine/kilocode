@@ -24,6 +24,7 @@ class KiloBackendTelemetry(
             log.debug { "telemetry capture dev-mode: $body" }
             return
         }
+        if (http == null || port <= 0) return
         post(http, port, "telemetry/capture", body)
     }
 
@@ -33,11 +34,11 @@ class KiloBackendTelemetry(
             log.debug { "telemetry setEnabled dev-mode: $body" }
             return
         }
+        if (http == null || port <= 0) return
         post(http, port, "telemetry/setEnabled", body)
     }
 
-    private suspend fun post(http: OkHttpClient?, port: Int, path: String, body: String) {
-        if (http == null || port <= 0) return
+    private suspend fun post(http: OkHttpClient, port: Int, path: String, body: String) {
         withContext(Dispatchers.IO) {
             try {
                 val req = Request.Builder()

@@ -2,8 +2,6 @@ package ai.kilocode.backend.cli
 
 import ai.kilocode.KiloPlugin
 import ai.kilocode.backend.dev.KiloDevMode
-import ai.kilocode.backend.telemetry.CliStartupTelemetry
-import ai.kilocode.backend.telemetry.KiloCliStartupTelemetry
 import ai.kilocode.log.KiloLog
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.PathManager
@@ -32,7 +30,6 @@ import java.util.concurrent.TimeUnit
  */
 class KiloBackendCliManager(
     private val log: KiloLog = KiloLog.create(KiloBackendCliManager::class.java),
-    private val startup: CliStartupTelemetry = KiloCliStartupTelemetry(),
 ) : CliServer {
 
     companion object {
@@ -49,30 +46,17 @@ class KiloBackendCliManager(
     @Volatile
     override var forceExtract = false
 
-    private var startupReported = false
-
     override fun process(): Process? = process
 
     override suspend fun init(): CliServer.State {
-        startupReported = false
-        val start = System.currentTimeMillis()
         return try {
             val path = extractCli()
             log.info("CLI binary path: ${path.absolutePath} (size=${path.length()} bytes)")
-            val state = withTimeout(STARTUP_TIMEOUT_MS) {
+            withTimeout(STARTUP_TIMEOUT_MS) {
                 spawn(path)
             }
-            if (state is CliServer.State.Ready) {
-                startup.report("CLI Startup Succeeded", mapOf(
-                    "durationMs" to (System.currentTimeMillis() - start).toString(),
-                    "platform" to platform(),
-                    "arch" to CpuArch.CURRENT.name,
-                ))
-            }
-            state
         } catch (e: Exception) {
             log.warn("CLI startup failed", e)
-            if (!startupReported) reportStartupException(e)
             process?.let { proc ->
                 log.info("Cleaning up orphaned CLI process (pid=${proc.pid()})")
                 process = null
@@ -198,15 +182,7 @@ class KiloBackendCliManager(
             val proc = try {
                 builder.start()
             } catch (e: Exception) {
-                reportStartupFailure(
-                    env = env,
-                    cmd = cmd,
-                    stdout = "",
-                    stderr = "",
-                    code = null,
-                    details = e.message,
-                    error = e,
-                )
+                log.warn("CLI process failed to start: ${e.message}", e)
                 throw e
             }
             log.info("CLI process started (pid=${proc.pid()})")
@@ -242,68 +218,14 @@ class KiloBackendCliManager(
 
             val code = proc.waitFor()
             val details = synchronized(stderr) { stderr.toString().trim() }
-            val out = synchronized(stdout) { stdout.toString().trim() }
             process = null
             uninstall()
-            reportStartupFailure(
-                env = env,
-                cmd = cmd,
-                stdout = out,
-                stderr = details,
-                code = code,
-                details = details,
-                error = null,
-            )
+            log.warn("CLI process exited with code $code before announcing a port: $details")
             CliServer.State.Error(
                 message = "CLI process exited with code $code before announcing a port",
                 details = details.ifEmpty { null },
             )
         }
-
-    private suspend fun reportStartupFailure(
-        env: Map<String, String>,
-        cmd: List<String>,
-        stdout: String,
-        stderr: String,
-        code: Int?,
-        details: String?,
-        error: Exception?,
-    ) {
-        startupReported = true
-        startup.report(buildMap {
-            if (code != null) put("exitCode", code.toString())
-            put("stdout", stdout)
-            put("stderr", stderr)
-            put("details", details.orEmpty())
-            put("command", cmd.joinToString(" "))
-            put("platform", platform())
-            put("arch", CpuArch.CURRENT.name)
-            env["KILO_APP_VERSION"]?.let { put("pluginVersion", it) }
-            env["KILO_APP_VERSION"]?.let { put("appVersion", it) }
-            env["KILO_EDITOR_NAME"]?.let { put("editorName", it) }
-            env["KILO_MACHINE_ID"]?.let { put("machineId", it) }
-            error?.let {
-                put("errorClass", it::class.java.name)
-                put("message", it.message.orEmpty())
-            }
-        })
-    }
-
-    private suspend fun reportStartupException(error: Exception) {
-        startupReported = true
-        val env = ideEnv()
-        startup.report(buildMap {
-            put("details", error.stackTraceToString())
-            put("errorClass", error::class.java.name)
-            put("message", error.message.orEmpty())
-            runCatching { put("platform", platform()) }
-            put("arch", CpuArch.CURRENT.name)
-            env["KILO_APP_VERSION"]?.let { put("pluginVersion", it) }
-            env["KILO_APP_VERSION"]?.let { put("appVersion", it) }
-            env["KILO_EDITOR_NAME"]?.let { put("editorName", it) }
-            env["KILO_MACHINE_ID"]?.let { put("machineId", it) }
-        })
-    }
 
     override fun dispose() {
         val proc = process ?: return

@@ -388,7 +388,7 @@ class SessionController(
             try {
                 if (rules != null) sessions.savePermissionRules(requestId, directory, rules)
                 sessions.replyPermission(requestId, directory, reply)
-                capture("Ask Approval", sessionProps() + mapOf(
+                capture("Approval Answered", sessionProps() + mapOf(
                     "requestId" to requestId,
                     "tool" to (current?.permission?.name ?: "unknown"),
                     "reply" to reply.reply,
