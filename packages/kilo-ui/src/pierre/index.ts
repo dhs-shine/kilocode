@@ -48,6 +48,11 @@ type DiffShared<T> = FileDiffOptions<T> & {
   commentedLines?: SelectedLineRange[]
   onLineNumberSelectionEnd?: (selection: SelectedLineRange | null) => void
   onRendered?: () => void
+  // When false, render the whole diff up front instead of row-virtualizing it.
+  // With highlighting offloaded to a worker, eager diffs render their rows once
+  // and never re-render on scroll, so fast scrolling never shows gap buffers.
+  // Defaults to virtualized.
+  virtualized?: boolean
   class?: string
   classList?: ComponentProps<"div">["classList"]
 }

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test"
 import { mergeWorktreeDiffs } from "../../webview-ui/agent-manager/diff-state"
 import {
+  EAGER_DIFF_REVIEW_LINES,
   EXTREME_DIFF_CHANGED_LINES,
   allOpenFiles,
+  eagerDiffFiles,
   expandableOpenFiles,
   initialOpenFiles,
   toggleOpenFiles,
@@ -95,5 +97,43 @@ describe("agent manager diff state", () => {
     expect(toggleOpenFiles(diffs, ["stale.ts"])).toEqual(["src/app.ts", "src/panel.ts"])
     expect(toggleOpenFiles(diffs, ["src/app.ts"])).toEqual(["src/app.ts", "src/panel.ts"])
     expect(toggleOpenFiles(diffs, ["src/app.ts", "src/panel.ts"])).toEqual([])
+  })
+})
+
+describe("eager diff files", () => {
+  it("renders normal files eagerly", () => {
+    const diffs = [
+      diff({ file: "src/a.ts", additions: 10, deletions: 5 }),
+      diff({ file: "src/b.ts", additions: 3, deletions: 0 }),
+    ]
+    expect(eagerDiffFiles(diffs)).toEqual(new Set(["src/a.ts", "src/b.ts"]))
+  })
+
+  it("virtualizes files larger than the large-file threshold", () => {
+    const diffs = [
+      diff({ file: "src/big.ts", additions: EXTREME_DIFF_CHANGED_LINES + 1, deletions: 0 }),
+      diff({ file: "src/small.ts", additions: 5, deletions: 0 }),
+    ]
+    expect(eagerDiffFiles(diffs)).toEqual(new Set(["src/small.ts"]))
+  })
+
+  it("stops rendering eagerly once the review budget is exhausted", () => {
+    // Each file is under the large-file threshold, but together they exceed the
+    // aggregate budget, so the overflow falls back to virtualization.
+    const diffs = [
+      diff({ file: "src/a.ts", additions: 2000, deletions: 0 }),
+      diff({ file: "src/b.ts", additions: 2000, deletions: 0 }),
+      diff({ file: "src/c.ts", additions: 2000, deletions: 0 }),
+      diff({ file: "src/d.ts", additions: EAGER_DIFF_REVIEW_LINES - 6005, deletions: 0 }),
+      diff({ file: "src/e.ts", additions: 2000, deletions: 0 }),
+      diff({ file: "src/f.ts", additions: 5, deletions: 0 }),
+    ]
+    const eager = eagerDiffFiles(diffs)
+    expect(eager.has("src/a.ts")).toBe(true)
+    expect(eager.has("src/d.ts")).toBe(true)
+    // Budget exhausted, so the next sizeable file virtualizes.
+    expect(eager.has("src/e.ts")).toBe(false)
+    // A smaller later file still fits within the remaining budget.
+    expect(eager.has("src/f.ts")).toBe(true)
   })
 })

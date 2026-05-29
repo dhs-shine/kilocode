@@ -163,6 +163,7 @@ export function Diff<T>(props: DiffProps<T>) {
     "selectedLines",
     "commentedLines",
     "onRendered",
+    "virtualized",
   ])
 
   const mobile = createMediaQuery("(max-width: 640px)")
@@ -681,7 +682,15 @@ export function Diff<T>(props: DiffProps<T>) {
 
     const opts = options()
     const workerPool = large() ? getWorkerPool("unified") : getWorkerPool(props.diffStyle)
-    const virtualizer = getVirtualizer()
+    // Eager (non-virtualized) diffs render once and never re-render on scroll or
+    // height changes, avoiding Pierre's re-render-all storms. Highlighting still
+    // runs in the worker, so the one-time row build stays cheap. Large diffs keep
+    // virtualizing to bound DOM size.
+    const virtualizer = local.virtualized === false ? undefined : getVirtualizer()
+    if (local.virtualized === false && sharedVirtualizer) {
+      sharedVirtualizer.release()
+      sharedVirtualizer = undefined
+    }
     const annotations = untrack(() => local.annotations)
 
     // Preserve container height during re-render to prevent scroll jumps.

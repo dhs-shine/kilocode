@@ -48,6 +48,11 @@ describe("buildCspString", () => {
     expect(result).toContain(`font-src ${cspSource}`)
   })
 
+  it("allows the Shiki worker via worker-src", () => {
+    const result = buildCspString(cspSource, nonce)
+    expect(result).toContain(`worker-src ${cspSource} blob:`)
+  })
+
   it("includes cspSource and https: in img-src", () => {
     const result = buildCspString(cspSource, nonce)
     expect(result).toContain("img-src")

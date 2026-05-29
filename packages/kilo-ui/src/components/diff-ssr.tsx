@@ -21,6 +21,7 @@ export function Diff<T>(props: SSRDiffProps<T>) {
     "annotations",
     "selectedLines",
     "commentedLines",
+    "virtualized",
   ])
   const workerPool = useWorkerPool(props.diffStyle)
 
@@ -227,7 +228,7 @@ export function Diff<T>(props: SSRDiffProps<T>) {
       onCleanup(() => monitor.disconnect())
     }
 
-    const virtualizer = getVirtualizer()
+    const virtualizer = local.virtualized === false ? undefined : getVirtualizer()
 
     fileDiffInstance = virtualizer
       ? new VirtualizedFileDiff<T>(
