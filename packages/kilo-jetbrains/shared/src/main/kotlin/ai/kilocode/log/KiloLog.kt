@@ -1,5 +1,6 @@
 package ai.kilocode.log
 
+import ai.kilocode.KiloPlugin
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.diagnostic.Logger
 import java.io.PrintWriter
@@ -22,9 +23,9 @@ import java.util.logging.LogRecord
  * which writes to the standard IDE log file.
  *
  * In sandbox mode (i.e. when running via `./gradlew runIde`, detected via the `idea.plugin.in.sandbox.mode`
- * system property), output is additionally written to a `kilo-dev.log` file inside the sandbox log directory.
- * This makes it easy to tail frontend and backend logs side-by-side during development without opening the
- * IDE's own log viewer.
+ * system property), or in RC plugin builds, output is additionally written to a `kilo-dev.log` file inside the
+ * IDE log directory. This makes it easy to tail frontend and backend logs side-by-side during development or
+ * RC validation without opening the IDE's own log viewer.
  *
  * Usage:
  * ```kotlin
@@ -46,12 +47,15 @@ interface KiloLog {
     fun error(msg: String, t: Throwable? = null)
 
     companion object {
-        private val sandbox = System.getProperty("idea.plugin.in.sandbox.mode", "false").toBoolean()
-
         fun create(cls: Class<*>): KiloLog {
             val intellij = IntellijLog(cls)
-            if (!sandbox) return intellij
+            if (!fileEnabled()) return intellij
             return CompositeLog(intellij, FileLog(cls))
+        }
+
+        private fun fileEnabled(): Boolean {
+            if (System.getProperty("idea.plugin.in.sandbox.mode", "false").toBoolean()) return true
+            return runCatching { KiloPlugin.isRc() }.getOrDefault(false)
         }
     }
 }

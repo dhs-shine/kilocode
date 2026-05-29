@@ -1,10 +1,9 @@
 package ai.kilocode.backend.telemetry
 
+import ai.kilocode.KiloPlugin
 import ai.kilocode.backend.dev.KiloDevMode
 import ai.kilocode.log.KiloLog
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.ApplicationInfo
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.system.CpuArch
 import kotlinx.coroutines.Dispatchers
@@ -78,7 +77,7 @@ class KiloCliStartupTelemetry(
             put("jetbrainsBuild", info.build.asString())
         }.onFailure { log.info("Could not read ApplicationInfo for startup telemetry: ${it.message}") }
         runCatching {
-            val version = PluginManagerCore.getPlugin(PluginId.getId("ai.kilocode.jetbrains"))?.version
+            val version = KiloPlugin.version()
             if (version != null) {
                 put("pluginVersion", version)
                 put("appVersion", version)

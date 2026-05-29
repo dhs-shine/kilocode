@@ -1,11 +1,10 @@
 package ai.kilocode.backend.telemetry
 
+import ai.kilocode.KiloPlugin
 import ai.kilocode.backend.dev.KiloDevMode
 import ai.kilocode.log.KiloLog
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.extensions.PluginId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
@@ -72,7 +71,7 @@ class KiloBackendTelemetry(
             put("jetbrainsBuild", JsonPrimitive(info.build.asString()))
         }.onFailure { log.info("Could not read ApplicationInfo for telemetry: ${it.message}") }
         runCatching {
-            val version = PluginManagerCore.getPlugin(PluginId.getId("ai.kilocode.jetbrains"))?.version
+            val version = KiloPlugin.version()
             if (version != null) {
                 put("pluginVersion", JsonPrimitive(version))
                 put("appVersion", JsonPrimitive(version))

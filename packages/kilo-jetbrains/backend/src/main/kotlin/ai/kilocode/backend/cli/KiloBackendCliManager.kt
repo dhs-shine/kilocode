@@ -1,13 +1,12 @@
 package ai.kilocode.backend.cli
 
-import ai.kilocode.log.KiloLog
+import ai.kilocode.KiloPlugin
+import ai.kilocode.backend.dev.KiloDevMode
 import ai.kilocode.backend.telemetry.CliStartupTelemetry
 import ai.kilocode.backend.telemetry.KiloCliStartupTelemetry
-import ai.kilocode.backend.dev.KiloDevMode
-import com.intellij.ide.plugins.PluginManagerCore
+import ai.kilocode.log.KiloLog
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.PathManager
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.system.CpuArch
 import kotlinx.coroutines.Dispatchers
@@ -367,8 +366,7 @@ class KiloBackendCliManager(
         }.onFailure { log.info("Could not read ApplicationInfo: ${it.message}") }
 
         runCatching {
-            val version = PluginManagerCore
-                .getPlugin(PluginId.getId("ai.kilocode.jetbrains"))?.version
+            val version = KiloPlugin.version()
             if (version != null) put("KILO_APP_VERSION", version)
         }.onFailure { log.info("Could not read plugin version: ${it.message}") }
 
