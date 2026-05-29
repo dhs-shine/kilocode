@@ -18,7 +18,15 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 interface CliStartupTelemetry {
-    suspend fun report(properties: Map<String, String>)
+    suspend fun report(properties: Map<String, String>) {
+        report("CLI Startup Failed", properties)
+    }
+
+    suspend fun report(event: String, properties: Map<String, String>)
+}
+
+object NoopCliStartupTelemetry : CliStartupTelemetry {
+    override suspend fun report(event: String, properties: Map<String, String>) = Unit
 }
 
 class KiloCliStartupTelemetry(
@@ -28,14 +36,14 @@ class KiloCliStartupTelemetry(
     private val url: String = "https://us.i.posthog.com/capture/",
     private val log: KiloLog = KiloLog.create(KiloCliStartupTelemetry::class.java),
 ) : CliStartupTelemetry {
-    override suspend fun report(properties: Map<String, String>) {
+    override suspend fun report(event: String, properties: Map<String, String>) {
         withContext(Dispatchers.IO) {
             try {
                 val props = base() + properties
                 val body = JsonObject(
                     mapOf(
                         "api_key" to JsonPrimitive("phc_GK2Pxl0HPj5ZPfwhLRjXrtdz8eD7e9MKnXiFrOqnB6z"),
-                        "event" to JsonPrimitive("CLI Startup Failed"),
+                        "event" to JsonPrimitive(event),
                         "distinct_id" to JsonPrimitive(props["machineId"] ?: "jetbrains-unknown"),
                         "properties" to JsonObject(props.mapValues { JsonPrimitive(it.value) }),
                     ),

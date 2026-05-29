@@ -5,6 +5,9 @@ import ai.kilocode.backend.cli.KiloBackendCliManager
 import ai.kilocode.backend.migration.KiloBackendLegacyMigrationStoreService
 import ai.kilocode.backend.migration.LegacyMigrationDetection
 import ai.kilocode.backend.telemetry.KiloBackendTelemetry
+import ai.kilocode.backend.telemetry.CliStartupTelemetry
+import ai.kilocode.backend.telemetry.KiloCliStartupTelemetry
+import ai.kilocode.backend.telemetry.NoopCliStartupTelemetry
 import ai.kilocode.log.KiloLog
 import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
 import ai.kilocode.jetbrains.api.client.DefaultApi
@@ -75,6 +78,7 @@ class KiloBackendAppService private constructor(
   private val server: CliServer,
   private val log: KiloLog,
   private val loadTimeoutMs: Long,
+  private val telemetry: CliStartupTelemetry,
 ) : Disposable {
 
     /** IntelliJ service injection entry point. */
@@ -83,6 +87,7 @@ class KiloBackendAppService private constructor(
         KiloBackendCliManager(),
       KiloLog.create(KiloBackendAppService::class.java),
         APP_LOAD_TIMEOUT_MS,
+        KiloCliStartupTelemetry(),
     )
 
     companion object {
@@ -96,13 +101,14 @@ class KiloBackendAppService private constructor(
           server: CliServer,
           log: KiloLog,
           loadTimeoutMs: Long = APP_LOAD_TIMEOUT_MS,
-        ) = KiloBackendAppService(cs, server, log, loadTimeoutMs)
+          telemetry: CliStartupTelemetry = NoopCliStartupTelemetry,
+        ) = KiloBackendAppService(cs, server, log, loadTimeoutMs, telemetry)
     }
 
     private val mutex = Mutex()
     private val connection = KiloConnectionService(cs, server, onReconnect = {
         cs.launch { reconnect() }
-    }, appLoadTimeoutMs = loadTimeoutMs, log = log)
+    }, appLoadTimeoutMs = loadTimeoutMs, log = log, telemetry = telemetry)
 
     private var watcher: Job? = null
     private var eventWatcher: Job? = null

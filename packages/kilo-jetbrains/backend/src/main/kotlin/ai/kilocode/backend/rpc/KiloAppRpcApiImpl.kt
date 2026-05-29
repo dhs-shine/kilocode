@@ -5,6 +5,7 @@ package ai.kilocode.backend.rpc
 import ai.kilocode.backend.app.KiloAppState
 import ai.kilocode.backend.app.KiloBackendAppService
 import ai.kilocode.backend.telemetry.KiloBackendTelemetry
+import ai.kilocode.backend.telemetry.KiloCliStartupTelemetry
 import ai.kilocode.backend.app.ConfigWarning
 import ai.kilocode.backend.app.LoadError
 import ai.kilocode.backend.app.LoadProgress
@@ -98,6 +99,9 @@ class KiloAppRpcApiImpl : KiloAppRpcApi {
 
     override suspend fun captureTelemetry(capture: TelemetryCaptureDto) {
         service<KiloBackendTelemetry>().capture(app.http, app.port, capture.event, capture.properties)
+        if ((app.http == null || app.port <= 0) && capture.event == "Connection Retry Clicked") {
+            KiloCliStartupTelemetry().report(capture.event, capture.properties)
+        }
     }
 
     private fun dto(state: KiloAppState): KiloAppStateDto =

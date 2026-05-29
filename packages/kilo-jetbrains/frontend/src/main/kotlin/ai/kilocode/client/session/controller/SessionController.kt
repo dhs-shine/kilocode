@@ -296,6 +296,7 @@ class SessionController(
         LOG.debug {
             "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=connection-retry app=${model.app.status} workspace=${model.workspace.status}"
         }
+        capture("Connection Retry Clicked", connectionProps())
         setConnectionTargetState(SessionControllerEvent.ConnectionChanged.ShowConnecting)
         setVisibleConnectionState(SessionControllerEvent.ConnectionChanged.ShowConnecting)
         // App retry policy is backend-owned and may escalate from lightweight refresh to restart.
@@ -1361,6 +1362,14 @@ class SessionController(
             }
         }
         model.variant?.takeIf { it in model.variants }?.let { put("variant", it) }
+    }
+
+    private fun connectionProps(): Map<String, String> = buildMap {
+        put("appStatus", model.app.status.name)
+        put("workspaceStatus", model.workspace.status.name)
+        model.app.error?.let { put("appError", it) }
+        model.workspace.error?.let { put("workspaceError", it) }
+        put("warningCount", model.app.warnings.size.toString())
     }
 
     fun dismissLoginRequired() {

@@ -50,9 +50,12 @@ class KiloBackendCliManager(
     @Volatile
     override var forceExtract = false
 
+    private var startupReported = false
+
     override fun process(): Process? = process
 
     override suspend fun init(): CliServer.State {
+        startupReported = false
         return try {
             val path = extractCli()
             log.info("CLI binary path: ${path.absolutePath} (size=${path.length()} bytes)")
@@ -61,6 +64,7 @@ class KiloBackendCliManager(
             }
         } catch (e: Exception) {
             log.warn("CLI startup failed", e)
+            if (!startupReported) reportStartupException(e)
             process?.let { proc ->
                 log.info("Cleaning up orphaned CLI process (pid=${proc.pid()})")
                 process = null
@@ -257,6 +261,7 @@ class KiloBackendCliManager(
         details: String?,
         error: Exception?,
     ) {
+        startupReported = true
         startup.report(buildMap {
             if (code != null) put("exitCode", code.toString())
             put("stdout", stdout)
@@ -273,6 +278,22 @@ class KiloBackendCliManager(
                 put("errorClass", it::class.java.name)
                 put("message", it.message.orEmpty())
             }
+        })
+    }
+
+    private suspend fun reportStartupException(error: Exception) {
+        startupReported = true
+        val env = ideEnv()
+        startup.report(buildMap {
+            put("details", error.stackTraceToString())
+            put("errorClass", error::class.java.name)
+            put("message", error.message.orEmpty())
+            runCatching { put("platform", platform()) }
+            put("arch", CpuArch.CURRENT.name)
+            env["KILO_APP_VERSION"]?.let { put("pluginVersion", it) }
+            env["KILO_APP_VERSION"]?.let { put("appVersion", it) }
+            env["KILO_EDITOR_NAME"]?.let { put("editorName", it) }
+            env["KILO_MACHINE_ID"]?.let { put("machineId", it) }
         })
     }
 
