@@ -24,7 +24,6 @@ const allow: Record<string, string> = {
   "cli/cmd/tui/config/tui.ts": "separately tracked TUI config facade",
   "installation/index.ts": "existing installation facade outside #10655",
   "session/compaction.ts": "existing compaction facade outside #10655",
-  "session/prompt.ts": "transitional facade tracked by #10655",
   "session/session.ts": "transitional facade tracked by #10655",
   "sync/index.ts": "sync event runtime boundary",
 }

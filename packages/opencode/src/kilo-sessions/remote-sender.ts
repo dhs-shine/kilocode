@@ -81,6 +81,7 @@ export namespace RemoteSender {
       readonly reply: (input: Parameters<Question.Interface["reply"]>[0]) => Promise<void>
       readonly reject: (requestID: QuestionID) => Promise<void>
     }
+    prompt?: (input: SessionPrompt.PromptInput) => Promise<unknown>
   }
 
   export type Sender = {
@@ -116,6 +117,12 @@ export namespace RemoteSender {
         return AppRuntime.runPromise(Question.Service.use((svc) => svc.reject(requestID)))
       },
     }
+    const prompt =
+      options.prompt ??
+      (async (input: SessionPrompt.PromptInput) => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(SessionPrompt.Service.use((svc) => svc.prompt(input)))
+      })
 
     const sub =
       options.subscribe ??
@@ -313,7 +320,7 @@ export namespace RemoteSender {
           return
         }
         dispatchLongRunning(msg, directoryFor(input.data.sessionID), async () => {
-          await SessionPrompt.prompt(input.data as SessionPrompt.PromptInput)
+          await prompt(input.data as SessionPrompt.PromptInput)
         })
         return
       }
