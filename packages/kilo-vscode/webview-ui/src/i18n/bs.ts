@@ -1030,6 +1030,8 @@ export const dict = {
   "session.delete.confirm": 'Izbriši sesiju "{{name}}"?',
   "session.delete.button": "Izbriši sesiju",
   "session.untitled": "Bez naslova",
+  "session.current": "Trenutna sesija",
+  "session.history.sources": "Izvor historije",
   "session.recent": "Nedavne",
   "session.showHistory": "Prikaži historiju",
   "session.search.placeholder": "Pretraži sesije...",
@@ -1263,9 +1265,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "Ne sažimaj veliki zalijepljeni sadržaj",
   "settings.experimental.batch.title": "Batch alat",
   "settings.experimental.batch.description": "Omogući batch obradu poziva alata",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Pretraga koda",
   "settings.experimental.codebaseSearch.description": "Omogući AI pretragu prirodnim jezikom kroz bazu koda",
   "settings.experimental.speechToText.title": "Govor u tekst",

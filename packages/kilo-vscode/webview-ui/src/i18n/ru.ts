@@ -1027,6 +1027,8 @@ export const dict = {
   "session.delete.confirm": 'Удалить сессию "{{name}}"?',
   "session.delete.button": "Удалить сессию",
   "session.untitled": "Без названия",
+  "session.current": "Текущая сессия",
+  "session.history.sources": "Источник истории",
   "session.recent": "Недавние",
   "session.showHistory": "Показать историю",
   "session.search.placeholder": "Поиск сессий...",
@@ -1259,9 +1261,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "Не суммировать большой вставленный контент",
   "settings.experimental.batch.title": "Пакетный инструмент",
   "settings.experimental.batch.description": "Включить пакетную обработку вызовов инструментов",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Поиск по коду",
   "settings.experimental.codebaseSearch.description": "Включить поиск на естественном языке с ИИ по всей кодовой базе",
   "settings.experimental.speechToText.title": "Речь в текст",

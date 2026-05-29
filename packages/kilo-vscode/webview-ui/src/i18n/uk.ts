@@ -984,6 +984,8 @@ export const dict = {
   "session.delete.confirm": 'Видалити сесію "{{name}}"?',
   "session.delete.button": "Видалити сесію",
   "session.untitled": "Без назви",
+  "session.current": "Поточна сесія",
+  "session.history.sources": "Джерело історії",
   "session.recent": "Останні",
   "session.showHistory": "Показати історію",
   "session.search.placeholder": "Пошук сесій...",
@@ -1251,9 +1253,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "Підсумовувати великий вставлений вміст",
   "settings.experimental.batch.title": "Пакетний інструмент",
   "settings.experimental.batch.description": "Увімкнути пакетну обробку кількох викликів інструментів",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Пошук по кодовій базі",
   "settings.experimental.codebaseSearch.description":
     "Увімкнути пошук природною мовою на основі ШІ по всій кодовій базі",

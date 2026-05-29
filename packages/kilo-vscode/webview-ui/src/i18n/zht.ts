@@ -965,6 +965,8 @@ export const dict = {
   "session.delete.confirm": '刪除工作階段 "{{name}}"?',
   "session.delete.button": "刪除工作階段",
   "session.untitled": "未命名",
+  "session.current": "目前的工作階段",
+  "session.history.sources": "歷史記錄來源",
   "session.recent": "最近",
   "session.showHistory": "顯示歷史",
   "session.search.placeholder": "搜尋工作階段...",
@@ -1192,9 +1194,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "不對大量貼上內容進行摘要",
   "settings.experimental.batch.title": "批次工具",
   "settings.experimental.batch.description": "啟用多個工具呼叫的批次處理",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "程式碼庫搜尋",
   "settings.experimental.codebaseSearch.description": "啟用 AI 驅動的自然語言程式碼庫搜尋",
   "settings.experimental.speechToText.title": "語音轉文字",
