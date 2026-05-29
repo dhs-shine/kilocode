@@ -75,6 +75,50 @@ describe("ProviderTransform.variants - Claude Opus 4.7", () => {
     })
   })
 
+  test("opus-4-8 returns adaptive thinking variants including xhigh (native anthropic)", () => {
+    const model = mockModel({
+      api: {
+        id: "claude-opus-4-8",
+        url: "https://api.anthropic.com",
+        npm: "@ai-sdk/anthropic",
+      },
+    })
+    const result = ProviderTransform.variants(model)
+    expect(Object.keys(result)).toEqual(["low", "medium", "high", "xhigh", "max"])
+    expect(result.xhigh).toEqual({
+      thinking: { type: "adaptive", display: "summarized" },
+      effort: "xhigh",
+    })
+  })
+
+  test("opus-4.8 dot-form returns adaptive thinking variants via @ai-sdk/gateway", () => {
+    const model = mockModel({
+      id: "anthropic/claude-opus-4-8",
+      api: {
+        id: "anthropic/claude-opus-4.8",
+        url: "https://gateway.ai",
+        npm: "@ai-sdk/gateway",
+      },
+    })
+    const result = ProviderTransform.variants(model)
+    expect(Object.keys(result)).toEqual(["low", "medium", "high", "xhigh", "max"])
+  })
+
+  test("opus-4-8 on bedrock returns adaptive reasoningConfig with xhigh", () => {
+    const model = mockModel({
+      api: {
+        id: "anthropic.claude-opus-4-8",
+        url: "https://bedrock.amazonaws.com",
+        npm: "@ai-sdk/amazon-bedrock",
+      },
+    })
+    const result = ProviderTransform.variants(model)
+    expect(Object.keys(result)).toEqual(["low", "medium", "high", "xhigh", "max"])
+    expect(result.xhigh).toEqual({
+      reasoningConfig: { type: "adaptive", maxReasoningEffort: "xhigh", display: "summarized" },
+    })
+  })
+
   test("opus-4-6 keeps original adaptive efforts without xhigh", () => {
     const model = mockModel({
       api: {
