@@ -354,7 +354,7 @@ export namespace KiloSessions {
       const getSessions = async () => {
         const [gitUrl, gitBranch] = await Promise.all([
           getGitUrl().catch(() => undefined),
-          Vcs.branch().catch(() => undefined),
+          branch().catch(() => undefined),
         ])
         const { AppRuntime } = await import("@/effect/app-runtime")
         const statusMap = await AppRuntime.runPromise(SessionStatus.Service.use((svc) => svc.list()))
@@ -723,11 +723,16 @@ export namespace KiloSessions {
     })
   }
 
+  async function branch() {
+    const { AppRuntime } = await import("@/effect/app-runtime")
+    return AppRuntime.runPromise(Vcs.Service.use((svc) => svc.branch()))
+  }
+
   async function meta(sessionId?: string) {
     const override = sessionId ? KiloSession.resolvePlatform(sessionId) : undefined
     const platform = override || process.env["KILO_PLATFORM"] || "cli"
     const orgId = await getOrgId()
-    const gitBranch = await Vcs.branch().catch(() => undefined)
+    const gitBranch = await branch().catch(() => undefined)
     const gitUrl = await getGitUrl().catch(() => undefined)
 
     return {
