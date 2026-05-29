@@ -31,21 +31,47 @@ test.describe("history session accessibility", () => {
     await expect(page.locator('[data-slot="selected-session"]')).toHaveText("s2")
   })
 
-  test("focuses and activates separate named rename and delete controls", async ({ page }) => {
+  test("focuses row actions without opening a session during rename", async ({ page }) => {
     await story(page, "history-sessionlist--with-items")
 
+    const selected = page.locator('[data-slot="selected-session"]')
     const rename = page.getByRole("button", { name: "Rename: Add screenshot test coverage" })
     await rename.focus()
     await expect(rename).toBeFocused()
     await page.keyboard.press("Enter")
-    await expect(page.getByRole("textbox", { name: "Rename" })).toBeFocused()
+    const input = page.getByRole("textbox", { name: "Rename" })
+    await expect(input).toBeFocused()
+    await expect(selected).toBeEmpty()
 
+    await input.fill("Updated screenshot test coverage")
+    await page.keyboard.press("Enter")
+    await expect(input).toBeHidden()
+    await expect(selected).toBeEmpty()
+
+    const renamed = page.getByRole("button", { name: "Rename: Add screenshot test coverage" })
+    await renamed.focus()
+    await page.keyboard.press("Enter")
+    await expect(input).toBeFocused()
+    await page.keyboard.press("Escape")
+    await expect(input).toBeHidden()
+    await expect(selected).toBeEmpty()
+  })
+
+  test("deleting does not open a session and restores focus after cancel", async ({ page }) => {
     await story(page, "history-sessionlist--with-items")
+
+    const selected = page.locator('[data-slot="selected-session"]')
     const remove = page.getByRole("button", { name: "Delete session: Add screenshot test coverage" })
     await remove.focus()
     await expect(remove).toBeFocused()
     await page.keyboard.press("Enter")
     await expect(page.getByRole("dialog", { name: "Delete session" })).toBeVisible()
+    await expect(selected).toBeEmpty()
+
+    await page.getByRole("button", { name: "Cancel" }).click()
+    await expect(page.getByRole("dialog", { name: "Delete session" })).toBeHidden()
+    await expect(remove).toBeFocused()
+    await expect(selected).toBeEmpty()
   })
 
   test("exposes Local and Cloud as keyboard navigable selected tabs", async ({ page }) => {

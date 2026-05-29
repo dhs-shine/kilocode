@@ -95,29 +95,36 @@ const SessionList: Component<SessionListProps> = (props) => {
     })
   }
 
-  function confirmDelete(s: SessionInfo) {
-    dialog.show(() => (
-      <Dialog title={language.t("session.delete.title")} fit>
-        <div class="dialog-confirm-body">
-          <span>{language.t("session.delete.confirm", { name: name(s) })}</span>
-          <div class="dialog-confirm-actions">
-            <Button variant="ghost" size="large" onClick={() => dialog.close()}>
-              {language.t("common.cancel")}
-            </Button>
-            <Button
-              variant="primary"
-              size="large"
-              onClick={() => {
-                session.deleteSession(s.id)
-                dialog.close()
-              }}
-            >
-              {language.t("session.delete.button")}
-            </Button>
+  function confirmDelete(s: SessionInfo, restore?: HTMLElement) {
+    dialog.show(
+      () => (
+        <Dialog title={language.t("session.delete.title")} fit>
+          <div class="dialog-confirm-body">
+            <span>{language.t("session.delete.confirm", { name: name(s) })}</span>
+            <div class="dialog-confirm-actions">
+              <Button variant="ghost" size="large" onClick={() => dialog.close()}>
+                {language.t("common.cancel")}
+              </Button>
+              <Button
+                variant="primary"
+                size="large"
+                onClick={() => {
+                  session.deleteSession(s.id)
+                  dialog.close()
+                }}
+              >
+                {language.t("session.delete.button")}
+              </Button>
+            </div>
           </div>
-        </div>
-      </Dialog>
-    ))
+        </Dialog>
+      ),
+      () => {
+        queueMicrotask(() => {
+          if (restore?.isConnected) restore.focus()
+        })
+      },
+    )
   }
 
   function wrapItem(item: SessionInfo, node: JSX.Element): JSX.Element {
@@ -143,7 +150,7 @@ const SessionList: Component<SessionListProps> = (props) => {
                   size="small"
                   variant="ghost"
                   aria-label={label(language.t("session.delete.title"), item)}
-                  onClick={() => confirmDelete(item)}
+                  onClick={(event) => confirmDelete(item, event.currentTarget)}
                 />
               </>
             }
