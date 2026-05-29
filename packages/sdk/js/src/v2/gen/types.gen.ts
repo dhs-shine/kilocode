@@ -2096,6 +2096,18 @@ export type TuiConfigGetResponse = {
   mouse?: boolean
 }
 
+export type TuiKeybindInfo = {
+  id: string
+  label: string
+  group: string
+  default: string
+  description: string
+}
+
+export type TuiKeybindListResponse = {
+  keybinds: Array<TuiKeybindInfo>
+}
+
 export type EffectHttpApiErrorUnauthorized = {
   _tag: "Unauthorized"
 }
@@ -7996,6 +8008,25 @@ export type TuiConfigUpdateResponses = {
 }
 
 export type TuiConfigUpdateResponse = TuiConfigUpdateResponses[keyof TuiConfigUpdateResponses]
+
+export type TuiKeybindListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/tui/keybinds"
+}
+
+export type TuiKeybindListResponses = {
+  /**
+   * TUI keybind metadata
+   */
+  200: TuiKeybindListResponse
+}
+
+export type TuiKeybindListResponse2 = TuiKeybindListResponses[keyof TuiKeybindListResponses]
 
 export type EnhancePromptEnhanceData = {
   body?: {

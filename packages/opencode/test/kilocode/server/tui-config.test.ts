@@ -3,6 +3,7 @@ import path from "path"
 import fs from "fs/promises"
 import * as Log from "@opencode-ai/core/util/log"
 import { Server } from "../../../src/server/server"
+import { GlobalBus, type GlobalEvent } from "../../../src/bus/global"
 import { resetDatabase } from "../../fixture/db"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 
@@ -42,6 +43,28 @@ describe("TUI config routes", () => {
     expect(body.plugin_origins).toBeUndefined()
   })
 
+  test("lists valid TUI keybinds", async () => {
+    await using tmp = await tmpdir()
+
+    const response = await Server.Legacy().app.request("/tui/keybinds", {
+      headers: { "x-kilo-directory": tmp.path },
+    })
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      keybinds: Array<{ id: string; default: string; description: string }>
+    }
+    const ids = new Set(body.keybinds.map((item) => item.id))
+    const exit = body.keybinds.find((item) => item.id === "app_exit")
+    const suspend = body.keybinds.find((item) => item.id === "terminal_suspend")
+
+    expect(ids.has("leader")).toBe(true)
+    expect(ids.has("input_submit")).toBe(true)
+    expect(exit?.default).toBe("ctrl+c,ctrl+d,<leader>q")
+    expect(exit?.description).toBe("Exit the application")
+    expect(suspend?.default).toBe(process.platform === "win32" ? "none" : "ctrl+z")
+  })
+
   test("patches project TUI config", async () => {
     await using tmp = await tmpdir()
 
@@ -60,5 +83,28 @@ describe("TUI config routes", () => {
 
     const saved = await Bun.file(path.join(tmp.path, ".kilo", "tui.json")).json()
     expect(saved).toEqual({ theme: "nord" })
+  })
+
+  test("emits global.config.updated when patching TUI config so open TUIs hot-reload", async () => {
+    await using tmp = await tmpdir()
+
+    const events: GlobalEvent[] = []
+    const handler = (event: GlobalEvent) => events.push(event)
+    GlobalBus.on("event", handler)
+    try {
+      const response = await Server.Legacy().app.request("/tui/config?scope=project", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-kilo-directory": tmp.path,
+        },
+        body: JSON.stringify({ keybinds: { app_exit: "ctrl+q" } }),
+      })
+      expect(response.status).toBe(200)
+    } finally {
+      GlobalBus.off("event", handler)
+    }
+
+    expect(events.some((event) => event.payload?.type === "global.config.updated")).toBe(true)
   })
 })

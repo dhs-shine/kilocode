@@ -10,6 +10,8 @@ import { TuiConfig } from "@/cli/cmd/tui/config/tui"
 import { TuiInfo } from "@/cli/cmd/tui/config/tui-schema"
 import { Filesystem } from "@/util/filesystem"
 import { isRecord } from "@/util/record"
+import { GlobalBus } from "@/bus/global"
+import { Event } from "@/server/event"
 
 export namespace KilocodeTuiConfig {
   export const Scope = z.enum(["project", "global"])
@@ -41,6 +43,12 @@ export namespace KilocodeTuiConfig {
     const output = file.endsWith(".jsonc") ? patchJsonc(before, next) : JSON.stringify(next, null, 2)
 
     await Filesystem.write(file, output)
+    // Notify connected TUIs so they hot-reload keybinds/theme/ui settings. Mirrors
+    // Config.updateGlobal; directory "global" routes it to the TUI's global event handler.
+    GlobalBus.emit("event", {
+      directory: "global",
+      payload: { type: Event.ConfigUpdated.type, properties: {} },
+    })
     return get({ directory: input.directory })
   }
 

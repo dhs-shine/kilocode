@@ -24,6 +24,7 @@ import type {
   ToolIdsResponse,
   ToolListResponse,
   TuiConfigGetResponse,
+  TuiKeybindListResponse,
   VcsInfo,
   Worktree,
   WorktreeDiffItem,
@@ -75,6 +76,7 @@ export type Snapshot = {
   providers: ProviderListResponse
   authMethods: ProviderAuthResponse
   tui: TuiConfigGetResponse
+  keybinds: TuiKeybindListResponse
   tools: ToolIdsResponse
   toolDetails: ToolListResponse
   mcp: McpStatusResponse
@@ -203,6 +205,26 @@ function model(input: unknown) {
   const index = input.indexOf("/")
   if (index <= 0 || index >= input.length - 1) return undefined
   return { provider: input.slice(0, index), model: input.slice(index + 1) }
+}
+
+function title(input: string) {
+  return input
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
+}
+
+function fallback(input: TuiConfigGetResponse): TuiKeybindListResponse {
+  return {
+    keybinds: Object.entries(input.keybinds ?? {}).map(([id, binding]) => ({
+      id,
+      label: title(id),
+      group: "Configured",
+      default: binding ?? "none",
+      description: "Configured TUI keybind",
+    })),
+  }
 }
 
 function norm(input: string) {
@@ -336,22 +358,25 @@ export async function resolveServer() {
 
 export async function load(input: Query): Promise<Snapshot> {
   const sdk = client(input)
-  const [health, overlay, modelState, providers, authMethods, tui, tools, mcp, lsp, formatter, agents] = await Promise.all([
-    sdk.global.health(),
-    sdk.config.overlay({ scope: input.scope }),
-    sdk.config.modelState(),
-    sdk.provider.list(),
-    sdk.provider.auth(),
-    sdk.tui.config.get(),
-    sdk.tool.ids(),
-    sdk.mcp.status(),
-    sdk.lsp.status(),
-    sdk.formatter.status(),
-    sdk.app.agents(),
-  ])
+  const [health, overlay, modelState, providers, authMethods, tui, keybinds, tools, mcp, lsp, formatter, agents] =
+    await Promise.all([
+      sdk.global.health(),
+      sdk.config.overlay({ scope: input.scope }),
+      sdk.config.modelState(),
+      sdk.provider.list(),
+      sdk.provider.auth(),
+      sdk.tui.config.get(),
+      maybe("TUI keybinds", sdk.tui.keybind.list()),
+      sdk.tool.ids(),
+      sdk.mcp.status(),
+      sdk.lsp.status(),
+      sdk.formatter.status(),
+      sdk.app.agents(),
+    ])
   const resolved = demand("Config overlay", overlay)
   const ref = model(resolved.effective.model)
   const info = ref ? await maybe("Tool metadata", sdk.tool.list(ref)) : undefined
+  const cfg = demand("TUI config", tui)
 
   return {
     health: demand("Health", health),
@@ -361,7 +386,8 @@ export async function load(input: Query): Promise<Snapshot> {
     modelState: demand("Model state", modelState),
     providers: demand("Providers", providers),
     authMethods: demand("Provider auth methods", authMethods),
-    tui: demand("TUI config", tui),
+    tui: cfg,
+    keybinds: keybinds ?? fallback(cfg),
     tools: demand("Tools", tools),
     toolDetails: info ?? [],
     mcp: demand("MCP status", mcp),

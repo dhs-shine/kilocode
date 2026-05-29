@@ -27,6 +27,10 @@ import { DialogProcessList } from "@/kilocode/cli/cmd/tui/component/dialog-proce
 // Re-export so upstream can render the route without importing directly
 export { KiloClawView } from "@/kilocode/claw/view"
 
+// Hot reload TUI-local settings (keybinds/theme/ui) when changed from the Kilo Console.
+// Called from the App body (below SDKProvider and the TuiConfig provider).
+export { useTuiConfigHotReload } from "@/kilocode/cli/cmd/tui/context/tui-config-hot-reload"
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------

@@ -271,6 +271,7 @@ import type {
   TuiControlResponseResponses,
   TuiExecuteCommandErrors,
   TuiExecuteCommandResponses,
+  TuiKeybindListResponses,
   TuiOpenHelpResponses,
   TuiOpenModelsResponses,
   TuiOpenSessionsResponses,
@@ -5067,6 +5068,38 @@ export class Config3 extends HeyApiClient {
   }
 }
 
+export class Keybind extends HeyApiClient {
+  /**
+   * List TUI keybinds
+   *
+   * List valid TUI keybind commands, descriptions, groups, and default bindings from the CLI schema.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<TuiKeybindListResponses, unknown, ThrowOnError>({
+      url: "/tui/keybinds",
+      ...options,
+      ...params,
+    })
+  }
+}
+
 export class Tui extends HeyApiClient {
   /**
    * Append TUI prompt
@@ -5447,6 +5480,11 @@ export class Tui extends HeyApiClient {
   private _config?: Config3
   get config(): Config3 {
     return (this._config ??= new Config3({ client: this.client }))
+  }
+
+  private _keybind?: Keybind
+  get keybind(): Keybind {
+    return (this._keybind ??= new Keybind({ client: this.client }))
   }
 }
 

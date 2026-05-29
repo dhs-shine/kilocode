@@ -1,5 +1,6 @@
 import { Config } from "@/config/config"
 import { ConfigPlugin } from "@/config/plugin"
+import { KilocodeKeybinds } from "@/kilocode/tui/keybinds"
 import { Authorization } from "@/server/routes/instance/httpapi/middleware/authorization"
 import { InstanceContextMiddleware } from "@/server/routes/instance/httpapi/middleware/instance-context"
 import { WorkspaceRoutingMiddleware } from "@/server/routes/instance/httpapi/middleware/workspace-routing"
@@ -80,6 +81,9 @@ const TuiConfigShape = {
 }
 export const TuiConfigResponse = Schema.Struct(TuiConfigShape).annotate({ identifier: "TuiConfigGetResponse" })
 export const TuiConfigPatch = Schema.Struct(TuiConfigShape)
+export const TuiKeybindListResponse = Schema.Struct({ keybinds: Schema.Array(KilocodeKeybinds.Info) }).annotate({
+  identifier: "TuiKeybindListResponse",
+})
 
 export const ConfigConsolePaths = {
   sources: "/config/sources",
@@ -87,6 +91,7 @@ export const ConfigConsolePaths = {
   overlay: "/config/overlay",
   modelState: "/config/model-state",
   tuiConfig: "/tui/config",
+  tuiKeybinds: "/tui/keybinds",
 } as const
 
 export const ConfigConsoleApi = HttpApi.make("config-console")
@@ -159,6 +164,16 @@ export const ConfigConsoleApi = HttpApi.make("config-console")
             identifier: "tui.config.get",
             summary: "Get TUI configuration",
             description: "Retrieve the effective TUI configuration for the current instance directory.",
+          }),
+        ),
+        HttpApiEndpoint.get("tuiKeybindList", ConfigConsolePaths.tuiKeybinds, {
+          success: described(TuiKeybindListResponse, "TUI keybind metadata"),
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "tui.keybind.list",
+            summary: "List TUI keybinds",
+            description:
+              "List valid TUI keybind commands, descriptions, groups, and default bindings from the CLI schema.",
           }),
         ),
         HttpApiEndpoint.patch("tuiConfigUpdate", ConfigConsolePaths.tuiConfig, {

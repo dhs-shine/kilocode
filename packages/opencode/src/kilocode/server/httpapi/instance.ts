@@ -30,6 +30,7 @@ export function register(app: Hono, handler: Handler, context: Context.Context<u
   app.get(ConfigConsolePaths.modelState, (c) => handler(c.req.raw, context))
   app.patch(ConfigConsolePaths.modelState, (c) => handler(c.req.raw, context))
   app.get(ConfigConsolePaths.tuiConfig, (c) => handler(c.req.raw, context))
+  app.get(ConfigConsolePaths.tuiKeybinds, (c) => handler(c.req.raw, context))
   app.patch(ConfigConsolePaths.tuiConfig, (c) => handler(c.req.raw, context))
   app.post("/permission/allow-everything", (c) => handler(c.req.raw, context))
   app.post("/enhance-prompt", (c) => handler(c.req.raw, context))

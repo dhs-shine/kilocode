@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import path from "path"
 import * as Log from "@opencode-ai/core/util/log"
 import { Server } from "../../../src/server/server"
+import { GlobalBus, type GlobalEvent } from "../../../src/bus/global"
 import { resetDatabase } from "../../fixture/db"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 
@@ -109,5 +110,34 @@ describe("agent builder routes", () => {
     })
 
     expect(preview.status).toBe(400)
+  })
+
+  // Regression: saving must dispose the instance so open TUIs hot-reload the agent list. The
+  // dispose is the reload trigger — the server agent cache is keyed by config
+  // (KiloAgent.cacheKey), not file-based `.md` agents, so without it a new agent would not
+  // surface until restart. The TUI reacts to `server.instance.disposed` by re-bootstrapping and
+  // refetching `app.agents`.
+  test("disposes the instance after save so open TUIs hot-reload agents", async () => {
+    await using tmp = await tmpdir()
+
+    const events: GlobalEvent[] = []
+    const handler = (event: GlobalEvent) => events.push(event)
+    GlobalBus.on("event", handler)
+    try {
+      const saved = await req(tmp.path, "/agent-builder/hotreload", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ scope: "project", prompt: "Hot reload me." }),
+      })
+      expect(saved.status).toBe(200)
+    } finally {
+      GlobalBus.off("event", handler)
+    }
+
+    expect(events.some((event) => event.payload?.type === "server.instance.disposed")).toBe(true)
+
+    // After the dispose, the next request rebuilds the instance and re-reads the agent files.
+    const agents = (await (await req(tmp.path, "/agent")).json()) as Agent[]
+    expect(agents.some((item) => item.name === "hotreload")).toBe(true)
   })
 })

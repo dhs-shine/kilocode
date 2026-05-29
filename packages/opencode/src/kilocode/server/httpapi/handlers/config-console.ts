@@ -5,6 +5,7 @@ import * as InstanceState from "@/effect/instance-state"
 import { KilocodeConfigOverlay } from "@/kilocode/config/overlay"
 import { KilocodeConfigSources } from "@/kilocode/config/sources"
 import { KilocodeModelState } from "@/kilocode/config/model-state"
+import { KilocodeKeybinds } from "@/kilocode/tui/keybinds"
 import { KilocodeTuiConfig } from "@/kilocode/tui/config"
 import { disposeAllInstancesAndEmitGlobalDisposed } from "@/server/global-lifecycle"
 import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
@@ -125,6 +126,10 @@ export const configConsoleHandlers = HttpApiBuilder.group(InstanceHttpApi, "conf
       return yield* Effect.promise(() => KilocodeTuiConfig.get({ directory: instance.directory }))
     })
 
+    const tuiKeybindList = Effect.fn("ConfigConsoleHttpApi.tuiKeybindList")(function* () {
+      return { keybinds: KilocodeKeybinds.list() }
+    })
+
     const tuiConfigUpdate = Effect.fn("ConfigConsoleHttpApi.tuiConfigUpdate")(function* (ctx: {
       query: typeof TuiConfigQuery.Type
       payload: typeof TuiConfigPatch.Type
@@ -157,6 +162,7 @@ export const configConsoleHandlers = HttpApiBuilder.group(InstanceHttpApi, "conf
       .handle("modelState", modelState)
       .handle("modelStateUpdate", modelStateUpdate)
       .handle("tuiConfigGet", tuiConfigGet)
+      .handle("tuiKeybindList", tuiKeybindList)
       .handle("tuiConfigUpdate", tuiConfigUpdate)
   }),
 )

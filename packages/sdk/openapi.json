@@ -10465,6 +10465,50 @@
         ]
       }
     },
+    "/tui/keybinds": {
+      "get": {
+        "tags": ["config-console"],
+        "operationId": "tui.keybind.list",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "TUI keybind metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TuiKeybindListResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "List valid TUI keybind commands, descriptions, groups, and default bindings from the CLI schema.",
+        "summary": "List TUI keybinds",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.tui.keybind.list({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/enhance-prompt": {
       "post": {
         "tags": ["enhance-prompt"],
@@ -19810,6 +19854,41 @@
             "type": "boolean"
           }
         },
+        "additionalProperties": false
+      },
+      "TuiKeybindInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string"
+          },
+          "default": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "label", "group", "default", "description"],
+        "additionalProperties": false
+      },
+      "TuiKeybindListResponse": {
+        "type": "object",
+        "properties": {
+          "keybinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TuiKeybindInfo"
+            }
+          }
+        },
+        "required": ["keybinds"],
         "additionalProperties": false
       },
       "effect_HttpApiError_Unauthorized": {
