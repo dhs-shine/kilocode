@@ -28,16 +28,17 @@ const render = (kind: "markdown" | "code", text: string) => {
 export async function open(filepath: string): Promise<Readable | undefined> {
   if (path.extname(filepath).toLowerCase() !== ".ipynb") return undefined
 
-  const data = parse((await Encoding.read(filepath)).text)
-  if (!object(data) || !Array.isArray(data.cells)) return undefined
+  const raw = (await Encoding.read(filepath)).text
+  const data = parse(raw)
+  if (!object(data) || !Array.isArray(data.cells)) return Readable.from([raw])
 
   const cells: string[] = []
   for (const cell of data.cells) {
-    if (!object(cell)) return undefined
+    if (!object(cell)) continue
     if (cell.cell_type !== "markdown" && cell.cell_type !== "code") continue
 
     const text = source(cell.source)
-    if (text === undefined) return undefined
+    if (text === undefined) continue
     cells.push(render(cell.cell_type, text))
   }
 
