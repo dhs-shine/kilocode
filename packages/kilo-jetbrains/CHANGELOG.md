@@ -1,17 +1,11 @@
 # Changelog
 
-## [Unreleased]
-
 ## [7.0.1-rc.4] - 2026-05-29
 
 ### Added
-- feat: add Italian language support by @ale-saglia in https://github.com/Kilo-Org/kilocode/pull/9796
-
-### Changed
-- ci(jetbrains): lock release source before reviewed publish by @kirillk in https://github.com/Kilo-Org/kilocode/pull/10627
-
-
-## [0.0.0-dev]
-
-### Added
-- Initial JetBrains plugin development builds.
+- Initial JetBrains plugin release with a native Kilo Code tool window.
+- Chat sessions with streamed responses, tool output, reasoning, markdown, todos, and plan follow-ups.
+- Native mode/model selection, account sign-in, permission prompts, and question flows.
+- Local and cloud session history with search, reopen, rename/delete local sessions, and repository filtering.
+- Migration wizard for legacy JetBrains plugin settings and chat history.
+- Bundled Kilo CLI runtime for macOS, Linux, and Windows.
