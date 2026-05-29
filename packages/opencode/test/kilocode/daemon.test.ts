@@ -123,22 +123,34 @@ describe("daemon manager", () => {
     expect(restarted.status).toBe(200)
   }, 20_000)
 
-  test("daemon client honors the escape hatch", async () => {
+  test("daemon client does not start a daemon while attaching", async () => {
     await using tmp = await tmpdir()
-    process.env.KILO_NO_DAEMON = "1"
+    dirs(tmp.path)
 
-    const daemon = await DaemonClient.connect(opts(tmp.path))
+    const daemon = await DaemonClient.connect()
 
     expect(daemon).toBeUndefined()
     expect((await Daemon.status()).running).toBe(false)
   })
 
+  test("daemon client honors the escape hatch", async () => {
+    await using tmp = await tmpdir()
+    const started = await Daemon.start(opts(tmp.path))
+    process.env.KILO_NO_DAEMON = "1"
+
+    const daemon = await DaemonClient.connect()
+
+    expect(daemon).toBeUndefined()
+    expect((await Daemon.status()).state?.pid).toBe(started.state?.pid)
+  }, 20_000)
+
   test("daemon client returns authenticated attach settings", async () => {
     await using tmp = await tmpdir()
+    const started = await Daemon.start(opts(tmp.path))
 
-    const daemon = await DaemonClient.connect(opts(tmp.path))
+    const daemon = await DaemonClient.connect()
 
-    expect(daemon?.url).toStartWith("http://127.0.0.1:")
+    expect(daemon?.url).toBe(started.state?.url)
     expect(daemon?.headers.Authorization).toBe(`Basic ${daemon?.state.token}`)
   }, 20_000)
 })

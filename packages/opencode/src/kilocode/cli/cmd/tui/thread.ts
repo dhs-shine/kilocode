@@ -1,5 +1,5 @@
 import { UI } from "@/cli/ui"
-import { resolveNetworkOptionsNoConfig, type NetworkOptions } from "@/cli/network"
+import type { NetworkOptions } from "@/cli/network"
 import { errorMessage } from "@/util/error"
 import { TuiConfig } from "@/cli/cmd/tui/config/tui"
 import { validateSession } from "@/cli/cmd/tui/validate-session"
@@ -45,8 +45,7 @@ async function session(input: Input, daemon: DaemonClient.Connection) {
 
 export namespace KiloTuiThreadDaemon {
   export async function attach(input: Input) {
-    const net = resolveNetworkOptionsNoConfig(input.args)
-    const daemon = await DaemonClient.maybe(DaemonClient.options(net))
+    const daemon = await DaemonClient.maybe()
     if (!daemon) return false
 
     const prompt = await input.input()

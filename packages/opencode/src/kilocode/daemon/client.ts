@@ -14,25 +14,14 @@ export namespace DaemonClient {
     return !process.env.KILO_NO_DAEMON
   }
 
-  export function options(input: Partial<Daemon.Options> = {}): Daemon.Options {
-    return {
-      hostname: "127.0.0.1",
-      port: 0,
-      mdns: false,
-      mdnsDomain: "kilo.local",
-      cors: ["http://127.0.0.1:3017", "http://localhost:3017"],
-      ...input,
-    }
-  }
-
   export function headers(state: Daemon.State) {
     return { Authorization: `Basic ${state.token}` }
   }
 
-  export async function connect(input: Daemon.Options): Promise<Connection | undefined> {
+  export async function connect(): Promise<Connection | undefined> {
     if (!enabled()) return undefined
-    const daemon = await Daemon.start(input)
-    if (!daemon.running || !daemon.state) throw new Error(daemon.reason ?? "Daemon did not start")
+    const daemon = await Daemon.status()
+    if (!daemon.running || !daemon.state) return undefined
     return {
       url: daemon.state.url,
       headers: headers(daemon.state),
@@ -40,8 +29,8 @@ export namespace DaemonClient {
     }
   }
 
-  export async function maybe(input: Daemon.Options): Promise<Connection | undefined> {
-    return await connect(input).catch((err) => {
+  export async function maybe(): Promise<Connection | undefined> {
+    return await connect().catch((err) => {
       log.warn("daemon unavailable, falling back to embedded server", { err })
       return undefined
     })

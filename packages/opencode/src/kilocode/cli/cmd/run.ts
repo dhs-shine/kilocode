@@ -9,7 +9,7 @@ export namespace KiloRunDaemon {
   }
 
   export async function attach(input: Input) {
-    const daemon = await DaemonClient.maybe(DaemonClient.options())
+    const daemon = await DaemonClient.maybe()
     if (!daemon) return false
     const dir = input.directory ?? Filesystem.resolve(process.cwd())
     const client = createKiloClient({ baseUrl: daemon.url, directory: dir, headers: daemon.headers })
