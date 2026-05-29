@@ -1040,6 +1040,8 @@ export const dict = {
   "session.delete.confirm": 'Supprimer la session "{{name}}" ?',
   "session.delete.button": "Supprimer la session",
   "session.untitled": "Sans titre",
+  "session.current": "Session actuelle",
+  "session.history.sources": "Source de l'historique",
   "session.recent": "Récentes",
   "session.showHistory": "Afficher l'historique",
   "session.search.placeholder": "Rechercher des sessions...",

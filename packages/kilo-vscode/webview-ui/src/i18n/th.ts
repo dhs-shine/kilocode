@@ -1013,6 +1013,8 @@ export const dict = {
   "session.delete.confirm": 'ลบเซสชัน "{{name}}" หรือไม่?',
   "session.delete.button": "ลบเซสชัน",
   "session.untitled": "ไม่มีชื่อ",
+  "session.current": "เซสชันปัจจุบัน",
+  "session.history.sources": "แหล่งที่มาของประวัติ",
   "session.recent": "ล่าสุด",
   "session.showHistory": "แสดงประวัติ",
   "session.search.placeholder": "ค้นหาเซสชัน...",

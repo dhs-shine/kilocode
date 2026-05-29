@@ -984,6 +984,8 @@ export const dict = {
   "session.delete.confirm": 'Видалити сесію "{{name}}"?',
   "session.delete.button": "Видалити сесію",
   "session.untitled": "Без назви",
+  "session.current": "Поточна сесія",
+  "session.history.sources": "Джерело історії",
   "session.recent": "Останні",
   "session.showHistory": "Показати історію",
   "session.search.placeholder": "Пошук сесій...",
