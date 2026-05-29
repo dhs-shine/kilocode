@@ -7,17 +7,17 @@ import { toolName } from "../../shared/utils"
 import { ConfigPage, SourceBadge } from "./ConfigPage"
 import { actions, usePermissionSettings, type PermissionAction, type PermissionRule } from "./state/permissions"
 
-function tone(action: PermissionAction) {
+export function tone(action: PermissionAction) {
   if (action === "allow") return "success"
   if (action === "deny") return "critical"
   return "warning"
 }
 
-function label(action: PermissionAction) {
+export function label(action: PermissionAction) {
   return actions.find((item) => item.value === action)?.label ?? action
 }
 
-function RuleMeta(props: { rule: PermissionRule }) {
+export function RuleMeta(props: { rule: PermissionRule }) {
   return (
     <div class="permission-row-meta">
       <Tag tone={tone(props.rule.action)}>{label(props.rule.action)}</Tag>
@@ -26,7 +26,7 @@ function RuleMeta(props: { rule: PermissionRule }) {
   )
 }
 
-function ActionSelect(props: {
+export function ActionSelect(props: {
   label: string
   value: PermissionAction
   disabled?: boolean

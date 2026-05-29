@@ -3,14 +3,35 @@ import type { Accessor } from "solid-js"
 import type { AgentBuilderPreviewResponse, Model, Provider } from "@kilocode/sdk/v2/client"
 import { previewAgent, saveAgent, type AgentPayload, type Scope, type Snapshot } from "../../../client"
 import { useConfig } from "../../../context/config"
-import { clean, friendly, sorted, text, toMode, toolCapabilities, toolName } from "../../../shared/utils"
+import { clean, friendly, sorted, toMode, toolCapabilities, toolName } from "../../../shared/utils"
+import {
+  defaults,
+  defs,
+  ruleDefs,
+  type PermissionAction,
+  type PermissionDef,
+  type PermissionTool,
+  type RuleDef,
+} from "./permissions"
 
 type Mode = AgentPayload["mode"]
 type Permission = NonNullable<AgentPayload["permission"]>
 type Draft = AgentBuilderPreviewResponse
-type Panel = "closed" | "model" | "tools" | "markdown"
+type Panel = "closed" | "model" | "tools" | "permission" | "markdown"
 type Favorite = Snapshot["modelState"]["favorite"][number]
 type Item = { id: string; provider: Provider; model: Model }
+type AgentPermissionRule = {
+  tool: string
+  pattern: string
+  action: PermissionAction
+}
+type AgentPermissionGroup = RuleDef & {
+  action: PermissionAction
+  rules: AgentPermissionRule[]
+}
+type AgentPermissionDefault = PermissionDef & {
+  action: PermissionAction
+}
 export type AgentItem = Snapshot["agents"][number]
 export type AgentEntry = Snapshot["overlay"]["collections"][string][number]
 
@@ -58,6 +79,26 @@ function number(input: unknown) {
   if (typeof input === "number" && Number.isFinite(input)) return input
   return undefined
 }
+
+function act(input: unknown, fallback: PermissionAction = "ask"): PermissionAction {
+  if (input === "allow" || input === "deny" || input === "ask") return input
+  return fallback
+}
+
+function rule(tool: string, pattern: string, input: unknown): AgentPermissionRule | undefined {
+  if (input !== "allow" && input !== "deny" && input !== "ask") return undefined
+  return { tool, pattern, action: input }
+}
+
+function rows(tool: string, value: unknown) {
+  const obj = record(value)
+  if (Object.keys(obj).length) return Object.entries(obj).flatMap(([pattern, input]) => rule(tool, pattern, input) ?? [])
+  const item = rule(tool, "*", value)
+  return item ? [item] : []
+}
+
+const ruleIDs = new Set<string>(ruleDefs.map((item) => item.id))
+const knownPermissions = new Set<string>(defs.map((item) => item.id))
 
 function source(item: AgentItem) {
   const value = item.options.source
@@ -124,9 +165,9 @@ export function useAgentBuilder(agent?: Accessor<string | undefined>) {
   const [steps, setSteps] = createSignal("")
   const [tools, setTools] = createSignal<string[]>([])
   const [prompt, setPrompt] = createSignal("")
-  const [permTool, setPermTool] = createSignal("bash")
+  const [permTool, setPermTool] = createSignal<PermissionTool>("external_directory")
   const [permPattern, setPermPattern] = createSignal("")
-  const [permAction, setPermAction] = createSignal<"ask" | "allow" | "deny">("ask")
+  const [permAction, setPermAction] = createSignal<PermissionAction>("ask")
   const [permission, setPermission] = createSignal<Permission>({})
   const [draft, setDraft] = createSignal<Draft>()
   const [panel, setPanel] = createSignal<Panel>("closed")
@@ -195,18 +236,37 @@ export function useAgentBuilder(agent?: Accessor<string | undefined>) {
   })
 
   const pickedDraft = createMemo(() => new Set(chosen()))
-  const rules = createMemo(() =>
-    Object.entries(permission()).flatMap(([tool, rule]) => {
-      if (rule && typeof rule === "object" && !Array.isArray(rule)) {
-        return Object.entries(rule as Record<string, unknown>).map(([pattern, act]) => ({
-          tool,
-          pattern,
-          action: text(act),
-        }))
+  const rules = createMemo(() => Object.entries(permission()).flatMap(([tool, value]) => rows(tool, value)))
+  const permissionGroups = createMemo<AgentPermissionGroup[]>(() =>
+    ruleDefs.map((def) => {
+      const value = permission()[def.id]
+      const obj = record(value)
+      return {
+        ...def,
+        action: act(typeof value === "string" ? value : obj["*"]),
+        rules: Object.entries(obj)
+          .filter(([pattern]) => pattern !== "*")
+          .flatMap(([pattern, input]) => rule(def.id, pattern, input) ?? []),
       }
-      return [{ tool, pattern: "*", action: text(rule) }]
     }),
   )
+  const permissionDefaults = createMemo<AgentPermissionDefault[]>(() =>
+    defaults.map((def) => {
+      const value = permission()[def.id]
+      const obj = record(value)
+      return {
+        ...def,
+        action: act(typeof value === "string" ? value : obj["*"]),
+      }
+    }),
+  )
+  const permissionOther = createMemo(() =>
+    Object.entries(permission())
+      .filter(([tool]) => !knownPermissions.has(tool))
+      .flatMap(([tool, value]) => rows(tool, value))
+      .sort((a, b) => a.tool.localeCompare(b.tool) || a.pattern.localeCompare(b.pattern)),
+  )
+  const selectedPermission = createMemo(() => ruleDefs.find((def) => def.id === permTool()) ?? ruleDefs[0])
 
   function reset(value = "reviewer") {
     setId(value)
@@ -221,6 +281,9 @@ export function useAgentBuilder(agent?: Accessor<string | undefined>) {
     setDraft(undefined)
     setLocked(false)
     setPanel("closed")
+    setPermTool("external_directory")
+    setPermPattern("")
+    setPermAction("ask")
     setPicker("")
     setChoice("")
     setSearch("")
@@ -344,24 +407,64 @@ export function useAgentBuilder(agent?: Accessor<string | undefined>) {
     setTools([])
   }
 
-  function addPermission() {
+  function openPermission(tool: PermissionTool) {
     if (!guard()) return
-    const tool = clean(permTool())
-    if (!tool) {
-      ctx.fail("Enter an agent permission tool key before adding an override.")
-      return
-    }
+    setPermTool(tool)
+    setPermPattern("")
+    setPermAction("ask")
+    setPanel("permission")
+  }
+
+  function setPermissionDefault(tool: string, action: PermissionAction) {
+    if (!guard()) return
     const next = { ...permission() }
-    const pattern = clean(permPattern())
-    if (!pattern) {
-      next[tool] = permAction()
+    if (!ruleIDs.has(tool)) {
+      next[tool] = action
       setPermission(next)
       return
     }
+    const map = record(next[tool])
+    next[tool] = { ...map, "*": action }
+    setPermission(next)
+  }
+
+  function addPermission() {
+    if (!guard()) return
+    const pattern = clean(permPattern())
+    if (!pattern) {
+      ctx.fail(`Enter a ${selectedPermission().noun} pattern before saving.`)
+      return
+    }
+    const tool = permTool()
+    const next = { ...permission() }
     const cur = next[tool]
     const map: Record<string, unknown> = cur && typeof cur === "object" && !Array.isArray(cur) ? { ...cur } : {}
     map[pattern] = permAction()
     next[tool] = map
+    setPermission(next)
+    close()
+  }
+
+  function removePermission(item: AgentPermissionRule) {
+    if (!guard()) return
+    const next = { ...permission() }
+    if (item.pattern === "*") {
+      const map = { ...record(next[item.tool]) }
+      if (Object.keys(map).length) {
+        delete map["*"]
+        if (Object.keys(map).length) next[item.tool] = map
+        else delete next[item.tool]
+        setPermission(next)
+        return
+      }
+      delete next[item.tool]
+      setPermission(next)
+      return
+    }
+    const map = { ...record(next[item.tool]) }
+    delete map[item.pattern]
+    if (Object.keys(map).length) next[item.tool] = map
+    else delete next[item.tool]
     setPermission(next)
   }
 
@@ -430,6 +533,10 @@ export function useAgentBuilder(agent?: Accessor<string | undefined>) {
     setPermPattern,
     permAction,
     setPermAction,
+    permissionGroups,
+    permissionDefaults,
+    permissionOther,
+    selectedPermission,
     draft,
     ready,
     locked,
@@ -452,6 +559,9 @@ export function useAgentBuilder(agent?: Accessor<string | undefined>) {
     pickedDraft,
     openTools,
     rules,
+    openPermission,
+    setPermissionDefault,
+    removePermission,
     toggleTool,
     saveTools,
     clearTools,

@@ -5031,6 +5031,12 @@ export class Config3 extends HeyApiClient {
       }
       diff_style?: "auto" | "stacked"
       mouse?: boolean
+      attention?: {
+        enabled?: boolean
+        notifications?: boolean
+        sound?: boolean
+        volume?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      }
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -5051,6 +5057,7 @@ export class Config3 extends HeyApiClient {
             { in: "body", key: "scroll_acceleration" },
             { in: "body", key: "diff_style" },
             { in: "body", key: "mouse" },
+            { in: "body", key: "attention" },
           ],
         },
       ],

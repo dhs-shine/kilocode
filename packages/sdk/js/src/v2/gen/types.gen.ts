@@ -2094,6 +2094,12 @@ export type TuiConfigGetResponse = {
   }
   diff_style?: "auto" | "stacked"
   mouse?: boolean
+  attention?: {
+    enabled?: boolean
+    notifications?: boolean
+    sound?: boolean
+    volume?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  }
 }
 
 export type TuiKeybindInfo = {
@@ -7981,6 +7987,12 @@ export type TuiConfigUpdateData = {
     }
     diff_style?: "auto" | "stacked"
     mouse?: boolean
+    attention?: {
+      enabled?: boolean
+      notifications?: boolean
+      sound?: boolean
+      volume?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    }
   }
   path?: never
   query?: {

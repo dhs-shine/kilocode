@@ -6,12 +6,12 @@ import { clean, type PermissionMap } from "../../../shared/utils"
 type Resolved = Snapshot["overlay"]["collections"][string][number]
 export type PermissionAction = "ask" | "allow" | "deny"
 export type PermissionTool = "external_directory" | "bash" | "read" | "edit"
-type PermissionDef = {
+export type PermissionDef = {
   id: string
   title: string
   description: string
 }
-type RuleDef = PermissionDef & {
+export type RuleDef = PermissionDef & {
   id: PermissionTool
   noun: string
   placeholder: string
@@ -53,7 +53,7 @@ export const actions: Array<{ value: PermissionAction; label: string }> = [
   { value: "deny", label: "Deny" },
 ]
 
-const ruleDefs: RuleDef[] = [
+export const ruleDefs: RuleDef[] = [
   {
     id: "external_directory",
     title: "External Directory",
@@ -84,7 +84,7 @@ const ruleDefs: RuleDef[] = [
   },
 ]
 
-const defaults: PermissionDef[] = [
+export const defaults: PermissionDef[] = [
   { id: "glob", title: "Glob", description: "Match files using glob patterns." },
   { id: "grep", title: "Grep", description: "Search file contents using regular expressions." },
   { id: "list", title: "List", description: "List files within a directory." },

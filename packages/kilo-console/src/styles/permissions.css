@@ -66,10 +66,6 @@
   flex: 0 0 auto;
 }
 
-.kilo-console .permission-section-actions [data-component="button"] {
-  min-height: 2rem;
-}
-
 .kilo-console .permission-section-actions [data-component="button"][data-variant="primary"] [data-component="icon"],
 .kilo-console .permission-section-actions [data-component="button"][data-variant="primary"] [data-slot="icon-svg"] {
   color: var(--primary-foreground);

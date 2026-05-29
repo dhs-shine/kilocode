@@ -1,13 +1,15 @@
 import { createMemo, createSignal, For, Show, type JSX } from "solid-js"
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { Button } from "@kilocode/kilo-web-ui/button"
+import { Card } from "@kilocode/kilo-web-ui/card"
 import { ConfigRow, SectionTitle } from "@kilocode/kilo-web-ui/console"
 import { IconButton } from "@kilocode/kilo-web-ui/icon-button"
 import { CountTag, Tag } from "@kilocode/kilo-web-ui/tag"
 import { SearchField } from "../../components/SearchField"
 import { useConfig } from "../../context/config"
-import { toAction, toMode, toolCapabilities, toolName } from "../../shared/utils"
+import { toMode, toolCapabilities, toolName } from "../../shared/utils"
 import { ConfigPage, SourceBadge } from "./ConfigPage"
+import { ActionSelect, label as actionLabel, tone as actionTone } from "./PermissionsRoute"
 import {
   agentEditable,
   agentTitle,
@@ -16,8 +18,11 @@ import {
   type AgentEntry,
   type AgentItem,
 } from "./state/agents"
+import type { PermissionAction } from "./state/permissions"
 
 type Row = { item: AgentItem; entry?: AgentEntry; rank: number }
+
+const colors = ["#0e639c", "#89d185", "#cca700", "#f14c4c", "#3794ff", "#c586c0", "#9cdcfe"]
 
 function base(input: string) {
   const index = input.indexOf("/settings")
@@ -50,17 +55,28 @@ function countTools(input: string[]) {
   return `${input.length} tools`
 }
 
-function FieldCard(props: { label: string; actions?: JSX.Element; children: JSX.Element }) {
+function FieldCard(props: { label: string; description?: string; actions?: JSX.Element; children: JSX.Element }) {
   return (
-    <article class="resolved-card default-model-card agent-field-card">
-      <header class="default-model-header">
-        <span>{props.label}</span>
+    <div class="ui-field agent-builder-field">
+      <div class="agent-builder-field-head">
+        <div>
+          <span>{props.label}</span>
+          <Show when={props.description}>{(description) => <small>{description()}</small>}</Show>
+        </div>
         <Show when={props.actions}>
-          <div class="tags default-model-actions">{props.actions}</div>
+          <div class="agent-builder-field-actions">{props.actions}</div>
         </Show>
-      </header>
-      <div class="default-model-value">{props.children}</div>
-    </article>
+      </div>
+      <div class="agent-builder-control">{props.children}</div>
+    </div>
+  )
+}
+
+function AgentRuleMeta(props: { action: PermissionAction }) {
+  return (
+    <div class="permission-row-meta">
+      <Tag tone={actionTone(props.action)}>{actionLabel(props.action)}</Tag>
+    </div>
   )
 }
 
@@ -196,6 +212,7 @@ export function AgentBuilderRoute() {
       {(_data) => (
         <ConfigPage
           title={title()}
+          description="Build a reusable agent by combining a prompt, model, mode, and tool permissions."
           actions={
             <>
               <Button variant="secondary" disabled={Boolean(state.ctx.saving()) || !state.ready()} onClick={state.openMarkdown}>
@@ -215,206 +232,341 @@ export function AgentBuilderRoute() {
             </>
           }
         >
-          <div class="builder">
-            <section class="builder-form">
-              <div class="resolved-grid model-defaults agent-fields">
-                <FieldCard label="Agent id">
-                  <input
-                    value={state.id()}
-                    placeholder="reviewer"
-                    readOnly={state.locked()}
-                    spellcheck={false}
-                    onInput={(event) => state.setId(event.currentTarget.value)}
-                  />
-                </FieldCard>
-                <FieldCard label="Description">
-                  <input
-                    value={state.desc()}
-                    placeholder="Review code and report risks"
-                    readOnly={state.locked()}
-                    onInput={(event) => state.setDesc(event.currentTarget.value)}
-                  />
-                </FieldCard>
-                <FieldCard label="Mode">
-                  <select
-                    value={state.mode()}
-                    disabled={state.locked()}
-                    onChange={(event) => state.setMode(toMode(event.currentTarget.value))}
-                  >
-                    <option value="primary">Primary</option>
-                    <option value="subagent">Subagent</option>
-                    <option value="all">Both</option>
-                  </select>
-                </FieldCard>
-                <FieldCard
-                  label="Model"
-                  actions={
-                    <>
-                      <Show when={!state.locked() && state.model()}>
-                        <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={state.clearModel}>
-                          Use Default
-                        </Button>
-                      </Show>
-                      <IconButton
-                        icon="edit"
-                        variant="secondary"
-                        aria-label="Edit agent model"
-                        disabled={Boolean(state.ctx.saving()) || state.locked()}
-                        onClick={state.openModel}
-                      />
-                    </>
-                  }
-                >
-                  <Show
-                    when={state.selected()}
-                    fallback={
-                      <>
-                        <strong>{state.model() || "Inherit default model"}</strong>
-                        <Show when={state.model()}>{(value) => <span class="default-model-id">{value()}</span>}</Show>
-                      </>
-                    }
-                  >
-                    {(model) => (
-                      <>
-                        <strong>{`${model().provider.name} / ${model().model.name}`}</strong>
-                        <span class="default-model-id">{model().id}</span>
-                      </>
-                    )}
-                  </Show>
-                </FieldCard>
-                <FieldCard label="Color">
-                  <input
-                    value={state.color()}
-                    placeholder="blue"
-                    readOnly={state.locked()}
-                    onInput={(event) => state.setColor(event.currentTarget.value)}
-                  />
-                </FieldCard>
-                <FieldCard label="Max steps">
-                  <input
-                    value={state.steps()}
-                    placeholder="optional"
-                    inputMode="numeric"
-                    readOnly={state.locked()}
-                    onInput={(event) => state.setSteps(event.currentTarget.value)}
-                  />
-                </FieldCard>
-                <FieldCard
-                  label="Tool Access"
-                  actions={
-                    <>
-                      <Show when={!state.locked() && state.tools().length}>
-                        <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={state.clearTools}>
-                          Clear
-                        </Button>
-                      </Show>
-                      <IconButton
-                        icon="edit"
-                        variant="secondary"
-                        aria-label="Edit tool access"
-                        disabled={Boolean(state.ctx.saving()) || state.locked()}
-                        onClick={state.openTools}
-                      />
-                    </>
-                  }
-                >
-                  <Show
-                    when={state.tools().length}
-                    fallback={
-                      <>
-                        <strong>No tools selected</strong>
-                        <span class="default-model-id">No allow permissions will be written.</span>
-                      </>
-                    }
-                  >
-                    <strong>{countTools(state.tools())}</strong>
-                    <div class="tag-cloud agent-tool-summary">
-                      <For each={state.tools()}>{(tool) => <Tag>{tool}</Tag>}</For>
-                    </div>
-                  </Show>
-                </FieldCard>
-                <FieldCard label="Prompt">
-                  <textarea
-                    value={state.prompt()}
-                    placeholder="Describe how this agent should behave."
-                    readOnly={state.locked()}
-                    onInput={(event) => state.setPrompt(event.currentTarget.value)}
-                  />
-                </FieldCard>
-              </div>
-
-              <div class="builder-block">
-                <div class="block-title">
-                  <strong>Prompt Snippets</strong>
-                  <span>Insert a starter instruction into the prompt, then customize it.</span>
-                </div>
-                <div class="snippet-list">
-                  <For each={snippets}>
-                    {(snippet) => (
-                      <Button
-                        variant="secondary"
-                        disabled={Boolean(state.ctx.saving()) || state.locked()}
-                        onClick={() => state.insert(snippet)}
-                      >
-                        {snippet}
-                      </Button>
-                    )}
-                  </For>
-                </div>
-              </div>
-
-              <div class="builder-block">
-                <div class="block-title">
-                  <strong>Agent Permissions</strong>
-                  <span>Add scalar or pattern-specific overrides before previewing markdown.</span>
-                </div>
-                <div class="model-controls compact">
-                  <label>
-                    Tool
+          <div class="builder agent-builder">
+            <section class="builder-form agent-builder-stack">
+              <Card class="ui-card agent-builder-card" padding={0}>
+                <header class="ui-card-header">
+                  <div>
+                    <h2>Identity</h2>
+                    <p>Name, mode, and display metadata for this agent.</p>
+                  </div>
+                </header>
+                <div class="ui-form agent-builder-form">
+                  <FieldCard label="Agent id" description="Used in @ mentions, commands, and agent files.">
                     <input
-                      value={state.permTool()}
-                      placeholder="bash"
+                      class="mono"
+                      value={state.id()}
+                      placeholder="reviewer"
                       readOnly={state.locked()}
-                      onInput={(event) => state.setPermTool(event.currentTarget.value)}
+                      spellcheck={false}
+                      onInput={(event) => state.setId(event.currentTarget.value)}
                     />
-                  </label>
-                  <label>
-                    Pattern
+                  </FieldCard>
+                  <FieldCard label="Description" description="Shown when choosing or delegating to the agent.">
                     <input
-                      value={state.permPattern()}
-                      placeholder="optional pattern"
+                      value={state.desc()}
+                      placeholder="Review code and report risks"
                       readOnly={state.locked()}
-                      onInput={(event) => state.setPermPattern(event.currentTarget.value)}
+                      onInput={(event) => state.setDesc(event.currentTarget.value)}
                     />
-                  </label>
-                  <label>
-                    Action
+                  </FieldCard>
+                  <FieldCard label="Mode">
                     <select
-                      value={state.permAction()}
+                      value={state.mode()}
                       disabled={state.locked()}
-                      onChange={(event) => state.setPermAction(toAction(event.currentTarget.value))}
+                      onChange={(event) => state.setMode(toMode(event.currentTarget.value))}
                     >
-                      <option value="ask">Ask</option>
-                      <option value="allow">Allow</option>
-                      <option value="deny">Deny</option>
+                      <option value="primary">Primary</option>
+                      <option value="subagent">Subagent</option>
+                      <option value="all">Both</option>
                     </select>
-                  </label>
-                  <Button variant="secondary" disabled={Boolean(state.ctx.saving()) || state.locked()} onClick={state.addPermission}>
-                    Add Override
-                  </Button>
+                  </FieldCard>
+                  <FieldCard label="Color">
+                    <div class="agent-color-control">
+                      <input
+                        class="mono"
+                        value={state.color()}
+                        placeholder="#0e639c"
+                        readOnly={state.locked()}
+                        onInput={(event) => state.setColor(event.currentTarget.value)}
+                      />
+                      <div class="agent-color-swatches" aria-label="Preset colors">
+                        <For each={colors}>
+                          {(color) => (
+                            <button
+                              class="agent-color-swatch"
+                              classList={{ selected: state.color() === color }}
+                              type="button"
+                              aria-label={`Use color ${color}`}
+                              disabled={state.locked()}
+                              style={{ "background-color": color }}
+                              onClick={() => state.setColor(color)}
+                            />
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  </FieldCard>
+                  <FieldCard label="Max steps" description="Optional hard cap on tool-call iterations.">
+                    <input
+                      class="mono"
+                      value={state.steps()}
+                      placeholder="optional"
+                      inputMode="numeric"
+                      readOnly={state.locked()}
+                      onInput={(event) => state.setSteps(event.currentTarget.value)}
+                    />
+                  </FieldCard>
                 </div>
-                <div class="mini-list columns">
-                  <For each={state.rules()}>
-                    {(rule) => (
-                      <article class="mini-item simple">
-                        <strong>{rule.tool}</strong>
-                        <span>{rule.pattern}</span>
-                        <Tag>{rule.action}</Tag>
-                      </article>
-                    )}
-                  </For>
+              </Card>
+
+              <Card class="ui-card agent-builder-card" padding={0}>
+                <header class="ui-card-header">
+                  <div>
+                    <h2>Model And Tools</h2>
+                    <p>Choose the model and default tool access written into the agent frontmatter.</p>
+                  </div>
+                </header>
+                <div class="ui-form agent-builder-form">
+                  <FieldCard
+                    label="Model"
+                    actions={
+                      <>
+                        <Show when={!state.locked() && state.model()}>
+                          <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={state.clearModel}>
+                            Use Default
+                          </Button>
+                        </Show>
+                        <IconButton
+                          icon="edit"
+                          variant="secondary"
+                          aria-label="Edit agent model"
+                          disabled={Boolean(state.ctx.saving()) || state.locked()}
+                          onClick={state.openModel}
+                        />
+                      </>
+                    }
+                  >
+                    <Show
+                      when={state.selected()}
+                      fallback={
+                        <>
+                          <strong>{state.model() || "Inherit default model"}</strong>
+                          <Show when={state.model()}>{(value) => <span class="mono">{value()}</span>}</Show>
+                        </>
+                      }
+                    >
+                      {(model) => (
+                        <>
+                          <strong>{`${model().provider.name} / ${model().model.name}`}</strong>
+                          <span class="mono">{model().id}</span>
+                        </>
+                      )}
+                    </Show>
+                  </FieldCard>
+                  <FieldCard
+                    label="Tool access"
+                    description="Selected tools are written as allow permissions."
+                    actions={
+                      <>
+                        <Show when={!state.locked() && state.tools().length}>
+                          <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={state.clearTools}>
+                            Clear
+                          </Button>
+                        </Show>
+                        <IconButton
+                          icon="edit"
+                          variant="secondary"
+                          aria-label="Edit tool access"
+                          disabled={Boolean(state.ctx.saving()) || state.locked()}
+                          onClick={state.openTools}
+                        />
+                      </>
+                    }
+                  >
+                    <Show
+                      when={state.tools().length}
+                      fallback={
+                        <>
+                          <strong>No tools selected</strong>
+                          <span>No allow permissions will be written.</span>
+                        </>
+                      }
+                    >
+                      <strong>{countTools(state.tools())}</strong>
+                      <div class="tag-cloud agent-tool-summary">
+                        <For each={state.tools()}>{(tool) => <Tag>{tool}</Tag>}</For>
+                      </div>
+                    </Show>
+                  </FieldCard>
                 </div>
-              </div>
+              </Card>
+
+              <Card class="ui-card agent-builder-card" padding={0}>
+                <header class="ui-card-header">
+                  <div>
+                    <h2>System Prompt</h2>
+                    <p>Markdown instructions that define how this agent behaves.</p>
+                  </div>
+                </header>
+                <div class="ui-form agent-builder-form">
+                  <FieldCard label="Prompt">
+                    <textarea
+                      class="mono agent-prompt-input"
+                      value={state.prompt()}
+                      placeholder="Describe how this agent should behave."
+                      readOnly={state.locked()}
+                      onInput={(event) => state.setPrompt(event.currentTarget.value)}
+                    />
+                  </FieldCard>
+                  <div class="agent-snippets">
+                    <div class="block-title">
+                      <strong>Prompt snippets</strong>
+                      <span>Insert a starter instruction into the prompt, then customize it.</span>
+                    </div>
+                    <div class="snippet-list">
+                      <For each={snippets}>
+                        {(snippet) => (
+                          <Button
+                            variant="secondary"
+                            disabled={Boolean(state.ctx.saving()) || state.locked()}
+                            onClick={() => state.insert(snippet)}
+                          >
+                            {snippet}
+                          </Button>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card class="ui-card agent-builder-card" padding={0}>
+                <header class="ui-card-header">
+                  <div>
+                    <h2>Agent Permissions</h2>
+                    <p>Add scalar or pattern-specific overrides before previewing markdown.</p>
+                  </div>
+                  <CountTag>{state.rules().length}</CountTag>
+                </header>
+                <div class="ui-card-body agent-permissions-body">
+                  <div class="permissions agent-permissions">
+                    <For each={state.permissionGroups()}>
+                      {(group) => (
+                        <section class="permission-group">
+                          <header class="permission-group-header">
+                            <div class="permission-group-copy">
+                              <h2>{group.title}</h2>
+                              <span>{group.id}</span>
+                              <p>{group.description}</p>
+                            </div>
+                            <div class="permission-section-actions">
+                              <CountTag>{group.rules.length}</CountTag>
+                              <Button
+                                icon="plus"
+                                variant="primary"
+                                disabled={Boolean(state.ctx.saving()) || state.locked()}
+                                onClick={() => state.openPermission(group.id)}
+                              >
+                                Add rule
+                              </Button>
+                            </div>
+                          </header>
+
+                          <ConfigRow
+                            title="Default method"
+                            subtitle={`Used for ${group.noun}s that do not match a specific rule.`}
+                            actions={
+                              <ActionSelect
+                                label={`Default method for ${group.title}`}
+                                value={group.action}
+                                disabled={Boolean(state.ctx.saving()) || state.locked()}
+                                onSelect={(action) => state.setPermissionDefault(group.id, action)}
+                              />
+                            }
+                          />
+
+                          <div class="permission-rules">
+                            <Show when={group.rules.length} fallback={<p class="permission-empty">No specific {group.noun} rules.</p>}>
+                              <For each={group.rules}>
+                                {(rule) => (
+                                  <ConfigRow
+                                    title={<span class="permission-pattern">{rule.pattern}</span>}
+                                    subtitle={`${group.title} ${group.noun} rule`}
+                                    status={<AgentRuleMeta action={rule.action} />}
+                                    actions={
+                                      <IconButton
+                                        icon="trash"
+                                        variant="ghost"
+                                        aria-label={`Delete ${group.title} rule ${rule.pattern}`}
+                                        disabled={Boolean(state.ctx.saving()) || state.locked()}
+                                        onClick={() => state.removePermission(rule)}
+                                      />
+                                    }
+                                  />
+                                )}
+                              </For>
+                            </Show>
+                          </div>
+                        </section>
+                      )}
+                    </For>
+
+                    <section class="permission-group">
+                      <SectionTitle
+                        trailing={<CountTag>{state.permissionDefaults().length}</CountTag>}
+                        description="Default methods for additional built-in tool permissions."
+                      >
+                        Tool Defaults
+                      </SectionTitle>
+                      <div class="permission-rules">
+                        <For each={state.permissionDefaults()}>
+                          {(item) => (
+                            <ConfigRow
+                              title={item.title}
+                              subtitle={`${item.id} · ${item.description}`}
+                              actions={
+                                <ActionSelect
+                                  label={`Default method for ${item.title}`}
+                                  value={item.action}
+                                  disabled={Boolean(state.ctx.saving()) || state.locked()}
+                                  onSelect={(action) => state.setPermissionDefault(item.id, action)}
+                                />
+                              }
+                            />
+                          )}
+                        </For>
+                      </div>
+                    </section>
+
+                    <Show when={state.permissionOther().length}>
+                      <section class="permission-group">
+                        <SectionTitle
+                          trailing={<CountTag>{state.permissionOther().length}</CountTag>}
+                          description="Additional tool permission rules from this agent."
+                        >
+                          Other Permissions
+                        </SectionTitle>
+                        <div class="permission-rules">
+                          <For each={state.permissionOther()}>
+                            {(rule) => (
+                              <ConfigRow
+                                title={toolName(rule.tool)}
+                                subtitle={
+                                  <span class="permission-subtitle">
+                                    <span>{rule.tool}</span>
+                                    <span class="permission-pattern">{rule.pattern}</span>
+                                  </span>
+                                }
+                                status={<AgentRuleMeta action={rule.action} />}
+                                actions={
+                                  <IconButton
+                                    icon="trash"
+                                    variant="ghost"
+                                    aria-label={`Delete ${rule.tool} rule ${rule.pattern}`}
+                                    disabled={Boolean(state.ctx.saving()) || state.locked()}
+                                    onClick={() => state.removePermission(rule)}
+                                  />
+                                }
+                              />
+                            )}
+                          </For>
+                        </div>
+                      </section>
+                    </Show>
+                  </div>
+                </div>
+              </Card>
             </section>
           </div>
 
@@ -541,6 +693,52 @@ export function AgentBuilderRoute() {
                 </Button>
                 <Button variant="primary" disabled={Boolean(state.ctx.saving()) || state.locked()} onClick={state.saveTools}>
                   Save
+                </Button>
+              </footer>
+            </aside>
+          </Show>
+
+          <Show when={state.panel() === "permission"}>
+            <div class="drawer-scrim" onClick={state.close} />
+            <aside class="provider-drawer permission-drawer" aria-label="Agent permission rule configuration">
+              <header class="drawer-header">
+                <div>
+                  <h2>{`Add ${state.selectedPermission().title} Rule`}</h2>
+                  <span>{`${state.selectedPermission().id} · ${state.selectedPermission().description}`}</span>
+                </div>
+                <Button variant="ghost" aria-label="Close permission rule overlay" onClick={state.close}>
+                  X
+                </Button>
+              </header>
+
+              <div class="provider-form permission-form">
+                <label class="required-field wide">
+                  {state.selectedPermission().noun === "command" ? "Command pattern" : "Path pattern"}
+                  <input
+                    value={state.permPattern()}
+                    placeholder={state.selectedPermission().placeholder}
+                    spellcheck={false}
+                    readOnly={state.locked()}
+                    onInput={(event) => state.setPermPattern(event.currentTarget.value)}
+                  />
+                </label>
+                <label class="required-field wide">
+                  Method
+                  <ActionSelect
+                    label="Rule method"
+                    value={state.permAction()}
+                    disabled={Boolean(state.ctx.saving()) || state.locked()}
+                    onSelect={state.setPermAction}
+                  />
+                </label>
+              </div>
+
+              <footer class="drawer-footer">
+                <Button variant="ghost" onClick={state.close}>
+                  Cancel
+                </Button>
+                <Button variant="primary" disabled={Boolean(state.ctx.saving()) || state.locked()} onClick={state.addPermission}>
+                  Save Rule
                 </Button>
               </footer>
             </aside>

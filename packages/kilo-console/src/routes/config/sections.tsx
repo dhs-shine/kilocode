@@ -1,6 +1,7 @@
 import type { Component } from "solid-js"
 import type { IconProps } from "@kilocode/kilo-web-ui/icon"
 import { AgentBuilderRoute, AgentsRoute } from "./AgentsRoute"
+import { CliNotificationsRoute } from "./CliNotificationsRoute"
 import { CliUiRoute } from "./CliUiRoute"
 import { FormattersRoute } from "./FormattersRoute"
 import { KeybindsRoute } from "./KeybindsRoute"
@@ -46,6 +47,13 @@ const permissions = {
   label: "Permissions",
   component: PermissionsRoute,
 }
+const formatters = {
+  path: "/formatters",
+  href: "/settings/formatters",
+  icon: "sliders",
+  label: "Formatters",
+  component: FormattersRoute,
+}
 
 export const configNav: ConfigNode[] = [
   {
@@ -76,22 +84,29 @@ export const configNav: ConfigNode[] = [
       },
     ],
   },
-  agents,
-  tools,
-  mcp,
-  permissions,
+  {
+    id: "behaviour",
+    label: "Behaviour",
+    items: [agents, tools, permissions, mcp, formatters],
+  },
   {
     id: "cli",
     label: "CLI",
     items: [
-      { path: "/keybinds", href: "/settings/keybinds", icon: "keyboard", label: "Keybinds", component: KeybindsRoute },
-      { path: "/ui", href: "/settings/ui", icon: "sliders", label: "UI", component: CliUiRoute },
+      { path: "/cli/ui", href: "/settings/cli/ui", icon: "sliders", label: "UI", component: CliUiRoute },
       {
-        path: "/formatters",
-        href: "/settings/formatters",
-        icon: "sliders",
-        label: "Formatters",
-        component: FormattersRoute,
+        path: "/cli/notifications",
+        href: "/settings/cli/notifications",
+        icon: "bubble-5",
+        label: "Notifications",
+        component: CliNotificationsRoute,
+      },
+      {
+        path: "/cli/keybinds",
+        href: "/settings/cli/keybinds",
+        icon: "keyboard",
+        label: "Keybinds",
+        component: KeybindsRoute,
       },
     ],
   },

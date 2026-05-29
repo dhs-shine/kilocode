@@ -6,7 +6,8 @@
   .kilo-console .config-page-header,
   .kilo-console .config-toolbar,
   .kilo-console .models-filter-primary,
-  .kilo-console .details,
+  .kilo-console .overview-details,
+  .kilo-console .ui-form,
   .kilo-console .model-controls,
   .kilo-console .builder,
   .kilo-console .provider-form {
@@ -32,8 +33,16 @@
   }
 
   .kilo-console .config-page-actions,
-  .kilo-console .provider-actions {
+  .kilo-console .provider-actions,
+  .kilo-console .ui-card-header,
+  .kilo-console .theme-footer {
     justify-content: flex-start;
+  }
+
+  .kilo-console .ui-card-header,
+  .kilo-console .theme-footer {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .kilo-console .config-page-header {
@@ -55,7 +64,7 @@
   }
 
   .kilo-console .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .kilo-console .models-filter-secondary {
@@ -67,6 +76,27 @@
   .kilo-console .models-capabilities-filter {
     flex: 1 1 auto;
     min-width: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .kilo-console .server-strip,
+  .kilo-console .server-strip-info {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .kilo-console .server-strip-info {
+    gap: 0.375rem;
+  }
+
+  .kilo-console .server-strip-separator {
+    display: none;
+  }
+
+  .kilo-console .facts div {
+    grid-template-columns: 1fr;
+    gap: 0.125rem;
   }
 }
 
@@ -139,5 +169,18 @@
 
   .kilo-console .metrics {
     grid-template-columns: 1fr;
+  }
+
+  .kilo-console .theme-swatches {
+    width: 6.5rem;
+  }
+
+  .kilo-console .agent-builder-field-head {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .kilo-console .agent-builder-field-actions {
+    justify-content: flex-start;
   }
 }
