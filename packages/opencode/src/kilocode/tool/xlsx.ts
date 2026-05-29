@@ -3,13 +3,19 @@ import { Readable } from "stream"
 import { read, utils, type CellObject, type WorkBook } from "xlsx"
 
 const ROW_LIMIT = 50_000
+const MAX_SIZE = 50 * 1024 * 1024
+const MAX_SIZE_LABEL = `${MAX_SIZE / (1024 * 1024)} MB`
 
 export function is(filepath: string) {
   return path.extname(filepath).toLowerCase() === ".xlsx"
 }
 
 export async function open(filepath: string) {
-  const bytes = new Uint8Array(await Bun.file(filepath).arrayBuffer())
+  const file = Bun.file(filepath)
+  if (file.size > MAX_SIZE) {
+    throw new Error(`Cannot read spreadsheet file: ${filepath} exceeds the ${MAX_SIZE_LABEL} size limit`)
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer())
   if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
     throw new Error(`Cannot read spreadsheet file: ${filepath} is not a valid XLSX workbook`)
   }

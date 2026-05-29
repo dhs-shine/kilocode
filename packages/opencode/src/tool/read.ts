@@ -15,6 +15,7 @@ import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
 // kilocode_change start
 import * as Encoding from "../kilocode/encoding"
 import * as TextStream from "../kilocode/text-stream"
+import * as Notebook from "../kilocode/tool/notebook"
 import * as Xlsx from "../kilocode/tool/xlsx"
 // kilocode_change end
 
@@ -364,6 +365,7 @@ export const ReadTool = Tool.define(
 // routed through TextStream.withFallback so non-UTF-8 files are decoded via
 // iconv. The body otherwise matches upstream.
 export async function lines(filepath: string, opts: { limit: number; offset: number }) {
+  if (Notebook.isFile(filepath)) return readLines(await Notebook.open(filepath), opts) // kilocode_change - extract readable notebook cells before paging
   return TextStream.withFallback(filepath, (stream) => readLines(stream, opts))
 }
 

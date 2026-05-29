@@ -1,5 +1,6 @@
 import { Cause, Effect, Exit, Layer } from "effect"
 import { describe, expect } from "bun:test"
+import { truncate } from "fs/promises"
 import path from "path"
 import { write, utils, type WorkBook, type WorkSheet } from "xlsx"
 import { TextReader, TextWriter, Uint8ArrayReader, Uint8ArrayWriter, ZipReader, ZipWriter } from "@zip.js/zip.js"
@@ -195,6 +196,20 @@ describe("kilocode XLSX reads", () => {
 
       expect(err.message).toContain("Cannot read spreadsheet file")
       expect(err.message).toContain("not a valid XLSX workbook")
+    }),
+  )
+
+  it.live("rejects spreadsheets larger than the parser input limit", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
+      const file = path.join(dir, "large-input.xlsx")
+      yield* put(file, new Uint8Array([0x50, 0x4b]))
+      yield* Effect.promise(() => truncate(file, 50 * 1024 * 1024 + 1))
+
+      const err = yield* fail(dir, file)
+
+      expect(err.message).toContain("Cannot read spreadsheet file")
+      expect(err.message).toContain("exceeds the 50 MB size limit")
     }),
   )
 
