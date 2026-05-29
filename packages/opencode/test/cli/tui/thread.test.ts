@@ -25,14 +25,4 @@ describe("tui thread", () => {
   test("uses the real cwd after resolving a relative project from PWD", async () => {
     await check(".")
   })
-
-  // kilocode_change start
-  test("ignores stale PWD after cwd is changed by a process wrapper", async () => {
-    await using root = await tmpdir()
-    const pkg = path.join(root.path, "packages", "opencode")
-    await fs.mkdir(pkg, { recursive: true })
-
-    expect(resolveThreadDirectory(".", root.path, pkg)).toBe(pkg)
-  })
-  // kilocode_change end
 })

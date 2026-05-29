@@ -17,7 +17,7 @@ import { importCloudSession, validateCloudFork } from "@/kilocode/cloud-session"
 import { createKiloClient } from "@kilocode/sdk/v2" // kilocode_change
 import { writeHeapSnapshot } from "v8"
 import { TuiConfig } from "./config/tui"
-import { DaemonClient } from "@/kilocode/daemon/client" // kilocode_change
+import { KiloTuiThreadDaemon } from "@/kilocode/cli/cmd/tui/thread" // kilocode_change
 import {
   KILO_PROCESS_ROLE,
   KILO_RUN_ID,
@@ -171,59 +171,7 @@ export const TuiThreadCommand = cmd({
       }
       const cwd = Filesystem.resolve(process.cwd())
       // kilocode_change start - default TUI sessions attach to the daemon unless explicitly disabled
-      const net = resolveNetworkOptionsNoConfig(args)
-      const daemon = await DaemonClient.maybe(DaemonClient.options(net))
-      if (daemon) {
-        const prompt = await input(args.prompt)
-        const config = await TuiConfig.get()
-
-        try {
-          await validateSession({
-            url: daemon.url,
-            sessionID: args.session,
-            directory: cwd,
-            headers: daemon.headers,
-          })
-        } catch (error) {
-          UI.error(errorMessage(error))
-          process.exitCode = 1
-          return
-        }
-
-        if (args.cloudFork && args.session) {
-          UI.println("Importing session from cloud...")
-          const sdk = createKiloClient({
-            baseUrl: daemon.url,
-            directory: cwd,
-            headers: daemon.headers,
-          })
-          const id = await importCloudSession(sdk, args.session).catch(() => undefined)
-          if (!id) {
-            UI.error("Failed to import session from cloud")
-            process.exitCode = 1
-            return
-          }
-          args.session = id
-          args.cloudFork = false
-        }
-
-        await start({
-          // kilocode_change
-          url: daemon.url,
-          config,
-          directory: cwd,
-          headers: daemon.headers,
-          args: {
-            continue: args.continue,
-            sessionID: args.session,
-            agent: args.agent,
-            model: args.model,
-            prompt,
-            fork: args.fork,
-          },
-        })
-        return
-      }
+      if (await KiloTuiThreadDaemon.attach({ args, cwd, input: () => input(args.prompt), start })) return
       // kilocode_change end
       const env = sanitizedProcessEnv({
         [KILO_PROCESS_ROLE]: "worker",

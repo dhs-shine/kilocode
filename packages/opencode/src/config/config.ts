@@ -570,15 +570,15 @@ export const layer = Layer.effect(
       Duration.infinity,
     )
 
+    // kilocode_change start - detect global config edits made by other Kilo processes
     const refreshGlobal = Effect.fnUntraced(function* () {
-      // kilocode_change start - detect global config edits made by other Kilo processes
       const stamp = yield* KilocodeGlobalConfigStamp.read(fs, Global.Path.config)
       if (!globalStamp || stamp === globalStamp) return false
       globalStamp = stamp
       yield* invalidateGlobal
       return true
-      // kilocode_change end
     })
+    // kilocode_change end
 
     const getGlobal = Effect.fn("Config.getGlobal")(function* () {
       yield* refreshGlobal() // kilocode_change
@@ -1000,9 +1000,11 @@ export const layer = Layer.effect(
     )
 
     const get = Effect.fn("Config.get")(function* () {
+      // kilocode_change start - reload instance config when global config changed elsewhere
       if (yield* refreshGlobal()) {
         yield* InstanceState.invalidate(state).pipe(Effect.catchCause(() => Effect.void))
       }
+      // kilocode_change end
       return yield* InstanceState.use(state, (s) => s.config)
     })
 
@@ -1098,9 +1100,9 @@ export const layer = Layer.effect(
       }
       // kilocode_change end
 
+      if (changed) yield* invalidate()
+      // kilocode_change start - hot-reload global config changes in the active instance
       if (changed) {
-        yield* invalidate()
-        // kilocode_change start - hot-reload global config changes in the active instance
         yield* InstanceState.invalidate(state).pipe(Effect.catchCause(() => Effect.void))
         yield* Effect.sync(() =>
           GlobalBus.emit("event", {
@@ -1111,8 +1113,8 @@ export const layer = Layer.effect(
             },
           }),
         ).pipe(Effect.catchCause(() => Effect.void))
-        // kilocode_change end
       }
+      // kilocode_change end
       return { info: next, changed }
     })
 

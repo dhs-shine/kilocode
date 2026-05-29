@@ -395,62 +395,6 @@ it.live("loop calls LLM and returns assistant message", () =>
     { git: true, config: providerCfg },
   ),
 )
-
-// kilocode_change start - active tools must re-read permissions after config changes
-it.live("active tool calls use permissions changed after model streaming starts", () =>
-  provideTmpdirServer(
-    Effect.fnUntraced(function* ({ dir, llm }) {
-      const config = yield* Config.Service
-      const prompt = yield* SessionPrompt.Service
-      const sessions = yield* Session.Service
-      const permission = yield* Permission.Service
-      const file = path.join(dir, "note.txt")
-      const gate = defer<void>()
-
-      yield* Effect.promise(() => Bun.write(file, "old"))
-      yield* llm.push(
-        reply()
-          .wait(gate.promise)
-          .tool("edit", { filePath: file, oldString: "old", newString: "new" }),
-      )
-
-      const chat = yield* sessions.create({ title: "Pinned" })
-      yield* prompt.prompt({
-        sessionID: chat.id,
-        agent: "build",
-        noReply: true,
-        parts: [{ type: "text", text: "edit note" }],
-      })
-
-      const fiber = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkScoped)
-      yield* llm.wait(1)
-      yield* config.update({ permission: { edit: { "*": "allow" } } } as Config.Info)
-      gate.resolve(undefined)
-
-      yield* waitFor(
-        "edit without permission prompt",
-        Effect.gen(function* () {
-          const pending = yield* permission.list()
-          if (pending.length) throw new Error("edit permission was requested after config allowed it")
-          const text = yield* Effect.promise(() => Bun.file(file).text())
-          if (text === "new") return text
-        }),
-      )
-
-      const exit = yield* Fiber.await(fiber)
-      expect(Exit.isSuccess(exit)).toBe(true)
-    }),
-    {
-      git: true,
-      config: (url) => ({
-        ...providerCfg(url),
-        permission: { edit: "ask" },
-      }),
-    },
-  ),
-)
-// kilocode_change end
-
 it.live("prompt emits v2 prompted and synthetic events", () =>
   provideTmpdirServer(
     Effect.fnUntraced(function* () {

@@ -179,16 +179,14 @@ export const layer = Layer.effect(
 
     const create = Effect.fn("Pty.create")(function* (input: CreateInput) {
       const s = yield* InstanceState.get(state)
-      // kilocode_change start
       const bridge = yield* EffectBridge.make()
       const cfg = yield* config.get()
       const id = PtyID.ascending()
-      // kilocode_change end
       const resolved = KiloPtySelfCommand.resolve(input) // kilocode_change
       const command = resolved.command || Shell.preferred(cfg.shell) // kilocode_change
       const args = resolved.args || [] // kilocode_change
       if (Shell.login(command)) {
-        args.push("-l") // kilocode_change
+        args.push("-l")
       }
 
       const cwd = resolved.cwd || s.dir // kilocode_change

@@ -25,7 +25,7 @@ import { TodoWriteTool } from "../../tool/todo"
 import { Locale } from "@/util/locale"
 import { importCloudSession, validateCloudFork } from "@/kilocode/cloud-session" // kilocode_change
 import { KiloRunAuto } from "@/kilocode/cli/run-auto" // kilocode_change
-import { DaemonClient } from "@/kilocode/daemon/client" // kilocode_change
+import { KiloRunDaemon } from "@/kilocode/cli/cmd/run" // kilocode_change
 import { Effect } from "effect"
 import { effectCmd } from "../effect-cmd"
 import { ServerAuth } from "@/server/auth"
@@ -746,14 +746,7 @@ export const RunCommand = effectCmd({
         return await execute(sdk)
       }
 
-      // kilocode_change start - default local runs attach to the daemon unless explicitly disabled
-      const daemon = await DaemonClient.maybe(DaemonClient.options())
-      if (daemon) {
-        const dir = directory ?? Filesystem.resolve(process.cwd())
-        const sdk = createKiloClient({ baseUrl: daemon.url, directory: dir, headers: daemon.headers })
-        return await execute(sdk)
-      }
-      // kilocode_change end
+      if (await KiloRunDaemon.attach({ directory, execute })) return // kilocode_change
 
       const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
         const request = new Request(input, init)
