@@ -40,7 +40,7 @@ import { ProfileCommand } from "./kilocode/cli/cmd/profile" // kilocode_change
 import { DevSetupCommand, DevAliasCommand } from "./kilocode/cli/dev-setup" // kilocode_change
 // kilocode_change start - Import telemetry, instance disposal, and legacy migration
 import { Telemetry } from "@kilocode/kilo-telemetry"
-import { InstanceStore } from "./project/instance-store" // kilocode_change
+import { InstanceRuntime } from "./project/instance-runtime" // kilocode_change
 import { migrateLegacyKiloAuth, ENV_FEATURE, ENV_VERSION } from "@kilocode/kilo-gateway"
 
 // kilocode_change - set feature for tracking. 'serve' is spawned by other services
@@ -57,6 +57,7 @@ if (!process.env[ENV_VERSION]) {
   process.env[ENV_VERSION] = InstallationVersion
 }
 import { Config } from "./config/config"
+import { AppRuntime } from "./effect/app-runtime"
 import { Auth } from "./auth"
 // kilocode_change end
 import { DbCommand } from "./cli/cmd/db"
@@ -148,7 +149,7 @@ let cli = yargs(args) // kilocode_change
     })
 
     // kilocode_change start - Initialize telemetry
-    const globalCfg = await Config.getGlobal()
+    const globalCfg = await AppRuntime.runPromise(Config.Service.use((cfg) => cfg.getGlobal()))
     await Telemetry.init({
       dataPath: Global.Path.data,
       version: InstallationVersion,
@@ -157,11 +158,11 @@ let cli = yargs(args) // kilocode_change
 
     // Migrate legacy Kilo CLI auth if needed
     await migrateLegacyKiloAuth(
-      async () => (await Auth.get("kilo")) !== undefined,
-      async (auth) => Auth.set("kilo", auth),
+      async () => (await AppRuntime.runPromise(Auth.Service.use((svc) => svc.get("kilo")))) !== undefined,
+      async (auth) => AppRuntime.runPromise(Auth.Service.use((svc) => svc.set("kilo", auth))),
     )
 
-    const kiloAuth = await Auth.get("kilo")
+    const kiloAuth = await AppRuntime.runPromise(Auth.Service.use((svc) => svc.get("kilo")))
     if (kiloAuth) {
       const token = kiloAuth.type === "oauth" ? kiloAuth.access : kiloAuth.key
       const accountId = kiloAuth.type === "oauth" ? kiloAuth.accountId : undefined
@@ -323,7 +324,7 @@ try {
   await Telemetry.shutdown()
   // kilocode_change end
 
-  await InstanceStore.disposeAllInstances() // kilocode_change - safety net disposal (no-op if already disposed)
+  await InstanceRuntime.disposeAllInstances() // kilocode_change - safety net disposal (no-op if already disposed)
 
   // Some subprocesses don't react properly to SIGTERM and similar signals.
   // Most notably, some docker-container-based MCP servers don't handle such signals unless

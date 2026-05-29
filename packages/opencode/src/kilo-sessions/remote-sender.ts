@@ -1,11 +1,6 @@
 import { RemoteProtocol } from "@/kilo-sessions/remote-protocol"
 import type { RemoteWS } from "@/kilo-sessions/remote-ws"
 import { GlobalBus } from "@/bus/global"
-// kilocode_change - AppRuntime is imported lazily inside dispatch() below to break a
-// module init cycle: Worktree → project/bootstrap → kilo-sessions → remote-sender →
-// app-runtime → Worktree. Static import here caused Worktree.defaultLayer to be
-// undefined when app-runtime evaluated during tests that import Worktree.
-import { Instance } from "@/project/instance"
 import { Session } from "@/session/session"
 import { SessionPrompt } from "@/session/prompt"
 import { Question } from "@/question"
@@ -18,6 +13,14 @@ import { ModelID, ProviderID } from "@/provider/schema"
 import * as Log from "@opencode-ai/core/util/log"
 import z from "zod"
 import { zodObject } from "@/util/effect-zod"
+import { Effect } from "effect"
+
+type Provide = typeof import("@/project/with-instance").provide
+
+async function provide<R>(input: { directory: string; fn: () => R }): Promise<R> {
+  const { WithInstance } = await import("@/project/with-instance")
+  return WithInstance.provide(input)
+}
 
 const QuestionData = z.object({
   requestID: z.string(),
@@ -69,7 +72,12 @@ export namespace RemoteSender {
       warn: (...args: any[]) => void
     }
     subscribe?: (callback: (event: any) => void) => () => void
-    provide?: typeof Instance.provide
+    provide?: Provide
+    permission?: {
+      readonly list: () => Promise<ReadonlyArray<Permission.Request>>
+      readonly reply: (input: Permission.ReplyInput) => Promise<boolean>
+    }
+    prompt?: (input: SessionPrompt.PromptInput) => Promise<unknown>
   }
 
   export type Sender = {
@@ -81,6 +89,22 @@ export namespace RemoteSender {
     const sessions = new Set<string>()
     const children = new Map<string, string>() // childId → parentId
     let unsub: (() => void) | undefined
+    const permission = options.permission ?? {
+      list: async () => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Permission.Service.use((svc) => svc.list()))
+      },
+      reply: async (input: Permission.ReplyInput) => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Permission.Service.use((svc) => svc.reply(input)))
+      },
+    }
+    const prompt =
+      options.prompt ??
+      (async (input: SessionPrompt.PromptInput) => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(SessionPrompt.Service.use((svc) => svc.prompt(input)))
+      })
 
     const sub =
       options.subscribe ??
@@ -93,7 +117,10 @@ export namespace RemoteSender {
       })
 
     async function directoryFor(sid: string): Promise<string> {
-      const info = await Session.get(SessionID.make(sid)).catch(() => undefined)
+      const { AppRuntime } = await import("@/effect/app-runtime")
+      const info = await AppRuntime.runPromise(
+        Session.Service.use((svc) => svc.get(SessionID.make(sid)).pipe(Effect.orElseSucceed(() => undefined))),
+      )
       return info?.directory ?? options.directory
     }
 
@@ -110,10 +137,10 @@ export namespace RemoteSender {
     }
 
     async function backfillChildren(parentId: string) {
-      const provide = options.provide ?? Instance.provide
+      const run = options.provide ?? provide
       try {
         const dir = await directoryFor(parentId)
-        await provide({
+        await run({
           directory: dir,
           fn: async () => {
             await discoverChildren(parentId)
@@ -131,7 +158,7 @@ export namespace RemoteSender {
       const [suggestions, questions, permissions] = await Promise.all([
         Suggestion.list(),
         Question.list(),
-        Permission.list(),
+        permission.list(),
       ])
       for (const suggestion of suggestions) {
         if (suggestion.sessionID !== sessionId) continue
@@ -163,10 +190,10 @@ export namespace RemoteSender {
     }
 
     async function backfillPendingState(sessionId: string) {
-      const provide = options.provide ?? Instance.provide
+      const run = options.provide ?? provide
       try {
         const dir = await directoryFor(sessionId)
-        await provide({
+        await run({
           directory: dir,
           fn: () => replay(sessionId),
         })
@@ -176,7 +203,10 @@ export namespace RemoteSender {
     }
 
     async function discoverChildren(parentId: string) {
-      const childSessions = await Session.children(SessionID.make(parentId))
+      const { AppRuntime } = await import("@/effect/app-runtime")
+      const childSessions = await AppRuntime.runPromise(
+        Session.Service.use((svc) => svc.children(SessionID.make(parentId))),
+      )
       for (const child of childSessions) {
         children.set(child.id, parentId)
         const root = rootOf(child.id) ?? parentId
@@ -228,11 +258,11 @@ export namespace RemoteSender {
     }
 
     function dispatchLongRunning(msg: RemoteProtocol.Command, dir: Promise<string>, work: () => Promise<void>) {
-      const provide = options.provide ?? Instance.provide
+      const run = options.provide ?? provide
       options.conn.send({ type: "response", id: msg.id, result: {} })
       void (async () => {
         try {
-          await provide({ directory: await dir, fn: work })
+          await run({ directory: await dir, fn: work })
         } catch (e) {
           options.log.error("long-running command failed after ACK", {
             id: msg.id,
@@ -244,10 +274,10 @@ export namespace RemoteSender {
     }
 
     function dispatchQuick(msg: RemoteProtocol.Command, dir: Promise<string>, work: () => Promise<void>) {
-      const provide = options.provide ?? Instance.provide
+      const run = options.provide ?? provide
       void (async () => {
         try {
-          await provide({ directory: await dir, fn: work })
+          await run({ directory: await dir, fn: work })
           options.conn.send({ type: "response", id: msg.id, result: {} })
         } catch (e) {
           options.conn.send({ type: "response", id: msg.id, error: String(e) })
@@ -278,7 +308,7 @@ export namespace RemoteSender {
           return
         }
         dispatchLongRunning(msg, directoryFor(input.data.sessionID), async () => {
-          await SessionPrompt.prompt(input.data as SessionPrompt.PromptInput)
+          await prompt(input.data as SessionPrompt.PromptInput)
         })
         return
       }
@@ -357,12 +387,7 @@ export namespace RemoteSender {
         }
         const dir = msg.sessionId ? directoryFor(msg.sessionId) : Promise.resolve(options.directory)
         dispatchQuick(msg, dir, async () => {
-          const { AppRuntime } = await import("@/effect/app-runtime")
-          await AppRuntime.runPromise(
-            Permission.Service.use((svc) =>
-              svc.reply({ ...parsed.data, requestID: PermissionID.make(parsed.data.requestID) }),
-            ),
-          )
+          await permission.reply({ ...parsed.data, requestID: PermissionID.make(parsed.data.requestID) })
         })
         return
       }
