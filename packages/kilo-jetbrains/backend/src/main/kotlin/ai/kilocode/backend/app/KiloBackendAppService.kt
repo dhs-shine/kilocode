@@ -4,6 +4,7 @@ import ai.kilocode.backend.cli.CliServer
 import ai.kilocode.backend.cli.KiloBackendCliManager
 import ai.kilocode.backend.migration.KiloBackendLegacyMigrationStoreService
 import ai.kilocode.backend.migration.LegacyMigrationDetection
+import ai.kilocode.backend.telemetry.KiloBackendTelemetry
 import ai.kilocode.log.KiloLog
 import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
 import ai.kilocode.jetbrains.api.client.DefaultApi
@@ -21,6 +22,7 @@ import ai.kilocode.rpc.dto.DeviceAuthDto
 import ai.kilocode.rpc.dto.HealthDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -119,7 +121,6 @@ class KiloBackendAppService private constructor(
     val chat = KiloBackendChatManager(cs, log)
     val models = KiloBackendModelStateManager(log)
     val workspaces = KiloBackendWorkspaceManager(cs, sessions, log)
-
     @Volatile var profile: KiloProfile200Response? = null
         private set
 
@@ -343,6 +344,8 @@ class KiloBackendAppService private constructor(
                     sessions.start(connection.api!!, connection.apiClient!!, connection.port, connection.events)
                     chat.start(connection.apiClient!!, connection.port, connection.events)
                     workspaces.start(connection.api!!, connection.apiClient!!, connection.port, connection.events)
+                    service<KiloBackendTelemetry>().setEnabled(connection.apiClient, connection.port, true)
+                    service<KiloBackendTelemetry>().capture(connection.apiClient, connection.port, "JetBrains Backend Connected", mapOf("portKnown" to "true"))
                     setAppReady(
                         AppData(
                             profile = prof,

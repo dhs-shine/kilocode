@@ -1,6 +1,9 @@
 package ai.kilocode.backend.cli
 
 import ai.kilocode.log.KiloLog
+import ai.kilocode.backend.telemetry.CliStartupTelemetry
+import ai.kilocode.backend.telemetry.KiloCliStartupTelemetry
+import ai.kilocode.backend.dev.KiloDevMode
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.PathManager
@@ -30,6 +33,7 @@ import java.util.concurrent.TimeUnit
  */
 class KiloBackendCliManager(
     private val log: KiloLog = KiloLog.create(KiloBackendCliManager::class.java),
+    private val startup: CliStartupTelemetry = KiloCliStartupTelemetry(),
 ) : CliServer {
 
     companion object {
@@ -130,6 +134,7 @@ class KiloBackendCliManager(
         put("KILO_ENABLE_QUESTION_TOOL", "true")
         put("KILO_PLATFORM", "jetbrains")
         put("KILO_APP_NAME", "kilo-code")
+        put("KILO_TELEMETRY_LEVEL", if (KiloDevMode.enabled()) "off" else "all")
         put("KILO_DISABLE_CLAUDE_CODE", "true")
         put("KILOCODE_FEATURE", "jetbrains-plugin")
         putIfAbsent("KILO_CONFIG_CONTENT", DEFAULT_CONFIG)
@@ -178,12 +183,26 @@ class KiloBackendCliManager(
 
             log.info("Starting CLI: ${cmd.joinToString(" ")}")
             log.info("CLI env: KILO_CLIENT=jetbrains KILO_PLATFORM=jetbrains KILO_APP_NAME=kilo-code")
-            val proc = builder.start()
+            val proc = try {
+                builder.start()
+            } catch (e: Exception) {
+                reportStartupFailure(
+                    env = env,
+                    cmd = cmd,
+                    stdout = "",
+                    stderr = "",
+                    code = null,
+                    details = e.message,
+                    error = e,
+                )
+                throw e
+            }
             log.info("CLI process started (pid=${proc.pid()})")
             process = proc
             install(proc)
 
             val stderr = StringBuilder()
+            val stdout = StringBuilder()
 
             Thread({
                 BufferedReader(InputStreamReader(proc.errorStream)).use { reader ->
@@ -197,6 +216,7 @@ class KiloBackendCliManager(
             BufferedReader(InputStreamReader(proc.inputStream)).use { reader ->
                 for (line in reader.lineSequence()) {
                     log.info("CLI stdout: $line")
+                    synchronized(stdout) { stdout.appendLine(line) }
                     val match = PORT_REGEX.find(line)
                     if (match != null) {
                         val p = match.groupValues[1].toInt()
@@ -210,13 +230,51 @@ class KiloBackendCliManager(
 
             val code = proc.waitFor()
             val details = synchronized(stderr) { stderr.toString().trim() }
+            val out = synchronized(stdout) { stdout.toString().trim() }
             process = null
             uninstall()
+            reportStartupFailure(
+                env = env,
+                cmd = cmd,
+                stdout = out,
+                stderr = details,
+                code = code,
+                details = details,
+                error = null,
+            )
             CliServer.State.Error(
                 message = "CLI process exited with code $code before announcing a port",
                 details = details.ifEmpty { null },
             )
         }
+
+    private suspend fun reportStartupFailure(
+        env: Map<String, String>,
+        cmd: List<String>,
+        stdout: String,
+        stderr: String,
+        code: Int?,
+        details: String?,
+        error: Exception?,
+    ) {
+        startup.report(buildMap {
+            if (code != null) put("exitCode", code.toString())
+            put("stdout", stdout)
+            put("stderr", stderr)
+            put("details", details.orEmpty())
+            put("command", cmd.joinToString(" "))
+            put("platform", platform())
+            put("arch", CpuArch.CURRENT.name)
+            env["KILO_APP_VERSION"]?.let { put("pluginVersion", it) }
+            env["KILO_APP_VERSION"]?.let { put("appVersion", it) }
+            env["KILO_EDITOR_NAME"]?.let { put("editorName", it) }
+            env["KILO_MACHINE_ID"]?.let { put("machineId", it) }
+            error?.let {
+                put("errorClass", it::class.java.name)
+                put("message", it.message.orEmpty())
+            }
+        })
+    }
 
     override fun dispose() {
         val proc = process ?: return
@@ -289,7 +347,7 @@ class KiloBackendCliManager(
 
         runCatching {
             val version = PluginManagerCore
-                .getPlugin(PluginId.getId("ai.kilocode"))?.version
+                .getPlugin(PluginId.getId("ai.kilocode.jetbrains"))?.version
             if (version != null) put("KILO_APP_VERSION", version)
         }.onFailure { log.info("Could not read plugin version: ${it.message}") }
 
