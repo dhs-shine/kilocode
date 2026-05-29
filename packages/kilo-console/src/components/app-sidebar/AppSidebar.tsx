@@ -3,10 +3,11 @@ import { createEffect, createMemo, createResource, createSignal, For, onCleanup 
 import {
   discover,
   forgetCached,
-  healthy,
   loadRecentProjects,
   loadProjectLiveStatus,
+  loadProjectOpenSessions,
   loadCached,
+  resolveServer,
   saveCached,
   subscribeProjectEvents,
   type ProjectConsoleEvent,
@@ -25,6 +26,7 @@ import {
   markAttention,
   clearAttention,
   markUnread,
+  clearUnread,
   clearBusy,
   markBusy,
   type GlobalEvent,
@@ -120,6 +122,7 @@ export function AppSidebar(props: Props) {
     return { url: target, dir: "" }
   })
   const [items, { refetch }] = createResource(query, loadRecentProjects)
+  const checks = new Map<string, number>()
 
   // project currently rendered by ProjectConsoleRoute — it owns unread tracking for its terminals
   const activeProject = createMemo(() => {
@@ -148,6 +151,32 @@ export function AppSidebar(props: Props) {
     }, 150)
   }
 
+  function bump(type: string, project: string, session: string) {
+    const key = `${type}\0${project}\0${session}`
+    const rev = (checks.get(key) ?? 0) + 1
+    checks.set(key, rev)
+    return { key, rev }
+  }
+
+  function gated(
+    type: string,
+    input: ProjectQuery,
+    project: string,
+    dir: string,
+    session: string,
+    run: () => void,
+    clear: () => void,
+  ) {
+    const check = bump(type, project, session)
+    void loadProjectOpenSessions(input, dir)
+      .then((open) => {
+        if (checks.get(check.key) !== check.rev) return
+        if (open.has(session)) run()
+        else clear()
+      })
+      .catch((err) => console.warn("Project open sessions:", err))
+  }
+
   // ── server URL tracking ──────────────────────────────────────────────────────
 
   createEffect(() => {
@@ -157,18 +186,11 @@ export function AppSidebar(props: Props) {
 
   createEffect(() => {
     if (!discoverable()) return
-    const cached = loadCached()
-    void Promise.resolve(cached ? healthy(cached) : false)
-      .then((ok) => {
-        if (ok) return cached
-        forgetCached()
-        return discover()
-      })
-      .then((value) => {
-        if (!value) return
-        saveCached(value)
-        setUrl(value)
-      })
+    void resolveServer().then((value) => {
+      if (!value) return
+      saveCached(value)
+      setUrl(value)
+    })
   })
 
   createEffect(() => {
@@ -216,7 +238,7 @@ export function AppSidebar(props: Props) {
           if (s.attention) markAttention(item.id, "__hydrated__")
           else clearAttention(item.id, "__hydrated__")
         })
-        .catch(() => {})
+        .catch((err) => console.warn("Project live status:", err))
     }
   })
 
@@ -240,24 +262,34 @@ export function AppSidebar(props: Props) {
       const proj = projectForDir(list, ge.directory)
       if (!proj) return
 
-      const sid = eventSessionId(ge) ?? "__unknown__"
+      const sid = eventSessionId(ge)
 
       // session.turn.close: error | completed
       if (t === "session.turn.close") {
         const payload = (ge.payload as Record<string, unknown>).properties as
           | { reason?: string }
           | undefined
+        if (!sid) return
         if (payload?.reason === "error") {
-          markError(proj.id, sid)
-        } else {
-          clearError(proj.id, sid)
-          if (payload?.reason === "completed") {
-            // When the user is on this project, ProjectConsoleRoute owns unread tracking
-            // with per-terminal awareness (it knows which terminal is active).
-            // AppSidebar only handles cross-project: projects the user is NOT currently viewing.
-            if (proj.id !== activeProject()) {
-              markUnread(proj.id, sid)
-            }
+          gated("error", current, proj.id, ge.directory, sid, () => markError(proj.id, sid), () => clearError(proj.id, sid))
+          return
+        }
+        bump("error", proj.id, sid)
+        clearError(proj.id, sid)
+        if (payload?.reason === "completed") {
+          // When the user is on this project, ProjectConsoleRoute owns unread tracking
+          // with per-terminal awareness (it knows which terminal is active).
+          // AppSidebar only handles cross-project: projects the user is NOT currently viewing.
+          if (proj.id !== activeProject()) {
+            gated(
+              "unread",
+              current,
+              proj.id,
+              ge.directory,
+              sid,
+              () => markUnread(proj.id, sid),
+              () => clearUnread(proj.id, sid),
+            )
           }
         }
         return
@@ -265,7 +297,16 @@ export function AppSidebar(props: Props) {
 
       // permission / question → attention
       if (t === "permission.asked" || t === "question.asked") {
-        markAttention(proj.id, sid)
+        if (!sid) return
+        gated(
+          "attention",
+          current,
+          proj.id,
+          ge.directory,
+          sid,
+          () => markAttention(proj.id, sid),
+          () => clearAttention(proj.id, sid),
+        )
         return
       }
       if (
@@ -274,6 +315,8 @@ export function AppSidebar(props: Props) {
         t === "question.replied" ||
         t === "question.rejected"
       ) {
+        if (!sid) return
+        bump("attention", proj.id, sid)
         clearAttention(proj.id, sid)
         return
       }
@@ -284,9 +327,12 @@ export function AppSidebar(props: Props) {
           | { status?: { type?: string } }
           | undefined
         const stype = sstatus?.status?.type
+        if (!sid) return
         if (stype === "busy" || stype === "retry") {
-          markBusy(proj.id, sid)
+          gated("busy", current, proj.id, ge.directory, sid, () => markBusy(proj.id, sid), () => clearBusy(proj.id, sid))
         } else if (stype === "idle") {
+          bump("busy", proj.id, sid)
+          bump("error", proj.id, sid)
           clearBusy(proj.id, sid)
           clearError(proj.id, sid)
         }
@@ -299,6 +345,7 @@ export function AppSidebar(props: Props) {
 
   onCleanup(() => {
     if (timers.refetch) window.clearTimeout(timers.refetch)
+    checks.clear()
   })
 
   return (

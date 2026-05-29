@@ -108,10 +108,16 @@ type Result<T> = {
   error?: unknown
 }
 
+type Hit = {
+  url: string
+  count: number
+  time: number
+}
+
 const ports = Array.from({ length: 20 }, (_, index) => 4097 + index)
 const day = 24 * 60 * 60 * 1000
-const hidden = new Set(["global"])
 const key = "kilo.config.server"
+const discovery: { run?: Promise<string | undefined> } = {}
 
 const fetcher = window.fetch.bind(window) as typeof fetch
 
@@ -211,6 +217,11 @@ function inside(root: string, input: string) {
   return dir.startsWith(`${base}/`)
 }
 
+function visible(item: ProjectItem) {
+  if (item.id !== "global") return true
+  return norm(item.worktree) !== "/"
+}
+
 function score(item: ProjectItem, dir: string) {
   return [item.worktree, ...item.sandboxes].reduce((best, root) => {
     if (!inside(root, dir)) return best
@@ -241,6 +252,44 @@ async function probe(url: string) {
     .finally(() => window.clearTimeout(timer))
 }
 
+function projects(input: unknown) {
+  if (!Array.isArray(input)) return []
+  return input.filter((item): item is ProjectItem => {
+    if (!item || typeof item !== "object") return false
+    const row = item as Partial<ProjectItem>
+    return typeof row.id === "string" && typeof row.worktree === "string" && typeof row.time?.updated === "number"
+  })
+}
+
+function newest(items: ProjectItem[]) {
+  return items.reduce((best, item) => Math.max(best, item.time.updated), 0)
+}
+
+async function inspect(url: string): Promise<Hit | undefined> {
+  const hit = await probe(url)
+  if (!hit) return undefined
+
+  const ctl = new AbortController()
+  const timer = window.setTimeout(() => ctl.abort(), 400)
+  const info = server(url)
+  return await fetcher(`${info.url}/project`, { headers: { Authorization: `Basic ${info.token}` }, signal: ctl.signal })
+    .then(async (res) => {
+      if (!res.ok) return { url, count: 0, time: 0 }
+      const rows = projects(await res.json()).filter(visible)
+      return { url, count: rows.length, time: newest(rows) }
+    })
+    .catch(() => ({ url, count: 0, time: 0 }))
+    .finally(() => window.clearTimeout(timer))
+}
+
+function port(input: string) {
+  return Number(new URL(input).port) || 0
+}
+
+function local(input: string) {
+  return new URL(input).hostname === "127.0.0.1" ? 1 : 0
+}
+
 export function loadCached() {
   return window.localStorage.getItem(key) ?? ""
 }
@@ -257,17 +306,32 @@ export async function healthy(url: string) {
   return (await probe(url)) !== undefined
 }
 
-export async function discover() {
+async function scan() {
   const urls = ports.flatMap((port) => [`http://127.0.0.1:${port}`, `http://localhost:${port}`])
-  const hit = await Promise.any(
-    urls.map((url) =>
-      probe(url).then((value) => {
-        if (value) return value
-        throw new Error(`${url} unavailable`)
-      }),
-    ),
-  ).catch(() => undefined)
-  return hit
+  const hits = (await Promise.all(urls.map(inspect))).filter((item): item is Hit => item !== undefined)
+  return hits.toSorted(
+    (a, b) => b.count - a.count || b.time - a.time || port(b.url) - port(a.url) || local(b.url) - local(a.url),
+  )[0]?.url
+}
+
+export async function discover() {
+  if (discovery.run) return await discovery.run
+  const run = scan().finally(() => {
+    if (discovery.run === run) discovery.run = undefined
+  })
+  discovery.run = run
+  return await run
+}
+
+export async function resolveServer() {
+  const hit = await discover()
+  if (hit) return hit
+
+  const cached = loadCached()
+  if (!cached) return undefined
+  if (await healthy(cached)) return cached
+  forgetCached()
+  return undefined
 }
 
 export async function load(input: Query): Promise<Snapshot> {
@@ -316,7 +380,7 @@ export async function loadProjects(input: ProjectQuery): Promise<ProjectItem[]> 
 
 export async function loadVisibleProjects(input: ProjectQuery): Promise<ProjectItem[]> {
   const items = await loadProjects(input)
-  return items.filter((item) => !hidden.has(item.id))
+  return items.filter(visible)
 }
 
 export async function loadRecentProjects(input: ProjectQuery): Promise<RecentProjectItem[]> {
@@ -414,8 +478,16 @@ export async function loadProjectTerminals(input: ProjectQuery, dir: string): Pr
   })
 }
 
+function opened(items: ProjectPtyInfo[]) {
+  return new Set(items.flatMap((item) => (item.sessionID ? [item.sessionID] : [])))
+}
+
 function pending(items: Array<PermissionRequest | QuestionRequest>) {
   return new Set(items.map((item) => item.sessionID))
+}
+
+function requested(items: Array<PermissionRequest | QuestionRequest>, open: Set<string>) {
+  return items.some((item) => open.has(item.sessionID))
 }
 
 export type ProjectLiveStatus = {
@@ -425,14 +497,22 @@ export type ProjectLiveStatus = {
 
 export async function loadProjectLiveStatus(input: ProjectQuery, dir: string): Promise<ProjectLiveStatus> {
   const sdk = client({ url: input.url, dir })
-  const [status, permissions, questions] = await Promise.all([
+  const [status, terminals, permissions, questions] = await Promise.all([
     maybe("Session status", sdk.session.status({ directory: dir })),
+    maybe("Terminals", sdk.pty.list({ directory: dir })),
     maybe("Pending permissions", sdk.permission.list({ directory: dir })),
     maybe("Pending questions", sdk.question.list({ directory: dir })),
   ])
-  const busy = Object.values(status ?? {}).some((s) => s.type !== "idle")
-  const attention = (permissions ?? []).length > 0 || (questions ?? []).length > 0
+  const open = opened(terminals ?? [])
+  const busy = Object.entries(status ?? {}).some(([id, s]) => open.has(id) && s.type !== "idle")
+  const attention = requested(permissions ?? [], open) || requested(questions ?? [], open)
   return { busy, attention }
+}
+
+export async function loadProjectOpenSessions(input: ProjectQuery, dir: string) {
+  const sdk = client({ url: input.url, dir })
+  const terminals = await maybe("Terminals", sdk.pty.list({ directory: dir }))
+  return opened(terminals ?? [])
 }
 
 function attention(id: string, permissions: Set<string>, questions: Set<string>) {
@@ -504,13 +584,13 @@ export function ptyWsUrl(input: Query, pty: string, cursor = 0) {
 
 export async function saveConfig(input: Query, patch: Partial<ConfigPatch>) {
   const sdk = client(input)
-  const result = await sdk.config.overlayUpdate({ scope: input.scope, set: patch })
+  const result = await sdk.config.overlayUpdate({ directory: value(input.dir), scope: input.scope, set: patch })
   return demand("Update config", result)
 }
 
 export async function unsetConfig(input: Query, unset: ConfigUnset) {
   const sdk = client(input)
-  const result = await sdk.config.overlayUpdate({ scope: input.scope, unset })
+  const result = await sdk.config.overlayUpdate({ directory: value(input.dir), scope: input.scope, unset })
   return demand("Update config", result)
 }
 

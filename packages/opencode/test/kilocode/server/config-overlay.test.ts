@@ -2,8 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test"
 import path from "path"
 import * as Log from "@opencode-ai/core/util/log"
 import { Global } from "@opencode-ai/core/global"
+import { Flag } from "@opencode-ai/core/flag/flag"
 import { Server } from "../../../src/server/server"
 import { Config } from "../../../src/config/config"
+import { Permission } from "../../../src/permission"
 import { AppRuntime } from "../../../src/effect/app-runtime"
 import { resetDatabase } from "../../fixture/db"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
@@ -11,15 +13,21 @@ import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 void Log.init({ print: false })
 
 const original = Global.Path.config
+const experimental = Flag.KILO_EXPERIMENTAL_HTTPAPI
 
 type Overlay = {
   fields: Record<string, { source: string; inherited: boolean; overridden: boolean; value?: unknown }>
   collections: Record<string, Array<{ key: string; source: string; inherited: boolean; local?: unknown }>>
   targets: { project?: string; global?: string; active?: string }
 }
+type Agent = {
+  name: string
+  permission: Permission.Ruleset
+}
 
 afterEach(async () => {
   ;(Global.Path as { config: string }).config = original
+  Flag.KILO_EXPERIMENTAL_HTTPAPI = experimental
   await AppRuntime.runPromise(Config.Service.use((svc) => svc.invalidate()))
   await disposeAllInstances()
   await resetDatabase()
@@ -30,6 +38,21 @@ function req(dir: string, input: string, init?: RequestInit) {
     ...init,
     headers: {
       "x-kilo-directory": dir,
+      ...init?.headers,
+    },
+  })
+}
+
+function app(value: boolean) {
+  Flag.KILO_EXPERIMENTAL_HTTPAPI = value
+  return value ? Server.Default().app : Server.Legacy().app
+}
+
+function request(target: ReturnType<typeof app>, dir: string | undefined, input: string, init?: RequestInit) {
+  return target.request(input, {
+    ...init,
+    headers: {
+      ...(dir ? { "x-kilo-directory": dir } : {}),
       ...init?.headers,
     },
   })
@@ -143,4 +166,102 @@ describe("config overlay routes", () => {
     }
     expect(saved.mcp).toEqual({ shared: { enabled: false } })
   })
+
+  test.serial("refreshes effective config after project permission update", async () => {
+    await using global = await tmpdir()
+    await using project = await tmpdir()
+    ;(Global.Path as { config: string }).config = global.path
+    await config(global.path, { permission: { edit: "allow" } })
+    await invalidate()
+
+    const before = await json<Agent[]>(await req(project.path, "/agent"))
+    expect(Permission.evaluate("edit", "*", before.find((item) => item.name === "code")?.permission ?? []).action).toBe(
+      "allow",
+    )
+
+    await json(
+      await req(project.path, "/config/overlay", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ scope: "project", set: { permission: { edit: { "*": "ask" } } } }),
+      }),
+    )
+    const body = await json<Overlay & { effective: { permission: Record<string, string | Record<string, string>> } }>(
+      await req(project.path, "/config/overlay?scope=project"),
+    )
+    const edit = body.effective.permission.edit
+    const after = await json<Agent[]>(await req(project.path, "/agent"))
+
+    expect(typeof edit === "string" ? edit : edit["*"]).toBe("ask")
+    expect(Permission.evaluate("edit", "*", after.find((item) => item.name === "code")?.permission ?? []).action).toBe(
+      "ask",
+    )
+    expect(body.collections.permission.find((item) => item.key === "edit")).toMatchObject({
+      source: "project",
+      overridden: true,
+    })
+  })
+
+  test.serial("refreshes agent permissions after global permission update", async () => {
+    await using global = await tmpdir()
+    await using project = await tmpdir()
+    ;(Global.Path as { config: string }).config = global.path
+    await config(global.path, { permission: { edit: "allow" } })
+    await invalidate()
+
+    const before = await json<Agent[]>(await req(project.path, "/agent"))
+    expect(Permission.evaluate("edit", "*", before.find((item) => item.name === "code")?.permission ?? []).action).toBe(
+      "allow",
+    )
+
+    await json(
+      await req(project.path, "/config/overlay", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ scope: "global", set: { permission: { edit: { "*": "ask" } } } }),
+      }),
+    )
+    const body = await json<Overlay & { effective: { permission: Record<string, string | Record<string, string>> } }>(
+      await req(project.path, "/config/overlay?scope=global"),
+    )
+    const edit = body.effective.permission.edit
+    const after = await json<Agent[]>(await req(project.path, "/agent"))
+
+    expect(typeof edit === "string" ? edit : edit["*"]).toBe("ask")
+    expect(Permission.evaluate("edit", "*", after.find((item) => item.name === "code")?.permission ?? []).action).toBe(
+      "ask",
+    )
+  })
+
+  for (const value of [false, true]) {
+    test.serial(
+      `${value ? "httpapi" : "legacy"} global overlay update refreshes existing project instances without a project directory`,
+      async () => {
+        await using global = await tmpdir()
+        await using project = await tmpdir()
+        ;(Global.Path as { config: string }).config = global.path
+        await config(global.path, { permission: { edit: "ask" } })
+        await invalidate()
+        const target = app(value)
+
+        const before = await json<Agent[]>(await request(target, project.path, "/agent"))
+        expect(
+          Permission.evaluate("edit", "*", before.find((item) => item.name === "code")?.permission ?? []).action,
+        ).toBe("ask")
+
+        await json(
+          await request(target, undefined, "/config/overlay", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ scope: "global", set: { permission: { edit: { "*": "allow" } } } }),
+          }),
+        )
+        const after = await json<Agent[]>(await request(target, project.path, "/agent"))
+
+        expect(
+          Permission.evaluate("edit", "*", after.find((item) => item.name === "code")?.permission ?? []).action,
+        ).toBe("allow")
+      },
+    )
+  }
 })

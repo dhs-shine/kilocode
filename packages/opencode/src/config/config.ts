@@ -49,6 +49,7 @@ import { Npm } from "@opencode-ai/core/npm"
 import { ZodOverride } from "@/util/effect-zod"
 import { KilocodeConfig } from "../kilocode/config/config"
 import { KilocodeDefaultPlugins } from "@/kilocode/config/default-plugins"
+import { KilocodeGlobalConfigStamp } from "@/kilocode/config/global-stamp"
 import {
   IndexingConfig as KiloIndexingConfig,
   IndexingSchema as KiloIndexingSchema,
@@ -526,8 +527,11 @@ export const layer = Layer.effect(
       return yield* loadConfig(text, { path: filepath })
     })
 
+    let globalStamp = "" // kilocode_change
+
     const loadGlobal = Effect.fnUntraced(function* () {
       yield* Effect.promise(() => KilocodeConfig.migrateBashPermission()) // kilocode_change
+      globalStamp = yield* KilocodeGlobalConfigStamp.read(fs, Global.Path.config) // kilocode_change
       let result: Info = {}
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "config.json")))
       // kilocode_change start
@@ -566,7 +570,18 @@ export const layer = Layer.effect(
       Duration.infinity,
     )
 
+    const refreshGlobal = Effect.fnUntraced(function* () {
+      // kilocode_change start - detect global config edits made by other Kilo processes
+      const stamp = yield* KilocodeGlobalConfigStamp.read(fs, Global.Path.config)
+      if (!globalStamp || stamp === globalStamp) return false
+      globalStamp = stamp
+      yield* invalidateGlobal
+      return true
+      // kilocode_change end
+    })
+
     const getGlobal = Effect.fn("Config.getGlobal")(function* () {
+      yield* refreshGlobal() // kilocode_change
       return yield* cachedGlobal
     })
 
@@ -985,6 +1000,9 @@ export const layer = Layer.effect(
     )
 
     const get = Effect.fn("Config.get")(function* () {
+      if (yield* refreshGlobal()) {
+        yield* InstanceState.invalidate(state).pipe(Effect.catchCause(() => Effect.void))
+      }
       return yield* InstanceState.use(state, (s) => s.config)
     })
 
@@ -1015,6 +1033,16 @@ export const layer = Layer.effect(
         patch: (input, patch) => patchJsonc(input, patch),
         writable,
       })
+      yield* InstanceState.invalidate(state)
+      yield* Effect.sync(() =>
+        GlobalBus.emit("event", {
+          directory: ctx.directory,
+          payload: {
+            type: Event.ConfigUpdated.type,
+            properties: {},
+          },
+        }),
+      )
       // kilocode_change end
     })
 
@@ -1056,7 +1084,7 @@ export const layer = Layer.effect(
       // kilocode_change start - skip dispose when caller opts out
       if (!dispose) {
         yield* invalidateGlobal
-        yield* InstanceState.invalidate(state)
+        yield* InstanceState.invalidate(state).pipe(Effect.catchCause(() => Effect.void))
         yield* Effect.sync(() =>
           GlobalBus.emit("event", {
             directory: "global",
@@ -1065,12 +1093,26 @@ export const layer = Layer.effect(
               properties: {},
             },
           }),
-        )
+        ).pipe(Effect.catchCause(() => Effect.void))
         return { info: next, changed }
       }
       // kilocode_change end
 
-      if (changed) yield* invalidate()
+      if (changed) {
+        yield* invalidate()
+        // kilocode_change start - hot-reload global config changes in the active instance
+        yield* InstanceState.invalidate(state).pipe(Effect.catchCause(() => Effect.void))
+        yield* Effect.sync(() =>
+          GlobalBus.emit("event", {
+            directory: "global",
+            payload: {
+              type: Event.ConfigUpdated.type,
+              properties: {},
+            },
+          }),
+        ).pipe(Effect.catchCause(() => Effect.void))
+        // kilocode_change end
+      }
       return { info: next, changed }
     })
 

@@ -5,9 +5,9 @@ import { SearchField } from "../../components/SearchField"
 import {
   discover,
   forgetCached,
-  healthy,
   loadCached,
   loadVisibleProjects,
+  resolveServer,
   saveCached,
   type ProjectItem,
   type ProjectQuery,
@@ -94,18 +94,11 @@ export function ProjectsRoute() {
 
   createEffect(() => {
     if (!discoverable()) return
-    const cached = loadCached()
-    void Promise.resolve(cached ? healthy(cached) : false)
-      .then((ok) => {
-        if (ok) return cached
-        forgetCached()
-        return discover()
-      })
-      .then((value) => {
-        if (!value) return
-        saveCached(value)
-        setUrl(value)
-      })
+    void resolveServer().then((value) => {
+      if (!value) return
+      saveCached(value)
+      setUrl(value)
+    })
   })
 
   createEffect(() => {

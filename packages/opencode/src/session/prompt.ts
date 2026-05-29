@@ -378,6 +378,17 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       return input.messages
     })
 
+    // kilocode_change start - resolve permissions at ask time so active tools see config edits
+    const rules = Effect.fnUntraced(function* (input: { agent: Agent.Info; session: Session.Info }) {
+      const agent = (yield* agents.get(input.agent.name)) ?? input.agent
+      const session = yield* sessions.get(input.session.id).pipe(Effect.catchCause(() => Effect.succeed(input.session)))
+      return {
+        ruleset: Permission.merge(agent.permission, KiloSessionPrompt.guardPermissions({ agent, session })),
+        hardRuleset: KiloSessionPrompt.hardPermissions({ agent }),
+      }
+    })
+    // kilocode_change end
+
     const resolveTools = Effect.fn("SessionPrompt.resolveTools")(function* (input: {
       agent: Agent.Info
       model: Provider.Model
@@ -415,20 +426,15 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             }
           }),
         ask: (req) =>
-          permission
-            .ask({
+          Effect.gen(function* () {
+            const current = yield* rules({ agent: input.agent, session: input.session })
+            yield* permission.ask({
               ...req,
               sessionID: input.session.id,
               tool: { messageID: input.processor.message.id, callID: options.toolCallId },
-              // kilocode_change start - reapply Ask/Plan mode guards after session permissions
-              ruleset: Permission.merge(
-                input.agent.permission,
-                KiloSessionPrompt.guardPermissions({ agent: input.agent, session: input.session }),
-              ),
-              hardRuleset: KiloSessionPrompt.hardPermissions({ agent: input.agent }),
-              // kilocode_change end
+              ...current, // kilocode_change - live permission rules
             })
-            .pipe(Effect.orDie),
+          }).pipe(Effect.orDie),
       })
 
       for (const item of yield* registry.tools({
@@ -657,19 +663,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               } satisfies MessageV2.ToolPart)
             }),
           ask: (req: any) =>
-            permission
-              .ask({
+            Effect.gen(function* () {
+              const current = yield* rules({ agent: taskAgent, session })
+              yield* permission.ask({
                 ...req,
-                // kilocode_change start - reapply Ask/Plan subagent guards after session permissions
                 sessionID,
-                ruleset: Permission.merge(
-                  taskAgent.permission,
-                  KiloSessionPrompt.guardPermissions({ agent: taskAgent, session }),
-                ),
-                hardRuleset: KiloSessionPrompt.hardPermissions({ agent: taskAgent }),
-                // kilocode_change end
+                ...current, // kilocode_change - live permission rules
               })
-              .pipe(Effect.orDie),
+            }).pipe(Effect.orDie),
         })
         .pipe(
           Effect.catchCause((cause) => {

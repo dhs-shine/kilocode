@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1 --port 3017",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 3018",
+    "test": "bun test src",
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {

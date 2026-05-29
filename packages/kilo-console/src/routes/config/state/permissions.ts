@@ -6,6 +6,16 @@ import { clean, type PermissionMap } from "../../../shared/utils"
 type Resolved = Snapshot["overlay"]["collections"][string][number]
 export type PermissionAction = "ask" | "allow" | "deny"
 export type PermissionTool = "external_directory" | "bash" | "read" | "edit"
+type PermissionDef = {
+  id: string
+  title: string
+  description: string
+}
+type RuleDef = PermissionDef & {
+  id: PermissionTool
+  noun: string
+  placeholder: string
+}
 
 export type PermissionRule = {
   tool: string
@@ -30,19 +40,20 @@ export type PermissionGroup = {
   rules: PermissionRule[]
 }
 
+export type PermissionDefault = PermissionDef & {
+  action: PermissionAction
+  source: string
+  inherited: boolean
+  overridden: boolean
+}
+
 export const actions: Array<{ value: PermissionAction; label: string }> = [
   { value: "ask", label: "Ask" },
   { value: "allow", label: "Allow" },
   { value: "deny", label: "Deny" },
 ]
 
-export const defs: Array<{
-  id: PermissionTool
-  title: string
-  description: string
-  noun: string
-  placeholder: string
-}> = [
+const ruleDefs: RuleDef[] = [
   {
     id: "external_directory",
     title: "External Directory",
@@ -72,6 +83,24 @@ export const defs: Array<{
     placeholder: "e.g. src/**/*.ts",
   },
 ]
+
+const defaults: PermissionDef[] = [
+  { id: "glob", title: "Glob", description: "Match files using glob patterns." },
+  { id: "grep", title: "Grep", description: "Search file contents using regular expressions." },
+  { id: "list", title: "List", description: "List files within a directory." },
+  { id: "task", title: "Task", description: "Launch sub-agents." },
+  { id: "skill", title: "Skill", description: "Load a skill by name." },
+  { id: "lsp", title: "LSP", description: "Run language server queries." },
+  { id: "todowrite", title: "Todo Write", description: "Update the todo list." },
+  { id: "question", title: "Question", description: "Ask the user a question." },
+  { id: "webfetch", title: "Web Fetch", description: "Fetch content from a URL." },
+  { id: "websearch", title: "Web Search", description: "Search the web." },
+  { id: "doom_loop", title: "Doom Loop", description: "Detect repeated tool calls with identical input." },
+  { id: "agent_manager", title: "Agent Manager", description: "Manage Agent Manager operations." },
+]
+
+export const defs = [...ruleDefs, ...defaults]
+const ruleIDs = new Set<string>(ruleDefs.map((item) => item.id))
 
 const known = new Set<string>(defs.map((item) => item.id))
 
@@ -139,7 +168,21 @@ function listed(tool: string, value: unknown, item?: Resolved) {
   return itemRow ? [itemRow] : []
 }
 
-function group(data: Snapshot, def: (typeof defs)[number]): PermissionGroup {
+function setting(data: Snapshot, def: PermissionDef): PermissionDefault {
+  const item = meta(data, def.id)
+  const value = raw(data, def.id)
+  const obj = record(value)
+  const base = fallback(data)
+  return {
+    ...def,
+    action: act(typeof value === "string" ? value : obj["*"], base),
+    source: item?.source ?? "default",
+    inherited: item?.inherited ?? false,
+    overridden: item?.overridden ?? false,
+  }
+}
+
+function group(data: Snapshot, def: RuleDef): PermissionGroup {
   const item = meta(data, def.id)
   const value = raw(data, def.id)
   const obj = record(value)
@@ -168,7 +211,12 @@ export function usePermissionSettings() {
   const groups = createMemo(() => {
     const data = snap()
     if (!data) return []
-    return defs.map((def) => group(data, def))
+    return ruleDefs.map((def) => group(data, def))
+  })
+  const settings = createMemo(() => {
+    const data = snap()
+    if (!data) return []
+    return defaults.map((def) => setting(data, def))
   })
   const other = createMemo(() => {
     const data = snap()
@@ -178,9 +226,9 @@ export function usePermissionSettings() {
       .flatMap(([tool, value]) => listed(tool, value, meta(data, tool)))
       .sort((a, b) => a.tool.localeCompare(b.tool) || a.pattern.localeCompare(b.pattern))
   })
-  const selected = createMemo(() => defs.find((def) => def.id === kind()) ?? defs[0])
+  const selected = createMemo(() => ruleDefs.find((def) => def.id === kind()) ?? ruleDefs[0])
 
-  function open(tool: PermissionTool = "external_directory") {
+  function open(tool: PermissionTool) {
     setKind(tool)
     setPattern("")
     setAction("ask")
@@ -189,11 +237,6 @@ export function usePermissionSettings() {
 
   function close() {
     setMode("closed")
-  }
-
-  function choose(value: string) {
-    const match = defs.find((def) => def.id === value)
-    if (match) setKind(match.id)
   }
 
   function add() {
@@ -208,12 +251,12 @@ export function usePermissionSettings() {
     close()
   }
 
-  function setDefault(tool: PermissionTool, action: PermissionAction) {
-    const permission = { [tool]: { "*": action } } as PermissionMap
+  function setDefault(tool: string, action: PermissionAction) {
+    const permission = ruleIDs.has(tool) ? ({ [tool]: { "*": action } } as PermissionMap) : ({ [tool]: action } as PermissionMap)
     ctx.save({ permission })
   }
 
-  function revert(rule: PermissionRule) {
+  function remove(rule: PermissionRule) {
     ctx.unset([rule.path])
   }
 
@@ -221,19 +264,19 @@ export function usePermissionSettings() {
     ctx,
     mode,
     kind,
-    choose,
     pattern,
     setPattern,
     action,
     setAction,
     rules,
     groups,
+    settings,
     other,
     selected,
     open,
     close,
     add,
     setDefault,
-    revert,
+    remove,
   }
 }

@@ -9,6 +9,7 @@ import { jsonRequest } from "@/server/routes/instance/trace"
 import { lazy } from "@/util/lazy"
 import { KilocodeConfigOverlay } from "@/kilocode/config/overlay"
 import { KilocodeConfigSources } from "@/kilocode/config/sources"
+import { disposeAllInstancesAndEmitGlobalDisposed } from "@/server/global-lifecycle"
 
 export const ConfigOverlayRoutes = lazy(() =>
   new Hono()
@@ -98,7 +99,15 @@ export const ConfigOverlayRoutes = lazy(() =>
             if (body.scope === "global") return yield* cfg.getGlobal()
             return yield* cfg.get()
           }
-          if (body.scope === "global") return yield* cfg.updateGlobal(patch)
+          if (body.scope === "global") {
+            const result = yield* cfg.updateGlobal(patch)
+            if (result.changed) {
+              yield* disposeAllInstancesAndEmitGlobalDisposed({ swallowErrors: true }).pipe(
+                Effect.catchCause(() => Effect.void),
+              )
+            }
+            return result.info
+          }
           yield* cfg.update(patch)
           return yield* cfg.get()
         }),

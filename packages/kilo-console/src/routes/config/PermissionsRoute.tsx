@@ -5,7 +5,7 @@ import { IconButton } from "@kilocode/kilo-web-ui/icon-button"
 import { CountTag, Tag } from "@kilocode/kilo-web-ui/tag"
 import { toolName } from "../../shared/utils"
 import { ConfigPage, SourceBadge } from "./ConfigPage"
-import { actions, defs, usePermissionSettings, type PermissionAction, type PermissionRule } from "./state/permissions"
+import { actions, usePermissionSettings, type PermissionAction, type PermissionRule } from "./state/permissions"
 
 function tone(action: PermissionAction) {
   if (action === "allow") return "success"
@@ -26,6 +26,56 @@ function RuleMeta(props: { rule: PermissionRule }) {
   )
 }
 
+function ActionSelect(props: {
+  label: string
+  value: PermissionAction
+  disabled?: boolean
+  onSelect: (value: PermissionAction) => void
+}) {
+  const current = () => label(props.value)
+
+  function choose(value: PermissionAction, event: MouseEvent & { currentTarget: HTMLButtonElement }) {
+    if (props.disabled) return
+    props.onSelect(value)
+    event.currentTarget.closest("details")?.removeAttribute("open")
+  }
+
+  function toggle(event: Event & { currentTarget: HTMLDetailsElement }) {
+    if (props.disabled) {
+      event.currentTarget.removeAttribute("open")
+      return
+    }
+    if (!event.currentTarget.open) return
+    event.currentTarget.parentElement?.querySelectorAll(".models-select[open]").forEach((node) => {
+      if (node !== event.currentTarget) node.removeAttribute("open")
+    })
+  }
+
+  return (
+    <details class="models-select permission-select" classList={{ disabled: props.disabled }} onToggle={toggle}>
+      <summary aria-label={props.label} aria-disabled={props.disabled}>
+        {current()}
+      </summary>
+      <div class="models-select-menu" role="listbox" aria-label={props.label}>
+        <For each={actions}>
+          {(item) => (
+            <button
+              class="models-select-option"
+              classList={{ selected: item.value === props.value }}
+              type="button"
+              role="option"
+              aria-selected={item.value === props.value}
+              onClick={(event) => choose(item.value, event)}
+            >
+              {item.label}
+            </button>
+          )}
+        </For>
+      </div>
+    </details>
+  )
+}
+
 export function PermissionsRoute() {
   const state = usePermissionSettings()
 
@@ -34,26 +84,33 @@ export function PermissionsRoute() {
       title={
         <span class="config-title-count">
           Permissions
-          <CountTag>{state.rules().length}</CountTag>
+          <CountTag>{state.groups().length + state.settings().length}</CountTag>
         </span>
       }
       description="Control what tools agents can use by default and add pattern-specific allow, ask, or deny rules."
-      actions={
-        <Button icon="plus" variant="primary" disabled={Boolean(state.ctx.saving())} onClick={() => state.open()}>
-          Add rule
-        </Button>
-      }
     >
       <div class="permissions">
         <For each={state.groups()}>
           {(group) => (
             <section class="permission-group">
-              <SectionTitle
-                trailing={<CountTag>{group.rules.length}</CountTag>}
-                description={`${group.id} · ${group.description}`}
-              >
-                {group.title}
-              </SectionTitle>
+              <header class="permission-group-header">
+                <div class="permission-group-copy">
+                  <h2>{group.title}</h2>
+                  <span>{group.id}</span>
+                  <p>{group.description}</p>
+                </div>
+                <div class="permission-section-actions">
+                  <CountTag>{group.rules.length}</CountTag>
+                  <Button
+                    icon="plus"
+                    variant="primary"
+                    disabled={Boolean(state.ctx.saving())}
+                    onClick={() => state.open(group.id)}
+                  >
+                    Add rule
+                  </Button>
+                </div>
+              </header>
 
               <ConfigRow
                 title="Default method"
@@ -64,15 +121,12 @@ export function PermissionsRoute() {
                   </div>
                 }
                 actions={
-                  <select
-                    class="permission-action-select"
-                    aria-label={`Default method for ${group.title}`}
+                  <ActionSelect
+                    label={`Default method for ${group.title}`}
                     value={group.action}
                     disabled={Boolean(state.ctx.saving())}
-                    onChange={(event) => state.setDefault(group.id, event.currentTarget.value as PermissionAction)}
-                  >
-                    <For each={actions}>{(item) => <option value={item.value}>{item.label}</option>}</For>
-                  </select>
+                    onSelect={(action) => state.setDefault(group.id, action)}
+                  />
                 }
               />
 
@@ -85,15 +139,13 @@ export function PermissionsRoute() {
                         subtitle={`${group.title} ${group.noun} rule`}
                         status={<RuleMeta rule={rule} />}
                         actions={
-                          <Show when={state.ctx.query()?.scope === "project" && rule.overridden}>
-                            <IconButton
-                              icon="trash"
-                              variant="ghost"
-                              aria-label={`Revert ${group.title} rule ${rule.pattern}`}
-                              disabled={Boolean(state.ctx.saving())}
-                              onClick={() => state.revert(rule)}
-                            />
-                          </Show>
+                          <IconButton
+                            icon="trash"
+                            variant="ghost"
+                            aria-label={`Delete ${group.title} rule ${rule.pattern}`}
+                            disabled={Boolean(state.ctx.saving())}
+                            onClick={() => state.remove(rule)}
+                          />
                         }
                       />
                     )}
@@ -103,6 +155,35 @@ export function PermissionsRoute() {
             </section>
           )}
         </For>
+
+        <section class="permission-group">
+          <SectionTitle trailing={<CountTag>{state.settings().length}</CountTag>} description="Default methods for additional built-in tool permissions.">
+            Tool Defaults
+          </SectionTitle>
+          <div class="permission-rules">
+            <For each={state.settings()}>
+              {(item) => (
+                <ConfigRow
+                  title={item.title}
+                  subtitle={`${item.id} · ${item.description}`}
+                  status={
+                    <div class="permission-row-meta">
+                      <SourceBadge source={item.source} inherited={item.inherited} overridden={item.overridden} />
+                    </div>
+                  }
+                  actions={
+                    <ActionSelect
+                      label={`Default method for ${item.title}`}
+                      value={item.action}
+                      disabled={Boolean(state.ctx.saving())}
+                      onSelect={(action) => state.setDefault(item.id, action)}
+                    />
+                  }
+                />
+              )}
+            </For>
+          </div>
+        </section>
 
         <Show when={state.other().length}>
           <section class="permission-group">
@@ -122,15 +203,13 @@ export function PermissionsRoute() {
                     }
                     status={<RuleMeta rule={rule} />}
                     actions={
-                      <Show when={state.ctx.query()?.scope === "project" && rule.overridden}>
-                        <IconButton
-                          icon="trash"
-                          variant="ghost"
-                          aria-label={`Revert ${rule.tool} rule ${rule.pattern}`}
-                          disabled={Boolean(state.ctx.saving())}
-                          onClick={() => state.revert(rule)}
-                        />
-                      </Show>
+                      <IconButton
+                        icon="trash"
+                        variant="ghost"
+                        aria-label={`Delete ${rule.tool} rule ${rule.pattern}`}
+                        disabled={Boolean(state.ctx.saving())}
+                        onClick={() => state.remove(rule)}
+                      />
                     }
                   />
                 )}
@@ -145,8 +224,8 @@ export function PermissionsRoute() {
         <aside class="provider-drawer permission-drawer" aria-label="Permission rule configuration">
           <header class="drawer-header">
             <div>
-              <h2>Add Permission Rule</h2>
-              <span>Create a pattern-specific rule for external directory, bash, read, or edit.</span>
+              <h2>{`Add ${state.selected().title} Rule`}</h2>
+              <span>{`${state.selected().id} · ${state.selected().description}`}</span>
             </div>
             <Button variant="ghost" aria-label="Close permission rule overlay" onClick={state.close}>
               X
@@ -154,12 +233,6 @@ export function PermissionsRoute() {
           </header>
 
           <div class="provider-form permission-form">
-            <label class="required-field wide">
-              Permission type
-              <select value={state.kind()} onChange={(event) => state.choose(event.currentTarget.value)}>
-                <For each={defs}>{(def) => <option value={def.id}>{def.title}</option>}</For>
-              </select>
-            </label>
             <label class="required-field wide">
               {state.selected().noun === "command" ? "Command pattern" : "Path pattern"}
               <input
@@ -171,12 +244,12 @@ export function PermissionsRoute() {
             </label>
             <label class="required-field wide">
               Method
-              <select
+              <ActionSelect
+                label="Rule method"
                 value={state.action()}
-                onChange={(event) => state.setAction(event.currentTarget.value as PermissionAction)}
-              >
-                <For each={actions}>{(item) => <option value={item.value}>{item.label}</option>}</For>
-              </select>
+                disabled={Boolean(state.ctx.saving())}
+                onSelect={state.setAction}
+              />
             </label>
           </div>
 

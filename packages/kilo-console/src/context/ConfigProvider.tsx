@@ -3,10 +3,10 @@ import type { JSX } from "solid-js"
 import {
   discover,
   forgetCached,
-  healthy,
   load,
   loadCached,
   loadProjects,
+  resolveServer,
   saveCached,
   saveConfig,
   saveTui,
@@ -86,18 +86,11 @@ export function ConfigProvider(props: { children?: JSX.Element }) {
 
   createEffect(() => {
     if (!discoverable()) return
-    const cached = loadCached()
-    void Promise.resolve(cached ? healthy(cached) : false)
-      .then((ok) => {
-        if (ok) return cached
-        forgetCached()
-        return discover()
-      })
-      .then((value) => {
-        if (!value) return
-        saveCached(value)
-        setUrl(value)
-      })
+    void resolveServer().then((value) => {
+      if (!value) return
+      saveCached(value)
+      setUrl(value)
+    })
   })
 
   createEffect(() => {

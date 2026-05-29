@@ -6,6 +6,7 @@ import { KilocodeConfigOverlay } from "@/kilocode/config/overlay"
 import { KilocodeConfigSources } from "@/kilocode/config/sources"
 import { KilocodeModelState } from "@/kilocode/config/model-state"
 import { KilocodeTuiConfig } from "@/kilocode/tui/config"
+import { disposeAllInstancesAndEmitGlobalDisposed } from "@/server/global-lifecycle"
 import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 import { Effect, Option } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
@@ -73,7 +74,15 @@ export const configConsoleHandlers = HttpApiBuilder.group(InstanceHttpApi, "conf
         if (body.scope === "global") return yield* config.getGlobal()
         return yield* config.get()
       }
-      if (body.scope === "global") return (yield* config.updateGlobal(patch)).info
+      if (body.scope === "global") {
+        const result = yield* config.updateGlobal(patch)
+        if (result.changed) {
+          yield* disposeAllInstancesAndEmitGlobalDisposed({ swallowErrors: true }).pipe(
+            Effect.catchCause(() => Effect.void),
+          )
+        }
+        return result.info
+      }
       yield* config.update(patch)
       return yield* config.get()
     })
