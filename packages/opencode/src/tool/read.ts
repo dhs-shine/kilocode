@@ -16,6 +16,7 @@ import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
 import * as Encoding from "../kilocode/encoding"
 import * as TextStream from "../kilocode/text-stream"
 import * as Notebook from "../kilocode/tool/notebook"
+import * as Docx from "../kilocode/tool/read-docx"
 // kilocode_change end
 
 const DEFAULT_READ_LIMIT = 2000
@@ -301,13 +302,18 @@ export const ReadTool = Tool.define(
         }
       }
 
-      if (isBinaryFile(filepath, sample)) {
+      // kilocode_change start - extract DOCX text before generic binary rejection
+      const docx = Docx.accepts(filepath)
+      const opts = { limit: params.limit ?? DEFAULT_READ_LIMIT, offset: params.offset || 1 }
+      const read = docx
+        ? () => Docx.open(filepath).then((stream) => readLines(stream, opts))
+        : () => lines(filepath, opts)
+      if (!docx && isBinaryFile(filepath, sample)) {
         return yield* Effect.fail(new Error(`Cannot read binary file: ${filepath}`))
       }
 
-      const file = yield* Effect.promise(() =>
-        lines(filepath, { limit: params.limit ?? DEFAULT_READ_LIMIT, offset: params.offset || 1 }),
-      )
+      const file = yield* Effect.promise(read)
+      // kilocode_change end
       if (file.count < file.offset && !(file.count === 0 && file.offset === 1)) {
         return yield* Effect.fail(
           new Error(`Offset ${file.offset} is out of range for this file (${file.count} lines)`),
