@@ -786,7 +786,7 @@ export const layer: Layer.Layer<
       }),
     )
 
-    // kilocode_change start - per-instance state for the slow-repo track wrapper
+    // kilocode_change start - Snapshot.Service-scoped state for the slow-repo track wrapper
     const trackState = KiloSnapshotTrack.makeState()
     // kilocode_change end
 
