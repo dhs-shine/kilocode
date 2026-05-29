@@ -1,11 +1,11 @@
-import { afterEach, expect } from "bun:test"
+import { afterEach, expect } from "bun:test" // kilocode_change - blocking behavior now uses the scoped service test helper
 import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import { Question } from "../../src/question"
 import { Instance } from "../../src/project/instance"
 import { WithInstance } from "../../src/project/with-instance"
 import { InstanceRuntime } from "../../src/project/instance-runtime"
 import { QuestionID } from "../../src/question/schema"
-import { disposeAllInstances, provideInstance, reloadTestInstance, tmpdirScoped } from "../fixture/fixture"
+import { disposeAllInstances, provideInstance, reloadTestInstance, tmpdirScoped } from "../fixture/fixture" // kilocode_change - blocking coverage no longer uses the Promise facade fixture
 import { SessionID } from "../../src/session/schema"
 import { testEffect } from "../lib/effect"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
@@ -207,6 +207,7 @@ it.instance(
   { git: true },
 )
 
+// kilocode_change start - preserve upstream unknown-request failure behavior during facade migration
 it.instance(
   "reply - fails for unknown requestID",
   () =>
@@ -221,6 +222,7 @@ it.instance(
     }),
   { git: true },
 )
+// kilocode_change end
 
 // reject tests
 
@@ -282,6 +284,7 @@ it.instance(
   { git: true },
 )
 
+// kilocode_change start - preserve upstream unknown-request failure behavior during facade migration
 it.instance(
   "reject - fails for unknown requestID",
   () =>
@@ -296,6 +299,7 @@ it.instance(
     }),
   { git: true },
 )
+// kilocode_change end
 
 // multiple questions tests
 
