@@ -380,15 +380,21 @@ const ProviderConnectDialog: Component<ProviderConnectDialogProps> = (props) => 
             {state.error}
           </div>
         </Show>
-        <div class="dialog-confirm-actions">
-          <a
-            href="https://blog.kilo.ai/p/kilo-gateway-now-supports-byok-20-providers"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="provider-connect-byok-link"
-          >
-            For more usage stats, <span>BYOK via Kilo's Gateway</span>.
-          </a>
+        <div class="dialog-confirm-actions provider-connect-actions">
+          <div class="provider-connect-byok">
+            {language.t("provider.connect.kiloGateway.byok.prefix")}
+            <a
+              href="https://blog.kilo.ai/p/kilo-gateway-now-supports-byok-20-providers"
+              onClick={(e) => {
+                e.preventDefault()
+                openExternal("https://blog.kilo.ai/p/kilo-gateway-now-supports-byok-20-providers")
+              }}
+              class="provider-connect-byok-link"
+            >
+              {language.t("provider.connect.kiloGateway.byok.link")}
+            </a>
+            {language.t("provider.connect.kiloGateway.byok.suffix")}
+          </div>
           <Button variant="ghost" size="large" type="button" onClick={back}>
             {language.t("common.goBack")}
           </Button>
