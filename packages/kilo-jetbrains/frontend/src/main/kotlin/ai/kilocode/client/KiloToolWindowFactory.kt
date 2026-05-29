@@ -33,6 +33,7 @@ class KiloToolWindowFactory : ToolWindowFactory, DumbAware {
     }
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
+        val start = System.currentTimeMillis()
         try {
             val workspaces = service<KiloWorkspaceService>()
             val cs = CoroutineScope(SupervisorJob())
@@ -44,7 +45,10 @@ class KiloToolWindowFactory : ToolWindowFactory, DumbAware {
                 withContext(Dispatchers.Main) {
                     setup(project, toolWindow, workspace)
                 }
-                Telemetry.send("Tool Window Opened", mapOf("projectResolved" to dir.isNotBlank().toString()))
+                Telemetry.send("Tool Window Opened", mapOf(
+                    "projectResolved" to dir.isNotBlank().toString(),
+                    "durationMs" to (System.currentTimeMillis() - start).toString(),
+                ))
             }
         } catch (e: Exception) {
             Telemetry.send("Tool Window Setup Failed", mapOf("stage" to "create", "errorClass" to e::class.java.name))

@@ -194,6 +194,11 @@ class SessionController(
         val exists = sid != null
         val dto = promptDto(text)
         LOG.debug { "${ChatLogSummary.sid(start)} ${ChatLogSummary.prompt(text)} ${ChatLogSummary.dir(directory)}" }
+        capture("Conversation Send Clicked", sessionProps(sid ?: ref?.key) + mapOf(
+            "source" to "user",
+            "hasExistingSession" to exists.toString(),
+            "textLength" to bucket(text),
+        ) + promptProps())
         showSession()
         cs.launch {
             try {
@@ -235,6 +240,7 @@ class SessionController(
         assertEdt()
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=abort" }
         val id = sid ?: return
+        capture("Session Stop Clicked", sessionProps(id))
         cs.launch {
             try {
                 sessions.abort(id, directory)
@@ -1011,6 +1017,10 @@ class SessionController(
         if (isPaidModelAuthRequired(event.error)) {
             loginRetry = retryPrompt()
             if (reveal) showSession()
+            capture("Account Overlay Shown", sessionProps(event.sessionID) + mapOf(
+                "surface" to "session",
+                "reason" to "paid_model_auth",
+            ))
             model.setState(SessionState.LoginRequired(KiloBundle.message("session.login.required.description")))
             return
         }
@@ -1364,6 +1374,13 @@ class SessionController(
         model.variant?.takeIf { it in model.variants }?.let { put("variant", it) }
     }
 
+    private fun bucket(text: String): String = when (text.length) {
+        0 -> "empty"
+        in 1..80 -> "short"
+        in 81..500 -> "medium"
+        else -> "long"
+    }
+
     private fun connectionProps(): Map<String, String> = buildMap {
         put("appStatus", model.app.status.name)
         put("workspaceStatus", model.workspace.status.name)
@@ -1374,8 +1391,13 @@ class SessionController(
 
     fun dismissLoginRequired() {
         assertEdt()
+        val active = model.state is SessionState.LoginRequired
         loginRetry = null
-        if (model.state is SessionState.LoginRequired) {
+        if (active) {
+            capture("Account Overlay Dismissed", sessionProps() + mapOf(
+                "surface" to "session",
+                "reason" to "paid_model_auth",
+            ))
             updateModel { model.setState(SessionState.Idle) }
         }
     }

@@ -55,12 +55,21 @@ class KiloBackendCliManager(
 
     override suspend fun init(): CliServer.State {
         startupReported = false
+        val start = System.currentTimeMillis()
         return try {
             val path = extractCli()
             log.info("CLI binary path: ${path.absolutePath} (size=${path.length()} bytes)")
-            withTimeout(STARTUP_TIMEOUT_MS) {
+            val state = withTimeout(STARTUP_TIMEOUT_MS) {
                 spawn(path)
             }
+            if (state is CliServer.State.Ready) {
+                startup.report("CLI Startup Succeeded", mapOf(
+                    "durationMs" to (System.currentTimeMillis() - start).toString(),
+                    "platform" to platform(),
+                    "arch" to CpuArch.CURRENT.name,
+                ))
+            }
+            state
         } catch (e: Exception) {
             log.warn("CLI startup failed", e)
             if (!startupReported) reportStartupException(e)

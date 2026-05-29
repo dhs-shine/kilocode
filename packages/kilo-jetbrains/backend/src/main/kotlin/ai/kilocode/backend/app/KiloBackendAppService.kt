@@ -272,12 +272,14 @@ class KiloBackendAppService private constructor(
             loader?.cancel()
             eventWatcher?.cancel()
             loader = cs.launch {
+                val start = System.currentTimeMillis()
                 log.info("Application starting — loading config, profile, notifications")
                 val progress = AtomicReference(LoadProgress())
                 _appState.value = KiloAppState.Loading(progress.get())
 
                 val migration = detectMigration()
                 if (migration != null) {
+                    captureLoad("Backend Migration Required", start, mapOf("migrationRequired" to "true"))
                     stopRuntime()
                     profile = null
                     config = null
@@ -350,8 +352,13 @@ class KiloBackendAppService private constructor(
                     sessions.start(connection.api!!, connection.apiClient!!, connection.port, connection.events)
                     chat.start(connection.apiClient!!, connection.port, connection.events)
                     workspaces.start(connection.api!!, connection.apiClient!!, connection.port, connection.events)
-                    service<KiloBackendTelemetry>().setEnabled(connection.apiClient, connection.port, true)
-                    service<KiloBackendTelemetry>().capture(connection.apiClient, connection.port, "Backend Connected", mapOf("portKnown" to "true"))
+                    setTelemetry(true)
+                    captureBackend("Backend Connected", mapOf("portKnown" to "true"))
+                    captureLoad("Backend Load Completed", start, mapOf(
+                        "profileStatus" to if (prof != null) "loaded" else "not_logged_in",
+                        "warningCount" to warns.size.toString(),
+                        "migrationRequired" to "false",
+                    ))
                     setAppReady(
                         AppData(
                             profile = prof,
@@ -368,6 +375,11 @@ class KiloBackendAppService private constructor(
                         detail = "Timed out loading app data after ${loadTimeoutMs}ms",
                     )
                     log.warn("Application start timed out after ${loadTimeoutMs}ms")
+                    captureLoad("Backend Load Failed", start, mapOf(
+                        "errorCount" to (errors.size + 1).toString(),
+                        "resources" to (errors.map { it.resource } + err.resource).distinct().joinToString(","),
+                        "reason" to "timeout",
+                    ))
                     setAppError(
                         message = "Failed to load required data",
                         errors = errors.toList() + err,
@@ -376,6 +388,11 @@ class KiloBackendAppService private constructor(
                     throw e
                 } catch (e: Exception) {
                     log.warn("Application start failed: ${e.message}")
+                    captureLoad("Backend Load Failed", start, mapOf(
+                        "errorCount" to errors.size.toString(),
+                        "resources" to errors.map { it.resource }.distinct().joinToString(","),
+                        "reason" to e::class.java.name,
+                    ))
                     setAppError(
                         message = "Failed to load required data",
                         errors = errors.toList(),
@@ -383,6 +400,33 @@ class KiloBackendAppService private constructor(
                 }
             }
         }
+    }
+
+    private fun captureLoad(event: String, start: Long, props: Map<String, String>) {
+        val http = connection.apiClient
+        val port = connection.port
+        cs.launch {
+            runCatching {
+                service<KiloBackendTelemetry>().capture(
+                    http,
+                    port,
+                    event,
+                    props + mapOf("durationMs" to (System.currentTimeMillis() - start).toString()),
+                )
+            }.onFailure { log.info("Skipping backend load telemetry: ${it.message}") }
+        }
+    }
+
+    private suspend fun setTelemetry(enabled: Boolean) {
+        runCatching {
+            service<KiloBackendTelemetry>().setEnabled(connection.apiClient, connection.port, enabled)
+        }.onFailure { log.info("Skipping telemetry setEnabled: ${it.message}") }
+    }
+
+    private suspend fun captureBackend(event: String, props: Map<String, String>) {
+        runCatching {
+            service<KiloBackendTelemetry>().capture(connection.apiClient, connection.port, event, props)
+        }.onFailure { log.info("Skipping backend telemetry: ${it.message}") }
     }
 
     private suspend fun detectMigration(): LegacyMigrationDetection? = withContext(Dispatchers.IO) {
