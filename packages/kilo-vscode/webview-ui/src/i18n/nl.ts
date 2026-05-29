@@ -985,6 +985,8 @@ export const dict = {
   "session.delete.confirm": 'Sessie "{{name}}" verwijderen?',
   "session.delete.button": "Verwijder sessie",
   "session.untitled": "Naamloos",
+  "session.current": "Huidige sessie",
+  "session.history.sources": "Geschiedenisbron",
   "session.recent": "Recent",
   "session.showHistory": "Geschiedenis weergeven",
   "session.search.placeholder": "Zoek sessies...",
@@ -1258,9 +1260,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "Vat grote geplakte inhoud niet samen",
   "settings.experimental.batch.title": "Batch Tool",
   "settings.experimental.batch.description": "Schakel batching van meerdere tool calls in",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Codebase Zoeken",
   "settings.experimental.codebaseSearch.description":
     "Schakel AI-aangedreven zoeken in natuurlijke taal door je codebase in",

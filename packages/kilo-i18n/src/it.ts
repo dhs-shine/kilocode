@@ -9,6 +9,9 @@ export const dict = {
   "provider.connect.kiloGateway.visit.prefix": "Visita ",
   "provider.connect.kiloGateway.visit.link": "kilo.ai",
   "provider.connect.kiloGateway.visit.suffix": " per ottenere la tua API key.",
+  "provider.connect.kiloGateway.byok.prefix": "Per ulteriori statistiche sull'utilizzo, utilizza ",
+  "provider.connect.kiloGateway.byok.link": "BYOK tramite Kilo's Gateway",
+  "provider.connect.kiloGateway.byok.suffix": ".",
 
   // Provider dialog translations
   "dialog.provider.group.recommended": "Consigliati",
@@ -42,8 +45,7 @@ export const dict = {
   "marketplace.install.done": "Fatto",
   "marketplace.install.close": "Chiudi",
   "marketplace.remove.title": "Rimuovere {{name}}?",
-  "marketplace.remove.confirm":
-    "Vuoi davvero rimuovere questo {{type}}? Verrà rimosso dalla configurazione {{scope}}.",
+  "marketplace.remove.confirm": "Vuoi davvero rimuovere questo {{type}}? Verrà rimosso dalla configurazione {{scope}}.",
   "marketplace.remove.cancel": "Annulla",
   "marketplace.remove.confirm.button": "Rimuovi",
   "marketplace.tab.mcp": "MCP",

@@ -988,6 +988,8 @@ export const dict = {
   "session.delete.confirm": 'Usunąć sesję "{{name}}"?',
   "session.delete.button": "Usuń sesję",
   "session.untitled": "Bez tytułu",
+  "session.current": "Bieżąca sesja",
+  "session.history.sources": "Źródło historii",
   "session.recent": "Ostatnie",
   "session.showHistory": "Pokaż historię",
   "session.search.placeholder": "Szukaj sesji...",
@@ -1221,9 +1223,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "Nie podsumowuj dużego wklejonego tekstu",
   "settings.experimental.batch.title": "Narzędzie wsadowe",
   "settings.experimental.batch.description": "Włącz przetwarzanie wsadowe wywołań narzędzi",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Wyszukiwanie kodu",
   "settings.experimental.codebaseSearch.description": "Włącz wyszukiwanie w języku naturalnym z AI w całej bazie kodu",
   "settings.experimental.speechToText.title": "Mowa na tekst",

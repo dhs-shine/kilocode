@@ -997,6 +997,8 @@ export const dict = {
   "session.delete.confirm": '删除会话 "{{name}}"？',
   "session.delete.button": "删除会话",
   "session.untitled": "无标题",
+  "session.current": "当前会话",
+  "session.history.sources": "历史记录来源",
   "session.recent": "最近",
   "session.showHistory": "显示历史",
   "session.search.placeholder": "搜索会话...",
@@ -1224,9 +1226,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "不对大量粘贴内容进行摘要",
   "settings.experimental.batch.title": "批量工具",
   "settings.experimental.batch.description": "启用多个工具调用的批处理",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "代码库搜索",
   "settings.experimental.codebaseSearch.description": "启用 AI 驱动的自然语言代码库搜索",
   "settings.experimental.speechToText.title": "语音转文本",
