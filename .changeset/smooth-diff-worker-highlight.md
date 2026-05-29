@@ -1,5 +1,6 @@
 ---
 "kilo-code": patch
+"@kilocode/kilo-ui": patch
 ---
 
-Fix laggy scrolling and gray flashes in the diff and Changes views. Syntax highlighting now runs in a web worker instead of blocking the main thread, and normal-sized review files render their diffs up front instead of re-rendering while scrolling. Scrolling large diffs stays smooth even when scrolling fast.
+Reduce lag and gray placeholders in the diff and Changes views by enabling worker-backed highlighting and rendering patch-backed review hunks without rebuilding full source files.

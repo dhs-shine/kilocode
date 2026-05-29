@@ -11,14 +11,15 @@ export function isLargeDiffFile(diff: WorktreeFileDiff): boolean {
   return diff.additions + diff.deletions > EXTREME_DIFF_CHANGED_LINES
 }
 
-// Files whose diffs should render eagerly (no row virtualization) so their rows
-// stay mounted and never re-render on scroll. Large files keep virtualizing, and
-// an aggregate budget keeps eager DOM bounded for very large reviews.
+// Files whose hunk-bounded patches should render eagerly (no row virtualization)
+// so their rows stay mounted and never re-render on scroll. Never eager-render a
+// detail without a patch: a tiny change in a very large source file would make
+// Pierre re-diff and render full before/after contents on the main thread.
 export function eagerDiffFiles(diffs: WorktreeFileDiff[]): Set<string> {
   const eager = new Set<string>()
   let used = 0
   for (const diff of diffs) {
-    if (isLargeDiffFile(diff)) continue
+    if (!diff.patch || isLargeDiffFile(diff)) continue
     const size = diff.additions + diff.deletions
     if (used + size > EAGER_DIFF_REVIEW_LINES) continue
     used += size

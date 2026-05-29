@@ -710,6 +710,7 @@ export const FullScreenDiffView: Component<FullScreenDiffViewProps> = (props) =>
                                   <Diff<AnnotationMeta>
                                     before={{ name: diff.file, contents: diff.before }}
                                     after={{ name: diff.file, contents: diff.after }}
+                                    patch={diff.patch}
                                     diffStyle={props.diffStyle}
                                     virtualized={!eager().has(diff.file)}
                                     annotations={annotationsForFile(diff.file)}

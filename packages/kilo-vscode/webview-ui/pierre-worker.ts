@@ -9,9 +9,9 @@
 //
 // Here we instead load the worker from a real dist asset (`dist/shiki-worker.js`,
 // also produced by esbuild.js) using the webview URI the extension injects into
-// the page. Highlighting then runs off the main thread and scrolling stays
-// smooth. If the URI is missing (or the worker fails to spawn) Pierre falls back
-// to its main-thread highlighter, so behaviour is never worse than before.
+// the page. Pierre can offload highlighted updates to the pool after its initial
+// plain render. The diff wrapper still needs to keep that initial render cheap,
+// which is why review surfaces pass hunk-bounded patches instead of full files.
 import { WorkerPoolManager } from "@pierre/diffs/worker"
 
 export type WorkerPoolStyle = "unified" | "split"

@@ -1,4 +1,4 @@
-import { DIFFS_TAG_NAME, FileDiff, type SelectedLineRange, VirtualizedFileDiff } from "@pierre/diffs"
+import { DIFFS_TAG_NAME, FileDiff, processFile, type SelectedLineRange, VirtualizedFileDiff } from "@pierre/diffs"
 import { PreloadMultiFileDiffResult } from "@pierre/diffs/ssr"
 import { createEffect, onCleanup, onMount, Show, splitProps } from "solid-js"
 import { Dynamic, isServer } from "solid-js/web"
@@ -16,6 +16,8 @@ export function Diff<T>(props: SSRDiffProps<T>) {
   const [local, others] = splitProps(props, [
     "before",
     "after",
+    "patch",
+    "fileDiff",
     "class",
     "classList",
     "annotations",
@@ -251,9 +253,12 @@ export function Diff<T>(props: SSRDiffProps<T>) {
         )
     // @ts-expect-error - fileContainer is private but needed for SSR hydration
     fileDiffInstance.fileContainer = fileDiffRef
+    const patch = "patch" in local && typeof local.patch === "string" ? local.patch : ""
+    const metadata = local.fileDiff ?? (patch ? processFile(patch, { cacheKey: patch }) : undefined)
     fileDiffInstance.hydrate({
-      oldFile: local.before,
-      newFile: local.after,
+      oldFile: metadata ? undefined : local.before,
+      newFile: metadata ? undefined : local.after,
+      fileDiff: metadata,
       lineAnnotations: local.annotations,
       fileContainer: fileDiffRef,
       containerWrapper: container,

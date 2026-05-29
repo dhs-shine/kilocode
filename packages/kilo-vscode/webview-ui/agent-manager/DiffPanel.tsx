@@ -613,6 +613,7 @@ export const DiffPanel: Component<DiffPanelProps> = (props) => {
                               <Diff<AnnotationMeta>
                                 before={{ name: diff.file, contents: diff.before }}
                                 after={{ name: diff.file, contents: diff.after }}
+                                patch={diff.patch}
                                 diffStyle={props.diffStyle ?? "unified"}
                                 virtualized={!eager().has(diff.file)}
                                 annotations={annotationsForFile(diff.file)}
