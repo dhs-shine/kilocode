@@ -37,11 +37,11 @@
     "agent",
     "agentic",
     "coding",
-    "coding-agent",
-    "coding-assistant",
+    "coding agent",
+    "coding assistant",
     "autocomplete",
-    "code-completion",
-    "pair-programming",
+    "code completion",
+    "pair programming",
     "chat",
     "terminal",
     "chatgpt",
@@ -49,7 +49,7 @@
     "sonnet",
     "anthropic",
     "openai",
-    "zoo-code"
+    "zoo code"
   ],
   "activationEvents": [
     "onStartupFinished"
