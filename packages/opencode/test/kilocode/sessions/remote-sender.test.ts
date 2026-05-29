@@ -4,10 +4,12 @@ import { Effect } from "effect"
 import { RemoteSender } from "../../../src/kilo-sessions/remote-sender"
 import type { RemoteWS } from "../../../src/kilo-sessions/remote-ws"
 import type { RemoteProtocol } from "../../../src/kilo-sessions/remote-protocol"
-import { SessionPrompt } from "../../../src/session/prompt"
+import type { SessionPrompt } from "../../../src/session/prompt"
 import { Question } from "../../../src/question"
 import { Permission } from "../../../src/permission"
 import { PermissionID } from "../../../src/permission/schema"
+import { ModelID, ProviderID } from "../../../src/provider/schema"
+import { SessionID } from "../../../src/session/schema"
 import { Suggestion } from "../../../src/kilocode/suggestion" // kilocode_change
 
 function fakeConn() {
@@ -52,6 +54,12 @@ function permissions(items: Permission.Request[] = []) {
   return {
     list: async () => items,
     reply: async () => true,
+  }
+}
+
+function prompts(calls: SessionPrompt.PromptInput[]) {
+  return async (input: SessionPrompt.PromptInput) => {
+    calls.push(input)
   }
 }
 
@@ -321,13 +329,14 @@ describe("RemoteSender", () => {
   // kilocode_change start
   test("send_message normalizes string model without prefix", async () => {
     const { conn, sent } = fakeConn()
-    const prompt = spyOn(SessionPrompt, "prompt").mockResolvedValue({} as never)
+    const calls: SessionPrompt.PromptInput[] = []
     const sender = RemoteSender.create({
       conn,
       directory: "/tmp/test",
       log: nolog,
       subscribe: fakeBus().subscribe,
       provide: async <R>(input: { directory: string; init?: Effect.Effect<void>; fn: () => R }) => input.fn(),
+      prompt: prompts(calls),
     })
 
     sender.handle({
@@ -344,22 +353,25 @@ describe("RemoteSender", () => {
     await new Promise((r) => setTimeout(r, 0))
 
     expect(sent[0]).toEqual({ type: "response", id: "req_model_string", result: {} })
-    expect(prompt).toHaveBeenCalledWith({
-      sessionID: "ses_x",
-      parts: [{ type: "text", text: "hello" }],
-      model: { providerID: "kilo", modelID: "anthropic/claude-sonnet-4-20250514" },
-    })
+    expect(calls).toEqual([
+      {
+        sessionID: SessionID.make("ses_x"),
+        parts: [{ type: "text", text: "hello" }],
+        model: { providerID: ProviderID.make("kilo"), modelID: ModelID.make("anthropic/claude-sonnet-4-20250514") },
+      },
+    ])
   })
 
   test("send_message keeps kilocode-prefixed model unchanged before internal conversion", async () => {
     const { conn } = fakeConn()
-    const prompt = spyOn(SessionPrompt, "prompt").mockResolvedValue({} as never)
+    const calls: SessionPrompt.PromptInput[] = []
     const sender = RemoteSender.create({
       conn,
       directory: "/tmp/test",
       log: nolog,
       subscribe: fakeBus().subscribe,
       provide: async <R>(input: { directory: string; init?: Effect.Effect<void>; fn: () => R }) => input.fn(),
+      prompt: prompts(calls),
     })
 
     sender.handle({
@@ -375,11 +387,13 @@ describe("RemoteSender", () => {
 
     await new Promise((r) => setTimeout(r, 0))
 
-    expect(prompt).toHaveBeenCalledWith({
-      sessionID: "ses_x",
-      parts: [{ type: "text", text: "hello" }],
-      model: { providerID: "kilo", modelID: "gpt-5-mini" },
-    })
+    expect(calls).toEqual([
+      {
+        sessionID: SessionID.make("ses_x"),
+        parts: [{ type: "text", text: "hello" }],
+        model: { providerID: ProviderID.make("kilo"), modelID: ModelID.make("gpt-5-mini") },
+      },
+    ])
   })
 
   test("send_message rejects structured model on remote path", () => {
@@ -411,13 +425,14 @@ describe("RemoteSender", () => {
 
   test("send_message does not special-case kilo-prefixed model", async () => {
     const { conn, sent } = fakeConn()
-    const prompt = spyOn(SessionPrompt, "prompt").mockResolvedValue({} as never)
+    const calls: SessionPrompt.PromptInput[] = []
     const sender = RemoteSender.create({
       conn,
       directory: "/tmp/test",
       log: nolog,
       subscribe: fakeBus().subscribe,
       provide: async <R>(input: { directory: string; init?: Effect.Effect<void>; fn: () => R }) => input.fn(),
+      prompt: prompts(calls),
     })
 
     sender.handle({
@@ -434,11 +449,13 @@ describe("RemoteSender", () => {
     await new Promise((r) => setTimeout(r, 0))
 
     expect(sent[0]).toEqual({ type: "response", id: "req_model_kilo", result: {} })
-    expect(prompt).toHaveBeenCalledWith({
-      sessionID: "ses_x",
-      parts: [{ type: "text", text: "hello" }],
-      model: { providerID: "kilo", modelID: "kilo/gpt-5-mini" },
-    })
+    expect(calls).toEqual([
+      {
+        sessionID: SessionID.make("ses_x"),
+        parts: [{ type: "text", text: "hello" }],
+        model: { providerID: ProviderID.make("kilo"), modelID: ModelID.make("kilo/gpt-5-mini") },
+      },
+    ])
   })
   // kilocode_change end
 
