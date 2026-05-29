@@ -24,11 +24,14 @@ describe("parseDshowAudioDevices", () => {
 [dshow @ 000001]     Alternative name "@device_headset"
 [dshow @ 000001]  "Microphone (MSI Sound Tune)"
 [dshow @ 000001]     Alternative name "@device_microphone"
+[dshow @ 000001]  "Alternative name Microphone"
+[dshow @ 000001]     Alternative name "@device_alternative"
 `
 
     expect(parseDshowAudioDevices(raw)).toEqual([
       "Headset (2- Bose QuietComfort 35 Series II)",
       "Microphone (MSI Sound Tune)",
+      "Alternative name Microphone",
     ])
   })
 

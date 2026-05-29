@@ -318,7 +318,7 @@ export function parseDshowAudioDevices(raw: string): string[] {
   const quoted = /"([^"]+)"/
   const section = (line: string) => /DirectShow audio devices/i.test(line)
   const other = (line: string) => /DirectShow (video|external) devices/i.test(line)
-  const alt = (line: string) => /Alternative name/i.test(line)
+  const alt = (line: string) => /\]\s+Alternative name\s+"/i.test(line)
   for (const line of raw.split(/\r?\n/)) {
     const match = legacy.exec(line)
     if (match) devices.add(match[1]!)
