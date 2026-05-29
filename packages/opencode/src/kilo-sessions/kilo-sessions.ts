@@ -190,13 +190,15 @@ export namespace KiloSessions {
   const STATUS_TIMEOUT_MS = 3_000
 
   async function deriveStatus(sessionID: string): Promise<"idle" | "busy" | "question" | "permission" | "retry"> {
-    const permissions = (await Permission.list()).filter((p) => p.sessionID === sessionID)
+    const { AppRuntime } = await import("@/effect/app-runtime")
+    const permissions = (
+      await AppRuntime.runPromise(Permission.Service.use((svc) => svc.list()))
+    ).filter((p) => p.sessionID === sessionID)
     if (permissions.length > 0) return "permission"
 
     const questions = (await Question.list()).filter((q) => q.sessionID === sessionID)
     if (questions.length > 0) return "question"
 
-    const { AppRuntime } = await import("@/effect/app-runtime")
     const status = await AppRuntime.runPromise(SessionStatus.Service.use((svc) => svc.get(SessionID.make(sessionID))))
     if (status.type === "offline") return "retry"
     return status.type
@@ -354,7 +356,7 @@ export namespace KiloSessions {
       const getSessions = async () => {
         const [gitUrl, gitBranch] = await Promise.all([
           getGitUrl().catch(() => undefined),
-          Vcs.branch().catch(() => undefined),
+          branch().catch(() => undefined),
         ])
         const { AppRuntime } = await import("@/effect/app-runtime")
         const statusMap = await AppRuntime.runPromise(SessionStatus.Service.use((svc) => svc.list()))
@@ -723,11 +725,16 @@ export namespace KiloSessions {
     })
   }
 
+  async function branch() {
+    const { AppRuntime } = await import("@/effect/app-runtime")
+    return AppRuntime.runPromise(Vcs.Service.use((svc) => svc.branch()))
+  }
+
   async function meta(sessionId?: string) {
     const override = sessionId ? KiloSession.resolvePlatform(sessionId) : undefined
     const platform = override || process.env["KILO_PLATFORM"] || "cli"
     const orgId = await getOrgId()
-    const gitBranch = await Vcs.branch().catch(() => undefined)
+    const gitBranch = await branch().catch(() => undefined)
     const gitUrl = await getGitUrl().catch(() => undefined)
 
     return {

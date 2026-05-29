@@ -59,7 +59,7 @@ const cache = new Map<string, Promise<FileDiff[]>>()
 const max = 100
 // kilocode_change end
 
-type State = Omit<Interface, "init"> & { readonly trackState: KiloSnapshotTrack.State } // kilocode_change
+type State = Omit<Interface, "init">
 
 export interface Interface {
   readonly init: () => Effect.Effect<void>
@@ -785,9 +785,13 @@ export const layer: Layer.Layer<
           Effect.forkScoped,
         )
 
-        return { cleanup, track, patch, restore, revert, diff, diffFull, trackState: KiloSnapshotTrack.makeState() } // kilocode_change - scope slow prompt state by worktree
+        return { cleanup, track, patch, restore, revert, diff, diffFull }
       }),
     )
+
+    // kilocode_change start - Snapshot.Service-scoped state for the slow-repo track wrapper
+    const trackState = KiloSnapshotTrack.makeState()
+    // kilocode_change end
 
     return Service.of({
       init: Effect.fn("Snapshot.init")(function* () {
@@ -798,15 +802,13 @@ export const layer: Layer.Layer<
       }),
       // kilocode_change start - timeout guard with interactive and managed wait policies
       track: Effect.fn("Snapshot.track")(function* (opts) {
-        return yield* InstanceState.useEffect(state, (s) =>
-          KiloSnapshotTrack.wrap({
-            inner: s.track(),
-            state: s.trackState,
-            snapshotInitialization: opts?.snapshotInitialization,
-            sessionID: opts?.sessionID,
-            messageID: opts?.messageID,
-          }),
-        )
+        return yield* KiloSnapshotTrack.wrap({
+          inner: InstanceState.useEffect(state, (s) => s.track()),
+          state: trackState,
+          snapshotInitialization: opts?.snapshotInitialization,
+          sessionID: opts?.sessionID,
+          messageID: opts?.messageID,
+        })
         // kilocode_change end
       }),
       patch: Effect.fn("Snapshot.patch")(function* (hash: string) {
