@@ -427,7 +427,10 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
   // Listen for slash command trigger
   const onTrigger = () => setOpen(true)
   window.addEventListener("openModelPicker", onTrigger)
-  onCleanup(() => window.removeEventListener("openModelPicker", onTrigger))
+  onCleanup(() => {
+    window.removeEventListener("openModelPicker", onTrigger)
+    clearTimeout(previewTimer)
+  })
 
   const onEscape = (e: KeyboardEvent) => {
     if (!open() || e.key !== "Escape") return
@@ -720,7 +723,7 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
                   {(group) => {
                     const shown = () => isGroupOpen(group.key)
                     return (
-                      <div role="group" aria-labelledby={groupID(group.key)}>
+                      <div class="model-selector-group" role="group" aria-labelledby={groupID(group.key)}>
                         <button
                           id={groupID(group.key)}
                           type="button"
@@ -756,6 +759,7 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
                               const preActive = () => isPreActive(row.key)
                               const starred = () => favoriteKeys().has(modelKey(model.providerID, model.id))
                               const showProvider = () => row.kind === "favorite"
+                              const showSelect = () => expanded() && preActive() && !isActive(model)
                               const starLabel = () =>
                                 `${starred() ? language.t("model.favorite.remove") : language.t("model.favorite.add")}: ${sanitizeName(model.name)}`
                               return (
@@ -772,7 +776,18 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
                                     class={`model-selector-item${(hovered() && !pointer()) || preActive() ? " keyboard-focused" : ""}${hovered() || preActive() ? " selected" : ""}${chosen(row) ? " active" : ""}`}
                                     role="option"
                                     aria-selected={chosen(row)}
-                                    onClick={() => selectRow(row)}
+                                    onClick={() => {
+                                      if (!expanded()) {
+                                        selectRow(row)
+                                        return
+                                      }
+                                      setRow(row.key)
+                                      setPreviewKey(row.key)
+                                      searchRef?.focus()
+                                    }}
+                                    onDblClick={() => {
+                                      if (expanded()) selectRow(row)
+                                    }}
                                     onMouseMove={() => {
                                       setPointer(true)
                                     }}
@@ -821,6 +836,16 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
                                       <Icon name={starred() ? "star-filled" : "star"} size="small" />
                                     </button>
                                   </Show>
+                                  <Show when={showSelect()}>
+                                    <button
+                                      type="button"
+                                      class="model-selector-item-select-btn"
+                                      aria-label={`${language.t("dialog.model.select")}: ${sanitizeName(model.name)}`}
+                                      onClick={() => selectRow(row)}
+                                    >
+                                      {language.t("dialog.model.select")}
+                                    </button>
+                                  </Show>
                                 </div>
                               )
                             }}
@@ -841,7 +866,9 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
                 class={`model-selector-preview${expanded() ? " model-selector-preview--visible" : ""}`}
                 style={expanded() ? { height: `${previewHeight()}px` } : {}}
               >
-                <ModelPreview model={previewModel() ?? activeModel() ?? null} />
+                <Show when={expanded()}>
+                  <ModelPreview model={previewModel() ?? activeModel() ?? null} />
+                </Show>
               </div>
             </div>
           )

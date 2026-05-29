@@ -37,11 +37,28 @@ test("model selector exposes combobox relationships and active option movement",
   const preview = page.locator(`[id="${controls}"]`)
   await expect(expand).toHaveAttribute("aria-expanded", "false")
   await expect(preview).toHaveAttribute("aria-hidden", "true")
+  await expect(preview.locator("button, a, [tabindex]")).toHaveCount(0)
   await expand.click()
   const collapse = page.getByRole("button", { name: "Collapse", exact: true })
   await expect(collapse).toHaveAttribute("aria-controls", controls!)
   await expect(collapse).toHaveAttribute("aria-expanded", "true")
   await expect(preview).toHaveAttribute("aria-hidden", "false")
+  await expect(preview.getByRole("button", { name: "Add to favorites" })).toBeVisible()
+})
+
+test("expanded preview waits for explicit pointer selection", async ({ page }) => {
+  await load(page, "shared--model-selector-accessible")
+
+  await page.getByRole("button", { name: "Review model: Alpha" }).click()
+  await page.getByRole("button", { name: "Expand" }).click()
+  await page.getByRole("option", { name: "Bravo" }).click()
+
+  await expect(page.getByTestId("model-selector-value")).toHaveText("alpha")
+  await expect(page.getByRole("combobox", { name: "Review model: Alpha. Search models" })).toBeVisible()
+  await expect(page.locator(".model-selector-preview")).toContainText("Bravo")
+
+  await page.getByRole("button", { name: "Select: Bravo" }).click()
+  await expect(page.getByTestId("model-selector-value")).toHaveText("bravo")
 })
 
 test("selected favorite remains selected when its duplicate group is collapsed", async ({ page }) => {
@@ -50,9 +67,11 @@ test("selected favorite remains selected when its duplicate group is collapsed",
   await page.getByRole("button", { name: "Review model: Alpha" }).click()
   const combobox = page.getByRole("combobox", { name: "Review model: Alpha. Search models" })
   const alpha = page.getByRole("option", { name: "Alpha" })
+  const favorites = page.getByRole("button", { name: "Collapse Favorites" })
   await expect(alpha.first()).toHaveAttribute("aria-selected", "true")
+  await expect.poll(() => favorites.evaluate((el) => getComputedStyle(el).borderTopStyle)).toBe("solid")
 
-  await page.getByRole("button", { name: "Collapse Favorites" }).click()
+  await favorites.click()
   await expect(alpha).toHaveCount(1)
   await expect(alpha).toHaveAttribute("aria-selected", "true")
   await expect(combobox).toHaveAttribute("aria-activedescendant", await alpha.getAttribute("id"))
