@@ -49,7 +49,7 @@ jobs:
       - name: Save reviewed release metadata
         run: |
           cp packages/kilo-jetbrains/CHANGELOG.md "$RUNNER_TEMP/jetbrains-CHANGELOG.md"
-          cp packages/kilo-jetbrains/package.json "$RUNNER_TEMP/jetbrains-package.json"
+          cp packages/kilo-jetbrains/gradle.properties "$RUNNER_TEMP/jetbrains-gradle.properties"
 
       - name: Checkout release tag
         uses: actions/checkout@v6
@@ -60,7 +60,7 @@ jobs:
       - name: Restore reviewed release metadata
         run: |
           cp "$RUNNER_TEMP/jetbrains-CHANGELOG.md" packages/kilo-jetbrains/CHANGELOG.md
-          cp "$RUNNER_TEMP/jetbrains-package.json" packages/kilo-jetbrains/package.json
+          cp "$RUNNER_TEMP/jetbrains-gradle.properties" packages/kilo-jetbrains/gradle.properties
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -111,7 +111,7 @@ jobs:
 
       - name: Verify plugin
         working-directory: packages/kilo-jetbrains
-        run: ./gradlew verifyPlugin -Pproduction=true -Pkilo.version="$VERSION" -Pkilo.channel="$CHANNEL"
+        run: ./gradlew verifyPlugin -Pproduction=true -Pkilo.channel="$CHANNEL"
         env:
           VERSION: ${{ steps.release.outputs.version }}
           CHANNEL: ${{ steps.release.outputs.marketplace_channel }}
@@ -129,7 +129,7 @@ jobs:
 
       - name: Publish to JetBrains Marketplace
         working-directory: packages/kilo-jetbrains
-        run: ./gradlew publishPlugin -Pproduction=true -Pkilo.version="$VERSION" -Pkilo.channel="$CHANNEL"
+        run: ./gradlew publishPlugin -Pproduction=true -Pkilo.channel="$CHANNEL"
         env:
           VERSION: ${{ steps.release.outputs.version }}
           CHANNEL: ${{ steps.release.outputs.marketplace_channel }}

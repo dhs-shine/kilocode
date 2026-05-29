@@ -50,14 +50,7 @@ const pkgjsons = await Array.fromAsync(
   new Bun.Glob("**/package.json").scan({
     absolute: true,
   }),
-).then((arr) =>
-  arr.filter(
-    (x) =>
-      !x.includes("node_modules") &&
-      !x.includes("dist") &&
-      !x.endsWith("/packages/kilo-jetbrains/package.json"), // kilocode_change
-  ),
-)
+).then((arr) => arr.filter((x) => !x.includes("node_modules") && !x.includes("dist")))
 
 for (const file of pkgjsons) {
   let pkg = await Bun.file(file).text()
