@@ -302,15 +302,18 @@ export const ReadTool = Tool.define(
         }
       }
 
-      // kilocode_change start - extract DOCX as text
-      if (!Docx.accepts(filepath) && isBinaryFile(filepath, sample)) {
+      // kilocode_change start - extract DOCX text before generic binary rejection
+      const docx = Docx.accepts(filepath)
+      const opts = { limit: params.limit ?? DEFAULT_READ_LIMIT, offset: params.offset || 1 }
+      const read = docx
+        ? () => Docx.open(filepath).then((stream) => readLines(stream, opts))
+        : () => lines(filepath, opts)
+      if (!docx && isBinaryFile(filepath, sample)) {
         return yield* Effect.fail(new Error(`Cannot read binary file: ${filepath}`))
       }
-      // kilocode_change end
 
-      const file = yield* Effect.promise(() =>
-        lines(filepath, { limit: params.limit ?? DEFAULT_READ_LIMIT, offset: params.offset || 1 }),
-      )
+      const file = yield* Effect.promise(read)
+      // kilocode_change end
       if (file.count < file.offset && !(file.count === 0 && file.offset === 1)) {
         return yield* Effect.fail(
           new Error(`Offset ${file.offset} is out of range for this file (${file.count} lines)`),
@@ -362,9 +365,7 @@ export const ReadTool = Tool.define(
 // routed through TextStream.withFallback so non-UTF-8 files are decoded via
 // iconv. The body otherwise matches upstream.
 export async function lines(filepath: string, opts: { limit: number; offset: number }) {
-  if (Docx.accepts(filepath)) return readLines(await Docx.open(filepath), opts) // kilocode_change
-  const extracted = await Notebook.open(filepath) // kilocode_change - extract readable notebook cells before paging
-  if (extracted) return readLines(extracted, opts) // kilocode_change
+  if (Notebook.isFile(filepath)) return readLines(await Notebook.open(filepath), opts) // kilocode_change - extract readable notebook cells before paging
   return TextStream.withFallback(filepath, (stream) => readLines(stream, opts))
 }
 

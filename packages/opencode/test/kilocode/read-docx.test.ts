@@ -73,7 +73,7 @@ const put = Effect.fn("ReadDocxTest.put")(function* (filepath: string, content: 
   yield* fs.writeWithDirs(filepath, content)
 })
 
-const document = async (paragraphs: string[]) => {
+const document = async (paragraphs: string[], extra = "") => {
   const writer = new ZipWriter(new Uint8ArrayWriter())
   await writer.add(
     "[Content_Types].xml",
@@ -101,6 +101,7 @@ const document = async (paragraphs: string[]) => {
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
         paragraphs.map((text) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`).join("") +
+        extra +
         "</w:body></w:document>",
     ),
   )
@@ -150,6 +151,19 @@ describe("kilocode DOCX reads", () => {
 
       expect(err.message).toContain("Failed to extract text from DOCX file")
       expect(err.message).toContain(filepath)
+    }),
+  )
+
+  it.live("includes extraction warnings for unsupported document elements", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
+      const filepath = path.join(dir, "warning.docx")
+      yield* put(filepath, yield* Effect.promise(() => document(["Readable text"], "<w:unsupported/>")))
+
+      const result = yield* exec(dir, { filePath: filepath })
+
+      expect(result.output).toContain("Readable text")
+      expect(result.output).toContain("DOCX extraction warnings")
     }),
   )
 

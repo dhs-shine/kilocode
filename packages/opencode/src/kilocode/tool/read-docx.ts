@@ -11,5 +11,7 @@ export async function open(filepath: string) {
     const message = err instanceof Error ? err.message : String(err)
     throw new Error(`Failed to extract text from DOCX file: ${filepath}\n${message}`, { cause: err })
   })
-  return Readable.from([result.value])
+  const warnings = result.messages.filter((item) => item.type === "warning").map((item) => item.message)
+  const note = warnings.length > 0 ? `\n\n(DOCX extraction warnings: ${warnings.join("; ")})` : ""
+  return Readable.from([result.value + note])
 }
