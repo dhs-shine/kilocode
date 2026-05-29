@@ -28,6 +28,8 @@ Before installing the Kilo Code plugin, ensure you have:
 4. Search for "Kilo Code"
 5. Click **Install** and restart your IDE
 
+<a id="jetbrains-early-access"></a>
+
 ### Try the v7 Early Access Program plugin
 
 The v7 EAP plugin is available for users who want to try the newest JetBrains experience before it reaches the default Marketplace channel. It uses a JetBrains-native UI and is designed to work well with JetBrains remote development.
