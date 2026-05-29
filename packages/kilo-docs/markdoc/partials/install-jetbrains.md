@@ -28,7 +28,7 @@ Before installing the Kilo Code plugin, ensure you have:
 4. Search for "Kilo Code"
 5. Click **Install** and restart your IDE
 
-<a id="v7-early-access"></a>
+<a id="jetbrains-early-access"></a>
 
 ### Try the v7 Early Access Program plugin
 
