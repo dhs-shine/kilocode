@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test"
 import { afterEach, mock, spyOn } from "bun:test"
 import { Effect } from "effect"
-import { AppRuntime } from "../../../src/effect/app-runtime"
 import { RemoteSender } from "../../../src/kilo-sessions/remote-sender"
 import type { RemoteWS } from "../../../src/kilo-sessions/remote-ws"
 import type { RemoteProtocol } from "../../../src/kilo-sessions/remote-protocol"
 import { SessionPrompt } from "../../../src/session/prompt"
 import { Question } from "../../../src/question"
 import { Permission } from "../../../src/permission"
+import { PermissionID } from "../../../src/permission/schema"
 import { Suggestion } from "../../../src/kilocode/suggestion" // kilocode_change
 
 function fakeConn() {
@@ -48,8 +48,11 @@ const nolog = {
   warn: () => {},
 }
 
-function permissions(items: Permission.Request[]) {
-  return spyOn(AppRuntime, "runPromise").mockResolvedValue(items as never)
+function permissions(items: Permission.Request[] = []) {
+  return {
+    list: async () => items,
+    reply: async () => true,
+  }
 }
 
 // kilocode_change start
@@ -470,6 +473,37 @@ describe("RemoteSender", () => {
     expect(sent[0]).toEqual({ type: "response", id: "req_q", result: {} })
   })
 
+  test("permission_respond sends response after work completes", async () => {
+    const { conn, sent } = fakeConn()
+    const calls: Permission.ReplyInput[] = []
+    const sender = RemoteSender.create({
+      conn,
+      directory: "/tmp/test",
+      log: nolog,
+      subscribe: fakeBus().subscribe,
+      provide: async <R>(input: { directory: string; init?: Effect.Effect<void>; fn: () => R }) => input.fn(),
+      permission: {
+        list: async () => [],
+        reply: async (input) => {
+          calls.push(input)
+          return true
+        },
+      },
+    })
+
+    sender.handle({
+      type: "command",
+      id: "req_permission",
+      command: "permission_respond",
+      data: { requestID: PermissionID.make("permission_1"), reply: "once" },
+    })
+
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(calls).toEqual([{ requestID: PermissionID.make("permission_1"), reply: "once" }])
+    expect(sent).toContainEqual({ type: "response", id: "req_permission", result: {} })
+  })
+
   test("question_reply error sends error response", async () => {
     const { conn, sent } = fakeConn()
     const sender = RemoteSender.create({
@@ -870,7 +904,6 @@ describe("RemoteSender", () => {
       { id: "question_1", sessionID: "ses_target", questions: [{ type: "text", text: "Continue?" }] } as any,
       { id: "question_2", sessionID: "ses_other", questions: [{ type: "text", text: "Unrelated?" }] } as any,
     ])
-    permissions([])
 
     const sender = RemoteSender.create({
       conn,
@@ -878,6 +911,7 @@ describe("RemoteSender", () => {
       log: nolog,
       subscribe: bus.subscribe,
       provide: async (input: any) => input.fn(),
+      permission: permissions(),
     })
 
     sender.handle({ type: "subscribe", sessionId: "ses_target" })
@@ -899,24 +933,6 @@ describe("RemoteSender", () => {
 
     spyOn(Suggestion, "list").mockResolvedValue([])
     spyOn(Question, "list").mockResolvedValue([])
-    permissions([
-      {
-        id: "permission_1",
-        sessionID: "ses_target",
-        permission: "file.write",
-        patterns: ["src/**"],
-        metadata: {},
-        always: [],
-      } as any,
-      {
-        id: "permission_2",
-        sessionID: "ses_other",
-        permission: "file.read",
-        patterns: ["*"],
-        metadata: {},
-        always: [],
-      } as any,
-    ])
 
     const sender = RemoteSender.create({
       conn,
@@ -924,6 +940,24 @@ describe("RemoteSender", () => {
       log: nolog,
       subscribe: bus.subscribe,
       provide: async (input: any) => input.fn(),
+      permission: permissions([
+        {
+          id: "permission_1",
+          sessionID: "ses_target",
+          permission: "file.write",
+          patterns: ["src/**"],
+          metadata: {},
+          always: [],
+        } as any,
+        {
+          id: "permission_2",
+          sessionID: "ses_other",
+          permission: "file.read",
+          patterns: ["*"],
+          metadata: {},
+          always: [],
+        } as any,
+      ]),
     })
 
     sender.handle({ type: "subscribe", sessionId: "ses_target" })
@@ -954,16 +988,6 @@ describe("RemoteSender", () => {
       { id: "sug_1", sessionID: "ses_other", text: "Review?", actions: [] } as any,
     ])
     spyOn(Question, "list").mockResolvedValue([{ id: "question_1", sessionID: "ses_other", questions: [] } as any])
-    permissions([
-      {
-        id: "permission_1",
-        sessionID: "ses_other",
-        permission: "file.write",
-        patterns: [],
-        metadata: {},
-        always: [],
-      } as any,
-    ])
 
     const sender = RemoteSender.create({
       conn,
@@ -971,6 +995,16 @@ describe("RemoteSender", () => {
       log: nolog,
       subscribe: bus.subscribe,
       provide: async (input: any) => input.fn(),
+      permission: permissions([
+        {
+          id: "permission_1",
+          sessionID: "ses_other",
+          permission: "file.write",
+          patterns: [],
+          metadata: {},
+          always: [],
+        } as any,
+      ]),
     })
 
     sender.handle({ type: "subscribe", sessionId: "ses_target" })
@@ -999,7 +1033,6 @@ describe("RemoteSender", () => {
       } as any,
     ])
     spyOn(Question, "list").mockResolvedValue([])
-    permissions([])
 
     const sender = RemoteSender.create({
       conn,
@@ -1007,6 +1040,7 @@ describe("RemoteSender", () => {
       log: nolog,
       subscribe: bus.subscribe,
       provide: async (input: any) => input.fn(),
+      permission: permissions(),
     })
 
     sender.handle({ type: "subscribe", sessionId: "ses_target" })
