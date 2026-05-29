@@ -15,8 +15,7 @@ import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
 // kilocode_change start
 import * as Encoding from "../kilocode/encoding"
 import * as TextStream from "../kilocode/text-stream"
-import * as Notebook from "../kilocode/tool/notebook"
-import * as Xlsx from "../kilocode/tool/xlsx"
+import * as Extract from "../kilocode/tool/read-extract"
 // kilocode_change end
 
 const DEFAULT_READ_LIMIT = 2000
@@ -302,23 +301,20 @@ export const ReadTool = Tool.define(
         }
       }
 
-      // kilocode_change start - extract XLSX text before generic binary rejection
-      const xlsx = Xlsx.is(filepath)
-      const opts = { limit: params.limit ?? DEFAULT_READ_LIMIT, offset: params.offset || 1 }
-      const read = xlsx
-        ? () => Xlsx.open(filepath).then((stream) => readLines(stream, opts))
-        : () => lines(filepath, opts)
-      if (!xlsx && isBinaryFile(filepath, sample)) {
+      // kilocode_change start - route extractable binary documents through lines()
+      if (!Extract.binary(filepath) && isBinaryFile(filepath, sample)) {
         return yield* Effect.fail(new Error(`Cannot read binary file: ${filepath}`))
       }
 
-      const file = yield* Effect.promise(read)
-      // kilocode_change end
+      const file = yield* Effect.promise(() =>
+        lines(filepath, { limit: params.limit ?? DEFAULT_READ_LIMIT, offset: params.offset || 1 }),
+      )
       if (file.count < file.offset && !(file.count === 0 && file.offset === 1)) {
         return yield* Effect.fail(
           new Error(`Offset ${file.offset} is out of range for this file (${file.count} lines)`),
         )
       }
+      // kilocode_change end
 
       let output = [`<path>${filepath}</path>`, `<type>file</type>`, "<content>\n"].join("\n")
       output += file.raw.map((line, i) => `${i + file.offset}: ${line}`).join("\n")
@@ -365,7 +361,8 @@ export const ReadTool = Tool.define(
 // routed through TextStream.withFallback so non-UTF-8 files are decoded via
 // iconv. The body otherwise matches upstream.
 export async function lines(filepath: string, opts: { limit: number; offset: number }) {
-  if (Notebook.isFile(filepath)) return readLines(await Notebook.open(filepath), opts) // kilocode_change - extract readable notebook cells before paging
+  const extracted = await Extract.open(filepath) // kilocode_change - extract supported document contents before paging
+  if (extracted) return readLines(extracted, opts) // kilocode_change
   return TextStream.withFallback(filepath, (stream) => readLines(stream, opts))
 }
 
