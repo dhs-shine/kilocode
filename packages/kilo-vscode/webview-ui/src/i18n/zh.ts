@@ -1224,9 +1224,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "不对大量粘贴内容进行摘要",
   "settings.experimental.batch.title": "批量工具",
   "settings.experimental.batch.description": "启用多个工具调用的批处理",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "代码库搜索",
   "settings.experimental.codebaseSearch.description": "启用 AI 驱动的自然语言代码库搜索",
   "settings.experimental.speechToText.title": "语音转文本",
