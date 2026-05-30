@@ -3,8 +3,10 @@ import {
   parseJwtClaims,
   extractAccountIdFromClaims,
   extractAccountId,
+  CodexAuthPlugin,
   type IdTokenClaims,
 } from "../../src/plugin/codex"
+import type { PluginInput } from "@kilocode/plugin"
 
 function createTestJwt(payload: object): string {
   const header = Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url")
@@ -13,6 +15,55 @@ function createTestJwt(payload: object): string {
 }
 
 describe("plugin.codex", () => {
+  test("identifies refresh requests as Kilo", async () => {
+    const original = globalThis.fetch
+    const seen: Request[] = []
+    let auth = {
+      type: "oauth" as const,
+      access: "old-access",
+      refresh: "old-refresh",
+      expires: 0,
+    }
+    const input = {
+      client: {
+        auth: {
+          set: async (req: { body: typeof auth }) => {
+            auth = req.body
+          },
+        },
+      },
+    } as unknown as PluginInput
+    globalThis.fetch = Object.assign(
+      async (...args: Parameters<typeof globalThis.fetch>) => {
+        const req = new Request(...args)
+        seen.push(req)
+        if (req.url === "https://auth.openai.com/oauth/token") {
+          return Response.json({
+            id_token: "",
+            access_token: "next-access",
+            refresh_token: "next-refresh",
+            expires_in: 60,
+          })
+        }
+        return new Response("", { status: 200 })
+      },
+      { preconnect: original.preconnect },
+    )
+
+    try {
+      const plugin = await CodexAuthPlugin(input)
+      const loaded = await plugin.auth!.loader!(async () => auth, {} as never)
+      await loaded.fetch("https://api.openai.com/v1/responses")
+    } finally {
+      globalThis.fetch = original
+    }
+
+    const refresh = seen[0]
+    expect(refresh.url).toBe("https://auth.openai.com/oauth/token")
+    expect(refresh.headers.get("user-agent")).toMatch(/^kilo\//)
+    expect(await refresh.text()).toContain("refresh_token=old-refresh")
+  })
+
   describe("parseJwtClaims", () => {
     test("parses valid JWT with claims", () => {
       const payload = { email: "test@example.com", chatgpt_account_id: "acc-123" }
