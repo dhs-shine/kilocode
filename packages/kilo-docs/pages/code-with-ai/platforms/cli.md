@@ -571,7 +571,6 @@ The CLI supports overriding config values with environment variables. The suppor
 - For `kilocode` provider: `KILOCODE_<FIELD_NAME>` (e.g., `KILOCODE_MODEL` → `kilocodeModel`)
 - For other providers: `KILO_<FIELD_NAME>` (e.g., `KILO_API_KEY` → `apiKey`)
 
-When `KILO_API_KEY` authenticates the CLI, sessions created in both interactive mode and `kilo run` sync to your private Kilo session history. Set `KILO_DISABLE_SESSION_INGEST=1` to call the Kilo Gateway without retaining session transcripts in Kilo.
 
 ## Using the CLI in an Organization
 
