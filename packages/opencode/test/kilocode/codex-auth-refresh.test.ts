@@ -132,7 +132,7 @@ async function race(input: { reuse: "early" | "late"; delay: number; lock?: Lock
       if (b.proc.exitCode === null) b.proc.kill()
     }
   } finally {
-    void server.stop(true)
+    await server.stop(true)
     await fs.rm(dir, { recursive: true, force: true })
   }
 }
