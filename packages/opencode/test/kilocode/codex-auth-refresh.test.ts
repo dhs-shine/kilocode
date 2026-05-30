@@ -30,7 +30,7 @@ const expired = (): Auth => ({
 })
 
 const root = path.join(import.meta.dir, "../..")
-const worker = path.join(import.meta.dir, "../fixture/codex-auth-refresh-worker.ts")
+const worker = path.join(import.meta.dir, "fixture/codex-auth-refresh-worker.ts")
 
 function plugin(persist: (auth: Auth) => void) {
   const set = async (req: { body: Auth }) => {
