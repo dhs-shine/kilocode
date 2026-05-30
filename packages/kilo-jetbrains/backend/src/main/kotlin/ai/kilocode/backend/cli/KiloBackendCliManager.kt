@@ -190,7 +190,6 @@ class KiloBackendCliManager(
             install(proc)
 
             val stderr = StringBuilder()
-            val stdout = StringBuilder()
 
             Thread({
                 BufferedReader(InputStreamReader(proc.errorStream)).use { reader ->
@@ -204,7 +203,6 @@ class KiloBackendCliManager(
             BufferedReader(InputStreamReader(proc.inputStream)).use { reader ->
                 for (line in reader.lineSequence()) {
                     log.info("CLI stdout: $line")
-                    synchronized(stdout) { stdout.appendLine(line) }
                     val match = PORT_REGEX.find(line)
                     if (match != null) {
                         val p = match.groupValues[1].toInt()
