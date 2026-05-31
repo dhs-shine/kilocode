@@ -783,7 +783,7 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
         let efforts = [...adaptiveEfforts]
         if (model.providerID === "github-copilot") {
           // kilocode_change start - treat opus-4.8 like opus-4.7
-          if (["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"].some((v) => model.api.id.includes(v))) {
+          if (model.api.id.includes("opus-4.7") || model.api.id.includes("opus-4.8")) {
             efforts = ["medium"]
           }
           // kilocode_change end
