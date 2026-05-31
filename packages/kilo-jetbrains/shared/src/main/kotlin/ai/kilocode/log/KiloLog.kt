@@ -1,6 +1,7 @@
 package ai.kilocode.log
 
 import ai.kilocode.KiloPlugin
+import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.diagnostic.Logger
 import java.io.PrintWriter
@@ -60,6 +61,26 @@ interface KiloLog {
     }
 }
 
+object KiloEnvironment {
+    fun payload(log: KiloLog? = null): Map<String, String> = buildMap {
+        put("platform", "jetbrains")
+        put("client", "jetbrains")
+        put("feature", "jetbrains-plugin")
+        runCatching {
+            val info = ApplicationInfo.getInstance()
+            put("editorName", info.fullApplicationName)
+            put("jetbrainsBuild", info.build.asString())
+        }.onFailure { log?.info("Could not read ApplicationInfo for environment payload: ${it.message}") }
+        runCatching {
+            val version = KiloPlugin.version()
+            if (version != null) {
+                put("pluginVersion", version)
+                put("appVersion", version)
+            }
+        }.onFailure { log?.info("Could not read plugin version for environment payload: ${it.message}") }
+    }
+}
+
 internal class IntellijLog(cls: Class<*>) : KiloLog {
     private val delegate = Logger.getInstance(cls)
     override val isDebugEnabled: Boolean
@@ -84,9 +105,11 @@ internal class FileLog(cls: Class<*>) : KiloLog {
 
         private val root: java.util.logging.Logger by lazy {
             val logger = java.util.logging.Logger.getLogger("ai.kilocode")
+            val payload = KiloEnvironment.payload().entries.joinToString(" ") { "${it.key}=${it.value}" }
             logger.addHandler(handler)
             logger.useParentHandlers = false
             logger.level = level
+            logger.log(Level.INFO, "environment payload: $payload")
             logger
         }
 

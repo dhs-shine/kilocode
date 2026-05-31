@@ -1,9 +1,8 @@
 package ai.kilocode.backend.telemetry
 
-import ai.kilocode.KiloPlugin
 import ai.kilocode.backend.dev.KiloDevMode
+import ai.kilocode.log.KiloEnvironment
 import ai.kilocode.log.KiloLog
-import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.components.Service
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -62,21 +61,6 @@ class KiloBackendTelemetry(
         ),
     ).toString()
 
-    private fun base(): Map<String, JsonPrimitive> = buildMap {
-        put("platform", JsonPrimitive("jetbrains"))
-        put("client", JsonPrimitive("jetbrains"))
-        put("feature", JsonPrimitive("jetbrains-plugin"))
-        runCatching {
-            val info = ApplicationInfo.getInstance()
-            put("editorName", JsonPrimitive(info.fullApplicationName))
-            put("jetbrainsBuild", JsonPrimitive(info.build.asString()))
-        }.onFailure { log.info("Could not read ApplicationInfo for telemetry: ${it.message}") }
-        runCatching {
-            val version = KiloPlugin.version()
-            if (version != null) {
-                put("pluginVersion", JsonPrimitive(version))
-                put("appVersion", JsonPrimitive(version))
-            }
-        }.onFailure { log.info("Could not read plugin version for telemetry: ${it.message}") }
-    }
+    private fun base(): Map<String, JsonPrimitive> =
+        KiloEnvironment.payload(log).mapValues { JsonPrimitive(it.value) }
 }
