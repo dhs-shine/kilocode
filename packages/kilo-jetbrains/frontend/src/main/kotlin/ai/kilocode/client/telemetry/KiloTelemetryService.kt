@@ -2,6 +2,7 @@
 
 package ai.kilocode.client.telemetry
 
+import ai.kilocode.log.KiloEnvironment
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.KiloAppRpcApi
 import ai.kilocode.rpc.dto.TelemetryCaptureDto
@@ -31,6 +32,11 @@ class KiloTelemetryService internal constructor(
     }
 
     fun send(event: String, properties: Map<String, String> = emptyMap()) {
+        if (KiloEnvironment.sandbox()) {
+            val payload = KiloEnvironment.payload(LOG) + properties
+            LOG.info("telemetry capture sandbox: event=$event ${payload.entries.joinToString(" ") { "${it.key}=${it.value}" }}")
+            return
+        }
         cs.launch {
             try {
                 val dto = TelemetryCaptureDto(event, properties)

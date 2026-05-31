@@ -20,7 +20,7 @@ class KiloBackendTelemetry(
     suspend fun capture(http: OkHttpClient?, port: Int, event: String, properties: Map<String, String>) {
         val body = payload(event, properties)
         if (KiloDevMode.enabled()) {
-            log.debug { "telemetry capture dev-mode: $body" }
+            log.info("telemetry capture sandbox: $body")
             return
         }
         if (http == null || port <= 0) return
@@ -30,7 +30,7 @@ class KiloBackendTelemetry(
     suspend fun setEnabled(http: OkHttpClient?, port: Int, enabled: Boolean) {
         val body = JsonObject(mapOf("enabled" to JsonPrimitive(enabled))).toString()
         if (KiloDevMode.enabled()) {
-            log.debug { "telemetry setEnabled dev-mode: $body" }
+            log.info("telemetry setEnabled sandbox: $body")
             return
         }
         if (http == null || port <= 0) return
