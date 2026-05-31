@@ -11,11 +11,16 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 
 @Service(Service.Level.APP)
 class KiloBackendTelemetry(
     private val log: KiloLog = KiloLog.create(KiloBackendTelemetry::class.java),
 ) {
+    companion object {
+        private const val TIMEOUT_MS = 5_000L
+    }
+
     suspend fun capture(http: OkHttpClient?, port: Int, event: String, properties: Map<String, String>) {
         val body = payload(event, properties)
         if (KiloDevMode.enabled()) {
@@ -39,12 +44,16 @@ class KiloBackendTelemetry(
     private suspend fun post(http: OkHttpClient, port: Int, path: String, body: String) {
         withContext(Dispatchers.IO) {
             try {
+                val client = http.newBuilder()
+                    .callTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .readTimeout(TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .build()
                 val req = Request.Builder()
                     .url("http://127.0.0.1:$port/$path")
                     .header("Accept", "application/json")
                     .post(body.toRequestBody("application/json".toMediaType()))
                     .build()
-                http.newCall(req).execute().use { res ->
+                client.newCall(req).execute().use { res ->
                     if (!res.isSuccessful) log.warn("telemetry $path failed: HTTP ${res.code}")
                 }
             } catch (e: Exception) {

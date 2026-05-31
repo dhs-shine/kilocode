@@ -193,12 +193,13 @@ class SessionController(
         val start = sid ?: ref?.key ?: "pending"
         val exists = sid != null
         val dto = promptDto(text)
+        val props = promptProps()
         LOG.debug { "${ChatLogSummary.sid(start)} ${ChatLogSummary.prompt(text)} ${ChatLogSummary.dir(directory)}" }
         capture("Conversation Send Clicked", sessionProps(sid ?: ref?.key) + mapOf(
             "source" to "user",
             "hasExistingSession" to exists.toString(),
             "textLength" to bucket(text),
-        ) + promptProps())
+        ) + props)
         showSession()
         cs.launch {
             try {
@@ -220,7 +221,7 @@ class SessionController(
                     session.id
                 }
                 sessions.prompt(id, directory, dto)
-                capture("Conversation Message", sessionProps(id) + mapOf("source" to "user", "hasExistingSession" to exists.toString()) + promptProps())
+                capture("Conversation Message", sessionProps(id) + mapOf("source" to "user", "hasExistingSession" to exists.toString()) + props)
                 LOG.debug { "${ChatLogSummary.sid(id)} kind=prompt dispatched=true" }
             } catch (e: Exception) {
                 capture("Session Error", sessionProps(sid ?: ref?.key ?: start) + mapOf("context" to "prompt", "errorClass" to e::class.java.name))
@@ -1384,9 +1385,18 @@ class SessionController(
     private fun connectionProps(): Map<String, String> = buildMap {
         put("appStatus", model.app.status.name)
         put("workspaceStatus", model.workspace.status.name)
-        model.app.error?.let { put("appError", it) }
-        model.workspace.error?.let { put("workspaceError", it) }
+        model.app.error?.let { put("appError", bucketError(it)) }
+        model.workspace.error?.let { put("workspaceError", bucketError(it)) }
         put("warningCount", model.app.warnings.size.toString())
+    }
+
+    private fun bucketError(text: String): String = when {
+        text.isBlank() -> "empty"
+        text.contains("timed out", ignoreCase = true) -> "timeout"
+        text.contains("not connected", ignoreCase = true) -> "not_connected"
+        text.contains("connection", ignoreCase = true) -> "connection"
+        text.contains("http", ignoreCase = true) -> "http"
+        else -> "other"
     }
 
     fun dismissLoginRequired() {

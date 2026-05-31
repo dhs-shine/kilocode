@@ -411,16 +411,24 @@ class KiloBackendAppService private constructor(
         }
     }
 
-    private suspend fun setTelemetry(enabled: Boolean) {
-        runCatching {
-            service<KiloBackendTelemetry>().setEnabled(connection.apiClient, connection.port, enabled)
-        }.onFailure { log.info("Skipping telemetry setEnabled: ${it.message}") }
+    private fun setTelemetry(enabled: Boolean) {
+        val http = connection.apiClient
+        val port = connection.port
+        cs.launch {
+            runCatching {
+                service<KiloBackendTelemetry>().setEnabled(http, port, enabled)
+            }.onFailure { log.info("Skipping telemetry setEnabled: ${it.message}") }
+        }
     }
 
-    private suspend fun captureBackend(event: String, props: Map<String, String>) {
-        runCatching {
-            service<KiloBackendTelemetry>().capture(connection.apiClient, connection.port, event, props)
-        }.onFailure { log.info("Skipping backend telemetry: ${it.message}") }
+    private fun captureBackend(event: String, props: Map<String, String>) {
+        val http = connection.apiClient
+        val port = connection.port
+        cs.launch {
+            runCatching {
+                service<KiloBackendTelemetry>().capture(http, port, event, props)
+            }.onFailure { log.info("Skipping backend telemetry: ${it.message}") }
+        }
     }
 
     private suspend fun detectMigration(): LegacyMigrationDetection? = withContext(Dispatchers.IO) {
