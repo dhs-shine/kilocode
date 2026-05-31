@@ -63,6 +63,7 @@ class SessionSidePanelManager(
                 existing
             } else create(ref)
         }
+        if (current === ui) return
         Telemetry.send("Session Opened", mapOf("source" to ref.type.name.lowercase(), "sessionId" to ref.id))
         show(ui)
     }
