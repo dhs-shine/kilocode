@@ -33,7 +33,7 @@ class KiloTelemetryService internal constructor(
     fun send(event: String, properties: Map<String, String> = emptyMap()) {
         if (KiloLog.sandbox()) {
             val payload = KiloLog.payload(LOG) + properties
-            LOG.info("telemetry capture sandbox: event=$event ${payload.entries.joinToString(" ") { "${it.key}=${it.value}" }}")
+            LOG.info("event=$event ${payload.entries.joinToString(" ") { "${it.key}=${it.value}" }}")
             return
         }
         cs.launch {
