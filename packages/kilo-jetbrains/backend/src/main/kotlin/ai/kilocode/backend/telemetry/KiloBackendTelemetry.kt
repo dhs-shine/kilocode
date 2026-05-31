@@ -1,7 +1,6 @@
 package ai.kilocode.backend.telemetry
 
 import ai.kilocode.backend.dev.KiloDevMode
-import ai.kilocode.log.KiloEnvironment
 import ai.kilocode.log.KiloLog
 import com.intellij.openapi.components.Service
 import kotlinx.coroutines.Dispatchers
@@ -62,5 +61,5 @@ class KiloBackendTelemetry(
     ).toString()
 
     private fun base(): Map<String, JsonPrimitive> =
-        KiloEnvironment.payload(log).mapValues { JsonPrimitive(it.value) }
+        KiloLog.payload(log).mapValues { JsonPrimitive(it.value) }
 }

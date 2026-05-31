@@ -48,33 +48,31 @@ interface KiloLog {
 
     companion object {
         fun create(cls: Class<*>): KiloLog {
-            if (KiloEnvironment.sandbox()) return FileLog(cls)
+            if (sandbox()) return FileLog(cls)
             val intellij = IntellijLog(cls)
             if (!runCatching { KiloPlugin.isRc() }.getOrDefault(false)) return intellij
             return CompositeLog(intellij, FileLog(cls))
         }
-    }
-}
 
-object KiloEnvironment {
-    fun sandbox(): Boolean = System.getProperty("idea.plugin.in.sandbox.mode", "false").toBoolean()
+        fun sandbox(): Boolean = System.getProperty("idea.plugin.in.sandbox.mode", "false").toBoolean()
 
-    fun payload(log: KiloLog? = null): Map<String, String> = buildMap {
-        put("platform", "jetbrains")
-        put("client", "jetbrains")
-        put("feature", "jetbrains-plugin")
-        runCatching {
-            val info = ApplicationInfo.getInstance()
-            put("editorName", info.fullApplicationName)
-            put("jetbrainsBuild", info.build.asString())
-        }.onFailure { log?.info("Could not read ApplicationInfo for environment payload: ${it.message}") }
-        runCatching {
-            val version = KiloPlugin.version()
-            if (version != null) {
-                put("pluginVersion", version)
-                put("appVersion", version)
-            }
-        }.onFailure { log?.info("Could not read plugin version for environment payload: ${it.message}") }
+        fun payload(log: KiloLog? = null): Map<String, String> = buildMap {
+            put("platform", "jetbrains")
+            put("client", "jetbrains")
+            put("feature", "jetbrains-plugin")
+            runCatching {
+                val info = ApplicationInfo.getInstance()
+                put("editorName", info.fullApplicationName)
+                put("jetbrainsBuild", info.build.asString())
+            }.onFailure { log?.info("Could not read ApplicationInfo for environment payload: ${it.message}") }
+            runCatching {
+                val version = KiloPlugin.version()
+                if (version != null) {
+                    put("pluginVersion", version)
+                    put("appVersion", version)
+                }
+            }.onFailure { log?.info("Could not read plugin version for environment payload: ${it.message}") }
+        }
     }
 }
 
@@ -102,7 +100,7 @@ internal class FileLog(cls: Class<*>) : KiloLog {
 
         private val root: java.util.logging.Logger by lazy {
             val logger = java.util.logging.Logger.getLogger("ai.kilocode")
-            val payload = KiloEnvironment.payload().entries.joinToString(" ") { "${it.key}=${it.value}" }
+            val payload = KiloLog.payload().entries.joinToString(" ") { "${it.key}=${it.value}" }
             logger.addHandler(handler)
             logger.useParentHandlers = false
             logger.level = level

@@ -1,7 +1,7 @@
 package ai.kilocode.backend.dev
 
-import ai.kilocode.log.KiloEnvironment
+import ai.kilocode.log.KiloLog
 
 object KiloDevMode {
-    fun enabled(): Boolean = KiloEnvironment.sandbox()
+    fun enabled(): Boolean = KiloLog.sandbox()
 }
