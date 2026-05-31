@@ -12,6 +12,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 object Telemetry {
@@ -36,10 +37,14 @@ class KiloTelemetryService internal constructor(
     }
 
     private val pending = AtomicInteger()
+    private val warned = AtomicBoolean()
 
     fun send(event: String, properties: Map<String, String> = emptyMap()) {
         if (pending.incrementAndGet() > MAX_PENDING) {
             pending.decrementAndGet()
+            if (warned.compareAndSet(false, true)) {
+                LOG.warn("telemetry backpressure: dropping events with more than $MAX_PENDING pending")
+            }
             return
         }
         cs.launch {
