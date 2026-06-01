@@ -6,6 +6,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.model.ModelText
+import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.settings.profile.edt
 import ai.kilocode.client.settings.ui.SettingsRow
 import ai.kilocode.client.settings.ui.SettingsRows
@@ -20,8 +21,16 @@ import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.ProvidersDto
+import com.intellij.ide.DataManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.options.ConfigurableWithId
+import com.intellij.openapi.options.ShowSettingsUtil
+import com.intellij.openapi.options.ex.Settings
+import com.intellij.openapi.project.ProjectManager
+import com.intellij.ui.EditorNotificationPanel
+import com.intellij.ui.InlineBanner
 import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -33,6 +42,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
+import java.util.function.Predicate
+import javax.swing.JComponent
 import javax.swing.JPanel
 
 internal class ModelsSettingsUi(
@@ -43,6 +54,10 @@ internal class ModelsSettingsUi(
 ) : JPanel(BorderLayout()) {
 
     private val status = JBLabel(KiloBundle.message("settings.models.loading"))
+    private val banner = InlineBanner(
+        KiloBundle.message("settings.models.login.message"),
+        EditorNotificationPanel.Status.Warning,
+    ).showCloseButton(false)
     private val content = Stack.vertical()
     private val rows = SettingsRows()
     private val modes = SettingsRows()
@@ -76,6 +91,9 @@ internal class ModelsSettingsUi(
             picker.picker.onFavoriteToggle = { app.toggleModelFavorite(it.provider, it.id) }
         }
 
+        banner.addAction(KiloBundle.message("settings.models.login.action"), Runnable { openProfile(banner) })
+        content.next(banner)
+        content.gap(UiStyle.Gap.md())
         content.next(status)
         content.gap(UiStyle.Gap.lg())
         content.next(TitledSeparator(KiloBundle.message("settings.models.displayName")))
@@ -240,15 +258,20 @@ internal class ModelsSettingsUi(
         checkEdt()
         allItems = items(false)
         val smallItems = items(true)
+        val hasDir = dir != null || directory != null
         val state = modelsStatus(
-            ready = appState.status == KiloAppStatusDto.READY,
-            loading = loading || (appState.status == KiloAppStatusDto.READY && !loaded && dir != null),
+            ready = appState.status == KiloAppStatusDto.READY && hasDir,
+            loading = loading || (appState.status == KiloAppStatusDto.READY && !loaded && hasDir),
             providers = providers,
             items = allItems.size,
             errors = errors,
             saving = saving,
         )
         val ready = state == ModelsStatus.READY || state == ModelsStatus.MODES_FAILED
+        banner.isVisible = modelsLoginBannerVisible(
+            ready = appState.status == KiloAppStatusDto.READY,
+            authenticated = appState.profile != null,
+        )
         if (!saving) {
             when (state) {
                 ModelsStatus.UNAVAILABLE -> {
@@ -346,6 +369,26 @@ internal class ModelsSettingsUi(
     private fun selectSubagent(item: ModelPicker.Item) {
         val variant = if (draft.subagent == item.key && draft.variant in item.variants) draft.variant else item.variants.firstOrNull()
         update { copy(subagent = item.key, variant = variant) }
+    }
+
+    private fun openProfile(src: JComponent) {
+        val settings = Settings.KEY.getData(DataManager.getInstance().getDataContext(src))
+        if (settings != null) {
+            val cfg = settings.find(UserProfileConfigurable.ID)
+            if (cfg != null) {
+                settings.select(cfg)
+                return
+            }
+        }
+
+        val project = ProjectManager.getInstance().openProjects.firstOrNull { !it.isDefault }
+        ShowSettingsUtil.getInstance().showSettingsDialog(
+            project,
+            Predicate { cfg: Configurable ->
+                cfg is ConfigurableWithId && cfg.getId() == UserProfileConfigurable.ID
+            },
+            { cfg: Configurable -> cfg.focusOn(UserProfileConfigurable.FOCUS_ACCOUNT_COMBO) },
+        )
     }
 
     @RequiresEdt

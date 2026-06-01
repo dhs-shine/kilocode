@@ -7,7 +7,9 @@ import ai.kilocode.rpc.dto.LoadErrorDto
 import ai.kilocode.rpc.dto.ProvidersDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ModelsSettingsStateTest {
 
@@ -97,6 +99,20 @@ class ModelsSettingsStateTest {
     }
 
     @Test
+    fun `models status reports missing providers after loading completes`() {
+        val status = modelsStatus(
+            ready = true,
+            loading = false,
+            providers = null,
+            items = 0,
+            errors = emptyList(),
+            saving = false,
+        )
+
+        assertEquals(ModelsStatus.LOAD_FAILED, status)
+    }
+
+    @Test
     fun `models status reports app unavailable`() {
         val status = modelsStatus(
             ready = false,
@@ -108,5 +124,12 @@ class ModelsSettingsStateTest {
         )
 
         assertEquals(ModelsStatus.UNAVAILABLE, status)
+    }
+
+    @Test
+    fun `login banner shows only when ready and unauthenticated`() {
+        assertTrue(modelsLoginBannerVisible(ready = true, authenticated = false))
+        assertFalse(modelsLoginBannerVisible(ready = true, authenticated = true))
+        assertFalse(modelsLoginBannerVisible(ready = false, authenticated = false))
     }
 }

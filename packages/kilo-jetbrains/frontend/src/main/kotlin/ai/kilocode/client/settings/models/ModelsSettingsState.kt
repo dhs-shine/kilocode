@@ -70,8 +70,10 @@ internal fun modelsStatus(
     if (saving) return ModelsStatus.SAVING
     if (!ready) return ModelsStatus.UNAVAILABLE
     if (loading) return ModelsStatus.LOADING
-    if (providers == null) return if (errors.isNotEmpty()) ModelsStatus.LOAD_FAILED else ModelsStatus.LOADING
+    if (providers == null) return ModelsStatus.LOAD_FAILED
     if (items == 0) return ModelsStatus.NO_PROVIDERS
     if (errors.any { it.resource == "agents" }) return ModelsStatus.MODES_FAILED
     return ModelsStatus.READY
 }
+
+internal fun modelsLoginBannerVisible(ready: Boolean, authenticated: Boolean): Boolean = ready && !authenticated
