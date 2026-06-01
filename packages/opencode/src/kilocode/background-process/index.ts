@@ -206,7 +206,7 @@ export namespace BackgroundProcess {
     emit(active)
   }
 
-  function done(active: Active) {
+  function finished(active: Active) {
     if (active.disposed) return true
     if (!infer()) return true
     if (terminal(active.info.status)) return true
@@ -215,7 +215,7 @@ export namespace BackgroundProcess {
   }
 
   function scan(active: Active) {
-    if (done(active)) return
+    if (finished(active)) return
     if (active.scan) return
     active.scan = refresh(active)
       .then((changed) => {
@@ -235,7 +235,7 @@ export namespace BackgroundProcess {
   }
 
   function poll(active: Active, ms = PORT_MS) {
-    if (done(active)) return
+    if (finished(active)) return
     if (active.poll) return
     active.poll = setTimeout(() => {
       active.poll = undefined
@@ -365,6 +365,7 @@ export namespace BackgroundProcess {
     }
     delete result.KILO_SERVER_PASSWORD
     delete result.KILO_SERVER_USERNAME
+    delete result.KILO_BACKGROUND_PROCESS_PORTS
     return result
   }
 
