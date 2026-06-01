@@ -989,6 +989,8 @@ export const dict = {
   "session.delete.confirm": 'Slette sesjonen "{{name}}"?',
   "session.delete.button": "Slett sesjon",
   "session.untitled": "Uten tittel",
+  "session.current": "Gjeldende økt",
+  "session.history.sources": "Historikkilde",
   "session.recent": "Nylige",
   "session.showHistory": "Vis historikk",
   "session.search.placeholder": "Søk i sesjoner...",
@@ -1222,9 +1224,6 @@ export const dict = {
   "settings.experimental.pasteSummary.description": "Ikke oppsummer stort limt innhold",
   "settings.experimental.batch.title": "Batchverktøy",
   "settings.experimental.batch.description": "Aktiver batchbehandling av verktøykall",
-  "settings.experimental.semanticIndexing.title": "Semantic Indexing",
-  "settings.experimental.semanticIndexing.description":
-    "Enable semantic codebase indexing and the semantic_search tool. Requires indexing configuration.",
   "settings.experimental.codebaseSearch.title": "Kodesøk",
   "settings.experimental.codebaseSearch.description": "Aktiver AI-drevet naturlig språksøk på tvers av kodebasen",
   "settings.experimental.speechToText.title": "Tale til tekst",

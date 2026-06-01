@@ -1427,7 +1427,6 @@ export type Config = {
     disable_paste_summary?: boolean
     batch_tool?: boolean
     codebase_search?: boolean
-    semantic_indexing?: boolean
     speech_to_text_model?: string
     openTelemetry?: boolean
     primary_tools?: Array<string>
@@ -5967,6 +5966,7 @@ export type SessionPromptData = {
     format?: OutputFormat
     system?: string
     variant?: string
+    snapshotInitialization?: "wait"
     editorContext?: {
       visibleFiles?: Array<string>
       openTabs?: Array<string>
@@ -6308,6 +6308,7 @@ export type SessionPromptAsyncData = {
     format?: OutputFormat
     system?: string
     variant?: string
+    snapshotInitialization?: "wait"
     editorContext?: {
       visibleFiles?: Array<string>
       openTabs?: Array<string>
@@ -6356,6 +6357,7 @@ export type SessionCommandData = {
     arguments: string
     command: string
     variant?: string
+    snapshotInitialization?: "wait"
     parts?: Array<{
       id?: string
       type: "file"

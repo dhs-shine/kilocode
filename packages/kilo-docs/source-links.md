@@ -35,6 +35,8 @@
   <!-- packages/opencode/src/plugin/xai.ts -->
 - <https://auth.x.ai/oauth2/token>
   <!-- packages/opencode/src/plugin/xai.ts -->
+- <https://blog.kilo.ai/p/kilo-gateway-now-supports-byok-20-providers>
+  <!-- packages/kilo-vscode/webview-ui/src/components/settings/ProviderConnectDialog.tsx -->
 - <https://blog.kilo.ai/p/new-kilo-for-vs-code-is-live>
   <!-- packages/kilo-vscode/webview-ui/src/components/migration/MigrationWizard.tsx -->
 - <https://chatgpt.com/explore/plus>
@@ -144,7 +146,7 @@
   <!-- packages/opencode/src/cli/cmd/tui/config/tui-migrate.ts -->
 - <https://opencode.ai/zen>
   <!-- packages/kilo-vscode/webview-ui/src/i18n/en.ts -->
-- <https://openrouter.ai/docs/use-cases/usage-accounting>
+- <https://openrouter.ai/docs/cookbook/administration/usage-accounting>
   <!-- packages/opencode/src/kilocode/session/index.ts -->
 - <https://opentelemetry.io/blog/2025/how-to-name-your-span-attributes/>
   <!-- packages/opencode/src/server/routes/instance/trace.ts -->
