@@ -14,7 +14,7 @@ import {
   type RecentProjectItem,
   type ProjectQuery,
 } from "../../client"
-import { type Path } from "../../shared/navigation"
+import { strip, type Path } from "../../shared/navigation"
 import { clean, friendly } from "../../shared/utils"
 import {
   projectStatus,
@@ -111,6 +111,7 @@ function Glyph(props: { name: "projects" | "settings" | "profile" }) {
 export function AppSidebar(props: Props) {
   const loc = useLocation()
   const params = createMemo(() => new URLSearchParams(loc.search))
+  const route = createMemo(() => strip(loc.pathname))
   const discoverable = () => shouldDiscover(params())
   const fallback = () => base(params())
   const [url, setUrl] = createSignal(fallback())
@@ -126,14 +127,14 @@ export function AppSidebar(props: Props) {
 
   // project currently rendered by ProjectConsoleRoute — it owns unread tracking for its terminals
   const activeProject = createMemo(() => {
-    const match = loc.pathname.match(/^\/projects\/([^/]+)/)
+    const match = route().match(/^\/projects\/([^/]+)/)
     return match ? decodeURIComponent(match[1]) : undefined
   })
 
   const settings = () => `/settings${tail(params())}`
   const selected = (item: RecentProjectItem) =>
-    loc.pathname.startsWith(`/projects/${encodeURIComponent(item.id)}/`) ||
-    loc.pathname === `/projects/${encodeURIComponent(item.id)}`
+    route().startsWith(`/projects/${encodeURIComponent(item.id)}/`) ||
+    route() === `/projects/${encodeURIComponent(item.id)}`
 
   const nav = () => [
     { href: "/projects", label: "Projects", name: "projects", path: "/projects" },

@@ -3,6 +3,7 @@ import { createMemo, For } from "solid-js"
 import { Icon } from "@kilocode/kilo-web-ui/icon"
 import { configNav, type ConfigGroup, type ConfigNode } from "./sections"
 import { friendly } from "../../shared/utils"
+import { settings, strip } from "../../shared/navigation"
 import { useConfig } from "../../context/config"
 
 function repo(input: string) {
@@ -14,20 +15,17 @@ export function ConfigSidebar() {
   const loc = useLocation()
   const params = useParams()
   const ctx = useConfig()
-  const project = createMemo(() => loc.pathname.startsWith("/projects/"))
+  const route = createMemo(() => strip(loc.pathname))
+  const project = createMemo(() => route().startsWith("/projects/"))
   const scope = createMemo(() => {
     if (!project()) return "Global"
     const dir = ctx.query()?.dir
     if (dir) return friendly(repo(dir))
     return friendly(decodeURIComponent(params.project ?? "Project"))
   })
-  const base = createMemo(() => {
-    const index = loc.pathname.indexOf("/settings")
-    if (index > 0) return `${loc.pathname.slice(0, index)}/settings`
-    return "/settings"
-  })
+  const base = createMemo(() => settings(route()))
   const active = createMemo(() => {
-    const rest = loc.pathname.slice(base().length)
+    const rest = route().slice(base().length)
     if (rest === "/models") return "/models/default"
     return rest || "/"
   })

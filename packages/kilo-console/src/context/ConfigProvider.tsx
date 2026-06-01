@@ -18,6 +18,7 @@ import {
   type TuiPatch,
 } from "../client"
 import { ConfigContext, type Task } from "./config"
+import { strip } from "../shared/navigation"
 import { clean, errMsg } from "../shared/utils"
 import { useLocation, useParams } from "@solidjs/router"
 
@@ -45,7 +46,8 @@ export function ConfigProvider(props: { children?: JSX.Element }) {
   const discoverable = () => shouldDiscover(search())
   const fallback = () => base(search())
   const [url, setUrl] = createSignal(fallback())
-  const scope = createMemo<Scope>(() => (loc.pathname.startsWith("/projects/") ? "project" : "global"))
+  const route = createMemo(() => strip(loc.pathname))
+  const scope = createMemo<Scope>(() => (route().startsWith("/projects/") ? "project" : "global"))
   const [saving, setSaving] = createSignal<string | undefined>()
   const [failure, setFailure] = createSignal<string | undefined>()
   const needs = createMemo(() => scope() === "project")

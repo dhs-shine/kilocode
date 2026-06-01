@@ -8,6 +8,7 @@ import { CountTag, Tag } from "@kilocode/kilo-web-ui/tag"
 import { CustomSelect, type SelectOption } from "../../components/CustomSelect"
 import { SearchField } from "../../components/SearchField"
 import { useConfig } from "../../context/config"
+import { settings } from "../../shared/navigation"
 import { toolCapabilities, toolName } from "../../shared/utils"
 import { ConfigPage, SourceBadge } from "./ConfigPage"
 import { ActionSelect, label as actionLabel, tone as actionTone } from "./PermissionsRoute"
@@ -30,13 +31,6 @@ const modes = [
   { value: "all", label: "Both" },
 ] satisfies SelectOption<"primary" | "subagent" | "all">[]
 
-function base(input: string) {
-  const index = input.indexOf("/settings")
-  if (index > 0) return `${input.slice(0, index)}/settings`
-  if (input.startsWith("/config")) return "/config"
-  return "/settings"
-}
-
 function desc(item: AgentItem) {
   return item.description ?? "No description available."
 }
@@ -51,7 +45,7 @@ function useAgentLinks() {
   const nav = useNavigate()
   const href = (id?: string) => {
     const suffix = id ? `/${encodeURIComponent(id)}` : ""
-    return `${base(loc.pathname)}/agents${suffix}${loc.search}`
+    return `${settings(loc.pathname)}/agents${suffix}${loc.search}`
   }
   return { href, nav }
 }
