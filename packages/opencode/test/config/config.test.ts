@@ -4,6 +4,7 @@ import { NodeFileSystem, NodePath } from "@effect/platform-node"
 import { Config } from "@/config/config"
 import { ConfigManaged } from "@/config/managed"
 import { ConfigParse } from "../../src/config/parse"
+import { KilocodeConfig } from "../../src/kilocode/config/config"
 import { EffectFlock } from "@opencode-ai/core/util/effect-flock"
 
 import { InstanceRef } from "../../src/effect/instance-ref"
@@ -365,6 +366,70 @@ test("updates global config and omits empty shell key in jsonc", async () => {
     expect(writtenConfig).not.toContain('"shell"')
     expect(parsed.shell).toBeUndefined()
     expect(parsed.model).toBe("test/model")
+  } finally {
+    ;(Global.Path as { config: string }).config = prev
+    await clear(true)
+  }
+})
+
+test("migrates string-form global permission in jsonc without throwing", async () => {
+  await using globalTmp = await tmpdir({
+    init: async (dir) => {
+      await Filesystem.write(
+        path.join(dir, "kilo.jsonc"),
+        `{
+  "$schema": "https://app.kilo.ai/config.json",
+  "permission": "allow"
+}`,
+      )
+    },
+  })
+
+  const prev = Global.Path.config
+  ;(Global.Path as { config: string }).config = globalTmp.path
+  await clear(true)
+
+  try {
+    await KilocodeConfig.migrateBashPermission()
+
+    const file = path.join(globalTmp.path, "kilo.jsonc")
+    const writtenConfig = await Filesystem.readText(file)
+    const parsed = ConfigParse.schema(Config.Info.zod, ConfigParse.jsonc(writtenConfig, file), file)
+    expect(parsed.permission?.["*"]).toBe("allow")
+    expect(parsed.permission?.bash).toBe("allow")
+  } finally {
+    ;(Global.Path as { config: string }).config = prev
+    await clear(true)
+  }
+})
+
+test("migrates object-form global permission in jsonc", async () => {
+  await using globalTmp = await tmpdir({
+    init: async (dir) => {
+      await Filesystem.write(
+        path.join(dir, "kilo.jsonc"),
+        `{
+  "$schema": "https://app.kilo.ai/config.json",
+  "permission": {
+    "read": "allow"
+  }
+}`,
+      )
+    },
+  })
+
+  const prev = Global.Path.config
+  ;(Global.Path as { config: string }).config = globalTmp.path
+  await clear(true)
+
+  try {
+    await KilocodeConfig.migrateBashPermission()
+
+    const file = path.join(globalTmp.path, "kilo.jsonc")
+    const writtenConfig = await Filesystem.readText(file)
+    const parsed = ConfigParse.schema(Config.Info.zod, ConfigParse.jsonc(writtenConfig, file), file)
+    expect(parsed.permission?.read).toBe("allow")
+    expect(parsed.permission?.bash).toBe("allow")
   } finally {
     ;(Global.Path as { config: string }).config = prev
     await clear(true)
