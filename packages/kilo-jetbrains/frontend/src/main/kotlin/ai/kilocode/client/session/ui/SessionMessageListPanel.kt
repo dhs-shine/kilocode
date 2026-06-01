@@ -13,6 +13,7 @@ import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.session.views.TurnView
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Disposer
 import com.intellij.util.ui.JBUI
 
 /**
@@ -56,7 +57,7 @@ class SessionMessageListPanel(
         SessionUiStyle.SessionLayout.TRANSCRIPT_PADDING,
         SessionUiStyle.SessionLayout.TRANSCRIPT_PADDING,
     ),
-), SessionEditorStyleTarget {
+), Disposable, SessionEditorStyleTarget {
 
     private val turnViews = LinkedHashMap<String, TurnView>()
     private val msgToTurn = HashMap<String, TurnView>()
@@ -69,6 +70,7 @@ class SessionMessageListPanel(
 
     init {
         isOpaque = false
+        Disposer.register(parent, this)
 
         model.addListener(parent) { event ->
             when (event) {
@@ -215,11 +217,16 @@ class SessionMessageListPanel(
         val tv = turnViews.remove(id) ?: return
         for (msgId in tv.messageIds()) unregister(msgId)
         remove(tv)
+        Disposer.dispose(tv)
         anchorFooter()
         refresh()
     }
 
     private fun rebuild() {
+        turnViews.values.forEach {
+            remove(it)
+            Disposer.dispose(it)
+        }
         turnViews.clear()
         msgToTurn.clear()
         msgToView.clear()
@@ -242,6 +249,10 @@ class SessionMessageListPanel(
     }
 
     private fun clear() {
+        turnViews.values.forEach {
+            remove(it)
+            Disposer.dispose(it)
+        }
         turnViews.clear()
         msgToTurn.clear()
         msgToView.clear()
@@ -335,5 +346,16 @@ class SessionMessageListPanel(
         login?.applyStyle(style)
         progress.applyStyle(style)
         refresh()
+    }
+
+    override fun dispose() {
+        turnViews.values.forEach {
+            remove(it)
+            Disposer.dispose(it)
+        }
+        turnViews.clear()
+        msgToTurn.clear()
+        msgToView.clear()
+        removeAll()
     }
 }

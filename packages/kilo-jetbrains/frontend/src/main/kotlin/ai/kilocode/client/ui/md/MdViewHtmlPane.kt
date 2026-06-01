@@ -28,6 +28,7 @@ internal class MdViewHtmlPane(
     private val source = StringBuilder()
     private var rendered = ""
     private var style = style
+    private var disposed = false
 
     private val extensions = listOf(
         AutolinkExtension.create(),
@@ -82,6 +83,7 @@ internal class MdViewHtmlPane(
     override var font: Font
         get() = fontOverride ?: opts().font
         set(value) {
+            if (disposed) return
             if (fontOverride == value) return
             fontOverride = value
             markDirty()
@@ -90,6 +92,7 @@ internal class MdViewHtmlPane(
     override var foreground: Color
         get() = foregroundOverride ?: opts().foreground
         set(value) {
+            if (disposed) return
             if (foregroundOverride == value) return
             foregroundOverride = value
             markDirty()
@@ -98,6 +101,7 @@ internal class MdViewHtmlPane(
     override var background: Color
         get() = backgroundOverride ?: opts().background
         set(value) {
+            if (disposed) return
             if (backgroundOverride == value) return
             backgroundOverride = value
             if (opaqueState) pane.background = value
@@ -107,6 +111,7 @@ internal class MdViewHtmlPane(
     override var linkColor: Color
         get() = linkColorOverride ?: opts().linkColor
         set(value) {
+            if (disposed) return
             if (linkColorOverride == value) return
             linkColorOverride = value
             markDirty()
@@ -115,6 +120,7 @@ internal class MdViewHtmlPane(
     override var codeBg: Color
         get() = codeBgOverride ?: opts().codeBg
         set(value) {
+            if (disposed) return
             if (codeBgOverride == value) return
             codeBgOverride = value
             markDirty()
@@ -123,6 +129,7 @@ internal class MdViewHtmlPane(
     override var preBg: Color
         get() = preBgOverride ?: opts().preBg
         set(value) {
+            if (disposed) return
             if (preBgOverride == value) return
             preBgOverride = value
             markDirty()
@@ -131,6 +138,7 @@ internal class MdViewHtmlPane(
     override var preFg: Color
         get() = preFgOverride ?: opts().preFg
         set(value) {
+            if (disposed) return
             if (preFgOverride == value) return
             preFgOverride = value
             markDirty()
@@ -139,6 +147,7 @@ internal class MdViewHtmlPane(
     override var codeFont: String
         get() = codeFontOverride ?: opts().codeFont
         set(value) {
+            if (disposed) return
             if (codeFontOverride == value) return
             codeFontOverride = value
             markDirty()
@@ -147,6 +156,7 @@ internal class MdViewHtmlPane(
     override var quoteBorder: Color
         get() = quoteBorderOverride ?: opts().quoteBorder
         set(value) {
+            if (disposed) return
             if (quoteBorderOverride == value) return
             quoteBorderOverride = value
             markDirty()
@@ -155,6 +165,7 @@ internal class MdViewHtmlPane(
     override var quoteFg: Color
         get() = quoteFgOverride ?: opts().quoteFg
         set(value) {
+            if (disposed) return
             if (quoteFgOverride == value) return
             quoteFgOverride = value
             markDirty()
@@ -163,6 +174,7 @@ internal class MdViewHtmlPane(
     override var tableBorder: Color
         get() = tableBorderOverride ?: opts().tableBorder
         set(value) {
+            if (disposed) return
             if (tableBorderOverride == value) return
             tableBorderOverride = value
             markDirty()
@@ -171,6 +183,7 @@ internal class MdViewHtmlPane(
     override var opaque: Boolean
         get() = opaqueState
         set(value) {
+            if (disposed) return
             if (opaqueState == value) return
             opaqueState = value
             pane.isOpaque = value
@@ -179,6 +192,7 @@ internal class MdViewHtmlPane(
         }
 
     override fun applyStyle(style: SessionEditorStyle) {
+        if (disposed) return
         if (this.style == style) return
         this.style = style
         if (opaqueState) pane.background = background
@@ -186,6 +200,7 @@ internal class MdViewHtmlPane(
     }
 
     override fun resetStyles() {
+        if (disposed) return
         fontOverride = null
         foregroundOverride = null
         backgroundOverride = null
@@ -204,6 +219,7 @@ internal class MdViewHtmlPane(
     }
 
     override fun set(text: String) {
+        if (disposed) return
         if (source.toString() == text) return
         source.clear()
         source.append(text)
@@ -211,12 +227,14 @@ internal class MdViewHtmlPane(
     }
 
     override fun append(delta: String) {
+        if (disposed) return
         if (delta.isEmpty()) return
         source.append(delta)
         syncHtml()
     }
 
     override fun clear() {
+        if (disposed) return
         if (source.isEmpty() && rendered.isEmpty() && pane.text.isEmpty()) return
         source.clear()
         rendered = ""
@@ -224,6 +242,7 @@ internal class MdViewHtmlPane(
     }
 
     override fun addLinkListener(listener: MdView.LinkListener) {
+        if (disposed) return
         listeners.add(listener)
     }
 
@@ -238,7 +257,16 @@ internal class MdViewHtmlPane(
     override fun overrideSheet(): String = MdCommon.rules(opts())
 
     override fun simulateLink(href: String) {
+        if (disposed) return
         dispatch(MdView.LinkEvent(href))
+    }
+
+    override fun dispose() {
+        disposed = true
+        listeners.clear()
+        source.clear()
+        rendered = ""
+        pane.text = ""
     }
 
     private fun dispatch(event: MdView.LinkEvent) {
@@ -246,11 +274,13 @@ internal class MdViewHtmlPane(
     }
 
     private fun markDirty() {
+        if (disposed) return
         pane.reloadCssStylesheets()
         if (source.isNotEmpty()) syncHtml()
     }
 
     private fun syncHtml() {
+        if (disposed) return
         val body = renderer.render(parser.parse(source.toString()))
         if (rendered == body && pane.text == "<html><body>$body</body></html>") return
         rendered = body

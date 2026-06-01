@@ -6,9 +6,11 @@ import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.fileTypes.UnknownFileType
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
@@ -16,10 +18,20 @@ import javax.swing.ScrollPaneConstants
 @Suppress("UnstableApiUsage")
 class MdViewHybridTest : BasePlatformTestCase() {
     private lateinit var view: MdView
+    private var disposed = false
 
     override fun setUp() {
         super.setUp()
         view = MdViewFactory.hybrid()
+        disposed = false
+    }
+
+    override fun tearDown() {
+        try {
+            if (this::view.isInitialized && !disposed) Disposer.dispose(view)
+        } finally {
+            super.tearDown()
+        }
     }
 
     fun `test set stores source`() {
@@ -199,6 +211,39 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertTrue(scrolls().isEmpty())
     }
 
+    fun `test rerender disposes previous code block editor`() {
+        view.set("```kotlin\nval value = 1\n```")
+        val editor = editors().single().getEditor(true)!!
+
+        view.set("plain text")
+        drainEdt()
+
+        assertTrue(editor.isDisposed)
+        assertTrue(scrolls().isEmpty())
+    }
+
+    fun `test clear disposes code block editor`() {
+        view.set("```kotlin\nval value = 1\n```")
+        val editor = editors().single().getEditor(true)!!
+
+        view.clear()
+        drainEdt()
+
+        assertTrue(editor.isDisposed)
+    }
+
+    fun `test dispose disposes code block editor`() {
+        view.set("```kotlin\nval value = 1\n```")
+        val editor = editors().single().getEditor(true)!!
+
+        Disposer.dispose(view)
+        disposed = true
+        drainEdt()
+
+        assertTrue(editor.isDisposed)
+        assertTrue(scrolls().isEmpty())
+    }
+
     fun `test applyStyle updates current and future blocks`() {
         val style = SessionEditorStyle.create(family = "Courier New", size = 21)
 
@@ -247,5 +292,9 @@ class MdViewHybridTest : BasePlatformTestCase() {
         host.doLayout()
         view.component.doLayout()
         scrolls().forEach { it.doLayout() }
+    }
+
+    private fun drainEdt() {
+        UIUtil.dispatchAllInvocationEvents()
     }
 }

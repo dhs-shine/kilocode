@@ -12,6 +12,7 @@ import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.client.ui.md.MdViewFactory
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
@@ -39,6 +40,7 @@ class ReasoningView(
     private var source = reasoning.content.toString()
 
     init {
+        Disposer.register(this, md)
         bindHeader(parts.title, parts.icon)
         applyStyle(style)
         md.opaque = false

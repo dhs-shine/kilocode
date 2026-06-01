@@ -11,6 +11,8 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Disposer
 import com.intellij.util.ui.JBUI
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -34,7 +36,7 @@ class MessageView(
     private val openUrl: (String) -> Unit = {},
 ) : ai.kilocode.client.session.ui.SessionLayoutPanel(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
-), SessionEditorStyleTarget, SessionView {
+), Disposable, SessionEditorStyleTarget, SessionView {
 
     constructor(msg: Message, openFile: (String) -> Unit) : this(msg, openFile, SessionEditorStyle.current())
 
@@ -84,6 +86,7 @@ class MessageView(
             val stale = parts.remove(content.id)
             if (stale != null) {
                 remove(stale)
+                Disposer.dispose(stale)
                 syncBorder()
                 refresh()
             }
@@ -111,6 +114,7 @@ class MessageView(
         val at = components.indexOfFirst { it === existing }.takeIf { it >= 0 } ?: componentCount
         parts.remove(content.id)
         remove(existing)
+        Disposer.dispose(existing)
         val view = view(content)
         view.applyStyle(style)
         parts[content.id] = view
@@ -123,6 +127,7 @@ class MessageView(
     fun removePart(contentId: String) {
         val view = parts.remove(contentId) ?: return
         remove(view)
+        Disposer.dispose(view)
         syncBorder()
         refresh()
     }
@@ -146,7 +151,10 @@ class MessageView(
      * Called only when the hidden ref changes to avoid unnecessary rebuilds.
      */
     private fun rebuildParts() {
-        parts.values.forEach { remove(it) }
+        parts.values.forEach {
+            remove(it)
+            Disposer.dispose(it)
+        }
         parts.clear()
         for ((_, content) in msg.parts) {
             if (content is StepFinish) continue
@@ -192,6 +200,15 @@ class MessageView(
         if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) background = style.editorScheme.defaultBackground
         for (view in parts.values) view.applyStyle(style)
         refresh()
+    }
+
+    override fun dispose() {
+        parts.values.forEach {
+            remove(it)
+            Disposer.dispose(it)
+        }
+        parts.clear()
+        hidden = null
     }
 
     override fun paintComponent(g: Graphics) {

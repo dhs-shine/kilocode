@@ -145,6 +145,7 @@ class SessionUi(
     private var style = SessionEditorStyle.current()
     private var editorTheme = style.editorScheme
     private var colorTheme = UIManager.getLookAndFeel()
+    private var disposed = false
 
     init {
         buildUi()
@@ -158,12 +159,14 @@ class SessionUi(
     }
 
     override fun addNotify() {
+        if (disposed) return
         super.addNotify()
         resumeOpen()
     }
 
     override fun doLayout() {
         super.doLayout()
+        if (disposed) return
         resumeOpen()
     }
 
@@ -499,6 +502,7 @@ class SessionUi(
     }
 
     private fun onStateChanged(state: SessionState) {
+        if (disposed) return
         prompt.setBusy(state.isBusy())
         load.setState(state)
         scroll.setQuestionPending(questionPending(state))
@@ -512,6 +516,7 @@ class SessionUi(
     }
 
     private fun refresh() {
+        if (disposed) return
         scroll.refresh()
         root.revalidate()
         root.repaint()
@@ -549,7 +554,13 @@ class SessionUi(
         )
     }
 
-    override fun dispose() {}
+    override fun dispose() {
+        disposed = true
+        modalFocus = null
+        empty = null
+        if (this::root.isInitialized) root.setModalContent(null)
+        removeAll()
+    }
 }
 
 private fun variantTitle(value: String): String = value.replaceFirstChar { it.titlecase() }

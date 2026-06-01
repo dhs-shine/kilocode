@@ -3,12 +3,14 @@ package ai.kilocode.client.ui.md
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.log.KiloLog
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.fileTypes.UnknownFileType
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBHtmlPaneConfiguration
@@ -122,6 +124,8 @@ internal class MdViewHybrid(
     private val source = StringBuilder()
     private var style = style
     private var rendered = ""
+    private var block: Disposable? = null
+    private var disposed = false
 
     private val extensions = listOf(
         AutolinkExtension.create(),
@@ -161,6 +165,7 @@ internal class MdViewHybrid(
     override var font: Font
         get() = fontOverride ?: opts().font
         set(value) {
+            if (disposed) return
             if (fontOverride == value) return
             fontOverride = value
             syncStyle()
@@ -169,6 +174,7 @@ internal class MdViewHybrid(
     override var foreground: Color
         get() = foregroundOverride ?: opts().foreground
         set(value) {
+            if (disposed) return
             if (foregroundOverride == value) return
             foregroundOverride = value
             syncStyle()
@@ -177,6 +183,7 @@ internal class MdViewHybrid(
     override var background: Color
         get() = backgroundOverride ?: opts().background
         set(value) {
+            if (disposed) return
             if (backgroundOverride == value) return
             backgroundOverride = value
             syncStyle()
@@ -185,6 +192,7 @@ internal class MdViewHybrid(
     override var linkColor: Color
         get() = linkColorOverride ?: opts().linkColor
         set(value) {
+            if (disposed) return
             if (linkColorOverride == value) return
             linkColorOverride = value
             syncStyle()
@@ -193,6 +201,7 @@ internal class MdViewHybrid(
     override var codeBg: Color
         get() = codeBgOverride ?: opts().codeBg
         set(value) {
+            if (disposed) return
             if (codeBgOverride == value) return
             codeBgOverride = value
             syncStyle()
@@ -201,6 +210,7 @@ internal class MdViewHybrid(
     override var preBg: Color
         get() = preBgOverride ?: opts().preBg
         set(value) {
+            if (disposed) return
             if (preBgOverride == value) return
             preBgOverride = value
             syncStyle()
@@ -209,6 +219,7 @@ internal class MdViewHybrid(
     override var preFg: Color
         get() = preFgOverride ?: opts().preFg
         set(value) {
+            if (disposed) return
             if (preFgOverride == value) return
             preFgOverride = value
             syncStyle()
@@ -217,6 +228,7 @@ internal class MdViewHybrid(
     override var codeFont: String
         get() = codeFontOverride ?: opts().codeFont
         set(value) {
+            if (disposed) return
             if (codeFontOverride == value) return
             codeFontOverride = value
             syncStyle()
@@ -225,6 +237,7 @@ internal class MdViewHybrid(
     override var quoteBorder: Color
         get() = quoteBorderOverride ?: opts().quoteBorder
         set(value) {
+            if (disposed) return
             if (quoteBorderOverride == value) return
             quoteBorderOverride = value
             syncStyle()
@@ -233,6 +246,7 @@ internal class MdViewHybrid(
     override var quoteFg: Color
         get() = quoteFgOverride ?: opts().quoteFg
         set(value) {
+            if (disposed) return
             if (quoteFgOverride == value) return
             quoteFgOverride = value
             syncStyle()
@@ -241,6 +255,7 @@ internal class MdViewHybrid(
     override var tableBorder: Color
         get() = tableBorderOverride ?: opts().tableBorder
         set(value) {
+            if (disposed) return
             if (tableBorderOverride == value) return
             tableBorderOverride = value
             syncStyle()
@@ -249,18 +264,21 @@ internal class MdViewHybrid(
     override var opaque: Boolean
         get() = opaqueState
         set(value) {
+            if (disposed) return
             if (opaqueState == value) return
             opaqueState = value
             syncStyle()
         }
 
     override fun applyStyle(style: SessionEditorStyle) {
+        if (disposed) return
         if (this.style == style) return
         this.style = style
         syncStyle()
     }
 
     override fun resetStyles() {
+        if (disposed) return
         fontOverride = null
         foregroundOverride = null
         backgroundOverride = null
@@ -277,6 +295,7 @@ internal class MdViewHybrid(
     }
 
     override fun set(text: String) {
+        if (disposed) return
         if (source.toString() == text) return
         source.clear()
         source.append(text)
@@ -284,21 +303,24 @@ internal class MdViewHybrid(
     }
 
     override fun append(delta: String) {
+        if (disposed) return
         if (delta.isEmpty()) return
         source.append(delta)
         syncBlocks()
     }
 
     override fun clear() {
+        if (disposed) return
         if (source.isEmpty() && rendered.isEmpty() && root.componentCount == 0) return
         source.clear()
         rendered = ""
-        root.removeAll()
+        clearBlocks()
         root.revalidate()
         root.repaint()
     }
 
     override fun addLinkListener(listener: MdView.LinkListener) {
+        if (disposed) return
         listeners.add(listener)
     }
 
@@ -313,10 +335,20 @@ internal class MdViewHybrid(
     override fun overrideSheet(): String = MdCommon.rules(opts())
 
     override fun simulateLink(href: String) {
+        if (disposed) return
         dispatch(MdView.LinkEvent(href))
     }
 
+    override fun dispose() {
+        disposed = true
+        listeners.clear()
+        source.clear()
+        rendered = ""
+        clearBlocks()
+    }
+
     private fun syncStyle() {
+        if (disposed) return
         val opts = opts()
         root.isOpaque = opts.opaque
         if (opts.opaque) root.background = opts.background
@@ -324,11 +356,12 @@ internal class MdViewHybrid(
     }
 
     private fun syncBlocks() {
+        if (disposed) return
         val text = source.toString()
         val doc = parser.parse(text)
         val body = renderer.render(doc)
         rendered = body
-        root.removeAll()
+        resetBlocks()
         if (text.isEmpty()) {
             root.revalidate()
             root.repaint()
@@ -338,6 +371,18 @@ internal class MdViewHybrid(
         doc.accept(visitor)
         root.revalidate()
         root.repaint()
+    }
+
+    private fun resetBlocks() {
+        block?.let { Disposer.dispose(it) }
+        block = Disposer.newDisposable("Markdown blocks")
+        root.removeAll()
+    }
+
+    private fun clearBlocks() {
+        block?.let { Disposer.dispose(it) }
+        block = null
+        root.removeAll()
     }
 
     private fun addGap() {
@@ -379,7 +424,11 @@ internal class MdViewHybrid(
     private fun codeBlock(text: String, lang: String?): JComponent {
         val opts = opts()
         val value = text.trimEnd('\n')
-        val field = runCatching { CodeField(file(lang), opts, text) }.getOrElse { err ->
+        val field = runCatching {
+            CodeField(file(lang), opts, text).also { ed ->
+                block?.let { ed.setDisposedWith(it) }
+            }
+        }.getOrElse { err ->
             LOG.warn("kind=markdown codeEditor=true failed message=${err.message}", err)
             textArea(text, opts)
         }

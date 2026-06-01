@@ -1,13 +1,14 @@
 package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import com.intellij.openapi.Disposable
 import java.awt.Color
 import java.awt.Font
 import java.awt.Point
 import javax.swing.JComponent
 
 /** Markdown rendering component. All public methods must be called on the EDT. */
-interface MdView {
+interface MdView : Disposable {
     val component: JComponent
 
     fun set(text: String)

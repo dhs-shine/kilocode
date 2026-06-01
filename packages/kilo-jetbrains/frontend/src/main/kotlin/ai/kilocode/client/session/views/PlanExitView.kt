@@ -7,6 +7,7 @@ import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.ui.md.MdViewFactory
+import com.intellij.openapi.util.Disposer
 import java.awt.BorderLayout
 
 class PlanExitView(tool: Tool, openFile: (String) -> Unit) : PartView() {
@@ -22,6 +23,7 @@ class PlanExitView(tool: Tool, openFile: (String) -> Unit) : PartView() {
     init {
         layout = BorderLayout()
         isOpaque = false
+        Disposer.register(this, md)
         md.addLinkListener { openFile(it.href) }
         add(md.component, BorderLayout.CENTER)
         applyStyle(SessionEditorStyle.current())

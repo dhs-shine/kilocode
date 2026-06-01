@@ -6,6 +6,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.client.ui.md.MdViewFactory
+import com.intellij.openapi.util.Disposer
 import java.awt.BorderLayout
 
 /**
@@ -26,6 +27,7 @@ class TextView(
     init {
         layout = BorderLayout()
         isOpaque = false
+        Disposer.register(this, md)
         md.opaque = !transparent
         md.addLinkListener { openUrl(it.href) }
         applyStyle(SessionEditorStyle.current())
