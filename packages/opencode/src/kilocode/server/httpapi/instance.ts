@@ -27,6 +27,8 @@ export function register(app: Hono, handler: Handler, context: Context.Context<u
   app.get(ConfigConsolePaths.effective, (c) => handler(c.req.raw, context))
   app.get(ConfigConsolePaths.overlay, (c) => handler(c.req.raw, context))
   app.patch(ConfigConsolePaths.overlay, (c) => handler(c.req.raw, context))
+  app.get(ConfigConsolePaths.rules, (c) => handler(c.req.raw, context))
+  app.put(ConfigConsolePaths.rules, (c) => handler(c.req.raw, context))
   app.get(ConfigConsolePaths.modelState, (c) => handler(c.req.raw, context))
   app.patch(ConfigConsolePaths.modelState, (c) => handler(c.req.raw, context))
   app.get(ConfigConsolePaths.tuiConfig, (c) => handler(c.req.raw, context))

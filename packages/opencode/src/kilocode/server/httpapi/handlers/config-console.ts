@@ -5,6 +5,7 @@ import * as InstanceState from "@/effect/instance-state"
 import { KilocodeConfigOverlay } from "@/kilocode/config/overlay"
 import { KilocodeConfigSources } from "@/kilocode/config/sources"
 import { KilocodeModelState } from "@/kilocode/config/model-state"
+import { ConfigRules } from "@/kilocode/server/routes/config-rules"
 import { KilocodeKeybinds } from "@/kilocode/tui/keybinds"
 import { KilocodeTuiConfig } from "@/kilocode/tui/config"
 import { disposeAllInstancesAndEmitGlobalDisposed } from "@/server/global-lifecycle"
@@ -15,6 +16,7 @@ import {
   ConfigModelStatePatch,
   ConfigOverlayPatch,
   ConfigOverlayQuery,
+  ConfigRulesPatch,
   TuiConfigPatch,
   TuiConfigQuery,
 } from "../groups/config-console"
@@ -109,6 +111,26 @@ export const configConsoleHandlers = HttpApiBuilder.group(InstanceHttpApi, "conf
       return yield* config.get()
     })
 
+    const rules = Effect.fn("ConfigConsoleHttpApi.rules")(function* () {
+      const instance = yield* InstanceState.context
+      return yield* Effect.promise(() =>
+        ConfigRules.read({ directory: instance.directory, worktree: instance.worktree }),
+      )
+    })
+
+    const rulesUpdate = Effect.fn("ConfigConsoleHttpApi.rulesUpdate")(function* (ctx: {
+      payload: typeof ConfigRulesPatch.Type
+    }) {
+      const instance = yield* InstanceState.context
+      return yield* Effect.promise(() =>
+        ConfigRules.update({
+          directory: instance.directory,
+          worktree: instance.worktree,
+          content: ctx.payload.content,
+        }),
+      )
+    })
+
     const modelState = Effect.fn("ConfigConsoleHttpApi.modelState")(function* () {
       return yield* Effect.promise(() => KilocodeModelState.get())
     })
@@ -159,6 +181,8 @@ export const configConsoleHandlers = HttpApiBuilder.group(InstanceHttpApi, "conf
       .handle("overlayUpdate", overlayUpdate)
       .handle("sources", sources)
       .handle("effective", effective)
+      .handle("rules", rules)
+      .handle("rulesUpdate", rulesUpdate)
       .handle("modelState", modelState)
       .handle("modelStateUpdate", modelStateUpdate)
       .handle("tuiConfigGet", tuiConfigGet)

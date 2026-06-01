@@ -9,6 +9,10 @@ import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 
 const Scope = Schema.Literals(["global", "project"])
+const Scoped = Scope.annotate({ default: "project" })
+const TuiScope = Schema.Literals(["project", "global"])
+const TuiScoped = TuiScope.annotate({ default: "project" })
+const ProjectScope = Schema.Literal("project").annotate({ default: "project" })
 const Origin = Schema.Literals(["project", "global", "system", "default"])
 const UnknownRecord = Schema.Record(Schema.String, Schema.Unknown)
 const ModelRef = Schema.Struct({ providerID: Schema.String, modelID: Schema.String })
@@ -36,11 +40,28 @@ const Source = Schema.Struct({
   reason: Schema.optional(Schema.String),
 })
 
-export const ConfigOverlayQuery = Schema.Struct({ scope: Schema.optional(Scope) })
+export const ConfigOverlayQuery = Schema.Struct({ scope: Schema.optional(Scoped) })
 export const ConfigOverlayPatch = Schema.Struct({
-  scope: Schema.optional(Scope),
+  scope: Schema.optional(Scoped),
   set: Schema.optional(UnknownRecord),
   unset: Schema.optional(Schema.Array(Schema.Array(Schema.String))),
+})
+export const ConfigRulesQuery = Schema.Struct({ scope: Schema.optional(ProjectScope) })
+const ConfigRulesFile = Schema.Struct({
+  name: Schema.String,
+  path: Schema.String,
+  exists: Schema.Boolean,
+  editable: Schema.Boolean,
+  content: Schema.String,
+})
+export const ConfigRulesResponse = Schema.Struct({
+  scope: Schema.Literal("project"),
+  target: Schema.String,
+  files: Schema.Array(ConfigRulesFile),
+}).annotate({ identifier: "ConfigRulesResponse" })
+export const ConfigRulesPatch = Schema.Struct({
+  scope: Schema.optional(ProjectScope),
+  content: Schema.String,
 })
 export const ConfigOverlayResponse = Schema.Struct({
   scope: Scope,
@@ -67,7 +88,7 @@ export const ConfigModelStateResponse = Schema.Struct({
   variant: Schema.Record(Schema.String, Schema.String),
 }).annotate({ identifier: "ConfigModelStateResponse" })
 
-export const TuiConfigQuery = Schema.Struct({ scope: Schema.optional(Scope) })
+export const TuiConfigQuery = Schema.Struct({ scope: Schema.optional(TuiScoped) })
 const TuiConfigShape = {
   $schema: Schema.optional(Schema.String),
   theme: Schema.optional(Schema.String),
@@ -97,6 +118,7 @@ export const ConfigConsolePaths = {
   sources: "/config/sources",
   effective: "/config/effective",
   overlay: "/config/overlay",
+  rules: "/config/rules",
   modelState: "/config/model-state",
   tuiConfig: "/tui/config",
   tuiKeybinds: "/tui/keybinds",
@@ -144,6 +166,26 @@ export const ConfigConsoleApi = HttpApi.make("config-console")
             summary: "Patch config overlay",
             description:
               "Apply a minimal global or project config patch, including unset paths for reverting local overrides.",
+          }),
+        ),
+        HttpApiEndpoint.get("rules", ConfigConsolePaths.rules, {
+          query: ConfigRulesQuery,
+          success: described(ConfigRulesResponse, "Project rules"),
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "config.rules",
+            summary: "Get project rules",
+            description: "List project instruction files used by Kilo and return their current contents.",
+          }),
+        ),
+        HttpApiEndpoint.put("rulesUpdate", ConfigConsolePaths.rules, {
+          payload: ConfigRulesPatch,
+          success: described(ConfigRulesResponse, "Project rules after update"),
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "config.rulesUpdate",
+            summary: "Update project rules",
+            description: "Create or update the project AGENTS.md rules file.",
           }),
         ),
         HttpApiEndpoint.get("modelState", ConfigConsolePaths.modelState, {

@@ -31,7 +31,51 @@ export namespace ConfigRulesRouteSchema {
   })
 }
 
-const names = ["AGENTS.md", "CLAUDE.md", "CONTEXT.md"] as const
+export namespace ConfigRules {
+  const names = ["AGENTS.md", "CLAUDE.md", "CONTEXT.md"] as const
+
+  type Ctx = {
+    directory: string
+    worktree?: string
+  }
+
+  function root(ctx?: Ctx) {
+    if (ctx) return ctx.worktree && ctx.worktree !== "/" ? ctx.worktree : ctx.directory
+    if (Instance.worktree && Instance.worktree !== "/") return Instance.worktree
+    return Instance.directory
+  }
+
+  function target(ctx?: Ctx) {
+    return path.join(root(ctx), "AGENTS.md")
+  }
+
+  export async function read(ctx?: Ctx) {
+    const dir = root(ctx)
+    const files = await Promise.all(
+      names.map(async (name) => {
+        const file = path.join(dir, name)
+        const exists = await Bun.file(file).exists()
+        return {
+          name,
+          path: file,
+          exists,
+          editable: name === "AGENTS.md",
+          content: exists ? await Bun.file(file).text() : "",
+        }
+      }),
+    )
+    return {
+      scope: "project" as const,
+      target: target(ctx),
+      files,
+    }
+  }
+
+  export async function update(input: Ctx & { content: string }) {
+    await Filesystem.write(target(input), input.content)
+    return read(input)
+  }
+}
 
 export const ConfigRulesRoutes = lazy(() =>
   new Hono()
@@ -53,7 +97,7 @@ export const ConfigRulesRoutes = lazy(() =>
         },
       }),
       validator("query", ConfigRulesRouteSchema.Query),
-      async (c) => c.json(await read()),
+      async (c) => c.json(await ConfigRules.read()),
     )
     .put(
       "/rules",
@@ -75,39 +119,9 @@ export const ConfigRulesRoutes = lazy(() =>
       validator("json", ConfigRulesRouteSchema.Update),
       async (c) => {
         const body = c.req.valid("json")
-        await Filesystem.write(target(), body.content)
-        return c.json(await read())
+        return c.json(
+          await ConfigRules.update({ directory: Instance.directory, worktree: Instance.worktree, content: body.content }),
+        )
       },
     ),
 )
-
-function root() {
-  if (Instance.worktree && Instance.worktree !== "/") return Instance.worktree
-  return Instance.directory
-}
-
-function target() {
-  return path.join(root(), "AGENTS.md")
-}
-
-async function read() {
-  const dir = root()
-  const files = await Promise.all(
-    names.map(async (name) => {
-      const file = path.join(dir, name)
-      const exists = await Bun.file(file).exists()
-      return {
-        name,
-        path: file,
-        exists,
-        editable: name === "AGENTS.md",
-        content: exists ? await Bun.file(file).text() : "",
-      }
-    }),
-  )
-  return {
-    scope: "project" as const,
-    target: target(),
-    files,
-  }
-}

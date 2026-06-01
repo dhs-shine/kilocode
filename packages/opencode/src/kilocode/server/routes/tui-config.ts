@@ -6,6 +6,7 @@ import { TuiConfig } from "@/cli/cmd/tui/config/tui"
 import { Instance } from "@/project/instance"
 import { errors } from "@/server/error"
 import { KilocodeTuiConfig } from "@/kilocode/tui/config"
+import { KilocodeKeybinds } from "@/kilocode/tui/keybinds"
 
 const Query = z.object({
   scope: KilocodeTuiConfig.Scope.optional().default("project"),
@@ -66,5 +67,37 @@ export const TuiConfigRoutes = lazy(() =>
           }),
         )
       },
-    ),
+    )
+    .get(
+      "/keybinds",
+      describeRoute({
+        summary: "List TUI keybinds",
+        description:
+          "List valid TUI keybind commands, descriptions, groups, and default bindings from the CLI schema.",
+        operationId: "tui.keybind.list",
+        responses: {
+          200: {
+            description: "TUI keybind metadata",
+            content: {
+              "application/json": {
+                schema: resolver(
+                  z.object({
+                    keybinds: z.array(
+                      z.object({
+                        id: z.string(),
+                        label: z.string(),
+                        group: z.string(),
+                        default: z.string(),
+                        description: z.string(),
+                      }),
+                    ),
+                  }),
+                ),
+              },
+            },
+          },
+        },
+      }),
+      async (c) => c.json({ keybinds: KilocodeKeybinds.list() }),
+    )
 )

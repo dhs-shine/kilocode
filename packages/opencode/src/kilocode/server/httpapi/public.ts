@@ -2,9 +2,18 @@ type Schema = {
   $ref?: string
   additionalProperties?: Schema | boolean
   anyOf?: Schema[]
+  const?: string
+  default?: unknown
+  enum?: string[]
   items?: Schema
   properties?: Record<string, Schema>
   type?: string
+}
+
+type Parameter = {
+  in?: string
+  name?: string
+  schema?: Schema
 }
 
 type Response = {
@@ -13,6 +22,7 @@ type Response = {
 }
 
 type Operation = {
+  parameters?: Parameter[]
   requestBody?: {
     content?: Record<string, { schema?: Schema }>
   }
@@ -23,11 +33,16 @@ type Spec = {
   components?: {
     schemas?: Record<string, Schema>
   }
-  paths?: Record<string, Partial<Record<"post" | "put", Operation>>>
+  paths?: Record<string, Partial<Record<"get" | "post" | "put" | "patch", Operation>>>
 }
 
 export function matchLegacyKiloOpenApi(input: Record<string, unknown>) {
   const spec = input as Spec
+  const rules = spec.paths?.["/config/rules"]?.get?.parameters?.find(
+    (param) => param.in === "query" && param.name === "scope",
+  )
+  if (rules) rules.schema = { const: "project", default: "project", type: "string" }
+
   const body = spec.paths?.["/kilo/organization"]?.post?.requestBody?.content?.["application/json"]?.schema
   const ref = body?.$ref?.replace("#/components/schemas/", "")
   const props = ref ? spec.components?.schemas?.[ref]?.properties : body?.properties
