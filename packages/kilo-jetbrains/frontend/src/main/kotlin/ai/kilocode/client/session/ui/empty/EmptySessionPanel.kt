@@ -56,7 +56,6 @@ class EmptySessionPanel(
 ) : BorderLayoutPanel(), Disposable, SessionEditorStyleTarget {
     val view: Align = align(HAlign.CENTER, VAlign.CENTER)
 
-    private var style = SessionEditorStyle.current()
     private val timer = Timer(ACTIVITY_MS) { syncActivity() }
     internal val recent = RecentsList(recents, controller)
 
@@ -90,6 +89,7 @@ class EmptySessionPanel(
 
     init {
         Disposer.register(parent, this)
+        Disposer.register(this, feedback)
         isOpaque = false
         applyStyle(SessionEditorStyle.current())
         addHierarchyListener { e ->
@@ -247,7 +247,6 @@ class EmptySessionPanel(
     }
 
     override fun applyStyle(style: SessionEditorStyle) {
-        this.style = style
         welcomeLabel.font = style.regularFont
         recent.applyStyle(style)
         revalidate()

@@ -7,10 +7,11 @@ import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
-import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.annotations.RequiresEdt
@@ -26,7 +27,7 @@ import javax.swing.JComponent
 
 internal class EmptySessionFeedback(
     private val browse: (String) -> Unit,
-) {
+) : Disposable {
     private var balloon: Balloon? = null
 
     val button: JButton = FeedbackButton().apply {
@@ -65,6 +66,10 @@ internal class EmptySessionFeedback(
     }
 
     private class FeedbackButton : EmptySessionPanel.ShowHistoryButton(buttonHtml(), AllIcons.Ide.Feedback)
+
+    override fun dispose() {
+        balloon?.hide()
+    }
 
     private class ActionButton(text: String, icon: javax.swing.Icon, action: () -> Unit) : JButton(text, icon) {
         init {
