@@ -138,7 +138,7 @@ describe("plan_exit detection", () => {
           {
             tool: "plan_exit",
             input: {},
-            output: "Plan is ready at .kilo/plans/plan.md. Ending planning turn.", // kilocode_change
+            output: "Plan is ready at .kilo/plans/plan.md. Ending planning turn.",
           },
         ],
       })
@@ -197,7 +197,7 @@ describe("plan_exit detection", () => {
         expect(question.questions[0].options.find((item) => item.label === PlanFollowup.ANSWER_CONTINUE)?.mode).toBe(
           "code",
         )
-        await Question.reject(question.id)
+        await PlanFollowupRuntime.question.reject(question.id)
         await expect(pending).resolves.toBe("break")
       } finally {
         if (prev === undefined) delete process.env.KILO_CLIENT
