@@ -10,7 +10,7 @@
   },
   "permission": {
     "edit": {
-      "packages/opencode/migration/*": "ask",
+      "packages/opencode/migration/*": "deny",
     },
   },
   "mcp": {},

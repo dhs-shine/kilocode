@@ -21,27 +21,36 @@ describe("bin/kilo tree-sitter resources", () => {
     return { bin, log, wasm, wrapper: join(dir, "kilo") }
   }
 
-  async function run(root: string, bin: string | undefined, log: string, wrapper?: string) {
+  async function run(root: string, bin: string | undefined, log: string, wrapper?: string, failCached?: boolean) {
     const capture = `
+const { EventEmitter } = require("events")
 const kiloFs = require("fs")
 const kiloChild = require("child_process")
 const log = process.argv[1]
 const wrapper = process.argv[2]
+const failCached = process.argv[3] === "true"
 const realpathSync = kiloFs.realpathSync
-kiloFs.realpathSync = (file) => wrapper && file === __filename ? wrapper : realpathSync(file)
-kiloChild.spawnSync = () => {
+kiloFs.realpathSync = (file) => file === __filename ? wrapper || process.cwd() : realpathSync(file)
+kiloChild.spawn = (target) => {
+  if (failCached && target.endsWith(".kilo")) throw new Error("cached binary failed")
   kiloFs.writeFileSync(log, process.env.KILO_TREE_SITTER_WASM_DIR || "")
-  return { status: 0 }
+  const child = new EventEmitter()
+  child.kill = () => {}
+  process.nextTick(() => child.emit("exit", 0))
+  return child
 }
 `
     const source = (await Bun.file(script).text()).replace(/^#!.*\n/, "")
-    return Bun.spawnSync(["node", "--input-type=commonjs", "--eval", capture + source, log, wrapper ?? ""], {
-      cwd: root,
-      env: {
-        PATH: process.env.PATH ?? "",
-        ...(bin ? { KILO_BIN_PATH: bin } : {}),
+    return Bun.spawnSync(
+      ["node", "--input-type=commonjs", "--eval", capture + source, log, wrapper ?? "", String(failCached)],
+      {
+        cwd: root,
+        env: {
+          PATH: process.env.PATH ?? "",
+          ...(bin ? { KILO_BIN_PATH: bin } : {}),
+        },
       },
-    })
+    )
   }
 
   test("exports co-located tree-sitter WASM dir for optional package binary", async () => {
@@ -65,6 +74,20 @@ kiloChild.spawnSync = () => {
 
       expect(proc.exitCode).toBe(0)
       expect(await Bun.file(item.log).text()).toBe(item.wasm)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test("falls back to the optional package when the cached binary cannot spawn", async () => {
+    const root = await mkdtemp(join(tmpdir(), "kilo-bin-tree-sitter-"))
+    try {
+      const cached = await setup(root, false)
+      const item = await setup(root, true)
+      const proc = await run(root, undefined, item.log, cached.wrapper, true)
+
+      expect(proc.exitCode).toBe(0)
+      expect(await Bun.file(item.log).text()).toBe(cached.wasm)
     } finally {
       await rm(root, { recursive: true, force: true })
     }
