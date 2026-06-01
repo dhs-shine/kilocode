@@ -66,7 +66,7 @@ export interface Interface {
   }>
 }
 
-type State = Omit<Interface, "generate">
+type State = Omit<Interface, "generate"> & { version: string } // kilocode_change
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Agent") {}
 
@@ -338,6 +338,7 @@ export const layer = Layer.effect(
         })
 
         return {
+          version: KiloAgent.cacheKey(cfg), // kilocode_change
           get,
           list,
           defaultAgent,
@@ -345,15 +346,25 @@ export const layer = Layer.effect(
       }),
     )
 
+    // kilocode_change start - rebuild cached agents when permission-relevant config changes
+    const current = Effect.fnUntraced(function* <A>(select: (s: State) => Effect.Effect<A>) {
+      const cfg = yield* config.get()
+      const s = yield* InstanceState.get(state)
+      if (s.version === KiloAgent.cacheKey(cfg)) return yield* select(s)
+      yield* InstanceState.invalidate(state)
+      return yield* select(yield* InstanceState.get(state))
+    })
+    // kilocode_change end
+
     return Service.of({
       get: Effect.fn("Agent.get")(function* (agent: string) {
-        return yield* InstanceState.useEffect(state, (s) => s.get(agent))
+        return yield* current((s) => s.get(agent)) // kilocode_change
       }),
       list: Effect.fn("Agent.list")(function* () {
-        return yield* InstanceState.useEffect(state, (s) => s.list())
+        return yield* current((s) => s.list()) // kilocode_change
       }),
       defaultAgent: Effect.fn("Agent.defaultAgent")(function* () {
-        return yield* InstanceState.useEffect(state, (s) => s.defaultAgent())
+        return yield* current((s) => s.defaultAgent()) // kilocode_change
       }),
       generate: Effect.fn("Agent.generate")(function* (input: {
         description: string

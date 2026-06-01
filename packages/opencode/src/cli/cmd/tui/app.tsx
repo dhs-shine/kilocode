@@ -321,6 +321,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   )
 
   KiloApp.useSessionEffects({ route, sdk, sync }) // kilocode_change
+  KiloApp.useTuiConfigHotReload() // kilocode_change - hot reload TUI keybinds/theme/ui settings
 
   // Update terminal window title based on current route and session
   createEffect(() => {

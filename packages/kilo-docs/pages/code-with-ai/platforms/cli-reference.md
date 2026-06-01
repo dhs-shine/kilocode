@@ -179,7 +179,7 @@ Options:
       --format                        format: default (formatted) or json (raw JSON events)  [string] [choices: "default", "json"] [default: "default"]
   -f, --file                          file(s) to attach to message  [array]
       --title                         title for the session (uses truncated prompt if no value provided)  [string]
-      --attach                        attach to a running opencode server (e.g., http://localhost:4096)  [string]
+      --attach                        attach to a running kilo server (e.g., http://localhost:4096)  [string]
   -p, --password                      basic auth password (defaults to KILO_SERVER_PASSWORD)  [string]
   -u, --username                      basic auth username (defaults to KILO_SERVER_USERNAME or 'kilo')  [string]
       --dir                           directory to run in, path on remote server if attaching  [string]
@@ -806,6 +806,91 @@ enable remote connection for real-time session relay
 Options:
   --help     Show help  [boolean]
   --version  Show version number  [boolean]
+```
+
+## kilo daemon
+
+```
+manage the local kilo daemon
+
+Commands:
+  kilo daemon start    start the local kilo daemon
+  kilo daemon status   show local kilo daemon status
+  kilo daemon stop     stop the local kilo daemon
+  kilo daemon restart  restart the local kilo daemon
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+```
+
+### kilo daemon start
+
+```
+start the local kilo daemon
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
+  --json         print daemon details as JSON  [boolean]
+```
+
+### kilo daemon status
+
+```
+show local kilo daemon status
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+  --json     print daemon details as JSON  [boolean]
+```
+
+### kilo daemon stop
+
+```
+stop the local kilo daemon
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+  --json     print daemon details as JSON  [boolean]
+```
+
+### kilo daemon restart
+
+```
+restart the local kilo daemon
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
+  --json         print daemon details as JSON  [boolean]
+```
+
+## kilo console
+
+```
+open the local Kilo Console
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
 ```
 
 ## kilo db
