@@ -36,15 +36,15 @@ export function createDiffRows(source: () => WorktreeFileDiff[], key: () => stri
     const files = new Set<string>()
     const diffs = source().map((next) => {
       files.add(next.file)
-      const current = cache.get(next.file)
-      if (current) {
-        current.set(next)
-        return current.diff
+      const cached = cache.get(next.file)
+      if (cached) {
+        cached.set(next)
+        return cached.diff
       }
 
       const [value, setValue] = createSignal(next)
       const diff = new Proxy(next, {
-        get: (_, key) => Reflect.get(value(), key),
+        get: (_, prop) => Reflect.get(value(), prop),
       })
       cache.set(next.file, { diff, set: setValue })
       return diff
