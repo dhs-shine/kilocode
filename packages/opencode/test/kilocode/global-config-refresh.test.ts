@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test"
+import path from "path"
 import { Global } from "@opencode-ai/core/global"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { GlobalBus } from "../../src/bus/global"
 import { Server } from "../../src/server/server"
 import { registerDisposer } from "../../src/effect/instance-registry"
+import { Permission } from "../../src/permission"
 import * as Log from "@opencode-ai/core/util/log"
 import { resetDatabase } from "../fixture/db"
 import { disposeAllInstances, tmpdir } from "../fixture/fixture"
@@ -29,6 +31,17 @@ async function update(target: ReturnType<typeof app>, provider: "kilo" | "openro
 async function provider(target: ReturnType<typeof app>, directory: string) {
   const response = await target.request("/config", { headers: { "x-kilo-directory": directory } })
   return (await response.json()).indexing?.provider as string | undefined
+}
+
+async function config(dir: string, value: unknown) {
+  await Bun.write(path.join(dir, "kilo.json"), JSON.stringify(value, null, 2))
+}
+
+async function edit(target: ReturnType<typeof app>, directory: string) {
+  const response = await target.request("/agent", { headers: { "x-kilo-directory": directory } })
+  expect(response.status).toBe(200)
+  const agents = (await response.json()) as Array<{ name: string; permission: Permission.Ruleset }>
+  return Permission.evaluate("edit", "*", agents.find((agent) => agent.name === "code")?.permission ?? []).action
 }
 
 afterEach(async () => {
@@ -85,6 +98,21 @@ describe("global config refresh", () => {
       } finally {
         GlobalBus.off("event", listener)
       }
+    })
+
+    test(`${value ? "httpapi" : "legacy"} detects external global config edits`, async () => {
+      await using global = await tmpdir()
+      await using workspace = await tmpdir({ config: { formatter: false, lsp: false } })
+      ;(Global.Path as { config: string }).config = global.path
+      await config(global.path, { permission: { edit: "ask" } })
+      await disposeAllInstances()
+      const target = app(value)
+
+      expect(await edit(target, workspace.path)).toBe("ask")
+
+      await config(global.path, { permission: { edit: { "*": "allow" } } })
+
+      expect(await edit(target, workspace.path)).toBe("allow")
     })
   }
 })

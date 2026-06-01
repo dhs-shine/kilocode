@@ -170,8 +170,7 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket, opts?: CorsOptions): H
     registerKiloHttpApiRoutes(app, handler, context) // kilocode_change
   }
 
-  const full = app // kilocode_change
-  full
+  app
     .route("/project", ProjectRoutes())
     .route("/pty", PtyRoutes(upgrade, opts))
     .route("/config", ConfigRoutes())
@@ -509,5 +508,5 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket, opts?: CorsOptions): H
         }),
     )
 
-  return registerKiloRoutes(full) // kilocode_change
+  return registerKiloRoutes(app) // kilocode_change
 }

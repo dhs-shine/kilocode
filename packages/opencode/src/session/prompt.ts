@@ -414,21 +414,21 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               },
             }
           }),
+        // kilocode_change start - resolve permissions at ask time so active tools see config edits
         ask: (req) =>
-          permission
-            .ask({
+          KiloSessionPrompt.askPermission({
+            permission,
+            agents,
+            sessions,
+            agent: input.agent,
+            session: input.session,
+            request: {
               ...req,
               sessionID: input.session.id,
               tool: { messageID: input.processor.message.id, callID: options.toolCallId },
-              // kilocode_change start - reapply Ask/Plan mode guards after session permissions
-              ruleset: Permission.merge(
-                input.agent.permission,
-                KiloSessionPrompt.guardPermissions({ agent: input.agent, session: input.session }),
-              ),
-              hardRuleset: KiloSessionPrompt.hardPermissions({ agent: input.agent }),
-              // kilocode_change end
-            })
-            .pipe(Effect.orDie),
+            },
+          }).pipe(Effect.orDie),
+        // kilocode_change end
       })
 
       for (const item of yield* registry.tools({
@@ -656,20 +656,20 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 state: { ...part.state, ...val },
               } satisfies MessageV2.ToolPart)
             }),
+          // kilocode_change start - resolve permissions at ask time so active tools see config edits
           ask: (req: any) =>
-            permission
-              .ask({
+            KiloSessionPrompt.askPermission({
+              permission,
+              agents,
+              sessions,
+              agent: taskAgent,
+              session,
+              request: {
                 ...req,
-                // kilocode_change start - reapply Ask/Plan subagent guards after session permissions
                 sessionID,
-                ruleset: Permission.merge(
-                  taskAgent.permission,
-                  KiloSessionPrompt.guardPermissions({ agent: taskAgent, session }),
-                ),
-                hardRuleset: KiloSessionPrompt.hardPermissions({ agent: taskAgent }),
-                // kilocode_change end
-              })
-              .pipe(Effect.orDie),
+              },
+            }).pipe(Effect.orDie),
+          // kilocode_change end
         })
         .pipe(
           Effect.catchCause((cause) => {

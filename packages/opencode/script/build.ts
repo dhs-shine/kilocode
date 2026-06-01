@@ -77,6 +77,31 @@ async function copyTreeSitterWasms(outputDir: string) {
 }
 // kilocode_change end
 
+// kilocode_change start - embed Kilo Console static assets
+async function buildKiloConsole() {
+  const app = path.resolve(dir, "../kilo-console")
+  const out = path.join(app, "dist")
+  console.log("building Kilo Console")
+  const proc = Bun.spawn([process.execPath, "run", "build"], {
+    cwd: app,
+    env: { ...process.env, KILO_CONSOLE_BASE: "/console/" },
+    stdout: "inherit",
+    stderr: "inherit",
+    windowsHide: true,
+  })
+  const code = await proc.exited
+  if (code !== 0) throw new Error(`Kilo Console build failed with exit code ${code}`)
+  return out
+}
+
+async function copyKiloConsole(input: string, outputDir: string) {
+  const target = path.join(outputDir, "console")
+  await fs.promises.rm(target, { recursive: true, force: true })
+  await fs.promises.cp(input, target, { recursive: true })
+  console.log(`copied Kilo Console assets to ${target}`)
+}
+// kilocode_change end
+
 // kilocode_change start - upstream's createEmbeddedWebUIBundle is intentionally removed because
 // Kilo dropped the packages/app web UI. Kept here as a commented reference so future upstream merges
 // can see the deliberate divergence rather than treating a re-add as a clean re-introduction.
@@ -191,6 +216,8 @@ const targets = singleFlag
 
 await $`rm -rf dist`
 
+const kiloConsoleDist = await buildKiloConsole() // kilocode_change
+
 const binaries: Record<string, string> = {}
 if (!skipInstall) {
   await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
@@ -258,6 +285,7 @@ for (const item of targets) {
   })
 
   await copyTreeSitterWasms(path.resolve(dir, `dist/${name}/bin`)) // kilocode_change
+  await copyKiloConsole(kiloConsoleDist, path.resolve(dir, `dist/${name}/bin`)) // kilocode_change
 
   // kilocode_change start - fix Nix-specific ELF interpreter paths for Linux binaries
   if (item.os === "linux") {
