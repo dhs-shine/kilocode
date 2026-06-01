@@ -58,7 +58,7 @@ class EmptySessionPanel(
 
     private var style = SessionEditorStyle.current()
     private val timer = Timer(ACTIVITY_MS) { syncActivity() }
-    private val recent = RecentsList(recents, controller)
+    internal val recent = RecentsList(recents, controller)
 
     private val historyButton = ShowHistoryButton().apply {
         addActionListener { history() }
@@ -162,8 +162,6 @@ class EmptySessionPanel(
 
     internal fun showHistoryCursor() = historyButton.cursor.type
 
-    internal fun recentCursor() = recent.cursorType()
-
     internal fun recentVisible() = recent.hasSessions()
 
     internal fun explanationText() = KiloBundle.message("session.empty.welcome")
@@ -251,7 +249,7 @@ class EmptySessionPanel(
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         welcomeLabel.font = style.regularFont
-        recent.titleFont(style.smallFont)
+        recent.applyStyle(style)
         revalidate()
         repaint()
     }

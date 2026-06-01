@@ -10,9 +10,11 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.IconLoader
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.annotations.RequiresEdt
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.xml.util.XmlStringUtil
 import java.awt.Cursor
@@ -25,19 +27,25 @@ import javax.swing.JComponent
 internal class EmptySessionFeedback(
     private val browse: (String) -> Unit,
 ) {
+    private var balloon: Balloon? = null
+
     val button: JButton = FeedbackButton().apply {
         addActionListener { popup() }
     }
 
     @RequiresEdt
     private fun popup() {
-        lateinit var balloon: Balloon
+        balloon?.let {
+            it.hide()
+            return
+        }
+
         val content = content { url ->
             browse(url)
-            balloon.hide()
+            balloon?.hide()
         }
-        val point = RelativePoint(button, Point(button.width / 2, button.height))
-        balloon = JBPopupFactory.getInstance()
+        val point = RelativePoint(button, Point(button.width / 2, button.height + JBUI.scale(1)))
+        val popup = JBPopupFactory.getInstance()
             .createBalloonBuilder(content)
             .setHideOnClickOutside(true)
             .setHideOnKeyOutside(true)
@@ -50,7 +58,10 @@ internal class EmptySessionFeedback(
             .setCornerRadius(UiStyle.Balloon.arc())
             .createBalloon()
 
-        balloon.show(point, Balloon.Position.below)
+        balloon = popup
+        popup.setAnimationEnabled(false)
+        Disposer.register(popup) { balloon = null }
+        popup.show(point, Balloon.Position.below)
     }
 
     private class FeedbackButton : EmptySessionPanel.ShowHistoryButton(buttonHtml(), AllIcons.Ide.Feedback)

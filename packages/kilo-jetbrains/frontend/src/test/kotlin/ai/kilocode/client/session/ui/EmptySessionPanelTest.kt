@@ -175,7 +175,7 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
         assertFalse(panel.feedbackBorderPainted())
         assertEquals(Cursor.HAND_CURSOR, panel.showHistoryCursor())
         assertEquals(Cursor.HAND_CURSOR, panel.feedbackCursor())
-        assertEquals(Cursor.HAND_CURSOR, panel.recentCursor())
+        assertEquals(Cursor.HAND_CURSOR, panel.recent.list.cursor.type)
     }
 
     fun `test clicking show history delegates callback`() {

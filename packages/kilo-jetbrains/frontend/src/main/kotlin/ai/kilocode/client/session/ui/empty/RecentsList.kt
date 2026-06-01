@@ -9,6 +9,8 @@ import ai.kilocode.client.session.history.HistoryTime
 import ai.kilocode.client.session.history.LocalHistoryItem
 import ai.kilocode.client.session.history.itemAt
 import ai.kilocode.client.session.history.title
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.FilledBadgeIcon
 import ai.kilocode.client.ui.UiStyle
@@ -34,7 +36,7 @@ import javax.swing.ListSelectionModel
 internal class RecentsList(
     sessions: List<SessionDto>,
     private val controller: SessionController,
-) : BorderLayoutPanel() {
+) : BorderLayoutPanel(), SessionEditorStyleTarget {
     private val model = DefaultListModel<LocalHistoryItem>()
     private var hover = -1
     private var snapshot = HistoryActivitySnapshot()
@@ -43,7 +45,7 @@ internal class RecentsList(
         foreground = UIUtil.getContextHelpForeground()
     }
 
-    private val list = JBList(model).apply {
+    internal val list = JBList(model).apply {
         isOpaque = false
         selectionMode = ListSelectionModel.SINGLE_SELECTION
         visibleRowCount = SessionUiStyle.RecentSessions.LIMIT
@@ -93,12 +95,6 @@ internal class RecentsList(
         controller.openSession(SessionRef.Local(model.getElementAt(index).session))
     }
 
-    fun cursorType() = list.cursor.type
-
-    fun titleFont(font: java.awt.Font) {
-        title.font = font
-    }
-
     fun text(session: SessionDto, now: Long = System.currentTimeMillis()) =
         HistoryTime.relative(LocalHistoryItem(session), now)
 
@@ -120,6 +116,12 @@ internal class RecentsList(
         val changed = snapshot.changed(next)
         snapshot = next
         repaintRows(changed)
+    }
+
+    override fun applyStyle(style: SessionEditorStyle) {
+        title.font = style.smallFont
+        revalidate()
+        repaint()
     }
 
     private fun setSessions(sessions: List<SessionDto>) {
