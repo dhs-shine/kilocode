@@ -2,6 +2,10 @@ package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.fileTypes.FileTypeRegistry
+import com.intellij.openapi.fileTypes.PlainTextFileType
+import com.intellij.openapi.fileTypes.UnknownFileType
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBScrollPane
@@ -143,6 +147,36 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertTrue("java code block should not clip vertically", pane.height >= pane.preferredSize.height)
     }
 
+    fun `test fenced code block resolves existing language aliases`() {
+        view.set("```javascript\nconst value = 1\n```")
+
+        assertSame(type("js"), editors().single().fileType)
+    }
+
+    fun `test fenced code block ignores whitespace metadata`() {
+        view.set("```json title=\"sample.json\"\n{\"value\":1}\n```")
+
+        assertSame(type("json"), editors().single().fileType)
+    }
+
+    fun `test fenced code block resolves new aliases when available`() {
+        view.set("```yaml\nvalue: 1\n```")
+
+        assertSame(type("yaml"), editors().single().fileType)
+    }
+
+    fun `test unknown fenced code language uses plain text`() {
+        view.set("```definitely-not-a-language\nvalue\n```")
+
+        assertSame(PlainTextFileType.INSTANCE, editors().single().fileType)
+    }
+
+    fun `test code block without language uses plain text`() {
+        view.set("```\nvalue\n```")
+
+        assertSame(PlainTextFileType.INSTANCE, editors().single().fileType)
+    }
+
     fun `test fenced code block width is bounded and boxed`() {
         view.set("```kotlin\n${"x".repeat(500)}\n```")
         val pane = scrolls().single()
@@ -199,6 +233,12 @@ class MdViewHybridTest : BasePlatformTestCase() {
     private fun scrolls(): List<JBScrollPane> = (view.component as JPanel).components.filterIsInstance<JBScrollPane>()
 
     private fun editors(): List<EditorTextField> = scrolls().mapNotNull { it.viewport.view as? EditorTextField }
+
+    private fun type(ext: String): FileType {
+        val type = FileTypeRegistry.getInstance().getFileTypeByExtension(ext)
+        if (type == UnknownFileType.INSTANCE) return PlainTextFileType.INSTANCE
+        return type
+    }
 
     private fun layout(width: Int) {
         val host = JPanel(BorderLayout())

@@ -5,8 +5,9 @@ import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.log.KiloLog
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.fileTypes.PlainTextFileType
+import com.intellij.openapi.fileTypes.UnknownFileType
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBHtmlPane
@@ -42,6 +43,79 @@ internal class MdViewHybrid(
 ) : MdView {
     companion object {
         private val LOG = KiloLog.create(MdViewHybrid::class.java)
+
+        private val FILES = mapOf(
+            "kt" to "kt",
+            "kotlin" to "kt",
+            "js" to "js",
+            "javascript" to "js",
+            "jsx" to "jsx",
+            "ts" to "ts",
+            "typescript" to "ts",
+            "tsx" to "tsx",
+            "java" to "java",
+            "py" to "py",
+            "python" to "py",
+            "sh" to "sh",
+            "bash" to "sh",
+            "shell" to "sh",
+            "json" to "json",
+            "xml" to "xml",
+            "html" to "html",
+            "css" to "css",
+            "md" to "md",
+            "markdown" to "md",
+            "yaml" to "yaml",
+            "yml" to "yaml",
+            "toml" to "toml",
+            "go" to "go",
+            "golang" to "go",
+            "rs" to "rs",
+            "rust" to "rs",
+            "rb" to "rb",
+            "ruby" to "rb",
+            "php" to "php",
+            "swift" to "swift",
+            "scala" to "scala",
+            "sql" to "sql",
+            "dockerfile" to "dockerfile",
+            "docker" to "dockerfile",
+            "gradle" to "gradle",
+            "kts" to "kts",
+            "c" to "c",
+            "h" to "h",
+            "cpp" to "cpp",
+            "c++" to "cpp",
+            "cc" to "cc",
+            "cxx" to "cxx",
+            "hpp" to "hpp",
+            "h++" to "hpp",
+            "cs" to "cs",
+            "csharp" to "cs",
+            "c#" to "cs",
+            "fs" to "fs",
+            "fsharp" to "fs",
+            "f#" to "fs",
+            "ps1" to "ps1",
+            "powershell" to "ps1",
+            "pwsh" to "ps1",
+            "bat" to "bat",
+            "batch" to "bat",
+            "cmd" to "bat",
+            "makefile" to "makefile",
+            "make" to "makefile",
+            "terraform" to "tf",
+            "tf" to "tf",
+            "hcl" to "hcl",
+            "vue" to "vue",
+            "svelte" to "svelte",
+            "graphql" to "graphql",
+            "proto" to "proto",
+            "ini" to "ini",
+            "properties" to "properties",
+            "diff" to "diff",
+            "patch" to "patch",
+        )
     }
 
     private val listeners = mutableListOf<MdView.LinkListener>()
@@ -409,24 +483,11 @@ internal class MdViewHybrid(
     }
 
     private fun file(lang: String?): FileType {
-        val key = lang?.trim()?.substringBefore(' ')?.lowercase().orEmpty()
-        val ext = when (key) {
-            "kt", "kotlin" -> "kt"
-            "js", "javascript" -> "js"
-            "ts", "typescript" -> "ts"
-            "tsx" -> "tsx"
-            "java" -> "java"
-            "py", "python" -> "py"
-            "sh", "bash", "shell" -> "sh"
-            "json" -> "json"
-            "xml" -> "xml"
-            "html" -> "html"
-            "css" -> "css"
-            "md", "markdown" -> "md"
-            else -> ""
-        }
-        if (ext.isEmpty()) return PlainTextFileType.INSTANCE
-        return FileTypeManager.getInstance().getFileTypeByExtension(ext)
+        val key = lang?.trim()?.split(Regex("\\s+"))?.firstOrNull()?.lowercase().orEmpty()
+        val ext = FILES[key] ?: return PlainTextFileType.INSTANCE
+        val type = FileTypeRegistry.getInstance().getFileTypeByExtension(ext)
+        if (type == UnknownFileType.INSTANCE) return PlainTextFileType.INSTANCE
+        return type
     }
 
     private fun dispatch(event: MdView.LinkEvent) {
