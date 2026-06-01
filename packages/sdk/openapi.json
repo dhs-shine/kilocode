@@ -741,6 +741,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "InternalServerError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/effect_HttpApiError_InternalServerError"
+                }
+              }
+            }
           }
         },
         "description": "Get the active Console org name and the set of provider IDs managed by that Console org.",
@@ -815,6 +825,16 @@
                   "required": ["orgs"],
                   "additionalProperties": false,
                   "description": "Switchable Console orgs"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/effect_HttpApiError_InternalServerError"
                 }
               }
             }
@@ -2544,7 +2564,7 @@
                         "type": "string"
                       }
                     },
-                    "required": ["name", "description", "location", "content"],
+                    "required": ["name", "location", "content"],
                     "additionalProperties": false
                   },
                   "description": "List of skills"
@@ -4266,7 +4286,7 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "NotFoundError",
             "content": {
               "application/json": {
                 "schema": {
@@ -4350,7 +4370,7 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "NotFoundError",
             "content": {
               "application/json": {
                 "schema": {
@@ -6252,22 +6272,22 @@
               }
             }
           },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          },
           "404": {
             "description": "NotFoundError",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/effect_HttpApiError_InternalServerError"
                 }
               }
             }
@@ -6323,22 +6343,22 @@
               }
             }
           },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BadRequestError"
-                }
-              }
-            }
-          },
           "404": {
             "description": "NotFoundError",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/effect_HttpApiError_InternalServerError"
                 }
               }
             }
@@ -9009,6 +9029,43 @@
         ]
       }
     },
+    "/experimental/workspace/sync-list": {
+      "post": {
+        "tags": ["workspace"],
+        "operationId": "experimental.workspace.syncList",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Workspace list synced"
+          }
+        },
+        "description": "Register missing workspaces returned by workspace adapters.",
+        "summary": "Sync workspace list",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.experimental.workspace.syncList({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/experimental/workspace/status": {
       "get": {
         "tags": ["workspace"],
@@ -10157,6 +10214,151 @@
         ]
       }
     },
+    "/kilo/edit": {
+      "post": {
+        "tags": ["kilo"],
+        "operationId": "kilo.edit",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Next Edit completion",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "prompt_tokens": {
+                          "type": "number"
+                        },
+                        "completion_tokens": {
+                          "type": "number"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["content"],
+                  "additionalProperties": false,
+                  "description": "Next Edit completion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Proxy a Mercury-style Next Edit request. The client supplies structured editor context; the gateway assembles the sentinel-tagged prompt and forwards to the upstream edit endpoint.",
+        "summary": "Next Edit completion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "maxTokens": {
+                    "type": "number"
+                  },
+                  "currentFilePath": {
+                    "type": "string"
+                  },
+                  "currentFileContent": {
+                    "type": "string"
+                  },
+                  "cursorLine": {
+                    "type": "number"
+                  },
+                  "cursorCharacter": {
+                    "type": "number"
+                  },
+                  "editableRegionStartLine": {
+                    "type": "number"
+                  },
+                  "editableRegionEndLine": {
+                    "type": "number"
+                  },
+                  "recentlyViewedSnippets": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "filepath": {
+                          "type": "string"
+                        },
+                        "content": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["filepath", "content"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "editDiffHistory": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "currentFilePath",
+                  "currentFileContent",
+                  "cursorLine",
+                  "cursorCharacter",
+                  "editableRegionStartLine",
+                  "editableRegionEndLine",
+                  "recentlyViewedSnippets",
+                  "editDiffHistory"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.edit({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/kilo/audio/transcriptions": {
       "post": {
         "tags": ["kilo"],
@@ -10235,6 +10437,9 @@
                     "additionalProperties": false
                   },
                   "language": {
+                    "type": "string"
+                  },
+                  "prompt": {
                     "type": "string"
                   },
                   "temperature": {
@@ -12749,6 +12954,9 @@
       "Event": {
         "anyOf": [
           {
+            "$ref": "#/components/schemas/EventServerInstanceDisposed"
+          },
+          {
             "$ref": "#/components/schemas/EventServerConnected"
           },
           {
@@ -12758,13 +12966,10 @@
             "$ref": "#/components/schemas/EventGlobalConfigUpdated"
           },
           {
-            "$ref": "#/components/schemas/EventServerInstanceDisposed"
+            "$ref": "#/components/schemas/EventFileEdited"
           },
           {
-            "$ref": "#/components/schemas/EventLspClientDiagnostics"
-          },
-          {
-            "$ref": "#/components/schemas/EventLspUpdated"
+            "$ref": "#/components/schemas/EventFileWatcherUpdated"
           },
           {
             "$ref": "#/components/schemas/EventQuestionAsked"
@@ -12774,6 +12979,12 @@
           },
           {
             "$ref": "#/components/schemas/EventQuestionRejected"
+          },
+          {
+            "$ref": "#/components/schemas/EventLspClientDiagnostics"
+          },
+          {
+            "$ref": "#/components/schemas/EventLspUpdated"
           },
           {
             "$ref": "#/components/schemas/Event.tui.prompt.append"
@@ -12837,12 +13048,6 @@
           },
           {
             "$ref": "#/components/schemas/EventInstallationUpdate-available"
-          },
-          {
-            "$ref": "#/components/schemas/EventFileEdited"
-          },
-          {
-            "$ref": "#/components/schemas/EventFileWatcherUpdated"
           },
           {
             "$ref": "#/components/schemas/EventTodoUpdated"
@@ -13163,7 +13368,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^que"
           },
           "sessionID": {
             "type": "string"
@@ -13198,7 +13404,8 @@
             "type": "string"
           },
           "requestID": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^que"
           },
           "answers": {
             "type": "array",
@@ -13217,7 +13424,8 @@
             "type": "string"
           },
           "requestID": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^que"
           }
         },
         "required": ["sessionID", "requestID"],
@@ -13360,7 +13568,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^que"
           },
           "sessionID": {
             "type": "string"
@@ -13392,7 +13601,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^per"
           },
           "sessionID": {
             "type": "string"
@@ -13745,6 +13955,31 @@
               "message": {
                 "type": "string"
               },
+              "action": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "link": {
+                    "type": "string"
+                  }
+                },
+                "required": ["reason", "provider", "title", "message", "label"],
+                "additionalProperties": false
+              },
               "next": {
                 "type": "integer",
                 "minimum": 0
@@ -13772,7 +14007,8 @@
                 "enum": ["offline"]
               },
               "requestID": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^que"
               },
               "message": {
                 "type": "string"
@@ -15257,6 +15493,9 @@
           "payload": {
             "anyOf": [
               {
+                "$ref": "#/components/schemas/EventServerInstanceDisposed"
+              },
+              {
                 "$ref": "#/components/schemas/EventServerConnected"
               },
               {
@@ -15266,13 +15505,10 @@
                 "$ref": "#/components/schemas/EventGlobalConfigUpdated"
               },
               {
-                "$ref": "#/components/schemas/EventServerInstanceDisposed"
+                "$ref": "#/components/schemas/EventFileEdited"
               },
               {
-                "$ref": "#/components/schemas/EventLspClientDiagnostics"
-              },
-              {
-                "$ref": "#/components/schemas/EventLspUpdated"
+                "$ref": "#/components/schemas/EventFileWatcherUpdated"
               },
               {
                 "$ref": "#/components/schemas/EventQuestionAsked"
@@ -15282,6 +15518,12 @@
               },
               {
                 "$ref": "#/components/schemas/EventQuestionRejected"
+              },
+              {
+                "$ref": "#/components/schemas/EventLspClientDiagnostics"
+              },
+              {
+                "$ref": "#/components/schemas/EventLspUpdated"
               },
               {
                 "$ref": "#/components/schemas/Event.tui.prompt.append"
@@ -15345,12 +15587,6 @@
               },
               {
                 "$ref": "#/components/schemas/EventInstallationUpdate-available"
-              },
-              {
-                "$ref": "#/components/schemas/EventFileEdited"
-              },
-              {
-                "$ref": "#/components/schemas/EventFileWatcherUpdated"
               },
               {
                 "$ref": "#/components/schemas/EventTodoUpdated"
@@ -15653,6 +15889,44 @@
         "additionalProperties": false,
         "description": "Server configuration for the kilo serve command"
       },
+      "ReferenceConfigEntry": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "repository": {
+                "type": "string",
+                "description": "Git repository URL, host/path reference, or GitHub owner/repo shorthand"
+              },
+              "branch": {
+                "type": "string"
+              }
+            },
+            "required": ["repository"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute path, ~/ path, or workspace-relative path to a local reference directory"
+              }
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ReferenceConfig": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/ReferenceConfigEntry"
+        }
+      },
       "IndexingConfig": {
         "type": "object",
         "properties": {
@@ -15908,6 +16182,15 @@
               },
               "websearch": {
                 "$ref": "#/components/schemas/PermissionActionConfig"
+              },
+              "codesearch": {
+                "$ref": "#/components/schemas/PermissionActionConfig"
+              },
+              "repo_clone": {
+                "$ref": "#/components/schemas/PermissionRuleConfig"
+              },
+              "repo_overview": {
+                "$ref": "#/components/schemas/PermissionRuleConfig"
               },
               "lsp": {
                 "$ref": "#/components/schemas/PermissionRuleConfig"
@@ -16405,6 +16688,9 @@
             },
             "additionalProperties": false
           },
+          "reference": {
+            "$ref": "#/components/schemas/ReferenceConfig"
+          },
           "watcher": {
             "type": "object",
             "properties": {
@@ -16541,6 +16827,9 @@
                 "$ref": "#/components/schemas/AgentConfig"
               },
               "explore": {
+                "$ref": "#/components/schemas/AgentConfig"
+              },
+              "scout": {
                 "$ref": "#/components/schemas/AgentConfig"
               },
               "title": {
@@ -17108,6 +17397,17 @@
           }
         },
         "required": ["consoleManagedProviders", "switchableOrgCount"],
+        "additionalProperties": false
+      },
+      "effect_HttpApiError_InternalServerError": {
+        "type": "object",
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": ["InternalServerError"]
+          }
+        },
+        "required": ["_tag"],
         "additionalProperties": false
       },
       "ToolListItem": {
@@ -18420,9 +18720,32 @@
           },
           "projectID": {
             "type": "string"
+          },
+          "timeUsed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "enum": ["NaN"]
+              },
+              {
+                "type": "string",
+                "enum": ["Infinity"]
+              },
+              {
+                "type": "string",
+                "enum": ["-Infinity"]
+              },
+              {
+                "type": "string",
+                "enum": ["Infinity", "-Infinity", "NaN"]
+              }
+            ]
           }
         },
-        "required": ["id", "type", "name", "branch", "directory", "extra", "projectID"],
+        "required": ["id", "type", "name", "branch", "directory", "extra", "projectID", "timeUsed"],
         "additionalProperties": false
       },
       "WorkspaceWarpError": {
@@ -20276,6 +20599,30 @@
         "required": ["type", "name", "id", "seq", "aggregateID", "data"],
         "additionalProperties": false
       },
+      "EventServerInstanceDisposed": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["server.instance.disposed"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string"
+              }
+            },
+            "required": ["directory"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
       "EventServerConnected": {
         "type": "object",
         "properties": {
@@ -20330,7 +20677,7 @@
         "required": ["id", "type", "properties"],
         "additionalProperties": false
       },
-      "EventServerInstanceDisposed": {
+      "EventFileEdited": {
         "type": "object",
         "properties": {
           "id": {
@@ -20338,23 +20685,23 @@
           },
           "type": {
             "type": "string",
-            "enum": ["server.instance.disposed"]
+            "enum": ["file.edited"]
           },
           "properties": {
             "type": "object",
             "properties": {
-              "directory": {
+              "file": {
                 "type": "string"
               }
             },
-            "required": ["directory"],
+            "required": ["file"],
             "additionalProperties": false
           }
         },
         "required": ["id", "type", "properties"],
         "additionalProperties": false
       },
-      "EventLspClientDiagnostics": {
+      "EventFileWatcherUpdated": {
         "type": "object",
         "properties": {
           "id": {
@@ -20362,38 +20709,21 @@
           },
           "type": {
             "type": "string",
-            "enum": ["lsp.client.diagnostics"]
+            "enum": ["file.watcher.updated"]
           },
           "properties": {
             "type": "object",
             "properties": {
-              "serverID": {
+              "file": {
                 "type": "string"
               },
-              "path": {
-                "type": "string"
+              "event": {
+                "type": "string",
+                "enum": ["add", "change", "unlink"]
               }
             },
-            "required": ["serverID", "path"],
+            "required": ["file", "event"],
             "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventLspUpdated": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["lsp.updated"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {}
           }
         },
         "required": ["id", "type", "properties"],
@@ -20445,6 +20775,51 @@
           },
           "properties": {
             "$ref": "#/components/schemas/QuestionRejected"
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventLspClientDiagnostics": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["lsp.client.diagnostics"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "serverID": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": ["serverID", "path"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventLspUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["lsp.updated"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {}
           }
         },
         "required": ["id", "type", "properties"],
@@ -20535,7 +20910,8 @@
                 "type": "string"
               },
               "requestID": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^que"
               }
             },
             "required": ["sessionID", "requestID"],
@@ -20562,7 +20938,8 @@
                 "type": "string"
               },
               "requestID": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^que"
               }
             },
             "required": ["sessionID", "requestID"],
@@ -20589,7 +20966,8 @@
                 "type": "string"
               },
               "requestID": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^que"
               },
               "time": {
                 "type": "number"
@@ -20672,7 +21050,8 @@
                 "type": "string"
               },
               "requestID": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^per"
               },
               "reply": {
                 "type": "string",
@@ -20909,58 +21288,6 @@
               }
             },
             "required": ["version"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventFileEdited": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["file.edited"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "file": {
-                "type": "string"
-              }
-            },
-            "required": ["file"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventFileWatcherUpdated": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["file.watcher.updated"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "file": {
-                "type": "string"
-              },
-              "event": {
-                "type": "string",
-                "enum": ["add", "change", "unlink"]
-              }
-            },
-            "required": ["file", "event"],
             "additionalProperties": false
           }
         },

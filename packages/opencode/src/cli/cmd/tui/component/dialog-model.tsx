@@ -7,7 +7,6 @@ import { DialogSelect } from "@tui/ui/dialog-select"
 import { useDialog } from "@tui/ui/dialog"
 import { createDialogProviderOptions, DialogProvider } from "./dialog-provider"
 import { DialogVariant } from "./dialog-variant"
-import { useKeybind } from "../context/keybind"
 import type { Model } from "@kilocode/sdk/v2" // kilocode_change
 import * as fuzzysort from "fuzzysort"
 import { useConnected } from "./use-connected"
@@ -17,7 +16,6 @@ export function DialogModel(props: { providerID?: string }) {
   const local = useLocal()
   const sync = useSync()
   const dialog = useDialog()
-  const keybind = useKeybind()
   const [query, setQuery] = createSignal("")
   const dimensions = useTerminalDimensions() // kilocode_change
 
@@ -216,16 +214,16 @@ export function DialogModel(props: { providerID?: string }) {
       <box flexGrow={1} flexShrink={1}>
         <DialogSelect<ReturnType<typeof options>[number]["value"]>
           options={options()}
-          keybind={[
+          actions={[
             {
-              keybind: keybind.all.model_provider_list?.[0],
+              command: "model.dialog.provider",
               title: connected() ? "Connect provider" : "View all providers",
               onTrigger() {
                 dialog.replace(() => <DialogProvider />)
               },
             },
             {
-              keybind: keybind.all.model_favorite_toggle?.[0],
+              command: "model.dialog.favorite",
               title: "Favorite",
               disabled: !connected(),
               onTrigger: (option) => {

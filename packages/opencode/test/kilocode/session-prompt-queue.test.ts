@@ -725,5 +725,4 @@ describe("session prompt queue", () => {
       },
     })
   })
-
 })

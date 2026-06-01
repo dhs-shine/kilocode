@@ -179,15 +179,17 @@ Options:
       --format                        format: default (formatted) or json (raw JSON events)  [string] [choices: "default", "json"] [default: "default"]
   -f, --file                          file(s) to attach to message  [array]
       --title                         title for the session (uses truncated prompt if no value provided)  [string]
-      --attach                        attach to a running opencode server (e.g., http://localhost:4096)  [string]
+      --attach                        attach to a running kilo server (e.g., http://localhost:4096)  [string]
   -p, --password                      basic auth password (defaults to KILO_SERVER_PASSWORD)  [string]
   -u, --username                      basic auth username (defaults to KILO_SERVER_USERNAME or 'kilo')  [string]
       --dir                           directory to run in, path on remote server if attaching  [string]
       --port                          port for the local server (defaults to random port if no value provided)  [number]
       --variant                       model variant (provider-specific reasoning effort, e.g., high, max, minimal)  [string]
-      --thinking                      show thinking blocks  [boolean] [default: false]
+      --thinking                      show thinking blocks  [boolean]
+  -i, --interactive                   run in direct interactive split-footer mode  [boolean] [default: false]
       --dangerously-skip-permissions  auto-approve permissions that are not explicitly denied (dangerous!)  [boolean] [default: false]
       --auto                          auto-approve all permissions (for autonomous/pipeline usage)  [boolean] [default: false]
+      --demo                          enable direct interactive demo slash commands; pass one as the message to run it immediately  [boolean] [default: false]
 ```
 
 ## kilo debug

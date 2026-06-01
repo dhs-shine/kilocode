@@ -14,11 +14,24 @@ type Body = {
 }
 
 describe("Kilo PublicApi OpenAPI contract", () => {
+  test("uses Kilo branding", () => {
+    const spec = OpenApi.fromApi(PublicApi)
+    expect(spec.info.title).toBe("kilo")
+    expect(spec.info.description).toBe("kilo api")
+  })
+
   test("keeps personal organization resets nullable", () => {
     const spec = OpenApi.fromApi(PublicApi)
     const body = spec.paths[KiloGatewayPaths.organization]?.post?.requestBody as Body | undefined
     const schema = body?.content?.["application/json"]?.schema
     const props = schema?.properties
     expect(props?.organizationId).toEqual({ anyOf: [{ type: "string" }, { type: "null" }] })
+  })
+
+  test("keeps transcription prompts in the public contract", () => {
+    const spec = OpenApi.fromApi(PublicApi)
+    const body = spec.paths[KiloGatewayPaths.audioTranscriptions]?.post?.requestBody as Body | undefined
+    const schema = body?.content?.["application/json"]?.schema
+    expect(schema?.properties?.prompt).toEqual({ type: "string" })
   })
 })

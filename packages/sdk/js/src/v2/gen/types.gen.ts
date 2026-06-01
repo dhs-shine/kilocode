@@ -5,15 +5,17 @@ export type ClientOptions = {
 }
 
 export type Event =
+  | EventServerInstanceDisposed
   | EventServerConnected
   | EventGlobalDisposed
   | EventGlobalConfigUpdated
-  | EventServerInstanceDisposed
-  | EventLspClientDiagnostics
-  | EventLspUpdated
+  | EventFileEdited
+  | EventFileWatcherUpdated
   | EventQuestionAsked
   | EventQuestionReplied
   | EventQuestionRejected
+  | EventLspClientDiagnostics
+  | EventLspUpdated
   | EventTuiPromptAppend
   | EventTuiCommandExecute
   | EventTuiToastShow1
@@ -35,8 +37,6 @@ export type Event =
   | EventSessionError
   | EventInstallationUpdated
   | EventInstallationUpdateAvailable
-  | EventFileEdited
-  | EventFileWatcherUpdated
   | EventTodoUpdated
   | EventSessionStatus
   | EventSessionIdle
@@ -373,6 +373,14 @@ export type SessionStatus =
       type: "retry"
       attempt: number
       message: string
+      action?: {
+        reason: string
+        provider: string
+        title: string
+        message: string
+        label: string
+        link?: string
+      }
       next: number
     }
   | {
@@ -872,15 +880,17 @@ export type GlobalEvent = {
   project?: string
   workspace?: string
   payload:
+    | EventServerInstanceDisposed
     | EventServerConnected
     | EventGlobalDisposed
     | EventGlobalConfigUpdated
-    | EventServerInstanceDisposed
-    | EventLspClientDiagnostics
-    | EventLspUpdated
+    | EventFileEdited
+    | EventFileWatcherUpdated
     | EventQuestionAsked
     | EventQuestionReplied
     | EventQuestionRejected
+    | EventLspClientDiagnostics
+    | EventLspUpdated
     | EventTuiPromptAppend
     | EventTuiCommandExecute
     | EventTuiToastShow
@@ -902,8 +912,6 @@ export type GlobalEvent = {
     | EventSessionError
     | EventInstallationUpdated
     | EventInstallationUpdateAvailable
-    | EventFileEdited
-    | EventFileWatcherUpdated
     | EventTodoUpdated
     | EventSessionStatus
     | EventSessionIdle
@@ -1010,6 +1018,26 @@ export type ServerConfig = {
   cors?: Array<string>
 }
 
+export type ReferenceConfigEntry =
+  | string
+  | {
+      /**
+       * Git repository URL, host/path reference, or GitHub owner/repo shorthand
+       */
+      repository: string
+      branch?: string
+    }
+  | {
+      /**
+       * Absolute path, ~/ path, or workspace-relative path to a local reference directory
+       */
+      path: string
+    }
+
+export type ReferenceConfig = {
+  [key: string]: ReferenceConfigEntry
+}
+
 export type IndexingConfig = {
   enabled?: boolean
   provider?:
@@ -1097,6 +1125,9 @@ export type PermissionConfig =
       question?: PermissionActionConfig
       webfetch?: PermissionActionConfig
       websearch?: PermissionActionConfig
+      codesearch?: PermissionActionConfig
+      repo_clone?: PermissionRuleConfig
+      repo_overview?: PermissionRuleConfig
       lsp?: PermissionRuleConfig
       doom_loop?: PermissionActionConfig
       skill?: PermissionRuleConfig
@@ -1299,6 +1330,7 @@ export type Config = {
     paths?: Array<string>
     urls?: Array<string>
   }
+  reference?: ReferenceConfig
   watcher?: {
     ignore?: Array<string>
   }
@@ -1343,6 +1375,7 @@ export type Config = {
     ask?: AgentConfig
     general?: AgentConfig
     explore?: AgentConfig
+    scout?: AgentConfig
     title?: AgentConfig
     summary?: AgentConfig
     compaction?: AgentConfig
@@ -1528,6 +1561,10 @@ export type ConsoleState = {
   consoleManagedProviders: Array<string>
   activeOrgName?: string
   switchableOrgCount: number
+}
+
+export type EffectHttpApiErrorInternalServerError = {
+  _tag: "InternalServerError"
 }
 
 export type ToolListItem = {
@@ -1968,6 +2005,7 @@ export type Workspace = {
   directory: string | null
   extra: unknown | null
   projectID: string
+  timeUsed: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
 }
 
 export type WorkspaceWarpError = {
@@ -2519,6 +2557,14 @@ export type SyncEventSessionNextCompactionEnded = {
   }
 }
 
+export type EventServerInstanceDisposed = {
+  id: string
+  type: "server.instance.disposed"
+  properties: {
+    directory: string
+  }
+}
+
 export type EventServerConnected = {
   id: string
   type: "server.connected"
@@ -2543,28 +2589,20 @@ export type EventGlobalConfigUpdated = {
   }
 }
 
-export type EventServerInstanceDisposed = {
+export type EventFileEdited = {
   id: string
-  type: "server.instance.disposed"
+  type: "file.edited"
   properties: {
-    directory: string
+    file: string
   }
 }
 
-export type EventLspClientDiagnostics = {
+export type EventFileWatcherUpdated = {
   id: string
-  type: "lsp.client.diagnostics"
+  type: "file.watcher.updated"
   properties: {
-    serverID: string
-    path: string
-  }
-}
-
-export type EventLspUpdated = {
-  id: string
-  type: "lsp.updated"
-  properties: {
-    [key: string]: unknown
+    file: string
+    event: "add" | "change" | "unlink"
   }
 }
 
@@ -2584,6 +2622,23 @@ export type EventQuestionRejected = {
   id: string
   type: "question.rejected"
   properties: QuestionRejected
+}
+
+export type EventLspClientDiagnostics = {
+  id: string
+  type: "lsp.client.diagnostics"
+  properties: {
+    serverID: string
+    path: string
+  }
+}
+
+export type EventLspUpdated = {
+  id: string
+  type: "lsp.updated"
+  properties: {
+    [key: string]: unknown
+  }
 }
 
 export type EventMcpToolsChanged = {
@@ -2737,23 +2792,6 @@ export type EventInstallationUpdateAvailable = {
   type: "installation.update-available"
   properties: {
     version: string
-  }
-}
-
-export type EventFileEdited = {
-  id: string
-  type: "file.edited"
-  properties: {
-    file: string
-  }
-}
-
-export type EventFileWatcherUpdated = {
-  id: string
-  type: "file.watcher.updated"
-  properties: {
-    file: string
-    event: "add" | "change" | "unlink"
   }
 }
 
@@ -3985,6 +4023,15 @@ export type ExperimentalConsoleGetData = {
   url: "/experimental/console"
 }
 
+export type ExperimentalConsoleGetErrors = {
+  /**
+   * InternalServerError
+   */
+  500: EffectHttpApiErrorInternalServerError
+}
+
+export type ExperimentalConsoleGetError = ExperimentalConsoleGetErrors[keyof ExperimentalConsoleGetErrors]
+
 export type ExperimentalConsoleGetResponses = {
   /**
    * Active Console provider metadata
@@ -4003,6 +4050,16 @@ export type ExperimentalConsoleListOrgsData = {
   }
   url: "/experimental/console/orgs"
 }
+
+export type ExperimentalConsoleListOrgsErrors = {
+  /**
+   * InternalServerError
+   */
+  500: EffectHttpApiErrorInternalServerError
+}
+
+export type ExperimentalConsoleListOrgsError =
+  ExperimentalConsoleListOrgsErrors[keyof ExperimentalConsoleListOrgsErrors]
 
 export type ExperimentalConsoleListOrgsResponses = {
   /**
@@ -4683,7 +4740,7 @@ export type AppSkillsResponses = {
    */
   200: Array<{
     name: string
-    description: string
+    description?: string
     location: string
     content: string
   }>
@@ -5411,7 +5468,7 @@ export type PermissionReplyErrors = {
    */
   400: BadRequestError
   /**
-   * Not found
+   * NotFoundError
    */
   404: NotFoundError
 }
@@ -5444,7 +5501,7 @@ export type PermissionSaveAlwaysRulesData = {
 
 export type PermissionSaveAlwaysRulesErrors = {
   /**
-   * Not found
+   * NotFoundError
    */
   404: NotFoundError
 }
@@ -6201,13 +6258,13 @@ export type SessionUnshareData = {
 
 export type SessionUnshareErrors = {
   /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
    * NotFoundError
    */
   404: NotFoundError
+  /**
+   * InternalServerError
+   */
+  500: EffectHttpApiErrorInternalServerError
 }
 
 export type SessionUnshareError = SessionUnshareErrors[keyof SessionUnshareErrors]
@@ -6235,13 +6292,13 @@ export type SessionShareData = {
 
 export type SessionShareErrors = {
   /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
    * NotFoundError
    */
   404: NotFoundError
+  /**
+   * InternalServerError
+   */
+  500: EffectHttpApiErrorInternalServerError
 }
 
 export type SessionShareError = SessionShareErrors[keyof SessionShareErrors]
@@ -7307,6 +7364,26 @@ export type ExperimentalWorkspaceCreateResponses = {
 export type ExperimentalWorkspaceCreateResponse =
   ExperimentalWorkspaceCreateResponses[keyof ExperimentalWorkspaceCreateResponses]
 
+export type ExperimentalWorkspaceSyncListData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/experimental/workspace/sync-list"
+}
+
+export type ExperimentalWorkspaceSyncListResponses = {
+  /**
+   * Workspace list synced
+   */
+  204: void
+}
+
+export type ExperimentalWorkspaceSyncListResponse =
+  ExperimentalWorkspaceSyncListResponses[keyof ExperimentalWorkspaceSyncListResponses]
+
 export type ExperimentalWorkspaceStatusData = {
   body?: never
   path?: never
@@ -7839,6 +7916,7 @@ export type KiloAudioTranscriptionsData = {
       format: string
     }
     language?: string
+    prompt?: string
     temperature?: number
   }
   path?: never
