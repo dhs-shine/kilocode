@@ -79,6 +79,20 @@ object SessionUiStyle {
             const val USER_BORDER_HORIZONTAL_PADDING = 12
         }
 
+        /** Markdown code block geometry inside assistant messages. */
+        object Code {
+            const val BLOCK_GAP = 6
+            const val MIN_ROWS = 1
+            const val BORDER_WIDTH = 1
+            const val VIEWPORT_TOP_PADDING = 6
+            const val VIEWPORT_HORIZONTAL_PADDING = 8
+            const val VIEWPORT_BOTTOM_PADDING = 0
+            const val SCROLLBAR_HEIGHT = 12
+            const val WIDTH_PADDING = 16
+
+            fun topPadding(): Int = VIEWPORT_TOP_PADDING + SCROLLBAR_HEIGHT
+        }
+
         /** Permission card command preview limits. */
         object Permission {
             const val COMMAND_LINES = 3

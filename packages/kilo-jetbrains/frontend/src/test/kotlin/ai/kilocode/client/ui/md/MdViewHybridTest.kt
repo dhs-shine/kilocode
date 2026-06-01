@@ -1,8 +1,11 @@
 package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBScrollPane
+import java.awt.BorderLayout
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
@@ -27,11 +30,131 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertTrue(view.html().contains("<strong>"))
     }
 
-    fun `test fenced code block creates horizontal scroll pane`() {
+    fun `test fenced code block shows horizontal scrollbar as needed`() {
         view.set("```kotlin\nval value = 1\n```")
         val pane = scrolls().single()
 
         assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, pane.horizontalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, pane.verticalScrollBarPolicy)
+        assertTrue(pane.isWheelScrollingEnabled)
+        assertTrue(pane.horizontalScrollBar.preferredSize.height > 0)
+        assertTrue(pane.horizontalScrollBar.isOpaque)
+        assertFalse(pane.isOverlappingScrollBar)
+        assertEquals(0, pane.verticalScrollBar.preferredSize.width)
+    }
+
+    fun `test fenced code block preserves multiline editor text and height`() {
+        view.set("```kotlin\nval one = 1\nval two = 2\nval three = 3\n```")
+        val pane = scrolls().single()
+        val editor = editors().single()
+        val line = editor.getFontMetrics(editor.font).height
+        val ins = pane.insets
+        val pad = pane.viewportBorder.getBorderInsets(pane)
+        val bar = pane.horizontalScrollBar.preferredSize.height
+
+        assertEquals("val one = 1\nval two = 2\nval three = 3", editor.text)
+        assertEquals(editor.preferredSize.height + ins.top + ins.bottom + pad.top + pad.bottom + bar, pane.preferredSize.height)
+        assertTrue(pane.preferredSize.height >= line * 3)
+    }
+
+    fun `test fenced code block horizontal scrollbar has no bottom padding`() {
+        view.set("```kotlin\n${"x".repeat(500)}\n```")
+        val pane = scrolls().single()
+        val pad = pane.viewportBorder.getBorderInsets(pane)
+
+        assertEquals(SessionUiStyle.View.Code.VIEWPORT_BOTTOM_PADDING, pad.bottom)
+        assertTrue(pane.horizontalScrollBar.preferredSize.height > 0)
+    }
+
+    fun `test short code block top padding balances hidden scrollbar space`() {
+        view.set("```text\n[ALICE, ANNA]\n```")
+        val pane = scrolls().single()
+        val pad = pane.viewportBorder.getBorderInsets(pane)
+
+        assertTrue(pad.top > pane.horizontalScrollBar.preferredSize.height)
+        assertEquals(SessionUiStyle.View.Code.VIEWPORT_BOTTOM_PADDING, pad.bottom)
+    }
+
+    fun `test fenced code block height is not capped`() {
+        val code = (1..24).joinToString("\n") { "val value$it = $it" }
+        view.set("```kotlin\n$code\n```")
+        val pane = scrolls().single()
+        val editor = editors().single()
+        val line = editor.getFontMetrics(editor.font).height
+
+        assertTrue(pane.preferredSize.height >= line * 24)
+    }
+
+    fun `test fenced code block lays out to full editor height`() {
+        val code = (1..30).joinToString("\n") { "val value$it = $it" }
+        view.set("```kotlin\n$code\n```")
+        val pane = scrolls().single()
+        val editor = editors().single()
+
+        layout(width = 420)
+
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, pane.verticalScrollBarPolicy)
+        assertTrue("scroll pane should use its full preferred height", pane.height >= pane.preferredSize.height)
+        assertTrue("editor should not be clipped vertically", editor.height >= editor.preferredSize.height)
+    }
+
+    fun `test streaming fenced code block grows to full height`() {
+        view.append("```java\nclass Example {\n")
+        val initial = scrolls().single().preferredSize.height
+
+        view.append((1..20).joinToString("\n", postfix = "\n") { "void method$it() {}" })
+        view.append("}\n```")
+        val pane = scrolls().single()
+        val editor = editors().single()
+        layout(width = 420)
+
+        assertTrue("code block should grow after streamed lines", pane.preferredSize.height > initial)
+        assertTrue("streamed editor should not be clipped vertically", editor.height >= editor.preferredSize.height)
+    }
+
+    fun `test java code block with blank lines fits vertically`() {
+        val code = """
+            import java.util.List;
+            import java.util.stream.Collectors;
+
+            public class StreamsExample {
+                public static void main(String[] args) {
+                    List<String> names = List.of("Alice", "Bob", "Charlie", "David", "Anna");
+
+                    List<String> result = names.stream()
+                            .filter(name -> name.startsWith("A"))
+                            .map(String::toUpperCase)
+                            .collect(Collectors.toList());
+
+                    System.out.println(result);
+                }
+            }
+        """.trimIndent()
+        view.set("```java\n$code\n```")
+        val pane = scrolls().single()
+        val editor = editors().single()
+
+        layout(width = 420)
+
+        val line = editor.getFontMetrics(editor.font).height
+        val rows = editor.text.lineSequence().count()
+        assertTrue("java editor should reserve every document line", editor.preferredSize.height >= line * rows)
+        assertTrue("java editor should not be clipped vertically", editor.height >= editor.preferredSize.height)
+        assertTrue("java code block should not clip vertically", pane.height >= pane.preferredSize.height)
+    }
+
+    fun `test fenced code block width is bounded and boxed`() {
+        view.set("```kotlin\n${"x".repeat(500)}\n```")
+        val pane = scrolls().single()
+        val editor = editors().single()
+        val ins = pane.border.getBorderInsets(pane)
+
+        assertEquals(0, pane.preferredSize.width)
+        assertTrue(editor.preferredSize.width > pane.preferredSize.width)
+        assertTrue(pane.maximumSize.width > 1000)
+        assertTrue(ins.top > 0)
+        assertTrue(ins.left > 0)
+        assertEquals(pane.background, pane.viewport.background)
     }
 
     fun `test clear resets source and components`() {
@@ -74,4 +197,15 @@ class MdViewHybridTest : BasePlatformTestCase() {
     }
 
     private fun scrolls(): List<JBScrollPane> = (view.component as JPanel).components.filterIsInstance<JBScrollPane>()
+
+    private fun editors(): List<EditorTextField> = scrolls().mapNotNull { it.viewport.view as? EditorTextField }
+
+    private fun layout(width: Int) {
+        val host = JPanel(BorderLayout())
+        host.add(view.component, BorderLayout.CENTER)
+        host.setSize(width, view.component.preferredSize.height)
+        host.doLayout()
+        view.component.doLayout()
+        scrolls().forEach { it.doLayout() }
+    }
 }

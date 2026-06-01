@@ -1,7 +1,9 @@
 package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.log.KiloLog
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.PlainTextFileType
@@ -24,6 +26,7 @@ import org.commonmark.node.Node
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import java.awt.Color
+import java.awt.Dimension
 import java.awt.Font
 import javax.swing.Box
 import javax.swing.BoxLayout
@@ -265,7 +268,7 @@ internal class MdViewHybrid(
 
     private fun addGap() {
         if (root.componentCount == 0) return
-        root.add(Box.createVerticalStrut(JBUI.scale(6)))
+        root.add(Box.createVerticalStrut(JBUI.scale(SessionUiStyle.View.Code.BLOCK_GAP)))
     }
 
     private fun addBlock(component: JComponent) {
@@ -301,18 +304,68 @@ internal class MdViewHybrid(
 
     private fun codeBlock(text: String, lang: String?): JComponent {
         val opts = opts()
+        val value = text.trimEnd('\n')
         val field = runCatching { CodeField(file(lang), opts, text) }.getOrElse { err ->
             LOG.warn("kind=markdown codeEditor=true failed message=${err.message}", err)
             textArea(text, opts)
         }
-        return JBScrollPane(field).apply {
-            border = JBUI.Borders.empty()
+        val height = codeHeight(field, value)
+        val width = codeWidth(field, value)
+        field.preferredSize = Dimension(width, height)
+        field.minimumSize = Dimension(0, height)
+        field.maximumSize = Dimension(Int.MAX_VALUE, height)
+        return object : JBScrollPane(field) {
+            override fun doLayout() {
+                super.doLayout()
+                val view = viewport.view ?: return
+                val size = viewport.extentSize
+                if (size.height <= 0 || view.height == size.height) return
+                view.setSize(view.width.coerceAtLeast(size.width), size.height)
+            }
+        }.apply {
+            border = JBUI.Borders.customLine(opts.tableBorder, SessionUiStyle.View.Code.BORDER_WIDTH)
+            viewportBorder = JBUI.Borders.empty(
+                SessionUiStyle.View.Code.topPadding(),
+                SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING,
+                SessionUiStyle.View.Code.VIEWPORT_BOTTOM_PADDING,
+                SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING,
+            )
             isOpaque = opts.opaque
             background = opts.preBg
             viewport.background = opts.preBg
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
-            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+            isWheelScrollingEnabled = true
+            setOverlappingScrollBar(false)
+            horizontalScrollBar.preferredSize = Dimension(0, JBUI.scale(SessionUiStyle.View.Code.SCROLLBAR_HEIGHT))
+            horizontalScrollBar.isOpaque = true
+            verticalScrollBar.preferredSize = JBUI.emptySize()
+            val pad = viewportBorder.getBorderInsets(this)
+            val size = height + insets.top + insets.bottom + pad.top + pad.bottom + horizontalScrollBar.preferredSize.height
+            preferredSize = Dimension(0, size)
+            minimumSize = Dimension(0, size)
+            maximumSize = Dimension(Int.MAX_VALUE, size)
         }
+    }
+
+    private fun codeWidth(component: JComponent, text: String): Int {
+        val metrics = component.getFontMetrics(component.font)
+        val width = text.lineSequence().maxOfOrNull { metrics.stringWidth(it) } ?: 0
+        return width + JBUI.scale(SessionUiStyle.View.Code.WIDTH_PADDING)
+    }
+
+    private fun codeHeight(component: JComponent, text: String): Int {
+        val count = text.lineSequence().count()
+        val rows = count.coerceAtLeast(SessionUiStyle.View.Code.MIN_ROWS)
+        val field = component as? CodeField
+        if (field != null) {
+            field.ensureWillComputePreferredSize()
+            val ed = field.getEditor(false)
+            val line = ed?.lineHeight ?: component.getFontMetrics(component.font).height
+            return maxOf(field.preferredSize.height, line * rows)
+        }
+        val line = component.getFontMetrics(component.font).height
+        return line * rows
     }
 
     private fun textArea(text: String, opts: MdStyle) = JBTextArea(text.trimEnd('\n')).apply {
@@ -322,16 +375,23 @@ internal class MdViewHybrid(
         background = opts.preBg
         foreground = opts.preFg
         font = Font(opts.codeFont, Font.PLAIN, style.editorSize)
-        border = JBUI.Borders.empty(6, 8)
+        border = JBUI.Borders.empty(
+            SessionUiStyle.View.Code.VIEWPORT_TOP_PADDING,
+            SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING,
+        )
     }
 
     private inner class CodeField(file: FileType, opts: MdStyle, value: String) :
-        com.intellij.ui.EditorTextField(ProjectManager.getInstance().defaultProject, file) {
+        com.intellij.ui.EditorTextField(
+            EditorFactory.getInstance().createDocument(value.trimEnd('\n')),
+            ProjectManager.getInstance().defaultProject,
+            file,
+            true,
+            false,
+        ) {
         init {
             setFontInheritedFromLAF(false)
             font = Font(opts.codeFont, Font.PLAIN, style.editorSize)
-            text = value.trimEnd('\n')
-            isViewer = true
             addSettingsProvider { ed ->
                 style.applyToEditor(ed)
                 ed.setBorder(JBUI.Borders.empty())
@@ -342,7 +402,8 @@ internal class MdViewHybrid(
                 ed.scrollPane.viewport.background = opts.preBg
                 ed.settings.isUseSoftWraps = false
                 ed.settings.isAdditionalPageAtBottom = false
-                ed.scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+                ed.scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+                ed.scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
             }
         }
     }
