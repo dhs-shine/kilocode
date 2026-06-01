@@ -4,14 +4,16 @@ import { tmpdir } from "os"
 import { join } from "path"
 
 const script = join(import.meta.dir, "..", "..", "bin", "kilo")
+const platform = process.platform === "win32" ? "windows" : process.platform
+const binary = platform === "windows" ? "kilo.exe" : "kilo"
 
 describe("bin/kilo tree-sitter resources", () => {
   async function setup(root: string, nested: boolean) {
     const dir = nested
-      ? join(root, "node_modules", "@kilocode", "cli-darwin-arm64", "bin")
+      ? join(root, "node_modules", "@kilocode", `cli-${platform}-${process.arch}`, "bin")
       : join(root, "node_modules", "@kilocode", "cli", "bin")
     const wasm = join(dir, "tree-sitter")
-    const bin = join(dir, nested ? "kilo" : ".kilo")
+    const bin = join(dir, nested ? binary : ".kilo")
     const log = join(root, nested ? "nested-env.txt" : "cached-env.txt")
 
     await mkdir(wasm, { recursive: true })

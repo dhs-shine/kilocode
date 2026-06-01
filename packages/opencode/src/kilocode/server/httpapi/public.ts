@@ -30,6 +30,7 @@ type Spec = {
 }
 
 export function matchLegacyKiloOpenApi(input: Record<string, unknown>) {
+  rebrand(input)
   const spec = input as Spec
   const body = spec.paths?.["/kilo/organization"]?.post?.requestBody?.content?.["application/json"]?.schema
   const ref = body?.$ref?.replace("#/components/schemas/", "")
@@ -76,6 +77,25 @@ export function matchLegacyKiloOpenApi(input: Record<string, unknown>) {
         },
       },
     },
+  }
+}
+
+function rebrand(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const item of value) rebrand(item)
+    return
+  }
+  if (!value || typeof value !== "object") return
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item !== "string") {
+      rebrand(item)
+      continue
+    }
+    ;(value as Record<string, unknown>)[key] = item
+      .replaceAll("OpenCode", "Kilo")
+      .replaceAll("opencode.local", "kilo.local")
+      .replaceAll("opencode serve", "kilo serve")
+      .replaceAll("https://opencode.ai/", "https://kilo.ai/")
   }
 }
 

@@ -16,7 +16,8 @@ function configureTreeSitterResources(target) {
 }
 // kilocode_change end
 
-function run(target, fallback) { // kilocode_change - preserve cached binary fallback
+function run(target, fallback) {
+  // kilocode_change - preserve cached binary fallback
   configureTreeSitterResources(target) // kilocode_change
   // kilocode_change start - fall through if the cached binary cannot be spawned
   const child = (() => {
@@ -37,7 +38,8 @@ function run(target, fallback) { // kilocode_change - preserve cached binary fal
   // kilocode_change end
 
   const forwarders = {}
-  const clear = () => { // kilocode_change - remove listeners before cached binary fallback
+  const clear = () => {
+    // kilocode_change - remove listeners before cached binary fallback
     for (const signal of forwardedSignals) {
       process.removeListener(signal, forwarders[signal])
     }

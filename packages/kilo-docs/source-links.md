@@ -102,6 +102,7 @@
   <!-- packages/opencode/src/session/network.ts -->
 - <https://kilo.ai/>
   <!-- packages/opencode/src/cli/cmd/generate.ts -->
+  <!-- packages/opencode/src/kilocode/server/httpapi/public.ts -->
   <!-- packages/opencode/src/provider/provider.ts -->
 - <https://kilo.ai/discord>
   <!-- packages/kilo-vscode/webview-ui/src/components/chat/FeedbackDialog.tsx -->
@@ -131,6 +132,7 @@
   <!-- packages/opencode/src/config/model-id.ts -->
 - <https://opencode.ai/>
   <!-- packages/opencode/src/cli/cmd/generate.ts -->
+  <!-- packages/opencode/src/kilocode/server/httpapi/public.ts -->
 - <https://opencode.ai/auth>
   <!-- packages/opencode/src/cli/cmd/providers.ts -->
 - <https://opencode.ai/docs/agents>
