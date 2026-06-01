@@ -16,5 +16,11 @@
   padding: 1rem;
 }
 
-[data-slot="sheet-header"] { border-bottom: 1px solid var(--border); }
-[data-slot="sheet-footer"] { margin-top: auto; border-top: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 45%, transparent); }
+[data-slot="sheet-header"] {
+  border-bottom: 1px solid var(--border);
+}
+[data-slot="sheet-footer"] {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 45%, transparent);
+}

@@ -32,7 +32,9 @@ function Meta(props: { row: ToolRow }) {
       <Show when={props.row.note}>{(note) => <Tag tone="warning">{note()}</Tag>}</Show>
       <Tag tone={tone(props.row.state)}>{label(props.row.state)}</Tag>
       <Show when={props.row.entry}>
-        {(entry) => <SourceBadge source={entry().source} inherited={entry().inherited} overridden={entry().overridden} />}
+        {(entry) => (
+          <SourceBadge source={entry().source} inherited={entry().inherited} overridden={entry().overridden} />
+        )}
       </Show>
     </div>
   )
@@ -277,7 +279,12 @@ export function FormattersRoute() {
           >
             {state.fmtOn() ? "Disable All" : "Enable Built-ins"}
           </Button>
-          <Button icon="plus" variant="primary" disabled={Boolean(state.ctx.saving())} onClick={() => state.open("formatter")}>
+          <Button
+            icon="plus"
+            variant="primary"
+            disabled={Boolean(state.ctx.saving())}
+            onClick={() => state.open("formatter")}
+          >
             Add Formatter
           </Button>
         </>
@@ -285,7 +292,10 @@ export function FormattersRoute() {
     >
       <div class="formatters">
         <section class="formatter-group">
-          <SectionTitle trailing={<CountTag>{state.builtinFmt().length}</CountTag>} description="Native formatter integrations from OpenCode. Edit a row to override command, extensions, or environment.">
+          <SectionTitle
+            trailing={<CountTag>{state.builtinFmt().length}</CountTag>}
+            description="Native formatter integrations from OpenCode. Edit a row to override command, extensions, or environment."
+          >
             Built-in Formatters
           </SectionTitle>
           <List kind="formatter" rows={state.builtinFmt()} state={state} />
@@ -293,7 +303,10 @@ export function FormattersRoute() {
 
         <Show when={state.customFmt().length}>
           <section class="formatter-group">
-            <SectionTitle trailing={<CountTag>{state.customFmt().length}</CountTag>} description="Project or global formatter entries added through config.">
+            <SectionTitle
+              trailing={<CountTag>{state.customFmt().length}</CountTag>}
+              description="Project or global formatter entries added through config."
+            >
               Custom Formatters
             </SectionTitle>
             <List kind="formatter" rows={state.customFmt()} state={state} />
@@ -327,7 +340,12 @@ export function LspRoute() {
           >
             {state.lspOn() ? "Disable All" : "Enable Built-ins"}
           </Button>
-          <Button icon="plus" variant="primary" disabled={Boolean(state.ctx.saving())} onClick={() => state.open("lsp")}>
+          <Button
+            icon="plus"
+            variant="primary"
+            disabled={Boolean(state.ctx.saving())}
+            onClick={() => state.open("lsp")}
+          >
             Add LSP Server
           </Button>
         </>
@@ -335,7 +353,10 @@ export function LspRoute() {
     >
       <div class="formatters">
         <section class="formatter-group">
-          <SectionTitle trailing={<CountTag>{state.builtinLsp().length}</CountTag>} description="Native LSP servers from OpenCode. Edit a row to disable it or provide a custom launch command.">
+          <SectionTitle
+            trailing={<CountTag>{state.builtinLsp().length}</CountTag>}
+            description="Native LSP servers from OpenCode. Edit a row to disable it or provide a custom launch command."
+          >
             Built-in LSP Servers
           </SectionTitle>
           <List kind="lsp" rows={state.builtinLsp()} state={state} />
@@ -343,7 +364,10 @@ export function LspRoute() {
 
         <Show when={state.customLsp().length}>
           <section class="formatter-group">
-            <SectionTitle trailing={<CountTag>{state.customLsp().length}</CountTag>} description="Project or global LSP entries added through config.">
+            <SectionTitle
+              trailing={<CountTag>{state.customLsp().length}</CountTag>}
+              description="Project or global LSP entries added through config."
+            >
               Custom LSP Servers
             </SectionTitle>
             <List kind="lsp" rows={state.customLsp()} state={state} />

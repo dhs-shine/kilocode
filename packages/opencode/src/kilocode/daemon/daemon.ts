@@ -307,15 +307,13 @@ export namespace Daemon {
   async function wait(out: string, pid: number | undefined, timeout: number) {
     if (!pid) throw new Error("Daemon process did not provide a pid")
     const started = Date.now()
-    const poll = async (): Promise<{ pid: number; hostname: string; port: number }> => {
+    while (true) {
       const match = await line(out)
       if (match) return { pid, hostname: match.hostname, port: match.port }
       if (!alive(pid)) throw new Error(`Daemon exited before listening. Log: ${out}`)
       if (Date.now() - started > timeout) throw new Error(`Timed out waiting for daemon. Log: ${out}`)
       await sleep(100)
-      return await poll()
     }
-    return await poll()
   }
 
   async function line(out: string) {
@@ -348,12 +346,10 @@ export namespace Daemon {
 
   async function waitDead(pid: number, timeout: number) {
     const started = Date.now()
-    const poll = async (): Promise<void> => {
+    while (true) {
       if (!alive(pid)) return
       if (Date.now() - started > timeout) return
       await sleep(100)
-      return await poll()
     }
-    await poll()
   }
 }

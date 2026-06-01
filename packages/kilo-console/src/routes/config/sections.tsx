@@ -66,9 +66,7 @@ export const configNav: ConfigNode[] = [
   {
     id: "general",
     label: "General",
-    items: [
-      { path: "/", href: "/settings", icon: "home", label: "Overview", component: OverviewRoute },
-    ],
+    items: [{ path: "/", href: "/settings", icon: "home", label: "Overview", component: OverviewRoute }],
   },
   providers,
   {
@@ -135,6 +133,12 @@ function sections(item: ConfigNode) {
 export const configSections = [
   ...configNav.flatMap(sections),
   { path: "/agents/new", href: "/settings/agents/new", icon: "task", label: "New Agent", component: AgentBuilderRoute },
-  { path: "/agents/:agentID", href: "/settings/agents", icon: "task", label: "Edit Agent", component: AgentBuilderRoute },
+  {
+    path: "/agents/:agentID",
+    href: "/settings/agents",
+    icon: "task",
+    label: "Edit Agent",
+    component: AgentBuilderRoute,
+  },
   { path: "/models", href: "/settings/models/default", icon: "models", label: "Models", component: ModelsRoute },
 ]

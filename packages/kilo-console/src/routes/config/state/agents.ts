@@ -92,7 +92,8 @@ function rule(tool: string, pattern: string, input: unknown): AgentPermissionRul
 
 function rows(tool: string, value: unknown) {
   const obj = record(value)
-  if (Object.keys(obj).length) return Object.entries(obj).flatMap(([pattern, input]) => rule(tool, pattern, input) ?? [])
+  if (Object.keys(obj).length)
+    return Object.entries(obj).flatMap(([pattern, input]) => rule(tool, pattern, input) ?? [])
   const item = rule(tool, "*", value)
   return item ? [item] : []
 }

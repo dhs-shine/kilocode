@@ -81,7 +81,9 @@ function json(input: unknown) {
 
 function strings(input: unknown) {
   const data = record(input)
-  const rows = Object.entries(data).flatMap(([key, value]) => (typeof value === "string" ? [[key, value] as const] : []))
+  const rows = Object.entries(data).flatMap(([key, value]) =>
+    typeof value === "string" ? [[key, value] as const] : [],
+  )
   if (!rows.length) return undefined
   return Object.fromEntries(rows) as Record<string, string>
 }
@@ -231,7 +233,12 @@ async function fetchMarket() {
 }
 
 function escape(input: string) {
-  return input.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t")
+  return input
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t")
 }
 
 function substitute(template: string, values: Record<string, string>) {
@@ -387,7 +394,9 @@ export function useMcpSettings() {
   const visible = createMemo(() => {
     const term = search().trim().toLowerCase()
     if (!term) return rows()
-    return rows().filter((row) => `${row.name} ${row.id} ${row.summary} ${row.status?.status ?? ""}`.toLowerCase().includes(term))
+    return rows().filter((row) =>
+      `${row.name} ${row.id} ${row.summary} ${row.status?.status ?? ""}`.toLowerCase().includes(term),
+    )
   })
 
   const installed = createMemo(() => new Set(rows().map((row) => row.id)))
@@ -521,7 +530,14 @@ export function useMcpSettings() {
         const head = object(headers(), "Headers", ctx.fail)
         const oauthCfg = oauth(auth(), ctx.fail)
         if (!head || (clean(auth()) && oauthCfg === undefined)) return undefined
-        const next: Dict = { type: "remote", url: endpoint, enabled: enabled(), command: null, environment: null, env: null }
+        const next: Dict = {
+          type: "remote",
+          url: endpoint,
+          enabled: enabled(),
+          command: null,
+          environment: null,
+          env: null,
+        }
         next.headers = Object.keys(head).length ? head : null
         next.oauth = oauthCfg !== undefined ? oauthCfg : null
         next.timeout = ms !== undefined ? ms : null

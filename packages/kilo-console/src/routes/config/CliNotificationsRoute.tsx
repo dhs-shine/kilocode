@@ -4,7 +4,13 @@ import { Tag } from "@kilocode/kilo-web-ui/tag"
 import { ConfigPage } from "./ConfigPage"
 import { useTuiNotificationSettings } from "./state/ui"
 
-function Toggle(props: { label: string; description: string; checked: boolean; disabled?: boolean; onChange: () => void }) {
+function Toggle(props: {
+  label: string
+  description: string
+  checked: boolean
+  disabled?: boolean
+  onChange: () => void
+}) {
   return (
     <button
       class="ui-toggle"

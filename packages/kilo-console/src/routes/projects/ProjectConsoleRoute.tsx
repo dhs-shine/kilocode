@@ -24,7 +24,11 @@ import {
   type Query,
 } from "../../client"
 import { clean, errMsg, friendly } from "../../shared/utils"
-import { markUnread as storeMarkUnread, clearUnread as storeClearUnread, sessionHasUnread } from "../../shared/terminal-status"
+import {
+  markUnread as storeMarkUnread,
+  clearUnread as storeClearUnread,
+  sessionHasUnread,
+} from "../../shared/terminal-status"
 import { GhosttyTerminal } from "./terminal/GhosttyTerminal"
 
 const ui = new Set(["3017", "3018"])
@@ -480,7 +484,9 @@ export function ProjectConsoleRoute() {
       const id = sessionID(item)
       return id ? [id] : []
     })
-    void viewProjectSessions({ url: base.url, dir: data.project.worktree }, focused ? [focused] : [], open).catch(() => {})
+    void viewProjectSessions({ url: base.url, dir: data.project.worktree }, focused ? [focused] : [], open).catch(
+      () => {},
+    )
   })
 
   createEffect(() => {
@@ -526,7 +532,9 @@ export function ProjectConsoleRoute() {
           </span>
           <span class="project-console-scope">
             <span class="project-console-name">
-              {snap()?.project.name ? friendly(snap()?.project.name ?? "") : title(snap()?.project.worktree ?? project())}
+              {snap()?.project.name
+                ? friendly(snap()?.project.name ?? "")
+                : title(snap()?.project.worktree ?? project())}
             </span>
           </span>
           <small>{snap()?.vcs.branch ?? "No branch"}</small>
@@ -550,7 +558,10 @@ export function ProjectConsoleRoute() {
               <For each={contexts()}>
                 {(item) => (
                   <div class="project-worktree-block">
-                    <div class="project-context-row" classList={{ active: current()?.dir === item.dir && !activeTerminal() }}>
+                    <div
+                      class="project-context-row"
+                      classList={{ active: current()?.dir === item.dir && !activeTerminal() }}
+                    >
                       <button
                         type="button"
                         class="project-context"
@@ -766,9 +777,7 @@ export function ProjectConsoleRoute() {
               )}
             </For>
           </div>
-          <Show when={detail()}>
-            {(item) => <pre class="project-diff-detail">{item()?.patch ?? ""}</pre>}
-          </Show>
+          <Show when={detail()}>{(item) => <pre class="project-diff-detail">{item()?.patch ?? ""}</pre>}</Show>
         </div>
       </aside>
     </section>

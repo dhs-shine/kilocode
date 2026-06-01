@@ -5,7 +5,9 @@ import { Icon, type IconProps } from "./icon"
 type Size = "xs" | "sm" | "small" | "normal" | "default" | "large" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg"
 type Variant = "primary" | "default" | "secondary" | "outline" | "ghost" | "destructive" | "link"
 
-export interface ButtonProps extends ComponentProps<typeof Kobalte>, Pick<ComponentProps<"button">, "class" | "classList" | "children"> {
+export interface ButtonProps
+  extends ComponentProps<typeof Kobalte>,
+    Pick<ComponentProps<"button">, "class" | "classList" | "children"> {
   size?: Size
   variant?: Variant
   icon?: IconProps["name"]
@@ -37,9 +39,7 @@ export function Button(props: ButtonProps) {
         [local.class ?? ""]: !!local.class,
       }}
     >
-      <Show when={local.icon}>
-        {(name) => <Icon name={name()} size="small" />}
-      </Show>
+      <Show when={local.icon}>{(name) => <Icon name={name()} size="small" />}</Show>
       {local.children}
     </Kobalte>
   )

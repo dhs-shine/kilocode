@@ -52,7 +52,7 @@ export const AgentBuilderRoutes = lazy(() =>
       validator("json", AgentBuilder.SaveInput),
       async (c) => {
         const body = c.req.valid("json")
-        const input = AgentBuilder.Input.parse({ ...body, id: c.req.valid("param").id })
+        const input = { ...body, id: c.req.valid("param").id }
         const output = await AgentBuilder.save(context(), input)
         await AppRuntime.runPromise(InstanceStore.Service.use((svc) => svc.dispose(Instance.current)))
         return c.json(output)

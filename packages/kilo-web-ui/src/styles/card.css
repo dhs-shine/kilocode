@@ -17,10 +17,18 @@
   padding: var(--kw-card-padding, 0.75rem);
 }
 
-[data-component="card"][data-variant="info"] { border-color: color-mix(in oklab, var(--info) 34%, var(--border)); }
-[data-component="card"][data-variant="success"] { border-color: color-mix(in oklab, var(--success) 34%, var(--border)); }
-[data-component="card"][data-variant="warning"] { border-color: color-mix(in oklab, var(--warning) 34%, var(--border)); }
-[data-component="card"][data-variant="error"] { border-color: color-mix(in oklab, var(--destructive) 34%, var(--border)); }
+[data-component="card"][data-variant="info"] {
+  border-color: color-mix(in oklab, var(--info) 34%, var(--border));
+}
+[data-component="card"][data-variant="success"] {
+  border-color: color-mix(in oklab, var(--success) 34%, var(--border));
+}
+[data-component="card"][data-variant="warning"] {
+  border-color: color-mix(in oklab, var(--warning) 34%, var(--border));
+}
+[data-component="card"][data-variant="error"] {
+  border-color: color-mix(in oklab, var(--destructive) 34%, var(--border));
+}
 
 [data-slot="card-header"],
 [data-slot="card-content"],

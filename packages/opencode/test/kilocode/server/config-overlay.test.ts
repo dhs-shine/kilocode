@@ -5,6 +5,7 @@ import { Global } from "@opencode-ai/core/global"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Server } from "../../../src/server/server"
 import { Config } from "../../../src/config/config"
+import { KilocodeConfigOverlay } from "../../../src/kilocode/config/overlay"
 import { Permission } from "../../../src/permission"
 import { AppRuntime } from "../../../src/effect/app-runtime"
 import { resetDatabase } from "../../fixture/db"
@@ -72,6 +73,21 @@ async function invalidate() {
 }
 
 describe("config overlay routes", () => {
+  test("ignores unsafe patch paths", () => {
+    const patched = KilocodeConfigOverlay.patch({
+      scope: "project",
+      unset: [
+        ["__proto__", "polluted"],
+        ["constructor", "prototype", "polluted"],
+        ["prototype", "polluted"],
+      ],
+    })
+
+    expect(Object.getPrototypeOf(patched)).toBe(Object.prototype)
+    expect(Object.hasOwn(patched, "constructor")).toBe(false)
+    expect(Object.hasOwn(patched, "prototype")).toBe(false)
+  })
+
   test.serial("marks global values inherited in project scope", async () => {
     await using global = await tmpdir()
     await using project = await tmpdir()

@@ -12,9 +12,20 @@ export function SheetClose(props: ComponentProps<"button">) {
   return <button {...props} data-slot="sheet-close" />
 }
 
-export function SheetContent(props: ComponentProps<"aside"> & { side?: "top" | "right" | "bottom" | "left"; showCloseButton?: boolean }) {
+export function SheetContent(
+  props: ComponentProps<"aside"> & { side?: "top" | "right" | "bottom" | "left"; showCloseButton?: boolean },
+) {
   const [local, rest] = splitProps(props, ["side", "showCloseButton", "class", "classList", "children"])
-  return <aside {...rest} data-slot="sheet-content" data-side={local.side ?? "right"} classList={{ ...local.classList, [local.class ?? ""]: !!local.class }}>{local.children}</aside>
+  return (
+    <aside
+      {...rest}
+      data-slot="sheet-content"
+      data-side={local.side ?? "right"}
+      classList={{ ...local.classList, [local.class ?? ""]: !!local.class }}
+    >
+      {local.children}
+    </aside>
+  )
 }
 
 export function SheetHeader(props: ComponentProps<"div">) {

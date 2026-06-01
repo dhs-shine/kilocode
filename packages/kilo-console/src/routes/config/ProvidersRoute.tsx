@@ -28,7 +28,12 @@ export function ProvidersRoute() {
           description="Credentials and endpoints for upstream model providers. Each provider exposes one or more models."
           actions={
             <>
-              <Button icon="plus" variant="primary" disabled={Boolean(state.ctx.saving()) || project()} onClick={state.add}>
+              <Button
+                icon="plus"
+                variant="primary"
+                disabled={Boolean(state.ctx.saving()) || project()}
+                onClick={state.add}
+              >
                 Add provider
               </Button>
             </>
@@ -40,7 +45,12 @@ export function ProvidersRoute() {
             </Card>
           </Show>
 
-          <SearchField label="Filter providers" value={state.search()} placeholder="Filter by name or ID..." onValue={state.setSearch} />
+          <SearchField
+            label="Filter providers"
+            value={state.search()}
+            placeholder="Filter by name or ID..."
+            onValue={state.setSearch}
+          />
 
           <div class="providers">
             <Show when={state.visible().length} fallback={<p class="empty">No providers match this filter.</p>}>
@@ -144,10 +154,7 @@ export function ProvidersRoute() {
                         </div>
                       </section>
                       <Card class="add-provider-step" padding={16}>
-                        <Show
-                          when={state.target()}
-                          fallback={<span>Select a provider to enter credentials.</span>}
-                        >
+                        <Show when={state.target()} fallback={<span>Select a provider to enter credentials.</span>}>
                           {(provider) => (
                             <span>
                               Step 2 · enter credentials for <strong>{provider().name}</strong>

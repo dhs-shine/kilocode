@@ -29,7 +29,7 @@ export namespace AgentBuilder {
     steps: z.number().int().positive().optional(),
     tools: z.string().array().optional(),
     permission: z.record(z.string(), z.unknown()).optional(),
-    prompt: z.string().trim().min(1),
+    prompt: z.string().regex(/\S/).trim(),
   })
 
   export const Input = Body.extend({

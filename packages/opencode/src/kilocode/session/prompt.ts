@@ -130,7 +130,9 @@ export namespace KiloSessionPrompt {
     request: Omit<Permission.AskInput, "ruleset" | "hardRuleset">
   }) {
     const agent = (yield* input.agents.get(input.agent.name)) ?? input.agent
-    const session = yield* input.sessions.get(input.session.id).pipe(Effect.catchCause(() => Effect.succeed(input.session)))
+    const session = yield* input.sessions
+      .get(input.session.id)
+      .pipe(Effect.catchCause(() => Effect.succeed(input.session)))
     yield* input.permission.ask({
       ...input.request,
       ruleset: Permission.merge(agent.permission, guardPermissions({ agent, session })),

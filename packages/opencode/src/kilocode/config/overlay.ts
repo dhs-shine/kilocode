@@ -86,6 +86,7 @@ export namespace KilocodeConfigOverlay {
   ] as const
 
   const collectionPaths = ["provider", "mcp", "permission", "agent", "formatter", "lsp"] as const
+  const blocked = new Set(["__proto__", "constructor", "prototype"])
 
   export async function project(input: { directory: string; worktree?: string }): Promise<Config.Info> {
     const found = await projectFiles(input)
@@ -279,7 +280,7 @@ export namespace KilocodeConfigOverlay {
 
   function set(input: Record<string, unknown>, parts: string[], value: unknown) {
     const [head, ...tail] = parts
-    if (!head) return
+    if (!head || blocked.has(head)) return
     if (tail.length === 0) {
       input[head] = value
       return

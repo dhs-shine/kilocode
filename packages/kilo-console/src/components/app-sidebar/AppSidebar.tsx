@@ -136,13 +136,12 @@ export function AppSidebar(props: Props) {
     route().startsWith(`/projects/${encodeURIComponent(item.id)}/`) ||
     route() === `/projects/${encodeURIComponent(item.id)}`
 
-  const nav = () => [
-    { href: "/projects", label: "Projects", name: "projects", path: "/projects" },
-  ] as const
-  const bottom = () => [
-    { href: "/profile", label: "Profile", name: "profile", path: "/profile" },
-    { href: settings(), label: "Settings", name: "settings", path: "/settings" },
-  ] as const
+  const nav = () => [{ href: "/projects", label: "Projects", name: "projects", path: "/projects" }] as const
+  const bottom = () =>
+    [
+      { href: "/profile", label: "Profile", name: "profile", path: "/profile" },
+      { href: settings(), label: "Settings", name: "settings", path: "/settings" },
+    ] as const
 
   function scheduleRefetch() {
     if (timers.refetch) return
@@ -267,12 +266,18 @@ export function AppSidebar(props: Props) {
 
       // session.turn.close: error | completed
       if (t === "session.turn.close") {
-        const payload = (ge.payload as Record<string, unknown>).properties as
-          | { reason?: string }
-          | undefined
+        const payload = (ge.payload as Record<string, unknown>).properties as { reason?: string } | undefined
         if (!sid) return
         if (payload?.reason === "error") {
-          gated("error", current, proj.id, ge.directory, sid, () => markError(proj.id, sid), () => clearError(proj.id, sid))
+          gated(
+            "error",
+            current,
+            proj.id,
+            ge.directory,
+            sid,
+            () => markError(proj.id, sid),
+            () => clearError(proj.id, sid),
+          )
           return
         }
         bump("error", proj.id, sid)
@@ -324,13 +329,19 @@ export function AppSidebar(props: Props) {
 
       // session.status → busy / idle
       if (t === "session.status") {
-        const sstatus = (ge.payload as Record<string, unknown>).properties as
-          | { status?: { type?: string } }
-          | undefined
+        const sstatus = (ge.payload as Record<string, unknown>).properties as { status?: { type?: string } } | undefined
         const stype = sstatus?.status?.type
         if (!sid) return
         if (stype === "busy" || stype === "retry") {
-          gated("busy", current, proj.id, ge.directory, sid, () => markBusy(proj.id, sid), () => clearBusy(proj.id, sid))
+          gated(
+            "busy",
+            current,
+            proj.id,
+            ge.directory,
+            sid,
+            () => markBusy(proj.id, sid),
+            () => clearBusy(proj.id, sid),
+          )
         } else if (stype === "idle") {
           bump("busy", proj.id, sid)
           bump("error", proj.id, sid)

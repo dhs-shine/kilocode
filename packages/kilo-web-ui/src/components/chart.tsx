@@ -9,9 +9,15 @@ export type ChartConfig = Record<
   }
 >
 
-export function ChartContainer(props: ComponentProps<"div"> & { config: ChartConfig; initialDimension?: { width: number; height: number } }) {
+export function ChartContainer(
+  props: ComponentProps<"div"> & { config: ChartConfig; initialDimension?: { width: number; height: number } },
+) {
   const [local, rest] = splitProps(props, ["config", "initialDimension", "class", "classList", "children"])
-  return <div {...rest} data-slot="chart" classList={{ ...local.classList, [local.class ?? ""]: !!local.class }}>{local.children}</div>
+  return (
+    <div {...rest} data-slot="chart" classList={{ ...local.classList, [local.class ?? ""]: !!local.class }}>
+      {local.children}
+    </div>
+  )
 }
 
 export function ChartTooltip(props: ComponentProps<"div">) {

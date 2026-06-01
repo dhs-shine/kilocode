@@ -20,8 +20,12 @@
   letter-spacing: -0.01em;
 }
 
-[data-component="page-header"] h1 { font-size: 1rem; }
-[data-component="section-title"] h2 { font-size: 0.75rem; }
+[data-component="page-header"] h1 {
+  font-size: 1rem;
+}
+[data-component="section-title"] h2 {
+  font-size: 0.75rem;
+}
 [data-component="page-header"] p,
 [data-component="section-title"] p {
   max-width: 42rem;
@@ -64,12 +68,25 @@
   padding: 0.5rem 0.625rem;
 }
 
-[data-component="banner"][data-tone="info"] > svg { color: var(--info); }
-[data-component="banner"][data-tone="success"] > svg { color: var(--success); }
-[data-component="banner"][data-tone="warning"] > svg { color: var(--warning); }
-[data-component="banner"][data-tone="critical"] > svg { color: var(--destructive); }
-[data-component="banner"] strong { display: block; color: var(--foreground); }
-[data-component="banner"] span { color: var(--muted-foreground); }
+[data-component="banner"][data-tone="info"] > svg {
+  color: var(--info);
+}
+[data-component="banner"][data-tone="success"] > svg {
+  color: var(--success);
+}
+[data-component="banner"][data-tone="warning"] > svg {
+  color: var(--warning);
+}
+[data-component="banner"][data-tone="critical"] > svg {
+  color: var(--destructive);
+}
+[data-component="banner"] strong {
+  display: block;
+  color: var(--foreground);
+}
+[data-component="banner"] span {
+  color: var(--muted-foreground);
+}
 
 [data-component="config-row"] {
   position: relative;
@@ -85,7 +102,9 @@
   text-align: left;
   text-decoration: none;
   padding: 0.625rem 0.75rem;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
 }
 
 button[data-component="config-row"] {
@@ -162,6 +181,12 @@ button[data-component="config-row"] {
   background: var(--muted-foreground);
 }
 
-[data-slot="status-dot"][data-tone="success"] { background: var(--success); }
-[data-slot="status-dot"][data-tone="warning"] { background: var(--warning); }
-[data-slot="status-dot"][data-tone="critical"] { background: var(--destructive); }
+[data-slot="status-dot"][data-tone="success"] {
+  background: var(--success);
+}
+[data-slot="status-dot"][data-tone="warning"] {
+  background: var(--warning);
+}
+[data-slot="status-dot"][data-tone="critical"] {
+  background: var(--destructive);
+}

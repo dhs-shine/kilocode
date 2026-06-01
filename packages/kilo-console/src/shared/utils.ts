@@ -26,18 +26,45 @@ const labels: Record<string, string> = {
 }
 
 const copy: Record<string, string[]> = {
-  apply_patch: ["Apply structured patches to add, update, move, or delete files.", "Keeps edits explicit and easy to review."],
-  bash: ["Run shell commands in the current workspace.", "Supports timeouts, working directories, and command descriptions."],
+  apply_patch: [
+    "Apply structured patches to add, update, move, or delete files.",
+    "Keeps edits explicit and easy to review.",
+  ],
+  bash: [
+    "Run shell commands in the current workspace.",
+    "Supports timeouts, working directories, and command descriptions.",
+  ],
   edit: ["Replace exact text inside an existing file.", "Can update one match or all matches when needed."],
   glob: ["Find files by path patterns.", "Useful for locating files before reading or editing them."],
-  grep: ["Search file contents with regular expressions.", "Can limit results to a file pattern such as TypeScript or CSS files."],
-  lsp: ["Use language-server features for code navigation.", "Supports operations such as definitions, references, and diagnostics."],
+  grep: [
+    "Search file contents with regular expressions.",
+    "Can limit results to a file pattern such as TypeScript or CSS files.",
+  ],
+  lsp: [
+    "Use language-server features for code navigation.",
+    "Supports operations such as definitions, references, and diagnostics.",
+  ],
   question: ["Ask the user for a decision during execution.", "Supports single-choice and multi-choice prompts."],
-  read: ["Read files, directories, images, and PDFs from the workspace.", "Supports line offsets and limits for large files."],
-  recall: ["Search and read previous project conversations.", "Useful for recovering prior decisions or implementation context."],
-  skill: ["Load task-specific instructions and workflows.", "Applies specialized repo guidance when a matching skill exists."],
-  task: ["Delegate focused exploration or implementation work to a subagent.", "Useful for parallel codebase research and complex subtasks."],
-  todowrite: ["Track multi-step implementation work.", "Shows progress with pending, in-progress, and completed states."],
+  read: [
+    "Read files, directories, images, and PDFs from the workspace.",
+    "Supports line offsets and limits for large files.",
+  ],
+  recall: [
+    "Search and read previous project conversations.",
+    "Useful for recovering prior decisions or implementation context.",
+  ],
+  skill: [
+    "Load task-specific instructions and workflows.",
+    "Applies specialized repo guidance when a matching skill exists.",
+  ],
+  task: [
+    "Delegate focused exploration or implementation work to a subagent.",
+    "Useful for parallel codebase research and complex subtasks.",
+  ],
+  todowrite: [
+    "Track multi-step implementation work.",
+    "Shows progress with pending, in-progress, and completed states.",
+  ],
   webfetch: ["Fetch and convert web pages for analysis.", "Supports markdown, text, and HTML output formats."],
   websearch: ["Search the web for external information.", "Supports fast, automatic, and deep search modes."],
   write: ["Create or overwrite files with complete contents.", "Best for new files or full-file replacements."],

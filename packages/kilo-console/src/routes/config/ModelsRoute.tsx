@@ -140,7 +140,10 @@ export function ModelsDefaultRoute() {
 
   return (
     <Show when={state.snap()}>
-      <ConfigPage title="Model defaults" description="The models Kilo uses when an agent or command doesn't pin its own.">
+      <ConfigPage
+        title="Model defaults"
+        description="The models Kilo uses when an agent or command doesn't pin its own."
+      >
         <div class="resolved-grid model-defaults model-default-fields">
           <For each={slots}>
             {(item) => {
@@ -313,7 +316,10 @@ export function ModelsAvailableRoute() {
             <FilterSelect
               label="Provider"
               value={state.filter()}
-              options={[{ value: "all", label: "All providers" }, ...state.providers().map((provider) => ({ value: provider.id, label: provider.name }))]}
+              options={[
+                { value: "all", label: "All providers" },
+                ...state.providers().map((provider) => ({ value: provider.id, label: provider.name })),
+              ]}
               onSelect={state.setFilter}
             />
             <FilterSelect
@@ -351,10 +357,7 @@ export function ModelsAvailableRoute() {
           <div class="models-filter-row models-filter-secondary">
             <div class="models-context-filter">
               <span>Context max</span>
-              <div
-                class="context-range"
-                style={`--context-min: 0%; --context-max: ${pct(state.top(), state.max())}%;`}
-              >
+              <div class="context-range" style={`--context-min: 0%; --context-max: ${pct(state.top(), state.max())}%;`}>
                 <span class="context-track" aria-hidden="true" />
                 <span class="context-fill" aria-hidden="true" />
                 <button
@@ -421,7 +424,10 @@ export function ModelsAvailableRoute() {
                   <Show when={desc(item.model)}>{(value) => <p class="model-description">{value()}</p>}</Show>
                   <div class="model-info-grid">
                     <Stat label="Family" value={item.model.family ? title(item.model.family) : "Unknown"} />
-                    <Stat label="Released" value={item.model.release_date ? fmtDate(item.model.release_date) : "Unknown"} />
+                    <Stat
+                      label="Released"
+                      value={item.model.release_date ? fmtDate(item.model.release_date) : "Unknown"}
+                    />
                     <Stat label="Context" value={fmtContext(item.model.limit.context)} mono />
                     <Stat label="Input" value={money(item.model.cost.input)} sub="/ 1M tok" mono />
                     <Stat label="Output" value={money(item.model.cost.output)} sub="/ 1M tok" mono />

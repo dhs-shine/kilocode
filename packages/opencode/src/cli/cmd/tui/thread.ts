@@ -346,7 +346,8 @@ export const TuiThreadCommand = cmd({
         }
         // kilocode_change end
 
-        await start({ // kilocode_change
+        await start({
+          // kilocode_change
           url: transport.url, // kilocode_change
           async onSnapshot() {
             const tui = writeHeapSnapshot("tui.heapsnapshot")

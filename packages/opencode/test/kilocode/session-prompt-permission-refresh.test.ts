@@ -217,11 +217,7 @@ it.live("active tool calls use permissions changed after model streaming starts"
       const gate = Promise.withResolvers<void>()
 
       yield* Effect.promise(() => Bun.write(file, "old"))
-      yield* llm.push(
-        reply()
-          .wait(gate.promise)
-          .tool("edit", { filePath: file, oldString: "old", newString: "new" }),
-      )
+      yield* llm.push(reply().wait(gate.promise).tool("edit", { filePath: file, oldString: "old", newString: "new" }))
 
       const chat = yield* sessions.create({ title: "Pinned" })
       yield* prompt.prompt({

@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import path from "path"
 import * as Log from "@opencode-ai/core/util/log"
+import { Flag } from "@opencode-ai/core/flag/flag"
 import { Server } from "../../../src/server/server"
 import { GlobalBus, type GlobalEvent } from "../../../src/bus/global"
 import { resetDatabase } from "../../fixture/db"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 
 void Log.init({ print: false })
+
+const experimental = Flag.KILO_EXPERIMENTAL_HTTPAPI
 
 type Output = {
   id: string
@@ -22,12 +25,28 @@ type Agent = {
 }
 
 afterEach(async () => {
+  Flag.KILO_EXPERIMENTAL_HTTPAPI = experimental
   await disposeAllInstances()
   await resetDatabase()
 })
 
 function req(dir: string, input: string, init?: RequestInit) {
   return Server.Legacy().app.request(input, {
+    ...init,
+    headers: {
+      "x-kilo-directory": dir,
+      ...init?.headers,
+    },
+  })
+}
+
+function app(value: boolean) {
+  Flag.KILO_EXPERIMENTAL_HTTPAPI = value
+  return value ? Server.Default().app : Server.Legacy().app
+}
+
+function request(target: ReturnType<typeof app>, dir: string, input: string, init?: RequestInit) {
+  return target.request(input, {
     ...init,
     headers: {
       "x-kilo-directory": dir,
@@ -111,6 +130,37 @@ describe("agent builder routes", () => {
 
     expect(preview.status).toBe(400)
   })
+
+  for (const value of [false, true]) {
+    test.serial(`${value ? "httpapi" : "legacy"} rejects whitespace-only prompts when saving`, async () => {
+      await using tmp = await tmpdir()
+      const saved = await request(app(value), tmp.path, "/agent-builder/empty", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          scope: "project",
+          prompt: "   ",
+        }),
+      })
+
+      expect(saved.status).toBe(400)
+    })
+
+    test.serial(`${value ? "httpapi" : "legacy"} rejects invalid route ids`, async () => {
+      await using tmp = await tmpdir()
+      const saved = await request(app(value), tmp.path, "/agent-builder/bad:id", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          scope: "project",
+          prompt: "Do not write invalid ids.",
+        }),
+      })
+
+      expect(saved.status).toBe(400)
+      expect(await Bun.file(path.join(tmp.path, ".kilo", "agent", "bad:id.md")).exists()).toBe(false)
+    })
+  }
 
   // Regression: saving must dispose the instance so open TUIs hot-reload the agent list. The
   // dispose is the reload trigger — the server agent cache is keyed by config

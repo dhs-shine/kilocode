@@ -96,12 +96,7 @@ export function CliUiRoute() {
           <div class="ui-form">
             <label class="ui-field">
               <span>Diff style</span>
-              <CustomSelect
-                label="Diff style"
-                value={state.diff()}
-                options={diffs}
-                onSelect={state.setDiff}
-              />
+              <CustomSelect label="Diff style" value={state.diff()} options={diffs} onSelect={state.setDiff} />
               <small>Auto adapts to terminal width; stacked always uses a single-column diff.</small>
             </label>
 
@@ -134,7 +129,6 @@ export function CliUiRoute() {
             />
           </div>
         </Card>
-
       </div>
 
       <Show when={state.mode() === "theme"}>

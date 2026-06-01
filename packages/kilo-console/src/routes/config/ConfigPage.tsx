@@ -2,7 +2,12 @@ import type { JSX } from "solid-js"
 import { Show } from "solid-js"
 import { SourceBadge as UiSourceBadge } from "@kilocode/kilo-web-ui/console"
 
-export function ConfigPage(props: { title: JSX.Element; description?: JSX.Element; actions?: JSX.Element; children?: JSX.Element }) {
+export function ConfigPage(props: {
+  title: JSX.Element
+  description?: JSX.Element
+  actions?: JSX.Element
+  children?: JSX.Element
+}) {
   return (
     <main class="config-page">
       <section class="config-page-header">

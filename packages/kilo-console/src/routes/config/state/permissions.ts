@@ -153,7 +153,9 @@ function row(tool: string, pattern: string, action: unknown, item?: Resolved): P
 function entries(item: Resolved): PermissionRule[] {
   const rule = item.value
   if (rule && typeof rule === "object" && !Array.isArray(rule)) {
-    return Object.entries(rule as Record<string, unknown>).flatMap(([glob, value]) => row(item.key, glob, value, item) ?? [])
+    return Object.entries(rule as Record<string, unknown>).flatMap(
+      ([glob, value]) => row(item.key, glob, value, item) ?? [],
+    )
   }
   const value = row(item.key, "*", rule, item)
   return value ? [value] : []
@@ -252,7 +254,9 @@ export function usePermissionSettings() {
   }
 
   function setDefault(tool: string, action: PermissionAction) {
-    const permission = ruleIDs.has(tool) ? ({ [tool]: { "*": action } } as PermissionMap) : ({ [tool]: action } as PermissionMap)
+    const permission = ruleIDs.has(tool)
+      ? ({ [tool]: { "*": action } } as PermissionMap)
+      : ({ [tool]: action } as PermissionMap)
     ctx.save({ permission })
   }
 

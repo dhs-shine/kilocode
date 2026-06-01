@@ -12,7 +12,17 @@ export function Badge(props: BadgeProps) {
     if (local.variant === "default") return "brand" as const
     return "neutral" as const
   }
-  return <Tag {...rest} data-variant={local.variant ?? "default"} tone={tone()} class={local.class} classList={local.classList}>{local.children}</Tag>
+  return (
+    <Tag
+      {...rest}
+      data-variant={local.variant ?? "default"}
+      tone={tone()}
+      class={local.class}
+      classList={local.classList}
+    >
+      {local.children}
+    </Tag>
+  )
 }
 
 export function badgeVariants() {

@@ -60,7 +60,9 @@
   color: var(--foreground);
   padding: 0.75rem;
   text-decoration: none;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
 }
 
 .kilo-console .project-row:hover,

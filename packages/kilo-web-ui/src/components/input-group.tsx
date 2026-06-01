@@ -7,7 +7,9 @@ export function InputGroup(props: ComponentProps<"div">) {
   return <div {...props} role="group" data-slot="input-group" />
 }
 
-export function InputGroupAddon(props: ComponentProps<"div"> & { align?: "inline-start" | "inline-end" | "block-start" | "block-end" }) {
+export function InputGroupAddon(
+  props: ComponentProps<"div"> & { align?: "inline-start" | "inline-end" | "block-start" | "block-end" },
+) {
   const [local, rest] = splitProps(props, ["align"])
   return <div {...rest} data-slot="input-group-addon" data-align={local.align ?? "inline-start"} />
 }

@@ -6,7 +6,11 @@ type Props = Omit<ComponentProps<"select">, "size"> & { size?: "sm" | "default" 
 export function NativeSelect(props: Props) {
   const [local, rest] = splitProps(props, ["size", "class", "classList", "children"])
   return (
-    <div data-slot="native-select-wrapper" data-size={local.size ?? "default"} classList={{ ...local.classList, [local.class ?? ""]: !!local.class }}>
+    <div
+      data-slot="native-select-wrapper"
+      data-size={local.size ?? "default"}
+      classList={{ ...local.classList, [local.class ?? ""]: !!local.class }}
+    >
       <select {...rest} data-slot="native-select">
         {local.children}
       </select>

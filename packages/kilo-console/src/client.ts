@@ -268,7 +268,10 @@ async function probe(url: string) {
   const ctl = new AbortController()
   const timer = window.setTimeout(() => ctl.abort(), 400)
   const info = server(url)
-  return await fetcher(`${info.url}/global/health`, { headers: { Authorization: `Basic ${info.token}` }, signal: ctl.signal })
+  return await fetcher(`${info.url}/global/health`, {
+    headers: { Authorization: `Basic ${info.token}` },
+    signal: ctl.signal,
+  })
     .then((res) => (res.ok ? url : undefined))
     .catch(() => undefined)
     .finally(() => window.clearTimeout(timer))
@@ -424,9 +427,7 @@ export async function loadRecentProjects(input: ProjectQuery): Promise<RecentPro
     counts.set(item.id, (counts.get(item.id) ?? 0) + 1)
   }
 
-  return items
-    .map((item) => ({ ...item, sessions: counts.get(item.id) ?? 0 }))
-    .filter((item) => item.sessions > 0)
+  return items.map((item) => ({ ...item, sessions: counts.get(item.id) ?? 0 })).filter((item) => item.sessions > 0)
 }
 
 export async function loadProjectConsole(input: ProjectConsoleQuery): Promise<ProjectConsoleSnapshot> {
@@ -438,7 +439,9 @@ export async function loadProjectConsole(input: ProjectConsoleQuery): Promise<Pr
     sdk.worktree.list({ directory: query.dir }),
   ])
   const dirs = demand("Worktrees", worktrees)
-  const terminals = await Promise.all([query.dir, ...dirs].map((dir) => loadProjectTerminals({ url: input.url, dir }, dir)))
+  const terminals = await Promise.all(
+    [query.dir, ...dirs].map((dir) => loadProjectTerminals({ url: input.url, dir }, dir)),
+  )
 
   return {
     project,

@@ -27,7 +27,11 @@ export type ToolRow = Builtin & {
 
 const fmts = [
   { id: "air", ext: [".R"], req: "air command available" },
-  { id: "biome", ext: [".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".md", ".json", ".yaml"], req: "biome.json(c) config file" },
+  {
+    id: "biome",
+    ext: [".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".md", ".json", ".yaml"],
+    req: "biome.json(c) config file",
+  },
   { id: "cargofmt", ext: [".rs"], req: "cargo fmt command available" },
   { id: "clang-format", ext: [".c", ".cpp", ".h", ".hpp", ".ino"], req: ".clang-format config file" },
   { id: "cljfmt", ext: [".clj", ".cljs", ".cljc", ".edn"], req: "cljfmt command available" },
@@ -42,9 +46,18 @@ const fmts = [
   { id: "nixfmt", ext: [".nix"], req: "nixfmt command available" },
   { id: "ocamlformat", ext: [".ml", ".mli"], req: "ocamlformat command and .ocamlformat config file" },
   { id: "ormolu", ext: [".hs"], req: "ormolu command available" },
-  { id: "oxfmt", ext: [".js", ".jsx", ".ts", ".tsx"], req: "oxfmt dependency and experimental flag", note: "Experimental" },
+  {
+    id: "oxfmt",
+    ext: [".js", ".jsx", ".ts", ".tsx"],
+    req: "oxfmt dependency and experimental flag",
+    note: "Experimental",
+  },
   { id: "pint", ext: [".php"], req: "laravel/pint dependency in composer.json" },
-  { id: "prettier", ext: [".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".md", ".json", ".yaml"], req: "prettier dependency in package.json" },
+  {
+    id: "prettier",
+    ext: [".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".md", ".json", ".yaml"],
+    req: "prettier dependency in package.json",
+  },
   { id: "rubocop", ext: [".rb", ".rake", ".gemspec", ".ru"], req: "rubocop command available" },
   { id: "ruff", ext: [".py", ".pyi"], req: "ruff command available with config" },
   { id: "rustfmt", ext: [".rs"], req: "rustfmt command available" },
@@ -58,26 +71,53 @@ const fmts = [
 const servers = [
   { id: "astro", ext: [".astro"], req: "Auto-installs for Astro projects" },
   { id: "bash", ext: [".sh", ".bash", ".zsh", ".ksh"], req: "Auto-installs bash-language-server" },
-  { id: "biome", ext: [".js", ".jsx", ".ts", ".tsx", ".json", ".jsonc", ".css"], req: "biome dependency or config available" },
-  { id: "clangd", ext: [".c", ".cpp", ".cc", ".cxx", ".c++", ".h", ".hpp", ".hh", ".hxx", ".h++"], req: "Auto-installs for C/C++ projects" },
+  {
+    id: "biome",
+    ext: [".js", ".jsx", ".ts", ".tsx", ".json", ".jsonc", ".css"],
+    req: "biome dependency or config available",
+  },
+  {
+    id: "clangd",
+    ext: [".c", ".cpp", ".cc", ".cxx", ".c++", ".h", ".hpp", ".hh", ".hxx", ".h++"],
+    req: "Auto-installs for C/C++ projects",
+  },
   { id: "clojure-lsp", ext: [".clj", ".cljs", ".cljc", ".edn"], req: "clojure-lsp command available" },
   { id: "csharp", title: "C#", ext: [".cs", ".csx"], req: ".NET SDK installed" },
   { id: "dart", ext: [".dart"], req: "dart command available" },
   { id: "deno", ext: [".ts", ".tsx", ".js", ".jsx", ".mjs"], req: "deno command available with deno.json/c" },
-  { id: "dockerfile", title: "Dockerfile", ext: ["Dockerfile", ".dockerfile"], req: "Docker language server available" },
+  {
+    id: "dockerfile",
+    title: "Dockerfile",
+    ext: ["Dockerfile", ".dockerfile"],
+    req: "Docker language server available",
+  },
   { id: "elixir-ls", ext: [".ex", ".exs"], req: "elixir command available" },
-  { id: "eslint", title: "ESLint", ext: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue"], req: "eslint dependency in project" },
+  {
+    id: "eslint",
+    title: "ESLint",
+    ext: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue"],
+    req: "eslint dependency in project",
+  },
   { id: "fsharp", title: "F#", ext: [".fs", ".fsi", ".fsx", ".fsscript"], req: ".NET SDK installed" },
   { id: "gleam", ext: [".gleam"], req: "gleam command available" },
   { id: "gopls", ext: [".go"], req: "go command available" },
-  { id: "haskell-language-server", title: "HLS", ext: [".hs", ".lhs"], req: "haskell-language-server-wrapper command available" },
+  {
+    id: "haskell-language-server",
+    title: "HLS",
+    ext: [".hs", ".lhs"],
+    req: "haskell-language-server-wrapper command available",
+  },
   { id: "jdtls", title: "JDTLS", ext: [".java"], req: "Java SDK 21+ installed" },
   { id: "julials", title: "JuliaLS", ext: [".jl"], req: "julia and LanguageServer.jl installed" },
   { id: "kotlin-ls", ext: [".kt", ".kts"], req: "Auto-installs for Kotlin projects" },
   { id: "lua-ls", ext: [".lua"], req: "Auto-installs for Lua projects" },
   { id: "nixd", ext: [".nix"], req: "nixd command available" },
   { id: "ocaml-lsp", ext: [".ml", ".mli"], req: "ocamllsp command available" },
-  { id: "oxlint", ext: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".astro", ".svelte"], req: "oxlint dependency in project" },
+  {
+    id: "oxlint",
+    ext: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".astro", ".svelte"],
+    req: "oxlint dependency in project",
+  },
   { id: "php intelephense", title: "PHP Intelephense", ext: [".php"], req: "Auto-installs for PHP projects" },
   { id: "prisma", ext: [".prisma"], req: "prisma command available" },
   { id: "pyright", ext: [".py", ".pyi"], req: "pyright dependency installed" },
@@ -90,7 +130,12 @@ const servers = [
   { id: "texlab", ext: [".tex"], req: "Auto-installs texlab" },
   { id: "tinymist", ext: [".typ", ".typc"], req: "Auto-installs from GitHub releases" },
   { id: "ty", title: "Ty", ext: [".py", ".pyi"], req: "Experimental Python LSP", note: "Experimental" },
-  { id: "typescript", title: "TypeScript", ext: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"], req: "typescript dependency in project" },
+  {
+    id: "typescript",
+    title: "TypeScript",
+    ext: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
+    req: "typescript dependency in project",
+  },
   { id: "vue", ext: [".vue"], req: "Auto-installs for Vue projects" },
   { id: "yaml-ls", title: "YAML LS", ext: [".yaml", ".yml"], req: "Auto-installs Red Hat yaml-language-server" },
   { id: "zls", title: "ZLS", ext: [".zig", ".zon"], req: "zig command available" },
@@ -154,10 +199,7 @@ function json(input: Record<string, unknown>) {
 }
 
 function parseEnv(input: string) {
-  const all = input
-    .split("\n")
-    .map(clean)
-    .filter(Boolean)
+  const all = input.split("\n").map(clean).filter(Boolean)
   const bad = all.find((line) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(line))
   if (bad) return { error: `Invalid environment variable: ${bad}` }
   return {
@@ -175,7 +217,8 @@ function parseInit(input: string) {
   if (!raw) return { value: undefined }
   try {
     const data = JSON.parse(raw) as unknown
-    if (!data || typeof data !== "object" || Array.isArray(data)) return { error: "Initialization must be a JSON object." }
+    if (!data || typeof data !== "object" || Array.isArray(data))
+      return { error: "Initialization must be a JSON object." }
     return { value: data as Record<string, unknown> }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Invalid initialization JSON." }
@@ -235,7 +278,8 @@ export function useFormatterSettings() {
       .map((entry): ToolRow => {
         const value = obj(entry.value)
         const live = fmtStatus().get(entry.key)
-        const state = !fmtOn() || value.disabled === true ? "disabled" : live?.enabled ? "active" : live ? "missing" : "enabled"
+        const state =
+          !fmtOn() || value.disabled === true ? "disabled" : live?.enabled ? "active" : live ? "missing" : "enabled"
         return {
           id: entry.key,
           title: friendly(entry.key),
@@ -258,7 +302,8 @@ export function useFormatterSettings() {
     const builtin = servers.map((item): ToolRow => {
       const entry = lspEntries().get(item.id)
       const live = lspStatus().get(item.id)
-      const state = !lspOn() || off(entry) ? "disabled" : live?.status === "error" ? "error" : live ? "connected" : "idle"
+      const state =
+        !lspOn() || off(entry) ? "disabled" : live?.status === "error" ? "error" : live ? "connected" : "idle"
       return {
         ...item,
         command: cmd(entry),
@@ -277,7 +322,14 @@ export function useFormatterSettings() {
       .map((entry): ToolRow => {
         const value = obj(entry.value)
         const live = lspStatus().get(entry.key)
-        const state = !lspOn() || value.disabled === true ? "disabled" : live?.status === "error" ? "error" : live ? "connected" : "idle"
+        const state =
+          !lspOn() || value.disabled === true
+            ? "disabled"
+            : live?.status === "error"
+              ? "error"
+              : live
+                ? "connected"
+                : "idle"
         return {
           id: entry.key,
           title: friendly(entry.key),
@@ -345,7 +397,8 @@ export function useFormatterSettings() {
       ctx.fail(parsed.error)
       return
     }
-    const cfg: { command?: string[]; disabled?: boolean; environment?: Record<string, string>; extensions?: string[] } = {}
+    const cfg: { command?: string[]; disabled?: boolean; environment?: Record<string, string>; extensions?: string[] } =
+      {}
     if (disabled()) cfg.disabled = true
     if (commandList.length) cfg.command = commandList
     if (extensionList.length) cfg.extensions = extensionList

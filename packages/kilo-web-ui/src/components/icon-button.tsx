@@ -2,7 +2,9 @@ import { Button as Kobalte } from "@kobalte/core/button"
 import { Show, splitProps, type ComponentProps } from "solid-js"
 import { Icon, type IconProps } from "./icon"
 
-export interface IconButtonProps extends ComponentProps<typeof Kobalte>, Pick<ComponentProps<"button">, "class" | "classList" | "children"> {
+export interface IconButtonProps
+  extends ComponentProps<typeof Kobalte>,
+    Pick<ComponentProps<"button">, "class" | "classList" | "children"> {
   icon?: IconProps["name"]
   size?: "small" | "normal" | "large" | "icon" | "icon-xs" | "icon-sm" | "icon-lg"
   iconSize?: IconProps["size"]
@@ -23,7 +25,16 @@ function variant(value: IconButtonProps["variant"]) {
 }
 
 export function IconButton(props: IconButtonProps) {
-  const [local, rest] = splitProps(props, ["variant", "size", "icon", "iconSize", "active", "class", "classList", "children"])
+  const [local, rest] = splitProps(props, [
+    "variant",
+    "size",
+    "icon",
+    "iconSize",
+    "active",
+    "class",
+    "classList",
+    "children",
+  ])
   return (
     <Kobalte
       {...rest}
@@ -37,9 +48,7 @@ export function IconButton(props: IconButtonProps) {
         [local.class ?? ""]: !!local.class,
       }}
     >
-      <Show when={local.icon}>
-        {(name) => <Icon name={name()} size={local.iconSize ?? "small"} />}
-      </Show>
+      <Show when={local.icon}>{(name) => <Icon name={name()} size={local.iconSize ?? "small"} />}</Show>
       {local.children}
     </Kobalte>
   )

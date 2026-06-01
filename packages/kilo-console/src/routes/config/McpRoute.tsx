@@ -87,22 +87,40 @@ export function McpRoute() {
                       <StatusTag status={row.status?.status ?? (row.enabled ? "configured" : "disabled")} />
                     </div>
                     <div class="provider-actions mcp-server-actions">
-                      <Show when={row.status?.status === "needs_auth" || row.status?.status === "needs_client_registration"}>
-                        <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={() => state.authenticate(row)}>
+                      <Show
+                        when={row.status?.status === "needs_auth" || row.status?.status === "needs_client_registration"}
+                      >
+                        <Button
+                          variant="secondary"
+                          disabled={Boolean(state.ctx.saving())}
+                          onClick={() => state.authenticate(row)}
+                        >
                           Authenticate
                         </Button>
                       </Show>
                       <Show when={row.status?.status === "connected"}>
-                        <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={() => state.disconnect(row)}>
+                        <Button
+                          variant="secondary"
+                          disabled={Boolean(state.ctx.saving())}
+                          onClick={() => state.disconnect(row)}
+                        >
                           Disconnect
                         </Button>
                       </Show>
                       <Show when={row.status?.status === "disabled" && row.enabled}>
-                        <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={() => state.connect(row)}>
+                        <Button
+                          variant="secondary"
+                          disabled={Boolean(state.ctx.saving())}
+                          onClick={() => state.connect(row)}
+                        >
                           Connect
                         </Button>
                       </Show>
-                      <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={() => state.toggle(row)}>
+                      <Button
+                        variant="secondary"
+                        disabled={Boolean(state.ctx.saving())}
+                        onClick={() => state.toggle(row)}
+                      >
                         {row.enabled ? "Disable" : "Enable"}
                       </Button>
                       <IconButton
@@ -121,7 +139,9 @@ export function McpRoute() {
                       />
                     </div>
                     <Show when={row.status?.status === "failed" || row.status?.status === "needs_client_registration"}>
-                      <p class="mcp-server-error">{row.status && "error" in row.status ? row.status.error : "Authentication setup is required."}</p>
+                      <p class="mcp-server-error">
+                        {row.status && "error" in row.status ? row.status.error : "Authentication setup is required."}
+                      </p>
                     </Show>
                   </article>
                 )}
@@ -153,7 +173,13 @@ export function McpRoute() {
                   />
                   <div class="mcp-status-filter">
                     <span>Status</span>
-                    <CustomSelect label="Status filter" value={state.status()} options={statusOptions} class="mcp-status-select" onSelect={state.setStatus} />
+                    <CustomSelect
+                      label="Status filter"
+                      value={state.status()}
+                      options={statusOptions}
+                      class="mcp-status-select"
+                      onSelect={state.setStatus}
+                    />
                   </div>
                 </div>
 
@@ -161,7 +187,12 @@ export function McpRoute() {
                   <div class="mcp-tag-filters">
                     <For each={state.tags()}>
                       {(tag) => (
-                        <button class="mcp-tag-filter" classList={{ active: state.picked().includes(tag) }} type="button" onClick={() => state.toggleTag(tag)}>
+                        <button
+                          class="mcp-tag-filter"
+                          classList={{ active: state.picked().includes(tag) }}
+                          type="button"
+                          onClick={() => state.toggleTag(tag)}
+                        >
                           <Tag>{tag}</Tag>
                         </button>
                       )}
@@ -170,11 +201,18 @@ export function McpRoute() {
                 </Show>
 
                 <Show when={state.marketError()}>
-                  {(message) => <Card class="banner" variant="info">Marketplace catalog could not be loaded: {message()}</Card>}
+                  {(message) => (
+                    <Card class="banner" variant="info">
+                      Marketplace catalog could not be loaded: {message()}
+                    </Card>
+                  )}
                 </Show>
 
                 <Show when={!state.catalog.loading} fallback={<p class="empty">Loading marketplace MCP servers...</p>}>
-                  <Show when={state.marketVisible().length} fallback={<p class="empty">No marketplace MCP servers match this filter.</p>}>
+                  <Show
+                    when={state.marketVisible().length}
+                    fallback={<p class="empty">No marketplace MCP servers match this filter.</p>}
+                  >
                     <div class="mcp-market-grid">
                       <For each={state.marketVisible()}>
                         {(item) => (
@@ -182,7 +220,9 @@ export function McpRoute() {
                             <div class="mcp-market-card-head">
                               <div>
                                 <strong>{item.name}</strong>
-                                <Show when={item.author}>{(author) => <span class="mcp-market-author">by {author()}</span>}</Show>
+                                <Show when={item.author}>
+                                  {(author) => <span class="mcp-market-author">by {author()}</span>}
+                                </Show>
                                 <span class="mcp-market-id">{item.id}</span>
                               </div>
                               <Show when={state.installed().has(item.id)}>
@@ -256,13 +296,17 @@ export function McpRoute() {
                         </ul>
                       </section>
                     </Show>
-                    <Show when={state.parameters().length} fallback={<p>No parameters are required for this server.</p>}>
+                    <Show
+                      when={state.parameters().length}
+                      fallback={<p>No parameters are required for this server.</p>}
+                    >
                       <section class="mcp-install-section">
                         <span>Parameters</span>
                         <For each={state.parameters()}>
                           {(param) => (
                             <label classList={{ "required-field": !param.optional }}>
-                              {param.name}{param.optional ? " (optional)" : ""}
+                              {param.name}
+                              {param.optional ? " (optional)" : ""}
                               <input
                                 value={state.params()[param.key] ?? ""}
                                 placeholder={param.placeholder ?? param.key}
@@ -279,7 +323,11 @@ export function McpRoute() {
                     <Button variant="ghost" onClick={state.openMarket}>
                       Back
                     </Button>
-                    <Button variant="primary" disabled={Boolean(state.ctx.saving()) || !state.valid()} onClick={state.install}>
+                    <Button
+                      variant="primary"
+                      disabled={Boolean(state.ctx.saving()) || !state.valid()}
+                      onClick={state.install}
+                    >
                       Install MCP
                     </Button>
                   </footer>
@@ -314,7 +362,13 @@ export function McpRoute() {
                 </label>
                 <label class="required-field">
                   Type
-                  <CustomSelect label="MCP server type" value={state.type()} options={typeOptions} class="mcp-config-select" onSelect={state.setType} />
+                  <CustomSelect
+                    label="MCP server type"
+                    value={state.type()}
+                    options={typeOptions}
+                    class="mcp-config-select"
+                    onSelect={state.setType}
+                  />
                 </label>
                 <label class="optional-field">
                   State

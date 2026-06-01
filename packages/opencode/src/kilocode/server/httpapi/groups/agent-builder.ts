@@ -7,7 +7,12 @@ import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "e
 
 const Scope = Schema.Literals(["global", "project"])
 const Mode = Schema.Literals(["primary", "subagent", "all"])
-export const AgentBuilderID = Schema.String
+const Prompt = Schema.String.check(Schema.isPattern(/\S/))
+export const AgentBuilderID = Schema.String.check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(64),
+  Schema.isPattern(/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/),
+)
 const Body = {
   scope: Schema.optional(Scope),
   description: Schema.optional(Schema.String),
@@ -17,7 +22,7 @@ const Body = {
   steps: Schema.optional(Schema.Number),
   tools: Schema.optional(Schema.Array(Schema.String)),
   permission: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
-  prompt: Schema.String,
+  prompt: Prompt,
 }
 
 export const AgentBuilderInput = Schema.Struct({ id: AgentBuilderID, ...Body })

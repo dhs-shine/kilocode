@@ -5,7 +5,10 @@ import { Effect } from "effect"
 export namespace KilocodeGlobalConfigStamp {
   const files = ["config.json", "kilo.json", "kilo.jsonc", "opencode.json", "opencode.jsonc", "config"]
 
-  export const read = Effect.fnUntraced(function* (fs: Pick<AppFileSystem.Interface, "readFileStringSafe">, dir: string) {
+  export const read = Effect.fnUntraced(function* (
+    fs: Pick<AppFileSystem.Interface, "readFileStringSafe">,
+    dir: string,
+  ) {
     const entries = yield* Effect.forEach(
       files,
       Effect.fnUntraced(function* (file) {

@@ -21,10 +21,20 @@ export function StatusDot(props: { tone: Exclude<Tone, "brand" | "info"> }) {
   return <span data-slot="status-dot" data-tone={props.tone} aria-hidden="true" />
 }
 
-export function StatusTag(props: { status: "connected" | "failed" | "running" | "stopped" | "error" | "healthy" | "unhealthy" | "unknown" | string }) {
+export function StatusTag(props: {
+  status: "connected" | "failed" | "running" | "stopped" | "error" | "healthy" | "unhealthy" | "unknown" | string
+}) {
   const meta = () => {
-    if (["connected", "healthy", "running"].includes(props.status)) return { tone: "success" as const, label: props.status === "healthy" ? "Healthy" : props.status === "running" ? "Running" : "Connected" }
-    if (["failed", "error", "unhealthy"].includes(props.status)) return { tone: "critical" as const, label: props.status === "unhealthy" ? "Unhealthy" : props.status === "failed" ? "Failed" : "Error" }
+    if (["connected", "healthy", "running"].includes(props.status))
+      return {
+        tone: "success" as const,
+        label: props.status === "healthy" ? "Healthy" : props.status === "running" ? "Running" : "Connected",
+      }
+    if (["failed", "error", "unhealthy"].includes(props.status))
+      return {
+        tone: "critical" as const,
+        label: props.status === "unhealthy" ? "Unhealthy" : props.status === "failed" ? "Failed" : "Error",
+      }
     if (props.status === "stopped") return { tone: "neutral" as const, label: "Stopped" }
     return { tone: "neutral" as const, label: props.status || "Unknown" }
   }
@@ -39,10 +49,19 @@ export function StatusTag(props: { status: "connected" | "failed" | "running" | 
 export function SourceBadge(props: { source?: Source; inherited?: boolean; overridden?: boolean }) {
   const source = () => kind(props)
   const label = () => source().toUpperCase()
-  return <Tag class="mono" tone={source() === "project" ? "info" : "neutral"}>{label()}</Tag>
+  return (
+    <Tag class="mono" tone={source() === "project" ? "info" : "neutral"}>
+      {label()}
+    </Tag>
+  )
 }
 
-export function PageHeader(props: { title: JSX.Element; actions?: JSX.Element; description?: JSX.Element; meta?: JSX.Element }) {
+export function PageHeader(props: {
+  title: JSX.Element
+  actions?: JSX.Element
+  description?: JSX.Element
+  meta?: JSX.Element
+}) {
   return (
     <section data-component="page-header">
       <div data-slot="page-header-main">
@@ -67,7 +86,12 @@ export function SectionTitle(props: { children: JSX.Element; trailing?: JSX.Elem
   )
 }
 
-export function Banner(props: { tone?: "info" | "warning" | "critical" | "success"; title?: JSX.Element; action?: JSX.Element; children: JSX.Element }) {
+export function Banner(props: {
+  tone?: "info" | "warning" | "critical" | "success"
+  title?: JSX.Element
+  action?: JSX.Element
+  children: JSX.Element
+}) {
   const icon = () => {
     if (props.tone === "critical") return "warning" as IconProps["name"]
     if (props.tone === "warning") return "warning" as IconProps["name"]
@@ -115,7 +139,9 @@ export function ConfigRow(props: {
   const override = () => kind({ source: props.source }) === "project" || props.highlightOverride
   const body = () => (
     <>
-      <Show when={override()}><span data-slot="config-row-accent" /></Show>
+      <Show when={override()}>
+        <span data-slot="config-row-accent" />
+      </Show>
       <Show when={props.leading}>{(leading) => <div data-slot="config-row-leading">{leading()}</div>}</Show>
       <div data-slot="config-row-body">
         <div data-slot="config-row-title">{props.title}</div>
@@ -130,9 +156,23 @@ export function ConfigRow(props: {
       </div>
     </>
   )
-  if (props.href) return <a data-component="config-row" data-override={override() || undefined} href={props.href}>{body()}</a>
-  if (props.onClick) return <button type="button" data-component="config-row" data-override={override() || undefined} onClick={props.onClick}>{body()}</button>
-  return <div data-component="config-row" data-override={override() || undefined}>{body()}</div>
+  if (props.href)
+    return (
+      <a data-component="config-row" data-override={override() || undefined} href={props.href}>
+        {body()}
+      </a>
+    )
+  if (props.onClick)
+    return (
+      <button type="button" data-component="config-row" data-override={override() || undefined} onClick={props.onClick}>
+        {body()}
+      </button>
+    )
+  return (
+    <div data-component="config-row" data-override={override() || undefined}>
+      {body()}
+    </div>
+  )
 }
 
 export function CardWithHeader(props: { title: JSX.Element; description?: JSX.Element; children: JSX.Element }) {
@@ -151,7 +191,9 @@ export function SimpleSelect(props: ComponentProps<"select"> & { options: Array<
   const [local, rest] = splitProps(props, ["options", "children"])
   return (
     <select {...rest}>
-      {local.options.map((item) => <option value={item.value}>{item.label}</option>)}
+      {local.options.map((item) => (
+        <option value={item.value}>{item.label}</option>
+      ))}
       {local.children}
     </select>
   )

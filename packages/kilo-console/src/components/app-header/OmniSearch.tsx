@@ -92,12 +92,14 @@ function project(item: ProjectItem, input: URLSearchParams): Entry {
 }
 
 function fuzzy(hay: string, term: string) {
-  return [...term].reduce((pos, char) => {
-    if (pos < 0) return -1
-    const hit = hay.indexOf(char, pos)
-    if (hit < 0) return -1
-    return hit + 1
-  }, 0) >= 0
+  return (
+    [...term].reduce((pos, char) => {
+      if (pos < 0) return -1
+      const hit = hay.indexOf(char, pos)
+      if (hit < 0) return -1
+      return hit + 1
+    }, 0) >= 0
+  )
 }
 
 function matches(item: Entry, input: string) {
@@ -309,9 +311,7 @@ export function OmniSearch() {
                   <span class="omni-label" classList={{ mono: item.mono }}>
                     {item.label}
                   </span>
-                  <Show when={item.sub}>
-                    {(sub) => <span class="omni-sub">{sub()}</span>}
-                  </Show>
+                  <Show when={item.sub}>{(sub) => <span class="omni-sub">{sub()}</span>}</Show>
                   <Show when={index() === active()}>
                     <span class="omni-enter" aria-hidden="true">
                       ↵

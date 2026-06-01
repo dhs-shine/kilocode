@@ -12,14 +12,7 @@ import { settings } from "../../shared/navigation"
 import { toolCapabilities, toolName } from "../../shared/utils"
 import { ConfigPage, SourceBadge } from "./ConfigPage"
 import { ActionSelect, label as actionLabel, tone as actionTone } from "./PermissionsRoute"
-import {
-  agentEditable,
-  agentTitle,
-  snippets,
-  useAgentBuilder,
-  type AgentEntry,
-  type AgentItem,
-} from "./state/agents"
+import { agentEditable, agentTitle, snippets, useAgentBuilder, type AgentEntry, type AgentItem } from "./state/agents"
 import type { PermissionAction } from "./state/permissions"
 
 type Row = { item: AgentItem; entry?: AgentEntry; rank: number }
@@ -105,9 +98,13 @@ export function AgentsRoute() {
   const visible = createMemo(() => {
     const q = search().trim().toLowerCase()
     if (!q) return rows()
-    return rows().filter((row) => `${agentTitle(row.item)} ${row.item.name} ${desc(row.item)}`.toLowerCase().includes(q))
+    return rows().filter((row) =>
+      `${agentTitle(row.item)} ${row.item.name} ${desc(row.item)}`.toLowerCase().includes(q),
+    )
   })
-  const groups = createMemo(() => [0, 1].map((rank) => visible().filter((row) => row.rank === rank)).filter((row) => row.length))
+  const groups = createMemo(() =>
+    [0, 1].map((rank) => visible().filter((row) => row.rank === rank)).filter((row) => row.length),
+  )
   const empty = createMemo(() => {
     if (!rows().length) return "No agents loaded."
     return "No agents match this filter."
@@ -130,7 +127,12 @@ export function AgentsRoute() {
             </Button>
           }
         >
-          <SearchField label="Filter agents" value={search()} placeholder="Filter by name or ID..." onValue={setSearch} />
+          <SearchField
+            label="Filter agents"
+            value={search()}
+            placeholder="Filter by name or ID..."
+            onValue={setSearch}
+          />
 
           <div class="agents">
             <Show when={groups().length} fallback={<p class="empty">{empty()}</p>}>
@@ -215,7 +217,11 @@ export function AgentBuilderRoute() {
           description="Build a reusable agent by combining a prompt, model, mode, and tool permissions."
           actions={
             <>
-              <Button variant="secondary" disabled={Boolean(state.ctx.saving()) || !state.ready()} onClick={state.openMarkdown}>
+              <Button
+                variant="secondary"
+                disabled={Boolean(state.ctx.saving()) || !state.ready()}
+                onClick={state.openMarkdown}
+              >
                 Markdown
               </Button>
               <Show when={!state.locked()}>
@@ -475,7 +481,10 @@ export function AgentBuilderRoute() {
                           />
 
                           <div class="permission-rules">
-                            <Show when={group.rules.length} fallback={<p class="permission-empty">No specific {group.noun} rules.</p>}>
+                            <Show
+                              when={group.rules.length}
+                              fallback={<p class="permission-empty">No specific {group.noun} rules.</p>}
+                            >
                               <For each={group.rules}>
                                 {(rule) => (
                                   <ConfigRow
@@ -689,7 +698,11 @@ export function AgentBuilderRoute() {
                 <Button variant="ghost" onClick={state.close}>
                   Cancel
                 </Button>
-                <Button variant="primary" disabled={Boolean(state.ctx.saving()) || state.locked()} onClick={state.saveTools}>
+                <Button
+                  variant="primary"
+                  disabled={Boolean(state.ctx.saving()) || state.locked()}
+                  onClick={state.saveTools}
+                >
                   Save
                 </Button>
               </footer>
@@ -735,7 +748,11 @@ export function AgentBuilderRoute() {
                 <Button variant="ghost" onClick={state.close}>
                   Cancel
                 </Button>
-                <Button variant="primary" disabled={Boolean(state.ctx.saving()) || state.locked()} onClick={state.addPermission}>
+                <Button
+                  variant="primary"
+                  disabled={Boolean(state.ctx.saving()) || state.locked()}
+                  onClick={state.addPermission}
+                >
                   Save Rule
                 </Button>
               </footer>

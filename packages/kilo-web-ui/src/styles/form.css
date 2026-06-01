@@ -12,7 +12,10 @@ textarea,
   font: inherit;
   font-size: 0.75rem;
   line-height: 1.45;
-  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
 input,

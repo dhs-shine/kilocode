@@ -131,7 +131,10 @@ export function PermissionsRoute() {
               />
 
               <div class="permission-rules">
-                <Show when={group.rules.length} fallback={<p class="permission-empty">No specific {group.noun} rules.</p>}>
+                <Show
+                  when={group.rules.length}
+                  fallback={<p class="permission-empty">No specific {group.noun} rules.</p>}
+                >
                   <For each={group.rules}>
                     {(rule) => (
                       <ConfigRow
@@ -157,7 +160,10 @@ export function PermissionsRoute() {
         </For>
 
         <section class="permission-group">
-          <SectionTitle trailing={<CountTag>{state.settings().length}</CountTag>} description="Default methods for additional built-in tool permissions.">
+          <SectionTitle
+            trailing={<CountTag>{state.settings().length}</CountTag>}
+            description="Default methods for additional built-in tool permissions."
+          >
             Tool Defaults
           </SectionTitle>
           <div class="permission-rules">
@@ -187,7 +193,10 @@ export function PermissionsRoute() {
 
         <Show when={state.other().length}>
           <section class="permission-group">
-            <SectionTitle trailing={<CountTag>{state.other().length}</CountTag>} description="Additional tool permission rules from config.">
+            <SectionTitle
+              trailing={<CountTag>{state.other().length}</CountTag>}
+              description="Additional tool permission rules from config."
+            >
               Other Permissions
             </SectionTitle>
             <div class="permission-rules">

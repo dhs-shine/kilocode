@@ -136,10 +136,18 @@ export function KeybindsRoute() {
                 <Button variant="secondary" disabled={Boolean(state.ctx.saving())} onClick={state.none}>
                   Set none
                 </Button>
-                <Button variant="secondary" disabled={Boolean(state.ctx.saving()) || state.defaulted()} onClick={state.reset}>
+                <Button
+                  variant="secondary"
+                  disabled={Boolean(state.ctx.saving()) || state.defaulted()}
+                  onClick={state.reset}
+                >
                   Use default
                 </Button>
-                <Button variant="primary" disabled={Boolean(state.ctx.saving()) || !state.binding()} onClick={state.save}>
+                <Button
+                  variant="primary"
+                  disabled={Boolean(state.ctx.saving()) || !state.binding()}
+                  onClick={state.save}
+                >
                   Save keybind
                 </Button>
               </footer>
