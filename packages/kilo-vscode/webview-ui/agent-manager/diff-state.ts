@@ -1,3 +1,4 @@
+import { createMemo, createSignal } from "solid-js"
 import type { WorktreeFileDiff } from "../src/types/messages"
 
 export function sameDiffMeta(left: WorktreeFileDiff, right: WorktreeFileDiff) {
@@ -16,6 +17,45 @@ export function sameDiffMeta(left: WorktreeFileDiff, right: WorktreeFileDiff) {
 export function diffToken(diff: WorktreeFileDiff) {
   const parts = [diff.status ?? "", diff.additions, diff.deletions, diff.tracked ?? "", diff.generatedLike ?? ""]
   return diff.stamp ?? parts.join(":")
+}
+
+// Keep each rendered row mounted while live detail refreshes replace its data.
+// Otherwise Solid's keyed <For> remounts the row and deferred rendering swaps a
+// previously rendered diff above the viewport for a short placeholder.
+export function createDiffRows(source: () => WorktreeFileDiff[], key: () => string | undefined) {
+  const cache = new Map<string, { diff: WorktreeFileDiff; set: (diff: WorktreeFileDiff) => void }>()
+  let current: string | undefined
+
+  return createMemo(() => {
+    const nextKey = key()
+    if (current !== nextKey) {
+      current = nextKey
+      cache.clear()
+    }
+
+    const files = new Set<string>()
+    const diffs = source().map((next) => {
+      files.add(next.file)
+      const cached = cache.get(next.file)
+      if (cached) {
+        cached.set(next)
+        return cached.diff
+      }
+
+      const [value, setValue] = createSignal(next)
+      const diff = new Proxy(next, {
+        get: (_, prop) => Reflect.get(value(), prop),
+      })
+      cache.set(next.file, { diff, set: setValue })
+      return diff
+    })
+
+    for (const file of cache.keys()) {
+      if (files.has(file)) continue
+      cache.delete(file)
+    }
+    return diffs
+  })
 }
 
 export interface MergeResult {
@@ -38,6 +78,7 @@ export function mergeWorktreeDiffs(prev: WorktreeFileDiff[], next: WorktreeFileD
       existing.file === diff.file &&
       existing.before === diff.before &&
       existing.after === diff.after &&
+      existing.patch === diff.patch &&
       sameDiffMeta(existing, diff)
     )
       return existing
@@ -45,8 +86,19 @@ export function mergeWorktreeDiffs(prev: WorktreeFileDiff[], next: WorktreeFileD
     if (!diff.summarized) return diff
     // Metadata matches — restore cached content as before.
     if (sameDiffMeta({ ...existing, summarized: true }, diff)) {
-      const merged = { ...diff, before: existing.before, after: existing.after, summarized: false }
-      if (existing.before === merged.before && existing.after === merged.after && sameDiffMeta(existing, merged))
+      const merged = {
+        ...diff,
+        before: existing.before,
+        after: existing.after,
+        patch: existing.patch,
+        summarized: false,
+      }
+      if (
+        existing.before === merged.before &&
+        existing.after === merged.after &&
+        existing.patch === merged.patch &&
+        sameDiffMeta(existing, merged)
+      )
         return existing
       return merged
     }
