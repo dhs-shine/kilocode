@@ -571,7 +571,6 @@ The CLI supports overriding config values with environment variables. The suppor
 - For `kilocode` provider: `KILOCODE_<FIELD_NAME>` (e.g., `KILOCODE_MODEL` → `kilocodeModel`)
 - For other providers: `KILO_<FIELD_NAME>` (e.g., `KILO_API_KEY` → `apiKey`)
 
-
 ## Using the CLI in an Organization
 
 If you belong to a Kilo organization (Team or Enterprise), you can route CLI requests through that organization. The process differs slightly between interactive and non-interactive usage.
