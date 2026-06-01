@@ -61,10 +61,15 @@ internal class ModelsSettingsUi(
     private val content = Stack.vertical()
     private val rows = SettingsRows()
     private val modes = SettingsRows()
-    private val defaults = ModelSettingPicker { update { copy(model = null) } }
-    private val small = ModelSettingPicker { update { copy(small = null) } }
-    private val subagent = ModelSettingPicker { update { copy(subagent = null, variant = null) } }
+    private val defaults = ModelSettingPicker()
+    private val small = ModelSettingPicker()
+    private val subagent = ModelSettingPicker()
     private val variant = ReasoningPicker()
+    private val variantRow = SettingsRow(
+        KiloBundle.message("settings.models.subagentVariant.title"),
+        KiloBundle.message("settings.models.subagentVariant.description"),
+        variant.align(HAlign.RIGHT, VAlign.CENTER),
+    )
     private val pickers = mutableMapOf<String, ModelSettingPicker>()
     private val jobs = mutableListOf<Job>()
 
@@ -79,12 +84,17 @@ internal class ModelsSettingsUi(
     private var errors: List<LoadErrorDto> = emptyList()
     private var allItems: List<ModelPicker.Item> = emptyList()
     private var saving = false
+    private var pending: ModelsDraft? = null
 
     init {
         status.foreground = UIUtil.getContextHelpForeground()
         defaults.picker.onSelect = { update { copy(model = it.key) } }
+        defaults.picker.onClear = { update { copy(model = null) } }
         small.picker.onSelect = { update { copy(small = it.key) } }
+        small.picker.onClear = { update { copy(small = null) } }
+        small.picker.includeSmall = true
         subagent.picker.onSelect = { item -> selectSubagent(item) }
+        subagent.picker.onClear = { update { copy(subagent = null, variant = null) } }
         variant.onSelect = { item -> update { copy(variant = item.id) } }
         listOf(defaults, small, subagent).forEach { picker ->
             picker.picker.favorites = { app.favorites.value }
@@ -112,11 +122,7 @@ internal class ModelsSettingsUi(
             KiloBundle.message("settings.models.subagentModel.description"),
             subagent,
         ))
-        rows.row(SettingsRow(
-            KiloBundle.message("settings.models.subagentVariant.title"),
-            KiloBundle.message("settings.models.subagentVariant.description"),
-            variant.align(HAlign.RIGHT, VAlign.CENTER),
-        ))
+        rows.row(variantRow)
         content.next(rows)
         content.next(TitledSeparator(KiloBundle.message("settings.models.modeModels.title")))
         content.next(JBLabel(KiloBundle.message("settings.models.modeModels.description")).apply {
@@ -150,21 +156,28 @@ internal class ModelsSettingsUi(
         val next = draft
         val patch = patch(prev, next)
         if (patch.values.isEmpty() && patch.agents.isEmpty()) return
-        baseline = next
+        pending = next
         saving = true
         status.text = KiloBundle.message("settings.models.save.pending")
         status.foreground = UIUtil.getContextHelpForeground()
         sync()
         cs.launch {
-            val ok = app.updateConfig(patch)
+            val state = app.updateConfig(patch)
             withContext(edt) {
-                if (ok) {
+                if (state != null) {
+                    appState = state
+                    val base = modelsDraft(state.config, agents)
+                    baseline = if (savedMatches(base, next)) base else next
+                    draft = next
+                    pending = null
                     saving = false
                     status.text = ""
                     sync()
                     return@withContext
                 }
                 baseline = prev
+                draft = next
+                pending = null
                 saving = false
                 status.text = KiloBundle.message("settings.models.save.failed")
                 status.foreground = UiStyle.Colors.errorLabelForeground()
@@ -179,14 +192,15 @@ internal class ModelsSettingsUi(
         appState = state
         if (state.status != KiloAppStatusDto.READY) {
             loading = false
-            loaded = false
-            providers = null
-            agents = emptyList()
-            errors = emptyList()
+            if (!loaded && providers == null) {
+                agents = emptyList()
+                errors = emptyList()
+            }
+            sync()
+            return
         }
         val base = modelsDraft(state.config, agents)
-        baseline = base
-        if (!saving) draft = base
+        acceptBase(base)
         sync()
         loadModels()
     }
@@ -200,8 +214,7 @@ internal class ModelsSettingsUi(
         loaded = true
         loading = false
         val base = modelsDraft(appState.config, agents)
-        baseline = base
-        if (!saving) draft = base
+        acceptBase(base)
         sync()
     }
 
@@ -268,10 +281,12 @@ internal class ModelsSettingsUi(
             saving = saving,
         )
         val ready = state == ModelsStatus.READY || state == ModelsStatus.MODES_FAILED
-        banner.isVisible = modelsLoginBannerVisible(
+        val bannerVisible = modelsLoginBannerVisible(
             ready = appState.status == KiloAppStatusDto.READY,
             authenticated = appState.profile != null,
         )
+        val structural = banner.isVisible != bannerVisible
+        banner.isVisible = bannerVisible
         if (!saving) {
             when (state) {
                 ModelsStatus.UNAVAILABLE -> {
@@ -301,18 +316,19 @@ internal class ModelsSettingsUi(
                 }
             }
         }
-        status.isVisible = status.text.isNotBlank()
+        val statusVisible = status.text.isNotBlank()
+        var layout = structural || status.isVisible != statusVisible
+        status.isVisible = statusVisible
         defaults.setItems(allItems, draft.model)
         small.setItems(smallItems, draft.small)
         subagent.setItems(allItems, draft.subagent)
-        defaults.setClearVisible(draft.model != null)
-        small.setClearVisible(draft.small != null)
-        subagent.setClearVisible(draft.subagent != null)
         listOf(defaults, small, subagent).forEach { it.isEnabled = ready }
-        syncVariant(ready)
-        syncModes(ready)
-        revalidate()
-        repaint()
+        layout = syncVariant(ready) || layout
+        layout = syncModes(ready) || layout
+        if (layout) {
+            revalidate()
+            repaint()
+        }
     }
 
     private fun items(includeSmall: Boolean): List<ModelPicker.Item> {
@@ -329,27 +345,33 @@ internal class ModelsSettingsUi(
     }
 
     @RequiresEdt
-    private fun syncVariant(ready: Boolean) {
+    private fun syncVariant(ready: Boolean): Boolean {
         val item = allItems.firstOrNull { it.key == draft.subagent || it.id == draft.subagent }
         val valid = item?.variants.orEmpty()
         if (draft.variant != null && draft.variant !in valid) draft = draft.copy(variant = valid.firstOrNull())
         if (draft.subagent != null && valid.isEmpty() && draft.variant != null) draft = draft.copy(variant = null)
         variant.setItems(valid.map { ReasoningPicker.Item(it, variantTitle(it)) }, draft.variant)
         variant.isEnabled = ready && valid.isNotEmpty()
-        variant.isVisible = valid.isNotEmpty()
+        val visible = valid.isNotEmpty()
+        val changed = variantRow.isVisible != visible
+        variantRow.isVisible = visible
+        variant.isVisible = visible
+        return changed
     }
 
     @RequiresEdt
-    private fun syncModes(ready: Boolean) {
-        val names = agents.map { it.name }.toSet()
-        if (names != pickers.keys) {
+    private fun syncModes(ready: Boolean): Boolean {
+        var layout = false
+        val names = agents.map { it.name }
+        if (names != pickers.keys.toList()) {
             modes.removeAll()
             pickers.clear()
             agents.forEach { agent ->
-                val picker = ModelSettingPicker { update { copy(agents = this.agents + (agent.name to null)) } }
+                val picker = ModelSettingPicker()
                 picker.picker.favorites = { app.favorites.value }
                 picker.picker.onFavoriteToggle = { app.toggleModelFavorite(it.provider, it.id) }
                 picker.picker.onSelect = { item -> update { copy(agents = this.agents + (agent.name to item.key)) } }
+                picker.picker.onClear = { update { copy(agents = this.agents + (agent.name to null)) } }
                 pickers[agent.name] = picker
                 modes.row(SettingsRow(
                     agent.displayName ?: title(agent.name),
@@ -357,13 +379,14 @@ internal class ModelsSettingsUi(
                     picker,
                 ))
             }
+            layout = true
         }
         for ((name, picker) in pickers) {
             val value = draft.agents[name]
             picker.setItems(allItems, value)
-            picker.setClearVisible(value != null)
             picker.isEnabled = ready
         }
+        return layout
     }
 
     private fun selectSubagent(item: ModelPicker.Item) {
@@ -396,6 +419,19 @@ internal class ModelsSettingsUi(
         checkEdt()
         draft = draft.fn()
         sync()
+    }
+
+    private fun acceptBase(base: ModelsDraft) {
+        val save = pending
+        if (save == null) {
+            baseline = base
+            if (!saving) draft = base
+            return
+        }
+        if (!savedMatches(base, save)) return
+        baseline = base
+        draft = save
+        pending = null
     }
 
     private fun checkEdt() {

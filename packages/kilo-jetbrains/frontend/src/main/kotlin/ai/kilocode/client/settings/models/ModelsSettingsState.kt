@@ -77,3 +77,14 @@ internal fun modelsStatus(
 }
 
 internal fun modelsLoginBannerVisible(ready: Boolean, authenticated: Boolean): Boolean = ready && !authenticated
+
+internal fun savedMatches(base: ModelsDraft, draft: ModelsDraft): Boolean {
+    if (base.model != draft.model) return false
+    if (base.small != draft.small) return false
+    if (base.subagent != draft.subagent) return false
+    if (base.variant != draft.variant) return false
+    for ((name, value) in draft.agents) {
+        if (base.agents[name] != value) return false
+    }
+    return true
+}

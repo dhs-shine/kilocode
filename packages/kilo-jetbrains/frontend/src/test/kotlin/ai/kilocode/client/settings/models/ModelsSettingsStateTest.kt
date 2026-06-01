@@ -132,4 +132,21 @@ class ModelsSettingsStateTest {
         assertFalse(modelsLoginBannerVisible(ready = true, authenticated = true))
         assertFalse(modelsLoginBannerVisible(ready = false, authenticated = false))
     }
+
+    @Test
+    fun `saved match requires saved top level values`() {
+        val draft = ModelsDraft(model = "kilo/gpt-5", small = "kilo/auto-small")
+
+        assertTrue(savedMatches(draft, draft))
+        assertFalse(savedMatches(draft.copy(model = "openai/gpt"), draft))
+    }
+
+    @Test
+    fun `saved match compares known pending agent values`() {
+        val draft = ModelsDraft(agents = mapOf("ask" to "kilo/gpt-5", "code" to null))
+        val base = ModelsDraft(agents = mapOf("ask" to "kilo/gpt-5", "code" to null, "plan" to "openai/gpt"))
+
+        assertTrue(savedMatches(base, draft))
+        assertFalse(savedMatches(base.copy(agents = base.agents + ("ask" to "openai/gpt")), draft))
+    }
 }

@@ -215,13 +215,13 @@ class KiloAppService internal constructor(
         }
     }
 
-    suspend fun updateConfig(patch: ConfigPatchDto): Boolean = try {
+    suspend fun updateConfig(patch: ConfigPatchDto): KiloAppStateDto? = try {
         val next = call { updateConfig(patch) }
         _state.value = next
-        true
+        next
     } catch (e: Exception) {
         LOG.warn("config update failed", e)
-        false
+        null
     }
 
     private fun setModelState(state: ModelStateDto) {
