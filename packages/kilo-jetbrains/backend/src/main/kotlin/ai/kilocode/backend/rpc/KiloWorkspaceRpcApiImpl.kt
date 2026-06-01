@@ -5,48 +5,39 @@ package ai.kilocode.backend.rpc
 import ai.kilocode.backend.app.KiloAppState
 import ai.kilocode.backend.app.KiloBackendAppService
 import ai.kilocode.backend.app.LoadError
+import ai.kilocode.backend.cli.KiloCliDataParser
 import ai.kilocode.backend.workspace.AgentData
 import ai.kilocode.backend.workspace.AgentInfo
-import ai.kilocode.backend.workspace.CommandInfo
 import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
-import ai.kilocode.backend.workspace.KiloWorkspaceLoadProgress
 import ai.kilocode.backend.workspace.KiloWorkspaceState
-import ai.kilocode.backend.workspace.ModelInfo
-import ai.kilocode.backend.workspace.ProviderData
-import ai.kilocode.backend.workspace.ProviderInfo
-import ai.kilocode.backend.workspace.SkillInfo
 import ai.kilocode.log.KiloLog
+import ai.kilocode.jetbrains.api.model.Agent
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
-import ai.kilocode.rpc.dto.AgentDto
-import ai.kilocode.rpc.dto.AgentsDto
-import ai.kilocode.rpc.dto.CommandDto
-import ai.kilocode.rpc.dto.KiloWorkspaceLoadProgressDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
-import ai.kilocode.rpc.dto.LoadErrorDto
-import ai.kilocode.rpc.dto.ModelDto
-import ai.kilocode.rpc.dto.ModelLimitDto
-import ai.kilocode.rpc.dto.ProviderDto
-import ai.kilocode.rpc.dto.ProvidersDto
-import ai.kilocode.rpc.dto.SkillDto
+import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.components.service
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.LocalFileSystem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import okhttp3.Request
 import java.net.URI
 import java.net.URLDecoder
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
@@ -99,6 +90,53 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
     override suspend fun reload(directory: String) {
         if (app.appState.value !is KiloAppState.Ready) return
         manager.get(directory).reload()
+    }
+
+    override suspend fun models(directory: String): ModelsWorkspaceDto {
+        app.requireReady()
+        val api = app.api ?: throw IllegalStateException("Kilo API is unavailable")
+        val http = app.http ?: throw IllegalStateException("Kilo HTTP client is unavailable")
+        val errors = mutableListOf<LoadError>()
+
+        val prov = try {
+            val raw = withContext(Dispatchers.IO) {
+                val request = Request.Builder()
+                    .url("http://127.0.0.1:${app.port}/provider?directory=${encode(directory)}")
+                    .get()
+                    .build()
+                http.newCall(request).execute().use { response ->
+                    val body = response.body?.string().orEmpty()
+                    if (!response.isSuccessful) throw RuntimeException("HTTP ${response.code}: $body")
+                    body
+                }
+            }
+            KiloCliDataParser.parseProviders(raw)
+        } catch (e: Exception) {
+            LOG.warn("Models settings providers fetch failed for $directory: ${e.message}", e)
+            errors.add(LoadError(resource = "providers", detail = e.message))
+            null
+        }
+
+        val agents = try {
+            val response = api.appAgents(directory = directory)
+            val mapped = response.map(::agent)
+            val visible = response.filter { it.mode != Agent.Mode.SUBAGENT && it.hidden != true }
+            AgentData(
+                agents = visible.map(::agent),
+                all = mapped,
+                default = visible.firstOrNull()?.name ?: "code",
+            )
+        } catch (e: Exception) {
+            LOG.warn("Models settings agents fetch failed for $directory: ${e.message}", e)
+            errors.add(LoadError(resource = "agents", detail = e.message))
+            null
+        }
+
+        return ModelsWorkspaceDto(
+            providers = prov?.let(KiloWorkspaceDtoMapper::providers),
+            agents = agents?.let(KiloWorkspaceDtoMapper::agents),
+            errors = errors.map(KiloWorkspaceDtoMapper::error),
+        )
     }
 
     override suspend fun files(directory: String, path: String): List<WorkspaceFileDto> {
@@ -167,6 +205,17 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         } ?: projects.firstOrNull()
     }
 
+    private fun agent(a: Agent) = AgentInfo(
+        name = a.name,
+        displayName = a.displayName,
+        description = a.description,
+        mode = a.mode.value,
+        native = a.native,
+        hidden = a.hidden,
+        color = a.color,
+        deprecated = a.deprecated,
+    )
+
     // ------ mapping: domain model → DTO ------
 
     private fun dto(state: KiloWorkspaceState): KiloWorkspaceStateDto =
@@ -174,89 +223,21 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
             KiloWorkspaceState.Pending -> KiloWorkspaceStateDto(KiloWorkspaceStatusDto.PENDING)
             is KiloWorkspaceState.Loading -> KiloWorkspaceStateDto(
                 status = KiloWorkspaceStatusDto.LOADING,
-                progress = progress(state.progress),
+                progress = KiloWorkspaceDtoMapper.progress(state.progress),
             )
             is KiloWorkspaceState.Ready -> KiloWorkspaceStateDto(
                 status = KiloWorkspaceStatusDto.READY,
-                providers = providers(state.providers),
-                agents = agents(state.agents),
-                commands = state.commands.map(::command),
-                skills = state.skills.map(::skill),
+                providers = KiloWorkspaceDtoMapper.providers(state.providers),
+                agents = KiloWorkspaceDtoMapper.agents(state.agents),
+                commands = state.commands.map(KiloWorkspaceDtoMapper::command),
+                skills = state.skills.map(KiloWorkspaceDtoMapper::skill),
             )
             is KiloWorkspaceState.Error -> KiloWorkspaceStateDto(
                 status = KiloWorkspaceStatusDto.ERROR,
                 error = state.message,
-                errors = state.errors.map(::error),
+                errors = state.errors.map(KiloWorkspaceDtoMapper::error),
             )
         }
-
-    private fun error(e: LoadError) = LoadErrorDto(
-        resource = e.resource,
-        status = e.status,
-        detail = e.detail,
-    )
-
-    private fun progress(p: KiloWorkspaceLoadProgress) = KiloWorkspaceLoadProgressDto(
-        providers = p.providers,
-        agents = p.agents,
-        commands = p.commands,
-        skills = p.skills,
-    )
-
-    private fun providers(d: ProviderData) = ProvidersDto(
-        providers = d.providers.map(::provider),
-        connected = d.connected,
-        defaults = d.defaults,
-    )
-
-    private fun provider(p: ProviderInfo) = ProviderDto(
-        id = p.id,
-        name = p.name,
-        source = p.source,
-        models = p.models.mapValues { (_, m) -> model(m) },
-    )
-
-    private fun model(m: ModelInfo) = ModelDto(
-        id = m.id,
-        name = m.name,
-        attachment = m.attachment,
-        reasoning = m.reasoning,
-        temperature = m.temperature,
-        toolCall = m.toolCall,
-        free = m.free,
-        status = m.status,
-        recommendedIndex = m.recommendedIndex,
-        variants = m.variants,
-        limit = m.limit?.let { ModelLimitDto(it.context, it.input, it.output) },
-    )
-
-    private fun agents(d: AgentData) = AgentsDto(
-        agents = d.agents.map(::agent),
-        all = d.all.map(::agent),
-        default = d.default,
-    )
-
-    private fun agent(a: AgentInfo) = AgentDto(
-        name = a.name,
-        displayName = a.displayName,
-        description = a.description,
-        mode = a.mode,
-        native = a.native,
-        hidden = a.hidden,
-        color = a.color,
-        deprecated = a.deprecated,
-    )
-
-    private fun command(c: CommandInfo) = CommandDto(
-        name = c.name,
-        description = c.description,
-        source = c.source,
-        hints = c.hints,
-    )
-
-    private fun skill(s: SkillInfo) = SkillDto(
-        name = s.name,
-        description = s.description,
-        location = s.location,
-    )
 }
+
+private fun encode(value: String) = URLEncoder.encode(value, Charsets.UTF_8)

@@ -3,6 +3,7 @@
 package ai.kilocode.client.app
 
 import ai.kilocode.rpc.KiloAppRpcApi
+import ai.kilocode.rpc.dto.ConfigPatchDto
 import ai.kilocode.rpc.dto.DeviceAuthDto
 import ai.kilocode.rpc.dto.HealthDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
@@ -212,6 +213,15 @@ class KiloAppService internal constructor(
                 setModelState(prev)
             }
         }
+    }
+
+    suspend fun updateConfig(patch: ConfigPatchDto): Boolean = try {
+        val next = call { updateConfig(patch) }
+        _state.value = next
+        true
+    } catch (e: Exception) {
+        LOG.warn("config update failed", e)
+        false
     }
 
     private fun setModelState(state: ModelStateDto) {

@@ -136,6 +136,23 @@ class ModelPickerTest : BasePlatformTestCase() {
         assertEquals("openai/b", picker.selectedForTest()?.key)
     }
 
+    fun `test setItems auto-selects first item by default`() {
+        val picker = ModelPicker()
+
+        picker.setItems(listOf(item("a", "A", "openai", "OpenAI")))
+
+        assertEquals("openai/a", picker.selectionKeyForTest())
+    }
+
+    fun `test allowEmpty keeps empty selection`() {
+        val picker = ModelPicker()
+        picker.allowEmpty = true
+
+        picker.setItems(listOf(item("a", "A", "openai", "OpenAI")))
+
+        assertNull(picker.selectionKeyForTest())
+    }
+
     fun `test provider qualified default selects duplicate model id from correct provider`() {
         val picker = ModelPicker()
 

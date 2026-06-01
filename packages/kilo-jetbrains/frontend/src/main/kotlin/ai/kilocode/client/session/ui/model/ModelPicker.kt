@@ -64,6 +64,8 @@ class ModelPicker : PickerButton() {
     var onSelect: (Item) -> Unit = {}
     var favorites: () -> List<ModelSelectionDto> = { emptyList() }
     var onFavoriteToggle: (Item) -> Unit = {}
+    var allowEmpty: Boolean = false
+    var emptyText: String = KiloBundle.message("settings.models.notSet")
 
     private var items: List<Item> = emptyList()
     private var selected: Item? = null
@@ -85,7 +87,7 @@ class ModelPicker : PickerButton() {
         items = values
         val key = default ?: selected?.key
         selected = key?.let { target -> values.firstOrNull { it.key == target || it.id == target } }
-            ?: values.firstOrNull()
+            ?: if (allowEmpty) null else values.firstOrNull()
         refresh()
     }
 
@@ -96,15 +98,22 @@ class ModelPicker : PickerButton() {
 
     internal fun selectedForTest(): Item? = selected
 
+    fun clearSelection() {
+        selected = null
+        refresh()
+    }
+
+    fun selectionKeyForTest(): String? = selected?.key
+
     private fun refresh() {
         if (items.isEmpty()) {
             isEnabled = false
-            text = " "
+            text = if (allowEmpty) emptyText else " "
             cursor = Cursor.getDefaultCursor()
             return
         }
-        val display = selected?.display ?: items.firstOrNull()?.display ?: ""
-        text = "${ModelText.sanitize(display)} ▴"
+        val display = selected?.display
+        text = if (display == null && allowEmpty) "$emptyText ▴" else "${ModelText.sanitize(display ?: items.first().display)} ▴"
         isEnabled = true
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
     }

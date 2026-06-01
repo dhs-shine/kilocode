@@ -1,0 +1,32 @@
+package ai.kilocode.client.actions
+
+import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.settings.KiloSettingsConfigurable
+import ai.kilocode.client.telemetry.Telemetry
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.options.ConfigurableWithId
+import com.intellij.openapi.options.ShowSettingsUtil
+import com.intellij.openapi.project.DumbAwareAction
+import java.util.function.Predicate
+
+class OpenSettingsAction : DumbAwareAction(
+    KiloBundle.message("action.Kilo.OpenSettings.text"),
+    KiloBundle.message("action.Kilo.OpenSettings.description"),
+    AllIcons.General.GearPlain,
+) {
+    override fun actionPerformed(e: AnActionEvent) {
+        Telemetry.send("Settings Opened", mapOf("surface" to "tool_window"))
+        ShowSettingsUtil.getInstance().showSettingsDialog(
+            e.project,
+            Predicate { cfg: Configurable ->
+                cfg is ConfigurableWithId && cfg.getId() == KiloSettingsConfigurable.ID
+            },
+            null,
+        )
+    }
+
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+}

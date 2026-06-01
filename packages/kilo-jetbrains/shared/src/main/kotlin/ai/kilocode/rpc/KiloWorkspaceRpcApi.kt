@@ -1,6 +1,7 @@
 package ai.kilocode.rpc
 
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
+import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.platform.rpc.RemoteApiProviderService
 import fleet.rpc.RemoteApi
@@ -37,6 +38,9 @@ interface KiloWorkspaceRpcApi : RemoteApi<Unit> {
 
     /** Trigger a full reload of workspace data. */
     suspend fun reload(directory: String)
+
+    /** Fetch only the providers and agents needed by Models settings. */
+    suspend fun models(directory: String): ModelsWorkspaceDto
 
     /** Resolve [path] to matching files, scoped primarily to [directory]. */
     suspend fun files(directory: String, path: String): List<WorkspaceFileDto>

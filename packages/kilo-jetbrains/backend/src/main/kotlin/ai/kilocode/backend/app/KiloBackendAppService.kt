@@ -2,6 +2,7 @@ package ai.kilocode.backend.app
 
 import ai.kilocode.backend.cli.CliServer
 import ai.kilocode.backend.cli.KiloBackendCliManager
+import ai.kilocode.backend.cli.KiloCliDataParser
 import ai.kilocode.backend.migration.KiloBackendLegacyMigrationStoreService
 import ai.kilocode.backend.migration.LegacyMigrationDetection
 import ai.kilocode.backend.telemetry.KiloBackendTelemetry
@@ -19,6 +20,7 @@ import ai.kilocode.jetbrains.api.model.KiloProfile200Response
 import ai.kilocode.jetbrains.api.model.ProviderOauthAuthorizeRequest
 import ai.kilocode.jetbrains.api.model.ProviderOauthCallbackRequest
 import ai.kilocode.rpc.dto.DeviceAuthDto
+import ai.kilocode.rpc.dto.ConfigPatchDto
 import ai.kilocode.rpc.dto.HealthDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
@@ -209,6 +211,28 @@ class KiloBackendAppService private constructor(
             is KiloAppState.MigrationRequired -> throw IllegalStateException("Migration required")
             else -> throw IllegalStateException("Kilo backend is not ready")
         }
+    }
+
+    suspend fun updateConfig(patch: ConfigPatchDto): KiloAppState {
+        val http = connection.apiClient ?: throw IllegalStateException("Not connected")
+        val current = _appState.value as? KiloAppState.Ready ?: throw IllegalStateException("Kilo backend is not ready")
+        val body = KiloCliDataParser.buildConfigPatch(patch)
+        val request = Request.Builder()
+            .url("http://127.0.0.1:$port/global/config")
+            .header("Accept", "application/json")
+            .patch(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        withContext(Dispatchers.IO) {
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    val text = response.body?.string()
+                    log.warn("Global config patch failed: HTTP ${response.code} ${response.message} ${text.orEmpty()}")
+                    throw IllegalStateException("Global config patch failed: HTTP ${response.code} ${response.message}")
+                }
+            }
+        }
+        refreshConfigState()
+        return (_appState.value as? KiloAppState.Ready) ?: current
     }
 
     internal suspend fun resumeAfterMigration() {

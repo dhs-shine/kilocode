@@ -25,9 +25,18 @@
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings"
                 id="ai.kilocode.jetbrains.settings.profile"
+                groupWeight="2"
                 instance="ai.kilocode.client.settings.profile.UserProfileConfigurable"
                 bundle="messages.KiloBundle"
                 key="settings.profile.displayName"/>
+
+        <applicationConfigurable
+                parentId="ai.kilocode.jetbrains.settings"
+                id="ai.kilocode.jetbrains.settings.models"
+                groupWeight="1"
+                instance="ai.kilocode.client.settings.models.ModelsConfigurable"
+                bundle="messages.KiloBundle"
+                key="settings.models.displayName"/>
 
         <registryKey key="kilo.session.condense"
                      description="Enable event condensing in the session update queue (merges redundant snapshots before model delivery)."
@@ -53,9 +62,18 @@
         <action id="Kilo.Reinstall"
                 class="ai.kilocode.client.actions.ReinstallKiloAction"/>
 
-        <group id="Kilo.SettingsGroup">
+        <action id="Kilo.OpenSettings"
+                class="ai.kilocode.client.actions.OpenSettingsAction"/>
+
+        <group id="Kilo.CliGroup" popup="true">
             <reference ref="Kilo.Restart"/>
             <reference ref="Kilo.Reinstall"/>
+        </group>
+
+        <group id="Kilo.SettingsGroup">
+            <reference ref="Kilo.OpenSettings"/>
+            <separator/>
+            <reference ref="Kilo.CliGroup"/>
         </group>
 
         <action id="Kilo.Settings"

@@ -5,6 +5,8 @@ package ai.kilocode.client.app
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
+import ai.kilocode.rpc.dto.LoadErrorDto
+import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.openapi.components.Service
 import ai.kilocode.log.KiloLog
@@ -97,6 +99,15 @@ class KiloWorkspaceService internal constructor(
             } catch (e: Exception) {
                 LOG.warn("workspace reload failed for $directory", e)
             }
+        }
+    }
+
+    suspend fun models(directory: String): ModelsWorkspaceDto {
+        return try {
+            call { this.models(directory) }
+        } catch (e: Exception) {
+            LOG.warn("models settings lookup failed for directory=$directory", e)
+            ModelsWorkspaceDto(errors = listOf(LoadErrorDto(resource = "models", detail = e.message)))
         }
     }
 
