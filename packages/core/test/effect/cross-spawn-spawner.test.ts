@@ -112,11 +112,12 @@ describe("cross-spawn spawner", () => {
           ),
         )
         const cwd = yield* Effect.promise(() => fs.realpath(tmp.path))
+        const actual = yield* Effect.promise(() => fs.realpath(out))
         const normalize = (value: string) => {
           const normalized = path.normalize(value)
           return process.platform === "win32" ? normalized.toLowerCase() : normalized
         }
-        expect(normalize(out)).toBe(normalize(cwd))
+        expect(normalize(actual)).toBe(normalize(cwd))
       }),
     )
 
