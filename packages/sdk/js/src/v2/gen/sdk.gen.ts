@@ -38,6 +38,8 @@ import type {
   ConfigOverlayResponses,
   ConfigOverlayUpdateResponses,
   ConfigProvidersResponses,
+  ConfigRulesResponses,
+  ConfigRulesUpdateResponses,
   ConfigSourcesResponses,
   ConfigUpdateErrors,
   ConfigUpdateResponses,
@@ -917,6 +919,77 @@ export class Config2 extends HeyApiClient {
       url: "/config/effective",
       ...options,
       ...params,
+    })
+  }
+
+  /**
+   * Get project rules
+   *
+   * List project instruction files used by Kilo and return their current contents.
+   */
+  public rules<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "project"
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "query", key: "scope" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ConfigRulesResponses, unknown, ThrowOnError>({
+      url: "/config/rules",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Update project rules
+   *
+   * Create or update the project AGENTS.md rules file.
+   */
+  public rulesUpdate<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      scope?: "project"
+      content?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "scope" },
+            { in: "body", key: "content" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).put<ConfigRulesUpdateResponses, unknown, ThrowOnError>({
+      url: "/config/rules",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 
@@ -5013,7 +5086,7 @@ export class Config3 extends HeyApiClient {
     parameters?: {
       directory?: string
       workspace?: string
-      scope?: "global" | "project"
+      scope?: "project" | "global"
       $schema?: string
       theme?: string
       keybinds?: {

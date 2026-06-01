@@ -2049,6 +2049,18 @@ export type ConfigSourcesResponse = {
   }>
 }
 
+export type ConfigRulesResponse = {
+  scope: "project"
+  target: string
+  files: Array<{
+    name: string
+    path: string
+    exists: boolean
+    editable: boolean
+    content: string
+  }>
+}
+
 export type ConfigModelStateResponse = {
   model: {
     [key: string]: {
@@ -7902,6 +7914,48 @@ export type ConfigEffectiveResponses = {
 
 export type ConfigEffectiveResponse = ConfigEffectiveResponses[keyof ConfigEffectiveResponses]
 
+export type ConfigRulesData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+    scope?: "project"
+  }
+  url: "/config/rules"
+}
+
+export type ConfigRulesResponses = {
+  /**
+   * Project rules
+   */
+  200: ConfigRulesResponse
+}
+
+export type ConfigRulesResponse2 = ConfigRulesResponses[keyof ConfigRulesResponses]
+
+export type ConfigRulesUpdateData = {
+  body?: {
+    scope?: "project"
+    content: string
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/rules"
+}
+
+export type ConfigRulesUpdateResponses = {
+  /**
+   * Project rules after update
+   */
+  200: ConfigRulesResponse
+}
+
+export type ConfigRulesUpdateResponse = ConfigRulesUpdateResponses[keyof ConfigRulesUpdateResponses]
+
 export type ConfigModelStateData = {
   body?: never
   path?: never
@@ -8000,7 +8054,7 @@ export type TuiConfigUpdateData = {
   query?: {
     directory?: string
     workspace?: string
-    scope?: "global" | "project"
+    scope?: "project" | "global"
   }
   url: "/tui/config"
 }
