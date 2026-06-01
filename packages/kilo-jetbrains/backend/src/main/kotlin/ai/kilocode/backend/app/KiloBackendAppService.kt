@@ -23,6 +23,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -343,6 +344,7 @@ class KiloBackendAppService private constructor(
                     sessions.start(connection.api!!, connection.apiClient!!, connection.port, connection.events)
                     chat.start(connection.apiClient!!, connection.port, connection.events)
                     workspaces.start(connection.api!!, connection.apiClient!!, connection.port, connection.events)
+                    startWatchingGlobalSseEvents()
                     setAppReady(
                         AppData(
                             profile = prof,
@@ -352,7 +354,6 @@ class KiloBackendAppService private constructor(
                         )
                     )
                     log.info("Application started — config, profile, notifications loaded")
-                    startWatchingGlobalSseEvents()
                 } catch (e: TimeoutCancellationException) {
                     val err = LoadError(
                         resource = "app",
@@ -592,7 +593,7 @@ class KiloBackendAppService private constructor(
         synchronized(loadLock) {
             if (eventWatcher?.isActive == true) return
             log.info("Started watching global SSE events (config.updated, disposed)")
-            eventWatcher = cs.launch {
+            eventWatcher = cs.launch(start = CoroutineStart.UNDISPATCHED) {
                 connection.events.collect { event ->
                     when (event.type) {
                         "global.config.updated" -> {
