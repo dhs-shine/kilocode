@@ -3,4 +3,4 @@
 "kilo-code": patch
 ---
 
-Skip inferred background-process port scanning in VS Code sessions to avoid unnecessary Bun subprocess polling.
+Limit inferred background-process port discovery to the TUI and stop scanning after startup to avoid unnecessary Bun subprocess polling.

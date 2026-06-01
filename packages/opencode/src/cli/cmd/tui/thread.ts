@@ -176,6 +176,7 @@ export const TuiThreadCommand = cmd({
       const env = sanitizedProcessEnv({
         [KILO_PROCESS_ROLE]: "worker",
         [KILO_RUN_ID]: ensureRunID(),
+        KILO_BACKGROUND_PROCESS_PORTS: "true", // kilocode_change - TUI surfaces inferred background process ports
       })
 
       const worker = new Worker(file, {
