@@ -4,7 +4,7 @@ import { pathToFileURL } from "url"
 import { UI } from "../ui"
 import { cmd } from "./cmd"
 import { Flag } from "@opencode-ai/core/flag/flag"
-import { buildRunMessage } from "./run-message" // kilocode_change
+import { buildRunMessage } from "@/kilocode/cli/cmd/run-message" // kilocode_change
 import { bootstrap } from "../bootstrap"
 import { EOL } from "os"
 import { text as streamText } from "node:stream/consumers"
