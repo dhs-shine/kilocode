@@ -3,6 +3,7 @@ import path from "path"
 import { pathToFileURL } from "url"
 import { UI } from "../ui"
 import { Flag } from "@opencode-ai/core/flag/flag"
+import { buildRunMessage } from "@/kilocode/cli/cmd/run-message" // kilocode_change
 import { EOL } from "os"
 import { text as streamText } from "node:stream/consumers"
 import { Filesystem } from "@/util/filesystem"
@@ -323,9 +324,7 @@ export const RunCommand = effectCmd({
   handler: Effect.fn("Cli.run")(function* (args) {
     const agentSvc = yield* Agent.Service
     yield* Effect.promise(async () => {
-      let message = [...args.message, ...(args["--"] || [])]
-        .map((arg) => (arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg))
-        .join(" ")
+      let message = buildRunMessage(args.message, args["--"]) // kilocode_change
 
       const directory = (() => {
         if (!args.dir) return undefined
