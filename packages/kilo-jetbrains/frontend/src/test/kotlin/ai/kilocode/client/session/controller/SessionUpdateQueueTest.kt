@@ -257,6 +257,54 @@ class SessionUpdateQueueTest : SessionControllerTestBase() {
         )
     }
 
+    fun `test pure text deltas preserve incidental overlap`() {
+        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
+        projectRpc.state.value = workspaceReady()
+        val m = controller("ses_test", flushMs = Long.MAX_VALUE)
+        flush()
+
+        emit(ChatEventDto.MessageUpdated("ses_test", msg("msg1", "ses_test", "assistant")))
+        emit(ChatEventDto.PartDelta("ses_test", "msg1", "prt1", "text", "hel"))
+        emit(ChatEventDto.PartDelta("ses_test", "msg1", "prt1", "text", "lo"))
+        settle()
+        flush()
+
+        assertModel(
+            """
+            assistant#msg1
+            text#prt1:
+              hello
+            """,
+            m,
+        )
+    }
+
+    fun `test pure text deltas preserve split closing fence`() {
+        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
+        projectRpc.state.value = workspaceReady()
+        val m = controller("ses_test", flushMs = Long.MAX_VALUE)
+        flush()
+
+        emit(ChatEventDto.MessageUpdated("ses_test", msg("msg1", "ses_test", "assistant")))
+        emit(ChatEventDto.PartDelta("ses_test", "msg1", "prt1", "text", "```python\nprint(1)\n``"))
+        emit(ChatEventDto.PartDelta("ses_test", "msg1", "prt1", "text", "`\n\nafter"))
+        settle()
+        flush()
+
+        assertModel(
+            """
+            assistant#msg1
+            text#prt1:
+              ```python
+              print(1)
+              ```
+              
+              after
+            """,
+            m,
+        )
+    }
+
     fun `test text snapshot covered prefix is trimmed from merged delta`() {
         appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY)
         projectRpc.state.value = workspaceReady()

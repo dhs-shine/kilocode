@@ -145,6 +145,9 @@ class SessionController(
     private var prefModel: String? = null
     private var prefAgent: String? = null
     private var modelTime: Double? = null
+    private val snapshots = mutableMapOf<PartKey, String>()
+
+    private data class PartKey(val messageId: String, val partId: String)
 
     val ready: Boolean get() = model.isReady()
     val autoApprove: Boolean get() = KiloPluginSettings.getAutoApprove()
@@ -653,6 +656,7 @@ class SessionController(
                     if (disposed) return@runEdt
                     if (sid != id) return@runEdt
                     updateModel {
+                        snapshots.clear()
                         this@SessionController.model.loadHistory(items)
                         syncHistoryAgent(items)
                         if (session != null) this@SessionController.model.setSession(session)
@@ -701,6 +705,7 @@ class SessionController(
                     ref = SessionRef.Local(session)
                     setRecentSessionsState(RecentsState.Idle)
                     updateModel {
+                        snapshots.clear()
                         this@SessionController.model.loadHistory(items)
                         syncHistoryAgent(items)
                         this@SessionController.model.setSession(session)
@@ -890,7 +895,15 @@ class SessionController(
             is ChatEventDto.PartUpdated -> {
                 partType = event.part.type
                 tool = event.part.tool
+                val key = PartKey(event.part.messageID, event.part.id)
+                val prev = content(event.part.messageID, event.part.id)
                 model.updateContent(event.part.messageID, event.part)
+                val next = content(event.part.messageID, event.part.id)
+                if (next != null && next != prev) {
+                    snapshots[key] = next
+                } else {
+                    snapshots.remove(key)
+                }
                 if (model.state is SessionState.Busy) {
                     model.setState(SessionState.Busy(status()))
                 }
@@ -905,6 +918,7 @@ class SessionController(
             }
 
             is ChatEventDto.PartRemoved -> {
+                snapshots.remove(PartKey(event.messageID, event.partID))
                 model.removeContent(event.messageID, event.partID)
             }
 
@@ -938,6 +952,7 @@ class SessionController(
             }
 
             is ChatEventDto.MessageRemoved -> {
+                snapshots.keys.removeAll { it.messageId == event.messageID }
                 model.removeMessage(event.messageID)
             }
 
@@ -982,14 +997,22 @@ class SessionController(
 
     private fun glue(messageId: String, partId: String, delta: String): String {
         if (delta.isEmpty()) return delta
-        val cur = when (val content = model.content(messageId, partId)) {
-            is Text -> content.content
-            is Reasoning -> content.content
-            else -> return delta
-        }
+        val key = PartKey(messageId, partId)
+        val cur = snapshots[key] ?: return delta
         val span = (minOf(cur.length, delta.length) downTo 1)
             .firstOrNull { n -> cur.regionMatches(cur.length - n, delta, 0, n) } ?: 0
+        if (span == delta.length) {
+            snapshots.remove(key)
+            return ""
+        }
+        snapshots.remove(key)
         return delta.substring(span)
+    }
+
+    private fun content(messageId: String, partId: String): String? = when (val content = model.content(messageId, partId)) {
+        is Text -> content.content.toString()
+        is Reasoning -> content.content.toString()
+        else -> null
     }
 
     private fun handleHidden(event: ChatEventDto): Boolean = when (event) {
