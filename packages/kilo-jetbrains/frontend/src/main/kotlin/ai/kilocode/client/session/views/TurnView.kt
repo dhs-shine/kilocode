@@ -3,6 +3,7 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Message
 import ai.kilocode.client.session.ui.SessionLayoutPanel
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import com.intellij.openapi.Disposable
@@ -23,6 +24,7 @@ class TurnView(
     private val openFile: (String) -> Unit,
     private var style: SessionEditorStyle = SessionEditorStyle.current(),
     private val openUrl: (String) -> Unit = {},
+    private val selection: SessionSelection? = null,
 ) : SessionLayoutPanel(JBUI.scale(SessionUiStyle.SessionLayout.GAP)), Disposable, SessionEditorStyleTarget {
 
     constructor(id: String, openFile: (String) -> Unit) : this(id, openFile, SessionEditorStyle.current())
@@ -35,7 +37,7 @@ class TurnView(
 
     /** Add a new [MessageView] for [msg] at the end of this turn. */
     fun addMessage(msg: Message): MessageView {
-        val view = MessageView(msg, openFile, style, openUrl)
+        val view = MessageView(msg, openFile, style, openUrl, selection)
         messages[msg.info.id] = view
         add(view)
         revalidate()

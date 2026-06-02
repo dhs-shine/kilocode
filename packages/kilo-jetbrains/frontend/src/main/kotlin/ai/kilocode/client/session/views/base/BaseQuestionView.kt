@@ -1,6 +1,7 @@
 package ai.kilocode.client.session.views.base
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.RoundedContentPanel
@@ -37,7 +38,9 @@ import javax.swing.JPanel
  * Call [setTopPanel], [setHeaderIcon], [setHeader], [setDescription],
  * [setContent], [setActions], or [setActionEnabled] to configure the card.
  */
-class BaseQuestionView : RoundedContentPanel(
+class BaseQuestionView(
+    private val selection: SessionSelection? = null,
+) : RoundedContentPanel(
     UiStyle.Gap.lg(),
     UiStyle.Gap.pad(),
 ), SessionEditorStyleTarget {
@@ -352,6 +355,7 @@ class BaseQuestionView : RoundedContentPanel(
             alignmentX = Component.LEFT_ALIGNMENT
         }
         tracked.add(area to bold)
+        selection?.register(area)
         applyFont(area, bold)
         return area
     }

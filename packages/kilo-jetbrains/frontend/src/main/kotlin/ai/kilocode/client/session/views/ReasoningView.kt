@@ -6,6 +6,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Reasoning
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.ui.UiStyle
@@ -28,7 +29,8 @@ import javax.swing.Scrollable
 class ReasoningView(
     reasoning: Reasoning,
     openUrl: (String) -> Unit = {},
-    private val parts: ReasoningParts = reasoningParts(),
+    selection: SessionSelection? = null,
+    private val parts: ReasoningParts = reasoningParts(selection),
 ) :
     SecondarySessionPartView(parts.header, parts.scroll) {
 
@@ -133,8 +135,8 @@ class ReasoningParts(
     val icon: JBLabel,
 )
 
-private fun reasoningParts(): ReasoningParts {
-    val md = MdViewFactory.create(SessionEditorStyle.current())
+private fun reasoningParts(selection: SessionSelection? = null): ReasoningParts {
+    val md = MdViewFactory.create(SessionEditorStyle.current(), selection)
     val panel = TrackPanel().apply {
         isOpaque = true
         background = SessionUiStyle.View.surface()

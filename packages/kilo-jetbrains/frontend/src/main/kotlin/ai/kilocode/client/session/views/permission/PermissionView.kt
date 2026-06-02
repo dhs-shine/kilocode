@@ -6,6 +6,7 @@ import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.views.base.BaseQuestionView
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
@@ -17,6 +18,8 @@ import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBHtmlPaneConfiguration
@@ -42,18 +45,20 @@ import javax.swing.text.html.StyleSheet
  */
 class PermissionView(
     private val reply: (String, PermissionReplyDto) -> Unit,
+    private val selection: SessionSelection? = null,
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SessionView {
     override val sessionViewKind = SessionView.Kind.Default
 
     private var requestId: String? = null
     private var style = SessionEditorStyle.current()
 
-    private val card = BaseQuestionView()
+    private val card = BaseQuestionView(selection)
 
     private val body = Stack.vertical()
 
     // Track target panes for style updates
     private val panes = mutableListOf<JBHtmlPane>()
+    private val regs = mutableListOf<Disposable>()
     private val diffViews = mutableListOf<PermissionDiffView>()
 
     private val ID_DENY = "deny"
@@ -79,6 +84,7 @@ class PermissionView(
         card.setHeader(KiloBundle.message("session.permission.title"))
 
         body.removeAll()
+        disposeRegs()
         panes.clear()
         diffViews.clear()
 
@@ -102,6 +108,7 @@ class PermissionView(
     fun hideView() {
         requestId = null
         body.removeAll()
+        disposeRegs()
         panes.clear()
         diffViews.clear()
         isVisible = false
@@ -158,10 +165,11 @@ class PermissionView(
         },
     ).apply {
         isEditable = false
-        isOpaque = true
-        this.text = "<html><body><pre>${XmlStringUtil.escapeString(text)}</pre></body></html>"
-        applyTargetPane(this)
-    }
+            isOpaque = true
+            this.text = "<html><body><pre>${XmlStringUtil.escapeString(text)}</pre></body></html>"
+            applyTargetPane(this)
+            selection?.register(this)?.let(regs::add)
+        }
 
     private fun applyTargetPane(pane: JBHtmlPane) {
         pane.font = style.transcriptFont
@@ -242,6 +250,11 @@ class PermissionView(
         repaint()
         parent?.revalidate()
         parent?.repaint()
+    }
+
+    private fun disposeRegs() {
+        regs.forEach(Disposer::dispose)
+        regs.clear()
     }
 
     // Test helpers

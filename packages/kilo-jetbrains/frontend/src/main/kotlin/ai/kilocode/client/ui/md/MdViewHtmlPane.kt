@@ -1,7 +1,10 @@
 package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.log.KiloLog
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBHtmlPaneConfiguration
 import com.intellij.ui.components.JBHtmlPaneStyleConfiguration
@@ -19,6 +22,7 @@ import javax.swing.text.html.StyleSheet
 @Suppress("UnstableApiUsage")
 internal class MdViewHtmlPane(
     style: SessionEditorStyle = SessionEditorStyle.current(),
+    private var selection: SessionSelection? = null,
 ) : MdView {
     companion object {
         private val LOG = KiloLog.create(MdViewHtmlPane::class.java)
@@ -28,6 +32,7 @@ internal class MdViewHtmlPane(
     private val source = StringBuilder()
     private var rendered = ""
     private var style = style
+    private var reg: Disposable? = null
     private var disposed = false
 
     private val extensions = listOf(
@@ -76,6 +81,10 @@ internal class MdViewHtmlPane(
             val pt = (e.inputEvent as? java.awt.event.MouseEvent)?.point
             dispatch(MdView.LinkEvent(href, pt))
         }
+    }
+
+    init {
+        syncSelection()
     }
 
     override val component: JComponent get() = pane
@@ -195,8 +204,18 @@ internal class MdViewHtmlPane(
         if (disposed) return
         if (this.style == style) return
         this.style = style
+        selection?.applyStyle(style)
         if (opaqueState) pane.background = background
         markDirty()
+    }
+
+    override fun setSelection(selection: SessionSelection?) {
+        if (disposed) return
+        if (this.selection === selection) return
+        reg?.let(Disposer::dispose)
+        reg = null
+        this.selection = selection
+        syncSelection()
     }
 
     override fun resetStyles() {
@@ -266,7 +285,13 @@ internal class MdViewHtmlPane(
         listeners.clear()
         source.clear()
         rendered = ""
+        reg?.let(Disposer::dispose)
+        reg = null
         pane.text = ""
+    }
+
+    private fun syncSelection() {
+        reg = selection?.register(pane)
     }
 
     private fun dispatch(event: MdView.LinkEvent) {

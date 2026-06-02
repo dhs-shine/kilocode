@@ -3,6 +3,7 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Text
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.client.ui.md.MdViewFactory
@@ -18,11 +19,12 @@ class TextView(
     text: Text,
     transparent: Boolean = false,
     openUrl: (String) -> Unit = {},
+    selection: SessionSelection? = null,
 ) : PartView() {
 
     override val contentId: String = text.id
 
-    val md: MdView = MdViewFactory.create(SessionEditorStyle.current())
+    val md: MdView = MdViewFactory.create(SessionEditorStyle.current(), selection)
 
     init {
         layout = BorderLayout()

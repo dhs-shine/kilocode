@@ -8,6 +8,7 @@ import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.ToolKind
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.ui.UiStyle
@@ -32,7 +33,11 @@ import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
 /** Renders non-read tool calls with VS Code-inspired rows/cards. */
-class ToolView(tool: Tool, private val parts: ToolParts = toolParts(tool)) :
+class ToolView(
+    tool: Tool,
+    private val selection: SessionSelection? = null,
+    private val parts: ToolParts = toolParts(tool),
+) :
     SecondarySessionPartView(parts.header, parts.scroll) {
 
     override val contentId: String = tool.id
@@ -41,6 +46,7 @@ class ToolView(tool: Tool, private val parts: ToolParts = toolParts(tool)) :
     private var style = SessionEditorStyle.current()
 
     init {
+        selection?.register(parts.text, this)
         bindHeader(parts.glyph, parts.title, parts.sub, parts.state, parts.center, parts.controls, parts.slot)
         parts.text.text = preview(item)
         applyStyle(style)
@@ -147,6 +153,7 @@ class ToolView(tool: Tool, private val parts: ToolParts = toolParts(tool)) :
 class ReadToolView(
     tool: Tool,
     openFile: (String) -> Unit = {},
+    private val selection: SessionSelection? = null,
     private val parts: ToolParts = toolParts(tool, openFile),
 ) : SecondarySessionPartView(parts.header, parts.scroll, expandable = false) {
 
@@ -160,6 +167,7 @@ class ReadToolView(
     private var style = SessionEditorStyle.current()
 
     init {
+        selection?.register(parts.text, this)
         bindHeader(parts.glyph, parts.title, parts.sub, parts.state, parts.center, parts.controls, parts.slot)
         parts.text.text = preview(item)
         applyStyle(style)
@@ -322,7 +330,7 @@ private fun toolParts(tool: Tool, openFile: ((String) -> Unit)? = null): ToolPar
     val text = JBTextArea().apply {
         isEditable = false
         caret.isVisible = false
-        caret.isSelectionVisible = false
+        caret.isSelectionVisible = true
         lineWrap = true
         wrapStyleWord = true
         foreground = if (tool.state == ToolExecState.ERROR) UiStyle.Colors.errorLabelForeground() else UiStyle.Colors.fg()

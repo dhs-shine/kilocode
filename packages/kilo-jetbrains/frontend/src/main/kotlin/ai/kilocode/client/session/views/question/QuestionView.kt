@@ -7,13 +7,16 @@ import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.editor.SessionEditorTextField
 import ai.kilocode.client.session.views.base.BaseQuestionView
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.QuestionReplyDto
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
@@ -48,6 +51,7 @@ class QuestionView(
     private val reject: (String) -> Unit,
     private val follow: () -> Boolean = { true },
     private val scroll: (Boolean) -> Unit = {},
+    private val selection: SessionSelection? = null,
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SessionView {
     override val sessionViewKind = SessionView.Kind.Default
 
@@ -61,11 +65,12 @@ class QuestionView(
     private var customOpen = emptyList<Boolean>()
     private var style = SessionEditorStyle.current()
     private val texts = mutableListOf<Pair<JBTextArea, Boolean>>()
+    private val regs = mutableListOf<Disposable>()
     // The custom editor for the currently shown question; null when not shown.
     private var customEditor: SessionEditorTextField? = null
     private var customFocus: FocusAdapter? = null
 
-    private val card = BaseQuestionView()
+    private val card = BaseQuestionView(selection)
 
     private val summary = JBLabel()
     private val nav = JPanel().apply {
@@ -145,6 +150,7 @@ class QuestionView(
         customOpen = emptyList()
         customEditor = null
         customFocus = null
+        disposeRegs()
         texts.clear()
         body.removeAll()
         card.setActions(emptyList())
@@ -169,6 +175,7 @@ class QuestionView(
     @RequiresEdt
     private fun syncPage() {
         val q = question ?: return
+        disposeRegs()
         texts.clear()
         customEditor = null
         customFocus = null
@@ -693,8 +700,14 @@ class QuestionView(
             border = JBUI.Borders.empty()
         }
         texts.add(area to bold)
+        selection?.register(area)?.let(regs::add)
         setFont(area, bold)
         return area
+    }
+
+    private fun disposeRegs() {
+        regs.forEach(Disposer::dispose)
+        regs.clear()
     }
 
     private fun single(q: Question): Boolean = q.items.size == 1 && !q.items[0].multiple

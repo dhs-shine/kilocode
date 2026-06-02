@@ -8,6 +8,7 @@ import ai.kilocode.client.session.model.ToolCallRef
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.session.ui.style.SessionUiStyle
@@ -34,6 +35,7 @@ class MessageView(
     private val openFile: (String) -> Unit,
     private var style: SessionEditorStyle = SessionEditorStyle.current(),
     private val openUrl: (String) -> Unit = {},
+    private val selection: SessionSelection? = null,
 ) : ai.kilocode.client.session.ui.SessionLayoutPanel(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
 ), Disposable, SessionEditorStyleTarget, SessionView {
@@ -174,9 +176,9 @@ class MessageView(
     }
 
     private fun view(content: Content) = if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) {
-        ViewFactory.createUser(content, openFile, openUrl)
+        ViewFactory.createUser(content, openFile, openUrl, selection)
     } else {
-        ViewFactory.create(content, openFile, openUrl)
+        ViewFactory.create(content, openFile, openUrl, selection)
     }
 
     /** Append a streaming delta to the renderer for [contentId]. */

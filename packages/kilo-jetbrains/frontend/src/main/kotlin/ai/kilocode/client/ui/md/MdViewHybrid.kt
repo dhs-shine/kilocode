@@ -1,6 +1,7 @@
 package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.log.KiloLog
 import com.intellij.openapi.Disposable
@@ -42,6 +43,7 @@ import javax.swing.text.html.StyleSheet
 @Suppress("UnstableApiUsage")
 internal class MdViewHybrid(
     style: SessionEditorStyle = SessionEditorStyle.current(),
+    private var selection: SessionSelection? = null,
 ) : MdView {
     companion object {
         private val LOG = KiloLog.create(MdViewHybrid::class.java)
@@ -274,7 +276,15 @@ internal class MdViewHybrid(
         if (disposed) return
         if (this.style == style) return
         this.style = style
+        selection?.applyStyle(style)
         syncStyle()
+    }
+
+    override fun setSelection(selection: SessionSelection?) {
+        if (disposed) return
+        if (this.selection === selection) return
+        this.selection = selection
+        syncBlocks()
     }
 
     override fun resetStyles() {
@@ -412,6 +422,7 @@ internal class MdViewHybrid(
             isOpaque = opts.opaque
             background = opts.background
             text = "<html><body>$body</body></html>"
+            block?.let { selection?.register(this, it) }
             addHyperlinkListener { e ->
                 if (e.eventType != HyperlinkEvent.EventType.ACTIVATED) return@addHyperlinkListener
                 val href = e.description ?: return@addHyperlinkListener
@@ -427,6 +438,7 @@ internal class MdViewHybrid(
         val field = runCatching {
             CodeField(file(lang), opts, text).also { ed ->
                 block?.let { ed.setDisposedWith(it) }
+                block?.let { selection?.register(ed, it) }
             }
         }.getOrElse { err ->
             LOG.warn("kind=markdown codeEditor=true failed message=${err.message}", err)
@@ -502,6 +514,7 @@ internal class MdViewHybrid(
             SessionUiStyle.View.Code.VIEWPORT_TOP_PADDING,
             SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING,
         )
+        block?.let { selection?.register(this, it) }
     }
 
     private inner class CodeField(file: FileType, opts: MdStyle, value: String) :

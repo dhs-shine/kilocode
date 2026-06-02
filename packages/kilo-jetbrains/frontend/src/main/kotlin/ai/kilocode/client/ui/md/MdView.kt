@@ -1,6 +1,7 @@
 package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import com.intellij.openapi.Disposable
 import java.awt.Color
 import java.awt.Font
@@ -15,6 +16,7 @@ interface MdView : Disposable {
     fun append(delta: String)
     fun clear()
     fun applyStyle(style: SessionEditorStyle)
+    fun setSelection(selection: SessionSelection?)
     fun resetStyles()
     fun addLinkListener(listener: LinkListener)
     fun removeLinkListener(listener: LinkListener)
