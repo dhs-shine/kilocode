@@ -1,6 +1,6 @@
-// kilocode_change - new file
 import { Telemetry, type ReviewCommand } from "@kilocode/kilo-telemetry"
 import { SessionNetwork } from "@/session/network"
+import type { ProviderID } from "@/provider/schema"
 import type { SessionID } from "@/session/schema"
 import type { SessionStatus } from "@/session/status"
 import { MessageV2 } from "@/session/message-v2"
@@ -234,8 +234,26 @@ export namespace KiloSessionProcessor {
     return new MessageV2.APIError({ message: EMPTY_RESPONSE_MESSAGE, isRetryable: true }).toObject()
   }
 
-  export function preserveError(error: unknown): MessageV2.Assistant["error"] | undefined {
+  export function guardEmptyResponse(input: Parameters<typeof emptyResponseError>[0]) {
+    return Effect.gen(function* () {
+      const err = emptyResponseError(input)
+      if (!err) return
+      return yield* Effect.fail(err)
+    })
+  }
+
+  function preserveError(error: unknown): MessageV2.Assistant["error"] | undefined {
     if (MessageV2.APIError.isInstance(error)) return { name: "APIError", data: error.data }
+  }
+
+  export function parse(error: unknown, input: { providerID: ProviderID; aborted: boolean }) {
+    return (
+      preserveError(error) ??
+      MessageV2.fromError(error, {
+        providerID: input.providerID,
+        aborted: input.aborted,
+      })
+    )
   }
 
   export function lengthWarning(input: {

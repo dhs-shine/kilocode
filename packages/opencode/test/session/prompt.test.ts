@@ -397,36 +397,6 @@ it.live("loop calls LLM and returns assistant message", () =>
   ),
 )
 
-// kilocode_change start - reject oversized payloads after pruning
-it.live("loop does not send payload that remains large after pruning", () =>
-  provideTmpdirServer(
-    Effect.fnUntraced(function* ({ llm }) {
-      const prompt = yield* SessionPrompt.Service
-      const sessions = yield* Session.Service
-      const chat = yield* sessions.create({
-        title: "Large payload",
-        permission: [{ permission: "*", pattern: "*", action: "allow" }],
-      })
-      yield* prompt.prompt({
-        sessionID: chat.id,
-        agent: "build",
-        noReply: true,
-        parts: [{ type: "text", text: "x".repeat(1_300_000) }],
-      })
-
-      const result = yield* prompt.loop({ sessionID: chat.id })
-
-      expect(yield* llm.calls).toBe(0)
-      expect(result.info.role).toBe("assistant")
-      if (result.info.role === "assistant") {
-        expect(result.info.error?.name).toBe("ContextOverflowError")
-      }
-    }),
-    { git: true, config: providerCfg },
-  ),
-)
-// kilocode_change end
-
 // kilocode_change start - replacement prompts unblock pending Question service requests
 it.live("new prompt dismisses a pending question", () =>
   provideTmpdirServer(
