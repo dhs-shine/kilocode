@@ -210,13 +210,11 @@ describe("MarketplaceInstaller skills", () => {
   it("handles concurrent installs without sharing temporary paths", async () => {
     const buffer = await archive()
     const original = globalThis.fetch
-    const now = Date.now
     const paths = new TestPaths()
     const installer = new MarketplaceInstaller(paths)
     const item = skill("https://example.com/skill.tar.gz")
     const gate = Promise.withResolvers<void>()
     let count = 0
-    Date.now = () => 1
     globalThis.fetch = async () => {
       count += 1
       if (count === 2) gate.resolve()
@@ -242,7 +240,6 @@ describe("MarketplaceInstaller skills", () => {
       ).toEqual([])
     } finally {
       globalThis.fetch = original
-      Date.now = now
     }
   })
 })
