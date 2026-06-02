@@ -27,6 +27,7 @@ import ai.kilocode.rpc.dto.ProviderDto
 import ai.kilocode.rpc.dto.ProvidersDto
 import ai.kilocode.rpc.dto.SessionDto
 import ai.kilocode.rpc.dto.SessionTimeDto
+import ai.kilocode.rpc.dto.TelemetryCaptureDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
@@ -128,8 +129,9 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         id: String? = null,
         flushMs: Long = Long.MAX_VALUE,
         displayMs: Long = Long.MAX_VALUE,
+        open: (SessionRef) -> Unit = {},
     ): SessionController {
-        return controller(id, flushMs, true, displayMs = displayMs)
+        return controller(id, flushMs, true, displayMs = displayMs, open = open)
     }
 
     protected fun controller(
@@ -148,6 +150,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         session: SessionDto? = null,
         beforeUpdate: () -> Boolean = { false },
         afterUpdate: (Boolean) -> Unit = {},
+        open: (SessionRef) -> Unit = {},
         ref: SessionRef? = if (session != null) SessionRef.Local(session) else SessionRef.from(id),
     ): SessionController {
         val root = Root()
@@ -162,8 +165,10 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
             flushMs,
             condense,
             displayMs,
+            open = open,
             beforeUpdate = beforeUpdate,
             afterUpdate = afterUpdate,
+            telemetry = { event, props -> appRpc.telemetry.add(TelemetryCaptureDto(event, props)) },
         )
         controllers.add(m)
         roots[m] = root
@@ -248,6 +253,13 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         ApplicationManager.getApplication().invokeAndWait(block)
     }
 
+    protected fun <T> edt(block: () -> T): T {
+        var result: T? = null
+        ApplicationManager.getApplication().invokeAndWait { result = block() }
+        @Suppress("UNCHECKED_CAST")
+        return result as T
+    }
+
     /** Emit a chat event into the fake RPC flow. */
     protected fun emit(event: ChatEventDto, flush: Boolean = true) {
         runBlocking { rpc.events.emit(event) }
@@ -292,6 +304,16 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
             .filter { it !is SessionModelEvent.HeaderUpdated }
             .filter { it !is SessionModelEvent.SessionUpdated }
             .joinToString("\n")
+        assertEquals(expected.trimIndent().trim(), act)
+    }
+
+    protected fun assertQuestionReply(expected: String, replies: List<Triple<String, String, ai.kilocode.rpc.dto.QuestionReplyDto>>) {
+        val act = replies.joinToString("\n") { (id, dir, reply) ->
+            val answers = reply.answers.joinToString(",", "[", "]") { inner ->
+                inner.joinToString(",", "[", "]")
+            }
+            "$id $dir $answers"
+        }
         assertEquals(expected.trimIndent().trim(), act)
     }
 

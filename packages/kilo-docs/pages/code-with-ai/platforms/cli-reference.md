@@ -154,6 +154,7 @@ Options:
       --fork        fork the session when continuing (use with --continue or --session)  [boolean]
       --cloud-fork  fetch session from cloud and continue locally (use with --session)  [boolean]
   -p, --password    basic auth password (defaults to KILO_SERVER_PASSWORD)  [string]
+  -u, --username    basic auth username (defaults to KILO_SERVER_USERNAME or 'kilo')  [string]
 ```
 
 ## kilo run
@@ -171,18 +172,21 @@ Options:
   -c, --continue                      continue the last session  [boolean]
   -s, --session                       session id to continue  [string]
       --fork                          fork the session before continuing (requires --continue or --session)  [boolean]
+      --cloud-fork                    fetch session from cloud and continue locally (use with --session)  [boolean]
       --share                         share the session  [boolean]
   -m, --model                         model to use in the format of provider/model  [string]
       --agent                         agent to use  [string]
       --format                        format: default (formatted) or json (raw JSON events)  [string] [choices: "default", "json"] [default: "default"]
   -f, --file                          file(s) to attach to message  [array]
       --title                         title for the session (uses truncated prompt if no value provided)  [string]
-      --attach                        attach to a running opencode server (e.g., http://localhost:4096)  [string]
+      --attach                        attach to a running kilo server (e.g., http://localhost:4096)  [string]
   -p, --password                      basic auth password (defaults to KILO_SERVER_PASSWORD)  [string]
+  -u, --username                      basic auth username (defaults to KILO_SERVER_USERNAME or 'kilo')  [string]
       --dir                           directory to run in, path on remote server if attaching  [string]
       --port                          port for the local server (defaults to random port if no value provided)  [number]
       --variant                       model variant (provider-specific reasoning effort, e.g., high, max, minimal)  [string]
       --thinking                      show thinking blocks  [boolean] [default: false]
+      --dangerously-skip-permissions  auto-approve permissions that are not explicitly denied (dangerous!)  [boolean] [default: false]
       --auto                          auto-approve all permissions (for autonomous/pipeline usage)  [boolean] [default: false]
 ```
 
@@ -201,6 +205,7 @@ Commands:
   kilo debug snapshot      snapshot debugging utilities
   kilo debug startup       print startup timing
   kilo debug agent <name>  show agent configuration details
+  kilo debug info          show debug information
   kilo debug paths         show global paths (data, config, cache, state)
   kilo debug wait          wait indefinitely (for debugging)
 
@@ -502,6 +507,16 @@ Options:
   --params   Tool params as JSON or a JS object literal  [string]
 ```
 
+### kilo debug info
+
+```
+show debug information
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+```
+
 ### kilo debug paths
 
 ```
@@ -528,7 +543,7 @@ Options:
 manage AI providers and credentials
 
 Commands:
-  kilo auth list         list providers  [aliases: ls]
+  kilo auth list         list providers and credentials  [aliases: ls]
   kilo auth login [url]  log in to a provider
   kilo auth logout       log out from a configured provider
 
@@ -540,7 +555,7 @@ Options:
 ### kilo auth list
 
 ```
-list providers
+list providers and credentials
 
 Options:
   --help     Show help  [boolean]
@@ -669,6 +684,25 @@ Options:
   --refresh  refresh the models cache from models.dev  [boolean]
 ```
 
+## kilo roll-call
+
+```
+batch-test text models matching a filter for connectivity and latency
+
+Positionals:
+  filter  regex to filter models by provider/modelID (required)  [string]
+
+Options:
+  --help      Show help  [boolean]
+  --version   Show version number  [boolean]
+  --prompt    Prompt to send to each model  [string] [default: "Hello"]
+  --timeout   Timeout for each model call in milliseconds  [number] [default: 25000]
+  --parallel  Number of parallel model calls  [number] [default: 5]
+  --verbose   Show verbose output  [boolean] [default: false]
+  --quiet     Suppress progress and decoration  [boolean] [default: false]
+  --output    Output format (table, json, or md)  [string] [choices: "table", "json", "md"] [default: "table"]
+```
+
 ## kilo stats
 
 ```
@@ -772,6 +806,91 @@ enable remote connection for real-time session relay
 Options:
   --help     Show help  [boolean]
   --version  Show version number  [boolean]
+```
+
+## kilo daemon
+
+```
+manage the local kilo daemon
+
+Commands:
+  kilo daemon start    start the local kilo daemon
+  kilo daemon status   show local kilo daemon status
+  kilo daemon stop     stop the local kilo daemon
+  kilo daemon restart  restart the local kilo daemon
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+```
+
+### kilo daemon start
+
+```
+start the local kilo daemon
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
+  --json         print daemon details as JSON  [boolean]
+```
+
+### kilo daemon status
+
+```
+show local kilo daemon status
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+  --json     print daemon details as JSON  [boolean]
+```
+
+### kilo daemon stop
+
+```
+stop the local kilo daemon
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+  --json     print daemon details as JSON  [boolean]
+```
+
+### kilo daemon restart
+
+```
+restart the local kilo daemon
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
+  --json         print daemon details as JSON  [boolean]
+```
+
+## kilo console
+
+```
+open the local Kilo Console
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
 ```
 
 ## kilo db

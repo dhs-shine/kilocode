@@ -8,7 +8,6 @@ import { Auth } from "../auth"
 import { ProviderTransform } from "@/provider/transform"
 
 import PROMPT_GENERATE from "./generate.txt"
-import { makeRuntime } from "@/effect/run-service" // kilocode_change
 import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
@@ -67,7 +66,7 @@ export interface Interface {
   }>
 }
 
-type State = Omit<Interface, "generate">
+type State = Omit<Interface, "generate"> & { version: string } // kilocode_change
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Agent") {}
 
@@ -339,6 +338,7 @@ export const layer = Layer.effect(
         })
 
         return {
+          version: KiloAgent.cacheKey(cfg), // kilocode_change
           get,
           list,
           defaultAgent,
@@ -346,15 +346,25 @@ export const layer = Layer.effect(
       }),
     )
 
+    // kilocode_change start - rebuild cached agents when permission-relevant config changes
+    const current = Effect.fnUntraced(function* <A>(select: (s: State) => Effect.Effect<A>) {
+      const cfg = yield* config.get()
+      const s = yield* InstanceState.get(state)
+      if (s.version === KiloAgent.cacheKey(cfg)) return yield* select(s)
+      yield* InstanceState.invalidate(state)
+      return yield* select(yield* InstanceState.get(state))
+    })
+    // kilocode_change end
+
     return Service.of({
       get: Effect.fn("Agent.get")(function* (agent: string) {
-        return yield* InstanceState.useEffect(state, (s) => s.get(agent))
+        return yield* current((s) => s.get(agent)) // kilocode_change
       }),
       list: Effect.fn("Agent.list")(function* () {
-        return yield* InstanceState.useEffect(state, (s) => s.list())
+        return yield* current((s) => s.list()) // kilocode_change
       }),
       defaultAgent: Effect.fn("Agent.defaultAgent")(function* () {
-        return yield* InstanceState.useEffect(state, (s) => s.defaultAgent())
+        return yield* current((s) => s.defaultAgent()) // kilocode_change
       }),
       generate: Effect.fn("Agent.generate")(function* (input: {
         description: string
@@ -430,19 +440,5 @@ export const defaultLayer = layer.pipe(
   Layer.provide(Config.defaultLayer),
   Layer.provide(Skill.defaultLayer),
 )
-
-// kilocode_change start - agent removal (delegated to kilocode module)
-export const RemoveError = KiloAgent.RemoveError
-export async function remove(name: string) {
-  return KiloAgent.remove(name)
-}
-// kilocode_change end
-
-// kilocode_change start - legacy promise helpers for Kilo callsites
-const { runPromise } = makeRuntime(Service, defaultLayer)
-export const get = (agent: string) => runPromise((svc) => svc.get(agent))
-export const list = () => runPromise((svc) => svc.list())
-export const defaultAgent = () => runPromise((svc) => svc.defaultAgent())
-// kilocode_change end
 
 export * as Agent from "./agent"
