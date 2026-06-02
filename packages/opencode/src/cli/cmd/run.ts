@@ -25,6 +25,7 @@ import { TodoWriteTool } from "../../tool/todo"
 import { Locale } from "@/util/locale"
 import { importCloudSession, validateCloudFork } from "@/kilocode/cloud-session" // kilocode_change
 import { KiloRunAuto } from "@/kilocode/cli/run-auto" // kilocode_change
+import { KiloRunDaemon } from "@/kilocode/cli/cmd/run" // kilocode_change
 import { Effect } from "effect"
 import { effectCmd } from "../effect-cmd"
 import { ServerAuth } from "@/server/auth"
@@ -744,6 +745,8 @@ export const RunCommand = effectCmd({
         const sdk = createKiloClient({ baseUrl: args.attach, directory, headers })
         return await execute(sdk)
       }
+
+      if (await KiloRunDaemon.attach({ directory, execute })) return // kilocode_change
 
       const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
         const request = new Request(input, init)

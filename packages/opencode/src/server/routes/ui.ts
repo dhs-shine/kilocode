@@ -2,10 +2,29 @@ import fs from "node:fs/promises"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { Hono } from "hono"
 import { embeddedUI, cspForHtml } from "../shared/ui"
+import { ConsoleAssets } from "@/kilocode/console/assets" // kilocode_change
 
 export async function serveUI(request: Request) {
   const embeddedWebUI = await embeddedUI()
   const path = new URL(request.url).pathname
+
+  // kilocode_change start - serve Kilo Console under /console
+  const asset = await ConsoleAssets.resolve(path)
+  if (asset && "file" in asset) {
+    if (await fs.exists(asset.file)) {
+      const mime = AppFileSystem.mimeType(asset.file)
+      const headers = new Headers({ "content-type": mime })
+      const body = new Uint8Array(await fs.readFile(asset.file))
+      if (mime.startsWith("text/html")) {
+        headers.set("content-security-policy", cspForHtml(new TextDecoder().decode(body)))
+      }
+      return new Response(body, { headers })
+    }
+
+    return Response.json({ error: "Not Found" }, { status: 404 })
+  }
+  if (asset?.missing) return Response.json({ error: "Not Found" }, { status: 404 })
+  // kilocode_change end
 
   if (embeddedWebUI) {
     const match = embeddedWebUI[path.replace(/^\//, "")] ?? embeddedWebUI["index.html"] ?? null
