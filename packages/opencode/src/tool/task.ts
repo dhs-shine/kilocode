@@ -4,6 +4,7 @@ import { Session } from "@/session/session"
 import { SessionID, MessageID } from "../session/schema"
 import { MessageV2 } from "../session/message-v2"
 import { Agent } from "../agent/agent"
+import { deriveSubagentSessionPermission } from "../agent/subagent-permissions"
 import type { SessionPrompt } from "../session/prompt"
 import { Config } from "@/config/config"
 import { Provider } from "@/provider/provider" // kilocode_change
@@ -70,43 +71,29 @@ export const TaskTool = Tool.define(
       const canTask = KiloTask.nestedTask() // kilocode_change - Kilo disallows subagents spawning subagents
       const canTodo = next.permission.some((rule) => rule.permission === "todowrite")
 
-      const parent = yield* sessions.get(ctx.sessionID)
-      // kilocode_change start — inherit edit/bash/MCP restrictions from calling agent
-      const caller = yield* agent.get(ctx.agent)
-      const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp })
-      // kilocode_change end
-
       const taskID = params.task_id
       const session = taskID
         ? yield* sessions.get(SessionID.make(taskID)).pipe(Effect.catchCause(() => Effect.succeed(undefined)))
         : undefined
+      const parent = yield* sessions.get(ctx.sessionID)
+      const parentAgent = parent.agent
+        ? yield* agent.get(parent.agent).pipe(Effect.catchCause(() => Effect.succeed(undefined)))
+        : undefined
+      // kilocode_change start — inherit edit/bash/MCP restrictions from calling agent
+      const caller = yield* agent.get(ctx.agent)
+      const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp })
+      // kilocode_change end
       const nextSession =
         session ??
         (yield* sessions.create({
           parentID: ctx.sessionID,
           title: params.description + ` (@${next.name} subagent)`,
           permission: [
-            ...(parent.permission ?? []).filter(
-              (rule) => rule.permission === "external_directory" || rule.action === "deny",
-            ),
-            ...(canTodo
-              ? []
-              : [
-                  {
-                    permission: "todowrite" as const,
-                    pattern: "*" as const,
-                    action: "deny" as const,
-                  },
-                ]),
-            ...(canTask
-              ? []
-              : [
-                  {
-                    permission: id,
-                    pattern: "*" as const,
-                    action: "deny" as const,
-                  },
-                ]),
+            ...deriveSubagentSessionPermission({
+              parentSessionPermission: parent.permission ?? [],
+              parentAgent,
+              subagent: next,
+            }),
             ...(cfg.experimental?.primary_tools?.map((item) => ({
               pattern: "*",
               action: "allow" as const,

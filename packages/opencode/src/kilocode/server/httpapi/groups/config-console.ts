@@ -3,7 +3,11 @@ import { ConfigPlugin } from "@/config/plugin"
 import { KilocodeKeybinds } from "@/kilocode/tui/keybinds"
 import { Authorization } from "@/server/routes/instance/httpapi/middleware/authorization"
 import { InstanceContextMiddleware } from "@/server/routes/instance/httpapi/middleware/instance-context"
-import { WorkspaceRoutingMiddleware } from "@/server/routes/instance/httpapi/middleware/workspace-routing"
+import {
+  WorkspaceRoutingMiddleware,
+  WorkspaceRoutingQuery,
+  WorkspaceRoutingQueryFields,
+} from "@/server/routes/instance/httpapi/middleware/workspace-routing"
 import { described } from "@/server/routes/instance/httpapi/groups/metadata"
 import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
@@ -40,7 +44,10 @@ const Source = Schema.Struct({
   reason: Schema.optional(Schema.String),
 })
 
-export const ConfigOverlayQuery = Schema.Struct({ scope: Schema.optional(Scoped) })
+export const ConfigOverlayQuery = Schema.Struct({
+  ...WorkspaceRoutingQueryFields,
+  scope: Schema.optional(Scoped),
+})
 export const ConfigOverlayPatch = Schema.Struct({
   scope: Schema.optional(Scoped),
   set: Schema.optional(UnknownRecord),
@@ -158,6 +165,7 @@ export const ConfigConsoleApi = HttpApi.make("config-console")
           }),
         ),
         HttpApiEndpoint.patch("overlayUpdate", ConfigConsolePaths.overlay, {
+          query: WorkspaceRoutingQuery,
           payload: ConfigOverlayPatch,
           success: described(Config.Info, "Effective configuration after patch"),
         }).annotateMerge(
