@@ -9,6 +9,7 @@ import com.intellij.openapi.fileTypes.UnknownFileType
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
+import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
@@ -126,6 +127,146 @@ class MdViewHybridTest : BasePlatformTestCase() {
 
         assertTrue("code block should grow after streamed lines", pane.preferredSize.height > initial)
         assertTrue("streamed editor should not be clipped vertically", editor.height >= editor.preferredSize.height)
+    }
+
+    fun `test appending later html block preserves earlier block component`() {
+        view.set("first\n\nsecond")
+        val first = htmls().first()
+
+        view.append(" more")
+
+        assertSame(first, htmls().first())
+        assertTrue(view.html().contains("second more"))
+    }
+
+    fun `test streaming fenced code block preserves editor component`() {
+        view.append("```java\nclass Example {\n")
+        val pane = scrolls().single()
+        val editor = editors().single()
+        val initial = pane.preferredSize.height
+
+        view.append("void method() {}\n}\n```")
+
+        assertSame(pane, scrolls().single())
+        assertSame(editor, editors().single())
+        assertEquals("class Example {\nvoid method() {}\n}", editor.text)
+        assertTrue(scrolls().single().preferredSize.height >= initial)
+    }
+
+    fun `test streaming code body append reuses editor and stays correct`() {
+        view.append("```java\nclass A {\n")
+        val pane = scrolls().single()
+        val editor = editors().single()
+
+        view.append("    void run() {\n")
+        view.append("    }\n")
+
+        assertSame(pane, scrolls().single())
+        assertSame(editor, editors().single())
+        assertEquals("class A {\n    void run() {\n    }", editor.text)
+        assertEquals("```java\nclass A {\n    void run() {\n    }\n", view.markdown())
+        assertTrue(view.html().contains("class A"))
+
+        view.append("}\n```")
+
+        assertSame(pane, scrolls().single())
+        assertSame(editor, editors().single())
+        assertEquals("class A {\n    void run() {\n    }\n}", editor.text)
+        assertEquals("```java\nclass A {\n    void run() {\n    }\n}\n```", view.markdown())
+    }
+
+    fun `test streaming code body append keeps html in sync`() {
+        view.append("```java\n")
+        view.append("if (a < b) {\n")
+
+        assertTrue(view.html().contains("a &lt; b"))
+        assertEquals("if (a < b) {", editors().single().text)
+    }
+
+    fun `test streaming partial fence opener renders code block without raw marker`() {
+        view.append("`")
+
+        val pane = scrolls().single()
+        val editor = editors().single()
+
+        assertEquals("", editor.text)
+        assertFalse(view.html().contains("`"))
+
+        view.append("`")
+
+        assertSame(pane, scrolls().single())
+        assertSame(editor, editors().single())
+        assertEquals("", editor.text)
+        assertFalse(view.html().contains("``"))
+    }
+
+    fun `test streaming language prefix stays out of code text`() {
+        view.append("```")
+        view.append("p")
+        view.append("ython\nprint(1)\n")
+
+        assertEquals("print(1)", editors().single().text)
+        assertFalse(view.html().contains("```"))
+        assertFalse(view.html().contains("python"))
+    }
+
+    fun `test streaming partial closing fence stays out of code text`() {
+        view.append("```python\nprint(1)\n")
+        val pane = scrolls().single()
+        val editor = editors().single()
+
+        view.append("`")
+
+        assertSame(pane, scrolls().single())
+        assertSame(editor, editors().single())
+        assertEquals("print(1)", editor.text)
+
+        view.append("`")
+
+        assertSame(pane, scrolls().single())
+        assertSame(editor, editors().single())
+        assertEquals("print(1)", editor.text)
+    }
+
+    fun `test completed closing fence preserves code block and renders following markdown`() {
+        view.append("```python\nprint(1)\n``")
+        val pane = scrolls().single()
+        val editor = editors().single()
+
+        view.append("`\n\nafter")
+
+        assertSame(pane, scrolls().single())
+        assertSame(editor, editors().single())
+        assertEquals("print(1)", editor.text)
+        assertEquals(1, scrolls().size)
+        assertEquals(1, htmls().size)
+        assertTrue(view.html().contains("after"))
+    }
+
+    fun `test appending new block preserves existing code block component`() {
+        view.set("```kotlin\nval value = 1\n```")
+        val pane = scrolls().single()
+        val editor = editors().single()
+
+        view.append("\n\nhello")
+
+        assertSame(pane, scrolls().single())
+        assertSame(editor, editors().single())
+        assertEquals(1, scrolls().size)
+        assertEquals(1, htmls().size)
+    }
+
+    fun `test incompatible suffix replacement preserves prefix block`() {
+        view.set("before\n\n```kotlin\nval value = 1\n```")
+        val prefix = htmls().single()
+        val editor = editors().single().getEditor(true)!!
+
+        view.set("before\n\nafter")
+        drainEdt()
+
+        assertSame(prefix, htmls().first())
+        assertTrue(editor.isDisposed)
+        assertTrue(scrolls().isEmpty())
     }
 
     fun `test java code block with blank lines fits vertically`() {
@@ -276,6 +417,8 @@ class MdViewHybridTest : BasePlatformTestCase() {
     }
 
     private fun scrolls(): List<JBScrollPane> = (view.component as JPanel).components.filterIsInstance<JBScrollPane>()
+
+    private fun htmls(): List<JBHtmlPane> = (view.component as JPanel).components.filterIsInstance<JBHtmlPane>()
 
     private fun editors(): List<EditorTextField> = scrolls().mapNotNull { it.viewport.view as? EditorTextField }
 

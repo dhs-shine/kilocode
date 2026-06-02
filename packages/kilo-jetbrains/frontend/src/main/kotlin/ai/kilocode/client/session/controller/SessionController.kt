@@ -17,7 +17,9 @@ import ai.kilocode.client.session.model.PermissionRequestState
 import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
+import ai.kilocode.client.session.model.Reasoning
 import ai.kilocode.client.session.model.ToolCallRef
+import ai.kilocode.client.session.model.Text
 import ai.kilocode.client.plugin.KiloPluginSettings
 import ai.kilocode.client.session.SessionRef
 import ai.kilocode.client.telemetry.Telemetry
@@ -897,7 +899,8 @@ class SessionController(
 
             is ChatEventDto.PartDelta -> {
                 if (event.field == "text") {
-                    model.appendDelta(event.messageID, event.partID, event.delta)
+                    val delta = glue(event.messageID, event.partID, event.delta)
+                    if (delta.isNotEmpty()) model.appendDelta(event.messageID, event.partID, delta)
                 }
             }
 
@@ -975,6 +978,18 @@ class SessionController(
             is ChatEventDto.SessionDiffChanged -> model.setDiff(event.diff)
             is ChatEventDto.TodoUpdated -> model.setTodos(event.todos)
         }
+    }
+
+    private fun glue(messageId: String, partId: String, delta: String): String {
+        if (delta.isEmpty()) return delta
+        val cur = when (val content = model.content(messageId, partId)) {
+            is Text -> content.content
+            is Reasoning -> content.content
+            else -> return delta
+        }
+        val span = (minOf(cur.length, delta.length) downTo 1)
+            .firstOrNull { n -> cur.regionMatches(cur.length - n, delta, 0, n) } ?: 0
+        return delta.substring(span)
     }
 
     private fun handleHidden(event: ChatEventDto): Boolean = when (event) {

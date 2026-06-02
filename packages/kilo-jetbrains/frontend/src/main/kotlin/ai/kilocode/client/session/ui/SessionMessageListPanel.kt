@@ -96,14 +96,11 @@ class SessionMessageListPanel(
                 }
 
                 is SessionModelEvent.ContentDelta -> {
-                    // Use the full current content from the model rather than
-                    // an incremental append. This avoids the double-write that
-                    // occurs when ContentAdded and ContentDelta both fire for
-                    // the same first delta (the model auto-creates the content
-                    // on first appendDelta and fires both events in sequence).
+                    if (event.created) return@addListener
+                    val handled = msgToView[event.messageId]?.appendDelta(event.contentId, event.delta) == true
+                    if (handled) return@addListener
                     val content = model.content(event.messageId, event.contentId)
                     if (content != null) msgToView[event.messageId]?.upsertPart(content)
-                    refresh()
                 }
 
                 is SessionModelEvent.HistoryLoaded -> rebuild()

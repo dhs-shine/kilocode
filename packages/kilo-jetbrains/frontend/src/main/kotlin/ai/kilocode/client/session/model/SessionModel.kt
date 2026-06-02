@@ -157,6 +157,7 @@ class SessionModel {
     fun appendDelta(messageId: String, contentId: String, delta: String) {
         val msg = entries[messageId] ?: return
         val existing = msg.parts[contentId]
+        val created = existing == null
         if (existing != null) {
             val buf = when (existing) {
                 is Text -> existing.content
@@ -170,7 +171,7 @@ class SessionModel {
             msg.parts[contentId] = content
             fire(SessionModelEvent.ContentAdded(messageId, content))
         }
-        fire(SessionModelEvent.ContentDelta(messageId, contentId, delta))
+        fire(SessionModelEvent.ContentDelta(messageId, contentId, delta, created))
         updateHeader()
     }
 

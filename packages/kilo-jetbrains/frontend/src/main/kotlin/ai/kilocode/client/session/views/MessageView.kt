@@ -182,10 +182,11 @@ class MessageView(
     }
 
     /** Append a streaming delta to the renderer for [contentId]. */
-    fun appendDelta(contentId: String, delta: String) {
-        val part = parts[contentId] ?: return
+    fun appendDelta(contentId: String, delta: String): Boolean {
+        val part = parts[contentId] ?: return false
         part.appendDelta(delta)
         refresh()
+        return true
     }
 
     /** Look up a renderer by part id. */

@@ -26,6 +26,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.awt.Container
+import javax.swing.JPanel
 
 /**
  * Tests for [SessionMessageListPanel] — structural and index integrity.
@@ -184,6 +185,31 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
 
         val tv = panel.findMessage("a1")!!.part("p1") as TextView
         assertEquals("hello world", tv.markdown())
+    }
+
+    fun `test ContentDelta preserves TextView and markdown component`() {
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", part("p1", "a1", "text", text = "first\n\nsecond"))
+        val mv = panel.findMessage("a1")!!
+        val tv = mv.part("p1") as TextView
+        val comp = tv.md.component
+        val first = (comp as JPanel).components.first()
+
+        model.appendDelta("a1", "p1", " more")
+
+        assertSame(tv, mv.part("p1"))
+        assertSame(comp, tv.md.component)
+        assertSame(first, comp.components.first())
+        assertEquals("first\n\nsecond more", tv.markdown())
+    }
+
+    fun `test created ContentDelta is not double applied`() {
+        model.upsertMessage(msg("a1", "assistant"))
+
+        model.appendDelta("a1", "p1", "hello")
+
+        val tv = panel.findMessage("a1")!!.part("p1") as TextView
+        assertEquals("hello", tv.markdown())
     }
 
     fun `test ContentRemoved removes PartView from MessageView`() {
