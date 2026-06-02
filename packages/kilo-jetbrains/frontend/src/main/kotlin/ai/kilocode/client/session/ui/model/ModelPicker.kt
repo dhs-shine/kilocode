@@ -5,7 +5,6 @@ import ai.kilocode.client.ui.PickerButton
 import ai.kilocode.rpc.dto.ModelSelectionDto
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.JBPopupFactory
-import com.intellij.openapi.ui.popup.PopupShowOptions
 import com.intellij.openapi.ui.popup.util.PopupUtil
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.DocumentAdapter
@@ -115,7 +114,7 @@ class ModelPicker : PickerButton() {
             return
         }
         val display = selected?.display
-        text = if (display == null && allowEmpty) "$emptyText ▴" else "${ModelText.sanitize(display ?: items.first().display)} ▴"
+        text = if (display == null && allowEmpty) "$emptyText ▾" else "${ModelText.sanitize(display ?: items.first().display)} ▾"
         isEnabled = true
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
     }
@@ -297,7 +296,7 @@ class ModelPicker : PickerButton() {
             .setMovable(false)
             .createPopup()
 
-        popup.show(PopupShowOptions.aboveComponent(this))
+        popup.showUnderneathOf(this)
         SwingUtilities.invokeLater {
             search.textEditor.requestFocusInWindow()
             search.selectText()

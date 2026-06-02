@@ -202,15 +202,18 @@ class ModelPickerTest : BasePlatformTestCase() {
         picker.setItems(listOf(item("a", "A", "openai", "OpenAI")))
 
         assertEquals("openai/a", picker.selectionKeyForTest())
+        assertEquals("A ▾", picker.text)
     }
 
     fun `test allowEmpty keeps empty selection`() {
         val picker = ModelPicker()
         picker.allowEmpty = true
+        picker.emptyText = "Not set"
 
         picker.setItems(listOf(item("a", "A", "openai", "OpenAI")))
 
         assertNull(picker.selectionKeyForTest())
+        assertEquals("Not set ▾", picker.text)
     }
 
     fun `test provider qualified default selects duplicate model id from correct provider`() {

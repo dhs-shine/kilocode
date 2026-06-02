@@ -26,6 +26,14 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
         assertTrue("Reinstall should force-enable recovery action", event.presentation.isEnabled)
     }
 
+    fun `test cli group has visible menu text`() {
+        val xml = requireNotNull(javaClass.classLoader.getResourceAsStream("kilo.jetbrains.frontend.xml"))
+            .bufferedReader()
+            .use { it.readText() }
+
+        assertTrue(xml.contains("<group id=\"Kilo.CliGroup\" text=\"CLI\" popup=\"true\">"))
+    }
+
     private fun event(action: AnAction): AnActionEvent {
         val presentation = Presentation().apply { copyFrom(action.templatePresentation) }
         presentation.isEnabled = false

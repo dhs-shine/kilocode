@@ -70,7 +70,7 @@
         <action id="Kilo.OpenSettings"
                 class="ai.kilocode.client.actions.OpenSettingsAction"/>
 
-        <group id="Kilo.CliGroup" popup="true">
+        <group id="Kilo.CliGroup" text="CLI" popup="true">
             <reference ref="Kilo.Restart"/>
             <reference ref="Kilo.Reinstall"/>
         </group>
