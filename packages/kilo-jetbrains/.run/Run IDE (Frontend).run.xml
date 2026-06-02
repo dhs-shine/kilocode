@@ -5,7 +5,7 @@
       <option name="executionName" />
       <option name="externalProjectPath" value="$PROJECT_DIR$/packages/kilo-jetbrains" />
       <option name="externalSystemIdString" value="GRADLE" />
-      <option name="scriptParameters" value="-Pkilo.dev.log.level=debug" />
+      <option name="scriptParameters" value="-Pkilo.dev.log.level=debug -Pkilo.dev.log.chat.content=full" />
       <option name="taskDescriptions">
         <list />
       </option>
