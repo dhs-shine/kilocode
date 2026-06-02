@@ -6,9 +6,8 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.model.ModelText
-import ai.kilocode.client.settings.profile.edt
 import ai.kilocode.client.settings.base.BaseContentPanel
-import ai.kilocode.client.settings.base.BaseSettingsUi
+import ai.kilocode.client.settings.base.BaseWorkspaceSettingsUi
 import ai.kilocode.client.settings.base.SettingsBannerKind
 import ai.kilocode.client.settings.base.SettingsRow
 import ai.kilocode.client.settings.base.SettingsRows
@@ -21,20 +20,25 @@ import ai.kilocode.rpc.dto.ConfigPatchDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
+import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.ProvidersDto
 import com.intellij.openapi.components.service
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 internal class ModelsSettingsUi(
-    private val cs: CoroutineScope,
+    cs: CoroutineScope,
     private val app: KiloAppService = service(),
     private val workspaces: KiloWorkspaceService = service(),
-    private val directory: String? = null,
-) : BaseSettingsUi<ModelsSettingsContent, ModelsDraft, ConfigPatchDto, KiloAppStateDto>(cs, ModelsDraft()) {
+    directory: String? = null,
+) : BaseWorkspaceSettingsUi<ModelsSettingsContent, ModelsDraft, ConfigPatchDto, KiloAppStateDto, ModelsWorkspaceDto>(
+    cs,
+    ModelsDraft(),
+    app,
+    workspaces,
+    directory,
+) {
 
     companion object {
         private val LOG = KiloLog.create(ModelsSettingsUi::class.java)
@@ -49,17 +53,11 @@ internal class ModelsSettingsUi(
 
     private var providers: ProvidersDto? = null
     private var agents: List<AgentDto> = emptyList()
-    private var appState: KiloAppStateDto = app.state.value
-    private var dir: String? = null
-    private var loading = false
-    private var loaded = false
     private var errors: List<LoadErrorDto> = emptyList()
     private var allItems: List<ModelPicker.Item> = emptyList()
 
     init {
-        setSettingsContent(ModelsSettingsContent(app, { updateDraft(it) }, ::selectSubagent))
-        syncContent()
-        start()
+        startSettings(ModelsSettingsContent(app, { updateDraft(it) }, ::selectSubagent))
     }
 
     override fun change(from: ModelsDraft, to: ModelsDraft): ConfigPatchDto? = patch(from, to).takeIf {
@@ -70,10 +68,9 @@ internal class ModelsSettingsUi(
         app.updateConfigAsync(change, done)
     }
 
-    override fun base(result: KiloAppStateDto): ModelsDraft {
-        appState = result
-        return modelsDraft(result.config, agents)
-    }
+    override fun base(result: KiloAppStateDto): ModelsDraft = modelsDraft(result.config, agents)
+
+    override fun draft(state: KiloAppStateDto): ModelsDraft = modelsDraft(state.config, agents)
 
     override fun saved(base: ModelsDraft, draft: ModelsDraft): Boolean = savedMatches(base, draft)
 
@@ -91,82 +88,34 @@ internal class ModelsSettingsUi(
 
     override fun logSaveCompletedAfterDispose(change: ConfigPatchDto) = LOG.info("model settings save: completed after dispose ${summary(change)}")
 
-    @RequiresEdt
-    fun updateApp(state: KiloAppStateDto) {
-        appState = state
-        if (state.status != KiloAppStatusDto.READY) {
-            loading = false
-            if (!loaded && providers == null) {
-                agents = emptyList()
-                errors = emptyList()
-            }
-            syncContent()
-            return
-        }
-        val base = modelsDraft(state.config, agents)
-        acceptBase(base)
-        syncContent()
-        loadModels()
-    }
-
-    @RequiresEdt
-    fun updateModelsWorkspace(state: ModelsWorkspaceDto) {
-        providers = state.providers
-        agents = state.agents?.agents ?: emptyList()
-        errors = state.errors
-        loaded = true
-        loading = false
-        val base = modelsDraft(appState.config, agents)
-        acceptBase(base)
-        syncContent()
-    }
-
-    @RequiresEdt
-    fun updateModels(state: ai.kilocode.rpc.dto.ModelStateDto) {
-        syncContent()
-    }
-
-    private fun start() {
-        jobs += cs.launch {
-            app.state.collect { state -> withContext(edt) { updateApp(state) } }
-        }
-        jobs += cs.launch {
-            app.models.collect { state -> withContext(edt) { updateModels(state) } }
-        }
-        jobs += cs.launch { app.connect() }
-        val hint = directory ?: return
-        jobs += cs.launch {
-            val resolved = workspaces.resolveProjectDirectory(hint)
-            withContext(edt) {
-                dir = resolved
-                loaded = false
-                loadModels()
-                syncContent()
-            }
+    override fun unavailable(state: KiloAppStateDto) {
+        if (!workspaceLoaded && providers == null) {
+            agents = emptyList()
+            errors = emptyList()
         }
     }
 
-    @RequiresEdt
-    private fun loadModels() {
-        val root = dir ?: return
-        if (appState.status != KiloAppStatusDto.READY || loading || loaded) return
-        loading = true
+    override fun models(state: ModelStateDto) = Unit
+
+    override fun clearWorkspaceError() {
         errors = emptyList()
-        syncContent()
-        jobs += cs.launch {
-            val state = workspaces.models(root)
-            withContext(edt) { updateModelsWorkspace(state) }
-        }
+    }
+
+    override suspend fun loadWorkspace(root: String): ModelsWorkspaceDto = workspaces.models(root)
+
+    override fun applyWorkspace(result: ModelsWorkspaceDto) {
+        providers = result.providers
+        agents = result.agents?.agents ?: emptyList()
+        errors = result.errors
     }
 
     @RequiresEdt
     override fun syncContent() {
         allItems = items(false)
         val smallItems = items(true)
-        val hasDir = dir != null || directory != null
         val state = modelsStatus(
-            ready = appState.status == KiloAppStatusDto.READY && hasDir,
-            loading = loading || (appState.status == KiloAppStatusDto.READY && !loaded && hasDir),
+            ready = appState.status == KiloAppStatusDto.READY && hasProjectDirectory,
+            loading = workspaceLoading || (appState.status == KiloAppStatusDto.READY && !workspaceLoaded && hasProjectDirectory),
             providers = providers,
             items = allItems.size,
             errors = errors,

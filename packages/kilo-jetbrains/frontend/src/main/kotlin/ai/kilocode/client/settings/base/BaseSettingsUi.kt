@@ -18,7 +18,7 @@ import java.util.function.Predicate
 import javax.swing.JComponent
 
 internal abstract class BaseSettingsUi<C : BaseContentPanel, D, P, R>(
-    private val cs: CoroutineScope,
+    protected val scope: CoroutineScope,
     initial: D,
     private val loginBanner: Boolean = true,
 ) : SettingsPanel() {
@@ -109,7 +109,7 @@ internal abstract class BaseSettingsUi<C : BaseContentPanel, D, P, R>(
         disposed = true
         jobs.forEach { it.cancel() }
         jobs.clear()
-        cs.cancel()
+        scope.cancel()
     }
 
     @RequiresEdt
@@ -120,7 +120,9 @@ internal abstract class BaseSettingsUi<C : BaseContentPanel, D, P, R>(
         syncContent()
     }
 
+    @RequiresEdt
     protected fun acceptBase(base: D) {
+        checkEdt()
         val target = pending
         if (target == null) {
             val prev = baseline
@@ -147,19 +149,43 @@ internal abstract class BaseSettingsUi<C : BaseContentPanel, D, P, R>(
         check(ApplicationManager.getApplication().isDispatchThread) { "Settings UI updates must run on EDT" }
     }
 
+    @RequiresEdt
     protected abstract fun change(from: D, to: D): P?
+
+    @RequiresEdt
     protected abstract fun save(change: P, done: (R?) -> Unit)
+
+    @RequiresEdt
     protected abstract fun base(result: R): D
+
+    @RequiresEdt
     protected abstract fun syncContent()
+
+    @RequiresEdt
     protected abstract fun pendingText(): String
+
+    @RequiresEdt
     protected abstract fun failedText(): String
 
+    @RequiresEdt
     protected open fun saved(base: D, draft: D): Boolean = base == draft
+
+    @RequiresEdt
     protected open fun onSaveFailedAfterDispose(change: P) = KiloNotifications.error(failedText())
+
+    @RequiresEdt
     protected open fun logSaveStarted(change: P) = Unit
+
+    @RequiresEdt
     protected open fun logSaveCompleted(change: P) = Unit
+
+    @RequiresEdt
     protected open fun logSaveFailed(change: P) = Unit
+
+    @RequiresEdt
     protected open fun logSaveFailedAfterDispose(change: P) = Unit
+
+    @RequiresEdt
     protected open fun logSaveCompletedAfterDispose(change: P) = Unit
 
     private fun openProfile(src: JComponent) {
