@@ -217,6 +217,8 @@ class KiloBackendAppService private constructor(
         val http = connection.apiClient ?: throw IllegalStateException("Not connected")
         val current = _appState.value as? KiloAppState.Ready ?: throw IllegalStateException("Kilo backend is not ready")
         val body = KiloCliDataParser.buildConfigPatch(patch)
+        val summary = summary(patch)
+        log.info("Global config patch: started $summary")
         val request = Request.Builder()
             .url("http://127.0.0.1:$port/global/config")
             .header("Accept", "application/json")
@@ -226,12 +228,14 @@ class KiloBackendAppService private constructor(
             http.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     val text = response.body?.string()
-                    log.warn("Global config patch failed: HTTP ${response.code} ${response.message} ${text.orEmpty()}")
+                    log.warn("Global config patch failed: HTTP ${response.code} ${response.message} $summary ${text.orEmpty()}")
                     throw IllegalStateException("Global config patch failed: HTTP ${response.code} ${response.message}")
                 }
             }
         }
+        log.info("Global config patch: saved $summary")
         refreshConfigState()
+        log.info("Global config patch: state refreshed $summary")
         return (_appState.value as? KiloAppState.Ready) ?: current
     }
 
@@ -807,6 +811,11 @@ class KiloBackendAppService private constructor(
         connection.dispose()
         server.dispose()
     }
+}
+
+private fun summary(patch: ConfigPatchDto): String {
+    val values = patch.values.keys.sorted().joinToString(",").ifEmpty { "none" }
+    return "values=$values agents=${patch.agents.size}"
 }
 
 /**

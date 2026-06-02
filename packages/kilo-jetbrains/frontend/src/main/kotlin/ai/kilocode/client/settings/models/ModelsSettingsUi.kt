@@ -17,7 +17,9 @@ import ai.kilocode.client.settings.ui.SettingsRows
 import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
+import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.AgentDto
+import ai.kilocode.rpc.dto.ConfigPatchDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
@@ -47,6 +49,10 @@ internal class ModelsSettingsUi(
     private val workspaces: KiloWorkspaceService = service(),
     private val directory: String? = null,
 ) : SettingsPanel() {
+
+    companion object {
+        private val LOG = KiloLog.create(ModelsSettingsUi::class.java)
+    }
 
     private val form = ModelsSettingsContent(app, ::update, ::selectSubagent)
     private val defaults = form.defaults
@@ -100,6 +106,7 @@ internal class ModelsSettingsUi(
         val next = draft
         val patch = patch(prev, next)
         if (patch.values.isEmpty() && patch.agents.isEmpty()) return
+        LOG.info("model settings save: started ${summary(patch)}")
         pending = next
         saving = true
         saveError = null
@@ -108,10 +115,16 @@ internal class ModelsSettingsUi(
         app.updateConfigAsync(patch) { state ->
             ApplicationManager.getApplication().invokeLater({
                 if (disposed) {
-                    if (state == null) KiloNotifications.error(KiloBundle.message("settings.models.save.failed"))
+                    if (state == null) {
+                        LOG.warn("model settings save: failed after dispose ${summary(patch)}")
+                        KiloNotifications.error(KiloBundle.message("settings.models.save.failed"))
+                    } else {
+                        LOG.info("model settings save: completed after dispose ${summary(patch)}")
+                    }
                     return@invokeLater
                 }
                 if (state != null) {
+                    LOG.info("model settings save: completed ${summary(patch)}")
                     appState = state
                     val base = modelsDraft(state.config, agents)
                     baseline = if (savedMatches(base, next)) base else next
@@ -127,6 +140,7 @@ internal class ModelsSettingsUi(
                 draft = next
                 pending = null
                 saving = false
+                LOG.warn("model settings save: failed ${summary(patch)}")
                 saveError = KiloBundle.message("settings.models.save.failed")
                 sync()
             }, ModalityState.any())
@@ -390,6 +404,11 @@ internal class ModelsSettingsUi(
 }
 
 private const val KILO_PROVIDER = "kilo"
+
+private fun summary(patch: ConfigPatchDto): String {
+    val values = patch.values.keys.sorted().joinToString(",").ifEmpty { "none" }
+    return "values=$values agents=${patch.agents.size}"
+}
 
 private class ModelsSettingsContent(
     app: KiloAppService,

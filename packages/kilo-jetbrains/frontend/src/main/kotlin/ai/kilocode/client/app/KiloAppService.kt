@@ -216,11 +216,13 @@ class KiloAppService internal constructor(
     }
 
     suspend fun updateConfig(patch: ConfigPatchDto): KiloAppStateDto? = try {
+        LOG.info("config update: sending RPC ${summary(patch)}")
         val next = call { updateConfig(patch) }
         _state.value = next
+        LOG.info("config update: RPC completed ${summary(patch)}")
         next
     } catch (e: Exception) {
-        LOG.warn("config update failed", e)
+        LOG.warn("config update failed ${summary(patch)}", e)
         null
     }
 
@@ -309,4 +311,9 @@ class KiloAppService internal constructor(
         )
         _state.value = current.copy(profile = profile, progress = progress)
     }
+}
+
+private fun summary(patch: ConfigPatchDto): String {
+    val values = patch.values.keys.sorted().joinToString(",").ifEmpty { "none" }
+    return "values=$values agents=${patch.agents.size}"
 }
