@@ -2,4 +2,4 @@
 "@kilocode/cli": patch
 ---
 
-Avoid showing unexpected incomplete-response warnings when Responses streams finish after a completed tool call without a terminal event.
+Treat empty provider responses as retryable failures and avoid sending oversized prompt payloads that remain too large after pruning.

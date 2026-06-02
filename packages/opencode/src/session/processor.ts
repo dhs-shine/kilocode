@@ -149,11 +149,16 @@ export const layer: Layer.Layer<
       const ac = new AbortController() // kilocode_change — abort controller for offline handler
       const slog = log.clone().tag("session.id", input.sessionID).tag("messageID", input.assistantMessage.id)
 
-      const parse = (e: unknown) =>
-        MessageV2.fromError(e, {
+      const parse = (e: unknown) => {
+        // kilocode_change start - preserve retryable errors raised by Kilo processor guards
+        const err = KiloSessionProcessor.preserveError(e)
+        if (err) return err
+        // kilocode_change end
+        return MessageV2.fromError(e, {
           providerID: input.model.providerID,
           aborted,
         })
+      }
 
       const settleToolCall = Effect.fn("SessionProcessor.settleToolCall")(function* (toolCallID: string) {
         const done = ctx.toolcalls[toolCallID]?.done
@@ -551,6 +556,17 @@ export const layer: Layer.Layer<
               usage: value.usage,
               metadata: value.providerMetadata,
             })
+            // kilocode_change start - retry empty provider streams instead of accepting finish "other" as completion
+            const empty = KiloSessionProcessor.emptyResponseError({
+              msg: ctx.assistantMessage,
+              finish: value.finishReason,
+              tokens: usage.tokens,
+              cost: usage.cost,
+              parts: MessageV2.parts(ctx.assistantMessage.id),
+              step: ctx.step,
+            })
+            if (empty) return yield* Effect.fail(empty)
+            // kilocode_change end
             // kilocode_change start - guard against finish-step without start-step:
             // ctx.stepStart is 0 until `start-step` fires, which would feed a
             // huge bogus `elapsed` into telemetry. Fall back to now().

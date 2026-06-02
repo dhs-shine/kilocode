@@ -20,6 +20,8 @@ import CODE_SWITCH from "@/session/prompt/code-switch.txt"
 
 export namespace KiloSessionPrompt {
   const modes = ["ask", "plan"]
+  export const PAYLOAD_OVERFLOW_MESSAGE =
+    "The conversation is still too large to send after pruning old tool output. Start a new message to retry after compaction."
 
   /**
    * Determines whether the plan follow-up prompt should be shown.
@@ -113,6 +115,12 @@ export namespace KiloSessionPrompt {
       input.agent.permission,
       rules.filter((rule) => rule.action === "deny"),
     )
+  }
+
+  export function payloadOverflowError(input: { size: number; limit: number }) {
+    return new MessageV2.ContextOverflowError({
+      message: `${PAYLOAD_OVERFLOW_MESSAGE} Payload size: ${input.size} bytes; limit: ${input.limit} bytes.`,
+    }).toObject()
   }
 
   export function hardPermissions(input: { agent: { name: string; permission: Permission.Ruleset } }) {

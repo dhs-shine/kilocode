@@ -803,9 +803,6 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV3 {
       unified: "other",
       raw: undefined,
     }
-    // kilocode_change start - avoid surfacing "other" when a stream omits the terminal response chunk
-    let hasResponseFinished = false
-    // kilocode_change end
     const usage: {
       inputTokens: number | undefined
       outputTokens: number | undefined
@@ -1269,9 +1266,6 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV3 {
                 }),
                 raw: value.response.incomplete_details?.reason ?? undefined,
               }
-              // kilocode_change start
-              hasResponseFinished = true
-              // kilocode_change end
               usage.inputTokens = value.response.usage.input_tokens
               usage.outputTokens = value.response.usage.output_tokens
               usage.totalTokens = value.response.usage.input_tokens + value.response.usage.output_tokens
@@ -1324,15 +1318,6 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV3 {
             if (serviceTier !== undefined) {
               providerMetadata.openai.serviceTier = serviceTier
             }
-
-            // kilocode_change start - classify missing terminal chunks by observed output instead of "other"
-            if (!hasResponseFinished && finishReason.unified === "other") {
-              finishReason = {
-                unified: mapOpenAIResponseFinishReason({ finishReason: undefined, hasFunctionCall }),
-                raw: undefined,
-              }
-            }
-            // kilocode_change end
 
             controller.enqueue({
               type: "finish",

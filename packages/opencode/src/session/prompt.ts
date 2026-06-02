@@ -1732,7 +1732,18 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               msgs = KiloSessionPrompt.maybeStripHistoricalMedia(msgs)
               modelMsgs = yield* MessageV2.toModelMessagesEffect(msgs, model)
               const nextSize = Buffer.byteLength(JSON.stringify(modelMsgs))
-              if (nextSize > REQUEST_PRUNE_BYTES) log.warn("payload still large after pruning", { size: nextSize })
+              if (nextSize > REQUEST_PRUNE_BYTES) {
+                log.warn("payload still large after pruning", { size: nextSize })
+                handle.message.error = KiloSessionPrompt.payloadOverflowError({
+                  size: nextSize,
+                  limit: REQUEST_PRUNE_BYTES,
+                })
+                yield* sessions.updateMessage(handle.message)
+                yield* bus.publish(Session.Event.Error, { sessionID, error: handle.message.error })
+                yield* status.set(sessionID, { type: "idle" })
+                closeReasons.set(sessionID, "error")
+                return "break" as const
+              }
             }
             // kilocode_change end
             const system = [...env, ...instructions, ...(skills ? [skills] : [])]
