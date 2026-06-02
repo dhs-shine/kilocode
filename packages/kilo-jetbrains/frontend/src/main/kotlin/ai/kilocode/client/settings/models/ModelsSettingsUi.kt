@@ -7,7 +7,7 @@ import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.model.ModelText
 import ai.kilocode.client.settings.base.BaseContentPanel
-import ai.kilocode.client.settings.base.BaseWorkspaceSettingsUi
+import ai.kilocode.client.settings.base.BaseSettingsUi
 import ai.kilocode.client.settings.base.SettingsBannerKind
 import ai.kilocode.client.settings.base.SettingsRow
 import ai.kilocode.client.settings.base.SettingsRows
@@ -32,7 +32,7 @@ internal class ModelsSettingsUi(
     private val app: KiloAppService = service(),
     private val workspaces: KiloWorkspaceService = service(),
     directory: String? = null,
-) : BaseWorkspaceSettingsUi<ModelsSettingsContent, ModelsDraft, ConfigPatchDto, KiloAppStateDto, ModelsWorkspaceDto>(
+) : BaseSettingsUi<ModelsSettingsContent, ModelsDraft, ConfigPatchDto, KiloAppStateDto, ModelsWorkspaceDto>(
     cs,
     ModelsDraft(),
     app,

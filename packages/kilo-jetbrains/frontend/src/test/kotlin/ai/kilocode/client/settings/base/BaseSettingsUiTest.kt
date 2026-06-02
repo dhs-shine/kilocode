@@ -1,5 +1,10 @@
 package ai.kilocode.client.settings.base
 
+import ai.kilocode.client.app.KiloAppService
+import ai.kilocode.client.app.KiloWorkspaceService
+import ai.kilocode.client.testing.FakeAppRpcApi
+import ai.kilocode.client.testing.FakeWorkspaceRpcApi
+import ai.kilocode.rpc.dto.KiloAppStateDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
@@ -14,11 +19,17 @@ import javax.swing.text.JTextComponent
 
 class BaseSettingsUiTest : BasePlatformTestCase() {
     private lateinit var scope: CoroutineScope
+    private lateinit var appScope: CoroutineScope
+    private lateinit var app: KiloAppService
+    private lateinit var workspaces: KiloWorkspaceService
     private var panel: FakePanel? = null
 
     override fun setUp() {
         super.setUp()
         scope = CoroutineScope(SupervisorJob())
+        appScope = CoroutineScope(SupervisorJob())
+        app = KiloAppService(appScope, FakeAppRpcApi())
+        workspaces = KiloWorkspaceService(appScope, FakeWorkspaceRpcApi())
     }
 
     override fun tearDown() {
@@ -27,6 +38,7 @@ class BaseSettingsUiTest : BasePlatformTestCase() {
             if (view != null) edt { view.dispose() }
             panel = null
             scope.cancel()
+            appScope.cancel()
         } finally {
             super.tearDown()
         }
@@ -137,7 +149,7 @@ class BaseSettingsUiTest : BasePlatformTestCase() {
     }
 
     private fun create(login: Boolean = true): FakePanel {
-        val view = edt { FakePanel(scope, login) }
+        val view = edt { FakePanel(scope, app, workspaces, login) }
         panel = view
         return view
     }
@@ -181,15 +193,16 @@ class BaseSettingsUiTest : BasePlatformTestCase() {
 
     private class FakePanel(
         cs: CoroutineScope,
+        app: KiloAppService,
+        workspaces: KiloWorkspaceService,
         login: Boolean,
-    ) : BaseSettingsUi<FakeContent, Draft, Change, Draft>(cs, Draft("old"), login) {
+    ) : BaseSettingsUi<FakeContent, Draft, Change, Draft, Unit>(cs, Draft("old"), app, workspaces, loginBanner = login) {
         private val callbacks = mutableListOf<(Draft?) -> Unit>()
         var disposedFailures = 0
             private set
 
         init {
-            setSettingsContent(FakeContent())
-            syncContent()
+            startSettings(FakeContent())
         }
 
         fun edit(value: String) = updateDraft { copy(value = value) }
@@ -209,6 +222,12 @@ class BaseSettingsUiTest : BasePlatformTestCase() {
         }
 
         override fun base(result: Draft): Draft = result
+
+        override fun draft(state: KiloAppStateDto): Draft = draft
+
+        override suspend fun loadWorkspace(root: String) = Unit
+
+        override fun applyWorkspace(result: Unit) = Unit
 
         override fun syncContent() {
             val err = saveError

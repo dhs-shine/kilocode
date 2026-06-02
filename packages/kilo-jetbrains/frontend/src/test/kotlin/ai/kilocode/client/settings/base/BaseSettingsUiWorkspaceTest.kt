@@ -18,7 +18,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 
-class BaseWorkspaceSettingsUiTest : BasePlatformTestCase() {
+class BaseSettingsUiWorkspaceTest : BasePlatformTestCase() {
     private lateinit var appScope: CoroutineScope
     private lateinit var uiScope: CoroutineScope
     private lateinit var rpc: FakeAppRpcApi
@@ -54,7 +54,7 @@ class BaseWorkspaceSettingsUiTest : BasePlatformTestCase() {
         workspaceRpc.directory = "/resolved"
         val view = create("/hint")
 
-        flushUntil { edt { view.value() == "new" && view.roots == listOf("/resolved") } }
+        flushUntil { edt { view.value() == "new" && view.roots == listOf("/resolved") && view.loaded() } }
 
         edt {
             assertEquals("new", view.value())
@@ -128,7 +128,7 @@ class BaseWorkspaceSettingsUiTest : BasePlatformTestCase() {
         app: KiloAppService,
         workspaces: KiloWorkspaceService,
         hint: String,
-    ) : BaseWorkspaceSettingsUi<FakeContent, Draft, Change, Draft, String>(
+    ) : BaseSettingsUi<FakeContent, Draft, Change, Draft, String>(
         cs,
         Draft("old"),
         app,
