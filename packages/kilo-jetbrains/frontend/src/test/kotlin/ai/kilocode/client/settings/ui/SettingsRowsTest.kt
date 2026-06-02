@@ -12,6 +12,9 @@ import javax.swing.AbstractButton
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JLabel
+import javax.swing.JScrollPane
+import javax.swing.ScrollPaneConstants
+import javax.swing.Scrollable
 import javax.swing.text.JTextComponent
 
 class SettingsRowsTest : BasePlatformTestCase() {
@@ -37,6 +40,42 @@ class SettingsRowsTest : BasePlatformTestCase() {
         assertSame(value, components(row).first { it === value })
         assertTrue(text(row).contains("Updated"))
         assertTrue(text(row).contains("After"))
+    }
+
+    fun `test keyed update can clear value`() {
+        val rows = SettingsRows()
+        val value = JButton("A")
+        val row = rows.row("one", SettingsRow("One", value = value))
+
+        rows.update("one", "One")
+
+        assertFalse(components(row).any { it === value })
+    }
+
+    fun `test row value centers vertically`() {
+        val value = JButton("Choose a model")
+        val row = SettingsRow(
+            "Default model",
+            "This description is intentionally long enough to wrap instead of pushing the value off screen.",
+            value,
+        )
+        row.setSize(row.preferredSize.width, row.preferredSize.height)
+
+        layout(row)
+
+        assertEquals((value.parent.height - value.height) / 2, value.y)
+    }
+
+    fun `test row description uses escaped wrapping html`() {
+        val row = SettingsRow("Mode", "Use <fast> & safe models")
+
+        val label = components(row)
+            .filterIsInstance<JBLabel>()
+            .single { it.text.contains("fast") }
+
+        assertTrue(label.text.startsWith("<html>"))
+        assertTrue(label.text.contains("&lt;fast&gt;"))
+        assertTrue(label.text.contains("&amp;"))
     }
 
     fun `test removing keyed row removes only that row`() {
@@ -80,6 +119,17 @@ class SettingsRowsTest : BasePlatformTestCase() {
         assertFalse(text(panel.overlay).contains("Sign in to Kilo Code"))
         assertTrue(panel.overlay.components.any { it === panel.progress })
         assertTrue(text(panel.progress).contains("Loading models..."))
+    }
+
+    fun `test settings panel tracks viewport width without horizontal scroll`() {
+        val panel = SettingsPanel()
+
+        val scroll = components(panel).filterIsInstance<JScrollPane>().single()
+        val view = scroll.viewport.view
+
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, scroll.horizontalScrollBarPolicy)
+        assertTrue(view is Scrollable)
+        assertTrue((view as Scrollable).getScrollableTracksViewportWidth())
     }
 
     fun `test settings progress overlay is centered near top`() {
@@ -171,6 +221,11 @@ class SettingsRowsTest : BasePlatformTestCase() {
 
     private fun assertNotSameColor(a: Color, b: Color) {
         assertFalse("Expected colors to differ: $a", a.rgb == b.rgb)
+    }
+
+    private fun layout(component: JComponent) {
+        component.doLayout()
+        components(component).filterIsInstance<Container>().forEach { it.doLayout() }
     }
 
     private fun text(component: JComponent): String = components(component)

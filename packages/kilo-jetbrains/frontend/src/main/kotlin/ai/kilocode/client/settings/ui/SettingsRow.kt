@@ -9,6 +9,7 @@ import ai.kilocode.client.ui.layout.align
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import com.intellij.xml.util.XmlStringUtil
 import java.awt.BorderLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -20,9 +21,10 @@ class SettingsRow(
 ) : JPanel(BorderLayout()) {
 
     private val titleLabel = JBLabel(title).apply { font = UiStyle.Fonts.bold() }
-    private val descriptionLabel = JBLabel(description.orEmpty()).apply {
+    private val descriptionLabel = JBLabel(descriptionHtml(description)).apply {
         font = UiStyle.Fonts.hint()
         foreground = UIUtil.getContextHelpForeground()
+        setAllowAutoWrapping(true)
         isVisible = description != null
     }
     private val labels = Stack.vertical(UiStyle.Gap.sm())
@@ -45,7 +47,7 @@ class SettingsRow(
         value: JComponent? = null,
     ) {
         if (titleLabel.text != title) titleLabel.text = title
-        val text = description.orEmpty()
+        val text = descriptionHtml(description)
         if (descriptionLabel.text != text) descriptionLabel.text = text
         val visible = description != null
         if (descriptionLabel.isVisible != visible) descriptionLabel.isVisible = visible
@@ -53,12 +55,20 @@ class SettingsRow(
     }
 
     private fun setValue(value: JComponent?) {
-        if (value != null && current !== value) {
-            valuePanel.removeAll()
-            valuePanel.add(value.align(HAlign.RIGHT, VAlign.CENTER), BorderLayout.CENTER)
-            current = value
+        if (current === value) return
+        valuePanel.removeAll()
+        current = value
+        if (value != null) {
+            valuePanel.add(value.align(HAlign.CENTER, VAlign.CENTER), BorderLayout.CENTER)
         }
+        valuePanel.revalidate()
+        valuePanel.repaint()
     }
+}
+
+private fun descriptionHtml(description: String?): String {
+    val text = description ?: return ""
+    return XmlStringUtil.wrapInHtml(XmlStringUtil.escapeString(text))
 }
 
 class SettingsRows : Stack(StackAxis.VERTICAL) {

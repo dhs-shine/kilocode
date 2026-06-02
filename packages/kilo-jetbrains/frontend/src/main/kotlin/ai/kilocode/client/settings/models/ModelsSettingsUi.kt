@@ -233,20 +233,7 @@ internal class ModelsSettingsUi(
             ready = appState.status == KiloAppStatusDto.READY,
             authenticated = appState.profile != null,
         )
-        if (bannerVisible) {
-            top.showNotLoggedIn { openProfile(it) }
-        } else {
-            when (state) {
-                ModelsStatus.LOAD_FAILED -> top.showBanner(
-                    KiloBundle.message("settings.models.load.failed"),
-                    emptyList(),
-                    SettingsBannerKind.ERROR,
-                )
-                ModelsStatus.NO_PROVIDERS -> top.showBanner(KiloBundle.message("settings.models.noProviders"), emptyList())
-                ModelsStatus.MODES_FAILED -> top.showBanner(KiloBundle.message("settings.models.modes.failed"), emptyList())
-                else -> top.hideBanner()
-            }
-        }
+        syncBanner(state, bannerVisible)
         val err = saveError
         if (saving || state == ModelsStatus.SAVING) {
             showProgress(KiloBundle.message("settings.models.save.pending"))
@@ -267,6 +254,26 @@ internal class ModelsSettingsUi(
         if (layout) {
             revalidate()
             repaint()
+        }
+    }
+
+    @RequiresEdt
+    private fun syncBanner(state: ModelsStatus, login: Boolean) {
+        checkEdt()
+        if (login) {
+            top.showNotLoggedIn { openProfile(it) }
+            return
+        }
+        if ((saving || state == ModelsStatus.LOADING || state == ModelsStatus.SAVING) && top.isVisible) return
+        when (state) {
+            ModelsStatus.LOAD_FAILED -> top.showBanner(
+                KiloBundle.message("settings.models.load.failed"),
+                emptyList(),
+                SettingsBannerKind.ERROR,
+            )
+            ModelsStatus.NO_PROVIDERS -> top.showBanner(KiloBundle.message("settings.models.noProviders"), emptyList())
+            ModelsStatus.MODES_FAILED -> top.showBanner(KiloBundle.message("settings.models.modes.failed"), emptyList())
+            else -> top.hideBanner()
         }
     }
 

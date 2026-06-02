@@ -18,6 +18,7 @@ import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.InlineBanner
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -137,6 +138,41 @@ class ModelsSettingsUiTest : BasePlatformTestCase() {
         }
         assertEquals(1, rpc.configUpdateAttempts)
         assertTrue(notes.any { it.title == "Failed to save model settings" })
+    }
+
+    fun `test logged out save keeps login banner stable`() {
+        edt {
+            requireUi().dispose()
+            ui = null
+        }
+        uiScope = CoroutineScope(SupervisorJob())
+        val state = KiloAppStateDto(
+            KiloAppStatusDto.READY,
+            config = ConfigDto(model = "kilo/old"),
+            profile = null,
+        )
+        rpc.state.value = state
+        app._state.value = state
+        workspaceRpc.models = ModelsWorkspaceDto(providers = providers())
+        edt { ui = ModelsSettingsUi(uiScope, app, workspaces, directory = "/test") }
+        val panel = requireUi()
+        flushUntil { text(panel).contains("Old") && text(panel).contains("Sign in to Kilo Code") }
+        val banner = edt { components(panel.top).filterIsInstance<InlineBanner>().single() }
+        rpc.configUpdateGate = CompletableDeferred()
+
+        edt {
+            select(panel, "new")
+            panel.applyDraft()
+            assertTrue(text(panel).contains("Sign in to Kilo Code"))
+            assertSame(banner, components(panel.top).filterIsInstance<InlineBanner>().single())
+        }
+
+        rpc.configUpdateGate?.complete(Unit)
+        flushUntil { rpc.configPatches.isNotEmpty() }
+        edt {
+            assertTrue(text(panel).contains("Sign in to Kilo Code"))
+            assertSame(banner, components(panel.top).filterIsInstance<InlineBanner>().single())
+        }
     }
 
     private fun providers(): ProvidersDto = ProvidersDto(
