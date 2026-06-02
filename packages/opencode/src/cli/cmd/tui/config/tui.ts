@@ -43,6 +43,7 @@ export type Resolved = Omit<Info, "keybinds" | "leader_timeout"> & {
 
 export interface Interface {
   readonly get: () => Effect.Effect<Resolved>
+  readonly info: () => Effect.Effect<Info>
   readonly waitForDependencies: () => Effect.Effect<void>
 }
 
@@ -67,6 +68,37 @@ function normalize(raw: Record<string, unknown>) {
   return {
     ...tui,
     ...data,
+  }
+}
+
+export function effective(config: Info): Info {
+  const keybinds = { ...(config.keybinds ?? {}) }
+  if (process.platform === "win32") {
+    // Native Windows terminals do not support POSIX suspend, so prefer prompt undo.
+    keybinds.terminal_suspend = "none"
+    keybinds.input_undo ??= unique([
+      "ctrl+z",
+      ...String(TuiKeybind.Keybinds.shape.input_undo.parse(undefined)).split(","),
+    ]).join(",")
+  }
+  return {
+    ...config,
+    keybinds: TuiKeybind.Keybinds.parse(keybinds),
+    leader_timeout: config.leader_timeout ?? KeymapLeaderTimeoutDefault,
+  }
+}
+
+export function resolve(config: Info, origins?: ConfigPlugin.Origin[]): Resolved {
+  const info = effective(config)
+  const keybinds = TuiKeybind.Keybinds.parse(info.keybinds ?? {})
+  return {
+    ...info,
+    keybinds: createBindingLookup(TuiKeybind.toBindingConfig(keybinds), {
+      commandMap: TuiKeybind.CommandMap,
+      bindingDefaults: TuiKeybind.bindingDefaults(),
+    }),
+    leader_timeout: info.leader_timeout ?? KeymapLeaderTimeoutDefault,
+    plugin_origins: origins?.length ? origins : undefined,
   }
 }
 
@@ -183,32 +215,17 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
     }
   }
 
-  const keybinds = { ...(acc.result.keybinds ?? {}) }
-  if (process.platform === "win32") {
-    // Native Windows terminals do not support POSIX suspend, so prefer prompt undo.
-    keybinds.terminal_suspend = "none"
-    keybinds.input_undo ??= unique([
-      "ctrl+z",
-      ...String(TuiKeybind.Keybinds.shape.input_undo.parse(undefined)).split(","),
-    ]).join(",")
-  }
-  const parsedKeybinds = TuiKeybind.Keybinds.parse(keybinds)
-  const result: Resolved = {
-    ...acc.result,
-    keybinds: createBindingLookup(TuiKeybind.toBindingConfig(parsedKeybinds), {
-      commandMap: TuiKeybind.CommandMap,
-      bindingDefaults: TuiKeybind.bindingDefaults(),
-    }),
-    leader_timeout: acc.result.leader_timeout ?? KeymapLeaderTimeoutDefault,
-    plugin_origins: acc.plugin_origins.length ? acc.plugin_origins : undefined,
-  }
+  const info = effective(acc.result)
+  const result = resolve(info, acc.plugin_origins)
 
   // kilocode_change start — inject Kilo default plugins to keep TUI aligned with server config
   KilocodeDefaultPlugins.apply(result, { disabled: Flag.KILO_DISABLE_DEFAULT_PLUGINS, log })
+  info.plugin = result.plugin
   // kilocode_change end
 
   return {
     config: result,
+    info,
     dirs: result.plugin?.length ? dirs : [],
   }
 })
@@ -238,11 +255,12 @@ export const layer = Layer.effect(
     )
 
     const get = Effect.fn("TuiConfig.get")(() => Effect.succeed(data.config))
+    const info = Effect.fn("TuiConfig.info")(() => Effect.succeed(data.info))
 
     const waitForDependencies = Effect.fn("TuiConfig.waitForDependencies")(() =>
       Effect.forEach(deps, Fiber.join, { concurrency: "unbounded" }).pipe(Effect.ignore(), Effect.asVoid),
     )
-    return Service.of({ get, waitForDependencies })
+    return Service.of({ get, info, waitForDependencies })
   }).pipe(Effect.withSpan("TuiConfig.layer")),
 )
 

@@ -3,6 +3,8 @@ import { useRouteData } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
 import { SplitBorder } from "@tui/component/border"
+import { Spinner } from "@tui/component/spinner" // kilocode_change
+import { useLocal } from "@tui/context/local" // kilocode_change
 import type { AssistantMessage } from "@kilocode/sdk/v2"
 import { Locale } from "@/util/locale"
 import { useTerminalDimensions } from "@opentui/solid"
@@ -12,8 +14,23 @@ import { useCommandShortcut } from "../../keymap"
 export function SubagentFooter() {
   const route = useRouteData("session")
   const sync = useSync()
+  const local = useLocal() // kilocode_change
   const messages = createMemo(() => sync.data.message[route.sessionID] ?? [])
   const session = createMemo(() => sync.session.get(route.sessionID))
+
+  // kilocode_change start
+  const lastAssistant = createMemo(() => messages().findLast((m) => m.role === "assistant"))
+
+  const isRunning = createMemo(() => {
+    const status = sync.data.session_status?.[route.sessionID]
+    if (status?.type === "busy") return true
+    const last = lastAssistant()
+    if (last && !last.time.completed) return true
+    return false
+  })
+
+  const agentColor = createMemo(() => local.agent.color(lastAssistant()?.agent ?? ""))
+  // kilocode_change end
 
   const subagentInfo = createMemo(() => {
     const s = session()
@@ -86,6 +103,11 @@ export function SubagentFooter() {
                 ({subagentInfo().index} of {subagentInfo().total})
               </text>
             </Show>
+            {/* kilocode_change start */}
+            <Show when={isRunning()}>
+              <Spinner color={agentColor()} />
+            </Show>
+            {/* kilocode_change end */}
             <Show when={usage()}>
               {(item) => (
                 <text fg={theme.textMuted} wrapMode="none">

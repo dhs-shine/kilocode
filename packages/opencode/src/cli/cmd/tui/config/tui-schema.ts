@@ -19,6 +19,17 @@ export const TuiOptions = z.object({
     .optional()
     .describe("Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column"),
   mouse: z.boolean().optional().describe("Enable or disable mouse capture (default: true)"),
+  // kilocode_change start - support documented TUI attention config in Console
+  attention: z
+    .object({
+      enabled: z.boolean().optional().describe("Enable TUI attention alerts"),
+      notifications: z.boolean().optional().describe("Enable desktop notifications for TUI attention alerts"),
+      sound: z.boolean().optional().describe("Enable sound for TUI attention alerts"),
+      volume: z.number().min(0).max(1).optional().describe("TUI attention sound volume"),
+    })
+    .optional()
+    .describe("TUI attention settings"),
+  // kilocode_change end
 })
 
 export const TuiInfo = z

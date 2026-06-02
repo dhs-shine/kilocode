@@ -705,6 +705,17 @@ Options:
   --output    Output format (table, json, or md)  [string] [choices: "table", "json", "md"] [default: "table"]
 ```
 
+## kilo profile
+
+```
+show Kilo account profile
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+  --json     output profile as JSON  [boolean] [default: false]
+```
+
 ## kilo stats
 
 ```
@@ -808,6 +819,91 @@ enable remote connection for real-time session relay
 Options:
   --help     Show help  [boolean]
   --version  Show version number  [boolean]
+```
+
+## kilo daemon
+
+```
+manage the local kilo daemon
+
+Commands:
+  kilo daemon start    start the local kilo daemon
+  kilo daemon status   show local kilo daemon status
+  kilo daemon stop     stop the local kilo daemon
+  kilo daemon restart  restart the local kilo daemon
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+```
+
+### kilo daemon start
+
+```
+start the local kilo daemon
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
+  --json         print daemon details as JSON  [boolean]
+```
+
+### kilo daemon status
+
+```
+show local kilo daemon status
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+  --json     print daemon details as JSON  [boolean]
+```
+
+### kilo daemon stop
+
+```
+stop the local kilo daemon
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+  --json     print daemon details as JSON  [boolean]
+```
+
+### kilo daemon restart
+
+```
+restart the local kilo daemon
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
+  --json         print daemon details as JSON  [boolean]
+```
+
+## kilo console
+
+```
+open the local Kilo Console
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
 ```
 
 ## kilo db

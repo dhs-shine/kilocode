@@ -51,7 +51,7 @@
   <!-- packages/opencode/src/cli/cmd/github.ts -->
 - <https://docs.inceptionlabs.ai/capabilities/next-edit>
   <!-- packages/opencode/src/kilocode/server/httpapi/groups/kilo-gateway.ts -->
-- <https://docs.mistral.ai/capabilities/reasoning/adjustable>
+- <https://docs.mistral.ai/studio-api/conversations/reasoning>
   <!-- packages/opencode/src/provider/transform.ts -->
 - <https://docs.venice.ai/overview/guides/reasoning-models#reasoning-effort>
   <!-- packages/opencode/src/provider/transform.ts -->
@@ -147,7 +147,7 @@
   <!-- packages/opencode/src/cli/cmd/tui/config/tui-migrate.ts -->
 - <https://opencode.ai/zen>
   <!-- packages/kilo-vscode/webview-ui/src/i18n/en.ts -->
-- <https://openrouter.ai/docs/use-cases/usage-accounting>
+- <https://openrouter.ai/docs/cookbook/administration/usage-accounting>
   <!-- packages/opencode/src/kilocode/session/index.ts -->
 - <https://opncd.ai>
   <!-- packages/opencode/src/share/share-next.ts -->

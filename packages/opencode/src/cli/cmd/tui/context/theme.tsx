@@ -17,6 +17,7 @@ import github from "./theme/github.json" with { type: "json" }
 import gruvbox from "./theme/gruvbox.json" with { type: "json" }
 import kanagawa from "./theme/kanagawa.json" with { type: "json" }
 import kilo from "./theme/kilo.json" with { type: "json" } // kilocode_change
+import kilo1 from "./theme/kilo-v1.json" with { type: "json" } // kilocode_change
 import material from "./theme/material.json" with { type: "json" }
 import matrix from "./theme/matrix.json" with { type: "json" }
 import mercury from "./theme/mercury.json" with { type: "json" }
@@ -102,6 +103,7 @@ export const DEFAULT_THEMES: Record<string, ThemeJson> = {
   gruvbox,
   kanagawa,
   kilo, // kilocode_change
+  ["kilo-v1"]: kilo1, // kilocode_change
   material,
   matrix,
   mercury,

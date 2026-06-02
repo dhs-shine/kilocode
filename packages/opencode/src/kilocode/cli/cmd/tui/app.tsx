@@ -27,6 +27,10 @@ import { DialogProcessList } from "@/kilocode/cli/cmd/tui/component/dialog-proce
 // Re-export so upstream can render the route without importing directly
 export { KiloClawView } from "@/kilocode/claw/view"
 
+// Hot reload TUI-local settings (keybinds/theme/ui) when changed from the Kilo Console.
+// Called from the App body (below SDKProvider and the TuiConfig provider).
+export { useTuiConfigHotReload } from "@/kilocode/cli/cmd/tui/context/tui-config-hot-reload"
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -68,10 +72,27 @@ export function useSessionEffects(deps: {
   sdk: ReturnType<typeof useSDK>
   sync: ReturnType<typeof useSync>
 }) {
+  const pty = process.env.KILO_PTY_ID
+  const state = { prev: "" }
+
   // Notify server which session the user is viewing
   createEffect(() => {
     const sessionID = deps.route.data.type === "session" ? deps.route.data.sessionID : undefined
     deps.sdk.client.session.viewed({ focused: sessionID ? [sessionID] : [] }).catch(() => {})
+
+    if (!pty) return
+    const session = sessionID ? deps.sync.session.get(sessionID) : undefined
+    const key = [sessionID ?? "", session?.title ?? ""].join("\n")
+    if (key === state.prev) return
+    state.prev = key
+
+    deps.sdk.client.pty
+      .update({
+        ptyID: pty,
+        sessionID: sessionID ?? null,
+        ...(session?.title ? { title: session.title } : {}),
+      })
+      .catch(() => {})
   })
 
   // Evict per-session data from store when navigating away

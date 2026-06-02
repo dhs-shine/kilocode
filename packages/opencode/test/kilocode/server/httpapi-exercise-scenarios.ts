@@ -70,6 +70,49 @@ export const kiloScenarios: Scenario[] = [
     }))
     .json(200, (body) => check(body === true, "session process stop should return true")),
   http.protected.get("/config/warnings", "config.warnings").json(200, array),
+  http.protected.get("/config/effective", "config.effective").json(200, object),
+  http.protected.get("/config/model-state", "config.modelState").json(200, object),
+  http.protected
+    .patch("/config/model-state", "config.modelStateUpdate")
+    .at((ctx) => ({ path: "/config/model-state", headers: ctx.headers(), body: { favorite: [] } }))
+    .json(200, object),
+  http.protected.get("/config/overlay", "config.overlay").json(200, object),
+  http.protected
+    .patch("/config/overlay", "config.overlayUpdate")
+    .mutating()
+    .at((ctx) => ({ path: "/config/overlay", headers: ctx.headers(), body: { scope: "project", set: {} } }))
+    .json(200, object),
+  http.protected.get("/config/rules", "config.rules").json(200, object),
+  http.protected
+    .put("/config/rules", "config.rulesUpdate")
+    .mutating()
+    .at((ctx) => ({ path: "/config/rules", headers: ctx.headers(), body: { content: "Use small changes." } }))
+    .json(200, object),
+  http.protected.get("/config/sources", "config.sources").json(200, object),
+  http.protected.get("/tui/config", "tui.config.get").json(200, object),
+  http.protected.get("/tui/keybinds", "tui.keybind.list").json(200, object),
+  http.protected
+    .patch("/tui/config", "tui.config.update")
+    .mutating()
+    .at((ctx) => ({ path: "/tui/config?scope=project", headers: ctx.headers(), body: { theme: "nord" } }))
+    .json(200, object),
+  http.protected
+    .post("/agent-builder/preview", "agent.builder.preview")
+    .at((ctx) => ({
+      path: "/agent-builder/preview",
+      headers: ctx.headers(),
+      body: { id: "httpapi-agent", scope: "project", mode: "subagent", prompt: "Review changes." },
+    }))
+    .json(200, object),
+  http.protected
+    .put("/agent-builder/{id}", "agent.builder.save")
+    .mutating()
+    .at((ctx) => ({
+      path: route("/agent-builder/{id}", { id: "httpapi-agent" }),
+      headers: ctx.headers(),
+      body: { id: "httpapi-agent", scope: "project", mode: "subagent", prompt: "Review changes." },
+    }))
+    .json(200, object),
   http.protected
     .get("/experimental/worktree/diff", "worktree.diff")
     .at((ctx) => ({ path: "/experimental/worktree/diff?base=HEAD", headers: ctx.headers() }))

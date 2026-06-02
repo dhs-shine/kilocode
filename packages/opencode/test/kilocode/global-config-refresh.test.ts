@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
+import path from "path"
 import { Global } from "@opencode-ai/core/global"
+import { Permission } from "../../src/permission"
 import { GlobalBus } from "../../src/bus/global"
 import { Server } from "../../src/server/server"
 import { registerDisposer } from "../../src/effect/instance-registry"
@@ -26,6 +28,20 @@ async function update(target: ReturnType<typeof app>, provider: "kilo" | "openro
 async function provider(target: ReturnType<typeof app>, directory: string) {
   const response = await target.request("/config", { headers: { "x-kilo-directory": directory } })
   return (await response.json()).indexing?.provider as string | undefined
+}
+
+async function config(dir: string, value: object) {
+  await Bun.write(path.join(dir, "kilo.json"), JSON.stringify(value))
+}
+
+async function edit(target: ReturnType<typeof app>, directory: string) {
+  const response = await target.request("/config", { headers: { "x-kilo-directory": directory } })
+  const body = (await response.json()) as { permission?: unknown }
+  return Permission.evaluate(
+    "edit",
+    "*",
+    Permission.fromConfig((body.permission ?? {}) as Parameters<typeof Permission.fromConfig>[0]),
+  ).action
 }
 
 afterEach(async () => {
@@ -80,5 +96,20 @@ describe("global config refresh", () => {
     } finally {
       GlobalBus.off("event", listener)
     }
+  })
+
+  test("detects external global config edits", async () => {
+    await using global = await tmpdir()
+    await using workspace = await tmpdir({ config: { formatter: false, lsp: false } })
+    ;(Global.Path as { config: string }).config = global.path
+    await config(global.path, { permission: { edit: "ask" } })
+    await disposeAllInstances()
+    const target = app()
+
+    expect(await edit(target, workspace.path)).toBe("ask")
+
+    await config(global.path, { permission: { edit: { "*": "allow" } } })
+
+    expect(await edit(target, workspace.path)).toBe("allow")
   })
 })

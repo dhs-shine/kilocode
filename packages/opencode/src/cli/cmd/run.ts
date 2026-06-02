@@ -29,6 +29,7 @@ import { Permission } from "@/permission"
 import { INTERACTIVE_INPUT_ERROR, resolveInteractiveStdin } from "./run/runtime.stdin"
 import { importCloudSession, validateCloudFork } from "@/kilocode/cloud-session" // kilocode_change
 import { KiloRunAuto } from "@/kilocode/cli/run-auto" // kilocode_change
+import { KiloRunDaemon } from "@/kilocode/cli/cmd/run" // kilocode_change
 
 const runtimeTask = import("./run/runtime")
 type ModelInput = Parameters<KiloClient["session"]["prompt"]>[0]["model"]
@@ -919,6 +920,8 @@ export const RunCommand = effectCmd({
         const sdk = attachSDK(directory)
         return await execute(sdk)
       }
+
+      if (await KiloRunDaemon.attach({ directory, execute })) return // kilocode_change
 
       const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
         const { Server } = await import("@/server/server")
