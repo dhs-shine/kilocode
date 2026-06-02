@@ -397,6 +397,7 @@ it.live("loop calls LLM and returns assistant message", () =>
   ),
 )
 
+// kilocode_change start - reject oversized payloads after pruning
 it.live("loop does not send payload that remains large after pruning", () =>
   provideTmpdirServer(
     Effect.fnUntraced(function* ({ llm }) {
@@ -424,6 +425,7 @@ it.live("loop does not send payload that remains large after pruning", () =>
     { git: true, config: providerCfg },
   ),
 )
+// kilocode_change end
 
 // kilocode_change start - replacement prompts unblock pending Question service requests
 it.live("new prompt dismisses a pending question", () =>

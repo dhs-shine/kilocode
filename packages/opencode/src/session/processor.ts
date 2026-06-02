@@ -149,16 +149,14 @@ export const layer: Layer.Layer<
       const ac = new AbortController() // kilocode_change — abort controller for offline handler
       const slog = log.clone().tag("session.id", input.sessionID).tag("messageID", input.assistantMessage.id)
 
-      const parse = (e: unknown) => {
-        // kilocode_change start - preserve retryable errors raised by Kilo processor guards
-        const err = KiloSessionProcessor.preserveError(e)
-        if (err) return err
-        // kilocode_change end
-        return MessageV2.fromError(e, {
+      // kilocode_change start - preserve retryable errors raised by Kilo processor guards
+      const parse = (e: unknown) =>
+        KiloSessionProcessor.preserveError(e) ??
+        MessageV2.fromError(e, {
           providerID: input.model.providerID,
           aborted,
         })
-      }
+      // kilocode_change end
 
       const settleToolCall = Effect.fn("SessionProcessor.settleToolCall")(function* (toolCallID: string) {
         const done = ctx.toolcalls[toolCallID]?.done

@@ -466,6 +466,7 @@ it.live("session.processor effect tests reset reasoning state across retries", (
   ),
 )
 
+// kilocode_change start - retry empty provider responses
 it.live("session.processor effect tests retry empty other finishes", () =>
   provideTmpdirServer(
     ({ dir, llm }) =>
@@ -512,6 +513,7 @@ it.live("session.processor effect tests retry empty other finishes", () =>
     { git: true, config: (url) => providerCfg(url) },
   ),
 )
+// kilocode_change end
 
 it.live("session.processor effect tests do not retry unknown json errors", () =>
   provideTmpdirServer(
