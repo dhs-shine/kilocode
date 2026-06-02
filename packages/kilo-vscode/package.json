@@ -52,7 +52,8 @@
     "zoo code"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onUri"
   ],
   "main": "./dist/extension.js",
   "contributes": {

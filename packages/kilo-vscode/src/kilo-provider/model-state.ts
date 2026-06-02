@@ -41,16 +41,20 @@ async function read(client: KiloClient | null): Promise<Record<string, unknown>>
   }
 }
 
-function write(client: KiloClient | null, key: string, value: unknown): Promise<void> {
+function update(client: KiloClient | null, key: string, updater: (value: unknown) => unknown): Promise<void> {
   const op = queue.then(async () => {
     const p = await resolve(client)
     if (!p) return
     const existing = await read(client)
-    existing[key] = value
+    existing[key] = updater(existing[key])
     await fs.promises.writeFile(p, JSON.stringify(existing, null, 2))
   })
   queue = op.catch(() => {})
   return op
+}
+
+function write(client: KiloClient | null, key: string, value: unknown): Promise<void> {
+  return update(client, key, () => value)
 }
 
 /**
@@ -63,20 +67,22 @@ export async function handleMessage(
   post: PostMessage,
 ): Promise<boolean> {
   if (type === "persistModelSelection") {
-    const data = await read(client)
-    const model = validateModelSelections(data.model)
-    model[message.agent as string] = {
-      providerID: message.providerID as string,
-      modelID: message.modelID as string,
-    }
-    await write(client, "model", model)
+    await update(client, "model", (value) => {
+      const model = validateModelSelections(value)
+      model[message.agent as string] = {
+        providerID: message.providerID as string,
+        modelID: message.modelID as string,
+      }
+      return model
+    })
     return true
   }
   if (type === "clearModelSelection") {
-    const data = await read(client)
-    const model = validateModelSelections(data.model)
-    delete model[message.agent as string]
-    await write(client, "model", model)
+    await update(client, "model", (value) => {
+      const model = validateModelSelections(value)
+      delete model[message.agent as string]
+      return model
+    })
     return true
   }
   if (type === "requestModelSelections") {

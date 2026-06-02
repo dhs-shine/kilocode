@@ -172,6 +172,7 @@ interface SessionContextValue {
   // Model selection (global, extension-lifetime)
   selected: (sessionID?: string) => ModelSelection | null
   selectModel: (providerID: string, modelID: string, sessionID?: string) => void
+  selectPersistedModel: (providerID: string, modelID: string) => void
   hasModelOverride: (sessionID?: string) => boolean
   clearModelOverride: (sessionID?: string) => void
 
@@ -345,6 +346,7 @@ export const SessionProvider: ParentComponent = (props) => {
   const [agents, setAgents] = createSignal<AgentInfo[]>([])
   const [allAgents, setAllAgents] = createSignal<AgentInfo[]>([])
   const [defaultAgent, setDefaultAgent] = createSignal("code")
+  const [pendingPersistedModel, setPendingPersistedModel] = createSignal<ModelSelection | null>(null)
 
   // Skills loaded from the CLI backend
   const [skills, setSkills] = createSignal<SkillInfo[]>([])
@@ -506,17 +508,9 @@ export const SessionProvider: ParentComponent = (props) => {
     vscode.postMessage({ type: "persistRecents", recents: updated })
   }
 
-  function applyModel(agentName: string, selection: ModelSelection, sessionID?: string) {
-    pushRecent(selection)
-    if (sessionID) {
-      setStore("sessionOverrides", sessionID, selection)
-      return
-    }
-    // Always remember the per-mode model choice so switching modes restores
-    // the last-used model (mirrors CLI TUI's model.json behavior).
+  function persistModelSelection(agentName: string, selection: ModelSelection) {
     setUserSetAgents((prev) => ({ ...prev, [agentName]: true }))
     setStore("modelSelections", agentName, selection)
-    // Persist to model.json via the extension host
     vscode.postMessage({
       type: "persistModelSelection",
       agent: agentName,
@@ -525,12 +519,47 @@ export const SessionProvider: ParentComponent = (props) => {
     })
   }
 
+  function applyModel(agentName: string, selection: ModelSelection, sessionID?: string) {
+    pushRecent(selection)
+    if (sessionID) {
+      setStore("sessionOverrides", sessionID, selection)
+      return
+    }
+    // Always remember the per-mode model choice so switching modes restores
+    // the last-used model (mirrors CLI TUI's model.json behavior).
+    persistModelSelection(agentName, selection)
+  }
+
   function selectModel(providerID: string, modelID: string, sessionID?: string) {
     const sid = sessionID ?? currentSessionID()
     applyModel(agentForScope(sid), { providerID, modelID }, sid)
     if (sid) {
       hideErrors(sid)
     }
+  }
+
+  function applyPersistedModel(selection: ModelSelection) {
+    const sid = currentSessionID()
+    const defaultAgentName = defaultAgent()
+    const activeAgentName = agentForScope()
+    pushRecent(selection)
+    persistModelSelection(defaultAgentName, selection)
+    if (activeAgentName !== defaultAgentName) {
+      persistModelSelection(activeAgentName, selection)
+    }
+    if (sid) {
+      setStore("sessionOverrides", sid, selection)
+      hideErrors(sid)
+    }
+  }
+
+  function selectPersistedModel(providerID: string, modelID: string) {
+    const selection = { providerID, modelID }
+    if (agents().length === 0) {
+      setPendingPersistedModel(selection)
+      return
+    }
+    applyPersistedModel(selection)
   }
 
   function promptAgent(sessionID?: string) {
@@ -636,6 +665,12 @@ export const SessionProvider: ParentComponent = (props) => {
         }
       }),
     )
+
+    const pendingModel = pendingPersistedModel()
+    if (pendingModel) {
+      setPendingPersistedModel(null)
+      applyPersistedModel(pendingModel)
+    }
 
     // Rescan already-loaded message history so sessions whose messagesLoaded
     // arrived before agentsLoaded (and therefore got no agent selection) are
@@ -2478,6 +2513,7 @@ export const SessionProvider: ParentComponent = (props) => {
     scopedSuggestions,
     selected,
     selectModel,
+    selectPersistedModel,
     hasModelOverride,
     clearModelOverride,
     costBreakdown,

@@ -10,6 +10,7 @@ import { Diff } from "@kilocode/kilo-ui/diff"
 import { File } from "@kilocode/kilo-ui/file"
 import { DataProvider } from "@kilocode/kilo-ui/context/data"
 import { Toast } from "@kilocode/kilo-ui/toast"
+import { KILO_PROVIDER_ID } from "../../src/shared/provider-model"
 import Settings from "./components/settings/Settings"
 import ProfileView from "./components/profile/ProfileView"
 import { VSCodeProvider, useVSCode } from "./context/vscode"
@@ -36,10 +37,17 @@ import { NotificationsProvider } from "./context/notifications"
 import { FeedbackProvider } from "./context/feedback"
 import { KiloEmbeddingModelsProvider } from "./context/kilo-embedding-models"
 import type { Message as SDKMessage, Part as SDKPart } from "@kilocode/sdk/v2"
+import type { SelectKiloModelMessage } from "./types/messages"
 import "./styles/chat.css"
 
 type ViewType = "newTask" | "marketplace" | "history" | "profile" | "settings" | "subAgentViewer"
 const VALID_VIEWS = new Set<string>(["newTask", "marketplace", "history", "profile", "settings", "subAgentViewer"])
+
+function isSelectKiloModelMessage(message: unknown): message is SelectKiloModelMessage {
+  if (!message || typeof message !== "object") return false
+  if (!("type" in message) || !("modelID" in message)) return false
+  return message.type === "selectKiloModel" && typeof message.modelID === "string"
+}
 
 /**
  * Bridge our session store to the DataProvider's expected Data shape.
@@ -261,6 +269,13 @@ const AppContent: Component = () => {
     setCurrentView("newTask")
   }
 
+  const handleSelectKiloModel = (message: unknown) => {
+    if (!isSelectKiloModelMessage(message)) return
+    console.log("[Kilo New] App: selecting promoted Kilo model:", message.modelID)
+    session.selectPersistedModel(KILO_PROVIDER_ID, message.modelID)
+    setCurrentView("newTask")
+  }
+
   onMount(() => {
     const handler = (event: MessageEvent) => {
       const message = event.data
@@ -279,6 +294,7 @@ const AppContent: Component = () => {
         session.selectCloudSession(message.sessionId)
         setCurrentView("newTask")
       }
+      handleSelectKiloModel(message)
       handleForked(message)
       if (message?.type === "viewSubAgentSession" && message.sessionID) {
         console.log("[Kilo New] App: 🔍 viewSubAgentSession:", message.sessionID)

@@ -229,6 +229,11 @@ export interface OpenCloudSessionMessage {
   sessionId: string
 }
 
+export interface SelectKiloModelMessage {
+  type: "selectKiloModel"
+  modelID: string
+}
+
 export interface ActionMessage {
   type: "action"
   action: string
@@ -1011,6 +1016,7 @@ export type ExtensionMessage =
   | CloudSessionImportedMessage
   | CloudSessionImportFailedMessage
   | OpenCloudSessionMessage
+  | SelectKiloModelMessage
   | AgentManagerBranchesMessage
   | AgentManagerExternalWorktreesMessage
   | AgentManagerImportResultMessage
