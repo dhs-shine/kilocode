@@ -113,6 +113,7 @@ class SessionController(
     private val directory: String get() = workspace.directory
     private val updates = SessionUpdateQueue(
       parent,
+      cs,
       comp,
       flushMs,
       ::handle,

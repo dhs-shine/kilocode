@@ -199,9 +199,6 @@ class SessionUi(
     }
 
     @RequiresEdt
-    internal fun canDisposeInactive(): Boolean = controller.model.state is SessionState.Idle
-
-    @RequiresEdt
     internal fun activityKind(): SessionActivityKind? = when (val state = controller.model.state) {
         is SessionState.Idle,
         is SessionState.Loading,
