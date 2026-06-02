@@ -54,6 +54,10 @@ describe("TextShimmer JS-timer regression guard", () => {
     expect(tsx).toMatch(/<Show when=\{shimmer\(\)\} fallback=\{text\(\)\}>/)
   })
 
+  it("text-shimmer.css preserves whitespace for plain inactive labels", () => {
+    expect(css).toMatch(/\[data-component="text-shimmer"\]\s*\{[^}]*white-space:\s*pre;/)
+  })
+
   it("text-shimmer.css gates the sweep animation on data-active, not data-run", () => {
     expect(css).not.toMatch(/\[data-run="true"\]/)
     expect(css).toMatch(
