@@ -35,6 +35,9 @@ class FakeAppRpcApi : KiloAppRpcApi {
     val cleared = mutableListOf<String>()
     val variants = mutableListOf<ModelVariantUpdateDto>()
     val configPatches = mutableListOf<ConfigPatchDto>()
+    var configUpdateAttempts = 0
+        private set
+    var configUpdateGate: CompletableDeferred<Unit>? = null
     var configUpdateError: Exception? = null
 
     var connected = false
@@ -120,6 +123,8 @@ class FakeAppRpcApi : KiloAppRpcApi {
 
     override suspend fun updateConfig(patch: ConfigPatchDto): KiloAppStateDto {
         assertNotEdt("updateConfig")
+        configUpdateAttempts += 1
+        configUpdateGate?.await()
         configUpdateError?.let { throw it }
         configPatches.add(patch)
         val current = state.value

@@ -43,6 +43,12 @@ internal open class SettingsPanel : LayeredOverlayPanel() {
         overlay.repaint()
     }
 
+    fun showError(text: String) {
+        progress.showError(text)
+        overlay.revalidate()
+        overlay.repaint()
+    }
+
     fun clearProgress() {
         progress.clearProgress()
         overlay.revalidate()

@@ -10,6 +10,11 @@
         <applicationService serviceImplementation="ai.kilocode.client.migration.KiloMigrationService"/>
         <applicationService serviceImplementation="ai.kilocode.client.autocomplete.KiloAutocompleteSettingsService"/>
 
+        <notificationGroup id="Kilo Code"
+                           displayType="BALLOON"
+                           bundle="messages.KiloBundle"
+                           key="notification.group.kilo"/>
+
         <toolWindow id="Kilo Code"
                     anchor="left"
                     icon="/icons/kilo.svg"

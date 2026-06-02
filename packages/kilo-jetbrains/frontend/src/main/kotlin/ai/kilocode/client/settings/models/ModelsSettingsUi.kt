@@ -1,5 +1,6 @@
 package ai.kilocode.client.settings.models
 
+import ai.kilocode.client.KiloNotifications
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.plugin.KiloBundle
@@ -24,6 +25,7 @@ import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.ProvidersDto
 import com.intellij.ide.DataManager
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurableWithId
@@ -67,6 +69,8 @@ internal class ModelsSettingsUi(
     private var allItems: List<ModelPicker.Item> = emptyList()
     private var saving = false
     private var pending: ModelsDraft? = null
+    private var saveError: String? = null
+    private var disposed = false
 
     init {
         setContent(form)
@@ -84,6 +88,7 @@ internal class ModelsSettingsUi(
     fun resetDraft() {
         checkEdt()
         draft = baseline
+        saveError = null
         if (!saving) clearProgress()
         sync()
     }
@@ -97,11 +102,15 @@ internal class ModelsSettingsUi(
         if (patch.values.isEmpty() && patch.agents.isEmpty()) return
         pending = next
         saving = true
+        saveError = null
         showProgress(KiloBundle.message("settings.models.save.pending"))
         sync()
-        cs.launch {
-            val state = app.updateConfig(patch)
-            withContext(edt) {
+        app.updateConfigAsync(patch) { state ->
+            ApplicationManager.getApplication().invokeLater({
+                if (disposed) {
+                    if (state == null) KiloNotifications.error(KiloBundle.message("settings.models.save.failed"))
+                    return@invokeLater
+                }
                 if (state != null) {
                     appState = state
                     val base = modelsDraft(state.config, agents)
@@ -109,17 +118,18 @@ internal class ModelsSettingsUi(
                     draft = next
                     pending = null
                     saving = false
+                    saveError = null
                     clearProgress()
                     sync()
-                    return@withContext
+                    return@invokeLater
                 }
                 baseline = prev
                 draft = next
                 pending = null
                 saving = false
-                clearProgress()
+                saveError = KiloBundle.message("settings.models.save.failed")
                 sync()
-            }
+            }, ModalityState.any())
         }
     }
 
@@ -164,6 +174,7 @@ internal class ModelsSettingsUi(
     @RequiresEdt
     fun dispose() {
         checkEdt()
+        disposed = true
         jobs.forEach { it.cancel() }
         jobs.clear()
         cs.cancel()
@@ -236,8 +247,11 @@ internal class ModelsSettingsUi(
                 else -> top.hideBanner()
             }
         }
+        val err = saveError
         if (saving || state == ModelsStatus.SAVING) {
             showProgress(KiloBundle.message("settings.models.save.pending"))
+        } else if (err != null) {
+            showError(err)
         } else if (state == ModelsStatus.UNAVAILABLE || state == ModelsStatus.LOADING) {
             showProgress(KiloBundle.message("settings.models.loading"))
         } else {
@@ -346,6 +360,7 @@ internal class ModelsSettingsUi(
     private fun update(fn: ModelsDraft.() -> ModelsDraft) {
         checkEdt()
         draft = draft.fn()
+        saveError = null
         sync()
     }
 

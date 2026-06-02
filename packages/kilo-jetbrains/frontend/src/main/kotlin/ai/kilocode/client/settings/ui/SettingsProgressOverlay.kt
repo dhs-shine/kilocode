@@ -1,7 +1,6 @@
 package ai.kilocode.client.settings.ui
 
 import ai.kilocode.client.ui.UiStyle
-import com.intellij.codeInsight.hint.HintUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
@@ -11,7 +10,10 @@ import java.awt.RenderingHints
 import javax.swing.JPanel
 
 internal class SettingsProgressOverlay : JPanel(BorderLayout()) {
+    private enum class Kind { INFO, ERROR }
+
     private var label: JBLabel? = null
+    private var kind: Kind? = null
 
     init {
         val view = JBLabel()
@@ -24,7 +26,19 @@ internal class SettingsProgressOverlay : JPanel(BorderLayout()) {
     }
 
     fun showProgress(text: String) {
+        show(text, Kind.INFO)
+    }
+
+    fun showError(text: String) {
+        show(text, Kind.ERROR)
+    }
+
+    private fun show(text: String, next: Kind) {
         val view = requireNotNull(label)
+        if (kind != next) {
+            kind = next
+            syncColors()
+        }
         if (view.text != text) view.text = text
         if (!isVisible) isVisible = true
         revalidate()
@@ -46,19 +60,32 @@ internal class SettingsProgressOverlay : JPanel(BorderLayout()) {
     }
 
     private fun syncColors() {
-        val hint = HintUtil.getInformationHint()
-        background = hint.textBackground
-        foreground = hint.textForeground
+        val current = kind ?: Kind.INFO
+        background = when (current) {
+            Kind.INFO -> UiStyle.Colors.infoOverlayBackground()
+            Kind.ERROR -> UiStyle.Colors.errorOverlayBackground()
+        }
+        foreground = when (current) {
+            Kind.INFO -> UiStyle.Colors.infoOverlayForeground()
+            Kind.ERROR -> UiStyle.Colors.errorOverlayForeground()
+        }
         label?.foreground = foreground
+    }
+
+    private fun borderColor() = when (kind ?: Kind.INFO) {
+        Kind.INFO -> UiStyle.Colors.infoOverlayBorder()
+        Kind.ERROR -> UiStyle.Colors.errorOverlayBorder()
     }
 
     override fun paintComponent(g: Graphics) {
         val g2 = g.create() as Graphics2D
         try {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            g2.color = background
             val arc = UiStyle.Arc.component()
+            g2.color = background
             g2.fillRoundRect(0, 0, width, height, arc, arc)
+            g2.color = borderColor()
+            g2.drawRoundRect(0, 0, width - 1, height - 1, arc, arc)
         } finally {
             g2.dispose()
         }

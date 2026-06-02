@@ -224,6 +224,14 @@ class KiloAppService internal constructor(
         null
     }
 
+    fun updateConfigAsync(
+        patch: ConfigPatchDto,
+        done: (KiloAppStateDto?) -> Unit,
+    ): Job = cs.launch {
+        val state = updateConfig(patch)
+        done(state)
+    }
+
     private fun setModelState(state: ModelStateDto) {
         _models.value = state
         _favorites.value = state.favorite

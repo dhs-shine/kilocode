@@ -1,12 +1,13 @@
 package ai.kilocode.client.settings.ui
 
+import ai.kilocode.client.ui.UiStyle
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.codeInsight.hint.HintUtil
 import com.intellij.ui.SeparatorComponent
 import com.intellij.ui.components.JBLabel
-import ai.kilocode.client.ui.UiStyle
+import java.awt.Color
 import java.awt.Container
 import java.awt.Rectangle
+import java.awt.image.BufferedImage
 import javax.swing.AbstractButton
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -112,14 +113,64 @@ class SettingsRowsTest : BasePlatformTestCase() {
 
     fun `test settings progress overlay uses information colors`() {
         val panel = SettingsPanel()
-        val hint = HintUtil.getInformationHint()
 
         panel.showProgress("Loading")
 
         val label = components(panel.progress).filterIsInstance<JBLabel>().single { it.text == "Loading" }
-        assertEquals(hint.textBackground, panel.progress.background)
-        assertEquals(hint.textForeground, panel.progress.foreground)
-        assertEquals(hint.textForeground, label.foreground)
+        assertEquals(UiStyle.Colors.infoOverlayBackground(), panel.progress.background)
+        assertEquals(UiStyle.Colors.infoOverlayForeground(), panel.progress.foreground)
+        assertEquals(UiStyle.Colors.infoOverlayForeground(), label.foreground)
+    }
+
+    fun `test settings progress overlay paints styled background`() {
+        val panel = SettingsPanel()
+
+        panel.showProgress("Saving")
+        panel.progress.setSize(panel.progress.preferredSize)
+        panel.progress.doLayout()
+
+        assertEquals(UiStyle.Colors.infoOverlayBackground().rgb, paint(panel.progress, UiStyle.Gap.lg(), panel.progress.height / 2).rgb)
+        assertNotSameColor(UiStyle.Colors.bg(), panel.progress.background)
+    }
+
+    fun `test settings progress overlay can show error`() {
+        val panel = SettingsPanel()
+
+        panel.showError("Failed to save model settings")
+
+        val label = components(panel.progress).filterIsInstance<JBLabel>().single { it.text == "Failed to save model settings" }
+        assertTrue(panel.progress.isVisible)
+        assertEquals(UiStyle.Colors.errorOverlayBackground(), panel.progress.background)
+        assertEquals(UiStyle.Colors.errorOverlayForeground(), panel.progress.foreground)
+        assertEquals(UiStyle.Colors.errorOverlayForeground(), label.foreground)
+    }
+
+    fun `test settings progress overlay switches error back to info`() {
+        val panel = SettingsPanel()
+
+        panel.showError("Failed")
+        val label = components(panel.progress).filterIsInstance<JBLabel>().single { it.text == "Failed" }
+        panel.showProgress("Saving")
+
+        assertSame(label, components(panel.progress).filterIsInstance<JBLabel>().single { it.text == "Saving" })
+        assertEquals(UiStyle.Colors.infoOverlayBackground(), panel.progress.background)
+        assertEquals(UiStyle.Colors.infoOverlayForeground(), panel.progress.foreground)
+        assertEquals(UiStyle.Colors.infoOverlayForeground(), label.foreground)
+    }
+
+    private fun paint(component: JComponent, x: Int, y: Int): Color {
+        val image = BufferedImage(component.width, component.height, BufferedImage.TYPE_INT_ARGB)
+        val g = image.createGraphics()
+        try {
+            component.paint(g)
+        } finally {
+            g.dispose()
+        }
+        return Color(image.getRGB(x, y), true)
+    }
+
+    private fun assertNotSameColor(a: Color, b: Color) {
+        assertFalse("Expected colors to differ: $a", a.rgb == b.rgb)
     }
 
     private fun text(component: JComponent): String = components(component)
