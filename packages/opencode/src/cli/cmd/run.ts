@@ -21,6 +21,7 @@ import { UI } from "../ui"
 import { effectCmd } from "../effect-cmd"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { ServerAuth } from "@/server/auth"
+import { buildRunMessage } from "@/kilocode/cli/cmd/run-message" // kilocode_change
 import { EOL } from "os"
 import { Filesystem } from "@/util/filesystem"
 import { createKiloClient, type KiloClient, type ToolPart } from "@kilocode/sdk/v2"
@@ -263,9 +264,7 @@ export const RunCommand = effectCmd({
         throw error
       }
 
-      let message = [...args.message, ...(args["--"] || [])]
-        .map((arg) => (arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg))
-        .join(" ")
+      let message = buildRunMessage(args.message, args["--"]) // kilocode_change
 
       if (args.interactive && args.command) {
         die("--interactive cannot be used with --command")
