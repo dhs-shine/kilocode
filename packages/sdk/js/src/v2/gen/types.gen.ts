@@ -1212,6 +1212,8 @@ export type ProviderConfig = {
       name?: string
       family?: string
       prompt?: "codex" | "gemini" | "beast" | "anthropic" | "trinity" | "anthropic_without_todo" | "ling" | "gpt55"
+      isFree?: boolean
+      ai_sdk_provider?: "alibaba" | "anthropic" | "openai" | "openai-compatible" | "openrouter"
       release_date?: string
       attachment?: boolean
       reasoning?: boolean
@@ -4111,7 +4113,10 @@ export type ConfigUpdateResponse = ConfigUpdateResponses[keyof ConfigUpdateRespo
 export type ConfigWarningsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/config/warnings"
 }
 
@@ -5632,7 +5637,10 @@ export type PermissionSaveAlwaysRulesData = {
   path: {
     requestID: string
   }
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/permission/{requestID}/always-rules"
 }
 
@@ -5662,7 +5670,10 @@ export type PermissionAllowEverythingData = {
     sessionID?: string
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/permission/allow-everything"
 }
 
@@ -8200,7 +8211,10 @@ export type IndexingStatusResponse = IndexingStatusResponses[keyof IndexingStatu
 export type KiloProfileData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/profile"
 }
 
@@ -8239,7 +8253,10 @@ export type KiloProfileResponse = KiloProfileResponses[keyof KiloProfileResponse
 export type KiloModesData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/modes"
 }
 
@@ -8288,7 +8305,10 @@ export type KiloFimData = {
     temperature?: number
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/fim"
 }
 
@@ -8340,7 +8360,10 @@ export type KiloEditData = {
     editDiffHistory: Array<string>
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/edit"
 }
 
@@ -8380,7 +8403,10 @@ export type KiloAudioTranscriptionsData = {
     temperature?: number
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/audio/transcriptions"
 }
 
@@ -8408,7 +8434,10 @@ export type KiloAudioTranscriptionsResponse = KiloAudioTranscriptionsResponses[k
 export type KiloNotificationsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/notifications"
 }
 
@@ -8445,7 +8474,10 @@ export type KiloOrganizationSetData = {
     organizationId: string | null
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/organization"
 }
 
@@ -8470,7 +8502,10 @@ export type KiloOrganizationSetResponse = KiloOrganizationSetResponses[keyof Kil
 export type KiloClawStatusData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/claw/status"
 }
 
@@ -8518,7 +8553,10 @@ export type KiloClawStatusResponse = KiloClawStatusResponses[keyof KiloClawStatu
 export type KiloClawChatCredentialsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/claw/chat-credentials"
 }
 
@@ -8540,8 +8578,10 @@ export type KiloCloudSessionsData = {
   body?: never
   path?: never
   query?: {
+    directory?: string
+    workspace?: string
     cursor?: string
-    limit?: string
+    limit?: number
     gitUrl?: string
   }
   url: "/kilo/cloud-sessions"
@@ -8579,7 +8619,10 @@ export type KiloCloudSessionGetData = {
   path: {
     id: string
   }
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/cloud/session/{id}"
 }
 
@@ -8632,7 +8675,10 @@ export type KiloCloudSessionImportData = {
     sessionId: string
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilo/cloud/session/import"
 }
 
@@ -8668,7 +8714,10 @@ export type KiloCloudSessionImportResponse = KiloCloudSessionImportResponses[key
 export type KilocodeHeapSnapshotData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilocode/heap/snapshot"
 }
 
@@ -8695,7 +8744,10 @@ export type KilocodeRemoveSkillData = {
     location: string
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilocode/skill/remove"
 }
 
@@ -8722,7 +8774,10 @@ export type KilocodeRemoveAgentData = {
     name: string
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilocode/agent/remove"
 }
 
@@ -8825,7 +8880,10 @@ export type NetworkRejectResponse = NetworkRejectResponses[keyof NetworkRejectRe
 export type RemoteEnableData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/remote/enable"
 }
 
@@ -8844,7 +8902,10 @@ export type RemoteEnableResponse = RemoteEnableResponses[keyof RemoteEnableRespo
 export type RemoteDisableData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/remote/disable"
 }
 
@@ -8863,7 +8924,10 @@ export type RemoteDisableResponse = RemoteDisableResponses[keyof RemoteDisableRe
 export type RemoteStatusData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/remote/status"
 }
 
@@ -8896,7 +8960,10 @@ export type KilocodeSessionImportProjectData = {
     }
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilocode/session-import/project"
 }
 
@@ -8955,7 +9022,10 @@ export type KilocodeSessionImportSessionData = {
     timeArchived?: number
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilocode/session-import/session"
 }
 
@@ -9032,7 +9102,10 @@ export type KilocodeSessionImportMessageData = {
         }
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilocode/session-import/message"
 }
 
@@ -9148,7 +9221,10 @@ export type KilocodeSessionImportPartData = {
         }
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/kilocode/session-import/part"
 }
 
@@ -9174,7 +9250,10 @@ export type KilocodeSessionImportPartResponse =
 export type SuggestionListData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/suggestion"
 }
 
@@ -9197,7 +9276,10 @@ export type SuggestionAcceptData = {
   path: {
     requestID: string
   }
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/suggestion/{requestID}/accept"
 }
 
@@ -9228,7 +9310,10 @@ export type SuggestionDismissData = {
   path: {
     requestID: string
   }
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/suggestion/{requestID}/dismiss"
 }
 

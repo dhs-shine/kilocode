@@ -57,6 +57,7 @@ export const PermissionApi = HttpApi.make("permission")
         // kilocode_change start
         HttpApiEndpoint.post("saveAlwaysRules", `${root}/:requestID/always-rules`, {
           params: { requestID: PermissionID },
+          query: WorkspaceRoutingQuery,
           payload: SaveAlwaysRulesBody,
           success: described(Schema.Boolean, "Always-rules saved"),
           error: [ApiNotFoundError],
@@ -68,6 +69,7 @@ export const PermissionApi = HttpApi.make("permission")
           }),
         ),
         HttpApiEndpoint.post("allowEverything", `${root}/allow-everything`, {
+          query: WorkspaceRoutingQuery,
           payload: AllowEverythingBody,
           success: described(Schema.Boolean, "Success"),
           error: [HttpApiError.BadRequest, HttpApiError.NotFound],

@@ -12,6 +12,7 @@ export const TurnOutcome: Component = () => {
       reason: session.closeReason(),
       messages: session.visibleMessages(),
       todos: session.todos(),
+      parts: (msg) => session.getParts(msg.id),
       hidden: session.isErrorHidden,
     }),
   )

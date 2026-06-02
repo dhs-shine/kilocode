@@ -40,7 +40,7 @@ const testAllow: Record<string, { count: number; reason: string }> = {
   "kilocode/plan-followup.test.ts": { count: 7, reason: "existing runtime integration test" },
   "kilocode/server/config-overlay.test.ts": { count: 3, reason: "server config cache integration test" },
   "kilocode/session/platform-attribution.test.ts": { count: 5, reason: "existing runtime integration test" },
-  "kilocode/session-prompt-queue.test.ts": { count: 5, reason: "legacy instance context integration test" },
+  "kilocode/session-prompt-queue.test.ts": { count: 5, reason: "prompt queue legacy instance bridge regression" },
   "kilocode/session/session.test.ts": { count: 4, reason: "existing runtime integration test" },
   "mcp/headers.test.ts": { count: 4, reason: "existing runtime integration test" },
   "mcp/oauth-browser.test.ts": { count: 4, reason: "existing runtime integration test" },

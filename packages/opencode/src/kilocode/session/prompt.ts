@@ -1,8 +1,8 @@
-// kilocode_change - new file
 import path from "path"
 import fs from "fs/promises"
 import { StringDecoder } from "string_decoder"
 import { Cause, Effect, Exit } from "effect"
+import { Bus } from "@/bus"
 import { SessionID, PartID } from "@/session/schema"
 import { MessageV2 } from "@/session/message-v2"
 import { Session } from "@/session/session"
@@ -16,11 +16,16 @@ import { Permission } from "@/permission"
 import { environmentDetails, type EditorContext } from "@/kilocode/editor-context"
 import { Identifier } from "@/id/id"
 import { Filesystem } from "@/util/filesystem"
+import { InstanceState } from "@/effect/instance-state"
 import PROMPT_PLAN from "@/session/prompt/plan.txt"
 import CODE_SWITCH from "@/session/prompt/code-switch.txt"
+import * as Log from "@opencode-ai/core/util/log"
 
 export namespace KiloSessionPrompt {
+  const log = Log.create({ service: "session.prompt.kilo" })
   const modes = ["ask", "plan"]
+  export const PAYLOAD_OVERFLOW_MESSAGE =
+    "The conversation is still too large to send after pruning old tool output. Start a new message to retry after compaction."
 
   /**
    * Determines whether the plan follow-up prompt should be shown.
@@ -48,7 +53,8 @@ export namespace KiloSessionPrompt {
     abort: AbortSignal
   }): Promise<"continue" | "break"> {
     if (!shouldAskPlanFollowup({ messages: input.messages, abort: input.abort })) return "break"
-    const action = await PlanFollowup.ask({
+    const ask = InstanceState.bind(PlanFollowup.ask)
+    const action = await ask({
       sessionID: input.sessionID,
       messages: input.messages,
       abort: input.abort,
@@ -115,6 +121,32 @@ export namespace KiloSessionPrompt {
       rules.filter((rule) => rule.action === "deny"),
     )
   }
+
+  export function payloadOverflowError(input: { size: number; limit: number }) {
+    return new MessageV2.ContextOverflowError({
+      message: `${PAYLOAD_OVERFLOW_MESSAGE} Payload size: ${input.size} bytes; limit: ${input.limit} bytes.`,
+    }).toObject()
+  }
+
+  export const rejectPayloadOverflow = Effect.fn("KiloSessionPrompt.rejectPayloadOverflow")(function* (input: {
+    sessionID: SessionID
+    msg: MessageV2.Assistant
+    size: number
+    limit: number
+    sessions: Pick<Session.Interface, "updateMessage">
+    bus: Pick<Bus.Interface, "publish">
+    status: Pick<SessionStatus.Interface, "set">
+    close: Map<string, KiloSession.CloseReason>
+  }) {
+    if (input.size <= input.limit) return false
+    log.warn("payload still large after pruning", { size: input.size })
+    input.msg.error = payloadOverflowError({ size: input.size, limit: input.limit })
+    yield* input.sessions.updateMessage(input.msg)
+    yield* input.bus.publish(Session.Event.Error, { sessionID: input.sessionID, error: input.msg.error })
+    yield* input.status.set(input.sessionID, { type: "idle" })
+    input.close.set(input.sessionID, "error")
+    return true
+  })
 
   export function hardPermissions(input: { agent: { name: string; permission: Permission.Ruleset } }) {
     if (!modes.includes(input.agent.name)) return
@@ -227,23 +259,33 @@ export namespace KiloSessionPrompt {
    * Ensures the plan file directory exists and tells the agent where to write.
    */
   export async function insertPlanReminders(input: {
-    agent: { name: string }
+    agent: { name: string; options?: Record<string, unknown> }
     session: Session.Info
     userMessage: MessageV2.WithParts
   }) {
-    if (input.agent.name !== "plan") return
-    const plan = Session.plan(input.session, Instance.current)
+    if (input.agent.name !== "plan" && input.agent.options?.id !== "architect") return
+    // keep bind(): inside Effect.promise the project context is lost, so Instance.current throws without it
+    const plan = InstanceState.bind(() => Session.plan(input.session, Instance.current))()
     const exists = await Filesystem.exists(plan)
     if (!exists) await ensurePlanDir(path.dirname(plan))
     const info = exists
       ? `A plan file already exists at ${plan}. You can read it and make incremental edits using the edit tool.`
       : `No plan file exists yet. You should create your plan at ${plan} using the write tool.`
+    const limit =
+      input.agent.name === "plan"
+        ? "This is the ONLY file you are allowed to write to or edit."
+        : "Use this as the main plan file to write or edit. Do not write or edit other files unless the user explicitly asks and your permissions allow it."
+    const planFile = `## Plan File\n${info}\n${limit}`
+    const text =
+      input.agent.name === "plan"
+        ? `${PROMPT_PLAN}\n\n${planFile}`
+        : `<system-reminder>\n${planFile} Before writing this file or calling plan_exit, ask the user to choose exactly one of: "Finalize and save the plan" or "Continue refining". If the user chooses to finalize, write the main plan to this exact file, then call plan_exit with no arguments. If the user explicitly asks for additional plan files and your permissions allow it, you may create them and reference them from the main plan.\n</system-reminder>`
     input.userMessage.parts.push({
       id: PartID.ascending(),
       messageID: input.userMessage.info.id,
       sessionID: input.userMessage.info.sessionID,
       type: "text",
-      text: PROMPT_PLAN + `\n\n## Plan File\n${info}\nThis is the ONLY file you are allowed to write to or edit.`,
+      text,
       synthetic: true,
     })
   }

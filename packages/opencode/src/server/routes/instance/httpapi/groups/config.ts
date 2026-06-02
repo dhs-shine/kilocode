@@ -45,6 +45,7 @@ export const ConfigApi = HttpApi.make("config")
         ),
         // kilocode_change start
         HttpApiEndpoint.get("warnings", `${root}/warnings`, {
+          query: WorkspaceRoutingQuery,
           success: described(Schema.Array(Warning), "Config warnings"),
         }).annotateMerge(
           OpenApi.annotations({

@@ -591,7 +591,24 @@
       "get": {
         "tags": ["config"],
         "operationId": "config.warnings",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Config warnings",
@@ -4332,6 +4349,22 @@
               "pattern": "^per.*"
             },
             "required": true
+          },
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
           }
         ],
         "responses": {
@@ -4395,7 +4428,24 @@
       "post": {
         "tags": ["permission"],
         "operationId": "permission.allowEverything",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -10705,7 +10755,24 @@
       "get": {
         "tags": ["kilo"],
         "operationId": "kilo.profile",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Profile data",
@@ -10792,7 +10859,24 @@
       "get": {
         "tags": ["kilo"],
         "operationId": "kilo.modes",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Organization modes list",
@@ -10928,7 +11012,24 @@
       "post": {
         "tags": ["kilo"],
         "operationId": "kilo.fim",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Streaming FIM completion response",
@@ -11031,7 +11132,24 @@
       "post": {
         "tags": ["kilo"],
         "operationId": "kilo.edit",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Next Edit completion",
@@ -11159,7 +11277,24 @@
       "post": {
         "tags": ["kilo"],
         "operationId": "kilo.audio.transcriptions",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Transcription response",
@@ -11243,7 +11378,24 @@
       "get": {
         "tags": ["kilo"],
         "operationId": "kilo.notifications",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Notifications list",
@@ -11319,7 +11471,24 @@
       "post": {
         "tags": ["kilo"],
         "operationId": "kilo.organization.set",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Organization updated successfully",
@@ -11380,7 +11549,24 @@
       "get": {
         "tags": ["kilo"],
         "operationId": "kilo.claw.status",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Instance status",
@@ -11475,7 +11661,24 @@
       "get": {
         "tags": ["kilo"],
         "operationId": "kilo.claw.chatCredentials",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Kilo Chat credentials or null",
@@ -11520,6 +11723,22 @@
         "operationId": "kilo.cloudSessions",
         "parameters": [
           {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
             "name": "cursor",
             "in": "query",
             "schema": {
@@ -11531,7 +11750,7 @@
             "name": "limit",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "number"
             },
             "required": false
           },
@@ -11621,6 +11840,22 @@
               "type": "string"
             },
             "required": true
+          },
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
           }
         ],
         "responses": {
@@ -11752,7 +11987,24 @@
       "post": {
         "tags": ["kilo"],
         "operationId": "kilo.cloud.session.import",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Imported session info",
@@ -11839,7 +12091,24 @@
       "post": {
         "tags": ["kilocode"],
         "operationId": "kilocode.heap.snapshot",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Heap snapshot file path",
@@ -11877,7 +12146,24 @@
       "post": {
         "tags": ["kilocode"],
         "operationId": "kilocode.removeSkill",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Skill removed",
@@ -11931,7 +12217,24 @@
       "post": {
         "tags": ["kilocode"],
         "operationId": "kilocode.removeAgent",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Agent removed",
@@ -12132,7 +12435,24 @@
       "post": {
         "tags": ["remote"],
         "operationId": "remote.enable",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Remote connection enabled",
@@ -12170,7 +12490,24 @@
       "post": {
         "tags": ["remote"],
         "operationId": "remote.disable",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Remote connection disabled",
@@ -12208,7 +12545,24 @@
       "get": {
         "tags": ["remote"],
         "operationId": "remote.status",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Remote connection status",
@@ -12246,7 +12600,24 @@
       "post": {
         "tags": ["session-import"],
         "operationId": "kilocode.sessionImport.project",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Project import result",
@@ -12338,7 +12709,24 @@
       "post": {
         "tags": ["session-import"],
         "operationId": "kilocode.sessionImport.session",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Session import result",
@@ -12474,7 +12862,24 @@
       "post": {
         "tags": ["session-import"],
         "operationId": "kilocode.sessionImport.message",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Message import result",
@@ -12688,7 +13093,24 @@
       "post": {
         "tags": ["session-import"],
         "operationId": "kilocode.sessionImport.part",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Part import result",
@@ -12963,7 +13385,24 @@
       "get": {
         "tags": ["suggestion"],
         "operationId": "suggestion.list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of pending suggestions",
@@ -13002,6 +13441,22 @@
               "type": "string"
             },
             "required": true
+          },
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
           }
         ],
         "responses": {
@@ -13077,6 +13532,22 @@
               "type": "string"
             },
             "required": true
+          },
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
           }
         ],
         "responses": {
@@ -16721,6 +17192,13 @@
                     "ling",
                     "gpt55"
                   ]
+                },
+                "isFree": {
+                  "type": "boolean"
+                },
+                "ai_sdk_provider": {
+                  "type": "string",
+                  "enum": ["alibaba", "anthropic", "openai", "openai-compatible", "openrouter"]
                 },
                 "release_date": {
                   "type": "string"
