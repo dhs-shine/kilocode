@@ -169,6 +169,7 @@
   max-width: min(320px, calc(100vw - 16px));
   transform: translate(-50%, calc(-100% - 4px));
   white-space: normal;
+  pointer-events: none;
 }
 
 @keyframes timeline-fade-in {
