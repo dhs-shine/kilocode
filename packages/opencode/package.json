@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "7.3.18",
+  "version": "7.3.22",
   "name": "@kilocode/cli",
   "type": "module",
   "license": "MIT",
@@ -130,6 +130,7 @@
     "@opentelemetry/sdk-trace-base": "2.6.1",
     "@opentelemetry/sdk-trace-node": "2.6.1",
     "@opentui/core": "catalog:",
+    "@opentui/keymap": "catalog:",
     "@opentui/solid": "catalog:",
     "@parcel/watcher": "2.5.1",
     "@pierre/diffs": "catalog:",
@@ -190,8 +191,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "yargs": "18.0.0",
     "zod": "catalog:",
-    "zod-to-json-schema": "3.24.5",
-    "@opentui/keymap": "catalog:"
+    "zod-to-json-schema": "3.24.5"
   },
   "overrides": {
     "drizzle-orm": "catalog:"
