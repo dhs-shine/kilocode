@@ -301,4 +301,13 @@ describe("Collapsed deferred tool details contract (source)", () => {
       expect(block).toContain("hasDetails")
     }
   })
+
+  it("lazy-mounts completed bash output and retains it after first expansion", () => {
+    const block =
+      message.match(/ToolRegistry\.register\(\{\s*name:\s*"bash"[\s\S]*?(?=ToolRegistry\.register\(|$)/)?.[0] ?? ""
+    expect(block).toContain("const [mounted, setMounted] = createSignal(open())")
+    expect(block).toMatch(/if \(open\(\) \|\| pending\(\)\) setMounted\(true\)/)
+    expect(block).toContain("hasDetails")
+    expect(block).toMatch(/<Show when=\{mounted\(\)\}>[\s\S]*?<BashHighlightedOutput/)
+  })
 })

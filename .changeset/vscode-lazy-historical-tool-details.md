@@ -2,4 +2,4 @@
 "kilo-code": patch
 ---
 
-Speed up Agent Manager switching for edit-heavy sessions by rendering collapsed historical tool details only when expanded.
+Speed up Agent Manager switching for long sessions by lazily mounting collapsed historical tool details and sharing timeline hover infrastructure across activity bars.
