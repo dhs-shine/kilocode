@@ -1,19 +1,17 @@
 package ai.kilocode.client.settings.models
 
-import ai.kilocode.client.KiloNotifications
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.model.ModelText
-import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.settings.profile.edt
-import ai.kilocode.client.settings.ui.SettingsBannerKind
-import ai.kilocode.client.settings.ui.SettingsContentPanel
-import ai.kilocode.client.settings.ui.SettingsPanel
-import ai.kilocode.client.settings.ui.SettingsRow
-import ai.kilocode.client.settings.ui.SettingsRows
+import ai.kilocode.client.settings.base.BaseContentPanel
+import ai.kilocode.client.settings.base.BaseSettingsUi
+import ai.kilocode.client.settings.base.SettingsBannerKind
+import ai.kilocode.client.settings.base.SettingsRow
+import ai.kilocode.client.settings.base.SettingsRows
 import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
@@ -25,46 +23,30 @@ import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.ProvidersDto
-import com.intellij.ide.DataManager
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.service
-import com.intellij.openapi.options.Configurable
-import com.intellij.openapi.options.ConfigurableWithId
-import com.intellij.openapi.options.ShowSettingsUtil
-import com.intellij.openapi.options.ex.Settings
-import com.intellij.openapi.project.ProjectManager
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.function.Predicate
-import javax.swing.JComponent
 
 internal class ModelsSettingsUi(
     private val cs: CoroutineScope,
     private val app: KiloAppService = service(),
     private val workspaces: KiloWorkspaceService = service(),
     private val directory: String? = null,
-) : SettingsPanel() {
+) : BaseSettingsUi<ModelsSettingsContent, ModelsDraft, ConfigPatchDto, KiloAppStateDto>(cs, ModelsDraft()) {
 
     companion object {
         private val LOG = KiloLog.create(ModelsSettingsUi::class.java)
     }
 
-    private val form = ModelsSettingsContent(app, ::update, ::selectSubagent)
-    private val defaults = form.defaults
-    private val small = form.small
-    private val subagent = form.subagent
-    private val variant = form.variant
-    private val variantRow = form.variantRow
-    private val pickers = form.pickers
-    private val jobs = mutableListOf<Job>()
+    private val defaults get() = form.defaults
+    private val small get() = form.small
+    private val subagent get() = form.subagent
+    private val variant get() = form.variant
+    private val variantRow get() = form.variantRow
+    private val pickers get() = form.pickers
 
-    private var baseline = ModelsDraft()
-    private var draft = ModelsDraft()
     private var providers: ProvidersDto? = null
     private var agents: List<AgentDto> = emptyList()
     private var appState: KiloAppStateDto = app.state.value
@@ -73,81 +55,41 @@ internal class ModelsSettingsUi(
     private var loaded = false
     private var errors: List<LoadErrorDto> = emptyList()
     private var allItems: List<ModelPicker.Item> = emptyList()
-    private var saving = false
-    private var pending: ModelsDraft? = null
-    private var saveError: String? = null
-    private var disposed = false
 
     init {
-        setContent(form)
-        sync()
+        setSettingsContent(ModelsSettingsContent(app, { updateDraft(it) }, ::selectSubagent))
+        syncContent()
         start()
     }
 
-    @RequiresEdt
-    fun modified(): Boolean {
-        checkEdt()
-        return draft != (pending ?: baseline)
+    override fun change(from: ModelsDraft, to: ModelsDraft): ConfigPatchDto? = patch(from, to).takeIf {
+        it.values.isNotEmpty() || it.agents.isNotEmpty()
     }
 
-    @RequiresEdt
-    fun resetDraft() {
-        checkEdt()
-        draft = pending ?: baseline
-        saveError = null
-        if (!saving) clearProgress()
-        sync()
+    override fun save(change: ConfigPatchDto, done: (KiloAppStateDto?) -> Unit) {
+        app.updateConfigAsync(change, done)
     }
 
-    @RequiresEdt
-    fun applyDraft() {
-        checkEdt()
-        val prev = baseline
-        val next = draft
-        val patch = patch(prev, next)
-        if (patch.values.isEmpty() && patch.agents.isEmpty()) return
-        LOG.info("model settings save: started ${summary(patch)}")
-        pending = next
-        saving = true
-        saveError = null
-        showProgress(KiloBundle.message("settings.models.save.pending"))
-        sync()
-        app.updateConfigAsync(patch) { state ->
-            ApplicationManager.getApplication().invokeLater({
-                if (disposed) {
-                    if (state == null) {
-                        LOG.warn("model settings save: failed after dispose ${summary(patch)}")
-                        KiloNotifications.error(KiloBundle.message("settings.models.save.failed"))
-                    } else {
-                        LOG.info("model settings save: completed after dispose ${summary(patch)}")
-                    }
-                    return@invokeLater
-                }
-                if (state != null) {
-                    LOG.info("model settings save: completed ${summary(patch)}")
-                    val edit = draft
-                    appState = state
-                    val base = modelsDraft(state.config, agents)
-                    baseline = if (savedMatches(base, next)) base else next
-                    draft = if (edit == next) baseline else edit
-                    pending = null
-                    saving = false
-                    saveError = null
-                    clearProgress()
-                    sync()
-                    return@invokeLater
-                }
-                val edit = draft
-                baseline = prev
-                draft = if (edit == next) next else edit
-                pending = null
-                saving = false
-                LOG.warn("model settings save: failed ${summary(patch)}")
-                saveError = KiloBundle.message("settings.models.save.failed")
-                sync()
-            }, ModalityState.any())
-        }
+    override fun base(result: KiloAppStateDto): ModelsDraft {
+        appState = result
+        return modelsDraft(result.config, agents)
     }
+
+    override fun saved(base: ModelsDraft, draft: ModelsDraft): Boolean = savedMatches(base, draft)
+
+    override fun pendingText(): String = KiloBundle.message("settings.models.save.pending")
+
+    override fun failedText(): String = KiloBundle.message("settings.models.save.failed")
+
+    override fun logSaveStarted(change: ConfigPatchDto) = LOG.info("model settings save: started ${summary(change)}")
+
+    override fun logSaveCompleted(change: ConfigPatchDto) = LOG.info("model settings save: completed ${summary(change)}")
+
+    override fun logSaveFailed(change: ConfigPatchDto) = LOG.warn("model settings save: failed ${summary(change)}")
+
+    override fun logSaveFailedAfterDispose(change: ConfigPatchDto) = LOG.warn("model settings save: failed after dispose ${summary(change)}")
+
+    override fun logSaveCompletedAfterDispose(change: ConfigPatchDto) = LOG.info("model settings save: completed after dispose ${summary(change)}")
 
     @RequiresEdt
     fun updateApp(state: KiloAppStateDto) {
@@ -159,12 +101,12 @@ internal class ModelsSettingsUi(
                 agents = emptyList()
                 errors = emptyList()
             }
-            sync()
+            syncContent()
             return
         }
         val base = modelsDraft(state.config, agents)
         acceptBase(base)
-        sync()
+        syncContent()
         loadModels()
     }
 
@@ -178,22 +120,13 @@ internal class ModelsSettingsUi(
         loading = false
         val base = modelsDraft(appState.config, agents)
         acceptBase(base)
-        sync()
+        syncContent()
     }
 
     @RequiresEdt
     fun updateModels(state: ai.kilocode.rpc.dto.ModelStateDto) {
         checkEdt()
-        sync()
-    }
-
-    @RequiresEdt
-    fun dispose() {
-        checkEdt()
-        disposed = true
-        jobs.forEach { it.cancel() }
-        jobs.clear()
-        cs.cancel()
+        syncContent()
     }
 
     private fun start() {
@@ -211,7 +144,7 @@ internal class ModelsSettingsUi(
                 dir = resolved
                 loaded = false
                 loadModels()
-                sync()
+                syncContent()
             }
         }
     }
@@ -223,7 +156,7 @@ internal class ModelsSettingsUi(
         if (appState.status != KiloAppStatusDto.READY || loading || loaded) return
         loading = true
         errors = emptyList()
-        sync()
+        syncContent()
         jobs += cs.launch {
             val state = workspaces.models(root)
             withContext(edt) { updateModelsWorkspace(state) }
@@ -231,7 +164,7 @@ internal class ModelsSettingsUi(
     }
 
     @RequiresEdt
-    private fun sync() {
+    override fun syncContent() {
         checkEdt()
         allItems = items(false)
         val smallItems = items(true)
@@ -250,7 +183,7 @@ internal class ModelsSettingsUi(
             ready = appState.status == KiloAppStatusDto.READY,
             authenticated = appState.profile != null,
         )
-        syncBanner(state, bannerVisible)
+        syncModelBanner(state, bannerVisible)
         val err = saveError
         if (saving || state == ModelsStatus.SAVING) {
             showProgress(KiloBundle.message("settings.models.save.pending"))
@@ -275,22 +208,20 @@ internal class ModelsSettingsUi(
     }
 
     @RequiresEdt
-    private fun syncBanner(state: ModelsStatus, login: Boolean) {
+    private fun syncModelBanner(state: ModelsStatus, login: Boolean) {
         checkEdt()
-        if (login) {
-            top.showNotLoggedIn { openProfile(it) }
-            return
-        }
-        if ((saving || state == ModelsStatus.LOADING || state == ModelsStatus.SAVING) && top.isVisible) return
-        when (state) {
-            ModelsStatus.LOAD_FAILED -> top.showBanner(
-                KiloBundle.message("settings.models.load.failed"),
-                emptyList(),
-                SettingsBannerKind.ERROR,
-            )
-            ModelsStatus.NO_PROVIDERS -> top.showBanner(KiloBundle.message("settings.models.noProviders"), emptyList())
-            ModelsStatus.MODES_FAILED -> top.showBanner(KiloBundle.message("settings.models.modes.failed"), emptyList())
-            else -> top.hideBanner()
+        syncLoginBanner(login) {
+            if ((saving || state == ModelsStatus.LOADING || state == ModelsStatus.SAVING) && top.isVisible) return@syncLoginBanner
+            when (state) {
+                ModelsStatus.LOAD_FAILED -> top.showBanner(
+                    KiloBundle.message("settings.models.load.failed"),
+                    emptyList(),
+                    SettingsBannerKind.ERROR,
+                )
+                ModelsStatus.NO_PROVIDERS -> top.showBanner(KiloBundle.message("settings.models.noProviders"), emptyList())
+                ModelsStatus.MODES_FAILED -> top.showBanner(KiloBundle.message("settings.models.modes.failed"), emptyList())
+                else -> top.hideBanner()
+            }
         }
     }
 
@@ -333,8 +264,8 @@ internal class ModelsSettingsUi(
                 val picker = ModelSettingPicker()
                 picker.picker.favorites = { app.favorites.value }
                 picker.picker.onFavoriteToggle = { app.toggleModelFavorite(it.provider, it.id) }
-                picker.picker.onSelect = { item -> update { copy(agents = this.agents + (agent.name to item.key)) } }
-                picker.picker.onClear = { update { copy(agents = this.agents + (agent.name to null)) } }
+                picker.picker.onSelect = { item -> updateDraft { copy(agents = this.agents + (agent.name to item.key)) } }
+                picker.picker.onClear = { updateDraft { copy(agents = this.agents + (agent.name to null)) } }
                 pickers[agent.name] = picker
                 form.modes.row(agent.name, SettingsRow(
                     agent.displayName ?: title(agent.name),
@@ -357,52 +288,7 @@ internal class ModelsSettingsUi(
 
     private fun selectSubagent(item: ModelPicker.Item) {
         val variant = if (draft.subagent == item.key && draft.variant in item.variants) draft.variant else item.variants.firstOrNull()
-        update { copy(subagent = item.key, variant = variant) }
-    }
-
-    private fun openProfile(src: JComponent) {
-        val settings = Settings.KEY.getData(DataManager.getInstance().getDataContext(src))
-        if (settings != null) {
-            val cfg = settings.find(UserProfileConfigurable.ID)
-            if (cfg != null) {
-                settings.select(cfg)
-                return
-            }
-        }
-
-        val project = ProjectManager.getInstance().openProjects.firstOrNull { !it.isDefault }
-        ShowSettingsUtil.getInstance().showSettingsDialog(
-            project,
-            Predicate { cfg: Configurable ->
-                cfg is ConfigurableWithId && cfg.getId() == UserProfileConfigurable.ID
-            },
-            { cfg: Configurable -> cfg.focusOn(UserProfileConfigurable.FOCUS_ACCOUNT_COMBO) },
-        )
-    }
-
-    @RequiresEdt
-    private fun update(fn: ModelsDraft.() -> ModelsDraft) {
-        checkEdt()
-        draft = draft.fn()
-        saveError = null
-        sync()
-    }
-
-    private fun acceptBase(base: ModelsDraft) {
-        val save = pending
-        if (save == null) {
-            val prev = baseline
-            val edit = draft
-            baseline = base
-            if (edit == prev) draft = base
-            return
-        }
-        if (!savedMatches(base, save)) return
-        baseline = base
-    }
-
-    private fun checkEdt() {
-        check(ApplicationManager.getApplication().isDispatchThread) { "Models settings UI updates must run on EDT" }
+        updateDraft { copy(subagent = item.key, variant = variant) }
     }
 }
 
@@ -413,11 +299,11 @@ private fun summary(patch: ConfigPatchDto): String {
     return "values=$values agents=${patch.agents.size}"
 }
 
-private class ModelsSettingsContent(
+internal class ModelsSettingsContent(
     app: KiloAppService,
     update: (ModelsDraft.() -> ModelsDraft) -> Unit,
     select: (ModelPicker.Item) -> Unit,
-) : SettingsContentPanel() {
+) : BaseContentPanel() {
     val defaults = ModelSettingPicker()
     val small = ModelSettingPicker()
     val subagent = ModelSettingPicker()

@@ -2,7 +2,7 @@ package ai.kilocode.client.settings.profile
 
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
-import ai.kilocode.client.settings.ui.SettingsPanel
+import ai.kilocode.client.settings.base.SettingsPanel
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.service

@@ -1,4 +1,4 @@
-package ai.kilocode.client.settings.ui
+package ai.kilocode.client.settings.base
 
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
@@ -7,7 +7,7 @@ import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
 
-internal open class SettingsContentPanel : Stack(StackAxis.VERTICAL) {
+internal open class BaseContentPanel : Stack(StackAxis.VERTICAL) {
     fun section(title: String, description: String? = null): SettingsRows {
         next(TitledSeparator(title))
         if (description != null) {

@@ -1,4 +1,4 @@
-package ai.kilocode.client.settings.ui
+package ai.kilocode.client.settings.base
 
 import ai.kilocode.client.ui.LayeredOverlayPanel
 import ai.kilocode.client.ui.UiStyle
