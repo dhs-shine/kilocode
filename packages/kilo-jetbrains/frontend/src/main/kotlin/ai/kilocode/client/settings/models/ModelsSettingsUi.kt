@@ -87,13 +87,13 @@ internal class ModelsSettingsUi(
     @RequiresEdt
     fun modified(): Boolean {
         checkEdt()
-        return draft != baseline
+        return draft != (pending ?: baseline)
     }
 
     @RequiresEdt
     fun resetDraft() {
         checkEdt()
-        draft = baseline
+        draft = pending ?: baseline
         saveError = null
         if (!saving) clearProgress()
         sync()
@@ -125,10 +125,11 @@ internal class ModelsSettingsUi(
                 }
                 if (state != null) {
                     LOG.info("model settings save: completed ${summary(patch)}")
+                    val edit = draft
                     appState = state
                     val base = modelsDraft(state.config, agents)
                     baseline = if (savedMatches(base, next)) base else next
-                    draft = next
+                    draft = if (edit == next) baseline else edit
                     pending = null
                     saving = false
                     saveError = null
@@ -136,8 +137,9 @@ internal class ModelsSettingsUi(
                     sync()
                     return@invokeLater
                 }
+                val edit = draft
                 baseline = prev
-                draft = next
+                draft = if (edit == next) next else edit
                 pending = null
                 saving = false
                 LOG.warn("model settings save: failed ${summary(patch)}")
@@ -243,6 +245,7 @@ internal class ModelsSettingsUi(
             saving = saving,
         )
         val ready = state == ModelsStatus.READY || state == ModelsStatus.MODES_FAILED
+        val editable = !saving && (ready || state == ModelsStatus.LOADING)
         val bannerVisible = modelsLoginBannerVisible(
             ready = appState.status == KiloAppStatusDto.READY,
             authenticated = appState.profile != null,
@@ -262,9 +265,9 @@ internal class ModelsSettingsUi(
         defaults.setItems(allItems, draft.model)
         small.setItems(smallItems, draft.small)
         subagent.setItems(allItems, draft.subagent)
-        listOf(defaults, small, subagent).forEach { it.isEnabled = ready }
-        layout = syncVariant(ready) || layout
-        layout = syncModes(ready) || layout
+        listOf(defaults, small, subagent).forEach { it.isEnabled = editable }
+        layout = syncVariant(editable) || layout
+        layout = syncModes(editable) || layout
         if (layout) {
             revalidate()
             repaint()
@@ -388,14 +391,14 @@ internal class ModelsSettingsUi(
     private fun acceptBase(base: ModelsDraft) {
         val save = pending
         if (save == null) {
+            val prev = baseline
+            val edit = draft
             baseline = base
-            if (!saving) draft = base
+            if (edit == prev) draft = base
             return
         }
         if (!savedMatches(base, save)) return
         baseline = base
-        draft = save
-        pending = null
     }
 
     private fun checkEdt() {

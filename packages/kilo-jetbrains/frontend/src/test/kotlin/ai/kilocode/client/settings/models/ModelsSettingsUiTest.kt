@@ -103,6 +103,141 @@ class ModelsSettingsUiTest : BasePlatformTestCase() {
         flushUntil { !text(panel).contains("Failed to save model settings") }
     }
 
+    fun `test reset during pending save keeps applied selection visible`() {
+        val panel = requireUi()
+        rpc.configUpdateGate = CompletableDeferred()
+
+        edt {
+            select(panel, "new")
+            panel.applyDraft()
+            panel.resetDraft()
+            assertTrue(text(panel.progress).contains("Saving model settings"))
+            assertFalse(panel.modified())
+            assertSelected(panel, "kilo/new")
+        }
+
+        rpc.configUpdateGate?.complete(Unit)
+        flushUntil { rpc.configPatches.isNotEmpty() }
+        edt { assertSelected(panel, "kilo/new") }
+    }
+
+    fun `test pickers are disabled during pending save`() {
+        val panel = requireUi()
+        rpc.configUpdateGate = CompletableDeferred()
+
+        edt {
+            select(panel, "new")
+            panel.applyDraft()
+            assertTrue(pickers(panel).isNotEmpty())
+            assertTrue(pickers(panel).all { !it.isEnabled })
+        }
+
+        rpc.configUpdateGate?.complete(Unit)
+        flushUntil { rpc.configPatches.isNotEmpty() }
+    }
+
+    fun `test matching app state before save callback keeps pending target`() {
+        val panel = requireUi()
+        rpc.configUpdateGate = CompletableDeferred()
+
+        edt {
+            select(panel, "new")
+            panel.applyDraft()
+        }
+        rpc.state.value = state("kilo/new")
+        flushUntil { edt { !panel.modified() && pickers(panel).all { !it.isEnabled } } }
+        edt {
+            panel.resetDraft()
+            assertSelected(panel, "kilo/new")
+            assertTrue(text(panel.progress).contains("Saving model settings"))
+        }
+
+        rpc.configUpdateGate?.complete(Unit)
+        flushUntil { rpc.configPatches.isNotEmpty() }
+        edt { assertSelected(panel, "kilo/new") }
+    }
+
+    fun `test matching app state after save callback preserves dirty draft`() {
+        val panel = requireUi()
+        rpc.configUpdateGate = CompletableDeferred()
+
+        edt {
+            select(panel, "new")
+            panel.applyDraft()
+            select(panel, "old")
+        }
+        rpc.configUpdateGate?.complete(Unit)
+        flushUntil { rpc.configPatches.isNotEmpty() }
+        rpc.state.value = state("kilo/new")
+        flushUntil { edt { panel.modified() } }
+
+        edt {
+            assertSelected(panel, "kilo/old")
+            assertTrue(panel.modified())
+        }
+    }
+
+    fun `test stale app state during pending save is ignored`() {
+        val panel = requireUi()
+        rpc.configUpdateGate = CompletableDeferred()
+
+        edt {
+            select(panel, "new")
+            panel.applyDraft()
+        }
+        rpc.state.value = state("kilo/old")
+        flushUntil { edt { text(panel.progress).contains("Saving model settings") } }
+
+        edt {
+            assertSelected(panel, "kilo/new")
+            assertFalse(panel.modified())
+        }
+
+        rpc.configUpdateGate?.complete(Unit)
+        flushUntil { rpc.configPatches.isNotEmpty() }
+    }
+
+    fun `test pickers stay enabled while models load`() {
+        edt {
+            requireUi().dispose()
+            ui = null
+        }
+        uiScope = CoroutineScope(SupervisorJob())
+        workspaceRpc.modelsGate = CompletableDeferred()
+        workspaceRpc.models = ModelsWorkspaceDto(providers = providers())
+
+        edt { ui = ModelsSettingsUi(uiScope, app, workspaces, directory = "/test") }
+        val panel = requireUi()
+
+        flushUntil { text(panel.progress).contains("Loading models") }
+        edt {
+            assertTrue(pickers(panel).isNotEmpty())
+            assertTrue(pickers(panel).all { it.isEnabled })
+        }
+
+        workspaceRpc.modelsGate?.complete(Unit)
+        flushUntil { text(panel).contains("Old") }
+    }
+
+    fun `test edit during pending save is preserved after completion`() {
+        val panel = requireUi()
+        rpc.configUpdateGate = CompletableDeferred()
+
+        edt {
+            select(panel, "new")
+            panel.applyDraft()
+            select(panel, "old")
+            assertSelected(panel, "kilo/old")
+        }
+
+        rpc.configUpdateGate?.complete(Unit)
+        flushUntil { rpc.configPatches.isNotEmpty() }
+        edt {
+            assertSelected(panel, "kilo/old")
+            assertTrue(panel.modified())
+        }
+    }
+
     fun `test failed save after dispose shows notification`() {
         val notes = mutableListOf<Notification>()
         ApplicationManager.getApplication().messageBus.connect(testRootDisposable).subscribe(
@@ -190,10 +325,22 @@ class ModelsSettingsUiTest : BasePlatformTestCase() {
         defaults = emptyMap(),
     )
 
+    private fun state(model: String): KiloAppStateDto = KiloAppStateDto(
+        KiloAppStatusDto.READY,
+        config = ConfigDto(model = model),
+        profile = ProfileDto(email = "alice@test.com"),
+    )
+
     private fun select(panel: ModelsSettingsUi, id: String) {
-        val picker = components(panel).filterIsInstance<ModelPicker>().first()
+        val picker = pickers(panel).first()
         picker.onSelect(ModelPicker.Item(id, id.replaceFirstChar { it.titlecase() }, "kilo", "Kilo"))
     }
+
+    private fun assertSelected(panel: ModelsSettingsUi, key: String) {
+        assertEquals(key, pickers(panel).first().selectionKeyForTest())
+    }
+
+    private fun pickers(panel: ModelsSettingsUi): List<ModelPicker> = components(panel).filterIsInstance<ModelPicker>()
 
     private fun requireUi(): ModelsSettingsUi = requireNotNull(ui)
 
