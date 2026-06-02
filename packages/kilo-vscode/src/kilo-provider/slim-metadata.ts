@@ -12,7 +12,9 @@
  *
  * This module strips fields the webview never (or rarely) needs while keeping
  * everything required to render transcript summaries, tool details and
- * diagnostics.
+ * diagnostics. It transforms outgoing webview copies only: backend session
+ * storage remains the source of truth for continuation, caching, forks and
+ * exports.
  *
  * No vscode dependency — safe to unit-test in isolation.
  */
