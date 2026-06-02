@@ -243,9 +243,9 @@ export const SessionApi = HttpApi.make("session")
         HttpApiEndpoint.post("fork", SessionPaths.fork, {
           params: { sessionID: SessionID },
           query: WorkspaceRoutingQuery,
-          payload: ForkPayload,
+          payload: [HttpApiSchema.NoContent, ForkPayload], // kilocode_change - carry upstream bodyless full-session fork support
           success: described(Session.Info, "200"),
-          error: ApiNotFoundError,
+          error: [HttpApiError.BadRequest, ApiNotFoundError], // kilocode_change - carry upstream malformed payload response
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "session.fork",
