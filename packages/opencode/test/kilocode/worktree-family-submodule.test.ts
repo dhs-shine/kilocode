@@ -1,5 +1,5 @@
 import { $ } from "bun"
-import { afterEach, describe, expect } from "bun:test"
+import { describe, expect } from "bun:test"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { Effect, Layer } from "effect"
 import * as fs from "fs/promises"
@@ -8,16 +8,10 @@ import { Git } from "../../src/git"
 import { WorktreeFamily } from "../../src/kilocode/worktree-family"
 import { Project } from "../../src/project/project"
 import * as Log from "@opencode-ai/core/util/log"
-import { resetDatabase } from "../fixture/db"
-import { disposeAllInstances, provideInstance, tmpdirScoped } from "../fixture/fixture"
+import { provideInstance, tmpdirScoped } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 
 Log.init({ print: false })
-
-afterEach(async () => {
-  await disposeAllInstances()
-  await resetDatabase()
-})
 
 const it = testEffect(Layer.mergeAll(Project.defaultLayer, Git.defaultLayer, CrossSpawnSpawner.defaultLayer))
 
@@ -33,13 +27,13 @@ describe("WorktreeFamily.list — git submodule", () => {
       yield* Effect.promise(() => $`git commit -m "add submodule"`.cwd(parent).quiet())
 
       const submodule = path.join(parent, "sub")
-      const submoduleReal = yield* Effect.promise(() => fs.realpath(submodule))
+      const real = yield* Effect.promise(() => fs.realpath(submodule))
 
       const dirs = yield* provideInstance(submodule)(WorktreeFamily.list())
       // `git worktree list --porcelain` from inside a submodule reports the
       // gitdir (`<parent>/.git/modules/sub`) as the worktree, so without the
       // submodule guard the actual working tree is missing.
-      expect(dirs).toContain(submoduleReal)
+      expect(dirs).toContain(real)
     }),
   )
 })

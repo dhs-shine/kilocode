@@ -870,6 +870,7 @@ export const layer: Layer.Layer<
             ),
             Effect.retry(
               SessionRetry.policy({
+                provider: input.model.providerID,
                 parse,
                 // kilocode_change start
                 ...KiloSessionProcessor.retryOpts({ sessionID: ctx.sessionID, abort: ac.signal, set: status.set }),
@@ -889,6 +890,7 @@ export const layer: Layer.Layer<
                     type: "retry",
                     attempt: info.attempt,
                     message: info.message,
+                    action: info.action,
                     next: info.next,
                   })
                 },

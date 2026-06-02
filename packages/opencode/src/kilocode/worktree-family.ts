@@ -1,4 +1,3 @@
-// kilocode_change - new file
 import { Effect } from "effect"
 import { InstanceState } from "../effect/instance-state"
 import { Project } from "../project/project"
