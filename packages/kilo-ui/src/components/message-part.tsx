@@ -2293,6 +2293,7 @@ ToolRegistry.register({
           {...props}
           icon="code-lines"
           defer
+          hasDetails
           trigger={
             <div data-component="edit-trigger">
               <div data-slot="message-part-title-area">
@@ -2407,6 +2408,7 @@ ToolRegistry.register({
           {...props}
           icon="code-lines"
           defer
+          hasDetails
           trigger={
             <div data-component="write-trigger">
               <div data-slot="message-part-title-area">
@@ -2539,6 +2541,7 @@ ToolRegistry.register({
           {...props}
           icon="code-lines"
           defer
+          hasDetails
           trigger={
             <div data-component={single() ? "edit-trigger" : "write-trigger"}>
               <div data-slot="message-part-title-area">
