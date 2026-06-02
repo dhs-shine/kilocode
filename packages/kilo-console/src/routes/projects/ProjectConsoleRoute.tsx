@@ -89,9 +89,12 @@ function eventSession(event: ProjectConsoleEvent) {
 }
 
 function eventType(event: ProjectConsoleEvent) {
-  const payload = event.payload
+  const payload = event.payload as { type?: string; name?: unknown; syncEvent?: { type?: unknown } }
+  if (!payload.type) return ""
   if (payload.type !== "sync") return payload.type
-  return payload.name
+  if (typeof payload.name === "string") return payload.name
+  if (typeof payload.syncEvent?.type === "string") return payload.syncEvent.type
+  return ""
 }
 
 function messageEvent(event: ProjectConsoleEvent) {
@@ -699,7 +702,7 @@ export function ProjectConsoleRoute() {
               return { url: base.url, dir: item.directory, scope: "project" }
             })
             return (
-              <Show keyed when={input()}>
+              <Show when={input()}>
                 {(target) => {
                   const item = pty()
                   if (!item) return null
@@ -710,7 +713,7 @@ export function ProjectConsoleRoute() {
                       aria-hidden={terminal() !== key}
                     >
                       <GhosttyTerminal
-                        query={target}
+                        query={target()}
                         pty={item.id}
                         active={terminal() === key}
                         onExit={() => {
@@ -751,7 +754,7 @@ export function ProjectConsoleRoute() {
         </div>
         <div class="project-info-card grow">
           <div class="project-panel-heading">Changes</div>
-          <Show when={diffs.loading}>
+          <Show when={diffs.loading && !diffs()}>
             <p class="empty">Loading diff...</p>
           </Show>
           <Show when={diffs.error}>
