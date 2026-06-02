@@ -25,6 +25,7 @@ import { ConfigCommand as ConfigCLICommand } from "../cli/cmd/config"
 import { PluginCommand } from "../cli/cmd/plug"
 import { DevSetupCommand, DevAliasCommand } from "./cli/dev-setup"
 import { RollCallCommand } from "./cli/cmd/roll-call"
+import { ProfileCommand } from "./cli/cmd/profile"
 import { DaemonCommand } from "./cli/cmd/daemon"
 import { KiloConsoleCommand } from "./cli/cmd/console"
 import { HelpCommand } from "./help-command"
@@ -59,6 +60,7 @@ export const commands = [
   ServeCommand,
   ModelsCommand,
   RollCallCommand,
+  ProfileCommand,
   StatsCommand,
   ExportCommand,
   ImportCommand,
