@@ -1,15 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import path from "path"
 import * as Log from "@opencode-ai/core/util/log"
-import { Flag } from "@opencode-ai/core/flag/flag"
 import { Server } from "../../../src/server/server"
 import { GlobalBus, type GlobalEvent } from "../../../src/bus/global"
 import { resetDatabase } from "../../fixture/db"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 
 void Log.init({ print: false })
-
-const experimental = Flag.KILO_EXPERIMENTAL_HTTPAPI
 
 type Output = {
   id: string
@@ -25,13 +22,12 @@ type Agent = {
 }
 
 afterEach(async () => {
-  Flag.KILO_EXPERIMENTAL_HTTPAPI = experimental
   await disposeAllInstances()
   await resetDatabase()
 })
 
 function req(dir: string, input: string, init?: RequestInit) {
-  return Server.Legacy().app.request(input, {
+  return Server.Default().app.request(input, {
     ...init,
     headers: {
       "x-kilo-directory": dir,
@@ -40,9 +36,8 @@ function req(dir: string, input: string, init?: RequestInit) {
   })
 }
 
-function app(value: boolean) {
-  Flag.KILO_EXPERIMENTAL_HTTPAPI = value
-  return value ? Server.Default().app : Server.Legacy().app
+function app(_value: boolean) {
+  return Server.Default().app
 }
 
 function request(target: ReturnType<typeof app>, dir: string, input: string, init?: RequestInit) {

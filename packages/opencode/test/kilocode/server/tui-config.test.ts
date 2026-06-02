@@ -27,7 +27,7 @@ describe("TUI config routes", () => {
       },
     })
 
-    const response = await Server.Legacy().app.request("/tui/config", {
+    const response = await Server.Default().app.request("/tui/config", {
       headers: { "x-kilo-directory": tmp.path },
     })
 
@@ -46,7 +46,7 @@ describe("TUI config routes", () => {
   test("lists valid TUI keybinds", async () => {
     await using tmp = await tmpdir()
 
-    const response = await Server.Legacy().app.request("/tui/keybinds", {
+    const response = await Server.Default().app.request("/tui/keybinds", {
       headers: { "x-kilo-directory": tmp.path },
     })
 
@@ -68,7 +68,7 @@ describe("TUI config routes", () => {
   test("patches project TUI config", async () => {
     await using tmp = await tmpdir()
 
-    const response = await Server.Legacy().app.request("/tui/config?scope=project", {
+    const response = await Server.Default().app.request("/tui/config?scope=project", {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
@@ -92,7 +92,7 @@ describe("TUI config routes", () => {
     const handler = (event: GlobalEvent) => events.push(event)
     GlobalBus.on("event", handler)
     try {
-      const response = await Server.Legacy().app.request("/tui/config?scope=project", {
+      const response = await Server.Default().app.request("/tui/config?scope=project", {
         method: "PATCH",
         headers: {
           "content-type": "application/json",

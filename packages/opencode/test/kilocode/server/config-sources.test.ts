@@ -58,7 +58,7 @@ function set(key: keyof typeof process.env, value: string | undefined) {
 }
 
 async function sources(dir: string) {
-  const response = await Server.Legacy().app.request("/config/sources", {
+  const response = await Server.Default().app.request("/config/sources", {
     headers: { "x-kilo-directory": dir },
   })
   expect(response.status).toBe(200)

@@ -1,4 +1,4 @@
-import { ConfigKeybinds } from "@/config/keybinds"
+import { TuiKeybind } from "@/cli/cmd/tui/config/keybind"
 import { Schema } from "effect"
 
 export namespace KilocodeKeybinds {
@@ -52,18 +52,20 @@ export namespace KilocodeKeybinds {
     return id.split("_").map(word).join(" ")
   }
 
-  function fallback(id: string, value: string) {
+  function fallback(id: string, value: unknown) {
     if (process.platform === "win32" && id === "terminal_suspend") return "none"
-    return value
+    if (value === false) return "none"
+    if (Array.isArray(value)) return value.map((item) => String(item)).join(",")
+    return String(value)
   }
 
   export function list(): Info[] {
-    return Object.entries(ConfigKeybinds.Keybinds.shape).map(([id, schema]) => ({
+    return Object.entries(TuiKeybind.Keybinds.shape).map(([id, schema]) => ({
       id,
       label: label(id),
       group: group(id),
       default: fallback(id, schema.parse(undefined)),
-      description: schema.description ?? label(id),
+      description: TuiKeybind.Descriptions[id as keyof typeof TuiKeybind.Descriptions] ?? label(id),
     }))
   }
 }

@@ -347,15 +347,14 @@ export const TuiThreadCommand = cmd({
         }
         // kilocode_change end
 
-        await start({ // kilocode_change
-          url: transport.url, // kilocode_change
-          // kilocode_change start
+        await start({
+          // kilocode_change - shared lazy loader also supports daemon attach
+          url: transport.url,
           async onSnapshot() {
             const tui = writeHeapSnapshot("tui.heapsnapshot")
             const server = await client.call("snapshot", undefined)
             return [tui, server]
           },
-          // kilocode_change end
           config,
           directory: cwd,
           fetch: transport.fetch,
@@ -379,4 +378,3 @@ export const TuiThreadCommand = cmd({
     process.exit(0)
   },
 })
-// scratch

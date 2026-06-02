@@ -124,10 +124,7 @@ export namespace KilocodeConfigOverlay {
       sources: input.sources,
       targets,
       fields: Object.fromEntries(
-        fieldPaths.map((parts) => [
-          parts.join("."),
-          field(input.scope, input.effective, global, local, [...parts]),
-        ]),
+        fieldPaths.map((parts) => [parts.join("."), field(input.scope, input.effective, global, local, [...parts])]),
       ),
       collections: Object.fromEntries(
         collectionPaths.map((key) => [key, collection(input.scope, input.effective, global, local, key)]),

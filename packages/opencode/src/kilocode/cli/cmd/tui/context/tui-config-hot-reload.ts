@@ -1,10 +1,9 @@
-// kilocode_change - new file
 /**
  * Hot-reload wiring for the reactive TUI config store.
  *
  * On a `global.config.updated` event we refetch the effective TUI config from the server
  * (`sdk.tui.config.get`) and reconcile it into the store via `KiloTuiConfig.useSet`. The
- * `useKeybind`/`useTheme` consumers read the store reactively, so new values take effect on the
+ * keymap and theme consumers read the store reactively, so new values take effect on the
  * next keypress / render.
  *
  * Kept separate from `tui-config.tsx` so the store factory has no SDK/event imports.

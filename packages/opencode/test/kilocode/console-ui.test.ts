@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import path from "path"
 import { mkdir } from "fs/promises"
 import { tmpdir } from "../fixture/fixture"
-import { serveUI } from "../../src/server/routes/ui"
+import { ConsoleAssets } from "../../src/kilocode/console/assets"
 
 const original = process.env.KILO_CONSOLE_ASSET_DIR
 
@@ -23,14 +23,15 @@ describe("Kilo Console UI routes", () => {
     process.env.KILO_CONSOLE_ASSET_DIR = tmp.path
     await assets(tmp.path)
 
-    const root = await serveUI(new Request("http://localhost/console"))
-    expect(root.status).toBe(200)
-    expect(root.headers.get("content-type")).toContain("text/html")
-    expect(await root.text()).toContain("console")
+    const root = await ConsoleAssets.resolve("/console")
+    expect(root && "file" in root).toBe(true)
+    if (!root || !("file" in root)) return
+    expect(await Bun.file(root.file).text()).toContain("console")
 
-    const route = await serveUI(new Request("http://localhost/console/projects/demo"))
-    expect(route.status).toBe(200)
-    expect(await route.text()).toContain("console")
+    const route = await ConsoleAssets.resolve("/console/projects/demo")
+    expect(route && "file" in route).toBe(true)
+    if (!route || !("file" in route)) return
+    expect(await Bun.file(route.file).text()).toContain("console")
   })
 
   test("serves console assets without falling back on missing files", async () => {
@@ -38,11 +39,11 @@ describe("Kilo Console UI routes", () => {
     process.env.KILO_CONSOLE_ASSET_DIR = tmp.path
     await assets(tmp.path)
 
-    const asset = await serveUI(new Request("http://localhost/console/assets/app.js"))
-    expect(asset.status).toBe(200)
-    expect(await asset.text()).toContain("kilo")
+    const asset = await ConsoleAssets.resolve("/console/assets/app.js")
+    expect(asset && "file" in asset).toBe(true)
+    if (!asset || !("file" in asset)) return
+    expect(await Bun.file(asset.file).text()).toContain("kilo")
 
-    const missing = await serveUI(new Request("http://localhost/console/assets/missing.js"))
-    expect(missing.status).toBe(404)
+    expect(await ConsoleAssets.resolve("/console/assets/missing.js")).toEqual({ missing: true })
   })
 })

@@ -185,9 +185,11 @@ Options:
       --dir                           directory to run in, path on remote server if attaching  [string]
       --port                          port for the local server (defaults to random port if no value provided)  [number]
       --variant                       model variant (provider-specific reasoning effort, e.g., high, max, minimal)  [string]
-      --thinking                      show thinking blocks  [boolean] [default: false]
+      --thinking                      show thinking blocks  [boolean]
+  -i, --interactive                   run in direct interactive split-footer mode  [boolean] [default: false]
       --dangerously-skip-permissions  auto-approve permissions that are not explicitly denied (dangerous!)  [boolean] [default: false]
       --auto                          auto-approve all permissions (for autonomous/pipeline usage)  [boolean] [default: false]
+      --demo                          enable direct interactive demo slash commands; pass one as the message to run it immediately  [boolean] [default: false]
 ```
 
 ## kilo debug
@@ -701,6 +703,17 @@ Options:
   --verbose   Show verbose output  [boolean] [default: false]
   --quiet     Suppress progress and decoration  [boolean] [default: false]
   --output    Output format (table, json, or md)  [string] [choices: "table", "json", "md"] [default: "table"]
+```
+
+## kilo profile
+
+```
+show Kilo account profile
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+  --json     output profile as JSON  [boolean] [default: false]
 ```
 
 ## kilo stats

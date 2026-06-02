@@ -19,13 +19,14 @@ export namespace KilocodeTuiConfig {
 
   export const Patch = TuiInfo
   export type Patch = z.output<typeof Patch>
+  export type Editable = Omit<Patch, "keybinds"> & { keybinds?: Record<string, string> }
 
   const files = ["tui.jsonc", "tui.json"] as const
   const dirs = [".kilo", ".kilocode", ".opencode"] as const
 
   export async function get(input: { directory: string }) {
     const cfg = await Effect.runPromise(
-      TuiConfig.Service.use((svc) => svc.get()).pipe(
+      TuiConfig.Service.use((svc) => svc.info()).pipe(
         Effect.provide(
           TuiConfig.defaultLayer.pipe(Layer.provide(Layer.succeed(CurrentWorkingDirectory, input.directory))),
         ),
@@ -110,15 +111,24 @@ export namespace KilocodeTuiConfig {
     return writable(mergeDeep(base, patch))
   }
 
-  function writable(config: TuiConfig.Info): Patch {
+  function writable(config: TuiConfig.Info): Editable {
     const result = { ...config } as Record<string, unknown>
     delete result.plugin_origins
+    const keybinds = Object.fromEntries(
+      Object.entries(config.keybinds ?? {}).flatMap(([key, value]) => {
+        if (typeof value === "string") return [[key, value]]
+        if (value === false) return [[key, "none"]]
+        return []
+      }),
+    )
+    if (config.keybinds) result.keybinds = keybinds
+    else delete result.keybinds
 
     for (const key of Object.keys(result)) {
       if (result[key] === undefined) delete result[key]
     }
 
-    return result as Patch
+    return result as Editable
   }
 
   function patchJsonc(input: string, patch: Patch) {

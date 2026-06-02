@@ -1,4 +1,3 @@
-// kilocode_change - new file
 /**
  * Kilo-specific TUI app customizations.
  *
@@ -10,7 +9,8 @@ import { createEffect, on } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import { TextAttributes } from "@opentui/core"
 import * as Clipboard from "@tui/util/clipboard"
-import { useCommandDialog } from "@tui/component/dialog-command"
+import { useCommandPalette } from "@tui/context/command-palette"
+import { useBindings } from "@tui/keymap"
 import { useSDK } from "@tui/context/sdk"
 import { useSync } from "@tui/context/sync"
 import { useDialog } from "@tui/ui/dialog"
@@ -150,7 +150,6 @@ export function handleSessionError(error: unknown, toast: ReturnType<typeof useT
  * - Registers the auto-approve toggle command
  */
 export function init() {
-  const command = useCommandDialog()
   const sync = useSync()
   const sdk = useSDK()
   const toast = useToast()
@@ -158,7 +157,7 @@ export function init() {
 
   // Inject TUI dependencies for kilo-gateway
   initializeTUIDependencies({
-    useCommandDialog,
+    useCommandPalette,
     useSync,
     useDialog,
     useToast,
@@ -176,35 +175,42 @@ export function init() {
   registerKiloCommands(useSDK)
 
   // Register auto-approve toggle
-  command.register(() => [
-    {
-      title: "Background processes",
-      description: "List and manage tracked background processes",
-      value: "background_process.list",
-      category: "Kilo",
-      slash: { name: "process", aliases: ["processes"] },
-      onSelect: () => {
-        dialog.replace(() => <DialogProcessList />)
+  useBindings(() => ({
+    commands: [
+      {
+        namespace: "palette",
+        name: "background_process.list",
+        title: "Background processes",
+        desc: "List and manage tracked background processes",
+        category: "Kilo",
+        slashName: "process",
+        slashAliases: ["processes"],
+        run: () => {
+          dialog.replace(() => <DialogProcessList />)
+        },
       },
-    },
-    {
-      get title() {
-        return isAllowEverything(sync.data.config.permission) ? "Disable auto-approve mode" : "Enable auto-approve mode"
+      {
+        namespace: "palette",
+        name: "permission.allow_everything",
+        get title() {
+          return isAllowEverything(sync.data.config.permission)
+            ? "Disable auto-approve mode"
+            : "Enable auto-approve mode"
+        },
+        category: "System",
+        run: async () => {
+          const enabled = isAllowEverything(sync.data.config.permission)
+          const result = await sdk.client.permission.allowEverything({ enable: !enabled })
+          if (result.error) {
+            toast.show({
+              variant: "error",
+              message: `Failed to ${!enabled ? "enable" : "disable"} auto-approve mode`,
+            })
+            return
+          }
+          dialog.clear()
+        },
       },
-      value: "permission.allow_everything",
-      category: "System",
-      onSelect: async (dialog) => {
-        const enabled = isAllowEverything(sync.data.config.permission)
-        const result = await sdk.client.permission.allowEverything({ enable: !enabled })
-        if (result.error) {
-          toast.show({
-            variant: "error",
-            message: `Failed to ${!enabled ? "enable" : "disable"} auto-approve mode`,
-          })
-          return
-        }
-        dialog.clear()
-      },
-    },
-  ])
+    ],
+  }))
 }

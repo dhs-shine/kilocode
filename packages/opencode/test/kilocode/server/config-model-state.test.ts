@@ -17,7 +17,7 @@ afterEach(async () => {
 })
 
 function req(input: string, init?: RequestInit) {
-  return Server.Legacy().app.request(input, init)
+  return Server.Default().app.request(input, init)
 }
 
 async function json<T>(response: Response) {

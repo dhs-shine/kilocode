@@ -18,7 +18,7 @@ afterEach(async () => {
 })
 
 function req(dir: string, input: string, init?: RequestInit) {
-  return Server.Legacy().app.request(input, {
+  return Server.Default().app.request(input, {
     ...init,
     headers: {
       "x-kilo-directory": dir,

@@ -21,6 +21,9 @@ const TEST_PATTERN = /\bAppRuntime\b/g
 
 const allow: Record<string, string> = {
   "bus/index.ts": "core bus callback and synchronous runtime boundary",
+  "cli/cmd/run/runtime.boot.ts": "direct run startup resolver runtime boundary",
+  "cli/cmd/run/stream.transport.ts": "per-subscription direct run transport runtime boundary",
+  "cli/cmd/run/variant.shared.ts": "direct run variant persistence runtime boundary with test filesystem injection",
   "cli/cmd/tui/config/tui.ts": "separately tracked TUI config facade",
   "installation/index.ts": "existing installation facade outside #10655",
   "session/compaction.ts": "existing compaction facade outside #10655",

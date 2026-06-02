@@ -92,7 +92,7 @@ export const TuiConfigQuery = Schema.Struct({ scope: Schema.optional(TuiScoped) 
 const TuiConfigShape = {
   $schema: Schema.optional(Schema.String),
   theme: Schema.optional(Schema.String),
-  keybinds: Schema.optional(Schema.Record(Schema.String, Schema.UndefinedOr(Schema.String))),
+  keybinds: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   plugin: Schema.optional(Schema.Array(ConfigPlugin.Spec)),
   plugin_enabled: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
   scroll_speed: Schema.optional(Schema.Number),
