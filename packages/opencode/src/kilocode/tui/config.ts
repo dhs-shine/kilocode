@@ -114,13 +114,15 @@ export namespace KilocodeTuiConfig {
   function writable(config: TuiConfig.Info): Editable {
     const result = { ...config } as Record<string, unknown>
     delete result.plugin_origins
-    result.keybinds = Object.fromEntries(
+    const keybinds = Object.fromEntries(
       Object.entries(config.keybinds ?? {}).flatMap(([key, value]) => {
         if (typeof value === "string") return [[key, value]]
         if (value === false) return [[key, "none"]]
         return []
       }),
     )
+    if (config.keybinds) result.keybinds = keybinds
+    else delete result.keybinds
 
     for (const key of Object.keys(result)) {
       if (result[key] === undefined) delete result[key]
