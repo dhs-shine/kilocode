@@ -1,5 +1,19 @@
 # @kilocode/cli
 
+## 7.3.21
+
+### Minor Changes
+
+- [#10298](https://github.com/Kilo-Org/kilocode/pull/10298) [`ac7e46d`](https://github.com/Kilo-Org/kilocode/commit/ac7e46d67a7015469bf2edeb573c284308ea05d5) Thanks [@Githubguy132010](https://github.com/Githubguy132010)! - Add a `kilo profile` command for checking the active Kilo account or team balance.
+
+- [#10310](https://github.com/Kilo-Org/kilocode/pull/10310) [`c265fa4`](https://github.com/Kilo-Org/kilocode/commit/c265fa4c4ef18204f8e2741c66953c24bf012f2a) Thanks [@IamCoder18](https://github.com/IamCoder18)! - Show running spinner in subagent footer to indicate when subagent is processing
+
+### Patch Changes
+
+- [#10191](https://github.com/Kilo-Org/kilocode/pull/10191) [`b590f8c`](https://github.com/Kilo-Org/kilocode/commit/b590f8c25f1af82e7df854b5b969ae8749118bba) Thanks [@IamCoder18](https://github.com/IamCoder18)! - Handle newlines in DialogAlert messages
+
+- [#10306](https://github.com/Kilo-Org/kilocode/pull/10306) [`aca8aeb`](https://github.com/Kilo-Org/kilocode/commit/aca8aeb2b91679b52937562d45986562440ac1de) Thanks [@IamCoder18](https://github.com/IamCoder18)! - Toggle export dialog checkboxes on mouse click
+
 ## 7.3.20
 
 ### Patch Changes
