@@ -143,7 +143,7 @@ internal abstract class BaseSettingsUi<C : BaseContentPanel, D, P, R>(
         fallback()
     }
 
-    protected fun checkEdt() {
+    private fun checkEdt() {
         check(ApplicationManager.getApplication().isDispatchThread) { "Settings UI updates must run on EDT" }
     }
 

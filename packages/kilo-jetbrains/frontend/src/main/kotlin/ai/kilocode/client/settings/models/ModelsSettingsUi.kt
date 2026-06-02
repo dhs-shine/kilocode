@@ -93,7 +93,6 @@ internal class ModelsSettingsUi(
 
     @RequiresEdt
     fun updateApp(state: KiloAppStateDto) {
-        checkEdt()
         appState = state
         if (state.status != KiloAppStatusDto.READY) {
             loading = false
@@ -112,7 +111,6 @@ internal class ModelsSettingsUi(
 
     @RequiresEdt
     fun updateModelsWorkspace(state: ModelsWorkspaceDto) {
-        checkEdt()
         providers = state.providers
         agents = state.agents?.agents ?: emptyList()
         errors = state.errors
@@ -125,7 +123,6 @@ internal class ModelsSettingsUi(
 
     @RequiresEdt
     fun updateModels(state: ai.kilocode.rpc.dto.ModelStateDto) {
-        checkEdt()
         syncContent()
     }
 
@@ -151,7 +148,6 @@ internal class ModelsSettingsUi(
 
     @RequiresEdt
     private fun loadModels() {
-        checkEdt()
         val root = dir ?: return
         if (appState.status != KiloAppStatusDto.READY || loading || loaded) return
         loading = true
@@ -165,7 +161,6 @@ internal class ModelsSettingsUi(
 
     @RequiresEdt
     override fun syncContent() {
-        checkEdt()
         allItems = items(false)
         val smallItems = items(true)
         val hasDir = dir != null || directory != null
@@ -209,7 +204,6 @@ internal class ModelsSettingsUi(
 
     @RequiresEdt
     private fun syncModelBanner(state: ModelsStatus, login: Boolean) {
-        checkEdt()
         syncLoginBanner(login) {
             if ((saving || state == ModelsStatus.LOADING || state == ModelsStatus.SAVING) && top.isVisible) return@syncLoginBanner
             when (state) {
