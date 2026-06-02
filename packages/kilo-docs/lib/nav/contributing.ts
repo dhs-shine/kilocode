@@ -23,6 +23,34 @@ export const ContributingNav: NavSection[] = [
         children: "Architecture Overview",
       },
       {
+        href: "/contributing/architecture/cli-runtime",
+        children: "CLI Runtime",
+      },
+      {
+        href: "/contributing/architecture/vscode-extension",
+        children: "VS Code Extension",
+      },
+      {
+        href: "/contributing/architecture/cloud-platform",
+        children: "Cloud Platform",
+      },
+      {
+        href: "/contributing/architecture/security-agent",
+        children: "Security Agent Architecture",
+      },
+      {
+        href: "/contributing/architecture/automation-services",
+        children: "Automation Services",
+      },
+      {
+        href: "/contributing/architecture/cloud-security",
+        children: "Cloud Security Architecture",
+      },
+      {
+        href: "/contributing/architecture/development-patterns",
+        children: "Development Patterns",
+      },
+      {
         href: "/contributing/architecture/features",
         children: "Features",
         subLinks: [
