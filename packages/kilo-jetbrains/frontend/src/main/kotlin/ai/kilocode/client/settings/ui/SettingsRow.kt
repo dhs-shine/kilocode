@@ -6,8 +6,6 @@ import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.ui.layout.StackAxis
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
-import com.intellij.ui.JBColor
-import com.intellij.ui.SeparatorComponent
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
@@ -18,38 +16,91 @@ import javax.swing.JPanel
 class SettingsRow(
     title: String,
     description: String? = null,
-    value: JComponent,
+    value: JComponent? = null,
 ) : JPanel(BorderLayout()) {
+
+    private val titleLabel = JBLabel(title).apply { font = UiStyle.Fonts.bold() }
+    private val descriptionLabel = JBLabel(description.orEmpty()).apply {
+        font = UiStyle.Fonts.hint()
+        foreground = UIUtil.getContextHelpForeground()
+        isVisible = description != null
+    }
+    private val labels = Stack.vertical(UiStyle.Gap.sm())
+    private val valuePanel = JPanel(BorderLayout())
+    private var current: JComponent? = null
 
     init {
         border = JBUI.Borders.empty(UiStyle.Gap.pad(), 0, UiStyle.Gap.pad(), 0)
-
-        val labels = Stack.vertical(UiStyle.Gap.sm())
-        labels.next(JBLabel(title).apply { font = UiStyle.Fonts.bold() })
-        if (description != null) {
-            labels.next(JBLabel(description).apply {
-                font = UiStyle.Fonts.hint()
-                foreground = UIUtil.getContextHelpForeground()
-            })
-        }
-
+        valuePanel.isOpaque = false
+        labels.next(titleLabel)
+        labels.next(descriptionLabel)
         add(labels, BorderLayout.CENTER)
-        add(value.align(HAlign.RIGHT, VAlign.CENTER), BorderLayout.EAST)
+        add(valuePanel, BorderLayout.EAST)
+        setValue(value)
+    }
+
+    fun update(
+        title: String,
+        description: String? = null,
+        value: JComponent? = null,
+    ) {
+        if (titleLabel.text != title) titleLabel.text = title
+        val text = description.orEmpty()
+        if (descriptionLabel.text != text) descriptionLabel.text = text
+        val visible = description != null
+        if (descriptionLabel.isVisible != visible) descriptionLabel.isVisible = visible
+        setValue(value)
+    }
+
+    private fun setValue(value: JComponent?) {
+        if (value != null && current !== value) {
+            valuePanel.removeAll()
+            valuePanel.add(value.align(HAlign.RIGHT, VAlign.CENTER), BorderLayout.CENTER)
+            current = value
+        }
     }
 }
 
 class SettingsRows : Stack(StackAxis.VERTICAL) {
-    private var rows = 0
+    private val keyed = linkedMapOf<String, SettingsRow>()
 
     fun row(child: SettingsRow): SettingsRows {
-        if (rows > 0) next(SeparatorComponent(0, JBColor.border(), null))
         next(child)
-        rows += 1
         return this
     }
 
+    fun row(key: String, child: SettingsRow): SettingsRow {
+        keyed.remove(key)?.let { remove(it) }
+        keyed[key] = child
+        next(child)
+        return child
+    }
+
+    fun update(
+        key: String,
+        title: String,
+        description: String? = null,
+        value: JComponent? = null,
+    ): SettingsRow? {
+        val row = keyed[key] ?: return null
+        row.update(title, description, value)
+        return row
+    }
+
+    fun remove(key: String): SettingsRow? {
+        val row = keyed.remove(key) ?: return null
+        remove(row)
+        revalidate()
+        repaint()
+        return row
+    }
+
+    fun retain(keys: Set<String>) {
+        keyed.keys.toList().filter { it !in keys }.forEach { remove(it) }
+    }
+
     override fun removeAll() {
-        rows = 0
+        keyed.clear()
         super.removeAll()
     }
 }

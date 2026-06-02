@@ -8,11 +8,12 @@ import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.model.ModelText
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.settings.profile.edt
+import ai.kilocode.client.settings.ui.SettingsBannerKind
+import ai.kilocode.client.settings.ui.SettingsContentPanel
+import ai.kilocode.client.settings.ui.SettingsPanel
 import ai.kilocode.client.settings.ui.SettingsRow
 import ai.kilocode.client.settings.ui.SettingsRows
-import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.HAlign
-import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
 import ai.kilocode.rpc.dto.AgentDto
@@ -29,48 +30,29 @@ import com.intellij.openapi.options.ConfigurableWithId
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.options.ex.Settings
 import com.intellij.openapi.project.ProjectManager
-import com.intellij.ui.EditorNotificationPanel
-import com.intellij.ui.InlineBanner
-import com.intellij.ui.TitledSeparator
-import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.concurrency.annotations.RequiresEdt
-import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.awt.BorderLayout
 import java.util.function.Predicate
 import javax.swing.JComponent
-import javax.swing.JPanel
 
 internal class ModelsSettingsUi(
     private val cs: CoroutineScope,
     private val app: KiloAppService = service(),
     private val workspaces: KiloWorkspaceService = service(),
     private val directory: String? = null,
-) : JPanel(BorderLayout()) {
+) : SettingsPanel() {
 
-    private val status = JBLabel(KiloBundle.message("settings.models.loading"))
-    private val banner = InlineBanner(
-        KiloBundle.message("settings.models.login.message"),
-        EditorNotificationPanel.Status.Warning,
-    ).showCloseButton(false)
-    private val content = Stack.vertical()
-    private val rows = SettingsRows()
-    private val modes = SettingsRows()
-    private val defaults = ModelSettingPicker()
-    private val small = ModelSettingPicker()
-    private val subagent = ModelSettingPicker()
-    private val variant = ReasoningPicker()
-    private val variantRow = SettingsRow(
-        KiloBundle.message("settings.models.subagentVariant.title"),
-        KiloBundle.message("settings.models.subagentVariant.description"),
-        variant.align(HAlign.RIGHT, VAlign.CENTER),
-    )
-    private val pickers = mutableMapOf<String, ModelSettingPicker>()
+    private val form = ModelsSettingsContent(app, ::update, ::selectSubagent)
+    private val defaults = form.defaults
+    private val small = form.small
+    private val subagent = form.subagent
+    private val variant = form.variant
+    private val variantRow = form.variantRow
+    private val pickers = form.pickers
     private val jobs = mutableListOf<Job>()
 
     private var baseline = ModelsDraft()
@@ -87,50 +69,7 @@ internal class ModelsSettingsUi(
     private var pending: ModelsDraft? = null
 
     init {
-        status.foreground = UIUtil.getContextHelpForeground()
-        defaults.picker.onSelect = { update { copy(model = it.key) } }
-        defaults.picker.onClear = { update { copy(model = null) } }
-        small.picker.onSelect = { update { copy(small = it.key) } }
-        small.picker.onClear = { update { copy(small = null) } }
-        small.picker.includeSmall = true
-        subagent.picker.onSelect = { item -> selectSubagent(item) }
-        subagent.picker.onClear = { update { copy(subagent = null, variant = null) } }
-        variant.onSelect = { item -> update { copy(variant = item.id) } }
-        listOf(defaults, small, subagent).forEach { picker ->
-            picker.picker.favorites = { app.favorites.value }
-            picker.picker.onFavoriteToggle = { app.toggleModelFavorite(it.provider, it.id) }
-        }
-
-        banner.addAction(KiloBundle.message("settings.models.login.action"), Runnable { openProfile(banner) })
-        content.next(banner)
-        content.gap(UiStyle.Gap.md())
-        content.next(status)
-        content.gap(UiStyle.Gap.lg())
-        content.next(TitledSeparator(KiloBundle.message("settings.models.displayName")))
-        rows.row(SettingsRow(
-            KiloBundle.message("settings.models.defaultModel.title"),
-            KiloBundle.message("settings.models.defaultModel.description"),
-            defaults,
-        ))
-        rows.row(SettingsRow(
-            KiloBundle.message("settings.models.smallModel.title"),
-            KiloBundle.message("settings.models.smallModel.description"),
-            small,
-        ))
-        rows.row(SettingsRow(
-            KiloBundle.message("settings.models.subagentModel.title"),
-            KiloBundle.message("settings.models.subagentModel.description"),
-            subagent,
-        ))
-        rows.row(variantRow)
-        content.next(rows)
-        content.next(TitledSeparator(KiloBundle.message("settings.models.modeModels.title")))
-        content.next(JBLabel(KiloBundle.message("settings.models.modeModels.description")).apply {
-            foreground = UIUtil.getContextHelpForeground()
-            font = UiStyle.Fonts.small()
-        })
-        content.next(modes)
-        add(JBScrollPane(content).apply { border = null }, BorderLayout.CENTER)
+        setContent(form)
         sync()
         start()
     }
@@ -145,7 +84,7 @@ internal class ModelsSettingsUi(
     fun resetDraft() {
         checkEdt()
         draft = baseline
-        if (!saving) status.text = ""
+        if (!saving) clearProgress()
         sync()
     }
 
@@ -158,8 +97,7 @@ internal class ModelsSettingsUi(
         if (patch.values.isEmpty() && patch.agents.isEmpty()) return
         pending = next
         saving = true
-        status.text = KiloBundle.message("settings.models.save.pending")
-        status.foreground = UIUtil.getContextHelpForeground()
+        showProgress(KiloBundle.message("settings.models.save.pending"))
         sync()
         cs.launch {
             val state = app.updateConfig(patch)
@@ -171,7 +109,7 @@ internal class ModelsSettingsUi(
                     draft = next
                     pending = null
                     saving = false
-                    status.text = ""
+                    clearProgress()
                     sync()
                     return@withContext
                 }
@@ -179,8 +117,7 @@ internal class ModelsSettingsUi(
                 draft = next
                 pending = null
                 saving = false
-                status.text = KiloBundle.message("settings.models.save.failed")
-                status.foreground = UiStyle.Colors.errorLabelForeground()
+                clearProgress()
                 sync()
             }
         }
@@ -285,40 +222,28 @@ internal class ModelsSettingsUi(
             ready = appState.status == KiloAppStatusDto.READY,
             authenticated = appState.profile != null,
         )
-        val structural = banner.isVisible != bannerVisible
-        banner.isVisible = bannerVisible
-        if (!saving) {
+        if (bannerVisible) {
+            top.showNotLoggedIn { openProfile(it) }
+        } else {
             when (state) {
-                ModelsStatus.UNAVAILABLE -> {
-                    status.text = KiloBundle.message("settings.models.unavailable")
-                    status.foreground = UIUtil.getContextHelpForeground()
-                }
-                ModelsStatus.LOADING -> {
-                    status.text = KiloBundle.message("settings.models.loading")
-                    status.foreground = UIUtil.getContextHelpForeground()
-                }
-                ModelsStatus.LOAD_FAILED -> {
-                    status.text = KiloBundle.message("settings.models.load.failed")
-                    status.foreground = UiStyle.Colors.errorLabelForeground()
-                }
-                ModelsStatus.NO_PROVIDERS -> {
-                    status.text = KiloBundle.message("settings.models.noProviders")
-                    status.foreground = UIUtil.getContextHelpForeground()
-                }
-                ModelsStatus.MODES_FAILED -> {
-                    status.text = KiloBundle.message("settings.models.modes.failed")
-                    status.foreground = UiStyle.Colors.warningLabelForeground()
-                }
-                ModelsStatus.READY,
-                ModelsStatus.SAVING -> {
-                    status.text = ""
-                    status.foreground = UIUtil.getContextHelpForeground()
-                }
+                ModelsStatus.LOAD_FAILED -> top.showBanner(
+                    KiloBundle.message("settings.models.load.failed"),
+                    emptyList(),
+                    SettingsBannerKind.ERROR,
+                )
+                ModelsStatus.NO_PROVIDERS -> top.showBanner(KiloBundle.message("settings.models.noProviders"), emptyList())
+                ModelsStatus.MODES_FAILED -> top.showBanner(KiloBundle.message("settings.models.modes.failed"), emptyList())
+                else -> top.hideBanner()
             }
         }
-        val statusVisible = status.text.isNotBlank()
-        var layout = structural || status.isVisible != statusVisible
-        status.isVisible = statusVisible
+        if (saving || state == ModelsStatus.SAVING) {
+            showProgress(KiloBundle.message("settings.models.save.pending"))
+        } else if (state == ModelsStatus.UNAVAILABLE || state == ModelsStatus.LOADING) {
+            showProgress(KiloBundle.message("settings.models.loading"))
+        } else {
+            clearProgress()
+        }
+        var layout = false
         defaults.setItems(allItems, draft.model)
         small.setItems(smallItems, draft.small)
         subagent.setItems(allItems, draft.subagent)
@@ -364,7 +289,7 @@ internal class ModelsSettingsUi(
         var layout = false
         val names = agents.map { it.name }
         if (names != pickers.keys.toList()) {
-            modes.removeAll()
+            form.modes.removeAll()
             pickers.clear()
             agents.forEach { agent ->
                 val picker = ModelSettingPicker()
@@ -373,7 +298,7 @@ internal class ModelsSettingsUi(
                 picker.picker.onSelect = { item -> update { copy(agents = this.agents + (agent.name to item.key)) } }
                 picker.picker.onClear = { update { copy(agents = this.agents + (agent.name to null)) } }
                 pickers[agent.name] = picker
-                modes.row(SettingsRow(
+                form.modes.row(agent.name, SettingsRow(
                     agent.displayName ?: title(agent.name),
                     agent.description,
                     picker,
@@ -381,7 +306,10 @@ internal class ModelsSettingsUi(
             }
             layout = true
         }
-        for ((name, picker) in pickers) {
+        agents.forEach { agent ->
+            val name = agent.name
+            val picker = pickers[name] ?: return@forEach
+            form.modes.update(name, agent.displayName ?: title(name), agent.description, picker)
             val value = draft.agents[name]
             picker.setItems(allItems, value)
             picker.isEnabled = ready
@@ -440,6 +368,61 @@ internal class ModelsSettingsUi(
 }
 
 private const val KILO_PROVIDER = "kilo"
+
+private class ModelsSettingsContent(
+    app: KiloAppService,
+    update: (ModelsDraft.() -> ModelsDraft) -> Unit,
+    select: (ModelPicker.Item) -> Unit,
+) : SettingsContentPanel() {
+    val defaults = ModelSettingPicker()
+    val small = ModelSettingPicker()
+    val subagent = ModelSettingPicker()
+    val variant = ReasoningPicker()
+    val variantRow = SettingsRow(
+        KiloBundle.message("settings.models.subagentVariant.title"),
+        KiloBundle.message("settings.models.subagentVariant.description"),
+        variant.align(HAlign.RIGHT, VAlign.CENTER),
+    )
+    val modes: SettingsRows
+    val pickers = linkedMapOf<String, ModelSettingPicker>()
+
+    init {
+        defaults.picker.onSelect = { update { copy(model = it.key) } }
+        defaults.picker.onClear = { update { copy(model = null) } }
+        small.picker.onSelect = { update { copy(small = it.key) } }
+        small.picker.onClear = { update { copy(small = null) } }
+        small.picker.includeSmall = true
+        subagent.picker.onSelect = { item -> select(item) }
+        subagent.picker.onClear = { update { copy(subagent = null, variant = null) } }
+        variant.onSelect = { item -> update { copy(variant = item.id) } }
+        listOf(defaults, small, subagent).forEach { picker ->
+            picker.picker.favorites = { app.favorites.value }
+            picker.picker.onFavoriteToggle = { app.toggleModelFavorite(it.provider, it.id) }
+        }
+
+        val rows = section(KiloBundle.message("settings.models.displayName"))
+        rows.row(SettingsRow(
+            KiloBundle.message("settings.models.defaultModel.title"),
+            KiloBundle.message("settings.models.defaultModel.description"),
+            defaults,
+        ))
+        rows.row(SettingsRow(
+            KiloBundle.message("settings.models.smallModel.title"),
+            KiloBundle.message("settings.models.smallModel.description"),
+            small,
+        ))
+        rows.row(SettingsRow(
+            KiloBundle.message("settings.models.subagentModel.title"),
+            KiloBundle.message("settings.models.subagentModel.description"),
+            subagent,
+        ))
+        rows.row(variantRow)
+        modes = section(
+            KiloBundle.message("settings.models.modeModels.title"),
+            KiloBundle.message("settings.models.modeModels.description"),
+        )
+    }
+}
 
 private fun variantTitle(value: String): String = value.replaceFirstChar { it.titlecase() }
 

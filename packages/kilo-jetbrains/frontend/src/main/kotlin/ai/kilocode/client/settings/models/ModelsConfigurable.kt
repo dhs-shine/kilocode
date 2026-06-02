@@ -3,6 +3,7 @@ package ai.kilocode.client.settings.models
 import ai.kilocode.client.plugin.KiloBundle
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.options.SearchableConfigurable
 import kotlinx.coroutines.CoroutineScope
@@ -11,7 +12,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import javax.swing.JComponent
 
-class ModelsConfigurable : SearchableConfigurable {
+class ModelsConfigurable : SearchableConfigurable, Configurable.NoScroll {
     private var ui: ModelsSettingsUi? = null
     private var scope: CoroutineScope? = null
 
