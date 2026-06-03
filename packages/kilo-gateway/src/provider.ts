@@ -80,6 +80,7 @@ export function createKilo(options: KiloProviderOptions = {}): KiloProvider {
   const anthropic = createAnthropic(sdkOptions)
   const openai = createOpenAI(sdkOptions)
   const openaiCompatible = createOpenAICompatible({ ...sdkOptions, name: "openaiCompatible" })
+  const mistral = createMistral(sdkOptions)
 
   return {
     languageModel(modelId) {
@@ -99,6 +100,9 @@ export function createKilo(options: KiloProviderOptions = {}): KiloProvider {
     },
     anthropic(modelId) {
       return anthropic(modelId)
+    },
+    mistral(modelId) {
+      return mistral(modelId)
     },
     openai(modelId) {
       return openai(modelId)
