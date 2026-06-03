@@ -1,101 +1,222 @@
 ---
 title: "Architecture Overview"
-description: "Overview of the Kilo platform architecture"
+description: "Overview of the Kilo Code platform architecture"
 ---
 
 # Architecture Overview
 
-This page is the contributor-facing map for Kilo's major systems. It shows how the CLI, editor clients, cloud services, and hosted runtimes fit together, then links to focused architecture pages for deeper implementation details.
+This page maps Kilo Code's repository-defined architecture. It introduces the local runtime, editor clients, cloud service boundaries, and hosted execution products before the subsystem pages add implementation detail.
 
 {% callout type="info" title="Scope" %}
-This overview is intentionally high level. Use the linked pages for runtime details, VS Code backend behavior, Kilo Cloud services, security boundaries, and implementation patterns.
+Use these pages for stable system boundaries and contributor-wide contracts. Source code remains the reference for feature-level implementation details. Static source shows code paths and deployable surfaces, not production enablement, traffic, retention, or vendor configuration.
 {% /callout %}
 
-## Platform Map
+## How to read these pages
 
-Kilo is built around the CLI agent runtime. Some surfaces use local runtime services directly, some attach to a daemon or `kilo serve` process over HTTP + SSE, and hosted cloud services run the CLI inside policy-scoped execution environments or route model traffic through Kilo Cloud.
+Choose the path closest to the change you are making:
 
-```mermaid
-graph LR
-  subgraph local ["Local and Editor Clients"]
-    tui["Kilo CLI TUI"]
-    run["kilo run"]
-    vscode["VS Code Extension"]
-  end
-
-  subgraph cli ["Kilo CLI Runtime"]
-    engine["Agent runtime, tools, sessions, config"]
-    server["kilo serve HTTP + SSE"]
-    router["Provider Router"]
-  end
-
-  subgraph cloud ["Kilo Cloud"]
-    web["Web control plane"]
-    gateway["Kilo Gateway"]
-    cloudagent["Cloud Agent"]
-    automation["Kilo Bot, Code Review, Auto Triage, Auto Fix, App Builder"]
-    security["Security Agent"]
-    claw["KiloClaw"]
-    gastown["Gas Town"]
-  end
-
-  providers["Model providers and gateways"]
-  repos["Customer repositories"]
-
-  tui -->|local services, daemon, or worker fallback| engine
-  run -->|daemon attach or embedded fetch| engine
-  vscode -->|HTTP + SSE| server
-  server --> engine
-  engine --> router
-  router -->|direct or gateway| providers
-  router --> gateway
-  gateway --> providers
-  web --> gateway
-  automation --> cloudagent
-  security --> cloudagent
-  cloudagent -->|CLI in policy-scoped sandbox| repos
-  cloudagent --> providers
-  claw --> providers
-  gastown -->|agents in Cloudflare Containers| repos
-  gastown --> providers
-```
-
-## Product and Runtime Matrix
-
-| Surface | Primary package or repo | Runtime model |
-|---|---|---|
-| Kilo CLI TUI | `packages/opencode/` | Renders a SolidJS OpenTUI interface and can use daemon attach or local fallback paths |
-| `kilo run` | `packages/opencode/` | Runs headless single-prompt execution through explicit attach, daemon attach, or embedded server fetch |
-| `kilo serve` | `packages/opencode/` | Exposes the CLI runtime through HTTP + SSE for clients |
-| VS Code Extension | `packages/kilo-vscode/` | Creates one shared connection service and lazily starts one shared `kilo serve --port 0` backend; autocomplete can prewarm it |
-| Kilo Cloud | `Kilo-Org/cloud` | Hosts authentication, billing, model routing, integrations, automation, and scoped execution services |
-| Cloud Agent | `Kilo-Org/cloud` | Runs coding sessions in Cloudflare sandbox containers with session-specific workspaces and policy-driven sandbox identity |
-| Security Agent | `Kilo-Org/cloud` | Syncs Dependabot findings and runs queue-backed LLM or Cloud Agent analysis for security issues |
-| KiloClaw | `Kilo-Org/cloud` | Runs owner-scoped OpenClaw runtimes coordinated by Cloudflare Durable Objects |
-| Gas Town | `Kilo-Org/cloud` | Runs multi-agent towns through Cloudflare Workers, Durable Objects, and Cloudflare Containers |
-
-## Architecture Pages
-
-| Page | What it covers |
+| Contributor path | Suggested order |
 |---|---|
-| [CLI Runtime](/docs/contributing/architecture/cli-runtime) | CLI modes, in-process vs HTTP clients, server API, provider routing, and core subsystems |
-| [VS Code Extension](/docs/contributing/architecture/vscode-extension) | Extension backend lifecycle, shared connection service, Agent Manager, worktree routing, and webview architecture |
-| [Cloud Platform](/docs/contributing/architecture/cloud-platform) | Kilo Cloud service inventory, Cloud Agent, KiloClaw, Gas Town, automation services, and supporting services |
-| [Security Agent Architecture](/docs/contributing/architecture/security-agent) | Dependabot sync, security finding model, auto-analysis queue, Cloud Agent launch path, and operational controls |
-| [Automation Services](/docs/contributing/architecture/automation-services) | Kilo Bot, Code Review, Auto Triage, Auto Fix, App Builder, webhook triggers, worker boundaries, and Cloud Agent callbacks |
-| [Kilo Cloud Security Architecture](/docs/contributing/architecture/cloud-security) | Cloud topology, trust boundaries, data flows, persistence, execution isolation, controls, and third-party categories |
-| [Development Patterns](/docs/contributing/architecture/development-patterns) | Module exports, server API conventions, tool implementation pattern, SDK regeneration, and build system notes |
-| [Features](/docs/contributing/architecture/features) | Feature-specific architecture specs and design notes |
+| Local CLI or editor client | Architecture Overview -> [CLI Runtime](/docs/contributing/architecture/cli-runtime) -> [VS Code Extension](/docs/contributing/architecture/vscode-extension) or [JetBrains Plugin](/docs/contributing/architecture/jetbrains-plugin) |
+| Hosted platform or automation | Architecture Overview -> [Cloud Platform](/docs/contributing/architecture/cloud-platform) -> [Automation Services](/docs/contributing/architecture/automation-services) |
+| Security review | Architecture Overview -> [Cloud Platform](/docs/contributing/architecture/cloud-platform) -> [Cloud Security](/docs/contributing/architecture/cloud-security) |
+| Architecture-facing implementation | Relevant architecture page -> [Development Patterns](/docs/contributing/architecture/development-patterns) |
+| CLI config ownership or key change | [CLI Runtime](/docs/contributing/architecture/cli-runtime#config-precedence) -> [CLI Config Schema](/docs/contributing/architecture/config-schema) -> [Development Patterns](/docs/contributing/architecture/development-patterns) |
 
-## Repository Boundaries
+## Repository boundaries
+
+Architecture pages cross two repositories:
 
 | Repository | Contents |
 |---|---|
-| [Kilo-Org/kilocode](https://github.com/Kilo-Org/kilocode) | CLI engine, VS Code extension, SDK, gateway client, telemetry, docs, UI components |
-| [Kilo-Org/cloud](https://github.com/Kilo-Org/cloud) | Web dashboard, Cloud Agent, Kilo Bot, KiloClaw, Gas Town, code review, auto triage, billing, and supporting Cloudflare Workers |
+| [Kilo&#8209;Org/kilocode](https://github.com/Kilo-Org/kilocode) | Kilo CLI runtime, local daemon, Kilo Console, VS Code extension, JetBrains plugin, JavaScript SDK, codebase indexing, Kilo Gateway client, telemetry, docs, and shared UI packages |
+| [Kilo&#8209;Org/cloud](https://github.com/Kilo-Org/cloud) | Web control plane, Kilo Gateway routes, Cloud Agent session runtime, automation, generated-application preview and deployment services, KiloClaw, Gas Town, billing, and supporting Workers |
 
-## Further Reading
+## Three architecture layers
 
-- [Development Environment](/docs/contributing/development-environment) - Setup guide
-- [Ecosystem](/docs/contributing/ecosystem) - Related projects and integrations
-- [KiloClaw Overview](/docs/kiloclaw/overview) - Customer-facing hosted OpenClaw docs
+| Layer | Responsibility | Typical boundaries |
+|---|---|---|
+| Local runtime and clients | Runs local coding sessions and connects editor surfaces to one local agent engine | Kilo CLI runtime, `kilo serve` server, local daemon, Kilo Console, VS Code extension, JetBrains plugin |
+| Kilo Cloud shared services | Handles hosted identity, authorization, model routing, billing, orchestration, and shared product services | Web control plane, Kilo Gateway, Workers, queues, Durable Objects, persistence |
+| Hosted product runtimes and automation | Runs scoped cloud work for coding, app generation, assistants, security analysis, and multi-agent orchestration | Cloud Agent, Automation Services, App Builder, Security Agent, KiloClaw, Gas Town, Wasteland |
+
+Local execution and hosted execution are separate boundaries. Editor clients use a local `kilo serve` server. Hosted automation can launch Cloud Agent execution sessions when cloud coding work is required.
+
+## Terms used throughout
+
+| Term | Meaning |
+|---|---|
+| Kilo Code | Umbrella product across local clients, Kilo CLI runtime, and Kilo Cloud services |
+| Kilo CLI runtime | Local agent engine in `packages/opencode/`; owns tools, sessions, config, persistence, and provider routing |
+| `kilo serve` server | Local HTTP and SSE process used by editor clients and Kilo Console; selected browser-oriented paths also use WebSocket |
+| Local daemon | Detached reusable `kilo serve` server managed by `kilo daemon` commands |
+| Directory context | Normalized local filesystem directory used to select local runtime state |
+| Local runtime instance | Directory-keyed runtime context inside one Kilo CLI process |
+| Local routing workspace | Optional routing context that can resolve to a local directory or remote target |
+| Worktree directory | Alternate git worktree path used as a directory context for isolated concurrent work |
+| Web control plane | Hosted Kilo Cloud application layer for identity, organization authorization, billing, product configuration, and API orchestration |
+| Kilo Gateway | First-party hosted model-routing boundary |
+| Cloud Agent | Hosted coding-session capability. A Cloud Agent execution session is one hosted run; current session runtime implementation lives in `services/cloud-agent-next/`. |
+
+## Core execution spine
+
+The three layers appear in two primary execution shapes: local client requests and hosted cloud work.
+
+```mermaid
+flowchart LR
+  subgraph clients ["Local clients"]
+    tui["Kilo CLI TUI"]
+    run["kilo run"]
+    console["Kilo Console"]
+    editors["VS Code and JetBrains"]
+  end
+
+  subgraph local ["Local Kilo CLI boundary"]
+    daemon["Local daemon manager"]
+    server["kilo serve server"]
+    runtime["Kilo CLI runtime"]
+    router["Provider router"]
+  end
+
+  subgraph cloud ["Kilo Cloud shared services"]
+    web["Web control plane"]
+    workers["Automation Workers, queues, and Durable Objects"]
+    gateway["Kilo Gateway"]
+    agent["Cloud Agent"]
+  end
+
+  trigger["Hosted product or automation trigger"]
+  repos["Repositories"]
+  models["Model providers and external gateways"]
+
+  tui -->|"daemon attach when available"| server
+  tui -->|"worker-backed fallback"| runtime
+  run -->|"attach when available"| server
+  run -->|"embedded fallback"| runtime
+  console -->|"starts or reuses"| daemon
+  daemon -->|"owns detached child"| server
+  editors -->|"start editor-owned child over HTTP + SSE"| server
+  server --> runtime --> router
+  router -->|"direct provider"| models
+  router --> gateway --> models
+
+  trigger --> web
+  trigger --> workers
+  web --> workers --> agent
+  web --> agent
+  agent --> repos
+  agent --> models
+```
+
+### Two execution paths
+
+| Path | Starts from | Runs in | What to remember |
+|---|---|---|---|
+| Local coding | Kilo CLI, Kilo Console, VS Code, or JetBrains | Kilo CLI runtime on developer machine | Editor clients talk to local `kilo serve` server. Local runtime owns coding session and sends model requests directly or through Kilo Gateway. |
+| Hosted work | Webhook, source-control event, command, schedule, or hosted product | Kilo Cloud services; Cloud Agent when coding is required | Cloud services coordinate work. Only flows that need repository changes launch Cloud Agent execution session. |
+
+This distinction is central: using editor does not move coding session into Cloud Agent. Cloud services also route model requests, deliver chat events, dispatch notifications, serve generated applications, and coordinate adjacent hosted boundaries without launching Cloud Agent.
+
+## Adjacent hosted boundaries
+
+The core execution spine is not the full cloud product catalog. These service families and hosted runtimes attach to it for specific product flows:
+
+```mermaid
+flowchart LR
+  web["Web control plane"]
+  workers["Automation Services"]
+  agent["Cloud Agent"]
+  builder["App Builder"]
+  preview["Generated-application preview"]
+  deploy["Generated-application deployment"]
+  security["Security Agent"]
+  chat["Kilo Chat, events, and notifications"]
+  claw["KiloClaw"]
+  town["Gas Town"]
+  wasteland["Wasteland"]
+
+  web --> workers --> agent
+  web --> builder --> agent
+  builder --> preview
+  builder --> deploy
+  web --> security
+  security -->|"optional deep analysis"| agent
+  web --> claw
+  chat --> claw
+  web --> town --> wasteland
+```
+
+| Boundary | Role | Topology or workflow | Security review |
+|---|---|---|---|
+| Automation Services | Turns commands, source-control events, labels, webhooks, and schedules into scoped work | [Automation Services](/docs/contributing/architecture/automation-services) | [Trust boundaries](/docs/contributing/architecture/cloud-security#trust-boundaries) |
+| App Builder | Coordinates generated-application coding, preview, build, and deployment boundaries | [Cloud Platform](/docs/contributing/architecture/cloud-platform#app-generation-boundaries) | [Preview and deployment](/docs/contributing/architecture/cloud-security#generated-application-preview-and-deployment) |
+| Security Agent | Syncs findings and analyzes risk; selected deep analysis can launch Cloud Agent | [Cloud Platform](/docs/contributing/architecture/cloud-platform#security-agent) | [Sync and cleanup](/docs/contributing/architecture/cloud-security#security-agent-sync-and-cleanup) |
+| KiloClaw | Coordinates owner-scoped hosted assistant runtimes | [Cloud Platform](/docs/contributing/architecture/cloud-platform#kiloclaw) | [KiloClaw ingress](/docs/contributing/architecture/cloud-security#kiloclaw-ingress) |
+| Gas Town and Wasteland | Coordinate multi-agent repository work and collaborative commons paths | [Cloud Platform](/docs/contributing/architecture/cloud-platform#gas-town-and-wasteland) | [Trust boundaries](/docs/contributing/architecture/cloud-security#trust-boundaries) |
+
+## Local entry points and clients
+
+These local surfaces live in [`Kilo-Org/kilocode`](https://github.com/Kilo-Org/kilocode). Package paths below are relative to that repository root.
+
+| Surface | Package in `Kilo-Org/kilocode` | Runtime model |
+|---|---|---|
+| Kilo CLI TUI | `packages/opencode/` | Interactive local client with daemon attach and worker-backed fallback paths |
+| `kilo run` | `packages/opencode/` | Headless prompt execution through explicit attach, daemon attach, or embedded fallback |
+| `kilo serve` | `packages/opencode/` | Local HTTP + SSE server for local clients |
+| Kilo Console | `packages/kilo-console/`{% linebreak /%}`packages/opencode/` | Browser UI served at `/console` by a started or reused local daemon |
+| VS Code extension | `packages/kilo-vscode/` | Extension host starts one shared editor-owned `kilo serve` server and routes webviews through HTTP + global SSE; SDK directory selects local runtime instance |
+| JetBrains plugin | `packages/kilo-jetbrains/` | Split-mode Swing plugin; backend module starts one editor-owned `kilo serve` server and caches workspace clients by directory |
+
+## Cloud service families
+
+Hosted service families live in [`Kilo-Org/cloud`](https://github.com/Kilo-Org/cloud). Paths below are relative to that repository root unless another repository is named.
+
+| Boundary | Primary source paths | Role |
+|---|---|---|
+| Kilo Cloud | `apps/web/`{% linebreak /%}`services/` | Hosted platform repository for identity, billing, routing, product configuration, automation, and scoped execution services |
+| Web control plane | `apps/web/` | Hosted application layer for authorization, configuration, and API orchestration |
+| Kilo Gateway | `apps/web/src/app/api/gateway/`{% linebreak /%}`apps/web/src/lib/ai-gateway/`{% linebreak /%}Local integration: `Kilo-Org/kilocode/packages/kilo-gateway/` | First-party model-routing boundary and local client integration |
+| Cloud Agent | `services/cloud-agent-next/` | Hosted coding-session capability with policy-selected sandbox allocation |
+| Automation Services | `services/code-review-infra/`{% linebreak /%}`services/auto-triage-infra/`{% linebreak /%}`services/auto-fix-infra/`{% linebreak /%}`services/security-auto-analysis/`{% linebreak /%}`services/security-sync/`{% linebreak /%}`services/webhook-agent-ingest/` | Trigger-driven review, triage, fix, security, and configured webhook flows |
+| Adjacent hosted boundaries | `services/app-builder/`{% linebreak /%}`services/kiloclaw/`{% linebreak /%}`services/gastown/`{% linebreak /%}`services/wasteland/`{% linebreak /%}Supporting services | App Builder, KiloClaw, Gas Town, Wasteland, chat, notifications, and supporting services |
+
+## Supporting packages
+
+These supporting packages also live in [`Kilo-Org/kilocode`](https://github.com/Kilo-Org/kilocode). Package paths below are relative to that repository root.
+
+| Package in `Kilo-Org/kilocode` | Role |
+|---|---|
+| `packages/kilo-indexing/` | Per-directory asynchronous codebase indexing engine behind Kilo CLI bridge |
+| `packages/sdk/js/` | Generated JavaScript client and handwritten wrapper for local server APIs |
+| `packages/kilo-gateway/` | Local Kilo Gateway client integration used by Kilo CLI runtime |
+| `packages/kilo-console/` | Browser UI served by local daemon at `/console` |
+
+## Architecture pages
+
+| Page | What it covers |
+|---|---|
+| [CLI Runtime](/docs/contributing/architecture/cli-runtime) | Local execution modes, daemon, server authentication, routing, persistence, snapshots, SDK, config, SSE, Kilo Console, and indexing |
+| [VS Code Extension](/docs/contributing/architecture/vscode-extension) | Shared local `kilo serve` ownership, webview bridge, Agent Manager, PTYs, recovery, bundled resources, and build outputs |
+| [JetBrains Plugin](/docs/contributing/architecture/jetbrains-plugin) | Split-mode modules, RPC, bundled local `kilo serve` lifecycle, Kotlin SDK, recovery, and remote-development constraints |
+| [Cloud Platform](/docs/contributing/architecture/cloud-platform) | Hosted service inventory, Cloud Agent topology, shared cloud boundaries, and adjacent hosted runtimes |
+| [Automation Services](/docs/contributing/architecture/automation-services) | Trigger-driven Workers, queues, callbacks, ownership, and scoped execution paths |
+| [Cloud Security](/docs/contributing/architecture/cloud-security) | Cloud trust boundaries, data flows, persistence, isolation, controls, and third-party categories |
+
+## Development pages
+
+After system-boundary pages, continue with Development Patterns for implementation rules. Use CLI Config Schema when changing config keys or editor-facing schema publication.
+
+| Page | What it covers |
+|---|---|
+| [Development Patterns](/docs/contributing/architecture/development-patterns) | Code-ownership decisions, shared-file seams, SDK generation, validation guards, and fork maintenance |
+| [CLI Config Schema](/docs/contributing/architecture/config-schema) | Separate runtime-loading and editor-validation paths for cross-repository config contract |
+
+## Related pages
+
+- [CLI Runtime](/docs/contributing/architecture/cli-runtime) - local runtime, server, routing, persistence, and SDK contracts
+- [Cloud Platform](/docs/contributing/architecture/cloud-platform) - hosted layers, Cloud Agent topology, and adjacent hosted boundaries
+- [Cloud Security](/docs/contributing/architecture/cloud-security) - cross-cutting trust boundaries, controls, and shared responsibility
+- [Development Patterns](/docs/contributing/architecture/development-patterns) - code-ownership decisions and contributor workflow
+- [Development Environment](/docs/contributing/development-environment) - setup guide
+- [Ecosystem](/docs/contributing/ecosystem) - related projects and integrations
+- [KiloClaw Overview](/docs/kiloclaw/overview) - customer-facing KiloClaw docs
