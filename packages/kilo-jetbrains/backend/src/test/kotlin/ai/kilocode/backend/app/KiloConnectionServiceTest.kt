@@ -147,11 +147,16 @@ class KiloConnectionServiceTest {
             }
         }
 
+        val entered = CountDownLatch(1)
         val first = Thread { listener.onEvent(source, null, "first.event", "first") }
-        val second = Thread { listener.onEvent(source, null, "second.event", "second") }
+        val second = Thread {
+            entered.countDown()
+            listener.onEvent(source, null, "second.event", "second")
+        }
         first.start()
         assertTrue(blocked.started.await(1, TimeUnit.SECONDS))
         second.start()
+        assertTrue(entered.await(1, TimeUnit.SECONDS))
         blocked.release.countDown()
         first.join()
         second.join()
