@@ -58,7 +58,7 @@ import { resolveProjectDirectory } from "./project-directory"
 import { getBusySessionCount, seedSessionStatuses } from "./session-status"
 import { normalizeEnhancePromptErrorMessage } from "./enhance-prompt-error"
 import { retry } from "./services/cli-backend/retry"
-import { slimPart, slimParts } from "./kilo-provider/slim-metadata"
+import { slimInfo, slimPart, slimParts } from "./kilo-provider/slim-metadata"
 import { handleSidebarWorktreeMessage } from "./kilo-provider/sidebar-worktree"
 import { parseMessageFiles, type MessageFile } from "./kilo-provider/message-files"
 import { renameSession } from "./kilo-provider/rename-session"
@@ -356,8 +356,13 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     })
   }
 
-  // Strip edit-tool metadata.filediff.before/after (multi-MB for edit-heavy
-  // sessions) to keep session switches fast. Logic in kilo-provider/slim-metadata.ts.
+  // Strip metadata unused by the webview to keep session switches fast.
+  // Logic in kilo-provider/slim-metadata.ts.
+  private slimInfo<T>(info: T): T {
+    if (!this.slimEditMetadata) return info
+    return slimInfo(info)
+  }
+
   private slimPart<T>(part: T): T {
     if (!this.slimEditMetadata) return part
     return slimPart(part)
@@ -1466,7 +1471,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       // no abort controller, so this guard prevents ghost entries.
       if (!this.trackedSessionIds.has(sessionID)) return
       const messages = page.items.map((m) => ({
-        ...m.info,
+        ...this.slimInfo(m.info),
         parts: this.slimParts(m.parts),
         createdAt: new Date(m.info.time.created).toISOString(),
       }))
@@ -1524,7 +1529,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       )
 
       const messages = messagesData.map((m) => ({
-        ...m.info,
+        ...this.slimInfo(m.info),
         parts: this.slimParts(m.parts),
         createdAt: new Date(m.info.time.created).toISOString(),
       }))
@@ -3159,11 +3164,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.streams.push({ ...msg, part: this.slimPart(msg.part) })
       return
     }
-    if (msg.type === "indexingStatusLoaded") {
-      this.cachedIndexingStatusMessage = msg
+    const next = msg.type === "messageCreated" ? { ...msg, message: this.slimInfo(msg.message) } : msg
+    if (next.type === "indexingStatusLoaded") {
+      this.cachedIndexingStatusMessage = next
     }
     this.streams.flush(sessionID)
-    this.postMessage(msg)
+    this.postMessage(next)
   }
 
   /** Wait until the webview has sent "webviewReady". Resolves immediately when already ready. */
