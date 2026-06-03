@@ -19,6 +19,7 @@ import com.intellij.ui.components.JBList
 import com.intellij.ui.popup.AbstractPopup
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import com.intellij.xml.util.XmlStringUtil
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Cursor
@@ -128,7 +129,7 @@ class ModelPicker : PickerButton() {
         icon = if (item?.let(ModelText::collectsData) == true) ModelPickerRenderer.DATA_COLLECTED else null
         horizontalTextPosition = SwingConstants.LEFT
         iconTextGap = JBUI.CurrentTheme.ActionsList.elementIconGap()
-        toolTipText = if (item?.let(ModelText::collectsData) == true) ModelText.dataCollected() else KiloBundle.message("model.picker.tooltip")
+        toolTipText = if (item?.let(ModelText::collectsData) == true) ModelText.dataCollectedTooltip() else KiloBundle.message("model.picker.tooltip")
         isEnabled = true
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
     }
@@ -455,6 +456,11 @@ internal object ModelText {
     fun providerSort(id: String): Int = if (id == "kilo") 0 else 1
 
     fun dataCollected(): String = KiloBundle.message("model.picker.dataCollected")
+
+    fun dataCollectedTooltip(): String = XmlStringUtil.wrapInHtml(
+        XmlStringUtil.escapeString(KiloBundle.message("model.picker.tooltip")) + "<br>" +
+            XmlStringUtil.escapeString(KiloBundle.message("model.picker.dataCollected.current")),
+    )
 
     fun freeLabel(): String = KiloBundle.message("model.picker.free")
 

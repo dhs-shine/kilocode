@@ -240,7 +240,7 @@ class ModelPickerTest : BasePlatformTestCase() {
 
         assertFalse(picker.text.contains("Data may be used for training"))
         assertSame(ModelPickerRenderer.DATA_COLLECTED, picker.icon)
-        assertEquals("Data may be used for training", picker.toolTipText)
+        assertEquals("<html>Select model<br>The current selected model may be used for training</html>", picker.toolTipText)
     }
 
     fun `test selected non-kilo free model does not indicate data collection`() {
