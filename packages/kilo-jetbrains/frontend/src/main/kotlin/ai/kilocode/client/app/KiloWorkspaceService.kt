@@ -3,6 +3,7 @@
 package ai.kilocode.client.app
 
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
+import ai.kilocode.rpc.dto.ConfigTargetDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
@@ -41,10 +42,10 @@ class KiloWorkspaceService internal constructor(
     }
 
     private val workspaces = ConcurrentHashMap<String, Workspace>()
-    private val localConfig = ConcurrentHashMap<String, String>()
+    private val localConfig = ConcurrentHashMap<String, ConfigTargetDto>()
 
     @Volatile
-    private var globalConfig: String? = null
+    private var globalConfig: ConfigTargetDto? = null
 
     // ------ RPC helpers ------
 
@@ -134,26 +135,26 @@ class KiloWorkspaceService internal constructor(
         }
     }
 
-    fun localConfigPath(directory: String): String? {
-        cs.launch {
-            try {
-                localConfig[directory] = call { this.localConfigPath(directory) }
-            } catch (e: Exception) {
-                LOG.warn("local config lookup failed for directory=$directory", e)
-            }
+    suspend fun localConfigTarget(directory: String): ConfigTargetDto? {
+        return try {
+            val target = call { this.localConfigTarget(directory) }
+            localConfig[directory] = target
+            target
+        } catch (e: Exception) {
+            LOG.warn("local config lookup failed for directory=$directory", e)
+            localConfig[directory]
         }
-        return localConfig[directory]
     }
 
-    fun globalConfigPath(): String? {
-        cs.launch {
-            try {
-                globalConfig = call { this.globalConfigPath() }
-            } catch (e: Exception) {
-                LOG.warn("global config lookup failed", e)
-            }
+    suspend fun globalConfigTarget(): ConfigTargetDto? {
+        return try {
+            val target = call { this.globalConfigTarget() }
+            globalConfig = target
+            target
+        } catch (e: Exception) {
+            LOG.warn("global config lookup failed", e)
+            globalConfig
         }
-        return globalConfig
     }
 
     fun openLocalConfig(directory: String, done: (Boolean) -> Unit) {

@@ -1,6 +1,7 @@
 package ai.kilocode.client.testing
 
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
+import ai.kilocode.rpc.dto.ConfigTargetDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
@@ -29,10 +30,18 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var openResult = true
     var localConfigPath = "/test/.kilo/kilo.jsonc"
     var globalConfigPath = "/config/kilo.jsonc"
+    var localConfigDisplayPath = localConfigPath
+    var globalConfigDisplayPath = globalConfigPath
+    var localConfigExists = true
+    var globalConfigExists = true
     val fileCalls = mutableListOf<Pair<String, String>>()
     val opened = mutableListOf<String>()
     val localConfigs = mutableListOf<String>()
     var globalConfigs = 0
+    var localConfigPathCalls = 0
+        private set
+    var globalConfigPathCalls = 0
+        private set
 
     override suspend fun resolveProjectDirectory(hint: String): String {
         assertNotEdt("resolveProjectDirectory")
@@ -67,14 +76,16 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
         return openResult
     }
 
-    override suspend fun localConfigPath(directory: String): String {
-        assertNotEdt("localConfigPath")
-        return localConfigPath
+    override suspend fun localConfigTarget(directory: String): ConfigTargetDto {
+        assertNotEdt("localConfigTarget")
+        localConfigPathCalls += 1
+        return ConfigTargetDto(localConfigPath, localConfigDisplayPath, localConfigExists)
     }
 
-    override suspend fun globalConfigPath(): String {
-        assertNotEdt("globalConfigPath")
-        return globalConfigPath
+    override suspend fun globalConfigTarget(): ConfigTargetDto {
+        assertNotEdt("globalConfigTarget")
+        globalConfigPathCalls += 1
+        return ConfigTargetDto(globalConfigPath, globalConfigDisplayPath, globalConfigExists)
     }
 
     override suspend fun openLocalConfig(directory: String): Boolean {

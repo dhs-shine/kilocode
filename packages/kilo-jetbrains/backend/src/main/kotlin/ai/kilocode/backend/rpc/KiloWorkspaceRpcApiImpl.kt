@@ -15,6 +15,7 @@ import ai.kilocode.backend.workspace.KiloWorkspaceState
 import ai.kilocode.log.KiloLog
 import ai.kilocode.jetbrains.api.model.Agent
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
+import ai.kilocode.rpc.dto.ConfigTargetDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
@@ -25,6 +26,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.LocalFileSystem
 import kotlinx.coroutines.Dispatchers
@@ -183,12 +185,12 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         return true
     }
 
-    override suspend fun localConfigPath(directory: String): String = withContext(Dispatchers.IO) {
-        localConfig(directory).toString()
+    override suspend fun localConfigTarget(directory: String): ConfigTargetDto = withContext(Dispatchers.IO) {
+        target(localConfig(directory))
     }
 
-    override suspend fun globalConfigPath(): String = withContext(Dispatchers.IO) {
-        globalConfig().toString()
+    override suspend fun globalConfigTarget(): ConfigTargetDto = withContext(Dispatchers.IO) {
+        target(globalConfig())
     }
 
     override suspend fun openLocalConfig(directory: String): Boolean = openConfig(withContext(Dispatchers.IO) {
@@ -230,6 +232,11 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
             .map { root.resolve(it) }
             .firstOrNull { Files.exists(it) }
             ?: root.resolve("kilo.jsonc")
+    }
+
+    private fun target(path: Path): ConfigTargetDto {
+        val raw = path.toString()
+        return ConfigTargetDto(raw, FileUtil.getLocationRelativeToUserHome(raw, false), Files.exists(path))
     }
 
     private fun clean(path: String): String? {

@@ -1,5 +1,6 @@
 package ai.kilocode.rpc
 
+import ai.kilocode.rpc.dto.ConfigTargetDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
@@ -48,11 +49,11 @@ interface KiloWorkspaceRpcApi : RemoteApi<Unit> {
     /** Open an absolute backend file path in the IDE. */
     suspend fun openFile(path: String): Boolean
 
-    /** Resolve the editable local config target path. */
-    suspend fun localConfigPath(directory: String): String
+    /** Resolve the editable local config target. */
+    suspend fun localConfigTarget(directory: String): ConfigTargetDto
 
-    /** Resolve the editable global config target path. */
-    suspend fun globalConfigPath(): String
+    /** Resolve the editable global config target. */
+    suspend fun globalConfigTarget(): ConfigTargetDto
 
     /** Open or create the local config file in the IDE. */
     suspend fun openLocalConfig(directory: String): Boolean
