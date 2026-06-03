@@ -3,6 +3,7 @@ package ai.kilocode.client.session.ui.model
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.PickerButton
 import ai.kilocode.rpc.dto.ModelSelectionDto
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.util.PopupUtil
@@ -33,6 +34,7 @@ import javax.swing.JScrollPane
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
 import javax.swing.ScrollPaneConstants
+import javax.swing.SwingConstants
 import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
 
@@ -110,11 +112,17 @@ class ModelPicker : PickerButton() {
         if (items.isEmpty()) {
             isEnabled = allowEmpty
             text = if (allowEmpty) emptyText else " "
+            icon = null
+            toolTipText = KiloBundle.message("model.picker.tooltip")
             cursor = if (allowEmpty) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else Cursor.getDefaultCursor()
             return
         }
-        val display = selected?.display
-        text = if (display == null && allowEmpty) "$emptyText ▾" else "${ModelText.sanitize(display ?: items.first().display)} ▾"
+        val item = selected ?: items.firstOrNull()
+        text = if (item == null && allowEmpty) "$emptyText ▾" else "${ModelText.sanitize(item?.display ?: items.first().display)} ▾"
+        icon = if (item?.let(ModelText::collectsData) == true) AllIcons.General.Warning else null
+        horizontalTextPosition = SwingConstants.LEFT
+        iconTextGap = JBUI.CurrentTheme.ActionsList.elementIconGap()
+        toolTipText = if (item?.let(ModelText::collectsData) == true) ModelText.dataCollected() else KiloBundle.message("model.picker.tooltip")
         isEnabled = true
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
     }
@@ -436,6 +444,12 @@ internal object ModelText {
     fun small(item: ModelPicker.Item): Boolean = item.provider == "kilo" && item.id in small
 
     fun providerSort(id: String): Int = if (id == "kilo") 0 else 1
+
+    fun dataCollected(): String = KiloBundle.message("model.picker.dataCollected")
+
+    fun freeLabel(): String = KiloBundle.message("model.picker.free")
+
+    fun collectsData(item: ModelPicker.Item): Boolean = item.free && item.provider == "kilo"
 
     fun freeBg(): JBColor = JBColor.namedColor("Kilo.ModelPicker.freeBadgeBackground", JBColor(0x95D6AC, 0x7FCA99))
 }
