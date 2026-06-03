@@ -5,6 +5,7 @@ import ai.kilocode.client.ui.PickerButton
 import ai.kilocode.rpc.dto.ModelSelectionDto
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.ui.popup.PopupShowOptions
 import com.intellij.openapi.ui.popup.util.PopupUtil
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.DocumentAdapter
@@ -61,6 +62,11 @@ class ModelPicker : PickerButton() {
         override fun toString(): String = listOf(display, id, providerName).joinToString(" ")
     }
 
+    enum class Placement {
+        ABOVE,
+        BELOW,
+    }
+
     var onSelect: (Item) -> Unit = {}
     var onClear: () -> Unit = {}
     var favorites: () -> List<ModelSelectionDto> = { emptyList() }
@@ -68,6 +74,7 @@ class ModelPicker : PickerButton() {
     var allowEmpty: Boolean = false
     var emptyText: String = KiloBundle.message("settings.models.notSet")
     var includeSmall: Boolean = false
+    var placement: Placement = Placement.BELOW
 
     private var items: List<Item> = emptyList()
     private var selected: Item? = null
@@ -118,7 +125,7 @@ class ModelPicker : PickerButton() {
         }
         val item = selected ?: if (allowEmpty) null else items.firstOrNull()
         text = if (item == null && allowEmpty) "$emptyText ▾" else "${ModelText.sanitize(item?.display ?: items.first().display)} ▾"
-        icon = if (item?.let(ModelText::collectsData) == true) ModelPickerIcons.DATA_COLLECTED else null
+        icon = if (item?.let(ModelText::collectsData) == true) ModelPickerRenderer.DATA_COLLECTED else null
         horizontalTextPosition = SwingConstants.LEFT
         iconTextGap = JBUI.CurrentTheme.ActionsList.elementIconGap()
         toolTipText = if (item?.let(ModelText::collectsData) == true) ModelText.dataCollected() else KiloBundle.message("model.picker.tooltip")
@@ -303,7 +310,10 @@ class ModelPicker : PickerButton() {
             .setMovable(false)
             .createPopup()
 
-        popup.showUnderneathOf(this)
+        when (placement) {
+            Placement.ABOVE -> popup.show(PopupShowOptions.aboveComponent(this))
+            Placement.BELOW -> popup.showUnderneathOf(this)
+        }
         SwingUtilities.invokeLater {
             search.textEditor.requestFocusInWindow()
             search.selectText()

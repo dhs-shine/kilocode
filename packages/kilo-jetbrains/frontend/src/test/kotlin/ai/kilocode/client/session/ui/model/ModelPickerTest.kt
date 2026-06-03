@@ -239,7 +239,7 @@ class ModelPickerTest : BasePlatformTestCase() {
         picker.setItems(listOf(item("auto", "Auto Free", "kilo", "Kilo", free = true)))
 
         assertFalse(picker.text.contains("Data may be used for training"))
-        assertSame(ModelPickerIcons.DATA_COLLECTED, picker.icon)
+        assertSame(ModelPickerRenderer.DATA_COLLECTED, picker.icon)
         assertEquals("Data may be used for training", picker.toolTipText)
     }
 

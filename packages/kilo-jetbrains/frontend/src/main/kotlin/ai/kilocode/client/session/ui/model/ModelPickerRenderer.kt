@@ -4,6 +4,7 @@ import ai.kilocode.client.session.ui.PickerRow
 import ai.kilocode.client.ui.FilledBadgeIcon
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.GroupHeaderSeparator
 import com.intellij.ui.NewUI
@@ -32,6 +33,7 @@ internal class ModelPickerRenderer(
     private val favorites: () -> Set<String>,
 ) : JPanel(BorderLayout()), ListCellRenderer<ModelPickerRow> {
     companion object {
+        val DATA_COLLECTED: Icon = IconLoader.getIcon("/icons/brain-circuit.svg", ModelPickerRenderer::class.java)
         val checked: Icon = AllIcons.Actions.Checked
         val empty: Icon = EmptyIcon.create(checked)
 
@@ -69,7 +71,7 @@ internal class ModelPickerRenderer(
         ModelText.freeBg(),
         JBColor.namedColor("Kilo.ModelPicker.freeBadgeForeground", JBColor.WHITE),
     )
-    private val warn = JBLabel(ModelPickerIcons.DATA_COLLECTED).apply {
+    private val warn = JBLabel(DATA_COLLECTED).apply {
         toolTipText = ModelText.dataCollected()
     }
     private val provider = JBLabel()
