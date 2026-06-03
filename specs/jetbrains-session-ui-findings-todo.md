@@ -38,47 +38,47 @@ Last status check: 2026-06-02.
 
 ## Medium Priority
 
-- [ ] Remove repaint/revalidate cascades on streaming deltas
+- [x] Remove repaint/revalidate cascades on streaming deltas
   - Severity: Medium
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/ui/SessionMessageListPanel.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/views/MessageView.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/views/TextView.kt`
   - Issue: A single content delta can call `refresh()` at child, message, and transcript levels.
-  - Plan direction: Let changed child views invalidate themselves only when size/paint changes; avoid parent refresh for delegated content updates.
+  - Implemented: `MessageView.appendDelta()` now delegates to the child part without refreshing the whole message card; leaf text/markdown views still invalidate themselves.
 
-- [ ] Lazy-create collapsed tool and reasoning bodies
+- [x] Lazy-create collapsed tool and reasoning bodies
   - Severity: Medium
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/views/ToolView.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/views/ReasoningView.kt`
   - Issue: Collapsed and even non-expandable views eagerly create `JBTextArea`, `JBScrollPane`, and markdown bodies.
-  - Plan direction: Build only headers initially; create body components on first expansion or first direct access; avoid unused body for non-expandable read views.
+  - Implemented: collapsible secondary views support lazy body suppliers; `ToolView` and `ReasoningView` create text/markdown scroll bodies on first expansion or direct body access and reuse them after collapse.
 
-- [ ] Explicitly dispose transient question custom editors
+- [x] Explicitly dispose transient question custom editors
   - Severity: Medium
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/views/question/QuestionView.kt`
   - Issue: `syncPage()` and `hideView()` remove/null `SessionEditorTextField` instances without explicit disposal of editor/listener resources.
-  - Plan direction: Track editor disposables, call the appropriate `EditorTextField` disposal mechanism, and test repeated custom-row toggle/navigation.
+  - Implemented: `QuestionView` releases the active custom `EditorTextField` editor before clearing or rebuilding the question page.
 
-- [ ] Add EDT annotations/assertions to session model and UI paths
+- [x] Add EDT annotations/assertions to session model and UI paths
   - Severity: Medium
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/model/SessionModel.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/SessionUi.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/ui/SessionMessageListPanel.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/SessionSidePanelManager.kt`
   - Issue: `SessionModel` is documented EDT-only, but public APIs and several Swing-mutating methods lack `@RequiresEdt` or assertions.
-  - Plan direction: Annotate EDT-only methods, add runtime assertions where useful, and ensure listener callbacks remain EDT-only.
+  - Implemented: public `SessionModel` read/mutation/listener APIs now carry `@RequiresEdt` contracts matching the documented ownership model.
 
-- [ ] Guard queued style callbacks after disposal
+- [x] Guard queued style callbacks after disposal
   - Severity: Medium
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/SessionUi.kt`
   - Issue: theme/editor color listeners schedule `invokeLater { applyStyle(...) }` without checking `disposed` before mutating components.
-  - Plan direction: Check `disposed` in queued callbacks and at the start of `applyStyle()`.
+  - Implemented: queued editor/LAF style callbacks and style application paths now return early once `SessionUi` is disposed.
 
-- [ ] Confine `SessionUpdateQueue` Swing listener operations to EDT
+- [x] Confine `SessionUpdateQueue` Swing listener operations to EDT
   - Severity: Medium
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/controller/SessionUpdateQueue.kt`
   - Issue: constructor reads `comp.isShowing` and adds a hierarchy listener without an EDT contract; `dispose()` removes the listener directly.
-  - Plan direction: Add `@RequiresEdt`/assertions for construction and disposal or marshal Swing listener operations to EDT.
+  - Implemented: `SessionUpdateQueue` marshals hierarchy listener add/remove and `isShowing` reads to EDT, and queued flush work is ignored after disposal.
 
-- [ ] Reduce full body rebuilds in question UI
+- [x] Reduce full body rebuilds in question UI
   - Severity: Medium
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/views/question/QuestionView.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/views/base/BaseQuestionView.kt`
   - Issue: question navigation/toggle paths call `body.removeAll()` and recreate rows/buttons/listeners.
-  - Plan direction: Retain per-page controls where practical, update existing button/text state, and avoid rebuilding action buttons for simple label/enabled changes.
+  - Implemented: `BaseQuestionView` retains footer buttons by action id, updating text, enabled state, primary style, and handlers in place while still removing stale actions.
 
 ## Low Priority
 

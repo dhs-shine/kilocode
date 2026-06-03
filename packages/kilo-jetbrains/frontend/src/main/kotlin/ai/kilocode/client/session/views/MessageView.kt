@@ -185,7 +185,6 @@ class MessageView(
     fun appendDelta(contentId: String, delta: String): Boolean {
         val part = parts[contentId] ?: return false
         part.appendDelta(delta)
-        refresh()
         return true
     }
 

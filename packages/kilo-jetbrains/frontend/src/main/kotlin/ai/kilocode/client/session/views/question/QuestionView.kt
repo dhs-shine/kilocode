@@ -15,6 +15,7 @@ import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.QuestionReplyDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.IconLoader
@@ -148,7 +149,7 @@ class QuestionView(
         selections = emptyList()
         customTexts = emptyList()
         customOpen = emptyList()
-        customEditor = null
+        disposeCustomEditor()
         customFocus = null
         disposeRegs()
         texts.clear()
@@ -177,7 +178,7 @@ class QuestionView(
         val q = question ?: return
         disposeRegs()
         texts.clear()
-        customEditor = null
+        disposeCustomEditor()
         customFocus = null
         body.removeAll()
         if (review(q)) {
@@ -525,6 +526,13 @@ class QuestionView(
 
         syncEditorHeight(ed)
         return ed
+    }
+
+    @RequiresEdt
+    private fun disposeCustomEditor() {
+        val ed = customEditor ?: return
+        customEditor = null
+        ed.getEditor(false)?.let { EditorFactory.getInstance().releaseEditor(it) }
     }
 
     @RequiresEdt

@@ -457,11 +457,13 @@ class SessionUi(
         val bus = ApplicationManager.getApplication().messageBus.connect(this)
         bus.subscribe(EditorColorsManager.TOPIC, EditorColorsListener {
             ApplicationManager.getApplication().invokeLater {
+                if (disposed) return@invokeLater
                 applyStyle(SessionEditorStyle.current())
             }
         })
         bus.subscribe(LafManagerListener.TOPIC, LafManagerListener {
             ApplicationManager.getApplication().invokeLater {
+                if (disposed) return@invokeLater
                 applyStyle(SessionEditorStyle.current())
             }
         })
@@ -546,6 +548,7 @@ class SessionUi(
     }
 
     override fun applyStyle(style: SessionEditorStyle) {
+        if (disposed) return
         this.style = style
         selection.applyStyle(style)
         editorTheme = style.editorScheme
@@ -562,6 +565,7 @@ class SessionUi(
     }
 
     private fun applyStyleIfThemeChanged() {
+        if (disposed) return
         val next = SessionEditorStyle.current()
         val laf = UIManager.getLookAndFeel()
         if (editorTheme === next.editorScheme && colorTheme == laf) return

@@ -6,10 +6,17 @@ import javax.swing.JComponent
 
 abstract class SecondarySessionPartView(
     header: JComponent,
-    content: JComponent,
+    content: () -> JComponent,
     expanded: Boolean = false,
     expandable: Boolean = true,
 ) : AbstractSessionPartView(header, content, expanded, expandable) {
+
+    constructor(
+        header: JComponent,
+        content: JComponent,
+        expanded: Boolean = false,
+        expandable: Boolean = true,
+    ) : this(header, { content }, expanded, expandable)
     init {
         row.isOpaque = true
         row.background = SessionUiStyle.View.header()
