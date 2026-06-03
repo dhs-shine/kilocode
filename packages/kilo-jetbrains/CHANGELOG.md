@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [7.0.1-rc.6] - 2026-06-03
+
+### Changed
+- docs(kilo-docs): clarify contributor architecture docs by @jeanduplessis in https://github.com/Kilo-Org/kilocode/pull/10887
+- release(jetbrains): v7.0.1-rc.5 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/10889
+
+
 ## [7.0.1-rc.5] - 2026-06-03
 
 ### Added
