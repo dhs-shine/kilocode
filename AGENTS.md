@@ -11,7 +11,6 @@ Kilo CLI is an open source AI coding agent that generates code from natural lang
 
 - **Dev**: `bun run dev` (runs from root) or `bun run --cwd packages/opencode --conditions=browser src/index.ts`
 - **Dev with params**: `bun dev -- help`
-- **JetBrains session event logs**: use `packages/kilo-jetbrains/script/dev/part-update.sh client <session-id>` to print frontend `message.part.delta` text by part id; use `packages/kilo-jetbrains/script/dev/part-update.sh backend <session-id>` for backend sandbox events. Append with `>> file.txt` when you need to keep the output. For full chat payload previews in JetBrains dev runs, pass `-Pkilo.dev.log.chat.content=<mode>` where `<mode>` is `off` (default, no content), `preview` (cleaned/truncated content), or `full` (cleaned full content). `-Pkilo.dev.log.chat.preview.max=<n>` controls preview length, clamped from 1 to 2000.
 - **Extension**: `bun run extension` (build + launch VS Code with the extension in dev mode). Pass `--no-build` to skip the build.
 - **Typecheck**: `bun turbo typecheck` (uses `tsgo`, not `tsc`). Includes the JetBrains plugin — requires Java 21. Check with `java -version` before running. If missing, install via SDKMAN: `sdk install java 21-tem && sdk use java 21-tem`. If SDKMAN is not installed, see https://sdkman.io/install.
 - **Test**: `bun test` from `packages/opencode/` (NOT from root -- root blocks tests)
