@@ -42,6 +42,14 @@ import { AudioTranscriptionsBody, EditBody, FimBody } from "../groups/kilo-gatew
 
 const FIM_TIMEOUT_MS = 30_000
 
+function jsonError(error: string, status: number) {
+  return HttpServerResponse.jsonUnsafe({ error }, { status })
+}
+
+function logError(route: string, err: unknown) {
+  console.error(`[Kilo Gateway] ${route}: unhandled error`, err instanceof Error ? err.message : err)
+}
+
 export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo", (handlers) =>
   Effect.gen(function* () {
     const auth = yield* Auth.Service
@@ -316,11 +324,18 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
           if (!response.ok) throw new GatewayError(await response.text(), response.status)
           return response.json()
         },
-        catch: (err) =>
-          err instanceof GatewayError && err.status === 401
-            ? new HttpApiError.Unauthorized({})
-            : new HttpApiError.ServiceUnavailable({}),
-      })
+        catch: (err) => err,
+      }).pipe(
+        Effect.match({
+          onFailure: (err) => {
+            if (err instanceof GatewayError)
+              return jsonError(`KiloClaw request failed: ${err.status} ${err.message}`, err.status)
+            logError("claw/status", err)
+            return jsonError("Failed to reach KiloClaw", 502)
+          },
+          onSuccess: (result) => result,
+        }),
+      )
     })
 
     const clawChatCredentials = Effect.fn("KiloGatewayHttpApi.clawChatCredentials")(function* () {
@@ -349,11 +364,17 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
 
       return yield* Effect.tryPromise({
         try: () => getCloudSessions(token, query),
-        catch: (err) =>
-          err instanceof GatewayError && err.status === 401
-            ? new HttpApiError.Unauthorized({})
-            : new HttpApiError.BadRequest({}),
-      })
+        catch: (err) => err,
+      }).pipe(
+        Effect.match({
+          onFailure: (err) => {
+            if (err instanceof GatewayError) return jsonError(err.message, err.status)
+            logError("cloud-sessions", err)
+            return jsonError("Internal error", 500)
+          },
+          onSuccess: (result) => result,
+        }),
+      )
     })
 
     const cloudSession = Effect.fn("KiloGatewayHttpApi.cloudSession")(function* (ctx) {
@@ -361,9 +382,19 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       const token = getToken(info)
       if (!token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
 
-      const result = yield* Effect.promise(() => fetchCloudSession(token, ctx.params.id))
-      if (!result.ok && result.status === 404) return yield* Effect.fail(new HttpApiError.NotFound({}))
-      if (!result.ok) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
+      const result = yield* Effect.tryPromise({
+        try: () => fetchCloudSession(token, ctx.params.id),
+        catch: (err) => err,
+      }).pipe(
+        Effect.catch((err) =>
+          Effect.sync(() => {
+            logError("cloud/session/get", err)
+            return undefined
+          }),
+        ),
+      )
+      if (!result) return jsonError("Internal error", 500)
+      if (!result.ok) return jsonError(result.error, result.status)
       return result.data
     })
 
@@ -372,9 +403,19 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       const token = getToken(info)
       if (!token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
 
-      const fetched = yield* Effect.promise(() => fetchCloudSessionForImport(token, ctx.payload.sessionId))
-      if (!fetched.ok && fetched.status === 404) return yield* Effect.fail(new HttpApiError.NotFound({}))
-      if (!fetched.ok) return yield* Effect.fail(new HttpApiError.BadRequest({}))
+      const fetched = yield* Effect.tryPromise({
+        try: () => fetchCloudSessionForImport(token, ctx.payload.sessionId),
+        catch: (err) => err,
+      }).pipe(
+        Effect.catch((err) =>
+          Effect.sync(() => {
+            logError("cloud/session/import", err)
+            return undefined
+          }),
+        ),
+      )
+      if (!fetched) return jsonError("Internal error", 500)
+      if (!fetched.ok) return jsonError(fetched.error, fetched.status)
       if (!fetched.data?.info?.id) return yield* Effect.fail(new HttpApiError.BadRequest({}))
 
       const bridge = yield* EffectBridge.make()
