@@ -23,6 +23,8 @@ import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
+import ai.kilocode.rpc.dto.MessageDto
+import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.QuestionInfoDto
 import ai.kilocode.rpc.dto.QuestionRequestDto
 import ai.kilocode.rpc.dto.SessionDto
@@ -36,6 +38,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import javax.swing.JLabel
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -236,6 +239,29 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
 
         assertNotSame(first, active(manager))
         assertEquals(listOf("/test" to "ses_1", "/test" to "ses_2", "/test" to "ses_1"), created)
+    }
+
+    fun `test queued hidden transcript events are discarded after timeout disposal`() {
+        useShortInactiveDisposeTimeout()
+        val flow = MutableSharedFlow<ChatEventDto>(extraBufferCapacity = 16)
+        rpc.eventFlow = { _, _ -> flow }
+        val manager = manager()
+
+        manager.openSession(session("ses_1"))
+        val first = active(manager)
+        settle()
+        manager.openSession(session("ses_2"))
+        kotlinx.coroutines.runBlocking {
+            flow.emit(ChatEventDto.MessageUpdated("ses_1", msg("msg_hidden", "ses_1", "assistant")))
+            flow.emit(ChatEventDto.PartDelta("ses_1", "msg_hidden", "txt_hidden", "text", "stale"))
+        }
+        settle()
+        manager.openSession(session("ses_1"))
+        val second = active(manager)
+        settle()
+
+        assertNotSame(first, second)
+        assertTrue(empty(second))
     }
 
     fun `test pending session is retained for history overlays before timeout`() {
@@ -623,6 +649,14 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
 
     private fun active(manager: SessionSidePanelManager) = manager.component.getComponent(0) as JPanel
 
+    private fun empty(panel: JPanel): Boolean {
+        var empty = false
+        com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+            empty = panel.controller().model.isEmpty()
+        }
+        return empty
+    }
+
     private fun useShortInactiveDisposeTimeout() = setInactiveDisposeTimeout(10)
 
     private fun useLongInactiveDisposeTimeout() = setInactiveDisposeTimeout(60_000)
@@ -680,6 +714,13 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
         title = title,
         version = "1",
         time = SessionTimeDto(created = 1.0, updated = 2.0),
+    )
+
+    private fun msg(id: String, session: String, role: String) = MessageDto(
+        id = id,
+        sessionID = session,
+        role = role,
+        time = MessageTimeDto(created = 1.0),
     )
 
     private fun cloud(id: String) = CloudSessionDto(

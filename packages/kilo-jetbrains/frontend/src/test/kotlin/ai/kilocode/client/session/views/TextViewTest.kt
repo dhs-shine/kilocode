@@ -3,6 +3,8 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Text
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import javax.swing.JComponent
+import javax.swing.RepaintManager
 
 /**
  * Tests for [TextView].
@@ -61,6 +63,24 @@ class TextViewTest : BasePlatformTestCase() {
         view.appendDelta("second")
 
         assertEquals("first second", view.markdown())
+    }
+
+    fun `test appendDelta empty string does not repaint or change markdown`() {
+        val view = TextView(Text("p1").also { it.content.append("keep") })
+        val repaint = TrackingRepaintManager(view)
+        val old = RepaintManager.currentManager(view)
+
+        try {
+            RepaintManager.setCurrentManager(repaint)
+
+            view.appendDelta("")
+
+            assertEquals("keep", view.markdown())
+            assertEquals(0, repaint.dirty)
+            assertEquals(0, repaint.invalid)
+        } finally {
+            RepaintManager.setCurrentManager(old)
+        }
     }
 
     // ---- contentId ------
@@ -122,5 +142,20 @@ class TextViewTest : BasePlatformTestCase() {
         view.md.simulateLink("https://kilocode.ai/docs")
 
         assertEquals(listOf("https://kilocode.ai/docs"), urls)
+    }
+
+    private class TrackingRepaintManager(private val watched: JComponent) : RepaintManager() {
+        var dirty = 0
+        var invalid = 0
+
+        override fun addDirtyRegion(c: JComponent, x: Int, y: Int, w: Int, h: Int) {
+            if (c === watched) dirty++
+            super.addDirtyRegion(c, x, y, w, h)
+        }
+
+        override fun addInvalidComponent(invalidComponent: JComponent) {
+            if (invalidComponent === watched) invalid++
+            super.addInvalidComponent(invalidComponent)
+        }
     }
 }

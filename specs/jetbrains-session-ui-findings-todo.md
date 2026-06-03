@@ -8,7 +8,7 @@ Last status check: 2026-06-02.
 
 - Implemented high-priority work: streaming markdown no longer rebuilds the full rendered tree on normal deltas, and hidden cached session UIs are disposed after a configurable timeout while `SessionUpdateQueue` uses a shared coroutine ticker instead of per-session scheduler threads.
 - Remaining high-priority work: none. `SessionController` subscription-state mutation is now EDT-confined while RPC event collection remains on background coroutines.
-- Remaining non-high-priority work: repaint/revalidate cleanup, lazy collapsed bodies, question editor disposal, EDT annotations/assertions, style callback disposal guards, `SessionUpdateQueue` Swing listener EDT confinement, question body retention, semantic timeline colors, and additional retained Swing regression tests.
+- Remaining findings: none. Semantic timeline colors and retained Swing regression coverage are complete.
 
 ## High Priority
 
@@ -82,17 +82,18 @@ Last status check: 2026-06-02.
 
 ## Low Priority
 
-- [ ] Replace hardcoded timeline runtime colors with semantic named colors
+- [x] Replace hardcoded timeline runtime colors with semantic named colors
   - Severity: Low/Medium
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/ui/style/SessionUiStyle.kt`
   - Issue: timeline color tokens use numeric `JBColor(Color(...), Color(...))`; AGENTS.md prefers theme-derived or `JBColor.namedColor(...)` semantic keys.
-  - Plan direction: Introduce named color keys with appropriate fallbacks or map to existing platform theme colors.
+  - Implemented: timeline tokens now use `JBColor.namedColor(...)` keys under `Kilo.Session.Timeline.*`, with platform semantic fallbacks for success/error/text/step and centralized blue fallbacks for read/write/tool.
+  - Tests/release note: `SessionHeaderPanelTest` verifies timeline colors honor semantic UIManager named-color overrides; `.changeset/semantic-jetbrains-timeline.md` documents the user-facing theming improvement.
 
-- [ ] Add focused regression tests for retained Swing behavior
+- [x] Add focused regression tests for retained Swing behavior
   - Severity: Low
   - Files: `packages/kilo-jetbrains/frontend/src/test/kotlin/ai/kilocode/client/session/**`
   - Issue: Several risks need tests: no parent refresh on no-op deltas, lazy body creation, editor disposal, hidden-session queue bounds, and EDT assertions.
-  - Plan direction: Extend existing session UI/controller tests using real IntelliJ EDT fixtures, not mocks.
+  - Implemented: added no-op repaint coverage for unknown message deltas and empty text deltas, custom question editor detachment coverage after forcing lazy editor creation, hidden queued transcript discard coverage after timeout disposal, and an EDT assertion regression for `SessionModel` mutation.
 
 ## Confirmed OK
 
