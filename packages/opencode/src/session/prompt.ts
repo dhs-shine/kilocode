@@ -1429,8 +1429,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           permissions.push({ permission: t, action: enabled ? "allow" : "deny", pattern: "*" })
         }
         if (permissions.length > 0) {
-          session.permission = permissions
-          yield* sessions.setPermission({ sessionID: session.id, permission: permissions })
+          // kilocode_change start - preserve inherited task restrictions while refreshing prompt tool toggles
+          const merged = KiloSessionPrompt.mergeToolPermissions({
+            existing: session.permission ?? [],
+            toggles: permissions,
+          })
+          session.permission = merged
+          yield* sessions.setPermission({ sessionID: session.id, permission: merged })
+          // kilocode_change end
         }
 
         // kilocode_change start — unblock tools waiting on user input so any in-flight

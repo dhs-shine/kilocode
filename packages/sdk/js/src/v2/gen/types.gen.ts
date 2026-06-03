@@ -7653,7 +7653,10 @@ export type AgentBuilderPreviewData = {
     prompt: string
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/agent-builder/preview"
 }
 
@@ -7698,7 +7701,10 @@ export type AgentBuilderSaveData = {
   path: {
     id: string
   }
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/agent-builder/{id}"
 }
 
@@ -7897,7 +7903,10 @@ export type CommitMessageGenerateData = {
     previousMessage?: string
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/commit-message"
 }
 
@@ -7969,7 +7978,10 @@ export type ConfigOverlayUpdateResponse = ConfigOverlayUpdateResponses[keyof Con
 export type ConfigSourcesData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/config/sources"
 }
 
@@ -7985,7 +7997,10 @@ export type ConfigSourcesResponse2 = ConfigSourcesResponses[keyof ConfigSourcesR
 export type ConfigEffectiveData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/config/effective"
 }
 
@@ -8002,6 +8017,8 @@ export type ConfigRulesData = {
   body?: never
   path?: never
   query?: {
+    directory?: string
+    workspace?: string
     scope?: "project"
   }
   url: "/config/rules"
@@ -8022,7 +8039,10 @@ export type ConfigRulesUpdateData = {
     content: string
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/config/rules"
 }
 
@@ -8038,7 +8058,10 @@ export type ConfigRulesUpdateResponse = ConfigRulesUpdateResponses[keyof ConfigR
 export type ConfigModelStateData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/config/model-state"
 }
 
@@ -8059,7 +8082,10 @@ export type ConfigModelStateUpdateData = {
     }>
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/config/model-state"
 }
 
@@ -8075,7 +8101,10 @@ export type ConfigModelStateUpdateResponse = ConfigModelStateUpdateResponses[key
 export type TuiConfigGetData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/tui/config"
 }
 
@@ -8122,6 +8151,8 @@ export type TuiConfigUpdateData = {
   }
   path?: never
   query?: {
+    directory?: string
+    workspace?: string
     scope?: "project" | "global"
   }
   url: "/tui/config"
@@ -8148,7 +8179,10 @@ export type TuiConfigUpdateResponse = TuiConfigUpdateResponses[keyof TuiConfigUp
 export type TuiKeybindListData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/tui/keybinds"
 }
 
@@ -8169,7 +8203,10 @@ export type EnhancePromptEnhanceData = {
     text: string
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/enhance-prompt"
 }
 
@@ -8806,7 +8843,10 @@ export type KilocodeRemoveAgentResponse = KilocodeRemoveAgentResponses[keyof Kil
 export type NetworkListData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/network"
 }
 
@@ -8824,7 +8864,10 @@ export type NetworkReplyData = {
   path: {
     requestID: string
   }
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/network/{requestID}/reply"
 }
 
@@ -8855,7 +8898,10 @@ export type NetworkRejectData = {
   path: {
     requestID: string
   }
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/network/{requestID}/reject"
 }
 
@@ -9354,7 +9400,10 @@ export type TelemetryCaptureData = {
     }
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/telemetry/capture"
 }
 
@@ -9381,7 +9430,10 @@ export type TelemetrySetEnabledData = {
     enabled: boolean
   }
   path?: never
-  query?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
   url: "/telemetry/setEnabled"
 }
 

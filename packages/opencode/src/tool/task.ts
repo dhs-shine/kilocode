@@ -75,6 +75,9 @@ export const TaskTool = Tool.define(
       const session = taskID
         ? yield* sessions.get(SessionID.make(taskID)).pipe(Effect.catchCause(() => Effect.succeed(undefined)))
         : undefined
+      if (session && session.parentID !== ctx.sessionID) {
+        return yield* Effect.fail(new Error(`Cannot resume session ${taskID}: not a child of the current session`)) // kilocode_change - prevent cross-session task resume
+      }
       const parent = yield* sessions.get(ctx.sessionID)
       const parentAgent = parent.agent
         ? yield* agent.get(parent.agent).pipe(Effect.catchCause(() => Effect.succeed(undefined)))
@@ -83,26 +86,40 @@ export const TaskTool = Tool.define(
       const caller = yield* agent.get(ctx.agent)
       const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp })
       // kilocode_change end
+      // kilocode_change start - refresh current parent restrictions when resuming an existing task session
+      if (session) {
+        session.permission = KiloTask.merge(
+          session.permission ?? [],
+          deriveSubagentSessionPermission({
+            parentSessionPermission: parent.permission ?? [],
+            parentAgent,
+            subagent: next,
+          }),
+          KiloTask.permissions(rules),
+        )
+        yield* sessions.setPermission({ sessionID: session.id, permission: session.permission })
+      }
+      // kilocode_change end
       const nextSession =
         session ??
         (yield* sessions.create({
           parentID: ctx.sessionID,
           title: params.description + ` (@${next.name} subagent)`,
-          permission: [
-            ...deriveSubagentSessionPermission({
+          // kilocode_change start - dedupe inherited restrictions before child prompt toggles persist
+          permission: KiloTask.merge(
+            deriveSubagentSessionPermission({
               parentSessionPermission: parent.permission ?? [],
               parentAgent,
               subagent: next,
             }),
-            ...(cfg.experimental?.primary_tools?.map((item) => ({
+            cfg.experimental?.primary_tools?.map((item) => ({
               pattern: "*",
               action: "allow" as const,
               permission: item,
-            })) ?? []),
-            // kilocode_change start — deny task + propagate caller restrictions
-            ...KiloTask.permissions(rules),
-            // kilocode_change end
-          ],
+            })) ?? [],
+            KiloTask.permissions(rules),
+          ),
+          // kilocode_change end
         }))
 
       const msg = yield* Effect.sync(() => MessageV2.get({ sessionID: ctx.sessionID, messageID: ctx.messageID }))
