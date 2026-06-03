@@ -117,7 +117,7 @@ class ModelPicker : PickerButton() {
             cursor = if (allowEmpty) Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) else Cursor.getDefaultCursor()
             return
         }
-        val item = selected ?: items.firstOrNull()
+        val item = selected ?: if (allowEmpty) null else items.firstOrNull()
         text = if (item == null && allowEmpty) "$emptyText ▾" else "${ModelText.sanitize(item?.display ?: items.first().display)} ▾"
         icon = if (item?.let(ModelText::collectsData) == true) AllIcons.General.Warning else null
         horizontalTextPosition = SwingConstants.LEFT
