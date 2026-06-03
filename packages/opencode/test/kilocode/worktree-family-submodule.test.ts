@@ -1,13 +1,38 @@
 import { $ } from "bun"
 import { afterEach, describe, expect, test } from "bun:test"
+import { Effect, ManagedRuntime } from "effect"
 import * as fs from "fs/promises"
 import path from "path"
-import { Instance } from "../../src/project/instance"
+import { Git } from "../../src/git"
 import { WorktreeFamily } from "../../src/kilocode/worktree-family"
+import { Project } from "../../src/project/project"
 import * as Log from "@opencode-ai/core/util/log"
-import { disposeAllInstances, tmpdir } from "../fixture/fixture"
+import { disposeAllInstances, provideInstance, tmpdir } from "../fixture/fixture"
 
 Log.init({ print: false })
+
+const project = Project.Service.of({
+  init: () => Effect.void,
+  fromDirectory: () => Effect.die(new Error("unused")),
+  discover: () => Effect.void,
+  list: () => Effect.succeed([]),
+  get: () => Effect.succeed(undefined),
+  update: () => Effect.die(new Error("unused")),
+  initGit: (input) => Effect.succeed(input.project),
+  setInitialized: () => Effect.void,
+  sandboxes: () => Effect.succeed([]),
+  addSandbox: () => Effect.void,
+  removeSandbox: () => Effect.void,
+})
+
+async function withGit<T>(body: (rt: ManagedRuntime.ManagedRuntime<Git.Service, never>) => Promise<T>) {
+  const rt = ManagedRuntime.make(Git.defaultLayer)
+  try {
+    return await body(rt)
+  } finally {
+    await rt.dispose()
+  }
+}
 
 afterEach(async () => {
   await disposeAllInstances()
@@ -26,15 +51,14 @@ describe("WorktreeFamily.list — git submodule", () => {
     const submodule = path.join(parent.path, "sub")
     const submoduleReal = await fs.realpath(submodule)
 
-    await Instance.provide({
-      directory: submodule,
-      fn: async () => {
-        const dirs = await WorktreeFamily.list()
-        // `git worktree list --porcelain` from inside a submodule reports the
-        // gitdir (`<parent>/.git/modules/sub`) as the worktree, so without the
-        // submodule guard the actual working tree is missing.
-        expect(dirs).toContain(submoduleReal)
-      },
+    await withGit(async (rt) => {
+      const dirs = await rt.runPromise(
+        WorktreeFamily.list().pipe(Effect.provideService(Project.Service, project), provideInstance(submodule)),
+      )
+      // `git worktree list --porcelain` from inside a submodule reports the
+      // gitdir (`<parent>/.git/modules/sub`) as the worktree, so without the
+      // submodule guard the actual working tree is missing.
+      expect(dirs).toContain(submoduleReal)
     })
   })
 })
