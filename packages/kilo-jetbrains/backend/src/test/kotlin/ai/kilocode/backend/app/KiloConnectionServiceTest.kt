@@ -25,6 +25,7 @@ import okhttp3.sse.EventSourceListener
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -138,6 +139,11 @@ class KiloConnectionServiceTest {
             override fun request(): Request = Request.Builder().url("http://127.0.0.1/global/event").build()
             override fun cancel() {}
         }
+        val sourceField = KiloConnectionService::class.java.getDeclaredField("source")
+        sourceField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        val ref = sourceField.get(svc) as AtomicReference<EventSource?>
+        ref.set(source)
         val received = scope.async {
             withTimeout(5_000) {
                 svc.events.take(2).toList()

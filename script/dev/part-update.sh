@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+# kilocode_change - new file
 set -eu
 
 usage() {

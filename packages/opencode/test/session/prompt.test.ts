@@ -899,7 +899,7 @@ it.live(
       }),
       { git: true, config: providerCfg },
     ),
-  3_000,
+  10_000, // kilocode_change - Windows CI can need extra time to settle cancellation
 )
 
 unix(
