@@ -3,7 +3,6 @@ package ai.kilocode.client.actions
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.KiloSettingsConfigurable
 import ai.kilocode.client.telemetry.Telemetry
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.options.Configurable
@@ -15,7 +14,7 @@ import java.util.function.Predicate
 class OpenSettingsAction : DumbAwareAction(
     KiloBundle.message("action.Kilo.OpenSettings.text"),
     KiloBundle.message("action.Kilo.OpenSettings.description"),
-    AllIcons.General.GearPlain,
+    null,
 ) {
     override fun actionPerformed(e: AnActionEvent) {
         Telemetry.send("Settings Opened", mapOf("surface" to "tool_window"))

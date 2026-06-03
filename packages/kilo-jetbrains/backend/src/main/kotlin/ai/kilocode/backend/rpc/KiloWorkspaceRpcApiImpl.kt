@@ -6,6 +6,8 @@ import ai.kilocode.backend.app.KiloAppState
 import ai.kilocode.backend.app.KiloBackendAppService
 import ai.kilocode.backend.app.LoadError
 import ai.kilocode.backend.cli.KiloCliDataParser
+import ai.kilocode.backend.cli.KiloBackendCliManager
+import ai.kilocode.backend.cli.KiloCliConfigPath
 import ai.kilocode.backend.workspace.AgentData
 import ai.kilocode.backend.workspace.AgentInfo
 import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
@@ -39,6 +41,7 @@ import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import kotlin.coroutines.resume
@@ -53,6 +56,15 @@ import kotlin.coroutines.resume
 class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
     companion object {
         private val LOG = KiloLog.create(KiloWorkspaceRpcApiImpl::class.java)
+        private const val SCHEMA = "https://app.kilo.ai/config.json"
+        private val MODERN = listOf("kilo.jsonc", "kilo.json")
+        private val LEGACY = listOf("opencode.jsonc", "opencode.json")
+        private val GLOBAL = MODERN + LEGACY + "config.json"
+        private val LOCAL_DIRS = listOf(".kilo", ".kilocode", ".opencode")
+        private val CONFIG = """{
+  "${'$'}schema": "$SCHEMA"
+}
+"""
     }
 
     private val app: KiloBackendAppService get() = service()
@@ -169,6 +181,55 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         }
         navigate(project, vf)
         return true
+    }
+
+    override suspend fun localConfigPath(directory: String): String = withContext(Dispatchers.IO) {
+        localConfig(directory).toString()
+    }
+
+    override suspend fun globalConfigPath(): String = withContext(Dispatchers.IO) {
+        globalConfig().toString()
+    }
+
+    override suspend fun openLocalConfig(directory: String): Boolean = openConfig(withContext(Dispatchers.IO) {
+        localConfig(directory)
+    })
+
+    override suspend fun openGlobalConfig(): Boolean = openConfig(withContext(Dispatchers.IO) {
+        globalConfig()
+    })
+
+    private suspend fun openConfig(path: Path): Boolean {
+        val target = withContext(Dispatchers.IO) {
+            Files.createDirectories(path.parent)
+            if (!Files.exists(path)) Files.writeString(path, CONFIG, StandardCharsets.UTF_8)
+            path
+        }
+        val vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(target.toString()) ?: return false
+        val project = project(target) ?: run {
+            LOG.warn("No project available to open config file: $target")
+            return false
+        }
+        navigate(project, vf)
+        return true
+    }
+
+    private fun localConfig(directory: String): Path {
+        val root = file(clean(directory) ?: directory)?.takeIf { it.isAbsolute } ?: Path.of(directory).normalize()
+        val dirs = LOCAL_DIRS.map { root.resolve(it) } + root
+        val found = dirs.asSequence()
+            .flatMap { dir -> (MODERN + LEGACY).asSequence().map { name -> dir.resolve(name) } }
+            .firstOrNull { Files.exists(it) }
+        return found ?: root.resolve(".kilo").resolve("kilo.jsonc")
+    }
+
+    private fun globalConfig(): Path {
+        val env = KiloBackendCliManager().buildEnv("config")
+        val root = KiloCliConfigPath.resolve(env).toPath().normalize()
+        return GLOBAL.asSequence()
+            .map { root.resolve(it) }
+            .firstOrNull { Files.exists(it) }
+            ?: root.resolve("kilo.jsonc")
     }
 
     private fun clean(path: String): String? {

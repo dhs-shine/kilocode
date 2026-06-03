@@ -27,8 +27,12 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var modelsGate: CompletableDeferred<Unit>? = null
     var fileMatches = emptyList<WorkspaceFileDto>()
     var openResult = true
+    var localConfigPath = "/test/.kilo/kilo.jsonc"
+    var globalConfigPath = "/config/kilo.jsonc"
     val fileCalls = mutableListOf<Pair<String, String>>()
     val opened = mutableListOf<String>()
+    val localConfigs = mutableListOf<String>()
+    var globalConfigs = 0
 
     override suspend fun resolveProjectDirectory(hint: String): String {
         assertNotEdt("resolveProjectDirectory")
@@ -60,6 +64,28 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     override suspend fun openFile(path: String): Boolean {
         assertNotEdt("openFile")
         opened.add(path)
+        return openResult
+    }
+
+    override suspend fun localConfigPath(directory: String): String {
+        assertNotEdt("localConfigPath")
+        return localConfigPath
+    }
+
+    override suspend fun globalConfigPath(): String {
+        assertNotEdt("globalConfigPath")
+        return globalConfigPath
+    }
+
+    override suspend fun openLocalConfig(directory: String): Boolean {
+        assertNotEdt("openLocalConfig")
+        localConfigs.add(directory)
+        return openResult
+    }
+
+    override suspend fun openGlobalConfig(): Boolean {
+        assertNotEdt("openGlobalConfig")
+        globalConfigs += 1
         return openResult
     }
 }

@@ -70,13 +70,26 @@
         <action id="Kilo.OpenSettings"
                 class="ai.kilocode.client.actions.OpenSettingsAction"/>
 
+        <action id="Kilo.OpenLocalConfig"
+                class="ai.kilocode.client.actions.OpenLocalConfigAction"/>
+
+        <action id="Kilo.OpenGlobalConfig"
+                class="ai.kilocode.client.actions.OpenGlobalConfigAction"/>
+
         <group id="Kilo.CliGroup" text="CLI" popup="true">
             <reference ref="Kilo.Restart"/>
             <reference ref="Kilo.Reinstall"/>
         </group>
 
+        <group id="Kilo.OpenConfigGroup" text="Config Files" popup="true">
+            <reference ref="Kilo.OpenLocalConfig"/>
+            <reference ref="Kilo.OpenGlobalConfig"/>
+        </group>
+
         <group id="Kilo.SettingsGroup">
             <reference ref="Kilo.OpenSettings"/>
+            <separator/>
+            <reference ref="Kilo.OpenConfigGroup"/>
             <separator/>
             <reference ref="Kilo.CliGroup"/>
         </group>
@@ -91,14 +104,10 @@
         <action id="Kilo.History"
                 class="ai.kilocode.client.actions.HistoryAction"/>
 
-        <action id="Kilo.ShowProfile"
-                class="ai.kilocode.client.actions.ShowProfileAction"/>
-
         <!-- Declarative toolbar group for the Kilo tool window title bar -->
         <group id="Kilo.ToolWindowToolbar">
             <reference ref="Kilo.NewSession"/>
             <reference ref="Kilo.History"/>
-            <reference ref="Kilo.ShowProfile"/>
             <reference ref="Kilo.Settings"/>
         </group>
 

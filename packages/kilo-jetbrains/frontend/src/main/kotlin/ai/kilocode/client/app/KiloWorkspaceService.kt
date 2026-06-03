@@ -41,6 +41,10 @@ class KiloWorkspaceService internal constructor(
     }
 
     private val workspaces = ConcurrentHashMap<String, Workspace>()
+    private val localConfig = ConcurrentHashMap<String, String>()
+
+    @Volatile
+    private var globalConfig: String? = null
 
     // ------ RPC helpers ------
 
@@ -127,6 +131,52 @@ class KiloWorkspaceService internal constructor(
         } catch (e: Exception) {
             LOG.warn("workspace file open failed for path=${match.path}", e)
             false
+        }
+    }
+
+    fun localConfigPath(directory: String): String? {
+        cs.launch {
+            try {
+                localConfig[directory] = call { this.localConfigPath(directory) }
+            } catch (e: Exception) {
+                LOG.warn("local config lookup failed for directory=$directory", e)
+            }
+        }
+        return localConfig[directory]
+    }
+
+    fun globalConfigPath(): String? {
+        cs.launch {
+            try {
+                globalConfig = call { this.globalConfigPath() }
+            } catch (e: Exception) {
+                LOG.warn("global config lookup failed", e)
+            }
+        }
+        return globalConfig
+    }
+
+    fun openLocalConfig(directory: String, done: (Boolean) -> Unit) {
+        cs.launch {
+            val ok = try {
+                call { this.openLocalConfig(directory) }
+            } catch (e: Exception) {
+                LOG.warn("local config open failed for directory=$directory", e)
+                false
+            }
+            done(ok)
+        }
+    }
+
+    fun openGlobalConfig(done: (Boolean) -> Unit) {
+        cs.launch {
+            val ok = try {
+                call { this.openGlobalConfig() }
+            } catch (e: Exception) {
+                LOG.warn("global config open failed", e)
+                false
+            }
+            done(ok)
         }
     }
 }

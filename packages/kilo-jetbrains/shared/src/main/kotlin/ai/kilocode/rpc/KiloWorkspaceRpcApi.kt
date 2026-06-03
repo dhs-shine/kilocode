@@ -47,4 +47,16 @@ interface KiloWorkspaceRpcApi : RemoteApi<Unit> {
 
     /** Open an absolute backend file path in the IDE. */
     suspend fun openFile(path: String): Boolean
+
+    /** Resolve the editable local config target path. */
+    suspend fun localConfigPath(directory: String): String
+
+    /** Resolve the editable global config target path. */
+    suspend fun globalConfigPath(): String
+
+    /** Open or create the local config file in the IDE. */
+    suspend fun openLocalConfig(directory: String): Boolean
+
+    /** Open or create the global config file in the IDE. */
+    suspend fun openGlobalConfig(): Boolean
 }

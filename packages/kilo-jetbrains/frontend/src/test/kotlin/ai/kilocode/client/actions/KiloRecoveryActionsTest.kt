@@ -32,6 +32,12 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
             .use { it.readText() }
 
         assertTrue(xml.contains("<group id=\"Kilo.CliGroup\" text=\"CLI\" popup=\"true\">"))
+        assertTrue(xml.contains("<reference ref=\"Kilo.Restart\"/>"))
+        assertTrue(xml.contains("<reference ref=\"Kilo.Reinstall\"/>"))
+        assertTrue(xml.contains("<group id=\"Kilo.OpenConfigGroup\" text=\"Config Files\" popup=\"true\">"))
+        assertTrue(xml.contains("<reference ref=\"Kilo.OpenConfigGroup\"/>"))
+        assertFalse(xml.contains("<action id=\"Kilo.ShowProfile\""))
+        assertFalse(xml.contains("<reference ref=\"Kilo.ShowProfile\"/>"))
     }
 
     private fun event(action: AnAction): AnActionEvent {
