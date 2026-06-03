@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [7.0.1-rc.6] - 2026-06-03
+
+### Fixed
+- Model picker now highlights models that can be used for training.
+
 ## [7.0.1-rc.5] - 2026-06-03
 
 ### Added
