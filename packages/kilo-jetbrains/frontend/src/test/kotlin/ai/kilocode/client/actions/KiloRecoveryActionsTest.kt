@@ -4,6 +4,7 @@ import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.session.SessionManager
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
+import ai.kilocode.rpc.dto.ConfigTargetDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -80,6 +81,7 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
         rpc.localConfigPath = "/test/.kilo/kilo.jsonc"
         rpc.localConfigDisplayPath = "~/.kilo/kilo.jsonc"
         rpc.localConfigExists = true
+        service().localConfig["/test"] = ConfigTargetDto("/test/.kilo/kilo.jsonc", "~/.kilo/kilo.jsonc", true)
         val action = OpenLocalConfigAction()
         val event = event(action, workspace = workspace("/test"))
 
@@ -87,13 +89,14 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
 
         assertTrue(event.presentation.isEnabled)
         assertEquals("Open: local ~/.kilo/kilo.jsonc", event.presentation.text)
-        assertEquals(1, rpc.localConfigPathCalls)
+        assertEquals(0, rpc.localConfigPathCalls)
     }
 
     fun `test local config action says create when target is missing`() {
         rpc.localConfigPath = "/test/.kilo/kilo.jsonc"
         rpc.localConfigDisplayPath = "~/.kilo/kilo.jsonc"
         rpc.localConfigExists = false
+        service().localConfig["/test"] = ConfigTargetDto("/test/.kilo/kilo.jsonc", "~/.kilo/kilo.jsonc", false)
         val action = OpenLocalConfigAction()
         val event = event(action, workspace = workspace("/test"))
 
@@ -101,33 +104,35 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
 
         assertTrue(event.presentation.isEnabled)
         assertEquals("Create: local ~/.kilo/kilo.jsonc", event.presentation.text)
-        assertEquals(1, rpc.localConfigPathCalls)
+        assertEquals(0, rpc.localConfigPathCalls)
     }
 
     fun `test global config action says open when target exists`() {
         rpc.globalConfigPath = "/config/kilo.jsonc"
         rpc.globalConfigDisplayPath = "~/.config/kilo/kilo.jsonc"
         rpc.globalConfigExists = true
+        cacheGlobal(ConfigTargetDto("/config/kilo.jsonc", "~/.config/kilo/kilo.jsonc", true))
         val action = OpenGlobalConfigAction()
         val event = event(action)
 
         update(action, event)
 
         assertEquals("Open: global ~/.config/kilo/kilo.jsonc", event.presentation.text)
-        assertEquals(1, rpc.globalConfigPathCalls)
+        assertEquals(0, rpc.globalConfigPathCalls)
     }
 
     fun `test global config action says create when target is missing`() {
         rpc.globalConfigPath = "/config/kilo.jsonc"
         rpc.globalConfigDisplayPath = "~/.config/kilo/kilo.jsonc"
         rpc.globalConfigExists = false
+        cacheGlobal(ConfigTargetDto("/config/kilo.jsonc", "~/.config/kilo/kilo.jsonc", false))
         val action = OpenGlobalConfigAction()
         val event = event(action)
 
         update(action, event)
 
         assertEquals("Create: global ~/.config/kilo/kilo.jsonc", event.presentation.text)
-        assertEquals(1, rpc.globalConfigPathCalls)
+        assertEquals(0, rpc.globalConfigPathCalls)
     }
 
     fun `test local config action disables without directory`() {
@@ -150,6 +155,14 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
         ApplicationManager.getApplication().executeOnPooledThread {
             ActionUtil.updateAction(action, event)
         }.get()
+    }
+
+    private fun service(): KiloWorkspaceService = ApplicationManager.getApplication().getService(KiloWorkspaceService::class.java)
+
+    private fun cacheGlobal(target: ConfigTargetDto) {
+        val field = KiloWorkspaceService::class.java.getDeclaredField("globalConfig")
+        field.isAccessible = true
+        field.set(service(), target)
     }
 
     private fun context(workspace: Workspace?): DataContext {
