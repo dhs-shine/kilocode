@@ -29,7 +29,7 @@ abstract class AbstractSessionPartView(
     ) : this(header, { body }, expanded, expandable)
 
     protected val arrow = JBLabel()
-    protected val row = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0))
+    protected val row = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0))
     private val bound = linkedSetOf<Component>()
     private var body: JComponent? = null
 

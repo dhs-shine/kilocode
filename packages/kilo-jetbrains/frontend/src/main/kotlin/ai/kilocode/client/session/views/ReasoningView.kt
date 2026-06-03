@@ -154,7 +154,7 @@ class ReasoningView(
         if (!parts.bodyCreated()) return 0
         val md = md
         return md.component.getFontMetrics(md.font).height * bodyMaxRows() +
-            JBUI.scale(SessionUiStyle.View.CARD_BODY_EXTRA_HEIGHT)
+            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
     }
 
     override fun dumpLabel(): String {
@@ -189,13 +189,13 @@ class ReasoningParts(
             isOpaque = true
             background = SessionUiStyle.View.surface()
             border = JBUI.Borders.empty(
-                JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
-                JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
             )
             add(md.component, BorderLayout.CENTER)
         }
         val scroll = JBScrollPane(panel).apply {
-            border = SessionUiStyle.View.cardTop()
+            border = SessionUiStyle.View.topOutline()
             isOpaque = true
             background = SessionUiStyle.View.surface()
             viewport.background = SessionUiStyle.View.surface()
@@ -215,7 +215,7 @@ class ReasoningBody(
 private fun reasoningParts(selection: SessionSelection? = null): ReasoningParts {
     val title = JBLabel(KiloBundle.message("session.part.reasoning")).apply { foreground = UiStyle.Colors.weak() }
     val icon = JBLabel(AllIcons.General.InspectionsEye).apply { foreground = UiStyle.Colors.weak() }
-    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0)).apply {
+    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply {
         isOpaque = false
         add(icon, BorderLayout.WEST)
         add(title, BorderLayout.CENTER)

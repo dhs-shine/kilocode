@@ -392,8 +392,9 @@ class MdViewHybridTest : BasePlatformTestCase() {
         view.applyStyle(style)
         view.set("hello")
 
-        assertEquals("Courier New", view.font.name)
+        assertFalse(view.font.name == "Courier New")
         assertEquals(21, view.font.size)
+        assertTrue(view.overrideSheet().contains(style.transcriptFont.name))
         assertTrue(view.overrideSheet().contains("Courier New"))
         assertTrue(view.overrideSheet().contains("21pt"))
     }
@@ -406,6 +407,7 @@ class MdViewHybridTest : BasePlatformTestCase() {
         view.applyStyle(style)
 
         assertSame(pane, htmls().single())
+        assertTrue(view.overrideSheet().contains(style.transcriptFont.name))
         assertTrue(view.overrideSheet().contains("Courier New"))
         assertTrue(view.overrideSheet().contains("21pt"))
     }

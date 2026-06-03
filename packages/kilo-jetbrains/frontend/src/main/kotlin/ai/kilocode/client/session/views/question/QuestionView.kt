@@ -164,7 +164,7 @@ class QuestionView(
         this.style = style
         card.applyStyle(style)
         customEditor?.let { ed ->
-            ed.font = style.transcriptFont
+            ed.font = style.editorFont
             ed.getEditor(false)?.let(style::applyToEditor)
             ed.background = style.editorScheme.defaultBackground
         }
@@ -500,7 +500,7 @@ class QuestionView(
             ex.settings.isAdditionalPageAtBottom = false
             ex.scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
         }
-        ed.font = style.transcriptFont
+        ed.font = style.editorFont
         ed.background = style.editorScheme.defaultBackground
 
         // Pre-fill with saved text. This call also forces lazy document creation so

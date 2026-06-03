@@ -593,7 +593,7 @@ internal class MdViewHybrid(
         area.isOpaque = opts.opaque
         area.background = opts.preBg
         area.foreground = opts.preFg
-        area.font = style.transcriptFont
+        area.font = style.editorFont
     }
 
     private inner class CodeField(file: FileType, opts: MdStyle, value: String) :
@@ -606,7 +606,7 @@ internal class MdViewHybrid(
         ) {
         init {
             setFontInheritedFromLAF(false)
-            font = style.transcriptFont
+            font = style.editorFont
             addSettingsProvider { ed ->
                 style.applyToEditor(ed)
                 ed.setBorder(JBUI.Borders.empty())
@@ -877,7 +877,7 @@ internal class MdViewHybrid(
             val view = pane.viewport.view
             when (view) {
                 is CodeField -> {
-                    view.font = style.transcriptFont
+                    view.font = style.editorFont
                     view.background = opts.preBg
                 }
                 is JBTextArea -> styleTextArea(view, opts)

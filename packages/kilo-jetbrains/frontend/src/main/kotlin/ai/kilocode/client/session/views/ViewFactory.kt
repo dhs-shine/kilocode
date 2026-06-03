@@ -70,7 +70,7 @@ object ViewFactory {
         openUrl: (String) -> Unit = {},
         selection: SessionSelection? = null,
     ): PartView = when (content) {
-        is Text -> TextView(content, transparent = true, openUrl = openUrl, selection = selection)
+        is Text -> PromptView(content, openUrl = openUrl, selection = selection)
         else -> create(content, openFile, openUrl, selection)
     }
 

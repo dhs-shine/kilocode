@@ -42,17 +42,17 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
             super.updateUI()
             isOpaque = true
             background = SessionUiStyle.View.surface()
-            border = SessionUiStyle.View.card()
+            border = SessionUiStyle.View.sessionView()
         }
     }
-    private val header = object : JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0)) {
+    private val header = object : JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)) {
         override fun updateUI() {
             super.updateUI()
             isOpaque = true
             background = SessionUiStyle.View.header()
             border = JBUI.Borders.empty(
-                JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
-                JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
             )
         }
     }
@@ -60,7 +60,7 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
     private val title = JBLabel()
     private val sub = JBLabel().apply { foreground = UiStyle.Colors.weak() }
     private val arrow = JBLabel()
-    private val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0)).apply {
+    private val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply {
         isOpaque = false
     }
     private var pane: JPanel? = null
@@ -166,8 +166,8 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
                 isOpaque = true
                 background = SessionUiStyle.View.surface()
                 border = JBUI.Borders.empty(
-                    JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
-                    JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
+                    JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
+                    JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
                 )
             }
         }.apply {
@@ -277,7 +277,7 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
         val color = if (value) SessionUiStyle.View.headerHover() else SessionUiStyle.View.header()
         if (header.background?.rgb == color.rgb) return
         header.background = color
-        root.border = if (value) SessionUiStyle.View.card(SessionUiStyle.View.hoverLine()) else SessionUiStyle.View.card()
+        root.border = if (value) SessionUiStyle.View.sessionView(SessionUiStyle.View.hoverLine()) else SessionUiStyle.View.sessionView()
         header.repaint()
         root.repaint()
     }

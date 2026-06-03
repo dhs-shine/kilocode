@@ -20,7 +20,7 @@ class MdViewFactoryTest : BasePlatformTestCase() {
         val style = SessionEditorStyle.create(family = "Courier New", size = 22)
         val view = MdViewFactory.create(style)
 
-        assertEquals("Courier New", view.font.name)
+        assertEquals(style.transcriptFont.name, view.font.name)
         assertEquals(22, view.font.size)
         assertEquals("Courier New", view.codeFont)
     }

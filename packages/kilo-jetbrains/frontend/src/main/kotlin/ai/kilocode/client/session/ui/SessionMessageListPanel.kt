@@ -71,7 +71,8 @@ class SessionMessageListPanel(
     val progress = ProgressPanel(model, parent)
 
     init {
-        isOpaque = false
+        isOpaque = true
+        background = SessionUiStyle.View.transcript()
         Disposer.register(parent, this)
 
         model.addListener(parent) { event ->
@@ -339,6 +340,7 @@ class SessionMessageListPanel(
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
+        background = SessionUiStyle.View.transcript()
         for (view in turnViews.values) view.applyStyle(style)
         question?.applyStyle(style)
         permission?.applyStyle(style)

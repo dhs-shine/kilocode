@@ -4,6 +4,7 @@ import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Text
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.selection.SessionSelection
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.client.ui.md.MdViewFactory
@@ -15,7 +16,7 @@ import java.awt.BorderLayout
  *
  * Supports both full-replacement ([update]) and streaming append ([appendDelta]).
  */
-class TextView(
+open class TextView(
     text: Text,
     transparent: Boolean = false,
     openUrl: (String) -> Unit = {},
@@ -55,16 +56,24 @@ class TextView(
     internal fun contentOpaque() = md.opaque
 
     override fun applyStyle(style: SessionEditorStyle) {
-        val changed = md.font != style.transcriptFont ||
+        val font = styleFont(style)
+        val bg = styleBackground(style)
+        val changed = md.font != font ||
             md.codeFont != style.editorFamily ||
-            md.foreground != style.editorForeground
+            md.foreground != style.editorForeground ||
+            md.background != bg
         md.applyStyle(style)
-        if (md.font != style.transcriptFont) md.font = style.transcriptFont
+        if (md.font != font) md.font = font
         if (md.codeFont != style.editorFamily) md.codeFont = style.editorFamily
         if (md.foreground != style.editorForeground) md.foreground = style.editorForeground
+        if (md.background != bg) md.background = bg
         if (!changed) return
         refresh()
     }
+
+    protected open fun styleFont(style: SessionEditorStyle) = style.transcriptFont
+
+    protected open fun styleBackground(style: SessionEditorStyle) = SessionUiStyle.View.transcript()
 
     private fun refresh() {
         revalidate()

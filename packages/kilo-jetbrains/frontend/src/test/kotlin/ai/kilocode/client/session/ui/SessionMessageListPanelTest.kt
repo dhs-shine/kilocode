@@ -296,6 +296,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertSame(message, panel.findMessage("a1"))
         assertSame(text, panel.findMessage("a1")!!.part("p1"))
         assertSame(comp, text.md.component)
+        assertTrue(text.md.overrideSheet().contains(style.transcriptFont.name))
         assertTrue(text.md.overrideSheet().contains("Courier New"))
         assertTrue(text.md.overrideSheet().contains("24pt"))
     }
@@ -308,6 +309,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         model.updateContent("a1", part("p1", "a1", "text", text = "hello"))
 
         val text = panel.findMessage("a1")!!.part("p1") as TextView
+        assertTrue(text.md.overrideSheet().contains(style.transcriptFont.name))
         assertTrue(text.md.overrideSheet().contains("Courier New"))
         assertTrue(text.md.overrideSheet().contains("25pt"))
     }

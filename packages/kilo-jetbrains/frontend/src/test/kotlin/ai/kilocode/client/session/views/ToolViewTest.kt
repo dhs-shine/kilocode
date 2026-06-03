@@ -326,12 +326,12 @@ class ToolViewTest : BasePlatformTestCase() {
         Tool(id, name, toolKind(name)).also { it.state = state; it.title = title }
 
     private fun assertEditorFont(font: java.awt.Font, style: SessionEditorStyle) {
-        assertEquals(style.editorFamily, font.name)
+        assertEquals(style.transcriptFont.name, font.name)
         assertEquals(style.editorSize, font.size)
     }
 
     private fun assertSmallEditorFont(font: java.awt.Font, style: SessionEditorStyle) {
-        assertEquals(style.editorFamily, font.name)
+        assertEquals(style.smallEditorFont.name, font.name)
         assertTrue(font.size < style.editorSize)
     }
 }

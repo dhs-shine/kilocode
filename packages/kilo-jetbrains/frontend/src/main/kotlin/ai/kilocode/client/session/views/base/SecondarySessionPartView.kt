@@ -21,8 +21,8 @@ abstract class SecondarySessionPartView(
         row.isOpaque = true
         row.background = SessionUiStyle.View.header()
         row.border = JBUI.Borders.empty(
-            JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
-            JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
+            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
+            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
         )
     }
 

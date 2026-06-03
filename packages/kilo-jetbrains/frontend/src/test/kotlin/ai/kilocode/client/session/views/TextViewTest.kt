@@ -97,12 +97,12 @@ class TextViewTest : BasePlatformTestCase() {
         assertNotNull(view.md.component)
     }
 
-    fun `test markdown uses editor font settings`() {
+    fun `test markdown uses ui family with editor size`() {
         val style = SessionEditorStyle.current()
         val view = TextView(Text("p1"))
         val sheet = view.md.overrideSheet()
 
-        assertTrue(sheet.contains(style.editorFamily))
+        assertTrue(sheet.contains(style.transcriptFont.name))
         assertTrue(sheet.contains("${style.editorSize}pt"))
     }
 
@@ -115,9 +115,21 @@ class TextViewTest : BasePlatformTestCase() {
         val sheet = view.md.overrideSheet()
 
         assertSame(component, view.md.component)
+        assertTrue(sheet.contains(style.transcriptFont.name))
         assertTrue(sheet.contains("Courier New"))
         assertTrue(sheet.contains("23pt"))
         assertEquals(style.editorForeground, view.md.foreground)
+    }
+
+    fun `test prompt view uses editor font and background`() {
+        val style = SessionEditorStyle.create(family = "Courier New", size = 23)
+        val view = PromptView(Text("p1"))
+
+        view.applyStyle(style)
+
+        assertEquals(style.editorFont, view.md.font)
+        assertEquals(style.editorBackground, view.md.background)
+        assertFalse(view.contentOpaque())
     }
 
     // ---- markdown is rendered ------

@@ -162,7 +162,7 @@ class ToolView(
     private fun bodyMaxHeight(): Int {
         val text = parts.text ?: return 0
         return text.getFontMetrics(text.font).height * bodyMaxRows() +
-            JBUI.scale(SessionUiStyle.View.CARD_BODY_EXTRA_HEIGHT)
+            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
     }
 
     override fun dumpLabel() = "ToolView#$contentId(${labelText()})"
@@ -292,7 +292,7 @@ class ReadToolView(
     private fun bodyMaxHeight(): Int {
         val text = parts.text ?: return 0
         return text.getFontMetrics(text.font).height * bodyMaxRows() +
-            JBUI.scale(SessionUiStyle.View.CARD_BODY_EXTRA_HEIGHT)
+            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
     }
 
     override fun dumpLabel() = "ReadToolView#$contentId(${labelText()})"
@@ -341,12 +341,12 @@ class ToolParts(
             foreground = if (tool.state == ToolExecState.ERROR) UiStyle.Colors.errorLabelForeground() else UiStyle.Colors.fg()
             background = SessionUiStyle.View.surface()
             border = JBUI.Borders.empty(
-                JBUI.scale(SessionUiStyle.View.CARD_VERTICAL_PADDING),
-                JBUI.scale(SessionUiStyle.View.CARD_HORIZONTAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
             )
         }
         val scroll = JBScrollPane(text).apply {
-            border = SessionUiStyle.View.cardTop()
+            border = SessionUiStyle.View.topOutline()
             isOpaque = true
             background = SessionUiStyle.View.surface()
             viewport.background = SessionUiStyle.View.surface()
@@ -388,9 +388,9 @@ private fun toolParts(tool: Tool, openFile: ((String) -> Unit)? = null): ToolPar
         add(link, LINK_CARD)
     }
     val state = JBLabel().apply { foreground = UiStyle.Colors.weak() }
-    val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0)).apply { isOpaque = false }
+    val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply { isOpaque = false }
     val controls = Box.createHorizontalBox()
-    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.CARD_LAYOUT_GAP), 0)).apply {
+    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply {
         isOpaque = false
         center.add(title, BorderLayout.WEST)
         center.add(slot, BorderLayout.CENTER)
