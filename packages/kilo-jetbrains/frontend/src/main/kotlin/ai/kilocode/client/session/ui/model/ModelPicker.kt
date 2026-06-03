@@ -457,9 +457,9 @@ internal object ModelText {
 
     fun dataCollected(): String = KiloBundle.message("model.picker.dataCollected")
 
-    fun dataCollectedTooltip(): String = XmlStringUtil.wrapInHtml(
-        XmlStringUtil.escapeString(KiloBundle.message("model.picker.tooltip")) + "<br>" +
-            XmlStringUtil.escapeString(KiloBundle.message("model.picker.dataCollected.current")),
+    fun dataCollectedTooltip(): String = XmlStringUtil.wrapInHtmlLines(
+        KiloBundle.message("model.picker.tooltip"),
+        KiloBundle.message("model.picker.dataCollected.current"),
     )
 
     fun freeLabel(): String = KiloBundle.message("model.picker.free")
