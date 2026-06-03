@@ -50,6 +50,7 @@ import com.intellij.openapi.application.ApplicationManager
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
 import com.intellij.openapi.util.Disposer
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
@@ -223,7 +224,10 @@ class SessionController(
                     val meta = if (LOG.isDebugEnabled) ChatLogSummary.dir(directory) else "kind=session"
                     LOG.info("${ChatLogSummary.sid(session.id)} kind=session $meta created=true")
                     capture("Task Created", sessionProps(session.id) + mapOf("source" to "jetbrains"))
-                    subscribeEvents()
+                    runEdt {
+                        if (disposed) return@runEdt
+                        subscribeEvents()
+                    }
                     session.id
                 }
                 sessions.prompt(id, directory, dto)
@@ -458,7 +462,9 @@ class SessionController(
         }
     }
 
+    @RequiresEdt
     private fun drainAutoApprove(skip: Set<String> = emptySet()) {
+        assertEdt()
         val id = sid ?: return
         val ids = (childIds + id).toSet()
         drainJob?.cancel()
@@ -749,13 +755,12 @@ class SessionController(
         if (!model.showSession) setControllerViewState(SessionControllerEvent.ViewChanged.ShowProgress)
     }
 
+    @RequiresEdt
     private fun subscribeEvents() {
+        assertEdt()
         val id = sid ?: return
         LOG.debug { "${ChatLogSummary.sid(id)} kind=subscription subscribe=true" }
-        eventJob?.cancel()
-        childJobs.values.forEach { it.cancel() }
-        childJobs.clear()
-        childIds.clear()
+        cancelSubscriptions()
         eventJob = cs.launch {
             try {
                 sessions.events(id, directory).collect { event ->
@@ -772,7 +777,9 @@ class SessionController(
         }
     }
 
+    @RequiresEdt
     private fun subscribeChild(child: String) {
+        assertEdt()
         if (childJobs.containsKey(child)) return
         LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-subscription child=$child subscribe=true" }
         val job = cs.launch {
@@ -789,10 +796,22 @@ class SessionController(
         childJobs[child] = job
     }
 
+    @RequiresEdt
     private fun trackChild(child: String) {
+        assertEdt()
         if (!childIds.add(child)) return
         subscribeChild(child)
         cs.launch { recoverChildPermissions(child) }
+    }
+
+    @RequiresEdt
+    private fun cancelSubscriptions() {
+        assertEdt()
+        eventJob?.cancel()
+        eventJob = null
+        childJobs.values.forEach { it.cancel() }
+        childJobs.clear()
+        childIds.clear()
     }
 
     private suspend fun recoverChildPermissions(child: String) {
@@ -1696,13 +1715,13 @@ class SessionController(
     }
 
     override fun dispose() {
-        disposed = true
-        connectionDelay.dispose()
-        eventJob?.cancel()
-        drainJob?.cancel()
-        childJobs.values.forEach { it.cancel() }
-        childJobs.clear()
-        childIds.clear()
+        runEdt {
+            disposed = true
+            connectionDelay.dispose()
+            cancelSubscriptions()
+            drainJob?.cancel()
+            drainJob = null
+        }
         cs.cancel()
     }
 

@@ -4,31 +4,37 @@ Use this as a planning backlog for the JetBrains session UI performance, memory,
 
 Last status check: 2026-06-02.
 
+## Current Summary
+
+- Implemented high-priority work: streaming markdown no longer rebuilds the full rendered tree on normal deltas, and hidden cached session UIs are disposed after a configurable timeout while `SessionUpdateQueue` uses a shared coroutine ticker instead of per-session scheduler threads.
+- Remaining high-priority work: none. `SessionController` subscription-state mutation is now EDT-confined while RPC event collection remains on background coroutines.
+- Remaining non-high-priority work: repaint/revalidate cleanup, lazy collapsed bodies, question editor disposal, EDT annotations/assertions, style callback disposal guards, `SessionUpdateQueue` Swing listener EDT confinement, question body retention, semantic timeline colors, and additional retained Swing regression tests.
+
 ## High Priority
 
 - [x] Fix streaming markdown full-tree rebuilds
   - Severity: High
-  - Status: Addressed for the high-priority full-tree rebuild issue. Remaining repaint/revalidate cleanup is tracked separately under medium priority.
+  - Status: Implemented for the high-priority full-tree rebuild issue. Remaining repaint/revalidate cleanup is tracked separately under medium priority.
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/ui/SessionMessageListPanel.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/views/TextView.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/ui/md/MdViewHybrid.kt`
   - Issue: `ContentDelta` updates fetch full content and route through `TextView.update()`/`md.set()`, causing markdown to reparse and recreate all child components, including code editors, on each streaming chunk.
-  - Plan direction: Restore incremental delta handling where safe, avoid full `set()` for append-only text, and retain/reuse markdown/code block components where possible.
-  - Current evidence: `ContentDelta` carries `created`, `SessionMessageListPanel` routes normal deltas through `appendDelta()`, and `MdViewHybrid` retains compatible HTML/code block views instead of clearing all rendered blocks.
+  - Implemented: `ContentDelta` carries `created`, `SessionMessageListPanel` routes normal deltas through `appendDelta()`, `TextView.appendDelta()` calls `md.append(delta)`, and `MdViewHybrid` retains compatible HTML/code block views instead of clearing all rendered blocks.
+  - Tests/release note: `SessionMessageListPanelTest` covers preserving the `TextView` and markdown component during deltas; `.changeset/retained-jetbrains-markdown.md` documents the user-facing fix.
 
 - [x] Prevent hidden cached sessions from accumulating resources
   - Severity: High
-  - Status: Addressed with timed hidden-session disposal and shared coroutine-based queue ticking.
+  - Status: Implemented with timed hidden-session disposal and shared coroutine-based queue ticking.
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/SessionSidePanelManager.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/controller/SessionUpdateQueue.kt`, `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/controller/SessionController.kt`
   - Issue: Inactive cached session UIs keep controller subscriptions, scheduler threads, models, Swing trees, and pending event queues alive. Non-metadata events can accumulate while hidden.
-  - Plan direction: Bound hidden transcript event queues with unconditional timed disposal, and avoid one scheduler thread per session UI.
-  - Current evidence: `kilo.session.inactive.dispose` was removed, `kilo.session.inactive.disposeTimeoutMs` now defaults to 180000 ms, hidden cached `SessionUi` instances are disposed by an EDT timer after the timeout unless shown again, and `SessionUpdateQueue` now uses the controller coroutine scope for its ticker instead of creating a per-queue scheduler thread.
+  - Implemented: `kilo.session.inactive.dispose` was removed, `kilo.session.inactive.disposeTimeoutMs` now defaults to 180000 ms, hidden cached `SessionUi` instances are disposed by an EDT timer after the timeout unless shown again, and `SessionUpdateQueue` now uses the controller coroutine scope for its ticker instead of creating a per-queue scheduler thread.
+  - Tests/release note: `SessionSidePanelManagerTest` covers hidden timeout disposal, reopen-after-timeout recreation, busy hidden disposal, and permission hidden disposal; `.changeset/hidden-session-timers.md` documents the user-facing fix.
 
-- [ ] Confine controller subscription mutation to EDT
+- [x] Confine controller subscription mutation to EDT
   - Severity: High
-  - Status: Not addressed; still needs work.
+  - Status: Implemented with EDT-only subscription bookkeeping and background RPC event collection.
   - Files: `packages/kilo-jetbrains/frontend/src/main/kotlin/ai/kilocode/client/session/controller/SessionController.kt`
   - Issue: `prompt()` calls `subscribeEvents()` from a background coroutine after session creation; `subscribeEvents()` mutates `eventJob`, `childJobs`, and `childIds` without EDT confinement.
-  - Plan direction: Run subscription-state mutation on EDT or separate thread-safe subscription state from EDT-only controller state.
-  - Current evidence: `prompt()` still calls `subscribeEvents()` from inside `cs.launch`, and `subscribeEvents()` still mutates `eventJob`, `childJobs`, and `childIds` without an EDT assertion or EDT handoff.
+  - Implemented: `subscribeEvents()`, `subscribeChild()`, `trackChild()`, `drainAutoApprove()`, and subscription cleanup are `@RequiresEdt`/asserted EDT-only. New-session prompt creation hands subscription setup back to EDT before prompt dispatch, and `dispose()` clears subscription state on EDT before cancelling the coroutine scope.
+  - Tests/release note: `ChatLoggingFlowTest` covers new-session event subscription, `PromptLifecycleTest` covers duplicate child task parts subscribing once, and `.changeset/jetbrains-controller-subscriptions.md` documents the stability fix.
 
 ## Medium Priority
 
