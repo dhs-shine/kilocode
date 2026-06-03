@@ -76,7 +76,9 @@ class PromptPanel(
     }
 
     val mode = ModePicker()
-    val model = ModelPicker()
+    val model = ModelPicker().apply {
+        placement = ModelPicker.Placement.ABOVE
+    }
     val reasoning = ReasoningPicker()
     var onReset: () -> Unit = {}
     var onChange: () -> Unit = {}
