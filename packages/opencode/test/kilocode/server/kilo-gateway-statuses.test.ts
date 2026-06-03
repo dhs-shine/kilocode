@@ -56,6 +56,7 @@ const layer = HttpRouter.serve(
 const it = testEffect(layer)
 
 function stub(run: () => Response | Promise<Response>) {
+  // These tests run sequentially; scope the process-global override and delegate in-process server traffic.
   const original = globalThis.fetch
   const fetch: typeof globalThis.fetch = Object.assign(
     async (input: RequestInfo | URL, init?: RequestInit) => {
