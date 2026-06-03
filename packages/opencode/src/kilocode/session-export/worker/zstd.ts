@@ -1,14 +1,8 @@
-import * as zlib from "node:zlib"
+import { zstdCompress, zstdDecompress } from "node:zlib"
 import { promisify } from "node:util"
 
-type Zstd = typeof zlib & {
-  zstdCompress(input: Uint8Array, callback: (err: Error | null, result: Uint8Array) => void): void
-  zstdDecompress(input: Uint8Array, callback: (err: Error | null, result: Uint8Array) => void): void
-}
-
-const runtime = zlib as Zstd
-const compress = promisify(runtime.zstdCompress)
-const decompress = promisify(runtime.zstdDecompress)
+const compress = promisify(zstdCompress)
+const decompress = promisify(zstdDecompress)
 
 export async function compressZstd(bytes: Uint8Array): Promise<Uint8Array> {
   return compress(bytes) as Promise<Uint8Array>
