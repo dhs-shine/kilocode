@@ -158,9 +158,9 @@ class ModelPickerTest : BasePlatformTestCase() {
 
         picker.setItems(listOf(item("auto", "Auto Free", "kilo", "Kilo", free = true)))
 
-        assertFalse(picker.text.contains("Data collected"))
+        assertFalse(picker.text.contains("Data may be used for training"))
         assertSame(ModelPickerIcons.DATA_COLLECTED, picker.icon)
-        assertEquals("Data collected", picker.toolTipText)
+        assertEquals("Data may be used for training", picker.toolTipText)
     }
 
     fun `test selected non-kilo free model does not indicate data collection`() {
@@ -282,7 +282,7 @@ class ModelPickerTest : BasePlatformTestCase() {
         assertTrue(renderer.badgeVisible())
         assertEquals("Free", renderer.badgeText())
         assertTrue(renderer.warningVisible())
-        assertEquals("Data collected", renderer.warningTooltip())
+        assertEquals("Data may be used for training", renderer.warningTooltip())
     }
 
     fun `test renderer hides data collection warning for non-kilo free model`() {
