@@ -4,7 +4,7 @@ import { FreeModelDisclosure } from "../../src/kilocode/components/free-model-di
 describe("FreeModelDisclosure", () => {
   test("uses compact CLI labels", () => {
     expect(FreeModelDisclosure.label).toBe("May train")
-    expect(FreeModelDisclosure.panel).toBe("Free - may train")
+    expect(FreeModelDisclosure.panel).toBe("Free - data may be used for training")
   })
 
   test("only Kilo Gateway free models get the training disclosure", () => {
