@@ -11,7 +11,6 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
-import kotlinx.coroutines.runBlocking
 
 abstract class ConfigAction(
     private val open: String,
@@ -40,9 +39,7 @@ class OpenLocalConfigAction : ConfigAction(
     override fun update(e: AnActionEvent) {
         val dir = directory(e)
         e.presentation.isEnabled = dir != null
-        e.presentation.text = text(dir?.let {
-            runBlocking { service<KiloWorkspaceService>().localConfigTarget(it) }
-        })
+        e.presentation.text = text(dir?.let { service<KiloWorkspaceService>().localConfig[it] })
     }
 
     override fun actionPerformed(e: AnActionEvent) {
@@ -65,9 +62,7 @@ class OpenGlobalConfigAction : ConfigAction(
     description = KiloBundle.message("action.Kilo.OpenGlobalConfig.description"),
 ) {
     override fun update(e: AnActionEvent) {
-        e.presentation.text = text(
-            runBlocking { service<KiloWorkspaceService>().globalConfigTarget() },
-        )
+        e.presentation.text = text(service<KiloWorkspaceService>().globalConfig)
     }
 
     override fun actionPerformed(e: AnActionEvent) {

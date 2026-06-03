@@ -6,7 +6,7 @@ import ai.kilocode.backend.app.KiloAppState
 import ai.kilocode.backend.app.KiloBackendAppService
 import ai.kilocode.backend.app.LoadError
 import ai.kilocode.backend.cli.KiloCliDataParser
-import ai.kilocode.backend.cli.KiloBackendCliManager
+import ai.kilocode.backend.cli.buildKiloCliEnv
 import ai.kilocode.backend.cli.KiloCliConfigPath
 import ai.kilocode.backend.workspace.AgentData
 import ai.kilocode.backend.workspace.AgentInfo
@@ -226,7 +226,7 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
     }
 
     private fun globalConfig(): Path {
-        val env = KiloBackendCliManager().buildEnv("config")
+        val env = buildKiloCliEnv("config")
         val root = KiloCliConfigPath.resolve(env).toPath().normalize()
         return GLOBAL.asSequence()
             .map { root.resolve(it) }

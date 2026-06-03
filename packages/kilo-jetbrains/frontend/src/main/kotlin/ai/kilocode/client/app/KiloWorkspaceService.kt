@@ -42,10 +42,11 @@ class KiloWorkspaceService internal constructor(
     }
 
     private val workspaces = ConcurrentHashMap<String, Workspace>()
-    private val localConfig = ConcurrentHashMap<String, ConfigTargetDto>()
+    internal val localConfig = ConcurrentHashMap<String, ConfigTargetDto>()
 
     @Volatile
-    private var globalConfig: ConfigTargetDto? = null
+    internal var globalConfig: ConfigTargetDto? = null
+        private set
 
     // ------ RPC helpers ------
 
