@@ -307,6 +307,17 @@ class MdViewTest : BasePlatformTestCase() {
         assertTrue(view.html().contains("hello"))
     }
 
+    fun `test applying same style reapplies component background`() {
+        view.set("hello")
+        view.component.background = Color.RED
+        val style = SessionEditorStyle.current()
+
+        view.applyStyle(style)
+
+        assertEquals(view.background, view.component.background)
+        assertTrue(view.html().contains("hello"))
+    }
+
     fun `test style change without content does not crash`() {
         view.foreground = Color.RED
         view.linkColor = Color.BLUE

@@ -202,7 +202,6 @@ internal class MdViewHtmlPane(
 
     override fun applyStyle(style: SessionEditorStyle) {
         if (disposed) return
-        if (this.style == style) return
         this.style = style
         selection?.applyStyle(style)
         if (opaqueState) pane.background = background

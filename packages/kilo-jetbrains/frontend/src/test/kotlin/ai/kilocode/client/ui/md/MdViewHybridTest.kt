@@ -13,6 +13,7 @@ import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
+import java.awt.Color
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
@@ -395,6 +396,31 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertEquals(21, view.font.size)
         assertTrue(view.overrideSheet().contains("Courier New"))
         assertTrue(view.overrideSheet().contains("21pt"))
+    }
+
+    fun `test applyStyle updates retained html block`() {
+        view.set("hello")
+        val pane = htmls().single()
+        val style = SessionEditorStyle.create(family = "Courier New", size = 21)
+
+        view.applyStyle(style)
+
+        assertSame(pane, htmls().single())
+        assertTrue(view.overrideSheet().contains("Courier New"))
+        assertTrue(view.overrideSheet().contains("21pt"))
+    }
+
+    fun `test applyStyle reapplies same style to retained html block`() {
+        view.set("hello")
+        val pane = htmls().single()
+        pane.background = Color.RED
+        val style = SessionEditorStyle.current()
+
+        view.applyStyle(style)
+
+        assertSame(pane, htmls().single())
+        assertEquals(view.background, pane.background)
+        assertTrue(pane.text.contains("hello"))
     }
 
     fun `test resetStyles keeps content rendered`() {

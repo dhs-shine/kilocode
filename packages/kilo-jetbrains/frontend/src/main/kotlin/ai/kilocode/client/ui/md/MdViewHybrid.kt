@@ -276,7 +276,6 @@ internal class MdViewHybrid(
 
     override fun applyStyle(style: SessionEditorStyle) {
         if (disposed) return
-        if (this.style == style) return
         this.style = style
         selection?.applyStyle(style)
         syncStyle()
@@ -832,6 +831,7 @@ internal class MdViewHybrid(
         override fun style(opts: MdStyle) {
             pane.isOpaque = opts.opaque
             pane.background = opts.background
+            pane.reloadCssStylesheets()
             val item = desc as Desc.Html
             pane.text = "<html><body>${item.body}</body></html>"
         }
