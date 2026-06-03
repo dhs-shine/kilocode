@@ -2,6 +2,8 @@ package ai.kilocode.client.session.views
 
 import ai.kilocode.client.session.model.Text
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.style.SessionUiStyle
+import com.intellij.util.ui.JBUI
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import javax.swing.JComponent
 import javax.swing.RepaintManager
@@ -130,6 +132,16 @@ class TextViewTest : BasePlatformTestCase() {
         assertEquals(style.editorFont, view.md.font)
         assertEquals(style.editorBackground, view.md.background)
         assertFalse(view.contentOpaque())
+    }
+
+    fun `test prompt view uses input shell padding`() {
+        val view = PromptView(Text("p1"))
+        val ins = view.border.getBorderInsets(view)
+
+        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING), ins.top)
+        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING), ins.bottom)
+        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_HORIZONTAL_PADDING), ins.left)
+        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_HORIZONTAL_PADDING), ins.right)
     }
 
     // ---- markdown is rendered ------

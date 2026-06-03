@@ -103,10 +103,10 @@ class TurnViewTest : BasePlatformTestCase() {
         val mv = MessageView(msg("u1", "user"), openFile)
         val ins = mv.border.getBorderInsets(mv)
 
-        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING), ins.top)
-        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING), ins.bottom)
-        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_HORIZONTAL_PADDING), ins.left)
-        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_HORIZONTAL_PADDING), ins.right)
+        assertEquals(0, ins.top)
+        assertEquals(0, ins.bottom)
+        assertEquals(0, ins.left)
+        assertEquals(0, ins.right)
         assertFalse(mv.isOpaque)
     }
 

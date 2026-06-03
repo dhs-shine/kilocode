@@ -53,11 +53,7 @@ class MessageView(
     init {
         isOpaque = false
         if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) background = style.editorScheme.defaultBackground
-        border = if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) {
-            userBorder()
-        } else {
-            assistantBorder()
-        }
+        border = assistantBorder()
 
         // Populate content that already exists (e.g. after loadHistory)
         for ((_, content) in msg.parts) {
@@ -238,11 +234,6 @@ class MessageView(
         revalidate()
         repaint()
     }
-
-    private fun userBorder() = JBUI.Borders.empty(
-        JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING),
-        JBUI.scale(SessionUiStyle.View.Prompt.SHELL_HORIZONTAL_PADDING),
-    )
 
     private fun assistantBorder() = JBUI.Borders.empty()
 }
