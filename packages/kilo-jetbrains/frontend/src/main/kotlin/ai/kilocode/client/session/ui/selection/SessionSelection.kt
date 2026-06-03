@@ -12,6 +12,7 @@ import com.intellij.util.concurrency.annotations.RequiresEdt
 import java.awt.Color
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.lang.ref.WeakReference
 import javax.swing.event.CaretEvent
 import javax.swing.event.CaretListener
 import javax.swing.text.JTextComponent
@@ -184,7 +185,8 @@ class SessionSelection : Disposable {
 
         init {
             field.getEditor(false)?.let(::bind)
-            field.addSettingsProvider { ed -> bind(ed) }
+            val ref = WeakReference(this)
+            field.addSettingsProvider { ed -> ref.get()?.bind(ed) }
         }
 
         override fun selectedText(): String? = editor?.selectionModel?.selectedText

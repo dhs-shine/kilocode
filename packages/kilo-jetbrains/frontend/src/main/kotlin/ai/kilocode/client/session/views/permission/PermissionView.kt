@@ -165,11 +165,11 @@ class PermissionView(
         },
     ).apply {
         isEditable = false
-            isOpaque = true
-            this.text = "<html><body><pre>${XmlStringUtil.escapeString(text)}</pre></body></html>"
-            applyTargetPane(this)
-            selection?.register(this)?.let(regs::add)
-        }
+        isOpaque = true
+        this.text = "<html><body><pre>${XmlStringUtil.escapeString(text)}</pre></body></html>"
+        applyTargetPane(this)
+        selection?.register(this)?.let(regs::add)
+    }
 
     private fun applyTargetPane(pane: JBHtmlPane) {
         pane.font = style.transcriptFont
