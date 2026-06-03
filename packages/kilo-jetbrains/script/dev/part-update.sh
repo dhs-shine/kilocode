@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-# kilocode_change - new file
 set -eu
 
 usage() {
@@ -17,8 +16,7 @@ sid=$2
 mode=$target
 
 script=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-root=$(CDPATH= cd -- "$script/../.." && pwd)
-plugin="$root/packages/kilo-jetbrains"
+plugin=$(CDPATH= cd -- "$script/../.." && pwd)
 
 resolve() {
   case "$target" in
