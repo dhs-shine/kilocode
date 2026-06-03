@@ -12025,8 +12025,7 @@
                           "additionalProperties": false
                         }
                       },
-                      "required": ["id", "title", "time"],
-                      "additionalProperties": false
+                      "required": ["id", "title", "time"]
                     },
                     "messages": {
                       "type": "array",
@@ -12060,8 +12059,7 @@
                                 "additionalProperties": false
                               }
                             },
-                            "required": ["id", "sessionID", "role", "time"],
-                            "additionalProperties": false
+                            "required": ["id", "sessionID", "role", "time"]
                           },
                           "parts": {
                             "type": "array",
@@ -12081,13 +12079,11 @@
                                   "type": "string"
                                 }
                               },
-                              "required": ["id", "sessionID", "messageID", "type"],
-                              "additionalProperties": false
+                              "required": ["id", "sessionID", "messageID", "type"]
                             }
                           }
                         },
-                        "required": ["info", "parts"],
-                        "additionalProperties": false
+                        "required": ["info", "parts"]
                       }
                     }
                   },
@@ -12170,7 +12166,6 @@
                     }
                   },
                   "required": ["id", "title", "time"],
-                  "additionalProperties": false,
                   "description": "Imported session info"
                 }
               }
