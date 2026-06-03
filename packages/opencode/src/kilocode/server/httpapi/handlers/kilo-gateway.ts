@@ -158,14 +158,17 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
 
     const edit = Effect.fn("KiloGatewayHttpApi.edit")(function* (ctx: { payload: typeof EditBody.Type }) {
       const target = resolveEditTarget(ctx.payload.provider, ctx.payload.model)
-      if (target.provider !== "inception") {
+      if (target.provider === "kilo" && !target.url) {
         return yield* Effect.fail(new HttpApiError.BadRequest({}))
       }
+      const proxy = target.provider === "kilo" ? yield* proxyAuth() : undefined
       const token = yield* Effect.gen(function* () {
+        if (target.provider === "kilo") return proxy?.token
         const item = yield* auth.get(target.provider).pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
         if (item?.type === "api") return item.key
         return DIRECT_EDIT_ENV[target.provider].map((key) => process.env[key]).find(Boolean)
       })
+      if (target.provider === "kilo" && !proxy?.auth) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
       if (!token) return yield* Effect.fail(new HttpApiError.Unauthorized({}))
 
       const request = yield* HttpServerRequest.HttpServerRequest
@@ -188,27 +191,44 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       })
 
       const response = yield* Effect.promise(async () => {
-        return fetch(target.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          signal,
-          body: JSON.stringify({
-            model: target.model,
-            max_tokens: ctx.payload.maxTokens ?? 512,
-            // Mercury rejects role:"system" on this endpoint — must be a single user message.
-            messages: [{ role: "user", content }],
-          }),
-        })
+        try {
+          return await fetch(target.url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              ...(target.provider === "kilo"
+                ? buildKiloHeaders(undefined, { kilocodeOrganizationId: proxy?.organizationId })
+                : {}),
+              ...(target.provider === "kilo" ? { [HEADER_FEATURE]: "autocomplete" } : {}),
+            },
+            signal,
+            body: JSON.stringify({
+              model: target.model,
+              max_tokens: ctx.payload.maxTokens ?? 512,
+              // Mercury rejects role:"system" on this endpoint — must be a single user message.
+              messages: [{ role: "user", content }],
+            }),
+          })
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "TimeoutError")
+            return Response.json({ error: "Edit request timed out" }, { status: 504 })
+          if (signal.aborted) return Response.json({ error: "Edit request canceled" }, { status: 499 })
+          throw err
+        }
       })
 
       if (!response.ok) {
         // Pass the upstream status through (mirrors the FIM handler) so the
         // client can distinguish auth/credit/rate-limit/server failures
         // instead of collapsing everything to 400.
-        const text = yield* Effect.promise(() => response.text())
+        const text = yield* Effect.promise(async () => {
+          try {
+            return await response.text()
+          } catch {
+            return "<unreadable>"
+          }
+        })
         return HttpServerResponse.jsonUnsafe(
           { error: `Edit request failed: ${response.status} ${text}` },
           { status: response.status },
