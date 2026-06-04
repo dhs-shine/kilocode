@@ -65,7 +65,7 @@ async function dispatch() {
 }
 
 async function runs() {
-  return (await $`gh run list --repo ${repo} --workflow ${workflow} --event workflow_dispatch --json databaseId,createdAt,status --limit 10`.json()) as {
+  return (await $`gh run list --repo ${repo} --workflow ${workflow} --event workflow_dispatch --json databaseId,createdAt,status --limit 100`.json()) as {
     databaseId: number
     createdAt: string
     status: string

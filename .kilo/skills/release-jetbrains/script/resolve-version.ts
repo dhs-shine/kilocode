@@ -48,7 +48,7 @@ function explicit(spec: string) {
 }
 
 function next(spec: string, tags: Tag[]) {
-  const latest = tags.sort((a, b) => semver.rcompare(a.version, b.version))[0]
+  const latest = [...tags].sort((a, b) => semver.rcompare(a.version, b.version))[0]
   if (!latest) throw new Error("No JetBrains release tags found; pass an explicit version")
   const parsed = semver.parse(latest.version)
   if (!parsed) throw new Error(`Invalid latest JetBrains tag: ${latest.tag}`)
@@ -74,12 +74,12 @@ function stable(ver: semver.SemVer) {
 function base(ver: string, kind: Kind, tags: Tag[]) {
   const want = semver.parse(ver)
   if (!want) throw new Error(`Invalid semver: ${ver}`)
-  const stable = tags
+  const prior = tags
     .filter((item) => !semver.prerelease(item.version) && semver.lt(item.version, ver))
     .sort((a, b) => semver.rcompare(a.version, b.version))
 
   if (kind === "stable") {
-    const hit = stable[0]
+    const hit = prior[0]
     if (!hit) return null
     return hit.tag
   }
@@ -93,7 +93,7 @@ function base(ver: string, kind: Kind, tags: Tag[]) {
     })
     .sort((a, b) => semver.rcompare(a.version, b.version))
 
-  return (prerelease[0] ?? stable[0])?.tag ?? null
+  return (prerelease[0] ?? prior[0])?.tag ?? null
 }
 
 async function list() {

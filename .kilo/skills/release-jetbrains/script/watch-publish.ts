@@ -64,7 +64,7 @@ async function merge() {
 }
 
 async function runs() {
-  return (await $`gh run list --repo ${repo} --workflow ${workflow} --event pull_request --json databaseId,createdAt,headBranch,status --limit 20`.json()) as {
+  return (await $`gh run list --repo ${repo} --workflow ${workflow} --event pull_request --json databaseId,createdAt,headBranch,status --limit 100`.json()) as {
     databaseId: number
     createdAt: string
     headBranch: string
