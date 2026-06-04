@@ -1,9 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import {
-  isCurrentModelSelections,
-  kiloCatalogModelStatus,
-  resolveModelSelection,
-} from "../../webview-ui/src/context/model-selection"
+import { kiloCatalogModelStatus, resolveModelSelection } from "../../webview-ui/src/context/model-selection"
 import { KILO_AUTO, parseModelString } from "../../src/shared/provider-model"
 import type { Provider } from "../../webview-ui/src/types/messages"
 
@@ -43,37 +39,20 @@ describe("parseModelString", () => {
 })
 
 describe("Kilo catalog model URI validation", () => {
-  it("waits for agents and provider metadata", () => {
-    expect(kiloCatalogModelStatus({ agents: false, loaded: true, providers, modelID: "vendor/new-live-model" })).toBe(
-      "pending",
-    )
-    expect(kiloCatalogModelStatus({ agents: true, loaded: false, providers, modelID: "vendor/new-live-model" })).toBe(
-      "pending",
-    )
+  it("waits for a catalog refresh after the link arrives", () => {
+    expect(kiloCatalogModelStatus(providers, "vendor/new-live-model", 1, 1)).toBe("pending")
   })
 
-  it("rejects models missing from the loaded Kilo catalog", () => {
-    expect(kiloCatalogModelStatus({ agents: true, loaded: true, providers, modelID: "vendor/missing-model" })).toBe(
-      "invalid",
-    )
+  it("accepts arbitrary models exposed by a refreshed Kilo catalog", () => {
+    expect(kiloCatalogModelStatus(providers, "vendor/new-live-model", 1, 2)).toBe("apply")
   })
 
-  it("applies arbitrary models exposed by the loaded Kilo catalog", () => {
-    expect(kiloCatalogModelStatus({ agents: true, loaded: true, providers, modelID: "vendor/new-live-model" })).toBe(
-      "apply",
-    )
+  it("rejects models missing from the refreshed Kilo catalog", () => {
+    expect(kiloCatalogModelStatus(providers, "vendor/missing-model", 1, 2)).toBe("invalid")
   })
 
   it("does not accept models exposed only by non-Kilo providers", () => {
-    expect(kiloCatalogModelStatus({ agents: true, loaded: true, providers, modelID: "gpt-4.1" })).toBe("invalid")
-  })
-})
-
-describe("isCurrentModelSelections", () => {
-  it("rejects stale hydration responses after local selection changes", () => {
-    expect(isCurrentModelSelections(0, 1)).toBe(false)
-    expect(isCurrentModelSelections(1, 1)).toBe(true)
-    expect(isCurrentModelSelections(undefined, 1)).toBe(true)
+    expect(kiloCatalogModelStatus(providers, "gpt-4.1", 1, 2)).toBe("invalid")
   })
 })
 

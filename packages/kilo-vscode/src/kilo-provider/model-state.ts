@@ -41,25 +41,16 @@ async function read(client: KiloClient | null): Promise<Record<string, unknown>>
   }
 }
 
-async function latest(client: KiloClient | null): Promise<Record<string, unknown>> {
-  await queue
-  return read(client)
-}
-
-function update(client: KiloClient | null, key: string, updater: (value: unknown) => unknown): Promise<void> {
+function write(client: KiloClient | null, key: string, update: (value: unknown) => unknown): Promise<void> {
   const op = queue.then(async () => {
     const p = await resolve(client)
     if (!p) return
     const existing = await read(client)
-    existing[key] = updater(existing[key])
+    existing[key] = update(existing[key])
     await fs.promises.writeFile(p, JSON.stringify(existing, null, 2))
   })
   queue = op.catch(() => {})
   return op
-}
-
-function write(client: KiloClient | null, key: string, value: unknown): Promise<void> {
-  return update(client, key, () => value)
 }
 
 /**
@@ -72,7 +63,7 @@ export async function handleMessage(
   post: PostMessage,
 ): Promise<boolean> {
   if (type === "persistModelSelection") {
-    await update(client, "model", (value) => {
+    await write(client, "model", (value) => {
       const model = validateModelSelections(value)
       model[message.agent as string] = {
         providerID: message.providerID as string,
@@ -83,7 +74,7 @@ export async function handleMessage(
     return true
   }
   if (type === "clearModelSelection") {
-    await update(client, "model", (value) => {
+    await write(client, "model", (value) => {
       const model = validateModelSelections(value)
       delete model[message.agent as string]
       return model
@@ -91,16 +82,17 @@ export async function handleMessage(
     return true
   }
   if (type === "requestModelSelections") {
-    const data = await latest(client)
+    await queue
+    const data = await read(client)
     const selections = validateModelSelections(data.model)
     const revision = typeof message.revision === "number" ? message.revision : undefined
-    post({ type: "modelSelectionsLoaded", selections, ...(revision !== undefined && { revision }) })
+    post({ type: "modelSelectionsLoaded", selections, revision })
     return true
   }
   return false
 }
 
 export async function reset(client: KiloClient | null, post: PostMessage): Promise<void> {
-  await write(client, "model", {})
+  await write(client, "model", () => ({}))
   post({ type: "modelSelectionsLoaded", selections: {} })
 }

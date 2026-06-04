@@ -43,16 +43,12 @@ export function resolveModelSelection(input: {
   )
 }
 
-export function kiloCatalogModelStatus(input: {
-  agents: boolean
-  loaded: boolean
-  providers: Record<string, Provider>
-  modelID: string
-}): "pending" | "invalid" | "apply" {
-  if (!input.agents || !input.loaded) return "pending"
-  return input.providers[KILO_PROVIDER_ID]?.models[input.modelID] ? "apply" : "invalid"
-}
-
-export function isCurrentModelSelections(revision: number | undefined, current: number): boolean {
-  return revision === undefined || revision === current
+export function kiloCatalogModelStatus(
+  providers: Record<string, Provider>,
+  modelID: string,
+  after: number,
+  current: number,
+): "pending" | "invalid" | "apply" {
+  if (current <= after) return "pending"
+  return providers[KILO_PROVIDER_ID]?.models[modelID] ? "apply" : "invalid"
 }

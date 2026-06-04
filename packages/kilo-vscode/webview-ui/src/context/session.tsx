@@ -51,7 +51,7 @@ import {
   upsertSessionToolPart,
 } from "./session-utils"
 import { Identifier } from "../utils/id"
-import { isCurrentModelSelections, kiloCatalogModelStatus, resolveModelSelection } from "./model-selection"
+import { kiloCatalogModelStatus, resolveModelSelection } from "./model-selection"
 import { resolveMessagePrefs } from "./session-preferences"
 import { errorIDs } from "./session-errors"
 import { PartStash } from "./part-stash"
@@ -172,7 +172,6 @@ interface SessionContextValue {
   // Model selection (global, extension-lifetime)
   selected: (sessionID?: string) => ModelSelection | null
   selectModel: (providerID: string, modelID: string, sessionID?: string) => void
-  selectKiloModel: (modelID: string) => void
   hasModelOverride: (sessionID?: string) => boolean
   clearModelOverride: (sessionID?: string) => void
 
@@ -346,7 +345,8 @@ export const SessionProvider: ParentComponent = (props) => {
   const [agents, setAgents] = createSignal<AgentInfo[]>([])
   const [allAgents, setAllAgents] = createSignal<AgentInfo[]>([])
   const [defaultAgent, setDefaultAgent] = createSignal("code")
-  const [pendingKiloModelID, setPendingKiloModelID] = createSignal<string | null>(null)
+  const [pendingKiloModel, setPendingKiloModel] = createSignal<{ modelID: string; after: number } | null>(null)
+  const [catalog, setCatalog] = createSignal(0)
   let revision = 0
 
   // Skills loaded from the CLI backend
@@ -556,25 +556,30 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   function selectKiloModel(modelID: string) {
-    setPendingKiloModelID(modelID)
+    setPendingKiloModel({ modelID, after: catalog() })
+    vscode.postMessage({ type: "requestProviders" })
   }
 
-  createEffect(() => {
-    const modelID = pendingKiloModelID()
-    if (!modelID) return
-    const status = kiloCatalogModelStatus({
-      agents: agents().length > 0,
-      loaded: provider.loaded(),
-      providers: provider.providers(),
-      modelID,
-    })
-    if (status === "pending") return
-    setPendingKiloModelID(null)
-    if (status === "invalid") {
-      console.warn("[Kilo New] Ignoring unavailable Kilo catalog model:", modelID)
+  const unsubKiloModel = vscode.onMessage((message: ExtensionMessage) => {
+    if (message.type === "providersLoaded") {
+      setCatalog((value) => value + 1)
       return
     }
-    applyPersistedModel({ providerID: KILO_PROVIDER_ID, modelID })
+    if (message.type === "selectKiloModel") selectKiloModel(message.modelID)
+  })
+  onCleanup(unsubKiloModel)
+
+  createEffect(() => {
+    const pending = pendingKiloModel()
+    if (!pending || agents().length === 0) return
+    const status = kiloCatalogModelStatus(provider.providers(), pending.modelID, pending.after, catalog())
+    if (status === "pending") return
+    setPendingKiloModel(null)
+    if (status === "invalid") {
+      console.warn("[Kilo New] Ignoring unavailable Kilo catalog model:", pending.modelID)
+      return
+    }
+    applyPersistedModel({ providerID: KILO_PROVIDER_ID, modelID: pending.modelID })
   })
 
   function promptAgent(sessionID?: string) {
@@ -807,7 +812,7 @@ export const SessionProvider: ParentComponent = (props) => {
   // Uses replace semantics so a reset (empty payload) clears old entries.
   const unsubSelections = vscode.onMessage((message: ExtensionMessage) => {
     if (message.type !== "modelSelectionsLoaded") return
-    if (!isCurrentModelSelections(message.revision, revision)) return
+    if (message.revision !== undefined && message.revision !== revision) return
     setStore("modelSelections", reconcile(message.selections))
     const flags: Record<string, boolean> = {}
     for (const name of Object.keys(message.selections)) {
@@ -2526,7 +2531,6 @@ export const SessionProvider: ParentComponent = (props) => {
     scopedSuggestions,
     selected,
     selectModel,
-    selectKiloModel,
     hasModelOverride,
     clearModelOverride,
     costBreakdown,
