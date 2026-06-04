@@ -95,6 +95,7 @@ const MockProviderProvider: ParentComponent<{ kiloAuth?: boolean }> = (props) =>
   const value = {
     providers: () => MOCK_PROVIDERS as any,
     connected: () => ["kilo"],
+    loaded: () => true,
     defaults: () => ({}),
     defaultSelection: () => ({ providerID: "kilo", modelID: "anthropic/claude-sonnet-4-6" }),
     models: () => MOCK_MODELS,

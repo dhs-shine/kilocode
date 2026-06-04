@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test"
-import { resolveModelSelection } from "../../webview-ui/src/context/model-selection"
+import {
+  isCurrentModelSelections,
+  promotion,
+  resolveModelSelection,
+} from "../../webview-ui/src/context/model-selection"
 import { KILO_AUTO, parseModelString } from "../../src/shared/provider-model"
 import type { Provider } from "../../webview-ui/src/types/messages"
 
@@ -35,6 +39,37 @@ describe("parseModelString", () => {
   it("returns null for invalid values", () => {
     expect(parseModelString(undefined)).toBeNull()
     expect(parseModelString("claude-sonnet-4")).toBeNull()
+  })
+})
+
+describe("promotion", () => {
+  it("waits for agents and provider metadata", () => {
+    expect(promotion({ agents: false, loaded: true, providers, connected: [], selection: KILO_AUTO })).toBe("pending")
+    expect(promotion({ agents: true, loaded: false, providers, connected: [], selection: KILO_AUTO })).toBe("pending")
+  })
+
+  it("rejects models missing from the loaded Kilo catalog", () => {
+    expect(
+      promotion({
+        agents: true,
+        loaded: true,
+        providers,
+        connected: [],
+        selection: { providerID: "kilo", modelID: "stealth/claude-opus-4.8" },
+      }),
+    ).toBe("invalid")
+  })
+
+  it("applies models exposed by the loaded Kilo catalog", () => {
+    expect(promotion({ agents: true, loaded: true, providers, connected: [], selection: KILO_AUTO })).toBe("apply")
+  })
+})
+
+describe("isCurrentModelSelections", () => {
+  it("rejects stale hydration responses after local selection changes", () => {
+    expect(isCurrentModelSelections(0, 1)).toBe(false)
+    expect(isCurrentModelSelections(1, 1)).toBe(true)
+    expect(isCurrentModelSelections(undefined, 1)).toBe(true)
   })
 })
 

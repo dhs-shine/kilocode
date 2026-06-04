@@ -17,6 +17,7 @@ export type EnrichedModel = ProviderModel & { providerID: string; providerName: 
 interface ProviderContextValue {
   providers: Accessor<Record<string, Provider>>
   connected: Accessor<string[]>
+  loaded: Accessor<boolean>
   defaults: Accessor<Record<string, string>>
   defaultSelection: Accessor<ModelSelection>
   models: Accessor<EnrichedModel[]>
@@ -33,6 +34,7 @@ export const ProviderProvider: ParentComponent = (props) => {
 
   const [providers, setProviders] = createSignal<Record<string, Provider>>({})
   const [connected, setConnected] = createSignal<string[]>([])
+  const [loaded, setLoaded] = createSignal(false)
   const [defaults, setDefaults] = createSignal<Record<string, string>>({})
   const [defaultSelection, setDefaultSelection] = createSignal<ModelSelection>(KILO_AUTO)
   const [authMethods, setAuthMethods] = createSignal<Record<string, ProviderAuthMethod[]>>({})
@@ -57,6 +59,7 @@ export const ProviderProvider: ParentComponent = (props) => {
 
     setProviders(message.providers)
     setConnected(message.connected)
+    setLoaded(true)
     setDefaults(message.defaults)
     setDefaultSelection(message.defaultSelection)
     setAuthMethods(message.authMethods)
@@ -92,6 +95,7 @@ export const ProviderProvider: ParentComponent = (props) => {
   const value: ProviderContextValue = {
     providers,
     connected,
+    loaded,
     defaults,
     defaultSelection,
     models,

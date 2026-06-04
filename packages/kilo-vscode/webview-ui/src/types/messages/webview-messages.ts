@@ -989,6 +989,7 @@ export interface ClearModelSelectionRequest {
 
 export interface RequestModelSelectionsMessage {
   type: "requestModelSelections"
+  revision: number
 }
 
 // Continue in Worktree: transfer sidebar session + git state to an isolated worktree

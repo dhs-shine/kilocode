@@ -635,6 +635,7 @@ export interface FavoritesLoadedMessage {
 export interface ModelSelectionsLoadedMessage {
   type: "modelSelectionsLoaded"
   selections: Record<string, ModelSelection>
+  revision?: number
 }
 
 export interface AgentManagerBranchesMessage {

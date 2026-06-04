@@ -41,3 +41,18 @@ export function resolveModelSelection(input: {
     null
   )
 }
+
+export function promotion(input: {
+  agents: boolean
+  loaded: boolean
+  providers: Record<string, Provider>
+  connected: string[]
+  selection: ModelSelection
+}): "pending" | "invalid" | "apply" {
+  if (!input.agents || !input.loaded) return "pending"
+  return isModelValid(input.providers, input.connected, input.selection) ? "apply" : "invalid"
+}
+
+export function isCurrentModelSelections(revision: number | undefined, current: number): boolean {
+  return revision === undefined || revision === current
+}

@@ -41,6 +41,11 @@ async function read(client: KiloClient | null): Promise<Record<string, unknown>>
   }
 }
 
+async function latest(client: KiloClient | null): Promise<Record<string, unknown>> {
+  await queue
+  return read(client)
+}
+
 function update(client: KiloClient | null, key: string, updater: (value: unknown) => unknown): Promise<void> {
   const op = queue.then(async () => {
     const p = await resolve(client)
@@ -86,9 +91,10 @@ export async function handleMessage(
     return true
   }
   if (type === "requestModelSelections") {
-    const data = await read(client)
+    const data = await latest(client)
     const selections = validateModelSelections(data.model)
-    post({ type: "modelSelectionsLoaded", selections })
+    const revision = typeof message.revision === "number" ? message.revision : undefined
+    post({ type: "modelSelectionsLoaded", selections, ...(revision !== undefined && { revision }) })
     return true
   }
   return false

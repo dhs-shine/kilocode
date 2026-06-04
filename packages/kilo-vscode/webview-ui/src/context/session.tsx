@@ -51,7 +51,7 @@ import {
   upsertSessionToolPart,
 } from "./session-utils"
 import { Identifier } from "../utils/id"
-import { resolveModelSelection } from "./model-selection"
+import { isCurrentModelSelections, promotion, resolveModelSelection } from "./model-selection"
 import { resolveMessagePrefs } from "./session-preferences"
 import { errorIDs } from "./session-errors"
 import { PartStash } from "./part-stash"
@@ -347,6 +347,7 @@ export const SessionProvider: ParentComponent = (props) => {
   const [allAgents, setAllAgents] = createSignal<AgentInfo[]>([])
   const [defaultAgent, setDefaultAgent] = createSignal("code")
   const [pendingPersistedModel, setPendingPersistedModel] = createSignal<ModelSelection | null>(null)
+  let revision = 0
 
   // Skills loaded from the CLI backend
   const [skills, setSkills] = createSignal<SkillInfo[]>([])
@@ -509,6 +510,7 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   function persistModelSelection(agentName: string, selection: ModelSelection) {
+    revision++
     setUserSetAgents((prev) => ({ ...prev, [agentName]: true }))
     setStore("modelSelections", agentName, selection)
     vscode.postMessage({
@@ -554,13 +556,27 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   function selectPersistedModel(providerID: string, modelID: string) {
-    const selection = { providerID, modelID }
-    if (agents().length === 0) {
-      setPendingPersistedModel(selection)
+    setPendingPersistedModel({ providerID, modelID })
+  }
+
+  createEffect(() => {
+    const selection = pendingPersistedModel()
+    if (!selection) return
+    const status = promotion({
+      agents: agents().length > 0,
+      loaded: provider.loaded(),
+      providers: provider.providers(),
+      connected: provider.connected(),
+      selection,
+    })
+    if (status === "pending") return
+    setPendingPersistedModel(null)
+    if (status === "invalid") {
+      console.warn("[Kilo New] Ignoring unavailable promoted Kilo model:", selection.modelID)
       return
     }
     applyPersistedModel(selection)
-  }
+  })
 
   function promptAgent(sessionID?: string) {
     const name = agentForScope(sessionID)
@@ -589,7 +605,10 @@ export const SessionProvider: ParentComponent = (props) => {
         delete selections[agentName]
       }),
     )
-    if (persist) vscode.postMessage({ type: "clearModelSelection", agent: agentName })
+    if (persist) {
+      revision++
+      vscode.postMessage({ type: "clearModelSelection", agent: agentName })
+    }
   }
 
   function shouldClearModeModelSelection(agentName: string) {
@@ -665,12 +684,6 @@ export const SessionProvider: ParentComponent = (props) => {
         }
       }),
     )
-
-    const pendingModel = pendingPersistedModel()
-    if (pendingModel) {
-      setPendingPersistedModel(null)
-      applyPersistedModel(pendingModel)
-    }
 
     // Rescan already-loaded message history so sessions whose messagesLoaded
     // arrived before agentsLoaded (and therefore got no agent selection) are
@@ -795,6 +808,7 @@ export const SessionProvider: ParentComponent = (props) => {
   // Uses replace semantics so a reset (empty payload) clears old entries.
   const unsubSelections = vscode.onMessage((message: ExtensionMessage) => {
     if (message.type !== "modelSelectionsLoaded") return
+    if (!isCurrentModelSelections(message.revision, revision)) return
     setStore("modelSelections", reconcile(message.selections))
     const flags: Record<string, boolean> = {}
     for (const name of Object.keys(message.selections)) {
@@ -802,7 +816,7 @@ export const SessionProvider: ParentComponent = (props) => {
     }
     setUserSetAgents(flags)
   })
-  vscode.postMessage({ type: "requestModelSelections" })
+  vscode.postMessage({ type: "requestModelSelections", revision })
   onCleanup(unsubSelections)
 
   // Load persisted recent models from extension globalState
