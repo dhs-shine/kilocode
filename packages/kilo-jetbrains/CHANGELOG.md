@@ -12,6 +12,21 @@
 
 ## [Unreleased]
 
+## [7.0.1-rc.7] - 2026-06-04
+
+### Fixed
+- fix(cli): resolve plan exit approval submissions by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/10895
+- fix(jetbrains): render multi-release change notes by @kirillk in https://github.com/Kilo-Org/kilocode/pull/10910
+
+### Changed
+- release(jetbrains): v7.0.1-rc.6 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/10892
+- Add additional Mistral model IDs for reasoning by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/10862
+- Add Mistral Kilo gateway provider by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/10881
+- Add NVIDIA Trial Terms of Service to docs by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/10906
+- test(jetbrains): stabilize backend SSE tests by @kirillk in https://github.com/Kilo-Org/kilocode/pull/10890
+- Add Atomic Chat as a first-class local provider. by @yanalialiuk in https://github.com/Kilo-Org/kilocode/pull/10555
+
+
 ## [7.0.1-rc.6] - 2026-06-03
 
 ### Fixed
