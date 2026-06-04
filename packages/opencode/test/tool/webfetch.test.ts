@@ -83,16 +83,49 @@ describe("tool.webfetch", () => {
   })
 
   // kilocode_change start
-  test("rejects unsupported image attachments", async () => {
+  test.each(["image/x-icon", "image/vnd.microsoft.icon"])("rejects %s attachments", async (mime) => {
     const bytes = new Uint8Array([0, 0, 1, 0])
     await withFetch(
-      () => new Response(bytes, { status: 200, headers: { "content-type": "image/x-icon" } }),
+      () => new Response(bytes, { status: 200, headers: { "content-type": mime } }),
       async (url) => {
         await WithInstance.provide({
           directory: projectRoot,
           fn: async () => {
             const result = await exec({ url: new URL("/favicon.ico", url).toString(), format: "markdown" })
-            expect(result.output).toContain("Unsupported image format: image/x-icon")
+            expect(result.output).toContain(`Unsupported image format: ${mime}`)
+            expect(result.attachments).toBeUndefined()
+          },
+        })
+      },
+    )
+  })
+
+  test("returns non-icon image responses as file attachments", async () => {
+    const bytes = new Uint8Array([0, 0, 0, 0])
+    await withFetch(
+      () => new Response(bytes, { status: 200, headers: { "content-type": "image/avif" } }),
+      async (url) => {
+        await WithInstance.provide({
+          directory: projectRoot,
+          fn: async () => {
+            const result = await exec({ url: new URL("/image.avif", url).toString(), format: "markdown" })
+            expect(result.output).toBe("Image fetched successfully")
+            expect(result.attachments?.[0].mime).toBe("image/avif")
+          },
+        })
+      },
+    )
+  })
+
+  test("keeps fastbidsheet responses as text output", async () => {
+    await withFetch(
+      () => new Response("sheet", { status: 200, headers: { "content-type": "image/vnd.fastbidsheet" } }),
+      async (url) => {
+        await WithInstance.provide({
+          directory: projectRoot,
+          fn: async () => {
+            const result = await exec({ url: new URL("/sheet", url).toString(), format: "text" })
+            expect(result.output).toBe("sheet")
             expect(result.attachments).toBeUndefined()
           },
         })
