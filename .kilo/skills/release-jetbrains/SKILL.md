@@ -1,6 +1,6 @@
 ---
 name: release-jetbrains
-description: Use when releasing the Kilo JetBrains plugin -- resolve a version ("next rc" or explicit), run the prepare workflow, edit and commit a filtered human-readable changelog on the release PR, merge it, and watch publish to completion.
+description: Use when releasing the Kilo JetBrains plugin -- resolve a version ("next rc" or explicit), run the prepare workflow, edit and commit a filtered human-readable changelog on the release PR, then watch publish to completion.
 ---
 
 # JetBrains Release
@@ -12,7 +12,8 @@ This skill drives the existing JetBrains release workflows. It must not move, de
 ## Preconditions
 
 - Run from the repository root.
-- `gh` must be authenticated for `Kilo-Org/kilocode` with permission to dispatch workflows, edit PRs, merge PRs, and write contents.
+- `gh` must be authenticated for `Kilo-Org/kilocode` with permission to dispatch workflows, read PRs, and write contents. Merge permission is only required if the user asks the skill to merge the release PR automatically.
+- Check auth with `gh auth status`. For GitHub CLI OAuth, refresh common release scopes with `gh auth refresh -s repo -s workflow`; `repo` covers private-repo contents and PR operations, and `workflow` allows workflow dispatch. If using a fine-grained token instead, grant repository permissions for Actions read/write, Contents read/write, and Pull requests read/write. Merging still requires normal repository collaborator permission or a token/user allowed by branch protection.
 - Reference `packages/kilo-jetbrains/RELEASING.md` for manual recovery rules.
 - Do not locally check out the generated release branch. The helper scripts update the release branch through GitHub to avoid disturbing the current worktree.
 
@@ -102,12 +103,18 @@ The script updates `packages/kilo-jetbrains/CHANGELOG.md` on `jetbrains/release/
 docs(jetbrains): edit changelog for v<version>
 ```
 
-## Approve, Merge, Publish
+## Approve And Publish
 
-Ask the user to approve the release. After approval, merge the PR and watch the publish workflow:
+Ask the user to approve the release changelog and metadata. By default, have the user merge the release PR manually in GitHub, then watch the publish workflow:
 
 ```bash
 bun .kilo/skills/release-jetbrains/script/watch-publish.ts --pr <number> --version 7.0.1-rc.7
+```
+
+Only merge automatically when the user explicitly asks for it and `gh` has merge permission:
+
+```bash
+bun .kilo/skills/release-jetbrains/script/watch-publish.ts --pr <number> --version 7.0.1-rc.7 --merge
 ```
 
 Pass a generous Bash timeout, such as `1800000` ms. If the shell times out, re-attach with:

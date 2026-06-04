@@ -10,13 +10,14 @@ const { values } = parseArgs({
   options: {
     pr: { type: "string" },
     version: { type: "string" },
+    merge: { type: "boolean", default: false },
     "run-id": { type: "string" },
     help: { type: "boolean", short: "h", default: false },
   },
 })
 
 if (values.help) {
-  console.log(`Usage: bun .kilo/skills/release-jetbrains/script/watch-publish.ts --pr <number> --version <version> [--run-id <id>]`)
+  console.log(`Usage: bun .kilo/skills/release-jetbrains/script/watch-publish.ts --pr <number> --version <version> [--merge] [--run-id <id>]`)
   process.exit(0)
 }
 
@@ -26,7 +27,7 @@ if (!pr) throw new Error("--pr is required")
 if (!ver) throw new Error("--version is required")
 
 const branch = `jetbrains/release/v${ver}`
-const id = values["run-id"] ?? (await merge())
+const id = values["run-id"] ?? (values.merge ? await merge() : await find())
 const url = `https://github.com/${repo}/actions/runs/${id}`
 
 console.log(`publishRunId=${id}`)
@@ -61,6 +62,15 @@ async function merge() {
     await Bun.sleep(1000)
   }
   throw new Error(`No new ${workflow} run appeared after merging PR ${pr}`)
+}
+
+async function find() {
+  for (const _ of Array.from({ length: 120 })) {
+    const run = (await runs()).find((item) => item.headBranch === branch)
+    if (run) return String(run.databaseId)
+    await Bun.sleep(1000)
+  }
+  throw new Error(`No ${workflow} run found for ${branch}. Merge PR ${pr} first, or pass --merge to merge it automatically.`)
 }
 
 async function runs() {
