@@ -82,6 +82,25 @@ describe("tool.webfetch", () => {
     )
   })
 
+  // kilocode_change start
+  test("rejects unsupported image attachments", async () => {
+    const bytes = new Uint8Array([0, 0, 1, 0])
+    await withFetch(
+      () => new Response(bytes, { status: 200, headers: { "content-type": "image/x-icon" } }),
+      async (url) => {
+        await WithInstance.provide({
+          directory: projectRoot,
+          fn: async () => {
+            const result = await exec({ url: new URL("/favicon.ico", url).toString(), format: "markdown" })
+            expect(result.output).toContain("Unsupported image format: image/x-icon")
+            expect(result.attachments).toBeUndefined()
+          },
+        })
+      },
+    )
+  })
+  // kilocode_change end
+
   test("keeps text responses as text output", async () => {
     await withFetch(
       () =>

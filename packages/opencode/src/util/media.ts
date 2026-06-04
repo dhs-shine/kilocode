@@ -9,7 +9,7 @@ export function isMedia(mime: string) {
 }
 
 export function isImageAttachment(mime: string) {
-  return mime.startsWith("image/") && mime !== "image/svg+xml" && mime !== "image/vnd.fastbidsheet"
+  return ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(mime) // kilocode_change
 }
 
 export function sniffAttachmentMime(bytes: Uint8Array, fallback: string) {

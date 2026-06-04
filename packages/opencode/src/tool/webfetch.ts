@@ -125,6 +125,16 @@ export const WebFetchTool = Tool.define(
             }
           }
 
+          // kilocode_change start
+          if (mime.startsWith("image/") && mime !== "image/svg+xml") {
+            return {
+              title,
+              output: `Unsupported image format: ${mime}. Supported formats are JPEG, PNG, GIF, and WebP.`,
+              metadata: {},
+            }
+          }
+          // kilocode_change end
+
           const content = new TextDecoder().decode(arrayBuffer)
 
           // Handle content based on requested format and actual content type
