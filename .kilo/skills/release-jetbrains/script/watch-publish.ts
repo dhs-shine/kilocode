@@ -66,11 +66,15 @@ async function merge() {
 
 async function find() {
   for (const _ of Array.from({ length: 120 })) {
-    const run = (await runs()).find((item) => item.headBranch === branch)
+    const run = (await runs()).find((item) => item.headBranch === branch && active(item.status))
     if (run) return String(run.databaseId)
     await Bun.sleep(1000)
   }
   throw new Error(`No ${workflow} run found for ${branch}. Merge PR ${pr} first, or pass --merge to merge it automatically.`)
+}
+
+function active(status: string) {
+  return status === "queued" || status === "in_progress" || status === "waiting" || status === "requested" || status === "pending"
 }
 
 async function runs() {
