@@ -10,7 +10,6 @@ import { Diff } from "@kilocode/kilo-ui/diff"
 import { File } from "@kilocode/kilo-ui/file"
 import { DataProvider } from "@kilocode/kilo-ui/context/data"
 import { Toast } from "@kilocode/kilo-ui/toast"
-import { KILO_PROVIDER_ID } from "../../src/shared/provider-model"
 import Settings from "./components/settings/Settings"
 import ProfileView from "./components/profile/ProfileView"
 import { VSCodeProvider, useVSCode } from "./context/vscode"
@@ -271,8 +270,8 @@ const AppContent: Component = () => {
 
   const handleSelectKiloModel = (message: unknown) => {
     if (!isSelectKiloModelMessage(message)) return
-    console.log("[Kilo New] App: selecting promoted Kilo model:", message.modelID)
-    session.selectPersistedModel(KILO_PROVIDER_ID, message.modelID)
+    console.log("[Kilo New] App: selecting linked Kilo model:", message.modelID)
+    session.selectKiloModel(message.modelID)
     setCurrentView("newTask")
   }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import {
   isCurrentModelSelections,
-  promotion,
+  kiloCatalogModelStatus,
   resolveModelSelection,
 } from "../../webview-ui/src/context/model-selection"
 import { KILO_AUTO, parseModelString } from "../../src/shared/provider-model"
@@ -16,7 +16,7 @@ function makeProvider(id: string, name: string, modelIds: string[]): Provider {
 }
 
 const providers = {
-  kilo: makeProvider("kilo", "Kilo Gateway", ["kilo-auto/free"]),
+  kilo: makeProvider("kilo", "Kilo Gateway", ["kilo-auto/free", "vendor/new-live-model"]),
   anthropic: makeProvider("anthropic", "Anthropic", ["claude-sonnet-4"]),
   openai: makeProvider("openai", "OpenAI", ["gpt-4.1"]),
 }
@@ -42,26 +42,30 @@ describe("parseModelString", () => {
   })
 })
 
-describe("promotion", () => {
+describe("Kilo catalog model URI validation", () => {
   it("waits for agents and provider metadata", () => {
-    expect(promotion({ agents: false, loaded: true, providers, connected: [], selection: KILO_AUTO })).toBe("pending")
-    expect(promotion({ agents: true, loaded: false, providers, connected: [], selection: KILO_AUTO })).toBe("pending")
+    expect(kiloCatalogModelStatus({ agents: false, loaded: true, providers, modelID: "vendor/new-live-model" })).toBe(
+      "pending",
+    )
+    expect(kiloCatalogModelStatus({ agents: true, loaded: false, providers, modelID: "vendor/new-live-model" })).toBe(
+      "pending",
+    )
   })
 
   it("rejects models missing from the loaded Kilo catalog", () => {
-    expect(
-      promotion({
-        agents: true,
-        loaded: true,
-        providers,
-        connected: [],
-        selection: { providerID: "kilo", modelID: "stealth/claude-opus-4.8" },
-      }),
-    ).toBe("invalid")
+    expect(kiloCatalogModelStatus({ agents: true, loaded: true, providers, modelID: "vendor/missing-model" })).toBe(
+      "invalid",
+    )
   })
 
-  it("applies models exposed by the loaded Kilo catalog", () => {
-    expect(promotion({ agents: true, loaded: true, providers, connected: [], selection: KILO_AUTO })).toBe("apply")
+  it("applies arbitrary models exposed by the loaded Kilo catalog", () => {
+    expect(kiloCatalogModelStatus({ agents: true, loaded: true, providers, modelID: "vendor/new-live-model" })).toBe(
+      "apply",
+    )
+  })
+
+  it("does not accept models exposed only by non-Kilo providers", () => {
+    expect(kiloCatalogModelStatus({ agents: true, loaded: true, providers, modelID: "gpt-4.1" })).toBe("invalid")
   })
 })
 

@@ -21,12 +21,12 @@ import { registerToggleAutoApprove } from "./commands/toggle-auto-approve"
 import { registerHeapSnapshot } from "./commands/heap-snapshot"
 import { RemoteStatusService } from "./services/RemoteStatusService"
 import { markWorkspace } from "./util/spotlight"
+import { kiloModelFromURI } from "./kilo-provider/model-uri"
 
 let agentManager: AgentManagerProvider | undefined
 let shuttingDown = false
 
 const RESTORE_KEY = "kilo.workbench.restore"
-const PROMOTED_KILO_MODEL_IDS = new Set(["stealth/claude-opus-4.8"])
 
 type RestoreState = {
   sidebar?: boolean
@@ -485,10 +485,9 @@ export function activate(context: vscode.ExtensionContext) {
           return
         }
 
-        if (uri.path !== "/kilocode/model") return
-        const modelID = new URLSearchParams(uri.query).get("model")
-        if (!modelID || !PROMOTED_KILO_MODEL_IDS.has(modelID)) return
-        console.log("[Kilo New] URI handler: selecting promoted model:", modelID)
+        const modelID = kiloModelFromURI(uri)
+        if (!modelID) return
+        console.log("[Kilo New] URI handler: selecting linked Kilo model:", modelID)
         await vscode.commands.executeCommand(`${KiloProvider.viewType}.focus`)
         provider.selectKiloModel(modelID)
       },

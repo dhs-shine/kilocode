@@ -26,7 +26,7 @@ describe("model state", () => {
     await Promise.all([
       handleMessage(
         "persistModelSelection",
-        { agent: "code", providerID: "kilo", modelID: "stealth/claude-opus-4.8" },
+        { agent: "code", providerID: "kilo", modelID: "vendor/new-live-model" },
         client,
         () => {},
       ),
@@ -40,7 +40,7 @@ describe("model state", () => {
 
     const data = JSON.parse(fs.readFileSync(file, "utf-8")) as { model: Record<string, unknown> }
     expect(data.model).toEqual({
-      code: { providerID: "kilo", modelID: "stealth/claude-opus-4.8" },
+      code: { providerID: "kilo", modelID: "vendor/new-live-model" },
       plan: { providerID: "kilo", modelID: "kilo-auto/free" },
     })
   })
@@ -63,7 +63,7 @@ describe("model state", () => {
     try {
       const pending = handleMessage(
         "persistModelSelection",
-        { agent: "code", providerID: "kilo", modelID: "stealth/claude-opus-4.8" },
+        { agent: "code", providerID: "kilo", modelID: "vendor/new-live-model" },
         client,
         () => {},
       )
@@ -85,7 +85,7 @@ describe("model state", () => {
     expect(sent).toEqual([
       {
         type: "modelSelectionsLoaded",
-        selections: { code: { providerID: "kilo", modelID: "stealth/claude-opus-4.8" } },
+        selections: { code: { providerID: "kilo", modelID: "vendor/new-live-model" } },
         revision: 3,
       },
     ])

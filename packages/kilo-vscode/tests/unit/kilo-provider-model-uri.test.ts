@@ -22,7 +22,7 @@ function connection() {
   }
 }
 
-describe("KiloProvider promoted model selection", () => {
+describe("KiloProvider model URI selection", () => {
   it("flushes a queued model before ancillary webview sync can fail", async () => {
     const service = connection()
     const provider = new KiloProvider({} as never, service as never)
@@ -39,11 +39,11 @@ describe("KiloProvider promoted model selection", () => {
       throw new Error("profile unavailable")
     }
 
-    provider.selectKiloModel("stealth/claude-opus-4.8")
+    provider.selectKiloModel("vendor/new-live-model")
     expect(sent).toEqual([])
 
     await expect(internal.handleWebviewReady()).rejects.toThrow("profile unavailable")
-    expect(sent).toEqual([{ type: "selectKiloModel", modelID: "stealth/claude-opus-4.8" }])
+    expect(sent).toEqual([{ type: "selectKiloModel", modelID: "vendor/new-live-model" }])
   })
 
   it("keeps a queued model until the backend client is available", () => {
@@ -61,11 +61,11 @@ describe("KiloProvider promoted model selection", () => {
     }
     internal.isWebviewReady = true
 
-    provider.selectKiloModel("stealth/claude-opus-4.8")
+    provider.selectKiloModel("vendor/new-live-model")
     expect(sent).toEqual([])
 
     service.state.connected = true
     internal.flushPendingKiloModel()
-    expect(sent).toEqual([{ type: "selectKiloModel", modelID: "stealth/claude-opus-4.8" }])
+    expect(sent).toEqual([{ type: "selectKiloModel", modelID: "vendor/new-live-model" }])
   })
 })

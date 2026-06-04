@@ -1,4 +1,5 @@
 import type { ModelSelection, Provider } from "../types/messages"
+import { KILO_PROVIDER_ID } from "../../../src/shared/provider-model"
 import { isModelValid } from "./provider-utils"
 
 function validate(
@@ -42,15 +43,14 @@ export function resolveModelSelection(input: {
   )
 }
 
-export function promotion(input: {
+export function kiloCatalogModelStatus(input: {
   agents: boolean
   loaded: boolean
   providers: Record<string, Provider>
-  connected: string[]
-  selection: ModelSelection
+  modelID: string
 }): "pending" | "invalid" | "apply" {
   if (!input.agents || !input.loaded) return "pending"
-  return isModelValid(input.providers, input.connected, input.selection) ? "apply" : "invalid"
+  return input.providers[KILO_PROVIDER_ID]?.models[input.modelID] ? "apply" : "invalid"
 }
 
 export function isCurrentModelSelections(revision: number | undefined, current: number): boolean {

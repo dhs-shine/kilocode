@@ -51,14 +51,14 @@ import {
   upsertSessionToolPart,
 } from "./session-utils"
 import { Identifier } from "../utils/id"
-import { isCurrentModelSelections, promotion, resolveModelSelection } from "./model-selection"
+import { isCurrentModelSelections, kiloCatalogModelStatus, resolveModelSelection } from "./model-selection"
 import { resolveMessagePrefs } from "./session-preferences"
 import { errorIDs } from "./session-errors"
 import { PartStash } from "./part-stash"
 import { mergeParts, sameParts } from "./session-parts"
 import { state as todoState } from "./todo-revert"
 import { getVariant, sessionVariantKeys, transferVariants, variantKey } from "./session-variant-store"
-import { KILO_AUTO, parseModelString } from "../../../src/shared/provider-model"
+import { KILO_AUTO, KILO_PROVIDER_ID, parseModelString } from "../../../src/shared/provider-model"
 import { visibleMessages as filterVisibleMessages } from "./session-queue"
 
 const RECENT_LIMIT = 5
@@ -172,7 +172,7 @@ interface SessionContextValue {
   // Model selection (global, extension-lifetime)
   selected: (sessionID?: string) => ModelSelection | null
   selectModel: (providerID: string, modelID: string, sessionID?: string) => void
-  selectPersistedModel: (providerID: string, modelID: string) => void
+  selectKiloModel: (modelID: string) => void
   hasModelOverride: (sessionID?: string) => boolean
   clearModelOverride: (sessionID?: string) => void
 
@@ -346,7 +346,7 @@ export const SessionProvider: ParentComponent = (props) => {
   const [agents, setAgents] = createSignal<AgentInfo[]>([])
   const [allAgents, setAllAgents] = createSignal<AgentInfo[]>([])
   const [defaultAgent, setDefaultAgent] = createSignal("code")
-  const [pendingPersistedModel, setPendingPersistedModel] = createSignal<ModelSelection | null>(null)
+  const [pendingKiloModelID, setPendingKiloModelID] = createSignal<string | null>(null)
   let revision = 0
 
   // Skills loaded from the CLI backend
@@ -555,27 +555,26 @@ export const SessionProvider: ParentComponent = (props) => {
     }
   }
 
-  function selectPersistedModel(providerID: string, modelID: string) {
-    setPendingPersistedModel({ providerID, modelID })
+  function selectKiloModel(modelID: string) {
+    setPendingKiloModelID(modelID)
   }
 
   createEffect(() => {
-    const selection = pendingPersistedModel()
-    if (!selection) return
-    const status = promotion({
+    const modelID = pendingKiloModelID()
+    if (!modelID) return
+    const status = kiloCatalogModelStatus({
       agents: agents().length > 0,
       loaded: provider.loaded(),
       providers: provider.providers(),
-      connected: provider.connected(),
-      selection,
+      modelID,
     })
     if (status === "pending") return
-    setPendingPersistedModel(null)
+    setPendingKiloModelID(null)
     if (status === "invalid") {
-      console.warn("[Kilo New] Ignoring unavailable promoted Kilo model:", selection.modelID)
+      console.warn("[Kilo New] Ignoring unavailable Kilo catalog model:", modelID)
       return
     }
-    applyPersistedModel(selection)
+    applyPersistedModel({ providerID: KILO_PROVIDER_ID, modelID })
   })
 
   function promptAgent(sessionID?: string) {
@@ -2527,7 +2526,7 @@ export const SessionProvider: ParentComponent = (props) => {
     scopedSuggestions,
     selected,
     selectModel,
-    selectPersistedModel,
+    selectKiloModel,
     hasModelOverride,
     clearModelOverride,
     costBreakdown,
