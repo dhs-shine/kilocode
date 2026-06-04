@@ -24,7 +24,7 @@
     "autocomplete",
     "developer-tools"
   ],
-  "private": true,
+  "private": false,
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "bun run script/test-runner.ts",
