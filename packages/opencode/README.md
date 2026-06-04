@@ -2,7 +2,7 @@
 
 The AI coding agent built for the terminal. Generate code from natural language, automate tasks, and run terminal commands -- powered by 500+ AI models.
 
-![Kilo CLI showing code edits in a terminal](../kilo-docs/public/img/npm-package-readme/kilo-cli.png)
+![Kilo CLI showing code edits in a terminal](https://raw.githubusercontent.com/Kilo-Org/kilocode/main/packages/kilo-docs/public/img/npm-package-readme/kilo-cli.png)
 
 Kilo is the all-in-one agentic engineering platform. Build, ship, and iterate faster with the most popular open source coding agent.
 
