@@ -108,7 +108,7 @@ export const WebFetchTool = Tool.define(
           const contentType = response.headers["content-type"] || ""
           const mime = contentType.split(";")[0]?.trim().toLowerCase() || ""
           const title = `${url} (${contentType})` // kilocode_change
-
+          if (isIconMimeType(mime)) throw new Error(`Unsupported image format: ${mime}`) // kilocode_change
           if (isImageAttachment(mime)) {
             const base64Content = Buffer.from(arrayBuffer).toString("base64")
             return {
@@ -124,16 +124,6 @@ export const WebFetchTool = Tool.define(
               ],
             }
           }
-
-          // kilocode_change start
-          if (isIconMimeType(mime)) {
-            return {
-              title,
-              output: `Unsupported image format: ${mime}.`,
-              metadata: {},
-            }
-          }
-          // kilocode_change end
 
           const content = new TextDecoder().decode(arrayBuffer)
 

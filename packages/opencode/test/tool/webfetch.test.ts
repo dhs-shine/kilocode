@@ -91,9 +91,9 @@ describe("tool.webfetch", () => {
         await WithInstance.provide({
           directory: projectRoot,
           fn: async () => {
-            const result = await exec({ url: new URL("/favicon.ico", url).toString(), format: "markdown" })
-            expect(result.output).toContain(`Unsupported image format: ${mime}`)
-            expect(result.attachments).toBeUndefined()
+            await expect(exec({ url: new URL("/favicon.ico", url).toString(), format: "markdown" })).rejects.toThrow(
+              `Unsupported image format: ${mime}`,
+            )
           },
         })
       },
