@@ -1,5 +1,11 @@
 # @kilocode/cli
 
+## 7.3.29
+
+### Patch Changes
+
+- [#10822](https://github.com/Kilo-Org/kilocode/pull/10822) [`8b1ee66`](https://github.com/Kilo-Org/kilocode/commit/8b1ee6628c7ee552814980465af7233522dd5528) - Preserve worktree routing for Kilo HTTP API clients and keep inherited task-subagent restrictions active.
+
 ## 7.3.28
 
 ### Patch Changes
