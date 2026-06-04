@@ -3,7 +3,7 @@ import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import * as Tool from "./tool"
 import TurndownService from "turndown"
 import DESCRIPTION from "./webfetch.txt"
-import { isImageAttachment } from "@/util/media"
+import { isIconMimeType, isImageAttachment } from "@/util/media" // kilocode_change
 import { normalizeUrls } from "@/kilocode/util/url" // kilocode_change
 
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -126,12 +126,7 @@ export const WebFetchTool = Tool.define(
           }
 
           // kilocode_change start
-          if (
-            mime.startsWith("image/") &&
-            !isImageAttachment(mime) &&
-            mime !== "image/svg+xml" &&
-            mime !== "image/vnd.fastbidsheet"
-          ) {
+          if (isIconMimeType(mime)) {
             return {
               title,
               output: `Unsupported image format: ${mime}.`,
