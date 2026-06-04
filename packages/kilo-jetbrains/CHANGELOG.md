@@ -4,28 +4,13 @@
 
 ### Patch Changes
 
-- [#9976](https://github.com/Kilo-Org/kilocode/pull/9976) [`ae6f3c0`](https://github.com/Kilo-Org/kilocode/commit/ae6f3c0e06e450a227ffbd024a52b689b5749d16) - Fix session transcript colors after switching JetBrains IDE themes.
-
-- [#9976](https://github.com/Kilo-Org/kilocode/pull/9976) [`8c06a3b`](https://github.com/Kilo-Org/kilocode/commit/8c06a3b7840960798f1c4f4792b8eed1d366c3c4) - Improve JetBrains session UI stability and responsiveness during streaming updates and collapsed transcript rendering.
-
-- [#9976](https://github.com/Kilo-Org/kilocode/pull/9976) [`87b0cf1`](https://github.com/Kilo-Org/kilocode/commit/87b0cf15ddfe29503fa0a4d72067bce050a1c432) - Improve JetBrains session timeline colors to follow semantic theme keys.
-
 ## [Unreleased]
 
 ## [7.0.1-rc.7] - 2026-06-04
 
 ### Fixed
-- fix(cli): resolve plan exit approval submissions by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/10895
-- fix(jetbrains): render multi-release change notes by @kirillk in https://github.com/Kilo-Org/kilocode/pull/10910
 
-### Changed
-- release(jetbrains): v7.0.1-rc.6 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/10892
-- Add additional Mistral model IDs for reasoning by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/10862
-- Add Mistral Kilo gateway provider by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/10881
-- Add NVIDIA Trial Terms of Service to docs by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/10906
-- test(jetbrains): stabilize backend SSE tests by @kirillk in https://github.com/Kilo-Org/kilocode/pull/10890
-- Add Atomic Chat as a first-class local provider. by @yanalialiuk in https://github.com/Kilo-Org/kilocode/pull/10555
-
+- Fixed JetBrains release notes rendering so notes from multiple releases display correctly.
 
 ## [7.0.1-rc.6] - 2026-06-03
 
