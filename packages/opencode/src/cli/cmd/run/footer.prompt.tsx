@@ -11,6 +11,7 @@ import { useKeyboard } from "@opentui/solid"
 import fuzzysort from "fuzzysort"
 import path from "path"
 import { createEffect, createMemo, createResource, createSignal, onCleanup, onMount, type Accessor } from "solid-js"
+import { slashDisplay } from "@/kilocode/cli/cmd/command-display" // kilocode_change
 import * as Locale from "@/util/locale"
 import {
   createPromptHistory,
@@ -375,13 +376,13 @@ export function createPromptState(input: PromptInput): PromptState {
     const hidden = new Set(builtins.map((item) => item.name))
     return [
       ...(input.commands() ?? [])
-        .filter((item) => item.source !== "skill" && !hidden.has(item.name))
+        .filter((item) => !hidden.has(item.name)) // kilocode_change - suggest skills as slash commands
         .map(
           (item) =>
             ({
               kind: "slash",
               name: item.name,
-              display: `/${item.name}${item.source === "mcp" ? ":mcp" : ""}`,
+              display: slashDisplay(item), // kilocode_change
               description: item.description,
             }) satisfies SlashOption,
         ),
