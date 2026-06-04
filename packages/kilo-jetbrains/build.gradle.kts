@@ -41,7 +41,7 @@ data class Release(val major: Int, val minor: Int, val patch: Int, val rc: Int?)
 
     override fun compareTo(other: Release): Int {
         val cmp = compareValuesBy(this, other, Release::major, Release::minor, Release::patch)
-        if (base != 0) return base
+        if (cmp != 0) return cmp
         return compareValues(rc ?: Int.MAX_VALUE, other.rc ?: Int.MAX_VALUE)
     }
 }
