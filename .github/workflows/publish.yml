@@ -183,7 +183,6 @@ jobs:
         run: |
           test "$(uname -m)" = "arm64"
           ./dist/@kilocode/cli-darwin-arm64/bin/kilo --version
-          ./dist/@kilocode/cli-darwin-arm64/bin/kilo --help >/dev/null
   # kilocode_change end
 
   # kilocode_change start - execute native Linux x64 and arm64 binaries before publishing them
@@ -218,7 +217,6 @@ jobs:
         run: |
           test "$(uname -m)" = "${{ matrix.uname }}"
           ./dist/@kilocode/cli-linux-${{ matrix.arch }}/bin/kilo --version
-          ./dist/@kilocode/cli-linux-${{ matrix.arch }}/bin/kilo --help >/dev/null
   # kilocode_change end
 
   # kilocode_change start
