@@ -287,26 +287,10 @@ for (const item of targets) {
   const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
   const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
 
-  // kilocode_change start - redirect @morphllm/morphsdk to its self-contained CJS bundle.
-  // Prefer the CJS build (client.cjs) over the pre-split ESM barrel (client.js + 52 chunk-*.js)
-  // so the bundler pulls in one self-contained module instead of dozens of side-import chunks.
-  // require.resolve uses the package's "require" condition, which maps the warp-grep/client
-  // subpath straight to client.cjs. The deep dist path is not an exported subpath, so resolving
-  // it directly throws "Cannot find module" — go through the public specifier instead.
-  const morphsdkCjs = require.resolve("@morphllm/morphsdk/tools/warp-grep/client")
-  const morphsdkCjsPlugin: import("bun").BunPlugin = {
-    name: "morphsdk-cjs",
-    setup(build) {
-      build.onResolve({ filter: /^@morphllm\/morphsdk\/tools\/warp-grep\/client$/ }, () => ({
-        path: morphsdkCjs,
-      }))
-    },
-  }
-  // kilocode_change end
   await Bun.build({
     conditions: ["browser"],
     tsconfig: "./tsconfig.json",
-    plugins: [plugin, morphsdkCjsPlugin], // kilocode_change
+    plugins: [plugin],
     // kilocode_change start - skip sourcemaps for release builds (each .js.map adds ~50 MB per target → ~600 MB total)
     sourcemap: Script.release ? "none" : "external",
     // kilocode_change end
