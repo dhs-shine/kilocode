@@ -1,5 +1,17 @@
 # @kilocode/cli
 
+## 7.3.39
+
+### Patch Changes
+
+- [#10901](https://github.com/Kilo-Org/kilocode/pull/10901) [`a8a8dd8`](https://github.com/Kilo-Org/kilocode/commit/a8a8dd87247a700e83d8b9cbedc7a4a26cdea602) - Prevent icon images fetched from the web from causing provider request errors.
+
+- [#10933](https://github.com/Kilo-Org/kilocode/pull/10933) [`a0eb3b7`](https://github.com/Kilo-Org/kilocode/commit/a0eb3b7cb6e06a6d9d625169eaefaffb4b4f7095) - Write strict JSON when adding MCP servers to `kilo.json` configuration files.
+
+- [#10924](https://github.com/Kilo-Org/kilocode/pull/10924) [`189f251`](https://github.com/Kilo-Org/kilocode/commit/189f251866fb9e2971384377d1494b03e6d8889d) - Temporarily disable free-model session and Git workspace data export.
+
+- [#10949](https://github.com/Kilo-Org/kilocode/pull/10949) [`78117d1`](https://github.com/Kilo-Org/kilocode/commit/78117d1a25cc7fe408a5933c117bf76062a7aaf2) - Fail publication builds when the bundled models snapshot cannot be downloaded or validated, and load the snapshot as JSON data in compiled binaries.
+
 ## 7.3.33
 
 ### Patch Changes
