@@ -1,32 +1,14 @@
 // kilocode_change - new file
 // Re-exports from @morphllm/morphsdk/tools/warp-grep/client.
 //
-// WHY THIS INDIRECTION EXISTS
-// ----------------------------
-// @morphllm/morphsdk ships a pre-split ESM distribution for this path:
-//   dist/tools/warp_grep/client.js  (805-byte barrel)
-//     └─ imports from ../../chunk-P7G3CJB2.js ... (52 total pre-split chunks)
+// @morphllm/morphsdk ships a pre-split ESM distribution for this path (client.js, an 805-byte
+// barrel that re-imports from ~52 chunk-*.js files). To keep the bundle simple, script/build.ts
+// adds a morphsdkCjsPlugin (onResolve) that redirects this specifier to client.cjs — a fully
+// self-contained CJS bundle with no chunk-*.js side-imports.
 //
-// Bun 1.3.14 bundling with `conditions: ["browser"]` resolves via the "import" condition
-// (ESM barrel) even inside createRequire() calls. When its ESM splitter merges those
-// external pre-split chunks into the bundle, it generates invalid minified output:
-//   SyntaxError: Exported binding 'G9' needs to refer to a top-level declared variable.
-//
-// FIX: script/build.ts adds a morphsdkCjsPlugin (onResolve) that redirects this module
-// specifier to client.cjs — a fully self-contained CJS bundle (~2300 lines, no chunk-*.js
-// imports). The plugin runs at bundle time before the ESM splitter is invoked. It resolves
-// client.cjs via require.resolve("@morphllm/morphsdk/tools/warp-grep/client") (the package's
-// "require" export condition); the raw dist/.../client.cjs path is not an exported subpath
-// and throws "Cannot find module".
-//
-// HOW TO DETECT THIS FOR FUTURE DEPS
-// ------------------------------------
-// If a new dependency causes the SyntaxError above in release builds, check whether its
-// ESM entry point is a barrel that re-imports from internal `chunk-*.js` files:
-//
-//   head -5 node_modules/<pkg>/dist/index.js
-//     → imports { ... } from "./chunk-XYZ123.js"  ← pre-split ESM
-//
-// If so, add a matching onResolve redirect to the CJS counterpart in build.ts.
+// NOTE: this redirect is not what fixes the release build. The startup crash
+//   SyntaxError: Exported binding 'G9' needs to refer to a top-level declared variable
+// is a Bun 1.3.14 code-splitting bug (oven-sh/bun#25621); the fix is splitting:false in
+// script/build.ts, not this re-export.
 
 export { WarpGrepClient } from "@morphllm/morphsdk/tools/warp-grep/client"

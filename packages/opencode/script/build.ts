@@ -287,11 +287,9 @@ for (const item of targets) {
   const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
   const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
 
-  // kilocode_change start - redirect @morphllm/morphsdk ESM barrel to self-contained CJS bundle
-  // Bun 1.3.14 (with conditions:["browser"]) resolves via the "import" condition, pulling in the
-  // pre-split ESM barrel (client.js) whose 52 chunk-*.js side-imports make the ESM splitter emit
-  // invalid minified output: SyntaxError: Exported binding 'G9' needs to refer to a top-level...
-  // Redirecting onResolve to client.cjs (2300-line self-contained CJS bundle) bypasses the splitter.
+  // kilocode_change start - redirect @morphllm/morphsdk to its self-contained CJS bundle.
+  // Prefer the CJS build (client.cjs) over the pre-split ESM barrel (client.js + 52 chunk-*.js)
+  // so the bundler pulls in one self-contained module instead of dozens of side-import chunks.
   // require.resolve uses the package's "require" condition, which maps the warp-grep/client
   // subpath straight to client.cjs. The deep dist path is not an exported subpath, so resolving
   // it directly throws "Cannot find module" — go through the public specifier instead.
@@ -315,7 +313,15 @@ for (const item of targets) {
     external: ["node-gyp", ...LanceDBRuntime.external], // kilocode_change
     format: "esm",
     minify: true,
-    splitting: true,
+    // kilocode_change start - disable code-splitting to avoid a Bun 1.3.14 codegen bug.
+    // With splitting:true Bun emits cross-chunk re-exports like `import{vn as G9}` whose
+    // binding isn't top-level, so the compiled binary crashes at startup on the baseline
+    // target: "SyntaxError: Exported binding 'G9' needs to refer to a top-level declared
+    // variable." (Bun oven-sh/bun#25621, #5344, #7265; also opencode#23349). Fixed upstream
+    // in Bun#26089, post-1.3.14. Splitting only deduped shared code between the entrypoints;
+    // turning it off inlines per entrypoint and produces a valid binary.
+    splitting: false,
+    // kilocode_change end
     compile: {
       autoloadBunfig: false,
       autoloadDotenv: false,
