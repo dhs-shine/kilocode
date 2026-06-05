@@ -14,7 +14,10 @@
 //
 // FIX: script/build.ts adds a morphsdkCjsPlugin (onResolve) that redirects this module
 // specifier to client.cjs — a fully self-contained CJS bundle (~2300 lines, no chunk-*.js
-// imports). The plugin runs at bundle time before the ESM splitter is invoked.
+// imports). The plugin runs at bundle time before the ESM splitter is invoked. It resolves
+// client.cjs via require.resolve("@morphllm/morphsdk/tools/warp-grep/client") (the package's
+// "require" export condition); the raw dist/.../client.cjs path is not an exported subpath
+// and throws "Cannot find module".
 //
 // HOW TO DETECT THIS FOR FUTURE DEPS
 // ------------------------------------

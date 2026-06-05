@@ -292,11 +292,15 @@ for (const item of targets) {
   // pre-split ESM barrel (client.js) whose 52 chunk-*.js side-imports make the ESM splitter emit
   // invalid minified output: SyntaxError: Exported binding 'G9' needs to refer to a top-level...
   // Redirecting onResolve to client.cjs (2300-line self-contained CJS bundle) bypasses the splitter.
+  // require.resolve uses the package's "require" condition, which maps the warp-grep/client
+  // subpath straight to client.cjs. The deep dist path is not an exported subpath, so resolving
+  // it directly throws "Cannot find module" — go through the public specifier instead.
+  const morphsdkCjs = require.resolve("@morphllm/morphsdk/tools/warp-grep/client")
   const morphsdkCjsPlugin: import("bun").BunPlugin = {
     name: "morphsdk-cjs",
     setup(build) {
       build.onResolve({ filter: /^@morphllm\/morphsdk\/tools\/warp-grep\/client$/ }, () => ({
-        path: require.resolve("@morphllm/morphsdk/dist/tools/warp_grep/client.cjs"),
+        path: morphsdkCjs,
       }))
     },
   }
