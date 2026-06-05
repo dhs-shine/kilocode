@@ -11,7 +11,7 @@ import { useKeyboard } from "@opentui/solid"
 import fuzzysort from "fuzzysort"
 import path from "path"
 import { createEffect, createMemo, createResource, createSignal, onCleanup, onMount, type Accessor } from "solid-js"
-import { slashDisplay } from "@/kilocode/cli/cmd/command-display" // kilocode_change
+import { slashDisplay, slashMatches } from "@/kilocode/cli/cmd/command-display" // kilocode_change
 import * as Locale from "@/util/locale"
 import {
   createPromptHistory,
@@ -170,7 +170,7 @@ function parseSlashCommand(text: string, commands: RunCommand[] | undefined) {
     return { type: "pending" as const }
   }
 
-  if (!commands.some((item) => item.name === head.name)) {
+  if (!commands.some((item) => slashMatches(item, head.name))) { // kilocode_change
     return { type: "none" as const }
   }
 
@@ -764,7 +764,7 @@ export function createPromptState(input: PromptInput): PromptState {
     }
 
     if (next.kind === "slash") {
-      const text = `/${next.name} `
+      const text = `${next.display} ` // kilocode_change
       const cursor = area.cursorOffset
 
       area.cursorOffset = 0

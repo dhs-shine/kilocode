@@ -406,17 +406,20 @@ export function Autocomplete(props: {
     const results: AutocompleteOption[] = [...command.slashes()]
 
     for (const serverCommand of sync.data.command) {
+      // kilocode_change start - preserve suffixes like :skill when inserting selected slash commands
+      const display = slashDisplay(serverCommand)
       results.push({
-        display: slashDisplay(serverCommand), // kilocode_change
+        display,
         description: serverCommand.description,
         onSelect: () => {
-          const newText = "/" + serverCommand.name + " "
+          const newText = display + " "
           const cursor = props.input().logicalCursor
           props.input().deleteRange(0, 0, cursor.row, cursor.col)
           props.input().insertText(newText)
           props.input().cursorOffset = Bun.stringWidth(newText)
         },
       })
+      // kilocode_change end
     }
 
     results.sort((a, b) => a.display.localeCompare(b.display))
