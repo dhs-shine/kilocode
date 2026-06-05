@@ -190,10 +190,12 @@ export const layer = Layer.effect(
 
     const get = Effect.fn("Command.get")(function* (name: string) {
       const s = yield* InstanceState.get(state)
+      // kilocode_change start
       const exact = s.commands[name]
       if (exact) return exact
+      // kilocode_change end
 
-      // kilocode_change start - route /name:skill to skills even when /name is a command
+      // kilocode_change start
       const target = skillName(name)
       if (target) {
         const item = yield* skill.get(target)
@@ -201,19 +203,19 @@ export const layer = Layer.effect(
         return undefined
       }
       // kilocode_change end
-      // kilocode_change start - allow autocomplete to insert displayed /name:mcp suffixes
+      // kilocode_change start
       const prompt = mcpName(name)
       if (prompt) {
         const cmd = s.commands[prompt]
         return cmd?.source === "mcp" ? cmd : undefined
       }
       // kilocode_change end
-      return undefined
+      return undefined // kilocode_change
     })
 
+    // kilocode_change start
     const list = Effect.fn("Command.list")(function* () {
       const s = yield* InstanceState.get(state)
-      // kilocode_change start - include skill completions that conflict with commands
       const result = Object.values(s.commands)
       const names = new Set(result.map((item) => item.name))
       for (const item of yield* skill.all()) {
@@ -221,8 +223,8 @@ export const layer = Layer.effect(
         if (names.has(item.name)) result.push(fromSkill(item))
       }
       return result
-      // kilocode_change end
     })
+    // kilocode_change end
 
     return Service.of({ get, list })
   }),
