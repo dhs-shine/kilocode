@@ -7,7 +7,7 @@
  * CLI backend without manual rebuild steps.
  */
 import { watch, chmodSync } from "node:fs"
-import { join, relative } from "node:path"
+import { dirname, join, relative } from "node:path"
 import { $ } from "bun"
 import { copyTreeSitterResources } from "../src/services/cli-backend/cli-resources"
 
@@ -17,6 +17,7 @@ const opencodeDir = join(packagesDir, "opencode")
 const opencodeSrcDir = join(opencodeDir, "src")
 const targetBinDir = join(kiloVscodeDir, "bin")
 const targetBinPath = join(targetBinDir, "kilo")
+const snapshotName = "models-snapshot.json"
 
 let building = false
 let pending = false
@@ -28,6 +29,10 @@ function log(msg: string) {
 
 function sourceBinaryPath(): string {
   return join(opencodeDir, "dist", `@kilocode/cli-${process.platform}-${process.arch}`, "bin", "kilo")
+}
+
+function snapshotPath(binary: string): string {
+  return join(dirname(binary), snapshotName)
 }
 
 async function rebuild() {
@@ -58,6 +63,7 @@ async function rebuild() {
 
     await $`mkdir -p ${targetBinDir}`
     await $`cp ${source} ${targetBinPath}`
+    await $`cp ${snapshotPath(source)} ${join(targetBinDir, snapshotName)}`
     await copyTreeSitterResources(source, targetBinPath)
     chmodSync(targetBinPath, 0o755)
 
