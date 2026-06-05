@@ -56,14 +56,19 @@ async function rebuild() {
     installed = true
 
     const source = sourceBinaryPath()
+    const snapshot = snapshotPath(source)
     if (!(await Bun.file(source).exists())) {
       log(`ERROR: Build completed but no binary found at ${relative(packagesDir, source)}`)
       return
     }
+    if (!(await Bun.file(snapshot).exists())) {
+      log(`ERROR: Build completed but no models snapshot found at ${relative(packagesDir, snapshot)}`)
+      return
+    }
 
     await $`mkdir -p ${targetBinDir}`
+    await $`cp ${snapshot} ${join(targetBinDir, snapshotName)}`
     await $`cp ${source} ${targetBinPath}`
-    await $`cp ${snapshotPath(source)} ${join(targetBinDir, snapshotName)}`
     await copyTreeSitterResources(source, targetBinPath)
     chmodSync(targetBinPath, 0o755)
 

@@ -32,7 +32,7 @@ const targetBinPath = join(targetBinDir, binName)
 const snapshotName = "models-snapshot.json"
 const targetSnapshotPath = join(targetBinDir, snapshotName)
 const versionFile = join(targetBinDir, ".cli-version")
-const sourceSnapshotPath = join(opencodeDir, "src", "provider", snapshotName)
+const devSnapshotPath = join(opencodeDir, "src", "provider", snapshotName)
 
 function log(msg: string) {
   console.log(`[local-bin] ${msg}`)
@@ -191,12 +191,14 @@ async function writeSourceWrapper() {
     ].join("\n"),
   )
   chmodSync(targetBinPath, 0o755)
-  if (existsSync(sourceSnapshotPath)) await $`cp ${sourceSnapshotPath} ${targetSnapshotPath}`
+  if (existsSync(devSnapshotPath)) await $`cp ${devSnapshotPath} ${targetSnapshotPath}`
   await ensureFfmpegForTarget(currentFfmpegTarget(), targetBinDir)
 
   const hash = await cliSourceHash()
   if (hash) await Bun.write(versionFile, hash + "\n")
-  log(`Compiled CLI build failed; wrote source wrapper at ${relative(kiloVscodeDir, targetBinPath)} for local development.`)
+  log(
+    `Compiled CLI build failed; wrote source wrapper at ${relative(kiloVscodeDir, targetBinPath)} for local development.`,
+  )
 }
 
 async function main() {
@@ -243,8 +245,8 @@ async function main() {
   if (!sourceBinPath) return
   const sourceSnapshotPath = snapshotForBinary(sourceBinPath)
   await $`mkdir -p ${targetBinDir}`
-  await $`cp ${sourceBinPath} ${targetBinPath}`
   await $`cp ${sourceSnapshotPath} ${targetSnapshotPath}`
+  await $`cp ${sourceBinPath} ${targetBinPath}`
   await copyTreeSitterResources(sourceBinPath, targetBinPath)
   chmodSync(targetBinPath, 0o755)
   await ensureFfmpegForTarget(currentFfmpegTarget(), targetBinDir)
