@@ -13,6 +13,7 @@ import ai.kilocode.rpc.dto.ToolRefDto
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.plugin.KiloBundle
 import com.intellij.ui.EditorTextField
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBRadioButton
 import com.intellij.util.ui.JBUI
 import java.awt.Container
@@ -495,11 +496,12 @@ class SessionScrollTest : SessionUiTestBase() {
         assertBottom(scrollBar())
     }
 
-    fun `test scroll owns the session viewport`() {
+    fun `test scroll owns the session viewport without overlapping content`() {
         settle()
 
         assertSame(scrollComponent(), scrollView()?.parent?.parent)
         assertFalse(scrollView() is SessionMessageListPanel)
+        assertFalse((scrollComponent() as JBScrollPane).isOverlappingScrollBar)
     }
 
     // ------ question/login-required autoscroll ------
