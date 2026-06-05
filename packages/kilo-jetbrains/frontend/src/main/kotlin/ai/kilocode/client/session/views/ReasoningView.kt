@@ -24,6 +24,8 @@ import java.awt.Rectangle
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 import javax.swing.Scrollable
+import javax.swing.SwingUtilities
+import javax.swing.border.Border
 
 /** Renders reasoning as a secondary collapsible block. */
 class ReasoningView(
@@ -32,7 +34,11 @@ class ReasoningView(
     private val selection: SessionSelection? = null,
     private val parts: ReasoningParts = reasoningParts(selection),
 ) :
-    SecondarySessionPartView(parts.header, { parts.scroll(openUrl) }) {
+    SecondarySessionPartView(
+        parts.header,
+        { parts.scroll(openUrl) },
+        expanded = reasoning.content.isNotBlank() && !reasoning.done,
+    ) {
 
     override val contentId: String = reasoning.id
 
@@ -50,11 +56,13 @@ class ReasoningView(
 
     private var style = SessionEditorStyle.current()
     private var source = reasoning.content.toString()
+    private var done = reasoning.done
     private var registered = false
 
     init {
         bindHeader(parts.title, parts.icon)
         applyStyle(style)
+        if (bodyVisible()) syncBody()
         sync()
     }
 
@@ -70,9 +78,16 @@ class ReasoningView(
         if (content !is Reasoning) return
         var changed = false
         val next = content.content.toString()
+        if (done != content.done) {
+            done = content.done
+            changed = true
+        }
         if (source != next) {
             source = next
-            if (parts.bodyCreated()) md.set(source)
+            if (parts.bodyCreated()) {
+                md.set(source)
+                followTail()
+            }
             changed = true
         }
         changed = sync() || changed
@@ -82,7 +97,10 @@ class ReasoningView(
     override fun appendDelta(delta: String) {
         if (delta.isEmpty()) return
         source += delta
-        if (parts.bodyCreated()) md.append(delta)
+        if (parts.bodyCreated()) {
+            md.append(delta)
+            followTail()
+        }
         val changed = sync()
         if (changed || bodyVisible()) refresh()
     }
@@ -95,6 +113,9 @@ class ReasoningView(
     internal fun horizontalPolicy() = parts.scrollOrNull?.horizontalScrollBarPolicy ?: ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
     internal fun bodyMaxRows() = SessionUiStyle.View.Reasoning.BODY_LINES
     internal fun bodyCreated() = parts.bodyCreated()
+    internal fun bodyBorder(): Border? = parts.scrollOrNull?.border
+    internal fun bodyScrollValue() = parts.scrollOrNull?.verticalScrollBar?.value ?: 0
+    internal fun bodyScrollBottom() = parts.scrollOrNull?.verticalScrollBar?.let { it.maximum - it.visibleAmount } ?: 0
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
@@ -116,7 +137,20 @@ class ReasoningView(
 
     private fun canExpand(): Boolean = source.isNotBlank()
 
-    private fun sync(): Boolean = syncExpandable(canExpand())
+    private fun sync(): Boolean {
+        var changed = false
+        val visible = source.isNotBlank()
+        if (isVisible != visible) {
+            isVisible = visible
+            changed = true
+        }
+        changed = syncExpandable(canExpand()) || changed
+        if (visible && !done && !parts.bodyCreated()) {
+            changed = expand() || changed
+            changed = syncExpandable(canExpand()) || changed
+        }
+        return changed
+    }
 
     private fun apply(md: MdView): Boolean {
         var changed = false
@@ -134,6 +168,7 @@ class ReasoningView(
         val md = md
         registerBody(md)
         md.set(source)
+        followTail()
     }
 
     private fun applyBodyStyle(): Boolean {
@@ -155,6 +190,15 @@ class ReasoningView(
         val md = md
         return md.component.getFontMetrics(md.font).height * bodyMaxRows() +
             JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
+    }
+
+    private fun followTail() {
+        if (!bodyVisible()) return
+        val scroll = parts.scrollOrNull ?: return
+        SwingUtilities.invokeLater {
+            val bar = scroll.verticalScrollBar
+            bar.value = bar.maximum - bar.visibleAmount
+        }
     }
 
     override fun dumpLabel(): String {
@@ -195,7 +239,7 @@ class ReasoningParts(
             add(md.component, BorderLayout.CENTER)
         }
         val scroll = JBScrollPane(panel).apply {
-            border = SessionUiStyle.View.topOutline()
+            border = SessionUiStyle.View.leftOutline()
             isOpaque = true
             background = SessionUiStyle.View.surface()
             viewport.background = SessionUiStyle.View.surface()

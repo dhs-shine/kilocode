@@ -2,6 +2,7 @@ package ai.kilocode.client.session.views
 
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Message
+import ai.kilocode.client.session.model.Reasoning
 import ai.kilocode.client.session.model.StepFinish
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolCallRef
@@ -48,6 +49,8 @@ class MessageView(
         get() = if (role == SessionUiStyle.View.Message.USER_ROLE) SessionView.Kind.UserPrompt else SessionView.Kind.Default
 
     private val parts = LinkedHashMap<String, PartView>()
+    private val aliases = LinkedHashMap<String, String>()
+    private val sources = LinkedHashMap<String, String>()
     private var hidden: ToolCallRef? = null
 
     init {
@@ -59,10 +62,7 @@ class MessageView(
         for ((_, content) in msg.parts) {
             if (content is StepFinish) continue
             if (isHidden(content)) continue
-            val view = view(content)
-            view.applyStyle(style)
-            parts[content.id] = view
-            add(view)
+            addPart(content)
         }
     }
 
@@ -81,7 +81,9 @@ class MessageView(
         if (content is StepFinish) return
         if (isHidden(content)) {
             // Remove any stale view for this content so it disappears when suppressed
-            val stale = parts.remove(content.id)
+            val id = aliases.remove(content.id)
+            sources.remove(content.id)
+            val stale = if (id == null) parts.remove(content.id) else null
             if (stale != null) {
                 remove(stale)
                 Disposer.dispose(stale)
@@ -89,6 +91,16 @@ class MessageView(
                 refresh()
             }
             return
+        }
+        val id = aliases[content.id]
+        if (id != null && content is Reasoning) {
+            updateAlias(content, id)
+            refresh()
+            return
+        }
+        if (id != null) {
+            aliases.remove(content.id)
+            sources.remove(content.id)
         }
         val existing = parts[content.id]
         if (existing != null) {
@@ -100,17 +112,48 @@ class MessageView(
             refresh()
             return
         }
+        addPart(content)
+        syncBorder()
+        refresh()
+    }
+
+    private fun addPart(content: Content) {
+        if (content is Reasoning) {
+            val previous = parts.values.lastOrNull()
+            if (previous is ReasoningView) {
+                aliases[content.id] = previous.contentId
+                sources[content.id] = content.content.toString()
+                previous.update(merged(previous, content, content.content.toString()))
+                return
+            }
+        }
         val view = view(content)
         view.applyStyle(style)
         parts[content.id] = view
         add(view)
-        syncBorder()
-        refresh()
+    }
+
+    private fun updateAlias(content: Reasoning, id: String) {
+        val view = parts[id] as? ReasoningView ?: return
+        val prev = sources[content.id].orEmpty()
+        val next = content.content.toString()
+        val delta = if (next.startsWith(prev)) next.removePrefix(prev) else next
+        sources[content.id] = next
+        if (delta.isEmpty()) return
+        view.update(merged(view, content, delta))
+    }
+
+    private fun merged(view: ReasoningView, content: Reasoning, delta: String) = Reasoning(view.contentId).also {
+        it.done = content.done
+        it.content.append(view.markdown())
+        it.content.append(delta)
     }
 
     private fun replacePart(content: Content, existing: PartView) {
         val at = components.indexOfFirst { it === existing }.takeIf { it >= 0 } ?: componentCount
         parts.remove(content.id)
+        aliases.values.removeAll { it == content.id }
+        sources.keys.removeAll { it !in aliases }
         remove(existing)
         Disposer.dispose(existing)
         val view = view(content)
@@ -123,7 +166,13 @@ class MessageView(
 
     /** Remove the renderer for [contentId] if present. */
     fun removePart(contentId: String) {
+        if (aliases.remove(contentId) != null) {
+            sources.remove(contentId)
+            return
+        }
         val view = parts.remove(contentId) ?: return
+        aliases.values.removeAll { it == contentId }
+        sources.keys.removeAll { it !in aliases }
         remove(view)
         Disposer.dispose(view)
         syncBorder()
@@ -154,13 +203,12 @@ class MessageView(
             Disposer.dispose(it)
         }
         parts.clear()
+        aliases.clear()
+        sources.clear()
         for ((_, content) in msg.parts) {
             if (content is StepFinish) continue
             if (isHidden(content)) continue
-            val view = view(content)
-            view.applyStyle(style)
-            parts[content.id] = view
-            add(view)
+            addPart(content)
         }
         syncBorder()
         refresh()
@@ -179,13 +227,15 @@ class MessageView(
 
     /** Append a streaming delta to the renderer for [contentId]. */
     fun appendDelta(contentId: String, delta: String): Boolean {
-        val part = parts[contentId] ?: return false
+        val id = aliases[contentId]
+        if (id != null) sources[contentId] = sources[contentId].orEmpty() + delta
+        val part = parts[id ?: contentId] ?: return false
         part.appendDelta(delta)
         return true
     }
 
     /** Look up a renderer by part id. */
-    fun part(id: String): PartView? = parts[id]
+    fun part(id: String): PartView? = parts[aliases[id] ?: id]
 
     /** Ordered part ids — stable for test assertions. */
     fun partIds(): List<String> = parts.keys.toList()
@@ -206,6 +256,8 @@ class MessageView(
             Disposer.dispose(it)
         }
         parts.clear()
+        aliases.clear()
+        sources.clear()
         hidden = null
     }
 

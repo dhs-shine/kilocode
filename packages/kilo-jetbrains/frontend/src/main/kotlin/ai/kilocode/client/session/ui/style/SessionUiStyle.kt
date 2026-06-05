@@ -55,6 +55,8 @@ object SessionUiStyle {
 
         fun topOutline(): Border = JBUI.Borders.customLineTop(line())
 
+        fun leftOutline(): Border = JBUI.Borders.customLine(line(), 0, 1, 0, 0)
+
         /** Prompt input dimensions and chrome inside the session view. */
         object Prompt {
             const val EDITOR_LINES = 3
