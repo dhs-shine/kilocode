@@ -287,10 +287,24 @@ for (const item of targets) {
   const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
   const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
 
+  // kilocode_change start - redirect @morphllm/morphsdk ESM barrel to self-contained CJS bundle
+  // Bun 1.3.14 (with conditions:["browser"]) resolves via the "import" condition, pulling in the
+  // pre-split ESM barrel (client.js) whose 52 chunk-*.js side-imports make the ESM splitter emit
+  // invalid minified output: SyntaxError: Exported binding 'G9' needs to refer to a top-level...
+  // Redirecting onResolve to client.cjs (2300-line self-contained CJS bundle) bypasses the splitter.
+  const morphsdkCjsPlugin: import("bun").BunPlugin = {
+    name: "morphsdk-cjs",
+    setup(build) {
+      build.onResolve({ filter: /^@morphllm\/morphsdk\/tools\/warp-grep\/client$/ }, () => ({
+        path: require.resolve("@morphllm/morphsdk/dist/tools/warp_grep/client.cjs"),
+      }))
+    },
+  }
+  // kilocode_change end
   await Bun.build({
     conditions: ["browser"],
     tsconfig: "./tsconfig.json",
-    plugins: [plugin], // kilocode_change
+    plugins: [plugin, morphsdkCjsPlugin], // kilocode_change
     // kilocode_change start - skip sourcemaps for release builds (each .js.map adds ~50 MB per target → ~600 MB total)
     sourcemap: Script.release ? "none" : "external",
     // kilocode_change end
