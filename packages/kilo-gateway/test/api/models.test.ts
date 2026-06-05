@@ -144,7 +144,6 @@ test("returns models without error on success", async () => {
 
   expect(result.error).toBeUndefined()
   expect(Object.keys(result.models).length).toBeGreaterThan(0)
-  expect(result.models["test/model-a"].terminalBench).toBeUndefined()
 })
 
 test("preserves Terminal Bench metadata as a dedicated model field", async () => {

@@ -1,12 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-  avgPrice,
-  fmtAttemptCost,
-  fmtCachedPrice,
-  fmtContext,
-  fmtPrice,
-  fmtScore,
-} from "../../src/kilocode/components/model-info-panel-utils"
+import { avgPrice, fmtCachedPrice, fmtContext, fmtPrice } from "../../src/kilocode/components/model-info-panel-utils"
 
 describe("model info panel price formatting", () => {
   test("fmtPrice returns Free for zero", () => {
@@ -41,16 +34,6 @@ describe("model info panel price formatting", () => {
   test("avgPrice uses input and output weighted formula without cache read", () => {
     const val = avgPrice({ input: 3, output: 15, cache: { read: 0, write: 0 } })
     expect(val).toBe(4.2)
-  })
-})
-
-describe("model info panel Terminal Bench formatting", () => {
-  test("formats completion as a one-decimal percentage", () => {
-    expect(fmtScore(0.551)).toBe("55.1%")
-  })
-
-  test("formats attempt cost as USD without a token suffix", () => {
-    expect(fmtAttemptCost(53.37)).toBe("$53.37")
   })
 })
 

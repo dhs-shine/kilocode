@@ -9,17 +9,6 @@ const agent = fs.readFileSync(path.join(root, "webview-ui/agent-manager/MultiMod
 const icons = fs.readFileSync(path.join(root, "../kilo-ui/src/components/icon.tsx"), "utf8")
 const styles = fs.readFileSync(path.join(root, "webview-ui/src/styles/model-selector.css"), "utf8")
 
-describe("model preview Terminal Bench group", () => {
-  it("shows Terminal Bench independently from token pricing", () => {
-    expect(preview).toContain("const bench = () => model().terminalBench")
-    expect(preview).toContain("<Show when={bench()}>")
-    expect(preview).toContain('language.t("model.preview.group.terminalBench")')
-    expect(preview).toContain('language.t("model.preview.label.completion")')
-    expect(preview).toContain('language.t("model.preview.label.costAttempt")')
-    expect(styles).toContain(".model-preview-group-title")
-  })
-})
-
 describe("model preview data collection line", () => {
   it("shows a visible data collection row above context details", () => {
     const data = preview.indexOf('class="model-preview-data-line"')

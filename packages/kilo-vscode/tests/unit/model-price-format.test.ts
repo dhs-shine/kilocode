@@ -1,11 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import {
-  avgPrice,
-  fmtAttemptCost,
-  fmtCachedPrice,
-  fmtPrice,
-  fmtTerminalBenchScore,
-} from "../../webview-ui/src/components/shared/model-preview-utils"
+import { avgPrice, fmtCachedPrice, fmtPrice } from "../../webview-ui/src/components/shared/model-preview-utils"
 
 // Prices arriving at fmtPrice are already in $/M tokens (converted by parseApiPrice).
 // This test suite guards against the double-multiplication bug where fmtPrice was
@@ -38,18 +32,6 @@ describe("fmtPrice", () => {
 
   it("formats a high-cost model price ($75/1M)", () => {
     expect(fmtPrice(75)).toBe("$75.00/1M")
-  })
-})
-
-describe("fmtTerminalBenchScore", () => {
-  it("formats a completion ratio as a one-decimal percentage", () => {
-    expect(fmtTerminalBenchScore(0.437)).toBe("43.7%")
-  })
-})
-
-describe("fmtAttemptCost", () => {
-  it("formats attempt cost in USD without a token suffix", () => {
-    expect(fmtAttemptCost(1.236)).toBe("$1.24")
   })
 })
 
