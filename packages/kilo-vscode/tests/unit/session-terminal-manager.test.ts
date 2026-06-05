@@ -88,6 +88,13 @@ describe("SessionTerminalManager structure", () => {
     expect(text).toContain("this.showExistingLocal()")
   })
 
+  it("panel command registration is best effort", () => {
+    const text = body("tryRegisterCommand")
+    expect(text).toContain("this.host.registerCommand")
+    expect(text).toContain("catch (err)")
+    expect(text).toContain("panel command registration skipped")
+  })
+
   it("exposes active terminal state for terminal context routing", () => {
     const text = body("hasActiveTerminal")
     expect(text).toContain("this.host.activeTerminal()")
