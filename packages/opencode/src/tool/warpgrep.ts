@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect"
 import * as Tool from "./tool"
-import { WarpGrepClient } from "@morphllm/morphsdk/tools/warp-grep/client" // kilocode_change
+import { WarpGrepClient } from "@/kilocode/compat/morphsdk" // kilocode_change
 import { Telemetry } from "@kilocode/kilo-telemetry" // kilocode_change
 import { Instance } from "../project/instance"
 import { Bus } from "../bus"
