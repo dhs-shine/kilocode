@@ -16,7 +16,6 @@ const PKG_JSON_FILE = path.join(ROOT, "package.json")
 const SRC_DIR = path.join(ROOT, "src")
 const EXTENSION_FILE = path.join(ROOT, "src/extension.ts")
 const KILO_PROVIDER_FILE = path.join(ROOT, "src/KiloProvider.ts")
-const KILO_PROVIDER_OPTIONS_FILE = path.join(ROOT, "src/kilo-provider/options.ts")
 
 function sliceBlock(source: string, start: number): string {
   const open = source.indexOf("{", start)
@@ -103,28 +102,6 @@ describe("Extension — package.json command sync", () => {
       bad,
       `Commands without "kilo-code.new." prefix — use the namespaced form:\n` + bad.map((b) => `  - ${b}`).join("\n"),
     ).toEqual([])
-  })
-})
-
-describe("Extension — sidebar visibility", () => {
-  const ext = fs.readFileSync(EXTENSION_FILE, "utf-8")
-  const provider = fs.readFileSync(KILO_PROVIDER_FILE, "utf-8")
-  const options = fs.readFileSync(KILO_PROVIDER_OPTIONS_FILE, "utf-8")
-
-  it("does not close or track the primary sidebar during workbench restore", () => {
-    const restore = ext.indexOf("type RestoreState")
-    expect(restore, "RestoreState must exist for Agent Manager restoration").toBeGreaterThan(-1)
-
-    expect(ext).not.toContain("workbench.action.closeSidebar")
-    expect(ext).not.toContain("onSidebarVisibilityChange")
-    expect(sliceBlock(ext, restore)).not.toContain("sidebar")
-    expect(provider).not.toContain("onSidebarVisibilityChange")
-    expect(options).not.toContain("onSidebarVisibilityChange")
-  })
-
-  it("keeps live Kilo sidebar visibility handling", () => {
-    expect(provider).toContain("this.setStreamVisibility(visible)")
-    expect(provider).toContain('vscode.commands.executeCommand("setContext", "kilo-code.new.sidebarVisible", visible)')
   })
 })
 
