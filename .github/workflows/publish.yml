@@ -161,6 +161,30 @@ jobs:
           name: kilo-vscode
           path: packages/kilo-vscode/out
 
+  # kilocode_change start - execute the cross-compiled Apple Silicon binary before publishing it
+  validate-darwin-arm64:
+    name: Validate CLI (darwin-arm64)
+    needs: build-cli
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: kilo-cli.tar.zst
+          path: /tmp
+          skip-decompress: true
+
+      - name: Unpack CLI dist
+        run: |
+          mkdir -p dist
+          tar --zstd -xf /tmp/kilo-cli.tar.zst -C dist
+
+      - name: Run CLI smoke test
+        run: |
+          test "$(uname -m)" = "arm64"
+          ./dist/@kilocode/cli-darwin-arm64/bin/kilo --version
+          ./dist/@kilocode/cli-darwin-arm64/bin/kilo --help >/dev/null
+  # kilocode_change end
   # kilocode_change start
   # Run smoke tests against CLI assets uploaded to the draft GitHub release
   # before publishing the release and package artifacts.
@@ -181,6 +205,7 @@ jobs:
       - version
       - build-cli
       - build-vscode
+      - validate-darwin-arm64 # kilocode_change
       - smoke-test
     runs-on: ubuntu-24.04
     steps:
