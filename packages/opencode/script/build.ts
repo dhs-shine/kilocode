@@ -287,35 +287,25 @@ for (const item of targets) {
   const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
   const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
 
-  // kilocode_change start - redirect @morphllm/morphsdk ESM barrel to self-contained CJS bundle
-  // Bun 1.3.14 (with conditions:["browser"]) resolves via the "import" condition, pulling in the
-  // pre-split ESM barrel (client.js) whose 52 chunk-*.js side-imports make the ESM splitter emit
-  // invalid minified output: SyntaxError: Exported binding 'G9' needs to refer to a top-level...
-  // Redirecting onResolve to client.cjs (2300-line self-contained CJS bundle) bypasses the splitter.
-  // require.resolve uses the package's "require" condition, which maps the warp-grep/client
-  // subpath straight to client.cjs. The deep dist path is not an exported subpath, so resolving
-  // it directly throws "Cannot find module" — go through the public specifier instead.
-  const morphsdkCjs = require.resolve("@morphllm/morphsdk/tools/warp-grep/client")
-  const morphsdkCjsPlugin: import("bun").BunPlugin = {
-    name: "morphsdk-cjs",
-    setup(build) {
-      build.onResolve({ filter: /^@morphllm\/morphsdk\/tools\/warp-grep\/client$/ }, () => ({
-        path: morphsdkCjs,
-      }))
-    },
-  }
-  // kilocode_change end
   await Bun.build({
     conditions: ["browser"],
     tsconfig: "./tsconfig.json",
-    plugins: [plugin, morphsdkCjsPlugin], // kilocode_change
+    plugins: [plugin],
     // kilocode_change start - skip sourcemaps for release builds (each .js.map adds ~50 MB per target → ~600 MB total)
     sourcemap: Script.release ? "none" : "external",
     // kilocode_change end
     external: ["node-gyp", ...LanceDBRuntime.external], // kilocode_change
     format: "esm",
     minify: true,
-    splitting: true,
+    // kilocode_change start - disable code-splitting to avoid a Bun 1.3.14 codegen bug.
+    // With splitting:true Bun emits cross-chunk re-exports like `import{vn as G9}` whose
+    // binding isn't top-level, so the compiled binary crashes at startup on the baseline
+    // target: "SyntaxError: Exported binding 'G9' needs to refer to a top-level declared
+    // variable." (Bun oven-sh/bun#25621, #5344, #7265; also opencode#23349). Fixed upstream
+    // in Bun#26089, post-1.3.14. Splitting only deduped shared code between the entrypoints;
+    // turning it off inlines per entrypoint and produces a valid binary.
+    splitting: false,
+    // kilocode_change end
     compile: {
       autoloadBunfig: false,
       autoloadDotenv: false,
