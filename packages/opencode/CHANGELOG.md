@@ -1,5 +1,13 @@
 # @kilocode/cli
 
+## 7.3.40
+
+### Patch Changes
+
+- [#10925](https://github.com/Kilo-Org/kilocode/pull/10925) [`881a451`](https://github.com/Kilo-Org/kilocode/commit/881a451f8ac198c9d199616c1eef20e94ff25b57) Thanks [@evanjacobson](https://github.com/evanjacobson)! - Display skills in CLI slash command autocomplete options
+
+- [#10952](https://github.com/Kilo-Org/kilocode/pull/10952) [`be5f42f`](https://github.com/Kilo-Org/kilocode/commit/be5f42f158ee88777cc37160cb94dd58b74c6247) Thanks [@johnnyeric](https://github.com/johnnyeric)! - Support custom plan file paths when exiting planning.
+
 ## 7.3.39
 
 ### Patch Changes
