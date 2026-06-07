@@ -182,12 +182,14 @@ class ReasoningViewTest : BasePlatformTestCase() {
         assertEquals(view.bodyScrollBottom(), view.bodyScrollValue())
     }
 
-    fun `test reasoning body uses vertical separator`() {
+    fun `test reasoning block uses vertical separator`() {
         val view = ReasoningView(reasoning("p1", done = true, text = "one"))
+
+        assertEquals(1, view.border!!.getBorderInsets(view).left)
 
         view.toggle()
 
-        val insets = view.bodyBorder()!!.getBorderInsets(view)
+        val insets = view.border!!.getBorderInsets(view)
         assertEquals(0, insets.top)
         assertEquals(1, insets.left)
         assertEquals(0, insets.bottom)

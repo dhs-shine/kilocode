@@ -25,7 +25,6 @@ import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 import javax.swing.Scrollable
 import javax.swing.SwingUtilities
-import javax.swing.border.Border
 
 /** Renders reasoning as a secondary collapsible block. */
 class ReasoningView(
@@ -60,17 +59,30 @@ class ReasoningView(
     private var registered = false
 
     init {
+        row.border = JBUI.Borders.empty(
+            JBUI.scale(SessionUiStyle.View.Reasoning.HEADER_VERTICAL_PADDING),
+            JBUI.scale(SessionUiStyle.View.Reasoning.HEADER_HORIZONTAL_PADDING),
+        )
         bindHeader(parts.title, parts.icon)
         applyStyle(style)
         if (bodyVisible()) syncBody()
+        syncBorder()
         sync()
     }
 
     override fun expand(): Boolean {
         val changed = super.expand()
         if (!changed) return false
+        syncBorder()
         syncBody()
         applyBodyStyle()
+        return true
+    }
+
+    override fun collapse(): Boolean {
+        val changed = super.collapse()
+        if (!changed) return false
+        syncBorder()
         return true
     }
 
@@ -113,7 +125,6 @@ class ReasoningView(
     internal fun horizontalPolicy() = parts.scrollOrNull?.horizontalScrollBarPolicy ?: ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
     internal fun bodyMaxRows() = SessionUiStyle.View.Reasoning.BODY_LINES
     internal fun bodyCreated() = parts.bodyCreated()
-    internal fun bodyBorder(): Border? = parts.scrollOrNull?.border
     internal fun bodyScrollValue() = parts.scrollOrNull?.verticalScrollBar?.value ?: 0
     internal fun bodyScrollBottom() = parts.scrollOrNull?.verticalScrollBar?.let { it.maximum - it.visibleAmount } ?: 0
 
@@ -150,6 +161,10 @@ class ReasoningView(
             changed = syncExpandable(canExpand()) || changed
         }
         return changed
+    }
+
+    private fun syncBorder() {
+        border = if (isExpanded()) SessionUiStyle.View.leftOutline() else JBUI.Borders.empty(0, 1, 0, 0)
     }
 
     private fun apply(md: MdView): Boolean {
@@ -233,13 +248,13 @@ class ReasoningParts(
             isOpaque = true
             background = SessionUiStyle.View.surface()
             border = JBUI.Borders.empty(
-                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
-                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Reasoning.BODY_VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Reasoning.BODY_HORIZONTAL_PADDING),
             )
             add(md.component, BorderLayout.CENTER)
         }
         val scroll = JBScrollPane(panel).apply {
-            border = SessionUiStyle.View.leftOutline()
+            border = JBUI.Borders.empty()
             isOpaque = true
             background = SessionUiStyle.View.surface()
             viewport.background = SessionUiStyle.View.surface()

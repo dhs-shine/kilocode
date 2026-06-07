@@ -78,7 +78,7 @@ abstract class AbstractSessionPartView(
         return true
     }
 
-    fun collapse(): Boolean {
+    open fun collapse(): Boolean {
         val item = body ?: return false
         if (item.parent !== this) return false
         remove(item)
