@@ -840,8 +840,8 @@ it.live("allowEverything - session-scoped enable stays within one session", () =
       yield* waitForPending(1)
       yield* permission.allowEverything({
         enable: true,
-        requestID: "permission_session_allow",
-        sessionID: "session_allowed",
+        requestID: PermissionID.make("permission_session_allow"),
+        sessionID: SessionID.make("session_allowed"),
       })
 
       yield* Fiber.join(first)

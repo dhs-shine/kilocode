@@ -49,7 +49,7 @@ function capture() {
   const requests: Array<{ permission: string; metadata: Record<string, any> }> = []
   const ctx = {
     sessionID: SessionID.make("ses_test-edit-filediff"),
-    messageID: MessageID.make(""),
+    messageID: MessageID.make("msg_test-edit-filediff"),
     callID: "",
     agent: "code",
     abort: AbortSignal.any([]),

@@ -18,7 +18,6 @@ import z from "zod" // kilocode_change
 import { evaluate as evalRule } from "./evaluate"
 import { PermissionID } from "./schema"
 import { ConfigProtection } from "@/kilocode/permission/config-paths" // kilocode_change
-import { Identifier } from "@/id/id" // kilocode_change
 import { drainCovered } from "@/kilocode/permission/drain" // kilocode_change
 import { ReadPermission } from "@/kilocode/permission/read" // kilocode_change
 import { ExternalDirectoryPermission } from "@/kilocode/permission/external-directory" // kilocode_change
@@ -137,15 +136,15 @@ export type ReplyInput = Schema.Schema.Type<typeof ReplyInput>
 
 // kilocode_change start
 export const SaveAlwaysRulesInput = z.object({
-  requestID: PermissionID.zod,
+  requestID: zod(PermissionID),
   approvedAlways: z.string().array().optional(),
   deniedAlways: z.string().array().optional(),
 })
 
 export const AllowEverythingInput = z.object({
   enable: z.boolean(),
-  requestID: Identifier.schema("permission").optional(),
-  sessionID: Identifier.schema("session").optional(),
+  requestID: zod(PermissionID).optional(),
+  sessionID: zod(SessionID).optional(),
 })
 // kilocode_change end
 
@@ -431,10 +430,10 @@ export const layer = Layer.effect(
       else s.approved.push(rule)
 
       if (input.requestID) {
-        const entry = s.pending.get(PermissionID.make(input.requestID))
+        const entry = s.pending.get(input.requestID)
         const ok = entry ? covered(entry, s.approved, s.session[entry.info.sessionID] ?? []) : false // kilocode_change
         if (entry && ok && (!input.sessionID || entry.info.sessionID === input.sessionID)) {
-          s.pending.delete(PermissionID.make(input.requestID))
+          s.pending.delete(input.requestID)
           yield* bus.publish(Event.Replied, {
             sessionID: entry.info.sessionID,
             requestID: entry.info.id,

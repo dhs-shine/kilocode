@@ -1,6 +1,7 @@
 import { AllowEverythingPermission } from "@/kilocode/permission/allow-everything" // kilocode_change
 import { Permission } from "@/permission"
 import { PermissionID } from "@/permission/schema"
+import { SessionID } from "@/session/schema" // kilocode_change
 import { Effect, Schema } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { InstanceHttpApi } from "../api"
@@ -47,7 +48,11 @@ export const permissionHandlers = HttpApiBuilder.group(InstanceHttpApi, "permiss
     const allowEverything = Effect.fn("PermissionHttpApi.allowEverything")(function* (ctx: {
       payload: Schema.Schema.Type<typeof AllowEverythingBody>
     }) {
-      return yield* AllowEverythingPermission.effect(ctx.payload)
+      return yield* AllowEverythingPermission.effect({
+        enable: ctx.payload.enable,
+        requestID: ctx.payload.requestID ? PermissionID.make(ctx.payload.requestID) : undefined,
+        sessionID: ctx.payload.sessionID ? SessionID.make(ctx.payload.sessionID) : undefined,
+      })
     })
     // kilocode_change end
 

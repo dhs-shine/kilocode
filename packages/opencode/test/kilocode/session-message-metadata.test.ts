@@ -15,9 +15,9 @@ function blob(size: number) {
 
 function part(tool: string, metadata: Record<string, unknown>): MessageV2.Part {
   return {
-    id: PartID.make(`p-${tool}`),
+    id: PartID.make(`prt-${tool}`),
     sessionID,
-    messageID: MessageID.make("m-assistant"),
+    messageID: MessageID.make("msg-assistant"),
     type: "tool",
     callID: `call-${tool}`,
     tool,

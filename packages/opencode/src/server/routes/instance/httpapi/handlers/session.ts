@@ -207,13 +207,15 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       params: { sessionID: SessionID }
       payload: typeof InitPayload.Type
     }) {
-      yield* promptSvc.command({
-        sessionID: ctx.params.sessionID,
-        messageID: ctx.payload.messageID,
-        model: `${ctx.payload.providerID}/${ctx.payload.modelID}`,
-        command: Command.Default.INIT,
-        arguments: "",
-      })
+      yield* promptSvc
+        .command({
+          sessionID: ctx.params.sessionID,
+          messageID: ctx.payload.messageID,
+          model: `${ctx.payload.providerID}/${ctx.payload.modelID}`,
+          command: Command.Default.INIT,
+          arguments: "",
+        })
+        .pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
       return true
     })
 
@@ -262,18 +264,17 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
     }) {
       const instance = yield* InstanceState.context
       const workspace = yield* InstanceState.workspaceID
-      return HttpServerResponse.stream(
-        Stream.fromEffect(
-          promptSvc
-            // kilocode_change - cast to bridge schema-readonly→PromptInput-mutable; matches legacy Hono session.ts
-            .prompt({ ...ctx.payload, sessionID: ctx.params.sessionID } as unknown as SessionPrompt.PromptInput)
-            .pipe(Effect.provideService(InstanceRef, instance), Effect.provideService(WorkspaceRef, workspace)),
-        ).pipe(
-          Stream.map((message) => JSON.stringify(message)),
-          Stream.encodeText,
-        ),
-        { contentType: "application/json" },
-      )
+      const message = yield* promptSvc
+        // kilocode_change - cast to bridge schema-readonly→PromptInput-mutable; matches legacy Hono session.ts
+        .prompt({ ...ctx.payload, sessionID: ctx.params.sessionID } as unknown as SessionPrompt.PromptInput)
+        .pipe(
+          Effect.provideService(InstanceRef, instance),
+          Effect.provideService(WorkspaceRef, workspace),
+          Effect.mapError(() => new HttpApiError.BadRequest({})),
+        )
+      return HttpServerResponse.stream(Stream.make(JSON.stringify(message)).pipe(Stream.encodeText), {
+        contentType: "application/json",
+      })
     })
 
     const promptAsync = Effect.fn("SessionHttpApi.promptAsync")(function* (ctx: {
@@ -303,7 +304,9 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       params: { sessionID: SessionID }
       payload: typeof CommandPayload.Type
     }) {
-      return yield* promptSvc.command({ ...ctx.payload, sessionID: ctx.params.sessionID })
+      return yield* promptSvc
+        .command({ ...ctx.payload, sessionID: ctx.params.sessionID })
+        .pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
     })
 
     const shell = Effect.fn("SessionHttpApi.shell")(function* (ctx: {

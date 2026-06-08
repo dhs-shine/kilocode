@@ -12,6 +12,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { assertExternalDirectoryEffect } from "./external-directory"
 import { Instruction } from "../session/instruction"
 import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
+import { Reference } from "@/reference/reference"
 // kilocode_change start
 import * as Encoding from "../kilocode/encoding"
 import * as TextStream from "../kilocode/text-stream"
@@ -48,6 +49,7 @@ export const ReadTool = Tool.define(
     const fs = yield* AppFileSystem.Service
     const instruction = yield* Instruction.Service
     const lsp = yield* LSP.Service
+    const reference = yield* Reference.Service
     const scope = yield* Scope.Scope
 
     const miss = Effect.fn("ReadTool.miss")(function* (filepath: string) {
@@ -213,6 +215,7 @@ export const ReadTool = Tool.define(
       if (process.platform === "win32") {
         filepath = AppFileSystem.normalizePath(filepath)
       }
+      yield* reference.ensure(filepath)
       const title = path.relative(instance.worktree, filepath)
 
       const stat = yield* fs.stat(filepath).pipe(
@@ -223,7 +226,7 @@ export const ReadTool = Tool.define(
       )
 
       yield* assertExternalDirectoryEffect(ctx, filepath, {
-        bypass: Boolean(ctx.extra?.["bypassCwdCheck"]),
+        bypass: Boolean(ctx.extra?.["bypassCwdCheck"]) || (yield* reference.contains(filepath)),
         kind: stat?.type === "Directory" ? "directory" : "file",
       })
 

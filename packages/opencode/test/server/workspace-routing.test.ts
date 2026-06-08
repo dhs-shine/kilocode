@@ -46,6 +46,11 @@ describe("getWorkspaceRouteSessionID", () => {
     expect(getWorkspaceRouteSessionID(url)).toBeNull()
   })
 
+  test("returns null for Kilo's /session/viewed route", () => {
+    const url = new URL("http://localhost/session/viewed")
+    expect(getWorkspaceRouteSessionID(url)).toBeNull()
+  }) // kilocode_change
+
   test("returns null for non-session paths", () => {
     const url = new URL("http://localhost/config")
     expect(getWorkspaceRouteSessionID(url)).toBeNull()

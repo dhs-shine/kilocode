@@ -13,6 +13,7 @@ import { KilocodeBootstrap } from "@/kilocode/bootstrap" // kilocode_change
 import { Effect, Layer } from "effect"
 import { Config } from "@/config/config"
 import { Service } from "./bootstrap-service"
+import { Reference } from "@/reference/reference"
 
 export { Service } from "./bootstrap-service"
 export type { Interface } from "./bootstrap-service"
@@ -30,6 +31,7 @@ export const layer = Layer.effect(
     const lsp = yield* LSP.Service
     const plugin = yield* Plugin.Service
     const project = yield* Project.Service
+    const reference = yield* Reference.Service
     const kilocode = yield* KilocodeBootstrap.Service // kilocode_change - Kilo session bootstrap replaces ShareNext
     // const shareNext = yield* ShareNext.Service // kilocode_change - handled by KilocodeBootstrap
     const snapshot = yield* Snapshot.Service
@@ -46,7 +48,7 @@ export const layer = Layer.effect(
       // Each service self-manages its own slow work via Effect.forkScoped against
       // its per-instance state scope. We just await materialization here.
       yield* Effect.forEach(
-        [lsp, format, file, fileWatcher, vcs, snapshot, project], // kilocode_change - shareNext removed, handled by KilocodeBootstrap
+        [reference, lsp, format, file, fileWatcher, vcs, snapshot, project], // kilocode_change - shareNext removed, handled by KilocodeBootstrap
         (s) => s.init().pipe(Effect.catchCause((cause) => Effect.logWarning("init failed", { cause }))),
         { concurrency: "unbounded", discard: true },
       ).pipe(Effect.withSpan("InstanceBootstrap.init"))
@@ -66,6 +68,7 @@ export const defaultLayer: Layer.Layer<Service> = layer.pipe(
     LSP.defaultLayer,
     Plugin.defaultLayer,
     Project.defaultLayer,
+    Reference.defaultLayer,
     KilocodeBootstrap.defaultLayer, // kilocode_change - Kilo session bootstrap replaces ShareNext
     // ShareNext.defaultLayer, // kilocode_change - handled by KilocodeBootstrap
     Snapshot.defaultLayer,
