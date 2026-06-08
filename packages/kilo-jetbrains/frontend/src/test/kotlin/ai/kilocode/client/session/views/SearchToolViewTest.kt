@@ -8,12 +8,24 @@ import ai.kilocode.client.session.views.tool.GlobToolView
 import ai.kilocode.client.session.views.tool.ReadToolView
 import ai.kilocode.client.session.views.tool.SearchToolView
 import ai.kilocode.client.session.views.tool.ToolView
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.awt.Container
 import java.awt.Dimension
+import javax.swing.ScrollPaneConstants
 
 @Suppress("UnstableApiUsage")
 class SearchToolViewTest : BasePlatformTestCase() {
+    private val views = mutableListOf<SearchToolView>()
+
+    override fun tearDown() {
+        try {
+            views.forEach(Disposer::dispose)
+            views.clear()
+        } finally {
+            super.tearDown()
+        }
+    }
 
     fun `test header renders title pattern and include targets`() {
         val view = SearchToolView(tool().also {
@@ -46,7 +58,7 @@ class SearchToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test completed search starts collapsed and expands output`() {
-        val view = SearchToolView(tool().also { it.output = "src/A.kt:1:class A" })
+        val view = track(SearchToolView(tool().also { it.output = "src/A.kt:1:class A" }))
 
         assertTrue(view.hasToggle())
         assertFalse(view.isExpanded())
@@ -61,18 +73,24 @@ class SearchToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test search body is lazy and reused`() {
-        val view = SearchToolView(tool().also { it.output = "src/A.kt" })
+        val view = track(SearchToolView(tool().also { it.output = "src/A.kt" }))
 
         assertFalse(view.bodyCreated())
         view.toggle()
         val body = view.scrollComponent()
+        val editor = view.bodyEditor()
         assertNotNull(body)
+        assertNotNull(editor)
+        assertFalse(view.bodyWrap())
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, view.horizontalPolicy())
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, view.verticalPolicy())
 
         view.toggle()
         assertFalse(view.bodyVisible())
         view.toggle()
 
         assertSame(body, view.scrollComponent())
+        assertSame(editor, view.bodyEditor())
         assertTrue(view.bodyVisible())
     }
 
@@ -127,4 +145,9 @@ class SearchToolViewTest : BasePlatformTestCase() {
     }
 
     private fun tool() = Tool("p1", "grep", toolKind("grep")).also { it.state = ToolExecState.COMPLETED }
+
+    private fun track(view: SearchToolView): SearchToolView {
+        views.add(view)
+        return view
+    }
 }

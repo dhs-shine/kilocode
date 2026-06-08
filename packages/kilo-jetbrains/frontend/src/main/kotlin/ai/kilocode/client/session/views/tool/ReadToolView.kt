@@ -62,6 +62,9 @@ class ReadToolView(
     internal fun horizontalPolicy() = parts.scroll?.horizontalScrollBarPolicy ?: ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
     internal fun bodyMaxRows() = SessionUiStyle.View.Tool.BODY_LINES
     internal fun bodyFont() = parts.text?.font ?: style.transcriptFont
+    internal fun bodyCreated() = parts.bodyCreated()
+    internal fun bodyWrap() = parts.text?.lineWrap ?: false
+    internal fun bodyEditor() = parts.content?.editor
     internal fun linkVisible() = parts.link.isVisible
     internal fun linkText() = parts.label
     internal fun linkMarkup() = parts.link.text ?: ""

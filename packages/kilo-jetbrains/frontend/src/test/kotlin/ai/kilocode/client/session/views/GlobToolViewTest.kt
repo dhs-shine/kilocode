@@ -7,10 +7,22 @@ import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.session.views.tool.GlobToolView
 import ai.kilocode.client.session.views.tool.ReadToolView
 import ai.kilocode.client.session.views.tool.ToolView
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import javax.swing.ScrollPaneConstants
 
 @Suppress("UnstableApiUsage")
 class GlobToolViewTest : BasePlatformTestCase() {
+    private val views = mutableListOf<GlobToolView>()
+
+    override fun tearDown() {
+        try {
+            views.forEach(Disposer::dispose)
+            views.clear()
+        } finally {
+            super.tearDown()
+        }
+    }
 
     fun `test header renders title directory and pattern rows`() {
         val view = GlobToolView(tool().also {
@@ -34,7 +46,7 @@ class GlobToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test completed glob starts collapsed and expands output`() {
-        val view = GlobToolView(tool().also { it.output = "/repo/src/A.kt\n/repo/src/B.kt" })
+        val view = track(GlobToolView(tool().also { it.output = "/repo/src/A.kt\n/repo/src/B.kt" }))
 
         assertTrue(view.hasToggle())
         assertFalse(view.isExpanded())
@@ -49,18 +61,24 @@ class GlobToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test glob body is lazy and reused`() {
-        val view = GlobToolView(tool().also { it.output = "/repo/src/A.kt" })
+        val view = track(GlobToolView(tool().also { it.output = "/repo/src/A.kt" }))
 
         assertFalse(view.bodyCreated())
         view.toggle()
         val body = view.scrollComponent()
+        val editor = view.bodyEditor()
         assertNotNull(body)
+        assertNotNull(editor)
+        assertFalse(view.bodyWrap())
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, view.horizontalPolicy())
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, view.verticalPolicy())
 
         view.toggle()
         assertFalse(view.bodyVisible())
         view.toggle()
 
         assertSame(body, view.scrollComponent())
+        assertSame(editor, view.bodyEditor())
         assertTrue(view.bodyVisible())
     }
 
@@ -88,4 +106,9 @@ class GlobToolViewTest : BasePlatformTestCase() {
     }
 
     private fun tool() = Tool("p1", "glob", toolKind("glob")).also { it.state = ToolExecState.COMPLETED }
+
+    private fun track(view: GlobToolView): GlobToolView {
+        views.add(view)
+        return view
+    }
 }

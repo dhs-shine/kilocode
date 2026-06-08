@@ -8,6 +8,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.ui.UiStyle
+import com.intellij.openapi.util.Disposer
 import com.intellij.util.ui.JBUI
 import java.awt.Dimension
 import javax.swing.Icon
@@ -23,6 +24,7 @@ abstract class BaseSearchToolView(
     protected var item = tool
     private var style = SessionEditorStyle.current()
     private var registered = false
+    private var disposed = false
 
     protected abstract fun toolIcon(tool: Tool): Icon
     protected abstract fun toolTitle(tool: Tool): String
@@ -68,12 +70,16 @@ abstract class BaseSearchToolView(
     internal fun targetVisible(index: Int): Boolean = parts.targets.getOrNull(index)?.isVisible ?: false
     internal fun bodyVisible() = parts.scroll?.parent === this
     internal fun hasToggle() = arrow.isVisible
-    internal fun bodyFont() = parts.text?.font ?: style.transcriptFont
+    internal fun bodyFont() = parts.content?.font ?: style.editorFont
     internal fun titleFont() = parts.title.font
     internal fun targetFont(index: Int) = parts.targets.getOrNull(index)?.font ?: style.smallEditorFont
     internal fun stateFont() = parts.state.font
     internal fun bodyCreated() = parts.bodyCreated()
     internal fun scrollComponent() = parts.scroll
+    internal fun bodyEditor() = parts.content?.editor
+    internal fun horizontalPolicy() = parts.scroll?.horizontalScrollBarPolicy
+    internal fun verticalPolicy() = parts.scroll?.verticalScrollBarPolicy
+    internal fun bodyWrap() = parts.content?.lineWrap ?: false
     internal fun headerComponent() = parts.header
     internal fun centerComponent() = parts.center
     internal fun targetComponents() = parts.targets
@@ -102,7 +108,11 @@ abstract class BaseSearchToolView(
         changed = syncTargets() || changed
         changed = setText(parts.state, stateText(item)) || changed
         changed = setForeground(parts.state, color(item)) || changed
-        parts.text?.let { changed = setForeground(it, bodyColor()) || changed }
+        val body = parts.content
+        if (body != null && body.foreground != bodyColor()) {
+            body.foreground = bodyColor()
+            changed = true
+        }
         return changed
     }
 
@@ -119,30 +129,33 @@ abstract class BaseSearchToolView(
     }
 
     private fun syncBody(): Boolean {
-        val text = parts.text ?: return false
+        val body = parts.content ?: return false
         val value = plainBody(item)
-        if (text.text != value) {
-            text.text = value
-            text.caretPosition = 0
+        if (body.text != value) {
+            body.text = value
             return true
         }
         return false
     }
 
     private fun applyBodyStyle(): Boolean {
-        val text = parts.text ?: return false
-        if (!registered && selection != null && text.parent != null) {
-            registered = true
-            selection.register(text, this)
+        val body = parts.content ?: return false
+        if (!disposed) {
+            Disposer.register(this, body)
+            disposed = true
         }
-        return setFont(text, style.transcriptFont)
+        if (!registered && selection != null && parts.scroll?.parent != null) {
+            registered = true
+            body.register(selection, this)
+        }
+        return body.applyStyle(style)
     }
 
     private fun bodyColor() = if (item.state == ToolExecState.ERROR) UiStyle.Colors.errorLabelForeground() else UiStyle.Colors.fg()
 
     private fun bodyMaxHeight(): Int {
-        val text = parts.text ?: return 0
-        return text.getFontMetrics(text.font).height * SessionUiStyle.View.Tool.BODY_LINES +
+        val body = parts.content ?: return 0
+        return body.lineHeight() * SessionUiStyle.View.Tool.BODY_LINES +
             JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
     }
 

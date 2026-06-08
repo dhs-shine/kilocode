@@ -5,13 +5,22 @@ package ai.kilocode.client.session.views.tool
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
+import ai.kilocode.client.session.ui.selection.SessionSelection
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
+import ai.kilocode.log.KiloLog
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.fileTypes.PlainTextFileType
+import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.util.Disposer
+import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
@@ -30,6 +39,10 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
+private val LOG = KiloLog.create(ToolParts::class.java)
+
+enum class ToolBodyMode { EDITOR, TEXT }
+
 class ToolParts(
     val header: JPanel,
     val glyph: JBLabel,
@@ -43,13 +56,17 @@ class ToolParts(
     private val open: ((String) -> Unit)? = null,
     val extra: JBLabel? = null,
     val targets: List<JBLabel> = emptyList(),
+    private val mode: ToolBodyMode = ToolBodyMode.EDITOR,
 ) {
     var href: String? = null
     var label: String = ""
     private var body: ToolBody? = null
 
     val text: JBTextArea?
-        get() = body?.text
+        get() = body?.area
+
+    val content: ToolBody?
+        get() = body
 
     val scroll: JBScrollPane?
         get() = body?.scroll
@@ -66,12 +83,134 @@ class ToolParts(
     private fun body(tool: Tool): ToolBody {
         val item = body
         if (item != null) return item
-        val text = JBTextArea().apply {
+        val body = when (mode) {
+            ToolBodyMode.EDITOR -> ToolBody.editor(tool)
+            ToolBodyMode.TEXT -> ToolBody.text(tool)
+        }
+        return body.also { this.body = it }
+    }
+}
+
+class ToolBody private constructor(
+    val area: JBTextArea?,
+    val ed: EditorTextField?,
+    val scroll: JBScrollPane,
+    private val disposable: Disposable?,
+) : Disposable {
+    var text: String
+        get() = area?.text ?: ed?.text ?: ""
+        set(value) {
+            if (text == value) return
+            area?.text = value
+            ed?.text = value
+            caretStart()
+            size()
+        }
+
+    var font: Font
+        get() = area?.font ?: ed?.font ?: SessionEditorStyle.current().editorFont
+        set(value) {
+            area?.font = value
+            ed?.font = value
+            size()
+        }
+
+    var foreground: Color
+        get() = area?.foreground ?: ed?.foreground ?: UiStyle.Colors.fg()
+        set(value) {
+            area?.foreground = value
+            ed?.foreground = value
+        }
+
+    val editable: Boolean get() = area?.isEditable ?: false
+    val caretVisible: Boolean get() = area?.caret?.isVisible ?: false
+    val lineWrap: Boolean get() = area?.lineWrap ?: false
+    val editor: EditorTextField? get() = ed
+
+    fun caretStart() {
+        area?.caretPosition = 0
+        ed?.getEditor(false)?.caretModel?.moveToOffset(0)
+    }
+
+    fun applyStyle(style: SessionEditorStyle): Boolean {
+        val before = font
+        area?.font = style.transcriptFont
+        ed?.font = style.editorFont
+        ed?.getEditor(false)?.let(style::applyToEditor)
+        size()
+        return before != font
+    }
+
+    fun register(selection: SessionSelection, parent: Disposable) {
+        val field = ed
+        if (field != null) {
+            selection.register(field, parent)
+            return
+        }
+        area?.let { selection.register(it, parent) }
+    }
+
+    fun lineHeight(): Int = ed?.getEditor(false)?.lineHeight ?: scroll.viewport.view.getFontMetrics(font).height
+
+    override fun dispose() {
+        disposable?.let(Disposer::dispose)
+    }
+
+    private fun size() {
+        val view = scroll.viewport.view as? JComponent ?: return
+        val height = height(view)
+        val width = width(view)
+        view.preferredSize = Dimension(width, height)
+        view.minimumSize = Dimension(0, height)
+        view.maximumSize = Dimension(Int.MAX_VALUE, height)
+        val inset = scroll.viewportBorder?.getBorderInsets(scroll) ?: JBUI.emptyInsets()
+        val pane = height + scroll.insets.top + scroll.insets.bottom + inset.top + inset.bottom +
+            scroll.horizontalScrollBar.preferredSize.height
+        scroll.preferredSize = Dimension(0, pane)
+        scroll.minimumSize = Dimension(0, pane)
+        scroll.maximumSize = Dimension(Int.MAX_VALUE, pane)
+    }
+
+    private fun width(view: JComponent): Int {
+        val metrics = view.getFontMetrics(font)
+        return (text.lineSequence().maxOfOrNull { metrics.stringWidth(it) } ?: 0) +
+            JBUI.scale(SessionUiStyle.View.Code.WIDTH_PADDING)
+    }
+
+    private fun height(view: JComponent): Int {
+        ed?.ensureWillComputePreferredSize()
+        val rows = text.lineSequence().count().coerceAtLeast(SessionUiStyle.View.Code.MIN_ROWS)
+        return maxOf(view.preferredSize.height, lineHeight() * rows)
+    }
+
+    companion object {
+        fun editor(tool: Tool): ToolBody {
+            val disposable = Disposer.newDisposable("Tool body")
+            val body = runCatching {
+                val field = ToolField(preview(tool), SessionEditorStyle.current()).also { it.setDisposedWith(disposable) }
+                ToolBody(null, field, pane(field, true), disposable)
+            }.getOrElse { err ->
+                LOG.warn("kind=tool codeEditor=true failed message=${err.message}", err)
+                val area = area(tool, false)
+                ToolBody(area, null, pane(area, true), disposable)
+            }
+            body.size()
+            return body
+        }
+
+        fun text(tool: Tool): ToolBody {
+            val area = area(tool, true)
+            val body = ToolBody(area, null, pane(area, false), null)
+            body.size()
+            return body
+        }
+
+        private fun area(tool: Tool, wrap: Boolean) = JBTextArea().apply {
             isEditable = false
             caret.isVisible = false
             caret.isSelectionVisible = true
-            lineWrap = true
-            wrapStyleWord = true
+            lineWrap = wrap
+            wrapStyleWord = wrap
             foreground = if (tool.state == ToolExecState.ERROR) UiStyle.Colors.errorLabelForeground() else UiStyle.Colors.fg()
             background = SessionUiStyle.View.surface()
             border = JBUI.Borders.empty(
@@ -79,27 +218,60 @@ class ToolParts(
                 JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
             )
         }
-        val scroll = JBScrollPane(text).apply {
+
+        private fun pane(view: JComponent, scrolls: Boolean) = JBScrollPane(view).apply {
             border = SessionUiStyle.View.topOutline()
+            viewportBorder = JBUI.Borders.empty(
+                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
+            ).takeIf { scrolls }
             isOpaque = true
             background = SessionUiStyle.View.surface()
             viewport.background = SessionUiStyle.View.surface()
-            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            horizontalScrollBarPolicy = if (scrolls) {
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+            } else {
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            }
             verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
         }
-        return ToolBody(text, scroll).also { body = it }
     }
 }
 
-class ToolBody(
-    val text: JBTextArea,
-    val scroll: JBScrollPane,
-)
+private class ToolField(value: String, private var style: SessionEditorStyle) : EditorTextField(
+    EditorFactory.getInstance().createDocument(value.trimEnd('\n')),
+    ProjectManager.getInstance().defaultProject,
+    PlainTextFileType.INSTANCE,
+    true,
+    false,
+) {
+    init {
+        setFontInheritedFromLAF(false)
+        font = style.editorFont
+        addSettingsProvider { ed ->
+            style.applyToEditor(ed)
+            ed.setBorder(JBUI.Borders.empty())
+            ed.scrollPane.border = JBUI.Borders.empty()
+            ed.scrollPane.viewportBorder = JBUI.Borders.empty()
+            ed.backgroundColor = SessionUiStyle.View.surface()
+            ed.scrollPane.background = SessionUiStyle.View.surface()
+            ed.scrollPane.viewport.background = SessionUiStyle.View.surface()
+            ed.settings.isUseSoftWraps = false
+            ed.settings.isAdditionalPageAtBottom = false
+            ed.scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            ed.scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+        }
+    }
+}
 
 private const val SUB_CARD = "sub"
 private const val LINK_CARD = "link"
 
-internal fun toolParts(tool: Tool, openFile: ((String) -> Unit)? = null): ToolParts {
+internal fun toolParts(
+    tool: Tool,
+    openFile: ((String) -> Unit)? = null,
+    mode: ToolBodyMode = ToolBodyMode.TEXT,
+): ToolParts {
     lateinit var parts: ToolParts
     val glyph = JBLabel()
     val title = JBLabel()
@@ -132,7 +304,7 @@ internal fun toolParts(tool: Tool, openFile: ((String) -> Unit)? = null): ToolPa
         add(center, BorderLayout.CENTER)
         add(controls, BorderLayout.EAST)
     }
-    parts = ToolParts(header, glyph, title, sub, link, slot, state, center, controls, openFile)
+    parts = ToolParts(header, glyph, title, sub, link, slot, state, center, controls, openFile, mode = mode)
     return parts.also {
         controls.add(it.state)
     }
@@ -170,7 +342,7 @@ internal fun searchParts(count: Int): ToolParts {
         add(center, BorderLayout.CENTER)
         add(controls, BorderLayout.EAST)
     }
-    return ToolParts(header, glyph, title, sub, link, slot, state, center, controls, targets = targets).also {
+    return ToolParts(header, glyph, title, sub, link, slot, state, center, controls, targets = targets, mode = ToolBodyMode.EDITOR).also {
         controls.add(it.state)
     }
 }

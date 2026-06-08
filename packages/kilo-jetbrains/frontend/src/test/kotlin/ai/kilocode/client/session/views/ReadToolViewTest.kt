@@ -88,6 +88,9 @@ class ReadToolViewTest : BasePlatformTestCase() {
         assertFalse(view.isExpanded())
         assertFalse(view.bodyVisible())
         assertEquals("file contents", view.bodyText())
+        assertTrue(view.bodyCreated())
+        assertTrue(view.bodyWrap())
+        assertNull(view.bodyEditor())
         assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, view.horizontalPolicy())
 
         view.toggle()
