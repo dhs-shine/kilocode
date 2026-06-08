@@ -36,6 +36,8 @@ import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.log.ChatLogSummary
+import ai.kilocode.rpc.dto.PromptDto
+import ai.kilocode.rpc.dto.PromptPartDto
 import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
 import com.intellij.ide.BrowserUtil
@@ -295,7 +297,7 @@ class SessionUi(
 
         prompt = PromptPanel(
             project = project,
-            onSend = { text -> sendPrompt(text) },
+            onSend = { text, files -> sendPrompt(text, files) },
             onAbort = { controller.abort() },
         )
 
@@ -308,7 +310,10 @@ class SessionUi(
 
     private fun bindUi() {
         prompt.mode.onSelect = { item -> controller.selectAgent(item.id) }
-        prompt.model.onSelect = { item -> controller.selectModel(item.provider, item.id) }
+        prompt.model.onSelect = { item ->
+            prompt.setAttachmentEnabled(item.attachment)
+            controller.selectModel(item.provider, item.id)
+        }
         prompt.reasoning.onSelect = { item -> controller.selectVariant(item.id) }
         prompt.onReset = { controller.clearModelOverride() }
         prompt.onChange = { scroll.refresh() }
@@ -344,14 +349,16 @@ class SessionUi(
                             it.display,
                             it.provider,
                             it.providerName,
-                            it.recommendedIndex,
-                            it.free,
-                            it.variants,
-                        )
+                             it.recommendedIndex,
+                             it.free,
+                             it.variants,
+                             it.attachment,
+                         )
                     }
                     val selected =
                         m.model?.let { full -> items.firstOrNull { it.key == full }?.key }
                     prompt.model.setItems(items, selected)
+                    prompt.setAttachmentEnabled(items.firstOrNull { it.key == selected }?.attachment ?: true)
                     prompt.reasoning.setItems(m.variants.map { ReasoningPicker.Item(it, variantTitle(it)) }, m.variant)
                     prompt.setResetVisible(m.modelOverride)
                     prompt.setReady(m.isReady())
@@ -503,16 +510,20 @@ class SessionUi(
         }
     }
 
-    private fun sendPrompt(text: String) {
-        if (text.isBlank()) return
+    private fun sendPrompt(text: String, files: List<PromptPartDto>) {
+        if (text.isBlank() && files.isEmpty()) return
+        val parts = buildList {
+            text.takeIf { it.isNotBlank() }?.let { add(PromptPartDto(type = "text", text = it)) }
+            addAll(files)
+        }
         LOG.debug {
             val agent = controller.model.agent ?: "none"
             val model = controller.model.model ?: "none"
-            "${ChatLogSummary.prompt(text)} agent=$agent model=$model ready=${controller.ready}"
+            "${ChatLogSummary.prompt(PromptDto(parts = parts))} agent=$agent model=$model ready=${controller.ready}"
         }
         prompt.clear()
         val follow = scroll.atBottom()
-        controller.prompt(text)
+        controller.prompt(text, files)
         scroll.followBottom(follow)
     }
 

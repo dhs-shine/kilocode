@@ -6,6 +6,7 @@ import ai.kilocode.client.session.views.question.QuestionResultView
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.model.Compaction
 import ai.kilocode.client.session.model.Content
+import ai.kilocode.client.session.model.FileAttachment
 import ai.kilocode.client.session.model.Generic
 import ai.kilocode.client.session.model.Reasoning
 import ai.kilocode.client.session.model.StepFinish
@@ -41,6 +42,7 @@ object ViewFactory {
     ): PartView = when (content) {
         is Text -> TextView(content, openUrl = openUrl, selection = selection)
         is Reasoning -> ReasoningView(content, openUrl = openUrl, selection = selection)
+        is FileAttachment -> AttachmentView(content, openFile, openUrl)
         is Tool -> when {
             TodoWriteView.canRender(content) -> TodoWriteView(content)
             PlanExitView.canRender(content) -> PlanExitView(content, openFile, selection)
@@ -71,6 +73,7 @@ object ViewFactory {
         selection: SessionSelection? = null,
     ): PartView = when (content) {
         is Text -> PromptView(content, openUrl = openUrl, selection = selection)
+        is FileAttachment -> AttachmentView(content, openFile, openUrl)
         else -> create(content, openFile, openUrl, selection)
     }
 

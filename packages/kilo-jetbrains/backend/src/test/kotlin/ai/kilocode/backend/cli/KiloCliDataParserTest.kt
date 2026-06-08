@@ -163,6 +163,33 @@ class KiloCliDataParserTest {
         }
 
         @Test
+        fun `parseChatEvent - file part preserves metadata`() {
+            val data = globalEvent("""
+                "type": "message.part.updated",
+                "properties": {
+                    "sessionID": "ses_1",
+                    "part": {
+                        "id": "file_1",
+                        "sessionID": "ses_1",
+                        "messageID": "msg_1",
+                        "type": "file",
+                        "mime": "image/png",
+                        "url": "file:///tmp/a.png",
+                        "filename": "a.png"
+                    }
+                }
+            """)
+
+            val result = KiloCliDataParser.parseChatEvent("message.part.updated", data)
+            assertNotNull(result)
+            assertTrue(result is ChatEventDto.PartUpdated)
+            assertEquals("file", result.part.type)
+            assertEquals("image/png", result.part.mime)
+            assertEquals("file:///tmp/a.png", result.part.url)
+            assertEquals("a.png", result.part.filename)
+        }
+
+        @Test
         fun `parseChatEvent - read tool part preserves input metadata and time`() {
             val data = globalEvent("""
                 "type": "message.part.updated",
@@ -1368,6 +1395,48 @@ class KiloCliDataParserTest {
             val prompt = PromptDto(parts = listOf(PromptPartDto("text", "line1\nline2\t\"quoted\"")))
             val result = KiloCliDataParser.buildPromptJson(prompt)
             assertTrue(result.contains("""line1\nline2\t\"quoted\""""))
+        }
+
+        @Test
+        fun `buildPromptJson - mixed text and file parts`() {
+            val prompt = PromptDto(
+                parts = listOf(
+                    PromptPartDto(type = "text", text = "see this"),
+                    PromptPartDto(type = "file", mime = "image/png", url = "file:///tmp/a.png", filename = "a.png"),
+                )
+            )
+
+            val result = KiloCliDataParser.buildPromptJson(prompt)
+
+            assertEquals(
+                """{"parts":[{"type":"text","text":"see this"},{"type":"file","mime":"image/png","url":"file:///tmp/a.png","filename":"a.png"}]}""",
+                result,
+            )
+        }
+
+        @Test
+        fun `buildPromptJson - file only omits optional filename`() {
+            val prompt = PromptDto(
+                parts = listOf(PromptPartDto(type = "file", mime = "application/pdf", url = "file:///tmp/a.pdf"))
+            )
+
+            val result = KiloCliDataParser.buildPromptJson(prompt)
+
+            assertEquals(
+                """{"parts":[{"type":"file","mime":"application/pdf","url":"file:///tmp/a.pdf"}]}""",
+                result,
+            )
+        }
+
+        @Test
+        fun `buildPromptJson - escapes file metadata`() {
+            val prompt = PromptDto(
+                parts = listOf(PromptPartDto(type = "file", mime = "text/plain", url = "file:///tmp/a%20b.txt", filename = "a \"b\".txt"))
+            )
+
+            val result = KiloCliDataParser.buildPromptJson(prompt)
+
+            assertTrue(result.contains(""""filename":"a \"b\".txt""""), result)
         }
 
         // ---- buildSummarizeJson ----

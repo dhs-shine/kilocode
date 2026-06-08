@@ -24,6 +24,7 @@ import ai.kilocode.rpc.dto.PermissionReplyDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
 import ai.kilocode.rpc.dto.PartTimeDto
 import ai.kilocode.rpc.dto.PromptDto
+import ai.kilocode.rpc.dto.PromptPartDto
 import ai.kilocode.rpc.dto.QuestionInfoDto
 import ai.kilocode.rpc.dto.QuestionOptionDto
 import ai.kilocode.rpc.dto.QuestionReplyDto
@@ -370,7 +371,7 @@ object KiloCliDataParser {
      */
     fun buildPromptJson(prompt: PromptDto): String {
         val parts = prompt.parts.joinToString(",") { part ->
-            """{"type":"${part.type}","text":${escape(part.text)}}"""
+            buildPromptPartJson(part)
         }
         val sb = StringBuilder()
         sb.append("""{"parts":[$parts]""")
@@ -397,6 +398,18 @@ object KiloCliDataParser {
         }
         sb.append("}")
         return sb.toString()
+    }
+
+    private fun buildPromptPartJson(part: PromptPartDto): String {
+        val fields = mutableListOf("\"type\":${escape(part.type)}")
+        if (part.type == "file") {
+            part.mime?.let { fields += "\"mime\":${escape(it)}" }
+            part.url?.let { fields += "\"url\":${escape(it)}" }
+            part.filename?.let { fields += "\"filename\":${escape(it)}" }
+            return "{${fields.joinToString(",")}}"
+        }
+        fields += "\"text\":${escape(part.text.orEmpty())}"
+        return "{${fields.joinToString(",")}}"
     }
 
     /**
@@ -502,6 +515,9 @@ object KiloCliDataParser {
             messageID = obj.str("messageID") ?: "",
             type = obj.str("type") ?: "unknown",
             text = obj.str("text"),
+            mime = obj.str("mime"),
+            url = obj.str("url"),
+            filename = obj.str("filename"),
             tool = obj.str("tool"),
             callID = obj.str("callID"),
             state = state?.str("status"),

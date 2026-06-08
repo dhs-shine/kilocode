@@ -2,7 +2,10 @@ package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionState
+import ai.kilocode.client.session.ui.attachment.AttachmentCard
+import ai.kilocode.client.session.views.AttachmentView
 import ai.kilocode.client.session.views.TextView
+import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
@@ -10,6 +13,8 @@ import ai.kilocode.rpc.dto.PartDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import java.awt.Container
+import javax.swing.JButton
 
 /**
  * Integration test: mutate [SessionModel] directly on the EDT and verify
@@ -138,6 +143,28 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
         assertNull(gv.border)
     }
 
+    fun `test user file part renders as attachment view`() {
+        model.upsertMessage(msg("u1", "user"))
+        model.updateContent(
+            "u1",
+            PartDto(
+                id = "f1",
+                sessionID = "ses",
+                messageID = "u1",
+                type = "file",
+                mime = "image/png",
+                url = "file:///tmp/a.png",
+                filename = "a.png",
+            ),
+        )
+
+        val view = panel.findMessage("u1")!!.part("f1")
+        assertTrue(view is AttachmentView)
+        assertEquals("AttachmentView#f1:a.png", view!!.dumpLabel())
+        assertNotNull(find(view, AttachmentCard::class.java))
+        assertFalse(buttons(view).any { it.accessibleContext.accessibleName == KiloBundle.message("prompt.attachment.remove", "a.png") })
+    }
+
     // ------ silent part types ------
 
     fun `test step markers are not rendered in panel`() {
@@ -209,4 +236,25 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
     private fun toolPart(id: String, mid: String, tool: String, state: String) = PartDto(
         id = id, sessionID = "ses", messageID = mid, type = "tool", tool = tool, state = state,
     )
+
+    private fun <T : Any> find(root: java.awt.Component, type: Class<T>): T? {
+        if (type.isInstance(root)) return type.cast(root)
+        if (root is Container) {
+            for (child in root.components) {
+                val found = find(child, type)
+                if (found != null) return found
+            }
+        }
+        return null
+    }
+
+    private fun buttons(root: java.awt.Component): List<JButton> {
+        val out = mutableListOf<JButton>()
+        fun visit(node: java.awt.Component) {
+            if (node is JButton) out.add(node)
+            if (node is Container) node.components.forEach(::visit)
+        }
+        visit(root)
+        return out
+    }
 }

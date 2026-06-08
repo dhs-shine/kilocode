@@ -153,6 +153,31 @@ class SessionModelTest : BasePlatformTestCase() {
         assertTrue(p.done)
     }
 
+    fun `test updateContent file creates attachment content and updates metadata`() {
+        model.addMessage(msg("m1", "user"))
+        events.clear()
+
+        model.updateContent("m1", filePart("f1", "m1", "image/png", "file:///tmp/a.png", "a.png"))
+
+        val file = model.message("m1")!!.parts["f1"] as FileAttachment
+        assertEquals("image/png", file.mime)
+        assertEquals("file:///tmp/a.png", file.url)
+        assertEquals("a.png", file.filename)
+        assertEquals("ContentAdded m1/f1", events.single().toString())
+
+        model.updateContent("m1", filePart("f1", "m1", "application/pdf", "file:///tmp/b.pdf", "b.pdf"))
+
+        assertSame(file, model.message("m1")!!.parts["f1"])
+        assertEquals("application/pdf", file.mime)
+        assertEquals("file:///tmp/b.pdf", file.url)
+        assertEquals("b.pdf", file.filename)
+        assertTrue(events.any { it.toString() == "ContentUpdated m1/f1" })
+        assertModel("""
+            user#m1
+            file#f1 application/pdf b.pdf
+        """)
+    }
+
     fun `test updateContent tool creates Tool content and tracks state`() {
         model.addMessage(msg("m1", "assistant"))
 
@@ -848,12 +873,18 @@ class SessionModelTest : BasePlatformTestCase() {
         tokens: TokensDto? = null,
         todos: List<TodoDto> = emptyList(),
         todoView: TodoViewDto? = null,
+        mime: String? = null,
+        url: String? = null,
+        filename: String? = null,
     ) = PartDto(
         id = id,
         sessionID = "ses",
         messageID = mid,
         type = type,
         text = text,
+        mime = mime,
+        url = url,
+        filename = filename,
         tool = tool,
         state = state,
         title = title,
@@ -867,6 +898,15 @@ class SessionModelTest : BasePlatformTestCase() {
         reason = reason,
         cost = cost,
         tokens = tokens,
+    )
+
+    private fun filePart(id: String, mid: String, mime: String, url: String, filename: String) = part(
+        id = id,
+        mid = mid,
+        type = "file",
+        mime = mime,
+        url = url,
+        filename = filename,
     )
 
     private fun question(id: String) = Question(

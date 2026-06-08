@@ -2,6 +2,9 @@ package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.session.model.PromptAttachment
+import ai.kilocode.client.session.ui.attachment.AttachmentCard
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import com.intellij.icons.AllIcons
@@ -11,6 +14,7 @@ import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
 import com.intellij.util.ui.EmptyIcon
+import com.intellij.util.ui.JBUI
 import java.awt.Container
 import javax.swing.JButton
 import javax.swing.SwingUtilities
@@ -20,7 +24,7 @@ class PromptPanelTest : BasePlatformTestCase() {
 
     fun `test prompt input uses editor font settings`() {
         val style = SessionEditorStyle.current()
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val font = panel.inputFont()
 
         assertEquals(style.editorFamily, font.name)
@@ -29,13 +33,13 @@ class PromptPanelTest : BasePlatformTestCase() {
 
     fun `test prompt input uses editor background`() {
         val style = SessionEditorStyle.current()
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
 
         assertEquals(style.editorScheme.defaultBackground, panel.defaultFocusedComponent.background)
     }
 
     fun `test applyStyle updates prompt input and height`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val style = SessionEditorStyle.create(family = "Courier New", size = 26)
 
         panel.applyStyle(style)
@@ -46,7 +50,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt editor grows when lines are added`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val editor = panel.defaultFocusedComponent as EditorTextField
         val min = editor.preferredSize.height
 
@@ -56,7 +60,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt editor shrinks when lines are removed`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val editor = panel.defaultFocusedComponent as EditorTextField
         val min = editor.preferredSize.height
 
@@ -69,7 +73,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt editor shrinks after clear`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val editor = panel.defaultFocusedComponent as EditorTextField
         val min = editor.preferredSize.height
 
@@ -81,8 +85,60 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(min, editor.preferredSize.height)
     }
 
+    fun `test attachment only prompt can send`() {
+        var sent = false
+        val panel = PromptPanel(project, { text, files ->
+            sent = text.isBlank() && files.single().url == "file:///tmp/a.png"
+        }, {})
+        panel.setReady(true)
+
+        panel.addAttachmentForTest(PromptAttachment("a", "a.png", "image/png", "file:///tmp/a.png"))
+        panel.send()
+
+        assertTrue(sent)
+    }
+
+    fun `test clear removes attachments`() {
+        val panel = PromptPanel(project, { _, _ -> }, {})
+
+        panel.addAttachmentForTest(PromptAttachment("a", "a.txt", "text/plain", "file:///tmp/a.txt"))
+        assertEquals(1, panel.attachmentCountForTest())
+
+        panel.clear()
+
+        assertEquals(0, panel.attachmentCountForTest())
+    }
+
+    fun `test removed attachment can be added again`() {
+        val item = PromptAttachment("a", "a.txt", "text/plain", "file:///tmp/a.txt")
+        val panel = PromptPanel(project, { _, _ -> }, {})
+
+        panel.addAttachmentForTest(item)
+        attachmentRemoveButton(panel, item).doClick()
+        panel.addAttachmentForTest(item)
+
+        assertEquals(1, panel.attachmentCountForTest())
+    }
+
+    fun `test attachment card has visible remove button and metadata tooltip`() {
+        val item = PromptAttachment("a", "a.txt", "text/plain", "file:///tmp/a.txt")
+        val panel = PromptPanel(project, { _, _ -> }, {})
+
+        panel.addAttachmentForTest(item)
+
+        val button = attachmentRemoveButton(panel, item)
+        val card = attachmentCard(panel)
+
+        assertTrue(button.isVisible)
+        assertTrue(card.toolTipText.contains("a.txt"))
+        assertTrue(card.toolTipText.contains("text/plain"))
+        assertTrue(card.toolTipText.contains("file:///tmp/a.txt"))
+        assertEquals(JBUI.scale(SessionUiStyle.View.Attachment.CARD_WIDTH), card.preferredSize.width)
+        assertEquals(JBUI.scale(SessionUiStyle.View.Attachment.CARD_HEIGHT), card.preferredSize.height)
+    }
+
     fun `test reasoning picker hides when variants are empty`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
 
         panel.reasoning.setItems(emptyList())
 
@@ -90,7 +146,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test reasoning picker shows selected variant`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
 
         panel.reasoning.setItems(listOf(ReasoningPicker.Item("low", "Low"), ReasoningPicker.Item("high", "High")), "high")
 
@@ -114,7 +170,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test reset visibility can be toggled`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
 
         panel.setResetVisible(true)
 
@@ -122,7 +178,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt editor exposes send context`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val sink = TestSink()
 
         (panel.defaultFocusedComponent as UiDataProvider).uiDataSnapshot(sink)
@@ -131,7 +187,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt button exposes send context`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val sink = TestSink()
 
         (panel.buttonForTest() as UiDataProvider).uiDataSnapshot(sink)
@@ -140,7 +196,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt button switches between send and stop state`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
 
         assertEquals(KeymapUtil.createTooltipText("Send", "Kilo.SendPrompt"), panel.buttonForTest().toolTipText)
         assertFalse(panel.isStopEnabled)
@@ -152,7 +208,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test auto approve button toggles and updates tooltip`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val button = autoApproveButton(panel)
         var seen: Boolean? = null
         panel.onAutoApproveToggle = { seen = it }
@@ -183,7 +239,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test auto approve button sits next to send button`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val auto = autoApproveButton(panel)
         val send = panel.buttonForTest()
         val items = auto.parent.components.toList()
@@ -194,7 +250,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test pickers belong to rounded shell`() {
-        val panel = PromptPanel(project, {}, {})
+        val panel = PromptPanel(project, { _, _ -> }, {})
         val shell = panel.shellForTest()
 
         assertTrue(SwingUtilities.isDescendingFrom(panel.mode, shell))
@@ -210,6 +266,25 @@ class PromptPanelTest : BasePlatformTestCase() {
             val name = it.accessibleContext.accessibleName
             name == enable || name == disable
         }
+    }
+
+    private fun attachmentRemoveButton(panel: PromptPanel, item: PromptAttachment): JButton {
+        val name = KiloBundle.message("prompt.attachment.remove", item.name)
+        return buttons(panel).first { it.accessibleContext.accessibleName == name }
+    }
+
+    private fun attachmentCard(root: java.awt.Component): AttachmentCard {
+        fun visit(node: java.awt.Component): AttachmentCard? {
+            if (node is AttachmentCard) return node
+            if (node is Container) {
+                for (child in node.components) {
+                    val card = visit(child)
+                    if (card != null) return card
+                }
+            }
+            return null
+        }
+        return visit(root)!!
     }
 
     private fun buttons(root: java.awt.Component): List<JButton> {

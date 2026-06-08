@@ -14,6 +14,7 @@ import ai.kilocode.rpc.dto.PermissionFileDiffDto
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
 import ai.kilocode.rpc.dto.ProviderDto
+import ai.kilocode.rpc.dto.PromptPartDto
 import ai.kilocode.rpc.dto.QuestionInfoDto
 import ai.kilocode.rpc.dto.QuestionOptionDto
 import ai.kilocode.rpc.dto.QuestionReplyDto
@@ -43,6 +44,26 @@ class PromptLifecycleTest : SessionControllerTestBase() {
         assertEquals("user", event.properties["source"])
         assertEquals("false", event.properties["hasExistingSession"])
         assertEquals("short", event.properties["textLength"])
+    }
+
+    fun `test prompt sends text and file parts`() {
+        val (m, _, _) = prompted()
+        rpc.prompts.clear()
+
+        edt {
+            m.prompt(
+                "see",
+                listOf(PromptPartDto(type = "file", mime = "image/png", url = "file:///tmp/a.png", filename = "a.png")),
+            )
+        }
+        flush()
+
+        val prompt = rpc.prompts.single().third
+        assertEquals("text", prompt.parts[0].type)
+        assertEquals("see", prompt.parts[0].text)
+        assertEquals("file", prompt.parts[1].type)
+        assertEquals("image/png", prompt.parts[1].mime)
+        assertEquals("file:///tmp/a.png", prompt.parts[1].url)
     }
 
     fun `test PermissionAsked moves state to AwaitingPermission`() {

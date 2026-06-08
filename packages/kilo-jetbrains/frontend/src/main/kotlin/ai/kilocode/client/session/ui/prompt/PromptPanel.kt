@@ -4,6 +4,8 @@ import ai.kilocode.client.actions.SendPromptAction
 import ai.kilocode.client.actions.StopSessionAction
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.ReasoningPicker
+import ai.kilocode.client.session.model.PromptAttachment
+import ai.kilocode.client.session.model.PromptAttachmentExtractor
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
@@ -15,8 +17,12 @@ import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.iconButton
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
+import ai.kilocode.rpc.dto.PromptPartDto
 import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
+import com.intellij.ide.dnd.DnDEvent
+import com.intellij.ide.dnd.DnDSupport
+import com.intellij.ide.dnd.FileCopyPasteUtil
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
@@ -63,7 +69,7 @@ import javax.swing.ScrollPaneConstants
  */
 class PromptPanel(
     private val project: Project,
-    private val onSend: (String) -> Unit,
+    private val onSend: (String, List<PromptPartDto>) -> Unit,
     private val onAbort: () -> Unit,
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext {
 
@@ -85,8 +91,11 @@ class PromptPanel(
     var onAutoApproveToggle: (Boolean) -> Unit = {}
     private var style = SessionEditorStyle.current()
     private val shell = PromptShell()
+    private val attachments = mutableListOf<PromptAttachment>()
+    private val strip = PromptAttachmentStrip(project) { removeAttachment(it) }
     private var bus: MessageBusConnection? = null
     private var autoApprove = false
+    private var attachment = true
 
     private val editor = PromptEditorTextField(project, this).apply {
         border = JBUI.Borders.empty()
@@ -106,6 +115,8 @@ class PromptPanel(
             ed.settings.isAdditionalPageAtBottom = false
             ed.scrollPane.horizontalScrollBarPolicy =
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            installDnD(ed.contentComponent, "editor")
+            installDnD(ed.scrollPane, "scroll")
             ed.contentComponent.addFocusListener(object : FocusAdapter() {
                 override fun focusGained(e: FocusEvent) {
                     shell.repaint()
@@ -151,7 +162,7 @@ class PromptPanel(
     private var ready = false
 
     override val isSendEnabled: Boolean
-        get() = ready && !busy && text().isNotEmpty()
+        get() = ready && !busy && (text().isNotEmpty() || attachments.isNotEmpty())
 
     override val isStopEnabled: Boolean
         get() = busy
@@ -175,6 +186,7 @@ class PromptPanel(
                 onChange()
             }
         })
+        shell.add(strip, BorderLayout.NORTH)
         shell.add(editor, BorderLayout.CENTER)
 
         val bar = BorderLayoutPanel().apply {
@@ -195,6 +207,7 @@ class PromptPanel(
         bar.add(button)
         shell.add(bar, BorderLayout.SOUTH)
         add(shell, BorderLayout.CENTER)
+        installDnD(shell, "shell")
         syncTooltip()
         syncAutoApprove()
     }
@@ -202,6 +215,11 @@ class PromptPanel(
     @RequiresEdt
     fun setReady(value: Boolean) {
         ready = value
+    }
+
+    @RequiresEdt
+    fun setAttachmentEnabled(value: Boolean) {
+        attachment = value
     }
 
     @RequiresEdt
@@ -249,6 +267,8 @@ class PromptPanel(
 
     internal fun buttonForTest(): JButton = button
 
+    internal fun attachmentCountForTest(): Int = attachments.size
+
     internal val defaultFocusedComponent: JComponent get() = editor
 
     @RequiresEdt
@@ -264,7 +284,14 @@ class PromptPanel(
     @RequiresEdt
     fun clear() {
         editor.text = ""
+        attachments.clear()
+        strip.clear()
         syncEditorHeight()
+    }
+
+    @RequiresEdt
+    fun addAttachmentForTest(item: PromptAttachment) {
+        addAttachment(item)
     }
 
     @RequiresEdt
@@ -287,10 +314,95 @@ class PromptPanel(
     private fun submit(src: String) {
         if (!isSendEnabled) return
         val txt = text()
-        LOG.debug { "${ChatLogSummary.prompt(txt)} src=$src busy=$busy" }
-        if (txt.isNotEmpty()) {
-            onSend(txt)
+        val files = attachments.map { it.part() }
+        LOG.debug { "${ChatLogSummary.prompt(promptDto(txt, files))} src=$src busy=$busy" }
+        onSend(txt, files)
+    }
+
+    @RequiresEdt
+    private fun addAttachment(item: PromptAttachment) {
+        if (!attachment && PromptAttachmentExtractor.media(item.mime)) {
+            LOG.debug { "kind=prompt-attachment add name=${item.name} mime=${item.mime} blocked=unsupported-model" }
+            notify(KiloBundle.message("prompt.attachment.unsupported.model"))
+            return
         }
+        if (attachments.any { it.id == item.id }) {
+            LOG.debug { "kind=prompt-attachment add name=${item.name} mime=${item.mime} blocked=duplicate" }
+            return
+        }
+        attachments += item
+        strip.add(item)
+        LOG.debug { "kind=prompt-attachment add name=${item.name} mime=${item.mime} count=${attachments.size}" }
+        onChange()
+    }
+
+    @RequiresEdt
+    private fun removeAttachment(item: PromptAttachment) {
+        if (!attachments.removeIf { it.id == item.id }) return
+        strip.remove(item)
+        onChange()
+    }
+
+    private fun promptDto(text: String, files: List<PromptPartDto>) = ai.kilocode.rpc.dto.PromptDto(
+        parts = buildList {
+            text.takeIf { it.isNotBlank() }?.let { add(PromptPartDto(type = "text", text = it)) }
+            addAll(files)
+        }
+    )
+
+    private fun installDnD(target: JComponent, area: String) {
+        LOG.debug { "kind=prompt-dnd install area=$area component=${target.javaClass.name}" }
+        DnDSupport.createBuilder(target)
+            .enableAsNativeTarget()
+            .setTargetChecker { event ->
+                if (!FileCopyPasteUtil.isFileListFlavorAvailable(event)) {
+                    LOG.debug { "kind=prompt-dnd check area=$area accept=false flavor=false" }
+                    return@setTargetChecker true
+                }
+                event.setDropPossible(true)
+                LOG.debug { "kind=prompt-dnd check area=$area accept=true flavor=true" }
+                false
+            }
+            .setDropHandlerWithResult { event ->
+                val start = System.nanoTime()
+                val files = dropFiles(event)
+                val ms = elapsedMs(start)
+                LOG.debug { "kind=prompt-dnd drop area=$area files=${files.size} extractMs=$ms queued=${files.isNotEmpty()}" }
+                if (files.isEmpty()) return@setDropHandlerWithResult false
+                processDrop(files, area, ms)
+                true
+            }
+            .install()
+    }
+
+    private fun processDrop(files: List<java.io.File>, area: String, dropMs: Long) {
+        ApplicationManager.getApplication().executeOnPooledThread {
+            val start = System.nanoTime()
+            try {
+                val items = PromptAttachmentExtractor.files(files)
+                val ms = elapsedMs(start)
+                LOG.debug { "kind=prompt-dnd extract area=$area files=${files.size} attachments=${items.size} extractMs=$ms dropMs=$dropMs" }
+                if (items.isEmpty()) return@executeOnPooledThread
+                ApplicationManager.getApplication().invokeLater {
+                    if (project.isDisposed || !isDisplayable) return@invokeLater
+                    LOG.debug { "kind=prompt-dnd attach area=$area files=${files.size} attachments=${items.size} extractMs=$ms dropMs=$dropMs" }
+                    items.forEach(::addAttachment)
+                }
+            } catch (e: Exception) {
+                LOG.warn("kind=prompt-dnd extract area=$area files=${files.size} failed message=${e.message}", e)
+            }
+        }
+    }
+
+    private fun dropFiles(event: DnDEvent): List<java.io.File> {
+        if (!FileCopyPasteUtil.isFileListFlavorAvailable(event)) return emptyList()
+        return FileCopyPasteUtil.getFileListFromAttachedObject(event.attachedObject).orEmpty()
+    }
+
+    private fun elapsedMs(start: Long) = (System.nanoTime() - start) / 1_000_000
+
+    private fun notify(text: String) {
+        com.intellij.notification.Notification("Kilo Code", text, com.intellij.notification.NotificationType.WARNING).notify(project)
     }
 
     @RequiresEdt

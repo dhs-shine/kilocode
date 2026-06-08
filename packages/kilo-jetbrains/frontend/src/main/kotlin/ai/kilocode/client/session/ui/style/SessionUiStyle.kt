@@ -71,6 +71,15 @@ object SessionUiStyle {
             const val SHELL_HORIZONTAL_PADDING = 8
         }
 
+        /** Attachment preview card geometry. */
+        object Attachment {
+            const val CARD_WIDTH = 180
+            const val CARD_HEIGHT = 132
+            const val PREVIEW_HEIGHT = 84
+            const val CLOSE_SIZE = 24
+            const val CORNER_ARC = 8
+        }
+
         /** Reasoning block preview sizing. */
         object Reasoning {
             const val BODY_LINES = 5
