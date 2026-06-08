@@ -211,6 +211,10 @@ jobs:
     name: Visual Regression (kilo-vscode webview)
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
+    # kilocode_change start
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    # kilocode_change end
 
     steps:
       - name: Checkout (internal)
