@@ -17,8 +17,11 @@ export function define<Type extends string, Properties extends Schema.Top>(
 }
 
 export function effectPayloads() {
+  // kilocode_change start - keep generated schemas stable across module evaluation orders
   return registry
     .entries()
+    .toArray()
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([type, def]) =>
       Schema.Struct({
         id: Schema.String,
@@ -26,7 +29,7 @@ export function effectPayloads() {
         properties: def.properties,
       }).annotate({ identifier: `Event.${type}` }),
     )
-    .toArray()
+  // kilocode_change end
 }
 
 export * as BusEvent from "./bus-event"

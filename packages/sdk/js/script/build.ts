@@ -9,14 +9,6 @@ import path from "path"
 
 import { createClient } from "@hey-api/openapi-ts"
 
-// kilocode_change start - prevent runtime-dependent generated SDK ordering
-const pkg = await Bun.file(path.resolve(dir, "../../../package.json")).json()
-const manager = pkg.packageManager ?? ""
-const version = manager.startsWith("bun@") ? manager.slice(4) : ""
-if (!version) throw new Error("Root packageManager must specify bun@<version>")
-if (Bun.version !== version) throw new Error(`SDK generation requires Bun ${version}, but is running Bun ${Bun.version}`)
-// kilocode_change end
-
 const opencode = path.resolve(dir, "../../opencode")
 
 await $`bun dev generate > ${dir}/openapi.json`.cwd(opencode)
