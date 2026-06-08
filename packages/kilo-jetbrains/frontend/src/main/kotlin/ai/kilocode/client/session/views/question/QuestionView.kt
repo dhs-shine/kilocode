@@ -94,7 +94,7 @@ class QuestionView(
     }
     private val topPanel = JPanel(BorderLayout()).apply {
         isOpaque = false
-        border = JBUI.Borders.emptyBottom(UiStyle.Gap.lg())
+        border = JBUI.Borders.empty()
         alignmentX = Component.LEFT_ALIGNMENT
     }
     private val body = JPanel().apply {
@@ -207,6 +207,12 @@ class QuestionView(
         summary.isVisible = total > 1
         nav.isVisible = total > 1
         topPanel.isVisible = total > 1
+        if (total > 1) {
+            topPanel.border = JBUI.Borders.empty(0, 0, UiStyle.Gap.sm(), 0)
+            card.setSpacing(UiStyle.Gap.sm(), UiStyle.Gap.pad())
+            return
+        }
+        card.setSpacing(UiStyle.Gap.xl(), UiStyle.Gap.pad())
     }
 
     @RequiresEdt
