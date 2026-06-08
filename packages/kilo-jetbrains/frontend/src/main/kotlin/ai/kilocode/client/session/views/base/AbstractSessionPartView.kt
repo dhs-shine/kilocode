@@ -65,7 +65,7 @@ abstract class AbstractSessionPartView(
 
     fun toggle() {
         if (!expandable || !arrow.isVisible) return
-        val changed = if (isExpanded()) collapse() else expand()
+        val changed = toggleLocal()
         if (!changed) return
         syncArrow()
         refresh()
@@ -88,6 +88,15 @@ abstract class AbstractSessionPartView(
     protected fun hasBody(): Boolean = body != null
 
     protected fun bodyComponent(): JComponent = body()
+
+    private fun toggleLocal(): Boolean {
+        val fn = resize ?: return toggleBody()
+        val expanded = isExpanded()
+        fn(this) { toggleBody() }
+        return expanded != isExpanded()
+    }
+
+    private fun toggleBody(): Boolean = if (isExpanded()) collapse() else expand()
 
     fun syncExpandable(expandable: Boolean): Boolean {
         val active = this.expandable && expandable

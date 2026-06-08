@@ -6,6 +6,7 @@ import ai.kilocode.client.session.model.toolKind
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.question.QuestionResultView
+import ai.kilocode.client.session.views.tool.ToolView
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.awt.Color
 import java.awt.Component

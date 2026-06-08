@@ -4,6 +4,7 @@ import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import com.intellij.openapi.Disposable
+import javax.swing.JComponent
 import javax.swing.JPanel
 
 /**
@@ -19,6 +20,8 @@ abstract class PartView : JPanel(), Disposable, SessionEditorStyleTarget {
 
     /** Stable [Content.id] this renderer was created for. */
     abstract val contentId: String
+
+    var resize: ((JComponent, () -> Unit) -> Unit)? = null
 
     /**
      * Apply a full content update — replace, not append.

@@ -19,6 +19,7 @@ import com.intellij.util.ui.JBUI
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
+import javax.swing.JComponent
 
 /**
  * A single message container inside a [TurnView].
@@ -37,6 +38,7 @@ class MessageView(
     private var style: SessionEditorStyle = SessionEditorStyle.current(),
     private val openUrl: (String) -> Unit = {},
     private val selection: SessionSelection? = null,
+    private val resize: ((JComponent, () -> Unit) -> Unit)? = null,
 ) : ai.kilocode.client.session.ui.SessionLayoutPanel(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
 ), Disposable, SessionEditorStyleTarget, SessionView {
@@ -128,6 +130,7 @@ class MessageView(
             }
         }
         val view = view(content)
+        view.resize = resize
         view.applyStyle(style)
         parts[content.id] = view
         add(view)
@@ -157,6 +160,7 @@ class MessageView(
         remove(existing)
         Disposer.dispose(existing)
         val view = view(content)
+        view.resize = resize
         view.applyStyle(style)
         parts[content.id] = view
         add(view, at)

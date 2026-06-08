@@ -140,6 +140,33 @@ internal class SessionScroll(
     }
 
     @RequiresEdt
+    fun preserve(anchor: JComponent, action: () -> Unit) {
+        if (component.viewport.view !== messages) {
+            action()
+            return
+        }
+        val pos = SwingUtilities.convertPoint(anchor, Point(0, 0), messages)
+        val delta = pos.y - component.viewport.viewPosition.y
+        seq++
+        stable = -1
+        user = false
+        auto = true
+        try {
+            action()
+            layoutScroll()
+            val next = SwingUtilities.convertPoint(anchor, Point(0, 0), messages)
+            val y = (next.y - delta).coerceIn(0, bottom())
+            component.viewport.viewPosition = Point(0, y)
+            bar.value = y
+        } finally {
+            auto = false
+        }
+        tail = atBottom()
+        syncValue()
+        updateJump()
+    }
+
+    @RequiresEdt
     fun openBottom(done: () -> Unit) {
         opening = true
         stable = -1

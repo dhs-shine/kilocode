@@ -122,13 +122,17 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
     }
 
     fun toggle() {
+        resize?.invoke(this) { toggleBody() } ?: toggleBody()
+        syncArrow()
+        refresh()
+    }
+
+    private fun toggleBody() {
         if (isExpanded()) {
             pane?.let { root.remove(it) }
         } else {
             root.add(body(), BorderLayout.CENTER)
         }
-        syncArrow()
-        refresh()
     }
 
     fun isExpanded(): Boolean = pane?.parent === root

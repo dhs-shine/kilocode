@@ -16,6 +16,7 @@ import ai.kilocode.client.session.views.TurnView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.ui.JBUI
+import javax.swing.JComponent
 
 /**
  * Scrollable transcript panel that maps the model's turn grouping to
@@ -51,6 +52,7 @@ class SessionMessageListPanel(
     private val openFile: (String) -> Unit,
     private val openUrl: (String) -> Unit = {},
     private val selection: SessionSelection? = null,
+    private val resize: ((JComponent, () -> Unit) -> Unit)? = null,
 ) : SessionLayoutPanel(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
     JBUI.insets(
@@ -177,7 +179,7 @@ class SessionMessageListPanel(
     // ------ private event handlers ------
 
     private fun onTurnAdded(turn: ai.kilocode.client.session.model.Turn) {
-        val tv = TurnView(turn.id, openFile, style, openUrl, selection)
+        val tv = TurnView(turn.id, openFile, style, openUrl, selection, resize)
         turnViews[turn.id] = tv
         for (msgId in turn.messageIds) {
             val msg = model.message(msgId) ?: continue
@@ -233,7 +235,7 @@ class SessionMessageListPanel(
         removeAll()
 
         for (turn in model.turns()) {
-            val tv = TurnView(turn.id, openFile, style, openUrl, selection)
+            val tv = TurnView(turn.id, openFile, style, openUrl, selection, resize)
             turnViews[turn.id] = tv
             for (msgId in turn.messageIds) {
                 val msg = model.message(msgId) ?: continue

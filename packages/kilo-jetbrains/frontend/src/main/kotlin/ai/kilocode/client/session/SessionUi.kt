@@ -287,7 +287,17 @@ class SessionUi(
             dismiss = { controller.dismissLoginRequired() },
             selection = selection,
         )
-        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login, ::openFile, ::openUrl, selection)
+        messageBody = SessionMessageListPanel(
+            controller.model,
+            this,
+            question,
+            permission,
+            login,
+            ::openFile,
+            ::openUrl,
+            selection,
+            resize = { anchor, fn -> scroll.preserve(anchor, fn) },
+        )
         header = SessionHeaderPanel(controller, this)
 
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)

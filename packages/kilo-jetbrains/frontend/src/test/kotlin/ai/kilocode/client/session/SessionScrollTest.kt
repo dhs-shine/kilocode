@@ -4,24 +4,30 @@ import ai.kilocode.client.session.ui.SessionMessageListPanel
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.MessageErrorDto
+import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
+import ai.kilocode.rpc.dto.PartDto
 import ai.kilocode.rpc.dto.QuestionInfoDto
 import ai.kilocode.rpc.dto.QuestionOptionDto
 import ai.kilocode.rpc.dto.QuestionRequestDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.ToolRefDto
 import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.plugin.KiloBundle
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBRadioButton
 import com.intellij.util.ui.JBUI
 import java.awt.Container
+import java.awt.Point
 import javax.swing.AbstractButton
 import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.Scrollable
 import javax.swing.SwingConstants
 import javax.swing.JTextArea
+import javax.swing.SwingUtilities
 import kotlinx.coroutines.CompletableDeferred
 
 @Suppress("UnstableApiUsage")
@@ -219,6 +225,51 @@ class SessionScrollTest : SessionUiTestBase() {
         drainScroll()
 
         assertEquals(value, bar.value)
+    }
+
+    fun `test expanding tool at bottom preserves clicked header position`() {
+        val mid = "tool_expand_bottom"
+        val pid = "tool_expand_bottom_part"
+        rpc.history.addAll(history(23) + toolHistory(mid, pid) + historyRange(1, start = 23))
+        ui = newUi(id = "ses_test")
+        settle()
+        drainScroll()
+        val bar = scrollBar()
+        setBottom(bar)
+        drainScroll()
+        val view = toolView(mid, pid)
+        assertFalse(view.bodyVisible())
+        val y = visibleY(view)
+        val value = bar.value
+
+        view.toggle()
+        drainScroll()
+
+        assertTrue(view.bodyVisible())
+        assertEquals(y, visibleY(view))
+        assertEquals(value, bar.value)
+    }
+
+    fun `test expanding tool in middle preserves clicked header position`() {
+        val mid = "tool_expand_middle"
+        val pid = "tool_expand_middle_part"
+        rpc.history.addAll(history(12) + toolHistory(mid, pid) + historyRange(12, start = 12))
+        ui = newUi(id = "ses_test")
+        settle()
+        drainScroll()
+        val bar = scrollBar()
+        val view = toolView(mid, pid)
+        val top = SwingUtilities.convertPoint(view, Point(0, 0), scrollView()).y
+        setValue(bar, top - 80)
+        drainScroll()
+        val y = visibleY(view)
+
+        view.toggle()
+        drainScroll()
+
+        assertTrue(view.bodyVisible())
+        assertEquals(y, visibleY(view))
+        assertTrue(jumpButton().isVisible)
     }
 
     fun `test long prompt message follows when transcript is at bottom`() {
@@ -874,6 +925,15 @@ class SessionScrollTest : SessionUiTestBase() {
     private inline fun <reified T> option(label: String): T where T : AbstractButton =
         findAll<T>(ui).first { it.actionCommand == label }
 
+    private fun toolView(mid: String, pid: String): ToolView {
+        val messages = find<SessionMessageListPanel>(ui)
+        return messages.findMessage(mid)?.part(pid) as? ToolView
+            ?: error("missing tool $mid/$pid\n${messages.dumpDetailed()}")
+    }
+
+    private fun visibleY(component: JComponent): Int =
+        SwingUtilities.convertPoint(component, Point(0, 0), scrollComponent()).y
+
     private inline fun <reified T> findAll(root: Container = ui): List<T> = findAll(root, T::class.java)
 
     private fun <T> findAll(root: Container, cls: Class<T>): List<T> {
@@ -970,4 +1030,27 @@ class SessionScrollTest : SessionUiTestBase() {
         ),
         tool = ToolRefDto("msg1", "call1"),
     )
+
+    private fun toolPart(id: String, mid: String) = PartDto(
+        id = id,
+        sessionID = "ses_test",
+        messageID = mid,
+        type = "tool",
+        tool = "bash",
+        callID = "call_$id",
+        state = "completed",
+        title = "print output",
+        output = "output line\n".repeat(160),
+    )
+
+    private fun toolHistory(mid: String, pid: String) = MessageWithPartsDto(
+        message(mid).copy(role = "assistant"),
+        listOf(toolPart(pid, mid)),
+    )
+
+    private fun historyRange(count: Int, start: Int) = List(count) { offset ->
+        val i = start + offset
+        val id = "hist_range_$i"
+        MessageWithPartsDto(message(id), listOf(part("hist_range_part_$i", id, "text", text(i))))
+    }
 }
