@@ -95,6 +95,22 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
         assertTrue(tv is ai.kilocode.client.session.views.ReadToolView)
     }
 
+    fun `test glob tool renders as GlobToolView`() {
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", toolPart("t1", "a1", "glob", "completed"))
+
+        val tv = panel.findMessage("a1")!!.part("t1")
+        assertTrue(tv is ai.kilocode.client.session.views.GlobToolView)
+    }
+
+    fun `test grep tool renders as SearchToolView`() {
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", toolPart("t1", "a1", "grep", "completed"))
+
+        val tv = panel.findMessage("a1")!!.part("t1")
+        assertTrue(tv is ai.kilocode.client.session.views.SearchToolView)
+    }
+
     // ------ multiple turns update correctly ------
 
     fun `test content goes to correct turn when multiple turns exist`() {

@@ -51,10 +51,18 @@ open class Stack(
     private val mgr: Layout
         get() = getLayout() as Layout
 
+    internal fun fit(): Stack {
+        mgr.fit = true
+        revalidate()
+        return this
+    }
+
     private class Layout(
         private val axis: StackAxis,
         private val gap: Int,
     ) : LayoutManager2 {
+
+        var fit = false
 
         private val entries = mutableListOf<Entry>()
 
@@ -83,6 +91,10 @@ open class Stack(
             val ins = parent.insets
             val w = maxOf(0, parent.width - ins.left - ins.right)
             val h = maxOf(0, parent.height - ins.top - ins.bottom)
+            if (axis == StackAxis.HORIZONTAL && fit) {
+                fit(parent, ins.left, ins.top, w, h)
+                return
+            }
             var x = ins.left
             var y = ins.top
             var seen = false
@@ -129,6 +141,53 @@ open class Stack(
                     }
                 }
             }
+        }
+
+        private fun fit(parent: Container, left: Int, top: Int, w: Int, h: Int) {
+            val items = children(parent, h)
+            val gap = items.sumOf { it.gap }
+            val total = items.sumOf { it.width } + gap
+            val widths = if (total <= w) {
+                items.map { it.width }
+            } else {
+                val space = maxOf(0, w - gap)
+                val base = if (items.isEmpty()) 0 else space / items.size
+                val extra = if (items.isEmpty()) 0 else space % items.size
+                items.mapIndexed { index, _ -> base + if (index < extra) 1 else 0 }
+            }
+            var x = left
+            items.forEachIndexed { index, item ->
+                x += item.gap
+                item.comp.setBounds(x, top, widths[index], h)
+                x += widths[index]
+            }
+        }
+
+        private fun children(parent: Container, h: Int): List<Item> {
+            val items = mutableListOf<Item>()
+            var seen = false
+            var ready = false
+            var pending: Int? = null
+            for (entry in entries) {
+                when (entry) {
+                    is Entry.Gap -> if (ready) pending = safe(pending ?: 0, entry.size)
+                    is Entry.Child -> {
+                        val space = pending
+                        pending = null
+                        ready = false
+                        if (entry.comp.isVisible) {
+                            entry.comp.setSize(entry.comp.width.coerceAtLeast(1), h)
+                            val pref = entry.comp.preferredSize
+                            val min = entry.comp.minimumSize
+                            val max = entry.comp.maximumSize
+                            items.add(Item(entry.comp, if (seen) space ?: gap else 0, bound(pref.width, min.width, max.width)))
+                            seen = true
+                            ready = true
+                        }
+                    }
+                }
+            }
+            return items
         }
 
         override fun minimumLayoutSize(parent: Container) = size(parent, Size.MIN)
@@ -204,6 +263,8 @@ open class Stack(
             data class Child(val comp: Component) : Entry
             data class Gap(val size: Int) : Entry
         }
+
+        private data class Item(val comp: Component, val gap: Int, val width: Int)
     }
 
     private enum class Size { MIN, PREF, MAX }
@@ -211,6 +272,7 @@ open class Stack(
     companion object {
         fun vertical(gap: Int = 0) = Stack(StackAxis.VERTICAL, gap)
         fun horizontal(gap: Int = 0) = Stack(StackAxis.HORIZONTAL, gap)
+        fun fitHorizontal(gap: Int = 0) = Stack(StackAxis.HORIZONTAL, gap).fit()
         fun verticalFiller(size: Int): Component = filler(StackAxis.VERTICAL, size)
         fun horizontalFiller(size: Int): Component = filler(StackAxis.HORIZONTAL, size)
     }

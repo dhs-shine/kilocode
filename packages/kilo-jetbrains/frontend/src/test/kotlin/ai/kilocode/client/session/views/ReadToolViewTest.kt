@@ -95,8 +95,8 @@ class ReadToolViewTest : BasePlatformTestCase() {
 
     fun `test view factory routes read kind tools to read tool view`() {
         assertTrue(ViewFactory.create(tool(), openFile = {}) is ReadToolView)
-        assertTrue(ViewFactory.create(Tool("p2", "grep", toolKind("grep")), openFile = {}) is ReadToolView)
-        assertTrue(ViewFactory.create(Tool("p3", "glob", toolKind("glob")), openFile = {}) is ReadToolView)
+        assertTrue(ViewFactory.create(Tool("p2", "grep", toolKind("grep")), openFile = {}) is SearchToolView)
+        assertTrue(ViewFactory.create(Tool("p3", "glob", toolKind("glob")), openFile = {}) is GlobToolView)
     }
 
     fun `test canRender matches read kind tools only`() {
