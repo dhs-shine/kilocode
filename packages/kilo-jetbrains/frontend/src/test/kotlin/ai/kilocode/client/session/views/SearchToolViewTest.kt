@@ -49,6 +49,38 @@ class SearchToolViewTest : BasePlatformTestCase() {
         assertEquals(listOf("/repo/src", "pattern=TODO", "include=*.kt"), view.targetTexts())
     }
 
+    fun `test repo path displays relative search target`() {
+        val view = SearchToolView(tool().also {
+            it.input = mapOf("path" to "/repo/src", "pattern" to "TODO", "include" to "*.kt")
+        }, repo = "/repo")
+
+        assertEquals(listOf("src", "pattern=TODO", "include=*.kt"), view.targetTexts())
+    }
+
+    fun `test repo root search path is hidden`() {
+        val exact = SearchToolView(tool().also {
+            it.input = mapOf("path" to "/repo", "pattern" to "TODO", "include" to "*.kt")
+        }, repo = "/repo")
+        val dot = SearchToolView(tool().also {
+            it.input = mapOf("path" to ".", "pattern" to "TODO", "include" to "*.kt")
+        }, repo = "/repo")
+
+        assertEquals(listOf("pattern=TODO", "include=*.kt"), exact.targetTexts())
+        assertEquals(listOf("pattern=TODO", "include=*.kt"), dot.targetTexts())
+        assertTrue(exact.targetVisible(0))
+        assertFalse(exact.targetVisible(2))
+        assertTrue(dot.targetVisible(0))
+        assertFalse(dot.targetVisible(2))
+    }
+
+    fun `test outside repo search path stays absolute`() {
+        val view = SearchToolView(tool().also {
+            it.input = mapOf("path" to "/other/src", "pattern" to "TODO", "include" to "*.kt")
+        }, repo = "/repo")
+
+        assertEquals(listOf("/other/src", "pattern=TODO", "include=*.kt"), view.targetTexts())
+    }
+
     fun `test target labels use plain text for clipping`() {
         val view = SearchToolView(tool().also {
             it.input = mapOf("pattern" to "<unsafe>", "include" to "*.kt")

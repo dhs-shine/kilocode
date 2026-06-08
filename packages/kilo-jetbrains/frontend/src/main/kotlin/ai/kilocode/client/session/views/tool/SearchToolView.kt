@@ -9,7 +9,9 @@ import com.intellij.icons.AllIcons
 class SearchToolView(
     tool: Tool,
     selection: SessionSelection? = null,
-) : BaseSearchToolView(tool, selection, searchParts(3)) {
+    parts: ToolParts = searchParts(3),
+    repo: String? = null,
+) : BaseSearchToolView(tool, selection, parts, repo) {
 
     companion object {
         fun canRender(tool: Tool): Boolean = tool.name == "grep"
@@ -17,6 +19,6 @@ class SearchToolView(
 
     override fun toolIcon(tool: Tool) = AllIcons.Actions.Search
     override fun toolTitle(tool: Tool) = KiloBundle.message("session.part.tool.search")
-    override fun targets(tool: Tool) = searchTargets(tool)
+    override fun targets(tool: Tool, repo: String?) = searchTargets(tool, repo)
     override fun viewName() = "SearchToolView"
 }

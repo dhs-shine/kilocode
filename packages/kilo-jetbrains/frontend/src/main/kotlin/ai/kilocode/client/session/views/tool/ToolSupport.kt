@@ -20,6 +20,8 @@ import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.util.io.OSAgnosticPathUtil
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -455,16 +457,31 @@ private fun readPath(tool: Tool): String {
     return tail(path).ifBlank { path }
 }
 
-internal fun globDirectory(tool: Tool): String =
-    tool.input["path"]?.takeIf { it.isNotBlank() }
-        ?: tool.title?.takeIf { it.isNotBlank() }
-        ?: ""
+internal fun searchPath(path: String, repo: String?): String {
+    val text = path.takeIf { it.isNotBlank() } ?: return ""
+    val root = repo?.takeIf { it.isNotBlank() }?.let(::norm)
+    if (root == null) return text.takeUnless { it == "." } ?: ""
+    val full = if (OSAgnosticPathUtil.isAbsolute(text)) norm(text) else norm(FileUtil.join(root, text))
+    if (full == root) return ""
+    if (!OSAgnosticPathUtil.startsWith(full, root)) return full
+    return FileUtil.getRelativePath(root, full, '/') ?: full
+}
+
+private fun norm(path: String): String = FileUtil.toCanonicalPath(FileUtil.toSystemIndependentName(path), '/', true)
+
+internal fun globDirectory(tool: Tool, repo: String?): String =
+    searchPath(
+        tool.input["path"]?.takeIf { it.isNotBlank() }
+            ?: tool.title?.takeIf { it.isNotBlank() }
+            ?: "",
+        repo,
+    )
 
 internal fun globPattern(tool: Tool): String =
     tool.input["pattern"]?.takeIf { it.isNotBlank() }?.let { "pattern=$it" } ?: ""
 
-internal fun searchTargets(tool: Tool): List<String> = listOfNotNull(
-    tool.input["path"]?.takeIf { it.isNotBlank() },
+internal fun searchTargets(tool: Tool, repo: String?): List<String> = listOfNotNull(
+    tool.input["path"]?.takeIf { it.isNotBlank() }?.let { searchPath(it, repo) }?.takeIf { it.isNotBlank() },
     tool.input["pattern"]?.takeIf { it.isNotBlank() }?.let { "pattern=$it" },
     tool.input["include"]?.takeIf { it.isNotBlank() }?.let { "include=$it" },
 )

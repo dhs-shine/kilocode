@@ -39,6 +39,7 @@ class MessageView(
     private val openUrl: (String) -> Unit = {},
     private val selection: SessionSelection? = null,
     private val resize: ((JComponent, () -> Unit) -> Unit)? = null,
+    private val repo: String? = null,
 ) : ai.kilocode.client.session.ui.SessionLayoutPanel(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
 ), Disposable, SessionEditorStyleTarget, SessionView {
@@ -224,9 +225,9 @@ class MessageView(
     }
 
     private fun view(content: Content) = if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) {
-        ViewFactory.createUser(content, openFile, openUrl, selection)
+        ViewFactory.createUser(content, openFile, openUrl, selection, repo)
     } else {
-        ViewFactory.create(content, openFile, openUrl, selection)
+        ViewFactory.create(content, openFile, openUrl, selection, repo)
     }
 
     /** Append a streaming delta to the renderer for [contentId]. */

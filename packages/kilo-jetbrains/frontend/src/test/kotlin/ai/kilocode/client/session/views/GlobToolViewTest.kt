@@ -45,6 +45,36 @@ class GlobToolViewTest : BasePlatformTestCase() {
         assertFalse(view.targetVisible(1))
     }
 
+    fun `test repo path displays relative directory`() {
+        val view = GlobToolView(tool().also {
+            it.input = mapOf("path" to "/repo/src", "pattern" to "**/*.kt")
+        }, repo = "/repo")
+
+        assertEquals(listOf("src", "pattern=**/*.kt"), view.targetTexts())
+    }
+
+    fun `test repo root directory is hidden`() {
+        val exact = GlobToolView(tool().also {
+            it.input = mapOf("path" to "/repo", "pattern" to "**/*.kt")
+        }, repo = "/repo")
+        val dot = GlobToolView(tool().also {
+            it.input = mapOf("path" to ".", "pattern" to "**/*.kt")
+        }, repo = "/repo")
+
+        assertEquals(listOf("pattern=**/*.kt"), exact.targetTexts())
+        assertEquals(listOf("pattern=**/*.kt"), dot.targetTexts())
+        assertFalse(exact.targetVisible(1))
+        assertFalse(dot.targetVisible(1))
+    }
+
+    fun `test outside repo directory stays absolute`() {
+        val view = GlobToolView(tool().also {
+            it.input = mapOf("path" to "/other/src", "pattern" to "**/*.kt")
+        }, repo = "/repo")
+
+        assertEquals(listOf("/other/src", "pattern=**/*.kt"), view.targetTexts())
+    }
+
     fun `test completed glob starts collapsed and expands output`() {
         val view = track(GlobToolView(tool().also { it.output = "/repo/src/A.kt\n/repo/src/B.kt" }))
 

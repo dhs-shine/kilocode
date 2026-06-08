@@ -17,6 +17,7 @@ abstract class BaseSearchToolView(
     tool: Tool,
     private val selection: SessionSelection? = null,
     private val parts: ToolParts,
+    private val repo: String? = null,
 ) : SecondarySessionPartView(parts.header, { parts.scroll(tool) }) {
 
     override val contentId: String = tool.id
@@ -28,7 +29,7 @@ abstract class BaseSearchToolView(
 
     protected abstract fun toolIcon(tool: Tool): Icon
     protected abstract fun toolTitle(tool: Tool): String
-    protected abstract fun targets(tool: Tool): List<String>
+    protected abstract fun targets(tool: Tool, repo: String?): List<String>
     protected abstract fun viewName(): String
 
     init {
@@ -117,7 +118,7 @@ abstract class BaseSearchToolView(
     }
 
     private fun syncTargets(): Boolean {
-        val values = targets(item)
+        val values = targets(item, repo)
         var changed = false
         parts.targets.forEachIndexed { index, label ->
             val text = values.getOrNull(index) ?: ""

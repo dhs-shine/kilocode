@@ -9,7 +9,8 @@ class GlobToolView(
     tool: Tool,
     selection: SessionSelection? = null,
     parts: ToolParts = searchParts(2),
-) : BaseSearchToolView(tool, selection, parts) {
+    repo: String? = null,
+) : BaseSearchToolView(tool, selection, parts, repo) {
 
     companion object {
         fun canRender(tool: Tool): Boolean = tool.name == "glob"
@@ -17,6 +18,6 @@ class GlobToolView(
 
     override fun toolIcon(tool: Tool) = icon(tool)
     override fun toolTitle(tool: Tool) = KiloBundle.message("session.part.tool.glob")
-    override fun targets(tool: Tool) = listOf(globDirectory(tool), globPattern(tool))
+    override fun targets(tool: Tool, repo: String?) = listOf(globDirectory(tool, repo), globPattern(tool)).filter { it.isNotBlank() }
     override fun viewName() = "GlobToolView"
 }

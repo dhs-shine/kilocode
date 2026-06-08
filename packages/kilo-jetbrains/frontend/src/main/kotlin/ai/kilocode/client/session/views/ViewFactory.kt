@@ -29,19 +29,20 @@ object ViewFactory {
     fun create(
         content: Content,
         openFile: (String) -> Unit,
-    ): PartView = create(content, openFile, openUrl = {}, selection = null)
+    ): PartView = create(content, openFile, openUrl = {}, selection = null, repo = null)
 
     fun create(
         content: Content,
         openFile: (String) -> Unit,
         openUrl: (String) -> Unit,
-    ): PartView = create(content, openFile, openUrl, selection = null)
+    ): PartView = create(content, openFile, openUrl, selection = null, repo = null)
 
     fun create(
         content: Content,
         openFile: (String) -> Unit,
         openUrl: (String) -> Unit = {},
         selection: SessionSelection? = null,
+        repo: String? = null,
     ): PartView = when (content) {
         is Text -> TextView(content, openUrl = openUrl, selection = selection)
         is Reasoning -> ReasoningView(content, openUrl = openUrl, selection = selection)
@@ -49,8 +50,8 @@ object ViewFactory {
             TodoWriteView.canRender(content) -> TodoWriteView(content)
             PlanExitView.canRender(content) -> PlanExitView(content, openFile, selection)
             QuestionResultView.canRender(content) -> QuestionResultView(content, selection)
-            GlobToolView.canRender(content) -> GlobToolView(content, selection = selection)
-            SearchToolView.canRender(content) -> SearchToolView(content, selection = selection)
+            GlobToolView.canRender(content) -> GlobToolView(content, selection = selection, repo = repo)
+            SearchToolView.canRender(content) -> SearchToolView(content, selection = selection, repo = repo)
             ReadToolView.canRender(content) -> ReadToolView(content, openFile, selection = selection)
             else -> ToolView(content, selection = selection)
         }
@@ -62,22 +63,23 @@ object ViewFactory {
     fun createUser(
         content: Content,
         openFile: (String) -> Unit,
-    ): PartView = createUser(content, openFile, openUrl = {}, selection = null)
+    ): PartView = createUser(content, openFile, openUrl = {}, selection = null, repo = null)
 
     fun createUser(
         content: Content,
         openFile: (String) -> Unit,
         openUrl: (String) -> Unit,
-    ): PartView = createUser(content, openFile, openUrl, selection = null)
+    ): PartView = createUser(content, openFile, openUrl, selection = null, repo = null)
 
     fun createUser(
         content: Content,
         openFile: (String) -> Unit,
         openUrl: (String) -> Unit = {},
         selection: SessionSelection? = null,
+        repo: String? = null,
     ): PartView = when (content) {
         is Text -> PromptView(content, openUrl = openUrl, selection = selection)
-        else -> create(content, openFile, openUrl, selection)
+        else -> create(content, openFile, openUrl, selection, repo)
     }
 
     /**
