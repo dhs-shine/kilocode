@@ -131,22 +131,26 @@ class QuestionResultViewTest : BasePlatformTestCase() {
         assertFalse("Should be collapsed after second toggle", view.isExpanded())
     }
 
-    fun `test hover border differs from header fill`() {
+    fun `test hover only changes header background`() {
         val view = QuestionResultView(completedTool(
             input = mapOf("questions" to """[{"question":"Q1"}]"""),
             metadata = mapOf("answers" to """[["A1"]]"""),
         ))
         val root = view.node(0)
+        val header = root.node(0)
 
         assertEquals(0, paint(root.border).alpha)
         view.toggle()
+        val body = root.node(1)
 
         view.setHovered(true)
 
-        assertEquals(SessionUiStyle.View.hoverLine().rgb, paint(root.border).rgb)
-        assertNotSameColor(SessionUiStyle.View.headerHover(), paint(root.border))
+        assertEquals(SessionUiStyle.View.Surface.headerHoverBgColor().rgb, header.background.rgb)
+        assertLine(root.border)
+        assertEquals(SessionUiStyle.View.Outline.brightColor().rgb, paint(body.border).rgb)
         view.setHovered(false)
-        assertEquals(SessionUiStyle.View.line().rgb, paint(root.border).rgb)
+        assertEquals(SessionUiStyle.View.Surface.headerBgColor().rgb, header.background.rgb)
+        assertLine(root.border)
     }
 
     // ------ view factory routing ------
@@ -293,7 +297,17 @@ class QuestionResultViewTest : BasePlatformTestCase() {
         return Color(image.getRGB(0, 0), true)
     }
 
-    private fun assertNotSameColor(left: Color, right: Color) {
-        assertFalse("Expected distinct colors but both were ${left.rgb}", left.rgb == right.rgb)
+    private fun assertLine(border: Border) {
+        val image = BufferedImage(5, 5, BufferedImage.TYPE_INT_ARGB)
+        val panel = JPanel()
+        val graphics = image.createGraphics()
+        border.paintBorder(panel, graphics, 0, 0, image.width, image.height)
+        graphics.dispose()
+        val rgb = SessionUiStyle.View.Outline.brightColor().rgb
+        assertEquals(rgb, Color(image.getRGB(2, 0), true).rgb)
+        assertEquals(rgb, Color(image.getRGB(0, 2), true).rgb)
+        assertEquals(rgb, Color(image.getRGB(4, 2), true).rgb)
+        assertEquals(rgb, Color(image.getRGB(2, 4), true).rgb)
     }
+
 }

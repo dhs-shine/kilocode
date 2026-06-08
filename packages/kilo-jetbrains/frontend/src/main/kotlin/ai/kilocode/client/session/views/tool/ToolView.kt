@@ -153,7 +153,7 @@ class ToolView(
     private fun bodyMaxHeight(): Int {
         val body = parts.content ?: return 0
         return body.lineHeight() * bodyMaxRows() +
-            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
+            JBUI.scale(SessionUiStyle.View.Layout.BODY_EXTRA_HEIGHT)
     }
 
     override fun dumpLabel() = "ToolView#$contentId(${labelText()})"

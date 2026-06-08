@@ -118,7 +118,7 @@ class ToolViewTest : BasePlatformTestCase() {
 
         assertEquals(0, paint(view.border).alpha)
         view.toggle()
-        assertEquals(SessionUiStyle.View.line().rgb, paint(view.border).rgb)
+        assertEquals(SessionUiStyle.View.Outline.color().rgb, paint(view.border).rgb)
         view.toggle()
         assertEquals(0, paint(view.border).alpha)
     }

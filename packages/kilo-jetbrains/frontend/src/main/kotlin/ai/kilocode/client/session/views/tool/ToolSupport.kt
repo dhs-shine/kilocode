@@ -214,22 +214,28 @@ class ToolBody private constructor(
             lineWrap = wrap
             wrapStyleWord = wrap
             foreground = if (tool.state == ToolExecState.ERROR) UiStyle.Colors.errorLabelForeground() else UiStyle.Colors.fg()
-            background = SessionUiStyle.View.surface()
+            background = SessionUiStyle.View.Surface.bgColor()
             border = JBUI.Borders.empty(
-                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
-                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Layout.VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING),
             )
         }
 
         private fun pane(view: JComponent, scrolls: Boolean) = JBScrollPane(view).apply {
-            border = SessionUiStyle.View.topOutline()
+            border = JBUI.Borders.customLine(
+                SessionUiStyle.View.Outline.color(),
+                SessionUiStyle.View.Outline.width(),
+                0,
+                0,
+                0,
+            )
             viewportBorder = JBUI.Borders.empty(
-                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
-                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Layout.VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING),
             ).takeIf { scrolls }
             isOpaque = true
-            background = SessionUiStyle.View.surface()
-            viewport.background = SessionUiStyle.View.surface()
+            background = SessionUiStyle.View.Surface.bgColor()
+            viewport.background = SessionUiStyle.View.Surface.bgColor()
             horizontalScrollBarPolicy = if (scrolls) {
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
             } else {
@@ -255,9 +261,9 @@ private class ToolField(value: String, private var style: SessionEditorStyle) : 
             ed.setBorder(JBUI.Borders.empty())
             ed.scrollPane.border = JBUI.Borders.empty()
             ed.scrollPane.viewportBorder = JBUI.Borders.empty()
-            ed.backgroundColor = SessionUiStyle.View.surface()
-            ed.scrollPane.background = SessionUiStyle.View.surface()
-            ed.scrollPane.viewport.background = SessionUiStyle.View.surface()
+            ed.backgroundColor = SessionUiStyle.View.Surface.bgColor()
+            ed.scrollPane.background = SessionUiStyle.View.Surface.bgColor()
+            ed.scrollPane.viewport.background = SessionUiStyle.View.Surface.bgColor()
             ed.settings.isUseSoftWraps = false
             ed.settings.isAdditionalPageAtBottom = false
             ed.scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
@@ -296,9 +302,9 @@ internal fun toolParts(
         add(link, LINK_CARD)
     }
     val state = JBLabel().apply { foreground = UiStyle.Colors.weak() }
-    val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply { isOpaque = false }
+    val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply { isOpaque = false }
     val controls = Stack.horizontal()
-    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply {
+    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply {
         isOpaque = false
         center.add(title, BorderLayout.WEST)
         center.add(slot, BorderLayout.CENTER)
@@ -331,14 +337,14 @@ internal fun searchParts(count: Int): ToolParts {
     val state = JBLabel().apply { foreground = UiStyle.Colors.weak() }
     val stack = Stack.fitHorizontal(UiStyle.Gap.md()).apply { targets.forEach { next(it) } }
     val target = stack.align(HAlign.TRACK, VAlign.CENTER)
-    val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply {
+    val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply {
         isOpaque = false
         minimumSize = Dimension(0, minimumSize.height)
         add(title, BorderLayout.WEST)
         add(target, BorderLayout.CENTER)
     }
     val controls = Stack.horizontal()
-    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply {
+    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply {
         isOpaque = false
         add(glyph, BorderLayout.WEST)
         add(center, BorderLayout.CENTER)

@@ -9,6 +9,10 @@ import javax.swing.border.Border
 
 /** Static style tokens owned by the chat session UI. */
 object SessionUiStyle {
+    object Transcript {
+        fun bgColor(): Color = UiStyle.Colors.bg()
+    }
+
     /** Geometry for the transcript list and its scroll behavior. */
     object SessionLayout {
         const val GAP = 4
@@ -20,43 +24,42 @@ object SessionUiStyle {
 
     /** Shared tokens for individual transcript views and session views. */
     object View {
-        const val SESSION_VIEW_GAP = 6
-        const val SESSION_VIEW_VERTICAL_PADDING = 8
-        const val SESSION_VIEW_HORIZONTAL_PADDING = 12
-        const val SESSION_VIEW_BODY_EXTRA_HEIGHT = 16
+        object Layout {
+            const val GAP = 6
+            const val VERTICAL_PADDING = 8
+            const val HORIZONTAL_PADDING = 12
+            const val BODY_EXTRA_HEIGHT = 16
+        }
 
         internal const val BORDER_DELTA = 80
         internal const val HOVER_BORDER_ALPHA = 0.18f
         internal const val HOVER_FILL_ALPHA = 0.10f
 
-        /** Creates a visible separator against editor-derived transcript surfaces. */
-        fun line(): Color = JBColor.lazy { UiStyle.Colors.contrast(UiStyle.Colors.editorBackground(), BORDER_DELTA) }
+        object Surface {
+            fun bgColor(): Color = UiStyle.Colors.editorBackground()
 
-        fun transcript(): Color = UiStyle.Colors.bg()
+            fun headerBgColor(): Color = UiStyle.Colors.editorBackground()
 
-        fun sessionViewBackground(): Color = UiStyle.Colors.contentBackground()
-
-        fun sessionViewOutline(): Color = UiStyle.Colors.contentBorder()
-
-        fun surface(): Color = UiStyle.Colors.editorBackground()
-
-        fun header(): Color = UiStyle.Colors.editorBackground()
-
-        /** Subtle hover fill, softer than the session-view outline. */
-        fun headerHover(): Color = JBColor.lazy { UiStyle.Colors.blend(header(), hoverLine(), HOVER_FILL_ALPHA) }
-
-        /** Subtle hover outline, stronger than the hover fill. */
-        fun hoverLine(): Color = JBColor.lazy {
-            UiStyle.Colors.blend(line(), JBUI.CurrentTheme.ActionButton.hoverBackground(), HOVER_BORDER_ALPHA)
+            /** Subtle hover fill, softer than the session-view outline. */
+            fun headerHoverBgColor(): Color = JBColor.lazy {
+                UiStyle.Colors.blend(headerBgColor(), Outline.hoverColor(), HOVER_FILL_ALPHA)
+            }
         }
 
-        fun sessionView(color: Color = line()): Border = outline(color)
+        object Outline {
+            fun color(): Color = UiStyle.Colors.contentBorder()
 
-        fun outline(color: Color = line()): Border = JBUI.Borders.customLine(color, 1)
+            fun brightColor(): Color = JBColor.lazy {
+                UiStyle.Colors.contrast(UiStyle.Colors.editorBackground(), BORDER_DELTA)
+            }
 
-        fun topOutline(): Border = JBUI.Borders.customLineTop(line())
+            /** Subtle hover outline, stronger than the hover fill. */
+            fun hoverColor(): Color = JBColor.lazy {
+                UiStyle.Colors.blend(brightColor(), JBUI.CurrentTheme.ActionButton.hoverBackground(), HOVER_BORDER_ALPHA)
+            }
 
-        fun leftOutline(): Border = JBUI.Borders.customLine(line(), 0, 1, 0, 0)
+            fun width(): Int = JBUI.scale(1)
+        }
 
         /** Prompt input dimensions and chrome inside the session view. */
         object Prompt {
@@ -126,6 +129,12 @@ object SessionUiStyle {
         }
     }
 
+    object AccountPopup {
+        fun bgColor(): Color = UiStyle.Colors.contentBackground()
+
+        fun outlineColor(): Color = UiStyle.Colors.contentBorder()
+    }
+
     /** Limits for the empty-state recent sessions list. */
     object RecentSessions {
         const val LIMIT = 5
@@ -147,7 +156,13 @@ object SessionUiStyle {
 /** Border presets for connection dock panel. */
 object Dock {
     fun banner(): Border = JBUI.Borders.compound(
-        JBUI.Borders.customLineTop(SessionUiStyle.View.line()),
+        JBUI.Borders.customLine(
+            SessionUiStyle.View.Outline.color(),
+            SessionUiStyle.View.Outline.width(),
+            0,
+            0,
+            0,
+        ),
         JBUI.Borders.empty(UiStyle.Gap.sm(), UiStyle.Gap.lg(), 0, UiStyle.Gap.lg()),
     )!!
 }

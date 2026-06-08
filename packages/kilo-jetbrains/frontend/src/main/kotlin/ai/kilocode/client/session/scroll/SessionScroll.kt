@@ -196,8 +196,8 @@ internal class SessionScroll(
     @RequiresEdt
     fun applyStyle(style: SessionEditorStyle) {
         this.style = style
-        component.background = SessionUiStyle.View.transcript()
-        component.viewport.background = SessionUiStyle.View.transcript()
+        component.background = SessionUiStyle.Transcript.bgColor()
+        component.viewport.background = SessionUiStyle.Transcript.bgColor()
         syncIcon()
         messages.applyStyle(style)
         val view = component.viewport.view

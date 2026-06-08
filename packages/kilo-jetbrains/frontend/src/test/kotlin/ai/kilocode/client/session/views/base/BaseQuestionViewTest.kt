@@ -242,8 +242,8 @@ class BaseQuestionViewTest : BasePlatformTestCase() {
                 BaseQuestionView.Action("a", "A", primary = false) {},
                 BaseQuestionView.Action("b", "B", primary = true) {},
             ))
-            assertEquals(SessionUiStyle.View.surface(), actionButton(panel, "A").background)
-            assertEquals(SessionUiStyle.View.surface(), actionButton(panel, "B").background)
+            assertEquals(SessionUiStyle.View.Surface.bgColor(), actionButton(panel, "A").background)
+            assertEquals(SessionUiStyle.View.Surface.bgColor(), actionButton(panel, "B").background)
         }
     }
 

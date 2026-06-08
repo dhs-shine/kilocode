@@ -434,8 +434,8 @@ class PermissionViewTest : BasePlatformTestCase() {
     fun `test session question buttons use question surface background`() {
         view.show(permission())
 
-        assertEquals(SessionUiStyle.View.surface(), view.runButtonForTest().background)
-        assertEquals(SessionUiStyle.View.surface(), view.denyButtonForTest().background)
+        assertEquals(SessionUiStyle.View.Surface.bgColor(), view.runButtonForTest().background)
+        assertEquals(SessionUiStyle.View.Surface.bgColor(), view.denyButtonForTest().background)
     }
 
     // ------ code labels use transcript style ------
@@ -494,7 +494,7 @@ class PermissionViewTest : BasePlatformTestCase() {
 
         val labels = view.codeLabelsForTest()
         assertFalse("Expected code labels", labels.isEmpty())
-        assertEquals(SessionUiStyle.View.headerHover(), labels[0].background)
+        assertEquals(SessionUiStyle.View.Surface.headerHoverBgColor(), labels[0].background)
     }
 
     private fun permission() = Permission(

@@ -164,7 +164,17 @@ class ReasoningView(
     }
 
     private fun syncBorder() {
-        border = if (isExpanded()) SessionUiStyle.View.leftOutline() else JBUI.Borders.empty(0, 1, 0, 0)
+        if (isExpanded()) {
+            border = JBUI.Borders.customLine(
+                SessionUiStyle.View.Outline.color(),
+                0,
+                SessionUiStyle.View.Outline.width(),
+                0,
+                0,
+            )
+            return
+        }
+        border = JBUI.Borders.empty(0, 1, 0, 0)
     }
 
     private fun apply(md: MdView): Boolean {
@@ -204,7 +214,7 @@ class ReasoningView(
         if (!parts.bodyCreated()) return 0
         val md = md
         return md.component.getFontMetrics(md.font).height * bodyMaxRows() +
-            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
+            JBUI.scale(SessionUiStyle.View.Layout.BODY_EXTRA_HEIGHT)
     }
 
     private fun followTail() {
@@ -246,7 +256,7 @@ class ReasoningParts(
         }
         val panel = TrackPanel().apply {
             isOpaque = true
-            background = SessionUiStyle.View.surface()
+            background = SessionUiStyle.View.Surface.bgColor()
             border = JBUI.Borders.empty(
                 JBUI.scale(SessionUiStyle.View.Reasoning.BODY_VERTICAL_PADDING),
                 JBUI.scale(SessionUiStyle.View.Reasoning.BODY_HORIZONTAL_PADDING),
@@ -256,8 +266,8 @@ class ReasoningParts(
         val scroll = JBScrollPane(panel).apply {
             border = JBUI.Borders.empty()
             isOpaque = true
-            background = SessionUiStyle.View.surface()
-            viewport.background = SessionUiStyle.View.surface()
+            background = SessionUiStyle.View.Surface.bgColor()
+            viewport.background = SessionUiStyle.View.Surface.bgColor()
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
         }
@@ -274,7 +284,7 @@ class ReasoningBody(
 private fun reasoningParts(selection: SessionSelection? = null): ReasoningParts {
     val title = JBLabel(KiloBundle.message("session.part.reasoning")).apply { foreground = UiStyle.Colors.weak() }
     val icon = JBLabel(AllIcons.General.InspectionsEye).apply { foreground = UiStyle.Colors.weak() }
-    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply {
+    val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply {
         isOpaque = false
         add(icon, BorderLayout.WEST)
         add(title, BorderLayout.CENTER)

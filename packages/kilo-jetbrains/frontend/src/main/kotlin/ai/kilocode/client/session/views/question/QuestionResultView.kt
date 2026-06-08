@@ -41,18 +41,18 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
         override fun updateUI() {
             super.updateUI()
             isOpaque = true
-            background = SessionUiStyle.View.surface()
+            background = SessionUiStyle.View.Surface.bgColor()
             border = JBUI.Borders.empty(1)
         }
     }
-    private val header = object : JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)) {
+    private val header = object : JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)) {
         override fun updateUI() {
             super.updateUI()
             isOpaque = true
-            background = SessionUiStyle.View.header()
+            background = SessionUiStyle.View.Surface.headerBgColor()
             border = JBUI.Borders.empty(
-                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
-                JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Layout.VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING),
             )
         }
     }
@@ -60,7 +60,7 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
     private val title = JBLabel()
     private val sub = JBLabel().apply { foreground = UiStyle.Colors.weak() }
     private val arrow = JBLabel()
-    private val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply {
+    private val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply {
         isOpaque = false
     }
     private var pane: JPanel? = null
@@ -170,10 +170,19 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
             override fun updateUI() {
                 super.updateUI()
                 isOpaque = true
-                background = SessionUiStyle.View.surface()
-                border = JBUI.Borders.empty(
-                    JBUI.scale(SessionUiStyle.View.SESSION_VIEW_VERTICAL_PADDING),
-                    JBUI.scale(SessionUiStyle.View.SESSION_VIEW_HORIZONTAL_PADDING),
+                background = SessionUiStyle.View.Surface.bgColor()
+                border = JBUI.Borders.compound(
+                    JBUI.Borders.customLine(
+                        SessionUiStyle.View.Outline.brightColor(),
+                        SessionUiStyle.View.Outline.width(),
+                        0,
+                        0,
+                        0,
+                    ),
+                    JBUI.Borders.empty(
+                        JBUI.scale(SessionUiStyle.View.Layout.VERTICAL_PADDING),
+                        JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING),
+                    ),
                 )
             }
         }.apply {
@@ -281,26 +290,23 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
 
     override fun setHovered(value: Boolean) {
         hover?.invoke(this, value)
-        val color = if (value) SessionUiStyle.View.headerHover() else SessionUiStyle.View.header()
+        val color =
+            if (value) SessionUiStyle.View.Surface.headerHoverBgColor() else SessionUiStyle.View.Surface.headerBgColor()
         if (header.background?.rgb != color.rgb) {
             header.background = color
             header.repaint()
         }
-        syncBorder()
-        root.repaint()
     }
 
     private fun syncBorder() {
-        root.border = if (isExpanded()) {
-            val color = if (header.background?.rgb == SessionUiStyle.View.headerHover().rgb) {
-                SessionUiStyle.View.hoverLine()
-            } else {
-                SessionUiStyle.View.line()
-            }
-            SessionUiStyle.View.sessionView(color)
-        } else {
-            JBUI.Borders.empty(1)
+        if (isExpanded()) {
+            root.border = JBUI.Borders.customLine(
+                SessionUiStyle.View.Outline.brightColor(),
+                SessionUiStyle.View.Outline.width(),
+            )
+            return
         }
+        root.border = JBUI.Borders.empty(1)
     }
 
     private fun inside(e: MouseEvent): Boolean {

@@ -29,7 +29,7 @@ abstract class AbstractSessionPartView(
     ) : this(header, { body }, expanded, expandable)
 
     protected val arrow = JBLabel()
-    protected val row = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0))
+    protected val row = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0))
     private val bound = linkedSetOf<Component>()
     private var body: JComponent? = null
 
@@ -119,14 +119,11 @@ abstract class AbstractSessionPartView(
 
     protected open fun hoverColor(value: Boolean): Color? = null
 
-    protected open fun applyHover(value: Boolean, color: Color) {}
-
     override fun setHovered(value: Boolean) {
         hover?.invoke(this, value)
         val color = hoverColor(value) ?: return
         if (row.background?.rgb == color.rgb) return
         row.background = color
-        applyHover(value, color)
         row.repaint()
     }
 

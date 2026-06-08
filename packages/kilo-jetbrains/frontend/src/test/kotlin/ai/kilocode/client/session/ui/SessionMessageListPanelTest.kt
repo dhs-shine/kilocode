@@ -570,12 +570,15 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         second.toggle()
 
         enter(header(first))
-        assertEquals(SessionUiStyle.View.hoverLine().rgb, paint(firstRoot.border).rgb)
+        assertEquals(SessionUiStyle.View.Surface.headerHoverBgColor().rgb, header(first).background.rgb)
+        assertLine(firstRoot.border)
 
         enter(header(second))
 
-        assertEquals(SessionUiStyle.View.line().rgb, paint(firstRoot.border).rgb)
-        assertEquals(SessionUiStyle.View.hoverLine().rgb, paint(secondRoot.border).rgb)
+        assertEquals(SessionUiStyle.View.Surface.headerBgColor().rgb, header(first).background.rgb)
+        assertEquals(SessionUiStyle.View.Surface.headerHoverBgColor().rgb, header(second).background.rgb)
+        assertLine(firstRoot.border)
+        assertLine(secondRoot.border)
     }
 
     // ------ helpers ------
@@ -669,12 +672,16 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         ))
     }
 
-    private fun paint(border: Border): Color {
-        val image = BufferedImage(3, 3, BufferedImage.TYPE_INT_ARGB)
+    private fun assertLine(border: Border) {
+        val image = BufferedImage(5, 5, BufferedImage.TYPE_INT_ARGB)
         val item = JPanel()
         val graphics = image.createGraphics()
         border.paintBorder(item, graphics, 0, 0, image.width, image.height)
         graphics.dispose()
-        return Color(image.getRGB(0, 0), true)
+        val rgb = SessionUiStyle.View.Outline.brightColor().rgb
+        assertEquals(rgb, Color(image.getRGB(2, 0), true).rgb)
+        assertEquals(rgb, Color(image.getRGB(0, 2), true).rgb)
+        assertEquals(rgb, Color(image.getRGB(4, 2), true).rgb)
+        assertEquals(rgb, Color(image.getRGB(2, 4), true).rgb)
     }
 }

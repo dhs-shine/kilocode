@@ -468,8 +468,8 @@ class QuestionViewTest : BasePlatformTestCase() {
         val dismiss = button(view, "Dismiss")
         val submit = button(view, "Submit")
 
-        assertEquals(SessionUiStyle.View.surface(), dismiss.background)
-        assertEquals(SessionUiStyle.View.surface(), submit.background)
+        assertEquals(SessionUiStyle.View.Surface.bgColor(), dismiss.background)
+        assertEquals(SessionUiStyle.View.Surface.bgColor(), submit.background)
     }
 
     fun `test review submit and back buttons have correct primary state on review page`() {

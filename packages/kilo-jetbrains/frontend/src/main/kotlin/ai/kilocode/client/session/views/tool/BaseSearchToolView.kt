@@ -157,7 +157,7 @@ abstract class BaseSearchToolView(
     private fun bodyMaxHeight(): Int {
         val body = parts.content ?: return 0
         return body.lineHeight() * SessionUiStyle.View.Tool.BODY_LINES +
-            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
+            JBUI.scale(SessionUiStyle.View.Layout.BODY_EXTRA_HEIGHT)
     }
 
     override fun dumpLabel() = "${viewName()}#$contentId(${labelText()})"

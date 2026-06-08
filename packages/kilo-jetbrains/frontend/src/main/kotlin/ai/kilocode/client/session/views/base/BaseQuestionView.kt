@@ -275,9 +275,9 @@ class BaseQuestionView(
 
     // ---- contentColor override ----
 
-    override fun contentColor(): Color = SessionUiStyle.View.surface()
+    override fun contentColor(): Color = SessionUiStyle.View.Surface.bgColor()
 
-    override fun outlineColor(): Color = SessionUiStyle.View.line()
+    override fun outlineColor(): Color = SessionUiStyle.View.Outline.brightColor()
 
     // ---- private helpers ----
 
@@ -383,7 +383,7 @@ class BaseQuestionView(
             }
 
             private fun syncBackground() {
-                background = SessionUiStyle.View.surface()
+                background = SessionUiStyle.View.Surface.bgColor()
             }
         }
         btn.addActionListener { actionHandlers[id]?.invoke() }

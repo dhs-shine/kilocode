@@ -140,7 +140,7 @@ class ReadToolView(
     private fun bodyMaxHeight(): Int {
         val text = parts.text ?: return 0
         return text.getFontMetrics(text.font).height * bodyMaxRows() +
-            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
+            JBUI.scale(SessionUiStyle.View.Layout.BODY_EXTRA_HEIGHT)
     }
 
     override fun dumpLabel() = "ReadToolView#$contentId(${labelText()})"
