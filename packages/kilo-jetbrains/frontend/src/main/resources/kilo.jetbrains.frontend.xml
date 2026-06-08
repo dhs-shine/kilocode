@@ -20,6 +20,9 @@
                     icon="/icons/kilo.svg"
                     factoryClass="ai.kilocode.client.KiloToolWindowFactory"/>
 
+        <virtualFileSystem key="kilo" implementationClass="ai.kilocode.client.vfs.KiloVirtualFileSystem"/>
+        <fileEditorProvider implementation="ai.kilocode.client.vfs.KiloFileEditorProvider"/>
+
         <applicationConfigurable
                 parentId="tools"
                 id="ai.kilocode.jetbrains.settings"
