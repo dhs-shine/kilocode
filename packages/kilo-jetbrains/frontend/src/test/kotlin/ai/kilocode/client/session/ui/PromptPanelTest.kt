@@ -13,9 +13,11 @@ import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
+import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import java.awt.Container
+import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.SwingUtilities
 
@@ -120,8 +122,8 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(1, panel.attachmentCountForTest())
     }
 
-    fun `test attachment card has visible remove button and metadata tooltip`() {
-        val item = PromptAttachment("a", "a.txt", "text/plain", "file:///tmp/a.txt")
+    fun `test attachment card is compact icon only with tooltip metadata and hover remove`() {
+        val item = PromptAttachment("a", "a.txt", "text/plain", "file:///tmp/a%20b.txt")
         val panel = PromptPanel(project, { _, _ -> }, {})
 
         panel.addAttachmentForTest(item)
@@ -129,12 +131,41 @@ class PromptPanelTest : BasePlatformTestCase() {
         val button = attachmentRemoveButton(panel, item)
         val card = attachmentCard(panel)
 
-        assertTrue(button.isVisible)
+        assertFalse(button.isVisible)
         assertTrue(card.toolTipText.contains("a.txt"))
         assertTrue(card.toolTipText.contains("text/plain"))
-        assertTrue(card.toolTipText.contains("file:///tmp/a.txt"))
+        assertTrue(card.toolTipText.contains("/tmp/a b.txt"))
+        assertFalse(card.toolTipText.contains("file:///"))
+        assertTrue(card.toolTipText.startsWith("<html>"))
+        assertTrue(card.toolTipText.contains("Name: a.txt<br>Type: text/plain<br>Location: /tmp/a b.txt"))
+        assertFalse(labels(card).any { it.text == "a.txt" || it.text == "text/plain" || it.text == "/tmp/a b.txt" })
+        assertTrue(components(card).filterIsInstance<javax.swing.JComponent>().any { it !== button && it.toolTipText == card.toolTipText })
         assertEquals(JBUI.scale(SessionUiStyle.View.Attachment.CARD_WIDTH), card.preferredSize.width)
         assertEquals(JBUI.scale(SessionUiStyle.View.Attachment.CARD_HEIGHT), card.preferredSize.height)
+        assertEquals(0, card.getComponentZOrder(button))
+
+        val label = labels(card).first()
+        label.dispatchEvent(MouseEvent(label, MouseEvent.MOUSE_ENTERED, System.currentTimeMillis(), 0, 1, 1, 0, false))
+
+        assertTrue(button.isVisible)
+        val icon = button.icon
+        button.dispatchEvent(MouseEvent(button, MouseEvent.MOUSE_ENTERED, System.currentTimeMillis(), 0, 1, 1, 0, false))
+        assertNotSame(icon, button.icon)
+        button.dispatchEvent(MouseEvent(button, MouseEvent.MOUSE_EXITED, System.currentTimeMillis(), 0, 1, 1, 0, false))
+        assertSame(icon, button.icon)
+    }
+
+    fun `test attachment child click opens item`() {
+        var opened = false
+        val card = AttachmentCard(
+            ai.kilocode.client.session.ui.attachment.AttachmentCardItem("a.txt", "text/plain", "file:///tmp/a.txt"),
+            open = { opened = true },
+        )
+
+        val label = labels(card).first()
+        label.dispatchEvent(MouseEvent(label, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(), 0, 1, 1, 1, false))
+
+        assertTrue(opened)
     }
 
     fun `test reasoning picker hides when variants are empty`() {
@@ -291,6 +322,20 @@ class PromptPanelTest : BasePlatformTestCase() {
         val out = mutableListOf<JButton>()
         fun visit(node: java.awt.Component) {
             if (node is JButton) out.add(node)
+            if (node is Container) node.components.forEach(::visit)
+        }
+        visit(root)
+        return out
+    }
+
+    private fun labels(root: java.awt.Component): List<JBLabel> {
+        return components(root).filterIsInstance<JBLabel>()
+    }
+
+    private fun components(root: java.awt.Component): List<java.awt.Component> {
+        val out = mutableListOf<java.awt.Component>()
+        fun visit(node: java.awt.Component) {
+            out.add(node)
             if (node is Container) node.components.forEach(::visit)
         }
         visit(root)

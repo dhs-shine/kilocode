@@ -73,10 +73,9 @@ object SessionUiStyle {
 
         /** Attachment preview card geometry. */
         object Attachment {
-            const val CARD_WIDTH = 180
-            const val CARD_HEIGHT = 132
-            const val PREVIEW_HEIGHT = 84
-            const val CLOSE_SIZE = 24
+            const val CARD_WIDTH = 80
+            const val CARD_HEIGHT = 59
+            const val CLOSE_SIZE = 18
             const val CORNER_ARC = 8
         }
 

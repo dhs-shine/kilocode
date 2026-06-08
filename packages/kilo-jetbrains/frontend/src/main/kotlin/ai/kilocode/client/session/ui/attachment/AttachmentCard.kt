@@ -2,18 +2,18 @@ package ai.kilocode.client.session.ui.attachment
 
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
-import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.iconButton
 import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.util.IconLoader
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.annotations.RequiresEdt
-import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Container
@@ -27,6 +27,8 @@ import java.awt.RenderingHints
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.net.URI
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import javax.imageio.ImageIO
 import javax.swing.Icon
@@ -35,6 +37,7 @@ import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingConstants
+import javax.swing.SwingUtilities
 
 data class AttachmentCardItem(
     val name: String,
@@ -51,38 +54,37 @@ open class AttachmentCard(
     private var gen = 0
     private var loaded = false
     private val icon = mimeIcon(item.mime)
-    private val preview = PreviewPanel().apply {
-        layout = BorderLayout()
-        add(JBLabel(icon, SwingConstants.CENTER).align(HAlign.CENTER, VAlign.CENTER), BorderLayout.CENTER)
+    private val tip = tooltip(item)
+    private val open = open?.let { callback ->
+        object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+                callback()
+            }
+        }
     }
-    private var title: JBLabel? = null
-    private var kind: JBLabel? = null
-    private val titleLabel = JBLabel(item.name).apply {
-        font = JBFont.small().asBold()
-        title = this
+    private val hover = object : MouseAdapter() {
+        override fun mouseEntered(e: MouseEvent) {
+            showAction(true)
+        }
+
+        override fun mouseMoved(e: MouseEvent) {
+            showAction(true)
+        }
+
+        override fun mouseExited(e: MouseEvent) {
+            val point = SwingUtilities.convertPoint(e.component, e.point, this@AttachmentCard)
+            showAction(contains(point))
+        }
     }
-    private val kindLabel = JBLabel(item.mime).apply {
-        font = JBFont.small()
-        foreground = UIUtil.getContextHelpForeground()
-        kind = this
-    }
+    private val preview = PreviewPanel(::watch).apply { setIcon(icon) }
     private val content = JPanel(BorderLayout()).apply {
         isOpaque = false
-        border = JBUI.Borders.empty(UiStyle.Gap.sm())
-        add(preview, BorderLayout.NORTH)
-        add(
-            JPanel(BorderLayout()).apply {
-                isOpaque = false
-                border = JBUI.Borders.emptyTop(UiStyle.Gap.sm())
-                add(titleLabel, BorderLayout.NORTH)
-                add(kindLabel, BorderLayout.SOUTH)
-            },
-            BorderLayout.CENTER,
-        )
+        border = JBUI.Borders.empty(UiStyle.Gap.xs())
+        add(preview, BorderLayout.CENTER)
     }
     private val action = remove?.let { callback ->
-        HoverIcon().apply {
-            icon = AllIcons.Actions.Close
+        CloseButton().apply {
+            isVisible = false
             toolTipText = KiloBundle.message("prompt.attachment.remove", item.name)
             accessibleContext?.accessibleName = toolTipText
             addActionListener { callback() }
@@ -92,11 +94,14 @@ open class AttachmentCard(
     init {
         isOpaque = false
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        toolTipText = KiloBundle.message("prompt.attachment.tooltip", item.name, item.mime, item.url)
+        toolTipText = tip
         accessibleContext?.accessibleName = KiloBundle.message("prompt.attachment.open", item.name)
         add(content)
-        if (action != null) add(action)
-        if (open != null) installOpen(content, open)
+        if (action != null) {
+            add(action)
+            setComponentZOrder(action, 0)
+        }
+        watch(this)
     }
 
     override fun getPreferredSize(): Dimension = JBUI.size(
@@ -113,13 +118,6 @@ open class AttachmentCard(
         if (loaded) return
         loaded = true
         load()
-    }
-
-    override fun updateUI() {
-        super.updateUI()
-        title?.font = JBFont.small().asBold()
-        kind?.font = JBFont.small()
-        kind?.foreground = UIUtil.getContextHelpForeground()
     }
 
     override fun paintComponent(g: Graphics) {
@@ -143,8 +141,8 @@ open class AttachmentCard(
         if (!item.mime.startsWith("image/")) return
         val stamp = ++gen
         val size = JBUI.size(
-            SessionUiStyle.View.Attachment.CARD_WIDTH - UiStyle.Gap.lg() * 2,
-            SessionUiStyle.View.Attachment.PREVIEW_HEIGHT,
+            SessionUiStyle.View.Attachment.CARD_WIDTH - UiStyle.Gap.xs() * 2,
+            SessionUiStyle.View.Attachment.CARD_HEIGHT - UiStyle.Gap.xs() * 2,
         )
         ApplicationManager.getApplication().executeOnPooledThread {
             val image = runCatching { ImageIO.read(path.toFile()) }.getOrNull()
@@ -157,34 +155,45 @@ open class AttachmentCard(
         }
     }
 
-    private fun installOpen(root: Component, open: () -> Unit) {
-        val listener = object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                open()
+    private fun watch(node: Component) {
+        if (node is JComponent && node !is JButton) node.toolTipText = tip
+        node.removeMouseListener(hover)
+        node.removeMouseMotionListener(hover)
+        node.addMouseListener(hover)
+        node.addMouseMotionListener(hover)
+        open?.let {
+            node.removeMouseListener(it)
+            if (node !is JButton) {
+                node.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                node.addMouseListener(it)
             }
         }
-        fun visit(node: Component) {
-            if (node is JButton) return
-            node.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-            node.addMouseListener(listener)
-            if (node is Container) node.components.forEach(::visit)
-        }
-        visit(root)
+        if (node is Container) node.components.forEach(::watch)
     }
 
-    private class PreviewPanel : JPanel(BorderLayout()) {
+    private fun showAction(value: Boolean) {
+        val button = action ?: return
+        if (button.isVisible == value) return
+        button.isVisible = value
+        revalidate()
+        repaint()
+    }
+
+    private class PreviewPanel(private val watch: (Component) -> Unit) : JPanel(BorderLayout()) {
         init {
             isOpaque = false
         }
 
         override fun getPreferredSize(): Dimension = JBUI.size(
-            SessionUiStyle.View.Attachment.CARD_WIDTH - UiStyle.Gap.lg() * 2,
-            SessionUiStyle.View.Attachment.PREVIEW_HEIGHT,
+            SessionUiStyle.View.Attachment.CARD_WIDTH - UiStyle.Gap.xs() * 2,
+            SessionUiStyle.View.Attachment.CARD_HEIGHT - UiStyle.Gap.xs() * 2,
         )
 
         fun setIcon(next: Icon) {
+            val label = JBLabel(next, SwingConstants.CENTER).align(HAlign.CENTER, VAlign.CENTER)
             removeAll()
-            add(JBLabel(next, SwingConstants.CENTER).align(HAlign.CENTER, VAlign.CENTER), BorderLayout.CENTER)
+            add(label, BorderLayout.CENTER)
+            watch(label)
             revalidate()
             repaint()
         }
@@ -219,14 +228,37 @@ open class AttachmentCard(
         override fun invalidateLayout(target: Container) = Unit
 
         override fun layoutContainer(parent: Container) {
-            if (parent.componentCount == 0) return
-            val content = parent.getComponent(0)
-            content.setBounds(0, 0, parent.width, parent.height)
-            if (parent.componentCount < 2) return
-            val action = parent.getComponent(1)
             val size = JBUI.scale(SessionUiStyle.View.Attachment.CLOSE_SIZE)
-            action.setBounds(parent.width - size - UiStyle.Gap.xs(), UiStyle.Gap.xs(), size, size)
+            for (i in 0 until parent.componentCount) {
+                val child = parent.getComponent(i)
+                if (child is JButton) {
+                    child.setBounds(parent.width - size - UiStyle.Gap.xs(), UiStyle.Gap.xs(), size, size)
+                    continue
+                }
+                child.setBounds(0, 0, parent.width, parent.height)
+            }
         }
+    }
+
+    private class CloseButton : JButton() {
+        init {
+            iconButton(this)
+            icon = REMOVE_ICON
+            addMouseListener(object : MouseAdapter() {
+                override fun mouseEntered(e: MouseEvent) {
+                    icon = REMOVE_HOVER_ICON
+                }
+
+                override fun mouseExited(e: MouseEvent) {
+                    icon = REMOVE_ICON
+                }
+            })
+        }
+    }
+
+    companion object {
+        private val REMOVE_ICON: Icon = IconLoader.getIcon("/icons/remove.svg", AttachmentCard::class.java)
+        private val REMOVE_HOVER_ICON: Icon = IconLoader.getIcon("/icons/remove-hover.svg", AttachmentCard::class.java)
     }
 }
 
@@ -251,4 +283,18 @@ private fun mimeIcon(mime: String): Icon = when {
     mime.startsWith("image/") -> AllIcons.FileTypes.Image
     mime == "application/x-directory" -> AllIcons.Nodes.Folder
     else -> AllIcons.FileTypes.Text
+}
+
+private fun tooltip(item: AttachmentCardItem): String = "<html>${listOf(
+    "Name: ${item.name}",
+    "Type: ${item.mime}",
+    "Location: ${location(item)}",
+).joinToString("<br>") { StringUtil.escapeXmlEntities(it) }}</html>"
+
+private fun location(item: AttachmentCardItem): String {
+    if (item.path != null) return item.path.toString()
+    val uri = runCatching { URI.create(item.url) }.getOrNull()
+    if (uri?.scheme == "file") return runCatching { Path.of(uri).toString() }
+        .getOrElse { URLDecoder.decode(uri.rawSchemeSpecificPart.removePrefix("//"), StandardCharsets.UTF_8) }
+    return item.url
 }
