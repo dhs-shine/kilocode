@@ -4,6 +4,9 @@ import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.toolKind
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
+import ai.kilocode.client.session.views.tool.GlobToolView
+import ai.kilocode.client.session.views.tool.ReadToolView
+import ai.kilocode.client.session.views.tool.ToolView
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 @Suppress("UnstableApiUsage")
@@ -17,9 +20,8 @@ class GlobToolViewTest : BasePlatformTestCase() {
 
         assertTrue(base is SecondarySessionPartView)
         assertTrue(view.labelText().contains("Glob"))
-        assertEquals("/repo/src", view.directoryText())
-        assertEquals("pattern=**/*.kt", view.patternText())
-        assertTrue(view.patternVisible())
+        assertEquals(listOf("/repo/src", "pattern=**/*.kt"), view.targetTexts())
+        assertTrue(view.targetVisible(1))
     }
 
     fun `test pattern row hides when pattern is absent`() {
@@ -27,9 +29,8 @@ class GlobToolViewTest : BasePlatformTestCase() {
             it.input = mapOf("path" to "/repo/src")
         })
 
-        assertEquals("/repo/src", view.directoryText())
-        assertEquals("", view.patternText())
-        assertFalse(view.patternVisible())
+        assertEquals(listOf("/repo/src"), view.targetTexts())
+        assertFalse(view.targetVisible(1))
     }
 
     fun `test completed glob starts collapsed and expands output`() {

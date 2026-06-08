@@ -1,0 +1,150 @@
+package ai.kilocode.client.session.views.tool
+
+import ai.kilocode.client.session.model.Content
+import ai.kilocode.client.session.model.Tool
+import ai.kilocode.client.session.model.ToolExecState
+import ai.kilocode.client.session.ui.selection.SessionSelection
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.base.SecondarySessionPartView
+import ai.kilocode.client.ui.UiStyle
+import com.intellij.util.ui.JBUI
+import java.awt.Dimension
+import javax.swing.Icon
+
+abstract class BaseSearchToolView(
+    tool: Tool,
+    private val selection: SessionSelection? = null,
+    private val parts: ToolParts,
+) : SecondarySessionPartView(parts.header, { parts.scroll(tool) }) {
+
+    override val contentId: String = tool.id
+
+    protected var item = tool
+    private var style = SessionEditorStyle.current()
+    private var registered = false
+
+    protected abstract fun toolIcon(tool: Tool): Icon
+    protected abstract fun toolTitle(tool: Tool): String
+    protected abstract fun targets(tool: Tool): List<String>
+    protected abstract fun viewName(): String
+
+    init {
+        bindHeader(parts.glyph, parts.title, parts.sub, parts.state, parts.center, parts.controls, parts.slot)
+        parts.targets.forEach { bindHeader(it) }
+        applyStyle(style)
+        sync()
+    }
+
+    override fun expand(): Boolean {
+        val changed = super.expand()
+        if (!changed) return false
+        syncBody()
+        applyBodyStyle()
+        return true
+    }
+
+    override fun getPreferredSize(): Dimension {
+        val size = super.getPreferredSize()
+        if (!bodyVisible()) return size
+        val height = row.preferredSize.height + bodyMaxHeight()
+        return Dimension(size.width, minOf(size.height, height))
+    }
+
+    override fun update(content: Content) {
+        if (content !is Tool) return
+        item = content
+        var changed = sync()
+        changed = syncBody() || changed
+        if (changed) refresh()
+    }
+
+    fun labelText(): String = listOf(parts.title.text).plus(targetTexts()).plus(parts.state.text)
+        .filter { it.isNotBlank() }
+        .joinToString(" ")
+
+    fun bodyText(): String = body(item)
+    internal fun targetTexts(): List<String> = parts.targets.map { it.text }.filter { it.isNotBlank() }
+    internal fun targetVisible(index: Int): Boolean = parts.targets.getOrNull(index)?.isVisible ?: false
+    internal fun bodyVisible() = parts.scroll?.parent === this
+    internal fun hasToggle() = arrow.isVisible
+    internal fun bodyFont() = parts.text?.font ?: style.transcriptFont
+    internal fun titleFont() = parts.title.font
+    internal fun targetFont(index: Int) = parts.targets.getOrNull(index)?.font ?: style.smallEditorFont
+    internal fun stateFont() = parts.state.font
+    internal fun bodyCreated() = parts.bodyCreated()
+    internal fun scrollComponent() = parts.scroll
+    internal fun headerComponent() = parts.header
+    internal fun centerComponent() = parts.center
+    internal fun targetComponents() = parts.targets
+
+    override fun applyStyle(style: SessionEditorStyle) {
+        this.style = style
+        var changed = false
+        changed = setFont(parts.title, style.boldEditorFont) || changed
+        changed = setFont(parts.sub, style.smallEditorFont) || changed
+        parts.targets.forEach { changed = setFont(it, style.smallEditorFont) || changed }
+        changed = setFont(parts.state, style.smallEditorFont) || changed
+        changed = applyBodyStyle() || changed
+        if (changed) refresh()
+    }
+
+    private fun sync(): Boolean {
+        val expand = canExpand(item)
+        var changed = false
+        changed = syncExpandable(expand) || changed
+        changed = setVisible(parts.state, item.state != ToolExecState.COMPLETED) || changed
+        changed = setIcon(parts.glyph, toolIcon(item)) || changed
+        changed = setForeground(parts.glyph, color(item)) || changed
+        changed = setText(parts.title, toolTitle(item)) || changed
+        changed = setForeground(parts.title, titleColor(item)) || changed
+        changed = setForeground(parts.sub, UiStyle.Colors.weak()) || changed
+        changed = syncTargets() || changed
+        changed = setText(parts.state, stateText(item)) || changed
+        changed = setForeground(parts.state, color(item)) || changed
+        parts.text?.let { changed = setForeground(it, bodyColor()) || changed }
+        return changed
+    }
+
+    private fun syncTargets(): Boolean {
+        val values = targets(item)
+        var changed = false
+        parts.targets.forEachIndexed { index, label ->
+            val text = values.getOrNull(index) ?: ""
+            changed = setVisible(label, text.isNotBlank()) || changed
+            changed = setPlainText(label, text) || changed
+            changed = setForeground(label, UiStyle.Colors.weak()) || changed
+        }
+        return changed
+    }
+
+    private fun syncBody(): Boolean {
+        val text = parts.text ?: return false
+        val value = plainBody(item)
+        if (text.text != value) {
+            text.text = value
+            text.caretPosition = 0
+            return true
+        }
+        return false
+    }
+
+    private fun applyBodyStyle(): Boolean {
+        val text = parts.text ?: return false
+        if (!registered && selection != null && text.parent != null) {
+            registered = true
+            selection.register(text, this)
+        }
+        return setFont(text, style.transcriptFont)
+    }
+
+    private fun bodyColor() = if (item.state == ToolExecState.ERROR) UiStyle.Colors.errorLabelForeground() else UiStyle.Colors.fg()
+
+    private fun bodyMaxHeight(): Int {
+        val text = parts.text ?: return 0
+        return text.getFontMetrics(text.font).height * SessionUiStyle.View.Tool.BODY_LINES +
+            JBUI.scale(SessionUiStyle.View.SESSION_VIEW_BODY_EXTRA_HEIGHT)
+    }
+
+    override fun dumpLabel() = "${viewName()}#$contentId(${labelText()})"
+}

@@ -3,6 +3,10 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.views.base.GenericView
 import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.session.views.question.QuestionResultView
+import ai.kilocode.client.session.views.tool.GlobToolView
+import ai.kilocode.client.session.views.tool.ReadToolView
+import ai.kilocode.client.session.views.tool.SearchToolView
+import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.model.Compaction
 import ai.kilocode.client.session.model.Content

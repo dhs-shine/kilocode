@@ -1,7 +1,7 @@
 package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.SessionUiTestBase
-import ai.kilocode.client.session.views.ToolView
+import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.PartDto
 import com.intellij.ide.CopyProvider

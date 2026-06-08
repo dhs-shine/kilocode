@@ -4,6 +4,10 @@ import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.toolKind
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
+import ai.kilocode.client.session.views.tool.GlobToolView
+import ai.kilocode.client.session.views.tool.ReadToolView
+import ai.kilocode.client.session.views.tool.SearchToolView
+import ai.kilocode.client.session.views.tool.ToolView
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.awt.Container
 import java.awt.Dimension
