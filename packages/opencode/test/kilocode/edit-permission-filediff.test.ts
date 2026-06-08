@@ -1,4 +1,3 @@
-// kilocode_change - new file
 //
 // Ensure the edit tool always includes `filediff` in its
 // permission-ask metadata. Without `filediff`, the VS Code extension's

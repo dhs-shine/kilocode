@@ -364,8 +364,8 @@ export const ReadTool = Tool.define(
 // routed through TextStream.withFallback so non-UTF-8 files are decoded via
 // iconv. The body otherwise matches upstream.
 export async function lines(filepath: string, opts: { limit: number; offset: number }) {
-  const extracted = await Extract.open(filepath) // kilocode_change - extract supported document contents before paging
-  if (extracted) return readLines(extracted, opts) // kilocode_change
+  const extracted = await Extract.open(filepath)
+  if (extracted) return readLines(extracted, opts)
   return TextStream.withFallback(filepath, (stream) => readLines(stream, opts))
 }
 

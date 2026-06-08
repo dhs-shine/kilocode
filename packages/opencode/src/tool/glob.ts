@@ -58,8 +58,10 @@ export const GlobTool = Tool.define(
             },
           })
 
-          const base = absolute?.dir ?? params.path ?? ins.directory // kilocode_change
+          // kilocode_change start
+          const base = absolute?.dir ?? params.path ?? ins.directory
           const search = path.isAbsolute(base) ? base : path.resolve(ins.directory, base)
+          // kilocode_change end
           yield* reference.ensure(search)
           const info = yield* fs.stat(search).pipe(Effect.catch(() => Effect.succeed(undefined)))
           if (info?.type === "File") {
@@ -72,8 +74,9 @@ export const GlobTool = Tool.define(
 
           const limit = 100
           let truncated = false
+          // kilocode_change start
           const files = yield* rg
-            .files({ cwd: search, glob: [absolute?.pattern ?? params.pattern], signal: ctx.abort }) // kilocode_change
+            .files({ cwd: search, glob: [absolute?.pattern ?? params.pattern], signal: ctx.abort })
             .pipe(
               Stream.mapEffect((file) =>
                 Effect.gen(function* () {
@@ -91,6 +94,7 @@ export const GlobTool = Tool.define(
               Stream.runCollect,
               Effect.map((chunk) => [...chunk]),
             )
+          // kilocode_change end
 
           if (files.length > limit) {
             truncated = true

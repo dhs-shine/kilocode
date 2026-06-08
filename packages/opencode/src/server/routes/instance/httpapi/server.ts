@@ -179,7 +179,7 @@ const uiRoute = HttpRouter.use((router) =>
 
 export function createRoutes(corsOptions?: CorsOptions) {
   return Layer.mergeAll(rootApiRoutes, eventApiRoutes, instanceRoutes, docRoute, uiRoute).pipe(
-    Layer.provide(schemaErrorLayer),
+    Layer.provide(schemaErrorLayer), // kilocode_change
     Layer.provide([
       errorLayer,
       compressionLayer,

@@ -111,7 +111,6 @@ export namespace Suggestion {
     ),
   }
 
-  // kilocode_change - Instance.state() removed in v1.4.4; use module-level state
   // (request IDs are globally unique so instance scoping is not needed)
   const pending: Record<
     string,

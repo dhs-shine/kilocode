@@ -16,9 +16,11 @@ import { webSearchProviderLabel } from "@/tool/websearch"
 import { useDialog } from "../../ui/dialog"
 import { getScrollAcceleration } from "../../util/scroll"
 import { useTuiConfig } from "../../context/tui-config"
-import { ConfigProtection } from "@/kilocode/permission/config-paths" // kilocode_change
-import { splitDiffHunks } from "@/kilocode/tui/diff" // kilocode_change
-import { normalizeUrls } from "@/kilocode/util/url" // kilocode_change
+// kilocode_change start
+import { ConfigProtection } from "@/kilocode/permission/config-paths"
+import { splitDiffHunks } from "@/kilocode/tui/diff"
+import { normalizeUrls } from "@/kilocode/util/url"
+// kilocode_change end
 import { useBindings, useCommandShortcut } from "../../keymap"
 import { usePathFormatter } from "../../context/path-format"
 
@@ -162,13 +164,15 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
           body={
             <Switch>
               <Match when={props.request.always.length === 1 && props.request.always[0] === "*"}>
-                {/* kilocode_change */}
+                {/* kilocode_change start */}
                 <TextBody title={"This will allow " + props.request.permission + " permanently."} />
+                {/* kilocode_change end */}
               </Match>
               <Match when={true}>
                 <box paddingLeft={1} gap={1}>
-                  {/* kilocode_change */}
+                  {/* kilocode_change start */}
                   <text fg={theme.textMuted}>This will allow the following patterns permanently</text>
+                  {/* kilocode_change end */}
                   <box>
                     <For each={props.request.always}>
                       {(pattern) => (
@@ -428,13 +432,13 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
                 </text>
                 <text fg={theme.text}>{current.title}</text>
               </box>
-              {/* // kilocode_change start - explain config file edits always require approval */}
+              {/* kilocode_change start - explain config file edits always require approval */}
               <Show when={props.request.metadata?.[ConfigProtection.DISABLE_ALWAYS_KEY]}>
                 <box paddingLeft={4} flexShrink={0}>
                   <text fg={theme.textMuted}>Config file edits always require approval</text>
                 </box>
               </Show>
-              {/* // kilocode_change end */}
+              {/* kilocode_change end */}
             </box>
           )
 
@@ -449,7 +453,9 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               title="Permission required"
               header={header()}
               body={current.body}
+              /* kilocode_change start */
               options={options}
+              /* kilocode_change end */
               escapeKey="reject"
               fullscreen
               onSelect={(option) => {
@@ -529,7 +535,6 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
           <text fg={theme.text}>Reject permission</text>
         </box>
         <box paddingLeft={1}>
-          {/* kilocode_change */}
           <text fg={theme.textMuted}>Tell Kilo what to do differently</text>
         </box>
       </box>

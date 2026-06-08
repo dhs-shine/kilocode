@@ -37,7 +37,7 @@ import {
   ShellPayload,
   SummarizePayload,
   UpdatePayload,
-  ViewedPayload,
+  ViewedPayload, // kilocode_change
 } from "../groups/session"
 import * as SessionError from "./session-errors"
 
@@ -265,8 +265,7 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       const instance = yield* InstanceState.context
       const workspace = yield* InstanceState.workspaceID
       const message = yield* promptSvc
-        // kilocode_change - cast to bridge schema-readonly→PromptInput-mutable; matches legacy Hono session.ts
-        .prompt({ ...ctx.payload, sessionID: ctx.params.sessionID } as unknown as SessionPrompt.PromptInput)
+        .prompt({ ...ctx.payload, sessionID: ctx.params.sessionID } as unknown as SessionPrompt.PromptInput) // kilocode_change
         .pipe(
           Effect.provideService(InstanceRef, instance),
           Effect.provideService(WorkspaceRef, workspace),

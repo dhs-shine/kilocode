@@ -1,4 +1,3 @@
-// kilocode_change - new file
 import { remapChildren as _remapChildren } from "./fork"
 import z from "zod"
 import { Cause, Effect, Schema } from "effect"

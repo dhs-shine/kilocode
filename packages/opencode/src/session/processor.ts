@@ -18,9 +18,11 @@ import { SessionStatus } from "./status"
 import { SessionSummary } from "./summary"
 import type { Provider } from "@/provider/provider"
 import { Question } from "@/question"
-import { KiloSessionProcessor, type ReviewTelemetry } from "@/kilocode/session/processor" // kilocode_change
-import { Suggestion } from "@/kilocode/suggestion" // kilocode_change
-import { NotFoundError } from "@/storage/storage" // kilocode_change
+// kilocode_change start
+import { KiloSessionProcessor, type ReviewTelemetry } from "@/kilocode/session/processor"
+import { Suggestion } from "@/kilocode/suggestion"
+import { NotFoundError } from "@/storage/storage"
+// kilocode_change end
 import { errorMessage } from "@/util/error"
 import * as Log from "@opencode-ai/core/util/log"
 import { isRecord } from "@/util/record"
@@ -60,8 +62,10 @@ type Input = {
   assistantMessage: MessageV2.Assistant
   sessionID: SessionID
   model: Provider.Model
-  telemetry?: ReviewTelemetry // kilocode_change
-  snapshotInitialization?: "wait" // kilocode_change - managed clients wait silently for slow baseline creation
+  // kilocode_change start
+  telemetry?: ReviewTelemetry
+  snapshotInitialization?: "wait"
+  // kilocode_change end
 }
 
 export interface Interface {
@@ -84,8 +88,10 @@ interface ProcessorContext extends Input {
   compactionError: ReturnType<typeof MessageV2.ContextOverflowError.prototype.toObject> | undefined // kilocode_change
   currentText: MessageV2.TextPart | undefined
   reasoningMap: Record<string, MessageV2.ReasoningPart>
-  stepStart: number // kilocode_change
-  step: { reasoning: boolean; text: boolean; tool: boolean } // kilocode_change
+  // kilocode_change start
+  stepStart: number
+  step: { reasoning: boolean; text: boolean; tool: boolean }
+  // kilocode_change end
 }
 
 type StreamEvent = Event
@@ -147,9 +153,11 @@ export const layer: Layer.Layer<
         compactionError: undefined, // kilocode_change
         currentText: undefined,
         reasoningMap: {},
-        telemetry: input.telemetry, // kilocode_change
-        stepStart: 0, // kilocode_change
-        step: { reasoning: false, text: false, tool: false }, // kilocode_change
+        // kilocode_change start
+        telemetry: input.telemetry,
+        stepStart: 0,
+        step: { reasoning: false, text: false, tool: false },
+        // kilocode_change end
       }
       let aborted = false
       const ac = new AbortController() // kilocode_change — abort controller for offline handler
@@ -384,8 +392,8 @@ export const layer: Layer.Layer<
             if (ctx.assistantMessage.summary) {
               throw new Error(`Tool call not allowed while generating summary: ${value.toolName}`)
             }
-            ctx.step.tool = true // kilocode_change
-            // kilocode_change start — create tool part if tool-input-start was never emitted
+            // kilocode_change start
+            ctx.step.tool = true
             if (!ctx.toolcalls[value.toolCallId]) {
               log.warn("tool-call without prior tool-input-start", {
                 toolCallId: value.toolCallId,
@@ -549,9 +557,9 @@ export const layer: Layer.Layer<
             throw value.error
 
           case "start-step":
-            ctx.stepStart = performance.now() // kilocode_change
-            ctx.step = { reasoning: false, text: false, tool: false } // kilocode_change
-            // kilocode_change start - pass turn context for slow-snapshot UI/policy handling
+            // kilocode_change start
+            ctx.stepStart = performance.now()
+            ctx.step = { reasoning: false, text: false, tool: false }
             if (!ctx.snapshot)
               ctx.snapshot = yield* snapshot.track({
                 sessionID: ctx.sessionID,
@@ -946,7 +954,7 @@ export const layer: Layer.Layer<
 
           if (ctx.needsCompaction) return "compact"
           if (ctx.blocked || ctx.assistantMessage.error) return "stop"
-          return "continue" // kilocode_change - remove once compactError is no longer Kilo-specific
+          return "continue"
         })
       })
 

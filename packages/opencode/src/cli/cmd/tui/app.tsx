@@ -1,4 +1,4 @@
-import { render, TimeToFirstDraw, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { render, TimeToFirstDraw, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid" // kilocode_change
 import { createDefaultOpenTuiKeymap } from "@opentui/keymap/opentui"
 import * as Clipboard from "@tui/util/clipboard"
 import * as Selection from "@tui/util/selection"
@@ -52,8 +52,10 @@ import { DialogConfirm } from "./ui/dialog-confirm"
 import { ToastProvider, useToast } from "./ui/toast"
 import { ExitProvider, useExit } from "./context/exit"
 import { Session as SessionApi } from "@/session/session"
+// kilocode_change start
 import { DialogSelect } from "./ui/dialog-select"
 import { Link } from "./ui/link"
+// kilocode_change end
 import { TuiEvent } from "./event"
 import { KVProvider, useKV } from "./context/kv"
 import { Provider } from "@/provider/provider"
@@ -176,7 +178,6 @@ export function tui(input: {
       await TuiPluginRuntime.dispose()
     }
 
-    // kilocode_change - safety net: ensure mouse tracking is disabled regardless of exit path
     process.on("exit", resetTerminalState) // kilocode_change
 
     const renderer = await createCliRenderer(rendererConfig(input.config))
@@ -190,11 +191,9 @@ export function tui(input: {
     await render(() => {
       return (
         <ErrorBoundary
-          // kilocode_change start
           fallback={(error, reset) => (
             <ErrorComponent error={error} reset={reset} onBeforeExit={onBeforeExit} onExit={onExit} mode={mode} />
           )}
-          // kilocode_change end
         >
           <OpencodeKeymapProvider keymap={keymap}>
             <ArgsProvider {...input.args}>
@@ -336,8 +335,10 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     kv.get("paste_summary_enabled", !sync.data.config.experimental?.disable_paste_summary),
   )
 
-  KiloApp.useSessionEffects({ route, sdk, sync }) // kilocode_change
-  KiloApp.useTuiConfigHotReload() // kilocode_change - hot reload TUI keybinds/theme/ui settings
+  // kilocode_change start
+  KiloApp.useSessionEffects({ route, sdk, sync })
+  KiloApp.useTuiConfigHotReload()
+  // kilocode_change end
 
   // Update terminal window title based on current route and session
   createEffect(() => {
@@ -346,24 +347,24 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     const titleDefault = KiloApp.APP_TITLE // kilocode_change
 
     if (route.data.type === "home") {
-      renderer.setTerminalTitle(titleDefault)
+      renderer.setTerminalTitle(titleDefault) // kilocode_change
       return
     }
 
     if (route.data.type === "session") {
       const session = sync.session.get(route.data.sessionID)
       if (!session || SessionApi.isDefaultTitle(session.title)) {
-        renderer.setTerminalTitle(titleDefault)
+        renderer.setTerminalTitle(titleDefault) // kilocode_change
         return
       }
 
       const title = session.title.length > 40 ? session.title.slice(0, 37) + "..." : session.title
-      renderer.setTerminalTitle(`${titleDefault} | ${title}`)
+      renderer.setTerminalTitle(`${titleDefault} | ${title}`) // kilocode_change
       return
     }
 
     if (route.data.type === "plugin") {
-      renderer.setTerminalTitle(`${titleDefault} | ${route.data.id}`)
+      renderer.setTerminalTitle(`${titleDefault} | ${route.data.id}`) // kilocode_change
     }
 
     // kilocode_change start
@@ -984,9 +985,7 @@ function tryUseTerminalDimensions() {
     return undefined
   }
 }
-// kilocode_change end
 
-// kilocode_change start — inlined ErrorComponent with safe renderer/keyboard guards
 function ErrorComponent(props: {
   error: Error
   reset: () => void
@@ -1004,7 +1003,6 @@ function ErrorComponent(props: {
     renderer?.setTerminalTitle("")
     renderer?.destroy()
     win32FlushInputBuffer()
-    // kilocode_change - reset terminal state to disable mouse tracking on exit
     resetTerminalState()
     await props.onExit()
   }

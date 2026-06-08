@@ -36,6 +36,7 @@ const configLayer = TestConfig.layer({
 })
 
 const registryBase = ToolRegistry.layer.pipe(
+  // kilocode_change
   Layer.provide(configLayer),
   Layer.provide(Plugin.defaultLayer),
   Layer.provide(Question.defaultLayer),
@@ -58,10 +59,7 @@ const registryBase = ToolRegistry.layer.pipe(
 )
 
 // kilocode_change start
-const registryLayer = registryBase.pipe(
-  Layer.provide(Command.defaultLayer),
-  Layer.provide(SessionStatus.defaultLayer),
-)
+const registryLayer = registryBase.pipe(Layer.provide(Command.defaultLayer), Layer.provide(SessionStatus.defaultLayer))
 // kilocode_change end
 
 const it = testEffect(Layer.mergeAll(registryLayer, node))
@@ -95,9 +93,7 @@ describe("tool.registry", () => {
       }
     }),
   )
-  // kilocode_change end
 
-  // kilocode_change start
   it.live("suggest is registered for cli and vscode only", () =>
     Effect.gen(function* () {
       const original = process.env["KILO_CLIENT"]

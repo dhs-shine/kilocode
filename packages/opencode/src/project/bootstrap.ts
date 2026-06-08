@@ -8,8 +8,10 @@ import * as Vcs from "./vcs"
 import { Bus } from "../bus"
 import { InstanceState } from "@/effect/instance-state"
 import { FileWatcher } from "@/file/watcher"
-import { KilocodeBootstrap } from "@/kilocode/bootstrap" // kilocode_change
-// import { ShareNext } from "@/share/share-next" // kilocode_change - handled by KilocodeBootstrap
+// kilocode_change start
+import { KilocodeBootstrap } from "@/kilocode/bootstrap"
+// import { ShareNext } from "@/share/share-next"
+// kilocode_change end
 import { Effect, Layer } from "effect"
 import { Config } from "@/config/config"
 import { Service } from "./bootstrap-service"
@@ -32,8 +34,10 @@ export const layer = Layer.effect(
     const plugin = yield* Plugin.Service
     const project = yield* Project.Service
     const reference = yield* Reference.Service
-    const kilocode = yield* KilocodeBootstrap.Service // kilocode_change - Kilo session bootstrap replaces ShareNext
-    // const shareNext = yield* ShareNext.Service // kilocode_change - handled by KilocodeBootstrap
+    // kilocode_change start
+    const kilocode = yield* KilocodeBootstrap.Service
+    // const shareNext = yield* ShareNext.Service
+    // kilocode_change end
     const snapshot = yield* Snapshot.Service
     const vcs = yield* Vcs.Service
 
@@ -69,8 +73,10 @@ export const defaultLayer: Layer.Layer<Service> = layer.pipe(
     Plugin.defaultLayer,
     Project.defaultLayer,
     Reference.defaultLayer,
-    KilocodeBootstrap.defaultLayer, // kilocode_change - Kilo session bootstrap replaces ShareNext
-    // ShareNext.defaultLayer, // kilocode_change - handled by KilocodeBootstrap
+    // kilocode_change start
+    KilocodeBootstrap.defaultLayer,
+    // ShareNext.defaultLayer,
+    // kilocode_change end
     Snapshot.defaultLayer,
     Vcs.defaultLayer,
   ]),

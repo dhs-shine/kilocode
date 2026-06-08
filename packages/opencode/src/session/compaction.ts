@@ -18,11 +18,13 @@ import { InstanceState } from "@/effect/instance-state"
 import { isOverflow as overflow, usable } from "./overflow"
 import { makeRuntime } from "@/effect/run-service"
 import { serviceUse } from "@/effect/service-use"
-import { KiloSessionPromptQueue } from "@/kilocode/session/prompt-queue" // kilocode_change
-import { KiloCompactionPayloadRecovery } from "@/kilocode/session/compaction-payload-recovery" // kilocode_change
-import { KiloCompactionChunks } from "@/kilocode/session/compaction-chunks" // kilocode_change
-import { SessionExport } from "@/kilocode/session-export" // kilocode_change
-import { KiloSession } from "@/kilocode/session" // kilocode_change
+// kilocode_change start
+import { KiloSessionPromptQueue } from "@/kilocode/session/prompt-queue"
+import { KiloCompactionPayloadRecovery } from "@/kilocode/session/compaction-payload-recovery"
+import { KiloCompactionChunks } from "@/kilocode/session/compaction-chunks"
+import { SessionExport } from "@/kilocode/session-export"
+import { KiloSession } from "@/kilocode/session"
+// kilocode_change end
 import { SyncEvent } from "@/sync"
 import { SessionEvent } from "@/v2/session-event"
 import { Flag } from "@opencode-ai/core/flag/flag"
@@ -478,9 +480,7 @@ export const layer: Layer.Layer<
             updateMessage: session.updateMessage,
             updatePart: session.updatePart,
           })
-      // kilocode_change end
 
-      // kilocode_change start - fallback to chunked compaction when the first summary overflows
       const fallback = KiloCompactionChunks.eligible({
         result,
         error: processor.message.error ?? processor.compactError?.(),
@@ -638,7 +638,6 @@ export const layer: Layer.Layer<
             include: selected.tail_start_id,
           })
         }
-        // kilocode_change start - export self-contained compaction capture and prune stale tool output
         const parent = KiloSession.resolveParent(input.sessionID)
         const found = KiloSession.resolveRoot(input.sessionID)
         const root = parent ? (found === input.sessionID ? parent : found) : input.sessionID
@@ -668,11 +667,10 @@ export const layer: Layer.Layer<
           },
         })
         yield* prune({ sessionID: input.sessionID, reason: "post-compaction" })
-        // kilocode_change end
         yield* bus.publish(Event.Compacted, { sessionID: input.sessionID })
       }
+      return fallback
       // kilocode_change end
-      return fallback // kilocode_change
     })
 
     const create = Effect.fn("SessionCompaction.create")(function* (input: {
@@ -735,7 +733,6 @@ export const defaultLayer = Layer.suspend(() =>
 const { runPromise } = makeRuntime(Service, defaultLayer)
 
 export async function isOverflow(input: { tokens: MessageV2.Assistant["tokens"]; model: Provider.Model }) {
-  // kilocode_change
   return runPromise((svc) => svc.isOverflow(input))
 }
 

@@ -1,12 +1,16 @@
 import { AllowEverythingPermission } from "@/kilocode/permission/allow-everything" // kilocode_change
 import { Permission } from "@/permission"
 import { PermissionID } from "@/permission/schema"
-import { SessionID } from "@/session/schema" // kilocode_change
+// kilocode_change start
+import { SessionID } from "@/session/schema"
 import { Effect, Schema } from "effect"
+// kilocode_change end
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { InstanceHttpApi } from "../api"
-import { notFound } from "../errors" // kilocode_change
-import { AllowEverythingBody, SaveAlwaysRulesBody } from "../groups/permission" // kilocode_change
+// kilocode_change start
+import { notFound } from "../errors"
+import { AllowEverythingBody, SaveAlwaysRulesBody } from "../groups/permission"
+// kilocode_change end
 
 export const permissionHandlers = HttpApiBuilder.group(InstanceHttpApi, "permission", (handlers) =>
   Effect.gen(function* () {
@@ -21,6 +25,7 @@ export const permissionHandlers = HttpApiBuilder.group(InstanceHttpApi, "permiss
       payload: Permission.ReplyBody
     }) {
       const ok = yield* svc.reply({
+        // kilocode_change
         requestID: ctx.params.requestID,
         reply: ctx.payload.reply,
         message: ctx.payload.message,
@@ -42,9 +47,7 @@ export const permissionHandlers = HttpApiBuilder.group(InstanceHttpApi, "permiss
       if (!ok) return yield* notFound(`Permission request not found: ${ctx.params.requestID}`)
       return true
     })
-    // kilocode_change end
 
-    // kilocode_change start
     const allowEverything = Effect.fn("PermissionHttpApi.allowEverything")(function* (ctx: {
       payload: Schema.Schema.Type<typeof AllowEverythingBody>
     }) {
@@ -54,12 +57,12 @@ export const permissionHandlers = HttpApiBuilder.group(InstanceHttpApi, "permiss
         sessionID: ctx.payload.sessionID ? SessionID.make(ctx.payload.sessionID) : undefined,
       })
     })
-    // kilocode_change end
 
     return handlers
       .handle("list", list)
       .handle("reply", reply)
       .handle("saveAlwaysRules", saveAlwaysRules)
-      .handle("allowEverything", allowEverything) // kilocode_change
+      .handle("allowEverything", allowEverything)
+    // kilocode_change end
   }),
 )

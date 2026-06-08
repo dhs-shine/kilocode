@@ -101,7 +101,7 @@ export const layer = Layer.effect(
         } satisfies Record<string, "allow" | "ask" | "deny">
 
         const baseDefaults = Permission.fromConfig({
-          // kilocode_change: renamed from defaults
+          // kilocode_change
           "*": "allow",
           doom_loop: "ask",
           external_directory: {
@@ -288,9 +288,7 @@ export const layer = Layer.effect(
 
         // kilocode_change start - rename build→code, add debug/orchestrator/ask, patch plan/explore
         KiloAgent.patchAgents(agents, defaults, user, cfg, kilo, ctx.worktree, whitelistedDirs)
-        // kilocode_change end
 
-        // kilocode_change start - preprocess config to remap "build" key → "code"
         const agentConfigs = KiloAgent.preprocessConfig(cfg.agent ?? {})
         for (const [key, value] of Object.entries(agentConfigs)) {
           // kilocode_change end
@@ -347,7 +345,7 @@ export const layer = Layer.effect(
             `Repository: ${reference.repository}`,
             ...(reference.branch ? [`Branch/ref: ${reference.branch}`] : []),
             `Cached directory: ${reference.path}`,
-            `OpenCode materializes this configured repository before use. Do not call repo_clone for this reference.`,
+            `OpenCode materializes this configured repository before use. Do not call repo_clone for this reference.`, // kilocode_change
             `Inspect the cached directory as the primary reference source. Prefer repo_overview with path ${JSON.stringify(reference.path)} before broader searches, then use Glob, Grep, and Read inside that directory. Do not edit files.`,
             `Return exact absolute file paths for findings whenever possible.`,
           ].join("\n\n")
@@ -428,8 +426,10 @@ export const layer = Layer.effect(
         const defaultAgent = Effect.fnUntraced(function* () {
           const c = yield* config.get()
           if (c.default_agent) {
-            const effective = KiloAgent.resolveKey(c.default_agent) // kilocode_change - treat "build" as "code"
-            const agent = agents[effective] // kilocode_change
+            // kilocode_change start
+            const effective = KiloAgent.resolveKey(c.default_agent)
+            const agent = agents[effective]
+            // kilocode_change end
             if (!agent) throw new Error(`default agent "${c.default_agent}" not found`)
             if (agent.mode === "subagent") throw new Error(`default agent "${c.default_agent}" is a subagent`)
             if (agent.hidden === true) throw new Error(`default agent "${c.default_agent}" is hidden`)

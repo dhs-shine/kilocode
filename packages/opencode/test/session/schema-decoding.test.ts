@@ -65,8 +65,7 @@ describe("Session.Info", () => {
         additions: 10,
         deletions: 5,
         files: 2,
-        // kilocode_change - summary.diffs uses SummaryFileDiff (patch omitted) in kilo
-        diffs: [{ additions: 1, deletions: 0, file: "a.ts" }],
+        diffs: [{ additions: 1, deletions: 0, file: "a.ts" }], // kilocode_change
       },
       share: { url: "https://share.example.com/s/1" },
       title: "Full session",
@@ -260,9 +259,9 @@ describe("SessionStatus.Info", () => {
         reason: "free_tier_limit",
         provider: "opencode",
         title: "Free limit reached",
-        message: "Subscribe to OpenCode Go.",
+        message: "Subscribe to OpenCode Go.", // kilocode_change
         label: "subscribe",
-        link: "https://opencode.ai/go",
+        link: "https://opencode.ai/go", // kilocode_change
       },
       next: 500,
     }

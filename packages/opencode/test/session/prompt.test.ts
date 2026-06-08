@@ -1,7 +1,9 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { FetchHttpClient } from "effect/unstable/http"
-import { afterEach, expect, mock, spyOn } from "bun:test" // kilocode_change - spy on review telemetry
-import { Telemetry } from "@kilocode/kilo-telemetry" // kilocode_change - assert review command telemetry
+// kilocode_change start
+import { afterEach, expect, mock, spyOn } from "bun:test"
+import { Telemetry } from "@kilocode/kilo-telemetry"
+// kilocode_change end
 import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import path from "path"
 import { fileURLToPath } from "url"
@@ -595,8 +597,8 @@ it.live("loop continues when finish is tool-calls", () =>
   ),
 )
 
-// kilocode_change - skipped: tracked in #9958
 it.live.skip("glob tool keeps instance context during prompt runs", () =>
+  // kilocode_change
   provideTmpdirServer(
     ({ dir, llm }) =>
       Effect.gen(function* () {
@@ -801,7 +803,7 @@ it.live(
       }),
       { git: true, config: providerCfg },
     ),
-  10_000, // kilocode_change
+  10_000,
 )
 
 // kilocode_change start - child task failures stay tool errors so the parent can recover
@@ -913,7 +915,7 @@ it.live(
 )
 
 unix(
-  // kilocode_change - skip flaky cancel test on Windows CI
+  // kilocode_change
   "cancel records MessageAbortedError on interrupted process",
   () =>
     provideTmpdirServer(
@@ -1153,7 +1155,7 @@ it.live(
         const a = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
         yield* llm.wait(1)
         const b = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-        yield* Effect.sleep(50) // kilocode_change - let b attach to a's done deferred before gate resolves
+        yield* Effect.sleep(50)
         gate.resolve()
 
         const [ea, eb] = yield* Effect.all([Fiber.await(a), Fiber.await(b)])

@@ -23,8 +23,10 @@ import { SplitBorder } from "@tui/component/border"
 import { Spinner } from "@tui/component/spinner"
 import { selectedForeground, useTheme } from "@tui/context/theme"
 import { BoxRenderable, ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
-import type { KeyEvent } from "@opentui/core" // kilocode_change
-import type { CommandContext } from "@opentui/keymap" // kilocode_change
+// kilocode_change start
+import type { KeyEvent } from "@opentui/core"
+import type { CommandContext } from "@opentui/keymap"
+// kilocode_change end
 import { Prompt, type PromptRef } from "@tui/component/prompt"
 // kilocode_change start
 import type { AssistantMessage, Part, Provider, ToolPart, UserMessage, TextPart, ReasoningPart } from "@kilocode/sdk/v2"
@@ -80,21 +82,25 @@ import { useExit } from "../../context/exit"
 import { Filesystem } from "@/util/filesystem"
 import { PermissionPrompt } from "./permission"
 import { QuestionPrompt } from "./question"
-import { Suggest } from "@/kilocode/suggestion/tui/render" // kilocode_change
-import { SuggestPrompt } from "@/kilocode/suggestion/tui/prompt" // kilocode_change
-import { NetworkPrompt } from "./network" // kilocode_change
+// kilocode_change start
+import { Suggest } from "@/kilocode/suggestion/tui/render"
+import { SuggestPrompt } from "@/kilocode/suggestion/tui/prompt"
+import { NetworkPrompt } from "./network"
+// kilocode_change end
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import * as Model from "../../util/model"
 import { formatTranscript } from "../../util/transcript"
 import { UI } from "@/cli/ui.ts"
 import { useTuiConfig } from "../../context/tui-config"
-import { splitDiffHunks } from "@/kilocode/tui/diff" // kilocode_change
-import { session as banner } from "@/kilocode/cli/logo" // kilocode_change
+// kilocode_change start
+import { splitDiffHunks } from "@/kilocode/tui/diff"
+import { session as banner } from "@/kilocode/cli/logo"
 
-import { formatMarkdownTables } from "../../util/markdown" // kilocode_change
-import { bell } from "@/kilocode/bell" // kilocode_change
-import { SessionIndexing } from "@/kilocode/components/session-indexing" // kilocode_change
-import { submitFeedback } from "@/kilocode/cli/cmd/tui/feedback" // kilocode_change
+import { formatMarkdownTables } from "../../util/markdown"
+import { bell } from "@/kilocode/bell"
+import { SessionIndexing } from "@/kilocode/components/session-indexing"
+import { submitFeedback } from "@/kilocode/cli/cmd/tui/feedback"
+// kilocode_change end
 import { getScrollAcceleration } from "../../util/scroll"
 import { TuiPluginRuntime } from "@/cli/cmd/tui/plugin/runtime"
 import { DialogRetryAction } from "../../component/dialog-retry-action"
@@ -229,10 +235,8 @@ export function Session() {
   const nonBlockingQuestions = createMemo(() => questions().filter((q) => q.blocking === false))
   const question = createMemo(() => blockingQuestions()[0] ?? nonBlockingQuestions()[0])
   const blockingSuggestions = createMemo(() => suggestions().filter((s) => s.blocking !== false))
-  // kilocode_change start - footer overlay only hosts blocking suggestions now;
   // non-blocking ones render inline at the tool-part slot via `SuggestBar`.
   const blockingSuggestion = createMemo(() => blockingSuggestions()[0])
-  // kilocode_change end
   const visible = createMemo(
     () =>
       !session()?.parentID &&
@@ -263,9 +267,7 @@ export function Session() {
   const lastAssistant = createMemo(() => {
     return messages().findLast((x) => x.role === "assistant")
   })
-  // kilocode_change end
 
-  // kilocode_change start - ring terminal bell on task completion
   createEffect(
     on(
       () => [route.sessionID, sync.data.session_status?.[route.sessionID]?.type] as const,
@@ -275,9 +277,7 @@ export function Session() {
       },
     ),
   )
-  // kilocode_change end
 
-  // kilocode_change start - ring terminal bell when input is needed
   createEffect(
     on(
       () => [route.sessionID, permissions().length] as const,
@@ -298,7 +298,7 @@ export function Session() {
   )
   createEffect(
     on(
-      () => [route.sessionID, suggestions().length + network().length] as const, // kilocode_change
+      () => [route.sessionID, suggestions().length + network().length] as const,
       ([id, len], prev) => {
         if (!prev || prev[0] !== id) return
         if (len > prev[1] && bellEnabled()) bell()
@@ -423,8 +423,8 @@ export function Session() {
     if (part.state.status !== "completed") return
     if (part.id === lastSwitch) return
 
-    // kilocode_change - plan_exit no longer switches agent; PlanFollowup handles it
     if (part.tool === "plan_enter") {
+      // kilocode_change
       local.agent.set("plan")
       lastSwitch = part.id
     }
@@ -471,9 +471,7 @@ export function Session() {
     const title = Locale.truncate(session()?.title ?? "", 50)
     return exit.message.set(banner(title, session()?.id, UI.Style.TEXT_DIM, UI.Style.TEXT_NORMAL))
   })
-  // kilocode_change end
 
-  // kilocode_change start - double ctrl+c to exit for child sessions
   const [exitPress, setExitPress] = createSignal(0)
   useBindings(() => ({
     enabled: Boolean(session()?.parentID),
@@ -1406,8 +1404,6 @@ export function Session() {
                   )}
                 </Show>
                 <Show when={permissions().length === 0 && !question()}>
-                  {/* kilocode_change end */}
-                  {/* kilocode_change start */}
                   <Show when={blockingSuggestion()} keyed>
                     {(request) => <SuggestPrompt request={request} />}
                   </Show>
@@ -1415,13 +1411,9 @@ export function Session() {
                 <Show when={session()?.parentID}>
                   <SubagentFooter />
                 </Show>
-                {/* kilocode_change end */}
-                {/* kilocode_change start */}
                 <Show when={networkVisible()}>
                   <NetworkPrompt request={network()[0]} />
                 </Show>
-                {/* kilocode_change end */}
-                {/* kilocode_change start */}
                 <Show when={!session()?.parentID}>
                   <TuiPluginRuntime.Slot
                     name="session_prompt"
