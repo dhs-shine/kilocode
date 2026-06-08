@@ -211,6 +211,10 @@ jobs:
     name: Visual Regression (kilo-vscode webview)
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
+    # kilocode_change start
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    # kilocode_change end
 
     steps:
       - name: Checkout (internal)
@@ -280,8 +284,6 @@ jobs:
         if: steps.storybook-cache-vscode.outputs.cache-hit != 'true'
         run: bun run build-storybook
         working-directory: packages/kilo-vscode
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096 # kilocode_change
 
       - name: Generate baselines and enforce webview accessibility checks # kilocode_change
         run: bun run test:visual:update
