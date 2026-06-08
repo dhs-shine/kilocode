@@ -290,14 +290,22 @@ for (const item of targets) {
   await Bun.build({
     conditions: ["browser"],
     tsconfig: "./tsconfig.json",
-    plugins: [plugin], // kilocode_change
+    plugins: [plugin],
     // kilocode_change start - skip sourcemaps for release builds (each .js.map adds ~50 MB per target → ~600 MB total)
     sourcemap: Script.release ? "none" : "external",
     // kilocode_change end
     external: ["node-gyp", ...LanceDBRuntime.external], // kilocode_change
     format: "esm",
     minify: true,
-    splitting: true,
+    // kilocode_change start - disable code-splitting to avoid a Bun 1.3.14 codegen bug.
+    // With splitting:true Bun emits cross-chunk re-exports like `import{vn as G9}` whose
+    // binding isn't top-level, so the compiled binary crashes at startup on the baseline
+    // target: "SyntaxError: Exported binding 'G9' needs to refer to a top-level declared
+    // variable." (Bun oven-sh/bun#25621, #5344, #7265; also opencode#23349). Fixed upstream
+    // in Bun#26089, post-1.3.14. Splitting only deduped shared code between the entrypoints;
+    // turning it off inlines per entrypoint and produces a valid binary.
+    splitting: false,
+    // kilocode_change end
     compile: {
       autoloadBunfig: false,
       autoloadDotenv: false,

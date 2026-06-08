@@ -134,7 +134,7 @@ jobs:
             package: "@kilocode/cli-darwin-arm64"
             mode: host
           - target: darwin-x64
-            runner: macos-13
+            runner: macos-15-intel
             uname: x86_64
             package: "@kilocode/cli-darwin-x64"
             mode: host
@@ -207,6 +207,11 @@ jobs:
             alpine:3.22 \
             sh -c '
               set -eu
+              # kilocode_change start - Bun musl binaries link against libstdc++ and libgcc_s
+              # (GCC C++ runtime). Alpine does not ship these by default; they are available
+              # as optional packages and must be installed for any Bun-compiled musl binary to run.
+              apk add --no-cache libstdc++ libgcc
+              # kilocode_change end
               binary="/dist/$PACKAGE/bin/kilo"
               "$binary" --version
               root="$(mktemp -d)"
