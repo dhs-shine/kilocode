@@ -9,11 +9,11 @@ const prompt = (focused: boolean, input: string): AppExit.Prompt => ({
 })
 
 describe("app_exit", () => {
-  test("blocks every configured exit binding when the command matcher is disabled", () => {
+  test("blocks exit when the command matcher is disabled", () => {
     const bindings = TuiConfig.resolve({}).keybinds.gather("app_exit", ["app.exit"])
 
     expect(bindings.length).toBeGreaterThan(0)
-    for (const binding of bindings) expect(AppExit.enabled(false)).toBe(false)
+    expect(AppExit.enabled(false)).toBe(false)
   })
 
   test("permits exit without a prompt ref", () => {
