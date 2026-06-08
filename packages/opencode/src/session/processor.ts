@@ -838,10 +838,12 @@ export const layer: Layer.Layer<
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             ctx.step = { reasoning: false, text: false, tool: false } // kilocode_change
+            // kilocode_change start
             const stream = llm.stream({
               ...streamInput,
-              preflight: !ctx.assistantMessage.summary, // kilocode_change
+              preflight: !ctx.assistantMessage.summary,
             })
+            // kilocode_change end
 
             yield* stream.pipe(
               Stream.tap((event) => handleEvent(event)),

@@ -1821,7 +1821,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               model: lastUser.model,
               auto: true,
               // kilocode_change - preflight compaction replays the pending turn without treating media as provider overflow
-              overflow: !handle.message.finish && handle.compactError?.() !== undefined,
+              overflow: !handle.message.finish && handle.compactError?.() !== undefined, // kilocode_change
             })
           }
           // kilocode_change start — break out so a newer queued prompt can take over
