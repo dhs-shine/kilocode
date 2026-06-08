@@ -13,8 +13,9 @@ object SessionUiStyle {
     object SessionLayout {
         const val GAP = 4
         const val TRANSCRIPT_PADDING = 12
+        const val TRANSCRIPT_SCROLLBAR_PADDING = 10
         const val USER_PROMPT_INDENT = 100
-        const val SCROLL_INCREMENT = 16
+        const val SCROLL_INCREMENT = 48
     }
 
     /** Shared tokens for individual transcript views and session views. */

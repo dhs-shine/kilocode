@@ -57,7 +57,7 @@ class SessionMessageListPanel(
         SessionUiStyle.SessionLayout.TRANSCRIPT_PADDING,
         SessionUiStyle.SessionLayout.TRANSCRIPT_PADDING,
         SessionUiStyle.SessionLayout.TRANSCRIPT_PADDING,
-        SessionUiStyle.SessionLayout.TRANSCRIPT_PADDING,
+        SessionUiStyle.SessionLayout.TRANSCRIPT_PADDING + SessionUiStyle.SessionLayout.TRANSCRIPT_SCROLLBAR_PADDING,
     ),
 ), Disposable, SessionEditorStyleTarget {
 

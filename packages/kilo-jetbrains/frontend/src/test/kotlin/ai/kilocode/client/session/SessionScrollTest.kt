@@ -1,6 +1,7 @@
 package ai.kilocode.client.session
 
 import ai.kilocode.client.session.ui.SessionMessageListPanel
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.MessageErrorDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
@@ -12,11 +13,14 @@ import ai.kilocode.rpc.dto.ToolRefDto
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.plugin.KiloBundle
 import com.intellij.ui.EditorTextField
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBRadioButton
 import com.intellij.util.ui.JBUI
 import java.awt.Container
 import javax.swing.AbstractButton
 import javax.swing.JButton
+import javax.swing.Scrollable
+import javax.swing.SwingConstants
 import javax.swing.JTextArea
 import kotlinx.coroutines.CompletableDeferred
 
@@ -159,6 +163,22 @@ class SessionScrollTest : SessionUiTestBase() {
 
         assertBottom(bar)
         assertFalse(jumpButton().isVisible)
+    }
+
+    fun `test physical mouse wheel uses accelerated transcript unit distance`() {
+        showMessages()
+        fillTranscript(48)
+        val bar = scrollBar()
+        setValue(bar, 0)
+        drainScroll()
+        val amount = 3
+        val expected = JBUI.scale(SessionUiStyle.SessionLayout.SCROLL_INCREMENT * amount)
+        assertTrue("bottom=${bottom(bar)} expected=$expected", bottom(bar) >= expected * 2)
+
+        val view = scrollView() as Scrollable
+        val unit = view.getScrollableUnitIncrement(scrollComponent().visibleRect, SwingConstants.VERTICAL, 1)
+
+        assertEquals(expected, unit * amount)
     }
 
     fun `test part delta follows bottom after height growth`() {
@@ -476,11 +496,12 @@ class SessionScrollTest : SessionUiTestBase() {
         assertBottom(scrollBar())
     }
 
-    fun `test scroll owns the session viewport`() {
+    fun `test scroll owns the session viewport without overlapping content`() {
         settle()
 
         assertSame(scrollComponent(), scrollView()?.parent?.parent)
         assertFalse(scrollView() is SessionMessageListPanel)
+        assertFalse((scrollComponent() as JBScrollPane).isOverlappingScrollBar)
     }
 
     // ------ question/login-required autoscroll ------
