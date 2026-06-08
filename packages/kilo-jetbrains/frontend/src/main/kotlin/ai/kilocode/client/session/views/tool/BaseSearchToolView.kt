@@ -122,8 +122,8 @@ abstract class BaseSearchToolView(
         parts.targets.forEachIndexed { index, label ->
             val text = values.getOrNull(index) ?: ""
             changed = setVisible(label, text.isNotBlank()) || changed
-            changed = setPlainText(label, text) || changed
-            changed = setForeground(label, UiStyle.Colors.weak()) || changed
+            changed = setTargetText(label, text) || changed
+            changed = setForeground(label, UiStyle.Colors.fg()) || changed
         }
         return changed
     }

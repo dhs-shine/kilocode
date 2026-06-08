@@ -145,21 +145,16 @@ open class Stack(
 
         private fun fit(parent: Container, left: Int, top: Int, w: Int, h: Int) {
             val items = children(parent, h)
-            val gap = items.sumOf { it.gap }
-            val total = items.sumOf { it.width } + gap
-            val widths = if (total <= w) {
-                items.map { it.width }
-            } else {
-                val space = maxOf(0, w - gap)
-                val base = if (items.isEmpty()) 0 else space / items.size
-                val extra = if (items.isEmpty()) 0 else space % items.size
-                items.mapIndexed { index, _ -> base + if (index < extra) 1 else 0 }
-            }
             var x = left
-            items.forEachIndexed { index, item ->
-                x += item.gap
-                item.comp.setBounds(x, top, widths[index], h)
-                x += widths[index]
+            var rest = w
+            items.forEach { item ->
+                val gap = minOf(item.gap, rest)
+                x += gap
+                rest -= gap
+                val width = minOf(item.width, rest)
+                item.comp.setBounds(x, top, width, h)
+                x += width
+                rest -= width
             }
         }
 

@@ -316,7 +316,7 @@ internal fun searchParts(count: Int): ToolParts {
     val sub = JBLabel().apply { foreground = UiStyle.Colors.weak() }
     val targets = List(count) {
         JBLabel().apply {
-            foreground = UiStyle.Colors.weak()
+            foreground = UiStyle.Colors.fg()
             minimumSize = Dimension(0, minimumSize.height)
         }
     }
@@ -327,7 +327,7 @@ internal fun searchParts(count: Int): ToolParts {
         add(link, LINK_CARD)
     }
     val state = JBLabel().apply { foreground = UiStyle.Colors.weak() }
-    val stack = Stack.fitHorizontal(UiStyle.Gap.xs()).apply { targets.forEach { next(it) } }
+    val stack = Stack.fitHorizontal(UiStyle.Gap.md()).apply { targets.forEach { next(it) } }
     val target = stack.align(HAlign.TRACK, VAlign.CENTER)
     val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)).apply {
         isOpaque = false
@@ -377,7 +377,7 @@ internal fun setText(label: JBLabel, text: String): Boolean {
     return true
 }
 
-internal fun setPlainText(label: JBLabel, text: String): Boolean {
+internal fun setTargetText(label: JBLabel, text: String): Boolean {
     if (label.text == text) return false
     label.text = text
     return true
