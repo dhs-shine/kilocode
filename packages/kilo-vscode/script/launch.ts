@@ -15,6 +15,7 @@
  *   --clean           Wipe the user-data and extensions dirs before launching
  *   --preserve-settings  Merge defaults into existing VS Code user settings
  *   --accessible      Enable VS Code accessibility support for assistive-technology testing
+ *   Any unrecognized arguments are forwarded to VS Code.
  *
  * Environment:
  *   VSCODE_EXEC_PATH  Path to VS Code executable (same as --app-path)
@@ -46,39 +47,53 @@ const extDir = join(base, "extensions")
 // ---------------------------------------------------------------------------
 
 function parse(argv: string[]) {
-  const result: Record<string, string | boolean> = {}
+  const opts: Record<string, string | boolean> = {}
+  const args: string[] = []
+  const flags = new Set(["build", "insiders", "wait", "clean", "preserve-settings", "accessible"])
+  const values = new Set(["workspace", "mode", "app-path"])
 
   for (let i = 0; i < argv.length; i++) {
     const item = argv[i]!
-    if (!item.startsWith("--")) continue
+    if (item === "--") {
+      args.push(...argv.slice(i + 1))
+      break
+    }
 
-    if (item.startsWith("--no-")) {
-      result[item.slice(5)] = false
+    if (item.startsWith("--no-") && flags.has(item.slice(5))) {
+      opts[item.slice(5)] = false
+      continue
+    }
+
+    if (!item.startsWith("--")) {
+      args.push(item)
       continue
     }
 
     const parts = item.slice(2).split("=", 2)
     const key = parts[0]!
     const raw = parts[1]
-    if (raw !== undefined) {
-      result[key] = raw
+    if (flags.has(key)) {
+      opts[key] = raw ?? true
+      continue
+    }
+
+    if (!values.has(key)) {
+      args.push(item)
       continue
     }
 
     const next = argv[i + 1]
-    if (!next || next.startsWith("--")) {
-      result[key] = true
-      continue
-    }
-
-    result[key] = next
-    i++
+    const value = next && !next.startsWith("--") ? next : true
+    opts[key] = raw ?? value
+    if (raw === undefined && typeof value === "string") i++
   }
 
-  return result
+  return { opts, args }
 }
 
-const opts = parse(process.argv.slice(2))
+const parsed = parse(process.argv.slice(2))
+const opts = parsed.opts
+const forwarded = parsed.args
 const shouldBuild = opts["build"] !== false
 const mode = (opts["mode"] as string) ?? "dev"
 const workspace = opts["workspace"] ? resolve(opts["workspace"] as string) : repo
@@ -257,6 +272,7 @@ function settings(keep: boolean, enabled: boolean) {
   const dir = join(userDir, "User")
   const file = join(dir, "settings.json")
   const defaults = {
+    "chat.disableAIFeatures": true,
     "editor.accessibilitySupport": enabled ? "on" : "off",
     "extensions.autoCheckUpdates": false,
     "extensions.autoUpdate": false,
@@ -313,7 +329,13 @@ async function launch() {
 
   settings(preserve, accessible)
 
-  const args = [workspace, `--extensions-dir=${extDir}`, `--user-data-dir=${userDir}`, "--skip-release-notes"]
+  const args = [
+    workspace,
+    `--extensions-dir=${extDir}`,
+    `--user-data-dir=${userDir}`,
+    "--skip-release-notes",
+    ...forwarded,
+  ]
 
   if (mode === "dev") {
     args.push(`--extensionDevelopmentPath=${root}`)
