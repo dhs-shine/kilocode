@@ -61,7 +61,7 @@ class ReasoningView(
     init {
         row.border = JBUI.Borders.empty(
             JBUI.scale(SessionUiStyle.View.Reasoning.HEADER_VERTICAL_PADDING),
-            JBUI.scale(SessionUiStyle.View.Reasoning.HEADER_HORIZONTAL_PADDING),
+            JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING),
         )
         bindHeader(parts.title, parts.icon)
         applyStyle(style)

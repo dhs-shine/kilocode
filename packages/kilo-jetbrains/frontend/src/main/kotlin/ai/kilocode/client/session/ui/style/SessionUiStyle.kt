@@ -81,7 +81,6 @@ object SessionUiStyle {
         object Reasoning {
             const val BODY_LINES = 5
             const val HEADER_VERTICAL_PADDING = 5
-            const val HEADER_HORIZONTAL_PADDING = 10
             const val BODY_VERTICAL_PADDING = 4
             const val BODY_HORIZONTAL_PADDING = 8
         }

@@ -5,7 +5,9 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
 @Suppress("UnstableApiUsage")
@@ -195,6 +197,15 @@ class ReasoningViewTest : BasePlatformTestCase() {
         assertEquals(0, insets.bottom)
         assertEquals(0, insets.right)
         assertEquals(SessionUiStyle.View.Reasoning.BODY_LINES, view.bodyMaxRows())
+    }
+
+    fun `test reasoning toggle uses shared right rail`() {
+        val view = ReasoningView(reasoning("p1", done = true, text = "one"))
+        val row = view.components.single() as JPanel
+        val insets = row.border.getBorderInsets(row)
+
+        assertEquals(JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING), insets.left)
+        assertEquals(JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING), insets.right)
     }
 
     fun `test link opens url callback`() {
