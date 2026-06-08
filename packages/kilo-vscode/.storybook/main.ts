@@ -5,7 +5,7 @@ import solidPlugin from "vite-plugin-solid"
 const config: StorybookConfig = {
   framework: "storybook-solidjs-vite",
   stories: ["../webview-ui/src/stories/**/*.stories.@(ts|tsx)"],
-  addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
+  addons: [],
   staticDirs: [{ from: "../assets/icons", to: "/icons" }],
   refs: {},
   viteFinal: async (config) => {

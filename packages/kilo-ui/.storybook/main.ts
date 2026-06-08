@@ -5,7 +5,7 @@ import solidPlugin from "vite-plugin-solid"
 const config: StorybookConfig = {
   framework: "storybook-solidjs-vite",
   stories: ["../src/**/*.stories.@(ts|tsx)"],
-  addons: ["@storybook/addon-docs", "@storybook/addon-themes", "@storybook/addon-a11y"],
+  addons: [],
   refs: {},
   viteFinal: async (config) => {
     return mergeConfig(config, {
