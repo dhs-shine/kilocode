@@ -73,7 +73,7 @@ abstract class BaseSearchToolView(
     internal fun hasToggle() = arrow.isVisible
     internal fun bodyFont() = parts.content?.font ?: style.editorFont
     internal fun titleFont() = parts.title.font
-    internal fun targetFont(index: Int) = parts.targets.getOrNull(index)?.font ?: style.smallEditorFont
+    internal fun targetFont(index: Int) = parts.targets.getOrNull(index)?.font ?: style.regularFont
     internal fun stateFont() = parts.state.font
     internal fun bodyCreated() = parts.bodyCreated()
     internal fun scrollComponent() = parts.scroll
@@ -90,7 +90,7 @@ abstract class BaseSearchToolView(
         var changed = false
         changed = setFont(parts.title, style.boldEditorFont) || changed
         changed = setFont(parts.sub, style.smallEditorFont) || changed
-        parts.targets.forEach { changed = setFont(it, style.smallEditorFont) || changed }
+        parts.targets.forEach { changed = setFont(it, style.regularFont) || changed }
         changed = setFont(parts.state, style.smallEditorFont) || changed
         changed = applyBodyStyle() || changed
         if (changed) refresh()

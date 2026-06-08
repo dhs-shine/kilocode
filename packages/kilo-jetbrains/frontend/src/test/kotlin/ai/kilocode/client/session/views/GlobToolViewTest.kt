@@ -7,6 +7,7 @@ import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.session.views.tool.GlobToolView
 import ai.kilocode.client.session.views.tool.ReadToolView
 import ai.kilocode.client.session.views.tool.ToolView
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import javax.swing.ScrollPaneConstants
@@ -73,6 +74,16 @@ class GlobToolViewTest : BasePlatformTestCase() {
         }, repo = "/repo")
 
         assertEquals(listOf("/other/src", "pattern=**/*.kt"), view.targetTexts())
+    }
+
+    fun `test target labels use regular font`() {
+        val view = GlobToolView(tool().also {
+            it.input = mapOf("path" to "/repo/src", "pattern" to "**/*.kt")
+        })
+        val style = SessionEditorStyle.current()
+
+        assertEquals(style.regularFont, view.targetFont(0))
+        assertEquals(style.regularFont, view.targetFont(1))
     }
 
     fun `test completed glob starts collapsed and expands output`() {

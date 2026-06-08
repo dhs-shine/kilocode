@@ -3,6 +3,7 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.toolKind
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.session.views.tool.GlobToolView
 import ai.kilocode.client.session.views.tool.ReadToolView
@@ -87,6 +88,16 @@ class SearchToolViewTest : BasePlatformTestCase() {
         })
 
         assertEquals("pattern=<unsafe>", view.targetComponents().first().text)
+    }
+
+    fun `test target labels use regular font`() {
+        val view = SearchToolView(tool().also {
+            it.input = mapOf("pattern" to "TODO", "include" to "*.kt")
+        })
+        val style = SessionEditorStyle.current()
+
+        assertEquals(style.regularFont, view.targetFont(0))
+        assertEquals(style.regularFont, view.targetFont(1))
     }
 
     fun `test completed search starts collapsed and expands output`() {
