@@ -134,7 +134,7 @@ jobs:
             package: "@kilocode/cli-darwin-arm64"
             mode: host
           - target: darwin-x64
-            runner: macos-13
+            runner: macos-15-intel
             uname: x86_64
             package: "@kilocode/cli-darwin-x64"
             mode: host
