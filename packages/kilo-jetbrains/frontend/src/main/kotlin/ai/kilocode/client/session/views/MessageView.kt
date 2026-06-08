@@ -40,6 +40,7 @@ class MessageView(
     private val selection: SessionSelection? = null,
     private val resize: ((JComponent, () -> Unit) -> Unit)? = null,
     private val repo: String? = null,
+    private val hover: ((PartView, Boolean) -> Unit)? = null,
 ) : ai.kilocode.client.session.ui.SessionLayoutPanel(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
 ), Disposable, SessionEditorStyleTarget, SessionView {
@@ -88,6 +89,7 @@ class MessageView(
             sources.remove(content.id)
             val stale = if (id == null) parts.remove(content.id) else null
             if (stale != null) {
+                detach(stale)
                 remove(stale)
                 Disposer.dispose(stale)
                 syncBorder()
@@ -132,6 +134,7 @@ class MessageView(
         }
         val view = view(content)
         view.resize = resize
+        view.hover = hover
         view.applyStyle(style)
         parts[content.id] = view
         add(view)
@@ -158,10 +161,12 @@ class MessageView(
         parts.remove(content.id)
         aliases.values.removeAll { it == content.id }
         sources.keys.removeAll { it !in aliases }
+        detach(existing)
         remove(existing)
         Disposer.dispose(existing)
         val view = view(content)
         view.resize = resize
+        view.hover = hover
         view.applyStyle(style)
         parts[content.id] = view
         add(view, at)
@@ -178,6 +183,7 @@ class MessageView(
         val view = parts.remove(contentId) ?: return
         aliases.values.removeAll { it == contentId }
         sources.keys.removeAll { it !in aliases }
+        detach(view)
         remove(view)
         Disposer.dispose(view)
         syncBorder()
@@ -204,6 +210,7 @@ class MessageView(
      */
     private fun rebuildParts() {
         parts.values.forEach {
+            detach(it)
             remove(it)
             Disposer.dispose(it)
         }
@@ -257,6 +264,7 @@ class MessageView(
 
     override fun dispose() {
         parts.values.forEach {
+            detach(it)
             remove(it)
             Disposer.dispose(it)
         }
@@ -290,6 +298,11 @@ class MessageView(
     private fun refresh() {
         revalidate()
         repaint()
+    }
+
+    private fun detach(view: PartView) {
+        view.setHovered(false)
+        view.hover = null
     }
 
     private fun assistantBorder() = JBUI.Borders.empty()

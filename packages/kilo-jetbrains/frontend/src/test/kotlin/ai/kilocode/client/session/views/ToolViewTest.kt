@@ -10,7 +10,11 @@ import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.session.views.tool.ToolView
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import java.awt.Color
+import java.awt.image.BufferedImage
+import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
+import javax.swing.border.Border
 
 /**
  * Tests for [ToolView].
@@ -104,6 +108,19 @@ class ToolViewTest : BasePlatformTestCase() {
         val base: Any = view
 
         assertTrue(base is SecondarySessionPartView)
+    }
+
+    fun `test tool outline is drawn only while expanded`() {
+        val view = track(ToolView(tool("p1", "bash", ToolExecState.COMPLETED).also {
+            it.input = mapOf("command" to "pwd")
+            it.output = "/tmp"
+        }))
+
+        assertEquals(0, paint(view.border).alpha)
+        view.toggle()
+        assertEquals(SessionUiStyle.View.line().rgb, paint(view.border).rgb)
+        view.toggle()
+        assertEquals(0, paint(view.border).alpha)
     }
 
     fun `test bash toggle collapses and expands`() {
@@ -362,5 +379,14 @@ class ToolViewTest : BasePlatformTestCase() {
     private fun assertSmallEditorFont(font: java.awt.Font, style: SessionEditorStyle) {
         assertEquals(style.smallEditorFont.name, font.name)
         assertTrue(font.size < style.editorSize)
+    }
+
+    private fun paint(border: Border): Color {
+        val image = BufferedImage(3, 3, BufferedImage.TYPE_INT_ARGB)
+        val item = JPanel()
+        val graphics = image.createGraphics()
+        border.paintBorder(item, graphics, 0, 0, image.width, image.height)
+        graphics.dispose()
+        return Color(image.getRGB(0, 0), true)
     }
 }

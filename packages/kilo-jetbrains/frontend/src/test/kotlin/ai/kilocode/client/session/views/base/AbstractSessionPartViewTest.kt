@@ -76,13 +76,15 @@ class AbstractSessionPartViewTest : BasePlatformTestCase() {
 
     fun `test primary card border follows hover color`() {
         val view = TestView(content = JLabel("body"))
-        val row = view.component(0)
 
-        enter(row)
+        assertEquals(0, paint(view.border).alpha)
+        view.expand()
+
+        view.setHovered(true)
 
         assertEquals(SessionUiStyle.View.hoverLine().rgb, paint(view.border).rgb)
         assertNotSameColor(SessionUiStyle.View.headerHover(), paint(view.border))
-        exit(row)
+        view.setHovered(false)
         assertEquals(SessionUiStyle.View.line().rgb, paint(view.border).rgb)
     }
 

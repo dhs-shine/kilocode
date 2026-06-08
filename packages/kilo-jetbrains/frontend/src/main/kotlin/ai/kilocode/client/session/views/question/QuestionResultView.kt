@@ -42,7 +42,7 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
             super.updateUI()
             isOpaque = true
             background = SessionUiStyle.View.surface()
-            border = SessionUiStyle.View.sessionView()
+            border = JBUI.Borders.empty(1)
         }
     }
     private val header = object : JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.SESSION_VIEW_GAP), 0)) {
@@ -70,10 +70,10 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
     }
 
     private val mouse = object : MouseAdapter() {
-        override fun mouseEntered(e: MouseEvent) { setHover(true) }
+        override fun mouseEntered(e: MouseEvent) { setHovered(true) }
         override fun mouseExited(e: MouseEvent) {
             if (inside(e)) return
-            setHover(false)
+            setHovered(false)
         }
     }
 
@@ -99,6 +99,7 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
         add(root, BorderLayout.CENTER)
         syncLabels()
         syncArrow()
+        syncBorder()
     }
 
     override fun update(content: Content) {
@@ -133,6 +134,7 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
         } else {
             root.add(body(), BorderLayout.CENTER)
         }
+        syncBorder()
     }
 
     fun isExpanded(): Boolean = pane?.parent === root
@@ -277,13 +279,28 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
         arrow.icon = if (isExpanded()) AllIcons.General.ArrowDown else AllIcons.General.ArrowRight
     }
 
-    private fun setHover(value: Boolean) {
+    override fun setHovered(value: Boolean) {
+        hover?.invoke(this, value)
         val color = if (value) SessionUiStyle.View.headerHover() else SessionUiStyle.View.header()
-        if (header.background?.rgb == color.rgb) return
-        header.background = color
-        root.border = if (value) SessionUiStyle.View.sessionView(SessionUiStyle.View.hoverLine()) else SessionUiStyle.View.sessionView()
-        header.repaint()
+        if (header.background?.rgb != color.rgb) {
+            header.background = color
+            header.repaint()
+        }
+        syncBorder()
         root.repaint()
+    }
+
+    private fun syncBorder() {
+        root.border = if (isExpanded()) {
+            val color = if (header.background?.rgb == SessionUiStyle.View.headerHover().rgb) {
+                SessionUiStyle.View.hoverLine()
+            } else {
+                SessionUiStyle.View.line()
+            }
+            SessionUiStyle.View.sessionView(color)
+        } else {
+            JBUI.Borders.empty(1)
+        }
     }
 
     private fun inside(e: MouseEvent): Boolean {

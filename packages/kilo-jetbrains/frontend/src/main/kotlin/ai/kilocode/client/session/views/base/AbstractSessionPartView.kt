@@ -41,12 +41,12 @@ abstract class AbstractSessionPartView(
     }
     private val mouse = object : MouseAdapter() {
         override fun mouseEntered(e: MouseEvent) {
-            setHover(true)
+            setHovered(true)
         }
 
         override fun mouseExited(e: MouseEvent) {
             if (inside(e)) return
-            setHover(false)
+            setHovered(false)
         }
     }
 
@@ -121,7 +121,8 @@ abstract class AbstractSessionPartView(
 
     protected open fun applyHover(value: Boolean, color: Color) {}
 
-    private fun setHover(value: Boolean) {
+    override fun setHovered(value: Boolean) {
+        hover?.invoke(this, value)
         val color = hoverColor(value) ?: return
         if (row.background?.rgb == color.rgb) return
         row.background = color

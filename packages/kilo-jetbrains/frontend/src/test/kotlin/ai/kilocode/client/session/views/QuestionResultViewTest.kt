@@ -137,13 +137,15 @@ class QuestionResultViewTest : BasePlatformTestCase() {
             metadata = mapOf("answers" to """[["A1"]]"""),
         ))
         val root = view.node(0)
-        val header = root.node(0)
 
-        enter(header)
+        assertEquals(0, paint(root.border).alpha)
+        view.toggle()
+
+        view.setHovered(true)
 
         assertEquals(SessionUiStyle.View.hoverLine().rgb, paint(root.border).rgb)
         assertNotSameColor(SessionUiStyle.View.headerHover(), paint(root.border))
-        exit(header)
+        view.setHovered(false)
         assertEquals(SessionUiStyle.View.line().rgb, paint(root.border).rgb)
     }
 
