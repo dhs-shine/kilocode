@@ -1,4 +1,5 @@
 import * as InstanceState from "@/effect/instance-state"
+import { Image } from "@/image/image" // kilocode_change - classify user image validation defects
 import { InstanceRef, WorkspaceRef } from "@/effect/instance-ref"
 import { KiloSessionHttpApi } from "@/kilocode/server/httpapi/session-fork" // kilocode_change
 import { Agent } from "@/agent/agent"
@@ -269,7 +270,18 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
         .pipe(
           Effect.provideService(InstanceRef, instance),
           Effect.provideService(WorkspaceRef, workspace),
-          Effect.mapError(() => new HttpApiError.BadRequest({})),
+          // kilocode_change start - reject only typed user image validation defects as request errors
+          Effect.catchCause((cause) => {
+            const error = Cause.squash(cause)
+            if (
+              error instanceof Image.InvalidDataUrlError ||
+              error instanceof Image.DecodeError ||
+              error instanceof Image.SizeError
+            )
+              return Effect.fail(new HttpApiError.BadRequest({}))
+            return Effect.failCause(cause)
+          }),
+          // kilocode_change end
         )
       return HttpServerResponse.stream(Stream.make(JSON.stringify(message)).pipe(Stream.encodeText), {
         contentType: "application/json",

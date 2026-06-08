@@ -638,6 +638,7 @@ export const layer: Layer.Layer<
             include: selected.tail_start_id,
           })
         }
+        // kilocode_change start - export self-contained compaction capture
         const parent = KiloSession.resolveParent(input.sessionID)
         const found = KiloSession.resolveRoot(input.sessionID)
         const root = parent ? (found === input.sessionID ? parent : found) : input.sessionID
@@ -666,11 +667,12 @@ export const layer: Layer.Layer<
             outputTokens: processor.message.tokens.output,
           },
         })
+        // kilocode_change end
         yield* prune({ sessionID: input.sessionID, reason: "post-compaction" })
         yield* bus.publish(Event.Compacted, { sessionID: input.sessionID })
       }
-      return fallback
       // kilocode_change end
+      return fallback // kilocode_change
     })
 
     const create = Effect.fn("SessionCompaction.create")(function* (input: {

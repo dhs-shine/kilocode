@@ -6,7 +6,7 @@ import { Telemetry } from "@kilocode/kilo-telemetry"
 // kilocode_change end
 import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import path from "path"
-import { fileURLToPath } from "url"
+import { fileURLToPath, pathToFileURL } from "url"
 import { NamedError } from "@opencode-ai/core/util/error"
 import { Agent as AgentSvc } from "../../src/agent/agent"
 import { Bus } from "../../src/bus"
@@ -448,6 +448,113 @@ it.live("new prompt dismisses a pending question", () =>
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) expect(Cause.squash(exit.cause)).toBeInstanceOf(Question.RejectedError)
       expect(yield* question.list()).toEqual([])
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+// kilocode_change end
+
+// kilocode_change start - cover user image normalization before persistence
+it.live("normalizes user data images before persistence", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* () {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({ title: "User image" })
+      const url = "data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA"
+
+      const result = yield* prompt.prompt({
+        sessionID: chat.id,
+        agent: "build",
+        noReply: true,
+        parts: [{ type: "file", mime: "image/webp", filename: "pixel.webp", url }],
+      })
+
+      expect(result.parts).toEqual(
+        expect.arrayContaining([expect.objectContaining({ type: "file", mime: "image/webp", url })]),
+      )
+      const saved = yield* sessions.messages({ sessionID: chat.id })
+      expect(saved.flatMap((message) => message.parts)).toEqual(
+        expect.arrayContaining([expect.objectContaining({ type: "file", mime: "image/webp", url })]),
+      )
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+it.live("rejects malformed user data images before persistence", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* () {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({ title: "Invalid user image" })
+      const exit = yield* prompt
+        .prompt({
+          sessionID: chat.id,
+          agent: "build",
+          noReply: true,
+          parts: [
+            {
+              type: "file",
+              mime: "image/png",
+              filename: "invalid.png",
+              url: `data:image/png;base64,${Buffer.from("not an image").toString("base64")}`,
+            },
+          ],
+        })
+        .pipe(Effect.exit)
+
+      expect(Exit.isFailure(exit)).toBe(true)
+      const saved = yield* sessions.messages({ sessionID: chat.id })
+      expect(saved.flatMap((message) => message.parts).some((part) => part.type === "file")).toBe(false)
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+it.live("normalizes user image file URLs after reading them", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* ({ dir }) {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({ title: "User image file" })
+      const data = "UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA"
+      const filepath = path.join(dir, "pixel.webp")
+      yield* Effect.promise(() => Bun.write(filepath, Buffer.from(data, "base64")))
+
+      const result = yield* prompt.prompt({
+        sessionID: chat.id,
+        agent: "build",
+        noReply: true,
+        parts: [{ type: "file", mime: "image/webp", filename: "pixel.webp", url: pathToFileURL(filepath).href }],
+      })
+
+      expect(result.parts).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "file", mime: "image/webp", url: `data:image/webp;base64,${data}` }),
+        ]),
+      )
+    }),
+    { git: true, config: providerCfg },
+  ),
+)
+
+it.live("leaves non-image data parts untouched", () =>
+  provideTmpdirServer(
+    Effect.fnUntraced(function* () {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const chat = yield* sessions.create({ title: "User data" })
+      const url = "data:application/octet-stream;base64,bm90IGFuIGltYWdl"
+
+      const result = yield* prompt.prompt({
+        sessionID: chat.id,
+        agent: "build",
+        noReply: true,
+        parts: [{ type: "file", mime: "application/octet-stream", filename: "data.bin", url }],
+      })
+
+      expect(result.parts).toEqual(expect.arrayContaining([expect.objectContaining({ type: "file", url })]))
     }),
     { git: true, config: providerCfg },
   ),
@@ -1423,6 +1530,38 @@ unix("shell commands can change directory after startup", () =>
   ),
 )
 
+// kilocode_change start - verify shell v2 events correlate with the persisted tool part
+unix("shell correlates the persisted tool part with its completed v2 record", () =>
+  provideTmpdirInstance(
+    (_dir) =>
+      Effect.gen(function* () {
+        const { prompt, chat } = yield* boot()
+        const result = yield* prompt.shell({
+          sessionID: chat.id,
+          agent: "build",
+          command: "printf correlated",
+        })
+        const tool = completedTool(result.parts)
+        if (!tool) return
+
+        const messages = yield* SessionV2.Service.use((session) => session.messages({ sessionID: chat.id })).pipe(
+          Effect.provide(SessionV2.layer),
+        )
+        const shell = messages.find((message) => message.type === "shell")
+
+        expect(shell).toMatchObject({
+          type: "shell",
+          callID: tool.callID,
+          command: "printf correlated",
+          output: "correlated",
+          time: { completed: expect.anything() },
+        })
+      }),
+    { git: true, config: cfg },
+  ),
+)
+// kilocode_change end
+
 unix("shell lists files from the project directory", () =>
   provideTmpdirInstance(
     (dir) =>
@@ -1912,7 +2051,7 @@ it.live(
               ),
             ]),
           )
-        }),
+        }).pipe(Effect.scoped), // kilocode_change - scope test finalizers explicitly
       { git: true, config: cfg },
     ),
   30_000,
@@ -1955,7 +2094,7 @@ it.live(
               ),
             ]),
           )
-        }),
+        }).pipe(Effect.scoped), // kilocode_change - scope test finalizers explicitly
       { git: true, config: cfg },
     ),
   30_000,

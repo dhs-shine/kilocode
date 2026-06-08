@@ -164,15 +164,13 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
           body={
             <Switch>
               <Match when={props.request.always.length === 1 && props.request.always[0] === "*"}>
-                {/* kilocode_change start */}
+                {/* kilocode_change */}
                 <TextBody title={"This will allow " + props.request.permission + " permanently."} />
-                {/* kilocode_change end */}
               </Match>
               <Match when={true}>
                 <box paddingLeft={1} gap={1}>
-                  {/* kilocode_change start */}
+                  {/* kilocode_change */}
                   <text fg={theme.textMuted}>This will allow the following patterns permanently</text>
-                  {/* kilocode_change end */}
                   <box>
                     <For each={props.request.always}>
                       {(pattern) => (
@@ -453,9 +451,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               title="Permission required"
               header={header()}
               body={current.body}
-              /* kilocode_change start */
-              options={options}
-              /* kilocode_change end */
+              /* kilocode_change */ options={options}
               escapeKey="reject"
               fullscreen
               onSelect={(option) => {

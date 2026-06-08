@@ -69,6 +69,7 @@ import * as DateTime from "effect/DateTime"
 import { eq } from "@/storage/db"
 import * as Database from "@/storage/db"
 import { SessionTable } from "./session.sql"
+import { Image } from "@/image/image" // kilocode_change - normalize user image data before persistence
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -132,6 +133,7 @@ export const layer = Layer.effect(
     const summary = yield* SessionSummary.Service
     const sys = yield* SystemPrompt.Service
     const llm = yield* LLM.Service
+    const image = yield* Image.Service // kilocode_change - normalize user image data before persistence
     const sync = yield* SyncEvent.Service // kilocode_change - preserve Kilo v2 event dual-write wiring
     const runner = Effect.fn("SessionPrompt.runner")(function* () {
       return yield* EffectBridge.make()
@@ -842,7 +844,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               providerID: model.providerID,
             }
             yield* sessions.updateMessage(msg)
-            const callID = ulid()
+            const callID = ulid() // kilocode_change - correlate v2 shell events with the persisted tool part
             const started = Date.now()
             const part: MessageV2.ToolPart = {
               type: "tool",
@@ -850,7 +852,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               messageID: msg.id,
               sessionID: input.sessionID,
               tool: ShellID.ToolID,
-              callID: ulid(),
+              callID, // kilocode_change
               state: {
                 status: "running",
                 time: { start: started },
@@ -1143,6 +1145,17 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                   { ...part, messageID: info.id, sessionID: input.sessionID },
                 ]
               }
+              // kilocode_change start - normalize user image data before persistence
+              if (part.mime.startsWith("image/")) {
+                const file: MessageV2.FilePart = {
+                  ...part,
+                  id: part.id ? PartID.make(part.id) : PartID.ascending(),
+                  messageID: info.id,
+                  sessionID: input.sessionID,
+                }
+                return [yield* image.normalize(file).pipe(Effect.orDie)]
+              }
+              // kilocode_change end
               break
             case "file:": {
               log.info("file", { mime: part.mime })
@@ -1285,6 +1298,39 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 ]
               }
 
+              // kilocode_change start - reject oversized user image files before reading and base64 allocation
+              if (mime.startsWith("image/")) {
+                const limit = (yield* config.get()).attachment?.image?.max_base64_bytes ?? Image.MAX_BASE64_BYTES
+                const stat = yield* fsys.stat(filepath).pipe(Effect.catch(Effect.die))
+                const encoded = ((stat.size + 2n) / 3n) * 4n
+                if (encoded > BigInt(limit))
+                  return yield* Effect.die(
+                    new Image.SizeError({
+                      bytes: Number(encoded > BigInt(Number.MAX_SAFE_INTEGER) ? Number.MAX_SAFE_INTEGER : encoded),
+                      max: limit,
+                      width: 0,
+                      height: 0,
+                      max_width: 0,
+                      max_height: 0,
+                    }),
+                  )
+              }
+              // kilocode_change end
+              const file: MessageV2.FilePart = {
+                id: part.id ? PartID.make(part.id) : PartID.ascending(),
+                messageID: info.id,
+                sessionID: input.sessionID,
+                type: "file",
+                url:
+                  `data:${mime};base64,` +
+                  Buffer.from(yield* fsys.readFile(filepath).pipe(Effect.catch(Effect.die))).toString("base64"),
+                mime,
+                filename: part.filename!,
+                source: part.source,
+              }
+              // kilocode_change start - apply image limits after resolving user file URLs
+              const attachment = mime.startsWith("image/") ? yield* image.normalize(file).pipe(Effect.orDie) : file
+              // kilocode_change end
               return [
                 {
                   messageID: info.id,
@@ -1293,18 +1339,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                   synthetic: true,
                   text: `Called the Read tool with the following input: {"filePath":"${filepath}"}`,
                 },
-                {
-                  id: part.id,
-                  messageID: info.id,
-                  sessionID: input.sessionID,
-                  type: "file",
-                  url:
-                    `data:${mime};base64,` +
-                    Buffer.from(yield* fsys.readFile(filepath).pipe(Effect.catch(Effect.die))).toString("base64"),
-                  mime,
-                  filename: part.filename!,
-                  source: part.source,
-                },
+                attachment,
               ]
             }
           }
@@ -2062,6 +2097,8 @@ export const defaultLayer = Layer.suspend(() =>
     Layer.provide(LSP.defaultLayer),
     Layer.provide(ToolRegistry.defaultLayer),
     Layer.provide(Truncate.defaultLayer),
+  ).pipe(
+    Layer.provide(Image.defaultLayer), // kilocode_change - provide user image normalization service
     Layer.provide(Provider.defaultLayer),
     Layer.provide(Config.defaultLayer),
     Layer.provide(Instruction.defaultLayer),

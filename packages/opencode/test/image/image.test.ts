@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { Cause, Effect, Exit, Layer } from "effect"
 import { Image } from "@/image/image"
 import { MessageID, PartID, SessionID } from "@/session/schema"
@@ -56,6 +56,46 @@ describe("Image", () => {
       expect(yield* image.normalize(input)).toEqual(input)
     }),
   )
+
+  // kilocode_change start - cover Kilo's Photon-unavailable fallback
+  test("preserves a valid in-limit image without Photon", () => {
+    const data = "UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA"
+    const input = part("image/webp", data)
+
+    expect(Image.fallback(input, data, { bytes: 1024, width: 2000, height: 2000 })).toEqual(input)
+  })
+
+  test("rejects non-image bytes without Photon", () => {
+    const data = Buffer.from("not an image").toString("base64")
+    const result = Image.fallback(part("image/png", data), data, { bytes: 1024, width: 2000, height: 2000 })
+
+    expect(result).toBeInstanceOf(Image.DecodeError)
+  })
+
+  test("rejects oversized encoded input before decoding without Photon", () => {
+    const data = "A".repeat(8 * 1024 * 1024)
+    const result = Image.fallback(part("image/png", data), data, { bytes: 1024, width: 2000, height: 2000 })
+
+    expect(result).toBeInstanceOf(Image.SizeError)
+    if (result instanceof Image.SizeError) expect(result.bytes).toBe(data.length)
+  })
+
+  test("rejects an image with oversized header dimensions without Photon", () => {
+    const png = Buffer.alloc(24)
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(png)
+    png.write("IHDR", 12, "ascii")
+    png.writeUInt32BE(10_000, 16)
+    png.writeUInt32BE(1, 20)
+    const data = png.toString("base64")
+    const result = Image.fallback(part("image/png", data), data, { bytes: 1024, width: 2000, height: 2000 })
+
+    expect(result).toBeInstanceOf(Image.SizeError)
+    if (result instanceof Image.SizeError) {
+      expect(result.width).toBe(10_000)
+      expect(result.height).toBe(1)
+    }
+  })
+  // kilocode_change end
 
   tiny.effect("fails with a typed size error when no resized candidate fits", () =>
     Effect.gen(function* () {

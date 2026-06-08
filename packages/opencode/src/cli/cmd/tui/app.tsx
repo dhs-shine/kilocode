@@ -70,6 +70,7 @@ import { createTuiApi } from "@/cli/cmd/tui/plugin/api"
 import type { RouteMap } from "@/cli/cmd/tui/plugin/api"
 import { FormatError, FormatUnknownError } from "@/cli/error"
 import { kitty, resetTerminalState } from "@/kilocode/cli/cmd/tui/util/terminal" // kilocode_change
+import * as AppExit from "@/kilocode/tui/app-exit" // kilocode_change
 import { CommandPaletteProvider, useCommandPalette } from "./context/command-palette"
 import { OpencodeKeymapProvider, registerOpencodeKeymap, useBindings, useOpencodeKeymap } from "./keymap"
 
@@ -663,14 +664,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         },
         category: "System",
       },
-      {
-        name: "app.exit",
-        title: "Exit the app",
-        slashName: "exit",
-        slashAliases: ["quit", "q"],
-        run: () => exit(),
-        category: "System",
-      },
+      AppExit.command(exit), // kilocode_change
       {
         name: "app.debug",
         title: "Toggle debug panel",
@@ -812,13 +806,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   }))
 
   useBindings(() => ({
-    enabled: () => {
-      const ok = command.matcher.get()
-      if (!ok) return false
-      const current = promptRef.current
-      if (!current?.focused) return true
-      return current.current.input === ""
-    },
+    enabled: () => AppExit.enabled(command.matcher.get(), promptRef.current), // kilocode_change
     bindings: tuiConfig.keybinds.gather("app_exit", ["app.exit"]),
   }))
 

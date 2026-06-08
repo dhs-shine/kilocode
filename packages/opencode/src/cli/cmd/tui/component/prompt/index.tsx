@@ -1534,12 +1534,10 @@ export function Prompt(props: PromptProps) {
                 syncExtmarksWithPromptParts()
                 setCursorVersion((value) => value + 1)
               }}
-              /* kilocode_change start */
-              onCursorChange={() => {
+              /* kilocode_change */ onCursorChange={() => {
                 setCursorVersion((value) => value + 1)
                 if (store.mode === "normal") auto()?.onCursorChange()
               }}
-              /* kilocode_change end */
               onKeyDown={(e: { preventDefault(): void }) => {
                 if (props.disabled) {
                   e.preventDefault()
@@ -1641,9 +1639,7 @@ export function Prompt(props: PromptProps) {
         </box>
         <box
           height={1}
-          /* kilocode_change start */
-          flexShrink={0}
-          /* kilocode_change end */
+          /* kilocode_change */ flexShrink={0}
           border={["left"]}
           borderColor={borderHighlight()}
           customBorderChars={{

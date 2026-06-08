@@ -26,10 +26,9 @@ describe("session export worker e2e", () => {
       worker.postMessage({ kind: "event", approxBytes: 1000, envelope: env })
     }
     await until(() => rows(db).length === 3)
+    const out = rows(db)
     await shutdown(worker)
     worker.terminate()
-
-    const out = rows(db)
     expect(out.map((row) => row.type)).toEqual([
       "llm_request_started",
       "workspace_baseline_completed",
