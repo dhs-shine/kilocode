@@ -18527,6 +18527,19 @@
           "isFree": {
             "type": "boolean"
           },
+          "terminalBench": {
+            "type": "object",
+            "properties": {
+              "overallScore": {
+                "type": "number"
+              },
+              "avgAttemptCostUsd": {
+                "type": "number"
+              }
+            },
+            "required": ["overallScore", "avgAttemptCostUsd"],
+            "additionalProperties": false
+          },
           "ai_sdk_provider": {
             "type": "string",
             "enum": ["alibaba", "anthropic", "mistral", "openai", "openai-compatible", "openrouter"]
