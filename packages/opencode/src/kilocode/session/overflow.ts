@@ -43,8 +43,11 @@ export namespace KiloSessionOverflow {
       if (!["data", "url", "image"].includes(key)) return value
       if (!this || typeof this !== "object" || !("type" in this)) return value
       if (!["file", "image", "media"].includes(String(this.type))) return value
-      const text = typeof value === "string" ? value : (JSON.stringify(value) ?? "")
-      extra += Math.max(0, Token.estimate(text) - MEDIA_TOKENS)
+      const tokens =
+        value instanceof Uint8Array
+          ? Math.ceil(value.byteLength / 4)
+          : Token.estimate(typeof value === "string" ? value : (JSON.stringify(value) ?? ""))
+      extra += Math.max(0, tokens - MEDIA_TOKENS)
       return MEDIA
     })
     const messages = Token.estimate(normalized)

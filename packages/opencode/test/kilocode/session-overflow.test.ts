@@ -245,6 +245,19 @@ describe("Kilo preflight compaction", () => {
     expect(usage.raw).toBeGreaterThan(100_000)
   })
 
+  test("accounts for binary provider image payloads in the raw estimate", () => {
+    const messages = [
+      {
+        role: "user",
+        content: [{ type: "image", image: new Uint8Array(600_000) }],
+      },
+    ] satisfies ModelMessage[]
+
+    const usage = KiloSessionOverflow.measure({ messages, tools: {} })
+    expect(usage.normalized).toBeLessThan(100)
+    expect(usage.raw).toBeGreaterThan(100_000)
+  })
+
   test("still compacts oversized text when the request includes media", () => {
     const conf = cfg({ threshold_percent: 75 })
     const mdl = model({ context: 200_000, output: 32_000 })

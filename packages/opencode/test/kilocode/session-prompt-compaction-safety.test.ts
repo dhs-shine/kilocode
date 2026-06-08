@@ -334,6 +334,9 @@ describe("SessionPrompt compaction safety", () => {
         expect(JSON.stringify(inputs.at(-1)?.messages)).toContain("CURRENTIMAGE")
         const msgs = yield* sessions.messages({ sessionID: chat.id })
         expect(msgs.some((msg) => msg.info.role === "assistant" && msg.info.summary === true)).toBe(true)
+        const marker = msgs.flatMap((msg) => msg.parts).find((part) => part.type === "compaction")
+        expect(marker?.type).toBe("compaction")
+        if (marker?.type === "compaction") expect(marker.overflow).toBe(false)
       }),
       {
         git: true,
