@@ -20,6 +20,7 @@ import type { Provider } from "@/provider/provider"
 import { Question } from "@/question"
 // kilocode_change start
 import { KiloSessionProcessor, type ReviewTelemetry } from "@/kilocode/session/processor"
+import { KiloSessionOverflow } from "@/kilocode/session/overflow"
 import { Suggestion } from "@/kilocode/suggestion"
 import { NotFoundError } from "@/storage/storage"
 // kilocode_change end
@@ -845,6 +846,12 @@ export const layer: Layer.Layer<
       })
 
       const halt = Effect.fn("SessionProcessor.halt")(function* (e: unknown) {
+        // kilocode_change start - internal preflight signal, not a provider error
+        if (e instanceof KiloSessionOverflow.PreflightError) {
+          ctx.needsCompaction = true
+          return
+        }
+        // kilocode_change end
         slog.error("process", { error: errorMessage(e), stack: e instanceof Error ? e.stack : undefined })
         const error = parse(e)
         // kilocode_change start
@@ -893,7 +900,12 @@ export const layer: Layer.Layer<
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             ctx.step = { reasoning: false, text: false, tool: false } // kilocode_change
-            const stream = llm.stream(streamInput)
+            // kilocode_change start
+            const stream = llm.stream({
+              ...streamInput,
+              preflight: !ctx.assistantMessage.summary,
+            })
+            // kilocode_change end
 
             yield* stream.pipe(
               Stream.tap((event) => handleEvent(event)),

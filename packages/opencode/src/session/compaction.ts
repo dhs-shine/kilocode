@@ -386,7 +386,8 @@ export const layer: Layer.Layer<
             parts: MessageV2.Part[]
           }
         | undefined
-      if (input.overflow) {
+      // kilocode_change start - false is preflight replay; undefined disables replay
+      if (input.overflow !== undefined) {
         const idx = input.messages.findIndex((m) => m.info.id === input.parentID)
         for (let i = idx - 1; i >= 0; i--) {
           const msg = input.messages[i]
@@ -403,6 +404,7 @@ export const layer: Layer.Layer<
           messages = input.messages
         }
       }
+      // kilocode_change end
 
       const agent = yield* agents.get("compaction")
       const model = agent.model
@@ -554,8 +556,9 @@ export const layer: Layer.Layer<
           KiloSessionPromptQueue.retarget(input.sessionID, replayMsg.id) // kilocode_change - expose replay to scope()
           for (const part of replay.parts) {
             if (part.type === "compaction") continue
+            // kilocode_change start - preserve media for preflight replay but strip it after provider overflow
             const replayPart =
-              part.type === "file" && MessageV2.isMedia(part.mime)
+              input.overflow && part.type === "file" && MessageV2.isMedia(part.mime)
                 ? { type: "text" as const, text: `[Attached ${part.mime}: ${part.filename ?? "file"}]` }
                 : part
             yield* session.updatePart({
@@ -564,6 +567,7 @@ export const layer: Layer.Layer<
               messageID: replayMsg.id,
               sessionID: input.sessionID,
             })
+            // kilocode_change end
           }
         }
 
