@@ -309,6 +309,47 @@ const file = Effect.fn("prompt-safety.file")(function* (
 })
 
 describe("SessionPrompt compaction safety", () => {
+  it.live("compacts estimated outgoing context before the provider request", () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ llm }) {
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const chat = yield* sessions.create({
+          title: "Preflight compaction",
+          permission: [{ permission: "*", pattern: "*", action: "allow" }],
+        })
+
+        const old = yield* user(chat.id, "x".repeat(240_000))
+        yield* assistant(chat.id, old.id, { text: "old answer" })
+        const current = yield* user(chat.id, "continue")
+        yield* file(chat.id, current.id, { mime: "image/png", name: "current.png", body: "CURRENTIMAGE" })
+        yield* llm.text("compacted history")
+        yield* llm.text("final answer")
+
+        const result = yield* prompt.loop({ sessionID: chat.id })
+
+        expect(yield* llm.calls).toBe(2)
+        expect(result.parts.some((part) => part.type === "text" && part.text === "final answer")).toBe(true)
+        const inputs = yield* llm.inputs
+        expect(JSON.stringify(inputs.at(-1)?.messages)).toContain("CURRENTIMAGE")
+        const msgs = yield* sessions.messages({ sessionID: chat.id })
+        expect(msgs.some((msg) => msg.info.role === "assistant" && msg.info.summary === true)).toBe(true)
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          compaction: {
+            auto: true,
+            threshold_percent: 70,
+            tail_turns: 0,
+            preserve_recent_tokens: 0,
+          },
+        }),
+      },
+    ),
+  )
+
   it.live("trims plain-text summary history before provider request", () =>
     provideTmpdirServer(
       Effect.fnUntraced(function* ({ llm }) {
