@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect } from "bun:test"
+import { describe, expect } from "bun:test"
 import { Effect, Layer } from "effect"
 import { Skill } from "../../src/skill"
 import { Discovery } from "../../src/skill/discovery"
@@ -6,7 +6,6 @@ import { RuntimeFlags } from "../../src/effect/runtime-flags"
 import { Bus } from "../../src/bus"
 import { Config } from "../../src/config/config"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
-import { Flag } from "@opencode-ai/core/flag/flag"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { Global } from "@opencode-ai/core/global"
 import { provideInstance, provideTmpdirInstance, tmpdir } from "../fixture/fixture"
@@ -16,20 +15,18 @@ import fs from "fs/promises"
 
 const node = CrossSpawnSpawner.defaultLayer
 
-const it = testEffect(Layer.mergeAll(Skill.defaultLayer, node))
-const itWithoutClaudeCodeSkills = testEffect(
-  Layer.mergeAll(
-    Skill.layer.pipe(
-      Layer.provide(Discovery.defaultLayer),
-      Layer.provide(Config.defaultLayer),
-      Layer.provide(Bus.layer),
-      Layer.provide(AppFileSystem.defaultLayer),
-      Layer.provide(Global.layer),
-      Layer.provide(RuntimeFlags.layer({ disableClaudeCodeSkills: true })),
-    ),
-    node,
-  ),
-)
+const skills = (disableClaudeCodeSkills: boolean) =>
+  Skill.layer.pipe(
+    Layer.provide(Discovery.defaultLayer),
+    Layer.provide(Config.defaultLayer),
+    Layer.provide(Bus.layer),
+    Layer.provide(AppFileSystem.defaultLayer),
+    Layer.provide(Global.layer),
+    Layer.provide(RuntimeFlags.layer({ disableClaudeCodeSkills })),
+  )
+
+const it = testEffect(Layer.mergeAll(skills(false), node))
+const itWithoutClaudeCodeSkills = testEffect(Layer.mergeAll(skills(true), node))
 
 async function createGlobalSkill(homeDir: string) {
   const skillDir = path.join(homeDir, ".claude", "skills", "global-test-skill")
@@ -63,17 +60,7 @@ const withHome = <A, E, R>(home: string, self: Effect.Effect<A, E, R>) =>
   )
 
 const discovered = <T extends { location: string }>(list: readonly T[]) =>
-  list.filter((s) => s.location !== Skill.BUILTIN_LOCATION) // kilocode_change
-
-const disabled = Flag.KILO_DISABLE_CLAUDE_CODE_SKILLS
-
-beforeAll(() => {
-  Flag.KILO_DISABLE_CLAUDE_CODE_SKILLS = false
-})
-
-afterAll(() => {
-  Flag.KILO_DISABLE_CLAUDE_CODE_SKILLS = disabled
-})
+  list.filter((skill) => ![Skill.BUILTIN_LOCATION, "<built-in>"].includes(skill.location)) // kilocode_change
 
 describe("skill", () => {
   // kilocode_change start
@@ -431,7 +418,7 @@ description: A skill in the .agents/skills directory.
           )
 
           const skill = yield* Skill.Service
-          const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+          const list = discovered(yield* skill.all()) // kilocode_change
           expect(list.map((s) => s.name)).toEqual(["agent-skill"])
         }),
       { git: true },

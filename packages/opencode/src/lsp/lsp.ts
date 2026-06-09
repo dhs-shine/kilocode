@@ -265,7 +265,7 @@ export const layer = Layer.effect(
           if (s.broken.has(root + server.id)) continue
 
           // kilocode_change start - use lightweight tsgo-based client when persistent LSP is not enabled
-          if (server.id === "typescript" && !Flag.KILO_EXPERIMENTAL_LSP_TOOL) {
+          if (server.id === "typescript" && !flags.experimentalLspTool) {
             const existing = s.clients.find((x) => x.root === root && x.serverID === server.id)
             if (existing) {
               result.push(existing)

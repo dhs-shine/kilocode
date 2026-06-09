@@ -1,7 +1,7 @@
 export * as ConfigCommand from "./command"
 
 import * as Log from "@opencode-ai/core/util/log"
-import { Cause, Exit, Schema } from "effect"
+import { Cause, Exit, Schema, SchemaIssue } from "effect"
 import { NamedError } from "@opencode-ai/core/util/error"
 import { Glob } from "@opencode-ai/core/util/glob"
 import { Bus } from "@/bus"
@@ -80,7 +80,16 @@ export async function load(dir: string, warnings?: Warning[]) {
       continue
     }
     // kilocode_change start
-    await KilocodeConfig.handleInvalid("command", item, parsed.error.issues, parsed.error, warnings)
+    const error = Cause.squash(parsed.cause)
+    const issues = Schema.isSchemaError(error)
+      ? SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues.map((issue) => ({
+          ...issue,
+          message: issue.message,
+          path: issue.path?.map(String) ?? [],
+        }))
+      : [{ message: String(error), path: [] }]
+    const cause = error instanceof Error ? error : new Error(String(error))
+    await KilocodeConfig.handleInvalid("command", item, issues, cause, warnings)
     // kilocode_change end
   }
   return result

@@ -67,7 +67,7 @@ function app(input?: { password?: string; username?: string }) {
   ).handler
   return {
     request(input: string | URL | Request, init?: RequestInit) {
-      return Effect.promise(() =>
+      return Effect.promise((): Promise<Response> =>
         Promise.resolve(
           handler(
             input instanceof Request ? input : new Request(new URL(input, "http://localhost"), init),
@@ -114,7 +114,7 @@ function uiApp(input?: {
   ).handler
   return {
     request(input: string | URL | Request, init?: RequestInit) {
-      return Effect.promise(() =>
+      return Effect.promise((): Promise<Response> =>
         Promise.resolve(
           handler(
             input instanceof Request ? input : new Request(new URL(input, "http://localhost"), init),
@@ -156,7 +156,7 @@ function routeOrderingApp() {
   return {
     proxiedUrl: () => proxiedUrl,
     request(input: string | URL | Request, init?: RequestInit) {
-      return Effect.promise(() =>
+      return Effect.promise((): Promise<Response> =>
         Promise.resolve(
           handler(
             input instanceof Request ? input : new Request(new URL(input, "http://localhost"), init),
@@ -195,7 +195,7 @@ describe("HttpApi UI fallback", () => {
       }).request("/")
 
       expect(response.status).toBe(404)
-      expect(yield* response.json).toEqual({ error: "Not Found" })
+      expect(yield* Effect.promise(() => response.json())).toEqual({ error: "Not Found" })
       expect(proxied).toBe(false)
     }),
   )
@@ -282,29 +282,47 @@ describe("HttpApi UI fallback", () => {
 
   it.live("accepts auth token for the web UI", () =>
     Effect.gen(function* () {
+      let proxied = false // kilocode_change
       const response = yield* uiApp({
         password: "secret",
         username: "kilo", // kilocode_change
         disableEmbeddedWebUi: true,
-        client: httpClient(new Response("<html>kilo</html>", { headers: { "content-type": "text/html" } })),
+        // kilocode_change start - authenticated requests still must not proxy when embedded UI is disabled
+        client: httpClient(new Response("<html>kilo</html>", { headers: { "content-type": "text/html" } }), () => {
+          proxied = true
+        }),
+        // kilocode_change end
       }).request(`/?auth_token=${btoa("kilo:secret")}`)
 
-      expect(response.status).toBe(200)
-      expect(yield* responseText(response)).toBe("<html>kilo</html>")
+      // kilocode_change start
+      expect(response.status).toBe(404)
+      expect(yield* Effect.promise(() => response.json())).toEqual({ error: "Not Found" })
+      expect(proxied).toBe(false)
+      // kilocode_change end
     }),
   )
 
   it.live("accepts basic auth for the web UI", () =>
     Effect.gen(function* () {
+      let proxied = false // kilocode_change
       const response = yield* uiApp({
         password: "secret",
         username: "kilo", // kilocode_change
         disableEmbeddedWebUi: true,
+        // kilocode_change start
+        client: httpClient(new Response("ui"), () => {
+          proxied = true
+        }),
+        // kilocode_change end
       }).request("/", {
         headers: { authorization: `Basic ${btoa("kilo:secret")}` },
       })
 
-      expect(response.status).toBe(200)
+      // kilocode_change start
+      expect(response.status).toBe(404)
+      expect(yield* Effect.promise(() => response.json())).toEqual({ error: "Not Found" })
+      expect(proxied).toBe(false)
+      // kilocode_change end
     }),
   )
 

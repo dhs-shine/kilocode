@@ -159,8 +159,8 @@ test("creates global jsonc config with schema when no global configs exist", asy
       },
     })
 
-    const content = await Filesystem.readText(path.join(tmp.path, "opencode.jsonc"))
-    expect(content).toContain('"$schema": "https://opencode.ai/config.json"')
+    const content = await Filesystem.readText(path.join(tmp.path, "kilo.jsonc"))
+    expect(content).toContain('"$schema": "https://app.kilo.ai/config.json"')
   } finally {
     ;(Global.Path as { config: string }).config = prev
     await clear(true)

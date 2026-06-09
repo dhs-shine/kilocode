@@ -227,7 +227,9 @@ export const aggregateSessionStats = Effect.fn("Cli.stats.aggregate")(function* 
 
         return {
           messageCount: messages.length,
-          sessionCost: session.parentID ? 0 : (session.cost ?? legacyCost),
+          // Persisted totals may reflect step costs while parent assistant
+          // messages include propagated subagent cost. Keep the larger total.
+          sessionCost: session.parentID ? 0 : Math.max(session.cost ?? 0, legacyCost),
           sessionTokens,
           sessionTotalTokens:
             sessionTokens.input +

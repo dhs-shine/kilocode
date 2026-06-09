@@ -17,6 +17,7 @@ import { TsCheck } from "../../src/kilocode/ts-check" // kilocode_change
 
 // kilocode_change - Typescript.spawn ignores ctx, so a cast is fine here.
 const fakeCtx = {} as InstanceContext
+const fakeFlags = {} as RuntimeFlags.Info
 
 const it = testEffect(Layer.mergeAll(LSP.defaultLayer, CrossSpawnSpawner.defaultLayer))
 const experimentalTyIt = testEffect(
@@ -72,14 +73,22 @@ describe("lsp.spawn", () => {
     ),
   )
 
-  // kilocode_change start - enable flag so spawn() is reached past the TsClient short-circuit
-  it.live("would spawn builtin LSP for files inside instance when lsp is true", () =>
+  // kilocode_change start - provide the runtime flag so spawn() is reached past the TsClient short-circuit
+  const experimentalToolIt = testEffect(
+    Layer.mergeAll(
+      LSP.layer.pipe(
+        Layer.provide(Config.defaultLayer),
+        Layer.provide(RuntimeFlags.layer({ experimentalLspTool: true })),
+      ),
+      CrossSpawnSpawner.defaultLayer,
+    ),
+  )
+
+  experimentalToolIt.live("would spawn builtin LSP for files inside instance when lsp is true", () =>
     provideTmpdirInstance(
       (dir) =>
         LSP.Service.use((lsp) =>
           Effect.gen(function* () {
-            const saved = Flag.KILO_EXPERIMENTAL_LSP_TOOL
-            Flag.KILO_EXPERIMENTAL_LSP_TOOL = true
             const spy = spyOn(LSPServer.Typescript, "spawn").mockResolvedValue(undefined)
 
             try {
@@ -90,7 +99,6 @@ describe("lsp.spawn", () => {
               })
               expect(spy).toHaveBeenCalledTimes(1)
             } finally {
-              Flag.KILO_EXPERIMENTAL_LSP_TOOL = saved
               spy.mockRestore()
             }
           }),
@@ -99,13 +107,11 @@ describe("lsp.spawn", () => {
     ),
   )
 
-  it.live("would spawn builtin LSP for files inside instance when config object is provided", () =>
+  experimentalToolIt.live("would spawn builtin LSP for files inside instance when config object is provided", () =>
     provideTmpdirInstance(
       (dir) =>
         LSP.Service.use((lsp) =>
           Effect.gen(function* () {
-            const saved = Flag.KILO_EXPERIMENTAL_LSP_TOOL
-            Flag.KILO_EXPERIMENTAL_LSP_TOOL = true
             const spy = spyOn(LSPServer.Typescript, "spawn").mockResolvedValue(undefined)
 
             try {
@@ -116,7 +122,6 @@ describe("lsp.spawn", () => {
               })
               expect(spy).toHaveBeenCalledTimes(1)
             } finally {
-              Flag.KILO_EXPERIMENTAL_LSP_TOOL = saved
               spy.mockRestore()
             }
           }),
@@ -147,7 +152,7 @@ describe("lsp.spawn", () => {
       await WithInstance.provide({
         directory: tmp.path,
         fn: async () => {
-          const result = await LSPServer.Typescript.spawn(tmp.path, fakeCtx)
+          const result = await LSPServer.Typescript.spawn(tmp.path, fakeCtx, fakeFlags)
           expect(result).toBeDefined()
           expect(tsgoSpy).toHaveBeenCalledWith(tmp.path)
           expect(spawnSpy).toHaveBeenCalled()
@@ -167,7 +172,7 @@ describe("lsp.spawn", () => {
     const saved = Flag.KILO_EXPERIMENTAL_LSP_TOOL
     Flag.KILO_EXPERIMENTAL_LSP_TOOL = false
     try {
-      const result = await LSPServer.Typescript.spawn("/tmp/any", fakeCtx)
+      const result = await LSPServer.Typescript.spawn("/tmp/any", fakeCtx, fakeFlags)
       expect(result).toBeUndefined()
     } finally {
       Flag.KILO_EXPERIMENTAL_LSP_TOOL = saved

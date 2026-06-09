@@ -306,7 +306,7 @@ export namespace SessionNetwork {
 
   export const restore = fn(
     z.object({
-      requestID: QuestionID.zod,
+      requestID: z.custom<QuestionID>((value) => typeof value === "string" && value.startsWith("que")),
     }),
     async (input) => {
       const s = await state()
@@ -330,7 +330,7 @@ export namespace SessionNetwork {
 
   export const reply = fn(
     z.object({
-      requestID: QuestionID.zod,
+      requestID: z.custom<QuestionID>((value) => typeof value === "string" && value.startsWith("que")),
     }),
     async (input) => {
       const s = await state()
@@ -379,7 +379,7 @@ export namespace SessionNetwork {
 
   export const reject = fn(
     z.object({
-      requestID: QuestionID.zod,
+      requestID: z.custom<QuestionID>((value) => typeof value === "string" && value.startsWith("que")),
     }),
     async (input) => {
       const s = await state()

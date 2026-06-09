@@ -12,6 +12,7 @@ import { Question } from "@/question" // kilocode_change
 import { zod } from "@opencode-ai/core/effect-zod" // kilocode_change
 import { withStatics } from "@opencode-ai/core/schema" // kilocode_change
 import { SessionID, MessageID, PartID } from "./schema"
+import type { NotFoundError } from "@/storage/storage"
 import { MessageV2 } from "./message-v2"
 import * as Log from "@opencode-ai/core/util/log"
 import { SessionRevert } from "./revert"
@@ -232,7 +233,7 @@ export const layer = Layer.effect(
         cancel: (sessionID: SessionID) => cancel(sessionID),
         resolvePromptParts: (template: string) => resolvePromptParts(template),
         prompt: (input: PromptInput) => prompt(input).pipe(Effect.catch(Effect.die)),
-        loop: (input: LoopInput) => loop(input),
+        loop: (input: LoopInput) => loop(input).pipe(Effect.orDie),
       } satisfies TaskPromptOps
     })
 
@@ -1741,11 +1742,14 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         return yield* KiloSessionPromptQueue.enqueue(
           input.sessionID,
           message.info.id,
-          bridge.run(loop({ sessionID: input.sessionID, snapshotInitialization: input.snapshotInitialization })), // kilocode_change
+          bridge.run(
+            loop({ sessionID: input.sessionID, snapshotInitialization: input.snapshotInitialization }).pipe(Effect.orDie),
+          ), // kilocode_change
           bridge.run(lastAssistant(input.sessionID)),
         )
         // kilocode_change end
       },
+      Effect.catchTag("NotFoundError", Effect.die),
     )
 
     const lastAssistant = Effect.fnUntraced(function* (sessionID: SessionID) {
@@ -1765,7 +1769,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     const closeReasons = new Map<string, KiloSession.CloseReason>()
 
     // kilocode_change start - retain request-scoped snapshot initialization policy
-    const runLoop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.run")(function* (
+    const runLoop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts, NotFoundError> = Effect.fn(
+      "SessionPrompt.run",
+    )(function* (
       input: LoopInput,
     ) {
       const sessionID = input.sessionID
@@ -2152,7 +2158,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       return yield* lastAssistant(sessionID)
     })
 
-    const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.loop")(function* (
+    const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts, NotFoundError> = Effect.fn(
+      "SessionPrompt.loop",
+    )(function* (
       input: LoopInput,
     ) {
       // kilocode_change start
@@ -2160,7 +2168,11 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       yield* KiloSessionPrompt.recoverProviderFinishError({ sessionID: input.sessionID, status, sessions })
       yield* bus.publish(KiloSession.Event.TurnOpen, { sessionID: input.sessionID })
       return yield* Effect.onExit(
-        state.ensureRunning(input.sessionID, lastAssistant(input.sessionID), runLoop(input)), // kilocode_change
+        state.ensureRunning(
+          input.sessionID,
+          lastAssistant(input.sessionID).pipe(Effect.orDie),
+          runLoop(input).pipe(Effect.orDie),
+        ), // kilocode_change
         Effect.fnUntraced(function* (exit) {
           yield* bus.publish(KiloSession.Event.TurnClose, {
             sessionID: input.sessionID,
@@ -2179,7 +2191,12 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       "SessionPrompt.shell",
     )(function* (input: ShellInput) {
       const ready = yield* Latch.make()
-      return yield* state.startShell(input.sessionID, lastAssistant(input.sessionID), shellImpl(input, ready), ready)
+      return yield* state.startShell(
+        input.sessionID,
+        lastAssistant(input.sessionID).pipe(Effect.orDie),
+        shellImpl(input, ready),
+        ready,
+      )
     })
 
     const command = Effect.fn("SessionPrompt.command")(function* (input: CommandInput) {
@@ -2304,7 +2321,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     return Service.of({
       cancel,
       prompt,
-      loop,
+      loop: (input) => loop(input).pipe(Effect.orDie),
       shell,
       command,
       resolvePromptParts,

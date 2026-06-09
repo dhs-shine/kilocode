@@ -22,7 +22,6 @@ import { Question } from "@/question"
 import { KiloSessionProcessor, type ReviewTelemetry } from "@/kilocode/session/processor"
 import { KiloSessionOverflow } from "@/kilocode/session/overflow"
 import { Suggestion } from "@/kilocode/suggestion"
-import { NotFoundError } from "@/storage/storage"
 // kilocode_change end
 import { errorMessage } from "@/util/error"
 import * as Log from "@opencode-ai/core/util/log"
@@ -196,14 +195,10 @@ export const layer: Layer.Layer<
 
       // kilocode_change start - tolerate deleted sessions during subagent cost reconciliation (#6321)
       const reconcile = Effect.fn("SessionProcessor.reconcileCost")(function* () {
-        const fresh = yield* Effect.sync(() => {
-          try {
-            return MessageV2.get({ sessionID: ctx.assistantMessage.sessionID, messageID: ctx.assistantMessage.id })
-          } catch (err) {
-            if (NotFoundError.isInstance(err)) return
-            throw err
-          }
-        })
+        const fresh = yield* MessageV2.get({
+          sessionID: ctx.assistantMessage.sessionID,
+          messageID: ctx.assistantMessage.id,
+        }).pipe(Effect.catchTag("NotFoundError", () => Effect.void))
         if (fresh?.info.role !== "assistant") return
         if (fresh.info.cost <= ctx.assistantMessage.cost) return
         ctx.assistantMessage.cost = fresh.info.cost

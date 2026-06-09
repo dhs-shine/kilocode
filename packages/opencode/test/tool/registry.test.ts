@@ -33,42 +33,55 @@ import { ProviderID, ModelID } from "@/provider/schema"
 import { ToolJsonSchema } from "@/tool/json-schema"
 import { MessageID, SessionID } from "@/session/schema"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import { Command } from "@/command"
 
 const node = CrossSpawnSpawner.defaultLayer
 const configLayer = TestConfig.layer({
   directories: () => InstanceState.directory.pipe(Effect.map((dir) => [path.join(dir, ".opencode")])),
 })
 
-const registryLayer = (flags: Partial<RuntimeFlags.Info> = {}) =>
-  ToolRegistry.layer
-    .pipe(
-      Layer.provide(configLayer),
-      Layer.provide(Plugin.defaultLayer),
-      Layer.provide(Question.defaultLayer),
-      Layer.provide(Todo.defaultLayer),
-      Layer.provide(Skill.defaultLayer),
-      Layer.provide(Agent.defaultLayer),
-      Layer.provide(Session.defaultLayer),
-      Layer.provide(Layer.mergeAll(SessionStatus.defaultLayer, BackgroundJob.defaultLayer)),
-      Layer.provide(Provider.defaultLayer),
-      Layer.provide(Git.defaultLayer),
-      Layer.provide(Reference.defaultLayer),
-      Layer.provide(LSP.defaultLayer),
-      Layer.provide(Instruction.defaultLayer),
-      Layer.provide(AppFileSystem.defaultLayer),
-      Layer.provide(Bus.layer),
-      Layer.provide(FetchHttpClient.layer),
-      Layer.provide(Format.defaultLayer),
-      Layer.provide(node),
-      Layer.provide(Ripgrep.defaultLayer),
-      Layer.provide(Truncate.defaultLayer),
-    )
-    .pipe(Layer.provide(RuntimeFlags.layer(flags)))
+const registryLayer = (flags: Partial<RuntimeFlags.Info> = {}) => {
+  const deps = Layer.mergeAll(
+    configLayer,
+    Plugin.defaultLayer,
+    Question.defaultLayer,
+    Todo.defaultLayer,
+    Skill.defaultLayer,
+    Agent.defaultLayer,
+    Session.defaultLayer,
+    Layer.mergeAll(SessionStatus.defaultLayer, BackgroundJob.defaultLayer),
+    Provider.defaultLayer,
+    Git.defaultLayer,
+    Reference.defaultLayer,
+    LSP.defaultLayer,
+    Instruction.defaultLayer,
+    Command.defaultLayer,
+    AppFileSystem.defaultLayer,
+    Bus.layer,
+    FetchHttpClient.layer,
+    Format.defaultLayer,
+    node,
+    Layer.mergeAll(Ripgrep.defaultLayer, Truncate.defaultLayer),
+  )
+  return ToolRegistry.layer.pipe(
+    Layer.provide(deps),
+    Layer.provide(RuntimeFlags.layer(flags)),
+    Layer.provide(node),
+    Layer.provide(Agent.defaultLayer),
+  )
+}
 
-const it = testEffect(Layer.mergeAll(registryLayer(), node, Agent.defaultLayer))
-const scout = testEffect(Layer.mergeAll(registryLayer({ experimentalScout: true }), node, Agent.defaultLayer))
+const it = testEffect(Layer.mergeAll(registryLayer(), Agent.defaultLayer, RuntimeFlags.layer(), configLayer))
+const scout = testEffect(
+  Layer.mergeAll(registryLayer({ experimentalScout: true }), Agent.defaultLayer, RuntimeFlags.layer(), configLayer),
+)
 const background = testEffect(
-  Layer.mergeAll(registryLayer({ experimentalBackgroundSubagents: true }), node, Agent.defaultLayer),
+  Layer.mergeAll(
+    registryLayer({ experimentalBackgroundSubagents: true }),
+    Agent.defaultLayer,
+    RuntimeFlags.layer(),
+    configLayer,
+  ),
 )
 
 afterEach(async () => {

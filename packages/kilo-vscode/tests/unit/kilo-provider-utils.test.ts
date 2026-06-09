@@ -18,8 +18,8 @@ import type {
   Agent,
   Provider,
   Event,
-  EventMessagePartUpdated,
-  EventMessageUpdated,
+  SyncEventMessagePartUpdated,
+  SyncEventMessageUpdated,
   EventSessionStatus,
   EventSessionTurnClose,
   EventPermissionAsked,
@@ -31,8 +31,8 @@ import type {
   EventSuggestionShown,
   EventSuggestionAccepted,
   EventSuggestionDismissed,
-  EventSessionCreated,
-  EventSessionUpdated,
+  SyncEventSessionCreated,
+  SyncEventSessionUpdated,
   EventServerConnected,
   TextPart,
   AssistantMessage,
@@ -243,11 +243,17 @@ describe("buildSettingPath", () => {
 })
 
 describe("mapSSEEventToWebviewMessage", () => {
-  it("maps message.part.updated to partUpdated", () => {
-    const event: EventMessagePartUpdated = {
-      type: "message.part.updated",
-      properties: {
+  it("maps message.part.updated.1 to partUpdated", () => {
+    const event: SyncEventMessagePartUpdated = {
+      type: "sync",
+      name: "message.part.updated.1",
+      id: "evt-part",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: {
+        sessionID: "sess-1",
         part: makeTextPart({ text: "hello" }),
+        time: 1700000000000,
       },
     }
     const msg = mapSSEEventToWebviewMessage(event, "sess-1")
@@ -258,18 +264,33 @@ describe("mapSSEEventToWebviewMessage", () => {
     }
   })
 
-  it("returns null for message.part.updated when sessionID is undefined", () => {
-    const event: EventMessagePartUpdated = {
-      type: "message.part.updated",
-      properties: { part: makeTextPart({ text: "" }) },
+  it("maps message.part.updated.1 without a tracked sessionID", () => {
+    const event: SyncEventMessagePartUpdated = {
+      type: "sync",
+      name: "message.part.updated.1",
+      id: "evt-part",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: {
+        sessionID: "sess-1",
+        part: makeTextPart({ text: "" }),
+        time: 1700000000000,
+      },
     }
-    expect(mapSSEEventToWebviewMessage(event, undefined)).toBeNull()
+    const msg = mapSSEEventToWebviewMessage(event, undefined)
+    expect(msg?.type).toBe("partUpdated")
+    if (msg?.type === "partUpdated") expect(msg.sessionID).toBe("sess-1")
   })
 
-  it("maps message.updated to messageCreated with ISO date", () => {
-    const event: EventMessageUpdated = {
-      type: "message.updated",
-      properties: {
+  it("maps message.updated.1 to messageCreated with ISO date", () => {
+    const event: SyncEventMessageUpdated = {
+      type: "sync",
+      name: "message.updated.1",
+      id: "evt-message",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: {
+        sessionID: "sess-1",
         info: makeAssistantMessage({ cost: 0.001 }),
       },
     }
@@ -496,10 +517,14 @@ describe("mapSSEEventToWebviewMessage", () => {
     expect(msg?.type).toBe("suggestionResolved")
   })
 
-  it("maps session.created to sessionCreated with ISO dates", () => {
-    const event: EventSessionCreated = {
-      type: "session.created",
-      properties: { info: makeSession() },
+  it("maps session.created.1 to sessionCreated with ISO dates", () => {
+    const event: SyncEventSessionCreated = {
+      type: "sync",
+      name: "session.created.1",
+      id: "evt-session",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: { sessionID: "sess-1", info: makeSession() },
     }
     const msg = mapSSEEventToWebviewMessage(event, "sess-1")
     expect(msg?.type).toBe("sessionCreated")
@@ -508,13 +533,16 @@ describe("mapSSEEventToWebviewMessage", () => {
     }
   })
 
-  it("maps session.updated to sessionUpdated with ISO dates", () => {
-    const event: EventSessionUpdated = {
-      type: "session.updated",
-      properties: { info: makeSession({ id: "sess-2" }) },
+  it("ignores session.updated.1 after backend state reconciliation", () => {
+    const event: SyncEventSessionUpdated = {
+      type: "sync",
+      name: "session.updated.1",
+      id: "evt-session",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: { sessionID: "sess-2", info: { id: "sess-2", time: { updated: 1700001000000 } } },
     }
-    const msg = mapSSEEventToWebviewMessage(event, "sess-2")
-    expect(msg?.type).toBe("sessionUpdated")
+    expect(mapSSEEventToWebviewMessage(event, "sess-2")).toBeNull()
   })
 
   it("returns null for server.connected (no webview message)", () => {
@@ -529,37 +557,46 @@ describe("mapSSEEventToWebviewMessage", () => {
 })
 
 describe("isEventFromForeignProject", () => {
-  const session = (projectID: string) =>
-    ({
-      id: "s1",
-      projectID,
-      title: "test",
-      directory: "/workspace",
-      time: { created: 0, updated: 0 },
-    }) as unknown as Session
+  function created(projectID: string): SyncEventSessionCreated {
+    return {
+      type: "sync",
+      name: "session.created.1",
+      id: "evt-session",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: { sessionID: "sess-1", info: makeSession({ projectID }) },
+    }
+  }
 
-  it("drops session.created from a different project", () => {
-    const event: Event = { type: "session.created", properties: { info: session("project-B") } }
-    expect(isEventFromForeignProject(event, "project-A")).toBe(true)
+  function updated(projectID: string): SyncEventSessionUpdated {
+    return {
+      type: "sync",
+      name: "session.updated.1",
+      id: "evt-session",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: { sessionID: "sess-1", info: { projectID } },
+    }
+  }
+
+  it("drops session.created.1 from a different project", () => {
+    expect(isEventFromForeignProject(created("project-B"), "project-A")).toBe(true)
   })
 
-  it("drops session.updated from a different project", () => {
-    const event: Event = { type: "session.updated", properties: { info: session("project-B") } }
-    expect(isEventFromForeignProject(event, "project-A")).toBe(true)
+  it("drops session.updated.1 from a different project", () => {
+    expect(isEventFromForeignProject(updated("project-B"), "project-A")).toBe(true)
   })
 
-  it("keeps session.created from the same project", () => {
-    const event: Event = { type: "session.created", properties: { info: session("project-A") } }
-    expect(isEventFromForeignProject(event, "project-A")).toBe(false)
+  it("keeps session.created.1 from the same project", () => {
+    expect(isEventFromForeignProject(created("project-A"), "project-A")).toBe(false)
   })
 
   it("keeps all events when expectedProjectID is undefined", () => {
-    const event: Event = { type: "session.created", properties: { info: session("project-B") } }
-    expect(isEventFromForeignProject(event, undefined)).toBe(false)
+    expect(isEventFromForeignProject(created("project-B"), undefined)).toBe(false)
   })
 
   it("keeps non-session events regardless of project", () => {
-    const event = { type: "server.heartbeat", properties: {} } as unknown as Event
+    const event: EventServerConnected = { type: "server.connected", properties: {} }
     expect(isEventFromForeignProject(event, "project-A")).toBe(false)
   })
 })

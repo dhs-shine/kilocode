@@ -8,7 +8,7 @@ import { Npm } from "@opencode-ai/core/npm"
 import { Hash } from "@opencode-ai/core/util/hash"
 import { Plugin } from "../plugin"
 import { type LanguageModelV3 } from "@ai-sdk/provider"
-import * as ModelsDev from "@opencode-ai/core/models"
+import * as ModelsDev from "./models" // kilocode_change - assemble dynamic Kilo models around upstream core catalog
 import { Auth } from "../auth"
 import { Env } from "../env"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
@@ -1024,7 +1024,7 @@ export interface Interface {
     providerID: ProviderID,
     query: string[],
   ) => Effect.Effect<{ providerID: ProviderID; modelID: string } | undefined>
-  readonly getSmallModel: (providerID: ProviderID) => Effect.Effect<Model | undefined>
+  readonly getSmallModel: (providerID: ProviderID) => Effect.Effect<Model | undefined, ModelNotFoundError>
   readonly defaultModel: () => Effect.Effect<{ providerID: ProviderID; modelID: ModelID }>
 }
 

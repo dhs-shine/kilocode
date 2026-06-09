@@ -65,8 +65,6 @@ export function createFetch(override?: FetchHandler) {
     switch (url.pathname) {
       case "/agent":
       case "/command":
-      case "/experimental/workspace":
-      case "/experimental/workspace/status":
       case "/formatter":
       case "/lsp":
       case "/network": // kilocode_change
@@ -89,6 +87,15 @@ export function createFetch(override?: FetchHandler) {
         return json({ id: "proj_test" })
       case "/provider":
         return json({ all: [], default: {}, connected: [] })
+      case "/experimental/workspace":
+        return json([
+          { id: "ws_a", type: "local", branch: "a", name: "a", directory: "/tmp/a", projectID: "proj_test" },
+          { id: "ws_b", type: "local", branch: "b", name: "b", directory: "/tmp/b", projectID: "proj_test" },
+        ])
+      case "/experimental/workspace/status":
+        return json([])
+      case "/indexing/status": // kilocode_change
+        return json({ state: "Disabled", message: "Indexing disabled.", processedFiles: 0, totalFiles: 0, percent: 0 })
       case "/session":
         return json([])
       case "/vcs":

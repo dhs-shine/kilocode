@@ -7,6 +7,7 @@ import * as Global from "../global"
 import { Schema } from "effect"
 import { Glob } from "./glob"
 import { createStream } from "rotating-file-stream" // kilocode_change
+import { KILO_RUN_ID } from "./opencode-process" // kilocode_change
 
 export const Level = Schema.Literals(["DEBUG", "INFO", "WARN", "ERROR"]).annotate({
   identifier: "LogLevel",
@@ -59,29 +60,44 @@ let logpath = ""
 export function file() {
   return logpath
 }
-let write = (msg: any) => {
+const stderr = (msg: any) => {
   process.stderr.write(msg)
   return msg.length
 }
+let write = stderr
+let stream: ReturnType<typeof createStream> | undefined // kilocode_change
 
 export async function init(options: Options) {
   if (options.level) level = options.level
   void cleanup(Global.Path.log)
-  if (options.print) return
+  // kilocode_change start - initialize one rotating stream and truncate dev.log once per Kilo run
+  if (stream) {
+    const active = stream
+    stream = undefined
+    await new Promise<void>((resolve) => active.end(resolve))
+  }
+  if (options.print) {
+    write = stderr
+    return
+  }
   logpath = path.join(
     Global.Path.log,
     options.dev ? "dev.log" : new Date().toISOString().split(".")[0].replace(/:/g, "") + ".log",
   )
-  await fs.truncate(logpath).catch(() => {})
-  // kilocode_change start - use rotating-file-stream to cap log files at 50 MB
+  const run = process.env[KILO_RUN_ID]
+  if (!options.dev || !run || process.env[initializedRunID] !== run) {
+    await fs.truncate(logpath).catch(() => {})
+    if (options.dev && run) process.env[initializedRunID] = run
+  }
   const dir = path.dirname(logpath)
-  const stream = createStream(path.basename(logpath), {
+  const active = createStream(path.basename(logpath), {
     size: "50M",
     maxFiles: 10,
     history: ".log-history",
     path: dir,
   })
-  stream.on("rotation", () => {
+  stream = active
+  active.on("rotation", () => {
     if (!existsSync(dir)) return
 
     try {
@@ -95,14 +111,14 @@ export async function init(options: Options) {
       process.stderr.write("log stream warning: " + msg + "\n")
     }
   })
-  stream.on("error", (err: Error) => {
+  active.on("error", (err: Error) => {
     process.stderr.write("log stream error: " + err.message + "\n")
   })
-  stream.on("warning", (err: Error) => {
+  active.on("warning", (err: Error) => {
     process.stderr.write("log stream warning: " + err.message + "\n")
   })
   write = (msg: any) => {
-    stream.write(msg)
+    active.write(msg)
     return msg.length
   }
   // kilocode_change end

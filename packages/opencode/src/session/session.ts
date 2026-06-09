@@ -661,11 +661,9 @@ export const layer: Layer.Layer<
     const updateMessage = <T extends MessageV2.Info>(msg: T): Effect.Effect<T> =>
       Effect.gen(function* () {
         // kilocode_change start - ignore FK errors when session was deleted while processor was still running
-        yield* Effect.sync(() =>
-          KiloSession.runSyncSafe(
-            () => SyncEvent.run(MessageV2.Event.Updated, { sessionID: msg.sessionID, info: msg }),
-            { type: "message update", id: msg.id, sessionID: msg.sessionID },
-          ),
+        yield* KiloSession.runSyncSafe(
+          sync.run(MessageV2.Event.Updated, { sessionID: msg.sessionID, info: msg }),
+          { type: "message update", id: msg.id, sessionID: msg.sessionID },
         )
         // kilocode_change end
         return msg
@@ -674,16 +672,13 @@ export const layer: Layer.Layer<
     const updatePart = <T extends MessageV2.Part>(part: T): Effect.Effect<T> =>
       Effect.gen(function* () {
         // kilocode_change start - ignore FK errors when session was deleted while processor was still running
-        yield* Effect.sync(() =>
-          KiloSession.runSyncSafe(
-            () =>
-              SyncEvent.run(MessageV2.Event.PartUpdated, {
-                sessionID: part.sessionID,
-                part: structuredClone(part),
-                time: Date.now(),
-              }),
-            { type: "part update", id: part.id, sessionID: part.sessionID },
-          ),
+        yield* KiloSession.runSyncSafe(
+          sync.run(MessageV2.Event.PartUpdated, {
+            sessionID: part.sessionID,
+            part: structuredClone(part),
+            time: Date.now(),
+          }),
+          { type: "part update", id: part.id, sessionID: part.sessionID },
         )
         // kilocode_change end
         return part

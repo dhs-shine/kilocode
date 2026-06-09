@@ -51,7 +51,7 @@ it.instance("returns default native agents when no config", () =>
   Effect.gen(function* () {
     const agents = yield* load((svc) => svc.list())
     const names = agents.map((a) => a.name)
-    expect(names).toContain("build")
+    expect(names).toContain("code")
     expect(names).toContain("plan")
     expect(names).toContain("general")
     expect(names).toContain("explore")
@@ -69,7 +69,7 @@ it.instance("build agent has correct default properties", () =>
     expect(build?.mode).toBe("primary")
     expect(build?.native).toBe(true)
     expect(evalPerm(build, "edit")).toBe("allow")
-    expect(evalPerm(build, "bash")).toBe("allow")
+    expect(evalPerm(build, "bash")).toBe("ask")
     expect(evalPerm(build, "repo_clone")).toBe("deny")
     expect(evalPerm(build, "repo_overview")).toBe("deny")
   }),
@@ -128,16 +128,16 @@ scout.instance("scout agent allows repo cloning and repo cache reads", () =>
 )
 
 scout.instance(
-  "reference config does not create subagents",
+  "reference config creates scout-backed subagents",
   () =>
     Effect.gen(function* () {
       const agents = yield* load((svc) => svc.list())
       const names = agents.map((agent) => agent.name)
       expect(names).toContain("scout")
-      expect(names).not.toContain("effect")
-      expect(names).not.toContain("effectFull")
-      expect(names).not.toContain("localdocs")
-      expect(names).not.toContain("localdocsFull")
+      expect(names).toContain("effect")
+      expect(names).toContain("effectFull")
+      expect(names).toContain("localdocs")
+      expect(names).toContain("localdocsFull")
     }),
   {
     config: {
@@ -623,17 +623,17 @@ description: Permission skill.
   { git: true },
 )
 
-it.instance("defaultAgent returns build when no default_agent config", () =>
+it.instance("defaultAgent returns code when no default_agent config", () =>
   Effect.gen(function* () {
     const agent = yield* load((svc) => svc.defaultAgent())
-    expect(agent).toBe("build")
+    expect(agent).toBe("code")
   }),
 )
 
-it.instance("defaultInfo returns resolved build agent when no default_agent config", () =>
+it.instance("defaultInfo returns resolved code agent when no default_agent config", () =>
   Effect.gen(function* () {
     const agent = yield* load((svc) => svc.defaultInfo())
-    expect(agent.name).toBe("build")
+    expect(agent.name).toBe("code")
     expect(agent.mode).toBe("primary")
   }),
 )
@@ -724,8 +724,11 @@ it.instance(
   {
     config: {
       agent: {
-        build: { disable: true },
+        code: { disable: true },
         plan: { disable: true },
+        debug: { disable: true },
+        orchestrator: { disable: true },
+        ask: { disable: true },
       },
     },
   },

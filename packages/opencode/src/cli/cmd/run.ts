@@ -29,6 +29,7 @@ import { Permission } from "@/permission"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { FormatError, FormatUnknownError } from "../error"
 import { INTERACTIVE_INPUT_ERROR, resolveInteractiveStdin } from "./run/runtime.stdin"
+import { event as normalizeEvent } from "./run/event"
 import { importCloudSession, validateCloudFork } from "@/kilocode/cloud-session" // kilocode_change
 import { KiloRunAuto } from "@/kilocode/cli/run-auto" // kilocode_change
 import { KiloRunDaemon } from "@/kilocode/cli/cmd/run" // kilocode_change
@@ -668,7 +669,10 @@ export const RunCommand = effectCmd({
           let retries = 0 // kilocode_change
           let error: string | undefined
 
-          for await (const event of events.stream) {
+          for await (const payload of events.stream) {
+            const event = normalizeEvent(payload)
+            if (!event) continue
+
             if (
               event.type === "message.updated" &&
               event.properties.sessionID === sessionID &&

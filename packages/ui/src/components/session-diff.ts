@@ -20,6 +20,7 @@ export type DiffText = {
   before: string
   after: string
   patch: string
+  patchIsPartial: boolean
 }
 
 export type ViewDiff = {

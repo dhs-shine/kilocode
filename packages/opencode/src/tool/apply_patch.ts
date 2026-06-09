@@ -145,7 +145,6 @@ export const ApplyPatchTool = Tool.define(
               )
               newContent = fileUpdate.content
               bom = fileUpdate.bom
-              encoding = fileUpdate.encoding // kilocode_change
             } catch (error) {
               return yield* Effect.fail(new Error(`apply_patch verification failed: ${error}`))
             }

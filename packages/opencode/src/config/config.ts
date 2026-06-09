@@ -526,7 +526,7 @@ export const layer = Layer.effect(
         const file = globalConfigFile()
         if (!existsSync(file)) {
           yield* fs
-            .writeWithDirs(file, JSON.stringify({ $schema: "https://opencode.ai/config.json" }, null, 2))
+            .writeWithDirs(file, JSON.stringify({ $schema: "https://app.kilo.ai/config.json" }, null, 2))
             .pipe(Effect.catch(() => Effect.void))
         }
       }
@@ -554,6 +554,7 @@ export const layer = Layer.effect(
         )
       }
 
+      globalStamp = yield* KilocodeGlobalConfigStamp.read(fs, Global.Path.config) // kilocode_change
       return result
     })
 
@@ -1028,7 +1029,7 @@ export const layer = Layer.effect(
         worktree: ctx.worktree,
         config,
         read: readConfigFile,
-        parse: (input, file) => ConfigParse.schema(Info.zod, ConfigParse.jsonc(input, file), file),
+        parse: (input, file) => ConfigParse.schema(Info, ConfigParse.jsonc(input, file), file),
         patch: (input, patch) => patchJsonc(input, patch),
         writable,
       })

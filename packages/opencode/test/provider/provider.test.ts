@@ -2,9 +2,10 @@ import { test, expect } from "bun:test"
 import { mkdir, unlink } from "fs/promises"
 import path from "path"
 
-import { disposeAllInstances, tmpdir } from "../fixture/fixture"
+import { tmpdir } from "../fixture/fixture"
 import { Global } from "@opencode-ai/core/global"
 import { Instance } from "../../src/project/instance"
+import { InstanceRuntime } from "../../src/project/instance-runtime"
 import { WithInstance } from "../../src/project/with-instance"
 import { Plugin } from "../../src/plugin/index"
 import { ModelsDev } from "@opencode-ai/core/models"
@@ -83,7 +84,7 @@ async function markPluginDependenciesReady(dir: string) {
 
 function paid(providers: Awaited<ReturnType<typeof list>>) {
   const item = providers[ProviderID.make("opencode")]
-  expect(item).toBeDefined()
+  if (!item) return 0 // kilocode_change - Kilo drops opencode provider without apiKey/auth
   return Object.values(item.models).filter((model) => model.cost.input > 0).length
 }
 
@@ -1891,9 +1892,9 @@ test("hosted nvidia provider adds billing origin header", async () => {
     fn: async () => {
       const providers = await list()
       expect(providers[ProviderID.make("nvidia")].options.headers).toEqual({
-        "HTTP-Referer": "https://opencode.ai/",
-        "X-Title": "opencode",
-        "X-BILLING-INVOKE-ORIGIN": "OpenCode",
+        "HTTP-Referer": "https://kilo.ai/",
+        "X-Title": "Kilo Code",
+        "X-BILLING-INVOKE-ORIGIN": "KiloCode",
       })
     },
   })
@@ -1923,9 +1924,9 @@ test("custom nvidia baseURL adds billing origin header", async () => {
     fn: async () => {
       const providers = await list()
       expect(providers[ProviderID.make("nvidia")].options.headers).toEqual({
-        "HTTP-Referer": "https://opencode.ai/",
-        "X-Title": "opencode",
-        "X-BILLING-INVOKE-ORIGIN": "OpenCode",
+        "HTTP-Referer": "https://kilo.ai/",
+        "X-Title": "Kilo Code",
+        "X-BILLING-INVOKE-ORIGIN": "KiloCode",
       })
     },
   })
@@ -2637,7 +2638,10 @@ test("plugin config providers persist after instance dispose", async () => {
   expect(first[ProviderID.make("demo")]).toBeDefined()
   expect(first[ProviderID.make("demo")].models[ModelID.make("chat")]).toBeDefined()
 
-  await disposeAllInstances()
+  await WithInstance.provide({
+    directory: tmp.path,
+    fn: () => InstanceRuntime.disposeInstance(Instance.current),
+  })
 
   const second = await WithInstance.provide({
     directory: tmp.path,
@@ -2645,7 +2649,7 @@ test("plugin config providers persist after instance dispose", async () => {
   })
   expect(second[ProviderID.make("demo")]).toBeDefined()
   expect(second[ProviderID.make("demo")].models[ModelID.make("chat")]).toBeDefined()
-})
+}, 60_000)
 
 test("plugin config enabled and disabled providers are honored", async () => {
   await using tmp = await tmpdir({

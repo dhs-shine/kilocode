@@ -24,6 +24,7 @@ const pluginUrl = pathToFileURL(path.join(import.meta.dir, "..", "fixture", "age
 
 const provider = ProviderTest.fake()
 const configLayer = Config.layer.pipe(
+  Layer.provide(RuntimeFlags.layer({ disableDefaultPlugins: true })),
   Layer.provide(AppFileSystem.defaultLayer),
   Layer.provide(Env.defaultLayer),
   Layer.provide(AuthTest.empty),
@@ -32,19 +33,18 @@ const configLayer = Config.layer.pipe(
 )
 const pluginLayer = Plugin.layer.pipe(
   Layer.provide(Bus.layer),
-  Layer.provide(configLayer),
   Layer.provide(RuntimeFlags.layer({ disableDefaultPlugins: true })),
 )
+const dependencies = Layer.mergeAll(configLayer, pluginLayer).pipe(Layer.provideMerge(configLayer))
 const agentLayer = Agent.layer.pipe(
-  Layer.provide(configLayer),
   Layer.provide(AuthTest.empty),
   Layer.provide(SkillTest.empty),
   Layer.provide(provider.layer),
-  Layer.provide(pluginLayer),
   Layer.provide(RuntimeFlags.layer({ disableDefaultPlugins: true })),
 )
+const layer = Layer.mergeAll(agentLayer, dependencies).pipe(Layer.provideMerge(dependencies))
 
-const it = testEffect(Layer.mergeAll(agentLayer, pluginLayer))
+const it = testEffect(layer)
 
 it.instance(
   "plugin-registered agents appear in Agent.list",

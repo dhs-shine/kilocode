@@ -723,7 +723,7 @@ export const layer: Layer.Layer<
     return Service.of({
       isOverflow,
       prune,
-      process: processCompaction,
+      process: (input) => processCompaction(input).pipe(Effect.orDie),
       create,
     })
   }),

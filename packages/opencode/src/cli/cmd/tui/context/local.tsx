@@ -534,8 +534,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         })
       }
 
-      event.on("session.deleted", (evt) => {
-        prune(evt.properties.info.id)
+      event.onSync("session.deleted.1", (evt) => {
+        prune(evt.data.sessionID)
       })
 
       if (Flag.KILO_EXPERIMENTAL_SESSION_SWITCHING) {

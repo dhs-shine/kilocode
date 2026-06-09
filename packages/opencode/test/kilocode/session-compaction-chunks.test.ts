@@ -4,6 +4,7 @@ import * as Stream from "effect/Stream"
 import { Agent } from "../../src/agent/agent"
 import { Bus } from "../../src/bus"
 import { Config } from "../../src/config/config"
+import { RuntimeFlags } from "../../src/effect/runtime-flags"
 import { Image } from "../../src/image/image"
 import { Permission } from "../../src/permission"
 import { Plugin } from "../../src/plugin"
@@ -219,11 +220,12 @@ function runtime(layer: Layer.Layer<LLM.Service>, context = 7_000) {
       Layer.provide(Agent.defaultLayer),
       Layer.provide(Plugin.defaultLayer),
       Layer.provide(SyncEvent.defaultLayer),
+      Layer.provide(RuntimeFlags.layer()),
       Layer.provide(status),
       Layer.provide(bus),
       Layer.provide(
         Layer.mock(Config.Service)({
-          get: () => Effect.succeed({ ...Config.Info.zod.parse({}), compaction: { reserved: 1_000 } }),
+          get: () => Effect.succeed({ ...{}, compaction: { reserved: 1_000 } }),
         }),
       ),
     ),
@@ -284,10 +286,11 @@ function fakeRuntime() {
         Layer.provide(Agent.defaultLayer),
         Layer.provide(Plugin.defaultLayer),
         Layer.provide(SyncEvent.defaultLayer),
+        Layer.provide(RuntimeFlags.layer()),
         Layer.provide(bus),
         Layer.provide(
           Layer.mock(Config.Service)({
-            get: () => Effect.succeed({ ...Config.Info.zod.parse({}), compaction: { reserved: 1_000 } }),
+            get: () => Effect.succeed({ ...{}, compaction: { reserved: 1_000 } }),
           }),
         ),
       ),
@@ -314,11 +317,12 @@ function liveRuntime(layer: Layer.Layer<LLM.Service>, context = 10_000) {
       Layer.provide(Agent.defaultLayer),
       Layer.provide(Plugin.defaultLayer),
       Layer.provide(SyncEvent.defaultLayer),
+      Layer.provide(RuntimeFlags.layer()),
       Layer.provide(status),
       Layer.provide(bus),
       Layer.provide(
         Layer.mock(Config.Service)({
-          get: () => Effect.succeed({ ...Config.Info.zod.parse({}), compaction: { reserved: 1_000 } }),
+          get: () => Effect.succeed({ ...{}, compaction: { reserved: 1_000 } }),
         }),
       ),
     ),

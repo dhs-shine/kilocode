@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test"
 import { ACP } from "../../src/acp/agent"
 import type { AgentSideConnection } from "@agentclientprotocol/sdk"
 import type {
-  Event,
-  EventMessagePartUpdated,
+  GlobalEvent,
+  SyncEventMessagePartUpdated,
   ToolStateCompleted,
   ToolStatePending,
   ToolStateRunning,
@@ -30,10 +30,7 @@ type SessionUpdateParams = Parameters<AgentSideConnection["sessionUpdate"]>[0]
 type RequestPermissionParams = Parameters<AgentSideConnection["requestPermission"]>[0]
 type RequestPermissionResult = Awaited<ReturnType<AgentSideConnection["requestPermission"]>>
 
-type GlobalEventEnvelope = {
-  directory?: string
-  payload?: Event
-}
+type GlobalEventEnvelope = Partial<GlobalEvent>
 
 type EventController = {
   push: (event: GlobalEventEnvelope) => void
@@ -86,10 +83,13 @@ function toolEvent(
           input: opts.input,
           raw: opts.raw,
         }
-  const payload: EventMessagePartUpdated = {
+  const payload: SyncEventMessagePartUpdated = {
     id: `evt_${opts.callID}`,
-    type: "message.part.updated",
-    properties: {
+    type: "sync",
+    name: "message.part.updated.1",
+    seq: 1,
+    aggregateID: "sessionID",
+    data: {
       sessionID: sessionId,
       time: Date.now(),
       part: {
@@ -126,10 +126,13 @@ function completedToolEvent(
     time: { start: Date.now() - 1, end: Date.now() },
     ...(opts.attachments && { attachments: opts.attachments }),
   }
-  const payload: EventMessagePartUpdated = {
+  const payload: SyncEventMessagePartUpdated = {
     id: `evt_${opts.callID}`,
-    type: "message.part.updated",
-    properties: {
+    type: "sync",
+    name: "message.part.updated.1",
+    seq: 1,
+    aggregateID: "sessionID",
+    data: {
       sessionID: sessionId,
       time: Date.now(),
       part: {
@@ -382,8 +385,12 @@ describe("acp.agent event subscription", () => {
         controller.push({
           directory: cwd,
           payload: {
-            type: "message.part.updated",
-            properties: {
+            type: "sync",
+            name: "message.part.updated.1",
+            id: "evt_part_1",
+            seq: 1,
+            aggregateID: "sessionID",
+            data: {
               sessionID: sessionId,
               time: Date.now(),
               part: {

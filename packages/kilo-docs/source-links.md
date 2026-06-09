@@ -6,6 +6,7 @@
   <!-- packages/opencode/src/plugin/xai.ts -->
 - <https://api.apertis.ai/v1>
   <!-- packages/opencode/src/provider/model-cache.ts -->
+  <!-- packages/opencode/src/provider/models.ts -->
 - <https://api.digitalocean.com>
   <!-- packages/opencode/src/plugin/digitalocean.ts -->
 - <https://api.kilo.ai>
@@ -132,8 +133,6 @@
   <!-- packages/opencode/src/kilocode/server/httpapi/public.ts -->
 - <https://opencode.ai/auth>
   <!-- packages/opencode/src/cli/cmd/providers.ts -->
-- <https://opencode.ai/config.json>
-  <!-- packages/opencode/src/config/config.ts -->
 - <https://opencode.ai/docs/agents>
   <!-- packages/opencode/src/config/config.ts -->
 - <https://opencode.ai/docs/commands>

@@ -229,7 +229,7 @@ export async function loadMode(dir: string, warnings?: Warning[]) {
     // kilocode_change start - use Effect schema (propertyOrder: original) + non-fatal handleInvalid
     try {
       result[config.name] = {
-        ...(ConfigParse.effectSchema(Info, config, item) as Info),
+        ...(ConfigParse.schema(Info, config, item) as Info),
         mode: "primary" as const,
       }
     } catch (err) {

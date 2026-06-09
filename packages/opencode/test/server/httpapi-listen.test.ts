@@ -294,7 +294,15 @@ describe("HttpApi Server.listen", () => {
       return true
     }) as typeof process.stderr.write
     try {
-      const response = await Server.Default().app.request("/status")
+      // kilocode_change start - use an authenticated local route instead of proxy-dependent status
+      Flag.KILO_SERVER_PASSWORD = auth.password
+      Flag.KILO_SERVER_USERNAME = auth.username
+      process.env.KILO_SERVER_PASSWORD = auth.password
+      process.env.KILO_SERVER_USERNAME = auth.username
+      const response = await Server.Default().app.request("/doc", {
+        headers: { authorization: authorization() },
+      })
+      // kilocode_change end
       expect(response.status).toBe(200)
     } finally {
       process.stderr.write = original

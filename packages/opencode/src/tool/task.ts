@@ -393,8 +393,12 @@ export const TaskTool = Tool.define(
             Effect.ensuring(
               Effect.gen(function* () {
                 ctx.abort.removeEventListener("abort", onAbort)
-                const costAfter = yield* KiloCostPropagation.childCost(sessions, nextSession.id)
-                yield* KiloCostPropagation.propagate(sessions, ctx.sessionID, ctx.messageID, costAfter - costBefore)
+                const costAfter = yield* KiloCostPropagation.childCost(sessions, nextSession.id).pipe(
+                  Effect.catchTag("NotFoundError", () => Effect.succeed(costBefore)),
+                )
+                yield* KiloCostPropagation.propagate(sessions, ctx.sessionID, ctx.messageID, costAfter - costBefore).pipe(
+                  Effect.catchTag("NotFoundError", () => Effect.void),
+                )
               }),
             ),
           ),

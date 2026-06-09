@@ -284,7 +284,7 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
               error instanceof Image.SizeError
             )
               return Effect.fail(new HttpApiError.BadRequest({}))
-            return Effect.failCause(cause)
+            return Effect.die(error)
           }),
           // kilocode_change end
         )

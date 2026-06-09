@@ -112,13 +112,24 @@ export const ReadTool = Tool.define(
 
     const lines = Effect.fn("ReadTool.lines")((filepath: string, opts: { limit: number; offset: number }) =>
       // kilocode_change - extracted formats still need their native readers; ordinary text stays on AppFileSystem
-      Effect.tryPromise(() => Extract.open(filepath)).pipe(
+      Effect.tryPromise({
+        try: () => Extract.open(filepath),
+        catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+      }).pipe(
         Effect.flatMap((extracted) =>
           extracted
-            ? Effect.tryPromise(() => collect(extracted, opts))
+            ? Effect.tryPromise({
+                try: () => collect(extracted, opts),
+                catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+              })
             : fs.readFile(filepath).pipe(
                 Effect.map((bytes) => Encoding.decode(Buffer.from(bytes), Encoding.detect(Buffer.from(bytes)))),
-                Effect.flatMap((text) => Effect.tryPromise(() => collect(Readable.from([text]), opts))),
+                Effect.flatMap((text) =>
+                  Effect.tryPromise({
+                    try: () => collect(Readable.from([text]), opts),
+                    catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+                  }),
+                ),
               ),
         ),
       ),
@@ -198,7 +209,7 @@ export const ReadTool = Tool.define(
             Effect.catch(() => Effect.succeed(new Uint8Array())),
           )
           if (isBinaryFile(child, sample)) return
-          const file = yield* Effect.promise(() => lines(child, { limit: DEFAULT_READ_LIMIT, offset: 1 })).pipe(
+          const file = yield* lines(child, { limit: DEFAULT_READ_LIMIT, offset: 1 }).pipe(
             Effect.catch(() => Effect.void),
           )
           if (!file) return

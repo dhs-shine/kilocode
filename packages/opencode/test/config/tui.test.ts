@@ -4,6 +4,7 @@ import { pathToFileURL } from "url"
 import { Effect, Layer } from "effect"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { Global } from "@opencode-ai/core/global"
+import { Flag } from "@opencode-ai/core/flag/flag"
 import { Config } from "@/config/config"
 import { ConfigPlugin } from "@/config/plugin"
 import { CurrentWorkingDirectory } from "@/cli/cmd/tui/config/cwd"
@@ -29,9 +30,18 @@ const cleanState = Effect.gen(function* () {
 
 const withCleanState = <A, E, R>(self: Effect.Effect<A, E, R>) =>
   Effect.acquireUseRelease(
-    cleanState,
+    Effect.gen(function* () {
+      const disabled = Flag.KILO_DISABLE_DEFAULT_PLUGINS
+      Flag.KILO_DISABLE_DEFAULT_PLUGINS = true
+      yield* cleanState
+      return disabled
+    }),
     () => self,
-    () => cleanState,
+    (disabled) =>
+      Effect.gen(function* () {
+        Flag.KILO_DISABLE_DEFAULT_PLUGINS = disabled
+        yield* cleanState
+      }),
   )
 
 const withEnv = <A, E, R>(name: string, value: string | undefined, self: Effect.Effect<A, E, R>) =>

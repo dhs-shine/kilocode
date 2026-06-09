@@ -50,7 +50,15 @@ import { ConfigMCP } from "@/config/mcp"
 import { Todo } from "@/session/todo"
 import { Result, Schema } from "effect"
 import { LoadAPIKeyError } from "ai"
-import type { AssistantMessage, Event, KiloClient, SessionMessageResponse, ToolPart } from "@kilocode/sdk/v2"
+import type {
+  AssistantMessage,
+  Event,
+  GlobalEvent,
+  KiloClient,
+  SessionMessageResponse,
+  SyncEventMessagePartUpdated,
+  ToolPart,
+} from "@kilocode/sdk/v2"
 import { applyPatch } from "diff"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
 
@@ -59,6 +67,12 @@ import { ShellID } from "@/tool/shell/id"
 
 type ModeOption = { id: string; name: string; description?: string }
 type ModelOption = { modelId: string; name: string }
+type MessagePartUpdated = {
+  id: string
+  type: "message.part.updated"
+  properties: SyncEventMessagePartUpdated["data"]
+}
+type AgentEvent = Event | MessagePartUpdated
 const decodeTodos = Schema.decodeUnknownResult(Schema.fromJsonString(Schema.Array(Todo.Info)))
 
 const DEFAULT_VARIANT_VALUE = "default"
@@ -185,14 +199,21 @@ export class Agent implements ACPAgent {
         if (this.eventAbort.signal.aborted) return
         const payload = event?.payload
         if (!payload) continue
-        await this.handleEvent(payload as Event).catch((error) => {
+        await this.handleEvent(payload).catch((error) => {
           log.error("failed to handle event", { error, type: payload.type })
         })
       }
     }
   }
 
-  private async handleEvent(event: Event) {
+  private async handleEvent(payload: GlobalEvent["payload"]) {
+    const event: AgentEvent | undefined = (() => {
+      if (payload.type !== "sync") return payload
+      if (payload.name !== "message.part.updated.1") return undefined
+      return { id: payload.id, type: "message.part.updated", properties: payload.data }
+    })()
+    if (!event) return
+
     switch (event.type) {
       case "permission.asked": {
         const permission = event.properties

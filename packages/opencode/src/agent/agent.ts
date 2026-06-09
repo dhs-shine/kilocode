@@ -24,6 +24,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { type DeepMutable } from "@opencode-ai/core/schema"
 import * as KiloAgent from "@/kilocode/agent" // kilocode_change
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import { Reference } from "@/reference/reference" // kilocode_change
 
 export const Info = Schema.Struct({
   name: Schema.String,
@@ -251,10 +252,10 @@ export const layer = Layer.effect(
             prompt: PROMPT_COMPACTION,
             permission: Permission.merge(
               defaults,
+              user,
               Permission.fromConfig({
                 "*": "deny",
               }),
-              user,
             ),
             options: {},
           },
@@ -267,10 +268,10 @@ export const layer = Layer.effect(
             temperature: 0.5,
             permission: Permission.merge(
               defaults,
+              user,
               Permission.fromConfig({
                 "*": "deny",
               }),
-              user,
             ),
             prompt: PROMPT_TITLE,
           },
@@ -282,10 +283,10 @@ export const layer = Layer.effect(
             hidden: true,
             permission: Permission.merge(
               defaults,
+              user,
               Permission.fromConfig({
                 "*": "deny",
               }),
-              user,
             ),
             prompt: PROMPT_SUMMARY,
           },
@@ -362,7 +363,7 @@ export const layer = Layer.effect(
           return `Invalid Scout reference for repository ${reference.repository}`
         }
 
-        if (Flag.KILO_EXPERIMENTAL_SCOUT) {
+        if (flags.experimentalScout) {
           const resolvedReferences = Reference.resolveAll({
             references: cfg.reference ?? {},
             directory: ctx.directory,
@@ -442,7 +443,7 @@ export const layer = Layer.effect(
           }
           // kilocode_change start - prefer "code" as default agent (key order changes after rename from "build")
           const code = agents.code
-          if (code && code.mode !== "subagent" && code.hidden !== true) return code.name
+          if (code && code.mode !== "subagent" && code.hidden !== true) return code
           // kilocode_change end
           const visible = Object.values(agents).find((a) => a.mode !== "subagent" && a.hidden !== true)
           if (!visible) throw new Error("no primary visible agent found")
@@ -481,7 +482,7 @@ export const layer = Layer.effect(
         return yield* current((s) => s.list()) // kilocode_change
       }),
       defaultInfo: Effect.fn("Agent.defaultInfo")(function* () {
-        return yield* InstanceState.useEffect(state, (s) => s.defaultInfo())
+        return yield* current((s) => s.defaultInfo()) // kilocode_change
       }),
       defaultAgent: Effect.fn("Agent.defaultAgent")(function* () {
         return yield* current((s) => s.defaultAgent()) // kilocode_change
