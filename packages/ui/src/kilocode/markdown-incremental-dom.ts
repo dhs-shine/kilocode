@@ -41,13 +41,20 @@ export function createIncrementalMarkdown<Context = never>(decorate: Decorate, h
   }
 
   const remove = (record: Record) => {
+    const parent = record.start.parentNode
+    if (!parent || record.end.parentNode !== parent) return false
+
+    const nodes: ChildNode[] = []
     let node: ChildNode | null = record.start
-    while (node) {
-      const next: ChildNode | null = node.nextSibling
-      node.parentNode?.removeChild(node)
-      if (node === record.end) return
-      node = next
+    while (node && node.parentNode === parent) {
+      nodes.push(node)
+      if (node === record.end) {
+        for (const item of nodes) parent.removeChild(item)
+        return true
+      }
+      node = node.nextSibling
     }
+    return false
   }
 
   const replace = (record: Record, block: MarkdownBlock, labels: Labels) => {
@@ -83,8 +90,12 @@ export function createIncrementalMarkdown<Context = never>(decorate: Decorate, h
     if (records.length === 0) container.replaceChildren()
 
     while (records.length > blocks.length) {
-      const record = records.pop()
-      if (record) remove(record)
+      const record = records.at(-1)
+      if (!record || !remove(record)) {
+        reset()
+        return false
+      }
+      records.pop()
     }
 
     for (let index = 0; index < blocks.length; index++) {

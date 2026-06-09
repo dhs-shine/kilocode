@@ -54,6 +54,25 @@ describe("incremental markdown DOM", () => {
     expect(Array.from(container.children).map((child) => child.tagName)).toEqual(["H2", "P", "UL"])
   })
 
+  test("rebuilds safely when an end boundary disappears", () => {
+    const container = document.createElement("div")
+    document.body.append(container)
+    const renderer = createIncrementalMarkdown(() => {})
+    const blocks = [
+      block("0", "stable", "<p>Stable</p>"),
+      block("1", "middle", "<p>Middle</p>"),
+      block("2", "tail", "<p>Tail</p>", "live"),
+    ]
+
+    renderer.update(container, blocks, labels)
+    const comments = Array.from(container.childNodes).filter((node) => node.nodeType === 8)
+    comments.at(-1)?.parentNode?.removeChild(comments.at(-1)!)
+
+    expect(renderer.update(container, [blocks[0]!, { ...blocks[1]!, mode: "live" }], labels)).toBe(true)
+    expect(container.textContent).toBe("StableMiddle")
+    expect(Array.from(container.children).map((child) => child.tagName)).toEqual(["P", "P"])
+  })
+
   test("runs streaming lifecycle hooks only when incremental rendering handles the update", () => {
     const container = document.createElement("div")
     document.body.append(container)
