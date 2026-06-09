@@ -196,7 +196,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         .then((x) => (x.data ?? []).toSorted((a, b) => a.id.localeCompare(b.id)))
     }
 
-    event.subscribe((event) => {
+    event.subscribe((event, { workspace }) => {
       switch (event.type) {
         case "server.instance.disposed":
           // kilocode_change start
@@ -522,7 +522,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         case "message.part.removed": {
           const parts = store.part[event.properties.messageID]
           const result = Binary.search(parts, event.properties.partID, (p) => p.id)
-          if (result.found)
+          if (result.found) {
             setStore(
               "part",
               event.properties.messageID,
@@ -530,6 +530,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
                 draft.splice(result.index, 1)
               }),
             )
+          }
           break
         }
 
@@ -540,7 +541,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         }
 
         case "vcs.branch.updated": {
-          setStore("vcs", { branch: event.properties.branch })
+          if (workspace === project.workspace.current()) {
+            setStore("vcs", { branch: event.properties.branch })
+          }
           break
         }
 

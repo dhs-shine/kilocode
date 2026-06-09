@@ -11,6 +11,7 @@ import {
   onMount,
   Show,
   Switch,
+  untrack,
   useContext,
 } from "solid-js"
 import { Dynamic } from "solid-js/web"
@@ -68,7 +69,6 @@ import { DialogForkFromTimeline } from "./dialog-fork-from-timeline"
 import { DialogSessionRename } from "../../component/dialog-session-rename"
 import { Sidebar } from "./sidebar"
 import { SubagentFooter } from "./subagent-footer.tsx"
-import { Flag } from "@opencode-ai/core/flag/flag"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
 import parsers from "../../../../../../parsers-config.ts"
 import * as Clipboard from "../../util/clipboard"
@@ -378,7 +378,7 @@ export function Session() {
   createEffect(() => {
     const sessionID = route.sessionID
     void (async () => {
-      const previousWorkspace = project.workspace.current()
+      const previousWorkspace = untrack(() => project.workspace.current())
       const result = await sdk.client.session.get({ sessionID }, { throwOnError: true })
       if (!result.data) {
         toast.show({
@@ -887,7 +887,7 @@ export function Session() {
       title: "Line up",
       value: "session.line.up",
       category: "Session",
-      enabled: false,
+      hidden: true,
       run: () => {
         scroll.scrollBy(-1)
         dialog.clear()
@@ -897,7 +897,7 @@ export function Session() {
       title: "Line down",
       value: "session.line.down",
       category: "Session",
-      enabled: false,
+      hidden: true,
       run: () => {
         scroll.scrollBy(1)
         dialog.clear()
@@ -1732,29 +1732,15 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
   return (
     <Show when={props.part.text.trim()}>
       <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
-        <Switch>
-          <Match when={Flag.KILO_EXPERIMENTAL_MARKDOWN}>
-            <markdown
-              syntaxStyle={syntax()}
-              streaming={true}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.markdownText}
-              bg={theme.background}
-            />
-          </Match>
-          <Match when={!Flag.KILO_EXPERIMENTAL_MARKDOWN}>
-            <code
-              filetype="markdown"
-              drawUnstyledText={false}
-              streaming={true}
-              syntaxStyle={syntax()}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.text}
-            />
-          </Match>
-        </Switch>
+        <markdown
+          syntaxStyle={syntax()}
+          streaming={true}
+          internalBlockMode="top-level"
+          content={props.part.text.trim()}
+          conceal={ctx.conceal()}
+          fg={theme.markdownText}
+          bg={theme.background}
+        />
       </box>
     </Show>
   )
@@ -2212,11 +2198,11 @@ function WebFetch(props: ToolProps<typeof WebFetchTool>) {
 }
 
 function WebSearch(props: ToolProps<typeof WebSearchTool>) {
-  const metadata = props.metadata as { numResults?: number; provider?: unknown }
+  const metadata = () => props.metadata as { numResults?: number; provider?: unknown }
   return (
     <InlineTool icon="◈" pending="Searching web..." complete={props.input.query} part={props.part}>
-      {webSearchProviderLabel(metadata.provider)} "{props.input.query}"{" "}
-      <Show when={metadata.numResults}>({metadata.numResults} results)</Show>
+      {webSearchProviderLabel(metadata().provider)} "{props.input.query}"{" "}
+      <Show when={metadata().numResults}>({metadata().numResults} results)</Show>
     </InlineTool>
   )
 }
@@ -2319,7 +2305,9 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
   const content = createMemo(() => {
     if (!props.input.description) return ""
-    let content = [`${Locale.titlecase(props.input.subagent_type ?? "General")} Task — ${props.input.description}`]
+    const description =
+      props.metadata.background === true ? `${props.input.description} (background)` : props.input.description
+    let content = [`${Locale.titlecase(props.input.subagent_type ?? "General")} Task — ${description}`]
 
     // kilocode_change start
     if (isRunning()) {
@@ -2336,7 +2324,11 @@ function Task(props: ToolProps<typeof TaskTool>) {
     // kilocode_change end
 
     if (props.part.state.status === "completed") {
-      content.push(`└ ${tools().length} toolcalls · ${Locale.duration(duration())}`)
+      content.push(
+        props.metadata.background === true
+          ? `└ ${tools().length} toolcalls`
+          : `└ ${tools().length} toolcalls · ${Locale.duration(duration())}`,
+      )
     }
 
     return content.join("\n")

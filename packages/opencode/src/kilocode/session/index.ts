@@ -5,7 +5,6 @@ import { BusEvent } from "@/bus/bus-event"
 import { EffectBridge } from "@/effect/bridge"
 import { Session } from "@/session/session"
 import { MessageID, SessionID } from "@/session/schema"
-import { fn } from "@/util/fn"
 import { Database, eq, and, gte, isNull, desc, like, inArray, lt, or } from "@/storage/db"
 import type { SQL } from "@/storage/db"
 import { ProjectTable } from "@/project/project.sql"
@@ -17,6 +16,7 @@ import type { LanguageModelUsage, ProviderMetadata } from "ai"
 import type { Provider } from "@/provider/provider"
 import { zod as toZod } from "@opencode-ai/core/effect-zod"
 import { ENV_FEATURE } from "@kilocode/kilo-gateway"
+import { fn } from "@/kilocode/fn"
 
 export namespace KiloSession {
   const log = Log.create({ service: "session.kilo" })

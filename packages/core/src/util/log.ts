@@ -4,12 +4,15 @@ import path from "path"
 import { existsSync, writeFileSync } from "fs" // kilocode_change
 import fs from "fs/promises"
 import * as Global from "../global"
-import z from "zod"
+import { Schema } from "effect"
 import { Glob } from "./glob"
 import { createStream } from "rotating-file-stream" // kilocode_change
 
-export const Level = z.enum(["DEBUG", "INFO", "WARN", "ERROR"]).meta({ ref: "LogLevel", description: "Log level" })
-export type Level = z.infer<typeof Level>
+export const Level = Schema.Literals(["DEBUG", "INFO", "WARN", "ERROR"]).annotate({
+  identifier: "LogLevel",
+  description: "Log level",
+})
+export type Level = Schema.Schema.Type<typeof Level>
 
 const levelPriority: Record<Level, number> = {
   DEBUG: 0,
@@ -18,6 +21,7 @@ const levelPriority: Record<Level, number> = {
   ERROR: 3,
 }
 const keep = 10
+const initializedRunID = "KILO_LOG_INITIALIZED_RUN_ID"
 
 let level: Level = "INFO"
 
