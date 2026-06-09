@@ -138,6 +138,7 @@ function ensureSprite() {
   svg.setAttribute("height", "0")
   svg.style.position = "absolute"
   svg.style.overflow = "hidden"
+  svg.style.display = "none"
   svg.innerHTML = Object.entries(icons)
     .map(([name, path]) => {
       const key = name as keyof typeof icons

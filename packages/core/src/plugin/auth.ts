@@ -20,6 +20,9 @@ export const AuthPlugin = PluginV2.define({
         }
         if (account.credential.type === "oauth") {
           evt.provider.options.aisdk.provider.apiKey = account.credential.access
+          if (evt.provider.id === "kilo" && account.credential.accountId) {
+            evt.provider.options.aisdk.provider.kilocodeOrganizationId = account.credential.accountId // kilocode_change
+          }
         }
       }),
     }

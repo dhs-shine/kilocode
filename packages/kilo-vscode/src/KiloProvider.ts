@@ -3030,6 +3030,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     if (
       this.projectID &&
       (event.type === "session.created" || event.type === "session.updated") &&
+      event.properties.info.projectID !== undefined &&
+      event.properties.info.projectID !== null &&
       event.properties.info.projectID !== this.projectID
     ) {
       return

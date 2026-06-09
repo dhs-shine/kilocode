@@ -21,6 +21,7 @@ export class OAuthCredential extends Schema.Class<OAuthCredential>("AuthV2.OAuth
   refresh: Schema.String,
   access: Schema.String,
   expires: NonNegativeInt,
+  accountId: Schema.optional(Schema.String), // kilocode_change - preserve Kilo organization during v1 migration
 }) {}
 
 export class ApiKeyCredential extends Schema.Class<ApiKeyCredential>("AuthV2.ApiKeyCredential")({
