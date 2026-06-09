@@ -6,9 +6,9 @@ import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.SessionViewIcons
 import ai.kilocode.client.session.views.base.PrimarySessionPartView
 import ai.kilocode.client.ui.UiStyle
-import com.intellij.icons.AllIcons
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
@@ -98,7 +98,7 @@ class TodoParts(
 )
 
 private fun todoParts(): TodoParts {
-    val glyph = JBLabel(AllIcons.Actions.Checked)
+    val glyph = JBLabel(SessionViewIcons.checklist)
     val title = JBLabel(KiloBundle.message("session.part.todo.title"))
     val sub = JBLabel().apply { foreground = UiStyle.Colors.weak() }
     val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply {

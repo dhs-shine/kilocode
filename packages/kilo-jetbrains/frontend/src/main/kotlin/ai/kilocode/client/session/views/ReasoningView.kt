@@ -12,7 +12,6 @@ import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.client.ui.md.MdViewFactory
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -283,7 +282,7 @@ class ReasoningBody(
 
 private fun reasoningParts(selection: SessionSelection? = null): ReasoningParts {
     val title = JBLabel(KiloBundle.message("session.part.reasoning")).apply { foreground = UiStyle.Colors.weak() }
-    val icon = JBLabel(AllIcons.General.InspectionsEye).apply { foreground = UiStyle.Colors.weak() }
+    val icon = JBLabel(SessionViewIcons.eye).apply { foreground = UiStyle.Colors.weak() }
     val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply {
         isOpaque = false
         add(icon, BorderLayout.WEST)

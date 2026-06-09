@@ -8,13 +8,13 @@ import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.SessionViewIcons
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
 import ai.kilocode.log.KiloLog
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileTypes.PlainTextFileType
@@ -356,14 +356,18 @@ internal fun searchParts(count: Int): ToolParts {
 }
 
 internal fun icon(tool: Tool) = when (tool.name) {
-    "read" -> AllIcons.Actions.Preview
-    "bash" -> AllIcons.Debugger.Console
-    else -> when (tool.state) {
-        ToolExecState.PENDING -> AllIcons.Process.Step_1
-        ToolExecState.RUNNING -> AllIcons.Process.Step_2
-        ToolExecState.COMPLETED -> AllIcons.Actions.Checked
-        ToolExecState.ERROR -> AllIcons.General.Error
-    }
+    "read" -> SessionViewIcons.glasses
+    "list" -> SessionViewIcons.bulletList
+    "glob", "grep" -> SessionViewIcons.search
+    "webfetch", "websearch" -> SessionViewIcons.windowCursor
+    "codesearch" -> SessionViewIcons.code
+    "task" -> SessionViewIcons.task
+    "bash" -> SessionViewIcons.console
+    "edit", "write", "apply_patch" -> SessionViewIcons.codeLines
+    "todowrite", "todoread" -> SessionViewIcons.checklist
+    "question" -> SessionViewIcons.bubble
+    "skill" -> SessionViewIcons.brain
+    else -> SessionViewIcons.mcp
 }
 
 internal fun title(tool: Tool) = when (tool.name) {

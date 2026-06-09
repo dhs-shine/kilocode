@@ -3,7 +3,7 @@ package ai.kilocode.client.session.views.tool
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.ui.selection.SessionSelection
-import com.intellij.icons.AllIcons
+import ai.kilocode.client.session.views.SessionViewIcons
 
 /** Renders grep/content-search calls with stacked, clipped search targets. */
 class SearchToolView(
@@ -17,7 +17,7 @@ class SearchToolView(
         fun canRender(tool: Tool): Boolean = tool.name == "grep"
     }
 
-    override fun toolIcon(tool: Tool) = AllIcons.Actions.Search
+    override fun toolIcon(tool: Tool) = SessionViewIcons.search
     override fun toolTitle(tool: Tool) = KiloBundle.message("session.part.tool.search")
     override fun targets(tool: Tool, repo: String?) = searchTargets(tool, repo)
     override fun viewName() = "SearchToolView"

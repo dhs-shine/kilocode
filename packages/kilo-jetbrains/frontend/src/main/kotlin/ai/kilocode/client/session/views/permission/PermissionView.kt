@@ -10,13 +10,13 @@ import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.SessionViewIcons
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
 import ai.kilocode.rpc.dto.PermissionReplyDto
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.ColorUtil
@@ -67,7 +67,7 @@ class PermissionView(
         isOpaque = false
         isVisible = false
 
-        card.setHeaderIcon(AllIcons.General.Warning, KiloBundle.message("session.permission.title"))
+        card.setHeaderIcon(SessionViewIcons.warning, KiloBundle.message("session.permission.title"))
         card.setContent(body)
         card.setActions(listOf(
             BaseQuestionView.Action(ID_DENY, KiloBundle.message("session.permission.deny"), primary = false) { decide("reject") },

@@ -6,10 +6,10 @@ import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.views.SessionViewIcons
 import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.ui.UiStyle
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLabel
@@ -56,7 +56,7 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
             )
         }
     }
-    private val glyph = JBLabel(AllIcons.General.Balloon)
+    private val glyph = JBLabel(SessionViewIcons.bubble)
     private val title = JBLabel()
     private val sub = JBLabel().apply { foreground = UiStyle.Colors.weak() }
     private val arrow = JBLabel()
@@ -285,7 +285,7 @@ class QuestionResultView(tool: Tool, private val selection: SessionSelection? = 
     }
 
     private fun syncArrow() {
-        arrow.icon = if (isExpanded()) AllIcons.General.ArrowDown else AllIcons.General.ArrowRight
+        arrow.icon = if (isExpanded()) SessionViewIcons.chevronDown else SessionViewIcons.chevronRight
     }
 
     override fun setHovered(value: Boolean) {

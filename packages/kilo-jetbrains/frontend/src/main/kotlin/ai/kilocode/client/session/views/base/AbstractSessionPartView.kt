@@ -1,7 +1,7 @@
 package ai.kilocode.client.session.views.base
 
 import ai.kilocode.client.session.ui.style.SessionUiStyle
-import com.intellij.icons.AllIcons
+import ai.kilocode.client.session.views.SessionViewIcons
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
@@ -157,7 +157,7 @@ abstract class AbstractSessionPartView(
     }
 
     private fun syncArrow(): Boolean {
-        val icon = if (isExpanded()) AllIcons.General.ArrowDown else AllIcons.General.ArrowRight
+        val icon = if (isExpanded()) SessionViewIcons.chevronDown else SessionViewIcons.chevronRight
         if (arrow.icon === icon) return false
         arrow.icon = icon
         return true

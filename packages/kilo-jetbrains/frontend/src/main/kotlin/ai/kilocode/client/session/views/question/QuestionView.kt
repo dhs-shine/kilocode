@@ -6,6 +6,7 @@ import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.editor.SessionEditorTextField
+import ai.kilocode.client.session.views.SessionViewIcons
 import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
@@ -13,7 +14,6 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.QuestionReplyDto
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.project.Project
@@ -79,14 +79,14 @@ class QuestionView(
         layout = BoxLayout(this, BoxLayout.X_AXIS)
     }
     private val back = HoverIcon().apply {
-        val ico = AllIcons.Actions.Back
+        val ico = SessionViewIcons.chevronLeft
         icon = ico
         disabledIcon = IconLoader.getDisabledIcon(ico)
         toolTipText = KiloBundle.message("session.question.back")
         addActionListener { goBack() }
     }
     private val fwd = HoverIcon().apply {
-        val ico = AllIcons.Actions.Forward
+        val ico = SessionViewIcons.chevronRight
         icon = ico
         disabledIcon = IconLoader.getDisabledIcon(ico)
         toolTipText = KiloBundle.message("session.question.next")
