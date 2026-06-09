@@ -20,6 +20,16 @@ export interface BarSize {
   content: number
 }
 
+export interface TimelineScroll {
+  scrollLeft: number
+  scrollWidth: number
+  clientWidth: number
+}
+
+export function pinned(scroll: TimelineScroll, slack = BAR_W): boolean {
+  return scroll.scrollWidth - scroll.clientWidth - scroll.scrollLeft <= slack
+}
+
 // ── Content length ───────────────────────────────────────────────────
 
 function content(part: Part): number {
