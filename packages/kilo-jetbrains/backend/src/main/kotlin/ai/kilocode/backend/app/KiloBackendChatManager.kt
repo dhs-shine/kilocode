@@ -70,6 +70,7 @@ class KiloBackendChatManager(
     private var client: OkHttpClient? = null
     private var base: String? = null
     private var watcher: Job? = null
+    private var normalizer = KiloCliDataParser.ChatEventNormalizer()
 
     fun start(http: OkHttpClient, port: Int, sse: SharedFlow<SseEvent>) {
         client = http
@@ -78,16 +79,18 @@ class KiloBackendChatManager(
         watcher = cs.launch {
             sse.collect { event ->
                 if (event.type in CHAT_EVENTS) {
-                    val parsed = KiloCliDataParser.parseChatEvent(event.type, event.data)
-                    if (parsed != null) {
-                        log.debug { ChatLogSummary.event(parsed) }
-                        if (parsed is ChatEventDto.SessionStatusChanged && parsed.status.type != "busy") {
-                            log.info(
-                                "${ChatLogSummary.sid(parsed.sessionID)} kind=status route=chat-events emit=true " +
-                                    "${ChatLogSummary.status(parsed.status)} bytes=${event.data.length}",
-                            )
+                    val events = normalizer.parse(event.type, event.data)
+                    if (events != null) {
+                        for (parsed in events) {
+                            log.debug { ChatLogSummary.event(parsed) }
+                            if (parsed is ChatEventDto.SessionStatusChanged && parsed.status.type != "busy") {
+                                log.info(
+                                    "${ChatLogSummary.sid(parsed.sessionID)} kind=status route=chat-events emit=true " +
+                                        "${ChatLogSummary.status(parsed.status)} bytes=${event.data.length}",
+                                )
+                            }
+                            _events.emit(parsed)
                         }
-                        _events.emit(parsed)
                     } else {
                         log.warn("SSE parse returned null for type=${event.type} bytes=${event.data.length}")
                     }
@@ -102,6 +105,7 @@ class KiloBackendChatManager(
         watcher = null
         client = null
         base = null
+        normalizer = KiloCliDataParser.ChatEventNormalizer()
         log.info("Chat manager stopped")
     }
 
