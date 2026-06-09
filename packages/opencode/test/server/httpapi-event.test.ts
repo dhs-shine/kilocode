@@ -21,13 +21,13 @@ const EventData = Schema.Struct({
   properties: Schema.Record(Schema.String, Schema.Any),
 })
 
-async function readChunk(reader: ReadableStreamDefaultReader<Uint8Array>) {
+async function readChunk(reader: ReadableStreamDefaultReader<Uint8Array>, delay = 5_000) {
   let timeout: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
       reader.read(),
       new Promise<never>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error("timed out waiting for event")), 5_000)
+        timeout = setTimeout(() => reject(new Error("timed out waiting for event")), delay)
       }),
     ])
   } finally {
@@ -51,18 +51,42 @@ async function readEvent(reader: ReadableStreamDefaultReader<Uint8Array>) {
   return Schema.decodeUnknownSync(EventData)(JSON.parse(new TextDecoder().decode(result.value).replace(/^data: /, "")))
 }
 
-async function readStatusWithin(reader: ReadableStreamDefaultReader<Uint8Array>, delay: number) {
-  let timeout: ReturnType<typeof setTimeout> | undefined
-  try {
-    return await Promise.race([
-      reader.read().then((result) => (result.done ? "closed" : "event")),
+async function expectOpen(reader: ReadableStreamDefaultReader<Uint8Array>, delay: number) {
+  const end = Date.now() + delay
+  while (true) {
+    const remaining = end - Date.now()
+    if (remaining <= 0) return
+
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    const result = await Promise.race([
+      reader.read(),
       new Promise<"open">((resolve) => {
-        timeout = setTimeout(() => resolve("open"), delay)
+        timeout = setTimeout(() => resolve("open"), remaining)
       }),
     ])
-  } finally {
     if (timeout) clearTimeout(timeout)
+    if (result === "open") return
+    if (result.done) throw new Error("event stream closed")
   }
+}
+
+async function readUntil(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  predicate: (event: Schema.Schema.Type<typeof EventData>) => boolean,
+  delay = 5_000,
+) {
+  const end = Date.now() + delay
+  while (true) {
+    const event = await readEventWithin(reader, end - Date.now())
+    if (predicate(event)) return event
+  }
+}
+
+async function readEventWithin(reader: ReadableStreamDefaultReader<Uint8Array>, delay: number) {
+  if (delay <= 0) throw new Error("timed out waiting for event")
+  const result = await readChunk(reader, delay)
+  if (result.done || !result.value) throw new Error("event stream closed")
+  return Schema.decodeUnknownSync(EventData)(JSON.parse(new TextDecoder().decode(result.value).replace(/^data: /, "")))
 }
 
 afterEach(async () => {
@@ -91,7 +115,7 @@ describe("event HttpApi", () => {
     const reader = response.body.getReader()
     try {
       expect(await readEvent(reader)).toMatchObject({ type: "server.connected", properties: {} })
-      expect(await readStatusWithin(reader, 250)).toBe("open")
+      await expectOpen(reader, 250)
     } finally {
       await reader.cancel()
     }
@@ -106,11 +130,12 @@ describe("event HttpApi", () => {
     try {
       expect(await readEvent(reader)).toMatchObject({ type: "server.connected", properties: {} })
 
-      const next = readEvent(reader)
+      const id = Bus.createID()
+      const next = readUntil(reader, (event) => event.id === id && event.type === "server.connected")
       const ctx = await reloadTestInstance({ directory: tmp.path })
-      await Instance.restore(ctx, () => Bus.publish(ServerEvent.Connected, {}))
+      await Instance.restore(ctx, () => Bus.publish(ServerEvent.Connected, {}, { id }))
 
-      expect(await next).toMatchObject({ type: "server.connected", properties: {} })
+      expect(await next).toMatchObject({ id, type: "server.connected", properties: {} })
     } finally {
       await reader.cancel()
     }

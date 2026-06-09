@@ -202,7 +202,7 @@ function filesArgs(input: FilesInput) {
   if (input.glob) {
     for (const glob of input.glob) args.push(`--glob=${glob}`)
   }
-  args.push(".")
+  // kilocode_change - cwd is rg's default path; an explicit "." fails with CrossSpawnSpawner on Windows
   return args
 }
 
