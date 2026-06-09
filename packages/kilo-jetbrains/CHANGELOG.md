@@ -11,7 +11,6 @@
 ### Added
 
 - Display search results and tool output in clearer, more readable JetBrains session cards.
-- Support reading `.ods` OpenDocument Spreadsheet files.
 
 ### Fixed
 
