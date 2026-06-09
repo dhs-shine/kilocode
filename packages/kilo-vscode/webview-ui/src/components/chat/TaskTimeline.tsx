@@ -73,7 +73,10 @@ export const TaskTimeline: Component = () => {
   const bars = createMemo(() => collect(messages(), allParts()))
   const busy = () => session.status() === "busy"
 
-  // Auto-scroll to the latest bar when new bars appear while preserving manual scroll position.
+  // Reading scrollWidth and writing scrollLeft synchronously for every appended bar can
+  // force repeated layout during streamed part updates. Batch those appends behind one
+  // animation frame, after Solid has applied the current DOM updates. Only follow while
+  // pinned so inspecting earlier activity is not interrupted by incoming bars.
   let prev = 0
   let frame: number | undefined
   let follow = true
