@@ -294,6 +294,7 @@ private fun tooltip(item: AttachmentCardItem): String = "<html>${listOf(
 private fun location(item: AttachmentCardItem): String {
     if (item.path != null) return item.path.toString()
     val uri = runCatching { URI.create(item.url) }.getOrNull()
+    if (uri?.scheme == "data") return KiloBundle.message("prompt.attachment.embedded")
     if (uri?.scheme == "file") return runCatching { Path.of(uri).toString() }
         .getOrElse { URLDecoder.decode(uri.rawSchemeSpecificPart.removePrefix("//"), StandardCharsets.UTF_8) }
     return item.url

@@ -5,19 +5,35 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.PromptAttachment
 import ai.kilocode.client.session.ui.attachment.AttachmentCard
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.ui.prompt.PROMPT_ATTACHMENT_PASTE_HANDLER_KEY
+import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteHandler
+import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.UiDataProvider
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.actions.PasteAction
 import com.intellij.openapi.keymap.KeymapUtil
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBLabel
+import com.intellij.util.Producer
 import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import java.awt.Container
+import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.StringSelection
+import java.awt.datatransfer.Transferable
 import java.awt.event.MouseEvent
+import java.awt.image.BufferedImage
+import java.io.File
 import javax.swing.JButton
 import javax.swing.SwingUtilities
 
@@ -155,6 +171,22 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertSame(icon, button.icon)
     }
 
+    fun `test attachment tooltip hides embedded binary content`() {
+        val item = PromptAttachment("a", "a.png", "image/png", "data:image/png;base64,aGVsbG8=")
+        val panel = PromptPanel(project, { _, _ -> }, {})
+
+        panel.addAttachmentForTest(item)
+
+        val tip = attachmentCard(panel).toolTipText
+
+        assertTrue(tip.contains("Name: a.png"))
+        assertTrue(tip.contains("Type: image/png"))
+        assertTrue(tip.contains("Location: ${KiloBundle.message("prompt.attachment.embedded")}"))
+        assertFalse(tip.contains("data:image/png"))
+        assertFalse(tip.contains("base64"))
+        assertFalse(tip.contains("aGVsbG8="))
+    }
+
     fun `test attachment child click opens item`() {
         var opened = false
         val card = AttachmentCard(
@@ -224,6 +256,76 @@ class PromptPanelTest : BasePlatformTestCase() {
         (panel.buttonForTest() as UiDataProvider).uiDataSnapshot(sink)
 
         assertSame(panel, sink.send)
+    }
+
+    fun `test prompt paste provider invokes registered handler`() {
+        val editor = createEditor()
+        val item = FileListTransferable(listOf(File.createTempFile("kilo-paste", ".txt")))
+        var seen: Transferable? = null
+        editor.putUserData(PROMPT_ATTACHMENT_PASTE_HANDLER_KEY, PromptAttachmentPasteHandler { seen = it })
+
+        try {
+            PromptAttachmentPasteProvider().performPaste(pasteContext(editor, item))
+
+            assertSame(item, seen)
+        } finally {
+            EditorFactory.getInstance().releaseEditor(editor)
+        }
+    }
+
+    fun `test file list paste adds attachment`() {
+        val panel = PromptPanel(project, { _, _ -> }, {})
+        val file = File.createTempFile("kilo-paste", ".txt")
+        file.writeText("hello")
+
+        PlatformTestUtil.waitForFuture(panel.processPasteForTest(FileListTransferable(listOf(file))))
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEquals(1, panel.attachmentCountForTest())
+    }
+
+    fun `test raw image paste adds attachment`() {
+        val panel = PromptPanel(project, { _, _ -> }, {})
+        val image = BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB)
+
+        PlatformTestUtil.waitForFuture(panel.processPasteForTest(ImageTransferable(image)))
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEquals(1, panel.attachmentCountForTest())
+    }
+
+    fun `test file paste ignores companion image flavor`() {
+        val panel = PromptPanel(project, { _, _ -> }, {})
+        val file = File.createTempFile("kilo-paste", ".png")
+        file.writeBytes(byteArrayOf())
+        val image = BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB)
+
+        PlatformTestUtil.waitForFuture(panel.processPasteForTest(FileImageTransferable(listOf(file), image)))
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEquals(1, panel.attachmentCountForTest())
+    }
+
+    fun `test normal text paste is not intercepted`() {
+        val editor = createEditor()
+        val provider = PromptAttachmentPasteProvider()
+        editor.putUserData(PROMPT_ATTACHMENT_PASTE_HANDLER_KEY, PromptAttachmentPasteHandler {})
+
+        try {
+            assertFalse(provider.isPasteEnabled(pasteContext(editor, StringSelection("hello"))))
+        } finally {
+            EditorFactory.getInstance().releaseEditor(editor)
+        }
+    }
+
+    fun `test disabled media model blocks pasted image`() {
+        val panel = PromptPanel(project, { _, _ -> }, {})
+        panel.setAttachmentEnabled(false)
+
+        PlatformTestUtil.waitForFuture(panel.processPasteForTest(ImageTransferable(BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB))))
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEquals(0, panel.attachmentCountForTest())
     }
 
     fun `test prompt button switches between send and stop state`() {
@@ -340,6 +442,61 @@ class PromptPanelTest : BasePlatformTestCase() {
         }
         visit(root)
         return out
+    }
+
+    private fun createEditor(): Editor {
+        val factory = EditorFactory.getInstance()
+        return factory.createEditor(factory.createDocument(""), project)
+    }
+
+    private fun pasteContext(editor: Editor, item: Transferable) = DataContext { id ->
+        when (id) {
+            CommonDataKeys.EDITOR.name -> editor
+            PasteAction.TRANSFERABLE_PROVIDER.name -> Producer { item }
+            else -> null
+        }
+    }
+
+    private class FileListTransferable(private val files: List<File>) : Transferable {
+        override fun getTransferDataFlavors(): Array<DataFlavor> = arrayOf(DataFlavor.javaFileListFlavor)
+
+        override fun isDataFlavorSupported(flavor: DataFlavor): Boolean = flavor == DataFlavor.javaFileListFlavor
+
+        override fun getTransferData(flavor: DataFlavor): Any {
+            if (!isDataFlavorSupported(flavor)) throw java.awt.datatransfer.UnsupportedFlavorException(flavor)
+            return files
+        }
+    }
+
+    private class ImageTransferable(private val image: BufferedImage) : Transferable {
+        override fun getTransferDataFlavors(): Array<DataFlavor> = arrayOf(DataFlavor.imageFlavor)
+
+        override fun isDataFlavorSupported(flavor: DataFlavor): Boolean = flavor == DataFlavor.imageFlavor
+
+        override fun getTransferData(flavor: DataFlavor): Any {
+            if (!isDataFlavorSupported(flavor)) throw java.awt.datatransfer.UnsupportedFlavorException(flavor)
+            return image
+        }
+    }
+
+    private class FileImageTransferable(
+        private val files: List<File>,
+        private val image: BufferedImage,
+    ) : Transferable {
+        override fun getTransferDataFlavors(): Array<DataFlavor> = arrayOf(
+            DataFlavor.javaFileListFlavor,
+            DataFlavor.imageFlavor,
+        )
+
+        override fun isDataFlavorSupported(flavor: DataFlavor): Boolean {
+            return flavor == DataFlavor.javaFileListFlavor || flavor == DataFlavor.imageFlavor
+        }
+
+        override fun getTransferData(flavor: DataFlavor): Any {
+            if (flavor == DataFlavor.javaFileListFlavor) return files
+            if (flavor == DataFlavor.imageFlavor) return image
+            throw java.awt.datatransfer.UnsupportedFlavorException(flavor)
+        }
     }
 
     private class TestSink : DataSink {

@@ -52,10 +52,13 @@ import java.awt.Cursor
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
+import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.Transferable
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.util.concurrent.Future
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.Icon
@@ -114,6 +117,7 @@ class PromptPanel(
             ed.scrollPane.viewport.background = style.editorScheme.defaultBackground
             ed.settings.isUseSoftWraps = true
             ed.settings.isAdditionalPageAtBottom = false
+            ed.putUserData(PROMPT_ATTACHMENT_PASTE_HANDLER_KEY, PromptAttachmentPasteHandler { processPaste(it) })
             ed.scrollPane.horizontalScrollBarPolicy =
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             installFileDrop(ed.contentComponent, "editor")
@@ -295,6 +299,8 @@ class PromptPanel(
         addAttachment(item)
     }
 
+    internal fun processPasteForTest(transferable: Transferable): Future<*> = processPaste(transferable)
+
     @RequiresEdt
     fun focus() {
         editor.requestFocusInWindow()
@@ -376,27 +382,41 @@ class PromptPanel(
                 LOG.debug { "kind=prompt-dnd drop area=$area files=${files.size} extractMs=$ms queued=${files.isNotEmpty()}" }
                 onFileDrag(false)
                 if (files.isEmpty()) return@setDropHandlerWithResult false
-                processDrop(files, area, ms)
+                processAttachments("prompt-dnd", area, files, null, ms)
                 true
             }
             .install()
     }
 
-    private fun processDrop(files: List<java.io.File>, area: String, dropMs: Long) {
-        ApplicationManager.getApplication().executeOnPooledThread {
+    private fun processPaste(transferable: Transferable): Future<*> {
+        return processAttachments("prompt-paste", "editor", null, transferable, 0)
+    }
+
+    private fun processAttachments(
+        kind: String,
+        area: String,
+        files: List<java.io.File>?,
+        transferable: Transferable?,
+        sourceMs: Long,
+    ): Future<*> {
+        return ApplicationManager.getApplication().executeOnPooledThread {
             val start = System.nanoTime()
             try {
-                val items = PromptAttachmentExtractor.files(files)
+                val list = files ?: transferable?.let { FileCopyPasteUtil.getFileList(it).orEmpty() }.orEmpty()
+                val image = transferable?.takeIf { list.isEmpty() && it.isDataFlavorSupported(DataFlavor.imageFlavor) }
+                    ?.getTransferData(DataFlavor.imageFlavor)
+                    ?.let(PromptAttachmentExtractor::image)
+                val items = PromptAttachmentExtractor.files(list) + listOfNotNull(image)
                 val ms = elapsedMs(start)
-                LOG.debug { "kind=prompt-dnd extract area=$area files=${files.size} attachments=${items.size} extractMs=$ms dropMs=$dropMs" }
+                LOG.debug { "kind=$kind extract area=$area files=${list.size} image=${image != null} attachments=${items.size} extractMs=$ms sourceMs=$sourceMs" }
                 if (items.isEmpty()) return@executeOnPooledThread
                 ApplicationManager.getApplication().invokeLater {
-                    if (project.isDisposed || !isDisplayable) return@invokeLater
-                    LOG.debug { "kind=prompt-dnd attach area=$area files=${files.size} attachments=${items.size} extractMs=$ms dropMs=$dropMs" }
+                    if (project.isDisposed) return@invokeLater
+                    LOG.debug { "kind=$kind attach area=$area files=${list.size} image=${image != null} attachments=${items.size} extractMs=$ms sourceMs=$sourceMs" }
                     items.forEach(::addAttachment)
                 }
             } catch (e: Exception) {
-                LOG.warn("kind=prompt-dnd extract area=$area files=${files.size} failed message=${e.message}", e)
+                LOG.warn("kind=$kind extract area=$area failed message=${e.message}", e)
             }
         }
     }
