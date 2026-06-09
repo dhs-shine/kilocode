@@ -202,7 +202,7 @@ function filesArgs(input: FilesInput) {
   if (input.glob) {
     for (const glob of input.glob) args.push(`--glob=${glob}`)
   }
-  // kilocode_change - cwd is rg's default path; an explicit "." fails with CrossSpawnSpawner on Windows
+  args.push(".")
   return args
 }
 
@@ -287,8 +287,10 @@ export const layer: Layer.Layer<Service, never, AppFileSystem.Service | ChildPro
 
       const filepath = yield* Effect.cached(
         Effect.gen(function* () {
-          const system = yield* Effect.sync(() => which(process.platform === "win32" ? "rg.exe" : "rg"))
+          // kilocode_change start - Git for Windows can expose an MSYS rg.exe that fails when spawned natively
+          const system = yield* Effect.sync(() => (process.platform === "win32" ? undefined : which("rg")))
           if (system && (yield* fs.isFile(system).pipe(Effect.orDie))) return system
+          // kilocode_change end
 
           const target = path.join(Global.Path.bin, `rg${process.platform === "win32" ? ".exe" : ""}`)
           if (yield* fs.isFile(target).pipe(Effect.orDie)) return target
