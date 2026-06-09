@@ -499,6 +499,9 @@ internal class MdViewHybrid(
         val field = runCatching {
             CodeField(file, opts, text).also { ed ->
                 ed.setDisposedWith(disposable)
+                Disposer.register(disposable) {
+                    ed.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
+                }
                 selection?.register(ed, disposable)
             }
         }.getOrElse { err ->

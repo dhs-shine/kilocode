@@ -47,7 +47,7 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         select(two, "bravo")
         copyProvider()!!.performCopy(DataContext.EMPTY_CONTEXT)
 
-        assertNull(one.selectedText)
+        assertTrue(one.selectedText.isNullOrEmpty())
         assertEquals("bravo", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
     }
 

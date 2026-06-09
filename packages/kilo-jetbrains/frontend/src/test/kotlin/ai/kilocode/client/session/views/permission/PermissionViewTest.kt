@@ -4,12 +4,12 @@ import ai.kilocode.client.session.model.Permission
 import ai.kilocode.client.session.model.PermissionFileDiff
 import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.PermissionRequestState
+import ai.kilocode.client.session.views.SessionViewIcons
 import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.PermissionReplyDto
-import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
@@ -410,7 +410,7 @@ class PermissionViewTest : BasePlatformTestCase() {
         val labels = findAll<JBLabel>(view)
         assertTrue(
             "Expected permission warning icon in header",
-            labels.any { it.icon == AllIcons.General.Warning },
+            labels.any { it.icon == SessionViewIcons.warning },
         )
     }
 

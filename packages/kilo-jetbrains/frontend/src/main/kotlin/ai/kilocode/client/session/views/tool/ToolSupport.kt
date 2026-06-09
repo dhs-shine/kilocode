@@ -208,7 +208,12 @@ class ToolBody private constructor(
         fun editor(tool: Tool): ToolBody {
             val disposable = Disposer.newDisposable("Tool body")
             val body = runCatching {
-                val field = ToolField(preview(tool), SessionEditorStyle.current()).also { it.setDisposedWith(disposable) }
+                val field = ToolField(preview(tool), SessionEditorStyle.current()).also { ed ->
+                    ed.setDisposedWith(disposable)
+                    Disposer.register(disposable) {
+                        ed.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
+                    }
+                }
                 ToolBody(null, field, pane(field, true), disposable)
             }.getOrElse { err ->
                 LOG.warn("kind=tool codeEditor=true failed message=${err.message}", err)

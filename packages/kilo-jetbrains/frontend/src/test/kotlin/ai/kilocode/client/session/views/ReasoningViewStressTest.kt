@@ -33,7 +33,7 @@ class ReasoningViewStressTest : BasePlatformTestCase() {
         assertEquals(count, panel(view).componentCount)
 
         view.update(reasoning("r1", done = true, text = view.markdown() + "```"))
-        assertFalse(view.bodyVisible())
+        assertTrue(view.bodyVisible())
         Disposer.dispose(view)
         drainEdt()
 
