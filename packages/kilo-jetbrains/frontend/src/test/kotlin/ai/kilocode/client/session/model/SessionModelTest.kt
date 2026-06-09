@@ -133,6 +133,27 @@ class SessionModelTest : BasePlatformTestCase() {
         assertTrue(events.single() is SessionModelEvent.ContentUpdated)
     }
 
+    fun `test updateContent ignores new empty text content`() {
+        model.addMessage(msg("m1", "user"))
+        events.clear()
+
+        model.updateContent("m1", part("p1", "m1", "text", text = "   "))
+
+        assertNull(model.message("m1")!!.parts["p1"])
+        assertTrue(events.isEmpty())
+    }
+
+    fun `test updateContent removes existing text when it becomes empty`() {
+        model.addMessage(msg("m1", "user"))
+        model.updateContent("m1", part("p1", "m1", "text", text = "visible"))
+        events.clear()
+
+        model.updateContent("m1", part("p1", "m1", "text", text = ""))
+
+        assertNull(model.message("m1")!!.parts["p1"])
+        assertEquals("ContentRemoved m1/p1", events.single().toString())
+    }
+
     fun `test updateContent reasoning creates Reasoning content`() {
         model.addMessage(msg("m1", "assistant"))
 

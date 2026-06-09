@@ -39,10 +39,11 @@ object ViewFactory {
         openFile: (String) -> Unit,
         openUrl: (String) -> Unit = {},
         selection: SessionSelection? = null,
+        openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, openFile, openUrl) },
     ): PartView = when (content) {
         is Text -> TextView(content, openUrl = openUrl, selection = selection)
         is Reasoning -> ReasoningView(content, openUrl = openUrl, selection = selection)
-        is FileAttachment -> AttachmentView(content, openFile, openUrl)
+        is FileAttachment -> AttachmentView(content, openAttachment)
         is Tool -> when {
             TodoWriteView.canRender(content) -> TodoWriteView(content)
             PlanExitView.canRender(content) -> PlanExitView(content, openFile, selection)
@@ -71,10 +72,11 @@ object ViewFactory {
         openFile: (String) -> Unit,
         openUrl: (String) -> Unit = {},
         selection: SessionSelection? = null,
+        openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, openFile, openUrl) },
     ): PartView = when (content) {
         is Text -> PromptView(content, openUrl = openUrl, selection = selection)
-        is FileAttachment -> AttachmentView(content, openFile, openUrl)
-        else -> create(content, openFile, openUrl, selection)
+        is FileAttachment -> AttachmentView(content, openAttachment)
+        else -> create(content, openFile, openUrl, selection, openAttachment)
     }
 
     /**

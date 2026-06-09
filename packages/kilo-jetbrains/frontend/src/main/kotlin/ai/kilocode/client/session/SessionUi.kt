@@ -8,6 +8,7 @@ import ai.kilocode.client.migration.KiloMigrationService
 import ai.kilocode.client.migration.MigrationUiController
 import ai.kilocode.client.migration.MigrationUiState
 import ai.kilocode.client.migration.ui.MigrationOverlayPanel
+import ai.kilocode.client.session.model.FileAttachment
 import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.scroll.SessionScroll
@@ -22,6 +23,8 @@ import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.SessionDropOverlay
 import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.SessionMessageListPanel
+import ai.kilocode.client.session.ui.attachment.isEmbeddedAttachment
+import ai.kilocode.client.session.ui.attachment.openEmbeddedAttachment
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
@@ -67,6 +70,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import java.awt.event.HierarchyEvent
+import java.net.URI
+import java.nio.file.Path
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.Timer
@@ -299,7 +304,17 @@ class SessionUi(
             dismiss = { controller.dismissLoginRequired() },
             selection = selection,
         )
-        messageBody = SessionMessageListPanel(controller.model, this, question, permission, login, ::openFile, ::openUrl, selection)
+        messageBody = SessionMessageListPanel(
+            controller.model,
+            this,
+            question,
+            permission,
+            login,
+            ::openFile,
+            ::openUrl,
+            selection,
+            ::openAttachment,
+        )
         header = SessionHeaderPanel(controller, this)
 
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
@@ -567,6 +582,25 @@ class SessionUi(
     private fun openUrl(url: String) {
         BrowserUtil.browse(url)
     }
+
+    private fun openAttachment(item: FileAttachment) {
+        val url = item.url.takeIf { it.isNotBlank() } ?: return
+        if (isEmbeddedAttachment(url)) {
+            openEmbeddedAttachment(project, attachmentName(item), item.mime, url)
+            return
+        }
+        val uri = runCatching { URI.create(url) }.getOrNull() ?: return
+        if (uri.scheme == "file") {
+            val path = runCatching { Path.of(uri).toString() }.getOrNull() ?: return
+            openFile(path)
+            return
+        }
+        openUrl(url)
+    }
+
+    private fun attachmentName(item: FileAttachment) = item.filename?.takeIf { it.isNotBlank() }
+        ?: item.url.substringBefore(',').substringAfterLast('/').takeIf { it.isNotBlank() }
+        ?: "attachment"
 
     private fun onStateChanged(state: SessionState) {
         if (disposed) return

@@ -4,6 +4,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.PromptAttachment
 import ai.kilocode.client.session.ui.attachment.AttachmentCard
+import ai.kilocode.client.session.ui.attachment.AttachmentCardItem
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.prompt.PROMPT_ATTACHMENT_PASTE_HANDLER_KEY
 import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteHandler
@@ -33,8 +34,12 @@ import java.awt.datatransfer.StringSelection
 import java.awt.datatransfer.Transferable
 import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.Base64
+import javax.imageio.ImageIO
 import javax.swing.JButton
+import javax.swing.ImageIcon
 import javax.swing.SwingUtilities
 
 @Suppress("UnstableApiUsage")
@@ -190,7 +195,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     fun `test attachment child click opens item`() {
         var opened = false
         val card = AttachmentCard(
-            ai.kilocode.client.session.ui.attachment.AttachmentCardItem("a.txt", "text/plain", "file:///tmp/a.txt"),
+            AttachmentCardItem("a.txt", "text/plain", "file:///tmp/a.txt"),
             open = { opened = true },
         )
 
@@ -198,6 +203,24 @@ class PromptPanelTest : BasePlatformTestCase() {
         label.dispatchEvent(MouseEvent(label, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(), 0, 1, 1, 1, false))
 
         assertTrue(opened)
+    }
+
+    fun `test attachment card previews embedded image data`() {
+        val image = BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB)
+        val out = ByteArrayOutputStream()
+        ImageIO.write(image, "png", out)
+        val card = AttachmentCard(
+            AttachmentCardItem("a.png", "image/png", "data:image/png;base64,${Base64.getEncoder().encodeToString(out.toByteArray())}"),
+        )
+
+        card.addNotify()
+        repeat(20) {
+            UIUtil.dispatchAllInvocationEvents()
+            if (labels(card).any { it.icon is ImageIcon }) return@repeat
+            Thread.sleep(20)
+        }
+
+        assertTrue(labels(card).any { it.icon is ImageIcon })
     }
 
     fun `test reasoning picker hides when variants are empty`() {

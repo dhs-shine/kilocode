@@ -26,6 +26,7 @@ import java.awt.LayoutManager2
 import java.awt.RenderingHints
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.io.ByteArrayInputStream
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -137,7 +138,6 @@ open class AttachmentCard(
 
     @RequiresEdt
     private fun load() {
-        val path = local(item) ?: return
         if (!item.mime.startsWith("image/")) return
         val stamp = ++gen
         val size = JBUI.size(
@@ -145,7 +145,11 @@ open class AttachmentCard(
             SessionUiStyle.View.Attachment.CARD_HEIGHT - UiStyle.Gap.xs() * 2,
         )
         ApplicationManager.getApplication().executeOnPooledThread {
-            val image = runCatching { ImageIO.read(path.toFile()) }.getOrNull()
+            val image = runCatching {
+                val data = decodeDataImage(item.url)
+                val path = local(item)
+                if (data != null) ImageIO.read(ByteArrayInputStream(data)) else path?.let { ImageIO.read(it.toFile()) }
+            }.getOrNull()
             val scaled = image?.let { scale(it, size.width, size.height) }
             if (scaled == null) return@executeOnPooledThread
             ApplicationManager.getApplication().invokeLater {

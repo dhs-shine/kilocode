@@ -158,6 +158,10 @@ class SessionModel {
         if (dto.type in SILENT_PART_TYPES) return
         val msg = entries[messageId] ?: return
         val existing = msg.parts[dto.id]
+        if (empty(dto)) {
+            if (existing is Text) removeContent(messageId, dto.id)
+            return
+        }
         if (existing != null) {
             updateExisting(messageId, existing, dto)
             return
@@ -243,6 +247,7 @@ class SessionModel {
             val item = Message(msg.info)
             for (part in msg.parts) {
                 if (part.type in SILENT_PART_TYPES) continue
+                if (empty(part)) continue
                 val content = fromDto(part, part.text)
                 item.parts[content.id] = content
             }
@@ -402,6 +407,8 @@ class SessionModel {
         fire(SessionModelEvent.ContentUpdated(messageId, existing))
         updateHeader()
     }
+
+    private fun empty(dto: PartDto) = dto.type == "text" && dto.text?.isNotBlank() != true
 
     private fun fromDto(dto: PartDto, text: CharSequence? = null): Content {
         val content = text ?: dto.text
