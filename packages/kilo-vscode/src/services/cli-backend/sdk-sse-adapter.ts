@@ -180,7 +180,6 @@ export class SdkSSEAdapter {
             this.notifyState("connected")
           }
 
-          console.log("[Kilo New] SSE: 📨 Event:", event.payload.type)
           this.notifyEvent(event.payload, event.directory)
         }
 
