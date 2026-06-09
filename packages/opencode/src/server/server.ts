@@ -2,6 +2,7 @@ import "./init-projectors"
 
 import { NodeHttpServer } from "@effect/platform-node"
 import * as Log from "@opencode-ai/core/util/log"
+import { serverUrls } from "../cli/server-urls"
 import { ConfigProvider, Context, Effect, Exit, Layer, Scope } from "effect"
 import { HttpRouter, HttpServer } from "effect/unstable/http"
 import { OpenApi } from "effect/unstable/httpapi"
@@ -24,6 +25,11 @@ export type Listener = {
   hostname: string
   port: number
   url: URL
+  urls: {
+    local: string
+    network?: string
+    bind: string
+  }
   stop: (close?: boolean) => Promise<void>
 }
 
@@ -79,6 +85,7 @@ export async function listen(opts: ListenOptions): Promise<Listener> {
     hostname: listener.hostname,
     port: listener.port,
     url: listener.url,
+    urls: listener.urls,
     stop: (close?: boolean) => Effect.runPromiseExit(listener.stop(close)).then(() => undefined),
   }
 }
@@ -96,6 +103,7 @@ const listenEffect: (opts: ListenOptions) => Effect.Effect<EffectListener, unkno
       hostname: opts.hostname,
       port: address.port,
       url: listenerUrl,
+      urls: serverUrls(opts.hostname, address.port),
       stop: yield* makeStop(state, unpublishMdns),
     }
   },

@@ -1,6 +1,7 @@
 import open from "open"
 import { cmd } from "@/cli/cmd/cmd"
 import { explicitNetworkOptions, withNetworkOptions, resolveNetworkOptions } from "@/cli/network"
+import { serverUrls } from "@/cli/server-urls"
 import { AppRuntime } from "@/effect/app-runtime"
 import { Daemon } from "@/kilocode/daemon/daemon"
 import { warnPort } from "@/kilocode/cli/port-warning"
@@ -48,10 +49,15 @@ export const KiloConsoleCommand = cmd({
     const state = daemon.result.state
     if (!state) throw new Error("Kilo daemon did not provide connection state")
 
-    const url = publicUrl(state)
+    const urls = serverUrls(state.hostname, state.port)
+    const consoleLocal = `${urls.local}/console`
+    const consoleNetwork = urls.network ? `${urls.network}/console` : undefined
+
     await launch(browserUrl(state)).catch((err) => {
       console.warn(`Could not open browser automatically: ${err instanceof Error ? err.message : String(err)}`)
     })
-    console.log(`Kilo Console: ${url}`)
+    console.log("Kilo Console:")
+    console.log(`  Local:   ${consoleLocal}`)
+    if (consoleNetwork) console.log(`  Network: ${consoleNetwork}`)
   },
 })

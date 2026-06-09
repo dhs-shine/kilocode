@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 import { Server } from "../../server/server"
+import { serverUrls } from "../server-urls"
 import { effectCmd } from "../effect-cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Flag } from "@opencode-ai/core/flag/flag"
@@ -18,7 +19,13 @@ export const ServeCommand = effectCmd({
     }
     const opts = yield* resolveNetworkOptions(args)
     const server = yield* Effect.promise(() => Server.listen(opts))
-    console.log(`kilo server listening on http://${server.hostname}:${server.port}`) // kilocode_change
+    const urls = serverUrls(server.hostname, server.port)
+
+    console.log(`kilo server listening on ${urls.bind}`)
+    if (urls.network) {
+      console.log(`  Local:   ${urls.local}`)
+      console.log(`  Network: ${urls.network}`)
+    }
 
     // kilocode_change start - graceful signal shutdown
     // yield* Effect.never
