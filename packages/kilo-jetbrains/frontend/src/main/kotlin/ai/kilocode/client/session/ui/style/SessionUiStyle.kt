@@ -15,7 +15,7 @@ object SessionUiStyle {
 
     /** Geometry for the transcript list and its scroll behavior. */
     object SessionLayout {
-        const val GAP = 4
+        const val GAP = 3
         const val TRANSCRIPT_PADDING = 12
         const val TRANSCRIPT_SCROLLBAR_PADDING = 10
         const val USER_PROMPT_INDENT = 100
@@ -25,8 +25,8 @@ object SessionUiStyle {
     /** Shared tokens for individual transcript views and session views. */
     object View {
         object Layout {
-            const val GAP = 6
-            const val VERTICAL_PADDING = 8
+            const val GAP = 5
+            const val VERTICAL_PADDING = 7
             const val HORIZONTAL_PADDING = 12
             const val BODY_EXTRA_HEIGHT = 16
         }
