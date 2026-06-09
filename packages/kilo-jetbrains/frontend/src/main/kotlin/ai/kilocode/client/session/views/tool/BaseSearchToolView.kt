@@ -9,6 +9,7 @@ import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.openapi.util.Disposer
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.Dimension
 import javax.swing.Icon
@@ -39,6 +40,7 @@ abstract class BaseSearchToolView(
         sync()
     }
 
+    @RequiresEdt
     override fun expand(): Boolean {
         val changed = super.expand()
         if (!changed) return false
@@ -47,6 +49,7 @@ abstract class BaseSearchToolView(
         return true
     }
 
+    @RequiresEdt
     override fun getPreferredSize(): Dimension {
         val size = super.getPreferredSize()
         if (!bodyVisible()) return size
@@ -54,6 +57,7 @@ abstract class BaseSearchToolView(
         return Dimension(size.width, minOf(size.height, height))
     }
 
+    @RequiresEdt
     override fun update(content: Content) {
         if (content !is Tool) return
         item = content
@@ -62,29 +66,49 @@ abstract class BaseSearchToolView(
         if (changed) refresh()
     }
 
+    @RequiresEdt
     fun labelText(): String = listOf(parts.title.text).plus(targetTexts()).plus(parts.state.text)
         .filter { it.isNotBlank() }
         .joinToString(" ")
 
+    @RequiresEdt
     fun bodyText(): String = body(item)
+    @RequiresEdt
     internal fun targetTexts(): List<String> = parts.targets.map { it.text }.filter { it.isNotBlank() }
+    @RequiresEdt
     internal fun targetVisible(index: Int): Boolean = parts.targets.getOrNull(index)?.isVisible ?: false
+    @RequiresEdt
     internal fun bodyVisible() = parts.scroll?.parent === this
+    @RequiresEdt
     internal fun hasToggle() = arrow.isVisible
+    @RequiresEdt
     internal fun bodyFont() = parts.content?.font ?: style.editorFont
+    @RequiresEdt
     internal fun titleFont() = parts.title.font
+    @RequiresEdt
     internal fun targetFont(index: Int) = parts.targets.getOrNull(index)?.font ?: style.regularFont
+    @RequiresEdt
     internal fun stateFont() = parts.state.font
+    @RequiresEdt
     internal fun bodyCreated() = parts.bodyCreated()
+    @RequiresEdt
     internal fun scrollComponent() = parts.scroll
+    @RequiresEdt
     internal fun bodyEditor() = parts.content?.editor
+    @RequiresEdt
     internal fun horizontalPolicy() = parts.scroll?.horizontalScrollBarPolicy
+    @RequiresEdt
     internal fun verticalPolicy() = parts.scroll?.verticalScrollBarPolicy
+    @RequiresEdt
     internal fun bodyWrap() = parts.content?.lineWrap ?: false
+    @RequiresEdt
     internal fun headerComponent() = parts.header
+    @RequiresEdt
     internal fun centerComponent() = parts.center
+    @RequiresEdt
     internal fun targetComponents() = parts.targets
 
+    @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         var changed = false

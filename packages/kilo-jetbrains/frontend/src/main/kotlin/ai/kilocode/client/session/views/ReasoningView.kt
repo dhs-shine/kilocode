@@ -15,6 +15,7 @@ import ai.kilocode.client.ui.md.MdViewFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Dimension
@@ -40,7 +41,9 @@ class ReasoningView(
 
     override val contentId: String = reasoning.id
 
+    /** Lazily creates, registers, populates, and styles the editor-backed body on first access. */
     val md: MdView
+        @RequiresEdt
         get() {
             val fresh = !parts.bodyCreated()
             val view = parts.md(openUrl)
@@ -56,6 +59,7 @@ class ReasoningView(
     private var source = reasoning.content.toString()
     private var done = reasoning.done
     private var registered = false
+    private var following = false
 
     init {
         row.border = JBUI.Borders.empty(
@@ -69,6 +73,7 @@ class ReasoningView(
         sync()
     }
 
+    @RequiresEdt
     override fun expand(): Boolean {
         val changed = super.expand()
         if (!changed) return false
@@ -78,6 +83,7 @@ class ReasoningView(
         return true
     }
 
+    @RequiresEdt
     override fun collapse(): Boolean {
         val changed = super.collapse()
         if (!changed) return false
@@ -85,10 +91,13 @@ class ReasoningView(
         return true
     }
 
+    @RequiresEdt
     override fun update(content: Content) {
         if (content !is Reasoning) return
         var changed = false
         val next = content.content.toString()
+        val finished = !done && content.done
+        val follow = tailVisible()
         if (done != content.done) {
             done = content.done
             changed = true
@@ -97,36 +106,50 @@ class ReasoningView(
             source = next
             if (parts.bodyCreated()) {
                 md.set(source)
-                followTail()
+                followTail(follow)
             }
             changed = true
         }
+        if (finished) changed = collapse() || changed
         changed = sync() || changed
         if (changed) refresh()
     }
 
+    @RequiresEdt
     override fun appendDelta(delta: String) {
         if (delta.isEmpty()) return
+        val follow = tailVisible()
         source += delta
         if (parts.bodyCreated()) {
             md.append(delta)
-            followTail()
+            followTail(follow)
         }
         val changed = sync()
         if (changed || bodyVisible()) refresh()
     }
 
+    @RequiresEdt
     fun markdown(): String = source
+    @RequiresEdt
     fun hasToggle(): Boolean = arrow.isVisible
+    @RequiresEdt
     fun headerText(): String = parts.title.text
+    @RequiresEdt
     internal fun headerFont() = parts.title.font
+    @RequiresEdt
     internal fun bodyVisible() = parts.scrollOrNull?.parent === this
+    @RequiresEdt
     internal fun horizontalPolicy() = parts.scrollOrNull?.horizontalScrollBarPolicy ?: ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+    @RequiresEdt
     internal fun bodyMaxRows() = SessionUiStyle.View.Reasoning.BODY_LINES
+    @RequiresEdt
     internal fun bodyCreated() = parts.bodyCreated()
+    @RequiresEdt
     internal fun bodyScrollValue() = parts.scrollOrNull?.verticalScrollBar?.value ?: 0
+    @RequiresEdt
     internal fun bodyScrollBottom() = parts.scrollOrNull?.verticalScrollBar?.let { it.maximum - it.visibleAmount } ?: 0
 
+    @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         var changed = false
@@ -138,6 +161,7 @@ class ReasoningView(
         if (changed) refresh()
     }
 
+    @RequiresEdt
     override fun getPreferredSize(): Dimension {
         val size = super.getPreferredSize()
         if (!bodyVisible()) return size
@@ -188,11 +212,12 @@ class ReasoningView(
         return changed
     }
 
+    @RequiresEdt
     private fun syncBody() {
         val md = md
         registerBody(md)
         md.set(source)
-        followTail()
+        followTail(true)
     }
 
     private fun applyBodyStyle(): Boolean {
@@ -216,10 +241,22 @@ class ReasoningView(
             JBUI.scale(SessionUiStyle.View.Layout.BODY_EXTRA_HEIGHT)
     }
 
-    private fun followTail() {
-        if (!bodyVisible()) return
+    @RequiresEdt
+    private fun tailVisible(): Boolean {
+        if (!bodyVisible()) return false
+        val scroll = parts.scrollOrNull ?: return false
+        val bar = scroll.verticalScrollBar
+        return bar.value >= bar.maximum - bar.visibleAmount
+    }
+
+    @RequiresEdt
+    private fun followTail(follow: Boolean) {
+        if (!follow || !bodyVisible() || following) return
         val scroll = parts.scrollOrNull ?: return
+        following = true
         SwingUtilities.invokeLater {
+            following = false
+            if (!bodyVisible()) return@invokeLater
             val bar = scroll.verticalScrollBar
             bar.value = bar.maximum - bar.visibleAmount
         }

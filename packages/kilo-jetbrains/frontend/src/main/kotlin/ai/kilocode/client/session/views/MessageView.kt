@@ -53,6 +53,9 @@ class MessageView(
         get() = if (role == SessionUiStyle.View.Message.USER_ROLE) SessionView.Kind.UserPrompt else SessionView.Kind.Default
 
     private val parts = LinkedHashMap<String, PartView>()
+    // Adjacent reasoning parts render through the first ReasoningView. aliases maps each
+    // merged child id to that owner id, and sources stores the child's latest full text
+    // so snapshot updates can append only deltas.
     private val aliases = LinkedHashMap<String, String>()
     private val sources = LinkedHashMap<String, String>()
     private var hidden: ToolCallRef? = null

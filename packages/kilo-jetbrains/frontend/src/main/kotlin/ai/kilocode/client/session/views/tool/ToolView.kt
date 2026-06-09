@@ -9,6 +9,7 @@ import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.openapi.util.Disposer
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.Dimension
 import javax.swing.ScrollPaneConstants
@@ -33,6 +34,7 @@ class ToolView(
         sync()
     }
 
+    @RequiresEdt
     override fun expand(): Boolean {
         val changed = super.expand()
         if (!changed) return false
@@ -41,6 +43,7 @@ class ToolView(
         return true
     }
 
+    @RequiresEdt
     override fun getPreferredSize(): Dimension {
         val size = super.getPreferredSize()
         if (!bodyVisible()) return size
@@ -48,6 +51,7 @@ class ToolView(
         return Dimension(size.width, minOf(size.height, height))
     }
 
+    @RequiresEdt
     override fun update(content: Content) {
         if (content !is Tool) return
         val was = item.name
@@ -59,30 +63,51 @@ class ToolView(
         if (changed) refresh()
     }
 
+    @RequiresEdt
     fun labelText(): String = listOf(parts.title.text, subtitleText(parts), parts.state.text)
         .filter { it.isNotBlank() }
         .joinToString(" ")
 
+    @RequiresEdt
     fun commandText(): String = command(item)
+    @RequiresEdt
     fun outputText(): String = output(item)
+    @RequiresEdt
     fun bodyText(): String = body(item)
+    @RequiresEdt
     internal fun previewText(): String = parts.content?.text ?: preview(item)
+    @RequiresEdt
     fun hasToggle(): Boolean = arrow.isVisible
+    @RequiresEdt
     internal fun bodyFont() = parts.content?.font ?: style.editorFont
+    @RequiresEdt
     internal fun titleFont() = parts.title.font
+    @RequiresEdt
     internal fun subtitleFont() = parts.sub.font
+    @RequiresEdt
     internal fun stateFont() = parts.state.font
+    @RequiresEdt
     internal fun bodyEditable() = parts.content?.editable ?: false
+    @RequiresEdt
     internal fun bodyCaretVisible() = parts.content?.caretVisible ?: false
+    @RequiresEdt
     internal fun bodyVisible() = parts.scroll?.parent === this
+    @RequiresEdt
     internal fun controlCount() = if (arrow.isVisible) 1 else 0
+    @RequiresEdt
     internal fun horizontalPolicy() = parts.scroll?.horizontalScrollBarPolicy ?: ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+    @RequiresEdt
     internal fun verticalPolicy() = parts.scroll?.verticalScrollBarPolicy ?: ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+    @RequiresEdt
     internal fun bodyWrap() = parts.content?.lineWrap ?: false
+    @RequiresEdt
     internal fun bodyMaxRows() = SessionUiStyle.View.Tool.BODY_LINES
+    @RequiresEdt
     internal fun bodyCreated() = parts.bodyCreated()
+    @RequiresEdt
     internal fun bodyEditor() = parts.content?.editor
 
+    @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         var changed = false

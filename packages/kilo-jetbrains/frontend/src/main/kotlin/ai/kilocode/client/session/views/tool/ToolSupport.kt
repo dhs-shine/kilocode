@@ -26,13 +26,14 @@ import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
+import com.intellij.util.concurrency.annotations.RequiresEdt
+import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import com.intellij.xml.util.XmlStringUtil
 import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.Color
 import java.awt.Cursor
-import java.awt.Dimension
 import java.awt.Font
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -65,23 +66,30 @@ class ToolParts(
     private var body: ToolBody? = null
 
     val text: JBTextArea?
+        @RequiresEdt
         get() = body?.area
 
     val content: ToolBody?
+        @RequiresEdt
         get() = body
 
     val scroll: JBScrollPane?
+        @RequiresEdt
         get() = body?.scroll
 
+    @RequiresEdt
     fun scroll(tool: Tool): JBScrollPane = body(tool).scroll
 
+    @RequiresEdt
     fun bodyCreated() = body != null
 
+    @RequiresEdt
     fun openLink() {
         val value = href ?: return
         open?.invoke(value)
     }
 
+    @RequiresEdt
     private fun body(tool: Tool): ToolBody {
         val item = body
         if (item != null) return item
@@ -100,7 +108,9 @@ class ToolBody private constructor(
     private val disposable: Disposable?,
 ) : Disposable {
     var text: String
+        @RequiresEdt
         get() = area?.text ?: ed?.text ?: ""
+        @RequiresEdt
         set(value) {
             if (text == value) return
             area?.text = value
@@ -110,7 +120,9 @@ class ToolBody private constructor(
         }
 
     var font: Font
+        @RequiresEdt
         get() = area?.font ?: ed?.font ?: SessionEditorStyle.current().editorFont
+        @RequiresEdt
         set(value) {
             area?.font = value
             ed?.font = value
@@ -118,7 +130,9 @@ class ToolBody private constructor(
         }
 
     var foreground: Color
+        @RequiresEdt
         get() = area?.foreground ?: ed?.foreground ?: UiStyle.Colors.fg()
+        @RequiresEdt
         set(value) {
             area?.foreground = value
             ed?.foreground = value
@@ -129,11 +143,13 @@ class ToolBody private constructor(
     val lineWrap: Boolean get() = area?.lineWrap ?: false
     val editor: EditorTextField? get() = ed
 
+    @RequiresEdt
     fun caretStart() {
         area?.caretPosition = 0
         ed?.getEditor(false)?.caretModel?.moveToOffset(0)
     }
 
+    @RequiresEdt
     fun applyStyle(style: SessionEditorStyle): Boolean {
         val before = font
         area?.font = style.transcriptFont
@@ -143,6 +159,7 @@ class ToolBody private constructor(
         return before != font
     }
 
+    @RequiresEdt
     fun register(selection: SessionSelection, parent: Disposable) {
         val field = ed
         if (field != null) {
@@ -152,6 +169,7 @@ class ToolBody private constructor(
         area?.let { selection.register(it, parent) }
     }
 
+    @RequiresEdt
     fun lineHeight(): Int = ed?.getEditor(false)?.lineHeight ?: scroll.viewport.view.getFontMetrics(font).height
 
     override fun dispose() {
@@ -162,15 +180,15 @@ class ToolBody private constructor(
         val view = scroll.viewport.view as? JComponent ?: return
         val height = height(view)
         val width = width(view)
-        view.preferredSize = Dimension(width, height)
-        view.minimumSize = Dimension(0, height)
-        view.maximumSize = Dimension(Int.MAX_VALUE, height)
+        view.preferredSize = JBUI.size(width, height)
+        view.minimumSize = JBUI.size(0, height)
+        view.maximumSize = JBDimension(Int.MAX_VALUE, height)
         val inset = scroll.viewportBorder?.getBorderInsets(scroll) ?: JBUI.emptyInsets()
         val pane = height + scroll.insets.top + scroll.insets.bottom + inset.top + inset.bottom +
             scroll.horizontalScrollBar.preferredSize.height
-        scroll.preferredSize = Dimension(0, pane)
-        scroll.minimumSize = Dimension(0, pane)
-        scroll.maximumSize = Dimension(Int.MAX_VALUE, pane)
+        scroll.preferredSize = JBUI.size(0, pane)
+        scroll.minimumSize = JBUI.size(0, pane)
+        scroll.maximumSize = JBDimension(Int.MAX_VALUE, pane)
     }
 
     private fun width(view: JComponent): Int {
@@ -186,6 +204,7 @@ class ToolBody private constructor(
     }
 
     companion object {
+        @RequiresEdt
         fun editor(tool: Tool): ToolBody {
             val disposable = Disposer.newDisposable("Tool body")
             val body = runCatching {
@@ -200,6 +219,7 @@ class ToolBody private constructor(
             return body
         }
 
+        @RequiresEdt
         fun text(tool: Tool): ToolBody {
             val area = area(tool, true)
             val body = ToolBody(area, null, pane(area, false), null)
@@ -275,6 +295,7 @@ private class ToolField(value: String, private var style: SessionEditorStyle) : 
 private const val SUB_CARD = "sub"
 private const val LINK_CARD = "link"
 
+@RequiresEdt
 internal fun toolParts(
     tool: Tool,
     openFile: ((String) -> Unit)? = null,
@@ -318,6 +339,7 @@ internal fun toolParts(
     }
 }
 
+@RequiresEdt
 internal fun searchParts(count: Int): ToolParts {
     val glyph = JBLabel()
     val title = JBLabel()
@@ -325,7 +347,7 @@ internal fun searchParts(count: Int): ToolParts {
     val targets = List(count) {
         JBLabel().apply {
             foreground = UiStyle.Colors.fg()
-            minimumSize = Dimension(0, minimumSize.height)
+            minimumSize = JBUI.size(0, minimumSize.height)
         }
     }
     val link = JBLabel().apply { isVisible = false }
@@ -339,7 +361,7 @@ internal fun searchParts(count: Int): ToolParts {
     val target = stack.align(HAlign.TRACK, VAlign.CENTER)
     val center = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply {
         isOpaque = false
-        minimumSize = Dimension(0, minimumSize.height)
+        minimumSize = JBUI.size(0, minimumSize.height)
         add(title, BorderLayout.WEST)
         add(target, BorderLayout.CENTER)
     }
@@ -382,6 +404,7 @@ internal fun subtitle(tool: Tool) = when (tool.name) {
     else -> toolSubtitle(tool)
 }
 
+@RequiresEdt
 internal fun setText(label: JBLabel, text: String): Boolean {
     val value = if (text.isBlank()) "" else XmlStringUtil.wrapInHtml(XmlStringUtil.escapeString(text))
     if (label.text == value) return false
@@ -389,12 +412,14 @@ internal fun setText(label: JBLabel, text: String): Boolean {
     return true
 }
 
+@RequiresEdt
 internal fun setTargetText(label: JBLabel, text: String): Boolean {
     if (label.text == text) return false
     label.text = text
     return true
 }
 
+@RequiresEdt
 internal fun setLinkText(parts: ToolParts, text: String): Boolean {
     val value = if (text.isBlank()) "" else XmlStringUtil.wrapInHtml("<u>${XmlStringUtil.escapeString(text)}</u>")
     if (parts.label == text && parts.link.text == value) return false
@@ -403,6 +428,7 @@ internal fun setLinkText(parts: ToolParts, text: String): Boolean {
     return true
 }
 
+@RequiresEdt
 internal fun show(parts: ToolParts, link: Boolean): Boolean {
     if (parts.link.isVisible == link && parts.sub.isVisible != link) return false
     (parts.slot.layout as CardLayout).show(parts.slot, if (link) LINK_CARD else SUB_CARD)
@@ -411,24 +437,28 @@ internal fun show(parts: ToolParts, link: Boolean): Boolean {
 
 internal fun subtitleText(parts: ToolParts): String = if (parts.link.isVisible) parts.label else parts.sub.text
 
+@RequiresEdt
 internal fun setIcon(label: JBLabel, icon: Icon): Boolean {
     if (label.icon === icon) return false
     label.icon = icon
     return true
 }
 
+@RequiresEdt
 internal fun setVisible(component: JComponent, visible: Boolean): Boolean {
     if (component.isVisible == visible) return false
     component.isVisible = visible
     return true
 }
 
+@RequiresEdt
 internal fun setForeground(component: JComponent, color: Color): Boolean {
     if (same(component.foreground, color)) return false
     component.foreground = color
     return true
 }
 
+@RequiresEdt
 internal fun setFont(component: JComponent, font: Font): Boolean {
     if (component.font == font) return false
     component.font = font

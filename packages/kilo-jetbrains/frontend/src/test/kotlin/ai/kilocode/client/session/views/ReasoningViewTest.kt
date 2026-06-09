@@ -5,8 +5,11 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import java.awt.Component
+import java.awt.Container
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
@@ -52,6 +55,29 @@ class ReasoningViewTest : BasePlatformTestCase() {
 
         assertFalse(view.isExpanded())
         assertEquals("one\ntwo\nthree\nfour", view.markdown())
+    }
+
+    fun `test live reasoning collapses when marked done`() {
+        val view = ReasoningView(reasoning("p1", done = false, text = "one\ntwo\nthree\nfour"))
+
+        assertTrue(view.isExpanded())
+
+        view.update(reasoning("p1", done = true, text = "one\ntwo\nthree\nfour"))
+
+        assertFalse(view.isExpanded())
+        assertFalse(view.bodyVisible())
+        assertTrue(view.bodyCreated())
+    }
+
+    fun `test manually expanded finished reasoning stays open on update`() {
+        val view = ReasoningView(reasoning("p1", done = true, text = "one\ntwo"))
+
+        view.toggle()
+        view.update(reasoning("p1", done = true, text = "one\ntwo\nthree"))
+
+        assertTrue(view.isExpanded())
+        assertTrue(view.bodyVisible())
+        assertEquals("one\ntwo\nthree", view.markdown())
     }
 
     fun `test toggle opens and closes reasoning`() {
@@ -184,6 +210,20 @@ class ReasoningViewTest : BasePlatformTestCase() {
         assertEquals(view.bodyScrollBottom(), view.bodyScrollValue())
     }
 
+    fun `test appended reasoning does not yank user scrolled above tail`() {
+        val view = ReasoningView(reasoning("p1", done = false, text = (1..40).joinToString("\n") { "line $it" }))
+        view.setSize(300, 80)
+        view.doLayout()
+        UIUtil.dispatchAllInvocationEvents()
+        val scroll = scroll(view)
+        scroll.verticalScrollBar.value = 0
+
+        view.appendDelta("\nline 41\nline 42")
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEquals(0, scroll.verticalScrollBar.value)
+    }
+
     fun `test reasoning block uses vertical separator`() {
         val view = ReasoningView(reasoning("p1", done = true, text = "one"))
 
@@ -233,5 +273,16 @@ class ReasoningViewTest : BasePlatformTestCase() {
     private fun reasoning(id: String, done: Boolean, text: String) = Reasoning(id).also {
         it.done = done
         it.content.append(text)
+    }
+
+    private fun scroll(component: Component): JBScrollPane {
+        if (component is JBScrollPane) return component
+        if (component is Container) {
+            component.components.forEach { child ->
+                val scroll = runCatching { scroll(child) }.getOrNull()
+                if (scroll != null) return scroll
+            }
+        }
+        error("scroll not found")
     }
 }

@@ -211,6 +211,29 @@ class TurnViewTest : BasePlatformTestCase() {
         assertEquals("first second third", (mv.part("r1") as ReasoningView).markdown())
     }
 
+    fun `test reasoning alias maps stay bounded across churn`() {
+        val mv = MessageView(msg("a1", "assistant"), openFile)
+
+        repeat(100) { i ->
+            mv.upsertPart(reasoning("r${i}a", "first $i "))
+            mv.upsertPart(reasoning("r${i}b", "second $i"))
+
+            assertEquals(listOf("r${i}a"), mv.partIds())
+            assertSame(mv.part("r${i}a"), mv.part("r${i}b"))
+            assertEquals(1, aliasSize(mv))
+            assertEquals(1, sourceSize(mv))
+            assertEquals(1, mv.componentCount)
+
+            mv.removePart("r${i}b")
+            mv.removePart("r${i}a")
+
+            assertTrue(mv.partIds().isEmpty())
+            assertEquals(0, aliasSize(mv))
+            assertEquals(0, sourceSize(mv))
+            assertEquals(0, mv.componentCount)
+        }
+    }
+
     fun `test text between reasoning parts keeps separate views`() {
         val message = msg("a1", "assistant")
         message.parts["r1"] = reasoning("r1", "first")
@@ -315,6 +338,16 @@ class TurnViewTest : BasePlatformTestCase() {
     }
 
     private fun text(id: String, content: String) = Text(id).also { it.content.append(content) }
+
+    private fun aliasSize(view: MessageView) = mapSize(view, "aliases")
+
+    private fun sourceSize(view: MessageView) = mapSize(view, "sources")
+
+    private fun mapSize(view: MessageView, name: String): Int {
+        val field = MessageView::class.java.getDeclaredField(name)
+        field.isAccessible = true
+        return (field.get(view) as Map<*, *>).size
+    }
 
     private class TrackingRepaintManager(private val watched: Set<JComponent>) : RepaintManager() {
         val dirty = mutableListOf<JComponent>()

@@ -9,6 +9,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
 import ai.kilocode.client.ui.UiStyle
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.Dimension
 import javax.swing.ScrollPaneConstants
@@ -38,6 +39,7 @@ class ReadToolView(
         sync()
     }
 
+    @RequiresEdt
     override fun getPreferredSize(): Dimension {
         val size = super.getPreferredSize()
         if (!bodyVisible()) return size
@@ -45,6 +47,7 @@ class ReadToolView(
         return Dimension(size.width, minOf(size.height, height))
     }
 
+    @RequiresEdt
     override fun update(content: Content) {
         if (content !is Tool) return
         item = content
@@ -53,28 +56,48 @@ class ReadToolView(
         if (changed) refresh()
     }
 
+    @RequiresEdt
     fun labelText(): String = listOf(parts.title.text, subtitleText(parts), parts.state.text)
         .filter { it.isNotBlank() }
         .joinToString(" ")
+    @RequiresEdt
     fun bodyText(): String = body(item)
+    @RequiresEdt
     internal fun bodyVisible() = parts.scroll?.parent === this
+    @RequiresEdt
     internal fun hasToggle() = arrow.isVisible
+    @RequiresEdt
     internal fun horizontalPolicy() = parts.scroll?.horizontalScrollBarPolicy ?: ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+    @RequiresEdt
     internal fun bodyMaxRows() = SessionUiStyle.View.Tool.BODY_LINES
+    @RequiresEdt
     internal fun bodyFont() = parts.text?.font ?: style.transcriptFont
+    @RequiresEdt
     internal fun bodyCreated() = parts.bodyCreated()
+    @RequiresEdt
     internal fun bodyWrap() = parts.text?.lineWrap ?: false
+    @RequiresEdt
     internal fun bodyEditor() = parts.content?.editor
+    @RequiresEdt
     internal fun linkVisible() = parts.link.isVisible
+    @RequiresEdt
     internal fun linkText() = parts.label
+    @RequiresEdt
     internal fun linkMarkup() = parts.link.text ?: ""
+    @RequiresEdt
     internal fun linkForeground() = parts.link.foreground
+    @RequiresEdt
     internal fun linkFont() = parts.link.font
+    @RequiresEdt
     internal fun subtitleForeground() = parts.sub.foreground
+    @RequiresEdt
     internal fun subtitleFont() = parts.sub.font
+    @RequiresEdt
     internal fun linkHref() = parts.href
+    @RequiresEdt
     internal fun openLink() = parts.openLink()
 
+    @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         var changed = false
