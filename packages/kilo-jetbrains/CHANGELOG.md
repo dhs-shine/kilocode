@@ -10,30 +10,22 @@
 
 ### Added
 
-- Add dedicated JetBrains renderers for search tools and tool output so session transcripts show structured results with editor-style bodies.
-- Add support for reading `.ods` OpenDocument Spreadsheet files.
-- Suggest project skill slash commands in the CLI, including disambiguation for similarly named commands.
-- Show Terminal Bench model details in model metadata.
+- Display search results and tool output in clearer, more readable JetBrains session cards.
+- Support reading `.ods` OpenDocument Spreadsheet files.
 
 ### Fixed
 
-- Preserve JetBrains session scroll intent across transcript updates, expand/collapse actions, streaming reasoning, and mouse wheel scrolling.
-- Improve JetBrains session transcript usability with tighter spacing, aligned icons and progress footers, cleaner card outlines, regular-text search targets, relative search paths, and hidden markdown separators.
-- Keep completed reasoning expanded while bounding streaming reasoning resources to avoid unnecessary editor retention.
-- Fix CLI release target isolation, baseline startup crashes, Alpine musl validation, and morphsdk module resolution in release builds.
-- Reject unsupported webfetch images with clearer tool errors.
-- Write strict JSON when saving MCP config.
-- Restore session export after the temporary disablement.
-- Restore automatic session titles, subagent isolation in session forks, project skill discovery in worktree sessions, and reset costs in forked sessions.
-- Prevent visible planning chat from being copied into new sessions.
-- Restore cloud session diffs on import.
-- Compact before the configured context threshold is exceeded.
-- Prevent prompt queue memory leaks when cancelling sessions without active tails.
+- Improve session transcript scrolling so streaming updates, expanded cards, reasoning blocks, and mouse wheel scrolling preserve the user's position more reliably.
+- Make session transcripts easier to scan with tighter spacing, aligned icons, cleaner card outlines, relative search paths, and less visual noise.
+- Keep completed reasoning blocks expanded after a response finishes.
+- Improve session stability during long-running or cancelled prompts.
+- Restore automatic session titles, project skill discovery, and subagent isolation in forked sessions.
+- Restore imported cloud session diffs.
+- Compact sessions before the configured context limit is exceeded.
 
 ### Changed
 
-- Update the bundled CLI to include OpenCode v1.14.48 compatibility and release build hardening.
-- Refresh npm package metadata and README content used by the CLI package.
+- Update the bundled Kilo CLI runtime with the latest fixes used by the JetBrains plugin.
 
 ## [7.0.1-rc.7] - 2026-06-04
 
