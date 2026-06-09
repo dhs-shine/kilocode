@@ -53,12 +53,55 @@ class SessionScrollTest : SessionUiTestBase() {
         if (bottom(bar) <= threshold) {
             fillTranscript(24, start = 24)
         }
-        setValue(bar, bottom(bar) - threshold + 1)
+        setValuePassive(bar, bottom(bar) - threshold + 1)
 
         emit(ChatEventDto.MessageUpdated("ses_test", message("tail")))
         drainScroll()
 
         assertBottom(bar)
+    }
+
+    fun `test viewport driven scroll can move away from stale saved position`() {
+        showMessages()
+        fillTranscript(24)
+        val bar = scrollBar()
+        setValue(bar, bottom(bar) / 2)
+        val value = bar.value
+        val target = (value + JBUI.scale(96)).coerceAtMost(bottom(bar) - 1)
+        assertTrue("value=$value target=$target bottom=${bottom(bar)}", target > value)
+
+        (scrollComponent() as JBScrollPane).viewport.viewPosition = Point(0, target)
+        drainScroll()
+
+        assertEquals(target, bar.value)
+        assertTrue(jumpButton().isVisible)
+    }
+
+    fun `test user scroll upward near bottom disables tail follow`() {
+        showMessages()
+        fillTranscript(48)
+        val bar = scrollBar()
+        val threshold = JBUI.scale(32)
+        assertTrue("bottom=${bottom(bar)} threshold=$threshold", bottom(bar) > threshold * 2)
+        val id = "near_bottom_user_tail"
+        val pid = "near_bottom_user_part"
+        emit(ChatEventDto.MessageUpdated("ses_test", message(id)), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", part(pid, id, "text", "start\n\n")), flush = false)
+        forceFlush()
+        drainScroll()
+        setBottom(bar)
+        setValue(bar, bottom(bar) - threshold + 1)
+        val value = bar.value
+        assertFalse(ui.scroll.following())
+
+        repeat(240) { i ->
+            emit(ChatEventDto.PartDelta("ses_test", id, pid, "text", "tail line $i\n"), flush = false)
+        }
+        forceFlush()
+        drainScroll()
+
+        assertTrue("value=$value actual=${bar.value}", bar.value >= value)
+        assertFalse(ui.scroll.following())
     }
 
     fun `test session update preserves position outside bottom threshold`() {
@@ -204,6 +247,55 @@ class SessionScrollTest : SessionUiTestBase() {
         drainScroll()
 
         assertBottom(bar)
+        assertFalse(jumpButton().isVisible)
+    }
+
+    fun `test user scrolling to bottom during massive stream resumes following`() {
+        showMessages()
+        fillTranscript(48)
+        val bar = scrollBar()
+        val id = "stream_massive_resume"
+        val pid = "stream_massive_resume_part"
+        emit(ChatEventDto.MessageUpdated("ses_test", message(id)), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", part(pid, id, "text", "start\n\n")), flush = false)
+        forceFlush()
+        drainScroll()
+        setValue(bar, bottom(bar) / 2)
+        assertFalse(ui.scroll.following())
+        assertTrue(jumpButton().isVisible)
+        val first = buildString {
+            repeat(160) { i -> append("line $i\n\n") }
+        }
+
+        repeat(160) { i ->
+            emit(ChatEventDto.PartDelta("ses_test", id, pid, "text", "line $i\n\n"), flush = false)
+        }
+        emit(ChatEventDto.PartUpdated("ses_test", part(pid, id, "text", "start\n\n${first}snapshot\n\n")), flush = false)
+        forceFlush()
+        settleShort(100)
+        layout()
+        setBottom(bar)
+        drainScroll()
+        setBottom(bar)
+        drainScroll()
+
+        assertBottom(bar)
+        assertTrue(ui.scroll.following())
+        assertFalse(jumpButton().isVisible)
+        val second = buildString {
+            repeat(160) { i -> append("tail line $i\n\n") }
+        }
+
+        repeat(160) { i ->
+            emit(ChatEventDto.PartDelta("ses_test", id, pid, "text", "tail line $i\n\n"), flush = false)
+        }
+        emit(ChatEventDto.PartUpdated("ses_test", part(pid, id, "text", "start\n\n${first}snapshot\n\n${second}snapshot tail\n\n")), flush = false)
+        forceFlush()
+        settleShort(100)
+        drainScroll()
+
+        assertBottom(bar)
+        assertTrue(ui.scroll.following())
         assertFalse(jumpButton().isVisible)
     }
 
@@ -457,6 +549,56 @@ class SessionScrollTest : SessionUiTestBase() {
         drainScroll()
 
         assertBottom(bar)
+        assertFalse(button.isVisible)
+    }
+
+    fun `test scroll button resumes following during massive stream`() {
+        showMessages()
+        fillTranscript(48)
+        val button = jumpButton()
+        val bar = scrollBar()
+        val id = "stream_massive_button"
+        val pid = "stream_massive_button_part"
+        emit(ChatEventDto.MessageUpdated("ses_test", message(id)), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", part(pid, id, "text", "start\n\n")), flush = false)
+        forceFlush()
+        drainScroll()
+        setValue(bar, bottom(bar) / 2)
+        val first = buildString {
+            repeat(160) { i -> append("line $i\n\n") }
+        }
+
+        repeat(160) { i ->
+            emit(ChatEventDto.PartDelta("ses_test", id, pid, "text", "line $i\n\n"), flush = false)
+        }
+        emit(ChatEventDto.PartUpdated("ses_test", part(pid, id, "text", "start\n\n${first}snapshot\n\n")), flush = false)
+        forceFlush()
+        settleShort(100)
+        drainScroll()
+
+        assertTrue(button.isVisible)
+        assertFalse(ui.scroll.following())
+
+        click(button)
+        drainScroll()
+
+        assertBottom(bar)
+        assertTrue(ui.scroll.following())
+        assertFalse(button.isVisible)
+        val second = buildString {
+            repeat(160) { i -> append("tail line $i\n\n") }
+        }
+
+        repeat(160) { i ->
+            emit(ChatEventDto.PartDelta("ses_test", id, pid, "text", "tail line $i\n\n"), flush = false)
+        }
+        emit(ChatEventDto.PartUpdated("ses_test", part(pid, id, "text", "start\n\n${first}snapshot\n\n${second}snapshot tail\n\n")), flush = false)
+        forceFlush()
+        settleShort(100)
+        drainScroll()
+
+        assertBottom(bar)
+        assertTrue(ui.scroll.following())
         assertFalse(button.isVisible)
     }
 
