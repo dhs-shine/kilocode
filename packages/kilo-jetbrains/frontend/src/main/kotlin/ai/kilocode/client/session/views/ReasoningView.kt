@@ -96,7 +96,6 @@ class ReasoningView(
         if (content !is Reasoning) return
         var changed = false
         val next = content.content.toString()
-        val finished = !done && content.done
         val follow = tailVisible()
         if (done != content.done) {
             done = content.done
@@ -110,7 +109,6 @@ class ReasoningView(
             }
             changed = true
         }
-        if (finished) changed = collapse() || changed
         changed = sync() || changed
         if (changed) refresh()
     }

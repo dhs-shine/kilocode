@@ -57,15 +57,15 @@ class ReasoningViewTest : BasePlatformTestCase() {
         assertEquals("one\ntwo\nthree\nfour", view.markdown())
     }
 
-    fun `test live reasoning collapses when marked done`() {
+    fun `test live reasoning stays expanded when marked done`() {
         val view = ReasoningView(reasoning("p1", done = false, text = "one\ntwo\nthree\nfour"))
 
         assertTrue(view.isExpanded())
 
         view.update(reasoning("p1", done = true, text = "one\ntwo\nthree\nfour"))
 
-        assertFalse(view.isExpanded())
-        assertFalse(view.bodyVisible())
+        assertTrue(view.isExpanded())
+        assertTrue(view.bodyVisible())
         assertTrue(view.bodyCreated())
     }
 
