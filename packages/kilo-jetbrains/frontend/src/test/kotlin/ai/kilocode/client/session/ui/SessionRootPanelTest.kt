@@ -115,7 +115,8 @@ class SessionRootPanelTest : BasePlatformTestCase() {
         assertEquals(JBFont.h0(), labels[0].font)
         assertEquals("to add them to the prompt", labels[1].text)
         assertEquals(JBFont.h2(), labels[1].font)
-        assertSame(AllIcons.Actions.Download, labels[2].icon)
+        assertEquals(AllIcons.Actions.Download.iconWidth * 3, labels[2].icon.iconWidth)
+        assertEquals(AllIcons.Actions.Download.iconHeight * 3, labels[2].icon.iconHeight)
     }
 
     fun `test drop overlay is registered in overlay layer not blocker`() {

@@ -9,6 +9,7 @@ import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
 import com.intellij.icons.AllIcons
 import com.intellij.ui.components.JBLabel
+import com.intellij.util.IconUtil
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
@@ -38,10 +39,11 @@ class SessionDropOverlay : BorderLayoutPanel() {
             font = JBFont.h2()
             foreground = UIUtil.getLabelForeground()
         }
-        val icon = JBLabel(AllIcons.Actions.Download)
+        val icon = JBLabel(IconUtil.scale(AllIcons.Actions.Download, null, 3f))
         val labels = Stack.vertical(JBUI.scale(SessionUiStyle.View.DropOverlay.LABEL_GAP))
             .next(primary.align(HAlign.CENTER, VAlign.CENTER))
             .next(secondary.align(HAlign.CENTER, VAlign.CENTER))
+            .gap(JBUI.scale(SessionUiStyle.View.DropOverlay.ICON_GAP))
             .next(icon.align(HAlign.CENTER, VAlign.CENTER))
         card.apply {
             isVisible = false

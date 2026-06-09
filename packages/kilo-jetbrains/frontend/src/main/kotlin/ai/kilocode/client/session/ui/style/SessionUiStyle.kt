@@ -85,6 +85,7 @@ object SessionUiStyle {
             const val CARD_HORIZONTAL_PADDING = 20
             const val CARD_ARC = 12
             const val LABEL_GAP = 2
+            const val ICON_GAP = 10
             private const val SCRIM_ALPHA = 210
 
             fun scrim(): Color = JBColor.lazy {
