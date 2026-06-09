@@ -19,6 +19,7 @@ import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.session.ui.account.SessionAccountOverlay
+import ai.kilocode.client.session.ui.SessionDropOverlay
 import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.SessionMessageListPanel
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
@@ -68,6 +69,7 @@ import java.awt.BorderLayout
 import java.awt.event.HierarchyEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.Timer
 import javax.swing.UIManager
 
 /**
@@ -91,6 +93,7 @@ class SessionUi(
 
     companion object {
         private val LOG = KiloLog.create(SessionUi::class.java)
+        private const val HIDE_MS = 120
     }
 
     private val project = project
@@ -127,6 +130,13 @@ class SessionUi(
 
     private lateinit var root: SessionRootPanel
     private lateinit var account: SessionAccountOverlay
+    private lateinit var drop: SessionDropOverlay
+    private val hide = Timer(HIDE_MS) {
+        if (disposed || !this::drop.isInitialized) return@Timer
+        drop.setActive(false)
+    }.apply {
+        isRepeats = false
+    }
 
     private lateinit var sessionContent: JPanel
 
@@ -301,6 +311,16 @@ class SessionUi(
             onAbort = { controller.abort() },
         )
 
+        drop = SessionDropOverlay()
+        root.addOverlay(drop) { pane, _ ->
+            java.awt.Rectangle(0, 0, pane.width, pane.height)
+        }
+        root.overlay.setComponentZOrder(drop, 0)
+        prompt.onFileDrag = ::syncDrop
+        prompt.installFileDrop(root, "session-root")
+        // The visual overlay returns contains(false) so normal UI remains clickable.
+        // Registering it as a native DnD target makes IntelliJ resolve a null over-component.
+
         sessionContent.add(header, BorderLayout.NORTH)
         sessionContent.add(scroll.component, BorderLayout.CENTER)
         root.content.add(sessionContent, BorderLayout.CENTER)
@@ -425,6 +445,17 @@ class SessionUi(
                 is SessionModelEvent.Cleared -> Unit
             }
         }
+    }
+
+    @RequiresEdt
+    private fun syncDrop(value: Boolean) {
+        if (disposed) return
+        if (value) {
+            hide.stop()
+            drop.setActive(true)
+            return
+        }
+        hide.restart()
     }
 
     private fun bindMigration() {
@@ -595,6 +626,7 @@ class SessionUi(
 
     override fun dispose() {
         disposed = true
+        hide.stop()
         modalFocus = null
         empty = null
         if (this::root.isInitialized) root.setModalContent(null)

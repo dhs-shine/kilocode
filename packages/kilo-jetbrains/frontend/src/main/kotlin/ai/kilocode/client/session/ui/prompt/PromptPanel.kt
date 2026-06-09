@@ -89,6 +89,7 @@ class PromptPanel(
     var onReset: () -> Unit = {}
     var onChange: () -> Unit = {}
     var onAutoApproveToggle: (Boolean) -> Unit = {}
+    var onFileDrag: (Boolean) -> Unit = {}
     private var style = SessionEditorStyle.current()
     private val shell = PromptShell()
     private val attachments = mutableListOf<PromptAttachment>()
@@ -115,8 +116,8 @@ class PromptPanel(
             ed.settings.isAdditionalPageAtBottom = false
             ed.scrollPane.horizontalScrollBarPolicy =
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-            installDnD(ed.contentComponent, "editor")
-            installDnD(ed.scrollPane, "scroll")
+            installFileDrop(ed.contentComponent, "editor")
+            installFileDrop(ed.scrollPane, "scroll")
             ed.contentComponent.addFocusListener(object : FocusAdapter() {
                 override fun focusGained(e: FocusEvent) {
                     shell.repaint()
@@ -207,7 +208,7 @@ class PromptPanel(
         bar.add(button)
         shell.add(bar, BorderLayout.SOUTH)
         add(shell, BorderLayout.CENTER)
-        installDnD(shell, "shell")
+        installFileDrop(shell, "shell")
         syncTooltip()
         syncAutoApprove()
     }
@@ -350,24 +351,30 @@ class PromptPanel(
         }
     )
 
-    private fun installDnD(target: JComponent, area: String) {
+    internal fun installFileDrop(target: JComponent, area: String) {
         LOG.debug { "kind=prompt-dnd install area=$area component=${target.javaClass.name}" }
         DnDSupport.createBuilder(target)
             .enableAsNativeTarget()
             .setTargetChecker { event ->
                 if (!FileCopyPasteUtil.isFileListFlavorAvailable(event)) {
+                    onFileDrag(false)
                     LOG.debug { "kind=prompt-dnd check area=$area accept=false flavor=false" }
                     return@setTargetChecker true
                 }
                 event.setDropPossible(true)
+                onFileDrag(true)
                 LOG.debug { "kind=prompt-dnd check area=$area accept=true flavor=true" }
                 false
+            }
+            .setCleanUpOnLeaveCallback {
+                onFileDrag(false)
             }
             .setDropHandlerWithResult { event ->
                 val start = System.nanoTime()
                 val files = dropFiles(event)
                 val ms = elapsedMs(start)
                 LOG.debug { "kind=prompt-dnd drop area=$area files=${files.size} extractMs=$ms queued=${files.isNotEmpty()}" }
+                onFileDrag(false)
                 if (files.isEmpty()) return@setDropHandlerWithResult false
                 processDrop(files, area, ms)
                 true
