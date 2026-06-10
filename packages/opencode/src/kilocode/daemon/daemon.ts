@@ -9,7 +9,7 @@ import { Flock } from "@opencode-ai/core/util/flock"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
 import { Filesystem } from "@/util/filesystem"
 import { Process } from "@/util/process"
-import { serverUrls } from "@/cli/server-urls"
+import { serverUrls } from "@/kilocode/cli/server-urls"
 
 export namespace Daemon {
   const username = "kilo"

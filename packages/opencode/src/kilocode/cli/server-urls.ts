@@ -1,3 +1,4 @@
+// kilocode_change - new file
 import { networkInterfaces } from "os"
 
 export function getNetworkIPs() {
@@ -9,7 +10,6 @@ export function getNetworkIPs() {
     if (!net) continue
     for (const netInfo of net) {
       if (netInfo.internal || netInfo.family !== "IPv4") continue
-      if (netInfo.address.startsWith("172.")) continue
       results.push(netInfo.address)
     }
   }

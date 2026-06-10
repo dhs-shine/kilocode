@@ -1,7 +1,7 @@
 import type { Argv } from "yargs"
 import { cmd } from "@/cli/cmd/cmd"
 import { explicitNetworkOptions, withNetworkOptions, resolveNetworkOptions } from "@/cli/network"
-import { serverUrls } from "@/cli/server-urls"
+import { serverUrls } from "@/kilocode/cli/server-urls"
 import { AppRuntime } from "@/effect/app-runtime"
 import { Daemon } from "@/kilocode/daemon/daemon"
 import { warnPort } from "@/kilocode/cli/port-warning"

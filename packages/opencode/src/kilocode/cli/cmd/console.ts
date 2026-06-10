@@ -1,7 +1,7 @@
 import open from "open"
 import { cmd } from "@/cli/cmd/cmd"
 import { explicitNetworkOptions, withNetworkOptions, resolveNetworkOptions } from "@/cli/network"
-import { serverUrls } from "@/cli/server-urls"
+import { serverUrls } from "@/kilocode/cli/server-urls"
 import { AppRuntime } from "@/effect/app-runtime"
 import { Daemon } from "@/kilocode/daemon/daemon"
 import { warnPort } from "@/kilocode/cli/port-warning"
@@ -49,7 +49,7 @@ export const KiloConsoleCommand = cmd({
     const state = daemon.result.state
     if (!state) throw new Error("Kilo daemon did not provide connection state")
 
-    const urls = serverUrls(state.hostname, state.port)
+    const urls = state.urls ?? serverUrls(state.hostname, state.port)
     const consoleLocal = `${urls.local}/console`
     const consoleNetwork = urls.network ? `${urls.network}/console` : undefined
 

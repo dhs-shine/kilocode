@@ -1,6 +1,5 @@
 import { Effect } from "effect"
 import { Server } from "../../server/server"
-import { serverUrls } from "../server-urls"
 import { UI } from "../ui"
 import { effectCmd } from "../effect-cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
@@ -25,7 +24,8 @@ export const WebCommand = effectCmd({
     UI.println(UI.logo("  "))
     UI.empty()
 
-    const urls = serverUrls(server.hostname, server.port)
+    // kilocode_change start
+    const urls = server.urls
 
     UI.println(UI.Style.TEXT_INFO_BOLD + "  Local:   ", UI.Style.TEXT_NORMAL, urls.local)
     if (urls.network) {
@@ -41,6 +41,7 @@ export const WebCommand = effectCmd({
     }
 
     open(urls.local).catch(() => {})
+    // kilocode_change end
 
     // kilocode_change start - graceful signal shutdown
     yield* Effect.promise(
