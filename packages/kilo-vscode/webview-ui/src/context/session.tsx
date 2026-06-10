@@ -71,6 +71,7 @@ import { state as todoState } from "./todo-revert"
 import { getVariant, sessionVariantKeys, transferVariants, variantKey } from "./session-variant-store"
 import { KILO_AUTO, parseModelString } from "../../../src/shared/provider-model"
 import { visibleMessages as filterVisibleMessages } from "./session-queue"
+import { removeQuestion, restoreQuestion } from "./question-queue"
 
 const RECENT_LIMIT = 5
 const MESSAGE_PAGE_LIMIT = 80
@@ -342,6 +343,7 @@ export const SessionProvider: ParentComponent = (props) => {
 
   // Pending questions
   const [questions, setQuestions] = createSignal<QuestionRequest[]>([])
+  const respondingQuestions = new Map<string, QuestionRequest>()
 
   // Tracks question IDs that failed so the UI can reset sending state
   const [questionErrors, setQuestionErrors] = createSignal<Set<string>>(new Set())
@@ -943,6 +945,7 @@ export const SessionProvider: ParentComponent = (props) => {
       case "clearPendingPrompts":
         setPermissions([])
         setQuestions([])
+        respondingQuestions.clear()
         setSuggestions([])
         setRespondingPermissions(new Set<string>())
         setSuggestionErrors(new Set<string>())
@@ -1454,6 +1457,7 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   function handleQuestionRequest(question: QuestionRequest) {
+    if (respondingQuestions.has(question.id)) return
     setQuestions((prev) => {
       const idx = prev.findIndex((q) => q.id === question.id)
       if (idx === -1) return [...prev, question]
@@ -1464,6 +1468,7 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   function handleQuestionResolved(requestID: string) {
+    respondingQuestions.delete(requestID)
     setQuestions((prev) => prev.filter((q) => q.id !== requestID))
     setQuestionErrors((prev) => {
       const next = new Set(prev)
@@ -1473,6 +1478,9 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   function handleQuestionError(requestID: string) {
+    const question = respondingQuestions.get(requestID)
+    respondingQuestions.delete(requestID)
+    setQuestions((prev) => restoreQuestion(prev, question))
     setQuestionErrors((prev) => new Set(prev).add(requestID))
   }
 
@@ -2165,8 +2173,10 @@ export const SessionProvider: ParentComponent = (props) => {
 
   function replyToQuestion(requestID: string, answers: string[][]) {
     clearQuestionError(requestID)
-    const question = questions().find((item) => item.id === requestID)
-    const sessionID = question?.sessionID ?? currentSessionID() ?? ""
+    const next = removeQuestion(questions(), requestID)
+    const sessionID = next.question?.sessionID ?? currentSessionID() ?? ""
+    if (next.question) respondingQuestions.set(requestID, next.question)
+    setQuestions(next.questions)
     vscode.postMessage({
       type: "questionReply",
       requestID,
@@ -2177,8 +2187,10 @@ export const SessionProvider: ParentComponent = (props) => {
 
   function rejectQuestion(requestID: string) {
     clearQuestionError(requestID)
-    const question = questions().find((item) => item.id === requestID)
-    const sessionID = question?.sessionID ?? currentSessionID() ?? ""
+    const next = removeQuestion(questions(), requestID)
+    const sessionID = next.question?.sessionID ?? currentSessionID() ?? ""
+    if (next.question) respondingQuestions.set(requestID, next.question)
+    setQuestions(next.questions)
     vscode.postMessage({
       type: "questionReject",
       requestID,
