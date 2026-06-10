@@ -1,5 +1,4 @@
-import { Effect, Stream } from "effect"
-import { ChildProcess } from "effect/unstable/process"
+import { Effect } from "effect"
 import path from "path"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import * as Log from "@opencode-ai/core/util/log"
@@ -15,7 +14,7 @@ export namespace KiloSnapshotSeed {
 
   type Git = (
     cmd: string[],
-    opts?: { cwd?: string; env?: Record<string, string>; stdin?: ChildProcess.CommandInput },
+    opts?: { cwd?: string; env?: Record<string, string>; stdin?: string },
   ) => Effect.Effect<Result>
 
   export interface Input {
@@ -35,7 +34,7 @@ export namespace KiloSnapshotSeed {
   }
 
   const list = (text: string) => text.split("\0").filter(Boolean)
-  const feed = (items: string[]) => Stream.make(new TextEncoder().encode(items.join("\0") + "\0"))
+  const feed = (items: string[]) => items.join("\0") + "\0"
   const snap = (input: Input, cmd: string[]) => ["--git-dir", input.gitdir, "--work-tree", input.worktree, ...cmd]
   // Match the existing snapshot add() stat fanout so seeding has the same filesystem pressure.
   const concurrency = 8

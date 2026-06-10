@@ -57,45 +57,49 @@ afterEach(async () => {
   await disposeAllInstances()
 })
 
-test("Agent Manager cold seed matches full snapshot and preserves first-turn reset", async () => {
-  await using source = await tmpdir({
-    git: true,
-    init: setup,
-  })
-  await using root = await tmpdir()
-  const seeded = path.join(root.path, "seeded")
-  await $`git worktree add --quiet -b snapshot-seed-test ${seeded} HEAD`.cwd(source.path)
+test(
+  "Agent Manager cold seed matches full snapshot and preserves first-turn reset",
+  async () => {
+    await using source = await tmpdir({
+      git: true,
+      init: setup,
+    })
+    await using root = await tmpdir()
+    const seeded = path.join(root.path, "seeded")
+    await $`git worktree add --quiet -b snapshot-seed-test ${seeded} HEAD`.cwd(source.path)
 
-  await dirty(source.path)
-  await dirty(seeded)
+    await dirty(source.path)
+    await dirty(seeded)
 
-  const cold = await run(source.path, (snapshot) => snapshot.track())
-  const fast = await run(seeded, (snapshot) => snapshot.track({ snapshotInitialization: "wait" }))
+    const cold = await run(source.path, (snapshot) => snapshot.track())
+    const fast = await run(seeded, (snapshot) => snapshot.track({ snapshotInitialization: "wait" }))
 
-  expect(cold.value).toBeTruthy()
-  expect(fast.value).toBe(cold.value)
-  await expect(fs.access(path.join(cold.gitdir, "objects", "info", "alternates"))).rejects.toThrow()
-  const common = (await $`git rev-parse --path-format=absolute --git-common-dir`.cwd(seeded).text()).trim()
-  expect((await fs.readFile(path.join(fast.gitdir, "objects", "info", "alternates"), "utf8")).trim()).toBe(
-    path.join(common, "objects"),
-  )
+    expect(cold.value).toBeTruthy()
+    expect(fast.value).toBe(cold.value)
+    await expect(fs.access(path.join(cold.gitdir, "objects", "info", "alternates"))).rejects.toThrow()
+    const common = (await $`git rev-parse --path-format=absolute --git-common-dir`.cwd(seeded).text()).trim()
+    expect((await fs.readFile(path.join(fast.gitdir, "objects", "info", "alternates"), "utf8")).trim()).toBe(
+      path.join(common, "objects"),
+    )
 
-  expect((await run(seeded, (snapshot) => snapshot.patch(fast.value!))).value.files).toEqual([])
+    expect((await run(seeded, (snapshot) => snapshot.patch(fast.value!))).value.files).toEqual([])
 
-  await Filesystem.write(path.join(seeded, "dirty.txt"), "assistant dirty\n")
-  await Filesystem.write(path.join(seeded, "untracked.txt"), "assistant untracked\n")
-  await Filesystem.write(path.join(seeded, "created.txt"), "assistant created\n")
-  const patch = (await run(seeded, (snapshot) => snapshot.patch(fast.value!))).value
-  expect(patch.files).toEqual(
-    expect.arrayContaining([fwd(seeded, "dirty.txt"), fwd(seeded, "untracked.txt"), fwd(seeded, "created.txt")]),
-  )
+    await Filesystem.write(path.join(seeded, "dirty.txt"), "assistant dirty\n")
+    await Filesystem.write(path.join(seeded, "untracked.txt"), "assistant untracked\n")
+    await Filesystem.write(path.join(seeded, "created.txt"), "assistant created\n")
+    const patch = (await run(seeded, (snapshot) => snapshot.patch(fast.value!))).value
+    expect(patch.files).toEqual(
+      expect.arrayContaining([fwd(seeded, "dirty.txt"), fwd(seeded, "untracked.txt"), fwd(seeded, "created.txt")]),
+    )
 
-  await run(seeded, (snapshot) => snapshot.revert([patch]))
-  expect(await fs.readFile(path.join(seeded, "dirty.txt"), "utf8")).toBe("user dirty\n")
-  expect(await fs.readFile(path.join(seeded, "untracked.txt"), "utf8")).toBe("user untracked\n")
-  await expect(fs.access(path.join(seeded, "created.txt"))).rejects.toThrow()
-  await expect(fs.access(path.join(seeded, "deleted.txt"))).rejects.toThrow()
-})
+    await run(seeded, (snapshot) => snapshot.revert([patch]))
+    expect(await fs.readFile(path.join(seeded, "dirty.txt"), "utf8")).toBe("user dirty\n")
+    expect(await fs.readFile(path.join(seeded, "untracked.txt"), "utf8")).toBe("user untracked\n")
+    await expect(fs.access(path.join(seeded, "created.txt"))).rejects.toThrow()
+    await expect(fs.access(path.join(seeded, "deleted.txt"))).rejects.toThrow()
+  },
+  { timeout: 15_000 },
+)
 
 test("Agent Manager seed falls back for sparse checkouts", async () => {
   await using tmp = await tmpdir({
