@@ -110,16 +110,20 @@ export const layer = Layer.effect(
         },
         hints: hints(PROMPT_INITIALIZE),
       }
+      // kilocode_change start - redirect deprecated /review to /local-review-uncommitted
+      const uncommittedReview = localReviewUncommittedCommand()
       commands[Default.REVIEW] = {
         name: Default.REVIEW,
-        description: "review changes [commit|branch|pr], defaults to uncommitted",
+        description: "DEPRECATED: use /local-review-uncommitted instead",
         source: "command",
         get template() {
-          return PROMPT_REVIEW.replace("${path}", ctx.worktree)
+          return `⚠️ DEPRECATION NOTICE: The /review command is deprecated. Please use /local-review-uncommitted for uncommitted changes or /local-review for branch reviews.
+
+${uncommittedReview.template}`
         },
-        subtask: true,
-        hints: hints(PROMPT_REVIEW),
+        hints: uncommittedReview.hints,
       }
+      // kilocode_change end
 
       // kilocode_change start
       commands[Default.LOCAL_REVIEW] = localReviewCommand()
