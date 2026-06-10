@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from "bun:test"
-import { initialOpen } from "@kilocode/kilo-ui/basic-tool"
-import { resetToolOpenState, toolOpenKey, writeToolOpen } from "../../../kilo-ui/src/components/tool-open-state"
+import {
+  readToolOpen,
+  resetToolOpenState,
+  toolOpenKey,
+  writeToolOpen,
+} from "../../../kilo-ui/src/components/tool-open-state"
 import { taskResult, taskRunning, taskVisible } from "../../webview-ui/src/components/chat/task-tool-state"
 
 describe("completed task hydration", () => {
@@ -10,7 +14,7 @@ describe("completed task hydration", () => {
     expect(taskRunning("pending")).toBe(true)
     expect(taskRunning("running")).toBe(true)
     expect(taskRunning("completed")).toBe(false)
-    expect(initialOpen({ tool: "task", partID: "part-new", defaultOpen: taskRunning("completed") })).toBe(false)
+    expect(readToolOpen(toolOpenKey({ tool: "task", partID: "part-new" }), taskRunning("completed"))).toBe(false)
   })
 
   it("keeps expansion state isolated by copied part ID", () => {
@@ -18,8 +22,8 @@ describe("completed task hydration", () => {
     const fork = { tool: "task", partID: "part-fork", defaultOpen: false }
     writeToolOpen(toolOpenKey(source), true)
 
-    expect(initialOpen(source)).toBe(true)
-    expect(initialOpen(fork)).toBe(false)
+    expect(readToolOpen(toolOpenKey(source), source.defaultOpen)).toBe(true)
+    expect(readToolOpen(toolOpenKey(fork), fork.defaultOpen)).toBe(false)
   })
 
   it("hydrates and streams a child only while expanded", () => {
