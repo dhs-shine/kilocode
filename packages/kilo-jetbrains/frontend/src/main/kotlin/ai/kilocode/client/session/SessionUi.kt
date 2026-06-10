@@ -318,6 +318,8 @@ class SessionUi(
             ::openUrl,
             selection,
             ::openAttachment,
+            repo = workspace.directory,
+            resize = { anchor, fn -> scroll.preserve(anchor, fn) },
         )
         header = SessionHeaderPanel(controller, this)
 

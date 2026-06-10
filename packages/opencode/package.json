@@ -1,26 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "7.3.40",
+  "version": "7.3.42",
   "name": "@kilocode/cli",
   "type": "module",
   "license": "MIT",
-  "keywords": [
-    "cli",
-    "tui",
-    "terminal",
-    "ai",
-    "agent",
-    "assistant",
-    "coding-agent",
-    "kilo-code",
-    "kilo",
-    "opencode",
-    "ink",
-    "react",
-    "copilot",
-    "autocomplete",
-    "developer-tools"
-  ],
   "private": false,
   "scripts": {
     "typecheck": "tsgo --noEmit",
@@ -50,11 +33,6 @@
       "bun": "./src/pty/pty.bun.ts",
       "node": "./src/pty/pty.node.ts",
       "default": "./src/pty/pty.bun.ts"
-    },
-    "#httpapi-server": {
-      "bun": "./src/server/httpapi-server.node.ts",
-      "node": "./src/server/httpapi-server.node.ts",
-      "default": "./src/server/httpapi-server.node.ts"
     }
   },
   "devDependencies": {
@@ -142,6 +120,7 @@
     "@octokit/rest": "catalog:",
     "@openauthjs/openauth": "catalog:",
     "@opencode-ai/script": "workspace:*",
+    "@opencode-ai/ui": "workspace:*",
     "@openrouter/ai-sdk-provider": "2.8.1",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/context-async-hooks": "2.6.1",
@@ -155,6 +134,7 @@
     "@pierre/diffs": "catalog:",
     "@secretlint/core": "10.2.2",
     "@secretlint/secretlint-rule-preset-recommend": "10.2.2",
+    "@silvia-odwyer/photon-node": "0.3.4",
     "@solid-primitives/event-bus": "1.1.2",
     "@solid-primitives/scheduled": "1.5.2",
     "@standard-schema/spec": "1.0.0",
@@ -179,6 +159,7 @@
     "gray-matter": "4.0.3",
     "hono": "catalog:",
     "hono-openapi": "catalog:",
+    "htmlparser2": "8.0.2",
     "iconv-lite": "0.7.2",
     "ignore": "7.0.5",
     "immer": "11.1.4",
@@ -217,5 +198,22 @@
   "overrides": {
     "drizzle-orm": "catalog:"
   },
-  "peerDependencies": {}
+  "peerDependencies": {},
+  "keywords": [
+    "cli",
+    "tui",
+    "terminal",
+    "ai",
+    "agent",
+    "assistant",
+    "coding-agent",
+    "kilo-code",
+    "kilo",
+    "opencode",
+    "ink",
+    "react",
+    "copilot",
+    "autocomplete",
+    "developer-tools"
+  ]
 }
