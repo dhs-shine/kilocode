@@ -498,10 +498,10 @@ internal class MdViewHybrid(
         val value = text.trimEnd('\n')
         val field = runCatching {
             CodeField(file, opts, text).also { ed ->
-                ed.setDisposedWith(disposable)
                 Disposer.register(disposable) {
                     ed.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
                 }
+                ed.setDisposedWith(disposable)
                 selection?.register(ed, disposable)
             }
         }.getOrElse { err ->

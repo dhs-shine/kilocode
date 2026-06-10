@@ -209,10 +209,10 @@ class ToolBody private constructor(
             val disposable = Disposer.newDisposable("Tool body")
             val body = runCatching {
                 val field = ToolField(preview(tool), SessionEditorStyle.current()).also { ed ->
-                    ed.setDisposedWith(disposable)
                     Disposer.register(disposable) {
                         ed.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
                     }
+                    ed.setDisposedWith(disposable)
                 }
                 ToolBody(null, field, pane(field, true), disposable)
             }.getOrElse { err ->
