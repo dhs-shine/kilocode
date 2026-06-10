@@ -177,7 +177,7 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
     close()
   }
 
-  const edit = () => {
+  const selectCustom = () => {
     if (store.sending) return
     if (!multi()) {
       const answer = store.answers[store.tab]?.[0]
@@ -199,7 +199,7 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
     if (store.sending) return
 
     if (optIndex === options().length) {
-      edit()
+      selectCustom()
       return
     }
 
@@ -448,7 +448,7 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
                       placeholder={language.t("ui.question.custom.placeholder")}
                       value={input()}
                       disabled={store.sending}
-                      onFocus={edit}
+                      onFocus={selectCustom}
                       onInput={(e) => {
                         const inputs = [...store.custom]
                         inputs[store.tab] = e.currentTarget.value
