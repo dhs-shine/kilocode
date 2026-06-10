@@ -12,6 +12,7 @@ import * as Log from "@opencode-ai/core/util/log"
 import { Flag } from "@opencode-ai/core/flag/flag" // kilocode_change
 import { DiffFull } from "../kilocode/snapshot/diff-full" // kilocode_change
 import { KiloSnapshotTrack } from "../kilocode/snapshot/track" // kilocode_change
+import { KiloSnapshotSeed } from "../kilocode/snapshot/seed" // kilocode_change
 import type { MessageID, SessionID } from "../session/schema" // kilocode_change
 import { withStatics } from "@opencode-ai/core/schema" // kilocode_change
 import { zod } from "@opencode-ai/core/effect-zod" // kilocode_change
@@ -300,7 +301,7 @@ export const layer: Layer.Layer<Service, never, AppFileSystem.Service | AppProce
             )
           })
 
-          const track = Effect.fnUntraced(function* () {
+          const track = Effect.fnUntraced(function* (opts?: Parameters<Interface["track"]>[0]) { // kilocode_change
             return yield* locked(
               Effect.gen(function* () {
                 if (!(yield* enabled())) return
@@ -314,6 +315,18 @@ export const layer: Layer.Layer<Service, never, AppFileSystem.Service | AppProce
                   yield* git(["--git-dir", state.gitdir, "config", "core.longpaths", "true"])
                   yield* git(["--git-dir", state.gitdir, "config", "core.symlinks", "true"])
                   yield* git(["--git-dir", state.gitdir, "config", "core.fsmonitor", "false"])
+                  // kilocode_change start - seed new Agent Manager snapshots from the worktree index
+                  if (opts?.snapshotInitialization === "wait") {
+                    yield* KiloSnapshotSeed.seed({
+                      dir: state.directory,
+                      worktree: state.worktree,
+                      gitdir: state.gitdir,
+                      limit,
+                      git,
+                      fs,
+                    })
+                  }
+                  // kilocode_change end
                   log.info("initialized")
                 }
                 yield* add()
@@ -786,7 +799,7 @@ export const layer: Layer.Layer<Service, never, AppFileSystem.Service | AppProce
         // kilocode_change start - guard slow snapshots and surface progress to the active session
         track: Effect.fn("Snapshot.track")(function* (opts) {
           return yield* KiloSnapshotTrack.wrap({
-            inner: InstanceState.useEffect(state, (s) => s.track()),
+            inner: InstanceState.useEffect(state, (s) => s.track(opts)),
             state: trackState,
             snapshotInitialization: opts?.snapshotInitialization,
             sessionID: opts?.sessionID,
