@@ -26,6 +26,8 @@ import {
 } from "./services/telemetry"
 import {
   sessionToWebview,
+  applySessionPatch,
+  sessionPatchToWebview,
   indexProvidersById,
   filterVisibleAgents,
   buildSettingPath,
@@ -2988,7 +2990,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       case "session.updated":
         return {
           type: "sessionUpdated" as const,
-          session: { ...event.properties.info, id: event.properties.sessionID },
+          session:
+            this.currentSession?.id === event.properties.sessionID
+              ? this.sessionToWebview(this.currentSession)
+              : sessionPatchToWebview(event.properties.sessionID, event.properties.info),
         }
       case "session.deleted":
         return null
@@ -3107,36 +3112,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.trackedSessionIds.add(event.properties.info.id)
     }
     if (event.type === "session.updated" && this.currentSession?.id === event.properties.sessionID) {
-      const info = event.properties.info
-      const session: Session = {
-        ...this.currentSession,
-        ...(info.slug != null && { slug: info.slug }),
-        ...(info.projectID != null && { projectID: info.projectID }),
-        ...(info.workspaceID != null && { workspaceID: info.workspaceID }),
-        ...(info.directory != null && { directory: info.directory }),
-        ...(info.path != null && { path: info.path }),
-        ...(info.parentID != null && { parentID: info.parentID }),
-        ...(info.summary != null && { summary: info.summary }),
-        ...(info.cost != null && { cost: info.cost }),
-        ...(info.tokens != null && { tokens: info.tokens }),
-        ...(info.share != null && info.share.url != null && { share: { url: info.share.url } }),
-        ...(info.title != null && { title: info.title }),
-        ...(info.agent != null && { agent: info.agent }),
-        ...(info.model != null && { model: info.model }),
-        ...(info.version != null && { version: info.version }),
-        ...(info.time != null && {
-          time: {
-            ...this.currentSession.time,
-            ...(info.time.created != null && { created: info.time.created }),
-            ...(info.time.updated != null && { updated: info.time.updated }),
-            ...(info.time.compacting != null && { compacting: info.time.compacting }),
-            ...(info.time.archived != null && { archived: info.time.archived }),
-          },
-        }),
-        ...(info.permission != null && { permission: info.permission }),
-        ...(info.revert != null && { revert: info.revert }),
-      }
-      this.setCurrentSession(session)
+      this.setCurrentSession(applySessionPatch(this.currentSession, event.properties.info))
       this.contextSessionID = event.properties.sessionID
     }
 
