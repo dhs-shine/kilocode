@@ -54,9 +54,7 @@ export const TranscriptRowView: Component<TranscriptRowViewProps> = (props) => {
               interrupted={row().interrupted}
               queued={row().queued}
               onFork={
-                props.onForkMessage
-                  ? () => props.onForkMessage?.(row().message.sessionID, row().message.id)
-                  : undefined
+                props.onForkMessage ? () => props.onForkMessage?.(row().message.sessionID, row().message.id) : undefined
               }
               onRevert={
                 row().answered
@@ -109,7 +107,8 @@ export const TranscriptRowView: Component<TranscriptRowViewProps> = (props) => {
               >
                 <span data-slot="session-turn-diffs-label">{i18n.t("ui.sessionReview.change.modified")}</span>
                 <span data-slot="session-turn-diffs-count">
-                  {row().diffs.length} {i18n.t(row().diffs.length === 1 ? "ui.common.file.one" : "ui.common.file.other")}
+                  {row().diffs.length}{" "}
+                  {i18n.t(row().diffs.length === 1 ? "ui.common.file.one" : "ui.common.file.other")}
                 </span>
                 <span data-slot="session-turn-diffs-meta">
                   <DiffChanges changes={row().diffs as SnapshotFileDiff[]} variant="bars" />

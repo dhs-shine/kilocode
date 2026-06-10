@@ -70,10 +70,7 @@ function equal(a: TranscriptRow, b: TranscriptRow) {
   if (a.type !== b.type || !meta(a, b)) return false
   if (a.type === "user" && b.type === "user") {
     return (
-      a.message === b.message &&
-      same(a.parts, b.parts) &&
-      a.interrupted === b.interrupted &&
-      a.answered === b.answered
+      a.message === b.message && same(a.parts, b.parts) && a.interrupted === b.interrupted && a.answered === b.answered
     )
   }
   if (a.type === "assistant" && b.type === "assistant") {

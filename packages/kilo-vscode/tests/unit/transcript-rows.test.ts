@@ -118,10 +118,7 @@ describe("transcriptRows", () => {
     const a2 = assistant("a2", "u1")
     const synthetic: Part = { ...part("p2", "a2"), synthetic: true }
     const blank: Part = { ...part("p3", "a2"), text: " " }
-    const rows = transcriptRows(
-      messageTurns([u1, a1, a2]),
-      lookup({ a1: [part("p1", "a1")], a2: [synthetic, blank] }),
-    )
+    const rows = transcriptRows(messageTurns([u1, a1, a2]), lookup({ a1: [part("p1", "a1")], a2: [synthetic, blank] }))
 
     expect(rows.filter((row) => row.type === "assistant").map((row) => row.copy)).toEqual(["p1", "p1"])
   })
@@ -135,14 +132,9 @@ describe("transcriptRows", () => {
     const a2 = assistant("a2", "u1")
     const u3 = user("u3")
     const turns = messageTurns([u1, a1, u2, a2, u3], "u3")
-    const rows = transcriptRows(turns, (id) => (id === "u2" ? u2.parts ?? [] : []))
+    const rows = transcriptRows(turns, (id) => (id === "u2" ? (u2.parts ?? []) : []))
 
-    expect(rows.map((row) => `${row.turn}:${row.message.id}`)).toEqual([
-      "u1:u1",
-      "u1:a1",
-      "u2:u2",
-      "u2:a2",
-    ])
+    expect(rows.map((row) => `${row.turn}:${row.message.id}`)).toEqual(["u1:u1", "u1:a1", "u2:u2", "u2:a2"])
   })
 
   it("replaces only rows whose data or metadata changed", () => {
