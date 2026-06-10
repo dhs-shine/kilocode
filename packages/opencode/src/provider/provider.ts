@@ -1726,7 +1726,7 @@ export const layer = Layer.effect(
           : fuzzysort
               .go(providerID, Object.keys({ ...s.catalog, ...s.providers }), { limit: 3, threshold: -10000 })
               .map((m) => m.target)
-        const empty = Object.values(s.providers).every((item) => Object.keys(item.models).length === 0) // kilocode_change
+        const empty = false // kilocode_change
         return yield* new ModelNotFoundError({ providerID, modelID, suggestions, modelsEmpty: empty }) // kilocode_change
       }
 
@@ -1736,7 +1736,7 @@ export const layer = Layer.effect(
         const suggestions = current.length
           ? current
           : modelSuggestions(s.catalog[providerID], modelID, runtimeFlags.enableExperimentalModels)
-        const empty = Object.values(s.providers).every((item) => Object.keys(item.models).length === 0) // kilocode_change
+        const empty = Object.keys(provider.models).length === 0 // kilocode_change
         return yield* new ModelNotFoundError({ providerID, modelID, suggestions, modelsEmpty: empty }) // kilocode_change
       }
       return info
