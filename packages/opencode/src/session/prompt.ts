@@ -1118,10 +1118,11 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       const err = Cause.squash(exit.cause)
       if (Provider.ModelNotFoundError.isInstance(err)) {
         const hint = err.suggestions?.length ? ` Did you mean: ${err.suggestions.join(", ")}?` : ""
+        const empty = err.modelsEmpty ? " No models are currently available." : "" // kilocode_change
         yield* bus.publish(Session.Event.Error, {
           sessionID,
           error: new NamedError.Unknown({
-            message: `Model not found: ${err.providerID}/${err.modelID}.${hint}`,
+            message: `Model not found: ${err.providerID}/${err.modelID}.${hint}${empty}`, // kilocode_change
           }).toObject(),
         })
       }
