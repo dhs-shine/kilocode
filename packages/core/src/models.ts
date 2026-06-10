@@ -74,6 +74,7 @@ export const Model = Schema.Struct({
   recommendedIndex: Schema.optional(Schema.Finite),
   prompt: Schema.optional(Schema.String),
   isFree: Schema.optional(Schema.Boolean),
+  mayTrainOnYourPrompts: Schema.optional(Schema.Boolean),
   ai_sdk_provider: Schema.optional(Schema.String),
   // kilocode_change end
   experimental: Schema.optional(
