@@ -744,7 +744,7 @@ export const layer: Layer.Layer<
       })
       const msgs = yield* messages({ sessionID: input.sessionID })
       const idMap = new Map<string, MessageID>()
-      const writer = KiloSession.writer(session.id) // kilocode_change - commit copied transcript in one transaction
+      const writer = KiloSession.writer(session.id, sync) // kilocode_change - commit copied transcript in one transaction
 
       for (const msg of msgs) {
         if (input.messageID && msg.info.id >= input.messageID) break

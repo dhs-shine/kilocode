@@ -9,7 +9,7 @@ const stale = /^[ \t]*task_id:[^\r\n]*(?:(?:\r?\n){1,2}|$)/
 
 type Item = { type: "message"; info: MessageV2.Info } | { type: "part"; part: MessageV2.Part; time: number }
 
-export function writer(sessionID: SessionID) {
+export function writer(sessionID: SessionID, sync: SyncEvent.Interface) {
   const items: Item[] = []
   return {
     message<T extends MessageV2.Info>(info: T) {
@@ -25,13 +25,15 @@ export function writer(sessionID: SessionID) {
           () => {
             for (const item of items) {
               if (item.type === "message") {
-                SyncEvent.run(MessageV2.Event.Updated, { sessionID, info: item.info }, { publish: false })
+                Effect.runSync(sync.run(MessageV2.Event.Updated, { sessionID, info: item.info }, { publish: false }))
                 continue
               }
-              SyncEvent.run(
-                MessageV2.Event.PartUpdated,
-                { sessionID, part: item.part, time: item.time },
-                { publish: false },
+              Effect.runSync(
+                sync.run(
+                  MessageV2.Event.PartUpdated,
+                  { sessionID, part: item.part, time: item.time },
+                  { publish: false },
+                ),
               )
             }
           },
