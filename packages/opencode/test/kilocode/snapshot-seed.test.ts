@@ -24,6 +24,7 @@ function run<A>(dir: string, body: (snapshot: Snapshot.Interface) => Effect.Effe
 }
 
 async function setup(dir: string) {
+  await $`git config core.autocrlf false`.cwd(dir).quiet()
   await $`git config filter.snapshot-test.clean "tr a-z A-Z"`.cwd(dir).quiet()
   await $`git config filter.snapshot-test.smudge cat`.cwd(dir).quiet()
   await $`git config filter.snapshot-test.required true`.cwd(dir).quiet()
