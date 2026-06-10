@@ -11,7 +11,6 @@ import path from "node:path"
 
 const ROOT = path.resolve(import.meta.dir, "../..")
 const FILE = path.join(ROOT, "webview-ui/src/components/chat/QuestionDock.tsx")
-const ASSISTANT = path.join(ROOT, "webview-ui/src/components/chat/AssistantMessage.tsx")
 
 function readFile(filePath: string): string {
   return fs.readFileSync(filePath, "utf-8")
@@ -58,10 +57,5 @@ describe("QuestionDock explicit submit contract", () => {
 
   it("keeps the footer Submit button wired to submit()", () => {
     expect(source).toContain('<Button variant="primary" size="small" onClick={submit} disabled={store.sending}>')
-  })
-
-  it("remounts the dock when an inline tool receives a new request", () => {
-    const assistant = readFile(ASSISTANT)
-    expect(assistant).toMatch(/<Show\s+when=\{activeQuestion\(\)\}\s+keyed/)
   })
 })

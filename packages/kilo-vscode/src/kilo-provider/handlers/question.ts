@@ -71,7 +71,6 @@ export async function handleQuestionReply(
       { requestID, answers, directory: ctx.getWorkspaceDirectory(sid) },
       { throwOnError: true },
     )
-    ctx.postMessage({ type: "questionResolved", requestID })
     return true
   } catch (error) {
     console.error("[Kilo New] KiloProvider: Failed to reply to question:", error)
@@ -95,7 +94,6 @@ export async function handleQuestionReject(
 
   try {
     await ctx.client.question.reject({ requestID, directory: ctx.getWorkspaceDirectory(sid) }, { throwOnError: true })
-    ctx.postMessage({ type: "questionResolved", requestID })
     return true
   } catch (error) {
     console.error("[Kilo New] KiloProvider: Failed to reject question:", error)

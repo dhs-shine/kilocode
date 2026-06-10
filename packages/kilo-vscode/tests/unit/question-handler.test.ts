@@ -5,7 +5,6 @@ import { handleQuestionReject, handleQuestionReply } from "../../src/kilo-provid
 describe("question handlers", () => {
   it("routes replies using the question session when provided", async () => {
     const calls: Array<Record<string, unknown>> = []
-    const messages: unknown[] = []
     const client = {
       question: {
         reply: async (input: Record<string, unknown>) => {
@@ -20,9 +19,7 @@ describe("question handlers", () => {
       {
         client,
         currentSessionId: "ses-root",
-        postMessage(message) {
-          messages.push(message)
-        },
+        postMessage() {},
         getWorkspaceDirectory(sessionId) {
           return sessionId ? `/repo/${sessionId}` : "/repo"
         },
@@ -40,7 +37,6 @@ describe("question handlers", () => {
         directory: "/repo/ses-worktree",
       },
     ])
-    expect(messages).toEqual([{ type: "questionResolved", requestID: "req-1" }])
   })
 
   it("falls back to the current session when no question session is provided", async () => {
@@ -74,7 +70,6 @@ describe("question handlers", () => {
 
   it("routes rejects using the question session when provided", async () => {
     const calls: Array<Record<string, unknown>> = []
-    const messages: unknown[] = []
     const client = {
       question: {
         reply: async () => true,
@@ -89,9 +84,7 @@ describe("question handlers", () => {
       {
         client,
         currentSessionId: "ses-root",
-        postMessage(message) {
-          messages.push(message)
-        },
+        postMessage() {},
         getWorkspaceDirectory(sessionId) {
           return sessionId ? `/repo/${sessionId}` : "/repo"
         },
@@ -107,6 +100,5 @@ describe("question handlers", () => {
         directory: "/repo/ses-worktree",
       },
     ])
-    expect(messages).toEqual([{ type: "questionResolved", requestID: "req-3" }])
   })
 })

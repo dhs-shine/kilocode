@@ -1,5 +1,7 @@
 ---
 "kilo-code": patch
+"@kilocode/cli": patch
+"@kilocode/kilo-gateway": patch
 ---
 
-Dismiss answered question prompts immediately and restore them when submission fails.
+Prevent streamed tool calls from executing twice and leaving answered questions disabled in VS Code.

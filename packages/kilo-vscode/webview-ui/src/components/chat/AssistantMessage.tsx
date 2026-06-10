@@ -225,7 +225,6 @@ export const AssistantMessage: Component<AssistantMessageProps> = (props) => {
               <div data-component="tool-part-wrapper" data-part-type={part.type}>
                 <Show
                   when={activeQuestion()}
-                  keyed
                   fallback={
                     <Show
                       when={activeSuggestion()}
@@ -269,7 +268,7 @@ export const AssistantMessage: Component<AssistantMessageProps> = (props) => {
                     </Show>
                   }
                 >
-                  {(req) => <QuestionDock request={req} />}
+                  {(req) => <QuestionDock request={req()} />}
                 </Show>
               </div>
             </Show>
