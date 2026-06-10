@@ -39,6 +39,33 @@ class KiloVfsManagerTest : KiloVfsTestBase() {
         assertEquals(1, files.size)
     }
 
+    fun testOpeningSameStableParamsInDifferentOrderDoesNotDuplicate() {
+        edt {
+            project.service<KiloVfsManager>().open(KiloVfsTestKind.ID, linkedMapOf("mode" to "tab", "id" to "stable"))
+            project.service<KiloVfsManager>().open(KiloVfsTestKind.ID, linkedMapOf("id" to "stable", "mode" to "tab"))
+            UIUtil.dispatchAllInvocationEvents()
+        }
+
+        val files = FileEditorManager.getInstance(project).openFiles.filterIsInstance<KiloVirtualFile>()
+        val history = EditorHistoryManager.getInstance(project).fileList.filterIsInstance<KiloVirtualFile>()
+        assertEquals(1, files.size)
+        assertEquals(1, history.size)
+    }
+
+    fun testDistinctPathsCreateDistinctHistoryEntries() {
+        edt {
+            project.service<KiloVfsManager>().open(KiloVfsTestKind.ID, mapOf("id" to "21"))
+            project.service<KiloVfsManager>().open(KiloVfsTestKind.ID, mapOf("id" to "22"))
+            UIUtil.dispatchAllInvocationEvents()
+        }
+
+        val files = FileEditorManager.getInstance(project).openFiles.filterIsInstance<KiloVirtualFile>()
+        val history = EditorHistoryManager.getInstance(project).fileList.filterIsInstance<KiloVirtualFile>()
+        assertEquals(2, files.size)
+        assertEquals(2, history.size)
+        assertTrue(history.containsAll(files))
+    }
+
     fun testCloseDisposesKindDisposable() {
         edt {
             project.service<KiloVfsManager>().open(KiloVfsTestKind.ID, mapOf("id" to "13"))

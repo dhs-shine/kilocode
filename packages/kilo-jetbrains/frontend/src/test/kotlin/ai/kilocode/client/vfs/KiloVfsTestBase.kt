@@ -37,7 +37,7 @@ abstract class KiloVfsTestBase : BasePlatformTestCase() {
     }
 
     protected fun path(params: Map<String, String> = mapOf("id" to "1"), kind: String = KiloVfsTestKind.ID): KiloPath {
-        return KiloPath("launch", project.locationHash, kind, params)
+        return KiloPath(project.locationHash, kind, params)
     }
 
     protected fun edt(block: () -> Unit) {

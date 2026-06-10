@@ -9,8 +9,6 @@ import com.intellij.util.concurrency.annotations.RequiresEdt
 
 @Service(Service.Level.PROJECT)
 class KiloVfsManager(private val project: Project) {
-    private val launchId = System.currentTimeMillis().toString()
-
     @RequiresEdt
     fun open(kind: String, params: Map<String, String> = emptyMap(), focus: Boolean = true): Boolean {
         val file = file(kind, params) ?: return false
@@ -34,7 +32,7 @@ class KiloVfsManager(private val project: Project) {
     }
 
     private fun file(kind: String, params: Map<String, String>): KiloVirtualFile? {
-        val path = KiloPath(launchId, project.locationHash, kind, params)
+        val path = KiloPath(project.locationHash, kind, params)
         return KiloVirtualFileSystem.getInstance().refreshAndFindFileByPath(KiloVirtualFileSystem.getInstance().getPath(path)) as? KiloVirtualFile
     }
 }

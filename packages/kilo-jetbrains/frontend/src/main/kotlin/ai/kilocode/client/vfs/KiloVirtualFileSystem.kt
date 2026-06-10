@@ -12,11 +12,11 @@ import com.intellij.openapi.vfs.VirtualFilePathWrapper
 import kotlinx.serialization.json.Json
 
 class KiloVirtualFileSystem : DeprecatedVirtualFileSystem(), NonPhysicalFileSystem {
-    fun getPath(path: KiloPath): String = json.encodeToString(KiloPath.serializer(), path)
+    fun getPath(path: KiloPath): String = json.encodeToString(KiloPath.serializer(), path.canonical())
 
     fun findOrCreateFile(project: Project, path: KiloPath): VirtualFile? {
         service<KiloVfsRegistry>().get(path.kind) ?: return null
-        return KiloVirtualFile(project, path)
+        return KiloVirtualFile(project, path.canonical())
     }
 
     override fun findFileByPath(path: String): VirtualFile? {
@@ -37,7 +37,7 @@ class KiloVirtualFileSystem : DeprecatedVirtualFileSystem(), NonPhysicalFileSyst
 
     private fun decode(path: String): KiloPath? {
         return try {
-            json.decodeFromString(KiloPath.serializer(), path)
+            json.decodeFromString(KiloPath.serializer(), path).canonical()
         } catch (err: Exception) {
             log.warn("Cannot deserialize $path", err)
             null

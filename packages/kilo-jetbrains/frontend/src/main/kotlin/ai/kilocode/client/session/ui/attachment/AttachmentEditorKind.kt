@@ -32,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 
 internal object AttachmentEditorKind : KiloEditorKind {
     const val ID = "attachment"
@@ -137,7 +138,12 @@ internal class KiloAttachmentEditorService(
             .messages(session, dir)
             .firstOrNull { it.info.id == message }
             ?.parts
-            ?.firstOrNull { it.id == part && it.type == "file" }
+            ?.firstOrNull {
+                if (it.type != "file") return@firstOrNull false
+                val key = params["attachmentKey"]
+                if (key.isPresent()) attachmentKey(it.id, it.filename.orEmpty(), it.url.orEmpty()) == key
+                else it.id == part
+            }
             ?: return AttachmentData.Missing
         val data = parseDataUrl(item.url.orEmpty()) ?: return AttachmentData.Missing
         val mime = item.mime?.takeIf { it.isNotBlank() } ?: data.mime
@@ -169,6 +175,7 @@ internal fun attachmentParams(
     "sessionId" to sessionId,
     "messageId" to messageId,
     "partId" to item.id,
+    "attachmentKey" to attachmentKey(item.id, item.filename.orEmpty(), item.url),
     "filename" to filename,
     "mime" to item.mime,
     "directory" to directory,
@@ -183,3 +190,9 @@ internal sealed interface AttachmentData {
 }
 
 private fun String?.isPresent(): Boolean = !this.isNullOrBlank()
+
+private fun attachmentKey(part: String, name: String, url: String): String {
+    val value = listOf(part, name, url).joinToString("\u0000")
+    val bytes = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
+    return bytes.take(16).joinToString("") { "%02x".format(it) }
+}
