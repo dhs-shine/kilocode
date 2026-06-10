@@ -33,7 +33,6 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
     custom: [] as string[],
     kinds: [] as Record<string, "option" | "custom">[],
     editing: false,
-    active: false,
     sending: false,
     collapsed: false,
   })
@@ -58,7 +57,7 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
   const input = createMemo(() => store.custom[store.tab] ?? "")
   const multi = createMemo(() => question()?.multiple === true)
   const customPicked = createMemo(() => {
-    if (!multi() && store.active) return true
+    if (!multi() && store.editing) return true
     const value = input()
     if (!value) return false
     if (store.kinds[store.tab]?.[value] !== "custom") return false
@@ -118,10 +117,7 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
     reply(questions().map((_, i) => [...(store.answers[i] ?? [])]))
   }
 
-  const close = () => {
-    setStore("editing", false)
-    setStore("active", false)
-  }
+  const close = () => setStore("editing", false)
 
   const back = () => {
     if (store.sending || store.tab <= 0) return
@@ -197,7 +193,6 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
       }
     }
     setStore("editing", true)
-    if (!multi()) setStore("active", true)
   }
 
   const selectOption = (optIndex: number) => {
