@@ -28,6 +28,7 @@ import { Provider } from "@/provider/provider"
 import { ProviderID, type ModelID } from "../provider/schema"
 import { WebSearchTool } from "./websearch"
 import { KiloToolRegistry } from "../kilocode/tool/registry" // kilocode_change
+import { CodeSearchTool } from "./codesearch" // kilocode_change
 import { RepoCloneTool } from "./repo_clone"
 import { RepoOverviewTool } from "./repo_overview"
 import { Flag } from "@opencode-ai/core/flag/flag" // kilocode_change
@@ -136,6 +137,7 @@ export const layer: Layer.Layer<
     const plan = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
+    const codesearch = yield* CodeSearchTool // kilocode_change
     const repoClone = yield* RepoCloneTool
     const repoOverview = yield* RepoOverviewTool
     const shell = yield* ShellTool
@@ -245,6 +247,7 @@ export const layer: Layer.Layer<
           fetch: Tool.init(webfetch),
           todo: Tool.init(todo),
           search: Tool.init(websearch),
+          code: Tool.init(codesearch), // kilocode_change
           repo_clone: Tool.init(repoClone),
           repo_overview: Tool.init(repoOverview),
           skill: Tool.init(skilltool),
@@ -275,6 +278,7 @@ export const layer: Layer.Layer<
               tool.fetch,
               tool.todo,
               tool.search,
+              tool.code, // kilocode_change
               ...(flags.experimentalScout ? [tool.repo_clone, tool.repo_overview] : []),
               tool.skill,
               tool.patch,
