@@ -9,7 +9,6 @@ import { MCP } from "../mcp"
 import { Skill } from "../skill"
 import { localReviewCommand, localReviewUncommittedCommand } from "@/kilocode/review/command" // kilocode_change
 import PROMPT_INITIALIZE from "./template/initialize.txt"
-import PROMPT_REVIEW from "./template/review.txt"
 
 type State = {
   commands: Record<string, Info>
@@ -127,7 +126,7 @@ ${uncommittedReview.template}`
 
       // kilocode_change start
       commands[Default.LOCAL_REVIEW] = localReviewCommand()
-      commands[Default.LOCAL_REVIEW_UNCOMMITTED] = localReviewUncommittedCommand()
+      commands[Default.LOCAL_REVIEW_UNCOMMITTED] = uncommittedReview
       // kilocode_change end
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {
