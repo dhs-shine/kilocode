@@ -2,4 +2,4 @@
 "kilo-code": patch
 ---
 
-Keep the question tool's custom-answer radio selection in sync when typing or switching to a predefined option.
+Keep custom-answer selection in sync and show one submit action while entering custom text.

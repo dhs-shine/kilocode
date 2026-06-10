@@ -492,34 +492,36 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
             <Button variant="ghost" size="small" onClick={reject} disabled={store.sending}>
               {language.t("ui.common.dismiss")}
             </Button>
-            <div data-slot="question-footer-actions">
-              <Show when={store.tab > 0}>
-                <Button variant="secondary" size="small" onClick={back} disabled={store.sending}>
-                  {language.t("ui.common.back")}
-                </Button>
-              </Show>
-              <Show
-                when={confirm()}
-                fallback={
-                  <Button
-                    variant={last() && single() ? "primary" : "secondary"}
-                    size="small"
-                    onClick={last() && single() ? submit : () => selectTab(store.tab + 1)}
-                    disabled={store.sending || (!confirm() && (store.answers[store.tab]?.length ?? 0) === 0)}
-                  >
-                    {last() && single()
-                      ? language.t("ui.common.submit")
-                      : last()
-                        ? language.t("common.review")
-                        : language.t("ui.common.next")}
+            <Show when={!store.editing}>
+              <div data-slot="question-footer-actions">
+                <Show when={store.tab > 0}>
+                  <Button variant="secondary" size="small" onClick={back} disabled={store.sending}>
+                    {language.t("ui.common.back")}
                   </Button>
-                }
-              >
-                <Button variant="primary" size="small" onClick={submit} disabled={store.sending}>
-                  {language.t("ui.common.submit")}
-                </Button>
-              </Show>
-            </div>
+                </Show>
+                <Show
+                  when={confirm()}
+                  fallback={
+                    <Button
+                      variant={last() && single() ? "primary" : "secondary"}
+                      size="small"
+                      onClick={last() && single() ? submit : () => selectTab(store.tab + 1)}
+                      disabled={store.sending || (!confirm() && (store.answers[store.tab]?.length ?? 0) === 0)}
+                    >
+                      {last() && single()
+                        ? language.t("ui.common.submit")
+                        : last()
+                          ? language.t("common.review")
+                          : language.t("ui.common.next")}
+                    </Button>
+                  }
+                >
+                  <Button variant="primary" size="small" onClick={submit} disabled={store.sending}>
+                    {language.t("ui.common.submit")}
+                  </Button>
+                </Show>
+              </div>
+            </Show>
           </div>
         </div>
       </div>
