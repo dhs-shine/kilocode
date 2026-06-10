@@ -9,7 +9,6 @@
 
 import type { Meta, StoryObj } from "storybook-solidjs-vite"
 import type { AssistantMessage } from "@kilocode/sdk/v2"
-import { createSignal } from "solid-js"
 import { StoryProviders, defaultMockData, mockSessionValue } from "./StoryProviders"
 import { ChatView } from "../components/chat/ChatView"
 import { ErrorDisplay } from "../components/chat/ErrorDisplay"
@@ -219,25 +218,13 @@ export const ChatViewWithPendingQuestionEmptyInput: Story = {
 
 export const QuestionDockSingle: Story = {
   name: "QuestionDock — single question (explicit submit)",
-  render: () => {
-    const [reply, setReply] = createSignal("")
-    const session = {
-      ...mockSessionValue({ id: SESSION_ID, questions: [singleQuestion] }),
-      replyToQuestion: (id: string, answers: string[][]) => setReply(JSON.stringify({ id, answers })),
-    }
-    return (
-      <StoryProviders sessionID={SESSION_ID} questions={[singleQuestion]}>
-        <SessionContext.Provider value={session as any}>
-          <div style={{ width: "100%" }}>
-            <QuestionDock request={singleQuestion} />
-            <output data-testid="question-reply" style={{ display: "none" }}>
-              {reply()}
-            </output>
-          </div>
-        </SessionContext.Provider>
-      </StoryProviders>
-    )
-  },
+  render: () => (
+    <StoryProviders sessionID={SESSION_ID} questions={[singleQuestion]}>
+      <div style={{ width: "100%" }}>
+        <QuestionDock request={singleQuestion} />
+      </div>
+    </StoryProviders>
+  ),
 }
 
 export const QuestionDockMulti: Story = {
