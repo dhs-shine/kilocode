@@ -5,7 +5,7 @@ import { SyncEvent } from "@/sync"
 import { Effect } from "effect"
 
 const task = "task"
-const stale = /^[ \t]*task_id:[^\r\n]*(?:(?:\r?\n){1,2}|$)/
+const stale = /^[ \t]*task_id:[^\r\n]*(?:(?:\r?\n){1,2}|$)/m
 
 type Item = { type: "message"; info: MessageV2.Info } | { type: "part"; part: MessageV2.Part; time: number }
 
@@ -23,6 +23,7 @@ export function writer(sessionID: SessionID, sync: SyncEvent.Interface) {
       return Effect.sync(() =>
         Database.transaction(
           () => {
+            // sync.run stays synchronous with publishing disabled, and its nested transaction reuses this active transaction.
             for (const item of items) {
               if (item.type === "message") {
                 Effect.runSync(sync.run(MessageV2.Event.Updated, { sessionID, info: item.info }, { publish: false }))

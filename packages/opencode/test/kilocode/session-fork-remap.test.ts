@@ -43,6 +43,7 @@ function taskPart(input: { messageID: string; sessionID: string; childSessionID:
       status: "completed",
       input: { description: "test task", prompt: "do something", task_id: input.childSessionID },
       output: [
+        "Background task completed: test task",
         `\ttask_id: ${input.childSessionID} (for resuming to continue this task if needed)`,
         "",
         "<task_result>",
@@ -178,7 +179,9 @@ describe("Session.fork task detachment", () => {
           expect(tool.metadata).toEqual({ trace: "keep" })
           expect(tool.state.metadata).toEqual({ model: { modelID: "test", providerID: "test" } })
           expect(tool.state.input.task_id).toBeUndefined()
-          expect(tool.state.output).toBe("<task_result>\r\nchild outcome\r\n</task_result>")
+          expect(tool.state.output).toBe(
+            "Background task completed: test task\r\n<task_result>\r\nchild outcome\r\n</task_result>",
+          )
 
           const source = await sessions.messages({ sessionID: parent.id })
           const original = source.flatMap((msg) => msg.parts).find((part) => part.type === "tool") as MessageV2.ToolPart
