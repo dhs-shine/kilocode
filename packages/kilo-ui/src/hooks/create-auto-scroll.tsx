@@ -79,13 +79,10 @@ export function createAutoScroll(options: AutoScrollOptions) {
     scrollToBottomNow("auto")
   }
 
-  const stop = () => {
+  const stop = (force = false) => {
     const el = scroll
     if (!el) return
-    if (!canScroll(el)) {
-      if (store.userScrolled) setStore("userScrolled", false)
-      return
-    }
+    if (!force && !canScroll(el)) return
     if (store.userScrolled) return
 
     setStore("userScrolled", true)
@@ -107,10 +104,7 @@ export function createAutoScroll(options: AutoScrollOptions) {
     userInitiated = false
     const distance = distanceFromBottom(el)
 
-    if (!canScroll(el)) {
-      if (store.userScrolled) setStore("userScrolled", false)
-      return
-    }
+    if (!canScroll(el)) return
 
     if (distance < threshold()) {
       if (store.userScrolled) setStore("userScrolled", false)
@@ -149,10 +143,7 @@ export function createAutoScroll(options: AutoScrollOptions) {
     () => store.contentRef,
     () => {
       const el = scroll
-      if (el && !canScroll(el)) {
-        if (store.userScrolled) setStore("userScrolled", false)
-        return
-      }
+      if (el && !canScroll(el)) return
       if (!active()) {
         if (!store.userScrolled && el && distanceFromBottom(el) > threshold()) {
           scrollToBottomNow("auto")
@@ -184,10 +175,7 @@ export function createAutoScroll(options: AutoScrollOptions) {
     () => {
       const el = scroll
       if (!el) return
-      if (!canScroll(el)) {
-        if (store.userScrolled) setStore("userScrolled", false)
-        return
-      }
+      if (!canScroll(el)) return
       if (store.userScrolled || recentlyInteracted()) return
       scrollToBottomNow("auto")
     },
@@ -247,7 +235,7 @@ export function createAutoScroll(options: AutoScrollOptions) {
     contentRef: (el: HTMLElement | undefined) => setStore("contentRef", el),
     handleScroll,
     handleInteraction,
-    pause: stop,
+    pause: () => stop(true),
     resume: () => {
       if (store.userScrolled) setStore("userScrolled", false)
       scrollToBottom(true)
