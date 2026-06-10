@@ -7,6 +7,7 @@ import { Flock } from "./util/flock"
 import { Hash } from "./util/hash"
 import { AppFileSystem } from "./filesystem"
 import { InstallationChannel, InstallationVersion } from "./installation/version"
+import * as ModelsRefresh from "./kilocode/models-refresh" // kilocode_change
 
 export const CatalogModelStatus = Schema.Literals(["alpha", "beta", "deprecated"])
 export type CatalogModelStatus = typeof CatalogModelStatus.Type
@@ -206,6 +207,7 @@ export const layer: Layer.Layer<Service, never, Requirements> = Layer.effect(
           if (!force && (yield* fresh())) return
           yield* fetchAndWrite()
           yield* invalidate
+          yield* ModelsRefresh.notify() // kilocode_change
         }),
       ).pipe(
         Effect.tapCause((cause) =>
