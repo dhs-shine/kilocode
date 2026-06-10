@@ -223,6 +223,10 @@ export const Info = Schema.Struct({
   terminal_command_display: Schema.optional(Schema.Literals(["expanded", "collapsed"])).annotate({
     description: "Controls whether terminal command blocks are expanded or collapsed by default in the VS Code chat UI",
   }),
+  code_edit_display: Schema.optional(Schema.Literals(["expanded", "collapsed"])).annotate({
+    description:
+      "Controls whether code edit and diff blocks are expanded or collapsed by default in the VS Code chat UI",
+  }),
   model: Schema.optional(Schema.NullOr(ConfigModelID)).annotate({
     description: "Model to use in the format of provider/model, eg anthropic/claude-2",
   }),

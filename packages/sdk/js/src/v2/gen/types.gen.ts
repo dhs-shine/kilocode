@@ -1370,6 +1370,7 @@ export type Config = {
   auto_collapse_reasoning?: boolean
   indexing?: IndexingConfig
   terminal_command_display?: "expanded" | "collapsed"
+  code_edit_display?: "expanded" | "collapsed"
   model?: string
   small_model?: string
   subagent_model?: string
