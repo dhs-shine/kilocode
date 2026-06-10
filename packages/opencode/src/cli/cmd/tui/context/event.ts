@@ -1,12 +1,49 @@
 import type { Event, GlobalEvent } from "@kilocode/sdk/v2"
 
 type SyncEvent = Extract<GlobalEvent["payload"], { type: "sync" }>
+type WireSyncEvent = {
+  type: "sync"
+  syncEvent: {
+    type: string
+    id: string
+    seq: number
+    aggregateID: string
+    data: unknown
+  }
+}
 import { useProject } from "./project"
 import { useSDK } from "./sdk"
 
 type EventMetadata = {
   workspace: string | undefined
 }
+
+// kilocode_change start - normalize the runtime SyncEvent wire envelope to the generated SDK shape
+export function normalizeSyncEvent(payload: unknown): SyncEvent | undefined {
+  if (!payload || typeof payload !== "object" || !("type" in payload) || payload.type !== "sync") return
+  if ("name" in payload) return payload as SyncEvent
+  if (!("syncEvent" in payload) || !payload.syncEvent || typeof payload.syncEvent !== "object") return
+
+  const event = payload.syncEvent as WireSyncEvent["syncEvent"]
+  if (
+    typeof event.type !== "string" ||
+    typeof event.id !== "string" ||
+    typeof event.seq !== "number" ||
+    typeof event.aggregateID !== "string" ||
+    !("data" in event)
+  )
+    return
+
+  return {
+    type: "sync",
+    name: event.type,
+    id: event.id,
+    seq: event.seq,
+    aggregateID: event.aggregateID,
+    data: event.data,
+  } as SyncEvent
+}
+// kilocode_change end
 
 export function useEvent() {
   const project = useProject()
@@ -23,9 +60,10 @@ export function useEvent() {
 
   function sync(handler: (event: SyncEvent, metadata: EventMetadata) => void) {
     return sdk.event.on("event", (event) => {
-      if (event.payload.type !== "sync") return
+      const payload = normalizeSyncEvent(event.payload)
+      if (!payload) return
       if (event.directory === "global" || event.project === project.project()) {
-        handler(event.payload, { workspace: event.workspace })
+        handler(payload, { workspace: event.workspace })
       }
     })
   }
