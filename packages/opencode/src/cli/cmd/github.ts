@@ -442,6 +442,9 @@ export const GithubRunCommand = effectCmd({
     const sessionSvc = yield* Session.Service
     const sessionShare = yield* SessionShare.Service
     const sessionPrompt = yield* SessionPrompt.Service
+    const busSvc = yield* Bus.Service
+    const runLocalEffect = <A, E>(effect: Effect.Effect<A, E>) =>
+      Effect.runPromise(effect.pipe(Effect.provideService(InstanceRef, ctx)))
     yield* Effect.promise(async () => {
       const isMock = args.token || args.event
 
@@ -555,7 +558,7 @@ export const GithubRunCommand = effectCmd({
 
         // Setup kilo session // kilocode_change
         const repoData = await fetchRepo()
-        session = await Effect.runPromise(
+        session = await runLocalEffect(
           sessionSvc.create({
             permission: [
               {
@@ -566,11 +569,11 @@ export const GithubRunCommand = effectCmd({
             ],
           }),
         )
-        subscribeSessionEvents()
+        await subscribeSessionEvents()
         shareId = await (async () => {
           if (share === false) return
           if (!share && repoData.data.private) return
-          await Effect.runPromise(sessionShare.share(session.id))
+          await runLocalEffect(sessionShare.share(session.id))
           return session.id.slice(-8)
         })()
         console.log("kilo session", session.id) // kilocode_change
@@ -877,7 +880,7 @@ export const GithubRunCommand = effectCmd({
         return { userPrompt: prompt, promptFiles: imgData }
       }
 
-      function subscribeSessionEvents() {
+      async function subscribeSessionEvents() {
         const TOOL: Record<string, [string, string]> = {
           todowrite: ["Todo", UI.Style.TEXT_WARNING_BOLD],
           bash: ["Shell", UI.Style.TEXT_DANGER_BOLD],
@@ -900,33 +903,35 @@ export const GithubRunCommand = effectCmd({
         }
 
         let text = ""
-        Bus.subscribe(MessageV2.Event.PartUpdated, (evt) => {
-          if (evt.properties.part.sessionID !== session.id) return
-          //if (evt.properties.part.messageID === messageID) return
-          const part = evt.properties.part
+        await runLocalEffect(
+          busSvc.subscribeCallback(MessageV2.Event.PartUpdated, (evt) => {
+            if (evt.properties.part.sessionID !== session.id) return
+            //if (evt.properties.part.messageID === messageID) return
+            const part = evt.properties.part
 
-          if (part.type === "tool" && part.state.status === "completed") {
-            const [tool, color] = TOOL[part.tool] ?? [part.tool, UI.Style.TEXT_INFO_BOLD]
-            const title =
-              part.state.title || Object.keys(part.state.input).length > 0
-                ? JSON.stringify(part.state.input)
-                : "Unknown"
-            console.log()
-            printEvent(color, tool, title)
-          }
-
-          if (part.type === "text") {
-            text = part.text
-
-            if (part.time?.end) {
-              UI.empty()
-              UI.println(UI.markdown(text))
-              UI.empty()
-              text = ""
-              return
+            if (part.type === "tool" && part.state.status === "completed") {
+              const [tool, color] = TOOL[part.tool] ?? [part.tool, UI.Style.TEXT_INFO_BOLD]
+              const title =
+                part.state.title || Object.keys(part.state.input).length > 0
+                  ? JSON.stringify(part.state.input)
+                  : "Unknown"
+              console.log()
+              printEvent(color, tool, title)
             }
-          }
-        })
+
+            if (part.type === "text") {
+              text = part.text
+
+              if (part.time?.end) {
+                UI.empty()
+                UI.println(UI.markdown(text))
+                UI.empty()
+                text = ""
+                return
+              }
+            }
+          }),
+        )
       }
 
       async function summarize(response: string) {
@@ -943,7 +948,7 @@ export const GithubRunCommand = effectCmd({
       async function chat(message: string, files: PromptFiles = []) {
         console.log("Sending message to kilo...") // kilocode_change
 
-        return Effect.runPromise(
+        return runLocalEffect(
           Effect.gen(function* () {
             const prompt = sessionPrompt
             const result = yield* prompt.prompt({

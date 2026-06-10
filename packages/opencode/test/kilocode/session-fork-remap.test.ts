@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Effect } from "effect"
 import { createKiloClient } from "@kilocode/sdk/v2/client"
-import { WithInstance } from "../../src/project/with-instance"
+import { provideTestInstance } from "../fixture/fixture"
 import { Server } from "../../src/server/server"
 import { Session } from "../../src/session/session"
 import { MessageV2 } from "../../src/session/message-v2"
@@ -88,7 +88,7 @@ describe("Session.fork cost accounting", () => {
     "forked sessions start with zero cost",
     async () => {
       await using tmp = await tmpdir({ git: true })
-      await WithInstance.provide({
+      await provideTestInstance({
         directory: tmp.path,
         fn: async () => {
           const original = await sessions.create({ title: "original" })
@@ -130,7 +130,7 @@ describe("Session.fork child session remapping", () => {
     "forked session gets its own copy of child sessions",
     async () => {
       await using tmp = await tmpdir({ git: true })
-      await WithInstance.provide({
+      await provideTestInstance({
         directory: tmp.path,
         fn: async () => {
           const parent = await sessions.create({ title: "parent" })
@@ -204,7 +204,7 @@ describe("Session.fork child session remapping", () => {
     "nested child sessions are also remapped",
     async () => {
       await using tmp = await tmpdir({ git: true })
-      await WithInstance.provide({
+      await provideTestInstance({
         directory: tmp.path,
         fn: async () => {
           // grandchild -> child -> parent
@@ -291,7 +291,7 @@ describe("Session.fork child session remapping", () => {
     "self-referential task metadata remaps to the forked session",
     async () => {
       await using tmp = await tmpdir({ git: true })
-      await WithInstance.provide({
+      await provideTestInstance({
         directory: tmp.path,
         fn: async () => {
           const parent = await sessions.create({ title: "parent" })
@@ -331,7 +331,7 @@ describe("Session.fork child session remapping", () => {
     "cyclic task metadata remaps each session once",
     async () => {
       await using tmp = await tmpdir({ git: true })
-      await WithInstance.provide({
+      await provideTestInstance({
         directory: tmp.path,
         fn: async () => {
           const parent = await sessions.create({ title: "parent" })
@@ -399,7 +399,7 @@ describe("Session.fork child session remapping", () => {
     "non-task tool parts are not affected",
     async () => {
       await using tmp = await tmpdir({ git: true })
-      await WithInstance.provide({
+      await provideTestInstance({
         directory: tmp.path,
         fn: async () => {
           const parent = await sessions.create({ title: "parent" })

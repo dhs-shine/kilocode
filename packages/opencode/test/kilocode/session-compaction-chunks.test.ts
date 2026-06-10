@@ -1,20 +1,22 @@
 import { afterEach, describe, expect, mock, test } from "bun:test"
-import { Effect, Layer, ManagedRuntime } from "effect"
+import { Effect, Layer, ManagedRuntime, Scope } from "effect"
 import * as Stream from "effect/Stream"
 import { Agent } from "../../src/agent/agent"
 import { Bus } from "../../src/bus"
 import { Config } from "../../src/config/config"
 import { RuntimeFlags } from "../../src/effect/runtime-flags"
+import { EventV2Bridge } from "../../src/event-v2-bridge"
 import { Image } from "../../src/image/image"
 import { Permission } from "../../src/permission"
 import { Plugin } from "../../src/plugin"
-import { WithInstance } from "../../src/project/with-instance"
+import { provideTestInstance } from "../fixture/fixture"
 import { ModelID, ProviderID } from "../../src/provider/schema"
 import { Snapshot } from "../../src/snapshot"
 import { KiloCompactionChunks } from "../../src/kilocode/session/compaction-chunks"
 import { KiloSessionCompaction } from "../../src/kilocode/session/compaction"
 import { LLM } from "../../src/session/llm"
 import { MessageV2 } from "../../src/session/message-v2"
+import { Reference } from "../../src/reference/reference"
 import { SessionCompaction } from "../../src/session/compaction"
 import * as SessionProcessorModule from "../../src/session/processor"
 import type { SessionProcessor } from "../../src/session/processor"
@@ -220,7 +222,9 @@ function runtime(layer: Layer.Layer<LLM.Service>, context = 7_000) {
       Layer.provide(Agent.defaultLayer),
       Layer.provide(Plugin.defaultLayer),
       Layer.provide(SyncEvent.defaultLayer),
+      Layer.provide(EventV2Bridge.defaultLayer),
       Layer.provide(RuntimeFlags.layer()),
+      Layer.provide(Reference.defaultLayer),
       Layer.provide(status),
       Layer.provide(bus),
       Layer.provide(
@@ -286,7 +290,9 @@ function fakeRuntime() {
         Layer.provide(Agent.defaultLayer),
         Layer.provide(Plugin.defaultLayer),
         Layer.provide(SyncEvent.defaultLayer),
+        Layer.provide(EventV2Bridge.defaultLayer),
         Layer.provide(RuntimeFlags.layer()),
+        Layer.provide(Reference.defaultLayer),
         Layer.provide(bus),
         Layer.provide(
           Layer.mock(Config.Service)({
@@ -317,7 +323,9 @@ function liveRuntime(layer: Layer.Layer<LLM.Service>, context = 10_000) {
       Layer.provide(Agent.defaultLayer),
       Layer.provide(Plugin.defaultLayer),
       Layer.provide(SyncEvent.defaultLayer),
+      Layer.provide(EventV2Bridge.defaultLayer),
       Layer.provide(RuntimeFlags.layer()),
+      Layer.provide(Reference.defaultLayer),
       Layer.provide(status),
       Layer.provide(bus),
       Layer.provide(
@@ -367,7 +375,7 @@ describe("KiloCompactionChunks", () => {
 
   test("falls back to chunk workers after the first compaction overflows", async () => {
     await using tmp = await tmpdir()
-    await WithInstance.provide({
+    await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
         const session = await svc.create({})
@@ -421,7 +429,7 @@ describe("KiloCompactionChunks", () => {
 
   test("uses chunk fallback before sending oversized normal compaction", async () => {
     await using tmp = await tmpdir()
-    await WithInstance.provide({
+    await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
         const session = await svc.create({})
@@ -467,7 +475,7 @@ describe("KiloCompactionChunks", () => {
 
   test("uses a worker even when fallback selection produces one oversized chunk", async () => {
     await using tmp = await tmpdir()
-    await WithInstance.provide({
+    await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
         const session = await svc.create({})
@@ -519,7 +527,7 @@ describe("KiloCompactionChunks", () => {
 
   test("serializes oversized fallback chunks before summarizing", async () => {
     await using tmp = await tmpdir()
-    await WithInstance.provide({
+    await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
         const session = await svc.create({})
@@ -564,7 +572,7 @@ describe("KiloCompactionChunks", () => {
   test("caps worker output budget below oversized model output limit", async () => {
     const { rt, calls, outputs } = fakeRuntime()
     await using tmp = await tmpdir()
-    await WithInstance.provide({
+    await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
         const session = await svc.create({})
@@ -612,7 +620,7 @@ describe("KiloCompactionChunks", () => {
     stub.push(reply("replay summary", (input) => calls.push(JSON.stringify(input.messages))))
 
     await using tmp = await tmpdir()
-    await WithInstance.provide({
+    await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
         const session = await svc.create({})

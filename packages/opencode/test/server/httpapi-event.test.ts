@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Bus } from "../../src/bus"
-import { Instance } from "../../src/project/instance"
+import { AppRuntime } from "../../src/effect/app-runtime"
+import { InstanceRef } from "../../src/effect/instance-ref"
 import { Server } from "../../src/server/server"
 import { EventPaths } from "../../src/server/routes/instance/httpapi/groups/event"
 import { Event as ServerEvent } from "../../src/server/event"
 import * as Log from "@opencode-ai/core/util/log"
-import { Schema } from "effect"
+import { Effect, Schema } from "effect"
 import { resetDatabase } from "../fixture/db"
 import { disposeAllInstances, reloadTestInstance, tmpdir } from "../fixture/fixture"
 
@@ -133,7 +134,11 @@ describe("event HttpApi", () => {
       const id = Bus.createID()
       const next = readUntil(reader, (event) => event.id === id && event.type === "server.connected")
       const ctx = await reloadTestInstance({ directory: tmp.path })
-      await Instance.restore(ctx, () => Bus.publish(ServerEvent.Connected, {}, { id }))
+      await AppRuntime.runPromise(
+        Bus.Service.use((svc) => svc.publish(ServerEvent.Connected, {}, { id })).pipe(
+          Effect.provideService(InstanceRef, ctx),
+        ),
+      )
 
       expect(await next).toMatchObject({ id, type: "server.connected", properties: {} })
     } finally {

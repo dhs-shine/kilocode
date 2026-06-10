@@ -6,7 +6,7 @@ import { hasIndexingPlugin } from "@kilocode/kilo-indexing/detect"
 import { IndexingStatus, disabledIndexingStatus } from "@kilocode/kilo-indexing/status"
 import { Telemetry } from "@kilocode/kilo-telemetry"
 import { fetchKiloEmbeddingModelCatalog } from "@kilocode/kilo-gateway"
-import { Instance } from "@/project/instance"
+import { Instance } from "@/kilocode/instance"
 import { Bus } from "@/bus"
 import { Config } from "@/config/config"
 import { AppRuntime } from "@/effect/app-runtime"
@@ -215,7 +215,7 @@ export namespace KiloIndexing {
 
   const inert = async (current: () => Status): Promise<Entry> => {
     const publish = async () => {
-      await Bus.publish(Event, { status: current() })
+      await Bus.publish(Instance.current, Event, { status: current() })
     }
 
     return {
@@ -258,7 +258,7 @@ export namespace KiloIndexing {
     let disposed = false
 
     const publish = async () => {
-      await Bus.publish(Event, { status: current() })
+      await Bus.publish(Instance.current, Event, { status: current() })
     }
     const report = Instance.bind(async () => {
       try {

@@ -4,9 +4,8 @@ import { Deferred, Effect, Fiber, Layer } from "effect"
 import { InstanceRef } from "../../src/effect/instance-ref"
 import { registerDisposer } from "../../src/effect/instance-registry"
 import { InstanceBootstrap } from "../../src/project/bootstrap-service"
-import { Instance } from "../../src/project/instance"
 import { InstanceStore } from "../../src/project/instance-store"
-import { TestInstance, tmpdirScoped } from "../fixture/fixture"
+import { tmpdirScoped } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 
 let bootstrapRun: Effect.Effect<void> = Effect.void
@@ -37,7 +36,7 @@ const registerDisposerScoped = (disposer: (directory: string) => Promise<void>) 
   )
 
 describe("InstanceStore", () => {
-  it.live("loads instance context without installing ALS for the caller", () =>
+  it.live("loads instance context", () =>
     Effect.gen(function* () {
       const dir = yield* tmpdirScoped({ git: true })
       const store = yield* InstanceStore.Service
@@ -45,7 +44,6 @@ describe("InstanceStore", () => {
 
       expect(ctx.directory).toBe(dir)
       expect(ctx.worktree).toBe(dir)
-      expect(() => Instance.current).toThrow()
     }),
   )
 
@@ -63,7 +61,6 @@ describe("InstanceStore", () => {
       yield* store.load({ directory: dir })
 
       expect(initializedDirectory).toBe(dir)
-      expect(() => Instance.current).toThrow()
     }),
   )
 
@@ -246,34 +243,17 @@ describe("InstanceStore", () => {
     }),
   )
 
-  it.instance(
-    "provides legacy Promise callers with instance ALS",
-    () =>
-      Effect.gen(function* () {
-        const test = yield* TestInstance
-        const ctx = yield* InstanceRef
-        if (!ctx) throw new Error("InstanceRef not provided")
-
-        const directory = yield* Effect.promise(() => Promise.resolve(Instance.restore(ctx, () => Instance.directory)))
-
-        expect(directory).toBe(test.directory)
-        expect(() => Instance.current).toThrow()
-      }),
-    { git: true },
-  )
-
-  // kilocode_change - InstanceStore.boot wraps bootstrap.run in the Instance ALS so
+  // kilocode_change - InstanceStore.boot provides InstanceRef to bootstrap.run so
   // KilocodeBootstrap (and anything it forkDetaches, e.g. KiloIndexing.init) can read
-  // Instance.directory. Upstream runs bootstrap without the ALS; this regression test
-  // pins the Kilo contract.
-  it.live("installs Instance ALS around bootstrap for Kilo bootstrap compatibility", () =>
+  // the current directory. This regression test pins the Kilo contract.
+  it.live("provides InstanceRef during bootstrap for Kilo bootstrap compatibility", () =>
     Effect.gen(function* () {
       const dir = yield* tmpdirScoped({ git: true })
       const store = yield* InstanceStore.Service
       let directoryDuringBootstrap: string | undefined
 
-      bootstrapRun = Effect.sync(() => {
-        directoryDuringBootstrap = Instance.directory
+      bootstrapRun = Effect.gen(function* () {
+        directoryDuringBootstrap = (yield* InstanceRef)?.directory
       })
       yield* store.load({ directory: dir })
 
