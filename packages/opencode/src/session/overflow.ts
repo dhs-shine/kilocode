@@ -27,8 +27,7 @@ export function isOverflow(input: {
   if (input.cfg.compaction?.auto === false) return false
   if (input.model.limit.context === 0) return false
 
-  const count =
-    input.tokens.total || input.tokens.input + input.tokens.output + input.tokens.cache.read + input.tokens.cache.write
+  const count = KiloSessionOverflow.count(input.tokens) // kilocode_change
   // kilocode_change start
   const cap = KiloSessionOverflow.limit({ cfg: input.cfg, model: input.model, usable: usable(input) })
   return count >= cap
