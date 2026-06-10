@@ -26,13 +26,14 @@ test("custom answer selection follows the custom row, input, and predefined opti
   await expect(custom).toHaveAttribute("data-picked", "true")
   await expect(vitest).toHaveAttribute("data-picked", "false")
 
-  await input.fill("Jest")
+  await input.fill("Custom runner")
   await jest.click()
   await expect(jest).toHaveAttribute("data-picked", "true")
   await expect(custom).toHaveAttribute("data-picked", "false")
-  await expect(input).toHaveValue("Jest")
+  await expect(input).toHaveCount(0)
 
-  await input.click()
-  await expect(custom).toHaveAttribute("data-picked", "true")
-  await expect(jest).toHaveAttribute("data-picked", "false")
+  await page.locator('[data-slot="question-dock-footer"]').getByRole("button", { name: "Submit" }).click()
+  await expect(page.getByTestId("question-reply")).toHaveText(
+    JSON.stringify({ id: "q-single-001", answers: [["Jest"]] }),
+  )
 })

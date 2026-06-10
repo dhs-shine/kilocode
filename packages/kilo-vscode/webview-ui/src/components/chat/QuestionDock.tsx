@@ -214,7 +214,7 @@ export const QuestionDock: Component<{ request: QuestionRequest }> = (props) => 
       toggle(opt.label)
       return
     }
-    setStore("active", false)
+    close()
     pick(opt.label)
   }
 
