@@ -1,5 +1,6 @@
 package ai.kilocode.client.vfs
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorProvider
@@ -13,7 +14,9 @@ class KiloVfsManager(private val project: Project) {
     @RequiresEdt
     fun open(kind: String, params: Map<String, String> = emptyMap(), focus: Boolean = true): Boolean {
         val file = file(kind, params) ?: return false
-        file.putUserData(FileEditorProvider.KEY, KiloFileEditorProvider())
+        if (ApplicationManager.getApplication().isUnitTestMode) {
+            file.putUserData(FileEditorProvider.KEY, KiloFileEditorProvider())
+        }
         FileEditorManager.getInstance(project).openFile(file, focus)
         return true
     }

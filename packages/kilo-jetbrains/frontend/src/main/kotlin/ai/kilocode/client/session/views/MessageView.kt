@@ -39,7 +39,7 @@ class MessageView(
     private var style: SessionEditorStyle = SessionEditorStyle.current(),
     private val openUrl: (String) -> Unit = {},
     private val selection: SessionSelection? = null,
-    private val openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, openFile, openUrl) },
+    private val openAttachment: (String, FileAttachment) -> Unit = { _, item -> AttachmentView.openDefault(item, openFile, openUrl) },
 ) : ai.kilocode.client.session.ui.SessionLayoutPanel(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
 ), Disposable, SessionEditorStyleTarget, SessionView {
@@ -192,9 +192,9 @@ class MessageView(
     }
 
     private fun view(content: Content) = if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) {
-        ViewFactory.createUser(content, openFile, openUrl, selection, openAttachment)
+        ViewFactory.createUser(content, openFile, openUrl, selection) { openAttachment(msg.info.id, it) }
     } else {
-        ViewFactory.create(content, openFile, openUrl, selection, openAttachment)
+        ViewFactory.create(content, openFile, openUrl, selection) { openAttachment(msg.info.id, it) }
     }
 
     /** Append a streaming delta to the renderer for [contentId]. */
@@ -266,7 +266,7 @@ class MessageView(
     }
 
     private fun upsertAttachment(content: FileAttachment, refresh: Boolean = true) {
-        val view = attachments ?: PromptAttachmentView(msg.info.id, openAttachment).also {
+        val view = attachments ?: PromptAttachmentView(msg.info.id) { openAttachment(msg.info.id, it) }.also {
             attachments = it
             it.applyStyle(style)
             add(it, attachmentIndex())

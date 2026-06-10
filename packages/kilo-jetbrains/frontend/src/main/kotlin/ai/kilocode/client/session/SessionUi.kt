@@ -24,7 +24,9 @@ import ai.kilocode.client.session.ui.SessionDropOverlay
 import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.SessionMessageListPanel
 import ai.kilocode.client.session.ui.attachment.isEmbeddedAttachment
-import ai.kilocode.client.session.ui.attachment.openEmbeddedAttachment
+import ai.kilocode.client.session.ui.attachment.AttachmentEditorKind
+import ai.kilocode.client.session.ui.attachment.attachmentParams
+import ai.kilocode.client.session.ui.attachment.ensureAttachmentEditorKind
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
@@ -39,6 +41,7 @@ import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.client.vfs.KiloVfsManager
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.rpc.dto.PromptDto
 import ai.kilocode.rpc.dto.PromptPartDto
@@ -181,6 +184,7 @@ class SessionUi(
 
     init {
         buildUi()
+        ensureAttachmentEditorKind()
         Disposer.register(this, selection)
         scroll.show(body(controller.model.state))
         bindUi()
@@ -583,10 +587,14 @@ class SessionUi(
         BrowserUtil.browse(url)
     }
 
-    private fun openAttachment(item: FileAttachment) {
+    private fun openAttachment(messageId: String, item: FileAttachment) {
         val url = item.url.takeIf { it.isNotBlank() } ?: return
         if (isEmbeddedAttachment(url)) {
-            openEmbeddedAttachment(project, attachmentName(item), item.mime, url)
+            val id = controller.id ?: return
+            project.service<KiloVfsManager>().open(
+                AttachmentEditorKind.ID,
+                attachmentParams(id, messageId, item, attachmentName(item), workspace.directory),
+            )
             return
         }
         val uri = runCatching { URI.create(url) }.getOrNull() ?: return

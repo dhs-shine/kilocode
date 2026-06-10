@@ -2,6 +2,7 @@ package ai.kilocode.client.vfs
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.impl.EditorHistoryManager
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
 
@@ -15,11 +16,14 @@ class KiloVfsManagerTest : KiloVfsTestBase() {
         val files = FileEditorManager.getInstance(project).openFiles.filterIsInstance<KiloVirtualFile>()
         val editor = FileEditorManager.getInstance(project).selectedEditor as KiloFileEditor
         val component = editor.component as JBLabel
+        val file = files.single()
+        val history = EditorHistoryManager.getInstance(project).fileList
 
         assertTrue(opened)
         assertEquals(1, files.size)
-        assertEquals(KiloVfsTestKind.ID, files.single().path.kind)
-        assertEquals("11", files.single().path.params["id"])
+        assertEquals(KiloVfsTestKind.ID, file.path.kind)
+        assertEquals("11", file.path.params["id"])
+        assertTrue(history.contains(file))
         assertSame(kind.components.single(), component)
         assertEquals("content:11", component.text)
     }

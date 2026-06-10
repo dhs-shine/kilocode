@@ -7,7 +7,6 @@ import ai.kilocode.client.ui.iconButton
 import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.text.StringUtil
@@ -54,7 +53,7 @@ open class AttachmentCard(
 ) : JPanel(CardLayout()) {
     private var gen = 0
     private var loaded = false
-    private val icon = mimeIcon(item.mime)
+    private val icon = attachmentIcon(item.mime, item.name)
     private val tip = tooltip(item)
     private val open = open?.let { callback ->
         object : MouseAdapter() {
@@ -281,12 +280,6 @@ private fun local(item: AttachmentCardItem): Path? {
     val uri = runCatching { URI.create(item.url) }.getOrNull() ?: return null
     if (uri.scheme != "file") return null
     return runCatching { Path.of(uri) }.getOrNull()
-}
-
-private fun mimeIcon(mime: String): Icon = when {
-    mime.startsWith("image/") -> AllIcons.FileTypes.Image
-    mime == "application/x-directory" -> AllIcons.Nodes.Folder
-    else -> AllIcons.FileTypes.Text
 }
 
 private fun tooltip(item: AttachmentCardItem): String = "<html>${listOf(

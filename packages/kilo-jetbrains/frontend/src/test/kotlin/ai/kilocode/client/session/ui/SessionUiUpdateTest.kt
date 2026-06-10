@@ -195,7 +195,7 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
 
     fun `test user text and attachments share one prompt container`() {
         val opened = mutableListOf<String>()
-        val item = SessionMessageListPanel(model, parent, openFile = {}, openAttachment = { opened.add(it.url) })
+        val item = SessionMessageListPanel(model, parent, openFile = {}, openAttachment = { _, it -> opened.add(it.url) })
         model.upsertMessage(msg("u1", "user"))
         model.updateContent("u1", part("p1", "u1", "text", text = "look at this"))
         model.updateContent(
@@ -344,8 +344,8 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
     }
 
     fun `test transcript attachment click delegates to attachment opener`() {
-        val opened = mutableListOf<String>()
-        val item = SessionMessageListPanel(model, parent, openFile = {}, openAttachment = { opened.add(it.url) })
+        val opened = mutableListOf<Pair<String, String>>()
+        val item = SessionMessageListPanel(model, parent, openFile = {}, openAttachment = { msg, it -> opened.add(msg to it.url) })
         model.upsertMessage(msg("u1", "user"))
         model.updateContent(
             "u1",
@@ -363,7 +363,7 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
         val card = find(item.findMessage("u1")!!.part("f1")!!, AttachmentCard::class.java)!!
         card.dispatchEvent(MouseEvent(card, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(), 0, 1, 1, 1, false))
 
-        assertEquals(listOf("data:text/plain;base64,aGVsbG8="), opened)
+        assertEquals(listOf("u1" to "data:text/plain;base64,aGVsbG8="), opened)
     }
 
     // ------ silent part types ------

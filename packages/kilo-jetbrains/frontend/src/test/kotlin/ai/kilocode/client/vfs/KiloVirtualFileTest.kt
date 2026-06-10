@@ -2,10 +2,13 @@ package ai.kilocode.client.vfs
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManagerKeys
+import com.intellij.openapi.fileEditor.impl.EditorHistoryManager
 
 class KiloVirtualFileTest : KiloVfsTestBase() {
     fun testContentlessPresentationAndUserData() {
         val file = KiloVirtualFile(project, path(mapOf("id" to "7")))
+        val included: EditorHistoryManager.IncludeInEditorHistoryFile = file
+        val history: EditorHistoryManager.OptionallyIncluded = included
         val err = try {
             file.contentsToByteArray()
             null
@@ -17,6 +20,8 @@ class KiloVirtualFileTest : KiloVfsTestBase() {
         assertFalse(file.isWritable)
         assertEquals(false, file.getUserData(FileEditorManagerKeys.REOPEN_WINDOW))
         assertEquals(true, file.getUserData(FileEditorManagerKeys.FORBID_TAB_SPLIT))
+        assertTrue(history.isIncludedInEditorHistory(project))
+        assertFalse(history.isPersistedInEditorHistory())
         assertEquals("Test 7", file.name)
         assertEquals("Test 7", file.presentableName)
         assertEquals("Kilo Test / 7", file.presentablePath)

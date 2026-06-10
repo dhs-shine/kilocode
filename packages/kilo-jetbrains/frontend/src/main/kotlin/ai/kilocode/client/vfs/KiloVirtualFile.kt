@@ -4,6 +4,7 @@ package ai.kilocode.client.vfs
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManagerKeys
+import com.intellij.openapi.fileEditor.impl.EditorHistoryManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypes
 import com.intellij.openapi.project.Project
@@ -16,7 +17,7 @@ import java.io.OutputStream
 class KiloVirtualFile(
     val project: Project,
     val path: KiloPath,
-) : LightVirtualFileBase("", null, 0), VirtualFileWithoutContent, VirtualFilePathWrapper {
+) : LightVirtualFileBase("", null, 0), VirtualFileWithoutContent, VirtualFilePathWrapper, EditorHistoryManager.IncludeInEditorHistoryFile {
     init {
         putUserData(FileEditorManagerKeys.REOPEN_WINDOW, false)
         putUserData(FileEditorManagerKeys.FORBID_TAB_SPLIT, true)
@@ -41,6 +42,8 @@ class KiloVirtualFile(
         val kind = kind() ?: return false
         return !project.isDisposed && kind.isValid(project, path.params)
     }
+
+    override fun isPersistedInEditorHistory(): Boolean = false
 
     override fun getLength(): Long = 0
     override fun contentsToByteArray(): ByteArray = throw UnsupportedOperationException()
