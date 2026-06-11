@@ -6,18 +6,25 @@ import ai.kilocode.backend.testing.FakeCliServer
 import ai.kilocode.backend.testing.MockCliServer
 import ai.kilocode.backend.testing.TestLog
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
+import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import java.util.concurrent.CountDownLatch
+import kotlin.system.measureTimeMillis
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class KiloBackendProviderSettingsManagerTest {
 
@@ -75,12 +82,74 @@ class KiloBackendProviderSettingsManagerTest {
         assertEquals(1, mock.requestCount("/global/dispose"))
     }
 
+    @Test
+    fun `state waits through dispose triggered reload`() = runBlocking {
+        mock.providers = """{
+            "all":[{"id":"openai","name":"OpenAI","source":"custom","models":{}}],
+            "default":{},
+            "connected":["openai"],
+            "failed":[]
+        }""".trimIndent()
+        val app = app()
+        val manager = KiloBackendProviderSettingsManager(app)
+        assertTrue(mock.awaitSseConnection())
+        val gate = CountDownLatch(1)
+        mock.responseGate = gate
+
+        try {
+            mock.pushEvent("global.disposed", "{}")
+            withTimeout(5_000) {
+                app.appState.first { it is KiloAppState.Loading }
+            }
+
+            val state = async { manager.state("/test") }
+            delay(200)
+            assertFalse(state.isCompleted)
+
+            gate.countDown()
+            val result = withTimeout(10_000) { state.await() }
+            assertEquals(listOf("openai"), result.connected)
+            assertEquals(1, result.providers.size)
+        } finally {
+            mock.responseGate = null
+            gate.countDown()
+        }
+    }
+
+    @Test
+    fun `awaitReady returns immediately when ready`() = runBlocking {
+        val app = app()
+
+        val elapsed = measureTimeMillis {
+            app.awaitReady()
+        }
+
+        assertTrue(elapsed < 500, "awaitReady should not wait when already ready, elapsed=${elapsed}ms")
+    }
+
+    @Test
+    fun `awaitReady fails fast when disconnected`() = runBlocking {
+        val app = KiloBackendAppService.create(scope, FakeCliServer(mock), TestLog())
+
+        val elapsed = measureTimeMillis {
+            assertFailsWith<IllegalStateException> {
+                app.awaitReady()
+            }
+        }
+
+        assertTrue(elapsed < 500, "awaitReady should fail fast when disconnected, elapsed=${elapsed}ms")
+    }
+
     private suspend fun manager(): KiloBackendProviderSettingsManager {
+        return KiloBackendProviderSettingsManager(app())
+    }
+
+    private suspend fun app(): KiloBackendAppService {
         val app = KiloBackendAppService.create(scope, FakeCliServer(mock), TestLog())
         app.connect()
         withTimeout(10_000) {
             app.appState.first { it is KiloAppState.Ready }
         }
-        return KiloBackendProviderSettingsManager(app)
+        return app
     }
 }

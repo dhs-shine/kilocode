@@ -39,12 +39,13 @@ internal class KiloBackendProviderSettingsManager(
             .callTimeout(15, TimeUnit.SECONDS)
             .build()
         private const val CALL_TIMEOUT_SECONDS = 15L
+        private const val OAUTH_CALL_TIMEOUT_SECONDS = 60L
     }
 
     suspend fun state(directory: String): ProviderSettingsDto {
         val start = System.currentTimeMillis()
         LOG.debug { "provider settings state: start dir=$directory" }
-        app.requireReady()
+        app.awaitReady()
         val errors = mutableListOf<LoadErrorDto>()
         val providers = load("providers", errors) {
             KiloCliDataParser.parseProviderSettingsProviders(get("/provider?directory=${enc(directory)}"))
@@ -90,14 +91,14 @@ internal class KiloBackendProviderSettingsManager(
 
     suspend fun authorize(input: ProviderOAuthAuthorizeDto): ProviderOAuthReadyDto {
         val body = KiloCliDataParser.buildProviderOAuthJson(input.method, input.inputs)
-        val raw = post("/provider/${enc(input.providerId)}/oauth/authorize?directory=${enc(input.directory)}", body)
+        val raw = post("/provider/${enc(input.providerId)}/oauth/authorize?directory=${enc(input.directory)}", body, OAUTH_CALL_TIMEOUT_SECONDS)
         val parsed = KiloCliDataParser.parseOAuthReady(raw)
         return ProviderOAuthReadyDto(parsed.first, parsed.second, parsed.third)
     }
 
     suspend fun callback(input: ProviderOAuthCallbackDto): ProviderActionResultDto {
         val body = KiloCliDataParser.buildProviderOAuthJson(input.method, code = input.code)
-        post("/provider/${enc(input.providerId)}/oauth/callback?directory=${enc(input.directory)}", body)
+        post("/provider/${enc(input.providerId)}/oauth/callback?directory=${enc(input.directory)}", body, OAUTH_CALL_TIMEOUT_SECONDS)
         dispose()
         return ProviderActionResultDto(state(input.directory))
     }
@@ -190,7 +191,7 @@ internal class KiloBackendProviderSettingsManager(
     }
 
     private suspend fun get(path: String) = request(Request.Builder().url(url(path)).get().build())
-    private suspend fun post(path: String, body: String) = request(Request.Builder().url(url(path)).post(body.toRequestBody(JSON)).build())
+    private suspend fun post(path: String, body: String, timeoutSeconds: Long = CALL_TIMEOUT_SECONDS) = request(Request.Builder().url(url(path)).post(body.toRequestBody(JSON)).build(), timeoutSeconds)
     private suspend fun put(path: String, body: String) = request(Request.Builder().url(url(path)).put(body.toRequestBody(JSON)).build())
     private suspend fun patch(body: String) = request(Request.Builder().url(url("/global/config")).patch(body.toRequestBody(JSON)).build())
 
@@ -204,12 +205,12 @@ internal class KiloBackendProviderSettingsManager(
             .onFailure { LOG.debug { "Provider settings dispose skipped: ${it.message}" } }
     }
 
-    private suspend fun request(request: Request): String {
+    private suspend fun request(request: Request, timeoutSeconds: Long = CALL_TIMEOUT_SECONDS): String {
         val start = System.currentTimeMillis()
         LOG.debug { "provider settings http: start ${request.method} ${request.url.encodedPath}" }
         val http = app.http?.newBuilder()
-            ?.callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            ?.readTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            ?.callTimeout(timeoutSeconds, TimeUnit.SECONDS)
+            ?.readTimeout(timeoutSeconds, TimeUnit.SECONDS)
             ?.build() ?: throw IllegalStateException("Kilo HTTP client is unavailable")
         return withContext(Dispatchers.IO) {
             try {
