@@ -70,7 +70,9 @@ class AttachmentEditorKindTest : KiloVfsTestBase() {
 
         assertTrue(file.isValid)
         assertEquals("note.txt", file.name)
-        assertEquals("Kilo / Attachments / ses1 / note.txt", file.presentablePath)
+        assertEquals("Kilo / attachment / ses1 / note.txt", file.presentablePath)
+        assertEquals("note.txt", AttachmentEditorKind.title(project, file.path.params))
+        assertEquals("Kilo / Attachments / ses1 / note.txt", AttachmentEditorKind.presentablePath(project, file.path.params))
     }
 
     fun testMissingRequiredParamsInvalidatesFile() {
@@ -82,7 +84,8 @@ class AttachmentEditorKindTest : KiloVfsTestBase() {
             "directory" to "/repo",
         )))
 
-        assertFalse(file.isValid)
+        assertTrue(file.isValid)
+        assertFalse(AttachmentEditorKind.isValid(project, file.path.params))
     }
 
     fun testOpeningSameAttachmentParamsDoesNotDuplicate() {
@@ -96,8 +99,8 @@ class AttachmentEditorKindTest : KiloVfsTestBase() {
         )
 
         edt {
-            project.service<KiloVfsManager>().open(AttachmentEditorKind.ID, params)
-            project.service<KiloVfsManager>().open(AttachmentEditorKind.ID, params)
+            project.service<KiloVfsManager>().openLocal(AttachmentEditorKind.ID, params)
+            project.service<KiloVfsManager>().openLocal(AttachmentEditorKind.ID, params)
             UIUtil.dispatchAllInvocationEvents()
         }
 
@@ -124,8 +127,8 @@ class AttachmentEditorKindTest : KiloVfsTestBase() {
         assertFalse(one["attachmentKey"] == two["attachmentKey"])
 
         edt {
-            project.service<KiloVfsManager>().open(AttachmentEditorKind.ID, one)
-            project.service<KiloVfsManager>().open(AttachmentEditorKind.ID, two)
+            project.service<KiloVfsManager>().openLocal(AttachmentEditorKind.ID, one)
+            project.service<KiloVfsManager>().openLocal(AttachmentEditorKind.ID, two)
             UIUtil.dispatchAllInvocationEvents()
         }
 
@@ -136,6 +139,18 @@ class AttachmentEditorKindTest : KiloVfsTestBase() {
         assertEquals(2, files.size)
         assertEquals(2, history.size)
         assertTrue(history.containsAll(files))
+
+        edt {
+            files.forEach { FileEditorManager.getInstance(project).closeFile(it) }
+            UIUtil.dispatchAllInvocationEvents()
+        }
+
+        val closed = EditorHistoryManager.getInstance(project).fileList.filterIsInstance<KiloVirtualFile>()
+            .filter { it.path.kind == AttachmentEditorKind.ID }
+        assertEquals(2, closed.size)
+        assertEquals(2, closed.map { it.path }.distinct().size)
+        assertTrue(closed.any { it.path.params["attachmentKey"] == one["attachmentKey"] })
+        assertTrue(closed.any { it.path.params["attachmentKey"] == two["attachmentKey"] })
     }
 
     @Suppress("UnstableApiUsage")

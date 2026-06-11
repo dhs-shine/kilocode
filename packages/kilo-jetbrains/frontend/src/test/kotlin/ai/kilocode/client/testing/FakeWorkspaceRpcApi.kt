@@ -36,6 +36,8 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var globalConfigExists = true
     val fileCalls = mutableListOf<Pair<String, String>>()
     val opened = mutableListOf<String>()
+    val openPathPushes = mutableListOf<Pair<String, List<String>>>()
+    var openPaths = emptyList<String>()
     val localConfigs = mutableListOf<String>()
     var globalConfigs = 0
     var localConfigPathCalls = 0
@@ -74,6 +76,16 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
         assertNotEdt("openFile")
         opened.add(path)
         return openResult
+    }
+
+    override suspend fun setVirtualOpenPaths(directory: String, paths: List<String>) {
+        assertNotEdt("setVirtualOpenPaths")
+        openPathPushes.add(directory to paths)
+    }
+
+    override suspend fun virtualOpenPaths(directory: String): List<String> {
+        assertNotEdt("virtualOpenPaths")
+        return openPaths
     }
 
     override suspend fun localConfigTarget(directory: String): ConfigTargetDto {

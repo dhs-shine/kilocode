@@ -1,6 +1,5 @@
 package ai.kilocode.client.vfs
 
-import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
@@ -9,15 +8,14 @@ import com.intellij.openapi.vfs.NonPhysicalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.VirtualFilePathWrapper
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import kotlinx.serialization.json.Json
 
 class KiloVirtualFileSystem : DeprecatedVirtualFileSystem(), NonPhysicalFileSystem {
     fun getPath(path: KiloPath): String = json.encodeToString(KiloPath.serializer(), path.canonical())
 
-    fun findOrCreateFile(project: Project, path: KiloPath): VirtualFile? {
-        service<KiloVfsRegistry>().get(path.kind) ?: return null
-        return KiloVirtualFile(project, path.canonical())
-    }
+    fun findOrCreateFile(project: Project, path: KiloPath): VirtualFile = KiloVirtualFile(project, path.canonical())
 
     override fun findFileByPath(path: String): VirtualFile? {
         val parsed = decode(path) ?: return null
@@ -35,15 +33,6 @@ class KiloVirtualFileSystem : DeprecatedVirtualFileSystem(), NonPhysicalFileSyst
 
     override fun getProtocol(): String = PROTOCOL
 
-    private fun decode(path: String): KiloPath? {
-        return try {
-            json.decodeFromString(KiloPath.serializer(), path).canonical()
-        } catch (err: Exception) {
-            log.warn("Cannot deserialize $path", err)
-            null
-        }
-    }
-
     companion object {
         const val PROTOCOL = "kilo"
 
@@ -53,6 +42,25 @@ class KiloVirtualFileSystem : DeprecatedVirtualFileSystem(), NonPhysicalFileSyst
 
         fun getInstance(): KiloVirtualFileSystem {
             return VirtualFileManager.getInstance().getFileSystem(PROTOCOL) as? KiloVirtualFileSystem ?: fallback
+        }
+
+        fun decode(path: String): KiloPath? {
+            return try {
+                val raw = raw(path) ?: return null
+                json.decodeFromString(KiloPath.serializer(), raw).canonical()
+            } catch (err: Exception) {
+                log.warn("Cannot deserialize $path", err)
+                null
+            }
+        }
+
+        private fun raw(path: String): String? {
+            if (path.startsWith("{")) return path
+            if (!path.startsWith("$PROTOCOL://")) return null
+            val raw = path.substringAfter("://")
+            if (raw.startsWith("{")) return raw
+            if (!raw.startsWith("%7B", ignoreCase = true)) return null
+            return URLDecoder.decode(raw, StandardCharsets.UTF_8)
         }
     }
 }

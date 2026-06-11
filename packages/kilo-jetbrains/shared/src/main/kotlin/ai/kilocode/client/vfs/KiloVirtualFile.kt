@@ -2,7 +2,6 @@
 
 package ai.kilocode.client.vfs
 
-import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManagerKeys
 import com.intellij.openapi.fileEditor.impl.EditorHistoryManager
 import com.intellij.openapi.fileTypes.FileType
@@ -17,7 +16,7 @@ import java.io.OutputStream
 class KiloVirtualFile(
     val project: Project,
     val path: KiloPath,
-) : LightVirtualFileBase("", null, 0), VirtualFileWithoutContent, VirtualFilePathWrapper, EditorHistoryManager.IncludeInEditorHistoryFile {
+) : LightVirtualFileBase("", FileTypes.UNKNOWN, 0), VirtualFileWithoutContent, VirtualFilePathWrapper, EditorHistoryManager.IncludeInEditorHistoryFile {
     init {
         putUserData(FileEditorManagerKeys.REOPEN_WINDOW, false)
         putUserData(FileEditorManagerKeys.FORBID_TAB_SPLIT, true)
@@ -30,18 +29,15 @@ class KiloVirtualFile(
 
     override fun getPath(): String = fileSystem.getPath(path)
 
-    override fun getName(): String = kind()?.title(project, path.params) ?: path.kind
+    override fun getName(): String = path.params["filename"] ?: path.params["name"] ?: path.kind
 
     override fun getPresentableName(): String = name
 
-    override fun getPresentablePath(): String = kind()?.presentablePath(project, path.params) ?: name
+    override fun getPresentablePath(): String = listOfNotNull("Kilo", path.kind, path.params["sessionId"], name).joinToString(" / ")
 
     override fun enforcePresentableName(): Boolean = true
 
-    override fun isValid(): Boolean {
-        val kind = kind() ?: return false
-        return !project.isDisposed && kind.isValid(project, path.params)
-    }
+    override fun isValid(): Boolean = !project.isDisposed
 
     override fun isPersistedInEditorHistory(): Boolean = false
 
@@ -57,6 +53,4 @@ class KiloVirtualFile(
     }
 
     override fun hashCode(): Int = 31 * project.hashCode() + path.hashCode()
-
-    private fun kind(): KiloEditorKind? = service<KiloVfsRegistry>().get(path.kind)
 }

@@ -161,7 +161,7 @@ internal class KiloAttachmentEditorService(
     }
 }
 
-internal fun ensureAttachmentEditorKind() {
+fun ensureAttachmentEditorKind() {
     service<KiloVfsRegistry>().register(AttachmentEditorKind)
 }
 

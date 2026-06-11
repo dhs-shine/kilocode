@@ -7,6 +7,7 @@ import javax.swing.JComponent
 
 class KiloFileEditor(
     private val project: Project,
+    private val source: VirtualFile,
     private val file: KiloVirtualFile,
     private val kind: KiloEditorKind,
 ) : KiloFileEditorBase() {
@@ -19,7 +20,7 @@ class KiloFileEditor(
 
     override fun getName(): String = kind.title(project, file.path.params)
 
-    override fun getFile(): VirtualFile = file
+    override fun getFile(): VirtualFile = source
 
-    override fun isValid(): Boolean = super.isValid() && file.isValid
+    override fun isValid(): Boolean = super.isValid() && source.isValid && file.isValid && kind.isValid(project, file.path.params)
 }

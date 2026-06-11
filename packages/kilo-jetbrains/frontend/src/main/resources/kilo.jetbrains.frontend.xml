@@ -22,7 +22,8 @@
                     factoryClass="ai.kilocode.client.KiloToolWindowFactory"/>
 
         <virtualFileSystem key="kilo" implementationClass="ai.kilocode.client.vfs.KiloVirtualFileSystem"/>
-        <fileEditorProvider implementation="ai.kilocode.client.vfs.KiloFileEditorProvider"/>
+        <fileEditorProvider id="KiloVfsEditor" implementation="ai.kilocode.client.vfs.KiloFileEditorProvider"/>
+        <postStartupActivity implementation="ai.kilocode.client.vfs.KiloVfsRestoreActivity"/>
 
         <applicationConfigurable
                 parentId="tools"
@@ -63,6 +64,11 @@
                      restartRequired="false"
                      overrides="false"/>
     </extensions>
+
+    <projectListeners>
+        <listener class="ai.kilocode.client.vfs.KiloVfsOpenTracker"
+                  topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+    </projectListeners>
 
     <actions>
         <action id="Kilo.Restart"

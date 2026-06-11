@@ -8,6 +8,7 @@ import ai.kilocode.backend.app.LoadError
 import ai.kilocode.backend.cli.KiloCliDataParser
 import ai.kilocode.backend.cli.buildKiloCliEnv
 import ai.kilocode.backend.cli.KiloCliConfigPath
+import ai.kilocode.backend.vfs.KiloVfsOpenStore
 import ai.kilocode.backend.workspace.AgentData
 import ai.kilocode.backend.workspace.AgentInfo
 import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
@@ -183,6 +184,16 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         }
         navigate(project, vf)
         return true
+    }
+
+    override suspend fun setVirtualOpenPaths(directory: String, paths: List<String>) {
+        val project = project(file(directory) ?: return) ?: return
+        project.service<KiloVfsOpenStore>().replace(paths)
+    }
+
+    override suspend fun virtualOpenPaths(directory: String): List<String> {
+        val project = project(file(directory) ?: return emptyList()) ?: return emptyList()
+        return project.service<KiloVfsOpenStore>().paths()
     }
 
     override suspend fun localConfigTarget(directory: String): ConfigTargetDto = withContext(Dispatchers.IO) {

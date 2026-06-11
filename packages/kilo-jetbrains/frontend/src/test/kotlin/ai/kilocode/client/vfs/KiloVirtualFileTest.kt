@@ -22,9 +22,9 @@ class KiloVirtualFileTest : KiloVfsTestBase() {
         assertEquals(true, file.getUserData(FileEditorManagerKeys.FORBID_TAB_SPLIT))
         assertTrue(history.isIncludedInEditorHistory(project))
         assertFalse(history.isPersistedInEditorHistory())
-        assertEquals("Test 7", file.name)
-        assertEquals("Test 7", file.presentableName)
-        assertEquals("Kilo Test / 7", file.presentablePath)
+        assertEquals(KiloVfsTestKind.ID, file.name)
+        assertEquals(KiloVfsTestKind.ID, file.presentableName)
+        assertEquals("Kilo / ${KiloVfsTestKind.ID} / ${KiloVfsTestKind.ID}", file.presentablePath)
     }
 
     fun testValueEqualityUsesProjectAndPath() {
@@ -43,9 +43,9 @@ class KiloVirtualFileTest : KiloVfsTestBase() {
         val invalid = KiloVirtualFile(project, path(mapOf("id" to "1", "valid" to "false")))
 
         assertTrue(valid.isValid)
-        assertFalse(invalid.isValid)
+        assertTrue(invalid.isValid)
 
         service<KiloVfsRegistry>().unregister(KiloVfsTestKind.ID)
-        assertFalse(valid.isValid)
+        assertTrue(valid.isValid)
     }
 }

@@ -136,6 +136,25 @@ class KiloWorkspaceService internal constructor(
         }
     }
 
+    fun setVirtualOpenPaths(directory: String, paths: List<String>) {
+        cs.launch {
+            try {
+                call { setVirtualOpenPaths(directory, paths) }
+            } catch (e: Exception) {
+                LOG.warn("set virtual open paths failed for directory=$directory", e)
+            }
+        }
+    }
+
+    suspend fun virtualOpenPaths(directory: String): List<String> {
+        return try {
+            call { virtualOpenPaths(directory) }
+        } catch (e: Exception) {
+            LOG.warn("virtual open paths lookup failed for directory=$directory", e)
+            emptyList()
+        }
+    }
+
     suspend fun localConfigTarget(directory: String): ConfigTargetDto? {
         return try {
             val target = call { this.localConfigTarget(directory) }

@@ -67,4 +67,29 @@ class KiloWorkspaceServiceTest : BasePlatformTestCase() {
         assertFalse(ok)
         assertEquals(listOf("/test/.kilo/plans/a.md"), rpc.opened)
     }
+
+    fun `test virtualOpenPaths returns backend list`() = runBlocking {
+        rpc.openPaths = listOf("path-a", "path-b")
+
+        val paths = withContext(Dispatchers.Default) {
+            service.virtualOpenPaths("/test")
+        }
+
+        assertEquals(listOf("path-a", "path-b"), paths)
+    }
+
+    fun `test setVirtualOpenPaths records push`() = runBlocking {
+        withContext(Dispatchers.Default) {
+            service.setVirtualOpenPaths("/test", listOf("path-a"))
+        }
+
+        withContext(Dispatchers.Default) {
+            repeat(200) {
+                if (rpc.openPathPushes.isNotEmpty()) return@withContext
+                kotlinx.coroutines.delay(25)
+            }
+        }
+
+        assertEquals(listOf("/test" to listOf("path-a")), rpc.openPathPushes)
+    }
 }

@@ -49,6 +49,12 @@ interface KiloWorkspaceRpcApi : RemoteApi<Unit> {
     /** Open an absolute backend file path in the IDE. */
     suspend fun openFile(path: String): Boolean
 
+    /** Replace the persisted set of open Kilo virtual paths for [directory]. */
+    suspend fun setVirtualOpenPaths(directory: String, paths: List<String>)
+
+    /** The persisted set of open Kilo virtual paths for [directory]. */
+    suspend fun virtualOpenPaths(directory: String): List<String>
+
     /** Resolve the editable local config target. */
     suspend fun localConfigTarget(directory: String): ConfigTargetDto
 
