@@ -292,8 +292,18 @@ html[data-theme="kilo-vscode"] [data-component="bash-output"] {
 
   [data-slot="message-part-tool-error-content"] {
     display: flex;
+    flex: 1;
+    flex-wrap: wrap;
     align-items: start;
+    gap: 2px 8px;
+    min-width: 0;
+  }
+
+  [data-slot="message-part-tool-error-heading"] {
+    display: inline-flex;
+    flex: none;
     gap: 8px;
+    white-space: nowrap;
   }
 
   [data-slot="message-part-tool-error-title"] {
@@ -307,11 +317,24 @@ html[data-theme="kilo-vscode"] [data-component="bash-output"] {
     white-space: nowrap;
   }
 
+  [data-slot="message-part-tool-error-code"] {
+    color: var(--text-on-critical-weak);
+  }
+
   [data-slot="message-part-tool-error-message"] {
     color: var(--text-on-critical-weak);
+    flex: 1 0 auto;
+    min-width: 0;
+    max-width: 100%;
     max-height: 240px;
     overflow-y: auto;
-    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 240px) {
+  [data-component="tool-error"] > [data-component="icon"] {
+    display: none;
   }
 }
 
