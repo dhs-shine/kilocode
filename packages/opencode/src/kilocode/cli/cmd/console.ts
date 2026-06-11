@@ -35,15 +35,35 @@ async function launch(url: string) {
   })
 }
 
+function explicitNetworkOption(name: string) {
+  return process.argv.some((arg) => arg === name || arg.startsWith(`${name}=`))
+}
+
+export async function startDaemon(opts: Daemon.Options, restartOnMismatch = false) {
+  const result = await Daemon.start(opts)
+  let state = result.state
+  if (!state) throw new Error("Kilo daemon did not provide connection state")
+
+  const portMismatch = opts.port !== 0 ? state.port !== opts.port : true
+  const hostnameMismatch = state.hostname !== opts.hostname
+  if (restartOnMismatch && result.reused && (hostnameMismatch || portMismatch)) {
+    console.warn(`Daemon running at ${state.hostname}:${state.port}; restarting with requested ${opts.hostname}:${opts.port}...`)
+    const fresh = await Daemon.restart(opts)
+    state = fresh.state
+    if (!state) throw new Error("Kilo daemon did not provide connection state")
+  }
+
+  return state
+}
+
 export const KiloConsoleCommand = cmd({
   command: "console",
   describe: "open the local Kilo Console",
   builder: (yargs) => withNetworkOptions(yargs),
   handler: async (args) => {
     const opts = await AppRuntime.runPromise(resolveNetworkOptions(args))
-    const result = await Daemon.start(opts)
-    const state = result.state
-    if (!state) throw new Error("Kilo daemon did not provide connection state")
+    const restartOnMismatch = explicitNetworkOption("--port") || explicitNetworkOption("--hostname")
+    const state = await startDaemon(opts, restartOnMismatch)
 
     const url = publicUrl(state)
     await launch(browserUrl(state)).catch((err) => {
