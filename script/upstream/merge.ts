@@ -213,10 +213,17 @@ function manager(content: string): string | undefined {
   return typeof pkg.packageManager === "string" ? pkg.packageManager : undefined
 }
 
+async function managerAt(ref: string): Promise<string | undefined> {
+  const result = await $`git show ${ref}:package.json`.quiet().nothrow()
+  if (result.exitCode === 0) return manager(result.stdout.toString())
+  logger.warn(`Could not read package.json at ${ref}; excluding it from Bun packageManager validation`)
+  return undefined
+}
+
 async function validateBun(base: string, upstream: string): Promise<void> {
   const current = manager(await Bun.file("package.json").text())
-  const ours = manager(await $`git show ${base}:package.json`.text())
-  const theirs = manager(await $`git show ${upstream}:package.json`.text())
+  const ours = await managerAt(base)
+  const theirs = await managerAt(upstream)
   assertBunPackageManager(current, ours, theirs)
   logger.success(`Validated Bun packageManager: ${current ?? "missing"}`)
 }

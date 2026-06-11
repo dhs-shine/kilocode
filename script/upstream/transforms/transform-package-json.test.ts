@@ -134,10 +134,10 @@ test("mergeWithNewestVersions appends theirs-only keys at the end", () => {
   expect(Object.keys(result)).toEqual(["a", "b", "c"])
 })
 
-test("selectBunPackageManager keeps the newer Bun version", () => {
+test("selectBunPackageManager keeps the newer Bun version and prefers Kilo on ties", () => {
   expect(selectBunPackageManager("bun@1.3.14", "bun@1.3.13")).toBe("bun@1.3.14")
   expect(selectBunPackageManager("bun@1.3.14", "bun@1.3.15")).toBe("bun@1.3.15")
-  expect(selectBunPackageManager("bun@1.3.14", "bun@1.3.14")).toBe("bun@1.3.14")
+  expect(selectBunPackageManager("bun@1.3.14+kilo", "bun@1.3.14+upstream")).toBe("bun@1.3.14+kilo")
 })
 
 test("selectBunPackageManager preserves valid versions over malformed values", () => {
@@ -152,7 +152,15 @@ test("fixPackageManager prevents root Bun downgrades", () => {
   const changes: string[] = []
   fixPackageManager(pkg, "package.json", ours, changes)
   expect(pkg.packageManager).toBe("bun@1.3.14")
-  expect(changes).toEqual(["packageManager: bun@1.3.13 -> bun@1.3.14 (Kilo newer)"])
+  expect(changes).toEqual(["packageManager: bun@1.3.13 -> bun@1.3.14 (preserved Kilo pin)"])
+})
+
+test("fixPackageManager restores a valid Kilo pin over malformed upstream", () => {
+  const pkg: Record<string, unknown> = { packageManager: "bun@latest" }
+  const changes: string[] = []
+  fixPackageManager(pkg, "package.json", { packageManager: "bun@1.3.14" }, changes)
+  expect(pkg.packageManager).toBe("bun@1.3.14")
+  expect(changes).toEqual(["packageManager: bun@latest -> bun@1.3.14 (preserved Kilo pin)"])
 })
 
 test("fixPackageManager accepts upstream Bun upgrades", () => {

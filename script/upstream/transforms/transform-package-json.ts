@@ -109,14 +109,13 @@ function bun(value: unknown): { value: string; version: string } | null {
   if (typeof value !== "string") return null
   const match = value.match(/^bun@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/)
   if (!match) return null
-  if (compareVersions(match[1], match[1]) === null) return null
   return { value, version: match[1] }
 }
 
 export function selectBunPackageManager(ours: unknown, theirs: unknown): string | undefined {
   const left = bun(ours)
   const right = bun(theirs)
-  if (left && right) return compareVersions(left.version, right.version)! > 0 ? left.value : right.value
+  if (left && right) return compareVersions(left.version, right.version)! >= 0 ? left.value : right.value
   if (left) return left.value
   if (right) return right.value
   return undefined
@@ -132,7 +131,7 @@ export function fixPackageManager(
   const next = selectBunPackageManager(ours?.packageManager, pkg.packageManager)
   if (!next || pkg.packageManager === next) return
   const prior = typeof pkg.packageManager === "string" ? pkg.packageManager : "missing or invalid"
-  changes.push(`packageManager: ${prior} -> ${next} (Kilo newer)`)
+  changes.push(`packageManager: ${prior} -> ${next} (preserved Kilo pin)`)
   pkg.packageManager = next
 }
 
