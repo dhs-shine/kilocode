@@ -2170,7 +2170,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
     const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts, NotFoundError> = Effect.fn(
       "SessionPrompt.loop",
-    )(function* (input: LoopInput) {
+    )(function* (
+      input: LoopInput,
+    ) {
       // kilocode_change start
       yield* KiloSessionPrompt.recoverDanglingAssistant({ sessionID: input.sessionID, status, sessions })
       yield* KiloSessionPrompt.recoverProviderFinishError({ sessionID: input.sessionID, status, sessions })
