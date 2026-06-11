@@ -2,4 +2,4 @@
 "@kilocode/cli": patch
 ---
 
-Remove unused `PROMPT_REVIEW` import and reuse `localReviewUncommittedCommand` result in command registry.
+Redirect deprecated `/review` command: detect commit/branch/PR arguments and guide users to `/local-review` instead of silently reviewing uncommitted changes.

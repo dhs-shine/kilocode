@@ -7,7 +7,7 @@ import { Effect, Layer, Context, Schema } from "effect"
 import { Config } from "@/config/config"
 import { MCP } from "../mcp"
 import { Skill } from "../skill"
-import { localReviewCommand, localReviewUncommittedCommand } from "@/kilocode/review/command" // kilocode_change
+import { localReviewCommand, localReviewUncommittedCommand, deprecatedReviewCommand } from "@/kilocode/review/command" // kilocode_change
 import PROMPT_INITIALIZE from "./template/initialize.txt"
 
 type State = {
@@ -110,23 +110,12 @@ export const layer = Layer.effect(
         hints: hints(PROMPT_INITIALIZE),
       }
       // kilocode_change start - redirect deprecated /review to /local-review-uncommitted
-      const uncommittedReview = localReviewUncommittedCommand()
-      commands[Default.REVIEW] = {
-        name: Default.REVIEW,
-        description: "DEPRECATED: use /local-review-uncommitted instead",
-        source: "command",
-        get template() {
-          return `⚠️ DEPRECATION NOTICE: The /review command is deprecated. Please use /local-review-uncommitted for uncommitted changes or /local-review for branch reviews.
-
-${uncommittedReview.template}`
-        },
-        hints: uncommittedReview.hints,
-      }
+      commands[Default.REVIEW] = { ...deprecatedReviewCommand(), source: "command" }
       // kilocode_change end
 
       // kilocode_change start
       commands[Default.LOCAL_REVIEW] = localReviewCommand()
-      commands[Default.LOCAL_REVIEW_UNCOMMITTED] = uncommittedReview
+      commands[Default.LOCAL_REVIEW_UNCOMMITTED] = localReviewUncommittedCommand()
       // kilocode_change end
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {

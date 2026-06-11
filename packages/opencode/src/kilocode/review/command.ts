@@ -2,6 +2,7 @@ import type { Command } from "@/command"
 import type { ReviewCommand } from "@kilocode/kilo-telemetry"
 import LOCAL_REVIEW from "./local-review.txt"
 import LOCAL_REVIEW_UNCOMMITTED from "./local-review-uncommitted.txt"
+import DEPRECATED_REVIEW from "./deprecated-review.txt"
 
 export function isReviewCommand(command: string | undefined): command is ReviewCommand {
   return command === "review" || command === "local-review" || command === "local-review-uncommitted"
@@ -11,6 +12,18 @@ export function parseReviewCommand(prompt: string | undefined): ReviewCommand | 
   if (!prompt?.startsWith("/")) return
   const name = prompt.slice(1).split(/\s/, 1)[0]
   if (isReviewCommand(name)) return name
+}
+
+/**
+ * /review (deprecated) - redirects argument-based calls to /local-review, falls back to uncommitted review
+ */
+export function deprecatedReviewCommand(): Command.Info {
+  return {
+    name: "review",
+    description: "DEPRECATED: use /local-review-uncommitted or /local-review instead",
+    template: DEPRECATED_REVIEW,
+    hints: ["$ARGUMENTS"],
+  }
 }
 
 /**
