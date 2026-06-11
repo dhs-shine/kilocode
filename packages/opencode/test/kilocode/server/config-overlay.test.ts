@@ -66,6 +66,7 @@ async function config(dir: string, value: unknown) {
 
 async function invalidate() {
   await AppRuntime.runPromise(Config.Service.use((svc) => svc.invalidate()))
+  await AppRuntime.runPromise(Config.Service.use((svc) => svc.getGlobal()))
 }
 
 describe("config overlay routes", () => {

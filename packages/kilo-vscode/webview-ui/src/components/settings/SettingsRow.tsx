@@ -4,7 +4,7 @@ import { Component, JSX, Show } from "solid-js"
 const SettingsRow: Component<{
   title: string
   description?: string
-  tag?: string
+  tag?: () => string | undefined
   last?: boolean
   children: JSX.Element
 }> = (props) => (
@@ -29,7 +29,7 @@ const SettingsRow: Component<{
         }}
       >
         <span>{props.title}</span>
-        <Show when={props.tag}>{(tag) => <Tag>{tag()}</Tag>}</Show>
+        <Show when={props.tag?.()}>{(tag) => <Tag>{tag()}</Tag>}</Show>
       </div>
       {props.description !== null && props.description !== undefined && (
         <div data-slot="settings-row-label-subtitle">{props.description}</div>

@@ -247,7 +247,7 @@ const IndexingTab: Component = () => {
     return value === undefined ? "" : String(value)
   }
 
-  return (
+  const content = (_scope: IndexingScope) => (
     <div style={{ display: "flex", "flex-direction": "column", gap: "16px" }}>
       <Card>
         <SettingsRow title={language.t("settings.indexing.status.title")} description={indexing.status().message}>
@@ -291,7 +291,7 @@ const IndexingTab: Component = () => {
               ? `Inherited from global config (${enabled() ? "on" : "off"}) until a project value is saved.`
               : language.t("settings.indexing.enable.description")
           }
-          tag={tag(scope(), [["enabled"]])}
+          tag={() => tag(scope(), [["enabled"]])}
           last
         >
           <Switch checked={enabled()} onChange={saveEnabled} hideLabel>
@@ -304,7 +304,7 @@ const IndexingTab: Component = () => {
         <SettingsRow
           title={language.t("settings.indexing.provider.title")}
           description={description(language.t("settings.indexing.provider.description"), [["provider"]])}
-          tag={tag(scope(), [["provider"]])}
+          tag={() => tag(scope(), [["provider"]])}
         >
           <Select
             options={providers()}
@@ -323,7 +323,7 @@ const IndexingTab: Component = () => {
             <SettingsRow
               title={language.t("settings.indexing.kiloModel.title")}
               description={description(language.t("settings.indexing.kiloModel.description"), [["model"]])}
-              tag={tag(scope(), [["model"]])}
+              tag={() => tag(scope(), [["model"]])}
             >
               <Select
                 options={kiloModels()}
@@ -343,7 +343,7 @@ const IndexingTab: Component = () => {
           <SettingsRow
             title={language.t("settings.indexing.model.title")}
             description={description(language.t("settings.indexing.model.description"), [["model"]])}
-            tag={tag(scope(), [["model"]])}
+            tag={() => tag(scope(), [["model"]])}
           >
             <TextField value={cfg().model ?? ""} placeholder="Enter model ID" onChange={saveModel} />
           </SettingsRow>
@@ -355,7 +355,7 @@ const IndexingTab: Component = () => {
               ? language.t("settings.indexing.dimension.description")
               : description(language.t("settings.indexing.dimension.description"), [["dimension"]])
           }
-          tag={selectedProvider() === "kilo" ? undefined : tag(scope(), [["dimension"]])}
+          tag={() => (selectedProvider() === "kilo" ? undefined : tag(scope(), [["dimension"]]))}
           last={!selectedProvider() || (fields().length === 0 && !(selectedProvider() === "kilo" && !kiloAvailable()))}
         >
           <TextField
@@ -392,7 +392,7 @@ const IndexingTab: Component = () => {
                     description={description(language.t("settings.indexing.providerField.description"), [
                       [group, field.key],
                     ])}
-                    tag={tag(scope(), [[group, field.key]])}
+                    tag={() => tag(scope(), [[group, field.key]])}
                     last={index() === fields.length - 1}
                   >
                     <TextField
@@ -420,7 +420,7 @@ const IndexingTab: Component = () => {
         <SettingsRow
           title={language.t("settings.indexing.vectorStore.title")}
           description={description(language.t("settings.indexing.vectorStore.description"), [["vectorStore"]])}
-          tag={tag(scope(), [["vectorStore"]])}
+          tag={() => tag(scope(), [["vectorStore"]])}
         >
           <Select
             options={stores}
@@ -441,7 +441,7 @@ const IndexingTab: Component = () => {
               description={description(language.t("settings.indexing.lancedbDirectory.description"), [
                 ["lancedb", "directory"],
               ])}
-              tag={tag(scope(), [["lancedb", "directory"]])}
+              tag={() => tag(scope(), [["lancedb", "directory"]])}
               last
             >
               <TextField
@@ -463,7 +463,7 @@ const IndexingTab: Component = () => {
             <SettingsRow
               title={language.t("settings.indexing.qdrantUrl.title")}
               description={description(language.t("settings.indexing.qdrantUrl.description"), [["qdrant", "url"]])}
-              tag={tag(scope(), [["qdrant", "url"]])}
+              tag={() => tag(scope(), [["qdrant", "url"]])}
             >
               <TextField
                 value={storeValue("qdrant", "url")}
@@ -483,7 +483,7 @@ const IndexingTab: Component = () => {
               description={description(language.t("settings.indexing.qdrantApiKey.description"), [
                 ["qdrant", "apiKey"],
               ])}
-              tag={tag(scope(), [["qdrant", "apiKey"]])}
+              tag={() => tag(scope(), [["qdrant", "apiKey"]])}
               last
             >
               <TextField
@@ -510,7 +510,7 @@ const IndexingTab: Component = () => {
             <SettingsRow
               title={item.label}
               description={description(language.t("settings.indexing.tuning.description"), [[item.key]])}
-              tag={tag(scope(), [[item.key]])}
+              tag={() => tag(scope(), [[item.key]])}
               last={index() === tuning.length - 1}
             >
               <TextField
@@ -532,6 +532,12 @@ const IndexingTab: Component = () => {
         </For>
       </Card>
     </div>
+  )
+
+  return (
+    <Show when={scope()} keyed>
+      {content}
+    </Show>
   )
 }
 
