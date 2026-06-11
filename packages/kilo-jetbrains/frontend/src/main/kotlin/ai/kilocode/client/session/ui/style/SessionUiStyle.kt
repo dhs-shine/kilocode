@@ -5,6 +5,7 @@ import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.Color
+import java.awt.Insets
 import javax.swing.border.Border
 
 /** Static style tokens owned by the chat session UI. */
@@ -16,7 +17,7 @@ object SessionUiStyle {
     /** Geometry for the transcript list and its scroll behavior. */
     object SessionLayout {
         const val GAP = 3
-        const val TRANSCRIPT_PADDING = GAP
+        val InnerInsets = Insets(UiStyle.Gap.md(), UiStyle.Gap.sm(), UiStyle.Gap.sm(), UiStyle.Gap.sm())
         const val TRANSCRIPT_SCROLLBAR_PADDING = 10
         const val USER_PROMPT_INDENT = 100
         const val SCROLL_INCREMENT = 48
