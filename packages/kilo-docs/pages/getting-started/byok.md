@@ -43,9 +43,17 @@ These providers offer coding-focused subscriptions or dedicated endpoints. Bring
 
 - BytePlus Coding Plan
 - Chutes BYOK
+- CrofAI
 - Kimi Code
-- Mistral Codestral
+- Inceptron BYOK
+- Martian
 - Neuralwatt
+- Ollama Cloud
+- OpenCode Go
+- OrcaRouter
+- Synthetic
+- Xiaomi Token Plan (Europe)
+- Xiaomi Token Plan (Singapore)
 - Z.ai Coding Plan
 
 ## Add a BYOK key
