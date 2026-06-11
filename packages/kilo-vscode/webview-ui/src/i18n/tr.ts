@@ -1240,6 +1240,8 @@ export const dict = {
   "settings.notifications.permissions.description": "İzin isteklerinde bildirim göster",
   "settings.notifications.errors.title": "Hatalar",
   "settings.notifications.errors.description": "Hata oluştuğunda bildirim göster",
+  "settings.notifications.playWhenFocused.title": "Odaklandığında Sesleri Çal",
+  "settings.notifications.playWhenFocused.description": "VS Code penceresi odaklıyken bile ses bildirimlerine izin ver",
   "settings.notifications.sounds": "Sesler",
   "settings.notifications.agentSound.title": "Ajan Tamamlanma Sesi",
   "settings.notifications.agentSound.description": "Ajan tamamlandığında çalınacak ses",
@@ -1249,6 +1251,8 @@ export const dict = {
   "settings.notifications.errorSound.description": "Hata oluştuğunda çalınacak ses",
   "settings.notifications.sound.default": "Varsayılan",
   "settings.notifications.sound.none": "Yok",
+  "settings.notifications.sound.system": "Sistem",
+  "settings.notifications.testSound": "Test",
 
   "settings.experimental.share.title": "Paylaşım Modu",
   "settings.experimental.share.description": "Oturum paylaşımının nasıl davranacağı",

@@ -1259,6 +1259,9 @@ export const dict = {
   "settings.notifications.permissions.description": "Mostrar notificación en solicitudes de permiso",
   "settings.notifications.errors.title": "Errores",
   "settings.notifications.errors.description": "Mostrar notificación en errores",
+  "settings.notifications.playWhenFocused.title": "Reproducir sonidos cuando está enfocado",
+  "settings.notifications.playWhenFocused.description":
+    "Permitir notificaciones de sonido aun cuando la ventana de VS Code esté enfocada",
   "settings.notifications.sounds": "Sonidos",
   "settings.notifications.agentSound.title": "Sonido de finalización del agente",
   "settings.notifications.agentSound.description": "Sonido a reproducir cuando el agente finaliza",
@@ -1268,6 +1271,8 @@ export const dict = {
   "settings.notifications.errorSound.description": "Sonido a reproducir en errores",
   "settings.notifications.sound.default": "Predeterminado",
   "settings.notifications.sound.none": "Ninguno",
+  "settings.notifications.sound.system": "Sistema",
+  "settings.notifications.testSound": "Prueba",
   "settings.experimental.share.title": "Modo de compartir",
   "settings.experimental.share.description": "Comportamiento de compartir sesión",
   "settings.experimental.share.manual": "Manual",

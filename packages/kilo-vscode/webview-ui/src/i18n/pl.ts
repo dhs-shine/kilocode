@@ -1211,6 +1211,9 @@ export const dict = {
   "settings.notifications.permissions.description": "Pokaż powiadomienie przy żądaniach uprawnień",
   "settings.notifications.errors.title": "Błędy",
   "settings.notifications.errors.description": "Pokaż powiadomienie przy błędach",
+  "settings.notifications.playWhenFocused.title": "Odtwarzaj dźwięki przy fokusu",
+  "settings.notifications.playWhenFocused.description":
+    "Pozwól na dźwięki powiadomień, nawet gdy okno VS Code jest w fokusu",
   "settings.notifications.sounds": "Dźwięki",
   "settings.notifications.agentSound.title": "Dźwięk zakończenia agenta",
   "settings.notifications.agentSound.description": "Dźwięk odtwarzany po zakończeniu agenta",
@@ -1220,6 +1223,8 @@ export const dict = {
   "settings.notifications.errorSound.description": "Dźwięk odtwarzany przy błędach",
   "settings.notifications.sound.default": "Domyślny",
   "settings.notifications.sound.none": "Brak",
+  "settings.notifications.sound.system": "System",
+  "settings.notifications.testSound": "Test",
   "settings.experimental.share.title": "Tryb udostępniania",
   "settings.experimental.share.description": "Zachowanie udostępniania sesji",
   "settings.experimental.share.manual": "Ręczny",

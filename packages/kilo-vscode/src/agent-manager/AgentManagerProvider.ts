@@ -78,6 +78,7 @@ export class AgentManagerProvider implements Disposable {
    *  Updated synchronously — unlike the session provider's currentSession which depends on
    *  an async `session.get` round-trip and can be stale during rapid tab switches. */
   private activeSessionId: string | undefined
+  private focusedId: string | undefined
   constructor(
     private readonly host: Host,
     private readonly connectionService: KiloConnectionService,
@@ -222,6 +223,12 @@ export class AgentManagerProvider implements Disposable {
     this.onVisibilityChange?.(ctx.visible)
     ctx.onDidChangeVisibility((visible) => {
       this.statsPoller.setVisible(visible)
+      this.onVisibilityChange?.(visible)
+      if (visible && this.focusedId) {
+        this.connectionService.registerFocused("agent-manager", this.focusedId)
+        return
+      }
+      this.connectionService.unregisterFocused("agent-manager")
     })
 
     ctx.sessions.onFollowupAdopted((session, directory) => {
@@ -241,6 +248,8 @@ export class AgentManagerProvider implements Disposable {
         this.prBridge.poller.stop()
         this.diffs.stop()
         this.panel = undefined
+        this.connectionService.unregisterFocused("agent-manager")
+        this.connectionService.registerOpen("agent-manager", [])
         this.onVisibilityChange?.(false)
       }
       ctx.sessions.dispose()
@@ -448,7 +457,8 @@ export class AgentManagerProvider implements Disposable {
 
     if (m.type === "loadMessages") {
       this.activeSessionId = m.sessionID
-      this.connectionService.registerFocused("agent-manager", m.sessionID)
+      this.focusedId = m.sessionID
+      if (this.panel?.visible) this.connectionService.registerFocused("agent-manager", m.sessionID)
       this.terminalManager.syncOnSessionSwitch(m.sessionID)
       this.prBridge.poller.setActiveWorktreeId(this.state?.getSession(m.sessionID)?.worktreeId ?? undefined)
       return msg
@@ -456,6 +466,7 @@ export class AgentManagerProvider implements Disposable {
 
     if (m.type === "clearSession") {
       this.activeSessionId = undefined
+      this.focusedId = undefined
       this.connectionService.unregisterFocused("agent-manager")
       void Promise.resolve().then(() => {
         if (!this.panel || !this.state) return

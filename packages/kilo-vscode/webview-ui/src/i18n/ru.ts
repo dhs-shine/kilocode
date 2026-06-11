@@ -1249,6 +1249,9 @@ export const dict = {
   "settings.notifications.permissions.description": "Показать уведомление при запросах разрешений",
   "settings.notifications.errors.title": "Ошибки",
   "settings.notifications.errors.description": "Показать уведомление при ошибках",
+  "settings.notifications.playWhenFocused.title": "Воспроизводить звуки при фокусе",
+  "settings.notifications.playWhenFocused.description":
+    "Разрешить звуковые уведомления, даже когда окно VS Code находится в фокусе",
   "settings.notifications.sounds": "Звуки",
   "settings.notifications.agentSound.title": "Звук завершения агента",
   "settings.notifications.agentSound.description": "Звук при завершении агента",
@@ -1258,6 +1261,8 @@ export const dict = {
   "settings.notifications.errorSound.description": "Звук при ошибках",
   "settings.notifications.sound.default": "По умолчанию",
   "settings.notifications.sound.none": "Нет",
+  "settings.notifications.sound.system": "Система",
+  "settings.notifications.testSound": "Тест",
   "settings.experimental.share.title": "Режим обмена",
   "settings.experimental.share.description": "Поведение обмена сессиями",
   "settings.experimental.share.manual": "Вручную",

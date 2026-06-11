@@ -1247,6 +1247,9 @@ export const dict = {
   "settings.notifications.permissions.description": "Toon melding bij toestemmingsverzoeken",
   "settings.notifications.errors.title": "Fouten",
   "settings.notifications.errors.description": "Toon melding bij fouten",
+  "settings.notifications.playWhenFocused.title": "Speel geluid bij focus",
+  "settings.notifications.playWhenFocused.description":
+    "Sta geluidsmeldingen toe zelfs als VS Code-venster focus heeft",
   "settings.notifications.sounds": "Geluiden",
   "settings.notifications.agentSound.title": "Agent Voltooiingsgeluid",
   "settings.notifications.agentSound.description": "Geluid om af te spelen wanneer agent voltooit",
@@ -1256,6 +1259,8 @@ export const dict = {
   "settings.notifications.errorSound.description": "Geluid om af te spelen bij fouten",
   "settings.notifications.sound.default": "Standaard",
   "settings.notifications.sound.none": "Geen",
+  "settings.notifications.sound.system": "Systeem",
+  "settings.notifications.testSound": "Test",
 
   "settings.experimental.share.title": "Deelmodus",
   "settings.experimental.share.description": "Hoe sessiedelen zich gedraagt",

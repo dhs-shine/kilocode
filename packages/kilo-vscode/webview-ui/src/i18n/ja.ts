@@ -1241,6 +1241,9 @@ export const dict = {
   "settings.notifications.permissions.description": "権限リクエスト時に通知を表示",
   "settings.notifications.errors.title": "エラー",
   "settings.notifications.errors.description": "エラー発生時に通知を表示",
+  "settings.notifications.playWhenFocused.title": "フォーカス時にサウンドを再生",
+  "settings.notifications.playWhenFocused.description":
+    "VS Codeウィンドウにフォーカスがある場合でもサウンド通知を再生できるようにする",
   "settings.notifications.sounds": "サウンド",
   "settings.notifications.agentSound.title": "エージェント完了サウンド",
   "settings.notifications.agentSound.description": "エージェント完了時に再生するサウンド",
@@ -1250,6 +1253,8 @@ export const dict = {
   "settings.notifications.errorSound.description": "エラー発生時に再生するサウンド",
   "settings.notifications.sound.default": "デフォルト",
   "settings.notifications.sound.none": "なし",
+  "settings.notifications.sound.system": "システム",
+  "settings.notifications.testSound": "テスト",
   "settings.experimental.share.title": "共有モード",
   "settings.experimental.share.description": "セッション共有の動作",
   "settings.experimental.share.manual": "手動",
