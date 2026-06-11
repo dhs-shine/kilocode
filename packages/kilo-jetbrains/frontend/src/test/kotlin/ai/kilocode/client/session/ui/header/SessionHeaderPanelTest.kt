@@ -17,7 +17,9 @@ import ai.kilocode.rpc.dto.PartTimeDto
 import ai.kilocode.rpc.dto.ProviderDto
 import ai.kilocode.rpc.dto.TodoDto
 import ai.kilocode.rpc.dto.TokensDto
+import com.intellij.icons.AllIcons
 import com.intellij.ide.util.PropertiesComponent
+import java.awt.Cursor
 import java.awt.Color
 import java.awt.Point
 import java.awt.event.MouseEvent
@@ -59,6 +61,7 @@ class SessionHeaderPanelTest : SessionControllerTestBase() {
         assertFalse(panel.isExpanded())
         assertEquals("Generated title", panel.titleText())
         assertEquals("$0.07", panel.costText())
+        assertEquals("$0.07 spent in this session", panel.costTip())
         assertEquals("1%", panel.contextText())
         assertEquals("Tokens 13.7K 2.5K cache write 25 cache read 75", panel.tokenText())
         assertEquals("Tokens used by the latest assistant response: input, output, cache writes, and cache reads.", panel.tokenTip())
@@ -73,7 +76,11 @@ class SessionHeaderPanelTest : SessionControllerTestBase() {
             List(panel.foregrounds().size) { style.editorForeground },
             panel.foregrounds(),
         )
-        assertNotNull(panel.expandButton().icon)
+        assertEquals("", panel.expandButton().text)
+        assertSame(AllIcons.General.ChevronRight, panel.expandButton().icon)
+        assertEquals(Cursor.HAND_CURSOR, panel.expandButton().cursor.type)
+        assertNotNull(panel.costIcon())
+        assertNotSame(panel.compactButton().parent, panel.expandButton().parent)
     }
 
     fun `test compact button follows eligibility and invokes controller`() {
@@ -96,7 +103,7 @@ class SessionHeaderPanelTest : SessionControllerTestBase() {
         val c = promptedHeader()
         val panel = SessionHeaderPanel(c, parent)
 
-        panel.expandButton().doClick()
+        click(panel.expandButton())
         assertTrue(panel.isExpanded())
         assertTrue(panel.todoVisible())
         assertFalse(panel.todoListVisible())
@@ -184,7 +191,7 @@ class SessionHeaderPanelTest : SessionControllerTestBase() {
         val bar = panel.contextBar()
 
         assertFalse(panel.isExpanded())
-        panel.expandButton().doClick()
+        click(panel.expandButton())
 
         assertTrue(panel.isExpanded())
         assertSame(body, panel.bodyPanel())
@@ -261,7 +268,7 @@ class SessionHeaderPanelTest : SessionControllerTestBase() {
         assertNull(panel.timelineToolTip())
         assertEquals(-1, panel.timelineHover())
 
-        panel.expandButton().doClick()
+        click(panel.expandButton())
 
         assertFalse(panel.isExpanded())
         assertSame(body, panel.bodyPanel())
@@ -297,26 +304,33 @@ class SessionHeaderPanelTest : SessionControllerTestBase() {
 
         assertFalse(panel.isExpanded())
         assertEquals("Show session metrics", panel.expandTip())
+        assertEquals("", panel.expandButton().text)
+        assertSame(AllIcons.General.ChevronRight, panel.expandButton().icon)
+        assertNotSame(panel.compactButton().parent, panel.expandButton().parent)
 
-        panel.expandButton().doClick()
+        click(panel.expandButton())
         emit(ChatEventDto.SessionUpdated("ses_test", session("ses_test", title = "New title")))
 
         assertTrue(panel.isExpanded())
         assertEquals("Hide session metrics", panel.expandTip())
+        assertEquals("", panel.expandButton().text)
+        assertSame(AllIcons.General.ChevronDown, panel.expandButton().icon)
 
-        panel.expandButton().doClick()
+        click(panel.expandButton())
         emit(ChatEventDto.MessageUpdated("ses_test", assistant(cost = 0.2)))
 
         assertFalse(panel.isExpanded())
         assertEquals("Show session metrics", panel.expandTip())
+        assertEquals("", panel.expandButton().text)
+        assertSame(AllIcons.General.ChevronRight, panel.expandButton().icon)
     }
 
     fun `test collapse persists and new header starts collapsed`() {
         val c = promptedHeader()
         val panel = SessionHeaderPanel(c, parent)
 
-        panel.expandButton().doClick()
-        panel.expandButton().doClick()
+        click(panel.expandButton())
+        click(panel.expandButton())
 
         assertFalse(panel.isExpanded())
         assertFalse(PropertiesComponent.getInstance().getBoolean(SessionHeaderPanel.EXPANDED_KEY, true))
@@ -334,7 +348,7 @@ class SessionHeaderPanelTest : SessionControllerTestBase() {
 
         assertFalse(panel.isExpanded())
 
-        panel.expandButton().doClick()
+        click(panel.expandButton())
 
         assertTrue(panel.isExpanded())
         assertTrue(PropertiesComponent.getInstance().getBoolean(SessionHeaderPanel.EXPANDED_KEY, false))
