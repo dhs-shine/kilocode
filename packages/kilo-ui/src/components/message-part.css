@@ -294,25 +294,26 @@ html[data-theme="kilo-vscode"] [data-component="bash-output"] {
     display: flex;
     flex: 1;
     flex-wrap: wrap;
-    align-items: start;
+    align-items: baseline;
     gap: 2px 8px;
     min-width: 0;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    font-style: normal;
+    line-height: var(--line-height-large);
+    letter-spacing: var(--letter-spacing-normal);
   }
 
   [data-slot="message-part-tool-error-heading"] {
     display: inline-flex;
     flex: none;
+    align-items: baseline;
     gap: 8px;
     white-space: nowrap;
   }
 
   [data-slot="message-part-tool-error-title"] {
-    font-family: var(--font-family-sans);
-    font-size: var(--font-size-base);
-    font-style: normal;
     font-weight: var(--font-weight-medium);
-    line-height: var(--line-height-large);
-    letter-spacing: var(--letter-spacing-normal);
     color: var(--text-on-critical-base);
     white-space: nowrap;
   }
