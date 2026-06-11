@@ -92,8 +92,8 @@ BYOK lets you use your own provider API keys with the Kilo AI Gateway. When a BY
 | BytePlus Coding Plan | `byteplus-coding` |
 | Chutes BYOK | `chutes-byok` |
 | CrofAI | `crofai` |
-| Kimi Code | `kimi-coding` |
 | Inceptron BYOK | `inceptron-byok` |
+| Kimi Code | `kimi-coding` |
 | Martian | `martian` |
 | Neuralwatt | `neuralwatt` |
 | Ollama Cloud | `ollama-cloud` |
