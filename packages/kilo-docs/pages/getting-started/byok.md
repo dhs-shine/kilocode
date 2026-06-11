@@ -47,6 +47,7 @@ These providers offer coding-focused subscriptions or dedicated endpoints. Bring
 - Inceptron BYOK
 - Kimi Code
 - Martian
+- Mistral Codestral
 - Neuralwatt
 - Ollama Cloud
 - OpenCode Go
