@@ -11,6 +11,16 @@ import { createMemo, createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
 import { LOCAL } from "../navigate"
 
+/** Font settings forwarded from the extension host (mirrors terminal-font.ts). */
+export interface TerminalFont {
+  fontFamily: string
+  fontSize: number
+  fontWeight?: string
+  fontWeightBold?: string
+  lineHeight?: number
+  letterSpacing?: number
+}
+
 /** Prefix used for terminal tab IDs in the webview (mirrors terminal-manager.ts). */
 export const TERMINAL_PREFIX = "terminal:"
 
@@ -21,6 +31,7 @@ export interface TerminalTabState {
   id: string
   title: string
   wsUrl: string
+  font: TerminalFont
 }
 
 /** Terminal row enriched with the sidebar context it belongs to. Used by
@@ -35,6 +46,7 @@ export interface TerminalCreatedEvent {
   terminalId: string
   title: string
   wsUrl: string
+  font: TerminalFont
 }
 
 export interface TerminalStateControls {
@@ -335,7 +347,7 @@ export function createTerminalMessageHandler(deps: TerminalMessageHandlerDeps) {
     if (msg.type === "agentManager.terminal.created") {
       const ev = msg as unknown as TerminalCreatedEvent
       const contextKey = ev.worktreeId === null ? LOCAL : ev.worktreeId
-      deps.state.add(ev.worktreeId, { id: ev.terminalId, title: ev.title, wsUrl: ev.wsUrl })
+      deps.state.add(ev.worktreeId, { id: ev.terminalId, title: ev.title, wsUrl: ev.wsUrl, font: ev.font })
       deps.onCreated?.(contextKey, ev.terminalId)
       deps.saveTabMemory()
       deps.setSelection(contextKey)

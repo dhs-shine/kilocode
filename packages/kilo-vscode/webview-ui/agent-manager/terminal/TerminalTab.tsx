@@ -11,7 +11,7 @@
  */
 
 import { Component, createEffect, onCleanup, onMount } from "solid-js"
-import { Terminal } from "@xterm/xterm"
+import { Terminal, type FontWeight } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit"
 import { WebLinksAddon } from "@xterm/addon-web-links"
 import { ClipboardAddon } from "@xterm/addon-clipboard"
@@ -20,10 +20,14 @@ import "@xterm/xterm/css/xterm.css"
 import { useVSCode } from "../../src/context/vscode"
 import { useLanguage } from "../../src/context/language"
 import { formatReviewCommentsMarkdown } from "../../src/utils/review-comment-markdown"
+import type { TerminalFont } from "./state"
 
 interface Props {
   terminalId: string
   wsUrl: string
+  /** Terminal font settings forwarded from the extension host. Used on
+   *  initial mount; live changes arrive via `agentManager.terminal.fontChanged`. */
+  font: TerminalFont
   /** Whether this terminal is currently the focused tab.
    *
    *  The xterm subtree always stays in the paint tree (see the layer /
@@ -126,12 +130,16 @@ export const TerminalTab: Component<Props> = (props) => {
     const term = new Terminal({
       convertEol: true,
       cursorBlink: true,
-      fontFamily: cssVar("--vscode-editor-font-family", "Menlo, Monaco, 'Courier New', monospace"),
-      fontSize: Number.parseFloat(cssVar("--font-size-base", "13px")),
+      fontFamily: props.font.fontFamily,
+      fontSize: props.font.fontSize,
       scrollback: 5000,
       theme: readTheme(),
       allowProposedApi: true,
     })
+    if (props.font.fontWeight) term.options.fontWeight = props.font.fontWeight as FontWeight
+    if (props.font.fontWeightBold) term.options.fontWeightBold = props.font.fontWeightBold as FontWeight
+    if (props.font.lineHeight) term.options.lineHeight = props.font.lineHeight
+    if (props.font.letterSpacing) term.options.letterSpacing = props.font.letterSpacing
     const fit = new FitAddon()
     term.loadAddon(fit)
     // Clickable URLs in terminal output (Cmd/Ctrl+click to open).
@@ -288,12 +296,26 @@ export const TerminalTab: Component<Props> = (props) => {
         return
       }
 
+      if (message.type === "agentManager.terminal.fontChanged") {
+        const font = message.font as TerminalFont
+        term.options.fontFamily = font.fontFamily
+        term.options.fontSize = font.fontSize
+        if (font.fontWeight) term.options.fontWeight = font.fontWeight as FontWeight
+        if (font.fontWeightBold) term.options.fontWeightBold = font.fontWeightBold as FontWeight
+        if (font.lineHeight) term.options.lineHeight = font.lineHeight
+        if (font.letterSpacing) term.options.letterSpacing = font.letterSpacing
+        fit.fit()
+        syncSize()
+        scheduleRepaint()
+        return
+      }
+
+      // fontSizeChanged/ready control the Kilo chat UI font — do not apply
+      // them to the terminal, which has its own independent font settings.
+      // Keep the repaint for any downstream layout side-effects.
       const size =
         message.type === "fontSizeChanged" ? message.fontSize : message.type === "ready" ? message.fontSize : undefined
       if (size === undefined) return
-      term.options.fontSize = size
-      fit.fit()
-      syncSize()
       scheduleRepaint()
     })
 
