@@ -7,6 +7,7 @@ import { Config } from "../../../src/config/config"
 import { KilocodeConfigOverlay } from "../../../src/kilocode/config/overlay"
 import { Permission } from "../../../src/permission"
 import { AppRuntime } from "../../../src/effect/app-runtime"
+import { Effect } from "effect"
 import { resetDatabase } from "../../fixture/db"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 
@@ -65,8 +66,13 @@ async function config(dir: string, value: unknown) {
 }
 
 async function invalidate() {
-  await AppRuntime.runPromise(Config.Service.use((svc) => svc.invalidate()))
-  await AppRuntime.runPromise(Config.Service.use((svc) => svc.getGlobal()))
+  await AppRuntime.runPromise(
+    Effect.gen(function* () {
+      const svc = yield* Config.Service
+      yield* svc.invalidate()
+      yield* svc.getGlobal()
+    }),
+  )
 }
 
 describe("config overlay routes", () => {
