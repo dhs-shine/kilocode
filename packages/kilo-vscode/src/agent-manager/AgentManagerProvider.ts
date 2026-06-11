@@ -35,6 +35,7 @@ import { diffSummary as localDiffSummary, diffFile as localDiffFile } from "./lo
 import { parseToolRequest, startFromTool, type ToolRequest } from "./tool-start"
 import { stopSessionProcesses } from "../kilo-provider/background-process"
 
+import { startSession } from "./mcp-warmup"
 import { buildKeybindingMap } from "./format-keybinding"
 import { resolveVersionModels, buildInitialMessages, type CreatedVersion } from "./multi-version"
 import { Semaphore } from "./semaphore"
@@ -810,9 +811,11 @@ export class AgentManagerProvider implements Disposable {
     })
 
     try {
-      const { data: session } = await client.session.create(
-        { directory: worktreePath, platform: PLATFORM },
-        { throwOnError: true },
+      const { data: session } = await startSession(
+        client,
+        worktreePath,
+        () => client.session.create({ directory: worktreePath, platform: PLATFORM }, { throwOnError: true }),
+        (...args) => this.log(...args),
       )
       return session
     } catch (error) {
