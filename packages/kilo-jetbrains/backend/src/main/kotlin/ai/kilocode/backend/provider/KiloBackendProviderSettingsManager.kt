@@ -1,0 +1,242 @@
+package ai.kilocode.backend.provider
+
+import ai.kilocode.backend.app.KiloBackendAppService
+import ai.kilocode.backend.app.LoadError
+import ai.kilocode.backend.cli.KiloCliDataParser
+import ai.kilocode.backend.rpc.KiloWorkspaceDtoMapper
+import ai.kilocode.log.KiloLog
+import ai.kilocode.rpc.dto.CustomModelFetchDto
+import ai.kilocode.rpc.dto.CustomModelFetchResultDto
+import ai.kilocode.rpc.dto.CustomProviderSaveDto
+import ai.kilocode.rpc.dto.LoadErrorDto
+import ai.kilocode.rpc.dto.ProviderActionResultDto
+import ai.kilocode.rpc.dto.ProviderConnectDto
+import ai.kilocode.rpc.dto.ProviderDisconnectDto
+import ai.kilocode.rpc.dto.ProviderEnableDto
+import ai.kilocode.rpc.dto.ProviderOAuthAuthorizeDto
+import ai.kilocode.rpc.dto.ProviderOAuthCallbackDto
+import ai.kilocode.rpc.dto.ProviderOAuthReadyDto
+import ai.kilocode.rpc.dto.ProviderSettingsDto
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
+
+internal class KiloBackendProviderSettingsManager(
+    private val app: KiloBackendAppService,
+) {
+    companion object {
+        private val LOG = KiloLog.create(KiloBackendProviderSettingsManager::class.java)
+        private val JSON = "application/json".toMediaType()
+        private val FETCH = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(15, TimeUnit.SECONDS)
+            .build()
+        private const val CALL_TIMEOUT_SECONDS = 15L
+    }
+
+    suspend fun state(directory: String): ProviderSettingsDto {
+        val start = System.currentTimeMillis()
+        LOG.debug { "provider settings state: start dir=$directory" }
+        app.requireReady()
+        val errors = mutableListOf<LoadErrorDto>()
+        val providers = load("providers", errors) {
+            KiloCliDataParser.parseProviderSettingsProviders(get("/provider?directory=${enc(directory)}"))
+        }
+        val auth = load("provider_auth", errors) {
+            KiloCliDataParser.parseProviderAuth(get("/provider/auth?directory=${enc(directory)}"))
+        } ?: emptyMap()
+        val global = load("global_config", errors) {
+            KiloCliDataParser.parseProviderConfig(get("/global/config"))
+        } ?: (emptyMap<String, ai.kilocode.rpc.dto.CustomProviderConfigDto>() to (emptyList<String>() to emptyList()))
+        val local = load("workspace_config", errors) {
+            KiloCliDataParser.parseProviderConfig(get("/config?directory=${enc(directory)}"))
+        } ?: (emptyMap<String, ai.kilocode.rpc.dto.CustomProviderConfigDto>() to (emptyList<String>() to emptyList()))
+        val cfg = global.first + local.first
+        val disabled = (global.second.first + local.second.first).distinct().sorted()
+        val enabled = (global.second.second + local.second.second).distinct().sorted()
+        val result = ProviderSettingsDto(
+            providers = providers?.first ?: emptyList(),
+            connected = providers?.second ?: emptyList(),
+            defaults = providers?.third ?: emptyMap(),
+            auth = auth,
+            config = cfg,
+            disabled = disabled,
+            enabled = enabled,
+            errors = errors,
+        )
+        result.providers.forEach { provider ->
+            val configured = provider.id in result.connected || provider.key != null || provider.source == "config" || provider.id in result.config
+            LOG.debug {
+                "provider settings provider: id=${provider.id} source=${provider.source} connected=${provider.id in result.connected} configured=$configured disabled=${provider.id in result.disabled} enabled=${provider.id in result.enabled} hasKey=${provider.key != null} auth=${result.auth[provider.id].orEmpty().map { it.type }.distinct().joinToString(",")} config=${provider.id in result.config} models=${provider.models.size}"
+            }
+        }
+        LOG.debug { "provider settings state: completed dir=$directory providers=${result.providers.size} connected=${result.connected.size} auth=${result.auth.size} errors=${result.errors.size} durationMs=${System.currentTimeMillis() - start}" }
+        return result
+    }
+
+    suspend fun connect(input: ProviderConnectDto): ProviderActionResultDto {
+        val body = KiloCliDataParser.buildProviderAuthJson(input.key, input.metadata)
+        put("/auth/${enc(input.providerId)}", body)
+        dispose()
+        return ProviderActionResultDto(state(input.directory))
+    }
+
+    suspend fun authorize(input: ProviderOAuthAuthorizeDto): ProviderOAuthReadyDto {
+        val body = KiloCliDataParser.buildProviderOAuthJson(input.method, input.inputs)
+        val raw = post("/provider/${enc(input.providerId)}/oauth/authorize?directory=${enc(input.directory)}", body)
+        val parsed = KiloCliDataParser.parseOAuthReady(raw)
+        return ProviderOAuthReadyDto(parsed.first, parsed.second, parsed.third)
+    }
+
+    suspend fun callback(input: ProviderOAuthCallbackDto): ProviderActionResultDto {
+        val body = KiloCliDataParser.buildProviderOAuthJson(input.method, code = input.code)
+        post("/provider/${enc(input.providerId)}/oauth/callback?directory=${enc(input.directory)}", body)
+        dispose()
+        return ProviderActionResultDto(state(input.directory))
+    }
+
+    suspend fun disconnect(input: ProviderDisconnectDto): ProviderActionResultDto {
+        val current = state(input.directory)
+        val provider = current.providers.firstOrNull { it.id == input.providerId }
+        val cfg = current.config[input.providerId]
+        if (input.providerId == "kilo") {
+            val ok = app.logout()
+            return ProviderActionResultDto(state(input.directory), profileCleared = ok)
+        }
+        if (provider?.source == "env") {
+            return ProviderActionResultDto(current, error = "Provider is configured by environment variables.")
+        }
+        val configured = input.providerId in current.connected || provider?.key != null || provider?.source == "config" || cfg != null
+        if (!configured) {
+            return ProviderActionResultDto(current, error = "Provider is not connected.")
+        }
+        if (cfg?.npm == "@ai-sdk/openai-compatible") {
+            patch(KiloCliDataParser.buildCustomProviderDeletePatch(input.providerId))
+            deleteAuth(input.providerId)
+            dispose()
+            return ProviderActionResultDto(state(input.directory))
+        }
+        if (provider?.source == "config") {
+            patch(KiloCliDataParser.buildDisabledProviderPatch(current.disabled + input.providerId))
+            dispose()
+            return ProviderActionResultDto(state(input.directory))
+        }
+        deleteAuth(input.providerId)
+        dispose()
+        return ProviderActionResultDto(state(input.directory))
+    }
+
+    suspend fun enable(input: ProviderEnableDto): ProviderActionResultDto {
+        val current = state(input.directory)
+        patch(KiloCliDataParser.buildDisabledProviderPatch(current.disabled.filter { it != input.providerId }))
+        dispose()
+        return ProviderActionResultDto(state(input.directory))
+    }
+
+    suspend fun saveCustom(input: CustomProviderSaveDto): ProviderActionResultDto {
+        val err = validate(input)
+        if (err != null) return ProviderActionResultDto(state(input.directory), error = err)
+        patch(KiloCliDataParser.buildCustomProviderPatch(input))
+        if (input.envVar.isNullOrBlank()) {
+            val key = input.apiKey?.takeIf { it.isNotBlank() }
+            if (key != null) put("/auth/${enc(input.id)}", KiloCliDataParser.buildProviderAuthJson(key, emptyMap()))
+        } else {
+            deleteAuth(input.id)
+        }
+        dispose()
+        return ProviderActionResultDto(state(input.directory))
+    }
+
+    suspend fun fetch(input: CustomModelFetchDto): CustomModelFetchResultDto {
+        val url = input.baseUrl.trim().trimEnd('/') + "/models"
+        return try {
+            val request = Request.Builder().url(url).get().apply {
+                input.apiKey?.takeIf { it.isNotBlank() }?.let { header("Authorization", "Bearer $it") }
+                input.headers.forEach { (key, value) -> header(key, value) }
+            }.build()
+            val raw = withContext(Dispatchers.IO) {
+                FETCH.newCall(request).execute().use { response ->
+                    val body = response.body?.string().orEmpty()
+                    if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}: $body")
+                    body
+                }
+            }
+            CustomModelFetchResultDto(KiloCliDataParser.parseModelIds(raw))
+        } catch (e: Exception) {
+            LOG.warn("Custom provider model fetch failed: ${e.message}", e)
+            CustomModelFetchResultDto(error = e.message)
+        }
+    }
+
+    private suspend fun <T> load(resource: String, errors: MutableList<LoadErrorDto>, block: suspend () -> T): T? {
+        val start = System.currentTimeMillis()
+        LOG.debug { "provider settings $resource: start" }
+        return try {
+            val result = block()
+            LOG.debug { "provider settings $resource: completed durationMs=${System.currentTimeMillis() - start}" }
+            result
+        } catch (e: Exception) {
+            LOG.warn("Provider settings $resource fetch failed durationMs=${System.currentTimeMillis() - start}: ${e.message}", e)
+            errors.add(KiloWorkspaceDtoMapper.error(LoadError(resource = resource, detail = e.message)))
+            null
+        }
+    }
+
+    private suspend fun get(path: String) = request(Request.Builder().url(url(path)).get().build())
+    private suspend fun post(path: String, body: String) = request(Request.Builder().url(url(path)).post(body.toRequestBody(JSON)).build())
+    private suspend fun put(path: String, body: String) = request(Request.Builder().url(url(path)).put(body.toRequestBody(JSON)).build())
+    private suspend fun patch(body: String) = request(Request.Builder().url(url("/global/config")).patch(body.toRequestBody(JSON)).build())
+
+    private suspend fun deleteAuth(id: String) {
+        runCatching { request(Request.Builder().url(url("/auth/${enc(id)}")).delete().build()) }
+            .onFailure { LOG.warn("Provider auth delete failed for $id: ${it.message}", it) }
+    }
+
+    private suspend fun dispose() {
+        runCatching { request(Request.Builder().url(url("/global/dispose")).post("{}".toRequestBody(JSON)).build()) }
+            .onFailure { LOG.debug { "Provider settings dispose skipped: ${it.message}" } }
+    }
+
+    private suspend fun request(request: Request): String {
+        val start = System.currentTimeMillis()
+        LOG.debug { "provider settings http: start ${request.method} ${request.url.encodedPath}" }
+        val http = app.http?.newBuilder()
+            ?.callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            ?.readTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            ?.build() ?: throw IllegalStateException("Kilo HTTP client is unavailable")
+        return withContext(Dispatchers.IO) {
+            try {
+                http.newCall(request.newBuilder().header("Accept", "application/json").build()).execute().use { response ->
+                    val body = response.body?.string().orEmpty()
+                    LOG.debug { "provider settings http: completed ${request.method} ${request.url.encodedPath} code=${response.code} bytes=${body.length} durationMs=${System.currentTimeMillis() - start}" }
+                    if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}: $body")
+                    body
+                }
+            } catch (e: Exception) {
+                LOG.debug { "provider settings http: failed ${request.method} ${request.url.encodedPath} durationMs=${System.currentTimeMillis() - start}: ${e.message}" }
+                throw e
+            }
+        }
+    }
+
+    private fun url(path: String) = "http://127.0.0.1:${app.port}$path"
+
+    private fun enc(value: String) = URLEncoder.encode(value, StandardCharsets.UTF_8)
+
+    private fun validate(input: CustomProviderSaveDto): String? {
+        val env = input.envVar
+        if (!Regex("^[a-zA-Z0-9_-]+$").matches(input.id.trim())) return "Provider ID can only contain letters, numbers, underscores, and hyphens."
+        if (!input.baseUrl.startsWith("http://") && !input.baseUrl.startsWith("https://")) return "Base URL must start with http:// or https://."
+        if (!env.isNullOrBlank() && !Regex("^[A-Za-z_][A-Za-z0-9_]*$").matches(env)) return "Environment variable name is invalid."
+        if (input.headers.keys.any { it.isBlank() }) return "Header names cannot be empty."
+        if (input.models.any { it.id.isBlank() }) return "Model IDs cannot be empty."
+        return null
+    }
+}

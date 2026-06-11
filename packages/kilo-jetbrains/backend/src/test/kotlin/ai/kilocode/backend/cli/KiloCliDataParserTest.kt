@@ -1210,6 +1210,33 @@ class KiloCliDataParserTest {
             }
         }
 
+        @Test
+        fun `parseProviderAuth - maps structured select options`() {
+            val raw = """{
+                "azure": [{
+                    "type": "api",
+                    "label": "API key",
+                    "prompts": [{
+                        "type": "select",
+                        "key": "endpointType",
+                        "message": "Select Azure endpoint configuration",
+                        "options": [
+                            {"label": "Resource name", "value": "resourceName", "hint": "Build the endpoint"},
+                            {"label": "Full endpoint URL", "value": "baseURL"}
+                        ]
+                    }]
+                }]
+            }"""
+
+            val prompt = KiloCliDataParser.parseProviderAuth(raw).getValue("azure").single().prompts.single()
+
+            assertEquals("Select Azure endpoint configuration", prompt.label)
+            assertEquals("Resource name", prompt.options[0].label)
+            assertEquals("resourceName", prompt.options[0].value)
+            assertEquals("Full endpoint URL", prompt.options[1].label)
+            assertEquals("baseURL", prompt.options[1].value)
+        }
+
         // ---- parseCommands ----
 
         @Test
@@ -1341,6 +1368,13 @@ class KiloCliDataParserTest {
             )
             val result = KiloCliDataParser.buildPromptJson(prompt)
             assertEquals("""{"parts":[{"type":"text","text":"Hi"}],"noReply":true}""", result)
+        }
+
+        @Test
+        fun `buildProviderOAuthJson - numeric method index`() {
+            val result = KiloCliDataParser.buildProviderOAuthJson("0", mapOf("deploymentType" to "github.com"))
+
+            assertEquals("""{"method":0,"inputs":{"deploymentType":"github.com"}}""", result)
         }
 
         @Test
