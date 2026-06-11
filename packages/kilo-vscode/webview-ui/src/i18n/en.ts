@@ -210,6 +210,9 @@ export const dict = {
   "model.preview.label.cached": "Cached",
   "model.preview.label.average": "Est. Average Cost",
   "model.preview.label.context": "Context",
+  "model.preview.group.terminalBench": "Terminal Bench 2.0",
+  "model.preview.label.completion": "Completion",
+  "model.preview.label.costAttempt": "Cost / attempt",
   "model.preview.value.notSupported": "Not supported",
   "model.preview.tooltip.average":
     "The estimated average cost is based on a typical ratio of input, output, and cache read tokens.",
@@ -1425,8 +1428,7 @@ export const dict = {
     "Query language server. Allows running language server queries for code intelligence.",
   "settings.autoApprove.tool.todoreadwrite": "Manage task list. Allows reading and updating the internal task list.",
   "settings.autoApprove.tool.webfetch": "Fetch a URL. Allows retrieving content from a specific URL.",
-  "settings.autoApprove.tool.websearchcodesearch":
-    "Search web or code. Allows performing external web or code searches.",
+  "settings.autoApprove.tool.websearch": "Search the web. Allows performing external web searches.",
   "settings.autoApprove.tool.doom_loop":
     "Prevent repeated identical actions. Triggered when the same tool call repeats with identical input.",
 

@@ -213,6 +213,9 @@ export const dict = {
   "model.preview.label.cached": "캐시됨",
   "model.preview.label.average": "예상 평균 비용",
   "model.preview.label.context": "컨텍스트",
+  "model.preview.group.terminalBench": "Terminal Bench 2.0",
+  "model.preview.label.completion": "완료율",
+  "model.preview.label.costAttempt": "시도당 비용",
   "model.preview.value.notSupported": "미지원",
   "model.preview.tooltip.average": "예상 평균 비용은 입력, 출력 및 캐시 읽기 토큰의 일반적인 비율을 기반으로 합니다.",
   "model.preview.badge.reasoning": "추론",
@@ -1419,8 +1422,7 @@ export const dict = {
   "settings.autoApprove.tool.lsp": "언어 서버 쿼리. 코드 인텔리전스를 위해 언어 서버 쿼리 실행을 허용합니다.",
   "settings.autoApprove.tool.todoreadwrite": "작업 목록 관리. 내부 작업 목록을 읽고 업데이트할 수 있도록 허용합니다.",
   "settings.autoApprove.tool.webfetch": "URL 가져오기. 특정 URL에서 콘텐츠를 검색할 수 있도록 허용합니다.",
-  "settings.autoApprove.tool.websearchcodesearch":
-    "웹 또는 코드 검색. 외부 웹 또는 코드 검색을 수행할 수 있도록 허용합니다.",
+  "settings.autoApprove.tool.websearch": "웹 검색. 외부 웹 검색을 수행할 수 있도록 허용합니다.",
   "settings.autoApprove.tool.external_directory":
     "작업 공간 외부 파일 접근. 현재 프로젝트 디렉토리 외부의 파일에 접근할 때 트리거됩니다.",
   "settings.autoApprove.tool.doom_loop":

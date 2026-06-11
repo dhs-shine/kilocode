@@ -212,6 +212,9 @@ export const dict = {
   "model.preview.label.cached": "Bufret",
   "model.preview.label.average": "Est. snittkostnad",
   "model.preview.label.context": "Kontekst",
+  "model.preview.group.terminalBench": "Terminal Bench 2.0",
+  "model.preview.label.completion": "Fullføring",
+  "model.preview.label.costAttempt": "Kostnad / forsøk",
   "model.preview.value.notSupported": "Ikke støttet",
   "model.preview.tooltip.average":
     "Den estimerte snittkostnaden er basert på et typisk forhold mellom inndata-, utdata- og leste buffer-tokens.",
@@ -1437,8 +1440,7 @@ export const dict = {
   "settings.autoApprove.tool.todoreadwrite":
     "Administrer oppgaveliste. Tillater lesing og oppdatering av den interne oppgavelisten.",
   "settings.autoApprove.tool.webfetch": "Hent en URL. Tillater henting av innhold fra en spesifikk URL.",
-  "settings.autoApprove.tool.websearchcodesearch":
-    "Søk på nettet eller i kode. Tillater å utføre eksterne nett- eller kodesøk.",
+  "settings.autoApprove.tool.websearch": "Søk på nettet. Tillater å utføre eksterne nettsøk.",
   "settings.autoApprove.tool.external_directory":
     "Få tilgang til filer utenfor arbeidsområdet. Utløses ved tilgang til filer utenfor gjeldende prosjektkatalog.",
   "settings.autoApprove.tool.doom_loop":

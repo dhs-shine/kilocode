@@ -16,17 +16,26 @@ describe("model preview data collection line", () => {
 
     expect(data).toBeGreaterThanOrEqual(0)
     expect(context).toBeGreaterThan(data)
-    expect(preview).toContain('Icon name="brain-circuit"')
+    expect(preview).toContain('Icon name="book-open-check"')
     expect(preview).toContain("isDataCollectedModel(model())")
     expect(preview).toContain('language.t("model.tag.dataCollected")')
     expect(styles).toContain(".model-preview-data-line")
   })
 
-  it("uses the brain circuit icon for all webview model data disclosures", () => {
-    expect(selector).toContain('Icon name="brain-circuit"')
+  it("renders prompt training independently from the free badge", () => {
+    expect(selector).toMatch(
+      /<Show when=\{isFree\(model\)\}>[\s\S]*?<\/Show>\s*<Show when=\{isDataCollectedModel\(model\)\}>/,
+    )
+    expect(preview).toMatch(
+      /<Show when=\{model\(\)\.isFree\}>[\s\S]*?<\/Show>\s*<Show when=\{isDataCollectedModel\(model\(\)\)\}>/,
+    )
+  })
+
+  it("uses the book open check icon for all webview model data disclosures", () => {
+    expect(selector).toContain('Icon name="book-open-check"')
     expect(selector).not.toContain('Icon name="warning"')
-    expect(agent).toContain('Icon name="brain-circuit"')
+    expect(agent).toContain('Icon name="book-open-check"')
     expect(agent).not.toContain('Icon name="warning"')
-    expect(icons).toContain('"brain-circuit"')
+    expect(icons).toContain('"book-open-check"')
   })
 })

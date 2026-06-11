@@ -636,7 +636,7 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
             <Show when={activeCollectsData()}>
               <Tooltip value={dataLabel()} placement="top">
                 <span class="model-selector-trigger-free-data" aria-label={dataLabel()}>
-                  <Icon name="brain-circuit" size="small" />
+                  <Icon name="book-open-check" size="small" />
                 </span>
               </Tooltip>
             </Show>
@@ -828,15 +828,17 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
                                           )
                                         })()}
                                       </span>
-                                      <Show when={isFree(model)}>
+                                      <Show when={isFree(model) || isDataCollectedModel(model)}>
                                         <span class="model-selector-free-data">
-                                          <span class="model-selector-data-badge">
-                                            <Tag data-variant="member">{freeLabel()}</Tag>
-                                          </span>
+                                          <Show when={isFree(model)}>
+                                            <span class="model-selector-data-badge">
+                                              <Tag data-variant="member">{freeLabel()}</Tag>
+                                            </span>
+                                          </Show>
                                           <Show when={isDataCollectedModel(model)}>
                                             <Tooltip value={dataLabel()} placement="top">
                                               <span class="model-selector-free-data-icon" aria-label={dataLabel()}>
-                                                <Icon name="brain-circuit" size="small" />
+                                                <Icon name="book-open-check" size="small" />
                                               </span>
                                             </Tooltip>
                                           </Show>

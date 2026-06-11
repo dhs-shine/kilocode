@@ -183,6 +183,9 @@ export const dict = {
   "model.preview.label.cached": "Cache",
   "model.preview.label.average": "Costo medio stimato",
   "model.preview.label.context": "Contesto",
+  "model.preview.group.terminalBench": "Terminal Bench 2.0",
+  "model.preview.label.completion": "Completamento",
+  "model.preview.label.costAttempt": "Costo / tentativo",
   "model.preview.value.notSupported": "Non supportato",
   "model.preview.tooltip.average":
     "Il costo medio stimato si basa su un rapporto tipico tra token di input, output e lettura cache.",
@@ -1278,7 +1281,7 @@ export const dict = {
   "settings.autoApprove.tool.todoreadwrite":
     "Gestisci lista task. Consente lettura e aggiornamento della lista task interna.",
   "settings.autoApprove.tool.webfetch": "Recupera URL. Consente di recuperare contenuti da un URL specifico.",
-  "settings.autoApprove.tool.websearchcodesearch": "Cerca web o codice. Consente ricerche web o di codice esterne.",
+  "settings.autoApprove.tool.websearch": "Cerca sul web. Consente ricerche web esterne.",
   "settings.autoApprove.tool.doom_loop":
     "Previeni azioni identiche ripetute. Si attiva quando la stessa chiamata tool si ripete con input identico.",
   "settings.checkpoints.enable.title": "Abilita snapshot",

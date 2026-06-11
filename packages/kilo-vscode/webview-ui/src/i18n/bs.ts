@@ -210,6 +210,9 @@ export const dict = {
   "model.preview.label.cached": "Keširano",
   "model.preview.label.average": "Procj. prosječni trošak",
   "model.preview.label.context": "Kontekst",
+  "model.preview.group.terminalBench": "Terminal Bench 2.0",
+  "model.preview.label.completion": "Završetak",
+  "model.preview.label.costAttempt": "Trošak / pokušaj",
   "model.preview.value.notSupported": "Nije podržano",
   "model.preview.tooltip.average":
     "Procijenjeni prosječni trošak zasniva se na tipičnom omjeru ulaznih i izlaznih tokena, te tokena pročitanih iz keša.",
@@ -1450,8 +1453,7 @@ export const dict = {
   "settings.autoApprove.tool.todoreadwrite":
     "Upravljanje listom zadataka. Dozvoljava čitanje i ažuriranje interne liste zadataka.",
   "settings.autoApprove.tool.webfetch": "Preuzimanje URL-a. Omogućava preuzimanje sadržaja sa određenog URL-a.",
-  "settings.autoApprove.tool.websearchcodesearch":
-    "Pretraga weba ili koda. Dozvoljava izvršavanje eksternih pretraga weba ili koda.",
+  "settings.autoApprove.tool.websearch": "Pretražuj web. Dozvoljava izvršavanje eksternih pretraga weba.",
   "settings.autoApprove.tool.external_directory":
     "Pristup datotekama izvan radnog prostora. Pokreće se prilikom pristupa datotekama izvan trenutnog direktorija projekta.",
   "settings.autoApprove.tool.doom_loop":

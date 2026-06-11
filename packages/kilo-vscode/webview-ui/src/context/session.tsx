@@ -4,7 +4,17 @@
  * Also owns global (extension-lifetime) model selection (provider context is catalog-only).
  */
 
-import { createContext, useContext, createSignal, createMemo, createEffect, onMount, onCleanup, batch } from "solid-js"
+import {
+  createContext,
+  useContext,
+  createSignal,
+  createMemo,
+  createEffect,
+  onMount,
+  onCleanup,
+  batch,
+  untrack,
+} from "solid-js"
 import type { ParentComponent, Accessor } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useVSCode } from "./vscode"
@@ -15,6 +25,7 @@ import { useLanguage } from "./language"
 import { showToast } from "@kilocode/kilo-ui/toast"
 import type {
   SessionInfo,
+  SessionUpdate,
   Message,
   Part,
   PartDelta,
@@ -171,6 +182,7 @@ interface SessionContextValue {
 
   // Model selection (global, extension-lifetime)
   selected: (sessionID?: string) => ModelSelection | null
+  configModel: (sessionID?: string) => ModelSelection | null
   selectModel: (providerID: string, modelID: string, sessionID?: string) => void
   hasModelOverride: (sessionID?: string) => boolean
   clearModelOverride: (sessionID?: string) => void
@@ -838,6 +850,64 @@ export const SessionProvider: ParentComponent = (props) => {
   })
   vscode.postMessage({ type: "requestFavorites" })
   onCleanup(unsubFavorites)
+
+  // Clear model overrides that match the previous config model (not intentional user overrides).
+  // When config.model changes, old overrides that were just default values should be cleared
+  // so sessions fall through to resolveModel() and pick up the new config model.
+  const [lastConfigModel, setLastConfigModel] = createSignal<ModelSelection | null>(getGlobalModel())
+  createEffect(() => {
+    const newConfigModel = getGlobalModel()
+    // Use untrack to read previous value without making this effect re-trigger on its own updates
+    const oldConfigModel = untrack(() => lastConfigModel())
+    if (oldConfigModel) {
+      // Also clear when newConfigModel is null (user removed model from config)
+      if (newConfigModel) {
+        const modelChanged =
+          oldConfigModel.providerID !== newConfigModel.providerID || oldConfigModel.modelID !== newConfigModel.modelID
+        if (modelChanged) {
+          // Clear overrides that match the OLD config model - these were likely defaults,
+          // not intentional user overrides. Overrides that differ from both old and new
+          // config are preserved (intentional user selections).
+          setStore(
+            "sessionOverrides",
+            produce((overrides) => {
+              for (const sid of Object.keys(overrides)) {
+                const override = overrides[sid]
+                if (
+                  override &&
+                  override.providerID === oldConfigModel.providerID &&
+                  override.modelID === oldConfigModel.modelID
+                ) {
+                  delete overrides[sid]
+                }
+              }
+            }),
+          )
+        }
+      } else {
+        // newConfigModel is null - clear all overrides that matched the old config model
+        // since the config no longer specifies a model. This ensures sessions fall through
+        // to provider defaults rather than using a stale removed model.
+        setStore(
+          "sessionOverrides",
+          produce((overrides) => {
+            for (const sid of Object.keys(overrides)) {
+              const override = overrides[sid]
+              if (
+                override &&
+                override.providerID === oldConfigModel.providerID &&
+                override.modelID === oldConfigModel.modelID
+              ) {
+                delete overrides[sid]
+              }
+            }
+          }),
+        )
+      }
+    }
+    // Update the tracked config model
+    setLastConfigModel(newConfigModel)
+  })
 
   function handleError(message: Extract<ExtensionMessage, { type: "error" }>) {
     if (!message.sessionID || message.sessionID === currentSessionID()) setLoading(false)
@@ -1620,11 +1690,12 @@ export const SessionProvider: ParentComponent = (props) => {
     setStore("todos", sessionID, items)
   }
 
-  function handleSessionUpdated(session: SessionInfo) {
+  function handleSessionUpdated(session: SessionUpdate) {
+    const changed = session.revert !== undefined
     const prev = store.sessions[session.id]?.revert
     const next = session.revert ?? undefined
     setStore("sessions", session.id, session)
-    if (prev?.messageID === next?.messageID && prev?.partID === next?.partID) return
+    if (!changed || (prev?.messageID === next?.messageID && prev?.partID === next?.partID)) return
     clearClose(session.id)
     resetTodos(session.id, next)
   }
@@ -2532,6 +2603,7 @@ export const SessionProvider: ParentComponent = (props) => {
     scopedQuestions,
     scopedSuggestions,
     selected,
+    configModel,
     selectModel,
     hasModelOverride,
     clearModelOverride,

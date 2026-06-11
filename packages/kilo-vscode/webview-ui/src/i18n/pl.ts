@@ -209,6 +209,9 @@ export const dict = {
   "model.preview.label.cached": "W pamięci podręcznej",
   "model.preview.label.average": "Szac. średni koszt",
   "model.preview.label.context": "Kontekst",
+  "model.preview.group.terminalBench": "Terminal Bench 2.0",
+  "model.preview.label.completion": "Ukończenie",
+  "model.preview.label.costAttempt": "Koszt / próbę",
   "model.preview.value.notSupported": "Nieobsługiwane",
   "model.preview.tooltip.average":
     "Szacowany średni koszt opiera się na typowym stosunku tokenów wejściowych, wyjściowych i pobranych z pamięci podręcznej.",
@@ -1445,8 +1448,8 @@ export const dict = {
   "settings.autoApprove.tool.todoreadwrite":
     "Zarządzaj listą zadań. Pozwala na odczytywanie i aktualizowanie wewnętrznej listy zadań.",
   "settings.autoApprove.tool.webfetch": "Pobieranie URL. Pozwala na pobieranie zawartości z określonego adresu URL.",
-  "settings.autoApprove.tool.websearchcodesearch":
-    "Przeszukuj sieć lub kod. Pozwala na wykonywanie zewnętrznych wyszukiwań w sieci lub kodzie.",
+  "settings.autoApprove.tool.websearch":
+    "Przeszukiwanie sieci. Pozwala na wykonywanie zewnętrznych wyszukiwań w sieci.",
   "settings.autoApprove.tool.external_directory":
     "Dostęp do plików poza obszarem roboczym. Uruchamiane przy dostępie do plików poza bieżącym katalogiem projektu.",
   "settings.autoApprove.tool.doom_loop":

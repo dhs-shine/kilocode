@@ -209,6 +209,9 @@ export const dict = {
   "model.preview.label.cached": "キャッシュ",
   "model.preview.label.average": "推定平均コスト",
   "model.preview.label.context": "コンテキスト",
+  "model.preview.group.terminalBench": "Terminal Bench 2.0",
+  "model.preview.label.completion": "完了率",
+  "model.preview.label.costAttempt": "試行あたりのコスト",
   "model.preview.value.notSupported": "未対応",
   "model.preview.tooltip.average":
     "推定平均コストは、入力、出力、およびキャッシュ読み取りトークンの一般的な比率に基づいています。",
@@ -1434,8 +1437,7 @@ export const dict = {
     "言語サーバーにクエリ。コードインテリジェンスのために言語サーバークエリの実行を許可します。",
   "settings.autoApprove.tool.todoreadwrite": "タスクリストの管理。内部タスクリストの読み取りと更新を許可します。",
   "settings.autoApprove.tool.webfetch": "URLをフェッチ。特定のURLからコンテンツを取得することを許可します。",
-  "settings.autoApprove.tool.websearchcodesearch":
-    "Webまたはコードの検索。外部のWebまたはコード検索の実行を許可します。",
+  "settings.autoApprove.tool.websearch": "ウェブを検索。外部のWeb検索の実行を許可します。",
   "settings.autoApprove.tool.external_directory":
     "ワークスペース外のファイルにアクセス。現在のプロジェクトディレクトリ外のファイルにアクセスしたときにトリガーされます。",
   "settings.autoApprove.tool.doom_loop":
