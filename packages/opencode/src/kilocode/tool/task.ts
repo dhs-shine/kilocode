@@ -20,7 +20,10 @@ const ModelState = z
     model: z
       .record(
         z.string(),
-        z.object({ providerID: z.custom<ProviderID>(Schema.is(ProviderID)), modelID: z.custom<ModelID>(Schema.is(ModelID)) }),
+        z.object({
+          providerID: z.custom<ProviderID>(Schema.is(ProviderID)),
+          modelID: z.custom<ModelID>(Schema.is(ModelID)),
+        }),
       )
       .optional(),
     variant: z.record(z.string(), z.string().optional()).optional(),
@@ -61,7 +64,11 @@ export namespace KiloTask {
 
   /** Extra permission rules appended to subagent sessions */
   export function permissions(rules: Permission.Ruleset): Permission.Ruleset {
-    return [{ permission: "task", pattern: "*", action: "deny" }, ...rules]
+    return [
+      { permission: "task", pattern: "*", action: "deny" },
+      { permission: "question", pattern: "*", action: "deny" },
+      ...rules,
+    ]
   }
 
   export function merge(...rulesets: Permission.Ruleset[]): Permission.Ruleset {

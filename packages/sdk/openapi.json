@@ -14504,100 +14504,8 @@
             "$ref": "#/components/schemas/EventInstallationUpdated"
           },
           {
-            "$ref": "#/components/schemas/EventMessageRemoved"
-          },
-          {
-            "$ref": "#/components/schemas/EventMessagePartUpdated"
-          },
-          {
-            "$ref": "#/components/schemas/EventMessagePartRemoved"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionCreated"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionUpdated"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionDeleted"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextAgentSwitched"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextModelSwitched"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextPrompted"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextSynthetic"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextShellStarted"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextShellEnded"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextStepStarted"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextStepEnded"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextStepFailed"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextTextStarted"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextTextDelta"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextTextEnded"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextReasoningStarted"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextReasoningDelta"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextReasoningEnded"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextToolInputStarted"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextToolInputDelta"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextToolInputEnded"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextToolCalled"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextToolProgress"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextToolSuccess"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextToolFailed"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextRetried"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextCompactionStarted"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextCompactionDelta"
-          },
-          {
-            "$ref": "#/components/schemas/EventSessionNextCompactionEnded"          }
+            "$ref": "#/components/schemas/EventInstallationUpdate-available"
+          }
         ]
       },
       "OAuth": {
@@ -17123,100 +17031,8 @@
                 "$ref": "#/components/schemas/EventInstallationUpdated"
               },
               {
-                "$ref": "#/components/schemas/EventMessageRemoved"
+                "$ref": "#/components/schemas/EventInstallationUpdate-available"
               },
-              {
-                "$ref": "#/components/schemas/EventMessagePartUpdated"
-              },
-              {
-                "$ref": "#/components/schemas/EventMessagePartRemoved"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionCreated"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionUpdated"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionDeleted"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextAgentSwitched"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextModelSwitched"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextPrompted"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextSynthetic"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextShellStarted"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextShellEnded"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextStepStarted"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextStepEnded"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextStepFailed"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextTextStarted"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextTextDelta"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextTextEnded"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextReasoningStarted"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextReasoningDelta"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextReasoningEnded"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextToolInputStarted"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextToolInputDelta"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextToolInputEnded"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextToolCalled"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextToolProgress"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextToolSuccess"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextToolFailed"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextRetried"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextCompactionStarted"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextCompactionDelta"
-              },
-              {
-                "$ref": "#/components/schemas/EventSessionNextCompactionEnded"              },
               {
                 "$ref": "#/components/schemas/SyncEventMessageUpdated"
               },
@@ -18870,6 +18686,9 @@
             "enum": ["codex", "gemini", "beast", "anthropic", "trinity", "anthropic_without_todo", "ling", "gpt55"]
           },
           "isFree": {
+            "type": "boolean"
+          },
+          "mayTrainOnYourPrompts": {
             "type": "boolean"
           },
           "terminalBench": {
@@ -24310,137 +24129,7 @@
         "required": ["message", "isRetryable"],
         "additionalProperties": false
       },
-      "EventSessionNextRetried": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["session.next.retried"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "timestamp": {
-                "type": "number"
-              },
-              "sessionID": {
-                "type": "string",
-                "pattern": "^ses"
-              },
-              "attempt": {
-                "type": "number"
-              },
-              "error": {
-                "$ref": "#/components/schemas/SessionNextRetry_error"
-              }
-            },
-            "required": ["timestamp", "sessionID", "attempt", "error"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventSessionNextCompactionStarted": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["session.next.compaction.started"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "timestamp": {
-                "type": "number"
-              },
-              "sessionID": {
-                "type": "string",
-                "pattern": "^ses"
-              },
-              "reason": {
-                "type": "string",
-                "enum": ["auto", "manual"]
-              }
-            },
-            "required": ["timestamp", "sessionID", "reason"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventSessionNextCompactionDelta": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["session.next.compaction.delta"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "timestamp": {
-                "type": "number"
-              },
-              "sessionID": {
-                "type": "string",
-                "pattern": "^ses"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": ["timestamp", "sessionID", "text"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventSessionNextCompactionEnded": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["session.next.compaction.ended"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "timestamp": {
-                "type": "number"
-              },
-              "sessionID": {
-                "type": "string",
-                "pattern": "^ses"
-              },
-              "text": {
-                "type": "string"
-              },
-              "include": {
-                "type": "string"
-              }
-            },
-            "required": ["timestamp", "sessionID", "text"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },      "SessionInfo": {
+      "SessionInfo": {
         "type": "object",
         "properties": {
           "id": {

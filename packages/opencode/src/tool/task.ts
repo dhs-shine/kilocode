@@ -247,6 +247,7 @@ export const TaskTool = Tool.define(
           variant, // kilocode_change
           agent: next.name,
           tools: {
+            question: false, // kilocode_change - subagents cannot prompt the user directly
             ...(canTodo ? {} : { todowrite: false }),
             ...(canTask ? {} : { task: false }),
             ...Object.fromEntries((cfg.experimental?.primary_tools ?? []).map((item) => [item, false])),
@@ -396,9 +397,12 @@ export const TaskTool = Tool.define(
                 const costAfter = yield* KiloCostPropagation.childCost(sessions, nextSession.id).pipe(
                   Effect.catchTag("NotFoundError", () => Effect.succeed(costBefore)),
                 )
-                yield* KiloCostPropagation.propagate(sessions, ctx.sessionID, ctx.messageID, costAfter - costBefore).pipe(
-                  Effect.catchTag("NotFoundError", () => Effect.void),
-                )
+                yield* KiloCostPropagation.propagate(
+                  sessions,
+                  ctx.sessionID,
+                  ctx.messageID,
+                  costAfter - costBefore,
+                ).pipe(Effect.catchTag("NotFoundError", () => Effect.void))
               }),
             ),
           ),
