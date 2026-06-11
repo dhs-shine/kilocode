@@ -69,6 +69,7 @@ export class AgentManagerProvider implements Disposable {
   private gitOps: GitOps
   private diffs: WorktreeDiffController
   private staleWorktreeIds = new Set<string>()
+  private toolRequests = new Set<string>()
   private cachedWorktreeStats: { type: "agentManager.worktreeStats"; stats: WorktreeStats[] } | undefined
   private cachedLocalStats: { type: "agentManager.localStats"; stats: LocalStats } | undefined
   private unsubTool: (() => void) | undefined
@@ -913,6 +914,13 @@ export class AgentManagerProvider implements Disposable {
         openPanel: (preserveFocus) => this.openPanel(preserveFocus),
         waitReady: (context) => this.waitForStateReady(context),
         createWorktree: (opts) => this.createWorktreeOnDisk(opts),
+        claimRequest: (id) => {
+          if (this.toolRequests.has(id)) return false
+          const oldest = this.toolRequests.size >= 100 ? this.toolRequests.values().next().value : undefined
+          if (oldest) this.toolRequests.delete(oldest)
+          this.toolRequests.add(id)
+          return true
+        },
         cleanupWorktree: async (wid, dir) => {
           this.getStateManager()?.removeWorktree(wid)
           await this.getWorktreeManager()?.removeWorktree(dir)
