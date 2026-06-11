@@ -359,7 +359,6 @@ export const SessionProvider: ParentComponent = (props) => {
   const [defaultAgent, setDefaultAgent] = createSignal("code")
   const [pendingKiloModel, setPendingKiloModel] = createSignal<{ modelID: string; after: number } | null>(null)
   const [catalog, setCatalog] = createSignal(0)
-  let revision = 0
 
   // Skills loaded from the CLI backend
   const [skills, setSkills] = createSignal<SkillInfo[]>([])
@@ -521,18 +520,6 @@ export const SessionProvider: ParentComponent = (props) => {
     vscode.postMessage({ type: "persistRecents", recents: updated })
   }
 
-  function persistModelSelection(agentName: string, selection: ModelSelection) {
-    revision++
-    setUserSetAgents((prev) => ({ ...prev, [agentName]: true }))
-    setStore("modelSelections", agentName, selection)
-    vscode.postMessage({
-      type: "persistModelSelection",
-      agent: agentName,
-      providerID: selection.providerID,
-      modelID: selection.modelID,
-    })
-  }
-
   function applyModel(agentName: string, selection: ModelSelection, sessionID?: string) {
     pushRecent(selection)
     if (sessionID) {
@@ -541,28 +528,21 @@ export const SessionProvider: ParentComponent = (props) => {
     }
     // Always remember the per-mode model choice so switching modes restores
     // the last-used model (mirrors CLI TUI's model.json behavior).
-    persistModelSelection(agentName, selection)
+    setUserSetAgents((prev) => ({ ...prev, [agentName]: true }))
+    setStore("modelSelections", agentName, selection)
+    // Persist to model.json via the extension host
+    vscode.postMessage({
+      type: "persistModelSelection",
+      agent: agentName,
+      providerID: selection.providerID,
+      modelID: selection.modelID,
+    })
   }
 
   function selectModel(providerID: string, modelID: string, sessionID?: string) {
     const sid = sessionID ?? currentSessionID()
     applyModel(agentForScope(sid), { providerID, modelID }, sid)
     if (sid) {
-      hideErrors(sid)
-    }
-  }
-
-  function applyPersistedModel(selection: ModelSelection) {
-    const sid = currentSessionID()
-    const defaultAgentName = defaultAgent()
-    const activeAgentName = agentForScope()
-    pushRecent(selection)
-    persistModelSelection(defaultAgentName, selection)
-    if (activeAgentName !== defaultAgentName) {
-      persistModelSelection(activeAgentName, selection)
-    }
-    if (sid) {
-      setStore("sessionOverrides", sid, selection)
       hideErrors(sid)
     }
   }
@@ -589,7 +569,7 @@ export const SessionProvider: ParentComponent = (props) => {
       console.warn("[Kilo New] Ignoring unavailable Kilo catalog model:", pending.modelID)
       return
     }
-    applyPersistedModel({ providerID: KILO_PROVIDER_ID, modelID: pending.modelID })
+    selectModel(KILO_PROVIDER_ID, pending.modelID)
   })
 
   function promptAgent(sessionID?: string) {
@@ -619,10 +599,7 @@ export const SessionProvider: ParentComponent = (props) => {
         delete selections[agentName]
       }),
     )
-    if (persist) {
-      revision++
-      vscode.postMessage({ type: "clearModelSelection", agent: agentName })
-    }
+    if (persist) vscode.postMessage({ type: "clearModelSelection", agent: agentName })
   }
 
   function shouldClearModeModelSelection(agentName: string) {
@@ -822,10 +799,6 @@ export const SessionProvider: ParentComponent = (props) => {
   // Uses replace semantics so a reset (empty payload) clears old entries.
   const unsubSelections = vscode.onMessage((message: ExtensionMessage) => {
     if (message.type !== "modelSelectionsLoaded") return
-    if (message.revision !== undefined && message.revision !== revision) {
-      vscode.postMessage({ type: "requestModelSelections", revision })
-      return
-    }
     setStore("modelSelections", reconcile(message.selections))
     const flags: Record<string, boolean> = {}
     for (const name of Object.keys(message.selections)) {
@@ -833,7 +806,7 @@ export const SessionProvider: ParentComponent = (props) => {
     }
     setUserSetAgents(flags)
   })
-  vscode.postMessage({ type: "requestModelSelections", revision })
+  vscode.postMessage({ type: "requestModelSelections" })
   onCleanup(unsubSelections)
 
   // Load persisted recent models from extension globalState
