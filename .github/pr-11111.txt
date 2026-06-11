@@ -1,1 +1,0 @@
-Achievement unlocked: PR 11111. Easter egg: 11111 in binary is 31, the traditional number of browser tabs needed to review one pull request.
