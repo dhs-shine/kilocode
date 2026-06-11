@@ -1227,15 +1227,17 @@ export const dict = {
   "settings.autocomplete.modelsHint": "To choose which model is used for autocompletions, see the Models settings.",
 
   "settings.notifications.agent.title": "Agent Completion",
-  "settings.notifications.agent.description": "Show notification when agent completes a task",
+  "settings.notifications.agent.description": "Show a notification when an agent completes while VS Code is unfocused",
   "settings.notifications.permissions.title": "Permission Requests",
-  "settings.notifications.permissions.description": "Show notification on permission requests",
+  "settings.notifications.permissions.description":
+    "Show a notification when a permission or question needs input while VS Code is unfocused",
   "settings.notifications.errors.title": "Errors",
-  "settings.notifications.errors.description": "Show notification on errors",
-  "settings.notifications.playWhenFocused.title": "Play Sounds When Focused",
+  "settings.notifications.errors.description": "Show a notification when a session errors while VS Code is unfocused",
+  "settings.notifications.playWhenFocused.title": "Also Play for the Active Session",
   "settings.notifications.playWhenFocused.description":
-    "Allow sound notifications to play even when VS Code window is focused",
-  "settings.notifications.sounds": "Sounds",
+    "Sounds normally play only for background sessions. Enable this to also play for the active session",
+  "settings.notifications.visual": "Visual Notifications",
+  "settings.notifications.sounds": "Sound Notifications",
   "settings.notifications.agentSound.title": "Agent Completion Sound",
   "settings.notifications.agentSound.description": "Sound to play when agent completes",
   "settings.notifications.permSound.title": "Permission Request Sound",

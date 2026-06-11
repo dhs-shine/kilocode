@@ -1262,7 +1262,8 @@ export const dict = {
   "settings.notifications.playWhenFocused.title": "Reproducir sonidos cuando está enfocado",
   "settings.notifications.playWhenFocused.description":
     "Permitir notificaciones de sonido aun cuando la ventana de VS Code esté enfocada",
-  "settings.notifications.sounds": "Sonidos",
+  "settings.notifications.visual": "Notificaciones visuales",
+  "settings.notifications.sounds": "Notificaciones sonoras",
   "settings.notifications.agentSound.title": "Sonido de finalización del agente",
   "settings.notifications.agentSound.description": "Sonido a reproducir cuando el agente finaliza",
   "settings.notifications.permSound.title": "Sonido de solicitud de permiso",

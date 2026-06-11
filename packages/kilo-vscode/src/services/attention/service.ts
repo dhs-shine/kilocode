@@ -69,8 +69,8 @@ export class AttentionService implements vscode.Disposable {
       appFocused: this.appFocused,
       sessionFocused: this.connection.isSessionFocused(notice.sessionID),
       subagent: notice.subagent,
-      notifications: notifications.get<boolean>(key, true),
-      sound: id !== undefined,
+      notifications: notifications.get<boolean>(key, false),
+      sound: sounds.get<boolean>(`${key}Enabled`, false) && id !== undefined,
       playWhenFocused: sounds.get<boolean>("playWhenFocused", false),
     })
 
@@ -78,6 +78,7 @@ export class AttentionService implements vscode.Disposable {
     if (!result.notification) return
 
     const message = `${clean(notice.title)}: ${notice.message}`
+    console.debug("[Kilo New] attention notification shown", { kind: notice.kind, sessionID: notice.sessionID })
     if (notice.kind === "error") {
       void vscode.window.showErrorMessage(message)
       return

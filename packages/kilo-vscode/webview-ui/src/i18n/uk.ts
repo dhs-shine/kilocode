@@ -1243,7 +1243,8 @@ export const dict = {
   "settings.notifications.playWhenFocused.title": "Відтворювати звуки при фокусі",
   "settings.notifications.playWhenFocused.description":
     "Дозволяти звукові сповіщення, навіть коли вікно VS Code знаходиться на фокусі",
-  "settings.notifications.sounds": "Звуки",
+  "settings.notifications.visual": "Візуальні сповіщення",
+  "settings.notifications.sounds": "Звукові сповіщення",
   "settings.notifications.agentSound.title": "Звук завершення агента",
   "settings.notifications.agentSound.description": "Звук, що відтворюється після завершення агента",
   "settings.notifications.permSound.title": "Звук запиту дозволу",

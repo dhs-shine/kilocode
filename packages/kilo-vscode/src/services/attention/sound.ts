@@ -140,14 +140,19 @@ function fileCommands(file: string): Array<{ cmd: string; args: string[]; env?: 
 }
 
 async function perform(id: SoundID, dir: string) {
-  if (id === "system") return run(systemCommands())
-  const file = path.resolve(dir, `${id}.wav`)
-  if (!file.startsWith(`${path.resolve(dir)}${path.sep}`)) return false
-  if (!fs.existsSync(file)) {
-    console.warn("[Kilo New] notification sound is missing", { file })
-    return false
+  const play = async () => {
+    if (id === "system") return run(systemCommands())
+    const file = path.resolve(dir, `${id}.wav`)
+    if (!file.startsWith(`${path.resolve(dir)}${path.sep}`)) return false
+    if (!fs.existsSync(file)) {
+      console.warn("[Kilo New] notification sound is missing", { file })
+      return false
+    }
+    return run(fileCommands(file))
   }
-  return run(fileCommands(file))
+  const ok = await play()
+  if (ok) console.debug("[Kilo New] notification sound played", { id })
+  return ok
 }
 
 export async function playSound(id: SoundID, dir = root) {

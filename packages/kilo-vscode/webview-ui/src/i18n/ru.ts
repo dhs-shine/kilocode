@@ -1252,7 +1252,8 @@ export const dict = {
   "settings.notifications.playWhenFocused.title": "Воспроизводить звуки при фокусе",
   "settings.notifications.playWhenFocused.description":
     "Разрешить звуковые уведомления, даже когда окно VS Code находится в фокусе",
-  "settings.notifications.sounds": "Звуки",
+  "settings.notifications.visual": "Визуальные уведомления",
+  "settings.notifications.sounds": "Звуковые уведомления",
   "settings.notifications.agentSound.title": "Звук завершения агента",
   "settings.notifications.agentSound.description": "Звук при завершении агента",
   "settings.notifications.permSound.title": "Звук запроса разрешений",

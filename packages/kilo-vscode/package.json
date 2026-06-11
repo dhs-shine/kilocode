@@ -944,23 +944,38 @@
         },
         "kilo-code.new.notifications.agent": {
           "type": "boolean",
-          "default": true,
-          "description": "Show a notification when an agent completes a task"
+          "default": false,
+          "description": "Show a notification when an agent completes while VS Code is unfocused"
         },
         "kilo-code.new.notifications.permissions": {
           "type": "boolean",
-          "default": true,
-          "description": "Show a notification when a permission or question needs input"
+          "default": false,
+          "description": "Show a notification when a permission or question needs input while VS Code is unfocused"
         },
         "kilo-code.new.notifications.errors": {
           "type": "boolean",
-          "default": true,
-          "description": "Show a notification when a session errors"
+          "default": false,
+          "description": "Show a notification when a session errors while VS Code is unfocused"
+        },
+        "kilo-code.new.sounds.agentEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Play a sound when an agent completes a task"
+        },
+        "kilo-code.new.sounds.permissionsEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Play a sound when a permission or question needs input"
+        },
+        "kilo-code.new.sounds.errorsEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Play a sound when a session errors"
         },
         "kilo-code.new.sounds.playWhenFocused": {
           "type": "boolean",
           "default": false,
-          "description": "Play attention sounds when the affected session is focused"
+          "description": "Also play sound notifications for the session currently visible in VS Code instead of only background sessions"
         },
         "kilo-code.new.sounds.agent": {
           "type": "string",
@@ -968,7 +983,6 @@
           "enum": [
             "system",
             "default",
-            "none",
             "alert-01",
             "alert-02",
             "alert-03",
@@ -1023,7 +1037,6 @@
           "enum": [
             "system",
             "default",
-            "none",
             "alert-01",
             "alert-02",
             "alert-03",
@@ -1078,7 +1091,6 @@
           "enum": [
             "system",
             "default",
-            "none",
             "alert-01",
             "alert-02",
             "alert-03",

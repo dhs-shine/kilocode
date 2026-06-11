@@ -1244,7 +1244,8 @@ export const dict = {
   "settings.notifications.playWhenFocused.title": "フォーカス時にサウンドを再生",
   "settings.notifications.playWhenFocused.description":
     "VS Codeウィンドウにフォーカスがある場合でもサウンド通知を再生できるようにする",
-  "settings.notifications.sounds": "サウンド",
+  "settings.notifications.visual": "視覚的な通知",
+  "settings.notifications.sounds": "サウンド通知",
   "settings.notifications.agentSound.title": "エージェント完了サウンド",
   "settings.notifications.agentSound.description": "エージェント完了時に再生するサウンド",
   "settings.notifications.permSound.title": "権限リクエストサウンド",

@@ -2316,10 +2316,13 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.postMessage({
       type: "notificationSettingsLoaded",
       settings: {
-        notifyAgent: notifications.get<boolean>("agent", true),
-        notifyPermissions: notifications.get<boolean>("permissions", true),
-        notifyErrors: notifications.get<boolean>("errors", true),
+        notifyAgent: notifications.get<boolean>("agent", false),
+        notifyPermissions: notifications.get<boolean>("permissions", false),
+        notifyErrors: notifications.get<boolean>("errors", false),
         playWhenFocused: sounds.get<boolean>("playWhenFocused", false),
+        soundAgentEnabled: sounds.get<boolean>("agentEnabled", false),
+        soundPermissionsEnabled: sounds.get<boolean>("permissionsEnabled", false),
+        soundErrorsEnabled: sounds.get<boolean>("errorsEnabled", false),
         soundAgent: sounds.get<string>("agent", "system"),
         soundPermissions: sounds.get<string>("permissions", "system"),
         soundErrors: sounds.get<string>("errors", "system"),

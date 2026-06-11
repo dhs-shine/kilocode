@@ -145,6 +145,33 @@ describe("delivery", () => {
         playWhenFocused: false,
       }),
     ).toEqual({ notification: false, sound: true })
+    expect(
+      delivery({
+        appFocused: false,
+        sessionFocused: false,
+        subagent: false,
+        notifications: true,
+        sound: false,
+        playWhenFocused: true,
+      }),
+    ).toEqual({ notification: true, sound: false })
+  })
+})
+
+describe("notification defaults", () => {
+  it("keeps visual and sound notifications opt-in", async () => {
+    const manifest = (await Bun.file(new URL("../../package.json", import.meta.url)).json()) as {
+      contributes: { configuration: { properties: Record<string, { default?: unknown; enum?: unknown[] }> } }
+    }
+    const properties = manifest.contributes.configuration.properties
+
+    expect(properties["kilo-code.new.notifications.agent"]?.default).toBe(false)
+    expect(properties["kilo-code.new.notifications.permissions"]?.default).toBe(false)
+    expect(properties["kilo-code.new.notifications.errors"]?.default).toBe(false)
+    expect(properties["kilo-code.new.sounds.agentEnabled"]?.default).toBe(false)
+    expect(properties["kilo-code.new.sounds.permissionsEnabled"]?.default).toBe(false)
+    expect(properties["kilo-code.new.sounds.errorsEnabled"]?.default).toBe(false)
+    expect(properties["kilo-code.new.sounds.agent"]?.enum).not.toContain("none")
   })
 })
 

@@ -1250,7 +1250,8 @@ export const dict = {
   "settings.notifications.playWhenFocused.title": "Speel geluid bij focus",
   "settings.notifications.playWhenFocused.description":
     "Sta geluidsmeldingen toe zelfs als VS Code-venster focus heeft",
-  "settings.notifications.sounds": "Geluiden",
+  "settings.notifications.visual": "Visuele meldingen",
+  "settings.notifications.sounds": "Geluidsmeldingen",
   "settings.notifications.agentSound.title": "Agent Voltooiingsgeluid",
   "settings.notifications.agentSound.description": "Geluid om af te spelen wanneer agent voltooit",
   "settings.notifications.permSound.title": "Toestemmingsverzoek Geluid",
