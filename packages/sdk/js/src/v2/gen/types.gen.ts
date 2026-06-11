@@ -1579,6 +1579,7 @@ export type Model = {
   recommendedIndex?: number
   prompt?: "codex" | "gemini" | "beast" | "anthropic" | "trinity" | "anthropic_without_todo" | "ling" | "gpt55"
   isFree?: boolean
+  mayTrainOnYourPrompts?: boolean
   terminalBench?: {
     overallScore: number
     avgAttemptCostUsd: number

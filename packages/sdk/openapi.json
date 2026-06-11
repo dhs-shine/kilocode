@@ -14393,25 +14393,13 @@
             "$ref": "#/components/schemas/EventLspClientDiagnostics"
           },
           {
+            "$ref": "#/components/schemas/EventLspUpdated"
+          },
+          {
             "$ref": "#/components/schemas/EventMcpToolsChanged"
           },
           {
             "$ref": "#/components/schemas/EventMcpBrowserOpenFailed"
-          },
-          {
-            "$ref": "#/components/schemas/EventPermissionAsked"
-          },
-          {
-            "$ref": "#/components/schemas/EventPermissionReplied"
-          },
-          {
-            "$ref": "#/components/schemas/EventCommandExecuted"
-          },
-          {
-            "$ref": "#/components/schemas/EventProjectUpdated"
-          },
-          {
-            "$ref": "#/components/schemas/EventLspUpdated"
           },
           {
             "$ref": "#/components/schemas/EventSessionNetworkAsked"
@@ -14427,6 +14415,12 @@
           },
           {
             "$ref": "#/components/schemas/EventMessagePartDelta"
+          },
+          {
+            "$ref": "#/components/schemas/EventPermissionAsked"
+          },
+          {
+            "$ref": "#/components/schemas/EventPermissionReplied"
           },
           {
             "$ref": "#/components/schemas/EventBackground_processUpdated"
@@ -14463,6 +14457,12 @@
           },
           {
             "$ref": "#/components/schemas/EventSuggestionDismissed"
+          },
+          {
+            "$ref": "#/components/schemas/EventCommandExecuted"
+          },
+          {
+            "$ref": "#/components/schemas/EventProjectUpdated"
           },
           {
             "$ref": "#/components/schemas/EventSessionCompacted"
@@ -15071,6 +15071,40 @@
         "required": ["sessionID", "requestID"],
         "additionalProperties": false
       },
+      "SessionNetworkWait": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^que"
+          },
+          "sessionID": {
+            "type": "string",
+            "pattern": "^ses"
+          },
+          "message": {
+            "type": "string"
+          },
+          "restored": {
+            "type": "boolean"
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "created": {
+                "type": "number"
+              },
+              "restored": {
+                "type": "number"
+              }
+            },
+            "required": ["created"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "sessionID", "message", "restored", "time"],
+        "additionalProperties": false
+      },
       "PermissionRequest": {
         "type": "object",
         "properties": {
@@ -15116,110 +15150,6 @@
           }
         },
         "required": ["id", "sessionID", "permission", "patterns", "metadata", "always"],
-        "additionalProperties": false
-      },
-      "Project": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "worktree": {
-            "type": "string"
-          },
-          "vcs": {
-            "type": "string",
-            "enum": ["git"]
-          },
-          "name": {
-            "type": "string"
-          },
-          "icon": {
-            "type": "object",
-            "properties": {
-              "url": {
-                "type": "string"
-              },
-              "override": {
-                "type": "string"
-              },
-              "color": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          },
-          "commands": {
-            "type": "object",
-            "properties": {
-              "start": {
-                "type": "string",
-                "description": "Startup script to run when creating a new workspace (worktree)"
-              }
-            },
-            "additionalProperties": false
-          },
-          "time": {
-            "type": "object",
-            "properties": {
-              "created": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "updated": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "initialized": {
-                "type": "integer",
-                "minimum": 0
-              }
-            },
-            "required": ["created", "updated"],
-            "additionalProperties": false
-          },
-          "sandboxes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": ["id", "worktree", "time", "sandboxes"],
-        "additionalProperties": false
-      },
-      "SessionNetworkWait": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^que"
-          },
-          "sessionID": {
-            "type": "string",
-            "pattern": "^ses"
-          },
-          "message": {
-            "type": "string"
-          },
-          "restored": {
-            "type": "boolean"
-          },
-          "time": {
-            "type": "object",
-            "properties": {
-              "created": {
-                "type": "number"
-              },
-              "restored": {
-                "type": "number"
-              }
-            },
-            "required": ["created"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "sessionID", "message", "restored", "time"],
         "additionalProperties": false
       },
       "BackgroundProcessInfo": {
@@ -15653,6 +15583,76 @@
           }
         },
         "required": ["id", "sessionID", "text", "actions"],
+        "additionalProperties": false
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "worktree": {
+            "type": "string"
+          },
+          "vcs": {
+            "type": "string",
+            "enum": ["git"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "override": {
+                "type": "string"
+              },
+              "color": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "commands": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string",
+                "description": "Startup script to run when creating a new workspace (worktree)"
+              }
+            },
+            "additionalProperties": false
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "created": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "updated": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "initialized": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": ["created", "updated"],
+            "additionalProperties": false
+          },
+          "sandboxes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["id", "worktree", "time", "sandboxes"],
         "additionalProperties": false
       },
       "Pty": {
@@ -17100,25 +17100,13 @@
                 "$ref": "#/components/schemas/EventLspClientDiagnostics"
               },
               {
+                "$ref": "#/components/schemas/EventLspUpdated"
+              },
+              {
                 "$ref": "#/components/schemas/EventMcpToolsChanged"
               },
               {
                 "$ref": "#/components/schemas/EventMcpBrowserOpenFailed"
-              },
-              {
-                "$ref": "#/components/schemas/EventPermissionAsked"
-              },
-              {
-                "$ref": "#/components/schemas/EventPermissionReplied"
-              },
-              {
-                "$ref": "#/components/schemas/EventCommandExecuted"
-              },
-              {
-                "$ref": "#/components/schemas/EventProjectUpdated"
-              },
-              {
-                "$ref": "#/components/schemas/EventLspUpdated"
               },
               {
                 "$ref": "#/components/schemas/EventSessionNetworkAsked"
@@ -17134,6 +17122,12 @@
               },
               {
                 "$ref": "#/components/schemas/EventMessagePartDelta"
+              },
+              {
+                "$ref": "#/components/schemas/EventPermissionAsked"
+              },
+              {
+                "$ref": "#/components/schemas/EventPermissionReplied"
               },
               {
                 "$ref": "#/components/schemas/EventBackground_processUpdated"
@@ -17170,6 +17164,12 @@
               },
               {
                 "$ref": "#/components/schemas/EventSuggestionDismissed"
+              },
+              {
+                "$ref": "#/components/schemas/EventCommandExecuted"
+              },
+              {
+                "$ref": "#/components/schemas/EventProjectUpdated"
               },
               {
                 "$ref": "#/components/schemas/EventSessionCompacted"
@@ -19042,6 +19042,9 @@
             "enum": ["codex", "gemini", "beast", "anthropic", "trinity", "anthropic_without_todo", "ling", "gpt55"]
           },
           "isFree": {
+            "type": "boolean"
+          },
+          "mayTrainOnYourPrompts": {
             "type": "boolean"
           },
           "terminalBench": {
@@ -23280,6 +23283,24 @@
         "required": ["id", "type", "properties"],
         "additionalProperties": false
       },
+      "EventLspUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["lsp.updated"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
       "EventMcpToolsChanged": {
         "type": "object",
         "properties": {
@@ -23326,126 +23347,6 @@
             },
             "required": ["mcpName", "url"],
             "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventPermissionAsked": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["permission.asked"]
-          },
-          "properties": {
-            "$ref": "#/components/schemas/PermissionRequest"
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventPermissionReplied": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["permission.replied"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "sessionID": {
-                "type": "string",
-                "pattern": "^ses"
-              },
-              "requestID": {
-                "type": "string",
-                "pattern": "^per"
-              },
-              "reply": {
-                "type": "string",
-                "enum": ["once", "always", "reject"]
-              }
-            },
-            "required": ["sessionID", "requestID", "reply"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventCommandExecuted": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["command.executed"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "sessionID": {
-                "type": "string",
-                "pattern": "^ses"
-              },
-              "arguments": {
-                "type": "string"
-              },
-              "messageID": {
-                "type": "string",
-                "pattern": "^msg"
-              }
-            },
-            "required": ["name", "sessionID", "arguments", "messageID"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventProjectUpdated": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["project.updated"]
-          },
-          "properties": {
-            "$ref": "#/components/schemas/Project"
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventLspUpdated": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["lsp.updated"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {}
           }
         },
         "required": ["id", "type", "properties"],
@@ -23591,6 +23492,56 @@
               }
             },
             "required": ["sessionID", "messageID", "partID", "field", "delta"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventPermissionAsked": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["permission.asked"]
+          },
+          "properties": {
+            "$ref": "#/components/schemas/PermissionRequest"
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventPermissionReplied": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["permission.replied"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string",
+                "pattern": "^ses"
+              },
+              "requestID": {
+                "type": "string",
+                "pattern": "^per"
+              },
+              "reply": {
+                "type": "string",
+                "enum": ["once", "always", "reject"]
+              }
+            },
+            "required": ["sessionID", "requestID", "reply"],
             "additionalProperties": false
           }
         },
@@ -23959,6 +23910,58 @@
             },
             "required": ["sessionID", "requestID"],
             "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventCommandExecuted": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["command.executed"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "sessionID": {
+                "type": "string",
+                "pattern": "^ses"
+              },
+              "arguments": {
+                "type": "string"
+              },
+              "messageID": {
+                "type": "string",
+                "pattern": "^msg"
+              }
+            },
+            "required": ["name", "sessionID", "arguments", "messageID"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventProjectUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["project.updated"]
+          },
+          "properties": {
+            "$ref": "#/components/schemas/Project"
           }
         },
         "required": ["id", "type", "properties"],
