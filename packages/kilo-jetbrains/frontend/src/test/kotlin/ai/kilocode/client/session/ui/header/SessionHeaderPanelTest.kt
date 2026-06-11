@@ -24,6 +24,7 @@ import java.awt.Color
 import java.awt.Point
 import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
+import java.awt.image.BufferedImage
 import javax.swing.UIManager
 
 class SessionHeaderPanelTest : SessionControllerTestBase() {
@@ -79,8 +80,30 @@ class SessionHeaderPanelTest : SessionControllerTestBase() {
         assertEquals("", panel.expandButton().text)
         assertSame(AllIcons.General.ChevronRight, panel.expandButton().icon)
         assertEquals(Cursor.HAND_CURSOR, panel.expandButton().cursor.type)
-        assertNotNull(panel.costIcon())
         assertNotSame(panel.compactButton().parent, panel.expandButton().parent)
+    }
+
+    fun `test header has editor tab bottom separator`() {
+        val old = UIManager.getColor("EditorTabs.underTabsBorderColor")
+        val color = Color(12, 34, 56)
+
+        try {
+            UIManager.put("EditorTabs.underTabsBorderColor", color)
+            val c = promptedHeader()
+            val panel = SessionHeaderPanel(c, parent)
+            val ins = panel.border.getBorderInsets(panel)
+            val img = BufferedImage(10, 10, BufferedImage.TYPE_INT_ARGB)
+            val g = img.createGraphics()
+
+            panel.border.paintBorder(panel, g, 0, 0, img.width, img.height)
+            g.dispose()
+
+            assertEquals(0, ins.top)
+            assertEquals(1, ins.bottom)
+            assertEquals(color.rgb, img.getRGB(5, img.height - 1))
+        } finally {
+            UIManager.put("EditorTabs.underTabsBorderColor", old)
+        }
     }
 
     fun `test compact button follows eligibility and invokes controller`() {

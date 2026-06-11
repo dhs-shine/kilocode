@@ -163,6 +163,7 @@ internal class MdViewHybrid(
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = true
         background = opts().background
+        border = JBUI.Borders.emptyLeft(JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING))
     }
 
     override val component: JComponent get() = root

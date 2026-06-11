@@ -11,6 +11,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Color
@@ -40,6 +41,13 @@ class MdViewHybridTest : BasePlatformTestCase() {
     fun `test set stores source`() {
         view.set("hello **world**")
         assertEquals("hello **world**", view.markdown())
+    }
+
+    fun `test root has small left inset`() {
+        val ins = view.component.border.getBorderInsets(view.component)
+
+        assertEquals(JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING), ins.left)
+        assertEquals(0, ins.right)
     }
 
     fun `test append renders accumulated source`() {

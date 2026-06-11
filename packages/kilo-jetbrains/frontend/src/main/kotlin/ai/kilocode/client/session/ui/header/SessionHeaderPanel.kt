@@ -8,7 +8,6 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.todo.TodoListPanel
-import ai.kilocode.client.ui.FilledBadgeIcon
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
@@ -18,6 +17,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.IconLoader
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
@@ -141,7 +141,12 @@ class SessionHeaderPanel(
     private val body = JPanel().apply {
         isOpaque = false
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        border = JBUI.Borders.empty(UiStyle.Gap.sm(), 0, 0, 0)
+        border = JBUI.Borders.empty(
+            UiStyle.Gap.sm(),
+            UiStyle.Gap.md(),
+            UiStyle.Gap.md(),
+            UiStyle.Gap.md(),
+        )
         add(viewport)
         add(tokens)
         add(bar)
@@ -218,10 +223,12 @@ class SessionHeaderPanel(
     override fun updateUI() {
         super.updateUI()
         border = JBUI.Borders.compound(
-            JBUI.Borders.customLine(JBUI.CurrentTheme.ToolWindow.borderColor(), 1, 0, 1, 0),
+            JBUI.Borders.customLine(separator(), 0, 0, 1, 0),
             JBUI.Borders.empty(),
         )
     }
+
+    private fun separator() = JBColor.namedColor("EditorTabs.underTabsBorderColor", JBUI.CurrentTheme.EditorTabs.borderColor())
 
     fun update(header: SessionHeaderSnapshot) {
         val before = isVisible
@@ -271,9 +278,7 @@ class SessionHeaderPanel(
         title.foreground = style.editorForeground
         cost.font = style.regularFont
         cost.foreground = style.editorForeground
-        cost.icon = costValue.takeIf { it.isNotBlank() }?.let {
-            FilledBadgeIcon(it, style.editorForeground, style.editorBackground, style.regularFont)
-        }
+        cost.icon = null
         context.font = style.regularFont
         context.foreground = style.editorForeground
         todos.font = style.smallFont
@@ -299,8 +304,6 @@ class SessionHeaderPanel(
     internal fun costText(): String = costValue
 
     internal fun costTip() = cost.toolTipText
-
-    internal fun costIcon() = cost.icon
 
     internal fun contextText(): String = context.text
 
@@ -415,10 +418,8 @@ class SessionHeaderPanel(
 
     private fun setCost(value: String?) {
         costValue = value.orEmpty()
-        cost.text = ""
-        cost.icon = costValue.takeIf { it.isNotBlank() }?.let {
-            FilledBadgeIcon(it, style.editorForeground, style.editorBackground, style.regularFont)
-        }
+        cost.text = costValue
+        cost.icon = null
         val tip = costValue.takeIf { it.isNotBlank() }?.let { KiloBundle.message("session.header.cost.tooltip", it) }
         cost.toolTipText = tip
         cost.accessibleContext.accessibleName = tip
