@@ -143,9 +143,9 @@ class SessionHeaderPanel(
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         border = JBUI.Borders.empty(
             UiStyle.Gap.sm(),
+            UiStyle.Gap.xl(),
             UiStyle.Gap.md(),
-            UiStyle.Gap.md(),
-            UiStyle.Gap.md(),
+            UiStyle.Gap.xl(),
         )
         add(viewport)
         add(tokens)

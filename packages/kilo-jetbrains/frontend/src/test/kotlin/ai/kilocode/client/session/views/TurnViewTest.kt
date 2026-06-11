@@ -11,6 +11,7 @@ import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.JBUI
+import java.awt.image.BufferedImage
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.RepaintManager
@@ -108,6 +109,16 @@ class TurnViewTest : BasePlatformTestCase() {
         assertEquals(0, ins.left)
         assertEquals(0, ins.right)
         assertFalse(mv.isOpaque)
+    }
+
+    fun `test user message uses standard outline color`() {
+        val mv = MessageView(msg("u1", "user"), openFile)
+        mv.setSize(120, 48)
+        val image = BufferedImage(120, 48, BufferedImage.TYPE_INT_ARGB)
+
+        mv.paint(image.createGraphics())
+
+        assertEquals(SessionUiStyle.View.Outline.color().rgb, image.getRGB(60, 0))
     }
 
     fun `test assistant message remains borderless`() {

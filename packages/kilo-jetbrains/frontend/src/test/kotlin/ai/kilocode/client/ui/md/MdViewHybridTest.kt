@@ -2,10 +2,17 @@ package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.HighlighterColors
+import com.intellij.openapi.editor.colors.CodeInsightColors
+import com.intellij.openapi.editor.colors.EditorColors
+import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.editor.colors.EditorColorsScheme
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.fileTypes.UnknownFileType
+import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
@@ -15,6 +22,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Color
+import java.awt.Font
 import javax.swing.Box
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
@@ -525,6 +533,28 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertTrue(pane.text.contains("hello"))
     }
 
+    fun `test applyStyle updates retained code editor scheme and background`() {
+        view.set("```kotlin\nval value = 1\n```")
+        val pane = scrolls().single()
+        val field = editors().single()
+        val editor = field.getEditor(true)!!
+        val style = customStyle()
+
+        view.applyStyle(style)
+
+        assertSame(pane, scrolls().single())
+        assertSame(field, editors().single())
+        assertEquals(
+            Color(0xDD, 0xEE, 0xFF).rgb,
+            editor.colorsScheme.getAttributes(DefaultLanguageHighlighterColors.DOC_CODE_BLOCK).foregroundColor.rgb,
+        )
+        assertEquals(Color(0x44, 0x55, 0x66).rgb, editor.backgroundColor.rgb)
+        assertEquals(Color(0x44, 0x55, 0x66).rgb, pane.background.rgb)
+        assertEquals(Color(0x44, 0x55, 0x66).rgb, pane.viewport.background.rgb)
+        assertEquals(Color(0x44, 0x55, 0x66).rgb, editor.scrollPane.background.rgb)
+        assertEquals(Color(0x44, 0x55, 0x66).rgb, editor.scrollPane.viewport.background.rgb)
+    }
+
     fun `test resetStyles keeps content rendered`() {
         view.set("hello **world**")
         view.font = view.font.deriveFont(25f)
@@ -569,5 +599,27 @@ class MdViewHybridTest : BasePlatformTestCase() {
 
     private fun drainEdt() {
         UIUtil.dispatchAllInvocationEvents()
+    }
+
+    private fun customStyle(): SessionEditorStyle {
+        val scheme = EditorColorsManager.getInstance().globalScheme.clone() as EditorColorsScheme
+        scheme.setAttributes(
+            HighlighterColors.TEXT,
+            TextAttributes(Color(0x10, 0x20, 0x30), Color(0x01, 0x02, 0x03), null, null, Font.PLAIN),
+        )
+        scheme.setAttributes(
+            DefaultLanguageHighlighterColors.DOC_CODE_INLINE,
+            TextAttributes(Color(0xAA, 0xBB, 0xCC), Color(0x11, 0x22, 0x33), null, null, Font.PLAIN),
+        )
+        scheme.setAttributes(
+            DefaultLanguageHighlighterColors.DOC_CODE_BLOCK,
+            TextAttributes(Color(0xDD, 0xEE, 0xFF), Color(0x44, 0x55, 0x66), null, null, Font.PLAIN),
+        )
+        scheme.setAttributes(
+            CodeInsightColors.HYPERLINK_ATTRIBUTES,
+            TextAttributes(Color(0x77, 0x88, 0x99), null, null, null, Font.PLAIN),
+        )
+        scheme.setColor(EditorColors.PREVIEW_BORDER_COLOR, Color(0x22, 0x33, 0x44))
+        return SessionEditorStyle.create(scheme = scheme, family = "Courier New", size = 21)
     }
 }

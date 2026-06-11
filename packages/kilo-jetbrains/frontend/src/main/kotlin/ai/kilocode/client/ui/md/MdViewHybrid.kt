@@ -526,7 +526,7 @@ internal class MdViewHybrid(
 
     private fun styleCodePane(pane: JBScrollPane, opts: MdStyle) {
         pane.apply {
-            border = JBUI.Borders.customLine(opts.tableBorder, SessionUiStyle.View.Code.BORDER_WIDTH)
+            border = JBUI.Borders.customLine(opts.codeBorder, SessionUiStyle.View.Code.BORDER_WIDTH)
             viewportBorder = JBUI.Borders.empty(
                 SessionUiStyle.View.Code.topPadding(),
                 SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING,
@@ -890,6 +890,12 @@ internal class MdViewHybrid(
                 is CodeField -> {
                     view.font = style.editorFont
                     view.background = opts.preBg
+                    view.getEditor(false)?.let { ed ->
+                        style.applyToEditor(ed)
+                        ed.backgroundColor = opts.preBg
+                        ed.scrollPane.background = opts.preBg
+                        ed.scrollPane.viewport.background = opts.preBg
+                    }
                 }
                 is JBTextArea -> styleTextArea(view, opts)
             }
