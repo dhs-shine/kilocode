@@ -1,5 +1,4 @@
 import type { ModelSelection, Provider } from "../types/messages"
-import { KILO_PROVIDER_ID } from "../../../src/shared/provider-model"
 import { isModelValid } from "./provider-utils"
 
 function validate(
@@ -41,14 +40,4 @@ export function resolveModelSelection(input: {
     input.fallback ??
     null
   )
-}
-
-export function kiloCatalogModelStatus(
-  providers: Record<string, Provider>,
-  modelID: string,
-  after: number,
-  current: number,
-): "pending" | "invalid" | "apply" {
-  if (current <= after) return "pending"
-  return providers[KILO_PROVIDER_ID]?.models[modelID] ? "apply" : "invalid"
 }

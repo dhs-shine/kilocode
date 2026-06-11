@@ -762,7 +762,14 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.visibleTaskStreams.handle(message)
       switch (message.type) {
         case "webviewReady":
-          await this.handleWebviewReady()
+          console.log("[Kilo New] KiloProvider: ✅ webviewReady received")
+          this.isWebviewReady = true
+          this.visibleTaskStreams.clear()
+          this.flushPendingKiloModel()
+          await this.syncWebviewState("webviewReady")
+          this.flushPendingReviewComments()
+          this.recoverPendingPrompts()
+          this.readyResolvers.splice(0).forEach((r) => r())
           break
         case "sendMessage": {
           const msg = message as typeof message & ContextMessage
@@ -1195,17 +1202,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       }
     })
     this.webviewMessageDisposable = watchFontSizeConfig((msg) => this.postMessage(msg), this.webviewMessageDisposable)
-  }
-
-  private async handleWebviewReady(): Promise<void> {
-    console.log("[Kilo New] KiloProvider: ✅ webviewReady received")
-    this.isWebviewReady = true
-    this.visibleTaskStreams.clear()
-    this.flushPendingKiloModel()
-    await this.syncWebviewState("webviewReady")
-    this.flushPendingReviewComments()
-    this.recoverPendingPrompts()
-    this.readyResolvers.splice(0).forEach((r) => r())
   }
 
   private handleEditorOpenMessage(message: Parameters<typeof handleEditorAction>[0]): boolean {

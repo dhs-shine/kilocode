@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { kiloCatalogModelStatus, resolveModelSelection } from "../../webview-ui/src/context/model-selection"
+import { resolveModelSelection } from "../../webview-ui/src/context/model-selection"
 import { KILO_AUTO, parseModelString } from "../../src/shared/provider-model"
 import type { Provider } from "../../webview-ui/src/types/messages"
 
@@ -12,7 +12,7 @@ function makeProvider(id: string, name: string, modelIds: string[]): Provider {
 }
 
 const providers = {
-  kilo: makeProvider("kilo", "Kilo Gateway", ["kilo-auto/free", "vendor/new-live-model"]),
+  kilo: makeProvider("kilo", "Kilo Gateway", ["kilo-auto/free"]),
   anthropic: makeProvider("anthropic", "Anthropic", ["claude-sonnet-4"]),
   openai: makeProvider("openai", "OpenAI", ["gpt-4.1"]),
 }
@@ -35,24 +35,6 @@ describe("parseModelString", () => {
   it("returns null for invalid values", () => {
     expect(parseModelString(undefined)).toBeNull()
     expect(parseModelString("claude-sonnet-4")).toBeNull()
-  })
-})
-
-describe("Kilo catalog model URI validation", () => {
-  it("waits for a catalog refresh after the link arrives", () => {
-    expect(kiloCatalogModelStatus(providers, "vendor/new-live-model", 1, 1)).toBe("pending")
-  })
-
-  it("accepts arbitrary models exposed by a refreshed Kilo catalog", () => {
-    expect(kiloCatalogModelStatus(providers, "vendor/new-live-model", 1, 2)).toBe("apply")
-  })
-
-  it("rejects models missing from the refreshed Kilo catalog", () => {
-    expect(kiloCatalogModelStatus(providers, "vendor/missing-model", 1, 2)).toBe("invalid")
-  })
-
-  it("does not accept models exposed only by non-Kilo providers", () => {
-    expect(kiloCatalogModelStatus(providers, "gpt-4.1", 1, 2)).toBe("invalid")
   })
 })
 

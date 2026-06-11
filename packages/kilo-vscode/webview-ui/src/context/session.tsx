@@ -62,7 +62,7 @@ import {
   upsertSessionToolPart,
 } from "./session-utils"
 import { Identifier } from "../utils/id"
-import { kiloCatalogModelStatus, resolveModelSelection } from "./model-selection"
+import { resolveModelSelection } from "./model-selection"
 import { resolveMessagePrefs } from "./session-preferences"
 import { errorIDs } from "./session-errors"
 import { PartStash } from "./part-stash"
@@ -583,11 +583,9 @@ export const SessionProvider: ParentComponent = (props) => {
 
   createEffect(() => {
     const pending = pendingKiloModel()
-    if (!pending || agents().length === 0) return
-    const status = kiloCatalogModelStatus(provider.providers(), pending.modelID, pending.after, catalog())
-    if (status === "pending") return
+    if (!pending || agents().length === 0 || catalog() <= pending.after) return
     setPendingKiloModel(null)
-    if (status === "invalid") {
+    if (!provider.providers()[KILO_PROVIDER_ID]?.models[pending.modelID]) {
       console.warn("[Kilo New] Ignoring unavailable Kilo catalog model:", pending.modelID)
       return
     }
@@ -824,7 +822,10 @@ export const SessionProvider: ParentComponent = (props) => {
   // Uses replace semantics so a reset (empty payload) clears old entries.
   const unsubSelections = vscode.onMessage((message: ExtensionMessage) => {
     if (message.type !== "modelSelectionsLoaded") return
-    if (message.revision !== undefined && message.revision !== revision) return
+    if (message.revision !== undefined && message.revision !== revision) {
+      vscode.postMessage({ type: "requestModelSelections", revision })
+      return
+    }
     setStore("modelSelections", reconcile(message.selections))
     const flags: Record<string, boolean> = {}
     for (const name of Object.keys(message.selections)) {
