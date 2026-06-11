@@ -1781,7 +1781,9 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     // kilocode_change start - retain request-scoped snapshot initialization policy
     const runLoop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts, NotFoundError> = Effect.fn(
       "SessionPrompt.run",
-    )(function* (input: LoopInput) {
+    )(function* (
+      input: LoopInput,
+    ) {
       const sessionID = input.sessionID
       // kilocode_change end
       // kilocode_change — cache environment details per turn (prompt caching)
