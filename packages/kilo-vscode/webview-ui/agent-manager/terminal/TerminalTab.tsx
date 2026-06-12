@@ -11,7 +11,7 @@
  */
 
 import { Component, createEffect, onCleanup, onMount } from "solid-js"
-import { Terminal, type FontWeight } from "@xterm/xterm"
+import { Terminal } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit"
 import { WebLinksAddon } from "@xterm/addon-web-links"
 import { ClipboardAddon } from "@xterm/addon-clipboard"
@@ -136,10 +136,6 @@ export const TerminalTab: Component<Props> = (props) => {
       theme: readTheme(),
       allowProposedApi: true,
     })
-    if (props.font.fontWeight) term.options.fontWeight = props.font.fontWeight as FontWeight
-    if (props.font.fontWeightBold) term.options.fontWeightBold = props.font.fontWeightBold as FontWeight
-    if (props.font.lineHeight) term.options.lineHeight = props.font.lineHeight
-    if (props.font.letterSpacing) term.options.letterSpacing = props.font.letterSpacing
     const fit = new FitAddon()
     term.loadAddon(fit)
     // Clickable URLs in terminal output (Cmd/Ctrl+click to open).
@@ -276,6 +272,7 @@ export const TerminalTab: Component<Props> = (props) => {
       if (!isRenderable()) return
       try {
         fit.fit()
+        syncSize()
       } catch (err) {
         // Layout not settled yet; ResizeObserver retries on next change.
         log("repaint fit() threw", err)
@@ -297,15 +294,8 @@ export const TerminalTab: Component<Props> = (props) => {
       }
 
       if (message.type === "agentManager.terminal.fontChanged") {
-        const font = message.font as TerminalFont
-        term.options.fontFamily = font.fontFamily
-        term.options.fontSize = font.fontSize
-        if (font.fontWeight) term.options.fontWeight = font.fontWeight as FontWeight
-        if (font.fontWeightBold) term.options.fontWeightBold = font.fontWeightBold as FontWeight
-        if (font.lineHeight) term.options.lineHeight = font.lineHeight
-        if (font.letterSpacing) term.options.letterSpacing = font.letterSpacing
-        fit.fit()
-        syncSize()
+        term.options.fontFamily = message.font.fontFamily
+        term.options.fontSize = message.font.fontSize
         scheduleRepaint()
         return
       }
