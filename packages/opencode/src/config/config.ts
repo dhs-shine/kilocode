@@ -212,8 +212,10 @@ export const Info = Schema.Struct({
   console: Schema.optional(
     Schema.Struct({
       context_sidebar_width: Schema.optional(
-        Schema.Number.check(Schema.isGreaterThanOrEqualTo(250), Schema.isLessThanOrEqualTo(800)),
-      ).annotate({ description: "Width of the Kilo Console project context sidebar in pixels" }),
+        Schema.Int.check(Schema.isBetween({ minimum: 250, maximum: 800 })).annotate({
+          description: "Width of the Kilo Console project context sidebar in pixels",
+        }),
+      ),
       diff_style: Schema.optional(Schema.Literals(["unified", "split"])).annotate({
         description: "Default diff layout in Kilo Console project reviews",
       }),

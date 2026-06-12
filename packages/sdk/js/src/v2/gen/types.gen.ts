@@ -1324,7 +1324,7 @@ export type Config = {
     /**
      * Width of the Kilo Console project context sidebar in pixels
      */
-    context_sidebar_width?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    context_sidebar_width?: number
     diff_style?: "unified" | "split"
   }
   terminal_command_display?: "expanded" | "collapsed"

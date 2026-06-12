@@ -668,6 +668,7 @@ export function ProjectConsoleRoute() {
 
   onCleanup(() => {
     if (events.timer) window.clearTimeout(events.timer)
+    if (resize.timer) window.clearTimeout(resize.timer)
     window.removeEventListener("resize", updateViewport)
   })
 
