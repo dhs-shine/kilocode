@@ -124,6 +124,7 @@ html[data-theme="kilo-vscode"] [data-component="tool-trigger"] {
 
     [data-component="icon"] {
       display: flex;
+      color: inherit;
     }
   }
 }
