@@ -112,10 +112,13 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
       return yield* registry.ids()
     })
 
+    // kilocode_change start - discover Agent Manager and external git worktrees
     const worktree = Effect.fn("ExperimentalHttpApi.worktree")(function* () {
-      const ctx = yield* InstanceState.context
-      return yield* project.sandboxes(ctx.project.id)
+      return yield* mapWorktreeError(worktreeSvc.list()).pipe(
+        Effect.map((items) => items.map((item) => item.directory)),
+      )
     })
+    // kilocode_change end
 
     const worktreeCreate = Effect.fn("ExperimentalHttpApi.worktreeCreate")(function* (ctx: {
       payload: Worktree.CreateInput | undefined
