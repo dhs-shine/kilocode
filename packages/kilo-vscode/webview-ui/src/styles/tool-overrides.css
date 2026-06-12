@@ -24,8 +24,7 @@
   margin-inline: -6px;
   width: calc(100% + 12px);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--vscode-sideBar-background, var(--surface-base)) 64%, black 36%);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--vscode-widget-shadow, #000000) 14%, transparent);
+  background: var(--surface-tool-output-base);
 }
 
 [data-component="background-process-fields"] {

@@ -217,8 +217,7 @@ html[data-theme="kilo-vscode"] [data-component="bash-output"] {
   [data-slot="bash-terminal"] {
     border: 0;
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--vscode-sideBar-background, var(--surface-base)) 64%, black 36%);
-    box-shadow: 0 1px 2px color-mix(in srgb, var(--vscode-widget-shadow, #000000) 14%, transparent);
+    background: var(--surface-tool-output-base);
   }
 
   [data-slot="bash-pre"] code {
@@ -429,8 +428,7 @@ html[data-theme="kilo-vscode"] [data-component="todos"] {
   padding: 8px 12px 10px;
   border: 0;
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--vscode-sideBar-background, var(--surface-base)) 64%, black 36%);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--vscode-widget-shadow, #000000) 14%, transparent);
+  background: var(--surface-tool-output-base);
   color: var(--text-weak);
 
   [data-slot="checkbox-checkbox-label"] {
@@ -661,8 +659,7 @@ html[data-theme="kilo-vscode"] [data-component="reasoning-part"] {
     padding: 8px 12px 10px;
     border: 0;
     border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--vscode-sideBar-background, var(--surface-base)) 64%, black 36%);
-    box-shadow: 0 1px 2px color-mix(in srgb, var(--vscode-widget-shadow, #000000) 14%, transparent);
+    background: var(--surface-tool-output-base);
 
     [data-component="markdown"] {
       font-size: var(--kilo-font-size-12);
