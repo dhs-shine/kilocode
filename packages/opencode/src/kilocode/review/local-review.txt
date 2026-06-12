@@ -71,16 +71,18 @@ ONLY review changes in this diff scope. Do NOT review or flag issues in code tha
 
 ## Review Focus
 
-Review only these things:
+The following six tracks are the only permitted review topics. The Required Workflow (step 3) determines which tracks are active for a given review based on diff size — not all six are spawned for every review. Never flag issues outside these tracks, regardless of how many sub-agents are spawned.
+
+Permitted tracks:
 
 - security
 - performance
 - business logic
-- deploy safety, especially database rollout risk or unintended historical data work
-- duplicated code or duplicated logic
-- dead code caused by the reviewed changes
+- deploy safety
+- duplication
+- dead code
 
-Do not review these things:
+Always out of scope — never flag these:
 
 - code style
 - clean code
@@ -89,18 +91,18 @@ Do not review these things:
 - lint-only issues
 - generic refactors with no bug or product risk
 
-Deploy safety rules:
+Rules for the deploy safety track (apply only when this track is active):
 
 - Look for rollout risks that can become expensive or unsafe in production, especially database queries, migrations, backfills, or processors that touch historical data.
 - Challenge operations that read, mutate, or re-process records older than 2 days unless the change context makes that clearly necessary.
 - Check for missing or overly broad date filters.
 
-Duplication rules:
+Rules for the duplication track (apply only when this track is active):
 
 - Only flag duplication if it creates bug risk, drift risk, or conflicting behavior.
 - Do not flag simple cleanup ideas.
 
-Dead-code rules:
+Rules for the dead code track (apply only when this track is active):
 
 - Only flag code that the reviewed changes themselves leave unused, unreachable, or obsolete.
 - Do not flag dead code that already existed before the branch diff.
