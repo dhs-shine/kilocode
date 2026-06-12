@@ -2,7 +2,9 @@ import { A, useLocation, useParams } from "@solidjs/router"
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, Show } from "solid-js"
 import { Card } from "@kilocode/kilo-web-ui/card"
 import { Icon } from "@kilocode/kilo-web-ui/icon"
+import { ConfirmDialog } from "../../components/ConfirmDialog"
 import { LoadingScreen } from "../../components/LoadingScreen"
+import { PromptDialog } from "../../components/PromptDialog"
 import {
   createProjectPty,
   createProjectWorktree,
@@ -39,6 +41,15 @@ type Context = {
   dir: string
   label: string
   kind: "local" | "worktree"
+}
+
+type Editor =
+  | { kind: "create"; value: string }
+  | { kind: "rename"; item: Context; value: string }
+
+type Pending = {
+  kind: "delete" | "reset"
+  item: Context
 }
 
 function discoverable(search: URLSearchParams) {
@@ -131,6 +142,8 @@ export function ProjectConsoleRoute() {
   const [unread, setUnread] = createSignal(new Set<string>())
   const [closing, setClosing] = createSignal(new Set<string>())
   const [labelRev, setLabelRev] = createSignal(0)
+  const [editor, setEditor] = createSignal<Editor | undefined>()
+  const [pending, setPending] = createSignal<Pending | undefined>()
   const events = { timer: undefined as number | undefined }
   const project = () => params.project ?? ""
   const query = createMemo<ProjectConsoleQuery | undefined>(() => {
@@ -322,10 +335,26 @@ export function ProjectConsoleRoute() {
   }
 
   function addWorktree() {
+    if (!projectInput()) return
+    setEditor({ kind: "create", value: "" })
+  }
+
+  function submitEditor() {
+    const state = editor()
+    if (!state) return
+    if (state.kind === "rename") {
+      const value = state.value.trim()
+      if (value) window.localStorage.setItem(labelKey(state.item.dir), value)
+      if (!value) window.localStorage.removeItem(labelKey(state.item.dir))
+      setLabelRev((revision) => revision + 1)
+      setEditor(undefined)
+      return
+    }
+
     const input = projectInput()
-    const data = snap()
-    if (!input || !data) return
-    const name = window.prompt("Worktree name") ?? undefined
+    if (!input) return
+    const name = state.value.trim() || undefined
+    setEditor(undefined)
     run("Creating worktree", async () => {
       const next = await createProjectWorktree(input, name)
       setSelected(next.directory)
@@ -395,27 +424,12 @@ export function ProjectConsoleRoute() {
 
   function renameWorktree(item: Context) {
     if (item.kind === "local") return
-    const input = window.prompt("Worktree label", displayLabel(item))
-    if (input === null) return
-    const next = input.trim()
-    if (next) window.localStorage.setItem(labelKey(item.dir), next)
-    else window.localStorage.removeItem(labelKey(item.dir))
-    setLabelRev((value) => value + 1)
+    setEditor({ kind: "rename", item, value: displayLabel(item) })
   }
 
   function removeWorktree(item: Context) {
-    const input = projectInput()
-    if (!input || item.kind === "local") return
-    if (!window.confirm(`Remove worktree ${displayLabel(item)}?`)) return
-    run("Removing worktree", async () => {
-      await removeProjectWorktree(input, item.dir)
-      window.localStorage.removeItem(labelKey(item.dir))
-      setLabelRev((value) => value + 1)
-      if (selected() === item.dir) {
-        setSelected(input.dir)
-        remember(input.dir)
-      }
-    })
+    if (!projectInput() || item.kind === "local") return
+    setPending({ kind: "delete", item })
   }
 
   function removeSelected() {
@@ -425,11 +439,60 @@ export function ProjectConsoleRoute() {
   }
 
   function resetSelected() {
-    const input = projectInput()
     const item = current()
-    if (!input || !item || item.kind === "local") return
-    if (!window.confirm(`Reset worktree ${displayLabel(item)}?`)) return
-    run("Resetting worktree", async () => resetProjectWorktree(input, item.dir))
+    if (!projectInput() || !item || item.kind === "local") return
+    setPending({ kind: "reset", item })
+  }
+
+  function confirmWorktree() {
+    const state = pending()
+    const input = projectInput()
+    if (!state || !input) return
+    setPending(undefined)
+    if (state.kind === "reset") {
+      run("Resetting worktree", async () => resetProjectWorktree(input, state.item.dir))
+      return
+    }
+
+    run("Removing worktree", async () => {
+      await removeProjectWorktree(input, state.item.dir)
+      window.localStorage.removeItem(labelKey(state.item.dir))
+      setLabelRev((revision) => revision + 1)
+      if (selected() === state.item.dir) {
+        setSelected(input.dir)
+        remember(input.dir)
+      }
+    })
+  }
+
+  function updateEditor(value: string) {
+    setEditor((state) => {
+      if (!state) return state
+      return { ...state, value }
+    })
+  }
+
+  function editorTitle() {
+    const state = editor()
+    if (!state || state.kind === "create") return "Create worktree"
+    return `Rename ${displayLabel(state.item)}`
+  }
+
+  function editorMessage() {
+    if (editor()?.kind === "rename") return "Leave the name blank to restore the generated worktree name."
+    return "Choose a recognizable name, or leave it blank to generate one automatically."
+  }
+
+  function pendingTitle() {
+    const state = pending()
+    if (!state) return ""
+    const action = state.kind === "reset" ? "Reset" : "Delete"
+    return `${action} worktree ${displayLabel(state.item)}?`
+  }
+
+  function pendingMessage() {
+    if (pending()?.kind === "reset") return "This discards all uncommitted changes in the worktree."
+    return "This removes the worktree directory and its files from the project."
   }
 
   createEffect(() => {
@@ -744,7 +807,7 @@ export function ProjectConsoleRoute() {
                 Reset
               </button>
               <button type="button" onClick={removeSelected} disabled={!!saving()}>
-                Remove
+                Delete
               </button>
             </div>
           </Show>
@@ -780,6 +843,29 @@ export function ProjectConsoleRoute() {
           <Show when={detail()}>{(item) => <pre class="project-diff-detail">{item()?.patch ?? ""}</pre>}</Show>
         </div>
       </aside>
+
+      <PromptDialog
+        open={Boolean(editor())}
+        title={editorTitle()}
+        message={editorMessage()}
+        label="Worktree name"
+        value={editor()?.value ?? ""}
+        placeholder="feature-name"
+        confirm={editor()?.kind === "rename" ? "Save" : "Create"}
+        busy={Boolean(saving())}
+        onInput={updateEditor}
+        onCancel={() => setEditor(undefined)}
+        onConfirm={submitEditor}
+      />
+      <ConfirmDialog
+        open={Boolean(pending())}
+        title={pendingTitle()}
+        message={pendingMessage()}
+        confirm={pending()?.kind === "reset" ? "Reset" : "Delete"}
+        busy={Boolean(saving())}
+        onCancel={() => setPending(undefined)}
+        onConfirm={confirmWorktree}
+      />
     </section>
   )
 }
