@@ -71,12 +71,7 @@ import { fetchMessagePage, MESSAGE_PAGE_LIMIT } from "./kilo-provider/message-pa
 import { childID } from "./kilo-provider/task-session"
 import { VisibleTaskStreams } from "./kilo-provider/visible-task-streams"
 import { handleNetworkEvent, clearNetworkWaits } from "./kilo-provider/network"
-import {
-  abortSession,
-  resolveAbortDirectories,
-  updateActiveSessionDirectory,
-  type ActiveSessionDirectories,
-} from "./kilo-provider/abort"
+import { abortSession } from "./kilo-provider/abort"
 import {
   buildAutocompleteSettingsMessage,
   validAutocompleteSetting,
@@ -286,7 +281,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private syncedChildSessions: Set<string> = new Set()
   private sessionStatusMap = new Map<string, SessionStatus["type"]>() // Latest status used for destructive config warnings.
   private sessionDirectories = new Map<string, string>() // Per-session directory overrides, such as Agent Manager worktrees.
-  private activeSessionDirectories: ActiveSessionDirectories = new Map()
   private permissionDirectories = new Map<string, string>()
   private projectID: string | undefined // Current workspace project ID used to filter sessions.
   private loadMessagesAbort: AbortController | null = null // Current load request cancellation.
@@ -634,28 +628,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
    * When set, all operations for this session use this directory instead of the workspace root.
    */
   public setSessionDirectory(sessionId: string, directory: string): void {
-    const status = this.sessionStatusMap.get(sessionId)
-    if (status && status !== "idle" && !this.activeSessionDirectories.has(sessionId)) {
-      updateActiveSessionDirectory({
-        active: this.activeSessionDirectories,
-        sessionID: sessionId,
-        status,
-        dir: this.getWorkspaceDirectory(sessionId),
-      })
-    }
     this.sessionDirectories.set(sessionId, directory)
   }
 
   public clearSessionDirectory(sessionId: string): void {
-    const status = this.sessionStatusMap.get(sessionId)
-    if (status && status !== "idle" && !this.activeSessionDirectories.has(sessionId)) {
-      updateActiveSessionDirectory({
-        active: this.activeSessionDirectories,
-        sessionID: sessionId,
-        status,
-        dir: this.getWorkspaceDirectory(sessionId),
-      })
-    }
     this.sessionDirectories.delete(sessionId)
   }
 
@@ -1732,7 +1708,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.visibleTaskStreams.delete(sessionID)
       this.syncedChildSessions.delete(sessionID)
       this.sessionDirectories.delete(sessionID)
-      this.activeSessionDirectories.delete(sessionID)
       this.lastReconciledAt.delete(sessionID)
       this.connectionService.pruneSession(sessionID)
       if (this.currentSession?.id === sessionID) {
@@ -2730,33 +2705,23 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   }
 
   private async handleAbort(sessionID?: string): Promise<void> {
-    const client = this.client
-    if (!client) return
+    if (!this.client) {
+      return
+    }
 
     const targetSessionID = sessionID || this.currentSession?.id
     if (!targetSessionID) {
       return
     }
 
-    const dirs = resolveAbortDirectories(
-      this.activeSessionDirectories,
-      targetSessionID,
-      this.getWorkspaceDirectory(targetSessionID),
-    )
-    const results = await Promise.allSettled(
-      dirs.map((dir) =>
-        abortSession({
-          client,
-          sessionID: targetSessionID,
-          dir,
-        }),
-      ),
-    )
-    const failures = results.flatMap((result, index) =>
-      result.status === "rejected" ? [{ dir: dirs[index], error: result.reason }] : [],
-    )
-    if (failures.length > 0) {
-      console.error("[Kilo New] KiloProvider: Failed to abort session in one or more directories:", failures)
+    try {
+      await abortSession({
+        client: this.client,
+        sessionID: targetSessionID,
+        dir: this.getWorkspaceDirectory(targetSessionID),
+      })
+    } catch (error) {
+      console.error("[Kilo New] KiloProvider: Failed to abort session:", error)
     }
   }
 
@@ -3131,12 +3096,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     if (event.type === "session.status") {
       const sid = event.properties.sessionID
       this.sessionStatusMap.set(sid, event.properties.status.type)
-      updateActiveSessionDirectory({
-        active: this.activeSessionDirectories,
-        sessionID: sid,
-        status: event.properties.status.type,
-        dir: directory,
-      })
       const msg = mapSSEEventToWebviewMessage(event, sid)
       if (msg) {
         this.streams.flush(sid)
@@ -3169,17 +3128,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     if (event.type === "server.instance.disposed") {
       const props = event.properties as Record<string, unknown> | null
       const dir = typeof props?.directory === "string" ? props.directory : undefined
-      if (dir) {
-        for (const sessionID of [...this.activeSessionDirectories.keys()]) {
-          updateActiveSessionDirectory({
-            active: this.activeSessionDirectories,
-            sessionID,
-            status: "idle",
-            dir,
-          })
-          if (!this.activeSessionDirectories.has(sessionID)) this.sessionStatusMap.set(sessionID, "idle")
-        }
-      }
       if (dir && !sameDirectory(dir, this.getWorkspaceDirectory())) return
       void this.reloadAfterAuthChange()
       return
@@ -3579,7 +3527,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.trackedSessionIds.clear()
     this.syncedChildSessions.clear()
     this.sessionDirectories.clear()
-    this.activeSessionDirectories.clear()
     this.permissionDirectories.clear()
     this.sessionStatusMap.clear()
     this.ignoreController?.dispose()

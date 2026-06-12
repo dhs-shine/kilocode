@@ -83,11 +83,14 @@ export const make = <A, E = never>(
   const startRun = (work: Effect.Effect<A, E>, done: Deferred.Deferred<A, E | Cancelled>) =>
     Effect.gen(function* () {
       const id = next()
-      const fiber = yield* work.pipe(
+      // kilocode_change start - do not let work publish busy before the Running state is committed
+      const ready = yield* Latch.make()
+      const fiber = yield* ready.whenOpen(work).pipe(
         Effect.onExit((exit) => finishRun(id, done, exit)),
         Effect.forkIn(scope),
       )
-      return { id, done, fiber } satisfies RunHandle<A, E>
+      return { run: { id, done, fiber } satisfies RunHandle<A, E>, ready }
+      // kilocode_change end
     })
 
   const finishShell = (id: number) =>
@@ -98,8 +101,13 @@ export const make = <A, E = never>(
           return [idle, { _tag: "Idle" }] as const
         }
         if (st._tag === "ShellThenRun" && st.shell.id === id) {
-          const run = yield* startRun(st.run.work, st.run.done)
-          return [Effect.void, { _tag: "Running", run }] as const
+          // kilocode_change start - open work only after the Running state is committed
+          const started = yield* startRun(st.run.work, st.run.done)
+          return [
+            started.ready.open.pipe(Effect.uninterruptible, Effect.asVoid),
+            { _tag: "Running", run: started.run },
+          ] as const
+          // kilocode_change end
         }
         return [Effect.void, st] as const
       }),
@@ -130,8 +138,13 @@ export const make = <A, E = never>(
           }
           case "Idle": {
             const done = yield* Deferred.make<A, E | Cancelled>()
-            const run = yield* startRun(work, done)
-            return [awaitDone(done), { _tag: "Running", run }] as const
+            // kilocode_change start - open work only after the Running state is committed
+            const started = yield* startRun(work, done)
+            return [
+              started.ready.open.pipe(Effect.uninterruptible, Effect.andThen(awaitDone(done))),
+              { _tag: "Running", run: started.run },
+            ] as const
+            // kilocode_change end
           }
         }
       }),

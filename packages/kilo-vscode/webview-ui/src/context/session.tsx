@@ -71,6 +71,7 @@ import { state as todoState } from "./todo-revert"
 import { getVariant, sessionVariantKeys, transferVariants, variantKey } from "./session-variant-store"
 import { KILO_AUTO, parseModelString } from "../../../src/shared/provider-model"
 import { visibleMessages as filterVisibleMessages } from "./session-queue"
+import { createAbortState } from "./abort-state"
 
 const RECENT_LIMIT = 5
 const MESSAGE_PAGE_LIMIT = 80
@@ -303,6 +304,7 @@ export const SessionProvider: ParentComponent = (props) => {
   const [busySinceMap, setBusySinceMap] = createStore<Record<string, number>>({})
   const [submissionMap, setSubmissionMap] = createStore<Record<string, number>>({})
   const pendingSubmissions = new Map<string, string>()
+  const aborts = createAbortState()
 
   const idle: SessionStatusInfo = { type: "idle" }
 
@@ -442,6 +444,7 @@ export const SessionProvider: ParentComponent = (props) => {
     if (!busySinceMap[sid]) setBusySinceMap(sid, Date.now())
   }
   const finishSubmission = (messageID: string) => {
+    aborts.finish(messageID)
     const sid = pendingSubmissions.get(messageID)
     if (!sid) return
     pendingSubmissions.delete(messageID)
@@ -464,7 +467,9 @@ export const SessionProvider: ParentComponent = (props) => {
   }
   const confirmSubmissions = (sid: string) => {
     for (const [id, scope] of pendingSubmissions) {
-      if (scope === sid) pendingSubmissions.delete(id)
+      if (scope !== sid) continue
+      aborts.finish(id)
+      pendingSubmissions.delete(id)
     }
     setSubmissionMap(
       produce((map) => {
@@ -1070,6 +1075,7 @@ export const SessionProvider: ParentComponent = (props) => {
 
   // Event handlers
   function handleSessionCreated(session: SessionInfo, draftID?: string) {
+    if (draftID) aborts.move(draftID, session.id)
     batch(() => {
       setStore("sessions", session.id, session)
 
@@ -1496,6 +1502,7 @@ export const SessionProvider: ParentComponent = (props) => {
     message?: string,
     next?: number,
   ) {
+    const shouldAbort = aborts.update(sessionID, newStatus)
     confirmSubmissions(sessionID)
     const prev = statusMap[sessionID] ?? { type: "idle" }
     const info: SessionStatusInfo =
@@ -1522,6 +1529,7 @@ export const SessionProvider: ParentComponent = (props) => {
       // messages themselves will be reconciled on the next messagesLoaded.
       pendingOptimistic.delete(sessionID)
     }
+    if (shouldAbort) vscode.postMessage({ type: "abort", sessionID })
   }
 
   function handlePermissionRequest(permission: PermissionRequest) {
@@ -1640,6 +1648,7 @@ export const SessionProvider: ParentComponent = (props) => {
   function handleSendMessageFailed(message: SendMessageFailedMessage) {
     const sid = message.sessionID ?? message.draftID
     if (message.messageID) finishSubmission(message.messageID)
+    if (!message.messageID && sid) aborts.clear(sid)
     if (sid && message.messageID) {
       pendingOptimistic.get(sid)?.delete(message.messageID)
       stash.remove(message.messageID)
@@ -1777,6 +1786,7 @@ export const SessionProvider: ParentComponent = (props) => {
 
   function handleSessionDeleted(sessionID: string) {
     pendingOptimistic.delete(sessionID)
+    aborts.clear(sessionID)
     confirmSubmissions(sessionID)
     batch(() => {
       // Collect message IDs so we can clean up their parts (store + stash)
@@ -2197,10 +2207,13 @@ export const SessionProvider: ParentComponent = (props) => {
 
   function abort() {
     const sessionID = currentSessionID()
-    if (!sessionID) {
-      console.warn("[Kilo New] Cannot abort: no current session")
+    const scope = sessionID ?? draftSessionID()
+    if (!scope) {
+      console.warn("[Kilo New] Cannot abort: no current or pending session")
       return
     }
+    const messageID = [...pendingSubmissions].reverse().find(([, sid]) => sid === scope)?.[0]
+    if (!aborts.request(scope, status(), messageID) || !sessionID) return
 
     vscode.postMessage({
       type: "abort",
