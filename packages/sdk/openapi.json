@@ -18227,6 +18227,12 @@
           "subagent_variant": {
             "type": "string"
           },
+          "subagent_variant_overrides": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
           "default_agent": {
             "type": "string"
           },
