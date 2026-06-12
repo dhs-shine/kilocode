@@ -126,6 +126,10 @@ test(
 
     expect(cold.value).toBeTruthy()
     expect(fast.value).toBe(cold.value)
+    const tree = await $`git --git-dir=${fast.gitdir} ls-tree -r --name-only ${fast.value!}`.text()
+    expect(tree).not.toContain("debug.log")
+    expect(tree).not.toContain("huge.bin")
+    expect(tree).not.toContain("tracked.log")
     await expect(fs.access(path.join(cold.gitdir, "objects", "info", "alternates"))).rejects.toThrow()
     const common = (await $`git rev-parse --path-format=absolute --git-common-dir`.cwd(seeded).text()).trim()
     expect(

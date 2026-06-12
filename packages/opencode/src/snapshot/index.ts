@@ -181,14 +181,18 @@ export const layer: Layer.Layer<Service, never, Requirements> =
 
           const stage = Effect.fnUntraced(function* (files: string[], env?: Record<string, string>) { // kilocode_change
             if (!files.length) return
-            const result = yield* git(
-              [...cfg, ...args(["add", "--all", "--sparse", "--pathspec-from-file=-", "--pathspec-file-nul"])],
-              {
-                cwd: state.directory,
-                env, // kilocode_change
-                stdin: feed(files),
-              },
-            )
+            // kilocode_change start
+            // Seeded snapshots cover the worktree root, so a single pathspec avoids
+            // quadratic matching against every tracked path in very large repositories.
+            const cmd = env
+              ? ["add", "--all", "--sparse", "--", "."]
+              : ["add", "--all", "--sparse", "--pathspec-from-file=-", "--pathspec-file-nul"]
+            const result = yield* git([...cfg, ...args(cmd)], {
+              cwd: state.directory,
+              env,
+              stdin: env ? undefined : feed(files),
+            })
+            // kilocode_change end
             if (result.code === 0) return
             log.warn("failed to add snapshot files", {
               exitCode: result.code,
