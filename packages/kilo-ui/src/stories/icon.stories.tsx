@@ -1,6 +1,6 @@
 /** @jsxImportSource solid-js */
 import type { Meta, StoryObj } from "storybook-solidjs-vite"
-import { Icon } from "../components/icon"
+import { Icon } from "@opencode-ai/ui/icon"
 
 const meta: Meta<typeof Icon> = {
   title: "Components/Icon",
@@ -89,26 +89,6 @@ const iconNames = [
   "layout-bottom",
 ] as const
 
-const toolIcons = [
-  { tool: "Read", icon: "glasses", note: "File reads" },
-  { tool: "List", icon: "bullet-list", note: "Directory lists" },
-  { tool: "Glob", icon: "magnifying-glass-menu", note: "File pattern search" },
-  { tool: "Grep", icon: "magnifying-glass-menu", note: "Content search" },
-  { tool: "WebFetch", icon: "window-cursor", note: "Fetch URL" },
-  { tool: "WebSearch", icon: "window-cursor", note: "Search web" },
-  { tool: "CodeSearch", icon: "code", note: "Code search" },
-  { tool: "Task", icon: "task", note: "Subagent" },
-  { tool: "Bash", icon: "console", note: "Shell command" },
-  { tool: "Edit", icon: "code-lines", note: "Modify file" },
-  { tool: "Write", icon: "code-lines", note: "Write file" },
-  { tool: "Apply Patch", icon: "code-lines", note: "Patch files" },
-  { tool: "TodoWrite", icon: "checklist", note: "Update todos" },
-  { tool: "TodoRead", icon: "checklist", note: "Read todos" },
-  { tool: "Question", icon: "bubble-5", note: "Ask user" },
-  { tool: "Skill", icon: "brain", note: "Load skill" },
-  { tool: "MCP/default", icon: "mcp", note: "Fallback tool" },
-] as const
-
 export const AllIcons: Story = {
   render: () => (
     <div
@@ -130,41 +110,6 @@ export const AllIcons: Story = {
         >
           <Icon name={name} size="normal" />
           <span style={{ "font-size": "10px", color: "var(--text-weak)", "text-align": "center" }}>{name}</span>
-        </div>
-      ))}
-    </div>
-  ),
-  parameters: { layout: "fullscreen" },
-}
-
-export const ToolCallIcons: Story = {
-  render: () => (
-    <div
-      style={{
-        display: "grid",
-        "grid-template-columns": "repeat(auto-fill, minmax(180px, 1fr))",
-        gap: "8px",
-        padding: "16px",
-      }}
-    >
-      {toolIcons.map((item) => (
-        <div
-          style={{
-            display: "grid",
-            "grid-template-columns": "24px 1fr",
-            gap: "8px",
-            "align-items": "center",
-            padding: "8px",
-            "border-radius": "6px",
-            background: "var(--surface-inset-base)",
-          }}
-        >
-          <Icon name={item.icon} size="normal" />
-          <div style={{ display: "flex", "flex-direction": "column", gap: "2px", "min-width": "0" }}>
-            <span style={{ "font-size": "12px", color: "var(--text-strong)" }}>{item.tool}</span>
-            <span style={{ "font-size": "11px", color: "var(--text-weak)" }}>{item.icon}</span>
-            <span style={{ "font-size": "11px", color: "var(--text-weaker)" }}>{item.note}</span>
-          </div>
         </div>
       ))}
     </div>

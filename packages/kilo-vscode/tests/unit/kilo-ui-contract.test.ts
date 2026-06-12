@@ -197,12 +197,12 @@ describe("Bash tool static terminal preview (source)", () => {
   it("BashHighlightedOutput renders the command as plain code next to the prompt", () => {
     expect(src).toContain('data-slot="bash-terminal" data-kind="command"')
     expect(src).toContain('data-slot="bash-prompt"')
-    expect(src).toContain('<pre data-slot="bash-pre"><code>{props.cmd}</code></pre>')
+    expect(src).toMatch(/<pre data-slot="bash-pre">\s*<code>\{props\.cmd\}<\/code>\s*<\/pre>/)
   })
 
   it("BashHighlightedOutput renders output as plain code", () => {
     expect(src).toContain('data-slot="bash-terminal" data-kind="output"')
-    expect(src).toContain('<pre data-slot="bash-pre"><code>{props.output}</code></pre>')
+    expect(src).toMatch(/<pre data-slot="bash-pre">\s*<code>\{props\.output\}<\/code>\s*<\/pre>/)
     expect(src).not.toMatch(/data-lang=/)
   })
 

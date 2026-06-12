@@ -2106,7 +2106,7 @@ function BashCopyButton(props: { value: () => string; label: string }) {
   )
 }
 
-function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?: string; active?: boolean }) {
+function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?: string }) {
   const data = useData()
   const i18n = useI18n()
 
@@ -2129,7 +2129,9 @@ function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?
               $
             </span>
             <div data-slot="bash-section-code">
-              <pre data-slot="bash-pre"><code>{props.cmd}</code></pre>
+              <pre data-slot="bash-pre">
+                <code>{props.cmd}</code>
+              </pre>
             </div>
             <div data-slot="bash-section-actions">
               <BashCopyButton value={() => props.cmd} label={i18n.t("ui.message.copy")} />
@@ -2141,7 +2143,9 @@ function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?
         <div data-slot="bash-terminal" data-kind="output">
           <div data-slot="bash-section" data-kind="output">
             <div data-slot="bash-section-code" data-scrollable>
-              <pre data-slot="bash-pre"><code>{props.output}</code></pre>
+              <pre data-slot="bash-pre">
+                <code>{props.output}</code>
+              </pre>
             </div>
             <div data-slot="bash-section-actions">
               <Show when={data.openContent || (props.outputPath && data.openFile)}>
@@ -2212,7 +2216,7 @@ ToolRegistry.register({
         }
       >
         <Show when={mounted()}>
-          <BashHighlightedOutput cmd={cmd()} output={out()} outputPath={props.metadata.outputPath} active={open()} />
+          <BashHighlightedOutput cmd={cmd()} output={out()} outputPath={props.metadata.outputPath} />
         </Show>
       </BasicTool>
     )
