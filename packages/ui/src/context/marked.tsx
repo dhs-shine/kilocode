@@ -12,7 +12,7 @@ import type { MarkedExtension, TokenizerAndRendererExtension } from "marked"
 import { bundledLanguages, type BundledLanguage } from "shiki"
 import { parseFilePath } from "../file-path" // kilocode_change
 import { createSimpleContext } from "./helper"
-import { getSharedHighlighter } from "@pierre/diffs"
+import { getSharedHighlighter } from "@pierre/diffs" // kilocode_change
 import { ensureKiloDiffTheme } from "../pierre/kilo-diff-theme" // kilocode_change
 
 // kilocode_change start: the "Kilo" diff/highlight theme registration moved to
