@@ -1,7 +1,14 @@
 import { A, useLocation, useParams } from "@solidjs/router"
-import { createEffect, createMemo, createResource, createSignal, For, onCleanup, Show } from "solid-js"
+import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show } from "solid-js"
+import { Badge } from "@kilocode/kilo-web-ui/badge"
+import { Button } from "@kilocode/kilo-web-ui/button"
 import { Card } from "@kilocode/kilo-web-ui/card"
 import { Icon } from "@kilocode/kilo-web-ui/icon"
+import { ResizeHandle } from "@kilocode/kilo-web-ui/resize-handle"
+import { Spinner } from "@kilocode/kilo-web-ui/spinner"
+import { File } from "@opencode-ai/ui/file"
+import { FileComponentProvider } from "@opencode-ai/ui/context/file"
+import { SessionReview, type SessionReviewDiffStyle } from "@opencode-ai/ui/session-review"
 import { ConfirmDialog } from "../../components/ConfirmDialog"
 import { LoadingScreen } from "../../components/LoadingScreen"
 import { PromptDialog } from "../../components/PromptDialog"
@@ -14,6 +21,7 @@ import {
   loadProjectConsole,
   loadProjectDiff,
   loadProjectDiffFile,
+  patchConfig,
   removeProjectPty,
   removeProjectWorktree,
   resetProjectWorktree,
@@ -23,6 +31,7 @@ import {
   viewProjectSessions,
   type ProjectConsoleEvent,
   type ProjectConsoleQuery,
+  type ProjectDiffItem,
   type ProjectTerminalItem,
   type Query,
 } from "../../client"
@@ -32,6 +41,14 @@ import {
   clearUnread as storeClearUnread,
   sessionHasUnread,
 } from "../../shared/terminal-status"
+import {
+  DEFAULT_CONSOLE_DIFF_STYLE,
+  DEFAULT_CONTEXT_SIDEBAR_WIDTH,
+  MAX_CONTEXT_SIDEBAR_WIDTH,
+  MIN_CONTEXT_SIDEBAR_WIDTH,
+  normalizeConsoleDiffStyle,
+  normalizeContextSidebarWidth,
+} from "../config/state/console"
 import { GhosttyTerminal } from "./terminal/GhosttyTerminal"
 
 const ui = new Set(["3017", "3018"])
@@ -43,9 +60,7 @@ type Context = {
   kind: "local" | "worktree"
 }
 
-type Editor =
-  | { kind: "create"; value: string }
-  | { kind: "rename"; item: Context; value: string }
+type Editor = { kind: "create"; value: string } | { kind: "rename"; item: Context; value: string }
 
 type Pending = {
   kind: "delete" | "reset"
@@ -136,7 +151,11 @@ export function ProjectConsoleRoute() {
   const [selected, setSelected] = createSignal(window.localStorage.getItem(`kilo.console.${params.project}.dir`) ?? "")
   const [active, setActive] = createSignal(window.localStorage.getItem(`kilo.console.${params.project}.pty`) ?? "")
   const [local, setLocal] = createSignal<ProjectTerminalItem[]>([])
-  const [file, setFile] = createSignal<string | undefined>()
+  const [openFiles, setOpenFiles] = createSignal<string[]>([])
+  const [details, setDetails] = createSignal<Record<string, ProjectDiffItem>>({})
+  const [infoWidth, setInfoWidth] = createSignal(DEFAULT_CONTEXT_SIDEBAR_WIDTH)
+  const [viewport, setViewport] = createSignal(window.innerWidth)
+  const [diffStyle, setDiffStyle] = createSignal<SessionReviewDiffStyle>(DEFAULT_CONSOLE_DIFF_STYLE)
   const [saving, setSaving] = createSignal<string | undefined>()
   const [failure, setFailure] = createSignal<string | undefined>()
   const [unread, setUnread] = createSignal(new Set<string>())
@@ -145,6 +164,8 @@ export function ProjectConsoleRoute() {
   const [editor, setEditor] = createSignal<Editor | undefined>()
   const [pending, setPending] = createSignal<Pending | undefined>()
   const events = { timer: undefined as number | undefined }
+  const resize = { timer: undefined as number | undefined, pending: false }
+  const detailPending = new Set<string>()
   const project = () => params.project ?? ""
   const query = createMemo<ProjectConsoleQuery | undefined>(() => {
     const target = clean(url()) || fallback()
@@ -152,6 +173,7 @@ export function ProjectConsoleRoute() {
     return { url: target, dir: "", project: project() }
   })
   const [snap, { refetch }] = createResource(query, loadProjectConsole)
+  const visibleInfoWidth = createMemo(() => Math.min(infoWidth(), maxInfoWidth()))
 
   const contexts = createMemo<Context[]>(() => {
     const data = snap()
@@ -198,11 +220,13 @@ export function ProjectConsoleRoute() {
     return { input: item, dir: item.dir }
   })
   const [diffs] = createResource(diffKey, (item) => loadProjectDiff(item.input, item.dir))
-  const detailKey = createMemo(() => {
-    const item = target()
-    const path = file()
-    if (!item || !path) return undefined
-    return { input: item, dir: item.dir, file: path }
+  // Diff summary items carry no content (patch/before/after empty); overlay full file
+  // diffs as they load so the review renders syntax-highlighted changes per file.
+  const reviewDiffs = createMemo<ProjectDiffItem[]>(() => {
+    const map = details()
+    return (diffs() ?? [])
+      .filter((item): item is ProjectDiffItem & { file: string } => typeof item.file === "string")
+      .map((item) => map[item.file] ?? item)
   })
   const terminal = createMemo(() => {
     const item = activeTerminal()
@@ -218,7 +242,6 @@ export function ProjectConsoleRoute() {
     return items
   })
   const terminalKeys = createMemo(() => Array.from(terminalMap().keys()))
-  const [detail] = createResource(detailKey, (item) => loadProjectDiffFile(item.input, item.dir, item.file))
   const settings = createMemo(() => {
     const q = search().toString()
     return `/projects/${encodeURIComponent(project())}/settings${q ? `?${q}` : ""}`
@@ -313,16 +336,65 @@ export function ProjectConsoleRoute() {
     setSelected(item.dir)
     const pty = terminalsFor(item.dir)[0]
     setActive(pty?.id ?? "")
-    setFile(undefined)
     remember(item.dir, pty?.id)
   }
 
   function selectTerminal(item: ProjectTerminalItem) {
     setSelected(item.directory)
     setActive(item.id)
-    setFile(undefined)
     clearUnread(item)
     remember(item.directory, item.id)
+  }
+
+  function fetchDetail(path: string) {
+    const base = target()
+    if (!base) return
+    if (details()[path] || detailPending.has(path)) return
+    detailPending.add(path)
+    void loadProjectDiffFile(base, base.dir, path)
+      .then((item) => {
+        if (item && item.file) setDetails((prev) => ({ ...prev, [item.file!]: item }))
+      })
+      .catch((err) => console.warn("Worktree diff file:", err))
+      .finally(() => detailPending.delete(path))
+  }
+
+  function openReviewFiles(next: string[]) {
+    setOpenFiles(next)
+    for (const path of next) fetchDetail(path)
+  }
+
+  function changeDiffStyle(style: SessionReviewDiffStyle) {
+    setDiffStyle(style)
+    const base = query()
+    if (!base) return
+    void patchConfig({ url: base.url, dir: "", scope: "global" }, { console: { diff_style: style } }).catch((err) =>
+      console.warn(`Console diff style: ${errMsg(err)}`),
+    )
+  }
+
+  function resizeInfo(value: number) {
+    const width = normalizeContextSidebarWidth(value)
+    setInfoWidth(width)
+    resize.pending = true
+    if (resize.timer) window.clearTimeout(resize.timer)
+    resize.timer = window.setTimeout(() => {
+      resize.timer = undefined
+      const base = query()
+      if (!base) {
+        resize.pending = false
+        return
+      }
+      void patchConfig({ url: base.url, dir: "", scope: "global" }, { console: { context_sidebar_width: width } })
+        .catch((err) => console.warn(`Console sidebar width: ${errMsg(err)}`))
+        .finally(() => {
+          resize.pending = false
+        })
+    }, 350)
+  }
+
+  function maxInfoWidth() {
+    return Math.max(MIN_CONTEXT_SIDEBAR_WIDTH, Math.min(MAX_CONTEXT_SIDEBAR_WIDTH, viewport() - 604))
   }
 
   function run(label: string, job: () => Promise<unknown>) {
@@ -496,9 +568,30 @@ export function ProjectConsoleRoute() {
   }
 
   createEffect(() => {
+    const data = snap()
+    if (!data) return
+    if (!resize.pending) setInfoWidth(normalizeContextSidebarWidth(data.config.console?.context_sidebar_width))
+    setDiffStyle(normalizeConsoleDiffStyle(data.config.console?.diff_style))
+  })
+
+  createEffect(() => {
     const next = search().get("server")
     if (next && next !== url()) setUrl(next)
   })
+
+  // Reset review state when the selected worktree changes so one worktree's
+  // file contents never leak into another.
+  createEffect(
+    on(
+      () => target()?.dir,
+      () => {
+        setOpenFiles([])
+        setDetails({})
+        detailPending.clear()
+      },
+      { defer: true },
+    ),
+  )
 
   createEffect(() => {
     if (!discoverable(search())) return
@@ -570,8 +663,12 @@ export function ProjectConsoleRoute() {
     onCleanup(stop)
   })
 
+  const updateViewport = () => setViewport(window.innerWidth)
+  window.addEventListener("resize", updateViewport)
+
   onCleanup(() => {
     if (events.timer) window.clearTimeout(events.timer)
+    window.removeEventListener("resize", updateViewport)
   })
 
   createEffect(() => {
@@ -588,7 +685,7 @@ export function ProjectConsoleRoute() {
   })
 
   return (
-    <section class="project-console">
+    <section class="project-console" style={`--project-info-width: ${visibleInfoWidth()}px`}>
       <aside class="project-console-sidebar" aria-label="Project console sections">
         <div class="project-console-title">
           <span class="project-console-heading">
@@ -797,50 +894,62 @@ export function ProjectConsoleRoute() {
       </main>
 
       <aside class="project-console-info" aria-label="Project details">
-        <div class="project-info-card">
-          <div class="project-panel-heading">Context</div>
-          <strong>{currentLabel()}</strong>
-          <code>{current()?.dir ?? snap()?.project.worktree ?? project()}</code>
+        <ResizeHandle
+          direction="horizontal"
+          edge="start"
+          size={visibleInfoWidth()}
+          min={MIN_CONTEXT_SIDEBAR_WIDTH}
+          max={maxInfoWidth()}
+          aria-label="Resize project context sidebar"
+          onResize={resizeInfo}
+        />
+        <div class="project-info-card project-info-context">
+          <div class="project-info-context-head">
+            <span class="project-panel-heading">Context</span>
+            <Badge variant="outline">{current()?.kind === "worktree" ? "Worktree" : "Local"}</Badge>
+          </div>
+          <strong class="project-info-title">{currentLabel()}</strong>
+          <code class="project-info-path" title={current()?.dir}>
+            {current()?.dir ?? snap()?.project.worktree ?? project()}
+          </code>
           <Show when={current()?.kind === "worktree"}>
             <div class="project-info-actions">
-              <button type="button" onClick={resetSelected} disabled={!!saving()}>
+              <Button variant="secondary" size="small" onClick={resetSelected} disabled={!!saving()}>
                 Reset
-              </button>
-              <button type="button" onClick={removeSelected} disabled={!!saving()}>
+              </Button>
+              <Button variant="destructive" size="small" onClick={removeSelected} disabled={!!saving()}>
                 Delete
-              </button>
+              </Button>
             </div>
           </Show>
         </div>
-        <div class="project-info-card grow">
-          <div class="project-panel-heading">Changes</div>
-          <Show when={diffs.loading && !diffs()}>
-            <p class="empty">Loading diff...</p>
+        <div class="project-info-review">
+          <Show
+            when={!diffs.error}
+            fallback={<div class="project-review-state project-review-state-error">{errMsg(diffs.error)}</div>}
+          >
+            <Show
+              when={!(diffs.loading && !diffs())}
+              fallback={
+                <div class="project-review-state">
+                  <Spinner />
+                  <span>Loading changes…</span>
+                </div>
+              }
+            >
+              <FileComponentProvider component={File}>
+                <SessionReview
+                  diffs={reviewDiffs()}
+                  title={<span>Changes</span>}
+                  diffStyle={diffStyle()}
+                  onDiffStyleChange={changeDiffStyle}
+                  open={openFiles()}
+                  onOpenChange={openReviewFiles}
+                  empty={<div class="project-review-empty">No changes detected.</div>}
+                />
+              </FileComponentProvider>
+            </Show>
           </Show>
-          <Show when={diffs.error}>
-            <p class="empty">{errMsg(diffs.error)}</p>
-          </Show>
-          <Show when={!diffs.loading && (diffs() ?? []).length === 0 && !diffs.error}>
-            <p class="empty">No changes detected.</p>
-          </Show>
-          <div class="project-diff-list">
-            <For each={diffs() ?? []}>
-              {(item) => (
-                <button
-                  type="button"
-                  class="project-diff-row"
-                  classList={{ active: file() === item.file }}
-                  onClick={() => setFile(item.file)}
-                >
-                  <span>{item.file}</span>
-                  <small>
-                    +{item.additions} -{item.deletions}
-                  </small>
-                </button>
-              )}
-            </For>
-          </div>
-          <Show when={detail()}>{(item) => <pre class="project-diff-detail">{item()?.patch ?? ""}</pre>}</Show>
         </div>
       </aside>
 
