@@ -23,10 +23,8 @@ import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.SessionDropOverlay
 import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.SessionMessageListPanel
+import ai.kilocode.client.session.ui.attachment.attachmentDescriptor
 import ai.kilocode.client.session.ui.attachment.isEmbeddedAttachment
-import ai.kilocode.client.session.ui.attachment.AttachmentEditorKind
-import ai.kilocode.client.session.ui.attachment.attachmentParams
-import ai.kilocode.client.session.ui.attachment.ensureAttachmentEditorKind
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
@@ -41,7 +39,6 @@ import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.client.ui.layout.Stack
-import ai.kilocode.client.vfs.KiloVfsManager
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.rpc.dto.PromptDto
 import ai.kilocode.rpc.dto.PromptPartDto
@@ -184,7 +181,6 @@ class SessionUi(
 
     init {
         buildUi()
-        ensureAttachmentEditorKind()
         Disposer.register(this, selection)
         scroll.show(body(controller.model.state))
         bindUi()
@@ -590,27 +586,53 @@ class SessionUi(
     }
 
     private fun openAttachment(messageId: String, item: FileAttachment) {
-        val url = item.url.takeIf { it.isNotBlank() } ?: return
-        if (isEmbeddedAttachment(url)) {
-            val id = controller.id ?: return
-            project.service<KiloVfsManager>().open(
-                AttachmentEditorKind.ID,
-                attachmentParams(id, messageId, item, attachmentName(item), workspace.directory),
-            )
+        val url = item.url.takeIf { it.isNotBlank() } ?: run {
+            LOG.info("kind=attachment-open skipped=true reason=blank-url message=$messageId part=${item.id} name=${attachmentName(item)} mime=${item.mime}")
             return
         }
-        val uri = runCatching { URI.create(url) }.getOrNull() ?: return
+        LOG.info(
+            "kind=attachment-open session=${controller.id ?: "none"} message=$messageId part=${item.id} " +
+                "name=${attachmentName(item)} mime=${item.mime} url=${attachmentUrl(url)} dir=${workspace.directory}"
+        )
+        if (isEmbeddedAttachment(url)) {
+            val id = controller.id ?: run {
+                LOG.info("kind=attachment-open skipped=true reason=missing-session message=$messageId part=${item.id} name=${attachmentName(item)}")
+                return
+            }
+            LOG.info("kind=attachment-open route=kilo-file session=$id message=$messageId part=${item.id} name=${attachmentName(item)}")
+            cs.launch {
+                workspaces.openKiloFile(
+                    workspace.directory,
+                    attachmentDescriptor(id, messageId, item, attachmentName(item), workspace.directory),
+                )
+            }
+            return
+        }
+        val uri = runCatching { URI.create(url) }.getOrNull() ?: run {
+            LOG.info("kind=attachment-open skipped=true reason=invalid-uri message=$messageId part=${item.id} url=${attachmentUrl(url)}")
+            return
+        }
         if (uri.scheme == "file") {
-            val path = runCatching { Path.of(uri).toString() }.getOrNull() ?: return
+            val path = runCatching { Path.of(uri).toString() }.getOrNull() ?: run {
+                LOG.info("kind=attachment-open skipped=true reason=invalid-file-uri message=$messageId part=${item.id} url=${attachmentUrl(url)}")
+                return
+            }
+            LOG.info("kind=attachment-open route=file session=${controller.id ?: "none"} message=$messageId part=${item.id} path=$path")
             openFile(path)
             return
         }
+        LOG.info("kind=attachment-open route=browser session=${controller.id ?: "none"} message=$messageId part=${item.id} url=${attachmentUrl(url)}")
         openUrl(url)
     }
 
     private fun attachmentName(item: FileAttachment) = item.filename?.takeIf { it.isNotBlank() }
         ?: item.url.substringBefore(',').substringAfterLast('/').takeIf { it.isNotBlank() }
         ?: "attachment"
+
+    private fun attachmentUrl(url: String): String {
+        val scheme = url.substringBefore(':', missingDelimiterValue = "none")
+        return "scheme=$scheme chars=${url.length} embedded=${isEmbeddedAttachment(url)}"
+    }
 
     private fun onStateChanged(state: SessionState) {
         if (disposed) return

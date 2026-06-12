@@ -1,6 +1,7 @@
 package ai.kilocode.client.testing
 
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
+import ai.kilocode.client.files.KiloEditorFileDescriptor
 import ai.kilocode.rpc.dto.ConfigTargetDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
@@ -36,8 +37,7 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var globalConfigExists = true
     val fileCalls = mutableListOf<Pair<String, String>>()
     val opened = mutableListOf<String>()
-    val openPathPushes = mutableListOf<Pair<String, List<String>>>()
-    var openPaths = emptyList<String>()
+    val kiloOpened = mutableListOf<Pair<String, KiloEditorFileDescriptor>>()
     val localConfigs = mutableListOf<String>()
     var globalConfigs = 0
     var localConfigPathCalls = 0
@@ -78,14 +78,10 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
         return openResult
     }
 
-    override suspend fun setVirtualOpenPaths(directory: String, paths: List<String>) {
-        assertNotEdt("setVirtualOpenPaths")
-        openPathPushes.add(directory to paths)
-    }
-
-    override suspend fun virtualOpenPaths(directory: String): List<String> {
-        assertNotEdt("virtualOpenPaths")
-        return openPaths
+    override suspend fun openKiloFile(directory: String, descriptor: KiloEditorFileDescriptor): Boolean {
+        assertNotEdt("openKiloFile")
+        kiloOpened.add(directory to descriptor)
+        return openResult
     }
 
     override suspend fun localConfigTarget(directory: String): ConfigTargetDto {

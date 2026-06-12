@@ -1,6 +1,7 @@
 package ai.kilocode.rpc
 
 import ai.kilocode.rpc.dto.ConfigTargetDto
+import ai.kilocode.client.files.KiloEditorFileDescriptor
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
@@ -49,11 +50,8 @@ interface KiloWorkspaceRpcApi : RemoteApi<Unit> {
     /** Open an absolute backend file path in the IDE. */
     suspend fun openFile(path: String): Boolean
 
-    /** Replace the persisted set of open Kilo virtual paths for [directory]. */
-    suspend fun setVirtualOpenPaths(directory: String, paths: List<String>)
-
-    /** The persisted set of open Kilo virtual paths for [directory]. */
-    suspend fun virtualOpenPaths(directory: String): List<String>
+    /** Create or reuse a physical Kilo editor descriptor file and open it in the IDE. */
+    suspend fun openKiloFile(directory: String, descriptor: KiloEditorFileDescriptor): Boolean
 
     /** Resolve the editable local config target. */
     suspend fun localConfigTarget(directory: String): ConfigTargetDto

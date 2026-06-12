@@ -10,7 +10,7 @@
         <platform.rpc.backend.remoteApiProvider implementation="ai.kilocode.backend.rpc.KiloProjectRpcApiProvider"/>
         <platform.rpc.backend.remoteApiProvider implementation="ai.kilocode.backend.rpc.KiloSessionRpcApiProvider"/>
         <platform.rpc.backend.remoteApiProvider implementation="ai.kilocode.backend.rpc.KiloMigrationRpcApiProvider"/>
-        <virtualFileSystem key="kilo" implementationClass="ai.kilocode.client.vfs.KiloVirtualFileSystem"/>
+        <fileEditorProvider id="KiloAttachmentEditorBackend" implementation="ai.kilocode.backend.vfs.KiloBackendFileEditorProvider"/>
         <applicationService serviceImplementation="ai.kilocode.backend.migration.KiloBackendLegacyMigrationStoreService"/>
     </extensions>
 </idea-plugin>

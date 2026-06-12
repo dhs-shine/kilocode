@@ -1,6 +1,7 @@
 package ai.kilocode.client.app
 
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
+import ai.kilocode.client.files.KiloEditorFileDescriptor
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import kotlinx.coroutines.CoroutineScope
@@ -68,28 +69,14 @@ class KiloWorkspaceServiceTest : BasePlatformTestCase() {
         assertEquals(listOf("/test/.kilo/plans/a.md"), rpc.opened)
     }
 
-    fun `test virtualOpenPaths returns backend list`() = runBlocking {
-        rpc.openPaths = listOf("path-a", "path-b")
+    fun `test openKiloFile delegates to backend`() = runBlocking {
+        val descriptor = KiloEditorFileDescriptor.attachment("ses1", "msg1", "part1", "key1", "note.txt", "text/plain", "/test")
 
-        val paths = withContext(Dispatchers.Default) {
-            service.virtualOpenPaths("/test")
+        val ok = withContext(Dispatchers.Default) {
+            service.openKiloFile("/test", descriptor)
         }
 
-        assertEquals(listOf("path-a", "path-b"), paths)
-    }
-
-    fun `test setVirtualOpenPaths records push`() = runBlocking {
-        withContext(Dispatchers.Default) {
-            service.setVirtualOpenPaths("/test", listOf("path-a"))
-        }
-
-        withContext(Dispatchers.Default) {
-            repeat(200) {
-                if (rpc.openPathPushes.isNotEmpty()) return@withContext
-                kotlinx.coroutines.delay(25)
-            }
-        }
-
-        assertEquals(listOf("/test" to listOf("path-a")), rpc.openPathPushes)
+        assertTrue(ok)
+        assertEquals(listOf("/test" to descriptor), rpc.kiloOpened)
     }
 }
