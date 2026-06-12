@@ -47,6 +47,7 @@
   [data-slot="message-part-title-text"] {
     font-size: var(--kilo-font-size-12);
     font-weight: var(--font-weight-regular);
+    color: var(--text-weak);
   }
 
   [data-slot="basic-tool-tool-arg"] {
@@ -56,6 +57,7 @@
 
   [data-slot="message-part-title-filename"] {
     font-size: var(--kilo-font-size-12);
+    color: var(--text-weak);
   }
 
   [data-slot="message-part-meta-line"] {
@@ -67,6 +69,7 @@
     min-width: 0;
     flex-shrink: 1;
     font-size: var(--kilo-font-size-12);
+    color: var(--text-weak);
 
     &.clickable {
       cursor: pointer;
@@ -172,6 +175,13 @@ html[data-theme="kilo-vscode"] [data-component="tool-part-wrapper"][data-part-ty
       color: var(--text-weak);
     }
 
+    [data-slot="message-part-title-text"]
+      + :is([data-slot="message-part-meta-line"], [data-slot="basic-tool-tool-subtitle"])::before {
+      content: "·";
+      margin-right: 6px;
+      color: var(--text-weak);
+    }
+
     [data-slot="basic-tool-tool-title"],
     [data-slot="basic-tool-tool-subtitle"],
     [data-slot="basic-tool-tool-arg"],
@@ -244,6 +254,35 @@ html[data-theme="kilo-vscode"] [data-component="tool-part-wrapper"][data-part-ty
     height: 1px;
     background: var(--border-weak-base, var(--vscode-panel-border));
     margin-top: 4px;
+  }
+
+  [data-slot="mcp-section-label"] + [data-component="tool-output"] {
+    margin-inline: -6px;
+    width: calc(100% + 12px);
+    max-height: 240px;
+    padding: 8px 12px 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--vscode-sideBar-background, var(--surface-base)) 64%, black 36%);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--vscode-widget-shadow, #000000) 14%, transparent);
+    color: var(--text-weak);
+    font-size: var(--kilo-font-size-12);
+    line-height: 16px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    [data-component="markdown"] {
+      color: inherit;
+      font-size: inherit;
+      line-height: inherit;
+    }
+
+    [data-component="markdown"] :is(a, code, span, [data-highlight="file"]) {
+      color: inherit;
+    }
   }
 
   [data-component="context-tool-group-trigger"] {

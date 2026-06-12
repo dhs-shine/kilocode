@@ -423,6 +423,33 @@ html[data-theme="kilo-vscode"] [data-component="bash-output"] {
   }
 }
 
+html[data-theme="kilo-vscode"] [data-component="todos"] {
+  margin-inline: -6px;
+  width: calc(100% + 12px);
+  padding: 8px 12px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--vscode-sideBar-background, var(--surface-base)) 64%, black 36%);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--vscode-widget-shadow, #000000) 14%, transparent);
+  color: var(--text-weak);
+
+  [data-slot="checkbox-checkbox-label"] {
+    color: var(--text-weak);
+    font-size: var(--kilo-font-size-12);
+    line-height: 16px;
+  }
+
+  [data-slot="message-part-todo-hidden"] {
+    color: var(--text-weaker);
+    font-size: var(--kilo-font-size-12);
+    line-height: 16px;
+  }
+
+  [data-slot="message-part-todo-content"][data-changed="changed"] {
+    color: var(--text-base);
+  }
+}
+
 /* User message copy button: collapse wrapper when idle, show on hover.
  * The wrapper must be tall enough to fully contain the button (20px)
  * so that hovering the button keeps [data-component="user-message"]
@@ -636,6 +663,11 @@ html[data-theme="kilo-vscode"] [data-component="reasoning-part"] {
     border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--vscode-sideBar-background, var(--surface-base)) 64%, black 36%);
     box-shadow: 0 1px 2px color-mix(in srgb, var(--vscode-widget-shadow, #000000) 14%, transparent);
+
+    [data-component="markdown"] {
+      font-size: var(--kilo-font-size-12);
+      line-height: 16px;
+    }
   }
 }
 
