@@ -648,7 +648,7 @@ export const layer: Layer.Layer<
           )
         }
         // kilocode_change end
-        yield* sync.run(Event.Deleted, { sessionID, info: session }, { publish: hasInstance }) // kilocode_change
+        yield* sync.run(Event.Deleted, { sessionID, info: session }, { publish: hasInstance })
         // kilocode_change - capture final session-export workspace delta on close/delete
         const workspaceKey = hasInstance ? yield* InstanceState.directory : undefined // kilocode_change
         yield* Effect.promise(() => SessionExport.onSessionClose(sessionID, workspaceKey)) // kilocode_change
@@ -728,7 +728,7 @@ export const layer: Layer.Layer<
         model: input?.model,
         permission: input?.permission,
         platform: input?.platform, // kilocode_change
-        workspaceID: input?.workspaceID ?? workspace, // kilocode_change - allow explicit override
+        workspaceID: input?.workspaceID ?? workspace,
       })
       return session
     })

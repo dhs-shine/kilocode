@@ -544,7 +544,7 @@ export class Agent implements ACPAgent {
         "terminal-auth": {
           command: "opencode",
           args: ["auth", "login"],
-          label: "Kilo Login", // kilocode_change
+          label: "Kilo Login",
         },
       }
     }
@@ -570,7 +570,7 @@ export class Agent implements ACPAgent {
       },
       authMethods: [authMethod],
       agentInfo: {
-        name: "Kilo", // kilocode_change
+        name: "Kilo",
         version: InstallationVersion,
       },
     }

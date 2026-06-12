@@ -26,8 +26,8 @@ export function attachWith<A, E, R>(effect: Effect.Effect<A, E, R>, refs: Refs):
 export function attach<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
   const workspace = WorkspaceContext.workspaceID
   const fiber = Fiber.getCurrent()
-  const current = fiber ? Context.getReferenceUnsafe(fiber.context, InstanceRef) : undefined
   // kilocode_change start - bridge legacy AsyncLocalStorage instance context into Effect runtimes
+  const current = fiber ? Context.getReferenceUnsafe(fiber.context, InstanceRef) : undefined
   const instance = (() => {
     if (current) return current
     try {
@@ -36,9 +36,9 @@ export function attach<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A
       if (!(err instanceof LocalContext.NotFound)) throw err
     }
   })()
-  // kilocode_change end
   return attachWith(effect, {
     instance,
+    // kilocode_change end
     workspace: workspace ?? (fiber ? Context.getReferenceUnsafe(fiber.context, WorkspaceRef) : undefined),
   })
 }

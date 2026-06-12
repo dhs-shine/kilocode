@@ -488,7 +488,7 @@ export const GithubRunCommand = effectCmd({
           ? (payload as IssueCommentEvent | IssuesEvent).issue.number
           : (payload as PullRequestEvent | PullRequestReviewCommentEvent).pull_request.number
       const runUrl = `/${owner}/${repo}/actions/runs/${runId}`
-      const shareBaseUrl = isMock ? "https://dev.kilo.ai" : "https://kilo.ai" // kilocode_change
+      const shareBaseUrl = isMock ? "https://dev.kilo.ai" : "https://kilo.ai"
 
       let appToken: string
       let octoRest: Octokit
@@ -749,7 +749,7 @@ export const GithubRunCommand = effectCmd({
 
       function normalizeOidcBaseUrl(): string {
         const value = process.env["OIDC_BASE_URL"]
-        if (!value) return "https://api.kilo.ai" // kilocode_change
+        if (!value) return "https://api.kilo.ai"
         return value.replace(/\/+$/, "")
       }
 

@@ -1,4 +1,4 @@
-import { Effect, Exit, Fiber, Layer, PubSub, Scope, Context, Stream, Schema } from "effect"
+import { Effect, Exit, Fiber, Layer, PubSub, Scope, Context, Stream, Schema } from "effect" // kilocode_change
 import { EffectBridge } from "@/effect/bridge"
 import * as Log from "@opencode-ai/core/util/log"
 import { BusEvent } from "./bus-event"
@@ -6,7 +6,7 @@ import { GlobalBus } from "./global"
 import { InstanceState } from "@/effect/instance-state"
 import { makeRuntime } from "@/effect/run-service"
 import { Identifier } from "@/id/id"
-import { context as instanceContext, type InstanceContext } from "@/project/instance-context"
+import { context as instanceContext, type InstanceContext } from "@/project/instance-context" // kilocode_change
 import { InstanceRef } from "@/effect/instance-ref"
 import { LocalContext } from "@/util/local-context" // kilocode_change
 

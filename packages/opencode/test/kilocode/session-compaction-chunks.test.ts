@@ -236,7 +236,7 @@ function runtime(layer: Layer.Layer<LLM.Service>, context = 7_000) {
   )
 }
 
-function fakeRuntime() {
+function fakeRuntime(outputTokenMax?: number) {
   const calls: string[] = []
   const outputs: number[] = []
   const bus = Bus.layer
@@ -291,7 +291,7 @@ function fakeRuntime() {
         Layer.provide(Plugin.defaultLayer),
         Layer.provide(SyncEvent.defaultLayer),
         Layer.provide(EventV2Bridge.defaultLayer),
-        Layer.provide(RuntimeFlags.layer()),
+        Layer.provide(RuntimeFlags.layer({ outputTokenMax })),
         Layer.provide(Reference.defaultLayer),
         Layer.provide(bus),
         Layer.provide(
@@ -371,6 +371,15 @@ describe("KiloCompactionChunks", () => {
     expect(chunks.flatMap((chunk) => chunk.messages.map((msg) => msg.info.id))).toEqual(
       messages.map((msg) => msg.info.id),
     )
+  })
+
+  test("uses runtime output cap for fallback selection and chunk budget", () => {
+    const model = ProviderTest.model({ providerID, id: modelID, limit: { context: 10_000, output: 8_000 } })
+    const cfg = {} as Config.Info
+    const outputTokenMax = 512
+
+    expect(KiloCompactionChunks.needed({ cfg, model, tokens: 5_000, outputTokenMax })).toBe(false)
+    expect(KiloCompactionChunks.budget({ cfg, model, outputTokenMax })).toBe(5_692)
   })
 
   test("falls back to chunk workers after the first compaction overflows", async () => {
@@ -569,15 +578,15 @@ describe("KiloCompactionChunks", () => {
     })
   })
 
-  test("caps worker output budget below oversized model output limit", async () => {
-    const { rt, calls, outputs } = fakeRuntime()
+  test("caps worker output budget below the configured runtime limit", async () => {
+    const { rt, calls, outputs } = fakeRuntime(512)
     await using tmp = await tmpdir()
     await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
         const session = await svc.create({})
-        const first = await user(session.id, "first " + "a".repeat(1_000))
-        await assistant(session.id, first.id, tmp.path, "reply " + "b".repeat(1_000))
+        const first = await user(session.id, "first " + "a".repeat(80_000))
+        await assistant(session.id, first.id, tmp.path, "reply " + "b".repeat(80_000))
         await Effect.runPromise(
           KiloSessionCompaction.create({
             session: store,
@@ -605,7 +614,7 @@ describe("KiloCompactionChunks", () => {
 
           expect(result).toBe("continue")
           expect(calls.length).toBeGreaterThan(0)
-          expect(outputs.every((value) => value <= 2_048)).toBe(true)
+          expect(outputs.at(-1)).toBe(512)
         } finally {
           await rt.dispose()
         }

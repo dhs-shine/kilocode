@@ -317,7 +317,7 @@ export function DialogSessionList() {
         },
         {
           command: "session.rename",
-          title: "rename", // kilocode_change
+          title: "rename",
           // kilocode_change start
           onTrigger: async (option) => {
             const item = sessions().find((x) => x.id === option.value)

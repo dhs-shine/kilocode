@@ -680,12 +680,14 @@ export const layer = Layer.effect(
               .pipe(Effect.ignore, Effect.forkIn(scope))
             if (
               !ctx.assistantMessage.summary &&
+              // kilocode_change start
               isOverflow({
                 cfg: yield* config.get(),
                 tokens: usage.tokens,
                 model: ctx.model,
                 outputTokenMax: flags.outputTokenMax,
-              }) // kilocode_change
+              })
+              // kilocode_change end
             ) {
               ctx.needsCompaction = true
               // kilocode_change start
@@ -893,8 +895,8 @@ export const layer = Layer.effect(
           yield* Effect.gen(function* () {
             ctx.currentText = undefined
             ctx.reasoningMap = {}
-            ctx.step = { reasoning: false, text: false, tool: false } // kilocode_change
             // kilocode_change start
+            ctx.step = { reasoning: false, text: false, tool: false }
             const stream = llm.stream({
               ...streamInput,
               preflight: !ctx.assistantMessage.summary,

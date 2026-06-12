@@ -5,6 +5,7 @@ import { ProviderTransform } from "../../../provider/transform"
 import { cmd } from "../../../cli/cmd/cmd"
 import { UI } from "../../../cli/ui"
 import { AppRuntime } from "../../../effect/app-runtime"
+import { RuntimeFlags } from "../../../effect/runtime-flags"
 import { generateText } from "ai"
 import { randomUUID } from "crypto"
 
@@ -132,6 +133,10 @@ function list() {
 
 function lang(model: Provider.Model) {
   return AppRuntime.runPromise(Provider.Service.use((svc) => svc.getLanguage(model)))
+}
+
+export function outputLimit(model: Provider.Model, outputTokenMax?: number) {
+  return ProviderTransform.maxOutputTokens(model, outputTokenMax)
 }
 
 export async function handle(args: ArgumentsCamelCase) {
@@ -285,7 +290,9 @@ async function call(
     const sessionID = randomUUID()
     const options = ProviderTransform.options({ model, sessionID })
     const providerOptions = ProviderTransform.providerOptions(model, options)
-    const maxOutputTokens = ProviderTransform.maxOutputTokens(model)
+    const maxOutputTokens = await AppRuntime.runPromise(
+      RuntimeFlags.Service.useSync((flags) => outputLimit(model, flags.outputTokenMax)),
+    )
     const temperature = ProviderTransform.temperature(model)
     const topP = ProviderTransform.topP(model)
     const topK = ProviderTransform.topK(model)

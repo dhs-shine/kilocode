@@ -45,6 +45,11 @@ describe("InstanceStore", () => {
 
       expect(ctx.directory).toBe(dir)
       expect(ctx.worktree).toBe(dir)
+
+      // kilocode_change start - capture prefers legacy ALS, then falls back to the Effect fiber reference
+      const fallback = yield* Effect.sync(capture).pipe(Effect.provideService(InstanceRef, ctx))
+      expect({ ambient: capture(), fallback }).toEqual({ ambient: undefined, fallback: ctx })
+      // kilocode_change end
     }),
   )
 
@@ -62,6 +67,7 @@ describe("InstanceStore", () => {
       yield* store.load({ directory: dir })
 
       expect(initializedDirectory).toBe(dir)
+      expect(capture()).toBeUndefined() // kilocode_change - bootstrap legacy ALS does not leak into the caller
     }),
   )
 

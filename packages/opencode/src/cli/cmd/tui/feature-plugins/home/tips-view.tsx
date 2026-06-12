@@ -233,15 +233,15 @@ const TIPS: Tip[] = [
   "Tool definitions can invoke scripts written in Python, Go, etc",
   "Add {highlight}.ts{/highlight} files to {highlight}.opencode/plugins/{/highlight} for event hooks",
   "Use plugins to send OS notifications when sessions complete",
-  "Create a plugin to prevent Kilo from reading sensitive files", // kilocode_change
+  "Create a plugin to prevent Kilo from reading sensitive files",
   "Use {highlight}kilo run{/highlight} for non-interactive scripting", // kilocode_change
   "Use {highlight}kilo --continue{/highlight} to resume the last session", // kilocode_change
   "Use {highlight}kilo run -f file.ts{/highlight} to attach files via CLI", // kilocode_change
   "Use {highlight}--format json{/highlight} for machine-readable output in scripts",
-  "Run {highlight}kilo serve{/highlight} for headless API access to Kilo", // kilocode_change
+  "Run {highlight}kilo serve{/highlight} for headless API access to Kilo",
   "Use {highlight}kilo run --attach{/highlight} to connect to a running server", // kilocode_change
-  "Run {highlight}kilo upgrade{/highlight} to update to the latest version", // kilocode_change
-  "Run {highlight}kilo auth list{/highlight} to see all configured providers", // kilocode_change
+  "Run {highlight}kilo upgrade{/highlight} to update to the latest version",
+  "Run {highlight}kilo auth list{/highlight} to see all configured providers",
   "Run {highlight}kilo agent create{/highlight} for guided agent creation", // kilocode_change
   "Use {highlight}/opencode{/highlight} in GitHub issues/PRs to trigger AI actions",
   "Run {highlight}kilo github install{/highlight} to set up the GitHub workflow", // kilocode_change

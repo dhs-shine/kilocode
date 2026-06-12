@@ -268,8 +268,8 @@ export const layer = Layer.effect(
           flags.disableExternalSkills,
           flags.disableClaudeCodeSkills,
           ctx.directory,
-          ctx.project.worktree,
-        ) // kilocode_change
+          ctx.project.worktree, // kilocode_change
+        )
       }),
     )
     const state = yield* InstanceState.make(

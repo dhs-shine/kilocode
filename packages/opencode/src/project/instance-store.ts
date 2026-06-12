@@ -4,7 +4,7 @@ import { InstanceRef } from "@/effect/instance-ref"
 import { disposeInstance as runDisposers } from "@/effect/instance-registry"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { Context, Deferred, Duration, Effect, Exit, Layer, Scope } from "effect"
-import { context as instanceContext, type InstanceContext } from "./instance-context"
+import { context as instanceContext, type InstanceContext } from "./instance-context" // kilocode_change
 import { InstanceBootstrap } from "./bootstrap-service"
 import * as Project from "./project"
 
@@ -52,10 +52,11 @@ export const layer: Layer.Layer<Service, never, Project.Service | InstanceBootst
                   project: result.project,
                 })),
               )
-        // kilocode_change - run bootstrap inside the Instance ALS so KilocodeBootstrap
+        // kilocode_change start - run bootstrap inside the Instance ALS so KilocodeBootstrap
         // (and anything it forks via Effect.forkDetach) sees Instance.directory.
         const ready = bootstrap.run.pipe(Effect.provideService(InstanceRef, ctx)) as Effect.Effect<void>
         yield* Effect.promise(() => instanceContext.provide(ctx, () => Effect.runPromise(ready)))
+        // kilocode_change end
         return ctx
       }).pipe(Effect.withSpan("InstanceStore.boot"))
 

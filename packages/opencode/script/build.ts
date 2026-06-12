@@ -285,7 +285,7 @@ for (const item of targets) {
   const sessionExportWorkerPath = "./src/kilocode/session-export/worker.ts" // kilocode_change
   const indexingWorkerPath = "./src/kilocode/indexing-worker.ts" // kilocode_change
 
-  // Use platform-specific bunfs root path based on target OS // kilocode_change
+  // Use platform-specific bunfs root path based on target OS
   const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
   const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
 

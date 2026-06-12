@@ -144,12 +144,12 @@ function buildPrompt(input: { previousSummary?: string; context: string[] }) {
   return [anchor, SUMMARY_TEMPLATE, ...input.context].join("\n\n")
 }
 
-function preserveRecentBudget(input: { cfg: Config.Info; model: Provider.Model; outputTokenMax?: number }) {
+function preserveRecentBudget(input: { cfg: Config.Info; model: Provider.Model; outputTokenMax?: number }) { // kilocode_change
   return (
     input.cfg.compaction?.preserve_recent_tokens ??
     Math.min(MAX_PRESERVE_RECENT_TOKENS, Math.max(MIN_PRESERVE_RECENT_TOKENS, Math.floor(usable(input) * 0.25)))
   )
-} // kilocode_change
+}
 
 function turns(messages: MessageV2.WithParts[]) {
   const result: Turn[] = []
@@ -260,11 +260,13 @@ export const layer = Layer.effect(
     }) {
       const limit = input.cfg.compaction?.tail_turns ?? DEFAULT_TAIL_TURNS
       if (limit <= 0) return { head: input.messages, tail_start_id: undefined }
+      // kilocode_change start
       const budget = preserveRecentBudget({
         cfg: input.cfg,
         model: input.model,
         outputTokenMax: flags.outputTokenMax,
-      }) // kilocode_change
+      })
+      // kilocode_change end
       const all = turns(input.messages)
       if (!all.length) return { head: input.messages, tail_start_id: undefined }
       const recent = all.slice(-limit)
@@ -466,7 +468,7 @@ export const layer = Layer.effect(
         model,
       })
       // kilocode_change start
-      const result = KiloCompactionChunks.needed({ cfg, model, tokens })
+      const result = KiloCompactionChunks.needed({ cfg, model, tokens, outputTokenMax: flags.outputTokenMax })
         ? "compact"
         : yield* KiloCompactionPayloadRecovery.process({
             processor,
@@ -493,6 +495,7 @@ export const layer = Layer.effect(
             sessionID: input.sessionID,
             model,
             cfg,
+            outputTokenMax: flags.outputTokenMax,
             messages: selected.head,
             prompt: nextPrompt,
             target: processor.message,
@@ -519,8 +522,7 @@ export const layer = Layer.effect(
         })
       }
 
-      if (fallback === "continue" && input.auto) {
-        // kilocode_change
+      if (fallback === "continue" && input.auto) { // kilocode_change
         if (replay) {
           // kilocode_change start - compact oversized replay turns instead of looping into replay overflow
           replay = yield* KiloCompactionChunks.replay({
@@ -531,6 +533,7 @@ export const layer = Layer.effect(
             sessionID: input.sessionID,
             model,
             cfg,
+            outputTokenMax: flags.outputTokenMax,
             messages: selected.head,
             prompt: nextPrompt,
             target: processor.message,
@@ -677,8 +680,8 @@ export const layer = Layer.effect(
         yield* prune({ sessionID: input.sessionID, reason: "post-compaction" })
         yield* bus.publish(Event.Compacted, { sessionID: input.sessionID })
       }
+      return fallback
       // kilocode_change end
-      return fallback // kilocode_change
     })
 
     const create = Effect.fn("SessionCompaction.create")(function* (input: {
@@ -719,7 +722,7 @@ export const layer = Layer.effect(
     return Service.of({
       isOverflow,
       prune,
-      process: (input) => processCompaction(input).pipe(Effect.orDie),
+      process: (input) => processCompaction(input).pipe(Effect.orDie), // kilocode_change
       create,
     })
   }),

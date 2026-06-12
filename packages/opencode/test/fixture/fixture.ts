@@ -11,7 +11,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import type { Config } from "@/config/config"
 import { InstanceRef } from "../../src/effect/instance-ref"
 import { InstanceBootstrap } from "../../src/project/bootstrap-service"
-import { context as instanceContext, type InstanceContext } from "../../src/project/instance-context"
+import { context as instanceContext, type InstanceContext } from "../../src/project/instance-context" // kilocode_change
 import { InstanceRuntime } from "../../src/project/instance-runtime"
 import { InstanceStore } from "../../src/project/instance-store"
 import { TestLLMServer } from "../lib/llm-server"
@@ -32,17 +32,19 @@ export async function provideTestInstance<R>(input: {
   const ctx = await runTestInstanceStore((store) => store.load({ directory: input.directory }))
   try {
     if (input.init) await testInstanceRuntime.runPromise(input.init.pipe(Effect.provideService(InstanceRef, ctx)))
-    return await instanceContext.provide(ctx, () => input.fn(ctx))
+    return await instanceContext.provide(ctx, () => input.fn(ctx)) // kilocode_change
   } finally {
+    // kilocode_change start
     await instanceContext.provide(ctx, () =>
       runTestInstanceStore((store) => store.dispose(ctx).pipe(Effect.provideService(InstanceRef, ctx))),
     )
+    // kilocode_change end
   }
 }
 
 export async function withTestInstance<R>(input: { directory: string; fn: (ctx: InstanceContext) => R }) {
   const ctx = await runTestInstanceStore((store) => store.load({ directory: input.directory }))
-  return instanceContext.provide(ctx, () => input.fn(ctx))
+  return instanceContext.provide(ctx, () => input.fn(ctx)) // kilocode_change
 }
 
 export async function reloadTestInstance(input: { directory: string }) {

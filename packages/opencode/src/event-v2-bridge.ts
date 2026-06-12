@@ -5,11 +5,13 @@ import { Bus as ProjectBus } from "@/bus"
 import { GlobalBus } from "@/bus/global"
 import { InstanceRef, WorkspaceRef } from "@/effect/instance-ref"
 import { InstanceStore } from "@/project/instance-store"
+import * as EventWire from "@/kilocode/event-wire" // kilocode_change
 import { SyncEvent } from "@/sync"
 import { EventV2 } from "@opencode-ai/core/event"
 import "@opencode-ai/core/catalog"
 import "@opencode-ai/core/session-event"
 import { Context, Effect, Layer, Option } from "effect"
+import { Schema } from "effect" // kilocode_change - encode EventV2 data at legacy boundaries
 
 export function toSyncDefinition<D extends EventV2.Definition>(definition: D) {
   const result = {
@@ -18,6 +20,7 @@ export function toSyncDefinition<D extends EventV2.Definition>(definition: D) {
     aggregate: definition.aggregate,
     schema: definition.data,
     properties: definition.data,
+    wire: true, // kilocode_change
   }
   return result as SyncEvent.Definition<D["type"], D["data"], D["data"]>
 }
@@ -31,24 +34,26 @@ export const layer = Layer.effect(
     const bus = yield* ProjectBus.Service
     const sync = yield* SyncEvent.Service
 
-    const publishGlobal = (event: EventV2.Payload) =>
+    // kilocode_change start - legacy bus and SSE consumers require the schema's encoded representation
+    const publishGlobal = (event: EventV2.Payload, data: unknown) =>
       Effect.sync(() => {
         GlobalBus.emit("event", {
+          directory: event.location?.directory ?? "global",
           workspace: event.location?.workspaceID,
           payload: {
             id: event.id,
             type: event.type,
-            properties: event.data,
+            properties: data,
           },
         })
       })
 
-    const provideEventLocation = <E, R>(event: EventV2.Payload, effect: Effect.Effect<void, E, R>) => {
+    const provideEventLocation = <E, R>(event: EventV2.Payload, data: unknown, effect: Effect.Effect<void, E, R>) => {
       return Effect.gen(function* () {
         const ctx = yield* InstanceRef
         if (ctx) return yield* effect
         const store = Option.getOrUndefined(yield* Effect.serviceOption(InstanceStore.Service))
-        if (!event.location?.directory || !store) return yield* publishGlobal(event)
+        if (!event.location?.directory || !store) return yield* publishGlobal(event, data)
         return yield* store.load({ directory: event.location.directory }).pipe(
           Effect.flatMap((ctx) => {
             const withInstance = effect.pipe(Effect.provideService(InstanceRef, ctx))
@@ -58,21 +63,26 @@ export const layer = Layer.effect(
         )
       })
     }
+    // kilocode_change end
 
     const unsubscribe = yield* events.sync((event) => {
       const definition = EventV2.registry.get(event.type)
       if (!definition) return Effect.void
+      const data = EventWire.encode(definition.data, event.data) // kilocode_change
       const aggregateID = definition.aggregate
         ? (event.data as Record<string, unknown>)[definition.aggregate]
         : undefined
 
       if (definition.version !== undefined && typeof aggregateID === "string") {
-        return provideEventLocation(event, sync.run(toSyncDefinition(definition), event.data))
+        return provideEventLocation(event, data, sync.run(toSyncDefinition(definition), event.data)) // kilocode_change
       }
 
       return provideEventLocation(
         event,
-        bus.publish({ type: definition.type, properties: definition.data }, event.data, { id: event.id }),
+        // kilocode_change start
+        data,
+        bus.publish({ type: definition.type, properties: Schema.toEncoded(definition.data) }, data, { id: event.id }),
+        // kilocode_change end
       )
     })
     yield* Effect.addFinalizer(() => unsubscribe)
