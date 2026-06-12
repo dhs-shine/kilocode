@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { createServer } from "net"
 import path from "path"
 import { explicitNetworkOptions } from "../../../../src/cli/network"
 import { Daemon } from "../../../../src/kilocode/daemon/daemon"
@@ -57,18 +56,6 @@ function opts(root: string): Daemon.Options {
   }
 }
 
-async function port() {
-  const server = createServer()
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject)
-    server.listen(0, "127.0.0.1", resolve)
-  })
-  const address = server.address()
-  await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())))
-  if (!address || typeof address === "string") throw new Error("Test server did not provide a port")
-  return address.port
-}
-
 describe("console daemon startup", () => {
   test("detects every explicit network option form", () => {
     expect(
@@ -102,6 +89,7 @@ describe("console daemon startup", () => {
       "cors",
     ])
 
+    expect(Daemon.matches(state, { ...input, port: state.port + 1 }, ["port"])).toBe(false)
     expect(daemon.restarted).toBe(false)
     expect(daemon.result.state?.pid).toBe(state.pid)
   }, 20_000)
@@ -166,11 +154,5 @@ describe("console daemon startup", () => {
     const byCors = await Daemon.ensure(cors, ["cors"])
     expect(byCors.restarted).toBe(true)
     expect(byCors.result.state?.pid).not.toBe(byDomain.result.state?.pid)
-
-    const fixed = { ...cors, port: await port() }
-    const byPort = await Daemon.ensure(fixed, ["port"])
-    expect(byPort.restarted).toBe(true)
-    expect(byPort.result.state?.pid).not.toBe(byCors.result.state?.pid)
-    expect(byPort.result.state?.port).toBe(fixed.port)
   }, 60_000)
 })

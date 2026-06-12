@@ -168,7 +168,7 @@ export namespace Daemon {
     return { running: true, stale: false, state, health: probe, file: file() }
   }
 
-  function compatible(state: State, input: Options, explicit: readonly NetworkOption[]) {
+  export function matches(state: State, input: Options, explicit: readonly NetworkOption[]) {
     const options = Network.parse(input)
     return explicit.every((name) => {
       if (name === "hostname") return state.hostname === options.hostname
@@ -185,7 +185,7 @@ export namespace Daemon {
       lock,
       async () => {
         const current = await status()
-        const restarted = current.running && !!current.state && (force || !compatible(current.state, input, explicit))
+        const restarted = current.running && !!current.state && (force || !matches(current.state, input, explicit))
         if (current.running && !restarted) {
           return { result: { ...current, started: false, reused: true }, restarted: false }
         }
