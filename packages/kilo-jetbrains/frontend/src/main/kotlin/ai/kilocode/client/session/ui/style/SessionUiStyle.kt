@@ -97,7 +97,7 @@ object SessionUiStyle {
 
         /** Markdown code block geometry inside assistant messages. */
         object Code {
-            const val BLOCK_GAP = 6
+            const val BLOCK_GAP = SessionLayout.GAP
             const val MIN_ROWS = 1
             const val BORDER_WIDTH = 1
             const val VIEWPORT_TOP_PADDING = 6
