@@ -935,6 +935,14 @@ const ProviderLimit = Schema.Struct({
   output: Schema.Finite,
 })
 
+// kilocode_change start
+const ProviderMetadata = Schema.Struct({
+  noteKey: optionalOmitUndefined(Schema.String),
+  note: optionalOmitUndefined(Schema.String),
+  icon: optionalOmitUndefined(Schema.String),
+})
+// kilocode_change end
+
 export const Model = Schema.Struct({
   id: ModelID,
   providerID: ProviderID,
@@ -959,6 +967,7 @@ export const Info = Schema.Struct({
   source: Schema.Literals(["env", "config", "custom", "api"]),
   env: Schema.Array(Schema.String),
   key: optionalOmitUndefined(Schema.String),
+  metadata: optionalOmitUndefined(ProviderMetadata), // kilocode_change
   options: Schema.Record(Schema.String, Schema.Any),
   models: Schema.Record(Schema.String, Model),
 }).annotate({ identifier: "Provider" })

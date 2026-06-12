@@ -15,7 +15,7 @@ import type { Provider } from "../../types/messages"
 import CustomProviderDialog from "./CustomProviderDialog"
 import ProviderConnectDialog from "./ProviderConnectDialog"
 import ProviderSelectDialog from "./ProviderSelectDialog"
-import { CUSTOM_PROVIDER_ID, isPopularProvider, providerIcon, providerNoteKey, sortProviders } from "./provider-catalog"
+import { CUSTOM_PROVIDER_ID, isPopularProvider, providerIcon, providerNote, providerNoteKey, sortProviders } from "./provider-catalog"
 import { disabledProviderOptions, providersWithKiloFallback, visibleConnectedIds } from "./provider-visibility"
 import { KILO_PROVIDER_ID, CUSTOM_PROVIDER_PACKAGE } from "../../../../src/shared/provider-model"
 import { createProviderAction } from "../../utils/provider-action"
@@ -174,7 +174,7 @@ const ProvidersTab: Component = () => {
               padding: "12px 0",
             }}
           >
-            <ProviderIcon id="synthetic" width={20} height={20} />
+            <ProviderIcon id={providerIcon(KILO_PROVIDER_ID)} width={20} height={20} />
             <span
               style={{
                 "font-size": "var(--kilo-font-size-14)",
@@ -232,7 +232,7 @@ const ProvidersTab: Component = () => {
                 }}
               >
                 <div style={{ display: "flex", "align-items": "center", gap: "12px", "min-width": 0 }}>
-                  <ProviderIcon id={providerIcon(item.id)} width={20} height={20} />
+                  <ProviderIcon id={providerIcon(item)} width={20} height={20} />
                   <span
                     style={{
                       "font-size": "var(--kilo-font-size-14)",
@@ -288,7 +288,8 @@ const ProvidersTab: Component = () => {
       <Card>
         <For each={popularProviders()}>
           {(item) => {
-            const noteKey = providerNoteKey(item.id)
+            const noteKey = providerNoteKey(item)
+            const note = providerNote(item)
             return (
               <div
                 style={{
@@ -304,7 +305,7 @@ const ProvidersTab: Component = () => {
               >
                 <div style={{ display: "flex", "flex-direction": "column", "min-width": 0 }}>
                   <div style={{ display: "flex", "align-items": "center", gap: "12px" }}>
-                    <ProviderIcon id={providerIcon(item.id)} width={20} height={20} />
+                    <ProviderIcon id={providerIcon(item)} width={20} height={20} />
                     <span
                       style={{
                         "font-size": "var(--kilo-font-size-14)",
@@ -325,6 +326,19 @@ const ProvidersTab: Component = () => {
                         }}
                       >
                         {language.t(key())}
+                      </span>
+                    )}
+                  </Show>
+                  <Show when={!noteKey && note}>
+                    {(text) => (
+                      <span
+                        style={{
+                          "font-size": "var(--kilo-font-size-12)",
+                          color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
+                          "margin-top": "2px",
+                        }}
+                      >
+                        {text()}
                       </span>
                     )}
                   </Show>

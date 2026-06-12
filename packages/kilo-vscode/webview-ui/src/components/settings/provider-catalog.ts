@@ -20,9 +20,19 @@ export function popularProviderIndex(providerID: string) {
   return providerOrderIndex(providerID, POPULAR_PROVIDER_IDS)
 }
 
-export function providerIcon(providerID: string): IconName {
-  if (providerID === KILO_PROVIDER_ID) return "synthetic"
-  if (iconNames.includes(providerID as IconName)) return providerID as IconName
+function validIcon(id: string | undefined): IconName | undefined {
+  if (!id) return undefined
+  if (iconNames.includes(id as IconName)) return id as IconName
+  return undefined
+}
+
+export function providerIcon(provider: Provider | string): IconName {
+  const providerID = typeof provider === "string" ? provider : provider.id
+  const icon = typeof provider === "string" ? undefined : validIcon(provider.metadata?.icon)
+  if (icon) return icon
+  if (providerID === KILO_PROVIDER_ID) return validIcon("kilo") ?? "synthetic"
+  const fallback = validIcon(providerID)
+  if (fallback) return fallback
   return "synthetic"
 }
 
@@ -30,17 +40,23 @@ export function kiloFallbackProvider(): Provider {
   return createKiloFallbackProvider()
 }
 
-export function providerNoteKey(providerID: string) {
-  if (providerID === "kilo") return "dialog.provider.kilo.note"
-  if (providerID === "opencode") return "dialog.provider.opencode.note"
-  if (providerID === "anthropic") return "dialog.provider.anthropic.note"
-  if (providerID === "deepseek") return "dialog.provider.deepseek.note"
-  if (providerID.startsWith("github-copilot")) return "dialog.provider.copilot.note"
-  if (providerID === "openai") return "dialog.provider.openai.note"
-  if (providerID === "google") return "dialog.provider.google.note"
-  if (providerID === "openrouter") return "dialog.provider.openrouter.note"
-  if (providerID === "vercel") return "dialog.provider.vercel.note"
+export function providerNoteKey(provider: Provider | string) {
+  if (typeof provider !== "string" && provider.metadata?.noteKey) return provider.metadata.noteKey
+  const providerID = typeof provider === "string" ? provider : provider.id
+  if (providerID === "kilo") return "settings.providers.note.kilo"
+  if (providerID === "opencode") return "settings.providers.note.opencode"
+  if (providerID === "anthropic") return "settings.providers.note.anthropic"
+  if (providerID === "deepseek") return "settings.providers.note.deepseek"
+  if (providerID.startsWith("github-copilot")) return "settings.providers.note.copilot"
+  if (providerID === "openai") return "settings.providers.note.openai"
+  if (providerID === "google") return "settings.providers.note.google"
+  if (providerID === "openrouter") return "settings.providers.note.openrouter"
+  if (providerID === "vercel") return "settings.providers.note.vercel"
   return undefined
+}
+
+export function providerNote(provider: Provider) {
+  return provider.metadata?.note
 }
 
 export function sortProviders(items: Provider[]) {

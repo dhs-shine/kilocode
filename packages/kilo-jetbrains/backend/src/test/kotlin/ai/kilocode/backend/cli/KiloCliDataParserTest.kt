@@ -1178,6 +1178,49 @@ class KiloCliDataParserTest {
         }
 
         @Test
+        fun `parseProviderSettingsProviders - preserves provider metadata and unknown fields`() {
+            val raw = """{
+                "all": [{
+                    "id": "openai",
+                    "name": "OpenAI",
+                    "source": "api",
+                    "metadata": {
+                        "noteKey": "settings.providers.note.openai",
+                        "note": "GPT and Codex models with API key or ChatGPT login",
+                        "icon": "openai",
+                        "extra": true
+                    },
+                    "unknown": "ok",
+                    "models": {}
+                }],
+                "default": {"code":"openai/gpt-5"},
+                "connected": ["openai"]
+            }"""
+
+            val result = KiloCliDataParser.parseProviderSettingsProviders(raw)
+            val provider = result.first.single()
+
+            assertEquals("settings.providers.note.openai", provider.metadata?.noteKey)
+            assertEquals("GPT and Codex models with API key or ChatGPT login", provider.metadata?.note)
+            assertEquals("openai", provider.metadata?.icon)
+            assertEquals(listOf("openai"), result.second)
+            assertEquals(mapOf("code" to "openai/gpt-5"), result.third)
+        }
+
+        @Test
+        fun `parseProviderSettingsProviders - malformed metadata becomes null`() {
+            val raw = """{
+                "all": [{"id":"p","name":"P","source":"api","metadata":"bad","models":{}}],
+                "default": {},
+                "connected": []
+            }"""
+
+            val provider = KiloCliDataParser.parseProviderSettingsProviders(raw).first.single()
+
+            assertNull(provider.metadata)
+        }
+
+        @Test
         fun `parseProviders - model boolean capabilities default to false`() {
             val raw = """{
                 "all": [{

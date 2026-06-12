@@ -1525,6 +1525,11 @@ export type Provider = {
   source: "env" | "config" | "custom" | "api"
   env: Array<string>
   key?: string
+  metadata?: {
+    noteKey?: string
+    note?: string
+    icon?: string
+  }
   options: {
     [key: string]: unknown
   }

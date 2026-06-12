@@ -39,6 +39,11 @@ export interface Provider {
   models: Record<string, ProviderModel>
   source?: "env" | "config" | "custom" | "api"
   env?: string[]
+  metadata?: {
+    noteKey?: string
+    note?: string
+    icon?: string
+  }
 }
 
 export interface ModelSelection {

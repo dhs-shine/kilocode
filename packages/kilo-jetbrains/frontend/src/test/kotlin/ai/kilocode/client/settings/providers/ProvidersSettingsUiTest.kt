@@ -6,6 +6,7 @@ import ai.kilocode.rpc.dto.CustomProviderConfigDto
 import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
+import ai.kilocode.rpc.dto.ProviderMetadataDto
 import ai.kilocode.rpc.dto.ProviderSettingsDto
 import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
 import com.intellij.openapi.application.ApplicationManager
@@ -14,6 +15,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import java.awt.Container
+import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.image.BufferedImage
@@ -333,14 +336,39 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
     fun `test renderer exposes provider icon and vscode note`() {
         edt {
-            val row = ProviderListRow(provider("openai", "OpenAI"), "Popular providers", listOf(ProviderListAction.CONNECT))
+            val row = ProviderListRow(
+                provider(
+                    "openai",
+                    "OpenAI",
+                    metadata = ProviderMetadataDto(
+                        noteKey = "settings.providers.note.openai",
+                        note = "GPT and Codex models with API key or ChatGPT login",
+                        icon = "openai",
+                    ),
+                ),
+                "Popular providers",
+                listOf(ProviderListAction.CONNECT),
+            )
             val list = JBList(listOf(row))
             val renderer = ProviderListRenderer(com.intellij.ui.CollectionListModel(listOf(row)))
 
             renderer.getListCellRendererComponent(list, row, 0, true, false)
 
             assertTrue(renderer.providerIconVisible())
+            assertEquals(Dimension(JBUI.scale(20), JBUI.scale(20)), renderer.providerIconSize())
             assertEquals("GPT and Codex models with API key or ChatGPT login", renderer.descriptionText())
+        }
+    }
+
+    fun `test renderer falls back to generic description without metadata`() {
+        edt {
+            val row = ProviderListRow(provider("openai", "OpenAI"), "Popular providers", listOf(ProviderListAction.CONNECT))
+            val list = JBList(listOf(row))
+            val renderer = ProviderListRenderer(com.intellij.ui.CollectionListModel(listOf(row)))
+
+            renderer.getListCellRendererComponent(list, row, 0, true, false)
+
+            assertEquals("catalog · 1 models", renderer.descriptionText())
         }
     }
 
@@ -465,10 +493,16 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
     private fun providerState(vararg providers: ProviderSettingsProviderDto) = ProviderSettingsDto(providers = providers.toList())
 
-    private fun provider(id: String, name: String, source: String? = null) = ProviderSettingsProviderDto(
+    private fun provider(
+        id: String,
+        name: String,
+        source: String? = null,
+        metadata: ProviderMetadataDto? = null,
+    ) = ProviderSettingsProviderDto(
         id = id,
         name = name,
         source = source,
+        metadata = metadata,
         models = mapOf("model" to ModelDto("model", "Model")),
     )
 

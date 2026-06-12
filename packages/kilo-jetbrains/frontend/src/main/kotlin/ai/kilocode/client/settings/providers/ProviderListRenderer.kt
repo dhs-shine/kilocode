@@ -12,6 +12,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
+import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
 import javax.swing.JList
@@ -154,6 +155,8 @@ internal class ProviderListRenderer(
     internal fun descriptionText() = desc.text
 
     internal fun providerIconVisible() = icon.icon != null
+
+    internal fun providerIconSize() = icon.icon?.let { Dimension(it.iconWidth, it.iconHeight) }
 
     private class ActionLabel(action: ProviderListAction) : JBLabel(text(action)) {
         init {

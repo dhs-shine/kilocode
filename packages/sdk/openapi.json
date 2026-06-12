@@ -18742,6 +18742,21 @@
           "key": {
             "type": "string"
           },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "noteKey": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
           "options": {
             "type": "object"
           },

@@ -20,10 +20,18 @@ data class ProviderSettingsProviderDto(
     val name: String,
     val source: String? = null,
     val key: String? = null,
+    val metadata: ProviderMetadataDto? = null,
     val models: Map<String, ModelDto> = emptyMap(),
 ) {
     val custom: Boolean get() = source == "custom" || id in setOf("openai-compatible")
 }
+
+@Serializable
+data class ProviderMetadataDto(
+    val noteKey: String? = null,
+    val note: String? = null,
+    val icon: String? = null,
+)
 
 @Serializable
 data class ProviderAuthMethodDto(

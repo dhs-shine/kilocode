@@ -28,6 +28,7 @@ import ai.kilocode.rpc.dto.PermissionRequestDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
 import ai.kilocode.rpc.dto.ProviderAuthOptionDto
 import ai.kilocode.rpc.dto.ProviderAuthPromptDto
+import ai.kilocode.rpc.dto.ProviderMetadataDto
 import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
 import ai.kilocode.rpc.dto.PartTimeDto
 import ai.kilocode.rpc.dto.PromptDto
@@ -327,6 +328,7 @@ object KiloCliDataParser {
                 name = item.str("name") ?: item.str("id") ?: "",
                 source = item.str("source"),
                 key = item.str("key"),
+                metadata = parseProviderMetadata(item["metadata"].obj()),
                 models = item["models"]?.jsonObject?.mapValues { (id, v) ->
                     val model = parseModel(id, v.jsonObject)
                     ai.kilocode.rpc.dto.ModelDto(
@@ -837,6 +839,17 @@ object KiloCliDataParser {
         source = obj.str("source"),
         models = obj["models"]?.jsonObject?.mapValues { (id, v) -> parseModel(id, v.jsonObject) } ?: emptyMap(),
     )
+
+    private fun parseProviderMetadata(obj: JsonObject?): ProviderMetadataDto? {
+        if (obj == null) return null
+        val dto = ProviderMetadataDto(
+            noteKey = obj.str("noteKey"),
+            note = obj.str("note"),
+            icon = obj.str("icon"),
+        )
+        if (dto.noteKey == null && dto.note == null && dto.icon == null) return null
+        return dto
+    }
 
     private fun parseModel(id: String, obj: JsonObject): ModelInfo {
         val cap = obj["capabilities"]?.jsonObject

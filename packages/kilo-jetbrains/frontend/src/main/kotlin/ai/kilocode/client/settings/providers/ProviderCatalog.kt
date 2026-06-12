@@ -6,7 +6,14 @@ import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
 import ai.kilocode.client.plugin.KiloBundle
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.util.IconLoader
+import com.intellij.util.ui.JBUI
+import java.awt.Component
+import java.awt.Graphics
+import java.awt.Graphics2D
+import java.util.concurrent.ConcurrentHashMap
 import javax.swing.Icon
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 internal const val KILO_PROVIDER_ID = "kilo"
 internal const val CUSTOM_PROVIDER_PACKAGE = "@ai-sdk/openai-compatible"
@@ -21,30 +28,47 @@ internal fun popularProviderIndex(id: String): Int {
 }
 
 internal fun providerDescription(provider: ProviderSettingsProviderDto): String {
-    providerNoteKey(provider.id)?.let { return KiloBundle.message(it) }
+    provider.metadata?.noteKey?.let { key -> KiloBundle.optional(key)?.let { return it } }
+    provider.metadata?.note?.let { return it }
     val source = provider.source ?: "catalog"
     val models = provider.models.size
     return "$source · $models models"
 }
 
 internal fun providerIcon(provider: ProviderSettingsProviderDto): Icon {
-    if (provider.id == KILO_PROVIDER_ID) return IconLoader.getIcon("/icons/kilo.svg", ProviderIcons::class.java)
-    return AllIcons.Nodes.Plugin
+    val id = provider.metadata?.icon ?: provider.id
+    return ProviderIcons.icon(id)
 }
 
-private object ProviderIcons
+private object ProviderIcons {
+    private val cache = ConcurrentHashMap<String, Icon>()
 
-private fun providerNoteKey(id: String): String? {
-    if (id == KILO_PROVIDER_ID) return "settings.providers.note.kilo"
-    if (id == "opencode") return "settings.providers.note.opencode"
-    if (id == "anthropic") return "settings.providers.note.anthropic"
-    if (id == "deepseek") return "settings.providers.note.deepseek"
-    if (id.startsWith("github-copilot")) return "settings.providers.note.copilot"
-    if (id == "openai") return "settings.providers.note.openai"
-    if (id == "google") return "settings.providers.note.google"
-    if (id == "openrouter") return "settings.providers.note.openrouter"
-    if (id == "vercel") return "settings.providers.note.vercel"
-    return null
+    fun icon(id: String): Icon = cache.computeIfAbsent(id) { key ->
+        val icon = IconLoader.findIcon("/icons/providers/$key.svg", ProviderIcons::class.java)
+        FixedProviderIcon(icon ?: IconLoader.findIcon("/icons/providers/synthetic.svg", ProviderIcons::class.java) ?: AllIcons.Nodes.Plugin)
+    }
+}
+
+private class FixedProviderIcon(private val icon: Icon) : Icon {
+    override fun getIconWidth() = JBUI.scale(20)
+
+    override fun getIconHeight() = JBUI.scale(20)
+
+    override fun paintIcon(c: Component?, g: Graphics, x: Int, y: Int) {
+        val width = icon.iconWidth.coerceAtLeast(1)
+        val height = icon.iconHeight.coerceAtLeast(1)
+        val size = min(iconWidth.toDouble() / width, iconHeight.toDouble() / height)
+        val w = (width * size).roundToInt().coerceAtLeast(1)
+        val h = (height * size).roundToInt().coerceAtLeast(1)
+        val copy = g.create() as Graphics2D
+        try {
+            copy.translate(x + (iconWidth - w) / 2, y + (iconHeight - h) / 2)
+            copy.scale(size, size)
+            icon.paintIcon(c, copy, 0, 0)
+        } finally {
+            copy.dispose()
+        }
+    }
 }
 
 internal fun providerMethods(provider: ProviderSettingsProviderDto, state: ProviderSettingsDto): List<ProviderAuthMethodDto> {
