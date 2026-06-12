@@ -34,8 +34,8 @@ const long = [
 ].join("\n")
 
 const hits = [
-  "packages/kilo-ui/src/components/message-part.tsx:1847: <div data-component=\"tool-output\">",
-  "packages/kilo-ui/src/components/basic-tool.css:250: [data-component=\"tool-output\"]",
+  'packages/kilo-ui/src/components/message-part.tsx:1847: <div data-component="tool-output">',
+  'packages/kilo-ui/src/components/basic-tool.css:250: [data-component="tool-output"]',
   "packages/kilo-vscode/webview-ui/src/components/chat/VscodeToolOverrides.tsx:141: background process output",
 ].join("\n")
 
@@ -93,7 +93,7 @@ const previews: SDKPart[] = [
     "lab-preview-grep",
     "lab-call-preview-grep",
     "grep",
-    completed({ pattern: "data-component=\"tool-output\"", include: "*.tsx", path: "." }, "Search tool output", hits),
+    completed({ pattern: 'data-component="tool-output"', include: "*.tsx", path: "." }, "Search tool output", hits),
   ),
   tool(
     "lab-preview-list",
@@ -105,7 +105,11 @@ const previews: SDKPart[] = [
     "lab-preview-background",
     "lab-call-preview-background",
     "background_process",
-    completed({ action: "status", id: "bgp_storybook", description: "Check Storybook server" }, "Check Storybook server", proc),
+    completed(
+      { action: "status", id: "bgp_storybook", description: "Check Storybook server" },
+      "Check Storybook server",
+      proc,
+    ),
   ),
 ]
 
