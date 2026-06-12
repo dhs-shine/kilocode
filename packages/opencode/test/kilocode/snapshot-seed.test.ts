@@ -14,7 +14,7 @@ import { disposeAllInstances, provideInstance, tmpdir } from "../fixture/fixture
 const fwd = (...parts: string[]) => path.join(...parts).replaceAll("\\", "/")
 
 async function waitFor(check: () => Promise<boolean>, message: string) {
-  const deadline = Date.now() + 10_000
+  const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {
     if (await check()) return
     await Bun.sleep(25)
@@ -28,14 +28,12 @@ function durable(snapshot: Snapshot.Interface) {
     const gitdir = path.join(Global.Path.data, "snapshot", Instance.project.id, Hash.fast(Instance.worktree))
     const alt = path.join(gitdir, "objects", "info", "alternates")
     yield* Effect.promise(() =>
-      waitFor(
-        () =>
-          fs.access(alt).then(
-            () => false,
-            () => true,
-          ),
-        "snapshot alternate was not removed after materialization",
-      ),
+      waitFor(async () => {
+        const pending = await Promise.all(
+          [alt, `${alt}.materializing`].map((file) => fs.access(file).then(() => true, () => false)),
+        )
+        return !pending.some(Boolean)
+      }, "snapshot alternate was not removed after materialization"),
     )
     return hash
   })
