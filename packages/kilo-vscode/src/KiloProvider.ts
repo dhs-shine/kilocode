@@ -273,6 +273,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private configWarningsShown = false
   /** Cached notificationsLoaded payload */
   private cachedNotificationsMessage: unknown = null
+  private pendingKiloModelID: string | null = null
   private pendingReviewComments: { comments: unknown[]; autoSend: boolean }[] = []
   private readyResolvers: (() => void)[] = []
   private promptRecoveryQueued = false
@@ -687,6 +688,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.postMessage({ type: "openCloudSession", sessionId })
   }
 
+  public selectKiloModel(modelID: string): void {
+    this.pendingKiloModelID = modelID
+    this.flushPendingKiloModel()
+  }
+
   public setContinueInWorktreeHandler(
     handler: (sessionId: string, progress: (status: string, detail?: string, error?: string) => void) => Promise<void>,
   ): void {
@@ -759,6 +765,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           console.log("[Kilo New] KiloProvider: ✅ webviewReady received")
           this.isWebviewReady = true
           this.visibleTaskStreams.clear()
+          this.flushPendingKiloModel()
           await this.syncWebviewState("webviewReady")
           this.flushPendingReviewComments()
           this.recoverPendingPrompts()
@@ -1245,6 +1252,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
       // Connect the shared service (no-op if already connected)
       await this.connectionService.connect(workspaceDir)
+      this.flushPendingKiloModel()
 
       // Subscribe to SSE events for this webview (filtered by tracked sessions)
       this.unsubscribeEvent = this.connectionService.onEventFiltered(
@@ -1283,6 +1291,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         this.postConnectionState(error)
 
         if (state === "connected") {
+          this.flushPendingKiloModel()
           // Fire config warnings independently so a failure in the
           // sequential await chain doesn't prevent warnings from being shown
           void this.checkConfigWarnings("state")
@@ -3217,6 +3226,14 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     void this.webview.postMessage(message).then(undefined, (error) => {
       console.error("[Kilo New] KiloProvider: ❌ postMessage failed", error)
     })
+  }
+
+  private flushPendingKiloModel(): void {
+    if (!this.webview || !this.isWebviewReady || !this.client || !this.pendingKiloModelID) return
+
+    const modelID = this.pendingKiloModelID
+    this.pendingKiloModelID = null
+    this.postMessage({ type: "selectKiloModel", modelID })
   }
 
   public async appendReviewComments(comments: unknown[], autoSend = false): Promise<void> {
