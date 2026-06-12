@@ -25,6 +25,36 @@ test("runs indexing engine requests in its worker", async () => {
   expect(failures).toEqual([])
 })
 
+test("routes multiple directories through the shared indexing worker", async () => {
+  await using first = await tmpdir()
+  await using second = await tmpdir()
+  const failures: unknown[] = []
+  const create = (directory: string) =>
+    IndexingWorker.create(directory, directory, {
+      status() {},
+      telemetry() {},
+      warning() {},
+      log() {},
+      failure(err) {
+        failures.push(err)
+      },
+    })
+  const left = create(first.path)
+  const right = create(second.path)
+
+  try {
+    const statuses = await Promise.all([
+      left.init({ enabled: false, embedderProvider: "openai" }),
+      right.init({ enabled: false, embedderProvider: "openai" }),
+    ])
+    expect(statuses.map((status) => status.state)).toEqual(["Disabled", "Disabled"])
+  } finally {
+    await Promise.all([left.dispose(), right.dispose()])
+  }
+
+  expect(failures).toEqual([])
+})
+
 test("reuses enabled workers across provider initialization errors", async () => {
   await using tmp = await tmpdir()
   const drivers = new Set<IndexingWorker.Driver>()

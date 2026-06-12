@@ -86,7 +86,9 @@ describe("kilocode tool registry indexing", () => {
       () =>
         Effect.gen(function* () {
           const err = new Error("ready rejected")
-          const ready = spyOn(KiloIndexing, "ready").mockImplementation(() => Promise.reject(err) as unknown as boolean)
+          const ready = spyOn(KiloIndexing, "ready").mockImplementation(
+            () => Promise.reject(err) as unknown as boolean,
+          )
           const warn = spyOn(logger, "warn").mockImplementation(() => {})
 
           try {
@@ -176,6 +178,20 @@ describe("kilocode tool registry indexing", () => {
       { git: true },
     ),
   )
+
+  test("enables semantic search from indexing configuration before the index is ready", () => {
+    expect(
+      KiloToolRegistry.indexing({
+        indexing: { enabled: true },
+      }),
+    ).toBe(true)
+    expect(
+      KiloToolRegistry.indexing({
+        indexing: { enabled: false },
+      }),
+    ).toBe(false)
+    expect(KiloToolRegistry.indexing({}, { indexing: { enabled: true } })).toBe(true)
+  })
 
   test("conditionally includes Kilo registry extras", () => {
     const prev = process.env["KILO_CLIENT"]

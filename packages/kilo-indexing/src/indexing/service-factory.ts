@@ -170,7 +170,7 @@ export class CodeIndexServiceFactory {
     }
   }
 
-  public createVectorStore(): IVectorStore {
+  public createVectorStore(workspacePath = this.workspacePath): IVectorStore {
     const config = this.configManager.getConfig()
     const profile = resolveEmbeddingProfile(config.embedderProvider, config.modelId, config.modelDimension)
 
@@ -192,7 +192,7 @@ export class CodeIndexServiceFactory {
         vectorSize: profile.dimension,
         dbDir,
       })
-      return new LanceDBVectorStore(this.workspacePath, profile.dimension, dbDir, profile)
+      return new LanceDBVectorStore(workspacePath, profile.dimension, dbDir, profile)
     }
 
     if (!config.qdrantUrl) throw new Error("Qdrant URL is required.")
@@ -202,7 +202,7 @@ export class CodeIndexServiceFactory {
       model: profile.modelId,
       vectorSize: profile.dimension,
     })
-    return new QdrantVectorStore(this.workspacePath, config.qdrantUrl, profile.dimension, config.qdrantApiKey, profile)
+    return new QdrantVectorStore(workspacePath, config.qdrantUrl, profile.dimension, config.qdrantApiKey, profile)
   }
 
   public createDirectoryScanner(

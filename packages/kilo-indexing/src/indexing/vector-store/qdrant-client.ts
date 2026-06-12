@@ -240,6 +240,27 @@ export class QdrantVectorStore implements IVectorStore {
     return true
   }
 
+  async openExisting(): Promise<void> {
+    const info = await this.getCollectionInfo()
+    if (!info) throw new Error("Baseline Qdrant collection does not exist")
+
+    const vectors = info.config?.params?.vectors
+    const size =
+      typeof vectors === "number"
+        ? vectors
+        : vectors && typeof vectors === "object" && "size" in vectors && typeof vectors.size === "number"
+          ? vectors.size
+          : 0
+    if (size !== this.vectorSize) throw new Error("Baseline Qdrant vector dimension does not match the worktree")
+
+    const payload = await this.getMetadataPayload()
+    const profile = this.getStoredProfile(payload)
+    if (!profile || !this.isProfileMatch(profile)) {
+      throw new Error("Baseline Qdrant embedding profile does not match the worktree")
+    }
+    if (payload?.[KEY.complete] !== true) throw new Error("Baseline Qdrant index is not complete")
+  }
+
   /**
    * Initializes the vector store
    * @returns Promise resolving to boolean indicating if a new collection was created

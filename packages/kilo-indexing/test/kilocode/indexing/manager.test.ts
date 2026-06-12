@@ -245,6 +245,30 @@ describe("CodeIndexManager", () => {
     expect(calls).toBe(1)
   })
 
+  test("schedules auto-recovery for watcher failures", async () => {
+    const mgr = new CodeIndexManager("/tmp/ws", "/tmp/cache")
+    const data = createData(mgr)
+    let calls = 0
+
+    data._recreateServices = async () => {
+      data._orchestrator = {
+        state: "Standby",
+        stopWatcher() {},
+        async startIndexing() {
+          calls += 1
+          this.state = "Indexed"
+          data._stateManager.setSystemState("Indexed", "done")
+        },
+      }
+      data._searchService = {}
+    }
+
+    data.handleTelemetry(createStartError("orchestrator:watcher"))
+    await data._retryTask
+
+    expect(calls).toBe(1)
+  })
+
   test("ignores non-orchestrator telemetry errors for auto-recovery", async () => {
     const mgr = new CodeIndexManager("/tmp/ws", "/tmp/cache")
     const data = createData(mgr)
@@ -323,30 +347,24 @@ describe("CodeIndexManager", () => {
     expect(mgr.getCurrentStatus().systemStatus).toBe("Indexed")
   })
 
-  test("dispose calls cancelIndexing on orchestrator", () => {
+  test("dispose waits for orchestrator shutdown", async () => {
     const mgr = new CodeIndexManager("/tmp/ws", "/tmp/cache")
-    let cancel = 0
-    let stop = 0
+    let shutdown = 0
     const data = mgr as unknown as {
       _orchestrator?: {
-        stopWatcher(): void
-        cancelIndexing(): void
+        shutdown(): Promise<void>
       }
     }
 
     data._orchestrator = {
-      stopWatcher() {
-        stop += 1
-      },
-      cancelIndexing() {
-        cancel += 1
+      async shutdown() {
+        shutdown += 1
       },
     }
 
-    mgr.dispose()
+    await mgr.dispose()
 
-    expect(cancel).toBe(1)
-    expect(stop).toBe(0)
+    expect(shutdown).toBe(1)
   })
 
   test("dispose during service recreation cancels the recreated orchestrator", async () => {
@@ -386,7 +404,7 @@ describe("CodeIndexManager", () => {
 
     const init = mgr.initialize(createInput({ openAiKey: "sk-test" }))
     await new Promise((resolve) => setTimeout(resolve, 0))
-    mgr.dispose()
+    await mgr.dispose()
     gate.resolve()
     await init
 
@@ -414,7 +432,7 @@ describe("CodeIndexManager", () => {
 
     const task = data.handleTelemetry(createStartError())
     await new Promise((resolve) => setTimeout(resolve, 0))
-    mgr.dispose()
+    await mgr.dispose()
     gate.resolve()
     await data._retryTask
 

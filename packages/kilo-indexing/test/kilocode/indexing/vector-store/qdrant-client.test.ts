@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test"
+import { createHash } from "crypto"
 
 import { DEFAULT_MAX_SEARCH_RESULTS, DEFAULT_SEARCH_MIN_SCORE } from "../../../../src/indexing/constants"
 
@@ -29,14 +30,6 @@ mock.module("@qdrant/js-client-rest", () => ({
   QdrantClient: MockQdrantClientConstructor,
 }))
 
-const mockDigest = mock()
-const mockUpdate = mock(() => ({ update: mockUpdate, digest: mockDigest }))
-const mockCreateHash = mock(() => ({ update: mockUpdate, digest: mockDigest }))
-
-mock.module("crypto", () => ({
-  createHash: mockCreateHash,
-}))
-
 // Now import the module under test
 import { QdrantVectorStore } from "../../../../src/indexing/vector-store/qdrant-client"
 
@@ -46,8 +39,7 @@ describe("QdrantVectorStore", () => {
   const mockQdrantUrl = "http://mock-qdrant:6333"
   const mockApiKey = "test-api-key"
   const mockVectorSize = 1536
-  const mockHashedPath = "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
-  const expectedCollectionName = `ws-${mockHashedPath.substring(0, 16)}`
+  const expectedCollectionName = `ws-${createHash("sha256").update(mockWorkspacePath).digest("hex").substring(0, 16)}`
 
   beforeEach(() => {
     // Reset all mocks
@@ -61,14 +53,6 @@ describe("QdrantVectorStore", () => {
     mockQuery.mockReset()
     mockDelete.mockReset()
     mockRetrieve.mockReset()
-    mockCreateHash.mockReset()
-    mockUpdate.mockReset()
-    mockDigest.mockReset()
-
-    // Mock crypto.createHash chain
-    mockCreateHash.mockReturnValue({ update: mockUpdate, digest: mockDigest })
-    mockUpdate.mockReturnValue({ update: mockUpdate, digest: mockDigest })
-    mockDigest.mockReturnValue(mockHashedPath)
 
     vectorStore = new QdrantVectorStore(mockWorkspacePath, mockQdrantUrl, mockVectorSize, mockApiKey)
   })
@@ -83,9 +67,6 @@ describe("QdrantVectorStore", () => {
     mockQuery.mockReset()
     mockDelete.mockReset()
     mockRetrieve.mockReset()
-    mockCreateHash.mockReset()
-    mockUpdate.mockReset()
-    mockDigest.mockReset()
   })
 
   test("should correctly initialize QdrantClient and collectionName in constructor", () => {
@@ -99,9 +80,6 @@ describe("QdrantVectorStore", () => {
         "User-Agent": "Kilo-Code",
       },
     })
-    expect(mockCreateHash).toHaveBeenCalledWith("sha256")
-    expect(mockUpdate).toHaveBeenCalledWith(mockWorkspacePath)
-    expect(mockDigest).toHaveBeenCalledWith("hex")
     expect((vectorStore as any).collectionName).toBe(expectedCollectionName)
     expect((vectorStore as any).vectorSize).toBe(mockVectorSize)
   })
@@ -524,6 +502,30 @@ describe("QdrantVectorStore", () => {
   })
 
   describe("initialize", () => {
+    test("opens a complete compatible baseline without mutating it", async () => {
+      mockGetCollection.mockResolvedValue({
+        points_count: 3,
+        config: { params: { vectors: { size: mockVectorSize } } },
+      })
+      mockRetrieve.mockResolvedValue([
+        {
+          payload: {
+            indexing_complete: true,
+            embedding_provider: "openai",
+            embedding_model_id: "",
+            embedding_dimension: mockVectorSize,
+          },
+        },
+      ])
+
+      await vectorStore.openExisting()
+
+      expect(mockCreateCollection).not.toHaveBeenCalled()
+      expect(mockDeleteCollection).not.toHaveBeenCalled()
+      expect(mockCreatePayloadIndex).not.toHaveBeenCalled()
+      expect(mockUpsert).not.toHaveBeenCalled()
+    })
+
     test("should create a new collection if none exists and return true", async () => {
       mockGetCollection.mockRejectedValue({
         response: { status: 404 },

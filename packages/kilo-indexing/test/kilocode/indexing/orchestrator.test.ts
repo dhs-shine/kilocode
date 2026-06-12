@@ -17,6 +17,7 @@ import { Emitter } from "../../../src/indexing/runtime"
 
 class Store {
   public clearCount = 0
+  public closeCount = 0
   public deleteCount = 0
 
   constructor(
@@ -46,6 +47,9 @@ class Store {
   }
   async deleteCollection(): Promise<void> {
     this.deleteCount += 1
+  }
+  async close(): Promise<void> {
+    this.closeCount += 1
   }
   async collectionExists(): Promise<boolean> {
     return true
@@ -115,6 +119,27 @@ class Watcher {
     this.onBatchProgressUpdate.dispose()
     this.onDidFinishBatchProcessing.dispose()
   }
+}
+
+class BlockingScanner {
+  public isCancelled = false
+  public finished = false
+  private readonly gate = Promise.withResolvers<void>()
+  readonly started = Promise.withResolvers<void>()
+
+  async scanDirectory(): Promise<{ stats: { processed: number; skipped: number }; totalBlockCount: number }> {
+    this.started.resolve()
+    await this.gate.promise
+    this.finished = true
+    return { stats: { processed: 0, skipped: 0 }, totalBlockCount: 0 }
+  }
+
+  cancel(): void {
+    this.isCancelled = true
+    this.gate.resolve()
+  }
+
+  updateBatchSegmentThreshold(_newThreshold: number): void {}
 }
 
 class FailScanner {
@@ -223,6 +248,28 @@ describe("CodeIndexOrchestrator telemetry", () => {
     // Scanner may or may not have been reached depending on timing,
     // but the orchestrator must not be in Indexing state
     expect(orchestrator.state).not.toBe("Indexing")
+  })
+
+  test("shutdown waits for an active scan before closing the store", async () => {
+    const scanner = new BlockingScanner()
+    const store = new Store(false)
+    const orchestrator = new CodeIndexOrchestrator(
+      createConfig(),
+      new CodeIndexStateManager(),
+      "/tmp/ws",
+      { async clearCacheFile() {}, async flush() {} } as unknown as CacheManager,
+      store as unknown as IVectorStore,
+      scanner as unknown as DirectoryScanner,
+      new Watcher() as unknown as IFileWatcher,
+    )
+
+    const active = orchestrator.startIndexing("background")
+    await scanner.started.promise
+    await orchestrator.shutdown()
+    await active
+
+    expect(scanner.finished).toBe(true)
+    expect(store.closeCount).toBe(1)
   })
 
   test("preserves cache and collection data on retryable start failures", async () => {

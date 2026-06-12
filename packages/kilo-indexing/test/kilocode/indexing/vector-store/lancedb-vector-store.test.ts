@@ -176,6 +176,22 @@ describe("LocalVectorStore", () => {
   })
 
   describe("initialize", () => {
+    test("opens a complete compatible baseline without mutating it", async () => {
+      spyOn(fs, "existsSync").mockReturnValue(true as any)
+      store["_getStoredEmbeddingProfile"] = mock().mockResolvedValue({
+        provider: "openai",
+        modelId: "",
+        dimension: vectorSize,
+      })
+      store["_getMetadataValue"] = mock().mockResolvedValue("true")
+
+      await store.openExisting()
+
+      expect(mockDb.createTable).not.toHaveBeenCalled()
+      expect(mockDb.dropTable).not.toHaveBeenCalled()
+      expect(mockTable.delete).not.toHaveBeenCalled()
+    })
+
     test("should create tables if not exist", async () => {
       mockDb.tableNames.mockResolvedValue([])
       mockDb.createTable.mockResolvedValue(mockTable)

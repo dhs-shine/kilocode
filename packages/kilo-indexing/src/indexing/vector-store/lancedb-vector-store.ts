@@ -251,6 +251,25 @@ export class LanceDBVectorStore implements IVectorStore {
     )
   }
 
+  async openExisting(): Promise<void> {
+    if (!fs.existsSync(this.dbPath)) throw new Error("Baseline LanceDB store does not exist")
+
+    const db = await this.getDb()
+    const tables = await db.tableNames()
+    if (!tables.includes(this.vectorTableName) || !tables.includes(this.metadataTableName)) {
+      throw new Error("Baseline LanceDB store is incomplete")
+    }
+
+    const profile = await this._getStoredEmbeddingProfile(db)
+    if (!profile || !this._isEmbeddingProfileMatch(profile)) {
+      throw new Error("Baseline LanceDB embedding profile does not match the worktree")
+    }
+
+    const complete = await this._getMetadataValue(db, KEY.complete)
+    if (String(complete) !== "true") throw new Error("Baseline LanceDB index is not complete")
+    this.table = await db.openTable(this.vectorTableName)
+  }
+
   async initialize(): Promise<boolean> {
     try {
       await this.closeConnect()
@@ -524,6 +543,10 @@ export class LanceDBVectorStore implements IVectorStore {
     } catch (error) {
       return false
     }
+  }
+
+  async close(): Promise<void> {
+    await this.closeConnect()
   }
 
   private async closeConnect(): Promise<void> {
