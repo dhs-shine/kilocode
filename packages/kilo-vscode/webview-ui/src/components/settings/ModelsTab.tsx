@@ -165,8 +165,8 @@ const ModelsTab: Component = () => {
           last
         >
           <Switch
-            checked={settings()["models.hidePromptTraining"] === true}
-            onChange={(checked: boolean) => updateSetting("models.hidePromptTraining", checked)}
+            checked={config().hide_prompt_training_models === true}
+            onChange={(checked: boolean) => updateConfig({ hide_prompt_training_models: checked })}
             hideLabel
           >
             {language.t("settings.models.hidePromptTraining.title")}

@@ -96,12 +96,6 @@ export const ConfigProvider: ParentComponent = (props) => {
       })
       return
     }
-    if (message.type === "modelSettingsLoaded") {
-      mergeSettings({
-        "models.hidePromptTraining": message.settings.hidePromptTraining,
-      })
-      return
-    }
     if (message.type === "configLoaded") {
       // Skip if a save is in-flight — a stale configLoaded must not overwrite
       // the optimistically-updated state while the write is being confirmed.
@@ -183,7 +177,6 @@ export const ConfigProvider: ParentComponent = (props) => {
   const requestInitialData = () => {
     vscode.postMessage({ type: "requestConfig" })
     vscode.postMessage({ type: "requestAutocompleteSettings" })
-    vscode.postMessage({ type: "requestModelSettings" })
   }
 
   // Request config immediately; if the extension's httpClient is not yet ready,

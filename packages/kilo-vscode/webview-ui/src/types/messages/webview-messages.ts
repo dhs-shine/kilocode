@@ -329,10 +329,6 @@ export interface RequestAutocompleteSettingsMessage {
   type: "requestAutocompleteSettings"
 }
 
-export interface RequestModelSettingsMessage {
-  type: "requestModelSettings"
-}
-
 export interface RequestChatCompletionMessage {
   type: "requestChatCompletion"
   text: string
@@ -1119,7 +1115,6 @@ export type WebviewMessage =
   | RenameSessionRequest
   | ExportSessionTranscriptRequest
   | RequestAutocompleteSettingsMessage
-  | RequestModelSettingsMessage
   | RequestChatCompletionMessage
   | SpeechToTextStartMessage
   | SpeechToTextStopMessage
