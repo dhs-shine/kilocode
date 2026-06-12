@@ -1,4 +1,5 @@
 import { Flag } from "@opencode-ai/core/flag/flag"
+import * as PowerShell from "@opencode-ai/core/shell/powershell" // kilocode_change - encoded PowerShell args
 import { lazy } from "@/util/lazy"
 import { Filesystem } from "@/util/filesystem"
 import { which } from "@/util/which"
@@ -188,7 +189,7 @@ export function args(file: string, command: string, cwd: string) {
     ]
   }
   if (n === "cmd") return ["/c", command]
-  if (ps(file)) return ["-NoProfile", "-Command", command]
+  if (ps(file)) return PowerShell.args(command) // kilocode_change - encoded PowerShell args
   return ["-c", command]
 }
 
