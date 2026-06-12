@@ -2,4 +2,4 @@
 "@kilocode/cli": patch
 ---
 
-Restart the daemon when `kilo console` is invoked with an explicit `--port` or `--hostname` that doesn't match the already-running daemon, instead of silently reusing the old connection.
+Restart the daemon when `kilo console` or `kilo daemon start` receives explicit network options that don't match the running daemon, instead of silently ignoring the requested settings.

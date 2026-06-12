@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
+import { createServer } from "net"
 import path from "path"
-import { startDaemon } from "../../../../src/kilocode/cli/cmd/console"
+import { explicitNetworkOptions } from "../../../../src/cli/network"
 import { Daemon } from "../../../../src/kilocode/daemon/daemon"
 import { tmpdir } from "../../../fixture/fixture"
 
@@ -35,6 +36,14 @@ function dirs(root: string) {
   }
 }
 
+function temp() {
+  return tmpdir({
+    dispose: async () => {
+      await Daemon.stop().catch(() => undefined)
+    },
+  })
+}
+
 function opts(root: string): Daemon.Options {
   return {
     hostname: "127.0.0.1",
@@ -48,34 +57,120 @@ function opts(root: string): Daemon.Options {
   }
 }
 
+async function port() {
+  const server = createServer()
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject)
+    server.listen(0, "127.0.0.1", resolve)
+  })
+  const address = server.address()
+  await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())))
+  if (!address || typeof address === "string") throw new Error("Test server did not provide a port")
+  return address.port
+}
+
 describe("console daemon startup", () => {
-  test("reuses a daemon when the requested host and port match", async () => {
-    await using tmp = await tmpdir()
-    const env = opts(tmp.path)
+  test("detects every explicit network option form", () => {
+    expect(
+      explicitNetworkOptions([
+        "kilo",
+        "console",
+        "--port=4321",
+        "--hostname",
+        "0.0.0.0",
+        "--no-mdns",
+        "--mdns-domain=test.local",
+        "--cors",
+        "https://example.com",
+      ]),
+    ).toStrictEqual(["port", "hostname", "mdns", "mdnsDomain", "cors"])
+    expect(explicitNetworkOptions(["kilo", "console", "--", "--port=4321"])).toStrictEqual([])
+  })
 
-    const first = await startDaemon(env)
-    const reused = await startDaemon({ ...env, port: first.port })
+  test("reuses a daemon when explicit options match", async () => {
+    await using tmp = await temp()
+    const input = opts(tmp.path)
+    const first = await Daemon.start(input)
+    const state = first.state
+    if (!state) throw new Error("Daemon did not provide connection state")
 
-    expect(reused.pid).toBe(first.pid)
+    const daemon = await Daemon.ensure({ ...input, port: state.port }, [
+      "port",
+      "hostname",
+      "mdns",
+      "mdnsDomain",
+      "cors",
+    ])
+
+    expect(daemon.restarted).toBe(false)
+    expect(daemon.result.state?.pid).toBe(state.pid)
   }, 20_000)
 
-  test("does not restart when the requested port is the default auto port", async () => {
-    await using tmp = await tmpdir()
-    const env = opts(tmp.path)
+  test("treats an explicit auto port as compatible", async () => {
+    await using tmp = await temp()
+    const input = opts(tmp.path)
+    const first = await Daemon.start(input)
 
-    const first = await startDaemon(env)
-    const reused = await startDaemon({ ...env, port: 0 })
+    const daemon = await Daemon.ensure(input, ["port"])
 
-    expect(reused.pid).toBe(first.pid)
+    expect(daemon.restarted).toBe(false)
+    expect(daemon.result.state?.pid).toBe(first.state?.pid)
   }, 20_000)
 
-  test("restarts a reused daemon when the requested port differs", async () => {
-    await using tmp = await tmpdir()
-    const env = opts(tmp.path)
-    const first = await startDaemon(env)
+  test("supports daemon state written before network options were persisted", async () => {
+    await using tmp = await temp()
+    const input = opts(tmp.path)
+    const first = await Daemon.start(input)
+    const state = first.state
+    if (!state) throw new Error("Daemon did not provide connection state")
+    await Bun.write(Daemon.file(), JSON.stringify({ ...state, options: undefined }))
 
-    const restarted = await startDaemon({ ...env, port: 0 }, true)
+    expect((await Daemon.read())?.options).toBeUndefined()
+    const matched = await Daemon.ensure({ ...input, port: state.port }, ["hostname", "port"])
+    expect(matched.restarted).toBe(false)
+    expect(matched.result.state?.pid).toBe(state.pid)
 
-    expect(restarted.pid).not.toBe(first.pid)
-  }, 20_000)
+    const unknown = await Daemon.ensure(input, ["mdns"])
+    expect(unknown.restarted).toBe(true)
+    expect(unknown.result.state?.pid).not.toBe(state.pid)
+  }, 30_000)
+
+  test("restarts for each mismatched explicit network option", async () => {
+    await using tmp = await temp()
+    const initial = opts(tmp.path)
+    const first = await Daemon.start(initial)
+    const state = first.state
+    if (!state) throw new Error("Daemon did not provide connection state")
+
+    const host = { ...initial, hostname: "0.0.0.0" }
+    const byHost = await Daemon.ensure(host, ["hostname"])
+    expect(byHost.restarted).toBe(true)
+    expect(byHost.result.state?.pid).not.toBe(state.pid)
+
+    const mdns = { ...host, mdns: true }
+    const byMdns = await Daemon.ensure(mdns, ["mdns"])
+    expect(byMdns.restarted).toBe(true)
+    expect(byMdns.result.state?.pid).not.toBe(byHost.result.state?.pid)
+
+    const loopback = await Daemon.restart({ ...mdns, hostname: "127.0.0.1" })
+    const byMdnsHost = await Daemon.ensure(mdns, ["mdns"])
+    expect(byMdnsHost.restarted).toBe(true)
+    expect(byMdnsHost.result.state?.pid).not.toBe(loopback.state?.pid)
+
+    const domain = { ...mdns, mdnsDomain: "test.local" }
+    const byDomain = await Daemon.ensure(domain, ["mdnsDomain"])
+    expect(byDomain.restarted).toBe(true)
+    expect(byDomain.result.state?.pid).not.toBe(byMdnsHost.result.state?.pid)
+
+    const cors = { ...domain, cors: ["https://example.com"] }
+    const byCors = await Daemon.ensure(cors, ["cors"])
+    expect(byCors.restarted).toBe(true)
+    expect(byCors.result.state?.pid).not.toBe(byDomain.result.state?.pid)
+
+    const fixed = { ...cors, port: await port() }
+    const byPort = await Daemon.ensure(fixed, ["port"])
+    expect(byPort.restarted).toBe(true)
+    expect(byPort.result.state?.pid).not.toBe(byCors.result.state?.pid)
+    expect(byPort.result.state?.port).toBe(fixed.port)
+  }, 60_000)
 })

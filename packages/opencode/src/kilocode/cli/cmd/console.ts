@@ -1,6 +1,6 @@
 import open from "open"
 import { cmd } from "@/cli/cmd/cmd"
-import { withNetworkOptions, resolveNetworkOptions } from "@/cli/network"
+import { explicitNetworkOptions, withNetworkOptions, resolveNetworkOptions } from "@/cli/network"
 import { AppRuntime } from "@/effect/app-runtime"
 import { Daemon } from "@/kilocode/daemon/daemon"
 import { warnPort } from "@/kilocode/cli/port-warning"
@@ -36,29 +36,6 @@ async function launch(url: string) {
   })
 }
 
-function explicitNetworkOption(name: string) {
-  return process.argv.some((arg) => arg === name || arg.startsWith(`${name}=`))
-}
-
-export async function startDaemon(opts: Daemon.Options, restartOnMismatch = false) {
-  const result = await Daemon.start(opts)
-  let state = result.state
-  if (!state) throw new Error("Kilo daemon did not provide connection state")
-
-  const portMismatch = opts.port !== 0 ? state.port !== opts.port : true
-  const hostnameMismatch = state.hostname !== opts.hostname
-  if (restartOnMismatch && result.reused && (hostnameMismatch || portMismatch)) {
-    console.warn(
-      `Daemon running at ${state.hostname}:${state.port}; restarting with requested ${opts.hostname}:${opts.port}...`,
-    )
-    const fresh = await Daemon.restart(opts)
-    state = fresh.state
-    if (!state) throw new Error("Kilo daemon did not provide connection state")
-  }
-
-  return state
-}
-
 export const KiloConsoleCommand = cmd({
   command: "console",
   describe: "open the local Kilo Console",
@@ -66,8 +43,10 @@ export const KiloConsoleCommand = cmd({
   handler: async (args) => {
     const opts = await AppRuntime.runPromise(resolveNetworkOptions(args))
     warnPort(opts.port)
-    const restartOnMismatch = explicitNetworkOption("--port") || explicitNetworkOption("--hostname")
-    const state = await startDaemon(opts, restartOnMismatch)
+    const daemon = await Daemon.ensure(opts, explicitNetworkOptions())
+    if (daemon.restarted) console.warn("Restarted the Kilo daemon to apply the requested network options")
+    const state = daemon.result.state
+    if (!state) throw new Error("Kilo daemon did not provide connection state")
 
     const url = publicUrl(state)
     await launch(browserUrl(state)).catch((err) => {
