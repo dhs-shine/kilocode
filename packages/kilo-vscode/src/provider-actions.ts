@@ -11,6 +11,7 @@ import {
 } from "./shared/custom-provider"
 import { CUSTOM_PROVIDER_PACKAGE, KILO_AUTO, parseModelString } from "./shared/provider-model"
 import { configFeatures } from "./features"
+import type { ProviderInfo } from "./kilo-provider-utils"
 
 /**
  * Compute the default model selection from CLI config, VS Code settings, or hardcoded fallback.
@@ -42,6 +43,17 @@ function same(a: unknown, b: unknown): boolean {
   const bkeys = Object.keys(b).sort()
   if (akeys.length !== bkeys.length) return false
   return akeys.every((key, index) => key === bkeys[index] && same(a[key], b[key]))
+}
+
+export function filterPromptTrainingModels(all: ProviderInfo[], hide: boolean): ProviderInfo[] {
+  if (!hide) return all
+  return all.map((provider) => {
+    if (provider.id !== "kilo") return provider
+    const models = Object.fromEntries(
+      Object.entries(provider.models).filter(([, model]) => model.mayTrainOnYourPrompts !== true),
+    )
+    return { ...provider, models }
+  })
 }
 
 /** Fetch auth methods alongside the provider list. Auth states default to empty (endpoint not yet available). */

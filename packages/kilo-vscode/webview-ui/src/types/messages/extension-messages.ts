@@ -351,6 +351,13 @@ export interface AutocompleteSettingsLoadedMessage {
   }
 }
 
+export interface ModelSettingsLoadedMessage {
+  type: "modelSettingsLoaded"
+  settings: {
+    hidePromptTraining: boolean
+  }
+}
+
 export interface ChatCompletionResultMessage {
   type: "chatCompletionResult"
   text: string
@@ -980,6 +987,7 @@ export type ExtensionMessage =
   | SkillsLoadedMessage
   | CommandsLoadedMessage
   | AutocompleteSettingsLoadedMessage
+  | ModelSettingsLoadedMessage
   | ChatCompletionResultMessage
   | SpeechToTextStartedMessage
   | SpeechToTextCancelledMessage

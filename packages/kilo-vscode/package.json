@@ -852,6 +852,11 @@
           "default": "kilo-auto/free",
           "description": "Default model ID for new sessions"
         },
+        "kilo-code.new.models.hidePromptTraining": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide Kilo Gateway models that may train on your prompts"
+        },
         "kilo-code.new.autocomplete.model": {
           "type": "string",
           "enum": [

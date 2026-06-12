@@ -44,6 +44,7 @@ import {
   resolveWorkspaceDirectory,
   sameDirectory,
   SessionStreamScheduler,
+  type ProviderInfo,
   type SessionRefreshContext,
 } from "./kilo-provider-utils"
 import { GitOps } from "./agent-manager/GitOps"
@@ -77,6 +78,7 @@ import {
   validAutocompleteSetting,
   watchAutocompleteConfig,
 } from "./services/autocomplete/settings"
+import { buildModelSettingsMessage, validModelSetting, watchModelConfig } from "./kilo-provider/model-settings"
 import { routeEarlyMessage } from "./kilo-provider/early-message"
 import * as ModelState from "./kilo-provider/model-state"
 import { handleForkSession } from "./kilo-provider/fork-session"
@@ -125,6 +127,7 @@ import {
   buildActionContext,
   computeDefaultSelection,
   fetchProviderData,
+  filterPromptTrainingModels,
   validateRecents,
   validateFavorites,
   connectProvider as connectProviderAction,
@@ -250,6 +253,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private readonly extensionVersion =
     vscode.extensions.getExtension("kilocode.kilo-code")?.packageJSON?.version ?? "unknown"
   private cachedProvidersMessage: unknown = null
+  private cachedProviders: ProviderInfo[] | null = null
   /** Coalesce provider refreshes — at most one follow-up rerun when a request lands mid-flight. */
   private providersRefresh: Promise<void> | null = null
   private providersQueued = false
@@ -304,6 +308,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private initConnectionPromise: Promise<void> | null = null
   private webviewMessageDisposable: vscode.Disposable | null = null
   private autocompleteConfigDisposable: vscode.Disposable | null = null
+  private modelConfigDisposable: vscode.Disposable | null = null
   private telemetryStateDisposable: vscode.Disposable | null = null
   private viewStateDisposable: vscode.Disposable | null = null
   private visibilityDisposable: vscode.Disposable | null = null
@@ -711,6 +716,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.webviewMessageDisposable?.dispose()
     this.autocompleteConfigDisposable?.dispose()
     this.autocompleteConfigDisposable = watchAutocompleteConfig((msg) => this.postMessage(msg))
+    this.modelConfigDisposable?.dispose()
+    this.modelConfigDisposable = watchModelConfig(
+      (msg) => this.postMessage(msg),
+      () => this.refreshModelVisibility(),
+    )
     this.telemetryStateDisposable?.dispose()
     this.telemetryStateDisposable = watchTelemetryState((msg) => this.postMessage(msg))
     this.webviewMessageDisposable = webview.onDidReceiveMessage(async (message) => {
@@ -1058,6 +1068,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           break
         case "updateSetting":
           await this.handleUpdateSetting(message.key, message.value)
+          break
+        case "requestModelSettings":
+          this.postMessage(buildModelSettingsMessage())
           break
         case "requestBrowserSettings":
           this.sendBrowserSettings()
@@ -1758,6 +1771,19 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     }
   }
 
+  private refreshModelVisibility(): void {
+    const all = this.cachedProviders
+    const cached = this.cachedProvidersMessage
+    if (all && cached && typeof cached === "object") {
+      const config = vscode.workspace.getConfiguration("kilo-code.new.models")
+      const providers = filterPromptTrainingModels(all, config.get<boolean>("hidePromptTraining", false))
+      const message = { ...(cached as Record<string, unknown>), providers: indexProvidersById(providers) }
+      this.cachedProvidersMessage = message
+      this.postMessage(message)
+    }
+    void this.fetchAndSendProviders()
+  }
+
   /** Fetch providers and send to webview. Coalesced: at most one in-flight + one queued. */
   private async fetchAndSendProviders(): Promise<void> {
     const next = ++this.providersGeneration
@@ -1783,10 +1809,13 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
             generation = this.providersGeneration
             continue
           }
+          this.cachedProviders = response.all
           const settings = vscode.workspace.getConfiguration("kilo-code.new.model")
+          const models = vscode.workspace.getConfiguration("kilo-code.new.models")
+          const providers = filterPromptTrainingModels(response.all, models.get<boolean>("hidePromptTraining", false))
           const message = {
             type: "providersLoaded",
-            providers: indexProvidersById(response.all),
+            providers: indexProvidersById(providers),
             connected: response.connected,
             defaults: response.default,
             defaultSelection: computeDefaultSelection(
@@ -2875,6 +2904,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private async handleUpdateSetting(key: string, value: unknown): Promise<void> {
     const { section, leaf } = buildSettingPath(key)
     if (section === "autocomplete" && !validAutocompleteSetting(leaf, value)) return
+    if (section === "models" && !validModelSetting(leaf, value)) return
     const config = vscode.workspace.getConfiguration(`kilo-code.new${section ? `.${section}` : ""}`)
     // Normalize a webview-side clear to `undefined` so VS Code removes the
     // key from settings.json rather than persisting a literal `null`. This
@@ -3504,6 +3534,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.visibilityDisposable?.dispose()
     this.webviewMessageDisposable?.dispose()
     this.autocompleteConfigDisposable?.dispose()
+    this.modelConfigDisposable?.dispose()
     this.telemetryStateDisposable?.dispose()
     this.autoApproveBridge?.dispose()
     this.visibleTaskStreams.clear()

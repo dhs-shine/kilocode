@@ -1,5 +1,6 @@
 import { Component, For, createMemo } from "solid-js"
 import { Card } from "@kilocode/kilo-ui/card"
+import { Switch } from "@kilocode/kilo-ui/switch"
 import { useConfig } from "../../context/config"
 import { useLanguage } from "../../context/language"
 import { useProvider } from "../../context/provider"
@@ -145,7 +146,6 @@ const ModelsTab: Component = () => {
         <SettingsRow
           title={language.t("settings.autocomplete.model.title")}
           description={language.t("settings.autocomplete.model.description")}
-          last
         >
           <ModelSelectorBase
             value={getAutocompleteSelection(autocompleteProvider(), autocompleteModel())}
@@ -158,6 +158,19 @@ const ModelsTab: Component = () => {
             label={language.t("settings.autocomplete.model.title")}
             description={language.t("settings.autocomplete.model.description")}
           />
+        </SettingsRow>
+        <SettingsRow
+          title={language.t("settings.models.hidePromptTraining.title")}
+          description={language.t("settings.models.hidePromptTraining.description")}
+          last
+        >
+          <Switch
+            checked={settings()["models.hidePromptTraining"] === true}
+            onChange={(checked: boolean) => updateSetting("models.hidePromptTraining", checked)}
+            hideLabel
+          >
+            {language.t("settings.models.hidePromptTraining.title")}
+          </Switch>
         </SettingsRow>
       </Card>
 
