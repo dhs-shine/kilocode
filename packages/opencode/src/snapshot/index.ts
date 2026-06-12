@@ -179,18 +179,24 @@ export const layer: Layer.Layer<Service, never, Requirements> =
             )
           })
 
-          const stage = Effect.fnUntraced(function* (files: string[], env?: Record<string, string>) { // kilocode_change
+          // kilocode_change start
+          const stage = Effect.fnUntraced(function* (
+            files: string[],
+            opts?: { env?: Record<string, string>; root?: boolean },
+          ) {
+          // kilocode_change end
             if (!files.length) return
             // kilocode_change start
-            // Seeded snapshots cover the worktree root, so a single pathspec avoids
+            // A new root snapshot covers the full worktree, so a single pathspec avoids
             // quadratic matching against every tracked path in very large repositories.
-            const cmd = env
+            const cmd = opts?.root
               ? ["add", "--all", "--sparse", "--", "."]
               : ["add", "--all", "--sparse", "--pathspec-from-file=-", "--pathspec-file-nul"]
+
             const result = yield* git([...cfg, ...args(cmd)], {
               cwd: state.directory,
-              env,
-              stdin: env ? undefined : feed(files),
+              env: opts?.env,
+              stdin: opts?.root ? undefined : feed(files),
             })
             // kilocode_change end
             if (result.code === 0) return
@@ -238,7 +244,7 @@ export const layer: Layer.Layer<Service, never, Requirements> =
             yield* fs.writeFileString(target, text ? `${text}\n` : "").pipe(Effect.orDie)
           })
 
-          const add = Effect.fnUntraced(function* (env?: Record<string, string>) { // kilocode_change
+          const add = Effect.fnUntraced(function* (opts?: { env?: Record<string, string>; root?: boolean }) { // kilocode_change
             yield* sync()
             const [diff, other] = yield* Effect.all(
               [
@@ -303,7 +309,7 @@ export const layer: Layer.Layer<Service, never, Requirements> =
             // kilocode_change start - initial seeded writes stay protected by the source pin
             yield* stage(
               allow.filter((item) => !block.has(item)),
-              env,
+              opts,
             )
           })
 
@@ -376,7 +382,7 @@ export const layer: Layer.Layer<Service, never, Requirements> =
                       GIT_ALTERNATE_OBJECT_DIRECTORIES: path.join(seed.gitdir, "objects"),
                     }
                   : undefined
-                yield* add(env)
+                yield* add({ env, root: !existed && state.directory === state.worktree })
                 if (
                   seed &&
                   !(yield* KiloSnapshotMaterialize.localize({
