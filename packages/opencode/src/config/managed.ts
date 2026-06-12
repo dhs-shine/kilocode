@@ -33,7 +33,7 @@ function systemManagedConfigDir(): string {
 }
 
 export function managedConfigDir() {
-  return process.env.KILO_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()
+  return process.env.KILO_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir() // kilocode_change
 }
 
 export function parseManagedPlist(json: string): string {

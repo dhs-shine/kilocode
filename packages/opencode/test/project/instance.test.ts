@@ -5,6 +5,7 @@ import { InstanceRef } from "../../src/effect/instance-ref"
 import { registerDisposer } from "../../src/effect/instance-registry"
 import { InstanceBootstrap } from "../../src/project/bootstrap-service"
 import { InstanceStore } from "../../src/project/instance-store"
+import { capture } from "../../src/kilocode/instance" // kilocode_change
 import { tmpdirScoped } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 
@@ -162,6 +163,26 @@ describe("InstanceStore", () => {
       expect(cached).toBe(second)
     }),
   )
+
+  // kilocode_change start - reload disposers retain legacy instance context
+  it.live("runs reload disposers under the previous instance context", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped({ git: true })
+      const store = yield* InstanceStore.Service
+      const first = yield* store.load({ directory: dir })
+      let captured: ReturnType<typeof capture>
+      yield* registerDisposerScoped(async (directory) => {
+        if (directory !== dir) return
+        await Promise.resolve()
+        captured = capture()
+      })
+
+      yield* store.reload({ directory: dir })
+
+      expect(captured).toBe(first)
+    }),
+  )
+  // kilocode_change end
 
   it.live("stale dispose does not delete an in-flight reload", () =>
     Effect.gen(function* () {

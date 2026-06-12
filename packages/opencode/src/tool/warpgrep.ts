@@ -2,7 +2,7 @@ import { Effect, Schema } from "effect"
 import * as Tool from "./tool"
 import { WarpGrepClient } from "@morphllm/morphsdk/tools/warp-grep/client" // kilocode_change
 import { Telemetry } from "@kilocode/kilo-telemetry" // kilocode_change
-import { Instance } from "../kilocode/instance"
+import { Instance } from "../kilocode/instance" // kilocode_change
 import { Bus } from "../bus"
 import { TuiEvent } from "../cli/cmd/tui/event"
 import DESCRIPTION from "./warpgrep.txt"

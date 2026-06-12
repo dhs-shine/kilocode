@@ -32,6 +32,8 @@ function createConnection() {
     config: {
       get: async () => ({ data: {} }),
       update: async () => ({ data: {} }),
+      overlay: async () => ({ data: { project: {} } }),
+      overlayUpdate: async () => ({ data: {} }),
     },
   }
 

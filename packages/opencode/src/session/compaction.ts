@@ -144,12 +144,12 @@ function buildPrompt(input: { previousSummary?: string; context: string[] }) {
   return [anchor, SUMMARY_TEMPLATE, ...input.context].join("\n\n")
 }
 
-function preserveRecentBudget(input: { cfg: Config.Info; model: Provider.Model }) {
+function preserveRecentBudget(input: { cfg: Config.Info; model: Provider.Model; outputTokenMax?: number }) {
   return (
     input.cfg.compaction?.preserve_recent_tokens ??
     Math.min(MAX_PRESERVE_RECENT_TOKENS, Math.max(MIN_PRESERVE_RECENT_TOKENS, Math.floor(usable(input) * 0.25)))
   )
-}
+} // kilocode_change
 
 function turns(messages: MessageV2.WithParts[]) {
   const result: Turn[] = []
@@ -260,7 +260,11 @@ export const layer = Layer.effect(
     }) {
       const limit = input.cfg.compaction?.tail_turns ?? DEFAULT_TAIL_TURNS
       if (limit <= 0) return { head: input.messages, tail_start_id: undefined }
-      const budget = preserveRecentBudget({ cfg: input.cfg, model: input.model })
+      const budget = preserveRecentBudget({
+        cfg: input.cfg,
+        model: input.model,
+        outputTokenMax: flags.outputTokenMax,
+      }) // kilocode_change
       const all = turns(input.messages)
       if (!all.length) return { head: input.messages, tail_start_id: undefined }
       const recent = all.slice(-limit)

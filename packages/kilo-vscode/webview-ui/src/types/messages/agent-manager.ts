@@ -1,3 +1,8 @@
+export interface TerminalFont {
+  fontFamily: string
+  fontSize: number
+}
+
 export type WorktreeErrorCode = "git_not_found" | "not_git_repo" | "lfs_missing"
 
 // Agent Manager worktree state types (mirrored from WorktreeStateManager)

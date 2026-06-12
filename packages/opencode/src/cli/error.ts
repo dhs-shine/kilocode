@@ -47,7 +47,7 @@ export function FormatError(input: unknown): string | undefined {
   // MCPFailed: { name: string }
   if (NamedError.hasName(input, "MCPFailed")) {
     const data = isRecord(input) && isRecord(input.data) ? stringField(input.data, "name") : undefined
-    return `MCP server "${data}" failed. Note, opencode does not support MCP authentication yet.`
+    return `MCP server "${data}" failed.` // kilocode_change
   }
 
   // AccountServiceError, AccountTransportError: TaggedErrorClass
@@ -66,7 +66,7 @@ export function FormatError(input: unknown): string | undefined {
       ...(suggestions.length ? ["Did you mean: " + suggestions.join(", ")] : []),
       ...(providerModelNotFound.modelsEmpty === true ? ["No models are currently available."] : []), // kilocode_change
       `Try: \`kilo models\` to list available models`, // kilocode_change
-      `Or check your config (opencode.json) provider/model names`,
+      `Or check your kilo.json provider/model names`, // kilocode_change
     ].join("\n")
   }
 

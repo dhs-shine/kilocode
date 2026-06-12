@@ -468,7 +468,7 @@ describe("indexing startup degradation", () => {
           expect(init.mock.calls[0]?.[0]).toMatchObject({
             embedderProvider: "kilo",
             modelId: "openai/text-embedding-3-small",
-            modelDimension: 256,
+            modelDimension: 1536,
           })
         },
       })

@@ -6,7 +6,6 @@ import { Server } from "../../../src/server/server"
 import { Config } from "../../../src/config/config"
 import { KilocodeConfigOverlay } from "../../../src/kilocode/config/overlay"
 import { Permission } from "../../../src/permission"
-import { AppRuntime } from "../../../src/effect/app-runtime"
 import { resetDatabase } from "../../fixture/db"
 import { disposeAllInstances, tmpdir } from "../../fixture/fixture"
 
@@ -26,7 +25,6 @@ type Agent = {
 
 afterEach(async () => {
   ;(Global.Path as { config: string }).config = original
-  await AppRuntime.runPromise(Config.Service.use((svc) => svc.invalidate()))
   await disposeAllInstances()
   await resetDatabase()
 })
@@ -64,8 +62,15 @@ async function config(dir: string, value: unknown) {
   await Bun.write(path.join(dir, "kilo.json"), JSON.stringify(value, null, 2))
 }
 
-async function invalidate() {
-  await AppRuntime.runPromise(Config.Service.use((svc) => svc.invalidate()))
+async function setGlobal(dir: string, value: Config.Info) {
+  ;(Global.Path as { config: string }).config = dir
+  await json(
+    await request(Server.Default().app, undefined, "/config/overlay", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope: "global", set: value }),
+    }),
+  )
 }
 
 describe("config overlay routes", () => {
@@ -87,13 +92,11 @@ describe("config overlay routes", () => {
   test.serial("marks global values inherited in project scope", async () => {
     await using global = await tmpdir()
     await using project = await tmpdir()
-    ;(Global.Path as { config: string }).config = global.path
-    await config(global.path, {
+    await setGlobal(global.path, {
       model: "kilo/global-model",
       permission: { bash: "ask" },
       mcp: { shared: { type: "local", command: ["node", "shared.js"], enabled: true } },
     })
-    await invalidate()
 
     const body = await json<Overlay>(await req(project.path, "/config/overlay?scope=project"))
 
@@ -111,9 +114,7 @@ describe("config overlay routes", () => {
   test.serial("removes local scalar override and falls back to global", async () => {
     await using global = await tmpdir()
     await using project = await tmpdir({ config: { model: "kilo/project-model", username: "alice" } })
-    ;(Global.Path as { config: string }).config = global.path
-    await config(global.path, { model: "kilo/global-model" })
-    await invalidate()
+    await setGlobal(global.path, { model: "kilo/global-model" })
 
     await json(
       await req(project.path, "/config/overlay", {
@@ -133,11 +134,9 @@ describe("config overlay routes", () => {
   test.serial("writes project mcp overrides without copying inherited servers", async () => {
     await using global = await tmpdir()
     await using project = await tmpdir()
-    ;(Global.Path as { config: string }).config = global.path
-    await config(global.path, {
+    await setGlobal(global.path, {
       mcp: { shared: { type: "local", command: ["node", "shared.js"], enabled: true } },
     })
-    await invalidate()
 
     await json(
       await req(project.path, "/config/overlay", {
@@ -159,11 +158,9 @@ describe("config overlay routes", () => {
   test.serial("disables inherited mcp server with a minimal local override", async () => {
     await using global = await tmpdir()
     await using project = await tmpdir()
-    ;(Global.Path as { config: string }).config = global.path
-    await config(global.path, {
+    await setGlobal(global.path, {
       mcp: { shared: { type: "local", command: ["node", "shared.js"], enabled: true } },
     })
-    await invalidate()
 
     await json(
       await req(project.path, "/config/overlay", {
@@ -182,9 +179,7 @@ describe("config overlay routes", () => {
   test.serial("refreshes effective config after project permission update", async () => {
     await using global = await tmpdir()
     await using project = await tmpdir()
-    ;(Global.Path as { config: string }).config = global.path
-    await config(global.path, { permission: { edit: "allow" } })
-    await invalidate()
+    await setGlobal(global.path, { permission: { edit: "allow" } })
 
     const before = await json<Agent[]>(await req(project.path, "/agent"))
     expect(Permission.evaluate("edit", "*", before.find((item) => item.name === "code")?.permission ?? []).action).toBe(
@@ -217,9 +212,7 @@ describe("config overlay routes", () => {
   test.serial("refreshes agent permissions after global permission update", async () => {
     await using global = await tmpdir()
     await using project = await tmpdir()
-    ;(Global.Path as { config: string }).config = global.path
-    await config(global.path, { permission: { edit: "allow" } })
-    await invalidate()
+    await setGlobal(global.path, { permission: { edit: "allow" } })
 
     const before = await json<Agent[]>(await req(project.path, "/agent"))
     expect(Permission.evaluate("edit", "*", before.find((item) => item.name === "code")?.permission ?? []).action).toBe(
@@ -251,9 +244,7 @@ describe("config overlay routes", () => {
       async () => {
         await using global = await tmpdir()
         await using project = await tmpdir()
-        ;(Global.Path as { config: string }).config = global.path
-        await config(global.path, { permission: { edit: "ask" } })
-        await invalidate()
+        await setGlobal(global.path, { permission: { edit: "ask" } })
         const target = app(value)
 
         const before = await json<Agent[]>(await request(target, project.path, "/agent"))

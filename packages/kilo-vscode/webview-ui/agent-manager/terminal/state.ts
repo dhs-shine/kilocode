@@ -10,6 +10,10 @@
 import { createMemo, createSignal } from "solid-js"
 import type { Accessor } from "solid-js"
 import { LOCAL } from "../navigate"
+import type { ExtensionMessage } from "../../src/types/messages/extension-messages"
+import type { TerminalFont } from "../../src/types/messages/agent-manager"
+
+export type { TerminalFont }
 
 /** Prefix used for terminal tab IDs in the webview (mirrors terminal-manager.ts). */
 export const TERMINAL_PREFIX = "terminal:"
@@ -21,6 +25,7 @@ export interface TerminalTabState {
   id: string
   title: string
   wsUrl: string
+  font: TerminalFont
 }
 
 /** Terminal row enriched with the sidebar context it belongs to. Used by
@@ -28,13 +33,6 @@ export interface TerminalTabState {
  *  worktree switches and we only toggle visibility, not lifecycle. */
 export interface TerminalTabStateWithContext extends TerminalTabState {
   contextKey: string
-}
-
-export interface TerminalCreatedEvent {
-  worktreeId: string | null
-  terminalId: string
-  title: string
-  wsUrl: string
 }
 
 export interface TerminalStateControls {
@@ -332,25 +330,29 @@ export interface TerminalMessageHandlerDeps {
  */
 export function createTerminalMessageHandler(deps: TerminalMessageHandlerDeps) {
   return (msg: { type: string } & Record<string, unknown>): boolean => {
-    if (msg.type === "agentManager.terminal.created") {
-      const ev = msg as unknown as TerminalCreatedEvent
-      const contextKey = ev.worktreeId === null ? LOCAL : ev.worktreeId
-      deps.state.add(ev.worktreeId, { id: ev.terminalId, title: ev.title, wsUrl: ev.wsUrl })
-      deps.onCreated?.(contextKey, ev.terminalId)
+    const message = msg as ExtensionMessage
+    if (message.type === "agentManager.terminal.created") {
+      const msg = message
+      const contextKey = msg.worktreeId === null ? LOCAL : msg.worktreeId
+      deps.state.add(msg.worktreeId, {
+        id: msg.terminalId,
+        title: msg.title,
+        wsUrl: msg.wsUrl,
+        font: msg.font,
+      })
+      deps.onCreated?.(contextKey, msg.terminalId)
       deps.saveTabMemory()
       deps.setSelection(contextKey)
-      deps.activate(ev.terminalId)
+      deps.activate(msg.terminalId)
       return true
     }
-    if (msg.type === "agentManager.terminal.closed") {
-      const ev = msg as unknown as { terminalId: string }
-      deps.state.remove(ev.terminalId)
-      if (deps.state.activeId() === ev.terminalId) deps.state.setActiveId(undefined)
+    if (message.type === "agentManager.terminal.closed") {
+      deps.state.remove(message.terminalId)
+      if (deps.state.activeId() === message.terminalId) deps.state.setActiveId(undefined)
       return true
     }
-    if (msg.type === "agentManager.terminal.error") {
-      const ev = msg as unknown as { message: string }
-      deps.showError(ev.message)
+    if (message.type === "agentManager.terminal.error") {
+      deps.showError(message.message)
       return true
     }
     return false

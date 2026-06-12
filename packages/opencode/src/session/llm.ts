@@ -296,7 +296,7 @@ const live: Layer.Layer<
         KiloSessionOverflow.shouldCompact({
           cfg,
           model: input.model,
-          usable: usable({ cfg, model: input.model }),
+          usable: usable({ cfg, model: input.model, outputTokenMax: flags.outputTokenMax }), // kilocode_change
           tokens: usage.normalized,
           continuation: usage.continuation,
         })

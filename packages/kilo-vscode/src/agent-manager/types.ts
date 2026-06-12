@@ -147,6 +147,18 @@ interface TerminalCreatedMessage {
   terminalId: string
   title: string
   wsUrl: string
+  font?: {
+    fontFamily: string
+    fontSize: number
+  }
+}
+
+interface TerminalFontChangedMessage {
+  type: "agentManager.terminal.fontChanged"
+  font: {
+    fontFamily: string
+    fontSize: number
+  }
 }
 
 interface TerminalClosedMessage {
@@ -312,6 +324,7 @@ export type AgentManagerOutMessage =
   | ActionOutMessage
   | RunStatusMessage
   | TerminalCreatedMessage
+  | TerminalFontChangedMessage
   | TerminalClosedMessage
   | TerminalErrorMessage
 

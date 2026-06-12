@@ -11163,6 +11163,98 @@
         ]
       }
     },
+    "/indexing/warnings": {
+      "get": {
+        "tags": ["indexing"],
+        "operationId": "indexing.warnings",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Indexing warnings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IndexingWarning"
+                  },
+                  "description": "Indexing warnings"
+                }
+              }
+            }
+          }
+        },
+        "description": "Retrieve code indexing warnings for the active project.",
+        "summary": "Get indexing warnings",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.indexing.warnings({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/indexing/models": {
+      "get": {
+        "tags": ["indexing"],
+        "operationId": "indexing.models",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kilo embedding model catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KiloEmbeddingModelCatalog"
+                }
+              }
+            }
+          }
+        },
+        "description": "Retrieve the embedding models available through the active Kilo account.",
+        "summary": "List Kilo embedding models",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.indexing.models({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/kilo/profile": {
       "get": {
         "tags": ["kilo"],
@@ -14372,6 +14464,9 @@
             "$ref": "#/components/schemas/EventIndexingStatus"
           },
           {
+            "$ref": "#/components/schemas/EventIndexingWarning"
+          },
+          {
             "$ref": "#/components/schemas/EventServerInstanceDisposed"
           },
           {
@@ -14927,6 +15022,20 @@
           }
         },
         "required": ["state", "message", "processedFiles", "totalFiles", "percent"],
+        "additionalProperties": false
+      },
+      "IndexingWarning": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["qdrant.version-incompatible", "qdrant.version-unavailable"]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "message"],
         "additionalProperties": false
       },
       "QuestionOption": {
@@ -17077,6 +17186,9 @@
               },
               {
                 "$ref": "#/components/schemas/EventIndexingStatus"
+              },
+              {
+                "$ref": "#/components/schemas/EventIndexingWarning"
               },
               {
                 "$ref": "#/components/schemas/EventServerInstanceDisposed"
@@ -21104,6 +21216,50 @@
         "required": ["keybinds"],
         "additionalProperties": false
       },
+      "KiloEmbeddingModelCatalog": {
+        "type": "object",
+        "properties": {
+          "defaultModel": {
+            "type": "string"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "dimension": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "scoreThreshold": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "name", "dimension", "scoreThreshold"],
+              "additionalProperties": false
+            }
+          },
+          "aliases": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["defaultModel", "models", "aliases"],
+        "additionalProperties": false
+      },
       "effect_HttpApiError_Unauthorized": {
         "type": "object",
         "properties": {
@@ -23124,6 +23280,23 @@
             },
             "required": ["status"],
             "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventIndexingWarning": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["indexing.warning"]
+          },
+          "properties": {
+            "$ref": "#/components/schemas/IndexingWarning"
           }
         },
         "required": ["id", "type", "properties"],

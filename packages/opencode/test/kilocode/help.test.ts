@@ -173,21 +173,57 @@ describe("generateCommandTable", () => {
   })
 })
 
-describe("commands.ts stays in sync with index.ts", () => {
-  test("every .command() in index.ts has an entry in the commands array", async () => {
-    const index = await Bun.file(path.resolve(import.meta.dir, "../../src/index.ts")).text()
-    const barrel = await Bun.file(path.resolve(import.meta.dir, "../../src/kilocode/commands.ts")).text()
+describe("Kilo CLI customizations are wired into index.ts", () => {
+  const file = (rel: string) => Bun.file(path.resolve(import.meta.dir, rel)).text()
+  const INDEX = "../../src/index.ts"
+  const SETUP = "../../src/kilocode/cli/setup.ts"
+  const BARREL = "../../src/kilocode/commands.ts"
 
-    // Match uncommented .command(XxxCommand) calls in index.ts
-    const registered = [...index.matchAll(/^\s*\.command\((\w+)\)/gm)].map((m) => m[1]!)
+  test("CLI is branded `kilo`, not `opencode`", async () => {
+    const index = await file(INDEX)
+    expect(index).toContain('.scriptName("kilo")')
+    expect(index).not.toContain('.scriptName("opencode")')
+  })
+
+  test("index.ts invokes the KiloCli integration points", async () => {
+    const index = await file(INDEX)
+    expect(index).toContain("KiloCli.register(")
+    expect(index).toContain("KiloCli.bootstrap(")
+    expect(index).toContain("KiloCli.shutdown(")
+  })
+
+  test("registers the local Kilo Console instead of the upstream account console", async () => {
+    const index = await file(INDEX)
+    const setup = await file(SETUP)
+    expect(setup).toContain("KiloConsoleCommand")
+    expect(index).not.toContain(".command(ConsoleCommand)")
+  })
+
+  test("every .command() in index.ts has an entry in the commands array", async () => {
+    const index = await file(INDEX)
+    const barrel = await file(BARREL)
+    const registered = [...index.matchAll(/^\s*\.command\((\w+)\)/gm)].map((match) => match[1]!)
     expect(registered.length).toBeGreaterThan(0)
 
-    // Extract identifiers inside the exported commands = [...] array, not just anywhere in the file
-    const arrayMatch = barrel.match(/export const commands\s*=\s*\[([\s\S]*?)\]/)
-    expect(arrayMatch).toBeTruthy()
-    const entries = [...arrayMatch![1]!.matchAll(/\b(\w+Command)\b/g)].map((m) => m[1]!)
+    const array = barrel.match(/export const commands\s*=\s*\[([\s\S]*?)\]/)
+    expect(array).toBeTruthy()
+    const entries = [...array![1]!.matchAll(/\b(\w+Command)\b/g)].map((match) => match[1]!)
+    expect(registered.filter((name) => !entries.includes(name))).toEqual([])
+  })
 
-    const missing = registered.filter((name) => !entries.includes(name))
-    expect(missing).toEqual([])
+  test("every barrel command is registered in index.ts or setup.ts", async () => {
+    const index = await file(INDEX)
+    const setup = await file(SETUP)
+    const barrel = await file(BARREL)
+    const registered = new Set(
+      [...index.matchAll(/\.command\((\w+)\)/g), ...setup.matchAll(/\.command\((\w+)\)/g)].map((match) => match[1]!),
+    )
+
+    const array = barrel.match(/export const commands\s*=\s*\[([\s\S]*?)\]/)
+    expect(array).toBeTruthy()
+    const body = array![1]!.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "")
+    const entries = [...body.matchAll(/\b(\w+Command)\b/g)].map((match) => match[1]!)
+    const except = new Set(["ConsoleCommand", "CompletionCommand", "HelpCommand"])
+    expect(entries.filter((name) => !except.has(name) && !registered.has(name))).toEqual([])
   })
 })

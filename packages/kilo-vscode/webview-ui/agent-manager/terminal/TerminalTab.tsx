@@ -20,10 +20,12 @@ import "@xterm/xterm/css/xterm.css"
 import { useVSCode } from "../../src/context/vscode"
 import { useLanguage } from "../../src/context/language"
 import { formatReviewCommentsMarkdown } from "../../src/utils/review-comment-markdown"
+import type { TerminalFont } from "./state"
 
 interface Props {
   terminalId: string
   wsUrl: string
+  font: TerminalFont
   /** Whether this terminal is currently the focused tab.
    *
    *  The xterm subtree always stays in the paint tree (see the layer /
@@ -126,8 +128,8 @@ export const TerminalTab: Component<Props> = (props) => {
     const term = new Terminal({
       convertEol: true,
       cursorBlink: true,
-      fontFamily: cssVar("--vscode-editor-font-family", "Menlo, Monaco, 'Courier New', monospace"),
-      fontSize: Number.parseFloat(cssVar("--font-size-base", "13px")),
+      fontFamily: props.font.fontFamily,
+      fontSize: props.font.fontSize,
       scrollback: 5000,
       theme: readTheme(),
       allowProposedApi: true,
@@ -268,6 +270,7 @@ export const TerminalTab: Component<Props> = (props) => {
       if (!isRenderable()) return
       try {
         fit.fit()
+        syncSize()
       } catch (err) {
         // Layout not settled yet; ResizeObserver retries on next change.
         log("repaint fit() threw", err)
@@ -288,12 +291,17 @@ export const TerminalTab: Component<Props> = (props) => {
         return
       }
 
+      if (message.type === "agentManager.terminal.fontChanged") {
+        term.options.fontFamily = message.font.fontFamily
+        term.options.fontSize = message.font.fontSize
+        scheduleRepaint()
+        return
+      }
+
+      // Kilo webview font changes do not affect the integrated terminal font.
       const size =
         message.type === "fontSizeChanged" ? message.fontSize : message.type === "ready" ? message.fontSize : undefined
       if (size === undefined) return
-      term.options.fontSize = size
-      fit.fit()
-      syncSize()
       scheduleRepaint()
     })
 

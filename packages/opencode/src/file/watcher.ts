@@ -16,7 +16,7 @@ import { FileIgnore } from "./ignore"
 import { Protected } from "./protected"
 import * as Log from "@opencode-ai/core/util/log"
 
-declare const KILO_LIBC: string | undefined
+declare const KILO_LIBC: string | undefined // kilocode_change
 
 const log = Log.create({ service: "file.watcher" })
 const SUBSCRIBE_TIMEOUT_MS = 10_000
@@ -34,7 +34,7 @@ export const Event = {
 const watcher = lazy((): typeof import("@parcel/watcher") | undefined => {
   try {
     const binding = require(
-      `@parcel/watcher-${process.platform}-${process.arch}${process.platform === "linux" ? `-${KILO_LIBC || "glibc"}` : ""}`,
+      `@parcel/watcher-${process.platform}-${process.arch}${process.platform === "linux" ? `-${KILO_LIBC || "glibc"}` : ""}`, // kilocode_change
     )
     return createWrapper(binding) as typeof import("@parcel/watcher")
   } catch (error) {
@@ -73,7 +73,7 @@ export const layer = Layer.effect(
     const state = yield* InstanceState.make(
       Effect.fn("FileWatcher.state")(
         function* () {
-          if (yield* Flag.KILO_EXPERIMENTAL_DISABLE_FILEWATCHER) return
+          if (yield* Flag.KILO_EXPERIMENTAL_DISABLE_FILEWATCHER) return // kilocode_change
 
           const ctx = yield* InstanceState.context
 
@@ -96,7 +96,7 @@ export const layer = Layer.effect(
           )
 
           const cb: ParcelWatcher.SubscribeCallback = bridge.bind((err, evts) => {
-            // if (err) return
+            if (err) return
             for (const evt of evts) {
               if (evt.type === "create") void Bus.publish(ctx, Event.Updated, { file: evt.path, event: "add" })
               if (evt.type === "update") void Bus.publish(ctx, Event.Updated, { file: evt.path, event: "change" })
@@ -123,6 +123,7 @@ export const layer = Layer.effect(
           const cfgIgnores = cfg.watcher?.ignore ?? []
 
           if (yield* Flag.KILO_EXPERIMENTAL_FILEWATCHER) {
+            // kilocode_change
             yield* Effect.forkScoped(
               subscribe(ctx.directory, [...FileIgnore.PATTERNS, ...cfgIgnores, ...protecteds(ctx.directory)]),
             )

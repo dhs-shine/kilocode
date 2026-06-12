@@ -1,6 +1,9 @@
 import type { JSX } from "solid-js"
 import { Show } from "solid-js"
-import { SourceBadge as UiSourceBadge } from "@kilocode/kilo-web-ui/console"
+import { CountTag as ConfigCountTag, SourceBadge as UiSourceBadge } from "@kilocode/kilo-web-ui/console"
+import { Tag as ConfigTag } from "@kilocode/kilo-web-ui/tag"
+
+export { ConfigCountTag, ConfigTag }
 
 export function ConfigPage(props: {
   title: JSX.Element

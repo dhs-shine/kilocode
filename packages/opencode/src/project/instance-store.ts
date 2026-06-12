@@ -130,8 +130,14 @@ export const layer: Layer.Layer<Service, never, Project.Service | InstanceBootst
           yield* Effect.gen(function* () {
             yield* Effect.logInfo("reloading instance").pipe(Effect.annotateLogs("directory", directory))
             if (previous) {
-              yield* Deferred.await(previous.deferred).pipe(Effect.ignore)
-              yield* Effect.promise(() => runDisposers(directory))
+              // kilocode_change start - dispose reloads under the previous instance context
+              const exit = yield* Deferred.await(previous.deferred).pipe(Effect.exit)
+              yield* Effect.promise(() =>
+                Exit.isSuccess(exit)
+                  ? instanceContext.provide(exit.value, () => runDisposers(directory))
+                  : runDisposers(directory),
+              )
+              // kilocode_change end
               yield* emitDisposed({ directory, project: input.project?.id })
             }
             yield* completeLoad(directory, input, entry)
