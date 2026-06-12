@@ -46,6 +46,7 @@ export namespace KiloSnapshotSeed {
   export const seed = Effect.fnUntraced(function* (input: Input) {
     const started = Date.now()
     const alt = path.join(input.gitdir, "objects", "info", "alternates")
+    const pending = `${alt}.seed`
     const temp = path.join(input.gitdir, "seed.index")
     const changed = { value: false }
     const pinned = { gitdir: "", ref: "", hash: "" }
@@ -63,6 +64,7 @@ export namespace KiloSnapshotSeed {
         yield* input.fs.remove(path.join(input.gitdir, "index.lock")).pipe(Effect.catch(() => Effect.void))
         yield* input.fs.remove(temp).pipe(Effect.catch(() => Effect.void))
         yield* input.fs.remove(`${temp}.lock`).pipe(Effect.catch(() => Effect.void))
+        yield* input.fs.remove(pending).pipe(Effect.catch(() => Effect.void))
         if (!retained.value) {
           yield* input.fs.remove(alt).pipe(Effect.catch(() => Effect.void))
           yield* input.fs
@@ -115,7 +117,8 @@ export namespace KiloSnapshotSeed {
       // Borrow committed objects while writing dirty content into snapshot-owned staging.
       yield* input.fs.ensureDir(path.dirname(alt))
       changed.value = true
-      yield* input.fs.writeFileString(alt, `${objects}\n${staging}\n`)
+      yield* input.fs.writeFileString(pending, `${objects}\n${staging}\n`)
+      yield* input.fs.rename(pending, alt)
 
       // Normalize a private index copy so write-tree cannot mutate the user's index
       // and the snapshot does not retain source-local index extensions.
@@ -198,6 +201,7 @@ export namespace KiloSnapshotSeed {
     })
 
     return yield* attempt.pipe(
+      Effect.onInterrupt(() => reset("interrupted", true).pipe(Effect.asVoid)),
       Effect.catch((err) => {
         log.warn("snapshot seed failed", { err })
         return reset("error", true)

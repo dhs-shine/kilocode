@@ -30,7 +30,12 @@ function durable(snapshot: Snapshot.Interface) {
     yield* Effect.promise(() =>
       waitFor(async () => {
         const pending = await Promise.all(
-          [alt, `${alt}.materializing`].map((file) => fs.access(file).then(() => true, () => false)),
+          [alt, `${alt}.materializing`].map((file) =>
+            fs.access(file).then(
+              () => true,
+              () => false,
+            ),
+          ),
         )
         return !pending.some(Boolean)
       }, "snapshot alternate was not removed after materialization"),
@@ -126,6 +131,8 @@ test(
     ).toBe("")
     const dirtyHash = (await $`git hash-object untracked.txt`.cwd(seeded).text()).trim()
     expect((await $`git --git-dir=${common} cat-file -e ${dirtyHash}`.nothrow()).exitCode).not.toBe(0)
+    expect((await $`git --git-dir=${fast.gitdir} cat-file -e ${dirtyHash}`.nothrow()).exitCode).toBe(0)
+    await expect(fs.access(path.join(fast.gitdir, "seed-objects"))).rejects.toThrow()
     expect(await fs.readFile(index)).toEqual(original)
     expect((await $`git stash create`.cwd(seeded).text()).trim()).toBeTruthy()
 
@@ -275,6 +282,24 @@ test(
       result.value!,
     )
 
+    const locked = `refs/kilo/snapshots/2/${result.value!}`
+    await $`git --git-dir=${result.gitdir} update-ref ${locked} ${result.value!}`.quiet()
+    const lock = path.join(result.gitdir, `${locked}.lock`)
+    await Filesystem.write(lock, "")
+    const orphanFile = path.join(tmp.path, "orphan.txt")
+    await Filesystem.write(orphanFile, "old orphan\n")
+    const orphan = (await $`git --git-dir=${result.gitdir} hash-object -w ${orphanFile}`.text()).trim()
+    const loose = path.join(result.gitdir, "objects", orphan.slice(0, 2), orphan.slice(2))
+    const old = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+    await fs.utimes(loose, old, old)
+    try {
+      await run(tmp.path, (snapshot) => snapshot.cleanup())
+      expect((await $`git --git-dir=${result.gitdir} rev-parse --verify ${locked}`.text()).trim()).toBe(result.value!)
+      expect((await $`git --git-dir=${result.gitdir} cat-file -e ${orphan}`.nothrow()).exitCode).not.toBe(0)
+    } finally {
+      await fs.rm(lock)
+    }
+
     await $`git --git-dir=${result.gitdir} gc --prune=now`.quiet()
     const objects = path.join(common, "objects")
     const hidden = path.join(common, "objects.hidden")
@@ -286,7 +311,7 @@ test(
       await fs.rename(hidden, objects)
     }
   },
-  { timeout: 15_000 },
+  { timeout: 30_000 },
 )
 
 test("regular seed falls back for sparse checkouts", async () => {

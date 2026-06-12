@@ -36,7 +36,7 @@ export const FileDiff = Schema.Struct({
   additions: Schema.Finite,
   deletions: Schema.Finite,
   status: Schema.optional(Schema.Literals(["added", "deleted", "modified"])),
-// kilocode_change start
+  // kilocode_change start
 })
   .annotate({ identifier: "SnapshotFileDiff" })
   .pipe(withStatics((s) => ({ zod: zod(s) })))
@@ -89,7 +89,7 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Sn
 // kilocode_change start
 type Requirements = AppFileSystem.Service | AppProcess.Service | Config.Service | EffectFlock.Service
 export const layer: Layer.Layer<Service, never, Requirements> =
-// kilocode_change end
+  // kilocode_change end
   Layer.effect(
     Service,
     Effect.gen(function* () {
@@ -304,14 +304,15 @@ export const layer: Layer.Layer<Service, never, Requirements> =
           })
 
           const materialize = Effect.fnUntraced(function* () {
-            yield* locked(
-              KiloSnapshotMaterialize.run({ gitdir: state.gitdir, git, fs }).pipe(
-                Effect.catchCause((cause) => {
-                  log.error("snapshot materialization failed", { cause: Cause.pretty(cause) })
-                  return Effect.void
-                }),
-              ),
-            ).pipe(Effect.forkDetach, Effect.asVoid)
+            yield* locked(KiloSnapshotMaterialize.run({ gitdir: state.gitdir, git, fs }).pipe(Effect.orDie)).pipe(
+              Effect.timeout("5 minutes"),
+              Effect.catchCause((cause) => {
+                log.error("snapshot materialization failed", { cause: Cause.pretty(cause) })
+                return Effect.void
+              }),
+              Effect.forkDetach,
+              Effect.asVoid,
+            )
           })
           // kilocode_change end
 
@@ -321,11 +322,7 @@ export const layer: Layer.Layer<Service, never, Requirements> =
                 if (!(yield* enabled())) return
                 if (!(yield* exists(state.gitdir))) return
                 // kilocode_change start - retain snapshots for the same seven-day window as object pruning
-                const pruned = yield* KiloSnapshotMaterialize.prune(
-                  { gitdir: state.gitdir, git, fs },
-                  Date.now() - retention,
-                )
-                if (!pruned) return
+                yield* KiloSnapshotMaterialize.prune({ gitdir: state.gitdir, git, fs }, Date.now() - retention)
                 // kilocode_change end
                 const result = yield* git(args(["gc", `--prune=${prune}`]), { cwd: state.directory })
                 if (result.code !== 0) {
