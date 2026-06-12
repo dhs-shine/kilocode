@@ -1,5 +1,5 @@
 import { Flag } from "@opencode-ai/core/flag/flag"
-import * as PowerShell from "@opencode-ai/core/shell/powershell" // kilocode_change - encoded PowerShell args
+import * as PowerShell from "@/kilocode/shell/shell" // kilocode_change - encoded PowerShell args
 import { lazy } from "@/util/lazy"
 import { Filesystem } from "@/util/filesystem"
 import { which } from "@/util/which"
@@ -170,7 +170,7 @@ export function args(file: string, command: string, cwd: string) {
         cd -- "$1"
         eval ${JSON.stringify(command)}
       `,
-      "opencode",
+      "kilo", // kilocode_change
       cwd,
     ]
   }
@@ -184,7 +184,7 @@ export function args(file: string, command: string, cwd: string) {
         cd -- "$1"
         eval ${JSON.stringify(command)}
       `,
-      "opencode",
+      "kilo", // kilocode_change
       cwd,
     ]
   }
