@@ -658,6 +658,9 @@ export function ProjectConsoleRoute() {
       if (event.directory !== "global" && !dirs.has(event.directory)) return
       const id = eventSession(event)
       if (id && messageEvent(event)) markUnread(id)
+      // Terminal fitting emits pty.updated for every width change. Ignore those refreshes while
+      // dragging so the controlled review accordion keeps its expanded files mounted.
+      if (resize.pending && eventType(event) === "pty.updated") return
       if (refreshEvent(event)) scheduleRefetch()
     })
     onCleanup(stop)
