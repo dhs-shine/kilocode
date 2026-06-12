@@ -151,14 +151,14 @@ class TurnViewTest : BasePlatformTestCase() {
         assertFalse((mv.part("p1") as TextView).contentOpaque())
     }
 
-    fun `test assistant text view remains opaque`() {
+    fun `test assistant text view is transparent`() {
         val mv = MessageView(msg("a1", "assistant"), openFile)
         val text = ai.kilocode.client.session.model.Text("p1")
         text.content.append("hello")
 
         mv.upsertPart(text)
 
-        assertTrue((mv.part("p1") as TextView).contentOpaque())
+        assertFalse((mv.part("p1") as TextView).contentOpaque())
     }
 
     fun `test upsertPart updates existing part rather than adding duplicate`() {

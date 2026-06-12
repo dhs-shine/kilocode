@@ -51,11 +51,11 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertEquals("hello **world**", view.markdown())
     }
 
-    fun `test root has small left inset`() {
-        val ins = view.component.border.getBorderInsets(view.component)
+    fun `test root has no renderer owned left inset`() {
+        val ins = view.component.border?.getBorderInsets(view.component)
 
-        assertEquals(JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING), ins.left)
-        assertEquals(0, ins.right)
+        assertEquals(0, ins?.left ?: 0)
+        assertEquals(0, ins?.right ?: 0)
     }
 
     fun `test append renders accumulated source`() {
@@ -118,6 +118,36 @@ class MdViewHybridTest : BasePlatformTestCase() {
         val line = editor.getFontMetrics(editor.font).height
 
         assertTrue(pane.preferredSize.height >= line * 24)
+    }
+
+    fun `test custom code block options cap editor height and enable vertical scrolling`() {
+        Disposer.dispose(view)
+        view = MdViewFactory.hybrid(
+            code = MdCodeBlockFactory.default(
+                MdCodeBlockOptions(
+                    border = MdCodeBlockBorder.Horizontal,
+                    maxLines = 3,
+                    verticalPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                    editorOnly = true,
+                ),
+            ),
+        )
+        val code = (1..12).joinToString("\n") { "val value$it = $it" }
+        view.set("```kotlin\n$code\n```")
+        val pane = scrolls().single()
+        val editor = editors().single()
+        val ins = pane.border.getBorderInsets(pane)
+        val chrome = pane.insets.top + pane.insets.bottom +
+            pane.viewportBorder.getBorderInsets(pane).top + pane.viewportBorder.getBorderInsets(pane).bottom +
+            pane.horizontalScrollBar.preferredSize.height
+
+        assertEquals(SessionUiStyle.View.Code.BORDER_WIDTH, ins.top)
+        assertEquals(SessionUiStyle.View.Code.BORDER_WIDTH, ins.bottom)
+        assertEquals(0, ins.left)
+        assertEquals(0, ins.right)
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, pane.verticalScrollBarPolicy)
+        assertTrue(editor.preferredSize.height > pane.preferredSize.height - chrome)
+        assertTrue(pane.preferredSize.height < editor.preferredSize.height + chrome)
     }
 
     fun `test fenced code block lays out to full editor height`() {
@@ -413,6 +443,22 @@ class MdViewHybridTest : BasePlatformTestCase() {
         view.set("```javascript\nconst value = 1\n```")
 
         assertSame(type("js"), editors().single().fileType)
+    }
+
+    fun `test shell code fence resolves shell file type`() {
+        view.set("```shell\necho hi\n```")
+
+        assertSame(type("sh"), editors().single().fileType)
+    }
+
+    fun `test shell script aliases resolve shell file type`() {
+        view.set("```shell script\necho hi\n```")
+
+        assertSame(type("sh"), editors().single().fileType)
+
+        view.set("```zsh\necho hi\n```")
+
+        assertSame(type("sh"), editors().single().fileType)
     }
 
     fun `test fenced code block ignores whitespace metadata`() {

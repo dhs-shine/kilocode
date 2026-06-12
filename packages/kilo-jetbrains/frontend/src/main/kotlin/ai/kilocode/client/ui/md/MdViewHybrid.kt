@@ -45,6 +45,7 @@ import javax.swing.text.html.StyleSheet
 internal class MdViewHybrid(
     style: SessionEditorStyle = SessionEditorStyle.current(),
     private var selection: SessionSelection? = null,
+    private val code: MdCodeBlockFactory = MdCodeBlockFactory.default(),
 ) : MdView {
     companion object {
         private val LOG = KiloLog.create(MdViewHybrid::class.java)
@@ -64,6 +65,8 @@ internal class MdViewHybrid(
             "sh" to "sh",
             "bash" to "sh",
             "shell" to "sh",
+            "zsh" to "sh",
+            "shellscript" to "sh",
             "json" to "json",
             "xml" to "xml",
             "html" to "html",
@@ -163,7 +166,6 @@ internal class MdViewHybrid(
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = true
         background = opts().background
-        border = JBUI.Borders.emptyLeft(JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING))
     }
 
     override val component: JComponent get() = root
@@ -497,22 +499,31 @@ internal class MdViewHybrid(
     private fun codeBlock(text: String, file: FileType, disposable: Disposable): JBScrollPane {
         val opts = opts()
         val value = text.trimEnd('\n')
-        val field = runCatching {
-            CodeField(file, opts, text).also { ed ->
-                Disposer.register(disposable) {
-                    ed.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
-                }
-                ed.setDisposedWith(disposable)
-                selection?.register(ed, disposable)
+        fun editor(type: FileType) = CodeField(type, opts, text).also { ed ->
+            Disposer.register(disposable) {
+                ed.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
             }
+            ed.setDisposedWith(disposable)
+            selection?.register(ed, disposable)
+        }
+        val field = runCatching {
+            editor(file)
         }.getOrElse { err ->
             LOG.warn("kind=markdown codeEditor=true failed message=${err.message}", err)
-            textArea(text, opts, disposable)
+            if (code.opts.editorOnly) runCatching {
+                editor(PlainTextFileType.INSTANCE)
+            }.getOrElse { fallback ->
+                LOG.warn("kind=markdown codeEditor=true fallback=plain failed message=${fallback.message}", fallback)
+                throw fallback
+            } else {
+                textArea(text, opts, disposable)
+            }
         }
         sizeCodeField(field, value)
         val pane = object : JBScrollPane(field) {
             override fun doLayout() {
                 super.doLayout()
+                if (code.opts.verticalPolicy != ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER) return
                 val view = viewport.view ?: return
                 val size = viewport.extentSize
                 if (size.height <= 0 || view.height == size.height) return
@@ -526,7 +537,11 @@ internal class MdViewHybrid(
 
     private fun styleCodePane(pane: JBScrollPane, opts: MdStyle) {
         pane.apply {
-            border = JBUI.Borders.customLine(opts.codeBorder, SessionUiStyle.View.Code.BORDER_WIDTH)
+            val width = SessionUiStyle.View.Code.BORDER_WIDTH
+            border = when (code.opts.border) {
+                MdCodeBlockBorder.All -> JBUI.Borders.customLine(opts.codeBorder, width)
+                MdCodeBlockBorder.Horizontal -> JBUI.Borders.customLine(opts.codeBorder, width, 0, width, 0)
+            }
             viewportBorder = JBUI.Borders.empty(
                 SessionUiStyle.View.Code.topPadding(),
                 SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING,
@@ -537,12 +552,14 @@ internal class MdViewHybrid(
             background = opts.preBg
             viewport.background = opts.preBg
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
-            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+            verticalScrollBarPolicy = code.opts.verticalPolicy
             isWheelScrollingEnabled = true
             setOverlappingScrollBar(false)
             horizontalScrollBar.preferredSize = Dimension(0, JBUI.scale(SessionUiStyle.View.Code.SCROLLBAR_HEIGHT))
             horizontalScrollBar.isOpaque = true
-            verticalScrollBar.preferredSize = JBUI.emptySize()
+            if (code.opts.verticalPolicy == ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER) {
+                verticalScrollBar.preferredSize = JBUI.emptySize()
+            }
         }
     }
 
@@ -556,7 +573,13 @@ internal class MdViewHybrid(
 
     private fun sizeCodePane(pane: JBScrollPane, component: JComponent) {
         val pad = pane.viewportBorder.getBorderInsets(pane)
-        val height = component.preferredSize.height + pane.insets.top + pane.insets.bottom +
+        val text = when (component) {
+            is CodeField -> component.text
+            is JBTextArea -> component.text
+            else -> ""
+        }
+        val content = visibleCodeHeight(component, text)
+        val height = content + pane.insets.top + pane.insets.bottom +
             pad.top + pad.bottom + pane.horizontalScrollBar.preferredSize.height
         pane.preferredSize = Dimension(0, height)
         pane.minimumSize = Dimension(0, height)
@@ -578,6 +601,21 @@ internal class MdViewHybrid(
             val ed = field.getEditor(false)
             val line = ed?.lineHeight ?: component.getFontMetrics(component.font).height
             return maxOf(field.preferredSize.height, line * rows)
+        }
+        val line = component.getFontMetrics(component.font).height
+        return line * rows
+    }
+
+    private fun visibleCodeHeight(component: JComponent, text: String): Int {
+        val max = code.opts.maxLines ?: return component.preferredSize.height
+        val count = text.lineSequence().count()
+        val rows = count.coerceAtLeast(SessionUiStyle.View.Code.MIN_ROWS).coerceAtMost(max)
+        val field = component as? CodeField
+        if (field != null) {
+            field.ensureWillComputePreferredSize()
+            val ed = field.getEditor(false)
+            val line = ed?.lineHeight ?: component.getFontMetrics(component.font).height
+            return line * rows
         }
         val line = component.getFontMetrics(component.font).height
         return line * rows
@@ -629,8 +667,14 @@ internal class MdViewHybrid(
     }
 
     private fun file(lang: String?): FileType {
-        val key = lang?.trim()?.split(Regex("\\s+"))?.firstOrNull()?.lowercase().orEmpty()
-        val ext = FILES[key] ?: return PlainTextFileType.INSTANCE
+        val key = lang?.trim()?.split(Regex("\\s+"))?.take(2)?.joinToString(" ")?.lowercase().orEmpty()
+        if (key == "shell script") return type("sh")
+        val single = key.substringBefore(' ')
+        val ext = FILES[key] ?: FILES[single] ?: return PlainTextFileType.INSTANCE
+        return type(ext)
+    }
+
+    private fun type(ext: String): FileType {
         val type = FileTypeRegistry.getInstance().getFileTypeByExtension(ext)
         if (type == UnknownFileType.INSTANCE) return PlainTextFileType.INSTANCE
         return type

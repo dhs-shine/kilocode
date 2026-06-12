@@ -17,7 +17,7 @@ import java.awt.BorderLayout
  */
 open class TextView(
     text: Text,
-    transparent: Boolean = false,
+    transparent: Boolean = true,
     openUrl: (String) -> Unit = {},
     selection: SessionSelection? = null,
 ) : PartView() {
