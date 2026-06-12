@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { ProviderInfo } from "../../src/kilo-provider-utils"
-import { filterPromptTrainingModels } from "../../src/provider-actions"
+import { filterPromptTrainingModels } from "../../src/kilo-provider/model-filter"
 
 const providers = [
   {

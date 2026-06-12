@@ -78,6 +78,7 @@ import {
   validAutocompleteSetting,
   watchAutocompleteConfig,
 } from "./services/autocomplete/settings"
+import { filterPromptTrainingModels } from "./kilo-provider/model-filter"
 import { buildModelSettingsMessage, validModelSetting, watchModelConfig } from "./kilo-provider/model-settings"
 import { routeEarlyMessage } from "./kilo-provider/early-message"
 import * as ModelState from "./kilo-provider/model-state"
@@ -127,7 +128,6 @@ import {
   buildActionContext,
   computeDefaultSelection,
   fetchProviderData,
-  filterPromptTrainingModels,
   validateRecents,
   validateFavorites,
   connectProvider as connectProviderAction,
