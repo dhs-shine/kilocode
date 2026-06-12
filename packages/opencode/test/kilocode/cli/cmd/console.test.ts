@@ -32,6 +32,7 @@ function dirs(root: string) {
     XDG_CONFIG_HOME: path.join(root, "xdg-config"),
     XDG_STATE_HOME: path.join(root, "xdg-state"),
     XDG_CACHE_HOME: path.join(root, "xdg-cache"),
+    KILO_TEST_DAEMON_EPHEMERAL_PORT: "1",
   }
 }
 

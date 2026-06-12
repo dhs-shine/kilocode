@@ -285,6 +285,7 @@ export namespace Daemon {
 
   async function port(input: Options) {
     if (input.port !== 0) return input.port
+    if (input.env?.KILO_TEST_DAEMON_EPHEMERAL_PORT) return 0
     const ports = Array.from({ length: PortRange.end - PortRange.start + 1 }, (_, index) => PortRange.start + index)
     const free = await Promise.any(
       ports.map((item) =>
