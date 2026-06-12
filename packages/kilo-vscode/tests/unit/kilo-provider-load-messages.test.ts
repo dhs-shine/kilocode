@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test"
+import { describe, it, expect, spyOn } from "bun:test"
 
 // vscode mock is provided by the shared preload (tests/setup/vscode-mock.ts)
 const { KiloProvider } = await import("../../src/KiloProvider")
@@ -43,12 +43,15 @@ function createClient(options?: {
   deleteDeferred?: Deferred<unknown>
   sessionData?: unknown
   sessionGet?: (params: { sessionID: string; directory?: string }) => Promise<{ data: unknown }>
+  abortFailures?: string[]
 }) {
   const calls: { before?: string; limit?: number }[] = []
   const stopped: { sessionID: string; directory?: string }[] = []
+  const aborted: { sessionID: string; directory?: string }[] = []
   return {
     calls,
     stopped,
+    aborted,
     session: {
       list: async () => ({ data: [] }),
       get: async (params: { sessionID: string; directory?: string }) => {
@@ -56,6 +59,11 @@ function createClient(options?: {
         return { data: options?.sessionData ?? null }
       },
       status: async () => ({ data: {} }),
+      abort: async (params: { sessionID: string; directory?: string }) => {
+        aborted.push(params)
+        if (params.directory && options?.abortFailures?.includes(params.directory)) throw new Error("abort failed")
+        return { data: true }
+      },
       messages: async (params: { before?: string; limit?: number }) => {
         calls.push({ before: params.before, limit: params.limit })
         if (options?.messagesDeferred) return options.messagesDeferred.promise
@@ -114,9 +122,11 @@ type ProviderInternals = {
   currentSession: { id: string; directory?: string } | null
   contextSessionID: string | undefined
   sessionDirectories: Map<string, string>
+  activeSessionDirectories: Map<string, Set<string>>
   trackedSessionIds: Set<string>
   stopCurrentSessionProcesses: (next?: string) => void
-  handleEvent: (event: unknown) => void
+  handleEvent: (event: unknown, directory?: string) => void
+  handleAbort: (sid?: string) => Promise<void>
   handleLoadMessages: (sid: string, opts?: { mode?: string; before?: string; limit?: number }) => Promise<void>
   handleDeleteSession: (sid: string) => Promise<void>
 }
@@ -134,6 +144,108 @@ function makeProvider(client: ReturnType<typeof createClient>) {
   }
   return { provider, internal, sent }
 }
+
+describe("KiloProvider.handleAbort", () => {
+  it("keeps the active owner when a running session moves to a worktree", async () => {
+    const client = createClient()
+    const { provider, internal } = makeProvider(client)
+    internal.handleEvent({
+      type: "session.status",
+      properties: { sessionID: "s1", status: { type: "busy" } },
+    })
+    provider.setSessionDirectory("s1", "/repo/worktree")
+
+    await internal.handleAbort("s1")
+
+    expect(client.aborted).toEqual([
+      { sessionID: "s1", directory: "/repo" },
+      { sessionID: "s1", directory: "/repo/worktree" },
+    ])
+  })
+
+  it("preserves a directory-qualified owner instead of inferring the current directory", async () => {
+    const client = createClient()
+    const { provider, internal } = makeProvider(client)
+    internal.handleEvent(
+      {
+        type: "session.status",
+        properties: { sessionID: "s1", status: { type: "busy" } },
+      },
+      "/repo/source",
+    )
+    provider.setSessionDirectory("s1", "/repo/worktree")
+
+    await internal.handleAbort("s1")
+
+    expect(client.aborted).toEqual([
+      { sessionID: "s1", directory: "/repo/source" },
+      { sessionID: "s1", directory: "/repo/worktree" },
+    ])
+  })
+
+  it("falls back to the current directory after the old owner becomes idle", async () => {
+    const client = createClient()
+    const { provider, internal } = makeProvider(client)
+    internal.handleEvent({
+      type: "session.status",
+      properties: { sessionID: "s1", status: { type: "busy" } },
+    })
+    provider.setSessionDirectory("s1", "/repo/worktree")
+    internal.handleEvent(
+      {
+        type: "session.status",
+        properties: { sessionID: "s1", status: { type: "idle" } },
+      },
+      "/repo",
+    )
+
+    await internal.handleAbort("s1")
+
+    expect(client.aborted).toEqual([{ sessionID: "s1", directory: "/repo/worktree" }])
+  })
+
+  it("deduplicates the current directory when it is also an active owner", async () => {
+    const client = createClient()
+    const { provider, internal } = makeProvider(client)
+    internal.trackedSessionIds.add("s1")
+    provider.setSessionDirectory("s1", "/repo/worktree")
+    internal.handleEvent(
+      {
+        type: "session.status",
+        properties: { sessionID: "s1", status: { type: "busy" } },
+      },
+      "/repo/worktree",
+    )
+
+    await internal.handleAbort("s1")
+
+    expect(client.aborted).toEqual([{ sessionID: "s1", directory: "/repo/worktree" }])
+  })
+
+  it("attempts every owner when one abort request fails", async () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    const client = createClient({ abortFailures: ["/repo"] })
+    const { provider, internal } = makeProvider(client)
+    internal.trackedSessionIds.add("s1")
+    internal.handleEvent(
+      {
+        type: "session.status",
+        properties: { sessionID: "s1", status: { type: "busy" } },
+      },
+      "/repo",
+    )
+    provider.setSessionDirectory("s1", "/repo/worktree")
+
+    await internal.handleAbort("s1")
+
+    expect(client.aborted).toEqual([
+      { sessionID: "s1", directory: "/repo" },
+      { sessionID: "s1", directory: "/repo/worktree" },
+    ])
+    expect(error).toHaveBeenCalledTimes(1)
+    error.mockRestore()
+  })
+})
 
 describe("KiloProvider.handleLoadMessages / focus mode freshness", () => {
   it("stops background processes for the previous session when switching sessions", async () => {
