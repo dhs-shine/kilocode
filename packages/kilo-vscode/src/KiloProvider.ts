@@ -3113,7 +3113,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     // Drop session events from other projects before any tracking logic.
     // This must come first: the trackedSessionIds guard below would otherwise
     // let a foreign session through if it was accidentally tracked.
-    if (!isLegacySyncEvent(event) && !isFullSessionUpdatedEvent(event) && isEventFromForeignProject(event, this.projectID))
+    if (
+      !isLegacySyncEvent(event) &&
+      !isFullSessionUpdatedEvent(event) &&
+      isEventFromForeignProject(event, this.projectID)
+    )
       return
     if (
       this.projectID &&
