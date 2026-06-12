@@ -239,7 +239,7 @@ class ShellBody(
     private fun styleShell() {
         val root = md.component as? JPanel ?: return
         root.components.filterIsInstance<JBHtmlPane>().forEach {
-            it.border = JBUI.Borders.emptyLeft(JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING))
+            it.border = JBUI.Borders.emptyLeft(JBUI.scale(SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING))
         }
     }
 
@@ -258,24 +258,38 @@ class ShellBody(
     override fun dispose() = Unit
 }
 
-private data class ShellContent(val command: String, val output: String, val error: String) {
-    constructor(tool: Tool) : this(command(tool), clean(output(tool)), clean(tool.error.orEmpty()))
+private data class ShellContent(
+    val command: String,
+    val output: String,
+    val error: String,
+    val rawOutput: String = output,
+    val rawError: String = error,
+) {
+    constructor(tool: Tool) : this(
+        command(tool),
+        clean(output(tool)),
+        clean(tool.error.orEmpty()),
+        output(tool),
+        tool.error.orEmpty(),
+    )
 
     val body: String = listOf(command, output, error).filter { it.isNotBlank() }.joinToString("\n\n")
 
     val markdown: String = buildString {
-        section(KiloBundle.message("session.part.tool.shell.command"), command)
-        section(KiloBundle.message("session.part.tool.shell.output"), output)
-        section(KiloBundle.message("session.part.tool.shell.error"), error)
+        section(KiloBundle.message("session.part.tool.shell.command"), command, "shell")
+        section(KiloBundle.message("session.part.tool.shell.output"), rawOutput, outputLang(rawOutput))
+        section(KiloBundle.message("session.part.tool.shell.error"), rawError, "ansi-stderr")
     }
 }
 
-private fun StringBuilder.section(title: String, text: String) {
+private fun outputLang(text: String): String = if (ANSI.containsMatchIn(text)) "ansi-stdout" else "shell-output"
+
+private fun StringBuilder.section(title: String, text: String, lang: String) {
     if (text.isBlank()) return
     if (isNotEmpty()) append("\n\n")
     val fence = fence(text)
-    append("### ").append(title).append("\n\n")
-    append(fence).append("shell\n")
+    append("**").append(title).append("**\n\n")
+    append(fence).append(lang).append("\n")
     append(text)
     if (!text.endsWith('\n')) append('\n')
     append(fence)
@@ -286,13 +300,27 @@ private fun fence(text: String): String {
     return "`".repeat(maxOf(3, size + 1))
 }
 
-private fun clean(text: String): String = normalize(strip(text))
+private fun clean(text: String): String = strip(normalize(text))
 
 private fun strip(text: String): String = ANSI.replace(text, "")
 
 private fun normalize(text: String): String = lines(text.replace("\r\n", "\n")).joinToString("\n") { line ->
-    if ('\r' !in line) return@joinToString line
-    frames(line).lastOrNull { it.isNotEmpty() } ?: ""
+    val frame = if ('\r' !in line) line else frames(line).lastOrNull { it.isNotEmpty() } ?: ""
+    backspace(frame)
+}
+
+private fun backspace(text: String): String {
+    val out = StringBuilder()
+    var idx = 0
+    while (idx < text.length) {
+        val ch = text[idx++]
+        if (ch == '\b') {
+            if (out.isNotEmpty()) out.deleteCharAt(out.length - 1)
+            continue
+        }
+        out.append(ch)
+    }
+    return out.toString()
 }
 
 private fun lines(text: String): List<String> {

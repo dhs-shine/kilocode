@@ -2,6 +2,8 @@ package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import com.intellij.execution.process.ProcessOutputTypes
+import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.CodeInsightColors
@@ -509,6 +511,107 @@ class MdViewHybridTest : BasePlatformTestCase() {
         view.set("```\nvalue\n```")
 
         assertSame(PlainTextFileType.INSTANCE, editors().single().fileType)
+    }
+
+    fun `test ansi stdout aliases render terminal plain text`() {
+        listOf("ansi", "ansi-stdout", "terminal-output").forEach { lang ->
+            view.set("```$lang\n\u001B[32mgreen\u001B[0m\n```")
+
+            assertSame(PlainTextFileType.INSTANCE, editors().single().fileType)
+            assertEquals("green", editors().single().text)
+            assertTrue(editors().single().getEditor(true)!!.markupModel.allHighlighters.isNotEmpty())
+        }
+    }
+
+    fun `test shell output renders plain text with semantic highlighters`() {
+        val output = """
+            475ab514 (HEAD -> main, origin/main, origin/HEAD) Bump kotlinSerialization from 1.10.0 to 1.11.0
+             gradle/libs.versions.toml | 2 +-
+            1 file changed, 1 insertion(+), 1 deletion(-)
+            e8b9785 Add second change
+             packages/kilo-jetbrains/frontend/src/main/kotlin/App.kt | 14 ++++++++++----
+            1 file changed, 10 insertions(+), 4 deletions(-)
+        """.trimIndent()
+        val display = """
+            475ab514 (HEAD -> main, origin/main, origin/HEAD) Bump kotlinSerialization from 1.10.0 to 1.11.0
+             gradle/libs.versions.toml | 2 +-
+            1 file changed, 1 insertion(+), 1 deletion(-)
+            
+            e8b9785 Add second change
+             packages/kilo-jetbrains/frontend/src/main/kotlin/App.kt | 14 ++++++++++----
+            1 file changed, 10 insertions(+), 4 deletions(-)
+        """.trimIndent()
+
+        view.set("```shell-output\n$output\n```")
+        val pane = scrolls().single()
+        val field = editors().single()
+        val editor = field.getEditor(true)!!
+        val spans = editor.markupModel.allHighlighters.map {
+            field.text.substring(it.startOffset, it.endOffset) to it.textAttributesKey
+        }
+
+        assertSame(PlainTextFileType.INSTANCE, field.fileType)
+        assertEquals("```shell-output\n$output\n```", view.markdown())
+        assertEquals(display, field.text)
+        assertTrue(spans.contains("475ab514" to DefaultLanguageHighlighterColors.NUMBER))
+        assertTrue(spans.contains("(HEAD -> main, origin/main, origin/HEAD)" to DefaultLanguageHighlighterColors.KEYWORD))
+        assertTrue(spans.contains("1 insertion(+)" to DefaultLanguageHighlighterColors.STRING))
+        assertTrue(spans.contains("1 deletion(-)" to DefaultLanguageHighlighterColors.LINE_COMMENT))
+        assertTrue(spans.contains("++++++++++" to DefaultLanguageHighlighterColors.STRING))
+        assertTrue(spans.contains("----" to DefaultLanguageHighlighterColors.LINE_COMMENT))
+        assertFalse(editor.settings.isUseSoftWraps)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, pane.horizontalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
+    }
+
+    fun `test ansi stderr aliases render terminal plain text`() {
+        listOf("ansi-stderr", "terminal-error", "shell-error").forEach { lang ->
+            view.set("```$lang\nboom\n```")
+            val editor = editors().single().getEditor(true)!!
+            val expected = ConsoleViewContentType.getConsoleViewType(ProcessOutputTypes.STDERR).attributesKey
+
+            assertSame(PlainTextFileType.INSTANCE, editors().single().fileType)
+            assertEquals("boom", editors().single().text)
+            assertEquals(expected, editor.markupModel.allHighlighters.single().textAttributesKey)
+        }
+    }
+
+    fun `test terminal block updates retained editor without soft wraps`() {
+        view.set("```ansi-stdout\none\n```")
+        val pane = scrolls().single()
+        val field = editors().single()
+        val editor = field.getEditor(true)!!
+
+        view.set("```ansi-stdout\ntwo\n```")
+
+        assertSame(pane, scrolls().single())
+        assertSame(field, editors().single())
+        assertEquals("two", field.text)
+        assertFalse(editor.settings.isUseSoftWraps)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, pane.horizontalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
+    }
+
+    fun `test terminal and source plain text blocks are incompatible`() {
+        view.set("```text\none\n```")
+        val source = editors().single().getEditor(true)!!
+
+        view.set("```ansi-stdout\none\n```")
+        drainEdt()
+
+        assertTrue(source.isDisposed)
+        assertEquals("one", editors().single().text)
+    }
+
+    fun `test ansi and shell output blocks are incompatible`() {
+        view.set("```ansi-stdout\none\n```")
+        val ansi = editors().single().getEditor(true)!!
+
+        view.set("```shell-output\none\n```")
+        drainEdt()
+
+        assertTrue(ansi.isDisposed)
+        assertEquals("one", editors().single().text)
     }
 
     fun `test fenced code block width is bounded and boxed`() {
