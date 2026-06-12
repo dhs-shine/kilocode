@@ -292,7 +292,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   window.addEventListener("exportSessionTranscript", onExport)
   onCleanup(() => window.removeEventListener("exportSessionTranscript", onExport))
 
-  const isBusy = () => isPromptBusy(session.status(), !!props.suggesting?.(), !!props.questioning?.())
+  const isBusy = () =>
+    isPromptBusy(session.status(), !!props.suggesting?.(), !!props.questioning?.(), session.submitting())
   const isDisabled = () => !server.isConnected()
   const canUseSpeech = () => canUseSpeechToText(config(), provider.connected(), server.profileData())
   const speechModel = () => selectedSpeechToTextModel(config())
