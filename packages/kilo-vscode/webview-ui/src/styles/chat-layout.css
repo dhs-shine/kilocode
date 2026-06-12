@@ -219,7 +219,13 @@
   [data-component="tool-part-wrapper"][data-part-type="text"]
   + [data-component="tool-part-wrapper"][data-part-type="tool"],
 .vscode-session-turn-assistant
+  [data-component="tool-part-wrapper"][data-part-type="text"]
+  + [data-component="tool-part-wrapper"][data-part-type="reasoning"],
+.vscode-session-turn-assistant
   [data-component="tool-part-wrapper"][data-part-type="tool"]
+  + [data-component="tool-part-wrapper"][data-part-type="text"],
+.vscode-session-turn-assistant
+  [data-component="tool-part-wrapper"][data-part-type="reasoning"]
   + [data-component="tool-part-wrapper"][data-part-type="text"] {
   margin-top: 6px;
 }

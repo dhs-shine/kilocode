@@ -18,7 +18,7 @@ import { ProviderContext } from "../context/provider"
 import { flattenModels, findModel as _findModel } from "../context/provider-utils"
 import { ConfigProvider, ConfigContext } from "../context/config"
 import { DisplayProvider } from "../context/display"
-import { DataProvider } from "@kilocode/kilo-ui/context/data"
+import { DataProvider, type OpenDiffFn, type OpenFileFn } from "@kilocode/kilo-ui/context/data"
 import { DiffComponentProvider } from "@kilocode/kilo-ui/context/diff"
 import { CodeComponentProvider } from "@kilocode/kilo-ui/context/code"
 import { FileComponentProvider } from "@kilocode/kilo-ui/context/file"
@@ -281,6 +281,8 @@ interface StoryProvidersProps {
   /** When provided, injects a mock ConfigContext with this config instead of the real ConfigProvider. */
   config?: Config
   onConfigChange?: (config: Config) => void
+  onOpenDiff?: OpenDiffFn
+  onOpenFile?: OpenFileFn
   kiloAuth?: boolean
   /** When true, renders children without the default 12px padding wrapper */
   noPadding?: boolean
@@ -372,7 +374,12 @@ export const StoryProviders: ParentComponent<StoryProvidersProps> = (props) => {
                         <SessionContext.Provider value={session as any}>
                           <IndexingProvider>
                             <KiloEmbeddingModelsProvider>
-                              <DataProvider data={data()} directory="/project/">
+                              <DataProvider
+                                data={data()}
+                                directory="/project/"
+                                onOpenDiff={props.onOpenDiff}
+                                onOpenFile={props.onOpenFile}
+                              >
                                 <DiffComponentProvider component={Diff}>
                                   <CodeComponentProvider component={Code}>
                                     <FileComponentProvider component={File}>
