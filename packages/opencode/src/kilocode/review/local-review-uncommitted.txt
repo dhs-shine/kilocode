@@ -75,13 +75,24 @@ Dead-code rules:
 
 1. Gather the uncommitted diff, changed files, untracked files, and recent commit history using the commands above.
 2. If there are no changes, use the no-changes output exactly as specified below.
-3. For non-trivial changes, spawn six sub-agents in parallel with the Task tool:
+3. Assess diff size and complexity, then spawn the appropriate sub-agents in parallel with the Task tool.
+
+   Count changed lines (additions + deletions) from the diff output and the number of distinct files changed. Use these thresholds:
+
+   **Small** (< 100 changed lines AND ≤ 3 files): spawn 1-2 sub-agents. Choose the 1-2 tracks most relevant to the nature of the change. Default priority order if unclear: security → business logic → deploy safety → performance → duplication → dead code.
+
+   **Medium** (100–300 changed lines OR 4–10 files): spawn 3-4 sub-agents. Always include security and business logic, then add the next most relevant tracks for the change type.
+
+   **Large or complex** (> 300 changed lines OR > 10 files OR changes span multiple architectural boundaries such as API + database + auth): spawn all six sub-agents:
    - security
    - performance
    - business logic
    - deploy safety
    - duplication
    - dead code
+
+   When the complexity signals are mixed (e.g., few files but security-sensitive code, or many files of pure test additions), adjust up or down by one tier using your judgment. Err toward fewer sub-agents for additive-only or test-only changes.
+
 4. Each sub-agent is research only. No sub-agent may edit files or produce the final user-facing review.
 5. Give each sub-agent the diff scope, current branch when available, and its track.
 6. Tell each sub-agent to return only high-confidence findings. Use this exact shape for each finding:
