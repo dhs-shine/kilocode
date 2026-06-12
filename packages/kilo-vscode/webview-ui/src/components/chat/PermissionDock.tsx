@@ -133,8 +133,7 @@ export const PermissionDock: Component<{
       "button, input, select, textarea, a[href], [contenteditable='true'], [role='button'], [role='menu'], [role='menuitem'], [role='listbox'], [role='option'], [role='combobox'], [role='textbox']",
     )
 
-  const plain = (e: KeyboardEvent) =>
-    isEnterKeyCommitNotIme(e) && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey
+  const plain = (e: KeyboardEvent) => isEnterKeyCommitNotIme(e) && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey
 
   const skip = (e: KeyboardEvent, target: Element | undefined) => {
     const local = !!target?.closest("[data-component='permission-shortcuts']")
