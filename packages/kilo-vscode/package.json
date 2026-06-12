@@ -942,21 +942,6 @@
           "default": false,
           "description": "Run browser automation in headless mode (no visible window). When disabled, you can watch the agent interact with the browser."
         },
-        "kilo-code.new.notifications.agent": {
-          "type": "boolean",
-          "default": false,
-          "description": "Show a notification when an agent completes while VS Code is unfocused"
-        },
-        "kilo-code.new.notifications.permissions": {
-          "type": "boolean",
-          "default": false,
-          "description": "Show a notification when a permission or question needs input while VS Code is unfocused"
-        },
-        "kilo-code.new.notifications.errors": {
-          "type": "boolean",
-          "default": false,
-          "description": "Show a notification when a session errors while VS Code is unfocused"
-        },
         "kilo-code.new.sounds.agentEnabled": {
           "type": "boolean",
           "default": false,
@@ -971,11 +956,6 @@
           "type": "boolean",
           "default": false,
           "description": "Play a sound when a session errors"
-        },
-        "kilo-code.new.sounds.playWhenFocused": {
-          "type": "boolean",
-          "default": false,
-          "description": "Also play sound notifications for the session currently visible in VS Code instead of only background sessions"
         },
         "kilo-code.new.sounds.agent": {
           "type": "string",

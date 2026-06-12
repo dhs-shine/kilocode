@@ -1234,15 +1234,6 @@ export const dict = {
   "settings.autocomplete.modelsHint":
     "Otomatik tamamlama için kullanılacak modeli seçmek için Modeller ayarlarına bakın.",
 
-  "settings.notifications.agent.title": "Ajan Tamamlanması",
-  "settings.notifications.agent.description": "Ajan bir görevi tamamladığında bildirim göster",
-  "settings.notifications.permissions.title": "İzin İstekleri",
-  "settings.notifications.permissions.description": "İzin isteklerinde bildirim göster",
-  "settings.notifications.errors.title": "Hatalar",
-  "settings.notifications.errors.description": "Hata oluştuğunda bildirim göster",
-  "settings.notifications.playWhenFocused.title": "Odaklandığında Sesleri Çal",
-  "settings.notifications.playWhenFocused.description": "VS Code penceresi odaklıyken bile ses bildirimlerine izin ver",
-  "settings.notifications.visual": "Görsel Bildirimler",
   "settings.notifications.sounds": "Sesli Bildirimler",
   "settings.notifications.agentSound.title": "Ajan Tamamlanma Sesi",
   "settings.notifications.agentSound.description": "Ajan tamamlandığında çalınacak ses",

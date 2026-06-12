@@ -1,4 +1,4 @@
-import { Component, Show, createSignal, onCleanup } from "solid-js"
+import { Component, createSignal, onCleanup } from "solid-js"
 import { Button } from "@kilocode/kilo-ui/button"
 import { Switch } from "@kilocode/kilo-ui/switch"
 import { Select } from "@kilocode/kilo-ui/select"
@@ -39,10 +39,6 @@ const NotificationsTab: Component = () => {
   const vscode = useVSCode()
   const language = useLanguage()
 
-  const [agentNotify, setAgentNotify] = createSignal(false)
-  const [permNotify, setPermNotify] = createSignal(false)
-  const [errorNotify, setErrorNotify] = createSignal(false)
-  const [playWhenFocused, setPlayWhenFocused] = createSignal(false)
   const [agentSoundEnabled, setAgentSoundEnabled] = createSignal(false)
   const [permSoundEnabled, setPermSoundEnabled] = createSignal(false)
   const [errorSoundEnabled, setErrorSoundEnabled] = createSignal(false)
@@ -53,10 +49,6 @@ const NotificationsTab: Component = () => {
   const unsubscribe = vscode.onMessage((message: ExtensionMessage) => {
     if (message.type !== "notificationSettingsLoaded") return
     const settings = message.settings
-    setAgentNotify(settings.notifyAgent)
-    setPermNotify(settings.notifyPermissions)
-    setErrorNotify(settings.notifyErrors)
-    setPlayWhenFocused(settings.playWhenFocused)
     setAgentSoundEnabled(settings.soundAgentEnabled)
     setPermSoundEnabled(settings.soundPermissionsEnabled)
     setErrorSoundEnabled(settings.soundErrorsEnabled)
@@ -124,57 +116,6 @@ const NotificationsTab: Component = () => {
 
   return (
     <div>
-      <h4 style={{ "margin-bottom": "8px" }}>{language.t("settings.notifications.visual")}</h4>
-      <Card>
-        <SettingsRow
-          title={language.t("settings.notifications.agent.title")}
-          description={language.t("settings.notifications.agent.description")}
-        >
-          <Switch
-            checked={agentNotify()}
-            onChange={(checked) => {
-              setAgentNotify(checked)
-              save("notifications.agent", checked)
-            }}
-            hideLabel
-          >
-            {language.t("settings.notifications.agent.title")}
-          </Switch>
-        </SettingsRow>
-        <SettingsRow
-          title={language.t("settings.notifications.permissions.title")}
-          description={language.t("settings.notifications.permissions.description")}
-        >
-          <Switch
-            checked={permNotify()}
-            onChange={(checked) => {
-              setPermNotify(checked)
-              save("notifications.permissions", checked)
-            }}
-            hideLabel
-          >
-            {language.t("settings.notifications.permissions.title")}
-          </Switch>
-        </SettingsRow>
-        <SettingsRow
-          title={language.t("settings.notifications.errors.title")}
-          description={language.t("settings.notifications.errors.description")}
-          last
-        >
-          <Switch
-            checked={errorNotify()}
-            onChange={(checked) => {
-              setErrorNotify(checked)
-              save("notifications.errors", checked)
-            }}
-            hideLabel
-          >
-            {language.t("settings.notifications.errors.title")}
-          </Switch>
-        </SettingsRow>
-      </Card>
-
-      <h4 style={{ "margin-top": "16px", "margin-bottom": "8px" }}>{language.t("settings.notifications.sounds")}</h4>
       <Card>
         <SettingsRow
           title={language.t("settings.notifications.agentSound.title")}
@@ -218,24 +159,6 @@ const NotificationsTab: Component = () => {
             language.t("settings.notifications.errorSound.title"),
           )}
         </SettingsRow>
-        <Show when={agentSoundEnabled() || permSoundEnabled() || errorSoundEnabled()}>
-          <SettingsRow
-            title={language.t("settings.notifications.playWhenFocused.title")}
-            description={language.t("settings.notifications.playWhenFocused.description")}
-            last
-          >
-            <Switch
-              checked={playWhenFocused()}
-              onChange={(checked) => {
-                setPlayWhenFocused(checked)
-                save("sounds.playWhenFocused", checked)
-              }}
-              hideLabel
-            >
-              {language.t("settings.notifications.playWhenFocused.title")}
-            </Switch>
-          </SettingsRow>
-        </Show>
       </Card>
     </div>
   )

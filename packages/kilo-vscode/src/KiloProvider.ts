@@ -243,7 +243,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
   private webview: vscode.Webview | null = null
   private currentSession: Session | null = null
-  private viewActive = true
   /** Remembers the last selected session so /new can stay in the same worktree after clearSession. */
   private contextSessionID: string | undefined
   private connectionState: "connecting" | "connected" | "disconnected" | "error" = "connecting"
@@ -379,23 +378,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   }
   private focusSession(id?: string): void {
     this.streams.focus(id)
-    if (id && this.viewActive) this.connectionService.registerFocused(this.instanceId, id)
-    else this.connectionService.unregisterFocused(this.instanceId)
-  }
-
-  private setViewActive(active: boolean): void {
-    this.viewActive = active
-    if (!active) {
-      this.connectionService.unregisterFocused(this.instanceId)
-      return
-    }
-    const id = this.contextSessionID ?? this.currentSession?.id
     if (id) this.connectionService.registerFocused(this.instanceId, id)
+    else this.connectionService.unregisterFocused(this.instanceId)
   }
 
   public setStreamVisibility(active: boolean): void {
     this.visibleTaskStreams.setActive(active)
-    this.setViewActive(active)
   }
 
   public setProjectDirectory(directory: string | null): void {
@@ -608,11 +596,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     this.setupWebviewMessageHandler(panel.webview)
     this.viewStateDisposable?.dispose()
-    this.viewStateDisposable = this.visibleTaskStreams.bindPanel(panel, () => {
-      this.setViewActive(panel.active)
-      this.focusSession(panel.active ? this.currentSession?.id : undefined)
-    })
-    this.setViewActive(panel.active)
+    this.viewStateDisposable = this.visibleTaskStreams.bindPanel(panel, () =>
+      this.focusSession(panel.active ? this.currentSession?.id : undefined),
+    )
     this.initializeConnection()
   }
 
@@ -2307,19 +2293,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.connectionService.notifyNotificationDismissed(notificationId)
   }
 
-  /**
-   * Read notification/sound settings from VS Code config and push to webview.
-   */
+  /** Read sound settings from VS Code config and push to webview. */
   private sendNotificationSettings(): void {
-    const notifications = vscode.workspace.getConfiguration("kilo-code.new.notifications")
     const sounds = vscode.workspace.getConfiguration("kilo-code.new.sounds")
     this.postMessage({
       type: "notificationSettingsLoaded",
       settings: {
-        notifyAgent: notifications.get<boolean>("agent", false),
-        notifyPermissions: notifications.get<boolean>("permissions", false),
-        notifyErrors: notifications.get<boolean>("errors", false),
-        playWhenFocused: sounds.get<boolean>("playWhenFocused", false),
         soundAgentEnabled: sounds.get<boolean>("agentEnabled", false),
         soundPermissionsEnabled: sounds.get<boolean>("permissionsEnabled", false),
         soundErrorsEnabled: sounds.get<boolean>("errorsEnabled", false),
@@ -2443,7 +2422,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.stopCurrentSessionProcesses(session.id)
       this.setCurrentSession(session)
       this.contextSessionID = session.id
-      this.focusSession(session.id)
       this.trackDirectory(session.id, dir)
       this.trackedSessionIds.add(session.id)
       this.postMessage({

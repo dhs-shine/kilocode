@@ -486,10 +486,6 @@ export interface GlobalConfigLoadedMessage {
 export interface NotificationSettingsLoadedMessage {
   type: "notificationSettingsLoaded"
   settings: {
-    notifyAgent: boolean
-    notifyPermissions: boolean
-    notifyErrors: boolean
-    playWhenFocused: boolean
     soundAgentEnabled: boolean
     soundPermissionsEnabled: boolean
     soundErrorsEnabled: boolean

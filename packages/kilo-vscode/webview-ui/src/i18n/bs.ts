@@ -1247,16 +1247,6 @@ export const dict = {
   "settings.autocomplete.chatAutocomplete.description": "Prikaži prijedloge automatskog dovršavanja u polju chata",
   "settings.autocomplete.modelsHint":
     "Da odaberete koji se model koristi za automatsko dovršavanje, pogledajte postavke Modela.",
-  "settings.notifications.agent.title": "Završetak agenta",
-  "settings.notifications.agent.description": "Prikaži obavijest kada agent završi zadatak",
-  "settings.notifications.permissions.title": "Zahtjevi za dozvolu",
-  "settings.notifications.permissions.description": "Prikaži obavijest pri zahtjevima za dozvolu",
-  "settings.notifications.errors.title": "Greške",
-  "settings.notifications.errors.description": "Prikaži obavijest pri greškama",
-  "settings.notifications.playWhenFocused.title": "Reproduciraj zvukove prilikom fokusa",
-  "settings.notifications.playWhenFocused.description":
-    "Omogući zvučne obavijesti čak i kad je VS Code prozor fokusiran",
-  "settings.notifications.visual": "Vizuelna obavještenja",
   "settings.notifications.sounds": "Zvučna obavještenja",
   "settings.notifications.agentSound.title": "Zvuk završetka agenta",
   "settings.notifications.agentSound.description": "Zvuk pri završetku agenta",

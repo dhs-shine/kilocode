@@ -1246,16 +1246,6 @@ export const dict = {
   "settings.autocomplete.chatAutocomplete.description": "Mostrar sugestões de autocompletar no campo de chat",
   "settings.autocomplete.modelsHint":
     "Para escolher qual modelo é usado para autocompletar, veja as configurações de Modelos.",
-  "settings.notifications.agent.title": "Conclusão do agente",
-  "settings.notifications.agent.description": "Mostrar notificação quando o agente conclui uma tarefa",
-  "settings.notifications.permissions.title": "Solicitações de permissão",
-  "settings.notifications.permissions.description": "Mostrar notificação em solicitações de permissão",
-  "settings.notifications.errors.title": "Erros",
-  "settings.notifications.errors.description": "Mostrar notificação em erros",
-  "settings.notifications.playWhenFocused.title": "Reproduzir sons quando focado",
-  "settings.notifications.playWhenFocused.description":
-    "Permitir notificações sonoras mesmo quando a janela do VS Code estiver focada",
-  "settings.notifications.visual": "Notificações visuais",
   "settings.notifications.sounds": "Notificações sonoras",
   "settings.notifications.agentSound.title": "Som de conclusão do agente",
   "settings.notifications.agentSound.description": "Som ao concluir o agente",

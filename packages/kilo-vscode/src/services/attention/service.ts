@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 import type { KiloConnectionService } from "../cli-backend/connection-service"
-import { AttentionTracker, delivery, toAttentionSignal, type AttentionKind, type AttentionNotice } from "./attention"
+import { AttentionTracker, toAttentionSignal, type AttentionKind, type AttentionNotice } from "./attention"
 import { playSound, resolveSoundID } from "./sound"
 
 export type AttentionSetting = "agent" | "permissions" | "errors"
@@ -17,14 +17,6 @@ function fallback(kind: AttentionSetting): AttentionKind {
   return "done"
 }
 
-function clean(value: string | undefined) {
-  return (value ?? "Kilo session")
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 80)
-}
-
 export function previewSound(kind: AttentionSetting, value: string) {
   const id = resolveSoundID(value, fallback(kind))
   if (id) void playSound(id)
@@ -34,13 +26,8 @@ export class AttentionService implements vscode.Disposable {
   private readonly tracker = new AttentionTracker()
   private readonly unsubscribeEvent: () => void
   private readonly unsubscribeState: () => void
-  private readonly focus: vscode.Disposable
-  private appFocused = vscode.window.state.focused
 
-  constructor(private readonly connection: KiloConnectionService) {
-    this.focus = vscode.window.onDidChangeWindowState((state) => {
-      this.appFocused = state.focused
-    })
+  constructor(connection: KiloConnectionService) {
     this.unsubscribeEvent = connection.onEvent((event) => {
       const signal = toAttentionSignal(event)
       if (!signal) return
@@ -55,34 +42,15 @@ export class AttentionService implements vscode.Disposable {
   dispose() {
     this.unsubscribeEvent()
     this.unsubscribeState()
-    this.focus.dispose()
     this.tracker.dispose()
   }
 
   private notify(notice: AttentionNotice) {
     const key = setting(notice.kind)
-    const notifications = vscode.workspace.getConfiguration("kilo-code.new.notifications")
     const sounds = vscode.workspace.getConfiguration("kilo-code.new.sounds")
+    if (!sounds.get<boolean>(`${key}Enabled`, false)) return
     const value = sounds.get<string>(key, "system")
     const id = resolveSoundID(value, notice.kind)
-    const result = delivery({
-      appFocused: this.appFocused,
-      sessionFocused: this.connection.isSessionFocused(notice.sessionID),
-      subagent: notice.subagent,
-      notifications: notifications.get<boolean>(key, false),
-      sound: sounds.get<boolean>(`${key}Enabled`, false) && id !== undefined,
-      playWhenFocused: sounds.get<boolean>("playWhenFocused", false),
-    })
-
-    if (result.sound && id) void playSound(id)
-    if (!result.notification) return
-
-    const message = `${clean(notice.title)}: ${notice.message}`
-    console.debug("[Kilo New] attention notification shown", { kind: notice.kind, sessionID: notice.sessionID })
-    if (notice.kind === "error") {
-      void vscode.window.showErrorMessage(message)
-      return
-    }
-    void vscode.window.showInformationMessage(message)
+    if (id) void playSound(id)
   }
 }

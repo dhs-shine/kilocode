@@ -33,22 +33,6 @@ type StatusSignal = Extract<AttentionSignal, { type: "status" }>
 type RequestSignal = Extract<AttentionSignal, { type: "question" | "permission" }>
 type ErrorSignal = Extract<AttentionSignal, { type: "error" }>
 
-type DeliveryInput = {
-  appFocused: boolean
-  sessionFocused: boolean
-  subagent: boolean
-  notifications: boolean
-  sound: boolean
-  playWhenFocused: boolean
-}
-
-export function delivery(input: DeliveryInput) {
-  return {
-    notification: input.notifications && !input.appFocused && !input.subagent,
-    sound: input.sound && (input.playWhenFocused || !input.appFocused || !input.sessionFocused),
-  }
-}
-
 export function sessionErrorMessage(error: unknown) {
   if (!error || typeof error !== "object") return "Session error"
   if ("name" in error && error.name === "MessageAbortedError") return "Session aborted"

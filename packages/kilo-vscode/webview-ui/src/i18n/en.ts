@@ -1226,17 +1226,6 @@ export const dict = {
   "settings.autocomplete.chatAutocomplete.description": "Show autocomplete suggestions in the chat textarea",
   "settings.autocomplete.modelsHint": "To choose which model is used for autocompletions, see the Models settings.",
 
-  "settings.notifications.agent.title": "Agent Completion",
-  "settings.notifications.agent.description": "Show a notification when an agent completes while VS Code is unfocused",
-  "settings.notifications.permissions.title": "Permission Requests",
-  "settings.notifications.permissions.description":
-    "Show a notification when a permission or question needs input while VS Code is unfocused",
-  "settings.notifications.errors.title": "Errors",
-  "settings.notifications.errors.description": "Show a notification when a session errors while VS Code is unfocused",
-  "settings.notifications.playWhenFocused.title": "Also Play for the Active Session",
-  "settings.notifications.playWhenFocused.description":
-    "Sounds normally play only for background sessions. Enable this to also play for the active session",
-  "settings.notifications.visual": "Visual Notifications",
   "settings.notifications.sounds": "Sound Notifications",
   "settings.notifications.agentSound.title": "Agent Completion Sound",
   "settings.notifications.agentSound.description": "Sound to play when agent completes",

@@ -1086,13 +1086,6 @@ export const dict = {
   "settings.autocomplete.chatAutocomplete.title": "Abilita autocompletamento textarea chat",
   "settings.autocomplete.chatAutocomplete.description":
     "Mostra suggerimenti di autocompletamento nella textarea della chat",
-  "settings.notifications.agent.title": "Completamento agente",
-  "settings.notifications.agent.description": "Mostra una notifica quando l'agente completa un task",
-  "settings.notifications.permissions.title": "Richieste autorizzazione",
-  "settings.notifications.permissions.description": "Mostra una notifica per le richieste di autorizzazione",
-  "settings.notifications.errors.title": "Errori",
-  "settings.notifications.errors.description": "Mostra una notifica per gli errori",
-  "settings.notifications.visual": "Notifiche visive",
   "settings.notifications.sounds": "Notifiche sonore",
   "settings.notifications.agentSound.title": "Suono completamento agente",
   "settings.notifications.agentSound.description": "Suono da riprodurre quando l'agente completa un task",
@@ -1100,9 +1093,6 @@ export const dict = {
   "settings.notifications.permSound.description": "Suono da riprodurre per le richieste di autorizzazione",
   "settings.notifications.errorSound.title": "Suono errore",
   "settings.notifications.errorSound.description": "Suono da riprodurre per gli errori",
-  "settings.notifications.playWhenFocused.title": "Riproduci suoni quando è in focus",
-  "settings.notifications.playWhenFocused.description":
-    "Consenti notifiche audio anche quando la finestra di VS Code è in primo piano",
   "settings.notifications.sound.default": "Predefinito",
   "settings.notifications.sound.none": "Nessuno",
   "settings.notifications.sound.system": "Sistema",

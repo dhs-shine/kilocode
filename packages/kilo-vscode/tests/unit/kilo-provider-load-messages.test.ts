@@ -43,7 +43,6 @@ function createClient(options?: {
   deleteDeferred?: Deferred<unknown>
   sessionData?: unknown
   sessionGet?: (params: { sessionID: string; directory?: string }) => Promise<{ data: unknown }>
-  sessionCreate?: () => Promise<{ data: unknown }>
 }) {
   const calls: { before?: string; limit?: number }[] = []
   const stopped: { sessionID: string; directory?: string }[] = []
@@ -52,7 +51,6 @@ function createClient(options?: {
     stopped,
     session: {
       list: async () => ({ data: [] }),
-      create: async () => options?.sessionCreate?.() ?? { data: null },
       get: async (params: { sessionID: string; directory?: string }) => {
         if (options?.sessionGet) return options.sessionGet(params)
         return { data: options?.sessionData ?? null }
@@ -86,9 +84,7 @@ function createClient(options?: {
 }
 
 function createConnection(client: ReturnType<typeof createClient>) {
-  const focused: string[] = []
   return {
-    focused,
     connect: async () => {},
     getClient: () => client,
     onEventFiltered: () => () => undefined,
@@ -107,7 +103,7 @@ function createConnection(client: ReturnType<typeof createClient>) {
     recordMessageSessionId: () => undefined,
     notifyNotificationDismissed: () => undefined,
     pruneSession: () => undefined,
-    registerFocused: (_key: string, id: string) => focused.push(id),
+    registerFocused: () => undefined,
     unregisterFocused: () => undefined,
   }
 }
@@ -123,7 +119,6 @@ type ProviderInternals = {
   handleEvent: (event: unknown) => void
   handleLoadMessages: (sid: string, opts?: { mode?: string; before?: string; limit?: number }) => Promise<void>
   handleDeleteSession: (sid: string) => Promise<void>
-  resolveSession: () => Promise<{ sid: string; dir: string } | undefined>
 }
 
 function makeProvider(client: ReturnType<typeof createClient>) {
@@ -137,20 +132,8 @@ function makeProvider(client: ReturnType<typeof createClient>) {
       sent.push(message)
     },
   }
-  return { provider, internal, sent, focused: connection.focused }
+  return { provider, internal, sent }
 }
-
-describe("KiloProvider session focus", () => {
-  it("registers a newly created session as focused", async () => {
-    const session = { id: "s-new", directory: "/repo", time: { created: 1, updated: 1 } }
-    const client = createClient({ sessionCreate: async () => ({ data: session }) })
-    const { internal, focused } = makeProvider(client)
-
-    await internal.resolveSession()
-
-    expect(focused).toContain("s-new")
-  })
-})
 
 describe("KiloProvider.handleLoadMessages / focus mode freshness", () => {
   it("stops background processes for the previous session when switching sessions", async () => {

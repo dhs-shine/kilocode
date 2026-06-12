@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import {
   AttentionTracker,
-  delivery,
   sessionErrorMessage,
   type AttentionNotice,
   type AttentionSignal,
@@ -96,78 +95,16 @@ describe("sessionErrorMessage", () => {
   })
 })
 
-describe("delivery", () => {
-  it("shows root notifications only while VS Code is blurred", () => {
-    expect(
-      delivery({
-        appFocused: false,
-        sessionFocused: true,
-        subagent: false,
-        notifications: true,
-        sound: true,
-        playWhenFocused: false,
-      }),
-    ).toEqual({ notification: true, sound: true })
-
-    expect(
-      delivery({
-        appFocused: true,
-        sessionFocused: true,
-        subagent: false,
-        notifications: true,
-        sound: true,
-        playWhenFocused: false,
-      }),
-    ).toEqual({ notification: false, sound: false })
-  })
-
-  it("plays sounds for background sessions and keeps subagent notifications silent", () => {
-    expect(
-      delivery({
-        appFocused: true,
-        sessionFocused: false,
-        subagent: true,
-        notifications: true,
-        sound: true,
-        playWhenFocused: false,
-      }),
-    ).toEqual({ notification: false, sound: true })
-  })
-
-  it("keeps visual and sound preferences independent", () => {
-    expect(
-      delivery({
-        appFocused: false,
-        sessionFocused: false,
-        subagent: false,
-        notifications: false,
-        sound: true,
-        playWhenFocused: false,
-      }),
-    ).toEqual({ notification: false, sound: true })
-    expect(
-      delivery({
-        appFocused: false,
-        sessionFocused: false,
-        subagent: false,
-        notifications: true,
-        sound: false,
-        playWhenFocused: true,
-      }),
-    ).toEqual({ notification: true, sound: false })
-  })
-})
-
-describe("notification defaults", () => {
-  it("keeps visual and sound notifications opt-in", async () => {
+describe("sound defaults", () => {
+  it("keeps every sound category opt-in", async () => {
     const manifest = (await Bun.file(new URL("../../package.json", import.meta.url)).json()) as {
       contributes: { configuration: { properties: Record<string, { default?: unknown; enum?: unknown[] }> } }
     }
     const properties = manifest.contributes.configuration.properties
 
-    expect(properties["kilo-code.new.notifications.agent"]?.default).toBe(false)
-    expect(properties["kilo-code.new.notifications.permissions"]?.default).toBe(false)
-    expect(properties["kilo-code.new.notifications.errors"]?.default).toBe(false)
+    expect(properties["kilo-code.new.notifications.agent"]).toBeUndefined()
+    expect(properties["kilo-code.new.notifications.permissions"]).toBeUndefined()
+    expect(properties["kilo-code.new.notifications.errors"]).toBeUndefined()
     expect(properties["kilo-code.new.sounds.agentEnabled"]?.default).toBe(false)
     expect(properties["kilo-code.new.sounds.permissionsEnabled"]?.default).toBe(false)
     expect(properties["kilo-code.new.sounds.errorsEnabled"]?.default).toBe(false)

@@ -1234,16 +1234,6 @@ export const dict = {
   "settings.autocomplete.chatAutocomplete.description": "Показувати підказки автодоповнення в полі введення чату",
   "settings.autocomplete.modelsHint": "Щоб вибрати модель для автодоповнення, див. Налаштування моделей.",
 
-  "settings.notifications.agent.title": "Завершення агента",
-  "settings.notifications.agent.description": "Показувати сповіщення, коли агент завершить завдання",
-  "settings.notifications.permissions.title": "Запити дозволів",
-  "settings.notifications.permissions.description": "Показувати сповіщення при запитах дозволів",
-  "settings.notifications.errors.title": "Помилки",
-  "settings.notifications.errors.description": "Показувати сповіщення при виникненні помилок",
-  "settings.notifications.playWhenFocused.title": "Відтворювати звуки при фокусі",
-  "settings.notifications.playWhenFocused.description":
-    "Дозволяти звукові сповіщення, навіть коли вікно VS Code знаходиться на фокусі",
-  "settings.notifications.visual": "Візуальні сповіщення",
   "settings.notifications.sounds": "Звукові сповіщення",
   "settings.notifications.agentSound.title": "Звук завершення агента",
   "settings.notifications.agentSound.description": "Звук, що відтворюється після завершення агента",

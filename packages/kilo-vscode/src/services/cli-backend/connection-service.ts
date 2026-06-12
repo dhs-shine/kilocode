@@ -452,14 +452,6 @@ export class KiloConnectionService {
     this.flushViewed()
   }
 
-  /** Whether any Kilo surface currently has this session selected. */
-  isSessionFocused(sessionID: string): boolean {
-    for (const id of this.focused.values()) {
-      if (id === sessionID) return true
-    }
-    return false
-  }
-
   /** Debounced: send the aggregated focused + open session IDs to the server. */
   flushViewed(): void {
     if (!this.isRemoteEnabled()) return
