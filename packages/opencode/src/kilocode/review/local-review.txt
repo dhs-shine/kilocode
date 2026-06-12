@@ -106,6 +106,7 @@ Rules for the dead code track (apply only when this track is active):
 
 - Only flag code that the reviewed changes themselves leave unused, unreachable, or obsolete.
 - Do not flag dead code that already existed before the branch diff.
+- Also flag functions or files that the reviewed changes make noticeably larger than comparable ones in the codebase; infer what is typical by sampling similar files or functions in the repo rather than applying a hard line-count threshold.
 
 ---
 
