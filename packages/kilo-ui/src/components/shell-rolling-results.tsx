@@ -12,7 +12,7 @@ import { TextShimmer } from "./text-shimmer"
 import { Tooltip } from "./tooltip"
 import { GROW_SPRING } from "./motion"
 import { useSpring } from "./motion-spring"
-import { busy, createThrottledValue, updateScrollMask, useCollapsible, useRowWipe, useToolFade } from "./tool-utils"
+import { busy, createThrottledValue, updateScrollMask, useRowWipe, useToolFade } from "./tool-utils"
 import { readToolOpen, toolOpenKey, writeToolOpen } from "./tool-open-state"
 
 function ShellRollingSubtitle(props: { text: string; animate?: boolean }) {
@@ -88,8 +88,6 @@ function ShellExpanded(props: { cmd: string; out: string; open: boolean }) {
   const rowHeight = 22
   const max = rows * rowHeight
 
-  let contentRef: HTMLDivElement | undefined
-  let bodyRef: HTMLDivElement | undefined
   let scrollRef: HTMLDivElement | undefined
   let topRef: HTMLDivElement | undefined
   const [copied, setCopied] = createSignal(false)
@@ -104,11 +102,6 @@ function ShellExpanded(props: { cmd: string; out: string; open: boolean }) {
     setCap(Math.max(rowHeight * 2, max - top - (props.out ? 1 : 0)))
   }
 
-  const measure = () => {
-    resize()
-    return Math.ceil(bodyRef?.getBoundingClientRect().height ?? 0)
-  }
-
   onMount(() => {
     resize()
     if (!topRef) return
@@ -120,18 +113,11 @@ function ShellExpanded(props: { cmd: string; out: string; open: boolean }) {
   createEffect(() => {
     props.cmd
     props.out
+    if (!props.open) return
     queueMicrotask(() => {
       resize()
       updateMask()
     })
-  })
-
-  useCollapsible({
-    content: () => contentRef,
-    body: () => bodyRef,
-    open: () => props.open,
-    measure,
-    onOpen: updateMask,
   })
 
   const handleCopy = async (e: MouseEvent) => {
@@ -145,8 +131,14 @@ function ShellExpanded(props: { cmd: string; out: string; open: boolean }) {
   }
 
   return (
-    <div ref={contentRef} style={{ overflow: "clip", height: "0px", display: "none" }}>
-      <div ref={bodyRef} data-component="shell-expanded-shell">
+    <div
+      style={{
+        overflow: "clip",
+        height: props.open ? "auto" : "0px",
+        display: props.open ? "block" : "none",
+      }}
+    >
+      <div data-component="shell-expanded-shell">
         <div data-slot="shell-expanded-body">
           <div ref={topRef} data-slot="shell-expanded-top">
             <div data-slot="shell-expanded-command">

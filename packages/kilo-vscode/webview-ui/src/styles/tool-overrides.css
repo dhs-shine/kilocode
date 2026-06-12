@@ -47,7 +47,9 @@
 [data-slot="background-process-output"] {
   margin: 0;
   font: inherit;
-  font-family: var(--font-mono);
+  font-family: var(--font-family-mono);
+  font-size: var(--kilo-font-size-12);
+  line-height: var(--line-height-large);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

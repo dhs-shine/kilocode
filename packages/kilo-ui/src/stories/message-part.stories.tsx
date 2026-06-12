@@ -1,6 +1,6 @@
 /** @jsxImportSource solid-js */
 import type { Meta, StoryObj } from "storybook-solidjs-vite"
-import { UserMessageDisplay, AssistantParts } from "../components/message-part"
+import { UserMessageDisplay, AssistantParts, Part } from "../components/message-part"
 import { DataProvider } from "@opencode-ai/ui/context/data"
 import { DiffComponentProvider } from "@kilocode/kilo-ui/context/diff"
 import { CodeComponentProvider } from "@kilocode/kilo-ui/context/code"
@@ -274,6 +274,38 @@ const mockDataContextGroup = createMockData([completedToolPart, grepCompleted, g
 const mockDataEdit = createMockData([editCompletedPart])
 const mockDataWrite = createMockData([writeCompletedPart])
 
+const vscodeReadPart: ToolPart = {
+  ...completedToolPart,
+  id: "part-vscode-read-001",
+  callID: "call-vscode-read-001",
+  state: {
+    ...completedToolPart.state,
+    input: {
+      filePath: "/Users/helios/.superconductor/worktrees/kilo-code/sc-zero-helium-f589/packages/kilo-vscode/AGENTS.md",
+      offset: 1,
+      limit: 200,
+    },
+    metadata: {
+      loaded: ["/project/packages/kilo-vscode/AGENTS.md"],
+    },
+  },
+}
+
+const vscodeGlobPart: ToolPart = {
+  ...globCompleted,
+  id: "part-vscode-glob-001",
+  callID: "call-vscode-glob-001",
+  state: {
+    ...globCompleted.state,
+    input: {
+      path: "/Users/helios/.superconductor/worktrees/kilo-code/sc-zero-helium-f589",
+      pattern: "packages/kilo-vscode/webview-ui/src/**/*.tsx",
+    },
+  },
+}
+
+const vscodeToolParts = [vscodeGlobPart, vscodeGlobPart, vscodeGlobPart, vscodeReadPart]
+
 function AllProviders(props: { children: any; data?: MockData; onOpenDiff?: () => void }) {
   return (
     <DataProvider data={props.data ?? mockData} directory="/project" onOpenDiff={props.onOpenDiff}>
@@ -322,6 +354,25 @@ export const AssistantMessageStory: Story = {
   render: () => (
     <AllProviders>
       <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+}
+
+export const VscodeToolBlocks: Story = {
+  globals: { theme: "kilo-vscode", vscodeTheme: "dark-modern" },
+  render: () => (
+    <AllProviders>
+      <div style={{ display: "flex", "flex-direction": "column", gap: "8px", width: "700px" }}>
+        <p style={{ margin: 0, color: "var(--text-base)", "font-size": "16px", "line-height": "1.5" }}>
+          I’ll inspect the UI test setup and existing patterns first, then identify the smallest relevant test change
+          to make.
+        </p>
+        <div style={{ display: "flex", "flex-direction": "column", gap: "2px" }}>
+          {vscodeToolParts.map((part) => (
+            <Part part={part} message={mockAssistantMessage} />
+          ))}
+        </div>
+      </div>
     </AllProviders>
   ),
 }

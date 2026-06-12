@@ -56,8 +56,6 @@ import { ShellRollingResults } from "./shell-rolling-results"
 import { reasoningHeading } from "./reasoning-heading"
 import { extractFilePathFromHref } from "../file-path"
 import { normalize } from "./session-diff"
-import { deferredHighlight } from "../context/marked"
-import { escapeHtml } from "../util/escape-html"
 
 // Windows CLI tools (e.g. winget) use \r to overwrite progress bars in-place.
 // Without this, every progress frame renders as a separate visual line.
@@ -1846,7 +1844,7 @@ ToolRegistry.register({
       >
         <Show when={props.output}>
           {(output) => (
-            <div data-component="tool-output" data-scrollable>
+            <div data-component="tool-output" data-variant="preview" data-scrollable>
               <Markdown text={output()} />
             </div>
           )}
@@ -1877,7 +1875,7 @@ ToolRegistry.register({
       >
         <Show when={props.output}>
           {(output) => (
-            <div data-component="tool-output" data-scrollable>
+            <div data-component="tool-output" data-variant="preview" data-scrollable>
               <Markdown text={output()} />
             </div>
           )}
@@ -1911,7 +1909,7 @@ ToolRegistry.register({
       >
         <Show when={props.output}>
           {(output) => (
-            <div data-component="tool-output" data-scrollable>
+            <div data-component="tool-output" data-variant="preview" data-scrollable>
               <Markdown text={output()} />
             </div>
           )}
@@ -2111,37 +2109,6 @@ function BashCopyButton(props: { value: () => string; label: string }) {
 function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?: string; active?: boolean }) {
   const data = useData()
   const i18n = useI18n()
-  const cmdState = { signal: { aborted: false } }
-  const outState = { signal: { aborted: false } }
-  let cmdRef: HTMLDivElement | undefined
-  let outRef: HTMLDivElement | undefined
-
-  createEffect(() => {
-    cmdState.signal.aborted = true
-    if (!props.active) return
-    const cmd = props.cmd
-    if (!cmdRef || !cmd) return
-    const signal = { aborted: false }
-    cmdState.signal = signal
-    cmdRef.innerHTML = `<pre data-slot="bash-pre"><code data-lang="shellscript">${escapeHtml(cmd)}</code></pre>`
-    void deferredHighlight(cmdRef, undefined, signal)
-  })
-
-  createEffect(() => {
-    outState.signal.aborted = true
-    if (!props.active) return
-    const out = props.output
-    if (!outRef || !out) return
-    const signal = { aborted: false }
-    outState.signal = signal
-    outRef.innerHTML = `<pre data-slot="bash-pre"><code data-lang="log">${escapeHtml(out)}</code></pre>`
-    void deferredHighlight(outRef, undefined, signal)
-  })
-
-  onCleanup(() => {
-    cmdState.signal.aborted = true
-    outState.signal.aborted = true
-  })
 
   const openInEditor = () => {
     // When output was truncated, open the full output file on disk
@@ -2156,34 +2123,40 @@ function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?
   return (
     <div data-component="bash-output">
       <Show when={props.cmd}>
-        <div data-slot="mcp-section-label">{i18n.t("ui.messagePart.shell.command")}</div>
-        <div data-slot="bash-section">
-          <div data-slot="bash-section-code" ref={cmdRef} />
-          <div data-slot="bash-section-actions">
-            <BashCopyButton value={() => props.cmd} label={i18n.t("ui.message.copy")} />
+        <div data-slot="bash-terminal" data-kind="command">
+          <div data-slot="bash-section" data-kind="command">
+            <span data-slot="bash-prompt" aria-hidden="true">
+              $
+            </span>
+            <div data-slot="bash-section-code">
+              <pre data-slot="bash-pre"><code>{props.cmd}</code></pre>
+            </div>
+            <div data-slot="bash-section-actions">
+              <BashCopyButton value={() => props.cmd} label={i18n.t("ui.message.copy")} />
+            </div>
           </div>
         </div>
       </Show>
-      <Show when={props.cmd && props.output}>
-        <div data-slot="bash-divider" />
-      </Show>
       <Show when={props.output}>
-        <div data-slot="mcp-section-label">{i18n.t("ui.messagePart.shell.output")}</div>
-        <div data-slot="bash-section">
-          <div data-slot="bash-section-code" data-scrollable ref={outRef} />
-          <div data-slot="bash-section-actions">
-            <Show when={data.openContent || (props.outputPath && data.openFile)}>
-              <Tooltip value={i18n.t("ui.messagePart.openInEditor")} placement="bottom" gutter={4}>
-                <IconButton
-                  icon="square-arrow-top-right"
-                  size="small"
-                  variant="ghost"
-                  onClick={openInEditor}
-                  aria-label={i18n.t("ui.messagePart.openInEditor")}
-                />
-              </Tooltip>
-            </Show>
-            <BashCopyButton value={() => props.output} label={i18n.t("ui.message.copy")} />
+        <div data-slot="bash-terminal" data-kind="output">
+          <div data-slot="bash-section" data-kind="output">
+            <div data-slot="bash-section-code" data-scrollable>
+              <pre data-slot="bash-pre"><code>{props.output}</code></pre>
+            </div>
+            <div data-slot="bash-section-actions">
+              <Show when={data.openContent || (props.outputPath && data.openFile)}>
+                <Tooltip value={i18n.t("ui.messagePart.openInEditor")} placement="bottom" gutter={4}>
+                  <IconButton
+                    icon="square-arrow-top-right"
+                    size="small"
+                    variant="ghost"
+                    onClick={openInEditor}
+                    aria-label={i18n.t("ui.messagePart.openInEditor")}
+                  />
+                </Tooltip>
+              </Show>
+              <BashCopyButton value={() => props.output} label={i18n.t("ui.message.copy")} />
+            </div>
           </div>
         </div>
       </Show>
@@ -2223,7 +2196,6 @@ ToolRegistry.register({
       <BasicTool
         {...props}
         icon="console"
-        animated
         hasDetails
         defaultOpen={props.defaultOpen ?? true}
         onOpenChange={setOpen}

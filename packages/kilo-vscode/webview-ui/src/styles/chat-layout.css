@@ -211,8 +211,15 @@
 .vscode-session-turn-assistant {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px;
   width: 100%;
+}
+
+.vscode-session-turn-assistant [data-component="tool-part-wrapper"][data-part-type="text"]
+  + [data-component="tool-part-wrapper"][data-part-type="tool"],
+.vscode-session-turn-assistant [data-component="tool-part-wrapper"][data-part-type="tool"]
+  + [data-component="tool-part-wrapper"][data-part-type="text"] {
+  margin-top: 6px;
 }
 
 .vscode-session-turn-diffs {

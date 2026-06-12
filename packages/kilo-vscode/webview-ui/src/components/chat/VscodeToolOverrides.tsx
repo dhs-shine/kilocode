@@ -138,7 +138,7 @@ function BackgroundProcessTool(props: ToolProps) {
       </Show>
       <Show when={data().output}>
         {(value) => (
-          <div data-component="tool-output" data-scrollable>
+          <div data-component="tool-output" data-variant="preview" data-scrollable>
             <pre data-slot="background-process-output">{value()}</pre>
           </div>
         )}
