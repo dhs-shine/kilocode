@@ -48,7 +48,9 @@ export async function startDaemon(opts: Daemon.Options, restartOnMismatch = fals
   const portMismatch = opts.port !== 0 ? state.port !== opts.port : true
   const hostnameMismatch = state.hostname !== opts.hostname
   if (restartOnMismatch && result.reused && (hostnameMismatch || portMismatch)) {
-    console.warn(`Daemon running at ${state.hostname}:${state.port}; restarting with requested ${opts.hostname}:${opts.port}...`)
+    console.warn(
+      `Daemon running at ${state.hostname}:${state.port}; restarting with requested ${opts.hostname}:${opts.port}...`,
+    )
     const fresh = await Daemon.restart(opts)
     state = fresh.state
     if (!state) throw new Error("Kilo daemon did not provide connection state")
@@ -66,7 +68,7 @@ export const KiloConsoleCommand = cmd({
     warnPort(opts.port)
     const restartOnMismatch = explicitNetworkOption("--port") || explicitNetworkOption("--hostname")
     const state = await startDaemon(opts, restartOnMismatch)
-    if (!state) throw new Error("Kilo daemon did not provide connection state")
+
     const url = publicUrl(state)
     await launch(browserUrl(state)).catch((err) => {
       console.warn(`Could not open browser automatically: ${err instanceof Error ? err.message : String(err)}`)
