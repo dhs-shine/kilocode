@@ -102,11 +102,11 @@ object SessionUiStyle {
             const val BORDER_WIDTH = 1
             const val VIEWPORT_TOP_PADDING = 6
             const val VIEWPORT_HORIZONTAL_PADDING = 8
-            const val VIEWPORT_BOTTOM_PADDING = 0
+            const val VIEWPORT_BOTTOM_PADDING = 6
             const val SCROLLBAR_HEIGHT = 12
             const val WIDTH_PADDING = 16
 
-            fun topPadding(): Int = VIEWPORT_TOP_PADDING + SCROLLBAR_HEIGHT
+            fun topPadding(): Int = VIEWPORT_TOP_PADDING
         }
 
         /** Permission session-view command preview limits. */

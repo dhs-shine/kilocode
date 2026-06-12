@@ -115,22 +115,25 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertTrue(pane.preferredSize.height >= line * 3)
     }
 
-    fun `test fenced code block horizontal scrollbar has no bottom padding`() {
+    fun `test fenced code block has symmetric content padding with horizontal scrollbar`() {
         view.set("```kotlin\n${"x".repeat(500)}\n```")
         val pane = scrolls().single()
         val pad = pane.viewportBorder.getBorderInsets(pane)
 
+        assertEquals(SessionUiStyle.View.Code.VIEWPORT_TOP_PADDING, pad.top)
         assertEquals(SessionUiStyle.View.Code.VIEWPORT_BOTTOM_PADDING, pad.bottom)
+        assertEquals(pad.top, pad.bottom)
         assertTrue(pane.horizontalScrollBar.preferredSize.height > 0)
     }
 
-    fun `test short code block top padding balances hidden scrollbar space`() {
+    fun `test short code block keeps symmetric content padding`() {
         view.set("```text\n[ALICE, ANNA]\n```")
         val pane = scrolls().single()
         val pad = pane.viewportBorder.getBorderInsets(pane)
 
-        assertTrue(pad.top > pane.horizontalScrollBar.preferredSize.height)
+        assertEquals(SessionUiStyle.View.Code.VIEWPORT_TOP_PADDING, pad.top)
         assertEquals(SessionUiStyle.View.Code.VIEWPORT_BOTTOM_PADDING, pad.bottom)
+        assertEquals(pad.top, pad.bottom)
     }
 
     fun `test fenced code block height is not capped`() {
