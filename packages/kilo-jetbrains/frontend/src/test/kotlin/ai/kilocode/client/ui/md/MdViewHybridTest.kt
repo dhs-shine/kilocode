@@ -68,14 +68,37 @@ class MdViewHybridTest : BasePlatformTestCase() {
     fun `test fenced code block shows horizontal scrollbar as needed`() {
         view.set("```kotlin\nval value = 1\n```")
         val pane = scrolls().single()
+        val editor = editors().single().getEditor(true)!!
 
         assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, pane.horizontalScrollBarPolicy)
         assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, pane.verticalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, editor.scrollPane.verticalScrollBarPolicy)
         assertTrue(pane.isWheelScrollingEnabled)
         assertTrue(pane.horizontalScrollBar.preferredSize.height > 0)
         assertTrue(pane.horizontalScrollBar.isOpaque)
         assertFalse(pane.isOverlappingScrollBar)
         assertEquals(0, pane.verticalScrollBar.preferredSize.width)
+    }
+
+    fun `test transparent markdown keeps code block background opaque`() {
+        view.opaque = false
+
+        view.set("```kotlin\nval value = 1\n```")
+        val pane = scrolls().single()
+        val editor = editors().single().getEditor(true)!!
+        val bg = view.preBg
+
+        assertFalse(view.component.isOpaque)
+        assertTrue(pane.isOpaque)
+        assertTrue(pane.viewport.isOpaque)
+        assertTrue(editor.scrollPane.isOpaque)
+        assertTrue(editor.scrollPane.viewport.isOpaque)
+        assertEquals(bg.rgb, pane.background.rgb)
+        assertEquals(bg.rgb, pane.viewport.background.rgb)
+        assertEquals(bg.rgb, editor.backgroundColor.rgb)
+        assertEquals(bg.rgb, editor.scrollPane.background.rgb)
+        assertEquals(bg.rgb, editor.scrollPane.viewport.background.rgb)
     }
 
     fun `test fenced code block preserves multiline editor text and height`() {
@@ -599,6 +622,8 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertEquals(Color(0x44, 0x55, 0x66).rgb, pane.viewport.background.rgb)
         assertEquals(Color(0x44, 0x55, 0x66).rgb, editor.scrollPane.background.rgb)
         assertEquals(Color(0x44, 0x55, 0x66).rgb, editor.scrollPane.viewport.background.rgb)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, editor.scrollPane.verticalScrollBarPolicy)
     }
 
     fun `test resetStyles keeps content rendered`() {

@@ -549,8 +549,9 @@ internal class MdViewHybrid(
                 SessionUiStyle.View.Code.VIEWPORT_BOTTOM_PADDING,
                 SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING,
             )
-            isOpaque = opts.opaque
+            isOpaque = true
             background = opts.preBg
+            viewport.isOpaque = true
             viewport.background = opts.preBg
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
             verticalScrollBarPolicy = code.opts.verticalPolicy
@@ -634,7 +635,7 @@ internal class MdViewHybrid(
     }
 
     private fun styleTextArea(area: JBTextArea, opts: MdStyle) {
-        area.isOpaque = opts.opaque
+        area.isOpaque = true
         area.background = opts.preBg
         area.foreground = opts.preFg
         area.font = style.editorFont
@@ -658,6 +659,8 @@ internal class MdViewHybrid(
                 ed.scrollPane.viewportBorder = JBUI.Borders.empty()
                 ed.backgroundColor = opts.preBg
                 ed.scrollPane.background = opts.preBg
+                ed.scrollPane.isOpaque = true
+                ed.scrollPane.viewport.isOpaque = true
                 ed.scrollPane.viewport.background = opts.preBg
                 ed.settings.isUseSoftWraps = false
                 ed.settings.isAdditionalPageAtBottom = false
@@ -937,9 +940,16 @@ internal class MdViewHybrid(
                     view.background = opts.preBg
                     view.getEditor(false)?.let { ed ->
                         style.applyToEditor(ed)
+                        ed.setBorder(JBUI.Borders.empty())
+                        ed.scrollPane.border = JBUI.Borders.empty()
+                        ed.scrollPane.viewportBorder = JBUI.Borders.empty()
                         ed.backgroundColor = opts.preBg
                         ed.scrollPane.background = opts.preBg
+                        ed.scrollPane.isOpaque = true
+                        ed.scrollPane.viewport.isOpaque = true
                         ed.scrollPane.viewport.background = opts.preBg
+                        ed.scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+                        ed.scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
                     }
                 }
                 is JBTextArea -> styleTextArea(view, opts)

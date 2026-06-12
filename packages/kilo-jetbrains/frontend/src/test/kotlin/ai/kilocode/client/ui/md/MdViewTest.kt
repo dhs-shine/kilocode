@@ -8,6 +8,7 @@ import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.colors.EditorColorsScheme
 import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.awt.Color
 import java.awt.Font
@@ -26,6 +27,14 @@ class MdViewTest : BasePlatformTestCase() {
     override fun setUp() {
         super.setUp()
         view = MdViewFactory.html()
+    }
+
+    override fun tearDown() {
+        try {
+            if (this::view.isInitialized) Disposer.dispose(view)
+        } finally {
+            super.tearDown()
+        }
     }
 
     // ---- set ----

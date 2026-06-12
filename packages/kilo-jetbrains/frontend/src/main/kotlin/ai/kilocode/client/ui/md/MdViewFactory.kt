@@ -23,7 +23,7 @@ object MdViewFactory {
     fun hybrid(code: MdCodeBlockFactory): MdView = hybrid(SessionEditorStyle.current(), null, code)
 
     fun html(style: SessionEditorStyle = SessionEditorStyle.current(), selection: SessionSelection? = null): MdView =
-        MdViewHtmlPane(style, selection)
+        hybrid(style, selection)
 }
 
 data class MdCodeBlockOptions(

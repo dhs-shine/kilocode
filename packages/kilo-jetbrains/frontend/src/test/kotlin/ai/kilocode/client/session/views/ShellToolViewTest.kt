@@ -258,6 +258,7 @@ class ShellToolViewTest : BasePlatformTestCase() {
         val root = view.mdComponent()!!
         val pane = root.components.filterIsInstance<JBScrollPane>().single()
         val editor = view.codeEditors().single()
+        val nested = editor.getEditor(true)!!.scrollPane
         val chrome = pane.insets.top + pane.insets.bottom +
             pane.viewportBorder.getBorderInsets(pane).top + pane.viewportBorder.getBorderInsets(pane).bottom +
             pane.horizontalScrollBar.preferredSize.height
@@ -265,6 +266,8 @@ class ShellToolViewTest : BasePlatformTestCase() {
         assertEquals(output, editor.text)
         assertEquals(1, view.codeEditors().size)
         assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, pane.verticalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, nested.verticalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, nested.horizontalScrollBarPolicy)
         assertTrue(editor.preferredSize.height > pane.preferredSize.height - chrome)
         assertTrue(pane.preferredSize.height < editor.preferredSize.height + chrome)
     }
