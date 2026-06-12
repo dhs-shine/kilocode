@@ -8,6 +8,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.tool.ShellToolView
 import ai.kilocode.client.session.views.tool.ToolView
+import ai.kilocode.client.ui.UiStyle
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -190,7 +191,10 @@ class ShellToolViewTest : BasePlatformTestCase() {
         assertEquals(style.editorSize, view.commandFont().size)
         assertEquals(style.transcriptFont.name, view.titleFont().name)
         assertTrue(view.titleFont().isBold)
-        assertTrue(view.subtitleFont().size < style.editorSize)
+        assertEquals(style.transcriptFont.name, view.subtitleFont().name)
+        assertEquals(style.transcriptFont.size, view.subtitleFont().size)
+        assertFalse(view.subtitleFont().isBold)
+        assertEquals(UiStyle.Colors.weak().rgb, view.subtitleForeground().rgb)
         assertTrue(view.stateFont().size < style.editorSize)
     }
 
@@ -216,7 +220,7 @@ class ShellToolViewTest : BasePlatformTestCase() {
         assertTrue(view.preferredSize.height > 0)
     }
 
-    fun `test shell labels are inset and code blocks use horizontal borders`() {
+    fun `test shell labels are inset and code blocks use bottom border only`() {
         val view = track(ShellToolView(tool().also {
             it.input = mapOf("command" to "pwd")
             it.output = "/tmp"
@@ -237,7 +241,7 @@ class ShellToolViewTest : BasePlatformTestCase() {
         }
         panes.forEach {
             val pane = it.border.getBorderInsets(it)
-            assertEquals(SessionUiStyle.View.Code.BORDER_WIDTH, pane.top)
+            assertEquals(0, pane.top)
             assertEquals(SessionUiStyle.View.Code.BORDER_WIDTH, pane.bottom)
             assertEquals(0, pane.left)
             assertEquals(0, pane.right)

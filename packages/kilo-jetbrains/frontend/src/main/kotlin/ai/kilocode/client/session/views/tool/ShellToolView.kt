@@ -7,6 +7,7 @@ import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.SecondarySessionPartView
+import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.md.MdCodeBlockBorder
 import ai.kilocode.client.ui.md.MdCodeBlockFactory
 import ai.kilocode.client.ui.md.MdCodeBlockOptions
@@ -112,6 +113,9 @@ class ShellToolView(
     internal fun subtitleFont() = parts.sub.font
 
     @RequiresEdt
+    internal fun subtitleForeground() = parts.sub.foreground
+
+    @RequiresEdt
     internal fun stateFont() = parts.state.font
 
     @RequiresEdt
@@ -129,7 +133,7 @@ class ShellToolView(
         this.style = style
         var changed = false
         changed = setFont(parts.title, style.boldEditorFont) || changed
-        changed = setFont(parts.sub, style.smallEditorFont) || changed
+        changed = setFont(parts.sub, style.transcriptFont) || changed
         changed = setFont(parts.link, style.smallEditorFont) || changed
         changed = setFont(parts.state, style.smallEditorFont) || changed
         holder.shell?.let { changed = it.applyStyle(style) || changed }
@@ -146,6 +150,7 @@ class ShellToolView(
         changed = setText(parts.title, title(item)) || changed
         changed = setText(parts.sub, subtitle(item)) || changed
         changed = setForeground(parts.title, titleColor(item)) || changed
+        changed = setForeground(parts.sub, UiStyle.Colors.weak()) || changed
         changed = setText(parts.state, stateText(item)) || changed
         changed = setForeground(parts.state, color(item)) || changed
         return changed
@@ -192,7 +197,7 @@ class ShellBody(
         selection,
         MdCodeBlockFactory.default(
             MdCodeBlockOptions(
-                border = MdCodeBlockBorder.Horizontal,
+                border = MdCodeBlockBorder.Bottom,
                 maxLines = 15,
                 verticalPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
                 editorOnly = true,
