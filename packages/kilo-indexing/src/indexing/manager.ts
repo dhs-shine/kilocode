@@ -461,6 +461,7 @@ export class CodeIndexManager {
         baselinePath,
       })
       await this._recreateServices()
+      if (this._disposed) return
       await this._orchestrator?.startIndexing("background")
     })().finally(() => {
       this._baselineRefresh = undefined
@@ -483,6 +484,7 @@ export class CodeIndexManager {
 
     const store = factory.createVectorStore(this.baselinePath)
     if (!store.openExisting) throw new Error("The configured vector store cannot open a shared baseline")
+    // Validate compatibility without keeping every worktree baseline connection open.
     await store.openExisting()
     await store.close?.()
 

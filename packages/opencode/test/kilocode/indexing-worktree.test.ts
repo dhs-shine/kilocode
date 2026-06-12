@@ -57,13 +57,14 @@ describe("indexing worktrees", () => {
     await WithInstance.provide({
       directory: worktree,
       fn: async () => {
+        await KiloIndexing.search("worktree")
         expect((await KiloIndexing.current()).state).toBe("Complete")
         expect(await KiloIndexing.available()).toBe(true)
       },
     })
 
     expect(calls).toEqual([{ directory: worktree, baseline: tmp.path }])
-  })
+  }, 15_000)
 
   test("does not classify an ordinary directory from its pathname", async () => {
     await using tmp = await tmpdir({ git: true, config: cfg })

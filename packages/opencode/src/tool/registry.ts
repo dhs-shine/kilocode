@@ -263,7 +263,7 @@ export const layer: Layer.Layer<
         const kilo = yield* KiloToolRegistry.build(kiloToolInfos, {
           agent: agents,
           truncate,
-          ...(indexing === undefined ? {} : { indexing }),
+          indexing: indexing ?? false,
         })
         // kilocode_change end
 

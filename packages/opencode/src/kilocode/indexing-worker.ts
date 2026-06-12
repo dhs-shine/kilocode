@@ -94,7 +94,10 @@ onmessage = (event: MessageEvent<Request>) => {
     context.run(request.key, () => {
       if (request.method !== "init") return handle(request)
       const next = initQueue.then(() => handle(request))
-      initQueue = next
+      initQueue = next.then(
+        () => undefined,
+        () => undefined,
+      )
       return next
     }),
   )

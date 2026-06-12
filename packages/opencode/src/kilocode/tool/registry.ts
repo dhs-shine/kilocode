@@ -9,7 +9,6 @@ import { Effect } from "effect"
 import * as Log from "@opencode-ai/core/util/log"
 import { Agent } from "@/agent/agent"
 import * as Truncate from "@/tool/truncate"
-import { Instance } from "@/project/instance"
 import type { Config } from "@/config/config"
 
 const log = Log.create({ service: "kilocode-tool-registry" })
@@ -66,8 +65,7 @@ export namespace KiloToolRegistry {
       const ready = yield* (deps.indexing === undefined
         ? (() => {
             const indexing = loaders.indexing ?? (() => import("@/kilocode/indexing"))
-            const check = Instance.bind((mod: Awaited<ReturnType<typeof indexing>>) => mod.KiloIndexing.ready())
-            return Effect.tryPromise(() => indexing().then(check)).pipe(
+            return Effect.tryPromise(() => indexing().then((mod) => mod.KiloIndexing.ready())).pipe(
               Effect.catch((err) =>
                 Effect.sync(() => {
                   log.warn("semantic search unavailable", { err })
