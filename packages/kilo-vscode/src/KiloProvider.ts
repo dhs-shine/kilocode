@@ -30,7 +30,6 @@ import {
   sessionPatchToWebview,
   indexProvidersById,
   filterVisibleAgents,
-  buildSettingPath,
   mapSSEEventToWebviewMessage,
   getErrorMessage,
   getConfigErrorDetails,
@@ -44,6 +43,7 @@ import {
   resolveWorkspaceDirectory,
   sameDirectory,
   SessionStreamScheduler,
+  buildSettingPath,
   type SessionRefreshContext,
 } from "./kilo-provider-utils"
 import { GitOps } from "./agent-manager/GitOps"
@@ -81,6 +81,12 @@ import { routeEarlyMessage } from "./kilo-provider/early-message"
 import * as ModelState from "./kilo-provider/model-state"
 import { handleForkSession } from "./kilo-provider/fork-session"
 import { openConfig } from "./kilo-provider/open-config"
+import {
+  getWorkStylePayload,
+  handleWorkStyleMessage,
+  isWorkStyleSetting,
+  watchWorkStyleConfig,
+} from "./kilo-provider/work-style"
 import * as McpOAuth from "./kilo-provider/mcp-oauth"
 import { retryable, backoff, MAX_RETRIES } from "./util/retry"
 import { hasGit } from "./kilo-provider/git-status"
@@ -744,6 +750,15 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       }
       if (this.handleEditorOpenMessage(message)) return
       if (
+        await handleWorkStyleMessage({
+          message,
+          connection: this.connectionService,
+          directory: this.getWorkspaceDirectory(this.currentSession?.id),
+          post: (msg) => this.postMessage(msg),
+        })
+      )
+        return
+      if (
         await handleSidebarWorktreeMessage(message, {
           post: (msg) => this.postMessage(msg),
           openAgentManager: () => vscode.commands.executeCommand("kilo-code.new.agentManagerOpen"),
@@ -1207,6 +1222,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       }
     })
     this.webviewMessageDisposable = watchFontSizeConfig((msg) => this.postMessage(msg), this.webviewMessageDisposable)
+    this.webviewMessageDisposable = watchWorkStyleConfig((msg) => this.postMessage(msg), this.webviewMessageDisposable)
   }
 
   private handleEditorOpenMessage(message: Parameters<typeof handleEditorAction>[0]): boolean {
@@ -2335,6 +2351,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     })
   }
 
+  private sendWorkStyle(): void {
+    this.postMessage(getWorkStylePayload())
+  }
+
   /** Returns the number of sessions currently in "busy" state. */
   private getBusySessionCount(): number {
     return getBusySessionCount(this.sessionStatusMap)
@@ -2893,6 +2913,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     // lets the runtime fall back to the resolved default.
     const next = value === null ? undefined : value
     await config.update(leaf, next, vscode.ConfigurationTarget.Global)
+    if (isWorkStyleSetting(key)) this.sendWorkStyle()
   }
 
   /**
@@ -2935,6 +2956,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.sendBrowserSettings()
     this.sendNotificationSettings()
     this.sendTimelineSetting()
+    this.sendWorkStyle()
     await ModelState.reset(this.client, (msg) => this.postMessage(msg))
 
     // Re-send globalState items to the webview

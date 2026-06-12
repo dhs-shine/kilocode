@@ -990,6 +990,24 @@
           "default": true,
           "description": "Show the task timeline graph in the chat header"
         },
+        "kilo-code.new.agentWorkStyle": {
+          "type": "string",
+          "scope": "application",
+          "default": "unset",
+          "enum": [
+            "unset",
+            "human-in-the-loop",
+            "autonomous",
+            "skipped"
+          ],
+          "enumDescriptions": [
+            "Show work style onboarding so you can choose again",
+            "Human in the Loop: review agent actions as they happen",
+            "High autonomy: let Kilo take most actions with fewer interruptions",
+            "Onboarding was skipped without changing work style settings"
+          ],
+          "description": "Preferred agent work style. Set to Unset to show the onboarding flow again."
+        },
         "kilo-code.new.diff.renderMarkdown": {
           "type": "boolean",
           "default": false,
