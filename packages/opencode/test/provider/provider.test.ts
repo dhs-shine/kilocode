@@ -100,7 +100,7 @@ async function markPluginDependenciesReady(dir: string) {
   await mkdir(path.join(dir, "node_modules"), { recursive: true })
   await Bun.write(
     path.join(dir, "package-lock.json"),
-    JSON.stringify({ packages: { "": { dependencies: { "@opencode-ai/plugin": "0.0.0" } } } }),
+    JSON.stringify({ packages: { "": { dependencies: { "@kilocode/plugin": "0.0.0" } } } }), // kilocode_change
   )
 }
 
@@ -2675,6 +2675,8 @@ test("plugin config enabled and disabled providers are honored", async () => {
     init: async (dir) => {
       const root = path.join(dir, ".opencode", "plugin")
       await mkdir(root, { recursive: true })
+      await markPluginDependenciesReady(path.dirname(root)) // kilocode_change
+      await markPluginDependenciesReady(Global.Path.config) // kilocode_change
       await Bun.write(
         path.join(root, "provider-filter.ts"),
         [

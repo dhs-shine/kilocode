@@ -339,9 +339,15 @@ describe("fetchAndSendPendingPermissions", () => {
       clearPermissionDirectory: (id) => {
         permDirs.delete(id)
       },
-      prunePermissionDirectories: (active) => {
-        for (const key of permDirs.keys()) {
-          if (!active.has(key)) permDirs.delete(key)
+      prunePermissionDirectories: (active, dirs) => {
+        for (const [key, dir] of permDirs) {
+          if (active.has(key)) {
+            continue
+          }
+          if (dirs && !dirs.has(dir)) {
+            continue
+          }
+          permDirs.delete(key)
         }
       },
     }

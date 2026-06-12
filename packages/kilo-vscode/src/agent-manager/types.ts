@@ -14,6 +14,9 @@ import type { ApplyConflict } from "./GitOps"
 import type { BranchListItem, WorktreeSetupErrorCode } from "./git-import"
 import type { ExternalWorktreeItem } from "./WorktreeManager"
 import type { RunStatus } from "./run/manager"
+import type { TerminalFont } from "./terminal-font"
+
+export type { TerminalFont }
 
 // ---------------------------------------------------------------------------
 // Shared payload types
@@ -147,18 +150,7 @@ interface TerminalCreatedMessage {
   terminalId: string
   title: string
   wsUrl: string
-  font?: {
-    fontFamily: string
-    fontSize: number
-  }
-}
-
-interface TerminalFontChangedMessage {
-  type: "agentManager.terminal.fontChanged"
-  font: {
-    fontFamily: string
-    fontSize: number
-  }
+  font: TerminalFont
 }
 
 interface TerminalClosedMessage {
@@ -170,6 +162,11 @@ interface TerminalErrorMessage {
   type: "agentManager.terminal.error"
   terminalId?: string
   message: string
+}
+
+interface TerminalFontChangedMessage {
+  type: "agentManager.terminal.fontChanged"
+  font: TerminalFont
 }
 
 interface ErrorOutMessage {
@@ -324,9 +321,9 @@ export type AgentManagerOutMessage =
   | ActionOutMessage
   | RunStatusMessage
   | TerminalCreatedMessage
-  | TerminalFontChangedMessage
   | TerminalClosedMessage
   | TerminalErrorMessage
+  | TerminalFontChangedMessage
 
 // ---------------------------------------------------------------------------
 // Webview → Extension messages (onMessage)

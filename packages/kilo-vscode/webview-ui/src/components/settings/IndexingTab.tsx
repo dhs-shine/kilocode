@@ -105,7 +105,7 @@ const IndexingTab: Component = () => {
   const [scope, setScope] = createSignal<IndexingScope>("global")
 
   const globalCfg = createMemo<IndexingConfig>(() => globalConfig().indexing ?? {})
-  const projectCfg = createMemo<IndexingConfig>(() => projectConfig?.().indexing ?? {})
+  const projectCfg = createMemo<IndexingConfig>(() => projectConfig().indexing ?? {})
   const raw = createMemo<IndexingConfig>(() => (scope() === "global" ? globalCfg() : projectCfg()))
   const cfg = createMemo<IndexingConfig>(() => indexingConfig(scope(), globalCfg(), projectCfg()))
   const enabled = createMemo(() => indexingEnabled(scope(), globalCfg(), projectCfg()))
@@ -128,7 +128,7 @@ const IndexingTab: Component = () => {
       updateGlobalConfig(patch)
       return
     }
-    updateProjectConfig?.(patch)
+    updateProjectConfig(patch)
   }
 
   const vectorStore = () => cfg().vectorStore ?? DEFAULT_VECTOR_STORE
@@ -383,12 +383,12 @@ const IndexingTab: Component = () => {
         <Show when={fields().length > 0 ? selectedProvider() : undefined} keyed>
           {(group) => {
             const fields = providerFields(group)
-            const label = allProviders.find((item) => item.value === group)?.label ?? group
+            const name = allProviders.find((item) => item.value === group)?.label ?? group
             return (
               <For each={fields}>
                 {(field, index) => (
                   <SettingsRow
-                    title={`${label} ${field.label}`}
+                    title={`${name} ${field.label}`}
                     description={description(language.t("settings.indexing.providerField.description"), [
                       [group, field.key],
                     ])}

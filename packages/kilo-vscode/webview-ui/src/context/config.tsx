@@ -34,7 +34,7 @@ export interface SaveError {
 interface ConfigContextValue {
   config: Accessor<Config>
   globalConfig: Accessor<Config>
-  projectConfig?: Accessor<Config>
+  projectConfig: Accessor<Config>
   settings: Accessor<Record<string, unknown>>
   features: Accessor<FeatureFlags>
   loading: Accessor<boolean>
@@ -43,7 +43,7 @@ interface ConfigContextValue {
   saveError: Accessor<SaveError | null>
   updateConfig: (partial: Partial<Config>) => void
   updateGlobalConfig: (partial: Partial<Config>) => void
-  updateProjectConfig?: (partial: Partial<Config>) => void
+  updateProjectConfig: (partial: Partial<Config>) => void
   updateSetting: (key: string, value: unknown) => void
   saveConfig: () => void
   discardConfig: () => void

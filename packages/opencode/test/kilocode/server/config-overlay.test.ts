@@ -111,6 +111,91 @@ describe("config overlay routes", () => {
     })
   })
 
+  test.serial("marks global indexing values inherited in project scope", async () => {
+    await using global = await tmpdir()
+    await using project = await tmpdir()
+    await setGlobal(global.path, {
+      indexing: {
+        enabled: true,
+        provider: "ollama",
+        ollama: { baseUrl: "http://localhost:11434" },
+      },
+    })
+
+    const body = await json<Overlay>(await req(project.path, "/config/overlay?scope=project"))
+
+    expect(body.fields["indexing.enabled"]).toMatchObject({ source: "global", inherited: true, value: true })
+    expect(body.fields["indexing.provider"]).toMatchObject({ source: "global", inherited: true, value: "ollama" })
+    expect(body.fields["indexing.ollama.baseUrl"]).toMatchObject({
+      source: "global",
+      inherited: true,
+      value: "http://localhost:11434",
+    })
+  })
+
+  test.serial("excludes project indexing values from global scope", async () => {
+    await using project = await tmpdir()
+    const global: Config.Info = {
+      indexing: {
+        enabled: true,
+        provider: "openai",
+        openai: { apiKey: "global-secret" },
+      },
+    }
+    const local: Config.Info = {
+      indexing: {
+        enabled: false,
+        provider: "ollama",
+        ollama: { baseUrl: "http://project:11434" },
+      },
+    }
+    await config(project.path, local)
+
+    const body = await KilocodeConfigOverlay.resolve({
+      directory: project.path,
+      scope: "global",
+      effective: local,
+      global,
+      sources: [],
+    })
+
+    expect(body.fields["indexing.enabled"]).toMatchObject({ source: "global", value: true })
+    expect(body.fields["indexing.provider"]).toMatchObject({ source: "global", value: "openai" })
+    expect(body.fields["indexing.openai.apiKey"]).toMatchObject({ source: "global", value: "global-secret" })
+    expect(body.fields["indexing.ollama.baseUrl"]).toMatchObject({ source: "default" })
+    expect(body.fields["indexing.ollama.baseUrl"].value).toBeUndefined()
+  })
+
+  test.serial("writes project indexing overrides to .kilo/kilo.jsonc", async () => {
+    await using global = await tmpdir()
+    await using project = await tmpdir()
+    await setGlobal(global.path, { indexing: { enabled: true, provider: "openai" } })
+
+    await json(
+      await req(project.path, "/config/overlay", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          scope: "project",
+          set: { indexing: { enabled: false, provider: "ollama", ollama: { baseUrl: "http://127.0.0.1:11434" } } },
+        }),
+      }),
+    )
+
+    const file = path.join(project.path, ".kilo", "kilo.jsonc")
+    const saved = (await Bun.file(file).json()) as { indexing: Record<string, unknown> }
+    const body = await json<Overlay>(await req(project.path, "/config/overlay?scope=project"))
+
+    expect(await Bun.file(path.join(project.path, ".kilo", "kilo.json")).exists()).toBe(false)
+    expect(saved.indexing).toEqual({
+      enabled: false,
+      provider: "ollama",
+      ollama: { baseUrl: "http://127.0.0.1:11434" },
+    })
+    expect(body.fields["indexing.enabled"]).toMatchObject({ source: "project", value: false })
+    expect(body.fields["indexing.provider"]).toMatchObject({ source: "project", value: "ollama" })
+  })
+
   test.serial("removes local scalar override and falls back to global", async () => {
     await using global = await tmpdir()
     await using project = await tmpdir({ config: { model: "kilo/project-model", username: "alice" } })
@@ -149,7 +234,7 @@ describe("config overlay routes", () => {
       }),
     )
 
-    const saved = (await Bun.file(path.join(project.path, ".kilo", "kilo.json")).json()) as {
+    const saved = (await Bun.file(path.join(project.path, ".kilo", "kilo.jsonc")).json()) as {
       mcp: Record<string, unknown>
     }
     expect(Object.keys(saved.mcp)).toEqual(["local"])
@@ -170,7 +255,7 @@ describe("config overlay routes", () => {
       }),
     )
 
-    const saved = (await Bun.file(path.join(project.path, ".kilo", "kilo.json")).json()) as {
+    const saved = (await Bun.file(path.join(project.path, ".kilo", "kilo.jsonc")).json()) as {
       mcp: Record<string, unknown>
     }
     expect(saved.mcp).toEqual({ shared: { enabled: false } })
@@ -245,6 +330,7 @@ describe("config overlay routes", () => {
         await using global = await tmpdir()
         await using project = await tmpdir()
         await setGlobal(global.path, { permission: { edit: "ask" } })
+        await disposeAllInstances()
         const target = app(value)
 
         const before = await json<Agent[]>(await request(target, project.path, "/agent"))

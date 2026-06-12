@@ -148,8 +148,9 @@ test("selectBunPackageManager preserves valid versions over malformed values", (
 
 test("fixPackageManager prevents root Bun downgrades", () => {
   const pkg: Record<string, unknown> = { packageManager: "bun@1.3.13" }
+  const ours = { packageManager: "bun@1.3.14" }
   const changes: string[] = []
-  fixPackageManager(pkg, "package.json", { packageManager: "bun@1.3.14" }, changes)
+  fixPackageManager(pkg, "package.json", ours, changes)
   expect(pkg.packageManager).toBe("bun@1.3.14")
   expect(changes).toEqual(["packageManager: bun@1.3.13 -> bun@1.3.14 (preserved Kilo pin)"])
 })

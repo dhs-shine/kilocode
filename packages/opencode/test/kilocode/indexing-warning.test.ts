@@ -17,7 +17,10 @@ describe("parseQdrantWarning", () => {
     const message =
       "Failed to obtain server version. Unable to check client-server compatibility. Set checkCompatibility=false to skip version check."
 
-    expect(parseQdrantWarning(message)).toEqual({ code: "qdrant.version-unavailable", message })
+    expect(parseQdrantWarning(message)).toEqual({
+      code: "qdrant.version-unavailable",
+      message,
+    })
   })
 
   test("ignores unrelated warnings and non-string values", () => {
@@ -35,6 +38,6 @@ test("classifies error statuses for TUI notifications", () => {
 
 test("indexingWarningKey includes the warning code and message", () => {
   expect(indexingWarningKey({ code: "qdrant.version-unavailable", message: "warning" })).toBe(
-    "qdrant.version-unavailable\0warning",
+    "qdrant.version-unavailable\u0000warning",
   )
 })

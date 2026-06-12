@@ -27,6 +27,8 @@ export function resolveTerminalFont(
   }
 }
 
+/** Resolve the user's integrated-terminal font, mirroring VS Code's own
+ *  family fallback while preserving the terminal's independent size. */
 export function readTerminalFont(): TerminalFont {
   const term = vscode.workspace.getConfiguration("terminal.integrated")
   const editor = vscode.workspace.getConfiguration("editor")
@@ -37,6 +39,7 @@ export function readTerminalFont(): TerminalFont {
   )
 }
 
+/** True when a config change affects the effective terminal family or size. */
 export function affectsTerminalFont(e: vscode.ConfigurationChangeEvent): boolean {
   return (
     e.affectsConfiguration("terminal.integrated.fontFamily") ||
@@ -45,6 +48,7 @@ export function affectsTerminalFont(e: vscode.ConfigurationChangeEvent): boolean
   )
 }
 
+/** Subscribe to terminal-font config changes. Returns a cleanup function. */
 export function watchTerminalFont(callback: (font: TerminalFont) => void): () => void {
   const sub = vscode.workspace.onDidChangeConfiguration((e) => {
     if (affectsTerminalFont(e)) callback(readTerminalFont())

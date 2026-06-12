@@ -25,6 +25,8 @@ import type { TerminalFont } from "./state"
 interface Props {
   terminalId: string
   wsUrl: string
+  /** Terminal font settings forwarded from the extension host. Used on
+   *  initial mount; live changes arrive via `agentManager.terminal.fontChanged`. */
   font: TerminalFont
   /** Whether this terminal is currently the focused tab.
    *
@@ -298,7 +300,9 @@ export const TerminalTab: Component<Props> = (props) => {
         return
       }
 
-      // Kilo webview font changes do not affect the integrated terminal font.
+      // fontSizeChanged/ready control the Kilo chat UI font — do not apply
+      // them to the terminal, which has its own independent font settings.
+      // Keep the repaint for any downstream layout side-effects.
       const size =
         message.type === "fontSizeChanged" ? message.fontSize : message.type === "ready" ? message.fontSize : undefined
       if (size === undefined) return

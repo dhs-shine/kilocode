@@ -15,6 +15,8 @@ import { makeRuntime } from "@/effect/run-service"
 import { registerDisposer } from "@/effect/instance-registry"
 import { Global } from "@opencode-ai/core/global"
 import * as Log from "@opencode-ai/core/util/log"
+import type { WorkspaceID } from "@/control-plane/schema"
+import { WorkspaceContext } from "@/control-plane/workspace-context"
 import { Event as IndexingEvent, Warning as IndexingWarningEvent } from "./indexing-event"
 import { indexingWarningKey, type IndexingWarning } from "./indexing-warning"
 import { IndexingWorker } from "./indexing-worker-client"
@@ -198,6 +200,7 @@ export namespace KiloIndexing {
     initialized?: boolean
     current(): Status
     warnings(): IndexingWarning[]
+    scope(workspace: WorkspaceID | undefined): void
     publish(): Promise<void>
     dispose(): Promise<void>
   }
@@ -224,6 +227,7 @@ export namespace KiloIndexing {
     return {
       current,
       warnings: () => [],
+      scope() {},
       publish,
       async dispose() {},
     }
@@ -257,6 +261,7 @@ export namespace KiloIndexing {
     const global = globalConfig.indexing
     const merged = indexingWithKiloDefault({ ...global, ...cfg.indexing }, auth)
     const cfgInput = await model(enrichKilo(input(merged, global), auth), auth)
+    const workspaces = new Set<WorkspaceID | undefined>([WorkspaceContext.workspaceID])
     const box = { status: pending() }
     const warnings = new Map<string, IndexingWarning>()
     const delivery = {
@@ -328,7 +333,14 @@ export namespace KiloIndexing {
       const key = indexingWarningKey(item)
       if (warnings.has(key)) return
       warnings.set(key, item)
-      void Bus.publish(Instance.current, Warning, item).catch((err) => {
+      void Promise.all(
+        [...workspaces].map((workspaceID) =>
+          WorkspaceContext.provide({
+            workspaceID,
+            fn: () => Bus.publish(Instance.current, Warning, item),
+          }),
+        ),
+      ).catch((err) => {
         log.error("failed to publish indexing warning", { err, workspacePath: dir })
       })
     })
@@ -339,6 +351,7 @@ export namespace KiloIndexing {
     const base: Entry = {
       current,
       warnings: () => [...warnings.values()],
+      scope: (workspaceID) => workspaces.add(workspaceID),
       publish: () => report(),
       async dispose() {
         if (disposed) return
@@ -453,7 +466,9 @@ export namespace KiloIndexing {
   }
 
   export async function current(): Promise<Status> {
-    return (await hit().ready).current()
+    const entry = await hit().ready
+    entry.scope(WorkspaceContext.workspaceID)
+    return entry.current()
   }
 
   export async function models() {
@@ -471,7 +486,9 @@ export namespace KiloIndexing {
   }
 
   export async function warnings(): Promise<IndexingWarning[]> {
-    return (await hit().ready).warnings()
+    const entry = await hit().ready
+    entry.scope(WorkspaceContext.workspaceID)
+    return entry.warnings()
   }
 
   export function ready(): boolean {
@@ -482,12 +499,14 @@ export namespace KiloIndexing {
 
   export async function available(): Promise<boolean> {
     const entry = await hit().ready
+    entry.scope(WorkspaceContext.workspaceID)
     if (!entry.initialized) return false
     return entry.current().state !== "Disabled"
   }
 
   export async function search(query: string, directoryPrefix?: string): Promise<VectorStoreSearchResult[]> {
     const entry = await hit().ready
+    entry.scope(WorkspaceContext.workspaceID)
     if (!entry.initialized || entry.current().state === "Disabled" || !entry.engine) return []
     return entry.engine.search(query, directoryPrefix)
   }

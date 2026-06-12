@@ -186,6 +186,9 @@ describe("Kilo CLI customizations are wired into index.ts", () => {
   })
 
   test("index.ts invokes the KiloCli integration points", async () => {
+    // These thin call-sites are the only wiring between upstream index.ts and the Kilo
+    // customizations in setup.ts. If a future upstream merge drops them, every Kilo command
+    // and the telemetry/lifecycle hooks silently disappear, exactly the regression this guards.
     const index = await file(INDEX)
     expect(index).toContain("KiloCli.register(")
     expect(index).toContain("KiloCli.bootstrap(")
@@ -202,28 +205,45 @@ describe("Kilo CLI customizations are wired into index.ts", () => {
   test("every .command() in index.ts has an entry in the commands array", async () => {
     const index = await file(INDEX)
     const barrel = await file(BARREL)
-    const registered = [...index.matchAll(/^\s*\.command\((\w+)\)/gm)].map((match) => match[1]!)
+
+    // Match uncommented .command(XxxCommand) calls in index.ts
+    const registered = [...index.matchAll(/^\s*\.command\((\w+)\)/gm)].map((m) => m[1]!)
     expect(registered.length).toBeGreaterThan(0)
 
-    const array = barrel.match(/export const commands\s*=\s*\[([\s\S]*?)\]/)
-    expect(array).toBeTruthy()
-    const entries = [...array![1]!.matchAll(/\b(\w+Command)\b/g)].map((match) => match[1]!)
-    expect(registered.filter((name) => !entries.includes(name))).toEqual([])
+    // Extract identifiers inside the exported commands = [...] array, not just anywhere in the file
+    const arrayMatch = barrel.match(/export const commands\s*=\s*\[([\s\S]*?)\]/)
+    expect(arrayMatch).toBeTruthy()
+    const entries = [...arrayMatch![1]!.matchAll(/\b(\w+Command)\b/g)].map((m) => m[1]!)
+
+    const missing = registered.filter((name) => !entries.includes(name))
+    expect(missing).toEqual([])
   })
 
   test("every barrel command is registered in index.ts or setup.ts", async () => {
+    // Reverse direction of the test above: every source-of-truth command must actually be
+    // runnable. The merge dropped `daemon`/`profile`/`remote`/`config` from index.ts while the
+    // barrel still listed them, this catches that.
     const index = await file(INDEX)
     const setup = await file(SETUP)
     const barrel = await file(BARREL)
+
     const registered = new Set(
-      [...index.matchAll(/\.command\((\w+)\)/g), ...setup.matchAll(/\.command\((\w+)\)/g)].map((match) => match[1]!),
+      [...index.matchAll(/\.command\((\w+)\)/g), ...setup.matchAll(/\.command\((\w+)\)/g)].map((m) => m[1]!),
     )
 
-    const array = barrel.match(/export const commands\s*=\s*\[([\s\S]*?)\]/)
-    expect(array).toBeTruthy()
-    const body = array![1]!.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "")
-    const entries = [...body.matchAll(/\b(\w+Command)\b/g)].map((match) => match[1]!)
+    const arrayMatch = barrel.match(/export const commands\s*=\s*\[([\s\S]*?)\]/)
+    expect(arrayMatch).toBeTruthy()
+    // Strip comments first, the array body contains a comment mentioning `AuthCommand`.
+    const body = arrayMatch![1]!.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "")
+    const entries = [...body.matchAll(/\b(\w+Command)\b/g)].map((m) => m[1]!)
+
+    // Not registered as a bare `.command(Ident)`:
+    //  ConsoleCommand    - replaced by KiloConsoleCommand
+    //  CompletionCommand - provided by yargs `.completion(...)`
+    //  HelpCommand       - registered via createHelpCommand(() => cli)
+    //  (DevSetup/DevAlias enter the array via `...dev`, so they aren't scraped here)
     const except = new Set(["ConsoleCommand", "CompletionCommand", "HelpCommand"])
-    expect(entries.filter((name) => !except.has(name) && !registered.has(name))).toEqual([])
+    const missing = entries.filter((name) => !except.has(name) && !registered.has(name))
+    expect(missing).toEqual([])
   })
 })

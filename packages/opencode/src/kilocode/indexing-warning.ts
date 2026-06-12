@@ -21,7 +21,7 @@ export function parseQdrantWarning(value: unknown): IndexingWarning | undefined 
 }
 
 export function indexingWarningKey(warning: IndexingWarning): string {
-  return `${warning.code}\0${warning.message}`
+  return `${warning.code}\u0000${warning.message}`
 }
 
 export function indexingErrorMessage(status: IndexingStatus): string | undefined {

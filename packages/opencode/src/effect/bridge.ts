@@ -34,7 +34,8 @@ function captureSync() {
 export const bind = <Args extends readonly unknown[], Result>(fn: (...args: Args) => Result) => {
   const captured = captureSync()
   return (...args: Args) =>
-    restore(captured.instance, captured.workspace, () => // kilocode_change
+    restore(captured.instance, captured.workspace, () =>
+      // kilocode_change
       Effect.runSync(
         attachWith(
           Effect.sync(() => fn(...args)),
@@ -76,7 +77,8 @@ export function make(): Effect.Effect<Shape> {
         restore(instance, workspace, () => Effect.runFork(wrap(effect))), // kilocode_change
       run: <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         Effect.callback<A, E>((resume) => {
-          restore(instance, workspace, () => // kilocode_change
+          restore(instance, workspace, () =>
+            // kilocode_change
             Effect.runPromiseExit(wrap(effect)).then((exit) =>
               resume(Exit.isSuccess(exit) ? Effect.succeed(exit.value) : Effect.failCause(exit.cause)),
             ),

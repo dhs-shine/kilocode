@@ -329,10 +329,8 @@ export interface TerminalMessageHandlerDeps {
  * out of the main webview component.
  */
 export function createTerminalMessageHandler(deps: TerminalMessageHandlerDeps) {
-  return (msg: { type: string } & Record<string, unknown>): boolean => {
-    const message = msg as ExtensionMessage
-    if (message.type === "agentManager.terminal.created") {
-      const msg = message
+  return (msg: ExtensionMessage): boolean => {
+    if (msg.type === "agentManager.terminal.created") {
       const contextKey = msg.worktreeId === null ? LOCAL : msg.worktreeId
       deps.state.add(msg.worktreeId, {
         id: msg.terminalId,
@@ -346,13 +344,13 @@ export function createTerminalMessageHandler(deps: TerminalMessageHandlerDeps) {
       deps.activate(msg.terminalId)
       return true
     }
-    if (message.type === "agentManager.terminal.closed") {
-      deps.state.remove(message.terminalId)
-      if (deps.state.activeId() === message.terminalId) deps.state.setActiveId(undefined)
+    if (msg.type === "agentManager.terminal.closed") {
+      deps.state.remove(msg.terminalId)
+      if (deps.state.activeId() === msg.terminalId) deps.state.setActiveId(undefined)
       return true
     }
-    if (message.type === "agentManager.terminal.error") {
-      deps.showError(message.message)
+    if (msg.type === "agentManager.terminal.error") {
+      deps.showError(msg.message)
       return true
     }
     return false
