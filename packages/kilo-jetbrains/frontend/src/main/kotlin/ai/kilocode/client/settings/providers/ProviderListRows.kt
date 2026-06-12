@@ -16,6 +16,7 @@ internal data class ProviderListRow(
     val provider: ProviderSettingsProviderDto,
     val section: String,
     val actions: List<ProviderListAction>,
+    val connected: Boolean = false,
 ) {
     val key: String get() = provider.id
 
@@ -27,17 +28,24 @@ internal fun providerListRows(state: ProviderSettingsDto, query: String): List<P
     val ids = state.connected.toSet()
     val disabled = state.disabled.toSet()
     val filtered = state.providers.filter { ModelSearch.matches(q, it.name) }
+    val connected = filtered
+        .filter { configured(it, state, ids) }
+        .sortedWith(compareBy<ProviderSettingsProviderDto> { popularProviderIndex(it.id) }.thenBy { it.name.lowercase() }.thenBy { it.id })
+    val connectedIds = connected.mapTo(mutableSetOf()) { it.id }
     val popular = filtered
-        .filter { it.id != "kilo" }
+        .filter { it.id !in connectedIds }
         .filter { it.id !in disabled }
-        .filter { !configured(it, state, ids) }
+        .filter { !hiddenProvider(it) }
         .filter { isPopularProvider(it.id) }
         .sortedWith(compareBy<ProviderSettingsProviderDto> { popularProviderIndex(it.id) }.thenBy { it.name.lowercase() }.thenBy { it.id })
     val popularIds = popular.mapTo(mutableSetOf()) { it.id }
     val all = filtered
+        .filter { it.id !in connectedIds }
         .filter { it.id !in popularIds }
+        .filter { !hiddenProvider(it) }
         .sortedWith(compareBy<ProviderSettingsProviderDto> { it.name.lowercase() }.thenBy { it.id })
     val rows = mutableListOf<ProviderListRow>()
+    rows += connected.map { ProviderListRow(it, KiloBundle.message("settings.providers.connected"), providerActions(it, state, disabled), connected = true) }
     rows += popular.map { ProviderListRow(it, KiloBundle.message("settings.providers.popular"), providerActions(it, state, disabled)) }
     rows += all.map { ProviderListRow(it, KiloBundle.message("settings.providers.all"), providerActions(it, state, disabled)) }
     return rows
@@ -65,6 +73,7 @@ internal fun providerActions(
     disabled: Set<String> = state.disabled.toSet(),
 ): List<ProviderListAction> {
     if (provider.id in disabled) return listOf(ProviderListAction.ENABLE)
+    if (provider.id == KILO_PROVIDER_ID && configured(provider, state, state.connected.toSet())) return emptyList()
     if (configured(provider, state, state.connected.toSet())) return listOf(ProviderListAction.DISCONNECT)
     val methods = providerMethods(provider, state)
     return buildList {

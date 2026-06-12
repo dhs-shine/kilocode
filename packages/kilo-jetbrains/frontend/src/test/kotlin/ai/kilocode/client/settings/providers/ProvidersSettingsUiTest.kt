@@ -54,7 +54,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt {
             content.update(
                 ProviderSettingsDto(
-                    providers = listOf(provider("models-dev-provider", "Models Dev Provider", source = "custom")),
+                    providers = listOf(provider("models-dev-provider", "Models Dev Provider")),
                 ),
             )
         }
@@ -71,7 +71,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt {
             content.update(
                 ProviderSettingsDto(
-                    providers = listOf(provider("cloudflare-ai-gateway", "Cloudflare AI Gateway", source = "custom")),
+                    providers = listOf(provider("cloudflare-ai-gateway", "Cloudflare AI Gateway")),
                     auth = mapOf(
                         "cloudflare-ai-gateway" to listOf(
                             ProviderAuthMethodDto("api", "API key"),
@@ -92,7 +92,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             val north = layout.getLayoutComponent(BorderLayout.NORTH) as Container
             val center = layout.getLayoutComponent(BorderLayout.CENTER) as Container
 
-            assertEquals(listOf("Add custom provider", "Refresh"), components(north).filterIsInstance<JButton>().map { it.text })
+            assertEquals(listOf("Refresh"), components(north).filterIsInstance<JButton>().map { it.text })
             assertEquals(1, components(center).filterIsInstance<SearchTextField>().size)
             assertEquals(1, components(center).filterIsInstance<JBList<ProviderListRow>>().size)
         }
@@ -114,7 +114,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt { assertEquals(listOf(ProviderListAction.DISCONNECT), rows(content).single().actions) }
     }
 
-    fun `test popular rows use vscode order and exclude kilo`() {
+    fun `test popular rows use vscode order including kilo`() {
         val rows = providerListRows(
             ProviderSettingsDto(
                 providers = listOf(
@@ -130,13 +130,11 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             "",
         )
 
-        assertEquals(listOf("anthropic", "deepseek", "openai", "google", "openrouter", "vercel"), rows.take(6).map { it.key })
+        assertEquals(listOf("kilo", "anthropic", "deepseek", "openai", "google", "openrouter", "vercel"), rows.map { it.key })
         assertEquals("Popular providers", providerListSectionTitle(rows, 0))
-        assertEquals("All providers", providerListSectionTitle(rows, 6))
-        assertEquals("kilo", rows[6].key)
     }
 
-    fun `test connected popular provider is not duplicated in popular section`() {
+    fun `test connected providers appear first and are not duplicated in popular section`() {
         val rows = providerListRows(
             ProviderSettingsDto(
                 providers = listOf(provider("anthropic", "Anthropic"), provider("openai", "OpenAI")),
@@ -145,10 +143,56 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             "",
         )
 
-        assertEquals(listOf("openai", "anthropic"), rows.map { it.key })
-        assertEquals("Popular providers", providerListSectionTitle(rows, 0))
-        assertEquals("All providers", providerListSectionTitle(rows, 1))
-        assertEquals(listOf(ProviderListAction.DISCONNECT), rows[1].actions)
+        assertEquals(listOf("anthropic", "openai"), rows.map { it.key })
+        assertEquals("Connected providers", providerListSectionTitle(rows, 0))
+        assertEquals("Popular providers", providerListSectionTitle(rows, 1))
+        assertEquals(listOf(ProviderListAction.DISCONNECT), rows[0].actions)
+        assertTrue(rows[0].connected)
+    }
+
+    fun `test source custom catalog providers remain visible while configured custom providers are connected`() {
+        val rows = providerListRows(
+            ProviderSettingsDto(
+                providers = listOf(
+                    provider("anthropic", "Anthropic", source = "custom"),
+                    provider("available-custom", "Available Custom", source = "custom"),
+                    provider("local-openai", "Local OpenAI", source = "custom"),
+                ),
+                config = mapOf("local-openai" to CustomProviderConfigDto("local-openai", npm = "@ai-sdk/openai-compatible")),
+            ),
+            "",
+        )
+
+        assertEquals(listOf("local-openai", "anthropic", "available-custom"), rows.map { it.key })
+        assertEquals("Connected providers", providerListSectionTitle(rows, 0))
+        assertEquals("Popular providers", providerListSectionTitle(rows, 1))
+        assertEquals("All providers", providerListSectionTitle(rows, 2))
+        assertEquals(listOf(ProviderListAction.DISCONNECT), rows[0].actions)
+    }
+
+    fun `test unconfigured openai compatible template provider is hidden`() {
+        val rows = providerListRows(
+            ProviderSettingsDto(
+                providers = listOf(provider("openai-compatible", "OpenAI Compatible", source = "custom")),
+            ),
+            "",
+        )
+
+        assertTrue(rows.isEmpty())
+    }
+
+    fun `test connected kilo gateway has no provider settings actions`() {
+        val rows = providerListRows(
+            ProviderSettingsDto(
+                providers = listOf(provider("kilo", "Kilo Gateway")),
+                connected = listOf("kilo"),
+            ),
+            "",
+        )
+
+        assertEquals(listOf("kilo"), rows.map { it.key })
+        assertEquals("Connected providers", providerListSectionTitle(rows, 0))
+        assertTrue(rows.single().actions.isEmpty())
     }
 
     fun `test disabled popular provider appears in all providers with enable`() {
@@ -218,11 +262,23 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             val row = ProviderListRow(provider("cloudflare", "Cloudflare"), "All providers", listOf(ProviderListAction.OAUTH, ProviderListAction.CONNECT))
             val list = JBList(listOf(row))
             val bounds = Rectangle(0, 0, 320, 48)
-            val areas = ProviderListRenderer.actionBounds(list, bounds, row)
+            val areas = ProviderListRenderer.actionBounds(list, bounds, row, selected = true)
 
-            assertEquals(ProviderListAction.CONNECT, ProviderListRenderer.actionAt(list, bounds, center(areas.getValue(ProviderListAction.CONNECT)), row))
-            assertEquals(ProviderListAction.OAUTH, ProviderListRenderer.actionAt(list, bounds, center(areas.getValue(ProviderListAction.OAUTH)), row))
-            assertNull(ProviderListRenderer.actionAt(list, bounds, Point(4, 4), row))
+            assertEquals(ProviderListAction.CONNECT, ProviderListRenderer.actionAt(list, bounds, center(areas.getValue(ProviderListAction.CONNECT)), row, selected = true))
+            assertEquals(ProviderListAction.OAUTH, ProviderListRenderer.actionAt(list, bounds, center(areas.getValue(ProviderListAction.OAUTH)), row, selected = true))
+            assertNull(ProviderListRenderer.actionAt(list, bounds, Point(4, 4), row, selected = true))
+            assertTrue(ProviderListRenderer.actionBounds(list, bounds, row, selected = false).isEmpty())
+        }
+    }
+
+    fun `test renderer keeps connected disconnect action visible when unselected`() {
+        edt {
+            val row = ProviderListRow(provider("openai", "OpenAI"), "Connected providers", listOf(ProviderListAction.DISCONNECT), connected = true)
+            val list = JBList(listOf(row))
+            val bounds = Rectangle(0, 0, 320, 48)
+            val area = ProviderListRenderer.actionBounds(list, bounds, row, selected = false).getValue(ProviderListAction.DISCONNECT)
+
+            assertEquals(ProviderListAction.DISCONNECT, ProviderListRenderer.actionAt(list, bounds, center(area), row, selected = false))
         }
     }
 
@@ -231,9 +287,9 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             val row = ProviderListRow(provider("env", "Env", source = "env"), "All providers", listOf(ProviderListAction.DISCONNECT))
             val list = JBList(listOf(row))
             val bounds = Rectangle(0, 0, 320, 48)
-            val area = ProviderListRenderer.actionBounds(list, bounds, row).getValue(ProviderListAction.DISCONNECT)
+            val area = ProviderListRenderer.actionBounds(list, bounds, row, selected = true).getValue(ProviderListAction.DISCONNECT)
 
-            assertNull(ProviderListRenderer.actionAt(list, bounds, center(area), row))
+            assertNull(ProviderListRenderer.actionAt(list, bounds, center(area), row, selected = true))
         }
     }
 
@@ -243,9 +299,21 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             val list = JBList(listOf(row))
             val renderer = ProviderListRenderer(com.intellij.ui.CollectionListModel(listOf(row)))
 
-            renderer.getListCellRendererComponent(list, row, 0, false, false)
+            renderer.getListCellRendererComponent(list, row, 0, true, false)
 
             assertEquals(listOf("OAuth", "Connect"), renderer.actionTexts())
+        }
+    }
+
+    fun `test renderer hides unselected unconnected action labels`() {
+        edt {
+            val row = ProviderListRow(provider("cloudflare", "Cloudflare"), "All providers", listOf(ProviderListAction.CONNECT))
+            val list = JBList(listOf(row))
+            val renderer = ProviderListRenderer(com.intellij.ui.CollectionListModel(listOf(row)))
+
+            renderer.getListCellRendererComponent(list, row, 0, false, false)
+
+            assertTrue(renderer.actionTexts().isEmpty())
         }
     }
 
@@ -255,11 +323,35 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             val list = JBList(listOf(row))
             val renderer = ProviderListRenderer(com.intellij.ui.CollectionListModel(listOf(row)))
 
-            renderer.getListCellRendererComponent(list, row, 0, false, false)
+            renderer.getListCellRendererComponent(list, row, 0, true, false)
 
             val fg = UIManager.getColor("Button.foreground") ?: UIUtil.getLabelForeground()
             val labels = components(renderer).filterIsInstance<JBLabel>().filter { it.text in listOf("OAuth", "Connect") }
             assertEquals(listOf(fg, fg), labels.map { it.foreground })
+        }
+    }
+
+    fun `test renderer exposes provider icon and vscode note`() {
+        edt {
+            val row = ProviderListRow(provider("openai", "OpenAI"), "Popular providers", listOf(ProviderListAction.CONNECT))
+            val list = JBList(listOf(row))
+            val renderer = ProviderListRenderer(com.intellij.ui.CollectionListModel(listOf(row)))
+
+            renderer.getListCellRendererComponent(list, row, 0, true, false)
+
+            assertTrue(renderer.providerIconVisible())
+            assertEquals("GPT and Codex models with API key or ChatGPT login", renderer.descriptionText())
+        }
+    }
+
+    fun `test action bounds are vertically centered`() {
+        edt {
+            val row = ProviderListRow(provider("openai", "OpenAI"), "Popular providers", listOf(ProviderListAction.CONNECT))
+            val list = JBList(listOf(row))
+            val bounds = Rectangle(0, 10, 320, 80)
+            val area = ProviderListRenderer.actionBounds(list, bounds, row, selected = true).getValue(ProviderListAction.CONNECT)
+
+            assertTrue(kotlin.math.abs((bounds.y + bounds.height / 2) - (area.y + area.height / 2)) <= 1)
         }
     }
 
@@ -348,7 +440,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt { assertTrue(rows(panel).isEmpty()) }
     }
 
-    private fun content() = edt { ProvidersContent({}, {}, {}, {}, {}, {}) }
+    private fun content() = edt { ProvidersContent({}, {}, {}, {}, {}) }
 
     private fun createUi(): ProvidersSettingsUi {
         val cs = CoroutineScope(SupervisorJob())

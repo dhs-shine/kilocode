@@ -83,6 +83,26 @@ class KiloBackendProviderSettingsManagerTest {
     }
 
     @Test
+    fun `disconnecting kilo gateway returns error without logout`() = runBlocking {
+        mock.providers = """{
+            "all":[{"id":"kilo","name":"Kilo Gateway","source":"custom","models":{}}],
+            "default":{},
+            "connected":["kilo"],
+            "failed":[]
+        }""".trimIndent()
+        val manager = manager()
+
+        mock.resetCounts()
+        val result = manager.disconnect(ProviderDisconnectDto("/test", "kilo"))
+
+        assertEquals("Kilo Gateway cannot be disconnected from provider settings.", result.error)
+        assertFalse(result.profileCleared)
+        assertNull(mock.lastAuthDeletePath)
+        assertEquals(0, mock.requestCount("/auth/kilo"))
+        assertEquals(0, mock.requestCount("/global/dispose"))
+    }
+
+    @Test
     fun `state waits through dispose triggered reload`() = runBlocking {
         mock.providers = """{
             "all":[{"id":"openai","name":"OpenAI","source":"custom","models":{}}],

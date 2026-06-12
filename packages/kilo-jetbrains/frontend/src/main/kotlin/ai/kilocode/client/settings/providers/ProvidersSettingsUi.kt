@@ -71,7 +71,7 @@ internal class ProvidersSettingsUi(
         val LOG = KiloLog.create(ProvidersSettingsUi::class.java)
     }
 
-    private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable, ::custom, ::reload)
+    private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable, ::reload)
     private var state = ProviderSettingsDto()
     private var job: Job? = null
     private var request = 0
@@ -235,7 +235,6 @@ internal class ProvidersContent(
     private val oauth: (ProviderSettingsProviderDto) -> Unit,
     private val disconnect: (ProviderSettingsProviderDto) -> Unit,
     private val enable: (ProviderSettingsProviderDto) -> Unit,
-    private val custom: () -> Unit,
     private val reload: () -> Unit,
 ) : JPanel(BorderLayout()) {
     private val top = Stack.horizontal(UiStyle.Gap.sm())
@@ -252,7 +251,6 @@ internal class ProvidersContent(
     init {
         layout = BorderLayout()
         border = JBUI.Borders.empty(UiStyle.Gap.pad(), UiStyle.Gap.pad(), UiStyle.Gap.pad(), UiStyle.Gap.pad())
-        top.next(JButton(KiloBundle.message("settings.providers.addCustom")).apply { addActionListener { custom() } })
         top.next(JButton(KiloBundle.message("settings.providers.refresh")).apply { addActionListener { reload() } })
         add(top, BorderLayout.NORTH)
         list.cellRenderer = ProviderListRenderer(model)
@@ -288,7 +286,7 @@ internal class ProvidersContent(
                 val bounds = idx.takeIf { it >= 0 }?.let { list.getCellBounds(it, it) } ?: return
                 if (!bounds.contains(e.point)) return
                 val row = model.getElementAt(idx)
-                val action = ProviderListRenderer.actionAt(list, bounds, e.point, row) ?: return
+                val action = ProviderListRenderer.actionAt(list, bounds, e.point, row, idx == list.selectedIndex) ?: return
                 activate(row, action)
                 e.consume()
             }
@@ -344,7 +342,7 @@ internal class ProvidersContent(
     private fun primary() {
         checkEdt()
         val row = list.selectedValue ?: return
-        val action = row.actions.firstOrNull() ?: return
+        val action = ProviderListRenderer.visibleActions(row, true).firstOrNull() ?: return
         activate(row, action)
     }
 
