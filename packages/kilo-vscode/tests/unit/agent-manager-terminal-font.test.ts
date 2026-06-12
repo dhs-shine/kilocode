@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { KiloClient } from "@kilocode/sdk/v2/client"
 import { createRoot } from "solid-js"
-import { affectsTerminalFont, readTerminalFont } from "../../src/agent-manager/terminal-font"
+import { affectsTerminalFont, resolveTerminalFont } from "../../src/agent-manager/terminal-font"
 import { TerminalRouter } from "../../src/agent-manager/terminal-routing"
 import type { AgentManagerOutMessage, TerminalFont } from "../../src/agent-manager/types"
 import { createTerminalMessageHandler, createTerminalState } from "../../webview-ui/agent-manager/terminal/state"
@@ -14,10 +14,18 @@ const font: TerminalFont = {
 }
 
 describe("Agent Manager terminal font", () => {
-  it("uses the platform terminal size when configuration is unavailable", () => {
-    expect(readTerminalFont()).toEqual({
+  it("resolves terminal settings without inheriting the editor size", () => {
+    expect(resolveTerminalFont(undefined, undefined, undefined)).toEqual({
       fontFamily: "Menlo, Monaco, 'Courier New', monospace",
       fontSize: process.platform === "darwin" ? 12 : 14,
+    })
+    expect(resolveTerminalFont("MesloLGS NF", 16, "Menlo")).toEqual({
+      fontFamily: "MesloLGS NF",
+      fontSize: 16,
+    })
+    expect(resolveTerminalFont(undefined, 16, "Menlo")).toEqual({
+      fontFamily: "Menlo",
+      fontSize: 16,
     })
   })
 

@@ -16,16 +16,27 @@ export interface TerminalFont {
 const FALLBACK = "Menlo, Monaco, 'Courier New', monospace"
 const SIZE = process.platform === "darwin" ? 12 : 14
 
+export function resolveTerminalFont(
+  family: string | undefined,
+  size: number | undefined,
+  editor: string | undefined,
+): TerminalFont {
+  return {
+    fontFamily: family?.trim() || editor?.trim() || FALLBACK,
+    fontSize: size ?? SIZE,
+  }
+}
+
 /** Resolve the user's integrated-terminal font, mirroring VS Code's own
  *  family fallback while preserving the terminal's independent size. */
 export function readTerminalFont(): TerminalFont {
   const term = vscode.workspace.getConfiguration("terminal.integrated")
   const editor = vscode.workspace.getConfiguration("editor")
-  const family = term.get<string>("fontFamily")?.trim() || editor.get<string>("fontFamily")?.trim() || FALLBACK
-  return {
-    fontFamily: family,
-    fontSize: term.get<number>("fontSize") ?? SIZE,
-  }
+  return resolveTerminalFont(
+    term.get<string>("fontFamily"),
+    term.get<number>("fontSize"),
+    editor.get<string>("fontFamily"),
+  )
 }
 
 /** True when a config change affects the effective terminal family or size. */
