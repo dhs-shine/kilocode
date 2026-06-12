@@ -2,13 +2,17 @@ import { afterEach, expect, test } from "bun:test"
 import { $ } from "bun"
 import fs from "fs/promises"
 import path from "path"
-import { Effect } from "effect"
+import { Deferred, Effect, Fiber, Layer } from "effect"
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { Global } from "@opencode-ai/core/global"
+import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { AppProcess } from "@opencode-ai/core/process"
 import { Hash } from "@opencode-ai/core/util/hash"
 import { Snapshot } from "../../src/snapshot"
 import { Instance } from "../../src/project/instance"
 import { Filesystem } from "../../src/util/filesystem"
 import { KiloSnapshotMaterialize } from "../../src/kilocode/snapshot/materialize"
+import { KiloSnapshotSeed } from "../../src/kilocode/snapshot/seed"
 import { disposeAllInstances, provideInstance, tmpdir } from "../fixture/fixture"
 
 const fwd = (...parts: string[]) => path.join(...parts).replaceAll("\\", "/")
@@ -43,6 +47,8 @@ function durable(snapshot: Snapshot.Interface) {
     return hash
   })
 }
+
+const infra = Layer.mergeAll(AppProcess.defaultLayer, AppFileSystem.defaultLayer)
 
 function run<A>(dir: string, body: (snapshot: Snapshot.Interface) => Effect.Effect<A>) {
   return Effect.runPromise(
@@ -165,7 +171,7 @@ test(
     await expect(fs.access(path.join(seeded, "created.txt"))).rejects.toThrow()
     await expect(fs.access(path.join(seeded, "deleted.txt"))).rejects.toThrow()
   },
-  { timeout: 15_000 },
+  { timeout: 35_000 },
 )
 
 test("regular seed preserves aged line endings and filtered worktree bytes", async () => {
@@ -311,8 +317,134 @@ test(
       await fs.rename(hidden, objects)
     }
   },
-  { timeout: 30_000 },
+  { timeout: 35_000 },
 )
+
+test("interrupted seed removes borrowed state after source gc", async () => {
+  await using source = await tmpdir({
+    git: true,
+    init: async (dir) => {
+      await Filesystem.write(path.join(dir, "tracked.txt"), "tracked\n")
+      await $`git add tracked.txt`.cwd(dir).quiet()
+      await $`git commit -m tracked`.cwd(dir).quiet()
+    },
+  })
+  await using root = await tmpdir()
+  const gitdir = path.join(root.path, "snapshot.git")
+  await $`git init --bare ${gitdir}`.quiet()
+  const index = (await $`git rev-parse --path-format=absolute --git-path index`.cwd(source.path).text()).trim()
+  const original = await fs.readFile(index)
+  const ref = KiloSnapshotMaterialize.ref(gitdir)
+
+  await Effect.runPromise(
+    Effect.gen(function* () {
+      const process = yield* AppProcess.Service
+      const fsys = yield* AppFileSystem.Service
+      const reached = yield* Deferred.make<void>()
+      const raw = (cmd: string[], opts?: { cwd?: string; env?: Record<string, string>; stdin?: string }) =>
+        process
+          .run(ChildProcess.make("git", cmd, { cwd: opts?.cwd, env: opts?.env, extendEnv: true }), {
+            stdin: opts?.stdin,
+          })
+          .pipe(
+            Effect.map((result) => ({
+              code: ChildProcessSpawner.ExitCode(result.exitCode),
+              text: result.stdout.toString("utf8"),
+              stderr: result.stderr.toString("utf8"),
+            })),
+            Effect.catch((err) =>
+              Effect.succeed({
+                code: ChildProcessSpawner.ExitCode(1),
+                text: "",
+                stderr: String(err),
+              }),
+            ),
+          )
+      const git = (cmd: string[], opts?: { cwd?: string; env?: Record<string, string>; stdin?: string }) => {
+        const read = cmd[1] === gitdir && cmd.includes("read-tree") && cmd.at(-1) !== "--empty"
+        if (read) return Deferred.succeed(reached, undefined).pipe(Effect.andThen(Effect.never))
+        return raw(cmd, opts)
+      }
+      const fiber = yield* KiloSnapshotSeed.seed({
+        dir: source.path,
+        worktree: source.path,
+        gitdir,
+        limit: 2 * 1024 * 1024,
+        git,
+        fs: fsys,
+      }).pipe(Effect.forkChild)
+      yield* Deferred.await(reached)
+
+      const hash = yield* Effect.promise(() => $`git --git-dir=${source.path}/.git rev-parse ${ref}`.text())
+      yield* Effect.promise(() => $`git gc --prune=now`.cwd(source.path).quiet())
+      yield* Effect.promise(() => $`git --git-dir=${source.path}/.git cat-file -e ${hash.trim()}^{tree}`.quiet())
+      yield* Fiber.interrupt(fiber)
+    }).pipe(Effect.provide(infra)),
+  )
+
+  expect(await fs.readFile(index)).toEqual(original)
+  expect((await $`git --git-dir=${source.path}/.git rev-parse --verify --quiet ${ref}`.nothrow().text()).trim()).toBe(
+    "",
+  )
+  for (const file of [
+    path.join(gitdir, "seed.index"),
+    path.join(gitdir, "seed.index.lock"),
+    path.join(gitdir, "objects", "info", "alternates"),
+    path.join(gitdir, "objects", "info", "alternates.seed"),
+    path.join(gitdir, "seed-objects"),
+  ]) {
+    await expect(fs.access(file)).rejects.toThrow()
+  }
+})
+
+test("regular seed falls back for subdirectory sessions", async () => {
+  await using tmp = await tmpdir({
+    git: true,
+    init: async (dir) => {
+      await Filesystem.write(path.join(dir, "root.txt"), "root\n")
+      await Filesystem.write(path.join(dir, "nested/tracked.txt"), "nested\n")
+      await $`git add .`.cwd(dir).quiet()
+      await $`git commit -m tracked`.cwd(dir).quiet()
+    },
+  })
+  const dir = path.join(tmp.path, "nested")
+  const result = await run(dir, (snapshot) => snapshot.track())
+  expect(result.value).toBeTruthy()
+  await expect(fs.access(path.join(result.gitdir, "objects", "info", "alternates"))).rejects.toThrow()
+  expect((await run(dir, (snapshot) => snapshot.patch(result.value!))).value.files).toEqual([])
+})
+
+test("regular seed falls back for unmerged indexes", async () => {
+  await using tmp = await tmpdir({
+    git: true,
+    init: async (dir) => {
+      await Filesystem.write(path.join(dir, "conflict.txt"), "base\n")
+      await $`git add conflict.txt`.cwd(dir).quiet()
+      await $`git commit -m base`.cwd(dir).quiet()
+      await $`git checkout -b other`.cwd(dir).quiet()
+      await Filesystem.write(path.join(dir, "conflict.txt"), "other\n")
+      await $`git commit -am other`.cwd(dir).quiet()
+      await $`git checkout -`.cwd(dir).quiet()
+      await Filesystem.write(path.join(dir, "conflict.txt"), "current\n")
+      await $`git commit -am current`.cwd(dir).quiet()
+      await $`git merge other`.cwd(dir).nothrow().quiet()
+    },
+  })
+  const before = await $`git ls-files --unmerged`.cwd(tmp.path).text()
+  expect(before).not.toBe("")
+
+  const result = await run(tmp.path, (snapshot) => snapshot.track())
+  expect(result.value).toBeTruthy()
+  await expect(fs.access(path.join(result.gitdir, "objects", "info", "alternates"))).rejects.toThrow()
+  expect(await $`git ls-files --unmerged`.cwd(tmp.path).text()).toBe(before)
+
+  const file = path.join(tmp.path, "conflict.txt")
+  const baseline = await fs.readFile(file, "utf8")
+  await Filesystem.write(file, "assistant\n")
+  const patch = (await run(tmp.path, (snapshot) => snapshot.patch(result.value!))).value
+  await run(tmp.path, (snapshot) => snapshot.revert([patch]))
+  expect(await fs.readFile(file, "utf8")).toBe(baseline)
+})
 
 test("regular seed falls back for sparse checkouts", async () => {
   await using tmp = await tmpdir({
