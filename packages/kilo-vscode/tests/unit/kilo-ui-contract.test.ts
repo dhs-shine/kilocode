@@ -185,7 +185,7 @@ describe("Write and apply_patch patch rendering contracts (source)", () => {
   })
 })
 
-describe("Bash tool syntax highlighting and section labels (source)", () => {
+describe("Bash tool static terminal preview (source)", () => {
   const src = fs.readFileSync(KILO_MESSAGE_PART_FILE, "utf-8")
   const block =
     src.match(/ToolRegistry\.register\(\{\s*name:\s*"bash"[\s\S]*?(?=ToolRegistry\.register\(|$)/)?.[0] ?? ""
@@ -194,25 +194,26 @@ describe("Bash tool syntax highlighting and section labels (source)", () => {
     expect(block).toContain("BashHighlightedOutput")
   })
 
-  it("BashHighlightedOutput uses shellscript grammar for commands without $ prefix", () => {
-    // The command should be highlighted as shellscript, but the $ prompt must
-    // NOT be inside the highlighted code (it breaks Shiki's parse context)
-    expect(src).toMatch(/data-lang="shellscript">\$\{escapeHtml\(cmd\)\}/)
-    expect(src).not.toMatch(/data-lang="shellscript">\$\s/)
+  it("BashHighlightedOutput renders the command as plain code next to the prompt", () => {
+    expect(src).toContain('data-slot="bash-terminal" data-kind="command"')
+    expect(src).toContain('data-slot="bash-prompt"')
+    expect(src).toContain('<pre data-slot="bash-pre"><code>{props.cmd}</code></pre>')
   })
 
-  it("BashHighlightedOutput uses log grammar for output", () => {
-    expect(src).toMatch(/data-lang="log"/)
+  it("BashHighlightedOutput renders output as plain code", () => {
+    expect(src).toContain('data-slot="bash-terminal" data-kind="output"')
+    expect(src).toContain('<pre data-slot="bash-pre"><code>{props.output}</code></pre>')
+    expect(src).not.toMatch(/data-lang=/)
   })
 
-  it("BashHighlightedOutput renders section labels matching MCP tool pattern", () => {
-    // Must use the same data-slot as MCP tools for consistent styling
-    expect(src).toMatch(/data-slot="mcp-section-label".*shell\.command/)
-    expect(src).toMatch(/data-slot="mcp-section-label".*shell\.output/)
+  it("BashHighlightedOutput keeps command and output in separate terminal containers", () => {
+    const slots = src.match(/data-slot="bash-terminal"/g) ?? []
+    expect(slots).toHaveLength(2)
   })
 
-  it("BashHighlightedOutput has edge-to-edge divider between sections", () => {
-    expect(src).toContain('data-slot="bash-divider"')
+  it("BashHighlightedOutput does not render shell section labels or a divider", () => {
+    expect(src).not.toMatch(/data-slot="mcp-section-label".*shell\./)
+    expect(src).not.toContain('data-slot="bash-divider"')
   })
 
   it("BashHighlightedOutput supports openContent for opening output in editor", () => {
@@ -255,9 +256,7 @@ describe("HighlightedText @mention regex fallback and click handler (source)", (
     expect(src).toMatch(/segment\.text\.replace\(\/\^@\//)
   })
 
-  it("escapeHtml is imported from shared util, not duplicated", () => {
-    expect(src).toMatch(/import.*escapeHtml.*from.*util\/escape-html/)
-    // Must NOT contain a local function definition
+  it("does not duplicate HTML escaping helpers", () => {
     expect(src).not.toMatch(/function escapeHtml/)
   })
 })
