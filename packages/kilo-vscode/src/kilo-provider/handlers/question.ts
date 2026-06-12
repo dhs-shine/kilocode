@@ -20,6 +20,7 @@ export interface QuestionContext {
   getQuestionDirectory(requestID: string): string | undefined
   clearQuestionDirectory(requestID: string): void
   getQuestionRevision(): number
+  pruneQuestionDirectories(active: Set<string>, dirs: Set<string>): void
 }
 
 interface QuestionRecovery {
@@ -71,6 +72,7 @@ export async function fetchAndSendPendingQuestions(ctx: QuestionContext): Promis
       ])
       const revision = ctx.getQuestionRevision()
       const seen = new Set<string>()
+      const scanned = new Set<string>()
       const failed = new Set<string>()
       const pending: Array<{ question: QuestionRequest; dir: string }> = []
       for (const dir of dirs) {
@@ -80,6 +82,7 @@ export async function fetchAndSendPendingQuestions(ctx: QuestionContext): Promis
           console.error(`[Kilo New] KiloProvider: Failed to fetch pending questions for ${dir}:`, error)
           continue
         }
+        scanned.add(dir)
         if (!data) continue
         for (const q of data) {
           if (seen.has(q.id)) continue
@@ -102,6 +105,7 @@ export async function fetchAndSendPendingQuestions(ctx: QuestionContext): Promis
           },
         })
       }
+      ctx.pruneQuestionDirectories(seen, scanned)
       return { seen, complete: failed.size === 0 }
     }
   } catch (error) {

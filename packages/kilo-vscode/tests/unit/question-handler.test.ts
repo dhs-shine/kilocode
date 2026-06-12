@@ -31,6 +31,7 @@ function ctx(
     pending?: Record<string, QuestionRequest[]>
     errors?: { list?: Record<string, unknown>; reply?: unknown; reject?: unknown }
     changeOnList?: string
+    removeOnList?: string
   } = {},
 ) {
   const messages: unknown[] = []
@@ -41,6 +42,7 @@ function ctx(
   const dirs = opts.dirs ?? new Map<string, string>()
   let revision = 0
   let changed = false
+  const removed = new Set<string>()
   const client = {
     question: {
       list: async (args: { directory?: string }) => {
@@ -52,7 +54,12 @@ function ctx(
         }
         const error = opts.errors?.list?.[dir]
         if (error) return { data: undefined, error }
-        return { data: opts.pending?.[dir] ?? [] }
+        const data = opts.pending?.[dir] ?? []
+        if (opts.removeOnList !== dir) return { data }
+        if (removed.has(dir)) return { data: [] }
+        removed.add(dir)
+        revision += 1
+        return { data }
       },
       reply: async (args: unknown) => {
         replies.push(args)
@@ -81,6 +88,14 @@ function ctx(
       revision += 1
     },
     getQuestionRevision: () => revision,
+    pruneQuestionDirectories: (active, scanned) => {
+      const size = questionDirs.size
+      for (const [id, dir] of questionDirs) {
+        if (active.has(id) || !scanned.has(dir)) continue
+        questionDirs.delete(id)
+      }
+      if (questionDirs.size !== size) revision += 1
+    },
   }
   return { fake, messages, queries, replies, rejects, questionDirs }
 }
@@ -262,17 +277,28 @@ describe("question recovery", () => {
       pending: { "/workspace": [item] },
       changeOnList: "/workspace",
     })
-    questionDirs.set("req-new", "/workspace")
 
     await fetchAndSendPendingQuestions(fake)
 
     expect(queries).toEqual(["/workspace", "/workspace"])
     expect(messages).toContainEqual({ type: "questionRequest", question: item })
-    expect(questionDirs.get("req-new")).toBe("/workspace")
     expect(questionDirs.get("req-missed")).toBe("/workspace")
   })
 
-  it("preserves cached routes when recovery is incomplete", async () => {
+  it("does not repost a question resolved during recovery", async () => {
+    const item = pending("req-resolved", "ses-root")
+    const { fake, messages, queries } = ctx({
+      pending: { "/workspace": [item] },
+      removeOnList: "/workspace",
+    })
+
+    await fetchAndSendPendingQuestions(fake)
+
+    expect(queries).toEqual(["/workspace", "/workspace"])
+    expect(messages).toEqual([])
+  })
+
+  it("prunes scanned routes while preserving routes from failed directories", async () => {
     const dir = "/workspace/.kilo/worktrees/failing"
     const error = new Error("temporary failure")
     const { fake, questionDirs } = ctx({
@@ -287,7 +313,7 @@ describe("question recovery", () => {
     await fetchAndSendPendingQuestions(fake)
     spy.mockRestore()
 
-    expect(questionDirs.get("workspace-stale")).toBe("/workspace")
+    expect(questionDirs.has("workspace-stale")).toBe(false)
     expect(questionDirs.get("worktree-pending")).toBe(dir)
   })
 })

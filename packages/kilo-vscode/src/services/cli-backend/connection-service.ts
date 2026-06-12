@@ -287,11 +287,21 @@ export class KiloConnectionService {
 
   clearQuestionDirectory(requestID: string): void {
     this.questionDirectories.delete(requestID)
+    // A resolved request must invalidate an in-flight recovery scan so stale list data cannot repost it.
     this.questionRevision += 1
   }
 
   getQuestionRevision(): number {
     return this.questionRevision
+  }
+
+  pruneQuestionDirectories(active: Set<string>, dirs: Set<string>): void {
+    const size = this.questionDirectories.size
+    for (const [id, dir] of this.questionDirectories) {
+      if (active.has(id) || !dirs.has(dir)) continue
+      this.questionDirectories.delete(id)
+    }
+    if (this.questionDirectories.size !== size) this.questionRevision += 1
   }
 
   /**

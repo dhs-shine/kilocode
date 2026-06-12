@@ -37,12 +37,14 @@ describe("KiloConnectionService question routing", () => {
       "/tmp/worktree",
     )
     expect(service.getQuestionDirectory("que_test")).toBe("/tmp/worktree")
+    expect(service.getQuestionRevision()).toBe(1)
 
     handler.handleQuestionEvent({
       type: "question.replied",
       properties: { requestID: "que_test", sessionID: "ses_test", answers: [] },
     })
     expect(service.getQuestionDirectory("que_test")).toBeUndefined()
+    expect(service.getQuestionRevision()).toBe(2)
 
     service.recordQuestionDirectory("que_rejected", "/tmp/worktree")
     handler.handleQuestionEvent({
@@ -50,5 +52,20 @@ describe("KiloConnectionService question routing", () => {
       properties: { requestID: "que_rejected", sessionID: "ses_test" },
     })
     expect(service.getQuestionDirectory("que_rejected")).toBeUndefined()
+    expect(service.getQuestionRevision()).toBe(3)
+  })
+
+  test("prunes stale origins only for successfully scanned directories", () => {
+    const service = new KiloConnectionService({} as any)
+    service.recordQuestionDirectory("que_active", "/tmp/scanned")
+    service.recordQuestionDirectory("que_stale", "/tmp/scanned")
+    service.recordQuestionDirectory("que_unknown", "/tmp/failed")
+
+    service.pruneQuestionDirectories(new Set(["que_active"]), new Set(["/tmp/scanned"]))
+
+    expect(service.getQuestionDirectory("que_active")).toBe("/tmp/scanned")
+    expect(service.getQuestionDirectory("que_stale")).toBeUndefined()
+    expect(service.getQuestionDirectory("que_unknown")).toBe("/tmp/failed")
+    expect(service.getQuestionRevision()).toBe(1)
   })
 })

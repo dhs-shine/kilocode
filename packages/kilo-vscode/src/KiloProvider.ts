@@ -2815,6 +2815,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       getQuestionDirectory: (id: string) => this.connectionService.getQuestionDirectory(id),
       clearQuestionDirectory: (id: string) => this.connectionService.clearQuestionDirectory(id),
       getQuestionRevision: () => this.connectionService.getQuestionRevision(),
+      pruneQuestionDirectories: (active: Set<string>, dirs: Set<string>) =>
+        this.connectionService.pruneQuestionDirectories(active, dirs),
     }
   }
 
