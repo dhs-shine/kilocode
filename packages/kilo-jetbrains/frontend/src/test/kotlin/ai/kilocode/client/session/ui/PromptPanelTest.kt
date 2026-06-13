@@ -52,7 +52,7 @@ class PromptPanelTest : BasePlatformTestCase() {
 
     fun `test prompt input uses editor font settings`() {
         val style = SessionEditorStyle.current()
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val font = panel.inputFont()
 
         assertEquals(style.editorFamily, font.name)
@@ -61,13 +61,13 @@ class PromptPanelTest : BasePlatformTestCase() {
 
     fun `test prompt input uses editor background`() {
         val style = SessionEditorStyle.current()
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
 
         assertEquals(style.editorScheme.defaultBackground, panel.defaultFocusedComponent.background)
     }
 
     fun `test applyStyle updates prompt input and height`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val style = SessionEditorStyle.create(family = "Courier New", size = 26)
 
         panel.applyStyle(style)
@@ -78,7 +78,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt editor grows when lines are added`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val editor = panel.defaultFocusedComponent as EditorTextField
         val min = editor.preferredSize.height
 
@@ -88,7 +88,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt editor shrinks when lines are removed`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val editor = panel.defaultFocusedComponent as EditorTextField
         val min = editor.preferredSize.height
 
@@ -101,7 +101,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt editor shrinks after clear`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val editor = panel.defaultFocusedComponent as EditorTextField
         val min = editor.preferredSize.height
 
@@ -229,7 +229,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test reasoning picker hides when variants are empty`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
 
         panel.reasoning.setItems(emptyList())
 
@@ -237,7 +237,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test reasoning picker shows selected variant`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
 
         panel.reasoning.setItems(listOf(ReasoningPicker.Item("low", "Low"), ReasoningPicker.Item("high", "High")), "high")
 
@@ -261,7 +261,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test reset visibility can be toggled`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
 
         panel.setResetVisible(true)
 
@@ -269,7 +269,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt editor exposes send context`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val sink = TestSink()
 
         (panel.defaultFocusedComponent as UiDataProvider).uiDataSnapshot(sink)
@@ -278,7 +278,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt button exposes send context`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val sink = TestSink()
 
         (panel.buttonForTest() as UiDataProvider).uiDataSnapshot(sink)
@@ -357,7 +357,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test prompt button switches between send and stop state`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
 
         assertEquals(KeymapUtil.createTooltipText("Send", "Kilo.SendPrompt"), panel.buttonForTest().toolTipText)
         assertFalse(panel.isStopEnabled)
@@ -369,7 +369,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test auto approve button toggles and updates tooltip`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val button = autoApproveButton(panel)
         var seen: Boolean? = null
         panel.onAutoApproveToggle = { seen = it }
@@ -400,7 +400,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test auto approve and enhance buttons sit next to send button`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val auto = autoApproveButton(panel)
         val enhance = enhanceButton(panel)
         val send = panel.buttonForTest()
@@ -414,7 +414,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test enhance button follows connection and busy state`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val enhance = enhanceButton(panel)
 
         assertFalse(enhance.isEnabled)
@@ -432,7 +432,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     fun `test enhance button rewrites active draft`() {
         var seen: String? = null
         var complete: ((Result<String>) -> Unit)? = null
-        val panel = PromptPanel(project, {}, {}, { text, done ->
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { text, done ->
             seen = text
             complete = done
         })
@@ -461,7 +461,7 @@ class PromptPanelTest : BasePlatformTestCase() {
 
     fun `test edit while enhancing ignores stale completion`() {
         var complete: ((Result<String>) -> Unit)? = null
-        val panel = PromptPanel(project, {}, {}, { _, done -> complete = done })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, done -> complete = done })
         val editor = panel.defaultFocusedComponent as EditorTextField
         val enhance = enhanceButton(panel)
         panel.setReady(true)
@@ -485,7 +485,7 @@ class PromptPanelTest : BasePlatformTestCase() {
         ApplicationManager.getApplication().messageBus.connect(testRootDisposable).subscribe(Notifications.TOPIC, listener)
         project.messageBus.connect(testRootDisposable).subscribe(Notifications.TOPIC, listener)
         var complete: ((Result<String>) -> Unit)? = null
-        val panel = PromptPanel(project, {}, {}, { _, done -> complete = done })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, done -> complete = done })
         val editor = panel.defaultFocusedComponent as EditorTextField
         val enhance = enhanceButton(panel)
         panel.setReady(true)
@@ -502,7 +502,7 @@ class PromptPanelTest : BasePlatformTestCase() {
 
     fun `test empty enhancement inserts explanation without request`() {
         var requests = 0
-        val panel = PromptPanel(project, {}, {}, { _, _ -> requests++ })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> requests++ })
         val editor = panel.defaultFocusedComponent as EditorTextField
         panel.setReady(true)
 
@@ -513,7 +513,7 @@ class PromptPanelTest : BasePlatformTestCase() {
     }
 
     fun `test pickers belong to rounded shell`() {
-        val panel = PromptPanel(project, {}, {}, { _, _ -> })
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val shell = panel.shellForTest()
 
         assertTrue(SwingUtilities.isDescendingFrom(panel.mode, shell))
