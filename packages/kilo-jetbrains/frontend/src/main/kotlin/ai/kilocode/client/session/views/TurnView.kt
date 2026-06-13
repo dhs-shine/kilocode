@@ -1,7 +1,7 @@
 package ai.kilocode.client.session.views
 
-import ai.kilocode.client.session.model.Message
 import ai.kilocode.client.session.model.FileAttachment
+import ai.kilocode.client.session.model.Message
 import ai.kilocode.client.session.ui.SessionLayoutPanel
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.selection.SessionSelection

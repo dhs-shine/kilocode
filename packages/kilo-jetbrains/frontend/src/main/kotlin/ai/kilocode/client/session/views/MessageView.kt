@@ -5,11 +5,9 @@ import ai.kilocode.client.session.model.FileAttachment
 import ai.kilocode.client.session.model.Message
 import ai.kilocode.client.session.model.Reasoning
 import ai.kilocode.client.session.model.StepFinish
-import ai.kilocode.client.session.model.Text
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolCallRef
 import ai.kilocode.client.session.model.ToolExecState
-import ai.kilocode.client.session.model.ToolKind
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.selection.SessionSelection
@@ -57,7 +55,6 @@ class MessageView(
         get() = if (role == SessionUiStyle.View.Message.USER_ROLE) SessionView.Kind.UserPrompt else SessionView.Kind.Default
 
     private val parts = LinkedHashMap<String, PartView>()
-    private var attachments: PromptAttachmentView? = null
     // Adjacent reasoning parts render through the first ReasoningView. aliases maps each
     // merged child id to that owner id, and sources stores the child's latest full text
     // so snapshot updates can append only deltas.
@@ -72,11 +69,8 @@ class MessageView(
 
         // Populate content that already exists (e.g. after loadHistory)
         for ((_, content) in msg.parts) {
-            if (content is StepFinish || !visible(content)) continue
-            if (content is FileAttachment && user()) {
-                upsertAttachment(content, refresh = false)
-                continue
-            }
+            if (content is StepFinish) continue
+            if (isHidden(content)) continue
             addPart(content)
         }
     }
@@ -94,14 +88,18 @@ class MessageView(
     /** Add or update the renderer for [content]. */
     fun upsertPart(content: Content) {
         if (content is StepFinish) return
-        if (!visible(content)) {
-            removePart(content.id)
-            return
-        }
-        if (content is FileAttachment && user()) {
-            aliases.remove(content.id)
+        if (isHidden(content)) {
+            // Remove any stale view for this content so it disappears when suppressed
+            val id = aliases.remove(content.id)
             sources.remove(content.id)
-            upsertAttachment(content)
+            val stale = if (id == null) parts.remove(content.id) else null
+            if (stale != null) {
+                detach(stale)
+                remove(stale)
+                Disposer.dispose(stale)
+                syncBorder()
+                refresh()
+            }
             return
         }
         val id = aliases[content.id]
@@ -183,7 +181,6 @@ class MessageView(
 
     /** Remove the renderer for [contentId] if present. */
     fun removePart(contentId: String) {
-        if (removeAttachment(contentId)) return
         if (aliases.remove(contentId) != null) {
             sources.remove(contentId)
             return
@@ -204,18 +201,12 @@ class MessageView(
      */
     private fun isHidden(content: Content): Boolean {
         if (content !is Tool) return false
-        if (user() && content.kind == ToolKind.READ) return true
         if (content.name == "todoread") return true
         if (content.name == "todowrite" && content.state != ToolExecState.COMPLETED) return true
         val ref = hidden ?: return false
         if (content.name != "question") return false
         if (content.state != ToolExecState.PENDING && content.state != ToolExecState.RUNNING) return false
         return msg.info.id == ref.messageId && content.callId == ref.callId
-    }
-
-    private fun visible(content: Content): Boolean {
-        if (isHidden(content)) return false
-        return content !is Text || content.content.isNotBlank()
     }
 
     /**
@@ -228,20 +219,12 @@ class MessageView(
             remove(it)
             Disposer.dispose(it)
         }
-        attachments?.let {
-            remove(it)
-            Disposer.dispose(it)
-        }
         parts.clear()
-        attachments = null
         aliases.clear()
         sources.clear()
         for ((_, content) in msg.parts) {
-            if (content is StepFinish || !visible(content)) continue
-            if (content is FileAttachment && user()) {
-                upsertAttachment(content, refresh = false)
-                continue
-            }
+            if (content is StepFinish) continue
+            if (isHidden(content)) continue
             addPart(content)
         }
         syncBorder()
@@ -254,9 +237,9 @@ class MessageView(
     }
 
     private fun view(content: Content) = if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) {
-        ViewFactory.createUser(content, openFile, openUrl, selection, { openAttachment(msg.info.id, it) }, repo)
+        ViewFactory.createUser(content, openFile, openUrl, selection, repo) { openAttachment(msg.info.id, it) }
     } else {
-        ViewFactory.create(content, openFile, openUrl, selection, { openAttachment(msg.info.id, it) }, repo)
+        ViewFactory.create(content, openFile, openUrl, selection, repo) { openAttachment(msg.info.id, it) }
     }
 
     /** Append a streaming delta to the renderer for [contentId]. */
@@ -269,23 +252,18 @@ class MessageView(
     }
 
     /** Look up a renderer by part id. */
-    fun part(id: String): PartView? = parts[aliases[id] ?: id] ?: attachments?.takeIf { it.contains(id) }
+    fun part(id: String): PartView? = parts[aliases[id] ?: id]
 
     /** Ordered part ids — stable for test assertions. */
-    fun partIds(): List<String> = msg.parts.values.mapNotNull {
-        if (it is StepFinish || !visible(it)) return@mapNotNull null
-        if (it is FileAttachment && user()) return@mapNotNull it.id.takeIf { id -> attachments?.contains(id) == true }
-        it.id.takeIf { id -> parts.containsKey(id) }
-    }
+    fun partIds(): List<String> = parts.keys.toList()
 
     /** Compact dump for test assertions. */
-    fun dump(): String = components.filterIsInstance<PartView>().joinToString(", ") { it.dumpLabel() }
+    fun dump(): String = parts.values.joinToString(", ") { it.dumpLabel() }
 
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) background = style.editorScheme.defaultBackground
         for (view in parts.values) view.applyStyle(style)
-        attachments?.applyStyle(style)
         refresh()
     }
 
@@ -295,12 +273,7 @@ class MessageView(
             remove(it)
             Disposer.dispose(it)
         }
-        attachments?.let {
-            remove(it)
-            Disposer.dispose(it)
-        }
         parts.clear()
-        attachments = null
         aliases.clear()
         sources.clear()
         hidden = null
@@ -331,54 +304,6 @@ class MessageView(
         revalidate()
         repaint()
     }
-
-    private fun upsertAttachment(content: FileAttachment, refresh: Boolean = true) {
-        val view = attachments ?: PromptAttachmentView(msg.info.id) { openAttachment(msg.info.id, it) }.also {
-            attachments = it
-            it.applyStyle(style)
-            add(it, attachmentIndex())
-        }
-        view.upsert(content)
-        repositionAttachments()
-        syncBorder()
-        if (refresh) refresh()
-    }
-
-    private fun removeAttachment(id: String): Boolean {
-        val view = attachments ?: return false
-        if (!view.remove(id)) return false
-        if (view.isEmpty()) {
-            remove(view)
-            Disposer.dispose(view)
-            attachments = null
-        } else {
-            repositionAttachments()
-        }
-        syncBorder()
-        refresh()
-        return true
-    }
-
-    private fun repositionAttachments() {
-        val view = attachments ?: return
-        val at = attachmentIndex()
-        val current = components.indexOfFirst { it === view }
-        if (current == at) return
-        remove(view)
-        add(view, at.coerceAtMost(componentCount))
-    }
-
-    private fun attachmentIndex(): Int {
-        var at = 0
-        for (content in msg.parts.values) {
-            if (content is StepFinish || !visible(content)) continue
-            if (content is FileAttachment && user()) return at
-            if (parts.containsKey(content.id)) at++
-        }
-        return componentCount
-    }
-
-    private fun user() = msg.info.role == SessionUiStyle.View.Message.USER_ROLE
 
     private fun detach(view: PartView) {
         view.setHovered(false)

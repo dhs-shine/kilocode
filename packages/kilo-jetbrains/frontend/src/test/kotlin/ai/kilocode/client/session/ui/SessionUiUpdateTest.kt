@@ -6,8 +6,8 @@ import ai.kilocode.client.session.ui.attachment.AttachmentCard
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.AttachmentView
 import ai.kilocode.client.session.views.PromptAttachmentView
-import ai.kilocode.client.session.views.TextView
 import ai.kilocode.client.session.views.tool.ReadToolView
+import ai.kilocode.client.session.views.TextView
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto

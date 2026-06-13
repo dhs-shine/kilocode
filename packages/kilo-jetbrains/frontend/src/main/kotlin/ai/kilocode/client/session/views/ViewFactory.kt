@@ -30,21 +30,15 @@ object ViewFactory {
     fun create(
         content: Content,
         openFile: (String) -> Unit,
-    ): PartView = create(content, openFile, openUrl = {}, selection = null)
-
-    fun create(
-        content: Content,
-        openFile: (String) -> Unit,
-        openUrl: (String) -> Unit,
-    ): PartView = create(content, openFile, openUrl, selection = null)
+    ): PartView = create(content, openFile, openUrl = {}, selection = null, repo = null)
 
     fun create(
         content: Content,
         openFile: (String) -> Unit,
         openUrl: (String) -> Unit = {},
         selection: SessionSelection? = null,
-        openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, openFile, openUrl) },
         repo: String? = null,
+        openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, openFile, openUrl) },
     ): PartView = when (content) {
         is Text -> TextView(content, openUrl = openUrl, selection = selection)
         is Reasoning -> ReasoningView(content, openUrl = openUrl, selection = selection)
@@ -66,25 +60,18 @@ object ViewFactory {
     fun createUser(
         content: Content,
         openFile: (String) -> Unit,
-    ): PartView = createUser(content, openFile, openUrl = {}, selection = null)
-
-    fun createUser(
-        content: Content,
-        openFile: (String) -> Unit,
-        openUrl: (String) -> Unit,
-    ): PartView = createUser(content, openFile, openUrl, selection = null)
+    ): PartView = createUser(content, openFile, openUrl = {}, selection = null, repo = null)
 
     fun createUser(
         content: Content,
         openFile: (String) -> Unit,
         openUrl: (String) -> Unit = {},
         selection: SessionSelection? = null,
-        openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, openFile, openUrl) },
         repo: String? = null,
+        openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, openFile, openUrl) },
     ): PartView = when (content) {
         is Text -> PromptView(content, openUrl = openUrl, selection = selection)
-        is FileAttachment -> AttachmentView(content, openAttachment)
-        else -> create(content, openFile, openUrl, selection, openAttachment, repo)
+        else -> create(content, openFile, openUrl, selection, repo, openAttachment)
     }
 
     /**
