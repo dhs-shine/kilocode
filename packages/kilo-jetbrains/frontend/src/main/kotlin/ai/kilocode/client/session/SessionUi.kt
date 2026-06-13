@@ -329,6 +329,7 @@ class SessionUi(
             project = project,
             onSend = { text, files -> sendPrompt(text, files) },
             onAbort = { controller.abort() },
+            onEnhance = controller::enhancePrompt,
         )
 
         drop = SessionDropOverlay()

@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.ui.prompt
 
+import ai.kilocode.client.KiloNotifications
 import ai.kilocode.client.actions.SendPromptAction
 import ai.kilocode.client.actions.StopSessionAction
 import ai.kilocode.client.plugin.KiloBundle
@@ -39,6 +40,7 @@ import com.intellij.openapi.keymap.KeymapManagerListener
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
+import com.intellij.ui.AnimatedIcon
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.xml.util.XmlStringUtil
 import com.intellij.util.ui.JBValue
@@ -47,6 +49,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
 import com.intellij.util.messages.MessageBusConnection
+import kotlinx.coroutines.CancellationException
 import java.awt.BorderLayout
 import java.awt.Cursor
 import java.awt.Graphics
@@ -74,6 +77,7 @@ class PromptPanel(
     private val project: Project,
     private val onSend: (String, List<PromptPartDto>) -> Unit,
     private val onAbort: () -> Unit,
+    private val onEnhance: (String, (Result<String>) -> Unit) -> Unit,
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext {
 
     companion object {
@@ -82,6 +86,7 @@ class PromptPanel(
         private val STOP_ICON: Icon = IconLoader.getIcon("/icons/stop.svg", PromptPanel::class.java)
         private val SHIELD_ICON: Icon = IconLoader.getIcon("/icons/shield.svg", PromptPanel::class.java)
         private val SHIELD_FILLED_ICON: Icon = IconLoader.getIcon("/icons/shield-filled.svg", PromptPanel::class.java)
+        private val WAND_ICON: Icon = IconLoader.getIcon("/icons/wand-sparkles.svg", PromptPanel::class.java)
     }
 
     val mode = ModePicker()
@@ -162,9 +167,19 @@ class PromptPanel(
         addActionListener { onAutoApproveToggle(!autoApprove) }
     }
 
+    private val enhancingIcon = AnimatedIcon.Default()
+    private val enhance = HoverIcon().apply {
+        icon = WAND_ICON
+        toolTipText = KiloBundle.message("prompt.action.enhance")
+        accessibleContext.accessibleName = KiloBundle.message("prompt.action.enhance")
+        addActionListener { enhance() }
+    }
+
     @Volatile
     private var busy = false
     private var ready = false
+    private var enhancing = false
+    private var request = 0L
 
     override val isSendEnabled: Boolean
         get() = ready && !busy && (text().isNotEmpty() || attachments.isNotEmpty())
@@ -187,6 +202,7 @@ class PromptPanel(
         editor.text = ""
         editor.addDocumentListener(object : DocumentListener {
             override fun documentChanged(e: DocumentEvent) {
+                invalidateEnhancement()
                 syncEditorHeight()
                 onChange()
             }
@@ -209,17 +225,21 @@ class PromptPanel(
         bar.add(Box.createHorizontalGlue())
         bar.add(auto)
         bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
+        bar.add(enhance)
+        bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
         bar.add(button)
         shell.add(bar, BorderLayout.SOUTH)
         add(shell, BorderLayout.CENTER)
         installFileDrop(shell, "shell")
         syncTooltip()
         syncAutoApprove()
+        syncEnhance()
     }
 
     @RequiresEdt
     fun setReady(value: Boolean) {
         ready = value
+        if (!value) invalidateEnhancement() else syncEnhance()
     }
 
     @RequiresEdt
@@ -230,6 +250,7 @@ class PromptPanel(
     @RequiresEdt
     fun setBusy(value: Boolean) {
         busy = value
+        if (value) invalidateEnhancement() else syncEnhance()
         button.icon = if (value) STOP_ICON else SEND_ICON
         syncTooltip()
     }
@@ -315,6 +336,57 @@ class PromptPanel(
         bus?.disconnect()
         bus = null
         super.removeNotify()
+    }
+
+    @RequiresEdt
+    private fun enhance() {
+        if (!enhance.isEnabled) return
+        val source = editor.text
+        if (source.isBlank()) {
+            editor.text = KiloBundle.message("prompt.action.enhance.description")
+            focus()
+            return
+        }
+        val id = ++request
+        enhancing = true
+        syncEnhance()
+        onEnhance(source.trim()) { result -> completeEnhancement(id, source, result) }
+    }
+
+    @RequiresEdt
+    private fun completeEnhancement(id: Long, source: String, result: Result<String>) {
+        if (id != request || editor.text != source) return
+        enhancing = false
+        syncEnhance()
+        result.onSuccess {
+            editor.text = it
+            focus()
+        }.onFailure {
+            if (it is CancellationException) return@onFailure
+            KiloNotifications.error(
+                project,
+                KiloBundle.message("prompt.action.enhance.failed"),
+                KiloBundle.message("prompt.action.enhance.failed.description"),
+            )
+        }
+    }
+
+    @RequiresEdt
+    private fun invalidateEnhancement() {
+        request++
+        enhancing = false
+        syncEnhance()
+    }
+
+    @RequiresEdt
+    private fun syncEnhance() {
+        enhance.isEnabled = ready && !busy && !enhancing
+        enhance.icon = if (enhancing) enhancingIcon else WAND_ICON
+        enhance.toolTipText = if (enhancing) {
+            KiloBundle.message("prompt.action.enhance.loading")
+        } else {
+            KiloBundle.message("prompt.action.enhance")
+        }
     }
 
     @RequiresEdt
