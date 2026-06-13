@@ -23,7 +23,9 @@ import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.SessionDropOverlay
 import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.SessionMessageListPanel
-import ai.kilocode.client.session.ui.attachment.attachmentDescriptor
+import ai.kilocode.client.session.ui.attachment.AttachmentEditorKind
+import ai.kilocode.client.session.ui.attachment.attachmentParams
+import ai.kilocode.client.session.ui.attachment.ensureAttachmentEditorKind
 import ai.kilocode.client.session.ui.attachment.isEmbeddedAttachment
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
 import ai.kilocode.client.session.ui.selection.SessionSelection
@@ -39,6 +41,7 @@ import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.client.vfs.KiloVfsManager
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.rpc.dto.PromptDto
 import ai.kilocode.rpc.dto.PromptPartDto
@@ -599,13 +602,12 @@ class SessionUi(
                 LOG.info("kind=attachment-open skipped=true reason=missing-session message=$messageId part=${item.id} name=${attachmentName(item)}")
                 return
             }
-            LOG.info("kind=attachment-open route=kilo-file session=$id message=$messageId part=${item.id} name=${attachmentName(item)}")
-            cs.launch {
-                workspaces.openKiloFile(
-                    workspace.directory,
-                    attachmentDescriptor(id, messageId, item, attachmentName(item), workspace.directory),
-                )
-            }
+            LOG.info("kind=attachment-open route=kilo-vfs session=$id message=$messageId part=${item.id} name=${attachmentName(item)}")
+            ensureAttachmentEditorKind()
+            project.service<KiloVfsManager>().open(
+                AttachmentEditorKind.ID,
+                attachmentParams(id, messageId, item, attachmentName(item), workspace.directory),
+            )
             return
         }
         val uri = runCatching { URI.create(url) }.getOrNull() ?: run {

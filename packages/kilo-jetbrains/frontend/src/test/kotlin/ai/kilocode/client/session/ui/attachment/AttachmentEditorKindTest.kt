@@ -2,11 +2,12 @@ package ai.kilocode.client.session.ui.attachment
 
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
-import ai.kilocode.client.files.KiloEditorFileDescriptor
-import ai.kilocode.client.files.KiloEditorFileDescriptors
 import ai.kilocode.client.session.model.FileAttachment
 import ai.kilocode.client.testing.FakeAppRpcApi
 import ai.kilocode.client.testing.FakeSessionRpcApi
+import ai.kilocode.client.vfs.KiloPath
+import ai.kilocode.client.vfs.KiloVirtualFile
+import ai.kilocode.client.vfs.KiloVirtualFileSystem
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.MessageDto
@@ -15,6 +16,7 @@ import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.PartDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.impl.EditorHistoryManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.replaceService
@@ -23,50 +25,55 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
-import java.nio.file.Path
 
 class AttachmentEditorKindTest : BasePlatformTestCase() {
-    fun testDescriptorUsesStableIdentityFields() {
+    fun testAttachmentParamsUseStableIdentityFields() {
         val item = FileAttachment("part1").apply {
             mime = "text/plain"
             url = "data:text/plain;base64,aGVsbG8="
             filename = "note.txt"
         }
 
-        val descriptor = attachmentDescriptor("ses1", "msg1", item, "note.txt", "/repo")
-        val json = KiloEditorFileDescriptors.encode(descriptor)
-        val decoded = KiloEditorFileDescriptors.decode(json)
+        val params = attachmentParams("ses1", "msg1", item, "note.txt", "/repo")
+        val path = KiloPath(AttachmentEditorKind.ID, params).canonical()
+        val json = KiloVirtualFileSystem.getInstance().getPath(path)
+        val decoded = KiloVirtualFileSystem.decode(json)
 
-        assertEquals(descriptor, decoded)
-        assertTrue(descriptor.validate())
-        assertEquals(KiloEditorFileDescriptor.VERSION, descriptor.version)
-        assertEquals(KiloEditorFileDescriptor.SESSION_ATTACHMENT, descriptor.kind)
-        assertEquals("ses1", descriptor.sessionId)
-        assertEquals("msg1", descriptor.messageId)
-        assertEquals("part1", descriptor.partId)
-        assertFalse(descriptor.attachmentKey.isNullOrBlank())
-        assertEquals("note.txt", descriptor.filename)
-        assertEquals("text/plain", descriptor.mime)
-        assertEquals("/repo", descriptor.directory)
+        assertEquals(path, decoded)
+        assertEquals(AttachmentEditorKind.ID, path.kind)
+        assertEquals("ses1", params["sessionId"])
+        assertEquals("msg1", params["messageId"])
+        assertEquals("part1", params["partId"])
+        assertFalse(params["attachmentKey"].isNullOrBlank())
+        assertEquals("note.txt", params["filename"])
+        assertEquals("text/plain", params["mime"])
+        assertEquals("/repo", params["directory"])
+        assertFalse(json.contains("projectHash", ignoreCase = true))
         assertFalse(json.contains("launch", ignoreCase = true))
         assertFalse(json.contains("time", ignoreCase = true))
         assertFalse(json.contains("random", ignoreCase = true))
     }
 
-    fun testSameDescriptorMapsToSamePhysicalPath() {
-        val descriptor = KiloEditorFileDescriptor.attachment("ses1", "msg1", "part1", "key1", "note.txt", "text/plain", "/repo")
-        val root = Path.of("/system/kilo/editors")
+    fun testSameParamsMapToSameVirtualPath() {
+        val params = linkedMapOf(
+            "sessionId" to "ses1",
+            "messageId" to "msg1",
+            "partId" to "part1",
+            "attachmentKey" to "key1",
+            "filename" to "note.txt",
+            "mime" to "text/plain",
+            "directory" to "/repo",
+        )
 
-        val one = KiloEditorFileDescriptors.path(root, descriptor)
-        val two = KiloEditorFileDescriptors.path(root, KiloEditorFileDescriptors.decode(KiloEditorFileDescriptors.encode(descriptor)))
+        val one = KiloVirtualFileSystem.getInstance().getPath(KiloPath(AttachmentEditorKind.ID, params))
+        val two = KiloVirtualFileSystem.getInstance().getPath(KiloPath(AttachmentEditorKind.ID, params.toList().reversed().toMap()))
 
         assertEquals(one, two)
-        assertTrue(one.toString().contains("/system/kilo/editors/session-attachments/"))
-        assertTrue(one.fileName.toString().startsWith("attachment__note.txt__ses_ses1__msg_msg1__part_part1__"))
-        assertTrue(one.fileName.toString().endsWith(".kiloattachment"))
+        assertFalse(one.contains("/system/kilo/editors"))
+        assertFalse(one.contains("kiloattachment"))
     }
 
-    fun testDuplicatePartAttachmentsMapToDistinctFiles() {
+    fun testDuplicatePartAttachmentsMapToDistinctVirtualFiles() {
         val first = FileAttachment("part1").apply {
             mime = "text/plain"
             url = "data:text/plain;base64,b25l"
@@ -77,13 +84,27 @@ class AttachmentEditorKindTest : BasePlatformTestCase() {
             url = "data:text/plain;base64,dHdv"
             filename = "note.txt"
         }
-        val one = attachmentDescriptor("ses1", "msg1", first, "note.txt", "/repo")
-        val two = attachmentDescriptor("ses1", "msg1", second, "note.txt", "/repo")
-        val root = Path.of("/system/kilo/editors")
+        val one = attachmentParams("ses1", "msg1", first, "note.txt", "/repo")
+        val two = attachmentParams("ses1", "msg1", second, "note.txt", "/repo")
 
         assertFalse(one == two)
-        assertFalse(one.attachmentKey == two.attachmentKey)
-        assertFalse(KiloEditorFileDescriptors.path(root, one) == KiloEditorFileDescriptors.path(root, two))
+        assertFalse(one["attachmentKey"] == two["attachmentKey"])
+        assertFalse(KiloPath(AttachmentEditorKind.ID, one) == KiloPath(AttachmentEditorKind.ID, two))
+    }
+
+    @Suppress("UnstableApiUsage")
+    fun testVirtualFilesAreExcludedFromEditorHistory() {
+        ensureAttachmentEditorKind()
+        val file = KiloVirtualFile(KiloPath(AttachmentEditorKind.ID, mapOf(
+            "directory" to "/repo",
+            "sessionId" to "ses1",
+            "messageId" to "msg1",
+            "partId" to "part1",
+            "filename" to "note.txt",
+        )))
+
+        assertFalse((file as EditorHistoryManager.OptionallyIncluded).isIncludedInEditorHistory(project))
+        assertFalse(file.isPersistedInEditorHistory())
     }
 
     @Suppress("UnstableApiUsage")
@@ -122,7 +143,7 @@ class AttachmentEditorKindTest : BasePlatformTestCase() {
         val parent = Disposer.newDisposable()
 
         try {
-            KiloAttachmentEditorService(project, cs).load(attachmentDescriptor("ses1", "msg1", item, "note.txt", "/repo"), parent) {
+            KiloAttachmentEditorService(project, cs).load(ref("ses1", "msg1", item, "note.txt", "/repo"), parent) {
                 results.add(it)
             }
 
@@ -171,7 +192,7 @@ class AttachmentEditorKindTest : BasePlatformTestCase() {
         val parent = Disposer.newDisposable()
 
         try {
-            KiloAttachmentEditorService(project, cs).load(attachmentDescriptor("ses1", "msg1", item, "note.txt", "/repo"), parent) {
+            KiloAttachmentEditorService(project, cs).load(ref("ses1", "msg1", item, "note.txt", "/repo"), parent) {
                 results.add(it)
             }
 
@@ -197,5 +218,18 @@ class AttachmentEditorKindTest : BasePlatformTestCase() {
             Thread.sleep(50)
         }
         assertTrue(done())
+    }
+
+    private fun ref(session: String, message: String, item: FileAttachment, name: String, dir: String): AttachmentRef {
+        val params = attachmentParams(session, message, item, name, dir)
+        return AttachmentRef(
+            directory = params.getValue("directory"),
+            sessionId = params.getValue("sessionId"),
+            messageId = params.getValue("messageId"),
+            partId = params.getValue("partId"),
+            attachmentKey = params["attachmentKey"],
+            filename = params.getValue("filename"),
+            mime = params.getValue("mime"),
+        )
     }
 }

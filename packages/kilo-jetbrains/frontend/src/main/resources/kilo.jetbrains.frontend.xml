@@ -21,7 +21,8 @@
                     icon="/icons/kilo.svg"
                     factoryClass="ai.kilocode.client.KiloToolWindowFactory"/>
 
-        <fileEditorProvider id="KiloAttachmentEditor" implementation="ai.kilocode.client.session.ui.attachment.KiloAttachmentFileEditorProvider"/>
+        <virtualFileSystem key="kilo" implementationClass="ai.kilocode.client.vfs.KiloVirtualFileSystem"/>
+        <fileEditorProvider id="KiloVfsEditor" implementation="ai.kilocode.client.vfs.KiloFileEditorProvider"/>
 
         <applicationConfigurable
                 parentId="tools"

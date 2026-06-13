@@ -1,8 +1,2 @@
 <idea-plugin>
-    <extensions defaultExtensionNs="com.intellij">
-        <fileType name="Kilo Session Attachment"
-                  implementationClass="ai.kilocode.client.files.KiloAttachmentFileType"
-                  fieldName="INSTANCE"
-                  extensions="kiloattachment"/>
-    </extensions>
 </idea-plugin>

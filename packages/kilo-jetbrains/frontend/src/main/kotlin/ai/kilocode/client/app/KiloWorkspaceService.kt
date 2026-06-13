@@ -3,7 +3,6 @@
 package ai.kilocode.client.app
 
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
-import ai.kilocode.client.files.KiloEditorFileDescriptor
 import ai.kilocode.rpc.dto.ConfigTargetDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
@@ -137,18 +136,6 @@ class KiloWorkspaceService internal constructor(
         }
     }
 
-    suspend fun openKiloFile(directory: String, descriptor: KiloEditorFileDescriptor): Boolean {
-        LOG.info("kilo file open request directory=$directory descriptor=${brief(descriptor)}")
-        return try {
-            val ok = call { openKiloFile(directory, descriptor) }
-            LOG.info("kilo file open response directory=$directory ok=$ok descriptor=${brief(descriptor)}")
-            ok
-        } catch (e: Exception) {
-            LOG.warn("kilo file open failed for directory=$directory descriptor=${brief(descriptor)}", e)
-            false
-        }
-    }
-
     suspend fun localConfigTarget(directory: String): ConfigTargetDto? {
         return try {
             val target = call { this.localConfigTarget(directory) }
@@ -195,16 +182,4 @@ class KiloWorkspaceService internal constructor(
         }
     }
 
-    private fun brief(descriptor: KiloEditorFileDescriptor): String {
-        return listOf(
-            "kind=${descriptor.kind}",
-            descriptor.sessionId?.let { "sessionId=$it" },
-            descriptor.messageId?.let { "messageId=$it" },
-            descriptor.partId?.let { "partId=$it" },
-            descriptor.attachmentKey?.let { "attachmentKey=$it" },
-            descriptor.filename?.let { "filename=$it" },
-            descriptor.mime?.let { "mime=$it" },
-            descriptor.directory?.let { "directory=$it" },
-        ).filterNotNull().joinToString(prefix = "{", postfix = "}")
-    }
 }

@@ -1,7 +1,6 @@
 package ai.kilocode.client.app
 
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
-import ai.kilocode.client.files.KiloEditorFileDescriptor
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import kotlinx.coroutines.CoroutineScope
@@ -67,16 +66,5 @@ class KiloWorkspaceServiceTest : BasePlatformTestCase() {
 
         assertFalse(ok)
         assertEquals(listOf("/test/.kilo/plans/a.md"), rpc.opened)
-    }
-
-    fun `test openKiloFile delegates to backend`() = runBlocking {
-        val descriptor = KiloEditorFileDescriptor.attachment("ses1", "msg1", "part1", "key1", "note.txt", "text/plain", "/test")
-
-        val ok = withContext(Dispatchers.Default) {
-            service.openKiloFile("/test", descriptor)
-        }
-
-        assertTrue(ok)
-        assertEquals(listOf("/test" to descriptor), rpc.kiloOpened)
     }
 }

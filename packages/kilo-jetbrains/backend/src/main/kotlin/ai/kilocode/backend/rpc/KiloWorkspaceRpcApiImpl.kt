@@ -8,8 +8,6 @@ import ai.kilocode.backend.app.LoadError
 import ai.kilocode.backend.cli.KiloCliDataParser
 import ai.kilocode.backend.cli.buildKiloCliEnv
 import ai.kilocode.backend.cli.KiloCliConfigPath
-import ai.kilocode.client.files.KiloEditorFileDescriptor
-import ai.kilocode.client.files.KiloEditorFileDescriptors
 import ai.kilocode.backend.workspace.AgentData
 import ai.kilocode.backend.workspace.AgentInfo
 import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
@@ -24,9 +22,7 @@ import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.service
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
@@ -189,30 +185,6 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         return true
     }
 
-    override suspend fun openKiloFile(directory: String, descriptor: KiloEditorFileDescriptor): Boolean {
-        LOG.info("kilo file open backend request directory=$directory kind=${descriptor.kind} descriptor=${brief(descriptor)}")
-        val dir = file(directory) ?: run {
-            LOG.info("kilo file open backend result=false reason=invalid-directory directory=$directory descriptor=${brief(descriptor)}")
-            return false
-        }
-        val project = project(dir) ?: run {
-            LOG.info("kilo file open backend result=false reason=no-project directory=$directory descriptor=${brief(descriptor)}")
-            return false
-        }
-        if (!descriptor.validate()) {
-            LOG.info("kilo file open backend result=false reason=invalid-descriptor directory=$directory descriptor=${brief(descriptor)}")
-            return false
-        }
-        val path = write(descriptor)
-        val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path) ?: run {
-            LOG.info("kilo file open backend result=false reason=vfs-missing directory=$directory path=$path descriptor=${brief(descriptor)}")
-            return false
-        }
-        open(project, file)
-        LOG.info("kilo file open backend result=true directory=$directory kind=${descriptor.kind} file=${file.name} descriptor=${brief(descriptor)}")
-        return true
-    }
-
     override suspend fun localConfigTarget(directory: String): ConfigTargetDto = withContext(Dispatchers.IO) {
         target(localConfig(directory))
     }
@@ -267,17 +239,6 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         return ConfigTargetDto(raw, FileUtil.getLocationRelativeToUserHome(raw, false), Files.exists(path))
     }
 
-    private suspend fun write(descriptor: KiloEditorFileDescriptor): Path = withContext(Dispatchers.IO) {
-        val root = PathManager.getSystemDir().resolve("kilo").resolve("editors")
-        val path = KiloEditorFileDescriptors.path(root, descriptor)
-        val content = KiloEditorFileDescriptors.encode(descriptor)
-        Files.createDirectories(path.parent)
-        if (!Files.exists(path) || Files.readString(path) != content) {
-            Files.writeString(path, content, StandardCharsets.UTF_8)
-        }
-        path
-    }
-
     private fun clean(path: String): String? {
         val raw = path.trim().takeIf { it.isNotBlank() } ?: return null
         return try {
@@ -302,26 +263,6 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
             OpenFileDescriptor(project, file).navigate(true)
             if (cont.isActive) cont.resume(Unit)
         }, ModalityState.any())
-    }
-
-    private suspend fun open(project: Project, file: VirtualFile) = suspendCancellableCoroutine { cont ->
-        ApplicationManager.getApplication().invokeLater({
-            FileEditorManager.getInstance(project).openFile(file, true)
-            if (cont.isActive) cont.resume(Unit)
-        }, ModalityState.any())
-    }
-
-    private fun brief(descriptor: KiloEditorFileDescriptor): String {
-        return listOf(
-            "kind=${descriptor.kind}",
-            descriptor.sessionId?.let { "sessionId=$it" },
-            descriptor.messageId?.let { "messageId=$it" },
-            descriptor.partId?.let { "partId=$it" },
-            descriptor.attachmentKey?.let { "attachmentKey=$it" },
-            descriptor.filename?.let { "filename=$it" },
-            descriptor.mime?.let { "mime=$it" },
-            descriptor.directory?.let { "directory=$it" },
-        ).filterNotNull().joinToString(prefix = "{", postfix = "}")
     }
 
     private fun project(path: Path): Project? {
