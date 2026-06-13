@@ -6,7 +6,7 @@ import ai.kilocode.client.session.ui.attachment.AttachmentCard
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.AttachmentView
 import ai.kilocode.client.session.views.PromptAttachmentView
-import ai.kilocode.client.session.views.ReadToolView
+import ai.kilocode.client.session.views.tool.ReadToolView
 import ai.kilocode.client.session.views.TextView
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.rpc.dto.MessageDto
@@ -94,7 +94,7 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
         model.updateContent("a1", toolPart("t1", "a1", "bash", "running"))
         model.updateContent("a1", toolPart("t1", "a1", "bash", "completed"))
 
-        val tv = panel.findMessage("a1")!!.part("t1") as ai.kilocode.client.session.views.ToolView
+        val tv = panel.findMessage("a1")!!.part("t1") as ai.kilocode.client.session.views.tool.ToolView
         assertFalse(tv.labelText().contains("Running"))
     }
 
@@ -103,7 +103,23 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
         model.updateContent("a1", toolPart("t1", "a1", "read", "completed"))
 
         val tv = panel.findMessage("a1")!!.part("t1")
-        assertTrue(tv is ai.kilocode.client.session.views.ReadToolView)
+        assertTrue(tv is ai.kilocode.client.session.views.tool.ReadToolView)
+    }
+
+    fun `test glob tool renders as GlobToolView`() {
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", toolPart("t1", "a1", "glob", "completed"))
+
+        val tv = panel.findMessage("a1")!!.part("t1")
+        assertTrue(tv is ai.kilocode.client.session.views.tool.GlobToolView)
+    }
+
+    fun `test grep tool renders as SearchToolView`() {
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", toolPart("t1", "a1", "grep", "completed"))
+
+        val tv = panel.findMessage("a1")!!.part("t1")
+        assertTrue(tv is ai.kilocode.client.session.views.tool.SearchToolView)
     }
 
     // ------ multiple turns update correctly ------
