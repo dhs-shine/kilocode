@@ -357,10 +357,32 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             assertTrue(renderer.providerIconVisible())
             assertEquals(Dimension(JBUI.scale(20), JBUI.scale(20)), renderer.providerIconSize())
             assertEquals("GPT and Codex models with API key or ChatGPT login", renderer.descriptionText())
+            assertTrue(renderer.preferredSize.height > JBUI.scale(44))
         }
     }
 
-    fun `test renderer falls back to generic description without metadata`() {
+    fun `test renderer prefers provider description from cli`() {
+        edt {
+            val row = ProviderListRow(
+                provider(
+                    "openai",
+                    "OpenAI",
+                    description = "Build with OpenAI models",
+                    metadata = ProviderMetadataDto(note = "Fallback metadata note"),
+                ),
+                "Popular providers",
+                listOf(ProviderListAction.CONNECT),
+            )
+            val list = JBList(listOf(row))
+            val renderer = ProviderListRenderer(com.intellij.ui.CollectionListModel(listOf(row)))
+
+            renderer.getListCellRendererComponent(list, row, 0, true, false)
+
+            assertEquals("Build with OpenAI models", renderer.descriptionText())
+        }
+    }
+
+    fun `test renderer does not invent provider description without metadata`() {
         edt {
             val row = ProviderListRow(provider("openai", "OpenAI"), "Popular providers", listOf(ProviderListAction.CONNECT))
             val list = JBList(listOf(row))
@@ -368,7 +390,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
             renderer.getListCellRendererComponent(list, row, 0, true, false)
 
-            assertEquals("catalog · 1 models", renderer.descriptionText())
+            assertEquals("", renderer.descriptionText())
         }
     }
 
@@ -496,11 +518,13 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
     private fun provider(
         id: String,
         name: String,
+        description: String? = null,
         source: String? = null,
         metadata: ProviderMetadataDto? = null,
     ) = ProviderSettingsProviderDto(
         id = id,
         name = name,
+        description = description,
         source = source,
         metadata = metadata,
         models = mapOf("model" to ModelDto("model", "Model")),

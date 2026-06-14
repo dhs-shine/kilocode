@@ -303,7 +303,8 @@ internal class ProvidersContent(
     @RequiresEdt
     fun update(state: ProviderSettingsDto) {
         checkEdt()
-        ProvidersSettingsUi.LOG.info("provider settings content update: start providers=${state.providers.size} connected=${state.connected.size} disabled=${state.disabled.size}")
+        val notes = state.providers.count { providerDescription(it).isNotBlank() }
+        ProvidersSettingsUi.LOG.info("provider settings content update: start providers=${state.providers.size} connected=${state.connected.size} disabled=${state.disabled.size} descriptions=$notes")
         this.state = state
         sync()
         ProvidersSettingsUi.LOG.info("provider settings content update: completed rows=${model.size}")

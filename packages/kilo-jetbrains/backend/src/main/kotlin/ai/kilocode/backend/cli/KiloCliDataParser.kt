@@ -326,6 +326,7 @@ object KiloCliDataParser {
             ProviderSettingsProviderDto(
                 id = item.str("id") ?: "",
                 name = item.str("name") ?: item.str("id") ?: "",
+                description = item.str("description"),
                 source = item.str("source"),
                 key = item.str("key"),
                 metadata = parseProviderMetadata(item["metadata"].obj()),

@@ -75,7 +75,7 @@ internal class KiloBackendProviderSettingsManager(
         result.providers.forEach { provider ->
             val configured = provider.id in result.connected || provider.key != null || provider.source == "config" || provider.id in result.config
             LOG.debug {
-                "provider settings provider: id=${provider.id} source=${provider.source} connected=${provider.id in result.connected} configured=$configured disabled=${provider.id in result.disabled} enabled=${provider.id in result.enabled} hasKey=${provider.key != null} auth=${result.auth[provider.id].orEmpty().map { it.type }.distinct().joinToString(",")} config=${provider.id in result.config} models=${provider.models.size}"
+                "provider settings provider: id=${provider.id} source=${provider.source} connected=${provider.id in result.connected} configured=$configured disabled=${provider.id in result.disabled} enabled=${provider.id in result.enabled} hasKey=${provider.key != null} auth=${result.auth[provider.id].orEmpty().map { it.type }.distinct().joinToString(",")} config=${provider.id in result.config} models=${provider.models.size} description=${provider.description?.isNotBlank() == true} note=${provider.metadata?.note?.isNotBlank() == true} noteKey=${provider.metadata?.noteKey} icon=${provider.metadata?.icon}"
             }
         }
         LOG.debug { "provider settings state: completed dir=$directory providers=${result.providers.size} connected=${result.connected.size} auth=${result.auth.size} errors=${result.errors.size} durationMs=${System.currentTimeMillis() - start}" }

@@ -964,9 +964,10 @@ export type Model = Types.DeepMutable<Schema.Schema.Type<typeof Model>>
 export const Info = Schema.Struct({
   id: ProviderID,
   name: Schema.String,
+  description: optionalOmitUndefined(Schema.String), // kilocode_change
   source: Schema.Literals(["env", "config", "custom", "api"]),
   env: Schema.Array(Schema.String),
-  key: optionalOmitUndefined(Schema.String),
+  key: optionalOmitUndefined(Schema.String), // kilocode_change
   metadata: optionalOmitUndefined(ProviderMetadata), // kilocode_change
   options: Schema.Record(Schema.String, Schema.Any),
   models: Schema.Record(Schema.String, Model),
@@ -1163,6 +1164,7 @@ export function fromModelsDevProvider(provider: ModelsDev.Provider): Info {
     id: ProviderID.make(provider.id),
     source: "custom",
     name: provider.name,
+    description: provider.description, // kilocode_change
     env: [...(provider.env ?? [])],
     options: {},
     models,

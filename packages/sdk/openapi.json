@@ -16481,6 +16481,9 @@
           "name": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "source": {
             "type": "object",
             "properties": {

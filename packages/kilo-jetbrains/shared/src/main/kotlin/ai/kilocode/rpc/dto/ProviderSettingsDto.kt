@@ -18,6 +18,7 @@ data class ProviderSettingsDto(
 data class ProviderSettingsProviderDto(
     val id: String,
     val name: String,
+    val description: String? = null,
     val source: String? = null,
     val key: String? = null,
     val metadata: ProviderMetadataDto? = null,

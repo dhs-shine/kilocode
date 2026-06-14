@@ -3,7 +3,10 @@ package ai.kilocode.client.settings.providers
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.PickerRow
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.GroupHeaderSeparator
 import com.intellij.ui.SimpleColoredComponent
@@ -86,6 +89,7 @@ internal class ProviderListRenderer(
         add(sep, BorderLayout.NORTH)
     }
     private val icon = JBLabel()
+    private val mark = icon.align(HAlign.CENTER, VAlign.TOP)
     private val title = SimpleColoredComponent()
     private val desc = JBLabel()
     private val text = JPanel(BorderLayout()).apply {
@@ -93,13 +97,13 @@ internal class ProviderListRenderer(
         add(desc, BorderLayout.SOUTH)
     }
     private val actions = Stack.horizontal(JBUI.scale(ACTION_GAP))
-    private val row = Stack.horizontal(UiStyle.Gap.md()).next(icon).next(text)
+    private val row = Stack.horizontal(UiStyle.Gap.md()).next(mark).next(text)
     private val wrap = PickerRow()
 
     init {
         isOpaque = true
         top.isOpaque = true
-        UiStyle.Components.transparent(row, icon, title, text, desc, actions)
+        UiStyle.Components.transparent(row, mark, icon, title, text, desc, actions)
         row.border = JBUI.Borders.empty(
             UiStyle.Gap.md(),
             UiStyle.Gap.lg(),
@@ -134,7 +138,9 @@ internal class ProviderListRenderer(
         title.clear()
         title.append(value.provider.name, SimpleTextAttributes(SimpleTextAttributes.STYLE_BOLD, fg))
         icon.icon = providerIcon(value.provider)
-        desc.text = providerDescription(value.provider)
+        val note = providerDescription(value.provider)
+        desc.text = note
+        desc.isVisible = note.isNotEmpty()
         desc.foreground = weak
 
         actions.removeAll()

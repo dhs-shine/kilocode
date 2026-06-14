@@ -1183,6 +1183,7 @@ class KiloCliDataParserTest {
                 "all": [{
                     "id": "openai",
                     "name": "OpenAI",
+                    "description": "Build with OpenAI models",
                     "source": "api",
                     "metadata": {
                         "noteKey": "settings.providers.note.openai",
@@ -1201,6 +1202,7 @@ class KiloCliDataParserTest {
             val provider = result.first.single()
 
             assertEquals("settings.providers.note.openai", provider.metadata?.noteKey)
+            assertEquals("Build with OpenAI models", provider.description)
             assertEquals("GPT and Codex models with API key or ChatGPT login", provider.metadata?.note)
             assertEquals("openai", provider.metadata?.icon)
             assertEquals(listOf("openai"), result.second)

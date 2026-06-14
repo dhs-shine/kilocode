@@ -28,11 +28,10 @@ internal fun popularProviderIndex(id: String): Int {
 }
 
 internal fun providerDescription(provider: ProviderSettingsProviderDto): String {
+    provider.description?.takeIf { it.isNotBlank() }?.let { return it }
     provider.metadata?.noteKey?.let { key -> KiloBundle.optional(key)?.let { return it } }
     provider.metadata?.note?.let { return it }
-    val source = provider.source ?: "catalog"
-    val models = provider.models.size
-    return "$source · $models models"
+    return ""
 }
 
 internal fun providerIcon(provider: ProviderSettingsProviderDto): Icon {
