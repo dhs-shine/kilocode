@@ -16,8 +16,8 @@ import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.PartDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
-import com.intellij.openapi.fileEditor.impl.EditorHistoryManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.replaceService
 import com.intellij.util.ui.UIUtil
@@ -92,7 +92,6 @@ class AttachmentEditorKindTest : BasePlatformTestCase() {
         assertFalse(KiloPath(AttachmentEditorKind.ID, one) == KiloPath(AttachmentEditorKind.ID, two))
     }
 
-    @Suppress("UnstableApiUsage")
     fun testVirtualFilesAreExcludedFromEditorHistory() {
         ensureAttachmentEditorKind()
         val file = KiloVirtualFile(KiloPath(AttachmentEditorKind.ID, mapOf(
@@ -103,8 +102,7 @@ class AttachmentEditorKindTest : BasePlatformTestCase() {
             "filename" to "note.txt",
         )))
 
-        assertFalse((file as EditorHistoryManager.OptionallyIncluded).isIncludedInEditorHistory(project))
-        assertFalse(file.isPersistedInEditorHistory())
+        assertNull(VirtualFileManager.getInstance().findFileByUrl(file.url))
     }
 
     @Suppress("UnstableApiUsage")
@@ -151,6 +149,9 @@ class AttachmentEditorKindTest : BasePlatformTestCase() {
             assertTrue(results.any { it is AttachmentData.Connecting })
             val data = results.last { it is AttachmentData.Text } as AttachmentData.Text
             assertEquals("two", data.text)
+            assertEquals(1, rpc.attachmentParts.size)
+            assertEquals("msg1", rpc.attachmentParts.single().messageId)
+            assertEquals(0, rpc.historyCalls)
         } finally {
             Disposer.dispose(parent)
             cs.cancel()

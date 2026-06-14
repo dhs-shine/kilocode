@@ -54,15 +54,25 @@ class PromptAttachmentView(
     fun upsert(item: FileAttachment) {
         val old = items[item.id]
         items[item.id] = item
-        if (old == null || !same(old, item)) cards[item.id] = card(item)
-        sync()
+        if (old != null && same(old, item)) return
+        val next = card(item)
+        val prev = cards.put(item.id, next)
+        if (prev == null) {
+            row.next(next)
+            refresh()
+            return
+        }
+        val at = row.components.indexOfFirst { it === prev }.takeIf { it >= 0 } ?: return refresh()
+        row.remove(prev)
+        row.add(next, at)
+        refresh()
     }
 
     @RequiresEdt
     fun remove(id: String): Boolean {
         val item = items.remove(id) ?: return false
-        cards.remove(item.id)
-        sync()
+        cards.remove(item.id)?.let { row.remove(it) }
+        refresh()
         return true
     }
 
@@ -96,10 +106,7 @@ class PromptAttachmentView(
 
     override fun dumpLabel(): String = "PromptAttachmentView#$contentId[${items.keys.joinToString(",")}]"
 
-    @RequiresEdt
-    private fun sync() {
-        row.removeAll()
-        for (id in items.keys) row.next(cards.getValue(id))
+    private fun refresh() {
         revalidate()
         repaint()
     }

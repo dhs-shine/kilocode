@@ -10,6 +10,7 @@ import java.util.UUID
 import javax.imageio.ImageIO
 import java.nio.file.Path
 import kotlin.io.path.name
+import kotlin.io.path.readBytes
 
 data class PromptAttachment(
     val id: String,
@@ -27,20 +28,25 @@ data class PromptAttachment(
 }
 
 object PromptAttachmentExtractor {
+    private const val MAX_BYTES = 10 * 1024 * 1024
+
     fun files(files: List<java.io.File>): List<PromptAttachment> = files
-        .filter { it.exists() }
+        .filter { it.exists() && it.isFile && it.canRead() && it.length() <= MAX_BYTES }
         .map { file ->
             val path = file.toPath()
+            val mime = mime(file)
+            if (!media(mime)) return@map null
             PromptAttachment(
                 id = path.toAbsolutePath().normalize().toString(),
                 name = path.fileName?.toString() ?: path.name,
-                mime = mime(file),
-                url = path.toUri().toString(),
+                mime = mime,
+                url = data(path, mime),
                 path = path,
             )
         }
+        .filterNotNull()
 
-    fun media(mime: String): Boolean = mime.startsWith("image/") || mime == "application/pdf"
+    fun media(mime: String): Boolean = mime.startsWith("image/") || mime == "text/plain"
 
     fun image(raw: Any): PromptAttachment? {
         val image = when (raw) {
@@ -75,6 +81,8 @@ object PromptAttachmentExtractor {
             else -> "application/octet-stream"
         }
     }
+
+    private fun data(path: Path, mime: String) = "data:$mime;base64,${Base64.getEncoder().encodeToString(path.readBytes())}"
 
     private fun Image.buffered(): BufferedImage? {
         if (this is BufferedImage) return this

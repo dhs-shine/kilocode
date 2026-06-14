@@ -312,6 +312,23 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(1, panel.attachmentCountForTest())
     }
 
+    fun `test pasted frontend file sends data url payload`() {
+        var sent: ai.kilocode.rpc.dto.PromptPartDto? = null
+        val panel = PromptPanel(project, { _, files -> sent = files.single() }, {}, { _, _ -> })
+        val file = File.createTempFile("kilo-paste", ".txt")
+        file.writeText("hello")
+        panel.setReady(true)
+
+        PlatformTestUtil.waitForFuture(panel.processPasteForTest(FileListTransferable(listOf(file))))
+        UIUtil.dispatchAllInvocationEvents()
+        panel.send()
+
+        val item = sent!!
+        assertEquals("text/plain", item.mime)
+        assertTrue(item.url.orEmpty().startsWith("data:text/plain;base64,"))
+        assertFalse(item.url.orEmpty().startsWith("file://"))
+    }
+
     fun `test raw image paste adds attachment`() {
         val panel = PromptPanel(project, { _, _ -> }, {}, { _, _ -> })
         val image = BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB)

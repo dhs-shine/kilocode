@@ -10,6 +10,7 @@ import ai.kilocode.client.ui.layout.align
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.xml.util.XmlStringUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
@@ -282,11 +283,11 @@ private fun local(item: AttachmentCardItem): Path? {
     return runCatching { Path.of(uri) }.getOrNull()
 }
 
-private fun tooltip(item: AttachmentCardItem): String = "<html>${listOf(
-    "Name: ${item.name}",
-    "Type: ${item.mime}",
-    "Location: ${location(item)}",
-).joinToString("<br>") { StringUtil.escapeXmlEntities(it) }}</html>"
+private fun tooltip(item: AttachmentCardItem): String = XmlStringUtil.wrapInHtml(
+    StringUtil.escapeXmlEntities(
+        KiloBundle.message("prompt.attachment.tooltip", item.name, item.mime, location(item)),
+    ).replace("\n", "<br>"),
+)
 
 private fun location(item: AttachmentCardItem): String {
     if (item.path != null) return item.path.toString()

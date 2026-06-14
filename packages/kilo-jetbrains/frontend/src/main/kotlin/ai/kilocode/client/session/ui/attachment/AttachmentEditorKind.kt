@@ -203,22 +203,13 @@ internal class KiloAttachmentEditorService(
     private fun alive(disposed: Boolean): Boolean = !project.isDisposed && !disposed
 
     private suspend fun fetch(ref: AttachmentRef): AttachmentData {
-        val messages = project.service<KiloSessionService>().messages(ref.sessionId, ref.directory)
-        LOG.info("kind=attachment-fetch phase=messages session=${ref.sessionId} message=${ref.messageId} part=${ref.partId} count=${messages.size} dir=${ref.directory}")
-        val msg = messages.firstOrNull { it.info.id == ref.messageId } ?: run {
-            LOG.info("kind=attachment-fetch result=missing reason=message-not-found session=${ref.sessionId} message=${ref.messageId} available=${messages.take(8).joinToString { it.info.id }} total=${messages.size}")
-            return AttachmentData.Missing
-        }
-        val files = msg.parts.filter { it.type == "file" }
-        LOG.info(
-            "kind=attachment-fetch phase=parts session=${ref.sessionId} message=${ref.messageId} part=${ref.partId} files=${files.size} " +
-                "candidates=${files.take(8).joinToString("|") { candidate(it.id, it.filename.orEmpty(), it.mime.orEmpty(), it.url.orEmpty()) }} truncated=${files.size > 8}"
-        )
-        val item = files.firstOrNull {
-            if (it.type != "file") return@firstOrNull false
-            if (ref.attachmentKey.isPresent()) attachmentKey(it.id, it.filename.orEmpty(), it.url.orEmpty()) == ref.attachmentKey
-            else it.id == ref.partId
-        } ?: run {
+        val item = project.service<KiloSessionService>().attachmentPart(
+            ref.sessionId,
+            ref.directory,
+            ref.messageId,
+            ref.partId,
+            ref.attachmentKey,
+        ) ?: run {
             LOG.info("kind=attachment-fetch result=missing reason=part-not-found session=${ref.sessionId} message=${ref.messageId} part=${ref.partId} key=${ref.attachmentKey ?: "none"}")
             return AttachmentData.Missing
         }
@@ -306,10 +297,6 @@ private fun describe(data: AttachmentData): String = when (data) {
     AttachmentData.Missing -> "missing"
     AttachmentData.Connecting -> "connecting"
     AttachmentData.ConnectionFailed -> "connection-failed"
-}
-
-private fun candidate(part: String, name: String, mime: String, url: String): String {
-    return "part=$part name=$name mime=$mime key=${attachmentKey(part, name, url)} ${urlInfo(url)}"
 }
 
 private fun urlInfo(url: String): String {

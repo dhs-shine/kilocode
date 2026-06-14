@@ -10,6 +10,7 @@ import ai.kilocode.rpc.dto.ModelSelectionDto
 import ai.kilocode.rpc.dto.PermissionAlwaysRulesDto
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
+import ai.kilocode.rpc.dto.PartDto
 import ai.kilocode.rpc.dto.PromptDto
 import ai.kilocode.rpc.dto.QuestionReplyDto
 import ai.kilocode.rpc.dto.QuestionRequestDto
@@ -255,6 +256,17 @@ class KiloBackendChatManager(
         }
     }
 
+    fun attachmentPart(id: String, dir: String, message: String, part: String, key: String?): PartDto? {
+        return messages(id, dir)
+            .firstOrNull { it.info.id == message }
+            ?.parts
+            ?.firstOrNull {
+                if (it.type != "file") return@firstOrNull false
+                if (!key.isNullOrBlank()) attachmentKey(it.id, it.filename.orEmpty(), it.url.orEmpty()) == key
+                else it.id == part
+            }
+    }
+
     // ------ config update ------
 
     fun updateConfig(dir: String, update: ConfigUpdateDto) {
@@ -374,4 +386,10 @@ class KiloBackendChatManager(
 
     private fun encode(value: String): String =
         java.net.URLEncoder.encode(value, "UTF-8")
+
+    private fun attachmentKey(part: String, name: String, url: String): String {
+        val value = listOf(part, name, url).joinToString("\u0000")
+        val bytes = java.security.MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
+        return bytes.take(16).joinToString("") { "%02x".format(it) }
+    }
 }
