@@ -23,6 +23,7 @@ class KiloVfsManager(private val project: Project) {
     fun close(kind: String, params: Map<String, String> = emptyMap()) {
         val file = file(kind, params) ?: return
         FileEditorManager.getInstance(project).closeFile(file)
+        KiloVirtualFileSystem.getInstance().release(file.path)
     }
 
     @RequiresEdt

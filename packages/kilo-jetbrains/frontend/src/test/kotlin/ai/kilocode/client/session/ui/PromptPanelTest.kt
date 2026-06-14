@@ -312,6 +312,16 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(1, panel.attachmentCountForTest())
     }
 
+    fun `test frontend file attachment defers data url encoding until send`() {
+        val file = File.createTempFile("kilo-paste", ".txt")
+        file.writeText("hello")
+
+        val item = ai.kilocode.client.session.model.PromptAttachmentExtractor.files(listOf(file)).single()
+
+        assertTrue(item.url.startsWith("file://"))
+        assertTrue(item.part().url.orEmpty().startsWith("data:text/plain;base64,"))
+    }
+
     fun `test pasted frontend file sends data url payload`() {
         var sent: ai.kilocode.rpc.dto.PromptPartDto? = null
         val panel = PromptPanel(project, { _, files -> sent = files.single() }, {}, { _, _ -> })

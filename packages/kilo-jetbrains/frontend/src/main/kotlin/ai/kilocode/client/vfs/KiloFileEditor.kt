@@ -20,4 +20,9 @@ class KiloFileEditor(
     override fun getName(): String = kind.title(kilo.path.params)
     override fun getFile(): VirtualFile = file
     override fun isValid(): Boolean = super.isValid() && kilo.isValid
+
+    override fun dispose() {
+        KiloVirtualFileSystem.getInstance().release(kilo.path)
+        super.dispose()
+    }
 }

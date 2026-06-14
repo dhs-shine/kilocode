@@ -22,6 +22,10 @@ class KiloVirtualFileSystem : VirtualFileSystem(), NonPhysicalFileSystem {
         return files.computeIfAbsent(path.canonical()) { KiloVirtualFile(it) }
     }
 
+    fun release(path: KiloPath) {
+        files.remove(path.canonical())
+    }
+
     override fun findFileByPath(path: String): VirtualFile? {
         val parsed = decode(path) ?: return null
         return findOrCreateFile(parsed)

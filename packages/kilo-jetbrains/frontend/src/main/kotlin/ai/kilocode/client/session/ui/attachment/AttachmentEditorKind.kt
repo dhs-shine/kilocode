@@ -34,6 +34,7 @@ import javax.swing.ImageIcon
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingConstants
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -156,11 +157,11 @@ internal class KiloAttachmentEditorService(
 
     fun load(ref: AttachmentRef, parent: Disposable, done: (AttachmentData) -> Unit) {
         LOG.info("kind=attachment-load phase=start project=${project.name} hash=${project.locationHash} ref=${brief(ref)}")
-        var disposed = false
+        val disposed = AtomicBoolean(false)
         val job = cs.launch {
             val app = service<KiloAppService>()
             app.connect()
-            while (!disposed) {
+            while (!disposed.get()) {
                 withContext(Dispatchers.Main) {
                     if (alive(disposed)) {
                         LOG.info("kind=attachment-load phase=connecting ref=${brief(ref)}")
@@ -194,13 +195,13 @@ internal class KiloAttachmentEditorService(
             }
         }
         Disposer.register(parent) {
-            disposed = true
+            disposed.set(true)
             LOG.info("kind=attachment-load phase=dispose ref=${brief(ref)}")
             job.cancel()
         }
     }
 
-    private fun alive(disposed: Boolean): Boolean = !project.isDisposed && !disposed
+    private fun alive(disposed: AtomicBoolean): Boolean = !project.isDisposed && !disposed.get()
 
     private suspend fun fetch(ref: AttachmentRef): AttachmentData {
         val item = project.service<KiloSessionService>().attachmentPart(

@@ -22,7 +22,7 @@ data class PromptAttachment(
     fun part() = PromptPartDto(
         type = "file",
         mime = mime,
-        url = url,
+        url = path?.let { data(it, mime) } ?: url,
         filename = name,
     )
 }
@@ -40,7 +40,7 @@ object PromptAttachmentExtractor {
                 id = path.toAbsolutePath().normalize().toString(),
                 name = path.fileName?.toString() ?: path.name,
                 mime = mime,
-                url = data(path, mime),
+                url = path.toUri().toString(),
                 path = path,
             )
         }
@@ -82,8 +82,6 @@ object PromptAttachmentExtractor {
         }
     }
 
-    private fun data(path: Path, mime: String) = "data:$mime;base64,${Base64.getEncoder().encodeToString(path.readBytes())}"
-
     private fun Image.buffered(): BufferedImage? {
         if (this is BufferedImage) return this
         val width = getWidth(null)
@@ -99,3 +97,5 @@ object PromptAttachmentExtractor {
         return image
     }
 }
+
+private fun data(path: Path, mime: String) = "data:$mime;base64,${Base64.getEncoder().encodeToString(path.readBytes())}"
