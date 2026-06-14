@@ -49,6 +49,8 @@ const clear = () =>
   Effect.runPromise(Config.Service.use((svc) => svc.invalidate()).pipe(Effect.scoped, Effect.provide(layer)))
 const saveGlobal = (config: Config.Info) =>
   Effect.runPromise(Config.Service.use((svc) => svc.updateGlobal(config)).pipe(Effect.scoped, Effect.provide(layer)))
+const saveProject = (config: Config.Info) =>
+  Effect.runPromise(Config.Service.use((svc) => svc.update(config)).pipe(Effect.scoped, Effect.provide(layer)))
 
 async function writeConfig(dir: string, config: object, name = "kilo.json") {
   await Filesystem.write(path.join(dir, name), JSON.stringify(config))
@@ -191,9 +193,25 @@ describe("kilocode indexing config", () => {
     }
   })
 
-  test("global indexing enabled applies when project indexing is disabled", async () => {
+  test("project indexing enabled overrides global enablement", async () => {
     const input = KiloIndexing.input({ enabled: false }, { enabled: true })
-    expect(input.enabled).toBe(true)
+    expect(input.enabled).toBe(false)
+    expect(KiloIndexing.input(undefined, { enabled: true }).enabled).toBe(true)
+    expect(KiloIndexing.input({ enabled: true }, { enabled: false }).enabled).toBe(true)
+  })
+
+  test("creates missing project config as .kilo/kilo.jsonc", async () => {
+    await using tmp = await tmpdir({ git: true })
+
+    await WithInstance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await saveProject({ indexing: { enabled: true } })
+      },
+    })
+
+    expect(await Bun.file(path.join(tmp.path, ".kilo", "kilo.jsonc")).exists()).toBe(true)
+    expect(await Bun.file(path.join(tmp.path, ".kilo", "kilo.json")).exists()).toBe(false)
   })
 
   test("accepts delete sentinels for indexing model overrides", () => {
@@ -213,6 +231,43 @@ describe("kilocode indexing config", () => {
     expect(merged.indexing).toEqual({ provider: "openai" })
     expect(input.modelId).toBeUndefined()
     expect(input.modelDimension).toBeUndefined()
+  })
+})
+
+describe("subagent variant overrides", () => {
+  test("removes one model override without removing sibling models", () => {
+    const patch = decode({
+      subagent_variant_overrides: {
+        "anthropic/claude-sonnet-4-6": null,
+      },
+    })
+    const merged = KilocodeConfig.mergeConfig(
+      {
+        subagent_variant_overrides: {
+          "anthropic/claude-sonnet-4-6": "high",
+          "openai/gpt-5": "xhigh",
+        },
+      },
+      patch,
+    )
+
+    expect(patch.subagent_variant_overrides?.["anthropic/claude-sonnet-4-6"]).toBeNull()
+    expect(merged.subagent_variant_overrides).toEqual({ "openai/gpt-5": "xhigh" })
+  })
+
+  test("accepts a delete sentinel for the complete override map", () => {
+    const patch = decode({ subagent_variant_overrides: null })
+    const merged = KilocodeConfig.mergeConfig(
+      {
+        subagent_variant_overrides: {
+          "anthropic/claude-sonnet-4-6": "high",
+        },
+      },
+      patch,
+    )
+
+    expect(patch.subagent_variant_overrides).toBeNull()
+    expect(merged.subagent_variant_overrides).toBeUndefined()
   })
 })
 
