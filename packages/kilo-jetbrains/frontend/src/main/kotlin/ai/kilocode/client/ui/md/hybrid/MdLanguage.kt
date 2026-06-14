@@ -12,7 +12,7 @@ internal sealed class Kind {
 
 internal enum class Stream { Stdout, Stderr }
 
-internal enum class Mode { Ansi, Shell }
+internal enum class Mode { Ansi, Shell, Command }
 
 internal object MdLanguage {
     private val terms = mapOf(
@@ -20,6 +20,7 @@ internal object MdLanguage {
         "ansi-stdout" to Kind.Terminal(Stream.Stdout, Mode.Ansi),
         "terminal" to Kind.Terminal(Stream.Stdout, Mode.Ansi),
         "terminal-output" to Kind.Terminal(Stream.Stdout, Mode.Ansi),
+        "shell-command" to Kind.Terminal(Stream.Stdout, Mode.Command),
         "shell-output" to Kind.Terminal(Stream.Stdout, Mode.Shell),
         "ansi-stderr" to Kind.Terminal(Stream.Stderr, Mode.Ansi),
         "terminal-error" to Kind.Terminal(Stream.Stderr, Mode.Ansi),

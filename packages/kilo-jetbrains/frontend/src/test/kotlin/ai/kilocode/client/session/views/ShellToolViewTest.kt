@@ -11,6 +11,7 @@ import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -41,7 +42,7 @@ class ShellToolViewTest : BasePlatformTestCase() {
         assertEquals("pwd", view.bodyText())
         view.toggle()
 
-        assertEquals("**Command**\n\n```shell\npwd\n```", view.markdown())
+        assertEquals("**Command**\n\n```shell-command\npwd\n```", view.markdown())
         assertEquals(listOf("pwd"), view.codeTexts())
     }
 
@@ -69,7 +70,7 @@ class ShellToolViewTest : BasePlatformTestCase() {
         view.toggle()
 
         assertEquals(
-            "**Command**\n\n```shell\ngit status\n```\n\n**Output**\n\n```shell-output\nclean\n```",
+            "**Command**\n\n```shell-command\ngit status\n```\n\n**Output**\n\n```shell-output\nclean\n```",
             view.markdown(),
         )
         assertEquals(listOf("git status", "clean"), view.codeTexts())
@@ -126,7 +127,7 @@ class ShellToolViewTest : BasePlatformTestCase() {
         view.toggle()
 
         assertEquals(
-            "**Command**\n\n```shell\nfail\n```\n\n**Error**\n\n```ansi-stderr\nboom\n```",
+            "**Command**\n\n```shell-command\nfail\n```\n\n**Error**\n\n```ansi-stderr\nboom\n```",
             view.markdown(),
         )
         assertEquals(listOf("fail", "boom"), view.codeTexts())
@@ -262,6 +263,25 @@ class ShellToolViewTest : BasePlatformTestCase() {
         assertTrue(view.markdown().contains("```shell-output\n$output\n```"))
         assertEquals(display, view.codeTexts().single())
         assertTrue(editor.markupModel.allHighlighters.size >= 4)
+    }
+
+    fun `test command receives shell command highlighters`() {
+        val view = track(ShellToolView(tool().also {
+            it.input = mapOf("command" to "git log -30 --oneline --decorate")
+        }))
+
+        view.toggle()
+        val field = view.codeEditors().single()
+        val editor = field.getEditor(true)!!
+        val spans = editor.markupModel.allHighlighters.map {
+            field.text.substring(it.startOffset, it.endOffset) to it.textAttributesKey
+        }
+
+        assertTrue(view.markdown().contains("```shell-command\ngit log -30 --oneline --decorate\n```"))
+        assertTrue(spans.contains("git" to DefaultLanguageHighlighterColors.FUNCTION_CALL))
+        assertTrue(spans.contains("-30" to DefaultLanguageHighlighterColors.KEYWORD))
+        assertTrue(spans.contains("--oneline" to DefaultLanguageHighlighterColors.KEYWORD))
+        assertTrue(spans.contains("--decorate" to DefaultLanguageHighlighterColors.KEYWORD))
     }
 
     fun `test shell labels align with code text and code blocks use bottom border only`() {

@@ -276,7 +276,7 @@ private data class ShellContent(
     val body: String = listOf(command, output, error).filter { it.isNotBlank() }.joinToString("\n\n")
 
     val markdown: String = buildString {
-        section(KiloBundle.message("session.part.tool.shell.command"), command, "shell")
+        section(KiloBundle.message("session.part.tool.shell.command"), command, "shell-command")
         section(KiloBundle.message("session.part.tool.shell.output"), rawOutput, outputLang(rawOutput))
         section(KiloBundle.message("session.part.tool.shell.error"), rawError, "ansi-stderr")
     }

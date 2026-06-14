@@ -634,13 +634,14 @@ internal open class MdViewHybrid(
 
     private fun shellDisplay(term: Term, mode: Mode): ShellDisplay {
         if (mode == Mode.Shell) return MdShellHighlight.project(term.text)
+        if (mode == Mode.Command) return MdShellHighlight.command(term.text)
         return ShellDisplay(term.text, emptyList())
     }
 
     private fun applyTerm(field: CodeField, term: Term, mode: Mode, display: ShellDisplay = shellDisplay(term, mode)) {
         val editor = field.getEditor(true) ?: return
         editor.markupModel.removeAllHighlighters()
-        if (mode == Mode.Shell) {
+        if (mode == Mode.Shell || mode == Mode.Command) {
             applyShell(field, display)
             return
         }

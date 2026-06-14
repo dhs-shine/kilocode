@@ -479,6 +479,24 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertSame(type("sh"), editors().single().fileType)
     }
 
+    fun `test shell command code fence renders terminal semantic highlighters`() {
+        view.set("```shell-command\ngit log -30 --oneline --decorate\n```")
+        val field = editors().single()
+        val editor = field.getEditor(true)!!
+        val spans = editor.markupModel.allHighlighters.map {
+            field.text.substring(it.startOffset, it.endOffset) to it.textAttributesKey
+        }
+
+        assertSame(PlainTextFileType.INSTANCE, field.fileType)
+        assertEquals("git log -30 --oneline --decorate", field.text)
+        assertTrue(spans.contains("git" to DefaultLanguageHighlighterColors.FUNCTION_CALL))
+        assertTrue(spans.contains("-30" to DefaultLanguageHighlighterColors.KEYWORD))
+        assertTrue(spans.contains("--oneline" to DefaultLanguageHighlighterColors.KEYWORD))
+        assertTrue(spans.contains("--decorate" to DefaultLanguageHighlighterColors.KEYWORD))
+        assertFalse(editor.settings.isUseSoftWraps)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, scrolls().single().horizontalScrollBarPolicy)
+    }
+
     fun `test shell script aliases resolve shell file type`() {
         view.set("```shell script\necho hi\n```")
 
