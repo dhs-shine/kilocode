@@ -253,7 +253,7 @@ internal open class MdViewHybrid(
         if (disposed) return
         if (delta.isEmpty()) return
         val fence = openFence
-        val view = blocks.lastOrNull() as? CodeView
+        val view = blocks.lastOrNull()
         if (fence != null && view != null && clean(fence.char, delta)) {
             source.append(delta)
             view.grow(delta)
@@ -880,6 +880,7 @@ internal open class MdViewHybrid(
         abstract fun compatible(desc: Desc): Boolean
         abstract fun update(desc: Desc)
         abstract fun style(opts: MdStyle)
+        open fun grow(delta: String) = Unit
     }
 
     private inner class HtmlView(desc: Desc.Html, private val pane: JBHtmlPane, disposable: Disposable) :
@@ -920,7 +921,7 @@ internal open class MdViewHybrid(
             }
         }
 
-        fun grow(delta: String) {
+        override fun grow(delta: String) {
             val item = desc as Desc.Code
             val next = item.copy(text = item.text + delta)
             desc = next
@@ -990,11 +991,6 @@ internal open class MdViewHybrid(
             applyTerm(view, term, kind.mode, value)
         }
 
-        fun grow(delta: String) {
-            val item = desc as Desc.Code
-            update(item.copy(text = item.text + delta))
-        }
-
         override fun style(opts: MdStyle) {
             styleCodePane(pane, opts)
             val view = pane.viewport.view as? CodeField ?: return
@@ -1022,6 +1018,11 @@ internal open class MdViewHybrid(
             sizeCodeField(view, value.text)
             sizeCodePane(pane, view)
             applyTerm(view, term, kind.mode, value)
+        }
+
+        override fun grow(delta: String) {
+            val item = desc as Desc.Code
+            update(item.copy(text = item.text + delta))
         }
     }
 

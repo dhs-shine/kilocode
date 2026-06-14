@@ -497,6 +497,22 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, scrolls().single().horizontalScrollBarPolicy)
     }
 
+    fun `test streaming shell command fence preserves terminal editor component`() {
+        view.append("```shell-command\ngit")
+        val pane = scrolls().single()
+        val field = editors().single()
+        val editor = field.getEditor(true)!!
+
+        view.append(" status --short\n")
+
+        assertSame(pane, scrolls().single())
+        assertSame(field, editors().single())
+        assertEquals("git status --short", field.text)
+        assertTrue(editor.markupModel.allHighlighters.map {
+            field.text.substring(it.startOffset, it.endOffset) to it.textAttributesKey
+        }.contains("git" to DefaultLanguageHighlighterColors.FUNCTION_CALL))
+    }
+
     fun `test shell script aliases resolve shell file type`() {
         view.set("```shell script\necho hi\n```")
 
