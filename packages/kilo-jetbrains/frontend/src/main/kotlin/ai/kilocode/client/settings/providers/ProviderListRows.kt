@@ -17,13 +17,14 @@ internal data class ProviderListRow(
     val section: String,
     val actions: List<ProviderListAction>,
     val connected: Boolean = false,
+    val disabled: Boolean = false,
 ) {
     val key: String get() = provider.id
 
-    fun enabled(action: ProviderListAction) = action != ProviderListAction.DISCONNECT || provider.source != "env"
+    fun enabled(action: ProviderListAction) = !disabled && (action != ProviderListAction.DISCONNECT || provider.source != "env")
 }
 
-internal fun providerListRows(state: ProviderSettingsDto, query: String): List<ProviderListRow> {
+internal fun providerListRows(state: ProviderSettingsDto, query: String, disabledRows: Boolean = false): List<ProviderListRow> {
     val q = query.trim()
     val ids = state.connected.toSet()
     val disabled = state.disabled.toSet()
@@ -45,9 +46,9 @@ internal fun providerListRows(state: ProviderSettingsDto, query: String): List<P
         .filter { !hiddenProvider(it) }
         .sortedWith(compareBy<ProviderSettingsProviderDto> { it.name.lowercase() }.thenBy { it.id })
     val rows = mutableListOf<ProviderListRow>()
-    rows += connected.map { ProviderListRow(it, KiloBundle.message("settings.providers.connected"), providerActions(it, state, disabled), connected = true) }
-    rows += popular.map { ProviderListRow(it, KiloBundle.message("settings.providers.popular"), providerActions(it, state, disabled)) }
-    rows += all.map { ProviderListRow(it, KiloBundle.message("settings.providers.all"), providerActions(it, state, disabled)) }
+    rows += connected.map { ProviderListRow(it, KiloBundle.message("settings.providers.connected"), providerActions(it, state, disabled), connected = true, disabled = disabledRows) }
+    rows += popular.map { ProviderListRow(it, KiloBundle.message("settings.providers.popular"), providerActions(it, state, disabled), disabled = disabledRows) }
+    rows += all.map { ProviderListRow(it, KiloBundle.message("settings.providers.all"), providerActions(it, state, disabled), disabled = disabledRows) }
     return rows
 }
 

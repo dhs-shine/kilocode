@@ -7,6 +7,7 @@ import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderMetadataDto
+import ai.kilocode.rpc.dto.ProviderOAuthReadyDto
 import ai.kilocode.rpc.dto.ProviderSettingsDto
 import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
 import com.intellij.openapi.application.ApplicationManager
@@ -29,10 +30,13 @@ import java.awt.Container
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
+import java.awt.event.ActionEvent
+import java.awt.event.KeyEvent
 import java.awt.image.BufferedImage
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JScrollPane
+import javax.swing.KeyStroke
 import javax.swing.UIManager
 
 @Suppress("UNCHECKED_CAST")
@@ -335,6 +339,22 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test disabled provider rows hide action labels and hit targets`() {
+        edt {
+            val row = ProviderListRow(provider("cloudflare", "Cloudflare"), "All providers", listOf(ProviderListAction.OAUTH, ProviderListAction.CONNECT), disabled = true)
+            val list = JBList(listOf(row))
+            val bounds = Rectangle(0, 0, 320, 48)
+            val renderer = ProviderListRenderer(com.intellij.ui.CollectionListModel(listOf(row)))
+
+            renderer.getListCellRendererComponent(list, row, 0, true, false)
+
+            assertTrue(ProviderListRenderer.visibleActions(row, selected = true).isEmpty())
+            assertTrue(ProviderListRenderer.actionBounds(list, bounds, row, selected = true).isEmpty())
+            assertNull(ProviderListRenderer.actionAt(list, bounds, Point(300, 24), row, selected = true))
+            assertTrue(renderer.actionTexts().isEmpty())
+        }
+    }
+
     fun `test renderer uses standard button foreground for actions`() {
         edt {
             val row = ProviderListRow(provider("cloudflare", "Cloudflare"), "All providers", listOf(ProviderListAction.OAUTH, ProviderListAction.CONNECT))
@@ -452,6 +472,85 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test provider oauth shows starting progress and disables actions while authorizing`() {
+        val ready = CompletableDeferred<ProviderOAuthReadyDto>()
+        val rpc = installProvider(
+            ProviderSettingsDto(
+                providers = listOf(provider("github-copilot", "GitHub Copilot")),
+                auth = mapOf("github-copilot" to listOf(ProviderAuthMethodDto("oauth", "OAuth"))),
+            ),
+        )
+        rpc.authorizesReady.add(ready)
+        val panel = edt { createUi() }
+
+        flushUntil { rpc.stateCalls.size == 1 && edt { rows(panel).map { it.key } == listOf("github-copilot") } }
+        edt { triggerPrimary(panel) }
+        flushUntil { rpc.authorizes.size == 1 && edt { text(panel).contains("Starting OAuth for GitHub Copilot") } }
+
+        edt {
+            assertTrue(text(panel).contains("Cancel"))
+            assertTrue(rows(panel).single().disabled)
+            assertTrue(ProviderListRenderer.visibleActions(rows(panel).single(), selected = true).isEmpty())
+            panel.reload()
+        }
+
+        flushUntil { rpc.stateCalls.size == 1 }
+        assertFalse(ready.isCompleted)
+    }
+
+    fun `test provider oauth waiting countdown can be cancelled without refresh`() {
+        val callback = CompletableDeferred<ai.kilocode.rpc.dto.ProviderActionResultDto>()
+        val rpc = installProvider(
+            ProviderSettingsDto(
+                providers = listOf(provider("github-copilot", "GitHub Copilot")),
+                auth = mapOf("github-copilot" to listOf(ProviderAuthMethodDto("oauth", "OAuth"))),
+            ),
+        )
+        rpc.ready = ProviderOAuthReadyDto(method = "auto")
+        rpc.callbacksReady.add(callback)
+        val panel = edt { createUi() }
+
+        flushUntil { rpc.stateCalls.size == 1 && edt { rows(panel).map { it.key } == listOf("github-copilot") } }
+        edt { triggerPrimary(panel) }
+        flushUntil { rpc.callbacks.size == 1 && edt { text(panel).contains("Waiting for authorization... (1:30)") } }
+        edt { components(panel).filterIsInstance<JButton>().single { it.text == "Cancel" && it.isVisible }.doClick() }
+
+        flushUntil { edt { !text(panel).contains("Waiting for authorization") && rows(panel).single().disabled.not() } }
+        callback.complete(ai.kilocode.rpc.dto.ProviderActionResultDto(providerState(provider("stale", "Stale"))))
+        flushUntil { callback.isCompleted }
+
+        edt {
+            assertEquals(1, rpc.stateCalls.size)
+            assertEquals(listOf("github-copilot"), rows(panel).map { it.key })
+            assertFalse(text(panel).contains("Cancel"))
+        }
+    }
+
+    fun `test provider oauth cancel before authorize completion skips callback`() {
+        val ready = CompletableDeferred<ProviderOAuthReadyDto>()
+        val rpc = installProvider(
+            ProviderSettingsDto(
+                providers = listOf(provider("github-copilot", "GitHub Copilot")),
+                auth = mapOf("github-copilot" to listOf(ProviderAuthMethodDto("oauth", "OAuth"))),
+            ),
+        )
+        rpc.authorizesReady.add(ready)
+        val panel = edt { createUi() }
+
+        flushUntil { rpc.stateCalls.size == 1 && edt { rows(panel).map { it.key } == listOf("github-copilot") } }
+        edt { triggerPrimary(panel) }
+        flushUntil { rpc.authorizes.size == 1 && edt { text(panel).contains("Cancel") } }
+        edt { components(panel).filterIsInstance<JButton>().single { it.text == "Cancel" && it.isVisible }.doClick() }
+        ready.complete(ProviderOAuthReadyDto(method = "auto"))
+        flushUntil { ready.isCompleted }
+
+        edt {
+            assertTrue(rpc.callbacks.isEmpty())
+            assertEquals(1, rpc.stateCalls.size)
+            assertEquals(listOf("github-copilot"), rows(panel).map { it.key })
+        }
+    }
+
     fun `test provider action failure returns error state`() = runBlocking {
         val cs = CoroutineScope(SupervisorJob())
         scope = cs
@@ -469,23 +568,19 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         assertEquals(listOf("/test"), rpc.stateCalls)
     }
 
-    fun `test stale reload result is ignored after newer reload`() {
+    fun `test reload is ignored while existing reload is pending`() {
         val first = CompletableDeferred<ProviderSettingsDto>()
-        val second = CompletableDeferred<ProviderSettingsDto>()
         val rpc = installProvider(ProviderSettingsDto())
         rpc.states.add(first)
-        rpc.states.add(second)
         val panel = edt { createUi() }
 
         flushUntil { rpc.stateCalls.size == 1 }
         edt { panel.reload() }
-        flushUntil { rpc.stateCalls.size == 2 }
-        second.complete(providerState(provider("new", "New")))
-        flushUntil { edt { rows(panel).map { it.key } == listOf("new") } }
+        flushUntil { rpc.stateCalls.size == 1 }
         first.complete(providerState(provider("old", "Old")))
         flushUntil { first.isCompleted }
 
-        edt { assertEquals(listOf("new"), rows(panel).map { it.key }) }
+        edt { assertEquals(listOf("old"), rows(panel).map { it.key }) }
     }
 
     fun `test dispose ignores pending reload completion`() {
@@ -557,6 +652,12 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
     private fun search(component: JComponent) = components(component).filterIsInstance<SearchTextField>().single()
 
     private fun center(rect: Rectangle) = Point(rect.x + rect.width / 2, rect.y + rect.height / 2)
+
+    private fun triggerPrimary(component: JComponent) {
+        val list = list(component)
+        val action = list.getActionForKeyStroke(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0))
+        action.actionPerformed(ActionEvent(list, ActionEvent.ACTION_PERFORMED, "enter"))
+    }
 
     private fun components(component: java.awt.Component): List<java.awt.Component> {
         val out = mutableListOf<java.awt.Component>()

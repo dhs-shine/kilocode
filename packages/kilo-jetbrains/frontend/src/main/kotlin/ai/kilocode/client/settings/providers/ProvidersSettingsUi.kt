@@ -65,6 +65,7 @@ import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
 import javax.swing.event.DocumentEvent
 import javax.swing.Icon
+import javax.swing.Timer
 
 private val edt = Dispatchers.EDT + ModalityState.any().asContextElement()
 
@@ -80,17 +81,21 @@ internal class ProvidersSettingsUi(
         KiloBundle.message("settings.providers.addCustom"),
         KiloBundle.message("settings.providers.addCustom.description"),
         AllIcons.General.Add,
+        { !busy },
     ) { custom() }
     private val refresh = ProviderToolbarAction(
         KiloBundle.message("settings.providers.refresh"),
         KiloBundle.message("settings.providers.refresh.description"),
         AllIcons.Actions.Refresh,
+        { !busy },
     ) { reload() }
     private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable)
     private var state = ProviderSettingsDto()
     private var job: Job? = null
     private var request = 0
     private var disposed = false
+    private var busy = false
+    private var timer: Timer? = null
 
     init {
         content.add(toolbar(), BorderLayout.NORTH)
@@ -102,12 +107,12 @@ internal class ProvidersSettingsUi(
     fun reload() {
         checkEdt()
         LOG.info("provider settings ui reload: start dir=$directory")
-        syncLoading()
-        launch("reload") { id ->
+        if (!launch("reload") { id ->
             val next = service<KiloProviderService>().state(directory)
             LOG.info("provider settings ui reload: state providers=${next.providers.size} errors=${next.errors.size}")
             apply(id, next, null)
-        }
+        }) return
+        syncLoading()
     }
 
     @RequiresEdt
@@ -124,11 +129,11 @@ internal class ProvidersSettingsUi(
         if (!dialog.showAndGet()) return
         val key = dialog.key()
         val metadata = dialog.metadata()
-        syncLoading()
-        launch("connect provider=${provider.id}") { id ->
+        if (!launch("connect provider=${provider.id}") { id ->
             val result = service<KiloProviderService>().connect(ProviderConnectDto(directory, provider.id, key, metadata))
             apply(id, result.state, result.error)
-        }
+        }) return
+        syncLoading()
     }
 
     @RequiresEdt
@@ -136,39 +141,50 @@ internal class ProvidersSettingsUi(
         checkEdt()
         val methods = state.auth[provider.id].orEmpty().filter { it.type == "oauth" }
         val method = state.auth[provider.id].orEmpty().indexOf(methods.firstOrNull()).coerceAtLeast(0).toString()
-        syncLoading()
-        launch("authorize provider=${provider.id}") { id ->
+        if (!launch("authorize provider=${provider.id}") { id ->
             val ready = service<KiloProviderService>().authorize(ProviderOAuthAuthorizeDto(directory, provider.id, method))
             val code = withContext(edt) {
                 if (!active(id)) return@withContext null
                 ready.url?.let(BrowserUtil::browse)
-                if (ready.method == "code") Messages.showInputDialog(this@ProvidersSettingsUi, ready.instructions ?: "Enter OAuth code", provider.name, null) else null
+                if (ready.method == "code") {
+                    val input = Messages.showInputDialog(this@ProvidersSettingsUi, ready.instructions ?: "Enter OAuth code", provider.name, null)
+                    if (input.isNullOrBlank()) {
+                        cancelOAuth(id)
+                        return@withContext null
+                    }
+                    input
+                } else null
             }
             val current = withContext(edt) { active(id) }
             if (!current) return@launch
+            withContext(edt) { syncOAuthWaiting(id) }
             val result = service<KiloProviderService>().callback(ProviderOAuthCallbackDto(directory, provider.id, method, code))
             apply(id, result.state, result.error)
-        }
+        }) return
+        showProgress(
+            KiloBundle.message("settings.providers.oauth.starting", provider.name),
+            KiloBundle.message("settings.providers.oauth.cancel"),
+        ) { cancelOAuth(request) }
     }
 
     @RequiresEdt
     private fun disconnect(provider: ProviderSettingsProviderDto) {
         checkEdt()
-        syncLoading()
-        launch("disconnect provider=${provider.id}") { id ->
+        if (!launch("disconnect provider=${provider.id}") { id ->
             val result = service<KiloProviderService>().disconnect(ProviderDisconnectDto(directory, provider.id))
             apply(id, result.state, result.error)
-        }
+        }) return
+        syncLoading()
     }
 
     @RequiresEdt
     private fun enable(provider: ProviderSettingsProviderDto) {
         checkEdt()
-        syncLoading()
-        launch("enable provider=${provider.id}") { id ->
+        if (!launch("enable provider=${provider.id}") { id ->
             val result = service<KiloProviderService>().enable(ProviderEnableDto(directory, provider.id))
             apply(id, result.state, result.error)
-        }
+        }) return
+        syncLoading()
     }
 
     @RequiresEdt
@@ -177,11 +193,11 @@ internal class ProvidersSettingsUi(
         val dialog = CustomProviderDialog()
         if (!dialog.showAndGet()) return
         val input = dialog.input(directory)
-        syncLoading()
-        launch("save custom provider") { id ->
+        if (!launch("save custom provider") { id ->
             val result = service<KiloProviderService>().saveCustom(input)
             apply(id, result.state, result.error)
-        }
+        }) return
+        syncLoading()
     }
 
     private fun toolbar(): JComponent {
@@ -193,10 +209,11 @@ internal class ProvidersSettingsUi(
     }
 
     @RequiresEdt
-    private fun launch(name: String, block: suspend (Int) -> Unit) {
+    private fun launch(name: String, block: suspend (Int) -> Unit): Boolean {
         checkEdt()
+        if (busy || disposed) return false
         val id = ++request
-        job?.cancel()
+        setBusy(true)
         job = cs.launch {
             val start = System.currentTimeMillis()
             LOG.info("provider settings ui $name: coroutine start dir=$directory")
@@ -207,6 +224,7 @@ internal class ProvidersSettingsUi(
                 LOG.warn("provider settings ui $name: coroutine timed out durationMs=${System.currentTimeMillis() - start}", e)
                 withContext(edt) {
                     if (!active(id)) return@withContext
+                    setBusy(false)
                     showError("${e::class.simpleName}: ${e.message}")
                 }
             } catch (e: CancellationException) {
@@ -216,10 +234,12 @@ internal class ProvidersSettingsUi(
                 LOG.warn("provider settings ui $name: coroutine failed durationMs=${System.currentTimeMillis() - start}", e)
                 withContext(edt) {
                     if (!active(id)) return@withContext
+                    setBusy(false)
                     showError("${e::class.simpleName}: ${e.message}")
                 }
             }
         }
+        return true
     }
 
     private suspend fun apply(id: Int, next: ProviderSettingsDto, error: String?) {
@@ -227,6 +247,7 @@ internal class ProvidersSettingsUi(
             if (!active(id)) return@withContext
             LOG.info("provider settings ui apply: start providers=${next.providers.size} errors=${next.errors.size} message=${error != null}")
             state = next
+            setBusy(false)
             view.update(next)
             val text = error ?: next.errors.joinToString("; ") { it.detail ?: it.resource }.takeIf { it.isNotBlank() }
             if (text != null) showError(text) else clearProgress()
@@ -235,12 +256,65 @@ internal class ProvidersSettingsUi(
     }
 
     @RequiresEdt
+    private fun syncOAuthWaiting(id: Int) {
+        checkEdt()
+        if (!active(id)) return
+        val expiry = System.currentTimeMillis() + KiloProviderService.OAUTH_RPC_TIMEOUT_MS
+        fun text(): String {
+            val ms = (expiry - System.currentTimeMillis()).coerceAtLeast(0)
+            val remain = ((ms + 999) / 1000).toInt()
+            val min = remain / 60
+            val sec = remain % 60
+            return KiloBundle.message("settings.providers.oauth.waitingTimed", "$min:${sec.toString().padStart(2, '0')}")
+        }
+        stopTimer()
+        showProgress(text(), KiloBundle.message("settings.providers.oauth.cancel")) { cancelOAuth(id) }
+        timer = Timer(1000) {
+            if (!active(id)) {
+                stopTimer()
+                return@Timer
+            }
+            updateProgress(text())
+        }.also { it.start() }
+    }
+
+    @RequiresEdt
+    private fun cancelOAuth(id: Int) {
+        checkEdt()
+        if (!active(id)) return
+        request++
+        job?.cancel()
+        job = null
+        stopTimer()
+        setBusy(false)
+        clearProgress()
+    }
+
+    @RequiresEdt
+    private fun stopTimer() {
+        checkEdt()
+        timer?.stop()
+        timer = null
+    }
+
+    @RequiresEdt
+    private fun setBusy(next: Boolean) {
+        checkEdt()
+        if (busy == next) return
+        busy = next
+        if (!next) stopTimer()
+        view.setBusy(next)
+    }
+
+    @RequiresEdt
     override fun dispose() {
         checkEdt()
         disposed = true
         request++
+        stopTimer()
         job?.cancel()
         job = null
+        setBusy(false)
     }
 
     @RequiresEdt
@@ -269,6 +343,7 @@ internal class ProvidersContent(
         textEditor.emptyText.text = KiloBundle.message("settings.providers.search")
     }
     private var state = ProviderSettingsDto()
+    private var busy = false
 
     init {
         list.cellRenderer = ProviderListRenderer(model)
@@ -326,9 +401,20 @@ internal class ProvidersContent(
     }
 
     @RequiresEdt
+    fun setBusy(next: Boolean) {
+        checkEdt()
+        if (busy == next) return
+        busy = next
+        search.isEnabled = !next
+        search.textEditor.isEnabled = !next
+        list.isEnabled = !next
+        sync()
+    }
+
+    @RequiresEdt
     private fun sync(prefer: String? = list.selectedValue?.key, at: Int? = null) {
         checkEdt()
-        val rows = providerListRows(state, search.text)
+        val rows = providerListRows(state, search.text, disabledRows = busy)
         model.replaceAll(rows)
         val idx = at?.let { providerListIndex(rows, it) }?.takeIf { it >= 0 }
             ?: providerListIndex(rows, prefer).takeIf { it >= 0 }
@@ -383,12 +469,18 @@ private class ProviderToolbarAction(
     text: String,
     description: String,
     icon: Icon,
+    private val enabled: () -> Boolean,
     private val action: () -> Unit,
 ) : DumbAwareAction(text, description, icon) {
     override fun getActionUpdateThread() = ActionUpdateThread.EDT
 
     override fun actionPerformed(e: AnActionEvent) {
+        if (!enabled()) return
         action()
+    }
+
+    override fun update(e: AnActionEvent) {
+        e.presentation.isEnabled = enabled()
     }
 }
 

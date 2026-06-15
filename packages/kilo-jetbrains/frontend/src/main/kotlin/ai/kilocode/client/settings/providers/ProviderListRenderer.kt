@@ -77,6 +77,7 @@ internal class ProviderListRenderer(
         }
 
         internal fun visibleActions(row: ProviderListRow, selected: Boolean): List<ProviderListAction> {
+            if (row.disabled) return emptyList()
             if (row.connected) return row.actions.filter { it == ProviderListAction.DISCONNECT }
             if (!selected) return emptyList()
             return row.actions

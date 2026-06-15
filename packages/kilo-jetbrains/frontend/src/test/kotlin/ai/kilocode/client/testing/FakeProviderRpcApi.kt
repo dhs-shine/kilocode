@@ -22,6 +22,11 @@ class FakeProviderRpcApi : KiloProviderRpcApi {
     val disconnects = mutableListOf<ProviderDisconnectDto>()
     val enables = mutableListOf<ProviderEnableDto>()
     val custom = mutableListOf<CustomProviderSaveDto>()
+    val authorizes = mutableListOf<ProviderOAuthAuthorizeDto>()
+    val callbacks = mutableListOf<ProviderOAuthCallbackDto>()
+    val authorizesReady = ArrayDeque<CompletableDeferred<ProviderOAuthReadyDto>>()
+    val callbacksReady = ArrayDeque<CompletableDeferred<ProviderActionResultDto>>()
+    var ready = ProviderOAuthReadyDto()
     var disconnectError: Exception? = null
 
     override suspend fun state(directory: String): ProviderSettingsDto {
@@ -39,11 +44,15 @@ class FakeProviderRpcApi : KiloProviderRpcApi {
 
     override suspend fun authorize(input: ProviderOAuthAuthorizeDto): ProviderOAuthReadyDto {
         assertNotEdt("provider.authorize")
-        return ProviderOAuthReadyDto()
+        authorizes.add(input)
+        if (authorizesReady.isNotEmpty()) return authorizesReady.removeFirst().await()
+        return ready
     }
 
     override suspend fun callback(input: ProviderOAuthCallbackDto): ProviderActionResultDto {
         assertNotEdt("provider.callback")
+        callbacks.add(input)
+        if (callbacksReady.isNotEmpty()) return callbacksReady.removeFirst().await()
         return ProviderActionResultDto(state)
     }
 

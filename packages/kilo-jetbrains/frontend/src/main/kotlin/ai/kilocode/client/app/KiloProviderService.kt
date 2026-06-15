@@ -33,7 +33,7 @@ class KiloProviderService internal constructor(
     companion object {
         private val LOG = KiloLog.create(KiloProviderService::class.java)
         private const val RPC_TIMEOUT_MS = 20_000L
-        private const val OAUTH_RPC_TIMEOUT_MS = 90_000L
+        internal const val OAUTH_RPC_TIMEOUT_MS = 90_000L
     }
 
     private suspend fun <T> call(name: String, timeoutMs: Long = RPC_TIMEOUT_MS, block: suspend KiloProviderRpcApi.() -> T): T {

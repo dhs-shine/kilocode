@@ -24,6 +24,16 @@ internal open class SettingsOverlayPanel : LayeredOverlayPanel() {
         syncOverlay()
     }
 
+    fun showProgress(text: String, cancelText: String, cancel: () -> Unit) {
+        progress.showProgress(text, cancelText, cancel)
+        syncOverlay()
+    }
+
+    fun updateProgress(text: String) {
+        progress.updateProgress(text)
+        syncOverlay()
+    }
+
     fun showError(text: String) {
         progress.showError(text)
         syncOverlay()
