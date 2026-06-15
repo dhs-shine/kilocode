@@ -8,6 +8,16 @@ import {
   validateProviderID,
   withCustomProviderDeletions,
 } from "../../src/shared/custom-provider"
+import { isCustomProviderPackage } from "../../src/shared/provider-model"
+
+describe("isCustomProviderPackage", () => {
+  it("recognizes supported custom provider packages", () => {
+    expect(isCustomProviderPackage("@ai-sdk/openai-compatible")).toBe(true)
+    expect(isCustomProviderPackage("@ai-sdk/openai")).toBe(true)
+    expect(isCustomProviderPackage("@ai-sdk/anthropic")).toBe(true)
+    expect(isCustomProviderPackage("malicious-package")).toBe(false)
+  })
+})
 
 describe("validateProviderID", () => {
   it("accepts valid provider ids", () => {
@@ -64,9 +74,9 @@ describe("resolveCustomProviderKey", () => {
 })
 
 describe("sanitizeCustomProviderConfig", () => {
-  it("normalizes config and forces the approved package", () => {
+  it("normalizes config and preserves an approved package", () => {
     const result = sanitizeCustomProviderConfig({
-      npm: "malicious-package",
+      npm: "@ai-sdk/anthropic",
       name: " My Provider ",
       env: [" MY_PROVIDER_KEY "],
       options: {
@@ -83,7 +93,7 @@ describe("sanitizeCustomProviderConfig", () => {
 
     expect(result).toEqual({
       value: {
-        npm: "@ai-sdk/openai-compatible",
+        npm: "@ai-sdk/anthropic",
         name: "My Provider",
         env: ["MY_PROVIDER_KEY"],
         options: {
@@ -98,6 +108,17 @@ describe("sanitizeCustomProviderConfig", () => {
         },
       },
     })
+  })
+
+  it("rejects unapproved packages", () => {
+    const result = sanitizeCustomProviderConfig({
+      npm: "malicious-package",
+      name: "Bad Provider",
+      options: { baseURL: "https://example.com/v1" },
+      models: { "model-1": { name: "Model One" } },
+    })
+
+    expect("error" in result ? result.error : "").toContain("Invalid option")
   })
 
   it("accepts supported thinking variant options", () => {
@@ -193,6 +214,12 @@ describe("withCustomProviderDeletions", () => {
     const model = (result.models as Record<string, { variants: Record<string, unknown> }>).keep
     expect(model.variants.high).toEqual({ reasoningEffort: "high" })
     expect(model.variants.low).toBeNull()
+  })
+
+  it("emits null when reasoning is disabled on a surviving model", () => {
+    const existing = { models: { keep: { name: "Keep", reasoning: true } } }
+    const result = withCustomProviderDeletions(existing, baseNext)
+    expect(result.models.keep).toEqual({ name: "Keep", reasoning: null })
   })
 
   it("emits null for options removed from a surviving variant", () => {

@@ -3,6 +3,7 @@ import { useDialog } from "@kilocode/kilo-ui/context/dialog"
 import { Dialog } from "@kilocode/kilo-ui/dialog"
 import { IconButton } from "@kilocode/kilo-ui/icon-button"
 import { ProviderIcon } from "@kilocode/kilo-ui/provider-icon"
+import { Select } from "@kilocode/kilo-ui/select"
 import { Spinner } from "@kilocode/kilo-ui/spinner"
 import { TextField } from "@kilocode/kilo-ui/text-field"
 import { showToast } from "@kilocode/kilo-ui/toast"
@@ -15,6 +16,11 @@ import { useVSCode } from "../../context/vscode"
 import type { ExtensionMessage, ProviderConfig } from "../../types/messages"
 import { createProviderAction } from "../../utils/provider-action"
 import { MASKED_CUSTOM_PROVIDER_KEY, resolveCustomProviderKey } from "../../../../src/shared/custom-provider"
+import {
+  CUSTOM_PROVIDER_PACKAGE,
+  isCustomProviderPackage,
+  type CustomProviderPackage,
+} from "../../../../src/shared/provider-model"
 import { ModelCard } from "./CustomProviderModelCard"
 import type {
   ChatTemplateArgsValue,
@@ -28,6 +34,12 @@ import { validateCustomProvider } from "./CustomProviderValidation"
 import type { FormErrors, FormState, HeaderRow } from "./CustomProviderValidation"
 const DEBOUNCE_MS = 500
 const SEARCH_DEBOUNCE_MS = 150
+
+const PACKAGE_OPTIONS: Array<{ value: CustomProviderPackage; label: string }> = [
+  { value: "@ai-sdk/openai-compatible", label: "OpenAI Compatible" },
+  { value: "@ai-sdk/openai", label: "OpenAI Responses" },
+  { value: "@ai-sdk/anthropic", label: "Anthropic Messages" },
+]
 
 /** Subsequence fuzzy match — "gpt4o" matches "gpt-4o-mini". */
 function fuzzy(query: string, target: string) {
@@ -109,9 +121,11 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
       ? provider.authStates()[props.existing.providerID]
       : undefined
 
+  const savedPackage = props.existing?.config?.npm
   const [form, setForm] = createStore<FormState>({
     providerID: props.existing?.providerID ?? "",
     name: props.existing?.name ?? "",
+    npm: isCustomProviderPackage(savedPackage) ? savedPackage : CUSTOM_PROVIDER_PACKAGE,
     baseURL: (props.existing?.config?.options as { baseURL?: string } | undefined)?.baseURL ?? "",
     apiKey: resolveCustomProviderKey(auth),
     models: initModels(),
@@ -161,11 +175,13 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
   // SolidJS store proxies track at the property level — any store write
   // (including setForm("models", ...)) invalidates effects that read from
   // the same store, causing unwanted re-runs that wipe the model picker.
+  const [fetchPackage, setFetchPackage] = createSignal(form.npm)
   const [fetchURL, setFetchURL] = createSignal(form.baseURL)
   const [fetchKey, setFetchKey] = createSignal("")
   let fetchVersion = 0
 
   createEffect(() => {
+    const npm = fetchPackage()
     const url = fetchURL()
     const key = fetchKey()
     void key // subscribe to key changes without using the value here
@@ -176,7 +192,7 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
     setFetchStatus(undefined)
     setSearch("")
 
-    if (!/^https?:\/\//.test(url.trim())) return
+    if (npm === "@ai-sdk/anthropic" || !/^https?:\/\//.test(url.trim())) return
 
     fetchVersion++
     const version = fetchVersion
@@ -492,6 +508,30 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
               validationState={errors.name ? "invalid" : undefined}
               error={errors.name}
             />
+            <div style={{ display: "flex", "flex-direction": "column", gap: "4px" }}>
+              <label
+                style={{
+                  "font-size": "var(--kilo-font-size-12)",
+                  "font-weight": "500",
+                  color: "var(--text-weak-base)",
+                }}
+              >
+                {language.t("provider.custom.field.package.label")}
+              </label>
+              <Select
+                options={PACKAGE_OPTIONS}
+                current={PACKAGE_OPTIONS.find((option) => option.value === form.npm)}
+                value={(option) => option.value}
+                label={(option) => option.label}
+                onSelect={(option) => {
+                  if (!option) return
+                  setForm("npm", option.value)
+                  setFetchPackage(option.value)
+                }}
+                variant="secondary"
+                triggerVariant="settings"
+              />
+            </div>
             <TextField
               label={language.t("provider.custom.field.baseURL.label")}
               placeholder={language.t("provider.custom.field.baseURL.placeholder")}

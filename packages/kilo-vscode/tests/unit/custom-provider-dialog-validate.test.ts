@@ -9,6 +9,7 @@ function base(): FormState {
   return {
     providerID: "my-provider",
     name: "My Provider",
+    npm: "@ai-sdk/openai-compatible",
     baseURL: "https://example.com/v1",
     apiKey: "",
     models: [{ id: "model-1", name: "Model One", reasoning: false, variants: [] }],
@@ -28,6 +29,13 @@ function args(form: FormState) {
 }
 
 describe("validateCustomProvider – variant name validation", () => {
+  it("persists the selected provider package", () => {
+    const form = base()
+    form.npm = "@ai-sdk/openai"
+
+    expect(validateCustomProvider(args(form)).result?.config.npm).toBe("@ai-sdk/openai")
+  })
+
   it("allows reconnecting a disabled provider id", () => {
     const form = base()
     const out = validateCustomProvider({

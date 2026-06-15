@@ -1,5 +1,6 @@
 import { z } from "zod"
-import { CUSTOM_PROVIDER_PACKAGE, PROVIDER_ID_PATTERN } from "./provider-model"
+import { CUSTOM_PROVIDER_PACKAGE, CUSTOM_PROVIDER_PACKAGES, PROVIDER_ID_PATTERN } from "./provider-model"
+import type { CustomProviderPackage } from "./provider-model"
 
 const INVALID_PROVIDER_ID = "Invalid provider ID"
 const INVALID_ENV = "Invalid environment variable name"
@@ -23,7 +24,7 @@ export type VariantConfig = z.infer<typeof VariantConfigSchema>
 
 export const CustomProviderConfigSchema = z
   .object({
-    npm: z.string().optional(),
+    npm: z.enum(CUSTOM_PROVIDER_PACKAGES).default(CUSTOM_PROVIDER_PACKAGE),
     name: z.string().trim().min(1).max(200),
     env: z.array(EnvSchema).max(1).optional(),
     options: z
@@ -54,7 +55,7 @@ export const CustomProviderConfigSchema = z
   .strict()
 
 export type SanitizedProviderConfig = {
-  npm: typeof CUSTOM_PROVIDER_PACKAGE
+  npm: CustomProviderPackage
   name: string
   env?: string[]
   options: {
@@ -119,7 +120,7 @@ export function normalizeCustomProviderConfig(
     : undefined
 
   return {
-    npm: CUSTOM_PROVIDER_PACKAGE,
+    npm: config.npm,
     name: config.name.trim(),
     ...(config.env ? { env: config.env.map((item) => item.trim()) } : {}),
     options: {
@@ -172,10 +173,11 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
       continue
     }
     const oldModel = oldModels[id]
-    const oldVariants = isRecord(oldModel) && isRecord(oldModel.variants) ? oldModel.variants : {}
     const newModel = patched[id]
-    if (!isRecord(newModel)) continue
-    const newVariants = isRecord(newModel.variants) ? newModel.variants : {}
+    if (!isRecord(oldModel) || !isRecord(newModel)) continue
+    const model = oldModel.reasoning === true && !("reasoning" in newModel) ? { ...newModel, reasoning: null } : newModel
+    const oldVariants = isRecord(oldModel.variants) ? oldModel.variants : {}
+    const newVariants = isRecord(model.variants) ? model.variants : {}
     const changes = Object.fromEntries(
       Object.entries(oldVariants).flatMap(([name, oldVariant]) => {
         if (!(name in newVariants)) return [[name, null]]
@@ -187,8 +189,11 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
         return [[name, { ...newVariant, ...nulls }]]
       }),
     )
-    if (Object.keys(changes).length === 0) continue
-    patched[id] = { ...newModel, variants: { ...newVariants, ...changes } }
+    if (Object.keys(changes).length === 0) {
+      patched[id] = model
+      continue
+    }
+    patched[id] = { ...model, variants: { ...newVariants, ...changes } }
   }
 
   return { ...next, models: patched as SanitizedProviderConfig["models"] }

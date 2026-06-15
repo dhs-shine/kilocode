@@ -96,9 +96,9 @@ function VariantRow(props: VariantRowProps) {
       <div
         style={{
           display: "flex",
-          gap: "6px",
-          "align-items": "flex-end",
-          "flex-wrap": "wrap",
+          gap: "8px",
+          "align-items": "stretch",
+          "flex-direction": "column",
           "padding-top": "4px",
         }}
       >
