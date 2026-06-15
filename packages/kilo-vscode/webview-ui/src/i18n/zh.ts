@@ -1216,7 +1216,7 @@ export const dict = {
   "settings.notifications.errors.description": "发生错误时显示通知",
   "settings.notifications.sounds": "声音",
   "settings.notifications.enable.title": "启用声音通知",
-  "settings.notifications.enable.description": "在会话完成、发生错误或需要你输入时播放 OpenCode 提示音",
+  "settings.notifications.enable.description": "在会话完成、遇到错误或需要你输入时播放声音",
   "settings.notifications.testSound": "测试",
   "settings.notifications.agentSound.title": "智能体完成提示音",
   "settings.notifications.agentSound.description": "智能体完成时播放的声音",
@@ -1225,6 +1225,9 @@ export const dict = {
   "settings.notifications.errorSound.title": "错误提示音",
   "settings.notifications.errorSound.description": "发生错误时播放的声音",
   "settings.notifications.sound.default": "默认",
+  "settings.notifications.sound.system": "系统",
+  "settings.notifications.sound.description":
+    "默认选项为完成、输入和错误使用不同的声音。其他选项为所有事件使用同一种声音。",
   "settings.notifications.sound.none": "无",
   "settings.experimental.share.title": "分享模式",
   "settings.experimental.share.description": "会话分享行为",

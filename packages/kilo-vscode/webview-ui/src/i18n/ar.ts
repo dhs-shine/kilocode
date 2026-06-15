@@ -1226,8 +1226,7 @@ export const dict = {
   "settings.notifications.errors.description": "إظهار إشعار عند الأخطاء",
   "settings.notifications.sounds": "أصوات",
   "settings.notifications.enable.title": "تمكين الإشعارات الصوتية",
-  "settings.notifications.enable.description":
-    "تشغيل أصوات تنبيه OpenCode عند اكتمال الجلسات أو حدوث خطأ أو الحاجة إلى ردّك",
+  "settings.notifications.enable.description": "تشغيل أصوات عند اكتمال الجلسات أو حدوث خطأ أو الحاجة إلى ردّك",
   "settings.notifications.testSound": "اختبار",
   "settings.notifications.agentSound.title": "صوت إكمال الوكيل",
   "settings.notifications.agentSound.description": "الصوت عند إكمال الوكيل",
@@ -1236,6 +1235,9 @@ export const dict = {
   "settings.notifications.errorSound.title": "صوت الخطأ",
   "settings.notifications.errorSound.description": "الصوت عند الأخطاء",
   "settings.notifications.sound.default": "افتراضي",
+  "settings.notifications.sound.system": "النظام",
+  "settings.notifications.sound.description":
+    "يستخدم الخيار الافتراضي أصواتًا مختلفة عند الاكتمال أو الحاجة إلى ردّك أو حدوث خطأ. تستخدم الخيارات الأخرى صوتًا واحدًا لجميع الأحداث.",
   "settings.notifications.sound.none": "بدون",
   "settings.experimental.share.title": "وضع المشاركة",
   "settings.experimental.share.description": "سلوك مشاركة الجلسة",

@@ -487,6 +487,7 @@ export interface NotificationSettingsLoadedMessage {
   type: "notificationSettingsLoaded"
   settings: {
     attentionEnabled: boolean
+    attentionSound: string
   }
 }
 

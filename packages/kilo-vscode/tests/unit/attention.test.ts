@@ -3,6 +3,7 @@ import type { TuiAttentionSoundName } from "@kilocode/plugin/tui"
 import { AttentionService } from "../../src/services/attention/service"
 import type { KiloConnectionService } from "../../src/services/cli-backend/connection-service"
 import type { SSEPayload } from "../../src/services/cli-backend/sdk-sse-adapter"
+import { CustomSoundIDs, resolveSoundID } from "../../src/services/attention/sound"
 
 function setup() {
   const sounds: TuiAttentionSoundName[] = []
@@ -97,23 +98,31 @@ describe("AttentionService", () => {
 })
 
 describe("attention defaults", () => {
-  it("keeps OpenCode attention sounds opt-in", async () => {
+  it("keeps attention sounds opt-in", async () => {
     const manifest = (await Bun.file(new URL("../../package.json", import.meta.url)).json()) as {
-      contributes: { configuration: { properties: Record<string, { default?: unknown }> } }
+      contributes: { configuration: { properties: Record<string, { default?: unknown; enum?: unknown[] }> } }
     }
     const properties = manifest.contributes.configuration.properties
 
     expect(properties["kilo-code.new.attention.enabled"]?.default).toBe(false)
+    expect(properties["kilo-code.new.attention.sound"]?.default).toBe("default")
+    expect(properties["kilo-code.new.attention.sound"]?.enum).toEqual(["default", "system", ...CustomSoundIDs])
     expect(properties["kilo-code.new.sounds.agentEnabled"]).toBeUndefined()
     expect(properties["kilo-code.new.sounds.permissionsEnabled"]).toBeUndefined()
     expect(properties["kilo-code.new.sounds.errorsEnabled"]).toBeUndefined()
   })
 
-  it("packages the upstream default sound set", async () => {
-    const names = ["bip-bop-01", "bip-bop-03", "staplebops-06", "nope-03", "yup-01"]
+  it("resolves global sound choices safely", () => {
+    expect(resolveSoundID("default")).toBe("default")
+    expect(resolveSoundID("system")).toBe("system")
+    expect(resolveSoundID("alert-04")).toBe("alert-04")
+    expect(resolveSoundID("unknown")).toBe("default")
+  })
+
+  it("packages every selectable bundled sound", async () => {
     const exists = await Promise.all(
-      names.map((name) => Bun.file(new URL(`../../audio-wav/${name}.wav`, import.meta.url)).exists()),
+      CustomSoundIDs.map((name) => Bun.file(new URL(`../../audio-wav/${name}.wav`, import.meta.url)).exists()),
     )
-    expect(exists).toEqual([true, true, true, true, true])
+    expect(exists.every(Boolean)).toBe(true)
   })
 })

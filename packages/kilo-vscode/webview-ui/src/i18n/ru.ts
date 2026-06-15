@@ -1252,7 +1252,7 @@ export const dict = {
   "settings.notifications.sounds": "Звуки",
   "settings.notifications.enable.title": "Включить звуковые уведомления",
   "settings.notifications.enable.description":
-    "Воспроизводить звуки оповещения OpenCode при завершении сеансов, возникновении ошибки или необходимости вашего участия",
+    "Воспроизводить звуки при завершении сеансов, возникновении ошибки или необходимости вашего участия",
   "settings.notifications.testSound": "Тест",
   "settings.notifications.agentSound.title": "Звук завершения агента",
   "settings.notifications.agentSound.description": "Звук при завершении агента",
@@ -1261,6 +1261,9 @@ export const dict = {
   "settings.notifications.errorSound.title": "Звук ошибки",
   "settings.notifications.errorSound.description": "Звук при ошибках",
   "settings.notifications.sound.default": "По умолчанию",
+  "settings.notifications.sound.system": "Системный",
+  "settings.notifications.sound.description":
+    "По умолчанию для завершения, запроса вашего участия и ошибок используются разные звуки. В остальных вариантах для всех событий используется один и тот же звук.",
   "settings.notifications.sound.none": "Нет",
   "settings.experimental.share.title": "Режим обмена",
   "settings.experimental.share.description": "Поведение обмена сессиями",

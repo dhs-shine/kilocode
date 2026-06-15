@@ -1244,7 +1244,7 @@ export const dict = {
   "settings.notifications.sounds": "サウンド",
   "settings.notifications.enable.title": "サウンド通知を有効にする",
   "settings.notifications.enable.description":
-    "セッションが完了したとき、エラーが発生したとき、またはユーザー入力が必要なときに OpenCode の通知音を再生します",
+    "セッションの完了時、エラーの発生時、またはユーザー入力が必要なときにサウンドを再生します",
   "settings.notifications.testSound": "テスト",
   "settings.notifications.agentSound.title": "エージェント完了サウンド",
   "settings.notifications.agentSound.description": "エージェント完了時に再生するサウンド",
@@ -1253,6 +1253,9 @@ export const dict = {
   "settings.notifications.errorSound.title": "エラーサウンド",
   "settings.notifications.errorSound.description": "エラー発生時に再生するサウンド",
   "settings.notifications.sound.default": "デフォルト",
+  "settings.notifications.sound.system": "システム",
+  "settings.notifications.sound.description":
+    "デフォルトでは、完了、入力、エラーにそれぞれ異なるサウンドが使用されます。その他の選択肢では、すべてのイベントに同じサウンドが使用されます。",
   "settings.notifications.sound.none": "なし",
   "settings.experimental.share.title": "共有モード",
   "settings.experimental.share.description": "セッション共有の動作",

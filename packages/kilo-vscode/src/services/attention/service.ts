@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import type { TuiAttentionSoundName } from "@kilocode/plugin/tui"
 import type { SSEPayload } from "../cli-backend/sdk-sse-adapter"
 import type { KiloConnectionService } from "../cli-backend/connection-service"
-import { playSound } from "./sound"
+import { playSound, resolveSoundID } from "./sound"
 
 type Sync = Extract<SSEPayload, { type: "sync" }>
 type Question = Extract<SSEPayload, { type: "question.asked" | "question.replied" | "question.rejected" }>
@@ -10,8 +10,8 @@ type Permission = Extract<SSEPayload, { type: "permission.asked" | "permission.r
 type Status = Extract<SSEPayload, { type: "session.status" }>
 type Error = Extract<SSEPayload, { type: "session.error" }>
 
-export function previewSound() {
-  void playSound("default")
+export function previewSound(value: string) {
+  void playSound("default", resolveSoundID(value))
 }
 
 export class AttentionService implements vscode.Disposable {
@@ -108,7 +108,8 @@ export class AttentionService implements vscode.Disposable {
   private notify(sound: TuiAttentionSoundName) {
     const config = vscode.workspace.getConfiguration("kilo-code.new.attention")
     if (!config.get<boolean>("enabled", false)) return
-    void playSound(sound)
+    const selected = resolveSoundID(config.get<string>("sound", "default"))
+    void playSound(sound, selected)
   }
 
   private reset() {

@@ -1243,7 +1243,7 @@ export const dict = {
   "settings.notifications.sounds": "Sesler",
   "settings.notifications.enable.title": "Sesli bildirimleri etkinleştir",
   "settings.notifications.enable.description":
-    "Oturumlar tamamlandığında, bir hata oluştuğunda veya sizden giriş beklendiğinde OpenCode uyarı seslerini çal",
+    "Oturumlar tamamlandığında, bir hatayla karşılaşıldığında veya sizden giriş beklendiğinde ses çal",
   "settings.notifications.testSound": "Test et",
   "settings.notifications.agentSound.title": "Ajan Tamamlanma Sesi",
   "settings.notifications.agentSound.description": "Ajan tamamlandığında çalınacak ses",
@@ -1252,6 +1252,9 @@ export const dict = {
   "settings.notifications.errorSound.title": "Hata Sesi",
   "settings.notifications.errorSound.description": "Hata oluştuğunda çalınacak ses",
   "settings.notifications.sound.default": "Varsayılan",
+  "settings.notifications.sound.system": "Sistem",
+  "settings.notifications.sound.description":
+    "Varsayılan seçenekte tamamlanma, giriş ve hatalar için farklı sesler kullanılır. Diğer seçeneklerde tüm etkinlikler için tek bir ses kullanılır.",
   "settings.notifications.sound.none": "Yok",
 
   "settings.experimental.share.title": "Paylaşım Modu",

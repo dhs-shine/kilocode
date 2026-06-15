@@ -435,6 +435,7 @@ export interface RequestNotificationSettingsMessage {
 
 export interface TestNotificationMessage {
   type: "testNotification"
+  sound: string
 }
 
 export interface ResetAllSettingsRequest {

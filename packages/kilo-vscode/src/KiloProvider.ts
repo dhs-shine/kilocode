@@ -1066,7 +1066,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           this.sendNotificationSettings()
           break
         case "testNotification":
-          previewSound()
+          previewSound(message.sound)
           break
         case "requestTimelineSetting":
           this.sendTimelineSetting()
@@ -2300,6 +2300,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       type: "notificationSettingsLoaded",
       settings: {
         attentionEnabled: attention.get<boolean>("enabled", false),
+        attentionSound: attention.get<string>("sound", "default"),
       },
     })
   }

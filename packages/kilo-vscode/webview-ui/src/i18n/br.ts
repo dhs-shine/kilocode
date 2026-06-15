@@ -1255,7 +1255,7 @@ export const dict = {
   "settings.notifications.sounds": "Sons",
   "settings.notifications.enable.title": "Ativar notificações sonoras",
   "settings.notifications.enable.description":
-    "Reproduzir os sons de alerta do OpenCode quando as sessões forem concluídas, ocorrer um erro ou sua interação for necessária",
+    "Reproduzir sons quando as sessões forem concluídas, ocorrer um erro ou sua interação for necessária",
   "settings.notifications.testSound": "Testar",
   "settings.notifications.agentSound.title": "Som de conclusão do agente",
   "settings.notifications.agentSound.description": "Som ao concluir o agente",
@@ -1264,6 +1264,9 @@ export const dict = {
   "settings.notifications.errorSound.title": "Som de erro",
   "settings.notifications.errorSound.description": "Som em erros",
   "settings.notifications.sound.default": "Padrão",
+  "settings.notifications.sound.system": "Sistema",
+  "settings.notifications.sound.description":
+    "A opção padrão usa sons diferentes para conclusão, interação e erros. As outras opções usam um único som para todos os eventos.",
   "settings.notifications.sound.none": "Nenhum",
   "settings.experimental.share.title": "Modo de compartilhamento",
   "settings.experimental.share.description": "Comportamento do compartilhamento de sessão",
