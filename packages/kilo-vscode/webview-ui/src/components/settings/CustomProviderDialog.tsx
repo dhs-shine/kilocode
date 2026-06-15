@@ -54,6 +54,50 @@ function fuzzy(query: string, target: string) {
 }
 
 type FetchedModel = { id: string; name: string }
+type RawModel = { name?: string; reasoning?: boolean; variants?: Record<string, Record<string, unknown>> }
+
+function parseVariant([name, cfg]: [string, Record<string, unknown>]): VariantEntry {
+  return {
+    name,
+    enableThinking: typeof cfg.enable_thinking === "boolean" ? cfg.enable_thinking : undefined,
+    thinking:
+      typeof cfg.thinking === "object" && cfg.thinking !== null
+        ? ((cfg.thinking as { type?: string }).type as ThinkingTypeValue)
+        : undefined,
+    splitReasoning: typeof cfg.reasoning_split === "boolean" ? cfg.reasoning_split : undefined,
+    reasoningEffort:
+      typeof cfg.reasoningEffort === "string" ? (cfg.reasoningEffort as ReasoningEffortValue) : undefined,
+    outputEffort: typeof cfg.effort === "string" ? (cfg.effort as OutputEffortValue) : undefined,
+    chatTemplateArgs:
+      typeof cfg.chat_template_args === "object" && cfg.chat_template_args !== null
+        ? ((cfg.chat_template_args as { enable_thinking?: boolean }).enable_thinking as ChatTemplateArgsValue)
+        : undefined,
+  }
+}
+
+function initModels(cfg: ProviderConfig | undefined): ModelEntry[] {
+  if (!cfg?.models || typeof cfg.models !== "object") return [{ id: "", name: "", reasoning: false, variants: [] }]
+  const entries = Object.entries(cfg.models)
+  if (entries.length === 0) return [{ id: "", name: "", reasoning: false, variants: [] }]
+  return entries.map(([id, model]) => {
+    const raw = model as RawModel
+    return {
+      id,
+      name: raw.name ?? id,
+      reasoning: raw.reasoning ?? false,
+      variants: Object.entries(raw.variants ?? {}).map(parseVariant),
+    }
+  })
+}
+
+function initHeaders(cfg: ProviderConfig | undefined): HeaderRow[] {
+  const opts = cfg?.options as { headers?: Record<string, string> } | undefined
+  const headers = opts?.headers
+  if (!headers || typeof headers !== "object") return [{ key: "", value: "" }]
+  const entries = Object.entries(headers)
+  if (entries.length === 0) return [{ key: "", value: "" }]
+  return entries.map(([key, value]) => ({ key, value }))
+}
 
 export interface CustomProviderDialogProps {
   onBack?: () => void
@@ -76,47 +120,6 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
 
   const editing = () => !!props.existing
 
-  function initModels(): ModelEntry[] {
-    const cfg = props.existing?.config
-    if (!cfg?.models || typeof cfg.models !== "object") return [{ id: "", name: "", reasoning: false, variants: [] }]
-    const entries = Object.entries(cfg.models)
-    if (entries.length === 0) return [{ id: "", name: "", reasoning: false, variants: [] }]
-    return entries.map(([id, m]) => {
-      const raw = m as { name?: string; reasoning?: boolean; variants?: Record<string, Record<string, unknown>> }
-      const variants: VariantEntry[] = Object.entries(raw?.variants ?? {}).map(([vname, vcfg]) => ({
-        name: vname,
-        enableThinking: typeof vcfg.enable_thinking === "boolean" ? (vcfg.enable_thinking as boolean) : undefined,
-        thinking:
-          typeof vcfg.thinking === "object" && vcfg.thinking !== null
-            ? ((vcfg.thinking as { type?: string }).type as ThinkingTypeValue)
-            : undefined,
-        splitReasoning: typeof vcfg.reasoning_split === "boolean" ? vcfg.reasoning_split : undefined,
-        reasoningEffort:
-          typeof vcfg.reasoningEffort === "string" ? (vcfg.reasoningEffort as ReasoningEffortValue) : undefined,
-        outputEffort: typeof vcfg.effort === "string" ? (vcfg.effort as OutputEffortValue) : undefined,
-        chatTemplateArgs:
-          typeof vcfg.chat_template_args === "object" && vcfg.chat_template_args !== null
-            ? ((vcfg.chat_template_args as { enable_thinking?: boolean }).enable_thinking as ChatTemplateArgsValue)
-            : undefined,
-      }))
-      return {
-        id,
-        name: raw?.name ?? id,
-        reasoning: raw?.reasoning ?? false,
-        variants,
-      }
-    })
-  }
-
-  function initHeaders(): HeaderRow[] {
-    const opts = props.existing?.config?.options as { headers?: Record<string, string> } | undefined
-    const headers = opts?.headers
-    if (!headers || typeof headers !== "object") return [{ key: "", value: "" }]
-    const entries = Object.entries(headers)
-    if (entries.length === 0) return [{ key: "", value: "" }]
-    return entries.map(([key, value]) => ({ key, value }))
-  }
-
   const auth = props.existing?.config?.env?.length
     ? undefined
     : props.existing
@@ -130,8 +133,8 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
     npm: isCustomProviderPackage(savedPackage) ? savedPackage : CUSTOM_PROVIDER_PACKAGE,
     baseURL: (props.existing?.config?.options as { baseURL?: string } | undefined)?.baseURL ?? "",
     apiKey: resolveCustomProviderKey(auth),
-    models: initModels(),
-    headers: initHeaders(),
+    models: initModels(props.existing?.config),
+    headers: initHeaders(props.existing?.config),
     saving: false,
   })
 
