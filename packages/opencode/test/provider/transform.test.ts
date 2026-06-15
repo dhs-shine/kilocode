@@ -2410,6 +2410,7 @@ describe("ProviderTransform.variants", () => {
     expect(result).toEqual({})
   })
 
+  // kilocode_change start: minimax
   test("minimax direct anthropic provider returns instant/thinking toggle", () => {
     const model = createMockModel({
       id: "minimax/MiniMax-M3",
@@ -2443,6 +2444,7 @@ describe("ProviderTransform.variants", () => {
       thinking: { reasoning: { enabled: true } },
     })
   })
+  // kilocode_change end
 
   test("glm returns empty object", () => {
     const model = createMockModel({
