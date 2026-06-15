@@ -198,6 +198,7 @@ type LegacySyncEvent =
       properties: Extract<SyncPayload, { name: "session.created.1" }>["data"]
     }
   | {
+      source: "sync"
       id: string
       type: "session.updated"
       properties: Extract<SyncPayload, { name: "session.updated.1" }>["data"]
@@ -208,18 +209,28 @@ type LegacySyncEvent =
       properties: Extract<SyncPayload, { name: "session.deleted.1" }>["data"]
     }
 
-type ProviderEvent = Event | LegacySyncEvent
+type FullSessionUpdatedEvent = {
+  id: string
+  type: "session.updated"
+  properties: { sessionID: string; info: Session }
+}
+
+type ProviderEvent = Event | LegacySyncEvent | FullSessionUpdatedEvent
 
 function isLegacySyncEvent(event: ProviderEvent): event is LegacySyncEvent {
+  if (event.type === "session.updated") return "source" in event && event.source === "sync"
   return (
     event.type === "message.updated" ||
     event.type === "message.removed" ||
     event.type === "message.part.updated" ||
     event.type === "message.part.removed" ||
     event.type === "session.created" ||
-    event.type === "session.updated" ||
     event.type === "session.deleted"
   )
+}
+
+function isFullSessionUpdatedEvent(event: ProviderEvent): event is FullSessionUpdatedEvent {
+  return event.type === "session.updated" && !isLegacySyncEvent(event)
 }
 
 function unwrapSyncEvent(event: GlobalEvent["payload"]): ProviderEvent | undefined {
@@ -237,7 +248,7 @@ function unwrapSyncEvent(event: GlobalEvent["payload"]): ProviderEvent | undefin
     case "session.created.1":
       return { id: event.id, type: "session.created", properties: event.data }
     case "session.updated.1":
-      return { id: event.id, type: "session.updated", properties: event.data }
+      return { source: "sync", id: event.id, type: "session.updated", properties: event.data }
     case "session.deleted.1":
       return { id: event.id, type: "session.deleted", properties: event.data }
     default:
@@ -3116,7 +3127,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     // Drop session events from other projects before any tracking logic.
     // This must come first: the trackedSessionIds guard below would otherwise
     // let a foreign session through if it was accidentally tracked.
-    if (!isLegacySyncEvent(event) && isEventFromForeignProject(event, this.projectID)) return
+    if (
+      !isLegacySyncEvent(event) &&
+      !isFullSessionUpdatedEvent(event) &&
+      isEventFromForeignProject(event, this.projectID)
+    )
+      return
     if (
       this.projectID &&
       (event.type === "session.created" || event.type === "session.updated") &&
@@ -3197,7 +3213,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.trackedSessionIds.add(event.properties.info.id)
     }
     if (event.type === "session.updated" && this.currentSession?.id === event.properties.sessionID) {
-      this.setCurrentSession(applySessionPatch(this.currentSession, event.properties.info))
+      const session = isLegacySyncEvent(event)
+        ? applySessionPatch(this.currentSession, event.properties.info)
+        : event.properties.info
+      this.setCurrentSession(session)
       this.contextSessionID = event.properties.sessionID
     }
 
@@ -3240,7 +3259,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     const msg = isLegacySyncEvent(event)
       ? this.mapSyncEventToWebviewMessage(event)
-      : mapSSEEventToWebviewMessage(event, sessionID)
+      : isFullSessionUpdatedEvent(event)
+        ? { type: "sessionUpdated" as const, session: this.sessionToWebview(event.properties.info) }
+        : mapSSEEventToWebviewMessage(event, sessionID)
     if (!msg) return
     if (msg.type === "partUpdated") {
       this.streams.push({ ...msg, part: this.slimPart(msg.part) })
