@@ -122,6 +122,7 @@ class PromptPanelTest : BasePlatformTestCase() {
 
         panel.addAttachmentForTest(PromptAttachment("a", "a.png", "image/png", "file:///tmp/a.png"))
         panel.send()
+        waitForSend { sent }
 
         assertTrue(sent)
     }
@@ -332,6 +333,7 @@ class PromptPanelTest : BasePlatformTestCase() {
         PlatformTestUtil.waitForFuture(panel.processPasteForTest(FileListTransferable(listOf(file))))
         UIUtil.dispatchAllInvocationEvents()
         panel.send()
+        waitForSend { sent != null }
 
         val item = sent!!
         assertEquals("text/plain", item.mime)
@@ -609,6 +611,14 @@ class PromptPanelTest : BasePlatformTestCase() {
     private fun createEditor(): Editor {
         val factory = EditorFactory.getInstance()
         return factory.createEditor(factory.createDocument(""), project)
+    }
+
+    private fun waitForSend(done: () -> Boolean) {
+        repeat(50) {
+            UIUtil.dispatchAllInvocationEvents()
+            if (done()) return
+            Thread.sleep(20)
+        }
     }
 
     private fun pasteContext(editor: Editor, item: Transferable) = DataContext { id ->

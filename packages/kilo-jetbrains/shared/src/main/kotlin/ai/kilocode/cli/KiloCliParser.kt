@@ -1,8 +1,15 @@
 package ai.kilocode.cli
 
+import java.util.concurrent.ConcurrentHashMap
+
 object KiloCliParser {
+    private val tags = ConcurrentHashMap<String, Regex>()
+
     fun tag(text: String, name: String): String? =
-        Regex("<$name>\\s*([\\s\\S]*?)\\s*</$name>")
+        tags.computeIfAbsent(name) {
+            val tag = Regex.escape(it)
+            Regex("<$tag>\\s*([\\s\\S]*?)\\s*</$tag>")
+        }
             .find(text)
             ?.groupValues
             ?.getOrNull(1)

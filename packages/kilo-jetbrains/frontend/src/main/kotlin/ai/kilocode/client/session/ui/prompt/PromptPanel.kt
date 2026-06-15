@@ -105,6 +105,7 @@ class PromptPanel(
     private var bus: MessageBusConnection? = null
     private var autoApprove = false
     private var attachment = true
+    private var submitting = false
 
     private val editor = PromptEditorTextField(project, this).apply {
         border = JBUI.Borders.empty()
@@ -182,7 +183,7 @@ class PromptPanel(
     private var request = 0L
 
     override val isSendEnabled: Boolean
-        get() = ready && !busy && (text().isNotEmpty() || attachments.isNotEmpty())
+        get() = ready && !busy && !submitting && (text().isNotEmpty() || attachments.isNotEmpty())
 
     override val isStopEnabled: Boolean
         get() = busy
@@ -393,9 +394,26 @@ class PromptPanel(
     private fun submit(src: String) {
         if (!isSendEnabled) return
         val txt = text()
-        val files = attachments.map { it.part() }
-        LOG.debug { "${ChatLogSummary.prompt(promptDto(txt, files))} src=$src busy=$busy" }
-        onSend(txt, files)
+        val items = attachments.toList()
+        submitting = true
+        ApplicationManager.getApplication().executeOnPooledThread {
+            try {
+                val files = items.map { it.part() }
+                ApplicationManager.getApplication().invokeLater {
+                    submitting = false
+                    if (project.isDisposed) return@invokeLater
+                    LOG.debug { "${ChatLogSummary.prompt(promptDto(txt, files))} src=$src busy=$busy" }
+                    onSend(txt, files)
+                }
+            } catch (e: Exception) {
+                ApplicationManager.getApplication().invokeLater {
+                    submitting = false
+                    if (project.isDisposed) return@invokeLater
+                    LOG.warn("kind=prompt-submit src=$src failed message=${e.message}", e)
+                    notify(KiloBundle.message("prompt.attachment.send.failed", e.message ?: e.javaClass.simpleName))
+                }
+            }
+        }
     }
 
     @RequiresEdt
