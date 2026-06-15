@@ -12,6 +12,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.iconButton
@@ -77,7 +78,8 @@ class PromptPanel(
     private val onSend: (String, List<PromptPartDto>) -> Unit,
     private val onAbort: () -> Unit,
     private val onEnhance: (String, (Result<String>) -> Unit) -> Unit,
-) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext {
+    private val selection: SessionSelection? = null,
+) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext, UiDataProvider {
 
     companion object {
         private val LOG = KiloLog.create(PromptPanel::class.java)
@@ -114,7 +116,7 @@ class PromptPanel(
     private var attachment = true
     private var submitting = false
 
-    private val editor = PromptEditorTextField(project, this).apply {
+    private val editor = PromptEditorTextField(project, this, selection).apply {
         border = JBUI.Borders.empty()
         setFontInheritedFromLAF(false)
         setPlaceholder(placeholder())
@@ -197,6 +199,7 @@ class PromptPanel(
 
     init {
         applyStyle(style)
+        selection?.register(editor)
         editor.text = ""
         editor.addDocumentListener(object : DocumentListener {
             override fun documentChanged(e: DocumentEvent) {
@@ -302,6 +305,10 @@ class PromptPanel(
     internal fun attachmentCountForTest(): Int = attachments.size
 
     internal val defaultFocusedComponent: JComponent get() = editor
+
+    override fun uiDataSnapshot(sink: DataSink) {
+        selection?.provideCopy(sink) { editor.text }
+    }
 
     @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {

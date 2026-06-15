@@ -11,6 +11,8 @@ import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.log.KiloLog
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.markup.HighlighterLayer
 import com.intellij.openapi.editor.markup.HighlighterTargetArea
@@ -93,7 +95,7 @@ internal open class MdViewHybrid(
     private var tableBorderOverride: Color? = null
     private var opaqueState = true
 
-    private val root = JPanel().apply {
+    private val root = RootPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = true
         background = opts().background
@@ -407,7 +409,7 @@ internal open class MdViewHybrid(
 
     private fun htmlBlock(body: String, disposable: Disposable): JBHtmlPane {
         val opts = opts()
-        return JBHtmlPane(
+        return object : JBHtmlPane(
             JBHtmlPaneStyleConfiguration {
                 enableInlineCodeBackground = true
                 enableCodeBlocksBackground = true
@@ -415,7 +417,11 @@ internal open class MdViewHybrid(
             JBHtmlPaneConfiguration {
                 customStyleSheetProvider { sheet() }
             },
-        ).apply {
+        ), UiDataProvider {
+            override fun uiDataSnapshot(sink: DataSink) {
+                selection?.provideCopy(sink) { document.getText(0, document.length).trim() }
+            }
+        }.apply {
             isEditable = false
             isOpaque = opts.opaque
             background = opts.background
@@ -629,6 +635,17 @@ internal open class MdViewHybrid(
                 ed.scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
                 ed.scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
             }
+        }
+
+        override fun uiDataSnapshot(sink: DataSink) {
+            super.uiDataSnapshot(sink)
+            selection?.provideCopy(sink) { text }
+        }
+    }
+
+    private inner class RootPanel : JPanel(), UiDataProvider {
+        override fun uiDataSnapshot(sink: DataSink) {
+            selection?.provideCopy(sink) { markdown() }
         }
     }
 

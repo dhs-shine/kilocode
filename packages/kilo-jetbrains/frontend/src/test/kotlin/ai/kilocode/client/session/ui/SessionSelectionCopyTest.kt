@@ -1,6 +1,7 @@
 package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.SessionUiTestBase
+import ai.kilocode.client.session.ui.selection.SessionContextMenu
 import ai.kilocode.client.session.views.tool.ShellToolView
 import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.rpc.dto.ChatEventDto
@@ -15,17 +16,23 @@ import com.intellij.openapi.actionSystem.DataSnapshotProvider
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.ide.CopyPasteManager
+import com.intellij.ui.EditorTextField
+import com.intellij.ui.components.JBScrollPane
+import java.awt.Component
 import java.awt.Container
 import java.awt.datatransfer.DataFlavor
+import java.awt.Point
+import javax.swing.JComponent
+import javax.swing.JPanel
 import javax.swing.text.JTextComponent
 
 @Suppress("UnstableApiUsage")
 class SessionSelectionCopyTest : SessionUiTestBase() {
-    fun `test session ui exposes copy provider when selection exists`() {
+    fun `test transcript view exposes copy provider when selection exists`() {
         val area = showTool("alpha output")
 
         select(area, "alpha")
-        val provider = copyProvider()
+        val provider = copyProvider(area)
 
         assertNotNull(provider)
         assertTrue(provider!!.isCopyEnabled(DataContext.EMPTY_CONTEXT))
@@ -35,9 +42,17 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         val area = showTool("alpha output")
 
         select(area, "alpha")
-        copyProvider()!!.performCopy(DataContext.EMPTY_CONTEXT)
+        copyProvider(area)!!.performCopy(DataContext.EMPTY_CONTEXT)
 
         assertEquals("alpha", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+    }
+
+    fun `test copy provider writes full component text without selection`() {
+        val area = showTool("alpha output")
+
+        copyProvider(area)!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+        assertEquals("alpha output", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
     }
 
     fun `test selecting another transcript component changes copied text`() {
@@ -46,10 +61,44 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
 
         select(one, "alpha")
         select(two, "bravo")
-        copyProvider()!!.performCopy(DataContext.EMPTY_CONTEXT)
+        copyProvider(two)!!.performCopy(DataContext.EMPTY_CONTEXT)
 
         assertTrue(one.selectedText.isNullOrEmpty())
         assertEquals("bravo", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+    }
+
+    fun `test code block child context exposes session copy provider`() {
+        showText("```text\nalpha code\n```")
+        val field = textEditors(ui).first { it.text.contains("alpha code") }
+        val editor = field.getEditor(true)!!
+
+        editor.selectionModel.setSelection(0, 5)
+        val provider = copyProvider(field as UiDataProvider)
+        provider!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+        assertEquals("alpha", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+    }
+
+    fun `test code block child copies full content without selection`() {
+        showText("```text\nalpha code\n```")
+        val field = textEditors(ui).first { it.text.contains("alpha code") }
+
+        copyProvider(field as UiDataProvider)!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+        assertEquals("alpha code", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+    }
+
+    fun `test session context menu resolves deepest component`() {
+        val root = JPanel(null)
+        val mid = JPanel(null)
+        val child = JPanel(null)
+        root.setBounds(0, 0, 100, 100)
+        mid.setBounds(10, 10, 80, 80)
+        child.setBounds(5, 5, 20, 20)
+        root.add(mid)
+        mid.add(child)
+
+        assertSame(child, SessionContextMenu.target(root, root, Point(20, 20)))
     }
 
     private fun select(area: JTextComponent, text: String) {
@@ -79,6 +128,13 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         return textComponent(text)
     }
 
+    private fun showText(text: String) {
+        if (controller().id == null) showMessages()
+        emit(ChatEventDto.MessageUpdated("ses_test", message("msg_text")))
+        emit(ChatEventDto.PartUpdated("ses_test", part("part_text", "msg_text", "text", text)))
+        layout()
+    }
+
     private fun toolViews(root: Container): List<Container> {
         val out = mutableListOf<Container>()
         if (root is ShellToolView || root is ToolView) out.add(root)
@@ -94,10 +150,44 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         else -> false
     }
 
-    private fun copyProvider(): CopyProvider? {
+    private fun copyProvider(provider: UiDataProvider): CopyProvider? {
         val sink = CopySink()
-        (ui as UiDataProvider).uiDataSnapshot(sink)
+        provider.uiDataSnapshot(sink)
         return sink.copy
+    }
+
+    private fun copyProvider(component: Component): CopyProvider? {
+        (component as? UiDataProvider)?.let(::copyProvider)?.let { return it }
+        ancestors(component).filterIsInstance<UiDataProvider>().firstNotNullOfOrNull(::copyProvider)?.let { return it }
+        val point = Point((component.width / 2).coerceAtLeast(0), (component.height / 2).coerceAtLeast(0))
+        val target = SessionContextMenu.target(ui as JComponent, component, point) ?: component
+        ancestors(target).filterIsInstance<UiDataProvider>().firstNotNullOfOrNull(::copyProvider)?.let { return it }
+        return providers(ui).firstNotNullOfOrNull(::copyProvider)
+    }
+
+    private fun providers(root: Component): Sequence<UiDataProvider> = sequence {
+        if (root is UiDataProvider) yield(root)
+        if (root is Container) {
+            for (child in root.components) yieldAll(providers(child))
+        }
+    }
+
+    private fun ancestors(component: Component): Sequence<Component> = sequence {
+        var comp: Component? = component
+        while (comp != null) {
+            yield(comp)
+            comp = comp.parent
+        }
+    }
+
+    private fun textEditors(root: Container): List<EditorTextField> {
+        val out = mutableListOf<EditorTextField>()
+        if (root is EditorTextField) out.add(root)
+        for (child in root.components) {
+            if (child is JBScrollPane) (child.viewport.view as? EditorTextField)?.let(out::add)
+            if (child is Container) out.addAll(textEditors(child))
+        }
+        return out.distinct()
     }
 
     private fun textComponent(needle: String): JTextComponent = textComponents(ui)

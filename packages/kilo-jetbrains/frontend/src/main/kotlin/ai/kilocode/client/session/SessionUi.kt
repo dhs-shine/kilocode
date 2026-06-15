@@ -28,6 +28,7 @@ import ai.kilocode.client.session.ui.attachment.attachmentParams
 import ai.kilocode.client.session.ui.attachment.ensureAttachmentEditorKind
 import ai.kilocode.client.session.ui.attachment.isEmbeddedAttachment
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
+import ai.kilocode.client.session.ui.selection.SessionContextMenu
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
@@ -48,11 +49,6 @@ import ai.kilocode.rpc.dto.PromptPartDto
 import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
 import com.intellij.ide.BrowserUtil
-import com.intellij.ide.TextCopyProvider
-import com.intellij.openapi.actionSystem.ActionUpdateThread
-import com.intellij.openapi.actionSystem.DataSink
-import com.intellij.openapi.actionSystem.PlatformDataKeys
-import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -97,7 +93,7 @@ class SessionUi(
     private val manager: SessionManager? = null,
     private val workspaces: KiloWorkspaceService = service(),
     private val migration: MigrationUiController = service<KiloMigrationService>(),
-) : JPanel(BorderLayout()), Disposable, SessionEditorStyleTarget, UiDataProvider {
+) : JPanel(BorderLayout()), Disposable, SessionEditorStyleTarget {
 
     companion object {
         private val LOG = KiloLog.create(SessionUi::class.java)
@@ -170,14 +166,6 @@ class SessionUi(
     private var modalFocus: (() -> JComponent)? = null
     private var style = SessionEditorStyle.current()
     private val selection = SessionSelection()
-    private val copy = object : TextCopyProvider() {
-        override fun getActionUpdateThread() = ActionUpdateThread.EDT
-
-        override fun getTextLinesToCopy(): Collection<String>? {
-            val text = selection.selectedText()?.takeIf { it.isNotEmpty() } ?: return null
-            return listOf(text)
-        }
-    }
     private var editorTheme = style.editorScheme
     private var colorTheme = UIManager.getLookAndFeel()
     private var disposed = false
@@ -214,10 +202,6 @@ class SessionUi(
 
     internal fun currentStyle() = style
 
-    override fun uiDataSnapshot(sink: DataSink) {
-        sink[PlatformDataKeys.COPY_PROVIDER] = copy
-    }
-
     @RequiresEdt
     internal fun activityKind(): SessionActivityKind? = when (val state = controller.model.state) {
         is SessionState.Idle,
@@ -252,6 +236,7 @@ class SessionUi(
 
     private fun buildUi() {
         root = SessionRootPanel()
+        SessionContextMenu.install(root, this)
 
         migrationOverlay = MigrationOverlayPanel().apply {
             onSkip = { migration.skip() }
@@ -327,6 +312,7 @@ class SessionUi(
 
         prompt = PromptPanel(
             project = project,
+            selection = selection,
             onSend = { text, files -> sendPrompt(text, files) },
             onAbort = { controller.abort() },
             onEnhance = controller::enhancePrompt,

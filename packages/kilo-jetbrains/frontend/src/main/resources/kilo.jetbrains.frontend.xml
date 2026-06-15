@@ -153,5 +153,9 @@
             <reference ref="Kilo.Session.Rename"/>
             <reference ref="Kilo.Session.Delete"/>
         </group>
+
+        <group id="Kilo.Session.ContextMenu">
+            <reference ref="$Copy"/>
+        </group>
     </actions>
 </idea-plugin>

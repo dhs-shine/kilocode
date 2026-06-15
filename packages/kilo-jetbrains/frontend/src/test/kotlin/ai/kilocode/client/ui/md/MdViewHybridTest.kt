@@ -1,9 +1,19 @@
 package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import com.intellij.ide.CopyProvider
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.DataKey
+import com.intellij.openapi.actionSystem.DataMap
+import com.intellij.openapi.actionSystem.DataProvider
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.DataSnapshotProvider
+import com.intellij.openapi.actionSystem.PlatformDataKeys
+import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.CodeInsightColors
@@ -15,6 +25,7 @@ import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.fileTypes.UnknownFileType
 import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
@@ -28,6 +39,7 @@ import java.awt.Font
 import javax.swing.Box
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
+import java.awt.datatransfer.DataFlavor
 
 @Suppress("UnstableApiUsage")
 class MdViewHybridTest : BasePlatformTestCase() {
@@ -793,6 +805,33 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertEquals("https://example.com", received.single().href)
     }
 
+    fun `test markdown root and code child expose selection copy provider`() {
+        Disposer.dispose(view)
+        disposed = true
+        val selection = SessionSelection()
+        val local = MdViewFactory.hybrid(selection = selection)
+        try {
+            local.set("```text\nalpha code\n```")
+            val field = (local.component as JPanel).components
+                .filterIsInstance<JBScrollPane>()
+                .mapNotNull { it.viewport.view as? EditorTextField }
+                .single()
+            field.getEditor(true)!!.selectionModel.setSelection(0, 5)
+
+            val root = CopySink()
+            (local.component as UiDataProvider).uiDataSnapshot(root)
+            val child = CopySink()
+            (field as UiDataProvider).uiDataSnapshot(child)
+            child.copy!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+            assertNotNull(root.copy)
+            assertEquals("alpha", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+        } finally {
+            Disposer.dispose(local)
+            selection.dispose()
+        }
+    }
+
     private fun scrolls(): List<JBScrollPane> = (view.component as JPanel).components.filterIsInstance<JBScrollPane>()
 
     private fun htmls(): List<JBHtmlPane> = (view.component as JPanel).components.filterIsInstance<JBHtmlPane>()
@@ -818,6 +857,26 @@ class MdViewHybridTest : BasePlatformTestCase() {
 
     private fun drainEdt() {
         UIUtil.dispatchAllInvocationEvents()
+    }
+
+    private class CopySink : DataSink {
+        var copy: CopyProvider? = null
+
+        override fun <T : Any> set(key: DataKey<T>, data: T?) {
+            if (key == PlatformDataKeys.COPY_PROVIDER) copy = data as? CopyProvider
+        }
+
+        override fun <T : Any> setNull(key: DataKey<T>) {}
+
+        override fun <T : Any> lazyNull(key: DataKey<T>) {}
+
+        override fun <T : Any> lazyValue(key: DataKey<T>, data: (DataMap) -> T?) {}
+
+        override fun uiDataSnapshot(provider: UiDataProvider) = provider.uiDataSnapshot(this)
+
+        override fun dataSnapshot(provider: DataSnapshotProvider) = provider.dataSnapshot(this)
+
+        override fun uiDataSnapshot(provider: DataProvider) {}
     }
 
     private fun customStyle(): SessionEditorStyle {

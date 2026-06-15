@@ -11,17 +11,25 @@ import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteHandler
 import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import com.intellij.icons.AllIcons
+import com.intellij.ide.CopyProvider
 import com.intellij.notification.Notification
 import com.intellij.notification.Notifications
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.DataKey
+import com.intellij.openapi.actionSystem.DataMap
+import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.DataSnapshotProvider
+import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.actions.PasteAction
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -44,6 +52,7 @@ import java.io.File
 import java.util.Base64
 import javax.imageio.ImageIO
 import javax.swing.JButton
+import javax.swing.JPanel
 import javax.swing.ImageIcon
 import javax.swing.SwingUtilities
 
@@ -111,6 +120,49 @@ class PromptPanelTest : BasePlatformTestCase() {
         panel.clear()
 
         assertEquals(min, editor.preferredSize.height)
+    }
+
+    fun `test prompt editor exposes selection copy provider`() {
+        val selection = SessionSelection()
+        val panel = PromptPanel(project = project, selection = selection, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+        val editor = panel.defaultFocusedComponent as EditorTextField
+        val host = JPanel()
+        host.add(panel)
+        host.addNotify()
+        try {
+            editor.text = "alpha prompt"
+
+            editor.getEditor(true)!!.selectionModel.setSelection(0, 5)
+            val sink = TestSink()
+            (editor as UiDataProvider).uiDataSnapshot(sink)
+            sink.copy!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+            assertEquals("alpha", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+        } finally {
+            editor.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
+            selection.dispose()
+        }
+    }
+
+    fun `test prompt editor copies full content without selection`() {
+        val selection = SessionSelection()
+        val panel = PromptPanel(project = project, selection = selection, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+        val editor = panel.defaultFocusedComponent as EditorTextField
+        val host = JPanel()
+        host.add(panel)
+        host.addNotify()
+        try {
+            editor.text = "alpha prompt"
+
+            val sink = TestSink()
+            (editor as UiDataProvider).uiDataSnapshot(sink)
+            sink.copy!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+            assertEquals("alpha prompt", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+        } finally {
+            editor.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
+            selection.dispose()
+        }
     }
 
     fun `test attachment only prompt can send`() {
@@ -673,9 +725,11 @@ class PromptPanelTest : BasePlatformTestCase() {
 
     private class TestSink : DataSink {
         var send: Any? = null
+        var copy: CopyProvider? = null
 
-        override fun <T : Any> set(key: com.intellij.openapi.actionSystem.DataKey<T>, data: T?) {
+        override fun <T : Any> set(key: DataKey<T>, data: T?) {
             if (key == PromptDataKeys.SEND) send = data
+            if (key == PlatformDataKeys.COPY_PROVIDER) copy = data as? CopyProvider
         }
 
         override fun <T : Any> setNull(key: com.intellij.openapi.actionSystem.DataKey<T>) {
@@ -685,20 +739,20 @@ class PromptPanelTest : BasePlatformTestCase() {
         }
 
         override fun <T : Any> lazyValue(
-            key: com.intellij.openapi.actionSystem.DataKey<T>,
-            data: (com.intellij.openapi.actionSystem.DataMap) -> T?,
+            key: DataKey<T>,
+            data: (DataMap) -> T?,
         ) {
         }
 
-        override fun uiDataSnapshot(provider: com.intellij.openapi.actionSystem.UiDataProvider) {
+        override fun uiDataSnapshot(provider: UiDataProvider) {
             provider.uiDataSnapshot(this)
         }
 
-        override fun dataSnapshot(provider: com.intellij.openapi.actionSystem.DataSnapshotProvider) {
+        override fun dataSnapshot(provider: DataSnapshotProvider) {
             provider.dataSnapshot(this)
         }
 
-        override fun uiDataSnapshot(provider: com.intellij.openapi.actionSystem.DataProvider) {
+        override fun uiDataSnapshot(provider: DataProvider) {
         }
     }
 
