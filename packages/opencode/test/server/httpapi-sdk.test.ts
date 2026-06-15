@@ -22,7 +22,7 @@ import { TestLLMServer } from "../lib/llm-server"
 import path from "path"
 import { resetDatabase } from "../fixture/db"
 import { disposeAllInstances, TestInstance, tmpdirScoped } from "../fixture/fixture"
-import { pollWithTimeout, testEffect } from "../lib/effect"
+import { pollWithTimeout, testEffect } from "../lib/effect" // kilocode_change
 
 const noopBootstrap = Layer.succeed(InstanceBootstrap.Service, InstanceBootstrap.Service.of({ run: Effect.void }))
 const it = testEffect(
@@ -203,12 +203,14 @@ function firstPartText(value: unknown) {
   return record(array(record(value).parts)[0]).text
 }
 
+// kilocode_change start
 function texts(value: unknown) {
   return array(value)
     .flatMap((item) => array(record(item).parts))
     .map((part) => record(part).text)
     .filter((text): text is string => typeof text === "string")
 }
+// kilocode_change end
 
 function sessionTitles(value: unknown) {
   return array(value)
@@ -693,6 +695,7 @@ describe("HttpApi SDK", () => {
             parts: [{ type: "text", text: "hello" }],
           }),
         )
+        // kilocode_change start
         const asyncPrompt = yield* capture(() =>
           sdk.session.promptAsync({
             sessionID,
@@ -714,6 +717,7 @@ describe("HttpApi SDK", () => {
           messageCount: array(messages.data).length,
           messageTexts: texts(messages.data).sort(),
         }
+        // kilocode_change end
       }),
     ),
   )

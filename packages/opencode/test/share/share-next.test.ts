@@ -18,7 +18,7 @@ import { Database } from "@/storage/db"
 import { eq } from "drizzle-orm"
 import { provideTmpdirInstance } from "../fixture/fixture"
 import { resetDatabase } from "../fixture/db"
-import { pollWithTimeout, testEffect } from "../lib/effect"
+import { pollWithTimeout, testEffect } from "../lib/effect" // kilocode_change
 
 const env = Layer.mergeAll(
   Session.defaultLayer,
@@ -266,6 +266,7 @@ describe("ShareNext", () => {
                 .run(),
             ),
           )
+          // kilocode_change start
           yield* pollWithTimeout(
             Effect.gen(function* () {
               if (seen.length > 0) return true as const
@@ -288,6 +289,7 @@ describe("ShareNext", () => {
           yield* Effect.sync(() => {
             seen.length = 0
           })
+          // kilocode_change end
 
           yield* bus.publish(Session.Event.Diff, {
             sessionID: info.id,
@@ -313,14 +315,14 @@ describe("ShareNext", () => {
                 deletions: 0,
                 status: "modified",
               },
-            ],
+            ], // kilocode_change
           })
-          const sync = yield* pollWithTimeout(Effect.sync(() => seen[0]), "share sync was not sent", "3 seconds")
+          const sync = yield* pollWithTimeout(Effect.sync(() => seen[0]), "share sync was not sent", "3 seconds") // kilocode_change
 
           expect(seen).toHaveLength(1)
-          expect(sync.url).toBe("https://legacy-share.example.com/api/share/shr_abc/sync")
+          expect(sync.url).toBe("https://legacy-share.example.com/api/share/shr_abc/sync") // kilocode_change
 
-          const body = JSON.parse(sync.body) as {
+          const body = JSON.parse(sync.body) as { // kilocode_change
             secret: string
             data: Array<{
               type: string
