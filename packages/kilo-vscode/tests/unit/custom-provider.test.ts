@@ -118,7 +118,7 @@ describe("sanitizeCustomProviderConfig", () => {
       models: { "model-1": { name: "Model One" } },
     })
 
-    expect("error" in result ? result.error : "").toContain("Invalid option")
+    expect("error" in result ? result.error : "").toContain("Invalid enum value")
   })
 
   it("accepts supported thinking variant options", () => {
@@ -152,6 +152,7 @@ describe("sanitizeCustomProviderConfig", () => {
               thinking: {
                 thinking: { type: "adaptive" },
                 reasoning_split: true,
+                effort: "max",
                 chat_template_args: { enable_thinking: true },
               },
             },
