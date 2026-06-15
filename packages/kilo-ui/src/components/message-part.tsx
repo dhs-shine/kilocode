@@ -56,6 +56,8 @@ import { ShellRollingResults } from "./shell-rolling-results"
 import { reasoningHeading } from "./reasoning-heading"
 import { extractFilePathFromHref } from "../file-path"
 import { normalize } from "./session-diff"
+import { deferredHighlight } from "../context/marked"
+import { escapeHtml } from "../util/escape-html"
 
 // Windows CLI tools (e.g. winget) use \r to overwrite progress bars in-place.
 // Without this, every progress frame renders as a separate visual line.
@@ -2115,6 +2117,22 @@ function BashCopyButton(props: { value: () => string; label: string }) {
 function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?: string }) {
   const data = useData()
   const i18n = useI18n()
+  const state = { signal: { aborted: false } }
+  let ref: HTMLDivElement | undefined
+
+  createEffect(() => {
+    state.signal.aborted = true
+    const cmd = props.cmd
+    if (!ref || !cmd) return
+    const signal = { aborted: false }
+    state.signal = signal
+    ref.innerHTML = `<pre data-slot="bash-pre"><code data-lang="shellscript">${escapeHtml(cmd)}</code></pre>`
+    void deferredHighlight(ref, undefined, signal)
+  })
+
+  onCleanup(() => {
+    state.signal.aborted = true
+  })
 
   const openInEditor = () => {
     // When output was truncated, open the full output file on disk
@@ -2134,11 +2152,7 @@ function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?
             <span data-slot="bash-prompt" aria-hidden="true">
               $
             </span>
-            <div data-slot="bash-section-code">
-              <pre data-slot="bash-pre">
-                <code>{props.cmd}</code>
-              </pre>
-            </div>
+            <div data-slot="bash-section-code" data-scrollable ref={ref} />
             <div data-slot="bash-section-actions">
               <BashCopyButton value={() => props.cmd} label={i18n.t("ui.message.copy")} />
             </div>

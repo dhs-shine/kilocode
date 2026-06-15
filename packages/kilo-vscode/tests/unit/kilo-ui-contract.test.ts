@@ -194,16 +194,18 @@ describe("Bash tool static terminal preview (source)", () => {
     expect(block).toContain("BashHighlightedOutput")
   })
 
-  it("BashHighlightedOutput renders the command as plain code next to the prompt", () => {
+  it("BashHighlightedOutput syntax highlights the command next to the prompt", () => {
     expect(src).toContain('data-slot="bash-terminal" data-kind="command"')
     expect(src).toContain('data-slot="bash-prompt"')
-    expect(src).toMatch(/<pre data-slot="bash-pre">\s*<code>\{props\.cmd\}<\/code>\s*<\/pre>/)
+    expect(src).toContain('data-slot="bash-section-code" data-scrollable ref={ref}')
+    expect(src).toContain('data-lang="shellscript"')
+    expect(src).toContain("escapeHtml(cmd)")
   })
 
   it("BashHighlightedOutput renders output as plain code", () => {
     expect(src).toContain('data-slot="bash-terminal" data-kind="output"')
     expect(src).toMatch(/<pre data-slot="bash-pre">\s*<code>\{props\.output\}<\/code>\s*<\/pre>/)
-    expect(src).not.toMatch(/data-lang=/)
+    expect(src).not.toMatch(/data-lang="log"/)
   })
 
   it("BashHighlightedOutput keeps command and output in separate terminal containers", () => {
