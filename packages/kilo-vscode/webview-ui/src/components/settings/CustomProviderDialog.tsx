@@ -13,7 +13,7 @@ import { useConfig } from "../../context/config"
 import { useLanguage } from "../../context/language"
 import { useProvider } from "../../context/provider"
 import { useVSCode } from "../../context/vscode"
-import type { ExtensionMessage, ProviderConfig } from "../../types/messages"
+import type { ExtensionMessage, ProviderAuthState, ProviderConfig } from "../../types/messages"
 import { createProviderAction } from "../../utils/provider-action"
 import { MASKED_CUSTOM_PROVIDER_KEY, resolveCustomProviderKey } from "../../../../src/shared/custom-provider"
 import {
@@ -99,14 +99,35 @@ function initHeaders(cfg: ProviderConfig | undefined): HeaderRow[] {
   return entries.map(([key, value]) => ({ key, value }))
 }
 
+type ExistingProvider = {
+  providerID: string
+  name: string
+  config: ProviderConfig
+}
+
+function resolveAuth(existing: ExistingProvider | undefined, states: Record<string, ProviderAuthState>) {
+  if (!existing || existing.config.env?.length) return
+  return states[existing.providerID]
+}
+
+function initForm(existing: ExistingProvider | undefined, auth: ProviderAuthState | undefined): FormState {
+  const npm = existing?.config?.npm
+  return {
+    providerID: existing?.providerID ?? "",
+    name: existing?.name ?? "",
+    npm: isCustomProviderPackage(npm) ? npm : CUSTOM_PROVIDER_PACKAGE,
+    baseURL: (existing?.config?.options as { baseURL?: string } | undefined)?.baseURL ?? "",
+    apiKey: resolveCustomProviderKey(auth),
+    models: initModels(existing?.config),
+    headers: initHeaders(existing?.config),
+    saving: false,
+  }
+}
+
 export interface CustomProviderDialogProps {
   onBack?: () => void
   /** When set, the dialog opens in edit mode with pre-filled values. */
-  existing?: {
-    providerID: string
-    name: string
-    config: ProviderConfig
-  }
+  existing?: ExistingProvider
 }
 
 const CustomProviderDialog = (props: CustomProviderDialogProps) => {
@@ -120,23 +141,8 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
 
   const editing = () => !!props.existing
 
-  const auth = props.existing?.config?.env?.length
-    ? undefined
-    : props.existing
-      ? provider.authStates()[props.existing.providerID]
-      : undefined
-
-  const savedPackage = props.existing?.config?.npm
-  const [form, setForm] = createStore<FormState>({
-    providerID: props.existing?.providerID ?? "",
-    name: props.existing?.name ?? "",
-    npm: isCustomProviderPackage(savedPackage) ? savedPackage : CUSTOM_PROVIDER_PACKAGE,
-    baseURL: (props.existing?.config?.options as { baseURL?: string } | undefined)?.baseURL ?? "",
-    apiKey: resolveCustomProviderKey(auth),
-    models: initModels(props.existing?.config),
-    headers: initHeaders(props.existing?.config),
-    saving: false,
-  })
+  const auth = resolveAuth(props.existing, provider.authStates())
+  const [form, setForm] = createStore<FormState>(initForm(props.existing, auth))
 
   const [errors, setErrors] = createStore<FormErrors>({
     providerID: undefined,
