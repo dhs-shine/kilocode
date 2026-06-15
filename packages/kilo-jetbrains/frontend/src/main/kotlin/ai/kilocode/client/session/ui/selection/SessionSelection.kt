@@ -17,6 +17,7 @@ import java.awt.Color
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.lang.ref.WeakReference
+import javax.swing.SwingUtilities
 import javax.swing.event.CaretEvent
 import javax.swing.event.CaretListener
 import javax.swing.text.JTextComponent
@@ -165,8 +166,17 @@ class SessionSelection : Disposable {
     }
 
     private inner class TextItem(private val component: JTextComponent) : Item, CaretListener {
+        private var span: Span? = null
+
         private val mouse = object : MouseAdapter() {
-            override fun mousePressed(e: MouseEvent) = started(this@TextItem)
+            override fun mousePressed(e: MouseEvent) {
+                if (e.isPopupTrigger || !SwingUtilities.isLeftMouseButton(e)) {
+                    if (restore()) e.consume()
+                    return
+                }
+                span = null
+                started(this@TextItem)
+            }
         }
 
         override var disposed = false
@@ -178,16 +188,40 @@ class SessionSelection : Disposable {
             component.isFocusable = true
             component.isRequestFocusEnabled = true
             component.addCaretListener(this)
-            component.addMouseListener(mouse)
+            installMouse()
         }
 
-        override fun caretUpdate(e: CaretEvent) = changed(this)
+        override fun caretUpdate(e: CaretEvent) {
+            if (!component.selectedText.isNullOrEmpty()) {
+                span = Span(component.selectionStart, component.selectionEnd)
+            }
+            changed(this)
+        }
 
         override fun selectedText(): String? = component.selectedText
 
         override fun clearSelection() {
+            span = null
             val pos = component.selectionStart.coerceIn(0, component.document.length)
             component.caretPosition = pos
+        }
+
+        private fun restore(): Boolean {
+            val item = span ?: return false
+            val size = component.document.length
+            val start = item.start.coerceIn(0, size)
+            val end = item.end.coerceIn(start, size)
+            if (start == end) return false
+            component.select(start, end)
+            active = this
+            return true
+        }
+
+        private fun installMouse() {
+            val listeners = component.mouseListeners.toList()
+            for (listener in listeners) component.removeMouseListener(listener)
+            component.addMouseListener(mouse)
+            for (listener in listeners) component.addMouseListener(listener)
         }
 
         override fun applyStyle(style: SessionEditorStyle) {
@@ -284,4 +318,6 @@ class SessionSelection : Disposable {
         return (scheme.getColor(EditorColors.SELECTION_BACKGROUND_COLOR) ?: bg ?: style.editorBackground) to
             (scheme.getColor(EditorColors.SELECTION_FOREGROUND_COLOR) ?: fg ?: style.editorForeground)
     }
+
+    private data class Span(val start: Int, val end: Int)
 }

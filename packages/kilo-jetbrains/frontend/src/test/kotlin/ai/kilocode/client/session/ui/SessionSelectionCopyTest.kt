@@ -22,6 +22,7 @@ import java.awt.Component
 import java.awt.Container
 import java.awt.datatransfer.DataFlavor
 import java.awt.Point
+import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.text.JTextComponent
@@ -88,6 +89,17 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         assertEquals("alpha code", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
     }
 
+    fun `test markdown popup press keeps selected text copyable`() {
+        val area = showTextComponent("alpha output")
+
+        select(area, "alpha")
+        popupPress(area)
+        copyProvider(area)!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+        assertEquals("alpha", area.selectedText)
+        assertEquals("alpha", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+    }
+
     fun `test session context menu resolves deepest component`() {
         val root = JPanel(null)
         val mid = JPanel(null)
@@ -102,7 +114,8 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
     }
 
     private fun select(area: JTextComponent, text: String) {
-        val start = area.text.indexOf(text)
+        val doc = area.document.getText(0, area.document.length)
+        val start = doc.indexOf(text)
         assertTrue(start >= 0)
         area.select(start, start + text.length)
     }
@@ -133,6 +146,26 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         emit(ChatEventDto.MessageUpdated("ses_test", message("msg_text")))
         emit(ChatEventDto.PartUpdated("ses_test", part("part_text", "msg_text", "text", text)))
         layout()
+    }
+
+    private fun showTextComponent(text: String): JTextComponent {
+        showText(text)
+        return textComponent(text)
+    }
+
+    private fun popupPress(area: JTextComponent) {
+        val event = MouseEvent(
+            area,
+            MouseEvent.MOUSE_PRESSED,
+            System.currentTimeMillis(),
+            MouseEvent.BUTTON3_DOWN_MASK,
+            1,
+            1,
+            1,
+            true,
+            MouseEvent.BUTTON3,
+        )
+        area.dispatchEvent(event)
     }
 
     private fun toolViews(root: Container): List<Container> {
