@@ -1241,7 +1241,17 @@ export const dict = {
   "settings.autocomplete.modelsHint":
     "Om te kiezen welk model wordt gebruikt voor automatisch aanvullen, zie de Modellen-instellingen.",
 
-  "settings.notifications.sounds": "Geluidsmeldingen",
+  "settings.notifications.agent.title": "Agent Voltooiing",
+  "settings.notifications.agent.description": "Toon melding wanneer agent een taak voltooit",
+  "settings.notifications.permissions.title": "Toestemmingsverzoeken",
+  "settings.notifications.permissions.description": "Toon melding bij toestemmingsverzoeken",
+  "settings.notifications.errors.title": "Fouten",
+  "settings.notifications.errors.description": "Toon melding bij fouten",
+  "settings.notifications.sounds": "Geluiden",
+  "settings.notifications.enable.title": "Geluidsmeldingen inschakelen",
+  "settings.notifications.enable.description":
+    "Waarschuwingsgeluiden van OpenCode afspelen wanneer sessies worden voltooid, er een fout optreedt of uw invoer vereist is",
+  "settings.notifications.testSound": "Testen",
   "settings.notifications.agentSound.title": "Agent Voltooiingsgeluid",
   "settings.notifications.agentSound.description": "Geluid om af te spelen wanneer agent voltooit",
   "settings.notifications.permSound.title": "Toestemmingsverzoek Geluid",
@@ -1250,8 +1260,6 @@ export const dict = {
   "settings.notifications.errorSound.description": "Geluid om af te spelen bij fouten",
   "settings.notifications.sound.default": "Standaard",
   "settings.notifications.sound.none": "Geen",
-  "settings.notifications.sound.system": "Systeem",
-  "settings.notifications.testSound": "Test",
 
   "settings.experimental.share.title": "Deelmodus",
   "settings.experimental.share.description": "Hoe sessiedelen zich gedraagt",

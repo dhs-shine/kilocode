@@ -1066,7 +1066,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           this.sendNotificationSettings()
           break
         case "testNotification":
-          previewSound(message.settingType, message.sound)
+          previewSound()
           break
         case "requestTimelineSetting":
           this.sendTimelineSetting()
@@ -2293,18 +2293,13 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.connectionService.notifyNotificationDismissed(notificationId)
   }
 
-  /** Read sound settings from VS Code config and push to webview. */
+  /** Read attention settings from VS Code config and push to webview. */
   private sendNotificationSettings(): void {
-    const sounds = vscode.workspace.getConfiguration("kilo-code.new.sounds")
+    const attention = vscode.workspace.getConfiguration("kilo-code.new.attention")
     this.postMessage({
       type: "notificationSettingsLoaded",
       settings: {
-        soundAgentEnabled: sounds.get<boolean>("agentEnabled", false),
-        soundPermissionsEnabled: sounds.get<boolean>("permissionsEnabled", false),
-        soundErrorsEnabled: sounds.get<boolean>("errorsEnabled", false),
-        soundAgent: sounds.get<string>("agent", "system"),
-        soundPermissions: sounds.get<string>("permissions", "system"),
-        soundErrors: sounds.get<string>("errors", "system"),
+        attentionEnabled: attention.get<boolean>("enabled", false),
       },
     })
   }

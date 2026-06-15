@@ -1,1 +1,1 @@
-export { AttentionService, previewSound, type AttentionSetting } from "./service"
+export { AttentionService, previewSound } from "./service"

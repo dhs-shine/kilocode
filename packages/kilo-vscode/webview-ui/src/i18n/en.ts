@@ -1226,7 +1226,17 @@ export const dict = {
   "settings.autocomplete.chatAutocomplete.description": "Show autocomplete suggestions in the chat textarea",
   "settings.autocomplete.modelsHint": "To choose which model is used for autocompletions, see the Models settings.",
 
-  "settings.notifications.sounds": "Sound Notifications",
+  "settings.notifications.agent.title": "Agent Completion",
+  "settings.notifications.agent.description": "Show notification when agent completes a task",
+  "settings.notifications.permissions.title": "Permission Requests",
+  "settings.notifications.permissions.description": "Show notification on permission requests",
+  "settings.notifications.errors.title": "Errors",
+  "settings.notifications.errors.description": "Show notification on errors",
+  "settings.notifications.sounds": "Sounds",
+  "settings.notifications.enable.title": "Enable Sound Notifications",
+  "settings.notifications.enable.description":
+    "Play OpenCode attention sounds when sessions complete, encounter an error, or need your input",
+  "settings.notifications.testSound": "Test",
   "settings.notifications.agentSound.title": "Agent Completion Sound",
   "settings.notifications.agentSound.description": "Sound to play when agent completes",
   "settings.notifications.permSound.title": "Permission Request Sound",
@@ -1235,8 +1245,6 @@ export const dict = {
   "settings.notifications.errorSound.description": "Sound to play on errors",
   "settings.notifications.sound.default": "Default",
   "settings.notifications.sound.none": "None",
-  "settings.notifications.sound.system": "System",
-  "settings.notifications.testSound": "Test",
 
   "settings.experimental.share.title": "Share Mode",
   "settings.experimental.share.description": "How session sharing behaves",

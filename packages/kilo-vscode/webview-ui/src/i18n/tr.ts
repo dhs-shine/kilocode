@@ -1234,7 +1234,17 @@ export const dict = {
   "settings.autocomplete.modelsHint":
     "Otomatik tamamlama için kullanılacak modeli seçmek için Modeller ayarlarına bakın.",
 
-  "settings.notifications.sounds": "Sesli Bildirimler",
+  "settings.notifications.agent.title": "Ajan Tamamlanması",
+  "settings.notifications.agent.description": "Ajan bir görevi tamamladığında bildirim göster",
+  "settings.notifications.permissions.title": "İzin İstekleri",
+  "settings.notifications.permissions.description": "İzin isteklerinde bildirim göster",
+  "settings.notifications.errors.title": "Hatalar",
+  "settings.notifications.errors.description": "Hata oluştuğunda bildirim göster",
+  "settings.notifications.sounds": "Sesler",
+  "settings.notifications.enable.title": "Sesli bildirimleri etkinleştir",
+  "settings.notifications.enable.description":
+    "Oturumlar tamamlandığında, bir hata oluştuğunda veya sizden giriş beklendiğinde OpenCode uyarı seslerini çal",
+  "settings.notifications.testSound": "Test et",
   "settings.notifications.agentSound.title": "Ajan Tamamlanma Sesi",
   "settings.notifications.agentSound.description": "Ajan tamamlandığında çalınacak ses",
   "settings.notifications.permSound.title": "İzin İsteği Sesi",
@@ -1243,8 +1253,6 @@ export const dict = {
   "settings.notifications.errorSound.description": "Hata oluştuğunda çalınacak ses",
   "settings.notifications.sound.default": "Varsayılan",
   "settings.notifications.sound.none": "Yok",
-  "settings.notifications.sound.system": "Sistem",
-  "settings.notifications.testSound": "Test",
 
   "settings.experimental.share.title": "Paylaşım Modu",
   "settings.experimental.share.description": "Oturum paylaşımının nasıl davranacağı",

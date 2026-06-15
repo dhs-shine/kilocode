@@ -435,8 +435,6 @@ export interface RequestNotificationSettingsMessage {
 
 export interface TestNotificationMessage {
   type: "testNotification"
-  settingType: "agent" | "permissions" | "errors"
-  sound: string
 }
 
 export interface ResetAllSettingsRequest {
