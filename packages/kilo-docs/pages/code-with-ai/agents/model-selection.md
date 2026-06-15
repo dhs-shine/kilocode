@@ -152,7 +152,7 @@ The VS Code extension supports a `vscode://` protocol handler that lets you open
 vscode://kilocode.kilo-code/kilocode/model?model=<modelID>
 ```
 
-Replace `<modelID>` with the ID of the model you want to select (e.g. `kilo-auto/free`, `anthropic/claude-opus-4-20250514`).
+Replace `<modelID>` with the Kilo Gateway model ID you want to select (e.g. `kilo-auto/free`). Only models available in the Kilo Gateway catalog are accepted; the link is silently ignored if the model ID is not found.
 
 ### Example: Auto Free
 

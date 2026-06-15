@@ -36,7 +36,6 @@ Key features include:
 - **Transcript export:** Save complete local session transcripts as Markdown files
 - **Sub-Agent Viewer** — Read-only panels for viewing child agent sessions
 - **Legacy Migration** — Automatic migration wizard for VSCode extension settings
-- **[Model deep links](/docs/code-with-ai/agents/model-selection#selecting-a-model-via-a-link-vs-code)** — Open VS Code and automatically select a model via a `vscode://` URL (e.g. to launch directly into Auto Free)
 
 ## Shared Settings
 
