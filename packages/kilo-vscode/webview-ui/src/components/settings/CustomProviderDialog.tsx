@@ -611,9 +611,7 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
                   onChangeVariantReasoningEffort={(vi, val) =>
                     setForm("models", i(), "variants", vi, "reasoningEffort", val)
                   }
-                  onChangeVariantOutputEffort={(vi, val) =>
-                    setForm("models", i(), "variants", vi, "outputEffort", val)
-                  }
+                  onChangeVariantOutputEffort={(vi, val) => setForm("models", i(), "variants", vi, "outputEffort", val)}
                   onChangeVariantChatTemplateArgs={(vi, val) =>
                     setForm("models", i(), "variants", vi, "chatTemplateArgs", val)
                   }
