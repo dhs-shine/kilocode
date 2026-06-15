@@ -88,6 +88,7 @@ describe("indexing worktrees", () => {
     await WithInstance.provide({
       directory,
       fn: async () => {
+        await KiloIndexing.search("ordinary directory")
         expect((await KiloIndexing.current()).state).toBe("Complete")
         expect(await KiloIndexing.available()).toBe(true)
       },
