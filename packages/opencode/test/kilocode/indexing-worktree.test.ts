@@ -4,8 +4,7 @@ import path from "node:path"
 import type { Config } from "../../src/config/config"
 import { KiloIndexing } from "../../src/kilocode/indexing"
 import { IndexingWorker } from "../../src/kilocode/indexing-worker-client"
-import { WithInstance } from "../../src/project/with-instance"
-import { disposeAllInstances, tmpdir } from "../fixture/fixture"
+import { disposeAllInstances, provideTestInstance, tmpdir } from "../fixture/fixture"
 
 const cfg: Partial<Config.Info> = {
   plugin: ["@kilocode/kilo-indexing"],
@@ -54,7 +53,7 @@ describe("indexing worktrees", () => {
       async dispose() {},
     }))
 
-    await WithInstance.provide({
+    await provideTestInstance({
       directory: worktree,
       fn: async () => {
         await KiloIndexing.search("worktree")
@@ -85,7 +84,7 @@ describe("indexing worktrees", () => {
       async dispose() {},
     }))
 
-    await WithInstance.provide({
+    await provideTestInstance({
       directory,
       fn: async () => {
         await KiloIndexing.search("ordinary directory")

@@ -5,8 +5,7 @@ import { KiloToolRegistry } from "../../src/kilocode/tool/registry"
 import { Agent } from "../../src/agent/agent"
 import * as Truncate from "../../src/tool/truncate"
 import type * as Tool from "../../src/tool/tool"
-import { WithInstance } from "../../src/project/with-instance"
-import { tmpdir } from "../fixture/fixture"
+import { provideTestInstance, tmpdir } from "../fixture/fixture"
 
 const logger = Log.create({ service: "kilocode-tool-registry" })
 const deps = { agent: {} as Agent.Interface, truncate: {} as Truncate.Interface }
@@ -19,7 +18,7 @@ describe("kilocode tool registry semantic tool import failure", () => {
     await using tmp = await tmpdir({ git: true })
 
     try {
-      const result = await WithInstance.provide({
+      const result = await provideTestInstance({
         directory: tmp.path,
         fn: () =>
           Effect.runPromise(
