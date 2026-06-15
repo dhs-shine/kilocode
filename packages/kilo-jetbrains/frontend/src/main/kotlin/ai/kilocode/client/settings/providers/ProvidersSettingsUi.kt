@@ -2,7 +2,8 @@ package ai.kilocode.client.settings.providers
 
 import ai.kilocode.client.app.KiloProviderService
 import ai.kilocode.client.plugin.KiloBundle
-import ai.kilocode.client.settings.base.SettingsOverlayPanel
+import ai.kilocode.client.settings.base.BaseContentPanel
+import ai.kilocode.client.settings.base.SettingsPanel
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.log.KiloLog
@@ -17,27 +18,33 @@ import ai.kilocode.rpc.dto.ProviderOAuthAuthorizeDto
 import ai.kilocode.rpc.dto.ProviderOAuthCallbackDto
 import ai.kilocode.rpc.dto.ProviderSettingsDto
 import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
+import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonShortcuts
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.SearchTextField
-import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.ScrollingUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBPasswordField
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.concurrency.annotations.RequiresEdt
-import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -50,35 +57,44 @@ import java.awt.BorderLayout
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.DefaultListCellRenderer
-import javax.swing.JPanel
 import javax.swing.JList
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
-import javax.swing.ScrollPaneConstants
 import javax.swing.event.DocumentEvent
+import javax.swing.Icon
 
 private val edt = Dispatchers.EDT + ModalityState.any().asContextElement()
 
 internal class ProvidersSettingsUi(
     private val cs: CoroutineScope,
     private val directory: String,
-) : SettingsOverlayPanel(), Disposable {
+) : SettingsPanel(), Disposable {
     companion object {
         val LOG = KiloLog.create(ProvidersSettingsUi::class.java)
     }
 
-    private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable, ::reload)
+    private val add = ProviderToolbarAction(
+        KiloBundle.message("settings.providers.addCustom"),
+        KiloBundle.message("settings.providers.addCustom.description"),
+        AllIcons.General.Add,
+    ) { custom() }
+    private val refresh = ProviderToolbarAction(
+        KiloBundle.message("settings.providers.refresh"),
+        KiloBundle.message("settings.providers.refresh.description"),
+        AllIcons.Actions.Refresh,
+    ) { reload() }
+    private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable)
     private var state = ProviderSettingsDto()
     private var job: Job? = null
     private var request = 0
     private var disposed = false
 
     init {
-        content.add(view, BorderLayout.CENTER)
+        content.add(toolbar(), BorderLayout.NORTH)
+        setContent(view)
         reload()
     }
 
@@ -168,6 +184,14 @@ internal class ProvidersSettingsUi(
         }
     }
 
+    private fun toolbar(): JComponent {
+        add.registerCustomShortcutSet(CommonShortcuts.getNewForDialogs(), this)
+        ActionManager.getInstance().getAction("Refresh")?.shortcutSet?.let { refresh.registerCustomShortcutSet(it, this) }
+        val toolbar = ActionManager.getInstance().createActionToolbar(ActionPlaces.TOOLBAR, DefaultActionGroup(add, refresh), true)
+        toolbar.targetComponent = this
+        return toolbar.component
+    }
+
     @RequiresEdt
     private fun launch(name: String, block: suspend (Int) -> Unit) {
         checkEdt()
@@ -235,9 +259,7 @@ internal class ProvidersContent(
     private val oauth: (ProviderSettingsProviderDto) -> Unit,
     private val disconnect: (ProviderSettingsProviderDto) -> Unit,
     private val enable: (ProviderSettingsProviderDto) -> Unit,
-    private val reload: () -> Unit,
-) : JPanel(BorderLayout()) {
-    private val top = Stack.horizontal(UiStyle.Gap.sm())
+) : BaseContentPanel() {
     private val model = CollectionListModel<ProviderListRow>()
     private val list = JBList(model).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
@@ -249,10 +271,6 @@ internal class ProvidersContent(
     private var state = ProviderSettingsDto()
 
     init {
-        layout = BorderLayout()
-        border = JBUI.Borders.empty(UiStyle.Gap.pad(), UiStyle.Gap.pad(), UiStyle.Gap.pad(), UiStyle.Gap.pad())
-        top.next(JButton(KiloBundle.message("settings.providers.refresh")).apply { addActionListener { reload() } })
-        add(top, BorderLayout.NORTH)
         list.cellRenderer = ProviderListRenderer(model)
         list.registerKeyboardAction(
             { primary() },
@@ -292,12 +310,9 @@ internal class ProvidersContent(
             }
         })
         ScrollingUtil.installActions(list)
-        val body = JPanel(BorderLayout(0, UiStyle.Gap.sm()))
-        body.add(search, BorderLayout.NORTH)
-        body.add(ScrollPaneFactory.createScrollPane(list).apply {
-            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-        }, BorderLayout.CENTER)
-        add(body, BorderLayout.CENTER)
+        next(search)
+            .gap(UiStyle.Gap.sm())
+            .next(list)
     }
 
     @RequiresEdt
@@ -364,6 +379,19 @@ internal class ProvidersContent(
     }
 }
 
+private class ProviderToolbarAction(
+    text: String,
+    description: String,
+    icon: Icon,
+    private val action: () -> Unit,
+) : DumbAwareAction(text, description, icon) {
+    override fun getActionUpdateThread() = ActionUpdateThread.EDT
+
+    override fun actionPerformed(e: AnActionEvent) {
+        action()
+    }
+}
+
 private class ApiKeyDialog(title: String, method: ProviderAuthMethodDto?) : DialogWrapper(true) {
     private val key = JBPasswordField()
     private val fields = method?.prompts.orEmpty().associateWith { prompt ->
@@ -420,7 +448,7 @@ private class CustomProviderDialog : DialogWrapper(true) {
     private val id = JBTextField()
     private val name = JBTextField()
     private val url = JBTextField()
-    private val key = JBPasswordField()
+    private val key = JBPasswordField().apply { columns = 50 }
     private val env = JBTextField()
     private val models = JBTextField()
 

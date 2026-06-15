@@ -32,6 +32,7 @@ import java.awt.Rectangle
 import java.awt.image.BufferedImage
 import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JScrollPane
 import javax.swing.UIManager
 
 @Suppress("UNCHECKED_CAST")
@@ -88,16 +89,30 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt { assertEquals(listOf(ProviderListAction.OAUTH, ProviderListAction.CONNECT), rows(content).single().actions) }
     }
 
-    fun `test content uses border layout with toolbar north and list center`() {
+    fun `test content uses toolbar search and direct list`() {
         val content = content()
         edt {
-            val layout = content.layout as BorderLayout
-            val north = layout.getLayoutComponent(BorderLayout.NORTH) as Container
-            val center = layout.getLayoutComponent(BorderLayout.CENTER) as Container
+            assertEquals(1, components(content).filterIsInstance<SearchTextField>().size)
+            assertEquals(1, components(content).filterIsInstance<JBList<ProviderListRow>>().size)
+            assertTrue(components(content).filterIsInstance<JScrollPane>().isEmpty())
+            assertTrue(components(content).filterIsInstance<JButton>().none { it.text == "Refresh" })
+        }
+    }
 
-            assertEquals(listOf("Refresh"), components(north).filterIsInstance<JButton>().map { it.text })
-            assertEquals(1, components(center).filterIsInstance<SearchTextField>().size)
-            assertEquals(1, components(center).filterIsInstance<JBList<ProviderListRow>>().size)
+    fun `test toolbar is outside scrollable provider content`() {
+        installProvider(ProviderSettingsDto())
+        val panel = edt { createUi() }
+
+        edt {
+            val layout = panel.content.layout as BorderLayout
+            val toolbar = layout.getLayoutComponent(BorderLayout.NORTH)
+            val scroll = layout.getLayoutComponent(BorderLayout.CENTER)
+
+            assertNotNull(toolbar)
+            assertTrue(scroll is JScrollPane)
+            assertFalse(components(content(panel)).contains(toolbar))
+            assertEquals(1, components(content(panel)).filterIsInstance<SearchTextField>().size)
+            assertEquals(1, components(content(panel)).filterIsInstance<JBList<ProviderListRow>>().size)
         }
     }
 
@@ -490,7 +505,9 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt { assertTrue(rows(panel).isEmpty()) }
     }
 
-    private fun content() = edt { ProvidersContent({}, {}, {}, {}, {}) }
+    private fun content() = edt { ProvidersContent({}, {}, {}, {}) }
+
+    private fun content(panel: ProvidersSettingsUi) = components(panel).filterIsInstance<ProvidersContent>().single()
 
     private fun createUi(): ProvidersSettingsUi {
         val cs = CoroutineScope(SupervisorJob())
