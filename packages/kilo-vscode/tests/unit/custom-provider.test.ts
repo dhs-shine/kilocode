@@ -132,6 +132,7 @@ describe("sanitizeCustomProviderConfig", () => {
             thinking: {
               thinking: { type: "adaptive" },
               reasoning_split: true,
+              effort: "max",
               chat_template_args: { enable_thinking: true },
             },
           },

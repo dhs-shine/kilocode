@@ -12,6 +12,7 @@ export type EnableThinkingValue = undefined | boolean
 export type ThinkingTypeValue = undefined | "enabled" | "disabled" | "adaptive"
 export type SplitReasoningValue = undefined | boolean
 export type ReasoningEffortValue = undefined | "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
+export type OutputEffortValue = undefined | "low" | "medium" | "high" | "xhigh" | "max"
 export type ChatTemplateArgsValue = undefined | boolean
 
 export type VariantEntry = {
@@ -20,6 +21,7 @@ export type VariantEntry = {
   thinking: ThinkingTypeValue
   splitReasoning: SplitReasoningValue
   reasoningEffort: ReasoningEffortValue
+  outputEffort: OutputEffortValue
   chatTemplateArgs: ChatTemplateArgsValue
 }
 
@@ -67,6 +69,15 @@ const REASONING_EFFORT_OPTIONS: SelectOption<ReasoningEffortValue>[] = [
   { value: "xhigh", labelKey: "provider.custom.models.variants.reasoningEffort.xhigh" },
 ]
 
+const OUTPUT_EFFORT_OPTIONS: SelectOption<OutputEffortValue>[] = [
+  { value: undefined, labelKey: "provider.custom.models.variants.option.unset" },
+  { value: "low", labelKey: "provider.custom.models.variants.outputEffort.low" },
+  { value: "medium", labelKey: "provider.custom.models.variants.outputEffort.medium" },
+  { value: "high", labelKey: "provider.custom.models.variants.outputEffort.high" },
+  { value: "xhigh", labelKey: "provider.custom.models.variants.outputEffort.xhigh" },
+  { value: "max", labelKey: "provider.custom.models.variants.outputEffort.max" },
+]
+
 type VariantRowProps = {
   v: VariantEntry
   vi: () => number
@@ -78,6 +89,7 @@ type VariantRowProps = {
   onChangeThinking: (val: ThinkingTypeValue) => void
   onChangeSplitReasoning: (val: SplitReasoningValue) => void
   onChangeReasoningEffort: (val: ReasoningEffortValue) => void
+  onChangeOutputEffort: (val: OutputEffortValue) => void
   onChangeChatTemplateArgs: (val: ChatTemplateArgsValue) => void
   onRemove: () => void
 }
@@ -223,6 +235,31 @@ function VariantRow(props: VariantRowProps) {
           <label
             style={{ "font-size": "var(--kilo-font-size-12)", "font-weight": "500", color: "var(--text-weak-base)" }}
           >
+            {props.t("provider.custom.models.variants.outputEffort.label")}
+          </label>
+          <Select
+            options={OUTPUT_EFFORT_OPTIONS}
+            current={OUTPUT_EFFORT_OPTIONS.find((o) => o.value === props.v.outputEffort)}
+            value={(o) => String(o.value)}
+            label={(o) => props.t(o.labelKey)}
+            onSelect={(o) => props.onChangeOutputEffort(o?.value)}
+            placeholder={props.t("provider.custom.models.variants.outputEffort.placeholder")}
+            variant="secondary"
+            size="small"
+            triggerVariant="settings"
+          />
+        </div>
+        <div
+          style={{
+            display: "flex",
+            "flex-direction": "column",
+            gap: "4px",
+            flex: "0 0 auto",
+          }}
+        >
+          <label
+            style={{ "font-size": "var(--kilo-font-size-12)", "font-weight": "500", color: "var(--text-weak-base)" }}
+          >
             {props.t("provider.custom.models.variants.chatTemplateArgs.label")}
           </label>
           <Select
@@ -267,6 +304,7 @@ type ModelCardProps = {
   onChangeVariantThinking: (vi: number, val: ThinkingTypeValue) => void
   onChangeVariantSplitReasoning: (vi: number, val: SplitReasoningValue) => void
   onChangeVariantReasoningEffort: (vi: number, val: ReasoningEffortValue) => void
+  onChangeVariantOutputEffort: (vi: number, val: OutputEffortValue) => void
   onChangeVariantChatTemplateArgs: (vi: number, val: ChatTemplateArgsValue) => void
 }
 
@@ -356,6 +394,7 @@ export function ModelCard(props: ModelCardProps) {
                   onChangeThinking={(val) => props.onChangeVariantThinking(vi(), val)}
                   onChangeSplitReasoning={(val) => props.onChangeVariantSplitReasoning(vi(), val)}
                   onChangeReasoningEffort={(val) => props.onChangeVariantReasoningEffort(vi(), val)}
+                  onChangeOutputEffort={(val) => props.onChangeVariantOutputEffort(vi(), val)}
                   onChangeChatTemplateArgs={(val) => props.onChangeVariantChatTemplateArgs(vi(), val)}
                   onRemove={() => props.onRemoveVariant(vi())}
                 />

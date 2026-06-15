@@ -26,6 +26,7 @@ import type {
   ChatTemplateArgsValue,
   EnableThinkingValue,
   ModelEntry,
+  OutputEffortValue,
   ReasoningEffortValue,
   ThinkingTypeValue,
   VariantEntry,
@@ -92,6 +93,7 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
         splitReasoning: typeof vcfg.reasoning_split === "boolean" ? vcfg.reasoning_split : undefined,
         reasoningEffort:
           typeof vcfg.reasoningEffort === "string" ? (vcfg.reasoningEffort as ReasoningEffortValue) : undefined,
+        outputEffort: typeof vcfg.effort === "string" ? (vcfg.effort as OutputEffortValue) : undefined,
         chatTemplateArgs:
           typeof vcfg.chat_template_args === "object" && vcfg.chat_template_args !== null
             ? ((vcfg.chat_template_args as { enable_thinking?: boolean }).enable_thinking as ChatTemplateArgsValue)
@@ -373,6 +375,7 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
       thinking: undefined,
       splitReasoning: undefined,
       reasoningEffort: undefined,
+      outputEffort: undefined,
       chatTemplateArgs: undefined,
     }
     setForm("models", mi, "variants", (v) => [...v, blank])
@@ -598,6 +601,9 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
                   }
                   onChangeVariantReasoningEffort={(vi, val) =>
                     setForm("models", i(), "variants", vi, "reasoningEffort", val)
+                  }
+                  onChangeVariantOutputEffort={(vi, val) =>
+                    setForm("models", i(), "variants", vi, "outputEffort", val)
                   }
                   onChangeVariantChatTemplateArgs={(vi, val) =>
                     setForm("models", i(), "variants", vi, "chatTemplateArgs", val)
