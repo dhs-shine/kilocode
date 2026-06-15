@@ -31,12 +31,6 @@ Changes from opencode v1.14.51 to v1.15.4 upstream:
 - Fixed custom LSP servers not sending refresh events after they initialize.
 - Hid background subagent task instructions unless experimental background mode is enabled.
 
-## SDK
-
-### Bugfixes
-
-- Restored missing event types in the JavaScript SDK, including session and message events.
-
 ## TUI
 
 ### Improvements

@@ -31,7 +31,7 @@ describe("opencode changesets", () => {
         to: "1.2.2",
         packages: ["@kilocode/cli", "kilo-code"],
         bump: "patch",
-        drop: ["Desktop"],
+        drop: ["Desktop", "SDK"],
       }),
     ).toBe(`---
 "@kilocode/cli": patch
@@ -63,6 +63,10 @@ Changes from opencode v1.2.1 to v1.2.2 upstream:
 
 - Drop misc
 
+## SDK
+
+- Drop sdk
+
 **Thank you to 1 community contributor:**
 
 - @user:
@@ -74,7 +78,7 @@ Changes from opencode v1.2.1 to v1.2.2 upstream:
         to: "1.2.2",
         packages: ["@kilocode/cli"],
         bump: "patch",
-        drop: ["Desktop", "Misc"],
+        drop: ["Desktop", "Misc", "SDK"],
       }),
     ).toBe(`---
 "@kilocode/cli": patch
@@ -130,7 +134,7 @@ Changes from opencode v1.2.1 to v1.2.2 upstream:
         to: "1.2.2",
         packages: ["@kilocode/cli"],
         bump: "patch",
-        drop: ["Desktop"],
+        drop: ["Desktop", "SDK"],
       }),
     ).toBe(`---
 "@kilocode/cli": patch

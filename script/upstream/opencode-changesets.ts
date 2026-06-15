@@ -40,8 +40,8 @@ Options:
       --repo <owner/repo>       GitHub repository (default: anomalyco/opencode)
       --package <name>          Changeset package (repeatable; defaults to @kilocode/cli and kilo-code)
       --bump <type>             Changeset bump type: major, minor, patch (default: patch)
-      --drop-section <heading>  Omit a markdown ## section by heading (repeatable; defaults to Desktop)
-      --no-default-drop-section Do not drop the default Desktop section
+      --drop-section <heading>  Omit a markdown ## section by heading (repeatable; defaults to Desktop and SDK)
+      --no-default-drop-section Do not drop the default Desktop and SDK sections
       --dry-run                 Print changesets without writing files
       --force                   Overwrite existing generated changeset files
       --include-prerelease      Include prerelease GitHub releases
@@ -261,7 +261,7 @@ function opts() {
     root: path.resolve(import.meta.dir, "../.."),
     packages: parsed.values.package?.length ? parsed.values.package : ["@kilocode/cli", "kilo-code"],
     bump,
-    drop: [...(parsed.values["no-default-drop-section"] ? [] : ["Desktop"]), ...(parsed.values["drop-section"] ?? [])],
+    drop: [...(parsed.values["no-default-drop-section"] ? [] : ["Desktop", "SDK"]), ...(parsed.values["drop-section"] ?? [])],
     dry: parsed.values["dry-run"],
     force: parsed.values.force,
     prerelease: parsed.values["include-prerelease"],
