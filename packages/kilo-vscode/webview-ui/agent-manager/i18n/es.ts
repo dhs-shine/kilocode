@@ -187,7 +187,8 @@ export const dict = {
   "agentManager.review.imageAfter": "Después",
   "agentManager.review.imageTooLarge": "La imagen es demasiado grande para previsualizarla ({{size}}).",
   "agentManager.review.imageUnreadable": "No se pudo renderizar esta imagen.",
-  "agentManager.review.imageUnavailable": "La vista previa de la imagen no está disponible para esta instantánea de la sesión.",
+  "agentManager.review.imageUnavailable":
+    "La vista previa de la imagen no está disponible para esta instantánea de la sesión.",
   "agentManager.review.endOfLongDiff": "¡Llegaste al final!",
 
   "agentManager.import.pullRequest": "Pull Request",

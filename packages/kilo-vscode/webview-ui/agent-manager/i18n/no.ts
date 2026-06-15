@@ -187,7 +187,8 @@ export const dict = {
   "agentManager.review.imageAfter": "Etter",
   "agentManager.review.imageTooLarge": "Bildet er for stort til å forhåndsvises ({{size}}).",
   "agentManager.review.imageUnreadable": "Dette bildet kunne ikke gjengis.",
-  "agentManager.review.imageUnavailable": "Forhåndsvisning av bildet er ikke tilgjengelig for dette øyeblikksbildet av økten.",
+  "agentManager.review.imageUnavailable":
+    "Forhåndsvisning av bildet er ikke tilgjengelig for dette øyeblikksbildet av økten.",
   "agentManager.review.endOfLongDiff": "Du nådde slutten!",
 
   "agentManager.import.pullRequest": "Pull Request",
