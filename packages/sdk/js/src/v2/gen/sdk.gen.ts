@@ -1651,7 +1651,7 @@ export class Worktree extends HeyApiClient {
   /**
    * List worktrees
    *
-   * List all sandbox worktrees for the current project.
+   * List all git worktrees for the current project and whether Kilo manages them.
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {

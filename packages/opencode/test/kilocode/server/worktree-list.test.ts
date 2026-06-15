@@ -56,12 +56,12 @@ describe("Kilo Console worktree listing", () => {
           `${ExperimentalPaths.worktree}?directory=${encodeURIComponent(test.directory)}`,
         )
         expect(response.status).toBe(200)
-        const worktrees = Schema.decodeUnknownSync(Schema.Array(Schema.String))(
-          yield* Effect.promise(() => response.json()),
-        )
+        const worktrees = Schema.decodeUnknownSync(
+          Schema.Array(Schema.Struct({ directory: Schema.String, managed: Schema.Boolean })),
+        )(yield* Effect.promise(() => response.json()))
 
-        expect(worktrees).toContain(directory)
-        expect(worktrees).not.toContain(test.directory)
+        expect(worktrees).toContainEqual({ directory, managed: false })
+        expect(worktrees.map((item) => item.directory)).not.toContain(test.directory)
       }),
     { git: true },
   )

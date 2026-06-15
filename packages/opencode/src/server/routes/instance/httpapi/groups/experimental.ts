@@ -55,7 +55,7 @@ export const ToolListQuery = Schema.Struct({
   model: ModelID,
 })
 
-const WorktreeList = Schema.Array(Schema.String)
+const WorktreeList = Schema.Array(Schema.Struct({ directory: Schema.String, managed: Schema.Boolean }).annotate({ identifier: "WorktreeListItem" })) // kilocode_change
 const WorktreeErrorName = Schema.Union([
   Schema.Literal("WorktreeNotGitError"),
   Schema.Literal("WorktreeNameGenerationFailedError"),
@@ -177,13 +177,13 @@ export const ExperimentalApi = HttpApi.make("experimental")
         ),
         HttpApiEndpoint.get("worktree", ExperimentalPaths.worktree, {
           query: WorkspaceRoutingQuery,
-          success: described(WorktreeList, "List of worktree directories"),
+          success: described(WorktreeList, "List of worktrees"),
           error: WorktreeApiError,
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "worktree.list",
             summary: "List worktrees",
-            description: "List all sandbox worktrees for the current project.",
+            description: "List all git worktrees for the current project and whether Kilo manages them.",
           }),
         ),
         HttpApiEndpoint.post("worktreeCreate", ExperimentalPaths.worktree, {
