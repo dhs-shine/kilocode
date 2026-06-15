@@ -106,6 +106,7 @@ function serializeVariant(v: VariantEntry): [string, Record<string, unknown>] {
   const cfg: Record<string, unknown> = {}
   if (v.enableThinking !== undefined) cfg.enable_thinking = v.enableThinking
   if (v.thinking !== undefined) cfg.thinking = { type: v.thinking }
+  if (v.splitReasoning !== undefined) cfg.reasoning_split = v.splitReasoning
   if (v.reasoningEffort !== undefined) cfg.reasoningEffort = v.reasoningEffort
   if (v.chatTemplateArgs !== undefined) cfg.chat_template_args = { enable_thinking: v.chatTemplateArgs }
   return [v.name.trim(), cfg]

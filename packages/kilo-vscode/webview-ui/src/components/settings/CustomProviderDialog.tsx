@@ -77,6 +77,7 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
           typeof vcfg.thinking === "object" && vcfg.thinking !== null
             ? ((vcfg.thinking as { type?: string }).type as ThinkingTypeValue)
             : undefined,
+        splitReasoning: typeof vcfg.reasoning_split === "boolean" ? vcfg.reasoning_split : undefined,
         reasoningEffort:
           typeof vcfg.reasoningEffort === "string" ? (vcfg.reasoningEffort as ReasoningEffortValue) : undefined,
         chatTemplateArgs:
@@ -354,6 +355,7 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
       name: "",
       enableThinking: undefined,
       thinking: undefined,
+      splitReasoning: undefined,
       reasoningEffort: undefined,
       chatTemplateArgs: undefined,
     }
@@ -551,6 +553,9 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
                     setForm("models", i(), "variants", vi, "enableThinking", val)
                   }
                   onChangeVariantThinking={(vi, val) => setForm("models", i(), "variants", vi, "thinking", val)}
+                  onChangeVariantSplitReasoning={(vi, val) =>
+                    setForm("models", i(), "variants", vi, "splitReasoning", val)
+                  }
                   onChangeVariantReasoningEffort={(vi, val) =>
                     setForm("models", i(), "variants", vi, "reasoningEffort", val)
                   }

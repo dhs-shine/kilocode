@@ -9,7 +9,8 @@ export type Translator = ReturnType<typeof useLanguage>["t"]
 
 // undefined = not set; true/false = enable_thinking value
 export type EnableThinkingValue = undefined | boolean
-export type ThinkingTypeValue = undefined | "enabled" | "disabled"
+export type ThinkingTypeValue = undefined | "enabled" | "disabled" | "adaptive"
+export type SplitReasoningValue = undefined | boolean
 export type ReasoningEffortValue = undefined | "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
 export type ChatTemplateArgsValue = undefined | boolean
 
@@ -17,6 +18,7 @@ export type VariantEntry = {
   name: string
   enableThinking: EnableThinkingValue
   thinking: ThinkingTypeValue
+  splitReasoning: SplitReasoningValue
   reasoningEffort: ReasoningEffortValue
   chatTemplateArgs: ChatTemplateArgsValue
 }
@@ -40,6 +42,13 @@ const THINKING_OPTIONS: SelectOption<ThinkingTypeValue>[] = [
   { value: undefined, labelKey: "provider.custom.models.variants.option.unset" },
   { value: "enabled", labelKey: "provider.custom.models.variants.thinking.enabled" },
   { value: "disabled", labelKey: "provider.custom.models.variants.thinking.disabled" },
+  { value: "adaptive", labelKey: "provider.custom.models.variants.thinking.adaptive" },
+]
+
+const SPLIT_REASONING_OPTIONS: SelectOption<SplitReasoningValue>[] = [
+  { value: undefined, labelKey: "provider.custom.models.variants.option.unset" },
+  { value: true, labelKey: "provider.custom.models.variants.splitReasoning.true" },
+  { value: false, labelKey: "provider.custom.models.variants.splitReasoning.false" },
 ]
 
 const CHAT_TEMPLATE_ARGS_OPTIONS: SelectOption<ChatTemplateArgsValue>[] = [
@@ -67,6 +76,7 @@ type VariantRowProps = {
   onChangeName: (val: string) => void
   onChangeEnableThinking: (val: EnableThinkingValue) => void
   onChangeThinking: (val: ThinkingTypeValue) => void
+  onChangeSplitReasoning: (val: SplitReasoningValue) => void
   onChangeReasoningEffort: (val: ReasoningEffortValue) => void
   onChangeChatTemplateArgs: (val: ChatTemplateArgsValue) => void
   onRemove: () => void
@@ -163,6 +173,31 @@ function VariantRow(props: VariantRowProps) {
           <label
             style={{ "font-size": "var(--kilo-font-size-12)", "font-weight": "500", color: "var(--text-weak-base)" }}
           >
+            {props.t("provider.custom.models.variants.splitReasoning.label")}
+          </label>
+          <Select
+            options={SPLIT_REASONING_OPTIONS}
+            current={SPLIT_REASONING_OPTIONS.find((o) => o.value === props.v.splitReasoning)}
+            value={(o) => String(o.value)}
+            label={(o) => props.t(o.labelKey)}
+            onSelect={(o) => props.onChangeSplitReasoning(o?.value)}
+            placeholder={props.t("provider.custom.models.variants.splitReasoning.placeholder")}
+            variant="secondary"
+            size="small"
+            triggerVariant="settings"
+          />
+        </div>
+        <div
+          style={{
+            display: "flex",
+            "flex-direction": "column",
+            gap: "4px",
+            flex: "0 0 auto",
+          }}
+        >
+          <label
+            style={{ "font-size": "var(--kilo-font-size-12)", "font-weight": "500", color: "var(--text-weak-base)" }}
+          >
             {props.t("provider.custom.models.variants.reasoningEffort.label")}
           </label>
           <Select
@@ -230,6 +265,7 @@ type ModelCardProps = {
   onChangeVariantName: (vi: number, val: string) => void
   onChangeVariantEnableThinking: (vi: number, val: EnableThinkingValue) => void
   onChangeVariantThinking: (vi: number, val: ThinkingTypeValue) => void
+  onChangeVariantSplitReasoning: (vi: number, val: SplitReasoningValue) => void
   onChangeVariantReasoningEffort: (vi: number, val: ReasoningEffortValue) => void
   onChangeVariantChatTemplateArgs: (vi: number, val: ChatTemplateArgsValue) => void
 }
@@ -318,6 +354,7 @@ export function ModelCard(props: ModelCardProps) {
                   onChangeName={(val) => props.onChangeVariantName(vi(), val)}
                   onChangeEnableThinking={(val) => props.onChangeVariantEnableThinking(vi(), val)}
                   onChangeThinking={(val) => props.onChangeVariantThinking(vi(), val)}
+                  onChangeSplitReasoning={(val) => props.onChangeVariantSplitReasoning(vi(), val)}
                   onChangeReasoningEffort={(val) => props.onChangeVariantReasoningEffort(vi(), val)}
                   onChangeChatTemplateArgs={(val) => props.onChangeVariantChatTemplateArgs(vi(), val)}
                   onRemove={() => props.onRemoveVariant(vi())}

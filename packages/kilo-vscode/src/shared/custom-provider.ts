@@ -13,7 +13,8 @@ export const EnvSchema = z
 
 const VariantConfigSchema = z.object({
   enable_thinking: z.boolean().optional(),
-  thinking: z.object({ type: z.enum(["enabled", "disabled"]) }).optional(),
+  thinking: z.object({ type: z.enum(["enabled", "disabled", "adaptive"]) }).optional(),
+  reasoning_split: z.boolean().optional(),
   reasoningEffort: z.enum(["none", "minimal", "low", "medium", "high", "xhigh"]).optional(),
   chat_template_args: z.object({ enable_thinking: z.boolean() }).optional(),
 })
@@ -155,10 +156,10 @@ function isRecord(v: unknown): v is AnyRecord {
 }
 
 /**
- * Build a provider patch that includes null sentinels for models and variants
- * that existed in the previous config but are absent from the new one. The CLI
- * `config.update` endpoint deep-merges the payload with the existing config;
- * without explicit nulls, removed entries would persist on disk.
+ * Build a provider patch that includes null sentinels for models, variants, and
+ * variant options that existed in the previous config but are absent from the
+ * new one. The CLI `config.update` endpoint deep-merges the payload with the
+ * existing config; without explicit nulls, removed entries would persist on disk.
  */
 export function withCustomProviderDeletions(existing: unknown, next: SanitizedProviderConfig): SanitizedProviderConfig {
   if (!isRecord(existing)) return next
@@ -175,10 +176,19 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
     const newModel = patched[id]
     if (!isRecord(newModel)) continue
     const newVariants = isRecord(newModel.variants) ? newModel.variants : {}
-    const removedVariants = Object.keys(oldVariants).filter((v) => !(v in newVariants))
-    if (removedVariants.length === 0) continue
-    const nulls = Object.fromEntries(removedVariants.map((v) => [v, null]))
-    patched[id] = { ...newModel, variants: { ...newVariants, ...nulls } }
+    const changes = Object.fromEntries(
+      Object.entries(oldVariants).flatMap(([name, oldVariant]) => {
+        if (!(name in newVariants)) return [[name, null]]
+        const newVariant = newVariants[name]
+        if (!isRecord(oldVariant) || !isRecord(newVariant)) return []
+        const removed = Object.keys(oldVariant).filter((key) => !(key in newVariant))
+        if (removed.length === 0) return []
+        const nulls = Object.fromEntries(removed.map((key) => [key, null]))
+        return [[name, { ...newVariant, ...nulls }]]
+      }),
+    )
+    if (Object.keys(changes).length === 0) continue
+    patched[id] = { ...newModel, variants: { ...newVariants, ...changes } }
   }
 
   return { ...next, models: patched as SanitizedProviderConfig["models"] }

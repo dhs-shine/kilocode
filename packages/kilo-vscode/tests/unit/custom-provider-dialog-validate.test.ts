@@ -56,6 +56,7 @@ describe("validateCustomProvider – variant name validation", () => {
         name: "fast",
         enableThinking: undefined,
         thinking: undefined,
+        splitReasoning: undefined,
         reasoningEffort: undefined,
         chatTemplateArgs: undefined,
       },
@@ -73,6 +74,7 @@ describe("validateCustomProvider – variant name validation", () => {
         name: "",
         enableThinking: undefined,
         thinking: undefined,
+        splitReasoning: undefined,
         reasoningEffort: undefined,
         chatTemplateArgs: undefined,
       },
@@ -90,6 +92,7 @@ describe("validateCustomProvider – variant name validation", () => {
         name: "   ",
         enableThinking: undefined,
         thinking: undefined,
+        splitReasoning: undefined,
         reasoningEffort: undefined,
         chatTemplateArgs: undefined,
       },
@@ -107,6 +110,7 @@ describe("validateCustomProvider – variant name validation", () => {
         name: "fast",
         enableThinking: undefined,
         thinking: undefined,
+        splitReasoning: undefined,
         reasoningEffort: undefined,
         chatTemplateArgs: undefined,
       },
@@ -114,6 +118,7 @@ describe("validateCustomProvider – variant name validation", () => {
         name: "fast",
         enableThinking: undefined,
         thinking: undefined,
+        splitReasoning: undefined,
         reasoningEffort: undefined,
         chatTemplateArgs: undefined,
       },
@@ -131,6 +136,7 @@ describe("validateCustomProvider – variant name validation", () => {
         name: "",
         enableThinking: undefined,
         thinking: undefined,
+        splitReasoning: undefined,
         reasoningEffort: undefined,
         chatTemplateArgs: undefined,
       },
@@ -148,11 +154,25 @@ describe("validateCustomProvider – variant name validation", () => {
     const form = base()
     form.models[0].reasoning = true
     form.models[0].variants = [
-      { name: "eco", enableThinking: true, thinking: undefined, reasoningEffort: "low", chatTemplateArgs: undefined },
+      {
+        name: "eco",
+        enableThinking: true,
+        thinking: "adaptive",
+        splitReasoning: false,
+        reasoningEffort: "low",
+        chatTemplateArgs: undefined,
+      },
     ]
     const out = validateCustomProvider(args(form))
     expect(out.result).toBeDefined()
     const saved = out.result!.config.models["model-1"] as Record<string, unknown>
-    expect(saved.variants).toEqual({ eco: { enable_thinking: true, reasoningEffort: "low" } })
+    expect(saved.variants).toEqual({
+      eco: {
+        enable_thinking: true,
+        thinking: { type: "adaptive" },
+        reasoning_split: false,
+        reasoningEffort: "low",
+      },
+    })
   })
 })

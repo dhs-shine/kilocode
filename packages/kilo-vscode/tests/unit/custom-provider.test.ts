@@ -100,7 +100,7 @@ describe("sanitizeCustomProviderConfig", () => {
     })
   })
 
-  it("accepts models with chat_template_args variant", () => {
+  it("accepts supported thinking variant options", () => {
     const result = sanitizeCustomProviderConfig({
       name: "Thinking Provider",
       options: { baseURL: "https://example.com/v1" },
@@ -108,7 +108,11 @@ describe("sanitizeCustomProviderConfig", () => {
         "model-1": {
           name: "Model One",
           variants: {
-            thinking: { chat_template_args: { enable_thinking: true } },
+            thinking: {
+              thinking: { type: "adaptive" },
+              reasoning_split: true,
+              chat_template_args: { enable_thinking: true },
+            },
           },
         },
       },
@@ -123,7 +127,11 @@ describe("sanitizeCustomProviderConfig", () => {
           "model-1": {
             name: "Model One",
             variants: {
-              thinking: { chat_template_args: { enable_thinking: true } },
+              thinking: {
+                thinking: { type: "adaptive" },
+                reasoning_split: true,
+                chat_template_args: { enable_thinking: true },
+              },
             },
           },
         },
@@ -185,6 +193,28 @@ describe("withCustomProviderDeletions", () => {
     const model = (result.models as Record<string, { variants: Record<string, unknown> }>).keep
     expect(model.variants.high).toEqual({ reasoningEffort: "high" })
     expect(model.variants.low).toBeNull()
+  })
+
+  it("emits null for options removed from a surviving variant", () => {
+    const existing = {
+      models: {
+        keep: {
+          name: "Keep",
+          variants: {
+            thinking: { thinking: { type: "adaptive" }, reasoning_split: true, reasoningEffort: "high" },
+          },
+        },
+      },
+    }
+    const next = {
+      ...baseNext,
+      models: {
+        keep: { name: "Keep", variants: { thinking: { reasoningEffort: "high" } } },
+      },
+    } as typeof baseNext
+    const result = withCustomProviderDeletions(existing, next)
+    const model = (result.models as Record<string, { variants: Record<string, unknown> }>).keep
+    expect(model.variants.thinking).toEqual({ reasoningEffort: "high", thinking: null, reasoning_split: null })
   })
 
   it("does not touch variants on a model that is being deleted", () => {
