@@ -1400,6 +1400,9 @@ export type Config = {
   small_model?: string
   subagent_model?: string
   subagent_variant?: string
+  subagent_variant_overrides?: {
+    [key: string]: string
+  }
   default_agent?: string
   username?: string
   mode?: {
