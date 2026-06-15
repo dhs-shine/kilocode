@@ -34,6 +34,7 @@ bun run merge.ts --version v1.1.50 --base-branch catrielmuller/kilo-opencode-v1.
 | `merge.ts` | Main orchestration script for upstream merges |
 | `list-versions.ts` | List available upstream versions |
 | `analyze.ts` | Analyze changes without merging |
+| `opencode-changesets.ts` | Generate Kilo changesets from upstream opencode release notes |
 | `fix-kilocode-markers.ts` | Rebuild `kilocode_change` markers for one file against the last merged upstream |
 | `reset-to-upstream.ts` | Reset one file to the transformed last merged upstream version |
 | `find-reset-candidates.ts` | Bulk-find files that have drifted insignificantly from upstream and (optionally) reset them |
@@ -59,6 +60,32 @@ bun run merge.ts --version v1.1.50 --base-branch catrielmuller/kilo-opencode-v1.
 |---|---|
 | `codemods/transform-imports.ts` | Transform import statements using ts-morph |
 | `codemods/transform-strings.ts` | Transform string literals |
+
+## Release Notes Changesets
+
+After merging upstream opencode releases, use `opencode-changesets.ts` to turn the upstream GitHub release notes into Kilo changesets:
+
+```bash
+bun script/upstream/opencode-changesets.ts 1.17.0 1.17.7
+```
+
+The script fetches releases from `anomalyco/opencode`, selects published releases in the semver range `(from, to]`, and writes one `.changeset/opencode-vX-Y-Z.md` file per release. It defaults to patch changesets for the fixed release group, `@kilocode/cli` and `kilo-code`.
+
+Preview without writing files:
+
+```bash
+bun script/upstream/opencode-changesets.ts --from v1.16.0 --to v1.17.7 --dry-run
+```
+
+Useful options:
+
+| Option | Description |
+|---|---|
+| `--repo <owner/repo>` | Fetch releases from another GitHub repository |
+| `--package <name>` | Add a changeset package; repeat for multiple packages |
+| `--bump <major|minor|patch>` | Set the generated changeset bump type |
+| `--force` | Overwrite existing generated changeset files |
+| `--include-prerelease` | Include prerelease GitHub releases |
 
 ## Merge Process
 

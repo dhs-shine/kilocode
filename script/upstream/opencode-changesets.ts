@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-// kilocode_change - new file
 
 import path from "path"
 import semver from "semver"
@@ -28,7 +27,7 @@ type Opts = {
 }
 
 const usage = `
-Usage: bun script/opencode-changesets.ts <from> <to> [options]
+Usage: bun script/upstream/opencode-changesets.ts <from> <to> [options]
 
 Creates one changeset per upstream opencode release in the semver range (from, to].
 
@@ -44,8 +43,8 @@ Options:
   -h, --help                    Show this help message
 
 Examples:
-  bun script/opencode-changesets.ts 1.17.0 1.17.7
-  bun script/opencode-changesets.ts --from v1.16.0 --to v1.17.7 --dry-run
+  bun script/upstream/opencode-changesets.ts 1.17.0 1.17.7
+  bun script/upstream/opencode-changesets.ts --from v1.16.0 --to v1.17.7 --dry-run
 `
 
 function clean(input: string) {
@@ -161,7 +160,7 @@ function opts() {
     from,
     to,
     repo: parsed.values.repo,
-    root: path.resolve(import.meta.dir, ".."),
+    root: path.resolve(import.meta.dir, "../.."),
     packages: parsed.values.package?.length ? parsed.values.package : ["@kilocode/cli", "kilo-code"],
     bump,
     dry: parsed.values["dry-run"],
