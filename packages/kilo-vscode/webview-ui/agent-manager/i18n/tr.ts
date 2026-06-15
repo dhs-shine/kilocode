@@ -189,6 +189,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} daraltıldı",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} daraltıldı, {{large}} büyük",
   "agentManager.review.largeFileCollapsed": "Büyük dosya (daraltıldı)",
+  "agentManager.review.image": "Görsel",
+  "agentManager.review.imageBefore": "Önce",
+  "agentManager.review.imageAfter": "Sonra",
+  "agentManager.review.imageTooLarge": "Görsel önizleme için çok büyük ({{size}}).",
+  "agentManager.review.imageUnreadable": "Bu görsel görüntülenemedi.",
+  "agentManager.review.imageUnavailable": "Bu oturum anlık görüntüsü için görsel önizlemesi kullanılamıyor.",
   "agentManager.review.endOfLongDiff": "Sonuna geldiniz!",
 
   "agentManager.import.pullRequest": "Pull Request",

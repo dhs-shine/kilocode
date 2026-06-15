@@ -188,6 +188,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} ingeklapt",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} ingeklapt, {{large}} groot",
   "agentManager.review.largeFileCollapsed": "Groot bestand (ingeklapt)",
+  "agentManager.review.image": "Afbeelding",
+  "agentManager.review.imageBefore": "Voor",
+  "agentManager.review.imageAfter": "Na",
+  "agentManager.review.imageTooLarge": "Afbeelding is te groot voor een voorbeeldweergave ({{size}}).",
+  "agentManager.review.imageUnreadable": "Deze afbeelding kon niet worden weergegeven.",
+  "agentManager.review.imageUnavailable": "Afbeeldingsvoorbeeld is niet beschikbaar voor deze sessiesnapshot.",
   "agentManager.review.endOfLongDiff": "Je hebt het einde bereikt!",
 
   "agentManager.import.pullRequest": "Pull Request",

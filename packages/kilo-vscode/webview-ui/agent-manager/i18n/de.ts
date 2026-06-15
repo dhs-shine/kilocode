@@ -183,6 +183,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} eingeklappt",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} eingeklappt, {{large}} groß",
   "agentManager.review.largeFileCollapsed": "Große Datei (eingeklappt)",
+  "agentManager.review.image": "Bild",
+  "agentManager.review.imageBefore": "Vorher",
+  "agentManager.review.imageAfter": "Nachher",
+  "agentManager.review.imageTooLarge": "Das Bild ist zu groß für eine Vorschau ({{size}}).",
+  "agentManager.review.imageUnreadable": "Dieses Bild konnte nicht dargestellt werden.",
+  "agentManager.review.imageUnavailable": "Für diesen Sitzungssnapshot ist keine Bildvorschau verfügbar.",
   "agentManager.review.endOfLongDiff": "Du hast das Ende erreicht!",
 
   "agentManager.import.pullRequest": "Pull Request",

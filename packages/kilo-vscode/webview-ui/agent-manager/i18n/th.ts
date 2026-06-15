@@ -178,6 +178,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "ยุบ {{count}} รายการ",
   "agentManager.review.collapsedWithLarge": "ยุบ {{collapsed}} รายการ, ขนาดใหญ่ {{large}} รายการ",
   "agentManager.review.largeFileCollapsed": "ไฟล์ขนาดใหญ่ (พับอยู่)",
+  "agentManager.review.image": "รูปภาพ",
+  "agentManager.review.imageBefore": "ก่อน",
+  "agentManager.review.imageAfter": "หลัง",
+  "agentManager.review.imageTooLarge": "รูปภาพมีขนาดใหญ่เกินกว่าจะแสดงตัวอย่าง ({{size}})",
+  "agentManager.review.imageUnreadable": "ไม่สามารถแสดงผลรูปภาพนี้ได้",
+  "agentManager.review.imageUnavailable": "ไม่สามารถแสดงตัวอย่างรูปภาพสำหรับสแนปช็อตของเซสชันนี้ได้",
   "agentManager.review.endOfLongDiff": "คุณมาถึงท้ายสุดแล้ว!",
 
   "agentManager.import.pullRequest": "Pull Request",

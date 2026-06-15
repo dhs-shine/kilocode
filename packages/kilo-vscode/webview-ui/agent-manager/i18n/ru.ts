@@ -182,6 +182,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} свернуто",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} свернуто, {{large}} больших",
   "agentManager.review.largeFileCollapsed": "Большой файл (свернут)",
+  "agentManager.review.image": "Изображение",
+  "agentManager.review.imageBefore": "До",
+  "agentManager.review.imageAfter": "После",
+  "agentManager.review.imageTooLarge": "Изображение слишком большое для предварительного просмотра ({{size}}).",
+  "agentManager.review.imageUnreadable": "Не удалось отобразить это изображение.",
+  "agentManager.review.imageUnavailable": "Предварительный просмотр изображения недоступен для этого снимка сеанса.",
   "agentManager.review.endOfLongDiff": "Вы дошли до конца!",
 
   "agentManager.import.pullRequest": "Запрос на слияние",

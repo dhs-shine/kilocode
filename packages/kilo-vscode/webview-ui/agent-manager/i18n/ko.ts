@@ -182,6 +182,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}}개 접힘",
   "agentManager.review.collapsedWithLarge": "{{collapsed}}개 접힘, {{large}}개 대용량",
   "agentManager.review.largeFileCollapsed": "큰 파일(접힘)",
+  "agentManager.review.image": "이미지",
+  "agentManager.review.imageBefore": "변경 전",
+  "agentManager.review.imageAfter": "변경 후",
+  "agentManager.review.imageTooLarge": "이미지가 너무 커서 미리 볼 수 없습니다({{size}}).",
+  "agentManager.review.imageUnreadable": "이 이미지를 렌더링할 수 없습니다.",
+  "agentManager.review.imageUnavailable": "이 세션 스냅샷에서는 이미지 미리보기를 사용할 수 없습니다.",
   "agentManager.review.endOfLongDiff": "끝까지 도달했습니다!",
 
   "agentManager.import.pullRequest": "Pull Request",

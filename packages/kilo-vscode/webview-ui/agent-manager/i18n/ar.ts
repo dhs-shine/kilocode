@@ -180,6 +180,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} مطوي",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} مطوي، {{large}} كبير",
   "agentManager.review.largeFileCollapsed": "ملف كبير (مطوي)",
+  "agentManager.review.image": "صورة",
+  "agentManager.review.imageBefore": "قبل",
+  "agentManager.review.imageAfter": "بعد",
+  "agentManager.review.imageTooLarge": "الصورة كبيرة جدًا بحيث يتعذر معاينتها ({{size}}).",
+  "agentManager.review.imageUnreadable": "تعذر عرض هذه الصورة.",
+  "agentManager.review.imageUnavailable": "معاينة الصورة غير متاحة في لقطة الجلسة هذه.",
   "agentManager.review.endOfLongDiff": "لقد وصلت إلى النهاية!",
 
   "agentManager.import.pullRequest": "طلب سحب",
