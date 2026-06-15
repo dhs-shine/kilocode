@@ -27,10 +27,12 @@ type Opts = {
   prerelease: boolean
 }
 
+type Group = Map<string, Map<string, string[]>>
+
 const usage = `
 Usage: bun script/upstream/opencode-changesets.ts <from> <to> [options]
 
-Creates one changeset per upstream opencode release in the semver range (from, to].
+Creates one changeset for upstream opencode releases in the semver range (from, to].
 
 Options:
       --from <version>          Starting opencode version, exclusive
@@ -61,8 +63,10 @@ function tag(input: string) {
   return `v${clean(input)}`
 }
 
-function slug(input: string) {
-  return `opencode-${tag(input).replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase()}.md`
+function slug(from: string, to: string) {
+  const base = tag(from).replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase()
+  const head = tag(to).replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase()
+  return `opencode-${base}-to-${head}.md`
 }
 
 function packages(input: string[], bump: Bump) {
@@ -109,6 +113,64 @@ function filter(input: string, drop: string[]) {
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim()
 }
 
+function add(groups: Group, section: string, category: string, line: string) {
+  if (!groups.has(section)) groups.set(section, new Map())
+  const group = groups.get(section)!
+  if (!group.has(category)) group.set(category, [])
+  group.get(category)!.push(line)
+}
+
+function collect(releases: Release[], drop: string[]) {
+  const groups: Group = new Map()
+
+  for (const release of releases) {
+    const text = filter(body(release), drop)
+    let section = "Core"
+    let category = ""
+
+    for (const line of text.split("\n")) {
+      const heading = line.match(/^##\s+(.+?)\s*$/)
+      if (heading) {
+        section = heading[1].trim()
+        category = ""
+        if (!groups.has(section)) groups.set(section, new Map())
+        continue
+      }
+
+      const sub = line.match(/^###\s+(.+?)\s*$/)
+      if (sub) {
+        category = sub[1].trim()
+        if (!groups.has(section)) groups.set(section, new Map())
+        if (!groups.get(section)!.has(category)) groups.get(section)!.set(category, [])
+        continue
+      }
+
+      if (!line.trim()) continue
+      add(groups, section, category, line)
+    }
+  }
+
+  return groups
+}
+
+function render(groups: Group) {
+  const lines: string[] = []
+
+  for (const [section, cats] of groups) {
+    const entries = [...cats.values()].flat()
+    if (entries.length === 0) continue
+
+    lines.push(`## ${section}`, "")
+    for (const [category, items] of cats) {
+      if (items.length === 0) continue
+      if (category) lines.push(`### ${category}`, "")
+      lines.push(...items, "")
+    }
+  }
+
+  return lines.join("\n").trim()
+}
+
 function isRelease(input: unknown): input is Release {
   return Boolean(input && typeof input === "object" && "tag_name" in input && typeof input.tag_name === "string")
 }
@@ -133,9 +195,9 @@ export function select(releases: Release[], from: string, to: string, prerelease
     .map((item) => ({ ...item.release, tag_name: tag(item.version) }))
 }
 
-export function changeset(release: Release, opts: Pick<Opts, "packages" | "bump" | "drop">) {
-  const text = filter(body(release), opts.drop) || "No upstream release notes were published."
-  return `---\n${packages(opts.packages, opts.bump)}\n---\n\nChanges from opencode ${release.tag_name} upstream:\n\n${text}\n`
+export function changeset(releases: Release[], opts: Pick<Opts, "from" | "to" | "packages" | "bump" | "drop">) {
+  const text = render(collect(releases, opts.drop)) || "No upstream release notes were published."
+  return `---\n${packages(opts.packages, opts.bump)}\n---\n\nChanges from opencode ${tag(opts.from)} to ${tag(opts.to)} upstream:\n\n${text}\n`
 }
 
 async function all(repo: string) {
@@ -208,20 +270,17 @@ function opts() {
 
 async function write(releases: Release[], opts: Opts) {
   const dir = path.join(opts.root, ".changeset")
+  const file = path.join(dir, slug(opts.from, opts.to))
+  const text = changeset(releases, opts)
 
-  for (const release of releases) {
-    const file = path.join(dir, slug(release.tag_name))
-    const text = changeset(release, opts)
-
-    if (opts.dry) {
-      process.stdout.write(`--- ${path.relative(opts.root, file)} ---\n${text}\n`)
-      continue
-    }
-
-    if (!opts.force && (await Bun.file(file).exists())) throw new Error(`Changeset already exists: ${file}`)
-    await Bun.write(file, text)
-    process.stdout.write(`Wrote ${path.relative(opts.root, file)}\n`)
+  if (opts.dry) {
+    process.stdout.write(`--- ${path.relative(opts.root, file)} ---\n${text}\n`)
+    return
   }
+
+  if (!opts.force && (await Bun.file(file).exists())) throw new Error(`Changeset already exists: ${file}`)
+  await Bun.write(file, text)
+  process.stdout.write(`Wrote ${path.relative(opts.root, file)}\n`)
 }
 
 export async function run(opts: Opts) {

@@ -26,7 +26,9 @@ describe("opencode changesets", () => {
 
   test("formats changeset markdown", () => {
     expect(
-      changeset({ tag_name: "v1.2.2", body: "\r\n## Core\r\n\r\n- Fix issue\r\n" }, {
+      changeset([{ tag_name: "v1.2.2", body: "\r\n## Core\r\n\r\n- Fix issue\r\n" }], {
+        from: "1.2.1",
+        to: "1.2.2",
         packages: ["@kilocode/cli", "kilo-code"],
         bump: "patch",
         drop: ["Desktop"],
@@ -36,7 +38,7 @@ describe("opencode changesets", () => {
 "kilo-code": patch
 ---
 
-Changes from opencode v1.2.2 upstream:
+Changes from opencode v1.2.1 to v1.2.2 upstream:
 
 ## Core
 
@@ -46,9 +48,10 @@ Changes from opencode v1.2.2 upstream:
 
   test("filters ignored sections and contributor thanks", () => {
     expect(
-      changeset({
-        tag_name: "v1.2.2",
-        body: `## Core
+      changeset([
+        {
+          tag_name: "v1.2.2",
+          body: `## Core
 
 - Keep this
 
@@ -65,7 +68,10 @@ Changes from opencode v1.2.2 upstream:
 - @user:
   - Helped
 `,
-      }, {
+        },
+      ], {
+        from: "1.2.1",
+        to: "1.2.2",
         packages: ["@kilocode/cli"],
         bump: "patch",
         drop: ["Desktop", "Misc"],
@@ -74,11 +80,81 @@ Changes from opencode v1.2.2 upstream:
 "@kilocode/cli": patch
 ---
 
-Changes from opencode v1.2.2 upstream:
+Changes from opencode v1.2.1 to v1.2.2 upstream:
 
 ## Core
 
 - Keep this
+`)
+  })
+
+  test("bundles release notes into shared sections", () => {
+    expect(
+      changeset([
+        {
+          tag_name: "v1.2.1",
+          body: `## Core
+
+### Bugfixes
+
+- Fix first
+
+## TUI
+
+### Improvements
+
+- Improve first
+`,
+        },
+        {
+          tag_name: "v1.2.2",
+          body: `## Core
+
+### Bugfixes
+
+- Fix second
+
+### Improvements
+
+- Improve core
+
+## TUI
+
+### Improvements
+
+- Improve second
+`,
+        },
+      ], {
+        from: "1.2.0",
+        to: "1.2.2",
+        packages: ["@kilocode/cli"],
+        bump: "patch",
+        drop: ["Desktop"],
+      }),
+    ).toBe(`---
+"@kilocode/cli": patch
+---
+
+Changes from opencode v1.2.0 to v1.2.2 upstream:
+
+## Core
+
+### Bugfixes
+
+- Fix first
+- Fix second
+
+### Improvements
+
+- Improve core
+
+## TUI
+
+### Improvements
+
+- Improve first
+- Improve second
 `)
   })
 })
