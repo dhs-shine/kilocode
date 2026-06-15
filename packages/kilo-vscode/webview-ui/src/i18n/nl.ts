@@ -1290,6 +1290,10 @@ export const dict = {
   "settings.notifications.errors.title": "Fouten",
   "settings.notifications.errors.description": "Toon melding bij fouten",
   "settings.notifications.sounds": "Geluiden",
+  "settings.notifications.enable.title": "Geluidsmeldingen inschakelen",
+  "settings.notifications.enable.description":
+    "Geluiden afspelen wanneer sessies worden voltooid, er een fout optreedt of uw invoer vereist is",
+  "settings.notifications.testSound": "Testen",
   "settings.notifications.agentSound.title": "Agent Voltooiingsgeluid",
   "settings.notifications.agentSound.description": "Geluid om af te spelen wanneer agent voltooit",
   "settings.notifications.permSound.title": "Toestemmingsverzoek Geluid",
@@ -1297,6 +1301,9 @@ export const dict = {
   "settings.notifications.errorSound.title": "Fout Geluid",
   "settings.notifications.errorSound.description": "Geluid om af te spelen bij fouten",
   "settings.notifications.sound.default": "Standaard",
+  "settings.notifications.sound.system": "Systeem",
+  "settings.notifications.sound.description":
+    "Standaard worden verschillende geluiden gebruikt voor voltooiing, invoer en fouten. Andere keuzes gebruiken voor elke gebeurtenis hetzelfde geluid.",
   "settings.notifications.sound.none": "Geen",
 
   "settings.experimental.share.title": "Deelmodus",
