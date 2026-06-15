@@ -107,6 +107,15 @@ class ShellToolViewTest : BasePlatformTestCase() {
         assertEquals(listOf("ad"), view.codeTexts())
     }
 
+    fun `test clean output delegates terminal reducer`() {
+        val view = track(ShellToolView(tool().also {
+            it.output = "\u001B[31mspin 1\u001B[0m\r\u001B[32mspin 2\u001B[0m\nabc\bd\u001B[K"
+        }))
+
+        assertEquals("spin 2\nabd", view.outputText())
+        assertEquals("spin 2\nabd", view.bodyText())
+    }
+
     fun `test output backticks use longer markdown fence`() {
         val view = track(ShellToolView(tool().also { it.output = "before\n```\nafter" }))
 

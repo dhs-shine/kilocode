@@ -12,6 +12,7 @@ import ai.kilocode.client.ui.md.MdCodeBlockBorder
 import ai.kilocode.client.ui.md.MdCodeBlockFactory
 import ai.kilocode.client.ui.md.MdCodeBlockOptions
 import ai.kilocode.client.ui.md.MdViewFactory
+import ai.kilocode.client.ui.md.hybrid.MdTerminal
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.EditorTextField
@@ -282,7 +283,7 @@ private data class ShellContent(
     }
 }
 
-private fun outputLang(text: String): String = if (ANSI.containsMatchIn(text)) "ansi-stdout" else "shell-output"
+private fun outputLang(text: String): String = if (MdTerminal.hasAnsi(text)) "ansi-stdout" else "shell-output"
 
 private fun StringBuilder.section(title: String, text: String, lang: String) {
     if (text.isBlank()) return
@@ -300,55 +301,4 @@ private fun fence(text: String): String {
     return "`".repeat(maxOf(3, size + 1))
 }
 
-private fun clean(text: String): String = strip(normalize(text))
-
-private fun strip(text: String): String = ANSI.replace(text, "")
-
-private fun normalize(text: String): String = lines(text.replace("\r\n", "\n")).joinToString("\n") { line ->
-    val frame = if ('\r' !in line) line else frames(line).lastOrNull { it.isNotEmpty() } ?: ""
-    backspace(frame)
-}
-
-private fun backspace(text: String): String {
-    val out = StringBuilder()
-    var idx = 0
-    while (idx < text.length) {
-        val ch = text[idx++]
-        if (ch == '\b') {
-            if (out.isNotEmpty()) out.deleteCharAt(out.length - 1)
-            continue
-        }
-        out.append(ch)
-    }
-    return out.toString()
-}
-
-private fun lines(text: String): List<String> {
-    val list = mutableListOf<String>()
-    var start = 0
-    while (true) {
-        val index = text.indexOf('\n', start)
-        if (index < 0) {
-            list.add(text.substring(start))
-            return list
-        }
-        list.add(text.substring(start, index))
-        start = index + 1
-    }
-}
-
-private fun frames(text: String): List<String> {
-    val list = mutableListOf<String>()
-    var start = 0
-    while (true) {
-        val index = text.indexOf('\r', start)
-        if (index < 0) {
-            list.add(text.substring(start))
-            return list
-        }
-        list.add(text.substring(start, index))
-        start = index + 1
-    }
-}
-
-private val ANSI = Regex("\\u001B\\[[0-?]*[ -/]*[@-~]")
+private fun clean(text: String): String = MdTerminal.strip(MdTerminal.reduce(text, keepSgr = false))

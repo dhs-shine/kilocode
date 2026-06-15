@@ -533,6 +533,14 @@ class MdViewHybridTest : BasePlatformTestCase() {
         view.set("```yaml\nvalue: 1\n```")
 
         assertSame(type("yaml"), editors().single().fileType)
+
+        view.set("```golang\nfmt.Println(1)\n```")
+
+        assertSame(type("go"), editors().single().fileType)
+
+        view.set("```pwsh\nWrite-Host hi\n```")
+
+        assertSame(type("ps1"), editors().single().fileType)
     }
 
     fun `test unknown fenced code language uses plain text`() {
