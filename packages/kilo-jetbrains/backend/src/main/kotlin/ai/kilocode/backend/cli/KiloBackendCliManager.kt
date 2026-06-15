@@ -40,6 +40,8 @@ class KiloBackendCliManager(
 
     @Volatile
     private var process: Process? = null
+    @Volatile
+    private var closing: Process? = null
     private var hook: Thread? = null
     private var stderr: Thread? = null
 
@@ -167,7 +169,7 @@ class KiloBackendCliManager(
                         }
                     }
                 }.onFailure { err ->
-                    if (proc.isAlive) log.warn("CLI stderr reader failed", err)
+                    if (proc.isAlive && closing !== proc) log.warn("CLI stderr reader failed", err)
                 }
             }, "kilo-cli-stderr").apply { isDaemon = true; start() }
             this@KiloBackendCliManager.stderr = err
@@ -205,13 +207,18 @@ class KiloBackendCliManager(
     }
 
     private fun cleanup(proc: Process, source: String) {
-        uninstall()
-        close(proc)
-        kill(proc, source)
-        val thread = stderr
-        stderr = null
-        if (thread != null && thread != Thread.currentThread()) {
-            thread.join(TimeUnit.SECONDS.toMillis(1))
+        closing = proc
+        try {
+            uninstall()
+            close(proc)
+            kill(proc, source)
+            val thread = stderr
+            stderr = null
+            if (thread != null && thread != Thread.currentThread()) {
+                thread.join(TimeUnit.SECONDS.toMillis(1))
+            }
+        } finally {
+            closing = null
         }
     }
 
