@@ -706,6 +706,7 @@ describe("OpenAICompatibleEmbedder", () => {
 
           const init = mockFetch.mock.calls[0]?.[1] as RequestInit | undefined
           const headers = new Headers(init?.headers)
+          expect(init?.headers).not.toBeInstanceOf(Headers)
           expect(headers.get("authorization")).toBeNull()
           expect(headers.get("api-key")).toBeNull()
           expect(headers.get("x-fixture")).toBe("present")

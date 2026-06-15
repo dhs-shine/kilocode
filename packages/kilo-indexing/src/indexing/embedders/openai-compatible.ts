@@ -79,24 +79,20 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
     this.baseUrl = baseUrl
     this.apiKey = apiKey?.trim() || undefined
 
-    try {
-      const defaults = new Headers(options.headers)
-      this.embeddingsClient = new OpenAI({
-        baseURL: baseUrl,
-        apiKey: this.apiKey ?? "EMPTY",
-        defaultHeaders: options.headers,
-        fetch: this.apiKey
-          ? undefined
-          : async (input, init) => {
-              const headers = new Headers(init?.headers)
-              if (!defaults.has("authorization")) headers.delete("authorization")
-              if (!defaults.has("api-key")) headers.delete("api-key")
-              return globalThis.fetch(input, { ...init, headers })
-            },
-      })
-    } catch (error) {
-      throw error instanceof Error ? error : new Error(String(error))
-    }
+    const defaults = new Headers(options.headers)
+    this.embeddingsClient = new OpenAI({
+      baseURL: baseUrl,
+      apiKey: this.apiKey ?? "EMPTY",
+      defaultHeaders: options.headers,
+      fetch: this.apiKey
+        ? undefined
+        : async (input, init) => {
+            const headers = new Headers(init?.headers)
+            if (!defaults.has("authorization")) headers.delete("authorization")
+            if (!defaults.has("api-key")) headers.delete("api-key")
+            return globalThis.fetch(input, { ...init, headers: Object.fromEntries(headers) })
+          },
+    })
 
     this.defaultModelId = modelId || getDefaultModelId("openai-compatible")
     // Cache the URL type check for performance

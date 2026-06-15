@@ -147,12 +147,20 @@ describe("CodeIndexManager", () => {
         }
       `
       const child = Bun.spawn([process.execPath, "-e", script], {
-        cwd: process.cwd(),
+        cwd: join(import.meta.dir, "../../.."),
         stdout: "pipe",
         stderr: "pipe",
         windowsHide: true,
       })
-      const [exit, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()])
+      const gate = Promise.withResolvers<never>()
+      const timeout = setTimeout(() => {
+        child.kill()
+        gate.reject(new Error("Indexing subprocess timed out"))
+      }, 10_000)
+      const [exit, stderr] = await Promise.race([
+        Promise.all([child.exited, new Response(child.stderr).text()]),
+        gate.promise,
+      ]).finally(() => clearTimeout(timeout))
       if (exit !== 0) throw new Error(stderr)
 
       expect(requests).toEqual([{ authorization: null, apiKey: null }])
