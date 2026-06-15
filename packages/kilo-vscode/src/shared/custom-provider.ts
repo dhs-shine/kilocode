@@ -178,17 +178,19 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
     const model = oldModel.reasoning === true && !("reasoning" in newModel) ? { ...newModel, reasoning: null } : newModel
     const oldVariants = isRecord(oldModel.variants) ? oldModel.variants : {}
     const newVariants = isRecord(model.variants) ? model.variants : {}
-    const changes = Object.fromEntries(
-      Object.entries(oldVariants).flatMap(([name, oldVariant]) => {
-        if (!(name in newVariants)) return [[name, null]]
-        const newVariant = newVariants[name]
-        if (!isRecord(oldVariant) || !isRecord(newVariant)) return []
-        const removed = Object.keys(oldVariant).filter((key) => !(key in newVariant))
-        if (removed.length === 0) return []
-        const nulls = Object.fromEntries(removed.map((key) => [key, null]))
-        return [[name, { ...newVariant, ...nulls }]]
-      }),
-    )
+    const changes: AnyRecord = {}
+    for (const [name, oldVariant] of Object.entries(oldVariants)) {
+      if (!(name in newVariants)) {
+        changes[name] = null
+        continue
+      }
+      const newVariant = newVariants[name]
+      if (!isRecord(oldVariant) || !isRecord(newVariant)) continue
+      const removed = Object.keys(oldVariant).filter((key) => !(key in newVariant))
+      if (removed.length === 0) continue
+      const nulls = Object.fromEntries(removed.map((key) => [key, null]))
+      changes[name] = { ...newVariant, ...nulls }
+    }
     if (Object.keys(changes).length === 0) {
       patched[id] = model
       continue
