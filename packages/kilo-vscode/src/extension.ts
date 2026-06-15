@@ -23,6 +23,7 @@ import { registerToggleAutoApprove } from "./commands/toggle-auto-approve"
 import { registerHeapSnapshot } from "./commands/heap-snapshot"
 import { RemoteStatusService } from "./services/RemoteStatusService"
 import { markWorkspace } from "./util/spotlight"
+import { importRooCodeSessionsCommand } from "./roo-import/command"
 
 let agentManager: AgentManagerProvider | undefined
 let shuttingDown = false
@@ -390,6 +391,9 @@ export function activate(context: vscode.ExtensionContext) {
       provider.postMessage({ type: "migrationState", needed: true })
     }),
     // legacy-migration end
+    vscode.commands.registerCommand("kilo-code.new.importRooCodeSessions", () => {
+      void importRooCodeSessionsCommand(context, () => connectionService.getClient())
+    }),
     vscode.commands.registerCommand("kilo-code.new.generateTerminalCommand", async () => {
       const input = await vscode.window.showInputBox({
         prompt: "Describe the terminal command you want to generate",

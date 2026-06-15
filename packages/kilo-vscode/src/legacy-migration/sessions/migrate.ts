@@ -6,6 +6,13 @@ import { createSessionID } from "./lib/ids"
 import type { LegacyHistoryItem } from "./lib/legacy-types"
 import { parseSession } from "./parser"
 
+export interface MigrateOverrides {
+  /** Custom tasks directory — skips the `context.globalStorageUri/tasks` default and `taskHistory` lookup. */
+  dir?: string
+  /** Pre-resolved history item — used when a custom dir is provided and globalState is unavailable. */
+  item?: LegacyHistoryItem
+}
+
 type Result =
   | {
       ok: true
@@ -36,10 +43,11 @@ export async function migrate(
     total: number
   },
   onProgress?: ProgressCallback,
+  overrides?: MigrateOverrides,
 ): Promise<Result> {
-  const dir = vscode.Uri.joinPath(context.globalStorageUri, "tasks").fsPath
-  const items = context.globalState.get<LegacyHistoryItem[]>("taskHistory", [])
-  const item = items.find((item) => item.id === input.id)
+  const dir = overrides?.dir ?? vscode.Uri.joinPath(context.globalStorageUri, "tasks").fsPath
+  const items = overrides?.dir ? [] : context.globalState.get<LegacyHistoryItem[]>("taskHistory", [])
+  const item = overrides?.item ?? items.find((i) => i.id === input.id)
 
   const progress = (next: Progress) => {
     if (!meta || !onProgress) return

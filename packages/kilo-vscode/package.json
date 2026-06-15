@@ -196,6 +196,11 @@
         "category": "Kilo Code"
       },
       {
+        "command": "kilo-code.new.importRooCodeSessions",
+        "title": "Import Sessions from Roo Code",
+        "category": "Kilo Code"
+      },
+      {
         "command": "kilo-code.new.autocomplete.generateSuggestions",
         "title": "Generate Suggested Edits",
         "category": "Kilo Code"
