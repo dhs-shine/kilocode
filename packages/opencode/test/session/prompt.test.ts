@@ -1039,7 +1039,7 @@ it.live(
       }),
       { git: true, config: providerCfg },
     ),
-  3_000,
+  10_000, // kilocode_change - Windows CI can take longer to cancel the live loop
 )
 
 unix(
@@ -1246,7 +1246,7 @@ it.live(
       }),
       { git: true, config: providerCfg },
     ),
-  3_000,
+  10_000, // kilocode_change - Windows CI can take longer to cancel queued live loops
 )
 
 // Queue semantics
