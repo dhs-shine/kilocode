@@ -69,7 +69,7 @@ After merging upstream opencode releases, use `opencode-changesets.ts` to turn t
 bun script/upstream/opencode-changesets.ts 1.17.0 1.17.7
 ```
 
-The script fetches releases from `anomalyco/opencode`, selects published releases in the semver range `(from, to]`, and writes one `.changeset/opencode-vX-Y-Z.md` file per release. It defaults to patch changesets for the fixed release group, `@kilocode/cli` and `kilo-code`.
+The script fetches releases from `anomalyco/opencode`, selects published releases in the semver range `(from, to]`, and writes one `.changeset/opencode-vX-Y-Z.md` file per release. It defaults to patch changesets for the fixed release group, `@kilocode/cli` and `kilo-code`. Generated notes omit contributor thank-you blocks and the upstream `Desktop` section by default because Kilo does not ship the opencode desktop app.
 
 Preview without writing files:
 
@@ -84,6 +84,8 @@ Useful options:
 | `--repo <owner/repo>` | Fetch releases from another GitHub repository |
 | `--package <name>` | Add a changeset package; repeat for multiple packages |
 | `--bump <major|minor|patch>` | Set the generated changeset bump type |
+| `--drop-section <heading>` | Omit a markdown `##` section by heading; repeat for multiple sections |
+| `--no-default-drop-section` | Disable the default dropped sections, such as `Desktop` |
 | `--force` | Overwrite existing generated changeset files |
 | `--include-prerelease` | Include prerelease GitHub releases |
 

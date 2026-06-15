@@ -29,17 +29,56 @@ describe("opencode changesets", () => {
       changeset({ tag_name: "v1.2.2", body: "\r\n## Core\r\n\r\n- Fix issue\r\n" }, {
         packages: ["@kilocode/cli", "kilo-code"],
         bump: "patch",
+        drop: ["Desktop"],
       }),
     ).toBe(`---
 "@kilocode/cli": patch
 "kilo-code": patch
 ---
 
-Integrate upstream opencode v1.2.2 release notes.
+Changes from opencode v1.2.2 upstream:
 
 ## Core
 
 - Fix issue
+`)
+  })
+
+  test("filters ignored sections and contributor thanks", () => {
+    expect(
+      changeset({
+        tag_name: "v1.2.2",
+        body: `## Core
+
+- Keep this
+
+## Desktop
+
+- Drop this
+
+## Misc
+
+- Drop misc
+
+**Thank you to 1 community contributor:**
+
+- @user:
+  - Helped
+`,
+      }, {
+        packages: ["@kilocode/cli"],
+        bump: "patch",
+        drop: ["Desktop", "Misc"],
+      }),
+    ).toBe(`---
+"@kilocode/cli": patch
+---
+
+Changes from opencode v1.2.2 upstream:
+
+## Core
+
+- Keep this
 `)
   })
 })

@@ -21,6 +21,7 @@ type Opts = {
   root: string
   packages: string[]
   bump: Bump
+  drop: string[]
   dry: boolean
   force: boolean
   prerelease: boolean
@@ -37,6 +38,8 @@ Options:
       --repo <owner/repo>       GitHub repository (default: anomalyco/opencode)
       --package <name>          Changeset package (repeatable; defaults to @kilocode/cli and kilo-code)
       --bump <type>             Changeset bump type: major, minor, patch (default: patch)
+      --drop-section <heading>  Omit a markdown ## section by heading (repeatable; defaults to Desktop)
+      --no-default-drop-section Do not drop the default Desktop section
       --dry-run                 Print changesets without writing files
       --force                   Overwrite existing generated changeset files
       --include-prerelease      Include prerelease GitHub releases
@@ -76,6 +79,36 @@ function body(release: Release) {
   return `Integrate upstream opencode ${release.tag_name}.`
 }
 
+function filter(input: string, drop: string[]) {
+  const drops = new Set(drop.map((item) => item.trim().toLowerCase()).filter(Boolean))
+  const lines = input.replace(/\r\n?/g, "\n").split("\n")
+  const out: string[] = []
+  let section = false
+  let thanks = false
+
+  for (const line of lines) {
+    const match = line.match(/^##\s+(.+?)\s*$/)
+    if (match) {
+      section = drops.has(match[1].trim().toLowerCase())
+      thanks = false
+    }
+
+    if (line.match(/^\*\*Thank you to \d+ community contributors?:\*\*\s*$/)) {
+      thanks = true
+      continue
+    }
+
+    if (thanks) {
+      if (!line.startsWith("-") && !line.startsWith("  -") && line.trim() !== "") thanks = false
+      if (thanks) continue
+    }
+
+    if (!section) out.push(line)
+  }
+
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim()
+}
+
 function isRelease(input: unknown): input is Release {
   return Boolean(input && typeof input === "object" && "tag_name" in input && typeof input.tag_name === "string")
 }
@@ -100,8 +133,9 @@ export function select(releases: Release[], from: string, to: string, prerelease
     .map((item) => ({ ...item.release, tag_name: tag(item.version) }))
 }
 
-export function changeset(release: Release, opts: Pick<Opts, "packages" | "bump">) {
-  return `---\n${packages(opts.packages, opts.bump)}\n---\n\nIntegrate upstream opencode ${release.tag_name} release notes.\n\n${body(release)}\n`
+export function changeset(release: Release, opts: Pick<Opts, "packages" | "bump" | "drop">) {
+  const text = filter(body(release), opts.drop) || "No upstream release notes were published."
+  return `---\n${packages(opts.packages, opts.bump)}\n---\n\nChanges from opencode ${release.tag_name} upstream:\n\n${text}\n`
 }
 
 async function all(repo: string) {
@@ -136,6 +170,8 @@ function opts() {
       repo: { type: "string", default: "anomalyco/opencode" },
       package: { type: "string", multiple: true },
       bump: { type: "string", default: "patch" },
+      "drop-section": { type: "string", multiple: true },
+      "no-default-drop-section": { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
       force: { type: "boolean", default: false },
       "include-prerelease": { type: "boolean", default: false },
@@ -163,6 +199,7 @@ function opts() {
     root: path.resolve(import.meta.dir, "../.."),
     packages: parsed.values.package?.length ? parsed.values.package : ["@kilocode/cli", "kilo-code"],
     bump,
+    drop: [...(parsed.values["no-default-drop-section"] ? [] : ["Desktop"]), ...(parsed.values["drop-section"] ?? [])],
     dry: parsed.values["dry-run"],
     force: parsed.values.force,
     prerelease: parsed.values["include-prerelease"],
