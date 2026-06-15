@@ -266,12 +266,14 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProce
           case "curl":
             upgradeResult = yield* upgradeCurl(target)
             break
+          // kilocode_change start
           case "npm":
-            upgradeResult = yield* run(["npm", "install", "-g", `${KiloNpm.name}@${target}`]) // kilocode_change
+            upgradeResult = yield* run(["npm", "install", "-g", `${KiloNpm.name}@${target}`])
             break
           case "yarn":
-            upgradeResult = yield* run(["yarn", "global", "add", `${KiloNpm.name}@${target}`]) // kilocode_change
+            upgradeResult = yield* run(["yarn", "global", "add", `${KiloNpm.name}@${target}`])
             break
+          // kilocode_change end
           case "pnpm":
             upgradeResult = yield* run(["pnpm", "install", "-g", `${KiloNpm.name}@${target}`]) // kilocode_change
             break
