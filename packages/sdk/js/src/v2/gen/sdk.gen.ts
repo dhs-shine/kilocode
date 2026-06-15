@@ -5046,14 +5046,14 @@ export class Model extends HeyApiClient {
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
-      instance?: {
+      location?: {
         directory?: string
         workspace?: string
       }
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "instance" }] }])
+    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "location" }] }])
     return (options?.client ?? this.client).get<V2ModelListResponses, unknown, ThrowOnError>({
       url: "/api/model",
       ...options,
@@ -5070,14 +5070,14 @@ export class Provider2 extends HeyApiClient {
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
-      instance?: {
+      location?: {
         directory?: string
         workspace?: string
       }
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "instance" }] }])
+    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "location" }] }])
     return (options?.client ?? this.client).get<V2ProviderListResponses, unknown, ThrowOnError>({
       url: "/api/provider",
       ...options,
@@ -5093,7 +5093,7 @@ export class Provider2 extends HeyApiClient {
   public get<ThrowOnError extends boolean = false>(
     parameters: {
       providerID: string
-      instance?: {
+      location?: {
         directory?: string
         workspace?: string
       }
@@ -5106,7 +5106,7 @@ export class Provider2 extends HeyApiClient {
         {
           args: [
             { in: "path", key: "providerID" },
-            { in: "query", key: "instance" },
+            { in: "query", key: "location" },
           ],
         },
       ],
