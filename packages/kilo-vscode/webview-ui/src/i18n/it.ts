@@ -1526,7 +1526,7 @@ export const dict = {
     "Modello e sforzo di ragionamento predefiniti per i sub-agent del tool task. Lascia non impostato per ereditare il modello dell'agente chiamante.",
   "settings.models.hidePromptTraining.title": "Nascondi i modelli che usano i prompt per l'addestramento",
   "settings.models.hidePromptTraining.description":
-    "Nascondi in tutti i client Kilo i modelli Kilo Gateway i cui provider potrebbero usare i tuoi prompt per l'addestramento.",
+    "Nascondi i modelli Kilo Gateway i cui provider potrebbero usare i tuoi prompt per l'addestramento.",
 
   // Autocomplete hint
   "settings.autocomplete.modelsHint":

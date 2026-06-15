@@ -836,7 +836,7 @@ export const dict = {
     "Domyślny model i wysiłek wnioskowania dla podagentów task-tool. Pozostaw puste, aby odziedziczyć model agenta wywołującego.",
   "settings.models.hidePromptTraining.title": "Ukryj modele trenujące na promptach",
   "settings.models.hidePromptTraining.description":
-    "Ukryj we wszystkich klientach Kilo modele Kilo Gateway, których dostawcy mogą używać Twoich promptów do trenowania.",
+    "Ukryj modele Kilo Gateway, których dostawcy mogą używać Twoich promptów do trenowania.",
   "settings.providers.modeModels": "Model na tryb",
   "settings.providers.custom.note": "Dodaj dostawcę kompatybilnego z OpenAI przez bazowy URL.",
   "settings.providers.modeModels.description":

@@ -818,7 +818,7 @@ export const dict = {
   "settings.providers.subagentModel.description": "task-tool 子代理的預設模型和推理工作量。留空以繼承呼叫代理的模型。",
   "settings.models.hidePromptTraining.title": "隱藏使用提示詞訓練的模型",
   "settings.models.hidePromptTraining.description":
-    "在所有 Kilo 用戶端中隱藏供應商可能會使用您的提示詞進行訓練的 Kilo Gateway 模型。",
+    "隱藏供應商可能會使用您的提示詞進行訓練的 Kilo Gateway 模型。",
   "settings.providers.modeModels": "按模式選擇模型",
   "settings.providers.custom.note": "透過 Base URL 新增 OpenAI 相容供應商。",
   "settings.providers.modeModels.description": "為特定模式覆寫預設模型。如果未設定，將使用全域預設模型。",

@@ -879,7 +879,7 @@ export const dict = {
     "Modelo predeterminado y esfuerzo de razonamiento para los subagentes de task-tool. Déjelo sin configurar para heredar el modelo del agente invocador.",
   "settings.models.hidePromptTraining.title": "Ocultar modelos que entrenan con prompts",
   "settings.models.hidePromptTraining.description":
-    "Oculta en todos los clientes de Kilo los modelos de Kilo Gateway cuyos proveedores pueden usar tus prompts para entrenamiento.",
+    "Oculta los modelos de Kilo Gateway cuyos proveedores pueden usar tus prompts para entrenamiento.",
   "settings.providers.modeModels": "Modelo por modo",
   "settings.providers.custom.note": "Agrega un proveedor compatible con OpenAI mediante URL base.",
   "settings.providers.modeModels.description":

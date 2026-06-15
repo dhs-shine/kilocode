@@ -1496,7 +1496,7 @@ export const dict = {
     "Standaardmodel en redeneerinspanning voor task-tool subagenten. Laat leeg om het model van de aanroepende agent over te nemen.",
   "settings.models.hidePromptTraining.title": "Modellen die prompts voor training gebruiken verbergen",
   "settings.models.hidePromptTraining.description":
-    "Verberg in alle Kilo-clients Kilo Gateway-modellen waarvan providers je prompts mogelijk voor training gebruiken.",
+    "Verberg Kilo Gateway-modellen waarvan providers je prompts mogelijk voor training gebruiken.",
   "settings.providers.modeModels": "Model per Modus",
   "settings.providers.modeModels.description":
     "Overschrijf het standaard model voor specifieke modi. Indien niet ingesteld, wordt het globale standaard model gebruikt.",

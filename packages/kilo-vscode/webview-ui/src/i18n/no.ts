@@ -838,7 +838,7 @@ export const dict = {
     "Standardmodell og resonneringsinnsats for task-tool-underagenter. La stå tom for å arve den kallende agentens modell.",
   "settings.models.hidePromptTraining.title": "Skjul modeller som trener på ledetekster",
   "settings.models.hidePromptTraining.description":
-    "Skjul Kilo Gateway-modeller i alle Kilo-klienter der leverandørene kan bruke ledetekstene dine til trening.",
+    "Skjul Kilo Gateway-modeller der leverandørene kan bruke ledetekstene dine til trening.",
   "settings.providers.modeModels": "Modell per modus",
   "settings.providers.custom.note": "Legg til en OpenAI-kompatibel leverandør via basis-URL.",
   "settings.providers.modeModels.description":

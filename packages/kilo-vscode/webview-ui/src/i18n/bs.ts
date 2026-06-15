@@ -877,7 +877,7 @@ export const dict = {
     "Zadani model i napor zaključivanja za podagente task-tool-a. Ostavite nepodešeno da naslijedi model pozivnog agenta.",
   "settings.models.hidePromptTraining.title": "Sakrij modele koji treniraju na promptovima",
   "settings.models.hidePromptTraining.description":
-    "Sakrij u svim Kilo klijentima Kilo Gateway modele čiji pružaoci mogu koristiti vaše promptove za treniranje.",
+    "Sakrij Kilo Gateway modele čiji pružaoci mogu koristiti vaše promptove za treniranje.",
   "settings.providers.modeModels": "Model po režimu",
   "settings.providers.custom.note": "Dodajte provajdera kompatibilnog s OpenAI putem osnovnog URL-a.",
   "settings.providers.modeModels.description":
