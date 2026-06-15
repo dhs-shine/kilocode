@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+// kilocode_change - new file
 
 import path from "path"
 import semver from "semver"

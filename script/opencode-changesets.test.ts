@@ -1,3 +1,5 @@
+// kilocode_change - new file
+
 import { describe, expect, test } from "bun:test"
 
 import { changeset, select, type Release } from "./opencode-changesets"
