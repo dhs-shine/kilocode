@@ -194,6 +194,7 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, editor.scrollPane.verticalScrollBarPolicy)
         assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
         assertTrue(editor.settings.isUseSoftWraps)
+        assertFalse(editor.settings.isPaintSoftWraps)
     }
 
     fun `test prompt editor shrinks when lines are removed`() {

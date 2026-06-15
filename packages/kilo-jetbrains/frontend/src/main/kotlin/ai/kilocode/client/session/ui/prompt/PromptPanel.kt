@@ -139,6 +139,7 @@ class PromptPanel(
             ed.scrollPane.background = style.editorScheme.defaultBackground
             ed.scrollPane.viewport.background = style.editorScheme.defaultBackground
             ed.settings.isUseSoftWraps = true
+            ed.settings.isPaintSoftWraps = false
             ed.settings.isAdditionalPageAtBottom = false
             ed.putUserData(PROMPT_ATTACHMENT_PASTE_HANDLER_KEY, PromptAttachmentPasteHandler { processPaste(it) })
             ed.scrollPane.verticalScrollBarPolicy =
