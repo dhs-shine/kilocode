@@ -195,14 +195,18 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
       // kilocode_change start
       const state = yield* InstanceState.context
       const projectID = ctx.query.worktrees && !ctx.query.projectID ? state.project.id : ctx.query.projectID
-      const directories = ctx.query.worktrees ? yield* WorktreeFamily.list() : undefined
-      const sorted = directories ? [...directories].sort((a, b) => b.length - a.length) : undefined
+      const roots = ctx.query.worktrees ? yield* WorktreeFamily.list() : undefined
+      const directory = ctx.query.current ? ctx.query.directory : undefined
+      const sorted = roots ? [...roots].sort((a, b) => b.length - a.length) : undefined
+      const current = sorted && directory ? sorted.find((dir) => Filesystem.contains(dir, directory)) : undefined
       // kilocode_change end
+      if (roots && directory && !current) return HttpServerResponse.jsonUnsafe([]) // kilocode_change
       const sessions = Array.from(
         Session.listGlobal({
           projectID, // kilocode_change
           directory: ctx.query.worktrees ? undefined : ctx.query.directory, // kilocode_change
-          directories, // kilocode_change
+          directories: roots, // kilocode_change
+          currentDirectory: directory, // kilocode_change
           roots: ctx.query.roots,
           start: ctx.query.start,
           cursor: ctx.query.cursor,

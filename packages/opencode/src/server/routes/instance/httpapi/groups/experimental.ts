@@ -77,6 +77,7 @@ export const SessionListQuery = Schema.Struct({
   // kilocode_change start
   projectID: Schema.optional(Schema.String),
   worktrees: Schema.optional(QueryBoolean),
+  current: Schema.optional(QueryBoolean),
   // kilocode_change end
   roots: Schema.optional(QueryBoolean),
   start: Schema.optional(Schema.NumberFromString),

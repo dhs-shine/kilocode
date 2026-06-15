@@ -4935,6 +4935,7 @@ export type ExperimentalSessionListData = {
     workspace?: string
     projectID?: string
     worktrees?: boolean
+    current?: "true" | "false"
     roots?: boolean | "true" | "false"
     start?: number
     cursor?: number

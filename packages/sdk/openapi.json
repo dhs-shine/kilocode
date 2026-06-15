@@ -1523,6 +1523,15 @@
             "required": false
           },
           {
+            "name": "current",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            },
+            "required": false
+          },
+          {
             "name": "roots",
             "in": "query",
             "schema": {
