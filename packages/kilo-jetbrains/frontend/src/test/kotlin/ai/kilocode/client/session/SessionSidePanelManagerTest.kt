@@ -701,7 +701,9 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
     private fun settle() = kotlinx.coroutines.runBlocking {
         repeat(5) {
             kotlinx.coroutines.delay(100)
-            com.intellij.util.ui.UIUtil.dispatchAllInvocationEvents()
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+                com.intellij.util.ui.UIUtil.dispatchAllInvocationEvents()
+            }
         }
     }
 
