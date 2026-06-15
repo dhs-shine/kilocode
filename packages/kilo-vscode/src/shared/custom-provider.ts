@@ -151,21 +151,33 @@ export function sanitizeCustomProviderConfig(provider: unknown): { value: Saniti
 }
 
 type AnyRecord = Record<string, unknown>
+type VariantPatch = Partial<{ [Key in keyof VariantConfig]: VariantConfig[Key] | null }>
+type ProviderPatch = Omit<SanitizedProviderConfig, "models"> & {
+  models: Record<
+    string,
+    null | {
+      name: string
+      reasoning?: true | null
+      variants?: Record<string, VariantConfig | VariantPatch | null>
+    }
+  >
+}
 
 function isRecord(v: unknown): v is AnyRecord {
   return !!v && typeof v === "object" && !Array.isArray(v)
 }
 
 /**
- * Build a provider patch that includes null sentinels for models, variants, and
- * variant options that existed in the previous config but are absent from the
- * new one. The CLI `config.update` endpoint deep-merges the payload with the
- * existing config; without explicit nulls, removed entries would persist on disk.
+ * Build a provider patch that includes null sentinels for model properties,
+ * variants, and variant options that existed in the previous config but are
+ * absent from the new one. The CLI `config.update` endpoint deep-merges the
+ * payload with the existing config; without explicit nulls, removed entries
+ * would persist on disk.
  */
 export function withCustomProviderDeletions(existing: unknown, next: SanitizedProviderConfig): SanitizedProviderConfig {
   if (!isRecord(existing)) return next
   const oldModels = isRecord(existing.models) ? existing.models : {}
-  const patched: AnyRecord = { ...next.models }
+  const patched: ProviderPatch["models"] = { ...next.models }
 
   for (const id of Object.keys(oldModels)) {
     if (!(id in patched)) {
@@ -175,10 +187,9 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
     const oldModel = oldModels[id]
     const newModel = patched[id]
     if (!isRecord(oldModel) || !isRecord(newModel)) continue
-    const model = oldModel.reasoning === true && !("reasoning" in newModel) ? { ...newModel, reasoning: null } : newModel
     const oldVariants = isRecord(oldModel.variants) ? oldModel.variants : {}
-    const newVariants = isRecord(model.variants) ? model.variants : {}
-    const changes: AnyRecord = {}
+    const newVariants = isRecord(newModel.variants) ? newModel.variants : {}
+    const changes: Record<string, VariantPatch | null> = {}
     for (const [name, oldVariant] of Object.entries(oldVariants)) {
       if (!(name in newVariants)) {
         changes[name] = null
@@ -189,14 +200,15 @@ export function withCustomProviderDeletions(existing: unknown, next: SanitizedPr
       const removed = Object.keys(oldVariant).filter((key) => !(key in newVariant))
       if (removed.length === 0) continue
       const nulls = Object.fromEntries(removed.map((key) => [key, null]))
-      changes[name] = { ...newVariant, ...nulls }
+      changes[name] = { ...newVariant, ...nulls } as VariantPatch
     }
-    if (Object.keys(changes).length === 0) {
-      patched[id] = model
-      continue
+    const variants = Object.keys(changes).length > 0 ? { ...newVariants, ...changes } : newModel.variants
+    patched[id] = {
+      ...newModel,
+      ...(variants ? { variants } : {}),
+      ...(oldModel.reasoning !== undefined && newModel.reasoning === undefined ? { reasoning: null } : {}),
     }
-    patched[id] = { ...model, variants: { ...newVariants, ...changes } }
   }
 
-  return { ...next, models: patched as SanitizedProviderConfig["models"] }
+  return { ...next, models: patched } as SanitizedProviderConfig
 }
