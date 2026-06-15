@@ -393,7 +393,7 @@ private class ProviderToolbarAction(
 }
 
 private class ApiKeyDialog(title: String, method: ProviderAuthMethodDto?) : DialogWrapper(true) {
-    private val key = JBPasswordField()
+    private val key = JBPasswordField().apply { columns = 50 }
     private val fields = method?.prompts.orEmpty().associateWith { prompt ->
         if (prompt.options.isNotEmpty()) optionBox(prompt.options) as JComponent else JBTextField()
     }
