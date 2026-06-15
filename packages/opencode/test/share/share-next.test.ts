@@ -18,7 +18,7 @@ import { Database } from "@/storage/db"
 import { eq } from "drizzle-orm"
 import { provideTmpdirInstance } from "../fixture/fixture"
 import { resetDatabase } from "../fixture/db"
-import { testEffect } from "../lib/effect"
+import { pollWithTimeout, testEffect } from "../lib/effect"
 
 const env = Layer.mergeAll(
   Session.defaultLayer,
@@ -253,7 +253,6 @@ describe("ShareNext", () => {
 
           const info = yield* session.create({ title: "first" })
           yield* share.init()
-          yield* Effect.sleep(50)
           yield* Effect.sync(() =>
             Database.use((db) =>
               db
@@ -267,6 +266,28 @@ describe("ShareNext", () => {
                 .run(),
             ),
           )
+          yield* pollWithTimeout(
+            Effect.gen(function* () {
+              if (seen.length > 0) return true as const
+              yield* bus.publish(Session.Event.Diff, {
+                sessionID: info.id,
+                diff: [
+                  {
+                    file: "warmup.ts",
+                    patch: "",
+                    additions: 0,
+                    deletions: 0,
+                    status: "modified",
+                  },
+                ],
+              })
+              return undefined
+            }),
+            "share diff subscriber did not flush warmup sync",
+          )
+          yield* Effect.sync(() => {
+            seen.length = 0
+          })
 
           yield* bus.publish(Session.Event.Diff, {
             sessionID: info.id,
@@ -294,12 +315,12 @@ describe("ShareNext", () => {
               },
             ],
           })
-          yield* Effect.sleep(1_250)
+          const sync = yield* pollWithTimeout(Effect.sync(() => seen[0]), "share sync was not sent", "3 seconds")
 
           expect(seen).toHaveLength(1)
-          expect(seen[0].url).toBe("https://legacy-share.example.com/api/share/shr_abc/sync")
+          expect(sync.url).toBe("https://legacy-share.example.com/api/share/shr_abc/sync")
 
-          const body = JSON.parse(seen[0].body) as {
+          const body = JSON.parse(sync.body) as {
             secret: string
             data: Array<{
               type: string
