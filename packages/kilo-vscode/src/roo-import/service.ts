@@ -39,9 +39,7 @@ export interface RooImportSource {
  * IDs as siblings of the current extension's global storage directory.
  * Returns `null` when no Roo Code installation is detected.
  */
-export async function detectRooCodeSessions(
-  context: vscode.ExtensionContext,
-): Promise<RooImportSource | null> {
+export async function detectRooCodeSessions(context: vscode.ExtensionContext): Promise<RooImportSource | null> {
   const storageParent = path.dirname(context.globalStorageUri.fsPath)
 
   for (const id of ROO_CODE_EXTENSION_IDS) {
