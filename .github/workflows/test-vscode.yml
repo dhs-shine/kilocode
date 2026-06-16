@@ -1,4 +1,3 @@
-# kilocode_change - new file
 name: test-vscode
 
 on:
@@ -6,38 +5,21 @@ on:
     branches:
       - main
       - dev
+    paths:
+      - "packages/kilo-vscode/**"
+      - "packages/ui/**"
+      - "packages/kilo-ui/**"
+      - ".github/workflows/test-vscode.yml"
   pull_request:
+    paths:
+      - "packages/kilo-vscode/**"
+      - "packages/ui/**"
+      - "packages/kilo-ui/**"
+      - ".github/workflows/test-vscode.yml"
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pull-requests: read
-
 jobs:
-  changes:
-    name: detect VS Code changes
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    outputs:
-      vscode: ${{ steps.filter.outputs.vscode }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Detect VS Code changes
-        id: filter
-        uses: Kilo-Org/paths-filter@668c092af3649c4b664c54e4b704aa46782f6f7c # v3
-        with:
-          predicate-quantifier: every
-          filters: |
-            vscode:
-              - '**'
-              - '!packages/kilo-jetbrains/**'
-              - '!packages/kilo-docs/**'
-              - '!docs/**'
-
   unit:
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.vscode == 'true'
     name: unit tests
     runs-on: blacksmith-4vcpu-ubuntu-2404
     defaults:
@@ -45,7 +27,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6 # kilocode_change
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
