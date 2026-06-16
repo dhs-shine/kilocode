@@ -1550,10 +1550,6 @@ export const dict = {
 
   "settings.display.username.title": "Benutzername",
   "settings.display.username.description": "Benutzerdefinierter Benutzername in Gesprächen",
-  "settings.display.layout.title": "Layout",
-  "settings.display.layout.description": "Layout-Modus für die Chat-Oberfläche",
-  "settings.display.layout.auto": "Automatisch",
-  "settings.display.layout.stretch": "Gestreckt",
   "settings.display.fontSize.title": "Schriftgröße",
   "settings.display.fontSize.description": "Passen Sie die Schriftgröße der Kilo webview UI unabhängig von VS Code an.",
   "settings.display.reasoningAutoCollapse.title": "Reasoning automatisch einklappen",
@@ -1563,6 +1559,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Blöcke für Codebearbeitungen",
+  "settings.display.codeEdit.description":
+    "Wählen Sie, ob Blöcke mit Codebearbeitungen und Unterschieden anfangs aus- oder eingeklappt sind.",
+  "settings.display.codeEdit.expanded": "Ausgeklappt",
+  "settings.display.codeEdit.collapsed": "Eingeklappt",
   "settings.providers.defaultModel.title": "Standardmodell",
   "settings.providers.defaultModel.description": "Primäres Modell für Gespräche",
   "settings.providers.smallModel.title": "Kleines Modell",
