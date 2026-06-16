@@ -120,6 +120,21 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         assertSame(target, item)
     }
 
+    fun `test hover copy resolver prefers outer target for stable anchoring`() {
+        val root = JPanel(null)
+        val target = TargetPanel("alpha")
+        val child = TargetPanel("bravo")
+        root.setBounds(0, 0, 100, 100)
+        target.setBounds(10, 10, 80, 80)
+        child.setBounds(5, 5, 20, 20)
+        root.add(target)
+        target.add(child)
+
+        val item = SessionTargetResolver.copy(root, root, Point(20, 20))
+
+        assertSame(target, item)
+    }
+
     fun `test code block hover copy target copies full content despite selection`() {
         showText("```text\nalpha code\n```")
         val field = textEditors(ui).first { it.text.contains("alpha code") }

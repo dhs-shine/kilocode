@@ -49,10 +49,11 @@ internal object SessionTargetResolver {
 
     private fun copy(root: JComponent, comp: Component): SessionCopyTarget? {
         var current: Component? = comp
+        var target: SessionCopyTarget? = null
         while (current != null && inside(root, current)) {
-            if (current is SessionCopyTarget) return current
+            if (current is SessionCopyTarget) target = current
             current = current.parent
         }
-        return null
+        return target
     }
 }

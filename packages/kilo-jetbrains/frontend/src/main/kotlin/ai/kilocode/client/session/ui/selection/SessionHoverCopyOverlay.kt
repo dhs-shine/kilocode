@@ -142,6 +142,7 @@ internal class SessionHoverCopyOverlay(
         JBPopupFactory.getInstance()
             .createHtmlTextBalloonBuilder(KiloBundle.message("session.copy.copied"), null, null, null)
             .createBalloon()
+            .also { it.setAnimationEnabled(false) }
             .show(RelativePoint(button, Point(button.width / 2, 0)), Balloon.Position.above)
     }
 
