@@ -34,13 +34,15 @@ type Input = {
   }
   getAuth: () => Promise<unknown>
   auth: Auth
-  refresh: (refresh: string) => Promise<Tokens>
+  refresh: (refresh: string, signal: AbortSignal) => Promise<Tokens>
   account: (tokens: Tokens) => string | undefined
   lock?: Flock.Options
+  timeout?: number
 }
 
 const pending = new Map<string, Promise<Auth>>()
 const lock = "codex-auth-refresh:openai"
+const timeout = 30_000
 
 function valid(auth: Auth) {
   return auth.access && auth.expires > Date.now()
@@ -84,7 +86,8 @@ export async function refreshCodexAuth(input: Input) {
 
       try {
         const base = current && current.refresh !== token ? current : input.auth
-        const tokens = await input.refresh(base.refresh)
+        const signal = AbortSignal.timeout(input.timeout ?? timeout)
+        const tokens = await input.refresh(base.refresh, signal)
         const id = input.account(tokens) || base.accountId
         const next = {
           type: "oauth" as const,

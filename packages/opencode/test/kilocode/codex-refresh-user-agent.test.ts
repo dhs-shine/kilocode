@@ -5,6 +5,7 @@ import { CodexAuthPlugin } from "../../src/plugin/codex"
 test("identifies Codex refresh requests as Kilo", async () => {
   const original = globalThis.fetch
   const seen: Request[] = []
+  const signals: (AbortSignal | null | undefined)[] = []
   let auth = {
     type: "oauth" as const,
     access: "old-access",
@@ -24,6 +25,7 @@ test("identifies Codex refresh requests as Kilo", async () => {
     async (...args: Parameters<typeof globalThis.fetch>) => {
       const req = new Request(...args)
       seen.push(req)
+      signals.push(args[1]?.signal)
       if (req.url === "https://auth.openai.com/oauth/token") {
         return Response.json({
           id_token: "",
@@ -48,5 +50,6 @@ test("identifies Codex refresh requests as Kilo", async () => {
   const refresh = seen[0]
   expect(refresh.url).toBe("https://auth.openai.com/oauth/token")
   expect(refresh.headers.get("user-agent")).toMatch(/^kilo\//)
+  expect(signals[0]).toBeInstanceOf(AbortSignal)
   expect(await refresh.text()).toContain("refresh_token=old-refresh")
 })

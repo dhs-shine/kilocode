@@ -279,6 +279,40 @@ describe("Codex auth refresh", () => {
     expect(calls).toEqual(["old-refresh", "old-refresh"])
   })
 
+  test("aborts a stalled refresh and releases the lock", async () => {
+    const auth = expired()
+    const calls: string[] = []
+    const failed = await refreshCodexAuth({
+      input: plugin(() => {}),
+      getAuth: async () => auth,
+      auth,
+      refresh: async (token, signal) => {
+        calls.push(token)
+        return new Promise<never>((_, reject) => {
+          signal.addEventListener("abort", () => reject(signal.reason), { once: true })
+        })
+      },
+      account: () => undefined,
+      timeout: 20,
+    }).catch((err) => err)
+
+    expect(failed).toBeInstanceOf(DOMException)
+    expect(failed.name).toBe("TimeoutError")
+
+    await refreshCodexAuth({
+      input: plugin(() => {}),
+      getAuth: async () => auth,
+      auth,
+      refresh: async (token) => {
+        calls.push(token)
+        return { id_token: "", access_token: "next-access", refresh_token: "next-refresh", expires_in: 60 }
+      },
+      account: () => undefined,
+    })
+
+    expect(calls).toEqual(["old-refresh", "old-refresh"])
+  })
+
   test("serializes refreshes across processes before token reuse", async () => {
     for (const reuse of ["early", "late"] as const) {
       for (let trial = 0; trial < 5; trial++) {
