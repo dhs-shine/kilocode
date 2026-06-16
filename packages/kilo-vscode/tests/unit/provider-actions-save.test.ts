@@ -54,6 +54,9 @@ function createCtx(existing: ExistingGlobal = { disabled_providers: [] }, merged
         }),
         auth: async () => ({ data: {} }),
       },
+      kilo: {
+        authStatus: async () => ({ data: { authenticated: false } }),
+      },
       global: {
         config: {
           get: async () => ({ data: existing }),
@@ -435,6 +438,9 @@ describe("fetchProviderData", () => {
         }),
         auth: async () => ({ data: {} }),
       },
+      kilo: {
+        authStatus: async () => ({ data: { authenticated: false } }),
+      },
     } as unknown as Parameters<typeof fetchProviderData>[0]
 
     const result = await fetchProviderData(client, "/tmp")
@@ -517,6 +523,9 @@ describe("fetchProviderData", () => {
           },
         }),
         auth: async () => ({ data: {} }),
+      },
+      kilo: {
+        authStatus: async () => ({ data: { authenticated: false } }),
       },
     } as unknown as Parameters<typeof fetchProviderData>[0]
 
