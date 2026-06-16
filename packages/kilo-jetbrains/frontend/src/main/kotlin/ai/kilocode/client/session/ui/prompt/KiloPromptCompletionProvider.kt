@@ -4,6 +4,7 @@ import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.rpc.dto.CommandDto
+import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
@@ -27,6 +28,9 @@ class KiloPromptCompletionProvider(
 ) : TextCompletionProvider, DumbAware {
     private val paths = Collections.synchronizedSet(mutableSetOf<String>())
 
+    @Volatile
+    private var cached: Pair<String, FileSearchResultDto>? = null
+
     data class SlashAction(
         val name: String,
         val description: String,
@@ -36,7 +40,10 @@ class KiloPromptCompletionProvider(
 
     fun mentionPaths(): Set<String> = paths.toSet()
 
-    fun clearMentions() = paths.clear()
+    fun clearMentions() {
+        paths.clear()
+        cached = null
+    }
 
     fun clientNames(): Set<String> = actions.mapTo(mutableSetOf()) { it.name }
 
@@ -71,9 +78,9 @@ class KiloPromptCompletionProvider(
     }
 
     private fun mention(prefix: String, result: CompletionResultSet) {
-        result.restartCompletionWhenNothingMatches()
-        val out = applyPrefixMatcher(result, prefix)
-        val search = runBlockingCancellable { service.searchFiles(workspace.directory, prefix, 50) }
+        result.restartCompletionOnAnyPrefixChange()
+        val out = result.withPrefixMatcher(PlainPrefixMatcher.ALWAYS_TRUE)
+        val search = search(prefix)
         if ("git-changes".startsWith(prefix, ignoreCase = true) && search.git) {
             out.addElement(special("git-changes", KiloBundle.message("prompt.mention.gitChanges")))
         }
@@ -90,6 +97,13 @@ class KiloPromptCompletionProvider(
             return
         }
         search.files.forEach { file -> out.addElement(file(file)) }
+    }
+
+    private fun search(prefix: String): FileSearchResultDto {
+        cached?.takeIf { it.first == prefix }?.let { return it.second }
+        val result = runBlockingCancellable { service.searchFiles(workspace.directory, prefix, 50) }
+        cached = prefix to result
+        return result
     }
 
     private fun client(action: SlashAction): LookupElement = LookupElementBuilder.create(action.name)

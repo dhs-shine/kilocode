@@ -29,6 +29,7 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var modelsGate: CompletableDeferred<Unit>? = null
     var fileMatches = emptyList<WorkspaceFileDto>()
     var searchResult = FileSearchResultDto()
+    var search: ((String) -> FileSearchResultDto)? = null
     var terminalOutput: String? = null
     var gitChanges: String? = null
     var openResult = true
@@ -39,6 +40,7 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var localConfigExists = true
     var globalConfigExists = true
     val fileCalls = mutableListOf<Pair<String, String>>()
+    val searchQueries = mutableListOf<String>()
     val opened = mutableListOf<String>()
     val localConfigs = mutableListOf<String>()
     var globalConfigs = 0
@@ -76,7 +78,8 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
 
     override suspend fun searchFiles(directory: String, query: String, limit: Int): FileSearchResultDto {
         assertNotEdt("searchFiles")
-        return searchResult
+        searchQueries.add(query)
+        return search?.invoke(query) ?: searchResult
     }
 
     override suspend fun terminalOutput(directory: String): String? {
