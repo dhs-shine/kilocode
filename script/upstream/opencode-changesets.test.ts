@@ -20,19 +20,13 @@ describe("opencode changesets", () => {
     ])
   })
 
-  test("can include prereleases", () => {
-    expect(select(releases, "1.2.3", "1.2.5", true).map((release) => release.tag_name)).toEqual(["v1.2.5"])
+  test("excludes prereleases", () => {
+    expect(select(releases, "1.2.3", "1.2.5").map((r) => r.tag_name)).toEqual([])
   })
 
   test("formats changeset markdown", () => {
     expect(
-      changeset([{ tag_name: "v1.2.2", body: "\r\n## Core\r\n\r\n- Fix issue\r\n" }], {
-        from: "1.2.1",
-        to: "1.2.2",
-        packages: ["@kilocode/cli", "kilo-code"],
-        bump: "patch",
-        drop: ["Desktop", "SDK"],
-      }),
+      changeset([{ tag_name: "v1.2.2", body: "\r\n## Core\r\n\r\n- Fix issue\r\n" }], "1.2.1", "1.2.2"),
     ).toBe(`---
 "@kilocode/cli": patch
 "kilo-code": patch
@@ -57,10 +51,6 @@ Changes from opencode v1.2.1 to v1.2.2 upstream:
 
 - Drop this
 
-## Misc
-
-- Drop misc
-
 ## SDK
 
 - Drop sdk
@@ -71,15 +61,10 @@ Changes from opencode v1.2.1 to v1.2.2 upstream:
   - Helped
 `,
         },
-      ], {
-        from: "1.2.1",
-        to: "1.2.2",
-        packages: ["@kilocode/cli"],
-        bump: "patch",
-        drop: ["Desktop", "Misc", "SDK"],
-      }),
+      ], "1.2.1", "1.2.2"),
     ).toBe(`---
 "@kilocode/cli": patch
+"kilo-code": patch
 ---
 
 Changes from opencode v1.2.1 to v1.2.2 upstream:
@@ -125,15 +110,10 @@ Changes from opencode v1.2.1 to v1.2.2 upstream:
 - Improve second
 `,
         },
-      ], {
-        from: "1.2.0",
-        to: "1.2.2",
-        packages: ["@kilocode/cli"],
-        bump: "patch",
-        drop: ["Desktop", "SDK"],
-      }),
+      ], "1.2.0", "1.2.2"),
     ).toBe(`---
 "@kilocode/cli": patch
+"kilo-code": patch
 ---
 
 Changes from opencode v1.2.0 to v1.2.2 upstream:

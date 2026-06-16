@@ -17,31 +17,25 @@ export type Release = {
 type Opts = {
   from: string
   to: string
-  repo: string
   root: string
-  packages: string[]
-  bump: Bump
-  drop: string[]
-  prerelease: boolean
 }
 
 type Group = Map<string, Map<string, string[]>>
 
+const repo = "anomalyco/opencode"
+const pkgs = ["@kilocode/cli", "kilo-code"]
+const bump: Bump = "patch"
+const drop = ["Desktop", "SDK"]
+
 const usage = `
-Usage: bun script/upstream/opencode-changesets.ts <from> <to> [options]
+Usage: bun script/upstream/opencode-changesets.ts <from> <to>
 
 Creates one changeset for upstream opencode releases in the semver range (from, to].
 
 Options:
-      --from <version>          Starting opencode version, exclusive
-      --to <version>            Ending opencode version, inclusive
-      --repo <owner/repo>       GitHub repository (default: anomalyco/opencode)
-      --package <name>          Changeset package (repeatable; defaults to @kilocode/cli and kilo-code)
-      --bump <type>             Changeset bump type: major, minor, patch (default: patch)
-      --drop-section <heading>  Omit a markdown ## section by heading (repeatable; defaults to Desktop and SDK)
-      --no-default-drop-section Do not drop the default Desktop and SDK sections
-      --include-prerelease      Include prerelease GitHub releases
-  -h, --help                    Show this help message
+      --from <version>  Starting opencode version, exclusive
+      --to <version>    Ending opencode version, inclusive
+  -h, --help            Show this help message
 
 Examples:
   bun script/upstream/opencode-changesets.ts 1.17.0 1.17.7
@@ -65,7 +59,7 @@ function slug(from: string, to: string) {
   return `opencode-${base}-to-${head}.md`
 }
 
-function packages(input: string[], bump: Bump) {
+function header(input: string[], bump: Bump) {
   return input.map((item) => `"${item}": ${bump}`).join("\n")
 }
 
@@ -79,17 +73,17 @@ function body(release: Release) {
   return `Integrate upstream opencode ${release.tag_name}.`
 }
 
-function filter(input: string, drop: string[]) {
-  const drops = new Set(drop.map((item) => item.trim().toLowerCase()).filter(Boolean))
+function filter(input: string, sections: string[]) {
+  const dropped = new Set(sections.map((item) => item.trim().toLowerCase()).filter(Boolean))
   const lines = input.replace(/\r\n?/g, "\n").split("\n")
   const out: string[] = []
-  let section = false
+  let skip = false
   let thanks = false
 
   for (const line of lines) {
     const match = line.match(/^##\s+(.+?)\s*$/)
     if (match) {
-      section = drops.has(match[1].trim().toLowerCase())
+      skip = dropped.has(match[1].trim().toLowerCase())
       thanks = false
     }
 
@@ -103,7 +97,7 @@ function filter(input: string, drop: string[]) {
       if (thanks) continue
     }
 
-    if (!section) out.push(line)
+    if (!skip) out.push(line)
   }
 
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim()
@@ -116,7 +110,7 @@ function add(groups: Group, section: string, category: string, line: string) {
   group.get(category)!.push(line)
 }
 
-function collect(releases: Release[], drop: string[]) {
+function collect(releases: Release[]) {
   const groups: Group = new Map()
 
   for (const release of releases) {
@@ -170,7 +164,7 @@ function isRelease(input: unknown): input is Release {
   return Boolean(input && typeof input === "object" && "tag_name" in input && typeof input.tag_name === "string")
 }
 
-export function select(releases: Release[], from: string, to: string, prerelease = false) {
+export function select(releases: Release[], from: string, to: string) {
   const base = clean(from)
   const head = clean(to)
   if (semver.gt(base, head) || base === head) throw new Error(`Expected from version to be lower than to version`)
@@ -178,7 +172,7 @@ export function select(releases: Release[], from: string, to: string, prerelease
   const seen = new Set<string>()
   return releases
     .filter((release) => !release.draft)
-    .filter((release) => prerelease || !release.prerelease)
+    .filter((release) => !release.prerelease)
     .map((release) => ({ release, version: semver.valid(release.tag_name.replace(/^v/, "")) }))
     .filter((item): item is { release: Release; version: string } => Boolean(item.version))
     .filter((item) => {
@@ -190,12 +184,12 @@ export function select(releases: Release[], from: string, to: string, prerelease
     .map((item) => ({ ...item.release, tag_name: tag(item.version) }))
 }
 
-export function changeset(releases: Release[], opts: Pick<Opts, "from" | "to" | "packages" | "bump" | "drop">) {
-  const text = render(collect(releases, opts.drop)) || "No upstream release notes were published."
-  return `---\n${packages(opts.packages, opts.bump)}\n---\n\nChanges from opencode ${tag(opts.from)} to ${tag(opts.to)} upstream:\n\n${text}\n`
+export function changeset(releases: Release[], from: string, to: string) {
+  const text = render(collect(releases)) || "No upstream release notes were published."
+  return `---\n${header(pkgs, bump)}\n---\n\nChanges from opencode ${tag(from)} to ${tag(to)} upstream:\n\n${text}\n`
 }
 
-async function all(repo: string) {
+async function fetch_all() {
   const list: Release[] = []
   const auth = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN
 
@@ -218,18 +212,12 @@ async function all(repo: string) {
   }
 }
 
-function opts() {
+function parse_opts() {
   const parsed = parseArgs({
     args: Bun.argv.slice(2),
     options: {
       from: { type: "string" },
       to: { type: "string" },
-      repo: { type: "string", default: "anomalyco/opencode" },
-      package: { type: "string", multiple: true },
-      bump: { type: "string", default: "patch" },
-      "drop-section": { type: "string", multiple: true },
-      "no-default-drop-section": { type: "boolean", default: false },
-      "include-prerelease": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
     allowPositionals: true,
@@ -244,38 +232,21 @@ function opts() {
   const to = parsed.values.to ?? parsed.positionals[1]
   if (!from || !to) throw new Error("Expected from and to opencode versions")
 
-  const bump = parsed.values.bump
-  if (bump !== "major" && bump !== "minor" && bump !== "patch") throw new Error(`Invalid bump type: ${bump}`)
-
-  return {
-    from,
-    to,
-    repo: parsed.values.repo,
-    root: path.resolve(import.meta.dir, "../.."),
-    packages: parsed.values.package?.length ? parsed.values.package : ["@kilocode/cli", "kilo-code"],
-    bump,
-    drop: [...(parsed.values["no-default-drop-section"] ? [] : ["Desktop", "SDK"]), ...(parsed.values["drop-section"] ?? [])],
-    prerelease: parsed.values["include-prerelease"],
-  } satisfies Opts
-}
-
-async function write(releases: Release[], opts: Opts) {
-  const dir = path.join(opts.root, ".changeset")
-  const file = path.join(dir, slug(opts.from, opts.to))
-  const text = changeset(releases, opts)
-  await Bun.write(file, text)
-  process.stdout.write(`Wrote ${path.relative(opts.root, file)}\n`)
+  return { from, to, root: path.resolve(import.meta.dir, "../..") } satisfies Opts
 }
 
 export async function run(opts: Opts) {
-  const releases = select(await all(opts.repo), opts.from, opts.to, opts.prerelease)
+  const releases = select(await fetch_all(), opts.from, opts.to)
   if (releases.length === 0) throw new Error(`No opencode releases found in range (${opts.from}, ${opts.to}]`)
 
-  await write(releases, opts)
+  const dir = path.join(opts.root, ".changeset")
+  const file = path.join(dir, slug(opts.from, opts.to))
+  await Bun.write(file, changeset(releases, opts.from, opts.to))
+  process.stdout.write(`Wrote ${path.relative(opts.root, file)}\n`)
 }
 
 if (import.meta.main) {
-  await run(opts()).catch((err) => {
+  await run(parse_opts()).catch((err) => {
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`)
     process.exit(1)
   })
