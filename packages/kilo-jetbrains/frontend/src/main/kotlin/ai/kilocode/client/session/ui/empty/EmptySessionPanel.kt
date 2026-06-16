@@ -17,7 +17,6 @@ import ai.kilocode.rpc.dto.SessionDto
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.IconLoader
 import com.intellij.util.concurrency.annotations.RequiresEdt
@@ -54,11 +53,10 @@ class EmptySessionPanel(
     private val activity: () -> Map<String, SessionActivityKind> = { emptyMap() },
     private val titles: () -> Map<String, String> = { emptyMap() },
     private val browse: (String) -> Unit = BrowserUtil::browse,
-    private val timers: UiTimers = service(),
 ) : BorderLayoutPanel(), Disposable, SessionEditorStyleTarget {
     val view: Align = align(HAlign.CENTER, VAlign.CENTER)
 
-    private val timer = timers.timer(ACTIVITY_MS) { syncActivity() }
+    private val timer = UiTimers.timer(ACTIVITY_MS) { syncActivity() }
     internal val recent = RecentsList(recents, controller)
 
     private val historyButton = ShowHistoryButton().apply {
@@ -182,7 +180,7 @@ class EmptySessionPanel(
 
     internal fun activeView() = getComponent(0)
 
-    internal fun text(session: SessionDto, now: Long = timers.now()) =
+    internal fun text(session: SessionDto, now: Long = UiTimers.now()) =
         recent.text(session, now)
 
     internal fun rendererComponent(

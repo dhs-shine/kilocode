@@ -16,7 +16,6 @@ import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.DataProvider
-import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.ui.DocumentAdapter
@@ -60,7 +59,6 @@ class HistoryPanel(
     private val controller: HistoryController,
     private val nav: () -> Unit = {},
     private val manager: SessionManager? = null,
-    private val timers: UiTimers = service(),
 ) : BorderLayoutPanel(), Disposable, DataProvider {
     private val localSearch = search(controller.local)
     private val cloudSearch = search(controller.cloud)
@@ -85,7 +83,7 @@ class HistoryPanel(
         .setText(KiloBundle.message("history.tab.cloud"))
         .setForeSideComponent(back())
     private var stale = false
-    private val timer = timers.timer(ACTIVITY_MS) { syncActivity() }
+    private val timer = UiTimers.timer(ACTIVITY_MS) { syncActivity() }
     private val tabs: JBTabs = JBTabsFactory.createTabs(null, this).apply {
         presentation.setSingleRow(true)
         presentation.setTabsPosition(JBTabsPosition.top)

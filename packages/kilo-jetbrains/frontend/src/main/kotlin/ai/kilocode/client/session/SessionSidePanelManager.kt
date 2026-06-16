@@ -32,7 +32,6 @@ class SessionSidePanelManager(
     private val resolve: (String) -> Workspace = { dir -> service<KiloWorkspaceService>().workspace(dir) },
     private val status: () -> Map<String, SessionActivityKind> = { project.service<KiloSessionService>().activity() },
     private val history: ((Disposable, (SessionRef) -> Unit, (String) -> Unit) -> JComponent)? = null,
-    private val timers: UiTimers = service(),
 ) : SessionManager, Disposable {
     val component: JPanel = object : JPanel(BorderLayout()), DataProvider {
         override fun getData(dataId: String): Any? {
@@ -208,7 +207,7 @@ class SessionSidePanelManager(
     private fun schedule(ui: SessionUi) {
         cancel(ui)
         val delay = Registry.intValue("kilo.session.inactive.disposeTimeoutMs").coerceAtLeast(0)
-        val timer = timers.timer(delay, repeats = false) {
+        val timer = UiTimers.timer(delay, repeats = false) {
             activeTimers.remove(ui)
             if (ui === current || ui !in all) return@timer
             disposeUi(ui)

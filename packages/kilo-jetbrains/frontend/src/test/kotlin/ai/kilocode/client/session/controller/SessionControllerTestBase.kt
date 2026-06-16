@@ -33,7 +33,6 @@ import ai.kilocode.rpc.dto.TelemetryCaptureDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import java.awt.event.HierarchyEvent
@@ -109,7 +108,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         appRpc = FakeAppRpcApi()
         projectRpc = FakeWorkspaceRpcApi()
         timers = FakeUiTimers()
-        ApplicationManager.getApplication().replaceService(UiTimers::class.java, timers, testRootDisposable)
+        UiTimers.replace(timers, testRootDisposable)
 
         scope = CoroutineScope(SupervisorJob())
         parent = Disposer.newDisposable("test")

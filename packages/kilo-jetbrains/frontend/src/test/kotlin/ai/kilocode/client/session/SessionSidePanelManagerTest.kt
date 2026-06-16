@@ -36,7 +36,6 @@ import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.util.registry.RegistryKeyDescriptor
-import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -63,8 +62,7 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
     override fun setUp() {
         super.setUp()
         timers = FakeUiTimers()
-        com.intellij.openapi.application.ApplicationManager.getApplication()
-            .replaceService(UiTimers::class.java, timers, testRootDisposable)
+        UiTimers.replace(timers, testRootDisposable)
         scope = CoroutineScope(SupervisorJob())
         rpc = FakeSessionRpcApi()
         sessions = KiloSessionService(project, scope, rpc)

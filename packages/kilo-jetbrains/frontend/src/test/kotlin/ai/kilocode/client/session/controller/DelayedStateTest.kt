@@ -4,7 +4,6 @@ import ai.kilocode.client.testing.FakeUiTimers
 import ai.kilocode.client.util.UiTimers
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class DelayedStateTest : BasePlatformTestCase() {
@@ -14,7 +13,7 @@ class DelayedStateTest : BasePlatformTestCase() {
     override fun setUp() {
         super.setUp()
         timers = FakeUiTimers()
-        ApplicationManager.getApplication().replaceService(UiTimers::class.java, timers, testRootDisposable)
+        UiTimers.replace(timers, testRootDisposable)
     }
 
     override fun tearDown() {

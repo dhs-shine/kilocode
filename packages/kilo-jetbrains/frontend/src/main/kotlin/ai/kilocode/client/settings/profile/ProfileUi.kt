@@ -43,7 +43,6 @@ internal class ProfileUi(
     private val cs: CoroutineScope,
     private val app: KiloAppService = service(),
     private val browse: (String) -> Unit = { BrowserUtil.browse(it) },
-    private val timers: UiTimers = service(),
 ) : JPanel(BorderLayout()) {
 
     private val cards = JPanel(CardLayout())
@@ -54,7 +53,6 @@ internal class ProfileUi(
         retry = { app.retryAsync() },
         cancel = ::cancel,
         browse = browse,
-        timers = timers,
     )
     private val account = LoggedInProfileUi(
         dashboard = {
@@ -194,7 +192,7 @@ internal class ProfileUi(
                 val next = app.startLogin()
                 withContext(edt) {
                     if (id != attempt) return@withContext
-                    login = LoginState.Pending(next, timers.now())
+                    login = LoginState.Pending(next, UiTimers.now())
                     sync()
                     browse(next.verificationUrl)
                 }
