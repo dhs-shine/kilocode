@@ -342,6 +342,7 @@ const AppContent: Component = () => {
                   setMigrationNeeded(true)
                   vscode.postMessage({ type: "requestLegacyMigrationData" })
                 }}
+                onImportRooClick={() => vscode.postMessage({ type: "importRooCodeSessions" })}
               />
             </Match>
             <Match when={currentView() === "subAgentViewer"}>

@@ -920,6 +920,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         case "openVSCodeSettings":
           vscode.commands.executeCommand("workbench.action.openSettings", message.query)
           break
+        case "importRooCodeSessions":
+          vscode.commands.executeCommand("kilo-code.new.importRooCodeSessions")
+          break
         case "openConfigFile":
           await openConfig(message.scope, message.labels, this.getProjectDirectory(this.currentSession?.id))
           break

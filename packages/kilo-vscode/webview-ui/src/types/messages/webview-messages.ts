@@ -181,6 +181,10 @@ export interface OpenVSCodeSettingsRequest {
   query: string
 }
 
+export interface ImportRooCodeSessionsRequest {
+  type: "importRooCodeSessions"
+}
+
 export interface OpenConfigFileRequest {
   type: "openConfigFile"
   scope: "local" | "global"
@@ -1114,6 +1118,7 @@ export type WebviewMessage =
   | OpenExternalRequest
   | OpenSettingsPanelRequest
   | OpenVSCodeSettingsRequest
+  | ImportRooCodeSessionsRequest
   | OpenConfigFileRequest
   | OpenMarketplacePanelRequest
   | OpenAgentManagerRequest
