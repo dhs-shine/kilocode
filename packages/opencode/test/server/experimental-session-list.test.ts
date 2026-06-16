@@ -212,9 +212,7 @@ describe("experimental.session.list", () => {
     const worktree = path.join(first.path, ".kilo", "worktrees", "nested-current")
 
     try {
-      await $`git worktree add --quiet -b test-branch-nested-current-${Date.now()} ${worktree} HEAD`.cwd(
-        first.path,
-      )
+      await $`git worktree add --quiet -b test-branch-nested-current-${Date.now()} ${worktree} HEAD`.cwd(first.path)
 
       try {
         const { Server } = await import("../../src/server/server")

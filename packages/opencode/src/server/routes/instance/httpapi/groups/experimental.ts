@@ -55,7 +55,9 @@ export const ToolListQuery = Schema.Struct({
   model: ModelID,
 })
 
-const WorktreeList = Schema.Array(Schema.Struct({ directory: Schema.String, managed: Schema.Boolean }).annotate({ identifier: "WorktreeListItem" })) // kilocode_change
+const WorktreeList = Schema.Array(
+  Schema.Struct({ directory: Schema.String, managed: Schema.Boolean }).annotate({ identifier: "WorktreeListItem" }),
+) // kilocode_change
 const WorktreeErrorName = Schema.Union([
   Schema.Literal("WorktreeNotGitError"),
   Schema.Literal("WorktreeNameGenerationFailedError"),

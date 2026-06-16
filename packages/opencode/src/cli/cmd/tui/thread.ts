@@ -87,7 +87,11 @@ export function resolveThreadDirectory(project?: string, envPWD = process.env.PW
   // kilocode_change start - ignore stale PWD from wrappers such as `bun --cwd`, except kilo-dev's caller cwd
   const dev = process.env.KILO_DEV_CWD
   const real = Filesystem.resolve(cwd)
-  const root = dev ? Filesystem.resolve(dev) : envPWD && Filesystem.resolve(envPWD) === real ? Filesystem.resolve(envPWD) : real
+  const root = dev
+    ? Filesystem.resolve(dev)
+    : envPWD && Filesystem.resolve(envPWD) === real
+      ? Filesystem.resolve(envPWD)
+      : real
   // kilocode_change end
   if (project) return Filesystem.resolve(path.isAbsolute(project) ? project : path.join(root, project))
   return dev ? root : real // kilocode_change
