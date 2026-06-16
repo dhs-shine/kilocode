@@ -380,11 +380,12 @@ export class CodeIndexOrchestrator {
   public async shutdown(): Promise<void> {
     this._cancelRequested = true
     this.scanner.cancel()
+    this.fileWatcher.setCollecting(false)
+    await this._active
     for (const sub of this._fileWatcherSubscriptions) sub.dispose()
     this._fileWatcherSubscriptions = []
     if (this.fileWatcher.shutdown) await this.fileWatcher.shutdown()
     else this.fileWatcher.dispose()
-    await this._active
     await this.vectorStore.close?.()
     this._isProcessing = false
   }

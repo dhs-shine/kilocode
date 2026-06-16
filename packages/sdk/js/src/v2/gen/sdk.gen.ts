@@ -1195,6 +1195,7 @@ export class Session extends HeyApiClient {
       workspace?: string
       projectID?: string
       worktrees?: boolean
+      current?: "true" | "false"
       roots?: boolean | "true" | "false"
       start?: number
       cursor?: number
@@ -1213,6 +1214,7 @@ export class Session extends HeyApiClient {
             { in: "query", key: "workspace" },
             { in: "query", key: "projectID" },
             { in: "query", key: "worktrees" },
+            { in: "query", key: "current" },
             { in: "query", key: "roots" },
             { in: "query", key: "start" },
             { in: "query", key: "cursor" },
@@ -1649,7 +1651,7 @@ export class Worktree extends HeyApiClient {
   /**
    * List worktrees
    *
-   * List all sandbox worktrees for the current project.
+   * List all git worktrees for the current project and whether Kilo manages them.
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
@@ -7169,7 +7171,7 @@ export class Kilocode extends HeyApiClient {
   /**
    * Remove a skill
    *
-   * Remove a skill by deleting its directory from disk and clearing it from cache.
+   * Remove a skill by deleting its manifest from disk and clearing it from cache.
    */
   public removeSkill<ThrowOnError extends boolean = false>(
     parameters?: {

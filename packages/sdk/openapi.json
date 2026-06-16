@@ -1062,15 +1062,15 @@
         ],
         "responses": {
           "200": {
-            "description": "List of worktree directories",
+            "description": "List of worktrees",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "$ref": "#/components/schemas/WorktreeListItem"
                   },
-                  "description": "List of worktree directories"
+                  "description": "List of worktrees"
                 }
               }
             }
@@ -1086,7 +1086,7 @@
             }
           }
         },
-        "description": "List all sandbox worktrees for the current project.",
+        "description": "List all git worktrees for the current project and whether Kilo manages them.",
         "summary": "List worktrees",
         "x-codeSamples": [
           {
@@ -1519,6 +1519,15 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            },
+            "required": false
+          },
+          {
+            "name": "current",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
             },
             "required": false
           },
@@ -12756,7 +12765,7 @@
             }
           }
         },
-        "description": "Remove a skill by deleting its directory from disk and clearing it from cache.",
+        "description": "Remove a skill by deleting its manifest from disk and clearing it from cache.",
         "summary": "Remove a skill",
         "requestBody": {
           "content": {
@@ -18575,6 +18584,13 @@
             "type": "string",
             "enum": ["expanded", "collapsed"]
           },
+          "code_edit_display": {
+            "type": "string",
+            "enum": ["expanded", "collapsed"]
+          },
+          "hide_prompt_training_models": {
+            "type": "boolean"
+          },
           "model": {
             "type": "string"
           },
@@ -19305,6 +19321,19 @@
         "items": {
           "type": "string"
         }
+      },
+      "WorktreeListItem": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "managed": {
+            "type": "boolean"
+          }
+        },
+        "required": ["directory", "managed"],
+        "additionalProperties": false
       },
       "WorktreeError": {
         "type": "object",

@@ -846,6 +846,7 @@ export const dict = {
   "provider.custom.field.providerID.description": "Kleine letters, cijfers, koppeltekens of onderstrepingstekens",
   "provider.custom.field.name.label": "Weergavenaam",
   "provider.custom.field.name.placeholder": "Mijn AI Provider",
+  "provider.custom.field.package.label": "Provider API",
   "provider.custom.field.baseURL.label": "Basis-URL",
   "provider.custom.field.baseURL.placeholder": "https://api.mijnprovider.com/v1",
   "provider.custom.field.apiKey.label": "API-sleutel",
@@ -871,6 +872,11 @@ export const dict = {
   "provider.custom.models.variants.thinking.placeholder": "thinking",
   "provider.custom.models.variants.thinking.enabled": "enabled",
   "provider.custom.models.variants.thinking.disabled": "disabled",
+  "provider.custom.models.variants.thinking.adaptive": "adaptive",
+  "provider.custom.models.variants.splitReasoning.label": "Split reasoning (required for e.g. MiniMax)",
+  "provider.custom.models.variants.splitReasoning.placeholder": "reasoning_split",
+  "provider.custom.models.variants.splitReasoning.true": "true",
+  "provider.custom.models.variants.splitReasoning.false": "false",
   "provider.custom.models.variants.chatTemplateArgs.label":
     "Nadenken inschakelen via chat template args (bijv. Hugging Face)",
   "provider.custom.models.variants.chatTemplateArgs.placeholder": "chat_template_args",
@@ -884,6 +890,13 @@ export const dict = {
   "provider.custom.models.variants.reasoningEffort.medium": "medium",
   "provider.custom.models.variants.reasoningEffort.high": "high",
   "provider.custom.models.variants.reasoningEffort.xhigh": "xhigh",
+  "provider.custom.models.variants.outputEffort.label": "Output effort (e.g. Anthropic)",
+  "provider.custom.models.variants.outputEffort.placeholder": "effort",
+  "provider.custom.models.variants.outputEffort.low": "low",
+  "provider.custom.models.variants.outputEffort.medium": "medium",
+  "provider.custom.models.variants.outputEffort.high": "high",
+  "provider.custom.models.variants.outputEffort.xhigh": "xhigh",
+  "provider.custom.models.variants.outputEffort.max": "max",
   "provider.custom.models.remove": "Model verwijderen",
   "provider.custom.models.add": "Model toevoegen",
   "provider.custom.models.fetch": "Modellen ophalen",
@@ -1277,6 +1290,10 @@ export const dict = {
   "settings.notifications.errors.title": "Fouten",
   "settings.notifications.errors.description": "Toon melding bij fouten",
   "settings.notifications.sounds": "Geluiden",
+  "settings.notifications.enable.title": "Geluidsmeldingen inschakelen",
+  "settings.notifications.enable.description":
+    "Geluiden afspelen wanneer sessies worden voltooid, er een fout optreedt of uw invoer vereist is",
+  "settings.notifications.testSound": "Testen",
   "settings.notifications.agentSound.title": "Agent Voltooiingsgeluid",
   "settings.notifications.agentSound.description": "Geluid om af te spelen wanneer agent voltooit",
   "settings.notifications.permSound.title": "Toestemmingsverzoek Geluid",
@@ -1284,6 +1301,9 @@ export const dict = {
   "settings.notifications.errorSound.title": "Fout Geluid",
   "settings.notifications.errorSound.description": "Geluid om af te spelen bij fouten",
   "settings.notifications.sound.default": "Standaard",
+  "settings.notifications.sound.system": "Systeem",
+  "settings.notifications.sound.description":
+    "Standaard worden verschillende geluiden gebruikt voor voltooiing, invoer en fouten. Andere keuzes gebruiken voor elke gebeurtenis hetzelfde geluid.",
   "settings.notifications.sound.none": "Geen",
 
   "settings.experimental.share.title": "Deelmodus",
@@ -1487,6 +1507,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Blokken met codebewerkingen",
+  "settings.display.codeEdit.description":
+    "Kies of blokken met codebewerkingen en verschillen standaard uitgeklapt of ingeklapt zijn.",
+  "settings.display.codeEdit.expanded": "Uitgeklapt",
+  "settings.display.codeEdit.collapsed": "Ingeklapt",
 
   "settings.providers.defaultModel.title": "Standaard Model",
   "settings.providers.defaultModel.description": "Primair model voor gesprekken",
@@ -1496,6 +1521,9 @@ export const dict = {
   "settings.providers.subagentModel.title": "Subagentmodel",
   "settings.providers.subagentModel.description":
     "Standaardmodel en redeneerinspanning voor task-tool subagenten. Laat leeg om het model van de aanroepende agent over te nemen.",
+  "settings.models.hidePromptTraining.title": "Modellen die prompts voor training gebruiken verbergen",
+  "settings.models.hidePromptTraining.description":
+    "Verberg Kilo Gateway-modellen waarvan providers je prompts mogelijk voor training gebruiken.",
   "settings.providers.modeModels": "Model per Modus",
   "settings.providers.modeModels.description":
     "Overschrijf het standaard model voor specifieke modi. Indien niet ingesteld, wordt het globale standaard model gebruikt.",
