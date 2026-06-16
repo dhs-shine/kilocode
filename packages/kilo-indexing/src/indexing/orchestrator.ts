@@ -37,6 +37,7 @@ export class CodeIndexOrchestrator {
     private readonly fileWatcher: IFileWatcher,
     private readonly onTelemetry?: IndexingTelemetryReporter,
     private readonly overlay?: WorktreeOverlay,
+    private readonly independent = false,
   ) {}
 
   private getTelemetryMeta(): IndexingTelemetryMeta {
@@ -212,12 +213,17 @@ export class CodeIndexOrchestrator {
           baselinePath: this.overlay.baselinePath,
           files: this.overlay.baseline.size,
         })
-      } else if (collectionCreated) {
-        await this.cacheManager.clearCacheFile()
-        log.info("cleared indexing cache after new collection creation", { workspacePath: this.workspacePath })
       }
 
-      const hasExistingData = this.overlay ? false : await this.vectorStore.hasIndexedData()
+      const hasExistingData = this.overlay || this.independent ? false : await this.vectorStore.hasIndexedData()
+      if (!this.overlay && !hasExistingData) {
+        if (!collectionCreated) await this.vectorStore.clearCollection()
+        await this.cacheManager.clearCacheFile()
+        log.info("cleared indexing cache before full scan", {
+          workspacePath: this.workspacePath,
+          collectionCreated,
+        })
+      }
       log.info("checked vector store indexed data", {
         workspacePath: this.workspacePath,
         hasExistingData,

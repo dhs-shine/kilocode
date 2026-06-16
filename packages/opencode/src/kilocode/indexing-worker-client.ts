@@ -170,28 +170,31 @@ export namespace IndexingWorker {
         )
       },
       search(query, directoryPrefix) {
-        return call(
-          state,
-          { type: "request", key, method: "search", input: { query, directoryPrefix } },
-          (message) => {
-            if (message.ok && message.method === "search") return message.value
-            throw new Error("Unexpected indexing worker search response.")
-          },
-        )
+        return call(state, { type: "request", key, method: "search", input: { query, directoryPrefix } }, (message) => {
+          if (message.ok && message.method === "search") return message.value
+          throw new Error("Unexpected indexing worker search response.")
+        })
       },
       async dispose() {
         if (!active || state.stopped) return
         active = false
-        await withTimeout(
-          call(state, { type: "request", key, method: "dispose", input: undefined }, (message) => {
-            if (message.ok && message.method === "dispose") return message.value
-            throw new Error("Unexpected indexing worker dispose response.")
-          }),
-          5000,
-          "Indexing worker reset timed out",
-        ).catch((err) => {
+        if (state.hosts.get(key) === host) state.hosts.delete(key)
+        if (pool.get(key) === host) pool.delete(key)
+        try {
+          await withTimeout(
+            call(state, { type: "request", key, method: "dispose", input: undefined }, (message) => {
+              if (message.ok && message.method === "dispose") return message.value
+              throw new Error("Unexpected indexing worker dispose response.")
+            }),
+            5000,
+            "Indexing worker reset timed out",
+          )
+        } catch (err) {
           callbacks.failure(err)
-        })
+        } finally {
+          if (state.hosts.get(key) === host) state.hosts.delete(key)
+          if (pool.get(key) === host) pool.delete(key)
+        }
       },
     }
     state.hosts.set(key, host)

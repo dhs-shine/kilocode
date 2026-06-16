@@ -58,7 +58,7 @@ export class CodeIndexSearchService {
         return search(maxResults)
       })()
       const base = (async () => {
-        const checks = new Map<string, Promise<{ valid: boolean; content: string }>>()
+        const checks = new Map<string, Promise<boolean>>()
         const search = async (limit: number): Promise<VectorStoreSearchResult[]> => {
           const results = await this.baseline!.store.search(vector, normalizedPrefix, minScore, limit)
           const accepted = await Promise.all(
@@ -73,12 +73,9 @@ export class CodeIndexSearchService {
       const [baseline, current] = await Promise.all([base, delta])
       const merged = new Map<string, VectorStoreSearchResult>()
       const key = (result: VectorStoreSearchResult) =>
-        [
-          result.payload?.filePath,
-          result.payload?.startLine,
-          result.payload?.endLine,
-          result.payload?.codeChunk,
-        ].join("\0")
+        [result.payload?.filePath, result.payload?.startLine, result.payload?.endLine, result.payload?.codeChunk].join(
+          "\0",
+        )
 
       for (const result of baseline) merged.set(key(result), result)
       for (const result of current) {

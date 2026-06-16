@@ -612,6 +612,7 @@ export class DirectoryScanner implements IDirectoryScanner {
             vector,
             payload: {
               filePath: generateRelativeFilePath(normalizedAbsolutePath, scanWorkspace),
+              fileHash: block.fileHash,
               codeChunk: block.content,
               startLine: block.start_line,
               endLine: block.end_line,

@@ -96,6 +96,7 @@ export interface VectorStoreSearchResult {
 
 export interface Payload {
   filePath: string
+  fileHash?: string
   codeChunk: string
   startLine: number
   endLine: number

@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
+import { CacheManager } from "../../../src/indexing/cache-manager"
 import { CodeIndexManager } from "../../../src/indexing/manager"
 import type { IndexingConfigInput } from "../../../src/indexing/config-manager"
 import type { IndexingTelemetryEvent, IndexingTelemetryTrigger } from "../../../src/indexing/interfaces/telemetry"
@@ -73,6 +74,59 @@ function createStartError(location = "orchestrator:startIndexing"): IndexingTele
 }
 
 describe("CodeIndexManager", () => {
+  test("falls back when the shared baseline is not ready", async () => {
+    const mgr = new CodeIndexManager("/tmp/worktree", "/tmp/cache", "/tmp/main")
+    let closed = 0
+    const data = mgr as unknown as {
+      createBaseline(factory: { createVectorStore(): unknown }): Promise<{ store?: unknown }>
+    }
+    const baseline = await data.createBaseline({
+      createVectorStore() {
+        return {
+          async openExisting() {
+            throw new Error("baseline rebuilding")
+          },
+          async close() {
+            closed += 1
+          },
+        }
+      },
+    })
+
+    expect(baseline.store).toBeUndefined()
+    expect(closed).toBe(1)
+  })
+
+  test("throttles unchanged baseline cache checks between searches", async () => {
+    const mgr = new CodeIndexManager("/tmp/worktree", "/tmp/cache", "/tmp/main")
+    const data = createData(mgr) as Data & {
+      _baselineStamp: string
+      _baselineSigned: number
+      _orchestrator: { state: string }
+      _searchService: { searchIndex(): Promise<[]> }
+    }
+    data._baselineStamp = "same"
+    data._baselineSigned = Date.now()
+    data._orchestrator = { state: "Indexed" }
+    data._searchService = {
+      async searchIndex() {
+        return []
+      },
+    }
+    const stamp = spyOn(CacheManager.prototype, "stamp").mockResolvedValue("same")
+    const initialize = spyOn(CacheManager.prototype, "initialize").mockResolvedValue()
+
+    try {
+      await mgr.searchIndex("first")
+      await mgr.searchIndex("second")
+      expect(stamp).toHaveBeenCalledTimes(1)
+      expect(initialize).not.toHaveBeenCalled()
+    } finally {
+      stamp.mockRestore()
+      initialize.mockRestore()
+    }
+  })
+
   test("returns standby state before services are initialized", () => {
     const mgr = new CodeIndexManager("/tmp/ws", "/tmp/cache")
     const data = mgr as unknown as {

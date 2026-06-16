@@ -16,6 +16,15 @@ import { sanitizeErrorMessage } from "./shared/validation-helpers"
 import { WorktreeOverlay } from "./worktree-overlay"
 
 const log = Log.create({ service: "indexing-manager" })
+const BASELINE_CHECK_INTERVAL = 1_000
+const BASELINE_SIGNATURE_INTERVAL = 30_000
+
+type Baseline = {
+  store?: IVectorStore
+  signature: string
+  stamp?: string
+  overlay?: WorktreeOverlay
+}
 
 /**
  * RATIONALE: Removed the static singleton Map and vscode.ExtensionContext.
@@ -33,6 +42,9 @@ export class CodeIndexManager {
   private _cacheManager: CacheManager | undefined
   private _baselineStore: IVectorStore | undefined
   private _baselineSignature: string | undefined
+  private _baselineStamp: string | undefined
+  private _baselineChecked = 0
+  private _baselineSigned = 0
   private _baselineRefresh: Promise<void> | undefined
   private _overlay: WorktreeOverlay | undefined
   private _isRecoveringFromError = false
@@ -449,18 +461,36 @@ export class CodeIndexManager {
   private async refreshBaseline(): Promise<void> {
     if (!this.baselinePath || this._disposed) return
     if (this._baselineRefresh) return this._baselineRefresh
+    const now = Date.now()
+    if (now - this._baselineChecked < BASELINE_CHECK_INTERVAL) return
+    this._baselineChecked = now
     const baselinePath = this.baselinePath
 
     const task = (async () => {
       const cache = new CacheManager(this.cacheDirectory, baselinePath)
+      const stamp = await cache.stamp()
+      const force = now - this._baselineSigned >= BASELINE_SIGNATURE_INTERVAL
+      if (!force && stamp === this._baselineStamp) return
+
       await cache.initialize()
-      if (cache.signature() === this._baselineSignature) return
+      const signature = cache.signature()
+      this._baselineStamp = stamp
+      this._baselineSigned = now
+      if (signature === this._baselineSignature && this._baselineStore) return
+
+      const baseline = await this.createBaseline(this._serviceFactory!)
+      this._baselineStamp = baseline?.stamp ?? stamp
+      this._baselineSigned = now
+      if (!baseline?.store) {
+        if (!this._baselineStore) this._baselineSignature = signature
+        return
+      }
 
       log.info("shared indexing baseline changed; rebuilding worktree delta", {
         workspacePath: this.workspacePath,
         baselinePath,
       })
-      await this._recreateServices()
+      await this._recreateServices(baseline)
       if (this._disposed) return
       await this._orchestrator?.startIndexing("background")
     })().finally(() => {
@@ -470,11 +500,13 @@ export class CodeIndexManager {
     return task
   }
 
-  private async createBaseline(factory: CodeIndexServiceFactory) {
+  private async createBaseline(factory: CodeIndexServiceFactory): Promise<Baseline | undefined> {
     if (!this.baselinePath) return
 
     const cache = new CacheManager(this.cacheDirectory, this.baselinePath)
     await cache.initialize()
+    const signature = cache.signature()
+    const stamp = await cache.stamp()
     const hashes = new Map<string, string>()
     for (const [filePath, hash] of Object.entries(cache.getAllHashes())) {
       const rel = path.relative(this.baselinePath, filePath)
@@ -483,47 +515,42 @@ export class CodeIndexManager {
     }
 
     const store = factory.createVectorStore(this.baselinePath)
-    if (!store.openExisting) throw new Error("The configured vector store cannot open a shared baseline")
-    // Validate compatibility without keeping every worktree baseline connection open.
-    await store.openExisting()
-    await store.close?.()
-
-    return {
-      store,
-      signature: cache.signature(),
-      overlay: new WorktreeOverlay(this.workspacePath, this.baselinePath, hashes),
+    try {
+      if (!store.openExisting) throw new Error("The configured vector store cannot open a shared baseline")
+      // Validate compatibility without keeping every worktree baseline connection open.
+      await store.openExisting()
+      await store.close?.()
+      return {
+        store,
+        signature,
+        stamp,
+        overlay: new WorktreeOverlay(this.workspacePath, this.baselinePath, hashes),
+      }
+    } catch (err) {
+      await store.close?.()
+      log.warn("shared indexing baseline is unavailable; using an independent worktree index", {
+        workspacePath: this.workspacePath,
+        baselinePath: this.baselinePath,
+        err,
+      })
+      return { signature, stamp }
     }
   }
 
-  private async _recreateServices(): Promise<void> {
+  private async _recreateServices(prepared?: Baseline): Promise<void> {
     log.info("starting indexing service recreation", { workspacePath: this.workspacePath })
-    await this._orchestrator?.shutdown?.()
-    await this._baselineStore?.close?.()
-    this._orchestrator = undefined
-    this._baselineStore = undefined
-    this._searchService = undefined
-
-    this._serviceFactory = new CodeIndexServiceFactory(
+    const factory = new CodeIndexServiceFactory(
       this._configManager!,
       this.workspacePath,
       this._cacheManager!,
       this.cacheDirectory,
       (event) => this.handleTelemetry(event),
     )
-
     const ignoreInstance = await loadIgnore(this.workspacePath)
-
     const config = this._configManager!.getConfig()
-    const baseline = await this.createBaseline(this._serviceFactory)
-    this._baselineStore = baseline?.store
-    this._baselineSignature = baseline?.signature
-    this._overlay = baseline?.overlay
-
-    const { embedder, vectorStore, scanner, fileWatcher } = this._serviceFactory.createServices(
-      this._cacheManager!,
-      ignoreInstance,
-    )
-    fileWatcher.setOverlay?.(this._overlay)
+    const baseline = prepared ?? (await this.createBaseline(factory))
+    const { embedder, vectorStore, scanner, fileWatcher } = factory.createServices(this._cacheManager!, ignoreInstance)
+    fileWatcher.setOverlay?.(baseline?.overlay)
     log.info("created indexing services", {
       workspacePath: this.workspacePath,
       provider: embedder.embedderInfo.name,
@@ -532,13 +559,12 @@ export class CodeIndexManager {
     })
 
     const shouldValidate = embedder && embedder.embedderInfo.name === config.embedderProvider
-
     if (shouldValidate) {
       log.info("validating embedder configuration", {
         workspacePath: this.workspacePath,
         provider: embedder.embedderInfo.name,
       })
-      const validationResult = await this._serviceFactory.validateEmbedder(embedder)
+      const validationResult = await factory.validateEmbedder(embedder)
       if (!validationResult.valid) {
         const errorMessage = validationResult.error || "Embedder configuration validation failed"
         this._stateManager.setSystemState("Error", errorMessage)
@@ -550,7 +576,7 @@ export class CodeIndexManager {
       })
     }
 
-    this._orchestrator = new CodeIndexOrchestrator(
+    const orchestrator = new CodeIndexOrchestrator(
       this._configManager!,
       this._stateManager,
       this.workspacePath,
@@ -559,17 +585,33 @@ export class CodeIndexManager {
       scanner,
       fileWatcher,
       (event) => this.handleTelemetry(event),
-      this._overlay,
+      baseline?.overlay,
+      Boolean(this.baselinePath && !baseline?.store),
     )
-
-    this._searchService = new CodeIndexSearchService(
+    const search = new CodeIndexSearchService(
       this._configManager!,
       this._stateManager,
       embedder,
       vectorStore,
-      this._baselineStore && this._overlay ? { store: this._baselineStore, overlay: this._overlay } : undefined,
+      baseline?.store && baseline.overlay ? { store: baseline.store, overlay: baseline.overlay } : undefined,
     )
 
+    await this._orchestrator?.shutdown?.()
+    await this._baselineStore?.close?.()
+    if (this._disposed) {
+      await orchestrator.shutdown()
+      await baseline?.store?.close?.()
+      return
+    }
+
+    this._serviceFactory = factory
+    this._orchestrator = orchestrator
+    this._searchService = search
+    this._baselineStore = baseline?.store
+    this._baselineSignature = baseline?.signature
+    this._baselineStamp = baseline?.stamp
+    this._baselineSigned = Date.now()
+    this._overlay = baseline?.overlay
     this._stateManager.setSystemState("Standby", "")
     log.info("indexing services are ready", { workspacePath: this.workspacePath })
   }

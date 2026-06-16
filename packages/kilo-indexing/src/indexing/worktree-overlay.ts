@@ -64,35 +64,22 @@ export class WorktreeOverlay {
     this.ready = true
   }
 
-  async baselineResult(
-    result: VectorStoreSearchResult,
-    checks: Map<string, Promise<{ valid: boolean; content: string }>>,
-  ): Promise<boolean> {
+  async baselineResult(result: VectorStoreSearchResult, checks: Map<string, Promise<boolean>>): Promise<boolean> {
     const filePath = result.payload?.filePath
     if (typeof filePath !== "string") return false
     const rel = this.relative(filePath)
     if (!rel || this.shadows.has(rel) || this.blocked.has(rel)) return false
 
     const expected = this.baseline.get(rel)
-    if (!expected) return false
+    if (!expected || result.payload?.fileHash !== expected) return false
     const existing = checks.get(rel)
     const valid =
       existing ??
-      Promise.all([
-        readFile(path.join(this.baselinePath, ...rel.split("/")), "utf-8"),
-        readFile(path.join(this.workspacePath, ...rel.split("/")), "utf-8"),
-      ])
-        .then(([baseline, current]) => {
-          const hash = (content: string) => createHash("sha256").update(content).digest("hex")
-          return { valid: hash(baseline) === expected && hash(current) === expected, content: current }
-        })
-        .catch(() => ({ valid: false, content: "" }))
+      readFile(path.join(this.workspacePath, ...rel.split("/")), "utf-8")
+        .then((content) => createHash("sha256").update(content).digest("hex") === expected)
+        .catch(() => false)
     checks.set(rel, valid)
-    const checked = await valid
-    if (!checked.valid) return false
-
-    const chunk = result.payload?.codeChunk
-    return typeof chunk === "string" && checked.content.includes(chunk)
+    return valid
   }
 
   deltaResult(result: VectorStoreSearchResult): boolean {

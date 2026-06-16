@@ -55,7 +55,29 @@ test("routes multiple directories through the shared indexing worker", async () 
   expect(failures).toEqual([])
 })
 
-test("reuses enabled workers across provider initialization errors", async () => {
+test("allows same-directory recreation while disposal is pending", async () => {
+  await using tmp = await tmpdir()
+  const hooks = {
+    status() {},
+    telemetry() {},
+    warning() {},
+    log() {},
+    failure() {},
+  }
+  const first = IndexingWorker.create(tmp.path, tmp.path, hooks)
+  await first.init({ enabled: false, embedderProvider: "openai" })
+
+  const disposing = first.dispose()
+  const second = IndexingWorker.create(tmp.path, tmp.path, hooks)
+  const status = await second.init({ enabled: false, embedderProvider: "openai" })
+  await disposing
+  await second.dispose()
+
+  expect(second).not.toBe(first)
+  expect(status.state).toBe("Disabled")
+})
+
+test("releases enabled workers after provider initialization errors", async () => {
   await using tmp = await tmpdir()
   const drivers = new Set<IndexingWorker.Driver>()
 
@@ -107,6 +129,6 @@ test("reuses enabled workers across provider initialization errors", async () =>
   await engine.dispose()
 
   expect(status.state).toBe("Disabled")
-  expect(drivers.has(engine)).toBe(true)
-  expect(drivers.size).toBe(1)
+  expect(drivers.has(engine)).toBe(false)
+  expect(drivers.size).toBe(3)
 })

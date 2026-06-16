@@ -91,4 +91,11 @@ export class CacheManager implements ICacheManager {
     const entries = Object.entries(this.fileHashes).sort(([left], [right]) => left.localeCompare(right))
     return createHash("sha256").update(JSON.stringify(entries)).digest("hex")
   }
+
+  async stamp(): Promise<string | undefined> {
+    return fs
+      .stat(this.cachePath)
+      .then((value) => `${value.mtimeMs}:${value.ctimeMs}:${value.size}`)
+      .catch(() => undefined)
+  }
 }

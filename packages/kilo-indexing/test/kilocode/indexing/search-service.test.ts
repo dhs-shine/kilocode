@@ -9,10 +9,10 @@ import { CodeIndexSearchService } from "../../../src/indexing/search-service"
 import { CodeIndexStateManager } from "../../../src/indexing/state-manager"
 import { WorktreeOverlay } from "../../../src/indexing/worktree-overlay"
 
-const result = (filePath: string, score: number, codeChunk = filePath): VectorStoreSearchResult => ({
+const result = (filePath: string, score: number, codeChunk = filePath, fileHash?: string): VectorStoreSearchResult => ({
   id: `${filePath}:${score}`,
   score,
-  payload: { filePath, codeChunk, startLine: 1, endLine: 1 },
+  payload: { filePath, fileHash, codeChunk, startLine: 1, endLine: 1 },
 })
 
 const store = (results: VectorStoreSearchResult[], limits: number[]): IVectorStore =>
@@ -79,7 +79,7 @@ describe("CodeIndexSearchService worktree search", () => {
       embedder(calls),
       store([result("src/changed.ts", 0.9, "worktree")], deltaLimits),
       {
-        store: store([result("src/changed.ts", 0.99), result("src/base.ts", 0.8)], baseLimits),
+        store: store([result("src/changed.ts", 0.99), result("src/base.ts", 0.8, "src/base.ts", hash)], baseLimits),
         overlay,
       },
     )
@@ -105,7 +105,17 @@ describe("CodeIndexSearchService worktree search", () => {
     const state = new CodeIndexStateManager()
     state.setSystemState("Indexed")
     const service = new CodeIndexSearchService(config(), state, embedder([]), store([], []), {
-      store: store([result("file.ts", 0.99, "export const value = 'primary-only'")], []),
+      store: store(
+        [
+          result(
+            "file.ts",
+            0.99,
+            "export const value = 'primary-only'",
+            createHash("sha256").update("export const value = 'primary-only'").digest("hex"),
+          ),
+        ],
+        [],
+      ),
       overlay,
     })
 
@@ -144,24 +154,18 @@ describe("CodeIndexSearchService worktree search", () => {
     const limits: number[] = []
     const state = new CodeIndexStateManager()
     state.setSystemState("Indexed")
-    const service = new CodeIndexSearchService(
-      config(),
-      state,
-      embedder([]),
-      store([], []),
-      {
-        store: store(
-          [
-            result("src/a.ts", 0.99),
-            result("src/b.ts", 0.98),
-            result("src/c.ts", 0.8),
-            result("src/d.ts", 0.7),
-          ],
-          limits,
-        ),
-        overlay,
-      },
-    )
+    const service = new CodeIndexSearchService(config(), state, embedder([]), store([], []), {
+      store: store(
+        [
+          result("src/a.ts", 0.99),
+          result("src/b.ts", 0.98),
+          result("src/c.ts", 0.8, "src/c.ts", hash("src/c.ts")),
+          result("src/d.ts", 0.7, "src/d.ts", hash("src/d.ts")),
+        ],
+        limits,
+      ),
+      overlay,
+    })
 
     const results = await service.searchIndex("query")
 

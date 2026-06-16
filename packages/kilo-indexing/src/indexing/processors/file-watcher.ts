@@ -472,7 +472,9 @@ export class FileWatcher implements IFileWatcher {
                     retryCount: this.maxBatchRetries,
                   })
                   this.emitError("file-watcher:upsert_retry_exhausted", upsertError, this.maxBatchRetries)
-                  throw new Error(`Failed to upsert batch after ${this.maxBatchRetries} retries: ${upsertError.message}`)
+                  throw new Error(
+                    `Failed to upsert batch after ${this.maxBatchRetries} retries: ${upsertError.message}`,
+                  )
                 }
                 this.emitRetry(retryCount, batch.length, upsertError)
                 await new Promise((resolve) =>
@@ -735,6 +737,7 @@ export class FileWatcher implements IFileWatcher {
             vector,
             payload: {
               filePath: generateRelativeFilePath(normalizedAbsolutePath, this.workspacePath),
+              fileHash: block.fileHash,
               codeChunk: block.content,
               startLine: block.start_line,
               endLine: block.end_line,

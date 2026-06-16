@@ -13,7 +13,6 @@ type Entry = {
 const managers = new Map<string, Entry>()
 const context = new AsyncLocalStorage<string>()
 const queues = new Map<string, Promise<void>>()
-let initQueue = Promise.resolve()
 
 function send(message: Result | Event) {
   postMessage(message)
@@ -75,7 +74,9 @@ async function handle(request: Request) {
     }
 
     if (request.method === "search") {
-      const value = await managers.get(request.key)?.manager.searchIndex(request.input.query, request.input.directoryPrefix)
+      const value = await managers
+        .get(request.key)
+        ?.manager.searchIndex(request.input.query, request.input.directoryPrefix)
       send({ type: "result", id: request.id, method: "search", ok: true, value: value ?? [] })
       return
     }
@@ -90,17 +91,7 @@ async function handle(request: Request) {
 onmessage = (event: MessageEvent<Request>) => {
   const request = event.data
   const prior = queues.get(request.key) ?? Promise.resolve()
-  const task = prior.then(() =>
-    context.run(request.key, () => {
-      if (request.method !== "init") return handle(request)
-      const next = initQueue.then(() => handle(request))
-      initQueue = next.then(
-        () => undefined,
-        () => undefined,
-      )
-      return next
-    }),
-  )
+  const task = prior.then(() => context.run(request.key, () => handle(request)))
   const queued = task.finally(() => {
     if (queues.get(request.key) === queued) queues.delete(request.key)
   })
