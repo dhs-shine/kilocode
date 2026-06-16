@@ -38,6 +38,10 @@ class KiloPromptCompletionProvider(
         val action: () -> Unit,
     )
 
+    data class Highlight(val start: Int, val end: Int, val kind: HighlightKind)
+
+    enum class HighlightKind { MENTION, COMMAND }
+
     fun mentionPaths(): Set<String> = paths.toSet()
 
     fun clearMentions() {
@@ -46,6 +50,36 @@ class KiloPromptCompletionProvider(
     }
 
     fun clientNames(): Set<String> = actions.mapTo(mutableSetOf()) { it.name }
+
+    fun highlights(text: String): List<Highlight> = buildList {
+        val command = text.takeIf { it.startsWith('/') }
+            ?.drop(1)
+            ?.takeWhile { !it.isWhitespace() }
+            ?.takeIf { it.isNotBlank() }
+        val commands = workspace.state.value.commands.mapTo(mutableSetOf()) { it.name }
+        if (command != null && (command in clientNames() || command in commands)) {
+            add(Highlight(0, command.length + 1, HighlightKind.COMMAND))
+        }
+
+        val ranges = mutableListOf<IntRange>()
+        val values = (mentionPaths() + setOf("terminal", "git-changes"))
+            .filter { it.isNotBlank() }
+            .sortedByDescending { it.length }
+        values.forEach { value ->
+            val raw = "@$value"
+            var idx = text.indexOf(raw)
+            while (idx >= 0) {
+                val end = idx + raw.length
+                val valid = end == text.length || text[end].isWhitespace()
+                val range = idx until end
+                if (valid && ranges.none { it.first < end && idx < it.last + 1 }) {
+                    ranges += range
+                    add(Highlight(idx, end, HighlightKind.MENTION))
+                }
+                idx = text.indexOf(raw, idx + 1)
+            }
+        }
+    }
 
     override fun getAdvertisement(): String? = null
 

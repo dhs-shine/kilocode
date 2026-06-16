@@ -47,6 +47,8 @@ import ai.kilocode.client.vfs.KiloVfsManager
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.rpc.dto.PromptDto
 import ai.kilocode.rpc.dto.PromptPartDto
+import ai.kilocode.rpc.dto.PartSourceDto
+import ai.kilocode.rpc.dto.PartSourceTextDto
 import com.intellij.util.ui.JBUI
 import ai.kilocode.log.KiloLog
 import com.intellij.ide.BrowserUtil
@@ -415,6 +417,7 @@ class SessionUi(
                     prompt.reasoning.setItems(m.variants.map { ReasoningPicker.Item(it, variantTitle(it)) }, m.variant)
                     prompt.setResetVisible(m.modelOverride)
                     prompt.setReady(m.isReady())
+                    prompt.refreshHighlights()
                 }
 
                 is SessionControllerEvent.ViewChanged.ShowProgress -> {
@@ -655,28 +658,46 @@ class SessionUi(
 
     private fun mentionParts(text: String, paths: Set<String>): List<PromptPartDto> = buildList {
         paths.filter { text.contains("@$it") }.forEach { path ->
+            val token = "@$path"
+            val start = text.indexOf(token).takeIf { it >= 0 } ?: return@forEach
             val target = runCatching {
                 val item = Path.of(path)
                 if (item.isAbsolute) item else Path.of(workspace.directory).resolve(item).normalize()
             }.getOrNull() ?: return@forEach
-            add(PromptPartDto(type = "file", mime = "text/plain", url = target.toUri().toString(), filename = target.fileName?.toString()))
+            add(PromptPartDto(
+                type = "file",
+                mime = "text/plain",
+                url = target.toUri().toString(),
+                filename = target.fileName?.toString(),
+                source = source("file", token, start, path = path),
+            ))
         }
-        if (text.contains("@terminal")) {
+        val terminal = text.indexOf("@terminal")
+        if (terminal >= 0) {
             runBlocking { workspaces.terminalOutput(workspace.directory) }
                 ?.takeIf { it.isNotBlank() }
-                ?.let { add(dataPart("terminal-output.txt", it)) }
+                ?.let { add(dataPart("terminal-output.txt", it, source("resource", "@terminal", terminal, uri = "terminal"))) }
         }
-        if (text.contains("@git-changes")) {
+        val git = text.indexOf("@git-changes")
+        if (git >= 0) {
             runBlocking { workspaces.gitChanges(workspace.directory) }
                 ?.takeIf { it.isNotBlank() }
-                ?.let { add(dataPart("git-changes.txt", it)) }
+                ?.let { add(dataPart("git-changes.txt", it, source("resource", "@git-changes", git, uri = "git-changes"))) }
         }
     }
 
-    private fun dataPart(name: String, text: String): PromptPartDto {
+    private fun dataPart(name: String, text: String, source: PartSourceDto? = null): PromptPartDto {
         val data = URLEncoder.encode(text, StandardCharsets.UTF_8).replace("+", "%20")
-        return PromptPartDto(type = "file", mime = "text/plain", url = "data:text/plain;charset=utf-8,$data", filename = name)
+        return PromptPartDto(type = "file", mime = "text/plain", url = "data:text/plain;charset=utf-8,$data", filename = name, source = source)
     }
+
+    private fun source(type: String, token: String, start: Int, path: String? = null, uri: String? = null) = PartSourceDto(
+        type = type,
+        text = PartSourceTextDto(value = token, start = start.toDouble(), end = (start + token.length).toDouble()),
+        path = path,
+        uri = uri,
+        clientName = if (type == "resource") "jetbrains" else null,
+    )
 
     private fun openFile(path: String) {
         cs.launch {

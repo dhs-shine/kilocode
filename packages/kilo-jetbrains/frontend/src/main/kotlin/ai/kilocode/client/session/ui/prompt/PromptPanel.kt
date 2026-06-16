@@ -39,8 +39,13 @@ import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
+import com.intellij.openapi.editor.markup.HighlighterLayer
+import com.intellij.openapi.editor.markup.HighlighterTargetArea
+import com.intellij.openapi.editor.markup.RangeHighlighter
 import com.intellij.openapi.keymap.Keymap
 import com.intellij.openapi.keymap.KeymapManagerListener
 import com.intellij.openapi.keymap.KeymapUtil
@@ -98,6 +103,8 @@ class PromptPanel(
         private val SHIELD_ICON: Icon = IconLoader.getIcon("/icons/shield.svg", PromptPanel::class.java)
         private val SHIELD_FILLED_ICON: Icon = IconLoader.getIcon("/icons/shield-filled.svg", PromptPanel::class.java)
         private val WAND_ICON: Icon = IconLoader.getIcon("/icons/wand-sparkles.svg", PromptPanel::class.java)
+        private val MENTION_KEY = DefaultLanguageHighlighterColors.METADATA
+        private val COMMAND_KEY = DefaultLanguageHighlighterColors.KEYWORD
     }
 
     val mode = ModePicker()
@@ -120,6 +127,7 @@ class PromptPanel(
         )
     }
     private val attachments = mutableListOf<PromptAttachment>()
+    private val highlighters = mutableListOf<RangeHighlighter>()
     private val strip = PromptAttachmentStrip(project) { removeAttachment(it) }
     private var bus: MessageBusConnection? = null
     private var autoApprove = false
@@ -156,6 +164,7 @@ class PromptPanel(
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             installFileDrop(ed.contentComponent, "editor")
             installFileDrop(ed.scrollPane, "scroll")
+            syncHighlights()
             ed.contentComponent.addFocusListener(object : FocusAdapter() {
                 override fun focusGained(e: FocusEvent) {
                     repaint()
@@ -224,6 +233,7 @@ class PromptPanel(
                 invalidateEnhancement()
                 syncEditorHeight()
                 triggerCompletion(e)
+                syncHighlights()
                 onChange()
             }
         })
@@ -336,6 +346,12 @@ class PromptPanel(
         editor.background = style.editorScheme.defaultBackground
         syncEditorHeight()
         syncAutoApprove()
+        syncHighlights()
+    }
+
+    @RequiresEdt
+    fun refreshHighlights() {
+        syncHighlights()
     }
 
     @RequiresEdt
@@ -345,6 +361,33 @@ class PromptPanel(
         completion?.clearMentions()
         strip.clear()
         syncEditorHeight()
+        syncHighlights()
+    }
+
+    @RequiresEdt
+    private fun syncHighlights() {
+        val provider = completion ?: return
+        val ed = editor.getEditor(false) ?: return
+        highlighters.forEach(ed.markupModel::removeHighlighter)
+        highlighters.clear()
+        val length = ed.document.textLength
+        provider.highlights(ed.document.text).forEach { item ->
+            val start = item.start.coerceIn(0, length)
+            val end = item.end.coerceIn(start, length)
+            if (start == end) return@forEach
+            highlighters += ed.markupModel.addRangeHighlighter(
+                key(item.kind),
+                start,
+                end,
+                HighlighterLayer.SYNTAX + 1,
+                HighlighterTargetArea.EXACT_RANGE,
+            )
+        }
+    }
+
+    private fun key(kind: KiloPromptCompletionProvider.HighlightKind): TextAttributesKey = when (kind) {
+        KiloPromptCompletionProvider.HighlightKind.MENTION -> MENTION_KEY
+        KiloPromptCompletionProvider.HighlightKind.COMMAND -> COMMAND_KEY
     }
 
     @RequiresEdt

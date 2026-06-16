@@ -1,16 +1,19 @@
 package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.PromptAttachment
 import ai.kilocode.client.session.ui.attachment.AttachmentCard
 import ai.kilocode.client.session.ui.attachment.AttachmentCardItem
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.ui.prompt.KiloPromptCompletionProvider
 import ai.kilocode.client.session.ui.prompt.PROMPT_ATTACHMENT_PASTE_HANDLER_KEY
 import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteHandler
 import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import com.intellij.icons.AllIcons
 import com.intellij.notification.Notification
 import com.intellij.notification.Notifications
@@ -19,6 +22,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.actions.PasteAction
@@ -32,7 +36,11 @@ import com.intellij.util.Producer
 import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import java.awt.Container
 import java.awt.BorderLayout
 import java.awt.datatransfer.DataFlavor
@@ -53,11 +61,22 @@ import javax.swing.SwingUtilities
 @Suppress("UnstableApiUsage")
 class PromptPanelTest : BasePlatformTestCase() {
     private val roots = mutableListOf<SessionRootPanel>()
+    private lateinit var scope: CoroutineScope
+    private lateinit var rpc: FakeWorkspaceRpcApi
+    private lateinit var workspaces: KiloWorkspaceService
+
+    override fun setUp() {
+        super.setUp()
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        rpc = FakeWorkspaceRpcApi()
+        workspaces = KiloWorkspaceService(scope, rpc)
+    }
 
     override fun tearDown() {
         try {
             roots.asReversed().forEach { it.removeNotify() }
             roots.clear()
+            scope.cancel()
         } finally {
             super.tearDown()
         }
@@ -195,6 +214,47 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
         assertTrue(editor.settings.isUseSoftWraps)
         assertFalse(editor.settings.isPaintSoftWraps)
+    }
+
+    fun `test prompt editor highlights validated commands and mentions`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        field.text = "/new use @terminal and @unknown"
+        UIUtil.dispatchAllInvocationEvents()
+
+        val spans = spans(field)
+        assertTrue(spans.contains("/new" to DefaultLanguageHighlighterColors.KEYWORD))
+        assertTrue(spans.contains("@terminal" to DefaultLanguageHighlighterColors.METADATA))
+        assertFalse(spans.any { it.first == "@unknown" })
+    }
+
+    fun `test prompt clear removes prompt highlighters`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        field.text = "use @terminal"
+        UIUtil.dispatchAllInvocationEvents()
+        assertEquals(1, field.getEditor(false)!!.markupModel.allHighlighters.size)
+
+        panel.clear()
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEquals(0, field.getEditor(false)!!.markupModel.allHighlighters.size)
+    }
+
+    fun `test prompt highlighters stay bounded across edits`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        repeat(50) {
+            field.text = if (it % 2 == 0) "/new @terminal" else "/new @git-changes"
+            UIUtil.dispatchAllInvocationEvents()
+            assertTrue(field.getEditor(false)!!.markupModel.allHighlighters.size <= 2)
+        }
     }
 
     fun `test prompt editor shrinks when lines are removed`() {
@@ -730,6 +790,19 @@ class PromptPanelTest : BasePlatformTestCase() {
         UIUtil.dispatchAllInvocationEvents()
         roots.add(root)
         return root
+    }
+
+    private fun completion() = KiloPromptCompletionProvider(
+        workspace = workspaces.workspace("/test"),
+        service = workspaces,
+        actions = listOf(KiloPromptCompletionProvider.SlashAction("new", "New") {}),
+    )
+
+    private fun spans(field: EditorTextField): List<Pair<String, com.intellij.openapi.editor.colors.TextAttributesKey?>> {
+        val editor = field.getEditor(false)!!
+        return editor.markupModel.allHighlighters.map {
+            field.text.substring(it.startOffset, it.endOffset) to it.textAttributesKey
+        }
     }
 
     private fun createEditor(): Editor {

@@ -18,6 +18,8 @@ import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
 import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.PartDto
+import ai.kilocode.rpc.dto.PartSourceDto
+import ai.kilocode.rpc.dto.PartSourceTextDto
 import ai.kilocode.rpc.dto.PermissionAlwaysRulesDto
 import ai.kilocode.rpc.dto.PermissionFileDiffDto
 import ai.kilocode.rpc.dto.PermissionReplyDto
@@ -519,6 +521,7 @@ object KiloCliDataParser {
             part.mime?.let { fields += "\"mime\":${escape(it)}" }
             part.url?.let { fields += "\"url\":${escape(it)}" }
             part.filename?.let { fields += "\"filename\":${escape(it)}" }
+            part.source?.let { fields += "\"source\":${sourceJson(it)}" }
             return "{${fields.joinToString(",")}}"
         }
         fields += "\"text\":${escape(part.text.orEmpty())}"
@@ -649,6 +652,8 @@ object KiloCliDataParser {
             mime = obj.str("mime"),
             url = obj.str("url"),
             filename = obj.str("filename"),
+            synthetic = obj.flagOrNull("synthetic"),
+            source = parseSource(obj["source"]),
             tool = obj.str("tool"),
             callID = obj.str("callID"),
             state = state?.str("status"),
@@ -674,6 +679,37 @@ object KiloCliDataParser {
     private fun readPayload(line: String): Boolean {
         if (!READ_TOOL_LINE.containsMatchIn(line)) return false
         return READ_TOOL_PATH.containsMatchIn(line)
+    }
+
+    private fun parseSource(raw: JsonElement?): PartSourceDto? {
+        val obj = raw.obj() ?: return null
+        val type = obj.str("type") ?: return null
+        val text = obj["text"].obj() ?: return null
+        val value = text.str("value") ?: return null
+        val start = text.num("start") ?: return null
+        val end = text.num("end") ?: return null
+        return PartSourceDto(
+            type = type,
+            text = PartSourceTextDto(value = value, start = start, end = end),
+            path = obj.str("path"),
+            clientName = obj.str("clientName"),
+            uri = obj.str("uri"),
+            name = obj.str("name"),
+            kind = obj.long("kind")?.safeInt(),
+        )
+    }
+
+    private fun sourceJson(source: PartSourceDto): String {
+        val fields = mutableListOf(
+            "\"type\":${escape(source.type)}",
+            "\"text\":{\"value\":${escape(source.text.value)},\"start\":${source.text.start},\"end\":${source.text.end}}",
+        )
+        source.path?.let { fields += "\"path\":${escape(it)}" }
+        source.clientName?.let { fields += "\"clientName\":${escape(it)}" }
+        source.uri?.let { fields += "\"uri\":${escape(it)}" }
+        source.name?.let { fields += "\"name\":${escape(it)}" }
+        source.kind?.let { fields += "\"kind\":$it" }
+        return "{${fields.joinToString(",")}}"
     }
 
     internal fun parseTodos(raw: JsonElement?): List<TodoDto> {
@@ -1107,6 +1143,11 @@ private fun JsonObject?.bool(key: String): Boolean =
 private fun JsonObject.flag(key: String, default: Boolean): Boolean {
     val prim = this[key]?.jsonPrimitive ?: return default
     return prim.booleanOrNull ?: prim.contentOrNull?.toBooleanStrictOrNull() ?: default
+}
+
+private fun JsonObject.flagOrNull(key: String): Boolean? {
+    val prim = this[key]?.jsonPrimitive ?: return null
+    return prim.booleanOrNull ?: prim.contentOrNull?.toBooleanStrictOrNull()
 }
 
 private fun Long.safeInt() = coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()

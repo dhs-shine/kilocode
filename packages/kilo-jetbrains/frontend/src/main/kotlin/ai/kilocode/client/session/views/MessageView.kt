@@ -96,6 +96,14 @@ class MessageView(
             sources.remove(content.id)
             val stale = if (id == null) parts.remove(content.id) else null
             if (stale != null) {
+                if (stale is PromptAttachmentView) {
+                    stale.remove(content.id)
+                    if (!stale.isEmpty()) {
+                        refresh()
+                        return
+                    }
+                    attachments = null
+                }
                 detach(stale)
                 remove(stale)
                 Disposer.dispose(stale)
@@ -232,6 +240,9 @@ class MessageView(
      * pending/running question tool part linked to the active question.
      */
     private fun isHidden(content: Content): Boolean {
+        if (role == SessionUiStyle.View.Message.USER_ROLE && content is FileAttachment) {
+            return content.source != null && content.mime.lowercase().startsWith("text/plain")
+        }
         if (content !is Tool) return false
         if (role == SessionUiStyle.View.Message.USER_ROLE && content.name == "read") return true
         if (content.name == "todoread") return true
