@@ -5,15 +5,13 @@ import ai.kilocode.client.util.UiTimerSource
 import com.intellij.openapi.application.ApplicationManager
 
 class TestUiTimers : UiTimerSource {
-    private val timers = mutableListOf<FakeTimer>()
+    private val timers = linkedSetOf<TestTimer>()
     private var time = 0L
 
     override fun now(): Long = time
 
     override fun timer(ms: Int, repeats: Boolean, action: () -> Unit): UiTimer {
-        val timer = FakeTimer(ms.coerceAtLeast(0), repeats, action)
-        timers.add(timer)
-        return timer
+        return TestTimer(ms.coerceAtLeast(0), repeats, action)
     }
 
     fun advanceBy(ms: Long) {
@@ -39,7 +37,7 @@ class TestUiTimers : UiTimerSource {
         app.invokeAndWait(action)
     }
 
-    private inner class FakeTimer(
+    private inner class TestTimer(
         private val ms: Int,
         private val repeats: Boolean,
         private val action: () -> Unit,
@@ -53,16 +51,19 @@ class TestUiTimers : UiTimerSource {
             if (running) return
             running = true
             due = time + ms
+            timers.add(this)
         }
 
         override fun stop() {
             running = false
             due = Long.MAX_VALUE
+            timers.remove(this)
         }
 
         override fun restart() {
             running = true
             due = time + ms
+            timers.add(this)
         }
 
         override fun isRunning(): Boolean = running
@@ -70,7 +71,7 @@ class TestUiTimers : UiTimerSource {
         fun fire() {
             if (!running || due > time) return
             if (repeats) {
-                due += ms.coerceAtLeast(1)
+                due = time + ms.coerceAtLeast(1)
             } else {
                 stop()
             }

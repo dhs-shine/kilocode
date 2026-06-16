@@ -74,9 +74,6 @@ internal class DelayedState(
     override fun dispose() {
         alive = false
         cancel()
-        edt {
-            timer.stop()
-        }
     }
 
     private data class Pending<T : Any>(
