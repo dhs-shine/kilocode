@@ -16,11 +16,48 @@ concurrency:
 permissions:
   contents: read
   checks: write
+  pull-requests: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  changes:
+    name: detect JetBrains changes
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    outputs:
+      jetbrains: ${{ steps.filter.outputs.jetbrains }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Detect JetBrains changes
+        id: filter
+        uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
+        with:
+          filters: |
+            jetbrains:
+              - 'packages/kilo-jetbrains/**'
+              - 'packages/opencode/src/**'
+              - 'packages/opencode/package.json'
+              - 'packages/opencode/tsconfig.json'
+              - 'packages/opencode/bunfig.toml'
+              - 'packages/core/**'
+              - 'packages/kilo-gateway/**'
+              - 'packages/kilo-indexing/**'
+              - 'packages/kilo-telemetry/**'
+              - 'packages/plugin/**'
+              - 'packages/plugin-atomic-chat/**'
+              - 'packages/sdk/**'
+              - 'packages/script/**'
+              - 'packages/ui/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'bunfig.toml'
+              - 'patches/**'
+              - '.github/actions/setup-bun/**'
+              - '.github/workflows/test.yml'
+
   unit:
     name: unit (${{ matrix.settings.name }})
     strategy:
@@ -107,6 +144,8 @@ jobs:
   # kilocode_change start
   jetbrains:
     name: jetbrains
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.jetbrains == 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     defaults:
       run:
@@ -160,13 +199,21 @@ jobs:
     name: test (linux)
     runs-on: blacksmith-4vcpu-ubuntu-2404
     needs:
+      - changes
       - unit
       - jetbrains
     if: always()
     steps:
       - name: Verify upstream test jobs passed
         run: |
+          echo "changes=${{ needs.changes.result }}"
           echo "unit=${{ needs.unit.result }}"
           echo "jetbrains=${{ needs.jetbrains.result }}"
+          test "${{ needs.changes.result }}" = "success"
           test "${{ needs.unit.result }}" = "success"
-          test "${{ needs.jetbrains.result }}" = "success"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ needs.changes.outputs.jetbrains }}" = "true" ]; then
+            test "${{ needs.jetbrains.result }}" = "success"
+          else
+            test "${{ needs.changes.outputs.jetbrains }}" = "false"
+            test "${{ needs.jetbrains.result }}" = "skipped"
+          fi
