@@ -37,6 +37,10 @@ export const KiloClawNav: NavSection[] = [
           { href: "/kiloclaw/development-tools/google", children: "Google Workspace" },
           { href: "/kiloclaw/development-tools/linear", children: "Linear" },
           { href: "/kiloclaw/development-tools/composio", children: "Composio" },
+          { href: "/kiloclaw/tools/1password", children: "1Password" },
+          { href: "/kiloclaw/tools/brave-search", children: "Brave Search" },
+          { href: "/kiloclaw/tools/agentcard", children: "AgentCard" },
+          { href: "/kiloclaw/tools/other-tools", children: "Other Tools" },
         ],
       },
       {
@@ -46,17 +50,6 @@ export const KiloClawNav: NavSection[] = [
           { href: "/kiloclaw/triggers", children: "Overview" },
           { href: "/kiloclaw/triggers/webhooks", children: "Webhooks" },
           { href: "/kiloclaw/triggers/scheduled", children: "Scheduled" },
-        ],
-      },
-      {
-        href: "/kiloclaw/tools",
-        children: "Tools",
-        subLinks: [
-          { href: "/kiloclaw/tools", children: "Overview" },
-          { href: "/kiloclaw/tools/1password", children: "1Password" },
-          { href: "/kiloclaw/tools/brave-search", children: "Brave Search" },
-          { href: "/kiloclaw/tools/agentcard", children: "AgentCard" },
-          { href: "/kiloclaw/tools/other-tools", children: "Other Tools" },
         ],
       },
       {
