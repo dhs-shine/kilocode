@@ -167,19 +167,19 @@ describe("experimental.session.list", () => {
       try {
         const { Server } = await import("../../src/server/server")
 
-        const branch = await WithInstance.provide({
+        const branch = await withTestInstance({
           directory: worktree,
-          fn: () => create("worktree-session"),
+          fn: (ctx) => create("worktree-session", ctx),
         })
 
-        const root = await WithInstance.provide({
+        const root = await withTestInstance({
           directory: first.path,
-          fn: async () => ({
+          fn: async (ctx) => ({
             app: Server.Default().app,
             project: await Server.Default().app.request("/project/current", {
               headers: { "x-kilo-directory": first.path },
             }),
-            session: await create("root-session"),
+            session: await create("root-session", ctx),
           }),
         })
 
@@ -219,19 +219,19 @@ describe("experimental.session.list", () => {
       try {
         const { Server } = await import("../../src/server/server")
 
-        const branch = await WithInstance.provide({
+        const branch = await withTestInstance({
           directory: worktree,
-          fn: () => create("worktree-session"),
+          fn: (ctx) => create("worktree-session", ctx),
         })
 
-        const root = await WithInstance.provide({
+        const root = await withTestInstance({
           directory: first.path,
-          fn: async () => ({
+          fn: async (ctx) => ({
             app: Server.Default().app,
             project: await Server.Default().app.request("/project/current", {
               headers: { "x-kilo-directory": first.path },
             }),
-            session: await create("root-session"),
+            session: await create("root-session", ctx),
           }),
         })
 

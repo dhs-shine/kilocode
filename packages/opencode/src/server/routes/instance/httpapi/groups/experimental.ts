@@ -177,13 +177,13 @@ export const ExperimentalApi = HttpApi.make("experimental")
         ),
         HttpApiEndpoint.get("worktree", ExperimentalPaths.worktree, {
           query: WorkspaceRoutingQuery,
-          success: described(WorktreeList, "List of worktrees"),
+          success: described(WorktreeList, "List of worktrees"), // kilocode_change
           error: WorktreeApiError,
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "worktree.list",
             summary: "List worktrees",
-            description: "List all git worktrees for the current project and whether Kilo manages them.",
+            description: "List all git worktrees for the current project and whether Kilo manages them.", // kilocode_change
           }),
         ),
         HttpApiEndpoint.post("worktreeCreate", ExperimentalPaths.worktree, {
