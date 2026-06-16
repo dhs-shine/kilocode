@@ -3,7 +3,7 @@ import type { KiloClient } from "@kilocode/sdk/v2/client"
 import { getMigrationErrorMessage } from "../errors/migration-error"
 import type { MigrationSessionInfo, MigrationSessionProgress, MigrationSessionSelection } from "../legacy-types"
 import { createSessionID } from "./lib/ids"
-import type { LegacyHistoryItem } from "./lib/legacy-types"
+import type { LegacyApiMessage, LegacyHistoryItem } from "./lib/legacy-types"
 import { parseSession } from "./parser"
 
 export interface MigrateOverrides {
@@ -11,6 +11,8 @@ export interface MigrateOverrides {
   dir?: string
   /** Pre-resolved history item — used when a custom dir is provided and globalState is unavailable. */
   item?: LegacyHistoryItem
+  /** Pre-parsed conversation — used by importers with non-legacy storage files. */
+  conversation?: LegacyApiMessage[]
 }
 
 type Result =
@@ -81,7 +83,7 @@ export async function migrate(
     }
 
     progress({ phase: "preparing" })
-    const payload = await parseSession(input.id, dir, item)
+    const payload = await parseSession(input.id, dir, item, overrides?.conversation)
     progress({ phase: "storing" })
     const project = await client.kilocode.sessionImport.project(payload.project, { throwOnError: true })
     const projectID = project.data?.id ?? payload.project.id

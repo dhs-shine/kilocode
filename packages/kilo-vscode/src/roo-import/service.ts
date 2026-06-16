@@ -14,7 +14,7 @@
 import * as path from "node:path"
 import * as vscode from "vscode"
 import type { MigrationSessionInfo } from "../legacy-migration/legacy-types"
-import type { LegacyHistoryItem } from "../legacy-migration/sessions/lib/legacy-types"
+import type { LegacyApiMessage, LegacyHistoryItem } from "../legacy-migration/sessions/lib/legacy-types"
 
 /**
  * Known Roo Code VS Code extension IDs.
@@ -23,15 +23,20 @@ import type { LegacyHistoryItem } from "../legacy-migration/sessions/lib/legacy-
 const ROO_CODE_EXTENSION_IDS = [
   "roovscode.roo-cline",
   "roovscode.roo-code",
+  "rooveterinaryinc.roo-cline",
   "rooveterinaryinc.roo-code",
   "rooveterinaryinc.roo-code-nightly",
 ]
+
+const API_HISTORY_FILE = "api_conversation_history.json"
+const UI_MESSAGES_FILE = "ui_messages.json"
 
 export interface RooImportSource {
   /** Absolute path to the Roo Code tasks directory. */
   dir: string
   sessions: MigrationSessionInfo[]
   items: LegacyHistoryItem[]
+  formats: Record<string, "api" | "ui">
 }
 
 /**
@@ -62,32 +67,34 @@ async function scanTasksDir(dir: string): Promise<RooImportSource | null> {
 
   const sessions: MigrationSessionInfo[] = []
   const items: LegacyHistoryItem[] = []
+  const formats: Record<string, "api" | "ui"> = {}
 
   for (const [name, type] of entries) {
     if (type !== vscode.FileType.Directory) continue
     const taskDir = path.join(dir, name)
-    const histFile = vscode.Uri.file(path.join(taskDir, "api_conversation_history.json"))
-    const exists = await vscode.workspace.fs.stat(histFile).then(
-      () => true,
-      () => false,
-    )
-    if (!exists) continue
+    const hasApi = await exists(path.join(taskDir, API_HISTORY_FILE))
+    const hasUi = hasApi ? false : await exists(path.join(taskDir, UI_MESSAGES_FILE))
+    if (!hasApi && !hasUi) continue
 
     const meta = await readHistoryItem(taskDir, name)
+    const fallback = hasApi || meta.title !== formatFallbackTitle(name) ? meta : await readUiMetadata(taskDir, name)
 
     sessions.push({
       id: name,
-      title: meta.title,
-      directory: meta.workspace,
-      time: meta.ts,
+      title: fallback.title,
+      directory: fallback.workspace,
+      time: fallback.ts,
     })
 
     items.push({
       id: name,
-      ts: meta.ts,
-      task: meta.title,
-      workspace: meta.workspace,
+      ts: fallback.ts,
+      task: fallback.title,
+      workspace: fallback.workspace,
+      mode: fallback.mode,
     })
+
+    formats[name] = hasApi ? "api" : "ui"
   }
 
   if (sessions.length === 0) return null
@@ -96,13 +103,21 @@ async function scanTasksDir(dir: string): Promise<RooImportSource | null> {
   sessions.sort((a, b) => b.time - a.time)
   items.sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0))
 
-  return { dir, sessions, items }
+  return { dir, sessions, items, formats }
+}
+
+async function exists(file: string) {
+  return vscode.workspace.fs.stat(vscode.Uri.file(file)).then(
+    () => true,
+    () => false,
+  )
 }
 
 interface TaskMeta {
   title: string
   workspace: string
   ts: number
+  mode?: string
 }
 
 /**
@@ -118,10 +133,12 @@ async function readHistoryItem(taskDir: string, id: string): Promise<TaskMeta> {
     const ts = typeof json.ts === "number" ? json.ts : parseTaskTimestamp(id)
     const title = typeof json.task === "string" && json.task.trim() ? json.task.trim().slice(0, 120) : undefined
     const workspace = typeof json.workspace === "string" ? json.workspace : ""
+    const mode = typeof json.mode === "string" ? json.mode : undefined
     return {
       title: title ?? formatFallbackTitle(id),
       workspace,
       ts,
+      mode,
     }
   } catch {
     // history_item.json not available — fall back to conversation file
@@ -130,6 +147,62 @@ async function readHistoryItem(taskDir: string, id: string): Promise<TaskMeta> {
   const ts = parseTaskTimestamp(id)
   const title = await extractTitleFromHistory(path.join(taskDir, "api_conversation_history.json"), id)
   return { title, workspace: "", ts }
+}
+
+async function readUiMetadata(taskDir: string, id: string): Promise<TaskMeta> {
+  const conversation = await readRooUiConversation(taskDir, id)
+  const first = conversation.find((msg) => msg.role === "user")
+  const title =
+    typeof first?.content === "string" && first.content.trim() ? first.content.trim().slice(0, 120) : undefined
+  return {
+    title: title ?? formatFallbackTitle(id),
+    workspace: "",
+    ts: first?.ts ?? parseTaskTimestamp(id),
+  }
+}
+
+interface RooUiMessage {
+  ts?: number
+  type?: string
+  say?: string
+  ask?: string
+  text?: string
+}
+
+export async function readRooUiConversation(taskDir: string, id: string): Promise<LegacyApiMessage[]> {
+  const file = path.join(taskDir, UI_MESSAGES_FILE)
+  const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(file))
+  const json = JSON.parse(Buffer.from(bytes).toString("utf8")) as unknown
+  if (!Array.isArray(json)) return []
+
+  return json.flatMap((entry, index) => toApiMessage(entry, index, id))
+}
+
+function toApiMessage(input: unknown, index: number, id: string): LegacyApiMessage[] {
+  if (!input || typeof input !== "object") return []
+  const msg = input as RooUiMessage
+  const text = typeof msg.text === "string" ? msg.text.trim() : ""
+  if (!text) return []
+
+  const role = getRole(msg, index)
+  if (!role) return []
+
+  return [
+    {
+      role,
+      content: text,
+      ts: msg.ts ?? parseTaskTimestamp(id),
+      ...(msg.say === "reasoning" ? { type: "reasoning" as const, text } : {}),
+    },
+  ]
+}
+
+function getRole(msg: RooUiMessage, index: number): "user" | "assistant" | undefined {
+  if (msg.type === "ask" && (msg.ask === "text" || msg.ask === "followup")) return "user"
+  if (msg.type !== "say") return undefined
+  if (index === 0 && msg.say === "text") return "user"
+  if (msg.say === "text" || msg.say === "reasoning") return "assistant"
+  return undefined
 }
 
 /**

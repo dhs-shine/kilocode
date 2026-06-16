@@ -7,12 +7,13 @@
  * is needed.
  */
 
+import * as path from "node:path"
 import * as vscode from "vscode"
 import type { KiloClient } from "@kilocode/sdk/v2/client"
 import { migrate } from "../legacy-migration/sessions/migrate"
 import type { MigrationSessionSelection } from "../legacy-migration/legacy-types"
 import { buildSessionMeta } from "../legacy-migration/migration-session-progress"
-import { detectRooCodeSessions } from "./service"
+import { detectRooCodeSessions, readRooUiConversation } from "./service"
 
 export async function importRooCodeSessionsCommand(
   context: vscode.ExtensionContext,
@@ -34,7 +35,7 @@ export async function importRooCodeSessionsCommand(
     return
   }
 
-  const { sessions, items, dir } = source
+  const { sessions, items, dir, formats } = source
   const picked = await vscode.window.showQuickPick(
     sessions.map((s) => ({
       label: s.title,
@@ -67,13 +68,14 @@ export async function importRooCodeSessionsCommand(
         const item = items.find((i) => i.id === id)
         const selection: MigrationSessionSelection = { id }
         const meta = buildSessionMeta(session, index, selected.length)
+        const conversation = formats[id] === "ui" ? await readRooUiConversation(path.join(dir, id), id) : undefined
 
         progress.report({
           message: `${index + 1} / ${selected.length}: ${session?.title ?? id}`,
           increment: 100 / selected.length,
         })
 
-        const result = await migrate(selection, context, client, meta, undefined, { dir, item })
+        const result = await migrate(selection, context, client, meta, undefined, { dir, item, conversation })
         if (result.ok) {
           imported++
         } else {
