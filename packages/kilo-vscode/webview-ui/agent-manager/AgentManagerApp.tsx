@@ -110,8 +110,9 @@ import { ApplyDialog } from "./ApplyDialog"
 import { groupApplyConflicts } from "./apply-conflicts"
 import type { ReviewComment } from "../diff-viewer/review-comments"
 import { clearReviewComposer, createReviewComposer } from "../diff-viewer/review-annotations"
-import { SidebarSearchMenu, type SidebarSearchMenuRef } from "./SidebarSearchMenu"
+import type { SidebarSearchMenuRef } from "./SidebarSearchMenu"
 import { createSidebarSearch, type SidebarSearchItem } from "./sidebar-search"
+import { WorktreeSectionActions } from "./WorktreeSectionActions"
 import { BranchSelect } from "../src/components/shared/BranchSelect"
 import { WorktreeItem } from "./WorktreeItem"
 import SectionHeader from "./SectionHeader"
@@ -2229,114 +2230,23 @@ const AgentManagerContent: Component = () => {
         <div class={`am-section ${sessionsCollapsed() ? "am-section-grow" : ""}`}>
           <div class="am-section-header">
             <span class="am-section-label">{t("agentManager.section.worktrees")}</span>
-            <div class="am-section-actions">
-              <SidebarSearchMenu
-                ref={(value) => {
-                  sidebarSearchMenu = value
-                }}
-                items={sidebarSearch.items}
-                current={sidebarSearch.current}
-                keybind={kb().search ?? ""}
-                labels={{
-                  search: t("agentManager.sidebarSearch.label"),
-                  scope: t("agentManager.sidebarSearch.scope"),
-                  sessions: t("agentManager.section.sessions"),
-                  contexts: t("agentManager.sidebarSearch.contexts"),
-                  waiting: t("agentManager.tabsMenu.status.waiting"),
-                  retry: t("agentManager.tabsMenu.status.retry"),
-                }}
-                onSelect={focusSidebarSearchItem}
-              />
-              <Show when={isGitRepo()}>
-                <div class="am-split-button">
-                  <IconButton
-                    icon="plus"
-                    size="small"
-                    variant="ghost"
-                    label={t("agentManager.worktree.new")}
-                    onClick={createWorktree}
-                    disabled={!loaded()}
-                  />
-                  <DropdownMenu gutter={4} placement="bottom-end">
-                    <DropdownMenu.Trigger
-                      class="am-split-arrow"
-                      aria-label={t("agentManager.worktree.advancedOptions")}
-                      disabled={!loaded()}
-                    >
-                      <Icon name="chevron-down" size="small" />
-                    </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
-                      <DropdownMenu.Content class="am-split-menu">
-                        <DropdownMenu.Item onSelect={createWorktree}>
-                          <span class="am-worktree-menu-gap" aria-hidden="true" />
-                          <DropdownMenu.ItemLabel class="am-worktree-menu-label">
-                            <span>{t("sidebar.session.newWorktree.from")}</span>
-                            <span class="am-worktree-menu-branch">
-                              <Icon name="branch" size="small" />
-                              <strong>{repoDefaultBranch()}</strong>
-                            </span>
-                          </DropdownMenu.ItemLabel>
-                          <span class="am-menu-shortcut">
-                            {parseBindingTokens(kb().newWorktree ?? "").map((token) => (
-                              <kbd class="am-menu-key">{token}</kbd>
-                            ))}
-                          </span>
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Item onSelect={showAdvancedWorktreeDialog}>
-                          <Icon name="settings-gear" size="small" />
-                          <DropdownMenu.ItemLabel>{t("agentManager.dialog.configureWorktree")}</DropdownMenu.ItemLabel>
-                          <span class="am-menu-shortcut">
-                            {parseBindingTokens(kb().advancedWorktree ?? "").map((token) => (
-                              <kbd class="am-menu-key">{token}</kbd>
-                            ))}
-                          </span>
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Separator />
-                        <DropdownMenu.Item onSelect={() => newSection()}>
-                          <Icon name="plus" size="small" />
-                          <DropdownMenu.ItemLabel>{t("agentManager.worktree.newSection")}</DropdownMenu.ItemLabel>
-                        </DropdownMenu.Item>
-                      </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
-                  </DropdownMenu>
-                </div>
-                <TooltipKeybind
-                  title={t("agentManager.shortcuts.title")}
-                  keybind={kb().showShortcuts ?? ""}
-                  placement="bottom"
-                >
-                  <IconButton
-                    icon="keyboard"
-                    size="small"
-                    variant="ghost"
-                    label={t("agentManager.shortcuts.title")}
-                    onClick={metrics.click("keyboard_shortcuts", "worktrees_header", handleShowKeyboardShortcuts)}
-                  />
-                </TooltipKeybind>
-                <DropdownMenu gutter={4} placement="bottom-end">
-                  <DropdownMenu.Trigger
-                    as={IconButton}
-                    icon="settings-gear"
-                    size="small"
-                    variant="ghost"
-                    label={t("agentManager.worktree.settings")}
-                  />
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.Content class="am-split-menu">
-                      <DropdownMenu.Item onSelect={setupScript}>
-                        <DropdownMenu.ItemLabel>{t("agentManager.worktree.setupScript")}</DropdownMenu.ItemLabel>
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Separator />
-                      <DropdownMenu.Item onSelect={handleChangeDefaultBaseBranch}>
-                        <DropdownMenu.ItemLabel>
-                          {t("agentManager.worktree.defaultBaseBranch")}: {repoDefaultBranch()}
-                        </DropdownMenu.ItemLabel>
-                      </DropdownMenu.Item>
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Portal>
-                </DropdownMenu>
-              </Show>
-            </div>
+            <WorktreeSectionActions
+              items={sidebarSearch.items}
+              current={sidebarSearch.current}
+              bindings={kb()}
+              branch={repoDefaultBranch()}
+              git={isGitRepo()}
+              loaded={loaded()}
+              t={t}
+              onRef={(value) => (sidebarSearchMenu = value)}
+              onSelect={focusSidebarSearchItem}
+              onCreate={createWorktree}
+              onAdvanced={showAdvancedWorktreeDialog}
+              onSection={newSection}
+              onShortcuts={metrics.click("keyboard_shortcuts", "worktrees_header", handleShowKeyboardShortcuts)}
+              onSetup={setupScript}
+              onBranch={handleChangeDefaultBaseBranch}
+            />
           </div>
           <div class="am-worktree-list">
             <Show
