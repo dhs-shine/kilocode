@@ -157,18 +157,17 @@ function render(groups: Group) {
   const lines: string[] = []
 
   for (const [section, cats] of groups) {
-    const entries = [...cats.values()].flat()
-    if (entries.length === 0) continue
-
-    lines.push(`## ${section}`, "")
     for (const [category, items] of cats) {
       if (items.length === 0) continue
-      if (category) lines.push(`### ${category}`, "")
-      lines.push(...items, "")
+      const prefix = [section, category].filter(Boolean).join(" ")
+      for (const item of items) {
+        const text = item.replace(/^\s*[-*]\s+/, "").trim()
+        lines.push(`- ${prefix}: ${text}`)
+      }
     }
   }
 
-  return lines.join("\n").trim()
+  return lines.join("\n")
 }
 
 function isRelease(input: unknown): input is Release {

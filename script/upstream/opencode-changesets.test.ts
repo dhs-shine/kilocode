@@ -40,9 +40,7 @@ describe("opencode changesets", () => {
 
 Changes from opencode v1.2.1 to v1.2.2 upstream:
 
-## Core
-
-- Fix issue
+- Core: Fix issue
 `)
   })
 
@@ -86,9 +84,7 @@ Changes from opencode v1.2.1 to v1.2.2 upstream:
 
 Changes from opencode v1.2.1 to v1.2.2 upstream:
 
-## Core
-
-- Keep this
+- Core: Keep this
 `)
   })
 
@@ -142,23 +138,11 @@ Changes from opencode v1.2.1 to v1.2.2 upstream:
 
 Changes from opencode v1.2.0 to v1.2.2 upstream:
 
-## Core
-
-### Bugfixes
-
-- Fix first
-- Fix second
-
-### Improvements
-
-- Improve core
-
-## TUI
-
-### Improvements
-
-- Improve first
-- Improve second
+- Core Bugfixes: Fix first
+- Core Bugfixes: Fix second
+- Core Improvements: Improve core
+- TUI Improvements: Improve first
+- TUI Improvements: Improve second
 `)
   })
 })
