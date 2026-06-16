@@ -12,18 +12,13 @@ import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.session.ui.selection.SessionSelection
+import ai.kilocode.client.test.CopyProviderSink
 import com.intellij.icons.AllIcons
-import com.intellij.ide.CopyProvider
 import com.intellij.notification.Notification
 import com.intellij.notification.Notifications
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataKey
-import com.intellij.openapi.actionSystem.DataMap
-import com.intellij.openapi.actionSystem.DataProvider
-import com.intellij.openapi.actionSystem.DataSink
-import com.intellij.openapi.actionSystem.DataSnapshotProvider
-import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
@@ -723,36 +718,12 @@ class PromptPanelTest : BasePlatformTestCase() {
         }
     }
 
-    private class TestSink : DataSink {
+    private class TestSink : CopyProviderSink() {
         var send: Any? = null
-        var copy: CopyProvider? = null
 
         override fun <T : Any> set(key: DataKey<T>, data: T?) {
+            super.set(key, data)
             if (key == PromptDataKeys.SEND) send = data
-            if (key == PlatformDataKeys.COPY_PROVIDER) copy = data as? CopyProvider
-        }
-
-        override fun <T : Any> setNull(key: com.intellij.openapi.actionSystem.DataKey<T>) {
-        }
-
-        override fun <T : Any> lazyNull(key: com.intellij.openapi.actionSystem.DataKey<T>) {
-        }
-
-        override fun <T : Any> lazyValue(
-            key: DataKey<T>,
-            data: (DataMap) -> T?,
-        ) {
-        }
-
-        override fun uiDataSnapshot(provider: UiDataProvider) {
-            provider.uiDataSnapshot(this)
-        }
-
-        override fun dataSnapshot(provider: DataSnapshotProvider) {
-            provider.dataSnapshot(this)
-        }
-
-        override fun uiDataSnapshot(provider: DataProvider) {
         }
     }
 

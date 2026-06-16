@@ -16,6 +16,7 @@ import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionResultView
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.session.views.MessageToolbar
+import ai.kilocode.client.session.views.MessageView
 import ai.kilocode.client.session.views.TextView
 import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.session.views.todo.TodoWriteView
@@ -31,9 +32,11 @@ import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
 import java.awt.Container
+import java.awt.Point
 import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
 import javax.swing.JPanel
+import javax.swing.SwingUtilities
 import javax.swing.border.Border
 
 /**
@@ -271,6 +274,25 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertEquals("first\n\nsecond more", tv.markdown())
     }
 
+    fun `test streaming assistant text keeps copy toolbar stable and bounded`() {
+        model.upsertMessage(msg("u1", "user"))
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", part("p1", "a1", "text", text = "start"))
+        val mv = panel.findMessage("a1")!!
+        val tv = mv.part("p1") as TextView
+        val comp = tv.md.component
+        val btn = tv.copyButton()
+        val count = count(tv)
+
+        repeat(200) { model.appendDelta("a1", "p1", " token$it") }
+
+        assertSame(tv, mv.part("p1"))
+        assertSame(comp, tv.md.component)
+        assertSame(btn, tv.copyButton())
+        assertEquals(count, count(tv))
+        assertTrue(tv.hasCopyToolbar())
+    }
+
     fun `test streaming new assistant text updates copy target without rebuilding previous text`() {
         model.upsertMessage(msg("u1", "user"))
         model.upsertMessage(msg("a1", "assistant"))
@@ -287,6 +309,28 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertSame(button, first.copyButton())
         assertFalse(first.hasCopyToolbar())
         assertTrue(second.hasCopyToolbar())
+    }
+
+    fun `test prompt box paints at wrapped prompt coordinates`() {
+        model.upsertMessage(msg("u1", "user"))
+        model.updateContent("u1", part("file1", "u1", "file", text = null))
+        model.updateContent("u1", part("p1", "u1", "text", text = "hello"))
+        val message = panel.findMessage("u1")!!
+        message.setSize(400, message.preferredSize.height)
+        message.doLayout()
+        layout(message)
+        val box = promptBox(message)
+        val point = SwingUtilities.convertPoint(box, Point(), message)
+        assertTrue("prompt box should be below attachment", point.y > 0)
+
+        val image = BufferedImage(message.width, message.height, BufferedImage.TYPE_INT_ARGB)
+        val graphics = image.createGraphics()
+        message.paint(graphics)
+        graphics.dispose()
+
+        val line = SessionUiStyle.View.Outline.color().rgb
+        assertEquals(line, Color(image.getRGB(point.x + box.width / 2, point.y), true).rgb)
+        assertFalse(line == Color(image.getRGB(point.x + box.width / 2, 0), true).rgb)
     }
 
     fun `test created ContentDelta is not double applied`() {
@@ -752,19 +796,6 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         ))
     }
 
-    private fun exit(component: Component) {
-        component.dispatchEvent(MouseEvent(
-            component,
-            MouseEvent.MOUSE_EXITED,
-            System.currentTimeMillis(),
-            0,
-            -1,
-            -1,
-            0,
-            false,
-        ))
-    }
-
     private fun assertLine(border: Border) {
         val image = BufferedImage(5, 5, BufferedImage.TYPE_INT_ARGB)
         val item = JPanel()
@@ -776,5 +807,29 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertEquals(rgb, Color(image.getRGB(0, 2), true).rgb)
         assertEquals(rgb, Color(image.getRGB(4, 2), true).rgb)
         assertEquals(rgb, Color(image.getRGB(2, 4), true).rgb)
+    }
+
+    private fun count(root: Component): Int {
+        if (root !is Container) return 1
+        return 1 + root.components.sumOf(::count)
+    }
+
+    private fun layout(root: Container) {
+        root.doLayout()
+        for (child in root.components) if (child is Container) layout(child)
+    }
+
+    private fun promptBox(root: MessageView): Component {
+        return components(root).first { it.parent != root && it is JPanel && it.componentCount == 1 && it.components.single() is TextView }
+    }
+
+    private fun components(root: Component): List<Component> {
+        val out = mutableListOf<Component>()
+        fun visit(node: Component) {
+            out.add(node)
+            if (node is Container) node.components.forEach(::visit)
+        }
+        visit(root)
+        return out
     }
 }

@@ -50,7 +50,7 @@ internal class SessionHoverCopyOverlay(
     fun bounds(pane: JPanel, child: JComponent): Rectangle {
         val item = target ?: return Rectangle()
         val anchor = item.copyAnchor
-        if (!anchor.isShowing && anchor.parent == null) return Rectangle()
+        if (!anchor.isShowing || anchor.parent == null) return Rectangle()
         val visible = anchor.visibleRect
         if (visible.isEmpty) return Rectangle()
         val size = child.preferredSize

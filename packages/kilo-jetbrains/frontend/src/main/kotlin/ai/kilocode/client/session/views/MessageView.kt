@@ -19,6 +19,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import java.awt.Point
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
@@ -109,6 +110,7 @@ class MessageView(
     }
 
     /** Add or update the renderer for [content]. */
+    @RequiresEdt
     fun upsertPart(content: Content) {
         if (content is StepFinish) return
         if (isHidden(content)) {
@@ -156,6 +158,7 @@ class MessageView(
         refresh()
     }
 
+    @RequiresEdt
     private fun addPart(content: Content) {
         if (content is FileAttachment && role == SessionUiStyle.View.Message.USER_ROLE) {
             addAttachment(content)
@@ -192,6 +195,7 @@ class MessageView(
         parts[content.id] = view
     }
 
+    @RequiresEdt
     private fun updateAlias(content: Reasoning, id: String) {
         val view = parts[id] as? ReasoningView ?: return
         val prev = sources[content.id].orEmpty()
@@ -208,6 +212,7 @@ class MessageView(
         it.content.append(delta)
     }
 
+    @RequiresEdt
     private fun replacePart(content: Content, existing: PartView) {
         val at = components.indexOfFirst { it === existing }.takeIf { it >= 0 } ?: componentCount
         parts.remove(content.id)
@@ -228,6 +233,7 @@ class MessageView(
     }
 
     /** Remove the renderer for [contentId] if present. */
+    @RequiresEdt
     fun removePart(contentId: String) {
         if (aliases.remove(contentId) != null) {
             sources.remove(contentId)
@@ -270,6 +276,7 @@ class MessageView(
      * Clear and rebuild all part views from [msg.parts].
      * Called only when the hidden ref changes to avoid unnecessary rebuilds.
      */
+    @RequiresEdt
     private fun rebuildParts() {
         parts.values.distinct().forEach {
             detach(it)
@@ -293,6 +300,7 @@ class MessageView(
         refresh()
     }
 
+    @RequiresEdt
     private fun syncBorder() {
         if (msg.info.role != SessionUiStyle.View.Message.ASSISTANT_ROLE) return
         border = assistantBorder()
@@ -305,6 +313,7 @@ class MessageView(
     }
 
     /** Append a streaming delta to the renderer for [contentId]. */
+    @RequiresEdt
     fun appendDelta(contentId: String, delta: String): Boolean {
         val id = aliases[contentId]
         if (id != null) sources[contentId] = sources[contentId].orEmpty() + delta
@@ -314,6 +323,7 @@ class MessageView(
         return true
     }
 
+    @RequiresEdt
     fun syncCopyToolbar(copyId: String?) {
         if (role == SessionUiStyle.View.Message.USER_ROLE) return
         for ((id, view) in parts) {
@@ -321,6 +331,7 @@ class MessageView(
         }
     }
 
+    @RequiresEdt
     fun latestAssistantCopyId(): String? {
         if (role != SessionUiStyle.View.Message.ASSISTANT_ROLE) return null
         for ((id, view) in parts.entries.reversed()) {
@@ -338,6 +349,7 @@ class MessageView(
     /** Compact dump for test assertions. */
     fun dump(): String = parts.values.joinToString(", ") { it.dumpLabel() }
 
+    @RequiresEdt
     fun setPromptHovered(value: Boolean) {
         if (role != SessionUiStyle.View.Message.USER_ROLE) return
         if (promptHover == value) {
@@ -348,10 +360,13 @@ class MessageView(
         syncPromptToolbar()
     }
 
+    @RequiresEdt
     fun paintsPromptToolbar() = promptToolbar?.paints() == true
 
+    @RequiresEdt
     fun promptToolbarAlignment() = promptToolbar?.alignment()
 
+    @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) background = style.editorScheme.defaultBackground
@@ -359,6 +374,7 @@ class MessageView(
         refresh()
     }
 
+    @RequiresEdt
     override fun dispose() {
         parts.values.forEach {
             detach(it)
@@ -395,8 +411,9 @@ class MessageView(
         try {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
             val arc = JBUI.scale(JBUI.getInt("Button.arc", SessionUiStyle.View.Prompt.CORNER_ARC))
-            val x = if (box === this) 0 else box.x
-            val y = if (box === this) 0 else box.y
+            val pt = if (box === this) Point() else SwingUtilities.convertPoint(box, Point(), this)
+            val x = pt.x
+            val y = pt.y
             val w = box.width - 1
             val h = box.height - 1
             g2.color = style.editorScheme.defaultBackground
@@ -408,20 +425,24 @@ class MessageView(
         }
     }
 
+    @RequiresEdt
     private fun refresh() {
         revalidate()
         repaint()
     }
 
+    @RequiresEdt
     private fun detach(view: PartView) {
         view.setHovered(false)
         view.hover = null
     }
 
+    @RequiresEdt
     private fun syncPromptToolbar() {
         promptToolbar?.paint(promptHover)
     }
 
+    @RequiresEdt
     private fun wrapPrompt(view: PartView): JComponent {
         if (role != SessionUiStyle.View.Message.USER_ROLE) return view
         if (view !is PromptView) return view
@@ -441,6 +462,7 @@ class MessageView(
         }
     }
 
+    @RequiresEdt
     private fun installPromptHover(root: JComponent) {
         val mouse = object : MouseAdapter() {
             override fun mouseEntered(e: MouseEvent) {
@@ -457,11 +479,13 @@ class MessageView(
         visit(root) { it.addMouseListener(mouse) }
     }
 
+    @RequiresEdt
     private fun inside(root: JComponent, e: MouseEvent): Boolean {
         val point = SwingUtilities.convertPoint(e.component, e.point, root)
         return root.contains(point)
     }
 
+    @RequiresEdt
     private fun visit(root: Container, fn: (JComponent) -> Unit) {
         if (root is JComponent) fn(root)
         for (child in root.components) {

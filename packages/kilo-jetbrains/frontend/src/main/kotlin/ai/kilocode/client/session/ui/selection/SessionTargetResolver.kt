@@ -3,6 +3,7 @@ package ai.kilocode.client.session.ui.selection
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import java.awt.Component
+import java.awt.Container
 import java.awt.Point
 import javax.swing.JComponent
 import javax.swing.SwingUtilities
@@ -25,19 +26,32 @@ internal object SessionTargetResolver {
         return copy(root, deepest(root, pt, skip) ?: src)
     }
 
+    @RequiresEdt
     internal fun inside(root: JComponent, comp: Component): Boolean = comp === root || SwingUtilities.isDescendingFrom(comp, root)
 
+    @RequiresEdt
     private fun deepest(root: JComponent, pt: Point, skip: Component?): Component? {
-        if (skip == null || !skip.isVisible) return SwingUtilities.getDeepestComponentAt(root, pt.x, pt.y)
-            ?.takeIf { inside(root, it) }
-        skip.isVisible = false
-        try {
+        if (skip == null || !skip.isVisible) {
             return SwingUtilities.getDeepestComponentAt(root, pt.x, pt.y)?.takeIf { inside(root, it) }
-        } finally {
-            skip.isVisible = true
         }
+        return deepestSkipping(root, pt, skip)
     }
 
+    @RequiresEdt
+    private fun deepestSkipping(container: Container, pt: Point, skip: Component): Component? {
+        for (child in container.components.toList().asReversed()) {
+            if (child === skip || SwingUtilities.isDescendingFrom(child, skip)) continue
+            if (!child.isVisible || !child.contains(SwingUtilities.convertPoint(container, pt, child))) continue
+            if (child is Container) {
+                val next = deepestSkipping(child, SwingUtilities.convertPoint(container, pt, child), skip)
+                if (next != null) return next
+            }
+            return child
+        }
+        return if (container === skip) null else container
+    }
+
+    @RequiresEdt
     private fun provider(root: JComponent, comp: Component): Component? {
         var current: Component? = comp
         while (current != null && inside(root, current)) {
@@ -47,6 +61,7 @@ internal object SessionTargetResolver {
         return null
     }
 
+    @RequiresEdt
     private fun copy(root: JComponent, comp: Component): SessionCopyTarget? {
         var current: Component? = comp
         var target: SessionCopyTarget? = null

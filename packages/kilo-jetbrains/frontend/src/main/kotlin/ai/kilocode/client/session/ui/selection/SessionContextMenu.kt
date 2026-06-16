@@ -60,5 +60,4 @@ internal object SessionContextMenu {
         popup.show(RelativePoint(target, point))
         event.consume()
     }
-
 }

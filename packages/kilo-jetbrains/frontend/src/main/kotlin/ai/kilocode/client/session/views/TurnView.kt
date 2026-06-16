@@ -10,6 +10,7 @@ import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.base.PartView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import javax.swing.JComponent
 
@@ -61,6 +62,7 @@ class TurnView(
         revalidate()
     }
 
+    @RequiresEdt
     fun syncCopyToolbars() {
         val id = messages.values.reversed().firstNotNullOfOrNull { it.latestAssistantCopyId() }
         for (view in messages.values) view.syncCopyToolbar(id)

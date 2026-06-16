@@ -12,7 +12,6 @@ internal class MessageToolbar(
 ) : JPanel(BorderLayout()) {
     private val copy = SessionCopyButton(text = text)
     private val button = copy.button
-    private var paint = true
 
     init {
         isOpaque = false
@@ -21,9 +20,8 @@ internal class MessageToolbar(
 
     @RequiresEdt
     fun sync(value: Boolean) {
-        if (isVisible == value && paint == value && button.isEnabled == value) return
+        if (isVisible == value && button.isEnabled == value) return
         isVisible = value
-        paint = value
         button.isEnabled = value
         revalidate()
         repaint()
@@ -31,15 +29,15 @@ internal class MessageToolbar(
 
     @RequiresEdt
     fun paint(value: Boolean) {
+        // Prompt toolbars stay visible to reserve layout space while their button is visually hidden.
         if (!isVisible) isVisible = true
-        if (paint == value && button.isEnabled == value) return
-        paint = value
+        if (button.isEnabled == value) return
         button.isEnabled = value
         repaint()
     }
 
     @RequiresEdt
-    fun paints() = paint
+    fun paints() = button.isEnabled
 
     @RequiresEdt
     fun alignment() = align
@@ -53,12 +51,12 @@ internal class MessageToolbar(
     }
 
     override fun paintComponent(g: Graphics) {
-        if (!paint) return
+        if (!button.isEnabled) return
         super.paintComponent(g)
     }
 
     override fun paintChildren(g: Graphics) {
-        if (!paint) return
+        if (!button.isEnabled) return
         super.paintChildren(g)
     }
 }

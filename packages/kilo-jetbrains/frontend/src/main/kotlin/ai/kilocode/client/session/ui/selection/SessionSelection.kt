@@ -27,14 +27,7 @@ class SessionSelection : Disposable {
     private var style: SessionEditorStyle? = null
     private var clearing = false
     private var disposed = false
-    private val copy = object : TextCopyProvider() {
-        override fun getActionUpdateThread() = ActionUpdateThread.EDT
-
-        override fun getTextLinesToCopy(): Collection<String>? {
-            val text = selectedText()?.takeIf { it.isNotEmpty() } ?: return null
-            return listOf(text)
-        }
-    }
+    private val copy = provider { selectedText() }
 
     @RequiresEdt
     fun selectedText(): String? {
@@ -55,16 +48,16 @@ class SessionSelection : Disposable {
             sink.set(PlatformDataKeys.COPY_PROVIDER, copy)
             return
         }
-        sink.set(PlatformDataKeys.COPY_PROVIDER, object : TextCopyProvider() {
-            override fun getActionUpdateThread() = ActionUpdateThread.EDT
+        sink.set(PlatformDataKeys.COPY_PROVIDER, provider { selectedText() ?: content() })
+    }
 
-            override fun getTextLinesToCopy(): Collection<String>? {
-                val text = selectedText()?.takeIf { it.isNotEmpty() }
-                    ?: content()?.takeIf { it.isNotEmpty() }
-                    ?: return null
-                return listOf(text)
-            }
-        })
+    private fun provider(text: () -> String?) = object : TextCopyProvider() {
+        override fun getActionUpdateThread() = ActionUpdateThread.EDT
+
+        override fun getTextLinesToCopy(): Collection<String>? {
+            val item = text()?.takeIf { it.isNotEmpty() } ?: return null
+            return listOf(item)
+        }
     }
 
     @RequiresEdt

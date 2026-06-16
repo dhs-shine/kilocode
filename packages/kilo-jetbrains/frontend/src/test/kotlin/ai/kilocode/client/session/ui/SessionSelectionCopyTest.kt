@@ -7,18 +7,14 @@ import ai.kilocode.client.session.ui.selection.SessionHoverCopyOverlay
 import ai.kilocode.client.session.ui.selection.SessionTargetResolver
 import ai.kilocode.client.session.views.tool.ShellToolView
 import ai.kilocode.client.session.views.tool.ToolView
+import ai.kilocode.client.test.CopyProviderSink
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.PartDto
 import com.intellij.ide.CopyProvider
 import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.DataKey
-import com.intellij.openapi.actionSystem.DataMap
-import com.intellij.openapi.actionSystem.DataProvider
-import com.intellij.openapi.actionSystem.DataSink
-import com.intellij.openapi.actionSystem.DataSnapshotProvider
-import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBScrollPane
@@ -35,6 +31,10 @@ import javax.swing.text.JTextComponent
 
 @Suppress("UnstableApiUsage")
 class SessionSelectionCopyTest : SessionUiTestBase() {
+    companion object {
+        private const val RGB_MASK = 0x00ffffff
+    }
+
     fun `test transcript view exposes copy provider when selection exists`() {
         val area = showTool("alpha output")
 
@@ -173,20 +173,48 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         assertFalse(overlay.isVisible)
     }
 
+    fun `test hover copy overlay ignores mouse events after disposal`() {
+        val root = ShowingPanel()
+        val parent = Disposer.newDisposable("overlay-test")
+        val target = TargetPanel("alpha")
+        val overlay = SessionHoverCopyOverlay(root, parent)
+        root.setBounds(0, 0, 100, 100)
+        target.setBounds(10, 10, 80, 80)
+        root.add(target)
+        root.add(overlay)
+
+        Disposer.dispose(parent)
+        target.dispatchEvent(MouseEvent(target, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, 1, 1, 0, false))
+
+        assertFalse(overlay.isVisible)
+    }
+
+    fun `test session context menu can reinstall after parent disposal`() {
+        val root = JPanel(null)
+        val one = Disposer.newDisposable("context-one")
+        val two = Disposer.newDisposable("context-two")
+
+        SessionContextMenu.install(root, one)
+        SessionContextMenu.install(root, one)
+        Disposer.dispose(one)
+        SessionContextMenu.install(root, two)
+        Disposer.dispose(two)
+    }
+
     fun `test hover copy button paints opaque background before and during pointer hover`() {
         val overlay = find<SessionHoverCopyOverlay>(ui)
         val btn = overlay.components.single()
         val size = btn.preferredSize
         btn.setBounds(0, 0, size.width, size.height)
 
-        assertEquals(rgb(UiStyle.Colors.bg()), rgb(btn, 2, size.height / 2))
+        assertEquals(rgb(UiStyle.Colors.bg()), argb(btn, 2, size.height / 2) and RGB_MASK)
 
         btn.dispatchEvent(MouseEvent(btn, MouseEvent.MOUSE_ENTERED, System.currentTimeMillis(), 0, 1, 1, 0, false))
 
-        assertEquals(255, alpha(btn, 2, size.height / 2))
+        assertEquals(255, argb(btn, 2, size.height / 2) ushr 24)
     }
 
-    private fun alpha(comp: Component, x: Int, y: Int): Int {
+    private fun argb(comp: Component, x: Int, y: Int): Int {
         val size = comp.size
         val image = BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB)
         val g = image.createGraphics()
@@ -196,23 +224,10 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         } finally {
             g.dispose()
         }
-        return image.getRGB(x, y) ushr 24
+        return image.getRGB(x, y)
     }
 
-    private fun rgb(color: java.awt.Color): Int = color.rgb and 0x00ffffff
-
-    private fun rgb(comp: Component, x: Int, y: Int): Int {
-        val size = comp.size
-        val image = BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB)
-        val g = image.createGraphics()
-
-        try {
-            comp.paint(g)
-        } finally {
-            g.dispose()
-        }
-        return image.getRGB(x, y) and 0x00ffffff
-    }
+    private fun rgb(color: java.awt.Color): Int = color.rgb and RGB_MASK
 
     fun `test hover overlay keeps current target while pointer remains inside anchor`() {
         val overlay = find<SessionHoverCopyOverlay>(ui)
@@ -273,7 +288,7 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
     }
 
     private fun copyProvider(provider: UiDataProvider): CopyProvider? {
-        val sink = CopySink()
+        val sink = CopyProviderSink()
         provider.uiDataSnapshot(sink)
         return sink.copy
     }
@@ -330,21 +345,7 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         override fun copyText() = value
     }
 
-    private class CopySink : DataSink {
-        var copy: CopyProvider? = null
-
-        override fun <T : Any> set(key: DataKey<T>, data: T?) {
-            if (key == PlatformDataKeys.COPY_PROVIDER) copy = data as? CopyProvider
-        }
-
-        override fun <T : Any> setNull(key: DataKey<T>) {}
-
-        override fun <T : Any> lazyNull(key: DataKey<T>) {}
-
-        override fun <T : Any> lazyValue(key: DataKey<T>, data: (DataMap) -> T?) {}
-
-        override fun uiDataSnapshot(provider: UiDataProvider) = provider.uiDataSnapshot(this)
-        override fun dataSnapshot(provider: DataSnapshotProvider) = provider.dataSnapshot(this)
-        override fun uiDataSnapshot(provider: DataProvider) {}
+    private class ShowingPanel : JPanel(null) {
+        override fun isShowing() = true
     }
 }

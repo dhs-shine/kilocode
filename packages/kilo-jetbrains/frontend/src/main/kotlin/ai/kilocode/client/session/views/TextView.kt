@@ -8,6 +8,7 @@ import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.ui.md.MdView
 import ai.kilocode.client.ui.md.MdViewFactory
 import com.intellij.openapi.util.Disposer
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import java.awt.BorderLayout
 import javax.swing.JButton
 
@@ -56,15 +57,19 @@ open class TextView(
         refresh()
     }
 
+    @RequiresEdt
     fun setCopyToolbar(enabled: Boolean, trim: Boolean = true) {
         mode = if (enabled) CopyMode(trim) else null
         syncToolbar()
     }
 
+    @RequiresEdt
     fun hasCopyToolbar() = toolbar.isVisible
 
+    @RequiresEdt
     fun copyButton(): JButton = toolbar.copyButton()
 
+    @RequiresEdt
     fun copyMarkdown(trim: Boolean = true): String {
         val text = md.markdown()
         return if (trim) text.trim() else text
@@ -100,10 +105,12 @@ open class TextView(
         repaint()
     }
 
+    @RequiresEdt
     private fun syncToolbar() {
         toolbar.sync(copyText()?.isNotEmpty() == true)
     }
 
+    @RequiresEdt
     private fun copyText(): String? {
         val item = mode ?: return null
         return copyMarkdown(item.trim)
