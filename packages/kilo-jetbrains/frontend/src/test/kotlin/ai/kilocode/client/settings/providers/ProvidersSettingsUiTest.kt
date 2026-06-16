@@ -2,6 +2,7 @@ package ai.kilocode.client.settings.providers
 
 import ai.kilocode.client.app.KiloProviderService
 import ai.kilocode.client.testing.FakeProviderRpcApi
+import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.CustomProviderConfigDto
 import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
@@ -21,10 +22,12 @@ import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.awt.BorderLayout
 import java.awt.Container
 import java.awt.Dimension
@@ -327,6 +330,24 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test renderer lays out action labels with visible bounds`() {
+        edt {
+            val row = ProviderListRow(provider("openai", "OpenAI"), "Popular providers", listOf(ProviderListAction.CONNECT))
+            val list = JBList(listOf(row))
+            val renderer = ProviderListRenderer(com.intellij.ui.CollectionListModel(listOf(row)))
+
+            renderer.getListCellRendererComponent(list, row, 0, true, false)
+            renderer.setSize(320, renderer.preferredSize.height)
+            renderer.doLayout()
+            components(renderer).filterIsInstance<Container>().forEach { it.doLayout() }
+
+            val label = components(renderer).filterIsInstance<JBLabel>().single { it.text == "Connect" }
+            assertTrue(label.isShowing || label.isVisible)
+            assertTrue(label.width > 0)
+            assertTrue(label.height > 0)
+        }
+    }
+
     fun `test renderer hides unselected unconnected action labels`() {
         edt {
             val row = ProviderListRow(provider("cloudflare", "Cloudflare"), "All providers", listOf(ProviderListAction.CONNECT))
@@ -437,6 +458,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             val area = ProviderListRenderer.actionBounds(list, bounds, row, selected = true).getValue(ProviderListAction.CONNECT)
 
             assertTrue(kotlin.math.abs((bounds.y + bounds.height / 2) - (area.y + area.height / 2)) <= 1)
+            assertTrue(bounds.contains(area))
         }
     }
 
@@ -489,6 +511,10 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
         edt {
             assertTrue(text(panel).contains("Cancel"))
+            val cancel = components(panel).filterIsInstance<JButton>().single { it.text == "Cancel" && it.isVisible }
+            assertEquals(UiStyle.Components.actionForeground(true), cancel.foreground)
+            assertEquals(UiStyle.Components.actionBackground(), cancel.background)
+            assertEquals(requireNotNull(UiStyle.Components.actionBorder()).getBorderInsets(cancel), requireNotNull(cancel.border).getBorderInsets(cancel))
             assertTrue(rows(panel).single().disabled)
             assertTrue(ProviderListRenderer.visibleActions(rows(panel).single(), selected = true).isEmpty())
             panel.reload()
@@ -548,6 +574,41 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             assertTrue(rpc.callbacks.isEmpty())
             assertEquals(1, rpc.stateCalls.size)
             assertEquals(listOf("github-copilot"), rows(panel).map { it.key })
+        }
+    }
+
+    fun `test provider oauth timeout clears progress without error`() {
+        val ready = CompletableDeferred<ProviderOAuthReadyDto>()
+        val rpc = installProvider(
+            ProviderSettingsDto(
+                providers = listOf(provider("github-copilot", "GitHub Copilot")),
+                auth = mapOf("github-copilot" to listOf(ProviderAuthMethodDto("oauth", "OAuth"))),
+            ),
+        )
+        rpc.authorizesReady.add(ready)
+        val panel = edt { createUi() }
+
+        flushUntil { rpc.stateCalls.size == 1 && edt { rows(panel).map { it.key } == listOf("github-copilot") } }
+        edt { triggerPrimary(panel) }
+        flushUntil { rpc.authorizes.size == 1 && edt { text(panel).contains("Starting OAuth for GitHub Copilot") } }
+        val timeout = runBlocking {
+            try {
+                withTimeout(1) { delay(Long.MAX_VALUE) }
+                error("timeout expected")
+            } catch (e: TimeoutCancellationException) {
+                e
+            }
+        }
+        ready.completeExceptionally(timeout)
+
+        flushUntil { edt { rows(panel).single().disabled.not() && !text(panel).contains("Starting OAuth") } }
+
+        edt {
+            val visible = text(panel)
+            assertFalse(visible.contains("TimeoutCancellationException"))
+            assertFalse(visible.contains("OAuth timed out"))
+            assertFalse(visible.contains("Cancel"))
+            assertTrue(rpc.callbacks.isEmpty())
         }
     }
 

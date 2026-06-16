@@ -225,7 +225,7 @@ internal class ProvidersSettingsUi(
                 withContext(edt) {
                     if (!active(id)) return@withContext
                     setBusy(false)
-                    showError("${e::class.simpleName}: ${e.message}")
+                    clearProgress()
                 }
             } catch (e: CancellationException) {
                 LOG.info("provider settings ui $name: coroutine cancelled durationMs=${System.currentTimeMillis() - start}")

@@ -22,7 +22,6 @@ import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.ListCellRenderer
 import javax.swing.SwingConstants
-import javax.swing.UIManager
 
 private const val ACTION_GAP = 8
 
@@ -93,25 +92,27 @@ internal class ProviderListRenderer(
     private val mark = icon.align(HAlign.CENTER, VAlign.TOP)
     private val title = SimpleColoredComponent()
     private val desc = JBLabel()
-    private val text = JPanel(BorderLayout()).apply {
-        add(title, BorderLayout.NORTH)
-        add(desc, BorderLayout.SOUTH)
-    }
+    private val text = Stack.vertical().next(title).next(desc)
     private val actions = Stack.horizontal(JBUI.scale(ACTION_GAP))
-    private val row = Stack.horizontal(UiStyle.Gap.md()).next(mark).next(text)
+    private val actionPane = actions.align(HAlign.RIGHT, VAlign.CENTER)
+    private val row = JPanel(BorderLayout(UiStyle.Gap.md(), 0)).apply {
+        add(mark, BorderLayout.WEST)
+        add(text, BorderLayout.CENTER)
+        add(actionPane, BorderLayout.EAST)
+    }
     private val wrap = PickerRow()
 
     init {
         isOpaque = true
         top.isOpaque = true
-        UiStyle.Components.transparent(row, mark, icon, title, text, desc, actions)
+        UiStyle.Components.transparent(row, mark, icon, title, text, desc, actions, actionPane)
         row.border = JBUI.Borders.empty(
             UiStyle.Gap.md(),
             UiStyle.Gap.lg(),
             UiStyle.Gap.md(),
             UiStyle.Gap.pad(),
         )
-        wrap.setContent(row, actions)
+        wrap.setContent(row)
         add(top, BorderLayout.NORTH)
         add(wrap, BorderLayout.CENTER)
     }
@@ -145,12 +146,13 @@ internal class ProviderListRenderer(
         desc.foreground = weak
 
         actions.removeAll()
-        for (action in visibleActions(value, selected)) {
+        val visible = visibleActions(value, selected)
+        actions.isVisible = visible.isNotEmpty()
+        actionPane.isVisible = visible.isNotEmpty()
+        for (action in visible) {
             actions.add(ActionLabel(action).apply {
                 isEnabled = value.enabled(action)
-                foreground = if (isEnabled) UIManager.getColor("Button.foreground") ?: UIUtil.getLabelForeground()
-                    else UIManager.getColor("Button.disabledText") ?: UIUtil.getContextHelpForeground()
-                background = UIManager.getColor("Button.background")
+                UiStyle.Components.actionLabel(this, isEnabled)
             })
         }
         top.invalidate()
@@ -168,11 +170,7 @@ internal class ProviderListRenderer(
     private class ActionLabel(action: ProviderListAction) : JBLabel(text(action)) {
         init {
             horizontalAlignment = SwingConstants.CENTER
-            border = JBUI.Borders.compound(
-                JBUI.Borders.customLine(UIUtil.getBoundsColor()),
-                JBUI.Borders.empty(UiStyle.Gap.sm(), UiStyle.Gap.pad()),
-            )
-            isOpaque = true
+            UiStyle.Components.actionLabel(this)
         }
     }
 }

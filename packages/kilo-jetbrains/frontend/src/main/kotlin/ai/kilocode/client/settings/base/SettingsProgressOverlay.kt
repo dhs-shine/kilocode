@@ -29,6 +29,7 @@ internal class SettingsProgressOverlay : JPanel(BorderLayout(UiStyle.Gap.md(), 0
         button.isVisible = false
         isVisible = false
         syncColors()
+        UiStyle.Components.actionButton(button)
     }
 
     fun showProgress(text: String) {
@@ -72,6 +73,7 @@ internal class SettingsProgressOverlay : JPanel(BorderLayout(UiStyle.Gap.md(), 0
         }
         button.text = text
         button.addActionListener { action() }
+        UiStyle.Components.actionButton(button)
         button.isVisible = true
     }
 
@@ -88,6 +90,7 @@ internal class SettingsProgressOverlay : JPanel(BorderLayout(UiStyle.Gap.md(), 0
     override fun updateUI() {
         super.updateUI()
         syncColors()
+        cancel?.let { UiStyle.Components.actionButton(it) }
     }
 
     private fun syncColors() {

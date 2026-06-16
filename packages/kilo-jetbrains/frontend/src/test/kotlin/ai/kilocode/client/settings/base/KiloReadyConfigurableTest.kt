@@ -126,8 +126,33 @@ class KiloReadyConfigurableTest : BasePlatformTestCase() {
         assertTrue(view.disposedOnEdt)
     }
 
-    private fun create(): FakeConfigurable {
-        val view = FakeConfigurable()
+    fun `test ready settings overlay is hosted by outer shell`() {
+        val view = create(overlay = true)
+        val root = edt { view.createComponent() as SettingsPanel }
+        flushUntil { rpc.connected }
+
+        rpc.state.value = KiloAppStateDto(KiloAppStatusDto.READY)
+        flushUntil { edt { view.readyPanel != null } }
+
+        edt {
+            val ready = requireNotNull(view.readyPanel)
+            ready.showProgress("Authorizing provider")
+
+            assertTrue(text(root).contains("Authorizing provider"))
+            assertTrue(root.progress.isVisible)
+            assertFalse(ready.progress.isVisible)
+            assertTrue(root.overlay.components.any { it === root.progress })
+            assertFalse(ready.overlay.components.any { it === root.progress })
+        }
+
+        edt { view.disposeUIResources() }
+        cfg = null
+
+        edt { assertFalse(root.progress.isVisible) }
+    }
+
+    private fun create(overlay: Boolean = false): FakeConfigurable {
+        val view = FakeConfigurable(overlay)
         cfg = view
         return view
     }
@@ -175,9 +200,11 @@ class KiloReadyConfigurableTest : BasePlatformTestCase() {
         visit(root)
     }
 
-    private class FakeConfigurable : KiloReadyConfigurable() {
+    private class FakeConfigurable(private val overlay: Boolean = false) : KiloReadyConfigurable() {
         val field = JPanel()
         val focuses = mutableListOf<String>()
+        var readyPanel: SettingsPanel? = null
+            private set
         var created = 0
             private set
         var disposed = 0
@@ -196,6 +223,12 @@ class KiloReadyConfigurableTest : BasePlatformTestCase() {
 
         override fun createReadyComponent(cs: CoroutineScope): JComponent {
             created++
+            if (overlay) {
+                val panel = SettingsPanel()
+                panel.setContent(JPanel().apply { add(JLabel("Ready content")) })
+                readyPanel = panel
+                return panel
+            }
             return JPanel().apply { add(JLabel("Ready content")) }
         }
 

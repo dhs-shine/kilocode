@@ -66,6 +66,7 @@ abstract class KiloReadyConfigurable : SearchableConfigurable, Configurable.NoSc
     override fun disposeUIResources() {
         val panel = ready
         val cs = scope
+        if (panel is SettingsOverlayPanel) panel.setOverlayHost(null)
         shell = null
         scope = null
         ready = null
@@ -94,7 +95,9 @@ abstract class KiloReadyConfigurable : SearchableConfigurable, Configurable.NoSc
         val cs = scope ?: return
         val panel = createReadyComponent(cs)
         ready = panel
-        shell?.setContent(panel)
+        val root = shell
+        if (panel is SettingsOverlayPanel) panel.setOverlayHost(root)
+        root?.setContent(panel)
         onReadyComponentCreated(panel)
     }
 

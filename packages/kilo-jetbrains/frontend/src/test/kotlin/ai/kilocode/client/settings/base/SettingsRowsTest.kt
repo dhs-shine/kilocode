@@ -119,6 +119,8 @@ class SettingsRowsTest : BasePlatformTestCase() {
         assertFalse(text(panel.overlay).contains("Sign in to Kilo Code"))
         assertTrue(panel.overlay.components.any { it === panel.progress })
         assertTrue(text(panel.progress).contains("Loading models..."))
+        val scroll = components(panel.content).filterIsInstance<JScrollPane>().single()
+        assertFalse(components(scroll.viewport.view as JComponent).any { it === panel.progress })
     }
 
     fun `test settings panel tracks viewport width without horizontal scroll`() {
