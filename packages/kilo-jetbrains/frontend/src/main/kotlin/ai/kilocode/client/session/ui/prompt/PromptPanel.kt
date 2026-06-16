@@ -20,6 +20,8 @@ import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.PromptPartDto
 import com.intellij.icons.AllIcons
+import com.intellij.codeInsight.completion.CodeCompletionHandlerBase
+import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.ide.DataManager
 import com.intellij.ide.dnd.DnDEvent
 import com.intellij.ide.dnd.DnDSupport
@@ -81,6 +83,8 @@ class PromptPanel(
     private val onSend: (String, List<PromptPartDto>) -> Unit,
     private val onAbort: () -> Unit,
     private val onEnhance: (String, (Result<String>) -> Unit) -> Unit,
+    private val onMentions: (String, Set<String>) -> List<PromptPartDto> = { _, _ -> emptyList() },
+    private val completion: KiloPromptCompletionProvider? = null,
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext {
 
     companion object {
@@ -124,7 +128,7 @@ class PromptPanel(
         }
     }
 
-    private val editor = PromptEditorTextField(project, this).apply {
+    private val editor = PromptEditorTextField(project, this, completion).apply {
         border = JBUI.Borders.empty()
         setFontInheritedFromLAF(false)
         setPlaceholder(placeholder())
@@ -215,6 +219,7 @@ class PromptPanel(
             override fun documentChanged(e: DocumentEvent) {
                 invalidateEnhancement()
                 syncEditorHeight()
+                triggerCompletion(e)
                 onChange()
             }
         })
@@ -333,6 +338,7 @@ class PromptPanel(
     fun clear() {
         editor.text = ""
         attachments.clear()
+        completion?.clearMentions()
         strip.clear()
         syncEditorHeight()
     }
@@ -425,11 +431,13 @@ class PromptPanel(
         ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val files = items.map { it.part() }
+                val mentioned = onMentions(txt, completion?.mentionPaths().orEmpty())
                 ApplicationManager.getApplication().invokeLater {
                     submitting = false
                     if (project.isDisposed) return@invokeLater
-                    LOG.debug { "${ChatLogSummary.prompt(promptDto(txt, files))} src=$src busy=$busy" }
-                    onSend(txt, files)
+                    val parts = files + mentioned
+                    LOG.debug { "${ChatLogSummary.prompt(promptDto(txt, parts))} src=$src busy=$busy" }
+                    onSend(txt, parts)
                 }
             } catch (e: Exception) {
                 ApplicationManager.getApplication().invokeLater {
@@ -438,6 +446,23 @@ class PromptPanel(
                     LOG.warn("kind=prompt-submit src=$src failed message=${e.message}", e)
                     notify(KiloBundle.message("prompt.attachment.send.failed", e.message ?: e.javaClass.simpleName))
                 }
+            }
+        }
+    }
+
+    private fun triggerCompletion(e: DocumentEvent) {
+        if (project.isDisposed) return
+        val value = e.newFragment.toString()
+        if (value.length != 1) return
+        val text = editor.text
+        val offset = e.offset + value.length
+        val popup = value == "@" || (value == "/" && text.take(offset).trim() == "/")
+        if (!popup) return
+        ApplicationManager.getApplication().invokeLater {
+            if (project.isDisposed) return@invokeLater
+            editor.getEditor(false)?.let {
+                CodeCompletionHandlerBase.createHandler(CompletionType.BASIC, true, false, true)
+                    .invokeCompletion(project, it, 1)
             }
         }
     }

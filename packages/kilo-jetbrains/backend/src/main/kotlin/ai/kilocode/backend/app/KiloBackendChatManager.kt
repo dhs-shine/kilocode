@@ -180,6 +180,12 @@ class KiloBackendChatManager(
         }
     }
 
+    fun command(id: String, dir: String, command: String, args: String, prompt: PromptDto) {
+        log.info("${ChatLogSummary.sid(id)} kind=command command=$command args=${args.length} parts=${prompt.parts.size}")
+        val body = KiloCliDataParser.buildCommandJson(command, args, prompt)
+        post("/session/$id/command?directory=${encode(dir)}", body, "command", "${ChatLogSummary.sid(id)} kind=command command=$command")
+    }
+
     // ------ abort ------
 
     fun abort(id: String, dir: String) {

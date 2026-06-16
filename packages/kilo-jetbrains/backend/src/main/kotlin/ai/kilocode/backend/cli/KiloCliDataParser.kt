@@ -531,6 +531,24 @@ object KiloCliDataParser {
     fun buildSummarizeJson(model: ModelSelectionDto): String =
         """{"providerID":${escape(model.providerID)},"modelID":${escape(model.modelID)}}"""
 
+    fun buildCommandJson(command: String, args: String, prompt: PromptDto): String {
+        val fields = mutableListOf(
+            "\"command\":${escape(command)}",
+            "\"arguments\":${escape(args)}",
+        )
+        prompt.agent?.let { fields += "\"agent\":${escape(it)}" }
+        prompt.variant?.let { fields += "\"variant\":${escape(it)}" }
+        val pid = prompt.providerID
+        val mid = prompt.modelID
+        if (pid != null && mid != null) {
+            val model = "$pid/$mid"
+            fields += "\"model\":${escape(model)}"
+        }
+        val parts = prompt.parts.filter { it.type == "file" }.joinToString(",") { buildPromptPartJson(it) }
+        if (parts.isNotEmpty()) fields += "\"parts\":[$parts]"
+        return "{${fields.joinToString(",")}}"
+    }
+
     /**
      * Build the partial JSON body for `PATCH /global/config`.
      */

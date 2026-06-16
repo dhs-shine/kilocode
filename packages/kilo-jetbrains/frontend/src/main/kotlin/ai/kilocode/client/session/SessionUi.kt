@@ -18,6 +18,7 @@ import ai.kilocode.client.session.ui.LoadingPanel
 import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
+import ai.kilocode.client.session.ui.prompt.KiloPromptCompletionProvider
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.SessionDropOverlay
@@ -38,6 +39,7 @@ import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.LoginRequiredView
 import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
+import ai.kilocode.client.settings.KiloSettingsConfigurable
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.client.ui.layout.Stack
@@ -70,10 +72,13 @@ import java.util.function.Predicate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import java.awt.event.HierarchyEvent
 import java.net.URI
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -325,11 +330,18 @@ class SessionUi(
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
         connection = ConnectionPanel(this, controller)
 
+        val completion = KiloPromptCompletionProvider(
+            workspace = workspace,
+            service = workspaces,
+            actions = slashActions(),
+        )
         prompt = PromptPanel(
             project = project,
             onSend = { text, files -> sendPrompt(text, files) },
             onAbort = { controller.abort() },
             onEnhance = controller::enhancePrompt,
+            onMentions = ::mentionParts,
+            completion = completion,
         )
 
         drop = SessionDropOverlay()
@@ -575,8 +587,95 @@ class SessionUi(
         }
         prompt.clear()
         val follow = scroll.atBottom()
-        controller.prompt(text, files)
+        val command = serverCommand(text)
+        if (command != null) controller.command(command.first, command.second, files)
+        else controller.prompt(text, files)
         scroll.followBottom(follow)
+    }
+
+    private fun slashActions(): List<KiloPromptCompletionProvider.SlashAction> = listOf(
+        KiloPromptCompletionProvider.SlashAction(
+            "new",
+            ai.kilocode.client.plugin.KiloBundle.message("prompt.slash.new"),
+        ) { manager?.newSession() },
+        KiloPromptCompletionProvider.SlashAction(
+            "sessions",
+            ai.kilocode.client.plugin.KiloBundle.message("prompt.slash.sessions"),
+            listOf("history", "resume"),
+        ) { manager?.showHistory() },
+        KiloPromptCompletionProvider.SlashAction(
+            "models",
+            ai.kilocode.client.plugin.KiloBundle.message("prompt.slash.models"),
+        ) { prompt.model.open() },
+        KiloPromptCompletionProvider.SlashAction(
+            "agents",
+            ai.kilocode.client.plugin.KiloBundle.message("prompt.slash.agents"),
+            listOf("modes"),
+        ) { prompt.mode.open() },
+        KiloPromptCompletionProvider.SlashAction(
+            "variant",
+            ai.kilocode.client.plugin.KiloBundle.message("prompt.slash.variant"),
+            listOf("reasoning"),
+        ) { prompt.reasoning.open() },
+        KiloPromptCompletionProvider.SlashAction(
+            "compact",
+            ai.kilocode.client.plugin.KiloBundle.message("prompt.slash.compact"),
+            listOf("smol"),
+        ) { controller.compact() },
+        KiloPromptCompletionProvider.SlashAction(
+            "settings",
+            ai.kilocode.client.plugin.KiloBundle.message("prompt.slash.settings"),
+        ) { openKiloSettings() },
+        KiloPromptCompletionProvider.SlashAction(
+            "help",
+            ai.kilocode.client.plugin.KiloBundle.message("prompt.slash.help"),
+        ) { BrowserUtil.browse("https://kilo.ai/docs") },
+    )
+
+    private fun clientCommandNames(): Set<String> = setOf(
+        "new",
+        "sessions",
+        "models",
+        "agents",
+        "variant",
+        "compact",
+        "settings",
+        "help",
+    )
+
+    private fun serverCommand(text: String): Pair<String, String>? {
+        val raw = text.trimStart()
+        if (!raw.startsWith('/')) return null
+        val name = raw.drop(1).takeWhile { !it.isWhitespace() }
+        if (name.isBlank()) return null
+        if (name in clientCommandNames()) return null
+        if (workspace.state.value.commands.none { it.name == name }) return null
+        return name to raw.drop(name.length + 1).trimStart()
+    }
+
+    private fun mentionParts(text: String, paths: Set<String>): List<PromptPartDto> = buildList {
+        paths.filter { text.contains("@$it") }.forEach { path ->
+            val target = runCatching {
+                val item = Path.of(path)
+                if (item.isAbsolute) item else Path.of(workspace.directory).resolve(item).normalize()
+            }.getOrNull() ?: return@forEach
+            add(PromptPartDto(type = "file", mime = "text/plain", url = target.toUri().toString(), filename = target.fileName?.toString()))
+        }
+        if (text.contains("@terminal")) {
+            runBlocking { workspaces.terminalOutput(workspace.directory) }
+                ?.takeIf { it.isNotBlank() }
+                ?.let { add(dataPart("terminal-output.txt", it)) }
+        }
+        if (text.contains("@git-changes")) {
+            runBlocking { workspaces.gitChanges(workspace.directory) }
+                ?.takeIf { it.isNotBlank() }
+                ?.let { add(dataPart("git-changes.txt", it)) }
+        }
+    }
+
+    private fun dataPart(name: String, text: String): PromptPartDto {
+        val data = URLEncoder.encode(text, StandardCharsets.UTF_8).replace("+", "%20")
+        return PromptPartDto(type = "file", mime = "text/plain", url = "data:text/plain;charset=utf-8,$data", filename = name)
     }
 
     private fun openFile(path: String) {
@@ -690,6 +789,16 @@ class SessionUi(
                 cfg is ConfigurableWithId && cfg.getId() == UserProfileConfigurable.ID
             },
             { cfg: Configurable -> cfg.focusOn(UserProfileConfigurable.FOCUS_ACCOUNT_COMBO) },
+        )
+    }
+
+    private fun openKiloSettings() {
+        ShowSettingsUtil.getInstance().showSettingsDialog(
+            project,
+            Predicate { cfg: Configurable ->
+                cfg is ConfigurableWithId && cfg.getId() == KiloSettingsConfigurable.ID
+            },
+            { _: Configurable -> },
         )
     }
 

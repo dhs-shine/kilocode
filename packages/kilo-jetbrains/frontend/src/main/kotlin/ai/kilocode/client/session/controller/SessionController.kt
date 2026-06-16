@@ -281,6 +281,57 @@ class SessionController(
         }
     }
 
+    fun command(command: String, args: String, files: List<PromptPartDto> = emptyList()) {
+        assertEdt()
+        val start = sid ?: ref?.key ?: "pending"
+        val exists = sid != null
+        val dto = promptDto("", files)
+        val props = promptProps(files)
+        LOG.debug { "${ChatLogSummary.sid(start)} kind=command command=$command args=${args.length} ${ChatLogSummary.dir(directory)}" }
+        capture("Conversation Send Clicked", sessionProps(sid ?: ref?.key) + mapOf(
+            "source" to "command",
+            "hasExistingSession" to exists.toString(),
+            "textLength" to bucket(args),
+        ) + props)
+        showSession()
+        cs.launch {
+            try {
+                val id = sid ?: run {
+                    val session = sessions.create(directory)
+                    runEdt {
+                        if (disposed) return@runEdt
+                        ref = SessionRef.Local(session)
+                        setRecentSessionsState(RecentsState.Idle)
+                        updateModel {
+                            model.setSession(session)
+                        }
+                    }
+                    if (disposed) return@launch
+                    LOG.info("${ChatLogSummary.sid(session.id)} kind=session ${ChatLogSummary.dir(directory)} created=true")
+                    capture("Task Created", sessionProps(session.id) + mapOf("source" to "jetbrains"))
+                    runEdt {
+                        if (disposed) return@runEdt
+                        subscribeEvents()
+                    }
+                    session.id
+                }
+                sessions.command(id, directory, command, args, dto)
+                capture("Conversation Message", sessionProps(id) + mapOf("source" to "command", "hasExistingSession" to exists.toString()) + props)
+                LOG.debug { "${ChatLogSummary.sid(id)} kind=command dispatched=true" }
+            } catch (e: Exception) {
+                capture("Session Error", sessionProps(sid ?: ref?.key ?: start) + mapOf("context" to "command", "errorClass" to e::class.java.name))
+                LOG.warn("${ChatLogSummary.sid(sid ?: ref?.key ?: start)} kind=command dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
+                edt {
+                    if (disposed) return@edt
+                    val msg = e.message ?: KiloBundle.message("session.error.prompt")
+                    updateModel {
+                        model.setState(SessionState.Error(msg))
+                    }
+                }
+            }
+        }
+    }
+
     fun abort() {
         assertEdt()
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=abort" }

@@ -6,6 +6,10 @@ import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.project.Project
 import com.intellij.ui.EditorTextField
+import com.intellij.ui.LanguageTextField
+import com.intellij.util.textCompletion.TextCompletionProvider
+import com.intellij.util.textCompletion.TextCompletionUtil
+import com.intellij.openapi.fileTypes.PlainTextLanguage
 
 /**
  * A session-scoped [EditorTextField] for plain-text input.
@@ -24,7 +28,19 @@ import com.intellij.ui.EditorTextField
 internal open class SessionEditorTextField(
     project: Project,
     private val ctx: SendPromptContext? = null,
-) : EditorTextField(project, PlainTextFileType.INSTANCE) {
+    completion: TextCompletionProvider? = null,
+) : EditorTextField(
+    completion?.let {
+        LanguageTextField.createDocument(
+            "",
+            PlainTextLanguage.INSTANCE,
+            project,
+            TextCompletionUtil.DocumentWithCompletionCreator(it, true),
+        )
+    },
+    project,
+    PlainTextFileType.INSTANCE,
+) {
     override fun uiDataSnapshot(sink: DataSink) {
         super.uiDataSnapshot(sink)
         ctx?.let { sink.set(PromptDataKeys.SEND, it) }

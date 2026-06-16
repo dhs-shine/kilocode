@@ -16,19 +16,26 @@ import ai.kilocode.log.KiloLog
 import ai.kilocode.jetbrains.api.model.Agent
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
 import ai.kilocode.rpc.dto.ConfigTargetDto
+import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.psi.codeStyle.NameUtil
+import com.intellij.psi.search.FilenameIndex
+import com.intellij.psi.search.GlobalSearchScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -46,6 +53,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 
 /**
@@ -63,6 +71,8 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         private val LEGACY = listOf("opencode.jsonc", "opencode.json")
         private val GLOBAL = MODERN + LEGACY + "config.json"
         private val LOCAL_DIRS = listOf(".kilo", ".kilocode", ".opencode")
+        private const val SEARCH_CAP = 2_000
+        private const val DIFF_CAP = 200_000
         private val CONFIG = """{
   "${'$'}schema": "$SCHEMA"
 }
@@ -173,6 +183,30 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         return found.values.toList()
     }
 
+    override suspend fun searchFiles(directory: String, query: String, limit: Int): FileSearchResultDto {
+        val base = file(clean(directory) ?: directory) ?: return FileSearchResultDto()
+        val project = project(base) ?: return FileSearchResultDto(git = gitAvailable(base))
+        val git = gitAvailable(base)
+        if (DumbService.getInstance(project).isDumb) return FileSearchResultDto(indexing = true, git = git)
+        return try {
+            val files = readAction { search(project, base, query, limit.coerceIn(1, 200)) }
+            FileSearchResultDto(files = files, git = git)
+        } catch (e: IndexNotReadyException) {
+            FileSearchResultDto(indexing = true, git = git)
+        }
+    }
+
+    override suspend fun terminalOutput(directory: String): String? = null
+
+    override suspend fun gitChanges(directory: String): String? = withContext(Dispatchers.IO) {
+        val base = file(clean(directory) ?: directory) ?: return@withContext null
+        if (!gitAvailable(base)) return@withContext null
+        val unstaged = git(base, "diff")
+        val staged = git(base, "diff", "--staged")
+        val text = listOf(unstaged, staged).filter { it.isNotBlank() }.joinToString("\n")
+        text.takeIf { it.isNotBlank() }?.take(DIFF_CAP)
+    }
+
     override suspend fun openFile(path: String): Boolean {
         val item = clean(path) ?: return false
         val target = file(item)?.takeIf { it.isAbsolute } ?: return false
@@ -271,6 +305,55 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
             val base = item.basePath?.let(::file) ?: return@firstOrNull false
             path.startsWith(base)
         } ?: projects.firstOrNull()
+    }
+
+    private fun search(project: Project, base: Path, query: String, limit: Int): List<WorkspaceFileDto> {
+        val scope = GlobalSearchScope.projectScope(project)
+        val matcher = NameUtil.buildMatcher("*${query.trim()}").build()
+        val names = mutableListOf<String>()
+        FilenameIndex.processAllFileNames({ name ->
+            if (matcher.matches(name)) names += name
+            names.size < SEARCH_CAP
+        }, scope, null)
+        return names.asSequence()
+            .flatMap { name -> FilenameIndex.getVirtualFilesByName(name, scope).asSequence() }
+            .mapNotNull { vf -> fileDto(base, vf) }
+            .distinctBy { it.path }
+            .sortedWith(
+                compareByDescending<WorkspaceFileDto> { matcher.matchingDegree(it.name) }
+                    .thenBy { it.path.length }
+                    .thenBy { it.path },
+            )
+            .take(limit)
+            .toList()
+    }
+
+    private fun fileDto(base: Path, vf: VirtualFile): WorkspaceFileDto? {
+        val path = file(vf.path) ?: return null
+        if (!path.startsWith(base)) return null
+        val rel = base.relativize(path).toString().replace('\\', '/')
+        if (rel.isBlank()) return null
+        return WorkspaceFileDto(rel, vf.name, vf.isDirectory)
+    }
+
+    private fun gitAvailable(base: Path): Boolean = Files.exists(base.resolve(".git")) || git(base, "rev-parse", "--is-inside-work-tree").trim() == "true"
+
+    private fun git(base: Path, vararg args: String): String {
+        return try {
+            val proc = ProcessBuilder(listOf("git") + args)
+                .directory(base.toFile())
+                .redirectErrorStream(true)
+                .start()
+            val done = proc.waitFor(5, TimeUnit.SECONDS)
+            if (!done) {
+                proc.destroyForcibly()
+                return ""
+            }
+            proc.inputStream.bufferedReader().readText().takeIf { proc.exitValue() == 0 }.orEmpty()
+        } catch (e: Exception) {
+            LOG.debug { "git command failed dir=$base args=${args.joinToString(" ")} message=${e.message}" }
+            ""
+        }
     }
 
     private fun agent(a: Agent) = AgentInfo(

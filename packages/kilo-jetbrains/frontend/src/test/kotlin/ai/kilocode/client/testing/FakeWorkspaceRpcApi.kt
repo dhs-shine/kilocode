@@ -2,6 +2,7 @@ package ai.kilocode.client.testing
 
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
 import ai.kilocode.rpc.dto.ConfigTargetDto
+import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
@@ -27,6 +28,9 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var models = ModelsWorkspaceDto()
     var modelsGate: CompletableDeferred<Unit>? = null
     var fileMatches = emptyList<WorkspaceFileDto>()
+    var searchResult = FileSearchResultDto()
+    var terminalOutput: String? = null
+    var gitChanges: String? = null
     var openResult = true
     var localConfigPath = "/test/.kilo/kilo.jsonc"
     var globalConfigPath = "/config/kilo.jsonc"
@@ -68,6 +72,21 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
         assertNotEdt("files")
         fileCalls.add(directory to path)
         return fileMatches
+    }
+
+    override suspend fun searchFiles(directory: String, query: String, limit: Int): FileSearchResultDto {
+        assertNotEdt("searchFiles")
+        return searchResult
+    }
+
+    override suspend fun terminalOutput(directory: String): String? {
+        assertNotEdt("terminalOutput")
+        return terminalOutput
+    }
+
+    override suspend fun gitChanges(directory: String): String? {
+        assertNotEdt("gitChanges")
+        return gitChanges
     }
 
     override suspend fun openFile(path: String): Boolean {

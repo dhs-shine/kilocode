@@ -4,6 +4,7 @@ package ai.kilocode.client.app
 
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
 import ai.kilocode.rpc.dto.ConfigTargetDto
+import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
@@ -123,6 +124,33 @@ class KiloWorkspaceService internal constructor(
         } catch (e: Exception) {
             LOG.warn("workspace file lookup failed for directory=$directory path=$path", e)
             emptyList()
+        }
+    }
+
+    suspend fun searchFiles(directory: String, query: String, limit: Int = 50): FileSearchResultDto {
+        return try {
+            call { searchFiles(directory, query, limit) }
+        } catch (e: Exception) {
+            LOG.warn("workspace file search failed for directory=$directory query=$query", e)
+            FileSearchResultDto()
+        }
+    }
+
+    suspend fun terminalOutput(directory: String): String? {
+        return try {
+            call { terminalOutput(directory) }
+        } catch (e: Exception) {
+            LOG.warn("terminal output lookup failed for directory=$directory", e)
+            null
+        }
+    }
+
+    suspend fun gitChanges(directory: String): String? {
+        return try {
+            call { gitChanges(directory) }
+        } catch (e: Exception) {
+            LOG.warn("git changes lookup failed for directory=$directory", e)
+            null
         }
     }
 
