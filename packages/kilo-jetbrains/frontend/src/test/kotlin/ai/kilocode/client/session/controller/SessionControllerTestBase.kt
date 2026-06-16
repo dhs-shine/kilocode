@@ -8,6 +8,8 @@ import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.testing.FakeAppRpcApi
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.client.testing.FakeSessionRpcApi
+import ai.kilocode.client.testing.FakeUiTimers
+import ai.kilocode.client.util.UiTimers
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.session.SessionRef
@@ -31,6 +33,7 @@ import ai.kilocode.rpc.dto.TelemetryCaptureDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import java.awt.event.HierarchyEvent
@@ -95,6 +98,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
     protected lateinit var app: KiloAppService
     protected lateinit var workspaces: KiloWorkspaceService
     protected lateinit var workspace: Workspace
+    protected lateinit var timers: FakeUiTimers
 
     protected lateinit var scope: CoroutineScope
     protected lateinit var parent: Disposable
@@ -104,6 +108,8 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         rpc = FakeSessionRpcApi()
         appRpc = FakeAppRpcApi()
         projectRpc = FakeWorkspaceRpcApi()
+        timers = FakeUiTimers()
+        ApplicationManager.getApplication().replaceService(UiTimers::class.java, timers, testRootDisposable)
 
         scope = CoroutineScope(SupervisorJob())
         parent = Disposer.newDisposable("test")
@@ -242,9 +248,14 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
     }
 
     protected fun pause(ms: Long) = runBlocking {
-        val tick = 10L
-        repeat((ms / tick).coerceAtLeast(1).toInt()) {
-            delay(tick)
+        settleFast()
+        timers.advanceBy(ms)
+        settleFast()
+    }
+
+    private suspend fun settleFast() {
+        repeat(3) {
+            delay(1)
             edt { UIUtil.dispatchAllInvocationEvents() }
         }
     }

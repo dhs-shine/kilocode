@@ -9,6 +9,8 @@
     <extensions defaultExtensionNs="com.intellij">
         <applicationService serviceImplementation="ai.kilocode.client.migration.KiloMigrationService"/>
         <applicationService serviceImplementation="ai.kilocode.client.autocomplete.KiloAutocompleteSettingsService"/>
+        <applicationService serviceInterface="ai.kilocode.client.util.UiTimers"
+                            serviceImplementation="ai.kilocode.client.util.SwingUiTimers"/>
         <customPasteProvider implementation="ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider"/>
 
         <notificationGroup id="Kilo Code"

@@ -7,6 +7,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.iconButton
+import ai.kilocode.client.util.UiTimers
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.application.ApplicationManager
@@ -15,6 +16,7 @@ import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.DataProvider
+import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.ui.DocumentAdapter
@@ -49,7 +51,6 @@ import javax.swing.JList
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
 import javax.swing.SwingUtilities
-import javax.swing.Timer
 import javax.swing.event.DocumentEvent
 import javax.swing.event.ListDataEvent
 import javax.swing.event.ListDataListener
@@ -59,6 +60,7 @@ class HistoryPanel(
     private val controller: HistoryController,
     private val nav: () -> Unit = {},
     private val manager: SessionManager? = null,
+    private val timers: UiTimers = service(),
 ) : BorderLayoutPanel(), Disposable, DataProvider {
     private val localSearch = search(controller.local)
     private val cloudSearch = search(controller.cloud)
@@ -83,7 +85,7 @@ class HistoryPanel(
         .setText(KiloBundle.message("history.tab.cloud"))
         .setForeSideComponent(back())
     private var stale = false
-    private val timer = Timer(ACTIVITY_MS) { syncActivity() }
+    private val timer = timers.timer(ACTIVITY_MS) { syncActivity() }
     private val tabs: JBTabs = JBTabsFactory.createTabs(null, this).apply {
         presentation.setSingleRow(true)
         presentation.setTabsPosition(JBTabsPosition.top)
