@@ -125,6 +125,40 @@ Permissions are configured under the `permission` key in `kilo.jsonc`. The follo
 
 Instead of a simple `"allow"` or `"deny"`, each tool can use glob-pattern rules for granular control. Patterns are matched against the tool's arguments (command strings, file paths, etc.), and the last matching rule wins.
 
+### Rule Precedence
+
+Permission rules are evaluated in config order. When more than one rule matches the requested permission and target pattern, the last matching rule wins.
+
+Put broad fallbacks first and exceptions after them:
+
+```json
+{
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "uv *": "allow"
+    }
+  }
+}
+```
+
+With that config, `uv pip install ...` is allowed because `uv *` appears after the catch-all `*`.
+
+If you put the catch-all last, it overrides the earlier specific rule:
+
+```json
+{
+  "permission": {
+    "bash": {
+      "uv *": "allow",
+      "*": "ask"
+    }
+  }
+}
+```
+
+With that config, `uv pip install ...` asks because the later `*` rule also matches.
+
 ### Example: Shell Commands
 
 Allow git commands automatically, but prompt for everything else:

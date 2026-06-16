@@ -6,7 +6,9 @@ platform: new
 
 # Agent Permissions
 
-Agent permissions decide whether a tool call is allowed, asks for approval, or is denied. This page shows the agent-file form of those rules, written as YAML frontmatter. The same `permission` keys also work in `kilo.jsonc` if you prefer to configure them globally.
+Agent permissions decide whether a tool call is allowed, asks for approval, or is denied.
+
+This page focuses on Markdown agent files, where permission rules are written as YAML frontmatter under the `permission` key. For global defaults in `kilo.jsonc`, use the JSON examples in [Auto-Approving Actions](/docs/getting-started/settings/auto-approving-actions#glob-pattern-rules).
 
 ## Actions
 
