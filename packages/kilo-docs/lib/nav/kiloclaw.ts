@@ -30,7 +30,7 @@ export const KiloClawNav: NavSection[] = [
       },
       {
         href: "/kiloclaw/development-tools",
-        children: "Settings",
+        children: "Integrations",
         subLinks: [
           { href: "/kiloclaw/development-tools", children: "Overview" },
           { href: "/kiloclaw/development-tools/github", children: "GitHub" },

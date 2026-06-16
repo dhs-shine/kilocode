@@ -60,5 +60,5 @@ Once connected, your KiloClaw agent can interact with Linear on your behalf:
 
 ## Related
 
-- [Settings Overview](/docs/kiloclaw/development-tools)
+- [Integrations Overview](/docs/kiloclaw/development-tools)
 - [GitHub Integration](/docs/kiloclaw/development-tools/github)

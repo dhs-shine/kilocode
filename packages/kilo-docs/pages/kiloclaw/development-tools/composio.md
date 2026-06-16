@@ -5,7 +5,7 @@ description: "Connect Composio to your KiloClaw agent to access hundreds of tool
 
 # Composio Integration
 
-Connect Composio to your KiloClaw agent to instantly unlock access to 250+ tool integrations — from GitHub and Slack to Salesforce, Notion, Jira, and beyond. Composio is a platform that handles the authentication and connection details for each service, so your agent can use them without you having to set up each one individually.
+Connect Composio to your KiloClaw agent to instantly unlock access to 250+ tool integrations — from Salesforce and HubSpot to Notion, Jira, and beyond. Composio is a platform that handles the authentication and connection details for each service, so your agent can use them without you having to set up each one individually.
 
 {% callout type="info" title="Tip" %}
 Browse the full list of tools Composio supports at [composio.dev/tools](https://composio.dev/tools). If a tool you need is listed there, you can connect it to KiloClaw through Composio in minutes.
@@ -62,5 +62,5 @@ Your agent can perform actions like reading data, creating records, sending mess
 
 ## Related
 
-- [Settings Overview](/docs/kiloclaw/development-tools)
+- [Integrations Overview](/docs/kiloclaw/development-tools)
 - [GitHub Integration](/docs/kiloclaw/development-tools/github)
