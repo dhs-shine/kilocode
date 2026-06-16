@@ -1,6 +1,6 @@
 import { FileDiff, type FileDiffOptions } from "@pierre/diffs"
 import type { WorkerPoolManager } from "@pierre/diffs/worker"
-import { createEffect, createMemo, onCleanup, splitProps, type ComponentProps, type JSX } from "solid-js"
+import { createEffect, createMemo, on, onCleanup, splitProps, untrack, type ComponentProps, type JSX } from "solid-js"
 import { File as BaseFile } from "@opencode-ai/ui/file"
 import { createDefaultOptions, styleVariables } from "@kilocode/kilo-ui/pierre"
 import { getWorkerPool } from "../pierre/worker"
@@ -68,39 +68,72 @@ function EagerDiff<T>(props: DiffProps<T>) {
       }) as unknown as FileDiffOptions<T>,
   )
 
-  createEffect(() => {
-    const annotations = local.annotations ?? []
-    instance?.cleanUp()
-    const worker = getWorkerPool(local.diffStyle) as unknown as WorkerPoolManager | undefined
-    instance = new FileDiff<T>(options(), worker)
-    container.innerHTML = ""
+  createEffect(
+    on(
+      () => {
+        const before = local.before
+        const after = local.after
+        return {
+          opts: options(),
+          style: local.diffStyle,
+          diff: local.fileDiff,
+          before,
+          after,
+          old: value(before),
+          next: value(after),
+          beforeName: before?.name,
+          afterName: after?.name,
+          notes: local.annotations ?? [],
+        }
+      },
+      (state, prev) => {
+        const notes = state.notes as Parameters<FileDiff<T>["setLineAnnotations"]>[0]
+        const same =
+          prev &&
+          prev.opts === state.opts &&
+          prev.style === state.style &&
+          prev.diff === state.diff &&
+          prev.before === state.before &&
+          prev.after === state.after &&
+          prev.old === state.old &&
+          prev.next === state.next &&
+          prev.beforeName === state.beforeName &&
+          prev.afterName === state.afterName
 
-    if (local.fileDiff) {
-      instance.render({
-        fileDiff: local.fileDiff,
-        lineAnnotations: annotations,
-        containerWrapper: container,
-      } as unknown as Parameters<FileDiff<T>["render"]>[0])
-    }
+        if (same) {
+          if (!instance) return
+          instance.setLineAnnotations(notes)
+          instance.rerender()
+          return
+        }
 
-    if (!local.fileDiff && local.before && local.after) {
-      instance.render({
-        oldFile: { ...local.before, contents: value(local.before) },
-        newFile: { ...local.after, contents: value(local.after) },
-        lineAnnotations: annotations,
-        containerWrapper: container,
-      } as unknown as Parameters<FileDiff<T>["render"]>[0])
-    }
+        instance?.cleanUp()
+        const worker = getWorkerPool(state.style) as unknown as WorkerPoolManager | undefined
+        instance = new FileDiff<T>(state.opts, worker)
+        container.innerHTML = ""
 
-    scheme(container)
-    local.onRendered?.()
-  })
+        if (state.diff) {
+          instance.render({
+            fileDiff: state.diff,
+            lineAnnotations: notes,
+            containerWrapper: container,
+          } as unknown as Parameters<FileDiff<T>["render"]>[0])
+        }
 
-  createEffect(() => {
-    if (!instance) return
-    instance.setLineAnnotations((local.annotations ?? []) as Parameters<FileDiff<T>["setLineAnnotations"]>[0])
-    instance.rerender()
-  })
+        if (!state.diff && state.before && state.after) {
+          instance.render({
+            oldFile: { ...state.before, contents: state.old },
+            newFile: { ...state.after, contents: state.next },
+            lineAnnotations: notes,
+            containerWrapper: container,
+          } as unknown as Parameters<FileDiff<T>["render"]>[0])
+        }
+
+        scheme(container)
+        untrack(() => local.onRendered?.())
+      },
+    ),
+  )
 
   onCleanup(() => {
     instance?.cleanUp()

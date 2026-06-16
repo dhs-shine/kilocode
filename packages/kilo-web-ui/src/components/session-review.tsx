@@ -226,7 +226,7 @@ export function SessionReview(props: SessionReviewProps) {
                                   <div data-slot="session-review-large-diff">
                                     <div data-slot="session-review-large-diff-title" data-state="loading">
                                       <Spinner />
-                                      <span>Loading diff...</span>
+                                      <span>{i18n.t("ui.sessionReview.image.loading")}</span>
                                     </div>
                                   </div>
                                 }
