@@ -26,8 +26,8 @@ You can write each permission as one action for the whole tool or as a pattern m
 permission:
   read: allow
   edit:
-    "*.md": allow
     "*": deny
+    "*.md": allow
   bash:
     "*": ask
     "git status *": allow
@@ -100,12 +100,12 @@ For project files, use workspace-relative patterns:
 ```yaml
 permission:
   read:
+    "*": ask
     "docs/*": allow
     "src/generated/*": deny
-    "*": ask
   edit:
-    "*.md": allow
     "*": deny
+    "*.md": allow
 ```
 
 Absolute paths are mainly relevant for `external_directory` permissions and shell commands that touch paths outside the worktree.
