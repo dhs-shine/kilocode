@@ -374,6 +374,19 @@ export function ModelsAvailableRoute() {
               </div>
               <strong class="models-context-value mono">{fmtContext(state.top())}</strong>
             </div>
+            <div class="models-privacy-filter-group">
+              <span>Privacy</span>
+              <button
+                class="models-privacy-filter"
+                classList={{ selected: state.privacy() }}
+                type="button"
+                aria-label="Hide models whose providers may use prompts for training"
+                aria-pressed={state.privacy()}
+                onClick={() => state.setPrivacy(!state.privacy())}
+              >
+                Hide prompt-training models
+              </button>
+            </div>
             <div class="models-capabilities-filter">
               <span>Capabilities</span>
               <div class="models-capabilities-list">
