@@ -239,6 +239,20 @@ const blocks: SDKPart[] = [
     },
     time: { start: stamp - 3000, end: stamp - 2800 },
   }),
+  tool("matrix-todos", "matrix-call-todos", "todowrite", {
+    status: "completed",
+    input: {
+      todos: [
+        { id: "todo-1", content: "Add block matrix story", status: "completed" },
+        { id: "todo-2", content: "Check spacing against reasoning output", status: "in_progress" },
+        { id: "todo-3", content: "Run visual regression", status: "pending" },
+      ],
+    },
+    output: "",
+    title: "Update todos",
+    metadata: {},
+    time: { start: stamp - 2300, end: stamp - 2100 },
+  }),
   tool("matrix-patch", "matrix-call-patch", "apply_patch", {
     status: "completed",
     input: {},
@@ -267,20 +281,6 @@ const blocks: SDKPart[] = [
       ],
     },
     time: { start: stamp - 2700, end: stamp - 2400 },
-  }),
-  tool("matrix-todos", "matrix-call-todos", "todowrite", {
-    status: "completed",
-    input: {
-      todos: [
-        { id: "todo-1", content: "Add block matrix story", status: "completed" },
-        { id: "todo-2", content: "Check spacing against reasoning output", status: "in_progress" },
-        { id: "todo-3", content: "Run visual regression", status: "pending" },
-      ],
-    },
-    output: "",
-    title: "Update todos",
-    metadata: {},
-    time: { start: stamp - 2300, end: stamp - 2100 },
   }),
   tool("matrix-question-active", "matrix-call-question-active", "question", {
     status: "running",

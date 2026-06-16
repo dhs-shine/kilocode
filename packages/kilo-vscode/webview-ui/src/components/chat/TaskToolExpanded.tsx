@@ -122,7 +122,7 @@ const TaskToolRenderer: Component<ToolProps> = (props) => {
   )
 
   return (
-    <div data-component="tool-part-wrapper">
+    <div data-component="tool-part-wrapper" data-part-type="tool" data-tool={props.tool}>
       <BasicTool
         icon="task"
         status={props.status}

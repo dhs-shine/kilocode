@@ -199,6 +199,14 @@
   padding: 0 4px 12px;
 }
 
+.vscode-session-turn[data-row="assistant"] {
+  padding-bottom: 6px;
+}
+
+.vscode-session-turn[data-row="assistant"]:has(> .vscode-session-turn-assistant:empty) {
+  padding-bottom: 0;
+}
+
 .vscode-session-turn-user {
   width: 100%;
 }
@@ -211,29 +219,8 @@
 .vscode-session-turn-assistant {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   width: 100%;
-}
-
-.vscode-session-turn-assistant
-  [data-component="tool-part-wrapper"][data-part-type="text"]
-  + [data-component="tool-part-wrapper"][data-part-type="tool"],
-.vscode-session-turn-assistant
-  [data-component="tool-part-wrapper"][data-part-type="text"]
-  + [data-component="tool-part-wrapper"][data-part-type="reasoning"],
-.vscode-session-turn-assistant
-  [data-component="tool-part-wrapper"][data-part-type="tool"]
-  + [data-component="tool-part-wrapper"][data-part-type="text"],
-.vscode-session-turn-assistant
-  [data-component="tool-part-wrapper"][data-part-type="reasoning"]
-  + [data-component="tool-part-wrapper"][data-part-type="text"],
-.vscode-session-turn-assistant
-  [data-component="tool-part-wrapper"]:has([data-slot="collapsible-trigger"][aria-expanded="true"])
-  + :is(
-    [data-component="tool-part-wrapper"][data-part-type="tool"],
-    [data-component="tool-part-wrapper"][data-part-type="reasoning"]
-  ) {
-  margin-top: 6px;
 }
 
 .vscode-session-turn-diffs {
