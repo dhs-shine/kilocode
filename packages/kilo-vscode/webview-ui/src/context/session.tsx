@@ -368,7 +368,11 @@ export const SessionProvider: ParentComponent = (props) => {
   const [agents, setAgents] = createSignal<AgentInfo[]>([])
   const [allAgents, setAllAgents] = createSignal<AgentInfo[]>([])
   const [defaultAgent, setDefaultAgent] = createSignal("code")
-  const [pendingKiloModel, setPendingKiloModel] = createSignal<{ modelID: string; after: number } | null>(null)
+  const [pendingKiloModel, setPendingKiloModel] = createSignal<{
+    modelID: string
+    agent?: string
+    after: number
+  } | null>(null)
   const [catalog, setCatalog] = createSignal(0)
 
   // Skills loaded from the CLI backend
@@ -598,8 +602,8 @@ export const SessionProvider: ParentComponent = (props) => {
     }
   }
 
-  function selectKiloModel(modelID: string) {
-    setPendingKiloModel({ modelID, after: catalog() })
+  function selectKiloModel(modelID: string, agent?: string) {
+    setPendingKiloModel({ modelID, ...(agent && { agent }), after: catalog() })
     vscode.postMessage({ type: "requestProviders" })
   }
 
@@ -608,7 +612,7 @@ export const SessionProvider: ParentComponent = (props) => {
       setCatalog((value) => value + 1)
       return
     }
-    if (message.type === "selectKiloModel") selectKiloModel(message.modelID)
+    if (message.type === "selectKiloModel") selectKiloModel(message.modelID, message.agent)
   })
   onCleanup(unsubKiloModel)
 
@@ -620,6 +624,11 @@ export const SessionProvider: ParentComponent = (props) => {
       console.warn("[Kilo New] Ignoring unavailable Kilo catalog model:", pending.modelID)
       return
     }
+    if (pending.agent && !agentNames().has(pending.agent)) {
+      console.warn("[Kilo New] Ignoring unavailable Kilo agent:", pending.agent)
+      return
+    }
+    if (pending.agent) selectAgent(pending.agent)
     selectModel(KILO_PROVIDER_ID, pending.modelID)
   })
 

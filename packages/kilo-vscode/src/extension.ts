@@ -23,6 +23,7 @@ import { registerToggleAutoApprove } from "./commands/toggle-auto-approve"
 import { registerHeapSnapshot } from "./commands/heap-snapshot"
 import { RemoteStatusService } from "./services/RemoteStatusService"
 import { markWorkspace } from "./util/spotlight"
+import { parseSwitchLink } from "./kilo-provider/switch-link"
 
 let agentManager: AgentManagerProvider | undefined
 let shuttingDown = false
@@ -491,12 +492,11 @@ export function activate(context: vscode.ExtensionContext) {
           return
         }
 
-        if (uri.path !== "/kilocode/model") return
-        const modelID = new URLSearchParams(uri.query).get("model")
-        if (!modelID) return
-        console.log("[Kilo New] URI handler: selecting linked Kilo model:", modelID)
+        const link = parseSwitchLink(uri.path, uri.query)
+        if (!link) return
+        console.log("[Kilo New] URI handler: applying linked Kilo selection:", link)
         await vscode.commands.executeCommand(`${KiloProvider.viewType}.focus`)
-        provider.selectKiloModel(modelID)
+        provider.selectKiloModel(link.modelID, link.agent)
       },
     }),
   )

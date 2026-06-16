@@ -149,17 +149,25 @@ The VS Code extension supports a `vscode://` protocol handler that lets you open
 ### URL Format
 
 ```
-vscode://kilocode.kilo-code/kilocode/model?model=<modelID>
+vscode://kilocode.kilo-code/kilocode/switch?model=<modelID>[&agent=<agentName>]
 ```
 
 Replace `<modelID>` with the Kilo Gateway model ID you want to select (e.g. `kilo-auto/free`). Only models available in the Kilo Gateway catalog are accepted; the link is silently ignored if the model ID is not found.
+
+The optional `agent` parameter switches to a visible primary agent before selecting the model. Use the agent's ID, such as `code` or `plan`, rather than its display name. `mode` is also accepted as an alias for `agent`.
 
 ### Example: Auto Free
 
 To open Kilo Code and switch to the [Auto Free](/docs/code-with-ai/agents/auto-model) tier (`kilo-auto/free`), use:
 
 ```
-vscode://kilocode.kilo-code/kilocode/model?model=kilo-auto%2Ffree
+vscode://kilocode.kilo-code/kilocode/switch?model=kilo-auto%2Ffree
+```
+
+To switch to Plan at the same time, add the optional agent:
+
+```
+vscode://kilocode.kilo-code/kilocode/switch?model=kilo-auto%2Ffree&agent=plan
 ```
 
 {% callout type="tip" %}
@@ -171,15 +179,16 @@ URL-encode the `/` in model IDs as `%2F` when embedding this URL in HTML links o
 - **VS Code open**: the Kilo sidebar is focused and the model is selected in the active session immediately.
 - **VS Code closed**: VS Code launches, then applies the model selection once the extension is ready.
 - The model is validated against the current Kilo Gateway model catalog before being applied. If the model ID is not found in the catalog, the deep link is silently ignored.
-- Model selection via deep link follows the same precedence as using the model picker: it applies as a session override for the active session (or sets the next-session model when no session is active), and updates your model recents list. It does **not** change your configured default model in settings.
+- When `agent` or `mode` is provided, it must identify a visible primary agent. Invalid or unavailable agents cause the deep link to be ignored.
+- The agent is selected before the model so the linked model applies to that agent. The selection follows the same precedence as using the pickers: it updates the active session, or the next session when no session is active. It does **not** change your configured defaults in settings.
 
 ### Sharing and Embedding
 
 You can embed these links in a web page:
 
 ```html
-<a href="vscode://kilocode.kilo-code/kilocode/model?model=kilo-auto%2Ffree">
-  Open Kilo Code with Auto Free
+<a href="vscode://kilocode.kilo-code/kilocode/switch?model=kilo-auto%2Ffree&amp;agent=plan">
+  Open Kilo Code with Auto Free in Plan
 </a>
 ```
 
