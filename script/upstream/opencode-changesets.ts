@@ -24,7 +24,7 @@ type Group = Map<string, Map<string, string[]>>
 
 const repo = "anomalyco/opencode"
 const pkgs = ["@kilocode/cli", "kilo-code"]
-const bump: Bump = "minor"
+const bump: Bump = "patch"
 const drop = ["Desktop", "SDK"]
 
 const usage = `
@@ -184,11 +184,21 @@ export function select(releases: Release[], from: string, to: string) {
   if (semver.gt(base, head) || base === head) throw new Error(`Expected from version to be lower than to version`)
 
   const seen = new Set<string>()
-  const selected = releases
+  const published = releases
     .filter((release) => !release.draft)
     .filter((release) => !release.prerelease)
     .map((release) => ({ release, version: semver.valid(release.tag_name.replace(/^v/, "")) }))
     .filter((item): item is { release: Release; version: string } => Boolean(item.version))
+
+  if (!published.some((item) => item.version === base)) {
+    throw new Error(`Starting opencode release does not exist or is not published: ${tag(base)}`)
+  }
+
+  if (!published.some((item) => item.version === head)) {
+    throw new Error(`Target opencode release does not exist or is not published: ${tag(head)}`)
+  }
+
+  return published
     .filter((item) => {
       if (seen.has(item.version)) return false
       seen.add(item.version)
@@ -196,12 +206,6 @@ export function select(releases: Release[], from: string, to: string) {
     })
     .sort((a, b) => semver.compare(a.version, b.version))
     .map((item) => ({ ...item.release, tag_name: tag(item.version) }))
-
-  if (!selected.some((release) => release.tag_name === tag(head))) {
-    throw new Error(`Target opencode release does not exist or is not published: ${tag(head)}`)
-  }
-
-  return selected
 }
 
 export function changeset(releases: Release[], from: string, to: string) {

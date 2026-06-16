@@ -1,6 +1,6 @@
 ---
-"@kilocode/cli": minor
-"kilo-code": minor
+"@kilocode/cli": patch
+"kilo-code": patch
 ---
 
 Changes from opencode v1.14.51 to v1.15.4 upstream:
