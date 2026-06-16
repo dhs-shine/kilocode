@@ -14,6 +14,7 @@ import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBLabel
@@ -40,6 +41,7 @@ import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JScrollPane
 import javax.swing.KeyStroke
+import javax.swing.JTextField
 import javax.swing.UIManager
 
 @Suppress("UNCHECKED_CAST")
@@ -96,29 +98,31 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt { assertEquals(listOf(ProviderListAction.OAUTH, ProviderListAction.CONNECT), rows(content).single().actions) }
     }
 
-    fun `test content uses toolbar search and direct list`() {
+    fun `test content uses direct list without scroll or search`() {
         val content = content()
         edt {
-            assertEquals(1, components(content).filterIsInstance<SearchTextField>().size)
             assertEquals(1, components(content).filterIsInstance<JBList<ProviderListRow>>().size)
+            assertTrue(components(content).filterIsInstance<SearchTextField>().isEmpty())
             assertTrue(components(content).filterIsInstance<JScrollPane>().isEmpty())
             assertTrue(components(content).filterIsInstance<JButton>().none { it.text == "Refresh" })
         }
     }
 
-    fun `test toolbar is outside scrollable provider content`() {
+    fun `test toolbar and search are outside scrollable provider content`() {
         installProvider(ProviderSettingsDto())
         val panel = edt { createUi() }
 
         edt {
             val layout = panel.content.layout as BorderLayout
-            val toolbar = layout.getLayoutComponent(BorderLayout.NORTH)
+            val header = layout.getLayoutComponent(BorderLayout.NORTH)
             val scroll = layout.getLayoutComponent(BorderLayout.CENTER)
 
-            assertNotNull(toolbar)
+            assertNotNull(header)
             assertTrue(scroll is JScrollPane)
-            assertFalse(components(content(panel)).contains(toolbar))
-            assertEquals(1, components(content(panel)).filterIsInstance<SearchTextField>().size)
+            assertEquals(1, components(header).filterIsInstance<SearchTextField>().size)
+            assertTrue(components(scroll).filterIsInstance<SearchTextField>().isEmpty())
+            assertFalse(components(content(panel)).contains(header))
+            assertTrue(components(content(panel)).filterIsInstance<SearchTextField>().isEmpty())
             assertEquals(1, components(content(panel)).filterIsInstance<JBList<ProviderListRow>>().size)
         }
     }
@@ -263,7 +267,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
                 ),
             )
 
-            search(content).text = "open"
+            content.filter("open")
 
             val rows = rows(content)
             assertEquals(listOf("openai"), rows.map { it.key })
@@ -552,6 +556,89 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test provider oauth prefers headless method original index`() {
+        val rpc = installProvider(
+            ProviderSettingsDto(
+                providers = listOf(provider("openai", "OpenAI")),
+                auth = mapOf(
+                    "openai" to listOf(
+                        ProviderAuthMethodDto("oauth", "ChatGPT Pro/Plus"),
+                        ProviderAuthMethodDto("oauth", "ChatGPT Pro/Plus (headless)"),
+                    ),
+                ),
+            ),
+        )
+        val panel = edt { createUi() }
+
+        flushUntil { rpc.stateCalls.size == 1 && edt { rows(panel).map { it.key } == listOf("openai") } }
+        edt { triggerPrimary(panel) }
+        flushUntil { rpc.authorizes.size == 1 }
+
+        assertEquals("1", rpc.authorizes.single().method)
+    }
+
+    fun `test provider oauth falls back to first oauth method original index`() {
+        val rpc = installProvider(
+            ProviderSettingsDto(
+                providers = listOf(provider("github-copilot", "GitHub Copilot")),
+                auth = mapOf(
+                    "github-copilot" to listOf(
+                        ProviderAuthMethodDto("oauth", "OAuth"),
+                    ),
+                ),
+            ),
+        )
+        val panel = edt { createUi() }
+
+        flushUntil { rpc.stateCalls.size == 1 && edt { rows(panel).map { it.key } == listOf("github-copilot") } }
+        edt { triggerPrimary(panel) }
+        flushUntil { rpc.authorizes.size == 1 }
+
+        assertEquals("0", rpc.authorizes.single().method)
+    }
+
+    fun `test provider oauth auto response shows device auth panel`() {
+        val callback = CompletableDeferred<ai.kilocode.rpc.dto.ProviderActionResultDto>()
+        val rpc = installProvider(
+            ProviderSettingsDto(
+                providers = listOf(provider("openai", "OpenAI")),
+                auth = mapOf(
+                    "openai" to listOf(
+                        ProviderAuthMethodDto("oauth", "ChatGPT Pro/Plus"),
+                        ProviderAuthMethodDto("oauth", "ChatGPT Pro/Plus (headless)"),
+                    ),
+                ),
+            ),
+        )
+        rpc.ready = ProviderOAuthReadyDto(
+            method = "auto",
+            url = "https://auth.openai.com/device",
+            instructions = "Enter code: ABCD-EFGH",
+        )
+        rpc.callbacksReady.add(callback)
+        val panel = edt { createUi() }
+
+        flushUntil { rpc.stateCalls.size == 1 && edt { rows(panel).map { it.key } == listOf("openai") } }
+        edt { triggerPrimary(panel) }
+        flushUntil { rpc.callbacks.size == 1 && edt { text(panel).contains("Waiting for authorization... (1:30)") } }
+
+        edt {
+            val t = text(panel)
+            assertTrue(t, t.contains("Starting OAuth for OpenAI"))
+            assertTrue(t, t.contains("Open this URL"))
+            assertTrue(t, t.contains("A B C D - E F G H"))
+            assertTrue(t, t.contains("Open Browser"))
+            assertTrue(t, t.contains("Cancel"))
+            assertEquals("https://auth.openai.com/device", fieldsByName(panel, "kilo.provider.oauth.url").single().text)
+            val qr = components(panel).filterIsInstance<JBLabel>().single { it.name == "kilo.provider.oauth.qr" }
+            assertNotNull(qr.icon)
+        }
+
+        edt { components(panel).filterIsInstance<JButton>().single { it.text == "Cancel" && it.isVisible }.doClick() }
+        flushUntil { edt { rpc.callbacks.size == 1 && rows(panel).single().disabled.not() } }
+        callback.complete(ai.kilocode.rpc.dto.ProviderActionResultDto(providerState(provider("stale", "Stale"))))
+    }
+
     fun `test provider oauth cancel before authorize completion skips callback`() {
         val ready = CompletableDeferred<ProviderOAuthReadyDto>()
         val rpc = installProvider(
@@ -710,7 +797,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
     private fun list(component: JComponent) = components(component).filterIsInstance<JBList<ProviderListRow>>().single()
 
-    private fun search(component: JComponent) = components(component).filterIsInstance<SearchTextField>().single()
+    private fun fieldsByName(root: Container, name: String): List<JTextField> = components(root).filterIsInstance<JTextField>().filter { it.name == name }
 
     private fun center(rect: Rectangle) = Point(rect.x + rect.width / 2, rect.y + rect.height / 2)
 
@@ -737,6 +824,8 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             when (comp) {
                 is JButton -> comp.text?.let { out.add(it) }
                 is JBLabel -> comp.text?.let { out.add(it) }
+                is JTextField -> comp.text?.let { out.add(it) }
+                is SimpleColoredComponent -> comp.toString().takeIf { it.isNotBlank() }?.let { out.add(it) }
             }
         }
         return out.joinToString("\n")

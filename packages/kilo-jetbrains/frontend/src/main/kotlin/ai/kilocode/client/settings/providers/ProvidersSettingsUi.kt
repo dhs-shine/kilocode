@@ -4,6 +4,9 @@ import ai.kilocode.client.app.KiloProviderService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.BaseContentPanel
 import ai.kilocode.client.settings.base.SettingsPanel
+import ai.kilocode.client.settings.auth.DeviceOAuthInfo
+import ai.kilocode.client.settings.auth.DeviceOAuthPanel
+import ai.kilocode.client.settings.auth.DeviceOAuthText
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.log.KiloLog
@@ -69,6 +72,10 @@ import javax.swing.Timer
 
 private val edt = Dispatchers.EDT + ModalityState.any().asContextElement()
 
+private val OAUTH_CODE_RE = Regex("""code:\s*(\S+)""", RegexOption.IGNORE_CASE)
+
+private fun oauthCode(text: String?): String? = text?.let { OAUTH_CODE_RE.find(it)?.groupValues?.getOrNull(1) }
+
 internal class ProvidersSettingsUi(
     private val cs: CoroutineScope,
     private val directory: String,
@@ -90,15 +97,19 @@ internal class ProvidersSettingsUi(
         { !busy },
     ) { reload() }
     private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable)
+    private val search = SearchTextField(false).apply {
+        textEditor.emptyText.text = KiloBundle.message("settings.providers.search")
+    }
     private var state = ProviderSettingsDto()
     private var job: Job? = null
     private var request = 0
     private var disposed = false
     private var busy = false
     private var timer: Timer? = null
+    private var oauth: DeviceOAuthPanel? = null
 
     init {
-        content.add(toolbar(), BorderLayout.NORTH)
+        content.add(header(), BorderLayout.NORTH)
         setContent(view)
         reload()
     }
@@ -139,8 +150,7 @@ internal class ProvidersSettingsUi(
     @RequiresEdt
     private fun oauth(provider: ProviderSettingsProviderDto) {
         checkEdt()
-        val methods = state.auth[provider.id].orEmpty().filter { it.type == "oauth" }
-        val method = state.auth[provider.id].orEmpty().indexOf(methods.firstOrNull()).coerceAtLeast(0).toString()
+        val method = providerOAuthMethodIndex(state.auth[provider.id].orEmpty()) ?: return
         if (!launch("authorize provider=${provider.id}") { id ->
             val ready = service<KiloProviderService>().authorize(ProviderOAuthAuthorizeDto(directory, provider.id, method))
             val code = withContext(edt) {
@@ -153,11 +163,28 @@ internal class ProvidersSettingsUi(
                         return@withContext null
                     }
                     input
-                } else null
+                } else {
+                    val url = ready.url
+                    if (ready.method == "auto" && url != null) {
+                        showOAuthDevice(
+                            id,
+                            provider,
+                            DeviceOAuthInfo(
+                                url = url,
+                                code = oauthCode(ready.instructions),
+                                expiresIn = (KiloProviderService.OAUTH_RPC_TIMEOUT_MS / 1000).toInt(),
+                                started = System.currentTimeMillis(),
+                            ),
+                        )
+                    }
+                    null
+                }
             }
             val current = withContext(edt) { active(id) }
             if (!current) return@launch
-            withContext(edt) { syncOAuthWaiting(id) }
+            withContext(edt) {
+                if (oauth == null) syncOAuthWaiting(id)
+            }
             val result = service<KiloProviderService>().callback(ProviderOAuthCallbackDto(directory, provider.id, method, code))
             apply(id, result.state, result.error)
         }) return
@@ -208,6 +235,32 @@ internal class ProvidersSettingsUi(
         return toolbar.component
     }
 
+    private fun header(): JComponent {
+        search.textEditor.registerKeyboardAction(
+            { view.primary() },
+            KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
+            JComponent.WHEN_FOCUSED,
+        )
+        search.textEditor.registerKeyboardAction(
+            { view.move(-1) },
+            KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0),
+            JComponent.WHEN_FOCUSED,
+        )
+        search.textEditor.registerKeyboardAction(
+            { view.move(1) },
+            KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0),
+            JComponent.WHEN_FOCUSED,
+        )
+        search.textEditor.document.addDocumentListener(object : DocumentAdapter() {
+            override fun textChanged(e: DocumentEvent) {
+                view.filter(search.text)
+            }
+        })
+        return Stack.vertical(UiStyle.Gap.sm())
+            .next(toolbar())
+            .next(search)
+    }
+
     @RequiresEdt
     private fun launch(name: String, block: suspend (Int) -> Unit): Boolean {
         checkEdt()
@@ -225,6 +278,7 @@ internal class ProvidersSettingsUi(
                 withContext(edt) {
                     if (!active(id)) return@withContext
                     setBusy(false)
+                    clearOAuthDevice()
                     clearProgress()
                 }
             } catch (e: CancellationException) {
@@ -235,6 +289,7 @@ internal class ProvidersSettingsUi(
                 withContext(edt) {
                     if (!active(id)) return@withContext
                     setBusy(false)
+                    clearOAuthDevice()
                     showError("${e::class.simpleName}: ${e.message}")
                 }
             }
@@ -248,6 +303,7 @@ internal class ProvidersSettingsUi(
             LOG.info("provider settings ui apply: start providers=${next.providers.size} errors=${next.errors.size} message=${error != null}")
             state = next
             setBusy(false)
+            clearOAuthDevice()
             view.update(next)
             val text = error ?: next.errors.joinToString("; ") { it.detail ?: it.resource }.takeIf { it.isNotBlank() }
             if (text != null) showError(text) else clearProgress()
@@ -286,8 +342,37 @@ internal class ProvidersSettingsUi(
         job?.cancel()
         job = null
         stopTimer()
+        clearOAuthDevice()
         setBusy(false)
         clearProgress()
+    }
+
+    @RequiresEdt
+    private fun showOAuthDevice(id: Int, provider: ProviderSettingsProviderDto, info: DeviceOAuthInfo) {
+        checkEdt()
+        if (!active(id)) return
+        clearProgress()
+        val panel = DeviceOAuthPanel(
+            DeviceOAuthText(
+                title = KiloBundle.message("settings.providers.oauth.starting", provider.name),
+                qrDescription = KiloBundle.message("profile.login.qr.description"),
+            ),
+            cancel = { cancelOAuth(id) },
+            browse = { BrowserUtil.browse(it) },
+            prefix = "kilo.provider.oauth",
+        )
+        oauth?.dispose()
+        oauth = panel
+        panel.update(info)
+        setModalContent(panel)
+    }
+
+    @RequiresEdt
+    private fun clearOAuthDevice() {
+        checkEdt()
+        oauth?.dispose()
+        oauth = null
+        setModalContent(null)
     }
 
     @RequiresEdt
@@ -303,6 +388,8 @@ internal class ProvidersSettingsUi(
         if (busy == next) return
         busy = next
         if (!next) stopTimer()
+        search.isEnabled = !next
+        search.textEditor.isEnabled = !next
         view.setBusy(next)
     }
 
@@ -339,10 +426,8 @@ internal class ProvidersContent(
         selectionMode = ListSelectionModel.SINGLE_SELECTION
         emptyText.text = KiloBundle.message("settings.providers.noMatches")
     }
-    private val search = SearchTextField(false).apply {
-        textEditor.emptyText.text = KiloBundle.message("settings.providers.search")
-    }
     private var state = ProviderSettingsDto()
+    private var filter = ""
     private var busy = false
 
     init {
@@ -352,26 +437,6 @@ internal class ProvidersContent(
             KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
             JComponent.WHEN_FOCUSED,
         )
-        search.textEditor.registerKeyboardAction(
-            { primary() },
-            KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
-            JComponent.WHEN_FOCUSED,
-        )
-        search.textEditor.registerKeyboardAction(
-            { move(-1) },
-            KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0),
-            JComponent.WHEN_FOCUSED,
-        )
-        search.textEditor.registerKeyboardAction(
-            { move(1) },
-            KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0),
-            JComponent.WHEN_FOCUSED,
-        )
-        search.textEditor.document.addDocumentListener(object : DocumentAdapter() {
-            override fun textChanged(e: DocumentEvent) {
-                sync()
-            }
-        })
         list.addMouseListener(object : MouseAdapter() {
             override fun mouseReleased(e: MouseEvent) {
                 if (!UIUtil.isActionClick(e, MouseEvent.MOUSE_RELEASED, true)) return
@@ -385,9 +450,7 @@ internal class ProvidersContent(
             }
         })
         ScrollingUtil.installActions(list)
-        next(search)
-            .gap(UiStyle.Gap.sm())
-            .next(list)
+        next(list)
     }
 
     @RequiresEdt
@@ -405,16 +468,22 @@ internal class ProvidersContent(
         checkEdt()
         if (busy == next) return
         busy = next
-        search.isEnabled = !next
-        search.textEditor.isEnabled = !next
         list.isEnabled = !next
+        sync()
+    }
+
+    @RequiresEdt
+    fun filter(text: String) {
+        checkEdt()
+        if (filter == text) return
+        filter = text
         sync()
     }
 
     @RequiresEdt
     private fun sync(prefer: String? = list.selectedValue?.key, at: Int? = null) {
         checkEdt()
-        val rows = providerListRows(state, search.text, disabledRows = busy)
+        val rows = providerListRows(state, filter, disabledRows = busy)
         model.replaceAll(rows)
         val idx = at?.let { providerListIndex(rows, it) }?.takeIf { it >= 0 }
             ?: providerListIndex(rows, prefer).takeIf { it >= 0 }
@@ -432,7 +501,7 @@ internal class ProvidersContent(
     }
 
     @RequiresEdt
-    private fun move(step: Int) {
+    fun move(step: Int) {
         checkEdt()
         val size = model.size
         if (size <= 0) return
@@ -441,7 +510,7 @@ internal class ProvidersContent(
     }
 
     @RequiresEdt
-    private fun primary() {
+    fun primary() {
         checkEdt()
         val row = list.selectedValue ?: return
         val action = ProviderListRenderer.visibleActions(row, true).firstOrNull() ?: return

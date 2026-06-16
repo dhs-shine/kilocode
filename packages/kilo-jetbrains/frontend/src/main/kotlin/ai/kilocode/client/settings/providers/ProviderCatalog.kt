@@ -76,6 +76,16 @@ internal fun providerMethods(provider: ProviderSettingsProviderDto, state: Provi
     return listOf(ProviderAuthMethodDto("api", "API key"))
 }
 
+internal fun providerOAuthMethodIndex(methods: List<ProviderAuthMethodDto>): String? {
+    val indexed = methods.withIndex().filter { it.value.type == "oauth" }
+    if (indexed.isEmpty()) return null
+    val remote = indexed.firstOrNull { entry ->
+        val label = entry.value.label.lowercase()
+        listOf("headless", "remote", "device", "vps").any { label.contains(it) }
+    }
+    return (remote ?: indexed.first()).index.toString()
+}
+
 internal fun hiddenProvider(provider: ProviderSettingsProviderDto) = provider.id == "openai-compatible"
 
 internal fun configured(provider: ProviderSettingsProviderDto, state: ProviderSettingsDto, ids: Set<String>) =
