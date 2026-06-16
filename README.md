@@ -13,7 +13,7 @@
   <a href="https://www.reddit.com/r/kilocode/"><img src="https://raster.shields.io/badge/Join%20r%2Fkilocode-D84315?style=flat&logo=reddit&logoColor=white" alt="Reddit" height="20"></a>
 </p>
 
-<img width="1728" height="1013" alt="Kilo-in-VS-Code-and-CLI" src="https://github.com/user-attachments/assets/0536ca59-ed81-4512-9e05-d186187a1b52" />
+![Kilo-in-VS-Code-and-CLI](https://github.com/user-attachments/assets/0536ca59-ed81-4512-9e05-d186187a1b52)
 
 ---
 
