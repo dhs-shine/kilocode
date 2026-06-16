@@ -19,6 +19,7 @@ import java.awt.Rectangle
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.awt.event.AWTEventListener
+import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -29,7 +30,8 @@ internal class SessionHoverCopyOverlay(
     parent: Disposable,
 ) : JPanel(null), Disposable {
     private var target: SessionCopyTarget? = null
-    private val button = HoverIcon().apply {
+    private var balloon: Balloon? = null
+    private val button = HoverIcon(fill = true).apply {
         icon = AllIcons.Actions.Copy
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         toolTipText = KiloBundle.message("session.copy.hover")
@@ -40,6 +42,11 @@ internal class SessionHoverCopyOverlay(
         isOpaque = false
         add(button)
         button.addActionListener { copy() }
+        button.addMouseListener(object : MouseAdapter() {
+            override fun mouseExited(e: MouseEvent) {
+                dismiss()
+            }
+        })
 
         val listener = AWTEventListener { event ->
             val mouse = event as? MouseEvent ?: return@AWTEventListener
@@ -127,7 +134,14 @@ internal class SessionHoverCopyOverlay(
     }
 
     @RequiresEdt
+    private fun dismiss() {
+        balloon?.hide()
+        balloon = null
+    }
+
+    @RequiresEdt
     private fun conceal() {
+        dismiss()
         if (target == null && !isVisible) return
         target = null
         isVisible = false
@@ -139,11 +153,14 @@ internal class SessionHoverCopyOverlay(
     private fun copy() {
         val text = target?.copyText()?.takeIf { it.isNotEmpty() } ?: return
         CopyPasteManager.getInstance().setContents(StringSelection(text))
-        JBPopupFactory.getInstance()
+        dismiss()
+        balloon = JBPopupFactory.getInstance()
             .createHtmlTextBalloonBuilder(KiloBundle.message("session.copy.copied"), null, null, null)
             .createBalloon()
-            .also { it.setAnimationEnabled(false) }
-            .show(RelativePoint(button, Point(button.width / 2, 0)), Balloon.Position.above)
+            .also { item ->
+                item.setAnimationEnabled(false)
+                item.show(RelativePoint(button, Point(button.width / 2, 0)), Balloon.Position.above)
+            }
     }
 
     override fun dispose() = Unit

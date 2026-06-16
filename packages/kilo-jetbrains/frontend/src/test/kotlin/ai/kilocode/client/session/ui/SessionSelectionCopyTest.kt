@@ -7,6 +7,7 @@ import ai.kilocode.client.session.ui.selection.SessionHoverCopyOverlay
 import ai.kilocode.client.session.ui.selection.SessionTargetResolver
 import ai.kilocode.client.session.views.tool.ShellToolView
 import ai.kilocode.client.session.views.tool.ToolView
+import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.PartDto
 import com.intellij.ide.CopyProvider
@@ -25,7 +26,9 @@ import java.awt.Component
 import java.awt.Container
 import java.awt.Cursor
 import java.awt.datatransfer.DataFlavor
+import java.awt.event.MouseEvent
 import java.awt.Point
+import java.awt.image.BufferedImage
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.text.JTextComponent
@@ -168,6 +171,47 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         overlay.isVisible = true
         overlay.clear()
         assertFalse(overlay.isVisible)
+    }
+
+    fun `test hover copy button paints opaque background before and during pointer hover`() {
+        val overlay = find<SessionHoverCopyOverlay>(ui)
+        val btn = overlay.components.single()
+        val size = btn.preferredSize
+        btn.setBounds(0, 0, size.width, size.height)
+
+        assertEquals(rgb(UiStyle.Colors.bg()), rgb(btn, 2, size.height / 2))
+
+        btn.dispatchEvent(MouseEvent(btn, MouseEvent.MOUSE_ENTERED, System.currentTimeMillis(), 0, 1, 1, 0, false))
+
+        assertEquals(255, alpha(btn, 2, size.height / 2))
+    }
+
+    private fun alpha(comp: Component, x: Int, y: Int): Int {
+        val size = comp.size
+        val image = BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB)
+        val g = image.createGraphics()
+
+        try {
+            comp.paint(g)
+        } finally {
+            g.dispose()
+        }
+        return image.getRGB(x, y) ushr 24
+    }
+
+    private fun rgb(color: java.awt.Color): Int = color.rgb and 0x00ffffff
+
+    private fun rgb(comp: Component, x: Int, y: Int): Int {
+        val size = comp.size
+        val image = BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB)
+        val g = image.createGraphics()
+
+        try {
+            comp.paint(g)
+        } finally {
+            g.dispose()
+        }
+        return image.getRGB(x, y) and 0x00ffffff
     }
 
     fun `test hover overlay keeps current target while pointer remains inside anchor`() {

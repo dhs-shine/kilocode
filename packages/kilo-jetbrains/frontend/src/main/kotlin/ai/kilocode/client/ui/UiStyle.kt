@@ -130,6 +130,8 @@ object UiStyle {
 
         fun infoOverlayBorder(): Color = JBUI.CurrentTheme.NotificationInfo.borderColor()
 
+        fun actionHoverBackground(): Color = JBUI.CurrentTheme.ActionButton.hoverBackground()
+
         fun errorOverlayBackground(): Color = JBUI.CurrentTheme.NotificationError.backgroundColor()
 
         fun errorOverlayForeground(): Color = JBUI.CurrentTheme.NotificationError.foregroundColor()
