@@ -1317,8 +1317,8 @@ class KiloCliDataParserTest {
                     "source": "api",
                     "metadata": {
                         "noteKey": "settings.providers.note.openai",
-                        "note": "GPT and Codex models with API key or ChatGPT login",
                         "icon": "openai",
+                        "priority": 3,
                         "extra": true
                     },
                     "unknown": "ok",
@@ -1333,8 +1333,8 @@ class KiloCliDataParserTest {
 
             assertEquals("settings.providers.note.openai", provider.metadata?.noteKey)
             assertEquals("Build with OpenAI models", provider.description)
-            assertEquals("GPT and Codex models with API key or ChatGPT login", provider.metadata?.note)
             assertEquals("openai", provider.metadata?.icon)
+            assertEquals(3, provider.metadata?.priority)
             assertEquals(listOf("openai"), result.second)
             assertEquals(mapOf("code" to "openai/gpt-5"), result.third)
         }

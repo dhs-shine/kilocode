@@ -147,13 +147,13 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         val rows = providerListRows(
             ProviderSettingsDto(
                 providers = listOf(
-                    provider("openrouter", "OpenRouter"),
-                    provider("kilo", "Kilo"),
-                    provider("google", "Google"),
-                    provider("anthropic", "Anthropic"),
-                    provider("vercel", "Vercel"),
-                    provider("openai", "OpenAI"),
-                    provider("deepseek", "DeepSeek"),
+                    provider("openrouter", "OpenRouter", priority = 5),
+                    provider("kilo", "Kilo", priority = 0),
+                    provider("google", "Google", priority = 4),
+                    provider("anthropic", "Anthropic", priority = 1),
+                    provider("vercel", "Vercel", priority = 6),
+                    provider("openai", "OpenAI", priority = 3),
+                    provider("deepseek", "DeepSeek", priority = 2),
                 ),
             ),
             "",
@@ -166,7 +166,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
     fun `test connected providers appear first and are not duplicated in popular section`() {
         val rows = providerListRows(
             ProviderSettingsDto(
-                providers = listOf(provider("anthropic", "Anthropic"), provider("openai", "OpenAI")),
+                providers = listOf(provider("anthropic", "Anthropic", priority = 1), provider("openai", "OpenAI", priority = 3)),
                 connected = listOf("anthropic"),
             ),
             "",
@@ -183,7 +183,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         val rows = providerListRows(
             ProviderSettingsDto(
                 providers = listOf(
-                    provider("anthropic", "Anthropic", source = "custom"),
+                    provider("anthropic", "Anthropic", source = "custom", priority = 1),
                     provider("available-custom", "Available Custom", source = "custom"),
                     provider("local-openai", "Local OpenAI", source = "custom"),
                 ),
@@ -227,7 +227,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
     fun `test disabled popular provider appears in all providers with enable`() {
         val rows = providerListRows(
             ProviderSettingsDto(
-                providers = listOf(provider("anthropic", "Anthropic"), provider("openai", "OpenAI")),
+                providers = listOf(provider("anthropic", "Anthropic", priority = 1), provider("openai", "OpenAI", priority = 3)),
                 disabled = listOf("anthropic"),
             ),
             "",
@@ -244,7 +244,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
                 providers = listOf(
                     provider("zeta", "Zeta"),
                     provider("alpha", "Alpha"),
-                    provider("openai", "OpenAI"),
+                    provider("openai", "OpenAI", priority = 3),
                 ),
             ),
             "",
@@ -260,8 +260,8 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             content.update(
                 ProviderSettingsDto(
                     providers = listOf(
-                        provider("openai", "OpenAI"),
-                        provider("anthropic", "Anthropic"),
+                        provider("openai", "OpenAI", priority = 3),
+                        provider("anthropic", "Anthropic", priority = 1),
                         provider("alpha", "Alpha Labs"),
                     ),
                 ),
@@ -402,7 +402,6 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
                     "OpenAI",
                     metadata = ProviderMetadataDto(
                         noteKey = "settings.providers.note.openai",
-                        note = "GPT and Codex models with API key or ChatGPT login",
                         icon = "openai",
                     ),
                 ),
@@ -428,7 +427,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
                     "openai",
                     "OpenAI",
                     description = "Build with OpenAI models",
-                    metadata = ProviderMetadataDto(note = "Fallback metadata note"),
+                    metadata = ProviderMetadataDto(noteKey = "settings.providers.note.openai"),
                 ),
                 "Popular providers",
                 listOf(ProviderListAction.CONNECT),
@@ -781,12 +780,13 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         description: String? = null,
         source: String? = null,
         metadata: ProviderMetadataDto? = null,
+        priority: Int? = null,
     ) = ProviderSettingsProviderDto(
         id = id,
         name = name,
         description = description,
         source = source,
-        metadata = metadata,
+        metadata = metadata ?: priority?.let { ProviderMetadataDto(priority = it) },
         models = mapOf("model" to ModelDto("model", "Model")),
     )
 

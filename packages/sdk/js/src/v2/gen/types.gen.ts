@@ -1615,8 +1615,8 @@ export type Provider = {
   key?: string
   metadata?: {
     noteKey?: string
-    note?: string
     icon?: string
+    priority?: number
   }
   options: {
     [key: string]: unknown

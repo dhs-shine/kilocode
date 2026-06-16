@@ -18,6 +18,8 @@ import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageErrorDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
+import ai.kilocode.rpc.dto.ModelDto
+import ai.kilocode.rpc.dto.ModelLimitDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
 import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.PartDto
@@ -437,22 +439,7 @@ object KiloCliDataParser {
                 source = item.str("source"),
                 key = item.str("key"),
                 metadata = parseProviderMetadata(item["metadata"].obj()),
-                models = item["models"]?.jsonObject?.mapValues { (id, v) ->
-                    val model = parseModel(id, v.jsonObject)
-                    ai.kilocode.rpc.dto.ModelDto(
-                        id = model.id,
-                        name = model.name,
-                        attachment = model.attachment,
-                        reasoning = model.reasoning,
-                        temperature = model.temperature,
-                        toolCall = model.toolCall,
-                        free = model.free,
-                        status = model.status,
-                        recommendedIndex = model.recommendedIndex,
-                        variants = model.variants,
-                        limit = model.limit?.let { ai.kilocode.rpc.dto.ModelLimitDto(it.context, it.input, it.output) },
-                    )
-                } ?: emptyMap(),
+                models = item["models"]?.jsonObject?.mapValues { (id, v) -> parseModelDto(id, v.jsonObject) } ?: emptyMap(),
             )
         } ?: emptyList()
         val connected = obj["connected"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
@@ -984,11 +971,28 @@ object KiloCliDataParser {
         if (obj == null) return null
         val dto = ProviderMetadataDto(
             noteKey = obj.str("noteKey"),
-            note = obj.str("note"),
             icon = obj.str("icon"),
+            priority = obj.num("priority")?.toInt(),
         )
-        if (dto.noteKey == null && dto.note == null && dto.icon == null) return null
+        if (dto.noteKey == null && dto.icon == null && dto.priority == null) return null
         return dto
+    }
+
+    private fun parseModelDto(id: String, obj: JsonObject): ModelDto {
+        val model = parseModel(id, obj)
+        return ModelDto(
+            id = model.id,
+            name = model.name,
+            attachment = model.attachment,
+            reasoning = model.reasoning,
+            temperature = model.temperature,
+            toolCall = model.toolCall,
+            free = model.free,
+            status = model.status,
+            recommendedIndex = model.recommendedIndex,
+            variants = model.variants,
+            limit = model.limit?.let { ModelLimitDto(it.context, it.input, it.output) },
+        )
     }
 
     private fun parseModel(id: String, obj: JsonObject): ModelInfo {

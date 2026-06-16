@@ -41,8 +41,8 @@ export interface Provider {
   env?: string[]
   metadata?: {
     noteKey?: string
-    note?: string
     icon?: string
+    priority?: number
   }
 }
 

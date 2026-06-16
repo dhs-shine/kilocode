@@ -15,7 +15,7 @@ import type { Provider } from "../../types/messages"
 import CustomProviderDialog from "./CustomProviderDialog"
 import ProviderConnectDialog from "./ProviderConnectDialog"
 import ProviderSelectDialog from "./ProviderSelectDialog"
-import { CUSTOM_PROVIDER_ID, isPopularProvider, providerIcon, providerNote, providerNoteKey, sortProviders } from "./provider-catalog"
+import { CUSTOM_PROVIDER_ID, isPopularProvider, providerIcon, providerNoteKey, sortProviders } from "./provider-catalog"
 import { disabledProviderOptions, providersWithKiloFallback, visibleConnectedIds } from "./provider-visibility"
 import { isCustomProviderPackage, KILO_PROVIDER_ID } from "../../../../src/shared/provider-model"
 import { createProviderAction } from "../../utils/provider-action"
@@ -53,10 +53,7 @@ const ProvidersTab: Component = () => {
     return sortProviders(
       all.filter(
         (item) =>
-          item.id !== KILO_PROVIDER_ID &&
-          isPopularProvider(item.id) &&
-          !connected.has(item.id) &&
-          !disabled.has(item.id),
+          item.id !== KILO_PROVIDER_ID && isPopularProvider(item) && !connected.has(item.id) && !disabled.has(item.id),
       ),
     )
   })
@@ -289,7 +286,6 @@ const ProvidersTab: Component = () => {
         <For each={popularProviders()}>
           {(item) => {
             const noteKey = providerNoteKey(item)
-            const note = providerNote(item)
             return (
               <div
                 style={{
@@ -326,19 +322,6 @@ const ProvidersTab: Component = () => {
                         }}
                       >
                         {language.t(key())}
-                      </span>
-                    )}
-                  </Show>
-                  <Show when={!noteKey && note}>
-                    {(text) => (
-                      <span
-                        style={{
-                          "font-size": "var(--kilo-font-size-12)",
-                          color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
-                          "margin-top": "2px",
-                        }}
-                      >
-                        {text()}
                       </span>
                     )}
                   </Show>

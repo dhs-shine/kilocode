@@ -16779,9 +16779,6 @@
           "name": {
             "type": "string"
           },
-          "description": {
-            "type": "string"
-          },
           "source": {
             "type": "object",
             "properties": {
@@ -19242,6 +19239,9 @@
           "name": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "source": {
             "type": "string",
             "enum": ["env", "config", "custom", "api"]
@@ -19261,11 +19261,11 @@
               "noteKey": {
                 "type": "string"
               },
-              "note": {
-                "type": "string"
-              },
               "icon": {
                 "type": "string"
+              },
+              "priority": {
+                "type": "integer"
               }
             },
             "additionalProperties": false

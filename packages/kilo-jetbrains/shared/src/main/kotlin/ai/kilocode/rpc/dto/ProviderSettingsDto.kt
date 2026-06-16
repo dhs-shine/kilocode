@@ -30,8 +30,8 @@ data class ProviderSettingsProviderDto(
 @Serializable
 data class ProviderMetadataDto(
     val noteKey: String? = null,
-    val note: String? = null,
     val icon: String? = null,
+    val priority: Int? = null,
 )
 
 @Serializable

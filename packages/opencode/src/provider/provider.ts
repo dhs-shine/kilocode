@@ -938,8 +938,8 @@ const ProviderLimit = Schema.Struct({
 // kilocode_change start
 const ProviderMetadata = Schema.Struct({
   noteKey: optionalOmitUndefined(Schema.String),
-  note: optionalOmitUndefined(Schema.String),
   icon: optionalOmitUndefined(Schema.String),
+  priority: optionalOmitUndefined(Schema.Int),
 })
 // kilocode_change end
 

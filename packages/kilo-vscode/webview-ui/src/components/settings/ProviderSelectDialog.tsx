@@ -81,7 +81,7 @@ const ProviderSelectDialog = () => {
         items={items()}
         filterKeys={["id", "name"]}
         groupBy={(item) =>
-          item.id !== CUSTOM_PROVIDER_ID && isPopularProvider(item.id)
+          item.id !== CUSTOM_PROVIDER_ID && isPopularProvider(item.provider ?? item.id)
             ? language.t("settings.providers.group.recommended")
             : language.t("dialog.provider.group.other")
         }
@@ -89,7 +89,7 @@ const ProviderSelectDialog = () => {
           if (a.id === CUSTOM_PROVIDER_ID) return -1
           if (b.id === CUSTOM_PROVIDER_ID) return 1
 
-          const rank = popularProviderIndex(a.id) - popularProviderIndex(b.id)
+          const rank = popularProviderIndex(a.provider ?? a.id) - popularProviderIndex(b.provider ?? b.id)
           if (rank !== 0) return rank
           return a.name.localeCompare(b.name)
         }}
@@ -106,7 +106,12 @@ const ProviderSelectDialog = () => {
       >
         {(item) => (
           <div style={{ display: "flex", gap: "10px", "align-items": "center", width: "100%", "min-width": 0 }}>
-            <ProviderIcon id={providerIcon(item.provider ?? item.id)} width={18} height={18} data-slot="list-item-extra-icon" />
+            <ProviderIcon
+              id={providerIcon(item.provider ?? item.id)}
+              width={18}
+              height={18}
+              data-slot="list-item-extra-icon"
+            />
             <div
               style={{
                 display: "flex",

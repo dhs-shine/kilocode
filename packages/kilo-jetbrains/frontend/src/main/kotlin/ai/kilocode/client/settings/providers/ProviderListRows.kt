@@ -31,14 +31,14 @@ internal fun providerListRows(state: ProviderSettingsDto, query: String, disable
     val filtered = state.providers.filter { ModelSearch.matches(q, it.name) }
     val connected = filtered
         .filter { configured(it, state, ids) }
-        .sortedWith(compareBy<ProviderSettingsProviderDto> { popularProviderIndex(it.id) }.thenBy { it.name.lowercase() }.thenBy { it.id })
+        .sortedWith(compareBy<ProviderSettingsProviderDto> { popularProviderIndex(it) }.thenBy { it.name.lowercase() }.thenBy { it.id })
     val connectedIds = connected.mapTo(mutableSetOf()) { it.id }
     val popular = filtered
         .filter { it.id !in connectedIds }
         .filter { it.id !in disabled }
         .filter { !hiddenProvider(it) }
-        .filter { isPopularProvider(it.id) }
-        .sortedWith(compareBy<ProviderSettingsProviderDto> { popularProviderIndex(it.id) }.thenBy { it.name.lowercase() }.thenBy { it.id })
+        .filter { isPopularProvider(it) }
+        .sortedWith(compareBy<ProviderSettingsProviderDto> { popularProviderIndex(it) }.thenBy { it.name.lowercase() }.thenBy { it.id })
     val popularIds = popular.mapTo(mutableSetOf()) { it.id }
     val all = filtered
         .filter { it.id !in connectedIds }

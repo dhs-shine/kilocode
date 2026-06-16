@@ -18,19 +18,13 @@ import kotlin.math.roundToInt
 internal const val KILO_PROVIDER_ID = "kilo"
 internal const val CUSTOM_PROVIDER_PACKAGE = "@ai-sdk/openai-compatible"
 
-internal val POPULAR_PROVIDER_IDS = listOf(KILO_PROVIDER_ID, "anthropic", "deepseek", "openai", "google", "openrouter", "vercel")
+internal fun isPopularProvider(provider: ProviderSettingsProviderDto) = provider.metadata?.priority != null
 
-internal fun isPopularProvider(id: String) = id in POPULAR_PROVIDER_IDS
-
-internal fun popularProviderIndex(id: String): Int {
-    val index = POPULAR_PROVIDER_IDS.indexOf(id)
-    return if (index >= 0) index else Int.MAX_VALUE
-}
+internal fun popularProviderIndex(provider: ProviderSettingsProviderDto): Int = provider.metadata?.priority ?: Int.MAX_VALUE
 
 internal fun providerDescription(provider: ProviderSettingsProviderDto): String {
     provider.description?.takeIf { it.isNotBlank() }?.let { return it }
     provider.metadata?.noteKey?.let { key -> KiloBundle.optional(key)?.let { return it } }
-    provider.metadata?.note?.let { return it }
     return ""
 }
 
