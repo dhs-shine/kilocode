@@ -1234,7 +1234,7 @@ it.live(
         const a = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
         yield* llm.wait(1)
         const b = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-        yield* Effect.sleep(50)
+        yield* Effect.yieldNow // kilocode_change - let the queued caller join without a wall-clock race
 
         yield* prompt.cancel(chat.id)
         const [exitA, exitB] = yield* Effect.all([Fiber.await(a), Fiber.await(b)])
