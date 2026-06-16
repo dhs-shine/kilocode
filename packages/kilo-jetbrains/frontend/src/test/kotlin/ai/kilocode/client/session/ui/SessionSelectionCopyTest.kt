@@ -1,7 +1,10 @@
 package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.SessionUiTestBase
+import ai.kilocode.client.session.ui.selection.SessionCopyTarget
 import ai.kilocode.client.session.ui.selection.SessionContextMenu
+import ai.kilocode.client.session.ui.selection.SessionHoverCopyOverlay
+import ai.kilocode.client.session.ui.selection.SessionTargetResolver
 import ai.kilocode.client.session.views.tool.ShellToolView
 import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.rpc.dto.ChatEventDto
@@ -20,6 +23,7 @@ import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBScrollPane
 import java.awt.Component
 import java.awt.Container
+import java.awt.Cursor
 import java.awt.datatransfer.DataFlavor
 import java.awt.Point
 import javax.swing.JComponent
@@ -99,6 +103,65 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         mid.add(child)
 
         assertSame(child, SessionContextMenu.target(root, root, Point(20, 20)))
+    }
+
+    fun `test hover copy resolver skips overlay and resolves underlying target`() {
+        val root = JPanel(null)
+        val target = TargetPanel("alpha")
+        val overlay = JPanel(null)
+        root.setBounds(0, 0, 100, 100)
+        target.setBounds(10, 10, 80, 80)
+        overlay.setBounds(15, 15, 20, 20)
+        root.add(target)
+        root.add(overlay)
+
+        val item = SessionTargetResolver.copy(root, root, Point(20, 20), overlay)
+
+        assertSame(target, item)
+    }
+
+    fun `test code block hover copy target copies full content despite selection`() {
+        showText("```text\nalpha code\n```")
+        val field = textEditors(ui).first { it.text.contains("alpha code") }
+        field.setSize(200, 80)
+        field.getEditor(true)!!.selectionModel.setSelection(0, 5)
+
+        val target = SessionTargetResolver.copy(field, field, Point(1, 1))
+
+        assertNotNull(target)
+        assertEquals("alpha code", target!!.copyText())
+    }
+
+    fun `test plain assistant text is not hover copy eligible`() {
+        showText("plain alpha")
+        val comp = textComponent("plain alpha")
+        comp.setSize(200, 80)
+
+        val target = SessionTargetResolver.copy(comp, comp, Point(1, 1))
+
+        assertNull(target)
+    }
+
+    fun `test session ui registers hover copy overlay in overlay layer`() {
+        val root = find<SessionRootPanel>(ui)
+        val overlay = find<SessionHoverCopyOverlay>(ui)
+
+        assertSame(root.overlay, overlay.parent)
+        assertFalse(root.blocker.components.contains(overlay))
+        assertFalse(overlay.isVisible)
+        assertEquals(Cursor.HAND_CURSOR, overlay.components.single().cursor.type)
+        overlay.isVisible = true
+        overlay.clear()
+        assertFalse(overlay.isVisible)
+    }
+
+    fun `test hover overlay keeps current target while pointer remains inside anchor`() {
+        val overlay = find<SessionHoverCopyOverlay>(ui)
+        val target = TargetPanel("alpha")
+        target.setBounds(10, 10, 80, 80)
+
+        assertTrue(overlay.contains(target, target, Point(79, 1)))
+        assertFalse(overlay.contains(target, target, Point(80, 1)))
     }
 
     private fun select(area: JTextComponent, text: String) {
@@ -200,6 +263,12 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
             if (child is Container) out.addAll(textComponents(child))
         }
         return out
+    }
+
+    private class TargetPanel(private val value: String) : JPanel(), SessionCopyTarget {
+        override val copyAnchor: JComponent get() = this
+
+        override fun copyText() = value
     }
 
     private class CopySink : DataSink {

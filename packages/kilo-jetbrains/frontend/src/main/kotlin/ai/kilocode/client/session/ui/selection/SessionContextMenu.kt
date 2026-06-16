@@ -4,8 +4,6 @@ import com.intellij.ide.DataManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.ActionPlaces
-import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.awt.RelativePoint
@@ -41,13 +39,8 @@ internal object SessionContextMenu {
     }
 
     @RequiresEdt
-    internal fun target(root: JComponent, src: Component, point: Point): Component? {
-        if (!inside(root, src)) return null
-        val pt = SwingUtilities.convertPoint(src, point, root)
-        if (!root.contains(pt)) return null
-        val deep = SwingUtilities.getDeepestComponentAt(root, pt.x, pt.y)?.takeIf { inside(root, it) } ?: src
-        return provider(root, deep) ?: deep
-    }
+    internal fun target(root: JComponent, src: Component, point: Point): Component? =
+        SessionTargetResolver.target(root, src, point)
 
     @RequiresEdt
     private fun show(root: JComponent, event: MouseEvent) {
@@ -68,14 +61,4 @@ internal object SessionContextMenu {
         event.consume()
     }
 
-    private fun provider(root: JComponent, comp: Component): Component? {
-        var current: Component? = comp
-        while (current != null && inside(root, current)) {
-            if (current is UiDataProvider) return current
-            current = current.parent
-        }
-        return null
-    }
-
-    private fun inside(root: JComponent, comp: Component): Boolean = comp === root || SwingUtilities.isDescendingFrom(comp, root)
 }

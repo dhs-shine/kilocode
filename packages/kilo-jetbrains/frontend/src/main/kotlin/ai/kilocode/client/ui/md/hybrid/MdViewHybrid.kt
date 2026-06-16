@@ -2,6 +2,7 @@ package ai.kilocode.client.ui.md.hybrid
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.selection.SessionSelection
+import ai.kilocode.client.session.ui.selection.SessionCopyTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.md.MdCodeBlockBorder
 import ai.kilocode.client.ui.md.MdCodeBlockFactory
@@ -460,7 +461,15 @@ internal open class MdViewHybrid(
             }
         }
         sizeCodeField(field, value)
-        val pane = object : JBScrollPane(field) {
+        val pane = object : JBScrollPane(field), SessionCopyTarget {
+            override val copyAnchor: JComponent get() = this
+
+            override fun copyText() = when (field) {
+                is CodeField -> field.text
+                is JBTextArea -> field.text
+                else -> ""
+            }
+
             override fun doLayout() {
                 super.doLayout()
                 if (code.opts.verticalPolicy != ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER) return
@@ -487,7 +496,11 @@ internal open class MdViewHybrid(
             selection?.register(ed, disposable)
         }
         sizeCodeField(field, value.text)
-        val pane = object : JBScrollPane(field) {
+        val pane = object : JBScrollPane(field), SessionCopyTarget {
+            override val copyAnchor: JComponent get() = this
+
+            override fun copyText() = field.text
+
             override fun doLayout() {
                 super.doLayout()
                 if (code.opts.verticalPolicy != ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER) return
@@ -591,7 +604,11 @@ internal open class MdViewHybrid(
         return line * rows
     }
 
-    private fun textArea(text: String, opts: MdStyle, disposable: Disposable) = JBTextArea(text.trimEnd('\n')).apply {
+    private fun textArea(text: String, opts: MdStyle, disposable: Disposable) = object : JBTextArea(text.trimEnd('\n')), SessionCopyTarget {
+        override val copyAnchor: JComponent get() = this
+
+        override fun copyText() = this.text
+    }.apply {
         isEditable = false
         lineWrap = false
         styleTextArea(this, opts)
@@ -616,7 +633,11 @@ internal open class MdViewHybrid(
             file,
             true,
             false,
-        ) {
+        ), SessionCopyTarget {
+        override val copyAnchor: JComponent get() = this
+
+        override fun copyText() = text
+
         init {
             setFontInheritedFromLAF(false)
             font = style.editorFont

@@ -29,6 +29,7 @@ import ai.kilocode.client.session.ui.attachment.ensureAttachmentEditorKind
 import ai.kilocode.client.session.ui.attachment.isEmbeddedAttachment
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
 import ai.kilocode.client.session.ui.selection.SessionContextMenu
+import ai.kilocode.client.session.ui.selection.SessionHoverCopyOverlay
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
@@ -135,6 +136,7 @@ class SessionUi(
     private lateinit var root: SessionRootPanel
     private lateinit var account: SessionAccountOverlay
     private lateinit var drop: SessionDropOverlay
+    private lateinit var copy: SessionHoverCopyOverlay
     private val hide = Timer(HIDE_MS) {
         if (disposed || !this::drop.isInitialized) return@Timer
         drop.setActive(false)
@@ -267,6 +269,11 @@ class SessionUi(
             )
         }
 
+        copy = SessionHoverCopyOverlay(root, this)
+        root.addOverlay(copy) { pane, child ->
+            copy.bounds(pane, child)
+        }
+
         sessionContent = JPanel(BorderLayout())
 
         blankBody = JPanel(BorderLayout()).apply {
@@ -308,6 +315,7 @@ class SessionUi(
         header = SessionHeaderPanel(controller, this)
 
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
+        scroll.onScroll = copy::clear
         connection = ConnectionPanel(this, controller)
 
         prompt = PromptPanel(

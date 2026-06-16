@@ -6,6 +6,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.selection.SessionSelection
+import ai.kilocode.client.session.ui.selection.SessionCopyTarget
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.SessionViewIcons
@@ -278,11 +279,14 @@ class ToolBody private constructor(
     }
 }
 
-private class ToolArea : JBTextArea(), UiDataProvider {
+private class ToolArea : JBTextArea(), UiDataProvider, SessionCopyTarget {
     var selection: SessionSelection? = null
+    override val copyAnchor: JComponent get() = this
+
+    override fun copyText() = text
 
     override fun uiDataSnapshot(sink: DataSink) {
-        selection?.provideCopy(sink) { text }
+        selection?.provideCopy(sink) { copyText() }
     }
 }
 
@@ -292,8 +296,11 @@ private class ToolField(value: String, private var style: SessionEditorStyle) : 
     PlainTextFileType.INSTANCE,
     true,
     false,
-) {
+), SessionCopyTarget {
     var selection: SessionSelection? = null
+    override val copyAnchor: JComponent get() = this
+
+    override fun copyText() = text
 
     init {
         setFontInheritedFromLAF(false)
@@ -315,7 +322,7 @@ private class ToolField(value: String, private var style: SessionEditorStyle) : 
 
     override fun uiDataSnapshot(sink: DataSink) {
         super.uiDataSnapshot(sink)
-        selection?.provideCopy(sink) { text }
+        selection?.provideCopy(sink) { copyText() }
     }
 }
 
