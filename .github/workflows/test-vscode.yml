@@ -27,7 +27,6 @@ jobs:
         id: filter
         uses: Kilo-Org/paths-filter@668c092af3649c4b664c54e4b704aa46782f6f7c # v3
         with:
-          base: ${{ github.ref_name }}
           predicate-quantifier: every
           filters: |
             vscode:
