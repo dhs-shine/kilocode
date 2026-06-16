@@ -156,7 +156,7 @@ vscode://kilocode.kilo-code/kilocode/switch?agent=<agentName>
 vscode://kilocode.kilo-code/kilocode/switch?model=<modelID>&agent=<agentName>
 ```
 
-Replace `<modelID>` with a Kilo Gateway model ID such as `kilo-auto/free`. Replace `<agentName>` with a visible primary agent ID such as `code` or `plan`, rather than its display name. `mode` is also accepted as an alias for `agent`.
+Replace `<modelID>` with a Kilo Gateway model ID such as `kilo-auto/free`. Replace `<agentName>` with a visible primary agent ID such as `code` or `plan`, rather than its display name.
 
 ### Example: Auto Free
 
@@ -187,7 +187,7 @@ URL-encode the `/` in model IDs as `%2F` when embedding this URL in HTML links o
 - **VS Code open**: the Kilo sidebar is focused and the linked selection is applied to the active session immediately.
 - **VS Code closed**: VS Code launches, then applies the selection once the extension is ready.
 - When `model` is provided, it must identify a model in the current Kilo Gateway catalog. Invalid or unavailable models cause the deep link to be ignored.
-- When `agent` or `mode` is provided, it must identify a visible primary agent. Invalid or unavailable agents cause the deep link to be ignored.
+- When `agent` is provided, it must identify a visible primary agent. Invalid or unavailable agents cause the deep link to be ignored.
 - An agent-only link uses the model that would normally be selected for that agent. When both parameters are present, the agent is selected first so the linked model applies to it.
 - The selection follows the same precedence as using the pickers: it updates the active session, or the next session when no session is active. It does **not** change your configured defaults in settings.
 

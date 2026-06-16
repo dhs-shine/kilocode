@@ -21,17 +21,8 @@ describe("parseSwitchLink", () => {
     })
   })
 
-  it("accepts mode as an agent alias without a model", () => {
-    expect(parseSwitchLink("/kilocode/switch", "mode=code")).toEqual({
-      agent: "code",
-    })
-  })
-
-  it("prefers agent when both parameter names are present", () => {
-    expect(parseSwitchLink("/kilocode/switch", "model=kilo-auto%2Ffree&agent=plan&mode=code")).toEqual({
-      modelID: "kilo-auto/free",
-      agent: "plan",
-    })
+  it("does not accept mode as an agent alias", () => {
+    expect(parseSwitchLink("/kilocode/switch", "mode=code")).toBeUndefined()
   })
 
   it("keeps the previous model route compatible", () => {
