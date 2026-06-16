@@ -7,6 +7,7 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.iconButton
+import ai.kilocode.client.util.UiTimerSource
 import ai.kilocode.client.util.UiTimers
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.LafManagerListener
@@ -59,6 +60,7 @@ class HistoryPanel(
     private val controller: HistoryController,
     private val nav: () -> Unit = {},
     private val manager: SessionManager? = null,
+    private val timers: UiTimerSource = UiTimers,
 ) : BorderLayoutPanel(), Disposable, DataProvider {
     private val localSearch = search(controller.local)
     private val cloudSearch = search(controller.cloud)
@@ -83,7 +85,7 @@ class HistoryPanel(
         .setText(KiloBundle.message("history.tab.cloud"))
         .setForeSideComponent(back())
     private var stale = false
-    private val timer = UiTimers.timer(ACTIVITY_MS) { syncActivity() }
+    private val timer = timers.timer(ACTIVITY_MS) { syncActivity() }
     private val tabs: JBTabs = JBTabsFactory.createTabs(null, this).apply {
         presentation.setSingleRow(true)
         presentation.setTabsPosition(JBTabsPosition.top)

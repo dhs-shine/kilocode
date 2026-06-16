@@ -3,6 +3,7 @@ package ai.kilocode.client.settings.profile
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.telemetry.Telemetry
+import ai.kilocode.client.util.UiTimerSource
 import ai.kilocode.client.util.UiTimers
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
@@ -43,6 +44,7 @@ internal class ProfileUi(
     private val cs: CoroutineScope,
     private val app: KiloAppService = service(),
     private val browse: (String) -> Unit = { BrowserUtil.browse(it) },
+    private val timers: UiTimerSource = UiTimers,
 ) : JPanel(BorderLayout()) {
 
     private val cards = JPanel(CardLayout())
@@ -53,6 +55,7 @@ internal class ProfileUi(
         retry = { app.retryAsync() },
         cancel = ::cancel,
         browse = browse,
+        timers = timers,
     )
     private val account = LoggedInProfileUi(
         dashboard = {
@@ -192,7 +195,7 @@ internal class ProfileUi(
                 val next = app.startLogin()
                 withContext(edt) {
                     if (id != attempt) return@withContext
-                    login = LoginState.Pending(next, UiTimers.now())
+                    login = LoginState.Pending(next, timers.now())
                     sync()
                     browse(next.verificationUrl)
                 }

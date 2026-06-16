@@ -12,6 +12,7 @@ import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
+import ai.kilocode.client.util.UiTimerSource
 import ai.kilocode.client.util.UiTimers
 import ai.kilocode.rpc.dto.SessionDto
 import com.intellij.icons.AllIcons
@@ -53,10 +54,11 @@ class EmptySessionPanel(
     private val activity: () -> Map<String, SessionActivityKind> = { emptyMap() },
     private val titles: () -> Map<String, String> = { emptyMap() },
     private val browse: (String) -> Unit = BrowserUtil::browse,
+    private val timers: UiTimerSource = UiTimers,
 ) : BorderLayoutPanel(), Disposable, SessionEditorStyleTarget {
     val view: Align = align(HAlign.CENTER, VAlign.CENTER)
 
-    private val timer = UiTimers.timer(ACTIVITY_MS) { syncActivity() }
+    private val timer = timers.timer(ACTIVITY_MS) { syncActivity() }
     internal val recent = RecentsList(recents, controller)
 
     private val historyButton = ShowHistoryButton().apply {
@@ -180,7 +182,7 @@ class EmptySessionPanel(
 
     internal fun activeView() = getComponent(0)
 
-    internal fun text(session: SessionDto, now: Long = UiTimers.now()) =
+    internal fun text(session: SessionDto, now: Long = timers.now()) =
         recent.text(session, now)
 
     internal fun rendererComponent(

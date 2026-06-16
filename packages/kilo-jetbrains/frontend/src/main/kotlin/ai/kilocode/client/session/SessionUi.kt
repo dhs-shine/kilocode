@@ -41,6 +41,7 @@ import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.client.util.UiTimerSource
 import ai.kilocode.client.util.UiTimers
 import ai.kilocode.client.vfs.KiloVfsManager
 import ai.kilocode.log.ChatLogSummary
@@ -97,6 +98,7 @@ class SessionUi(
     private val manager: SessionManager? = null,
     private val workspaces: KiloWorkspaceService = service(),
     private val migration: MigrationUiController = service<KiloMigrationService>(),
+    private val timers: UiTimerSource = UiTimers,
 ) : JPanel(BorderLayout()), Disposable, SessionEditorStyleTarget, UiDataProvider {
 
     companion object {
@@ -133,13 +135,14 @@ class SessionUi(
         afterUpdate = { if (!opening) scroll.followBottom(it) },
         loaded = ::onSessionLoaded,
         openProfileAction = ::openProfileSettings,
+        timers = timers,
     )
 
 
     private lateinit var root: SessionRootPanel
     private lateinit var account: SessionAccountOverlay
     private lateinit var drop: SessionDropOverlay
-    private val hide = UiTimers.timer(HIDE_MS, repeats = false) {
+    private val hide = timers.timer(HIDE_MS, repeats = false) {
         if (disposed || !this::drop.isInitialized) return@timer
         drop.setActive(false)
     }
@@ -416,6 +419,7 @@ class SessionUi(
                         history = { manager?.showHistory() },
                         activity = { manager?.activity() ?: sessions.activity() },
                         titles = { manager?.titles().orEmpty() },
+                        timers = timers,
                     )
                     empty = panel
                     scroll.show(panel.view)

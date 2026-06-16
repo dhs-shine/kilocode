@@ -8,8 +8,7 @@ import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.testing.FakeAppRpcApi
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.client.testing.FakeSessionRpcApi
-import ai.kilocode.client.testing.FakeUiTimers
-import ai.kilocode.client.util.UiTimers
+import ai.kilocode.client.testing.TestUiTimers
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.session.SessionRef
@@ -97,7 +96,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
     protected lateinit var app: KiloAppService
     protected lateinit var workspaces: KiloWorkspaceService
     protected lateinit var workspace: Workspace
-    protected lateinit var timers: FakeUiTimers
+    protected lateinit var timers: TestUiTimers
 
     protected lateinit var scope: CoroutineScope
     protected lateinit var parent: Disposable
@@ -107,8 +106,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         rpc = FakeSessionRpcApi()
         appRpc = FakeAppRpcApi()
         projectRpc = FakeWorkspaceRpcApi()
-        timers = FakeUiTimers()
-        UiTimers.replace(timers, testRootDisposable)
+        timers = TestUiTimers()
 
         scope = CoroutineScope(SupervisorJob())
         parent = Disposer.newDisposable("test")
@@ -174,6 +172,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
             beforeUpdate = beforeUpdate,
             afterUpdate = afterUpdate,
             telemetry = { event, props -> appRpc.telemetry.add(TelemetryCaptureDto(event, props)) },
+            timers = timers,
         )
         controllers.add(m)
         roots[m] = root

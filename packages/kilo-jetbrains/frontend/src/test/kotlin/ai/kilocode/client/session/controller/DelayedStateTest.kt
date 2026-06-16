@@ -1,19 +1,17 @@
 package ai.kilocode.client.session.controller
 
-import ai.kilocode.client.testing.FakeUiTimers
-import ai.kilocode.client.util.UiTimers
+import ai.kilocode.client.testing.TestUiTimers
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class DelayedStateTest : BasePlatformTestCase() {
     private val states = mutableListOf<DelayedState>()
-    private lateinit var timers: FakeUiTimers
+    private lateinit var timers: TestUiTimers
 
     override fun setUp() {
         super.setUp()
-        timers = FakeUiTimers()
-        UiTimers.replace(timers, testRootDisposable)
+        timers = TestUiTimers()
     }
 
     override fun tearDown() {
@@ -135,7 +133,7 @@ class DelayedStateTest : BasePlatformTestCase() {
     }
 
     private fun delayed(ms: Long): DelayedState {
-        val state = DelayedState(ms)
+        val state = DelayedState(ms, timers)
         states.add(state)
         return state
     }

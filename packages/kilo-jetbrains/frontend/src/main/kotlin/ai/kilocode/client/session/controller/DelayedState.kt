@@ -1,16 +1,20 @@
 package ai.kilocode.client.session.controller
 
+import ai.kilocode.client.util.UiTimerSource
 import ai.kilocode.client.util.UiTimers
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 
-internal class DelayedState(private val ms: Long) : Disposable {
+internal class DelayedState(
+    private val ms: Long,
+    private val timers: UiTimerSource = UiTimers,
+) : Disposable {
     private val tick = when {
         ms <= 0 -> 1
         ms > Int.MAX_VALUE -> Int.MAX_VALUE
         else -> ms.coerceAtMost(TICK_MS).toInt()
     }
-    private val timer = UiTimers.timer(tick) { flush() }
+    private val timer = timers.timer(tick) { flush() }
     private val pending = mutableListOf<Pending<*>>()
     @Volatile private var alive = true
 
@@ -45,7 +49,7 @@ internal class DelayedState(private val ms: Long) : Disposable {
 
     private fun flush() {
         if (!alive) return
-        val now = UiTimers.now()
+        val now = timers.now()
         for (item in pending.toList()) {
             if (item.due > now) continue
             apply(item)
@@ -54,7 +58,7 @@ internal class DelayedState(private val ms: Long) : Disposable {
     }
 
     private fun due(): Long {
-        val now = UiTimers.now()
+        val now = timers.now()
         return now + ms.coerceAtMost(Long.MAX_VALUE - now)
     }
 

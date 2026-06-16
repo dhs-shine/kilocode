@@ -16,9 +16,8 @@ import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.testing.FakeAppRpcApi
 import ai.kilocode.client.testing.FakeSessionRpcApi
-import ai.kilocode.client.testing.FakeUiTimers
+import ai.kilocode.client.testing.TestUiTimers
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
-import ai.kilocode.client.util.UiTimers
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.CloudSessionDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
@@ -53,7 +52,7 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
     private lateinit var workspace: Workspace
     private lateinit var sessions: KiloSessionService
     private lateinit var app: KiloAppService
-    private lateinit var timers: FakeUiTimers
+    private lateinit var timers: TestUiTimers
     private val managers = mutableListOf<SessionSidePanelManager>()
     private val created = mutableListOf<Pair<String, String?>>()
     private val refs = mutableListOf<SessionRef?>()
@@ -61,8 +60,7 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
 
     override fun setUp() {
         super.setUp()
-        timers = FakeUiTimers()
-        UiTimers.replace(timers, testRootDisposable)
+        timers = TestUiTimers()
         scope = CoroutineScope(SupervisorJob())
         rpc = FakeSessionRpcApi()
         sessions = KiloSessionService(project, scope, rpc)
@@ -631,7 +629,7 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
         val manager = SessionSidePanelManager(
             project = project,
             root = workspace,
-            create = { project, workspace, owner, ref ->
+            create = { project, workspace, owner, ref, timers ->
                 val id = when (ref) {
                     is SessionRef.Local -> ref.id
                     is SessionRef.Cloud -> ref.key
@@ -639,7 +637,17 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
                 }
                 created.add(workspace.directory to id)
                 refs.add(ref)
-                SessionUi(project, workspace, sessions, app, scope, ref = ref, manager = owner, workspaces = workspaces).also {
+                SessionUi(
+                    project,
+                    workspace,
+                    sessions,
+                    app,
+                    scope,
+                    ref = ref,
+                    manager = owner,
+                    workspaces = workspaces,
+                    timers = timers,
+                ).also {
                     ui.add(it)
                     Disposer.register(it) { ui.remove(it) }
                 }
@@ -647,6 +655,7 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
             resolve = { workspaces.workspace(it) },
             status = { sessions.activity() },
             history = history,
+            timers = timers,
         )
         managers.add(manager)
         return manager

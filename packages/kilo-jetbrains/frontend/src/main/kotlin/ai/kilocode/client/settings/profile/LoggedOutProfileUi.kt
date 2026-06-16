@@ -4,6 +4,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.util.UiTimerSource
 import ai.kilocode.client.util.UiTimers
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import com.intellij.icons.AllIcons
@@ -47,6 +48,7 @@ internal class LoggedOutProfileUi(
     private val retry: () -> Unit,
     private val cancel: () -> Unit,
     private val browse: (String) -> Unit,
+    private val timers: UiTimerSource = UiTimers,
 ) : JPanel(BorderLayout()) {
 
     private val cards = JPanel(CardLayout())
@@ -147,7 +149,7 @@ internal class LoggedOutProfileUi(
     // -- cached URL for listener/QR deduplication --
     private var lastPendingUrl: String? = null
 
-    private val timer = UiTimers.timer(1000) { syncTime() }
+    private val timer = timers.timer(1000) { syncTime() }
 
     init {
         codePanel.add(codeLabel, BorderLayout.CENTER)
@@ -361,7 +363,7 @@ internal class LoggedOutProfileUi(
 
     @RequiresEdt
     private fun syncTime() {
-        val elapsed = ((UiTimers.now() - pendingStarted) / 1000).toInt()
+        val elapsed = ((timers.now() - pendingStarted) / 1000).toInt()
         val remain = (pendingExpires - elapsed).coerceAtLeast(0)
         val min = remain / 60
         val sec = remain % 60

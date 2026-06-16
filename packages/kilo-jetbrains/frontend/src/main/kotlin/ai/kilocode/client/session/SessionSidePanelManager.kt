@@ -7,6 +7,7 @@ import ai.kilocode.client.session.history.HistoryController
 import ai.kilocode.client.session.history.HistoryPanel
 import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.client.util.UiTimer
+import ai.kilocode.client.util.UiTimerSource
 import ai.kilocode.client.util.UiTimers
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataProvider
@@ -26,12 +27,14 @@ import javax.swing.JPanel
 class SessionSidePanelManager(
     private val project: Project,
     private val root: Workspace,
-    private val create: (Project, Workspace, SessionManager, SessionRef?) -> SessionUi = { project, workspace, manager, ref ->
-        service<SessionUiFactory>().create(project, workspace, manager, ref)
-    },
+    private val create: (Project, Workspace, SessionManager, SessionRef?, UiTimerSource) -> SessionUi =
+        { project, workspace, manager, ref, timers ->
+            service<SessionUiFactory>().create(project, workspace, manager, ref, timers)
+        },
     private val resolve: (String) -> Workspace = { dir -> service<KiloWorkspaceService>().workspace(dir) },
     private val status: () -> Map<String, SessionActivityKind> = { project.service<KiloSessionService>().activity() },
     private val history: ((Disposable, (SessionRef) -> Unit, (String) -> Unit) -> JComponent)? = null,
+    private val timers: UiTimerSource = UiTimers,
 ) : SessionManager, Disposable {
     val component: JPanel = object : JPanel(BorderLayout()), DataProvider {
         override fun getData(dataId: String): Any? {
@@ -54,7 +57,7 @@ class SessionSidePanelManager(
         val active = current
         if (active?.blank == true) return
         register(active)
-        show(create(project, root, this, null))
+        show(create(project, root, this, null, timers))
     }
 
     override fun openSession(ref: SessionRef) {
@@ -101,7 +104,7 @@ class SessionSidePanelManager(
             is SessionRef.Local -> ref.session?.directory?.let(resolve) ?: root
             is SessionRef.Cloud -> root
         }
-        return create(project, workspace, this, ref).also {
+        return create(project, workspace, this, ref, timers).also {
             all.add(it)
             opened[ref.key] = it
             val local = (ref as? SessionRef.Local)?.session?.id
@@ -148,7 +151,7 @@ class SessionSidePanelManager(
             deleted = this::removeSession,
         )
         Disposer.register(this) { cs.cancel() }
-        return HistoryPanel(this, controller, nav = this::back, manager = this).component
+        return HistoryPanel(this, controller, nav = this::back, manager = this, timers = timers).component
     }
 
     private fun back() {
@@ -207,7 +210,7 @@ class SessionSidePanelManager(
     private fun schedule(ui: SessionUi) {
         cancel(ui)
         val delay = Registry.intValue("kilo.session.inactive.disposeTimeoutMs").coerceAtLeast(0)
-        val timer = UiTimers.timer(delay, repeats = false) {
+        val timer = timers.timer(delay, repeats = false) {
             activeTimers.remove(ui)
             if (ui === current || ui !in all) return@timer
             disposeUi(ui)

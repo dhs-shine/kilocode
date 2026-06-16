@@ -4,7 +4,7 @@ import ai.kilocode.client.util.UiTimer
 import ai.kilocode.client.util.UiTimerSource
 import com.intellij.openapi.application.ApplicationManager
 
-class FakeUiTimers : UiTimerSource {
+class TestUiTimers : UiTimerSource {
     private val timers = mutableListOf<FakeTimer>()
     private var time = 0L
 
