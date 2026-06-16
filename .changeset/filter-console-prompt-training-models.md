@@ -2,4 +2,4 @@
 "@kilocode/cli": patch
 ---
 
-Add a temporary privacy filter to the Kilo Console model explorer.
+Add a privacy filter to the Console model explorer to hide models whose providers may use prompts for training.
