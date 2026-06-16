@@ -11,8 +11,10 @@ import type {
   ClearLegacyDataMessage,
   FinalizeLegacyMigrationMessage,
   RequestLegacyMigrationDataMessage,
+  RequestRooMigrationDataMessage,
   SkipLegacyMigrationMessage,
   StartLegacyMigrationMessage,
+  StartRooMigrationMessage,
 } from "./migration"
 
 // ============================================
@@ -179,10 +181,6 @@ export interface OpenSettingsPanelRequest {
 export interface OpenVSCodeSettingsRequest {
   type: "openVSCodeSettings"
   query: string
-}
-
-export interface ImportRooCodeSessionsRequest {
-  type: "importRooCodeSessions"
 }
 
 export interface OpenConfigFileRequest {
@@ -1118,7 +1116,6 @@ export type WebviewMessage =
   | OpenExternalRequest
   | OpenSettingsPanelRequest
   | OpenVSCodeSettingsRequest
-  | ImportRooCodeSessionsRequest
   | OpenConfigFileRequest
   | OpenMarketplacePanelRequest
   | OpenAgentManagerRequest
@@ -1230,7 +1227,9 @@ export type WebviewMessage =
   | OpenPRMessage
   // legacy-migration start
   | RequestLegacyMigrationDataMessage
+  | RequestRooMigrationDataMessage
   | StartLegacyMigrationMessage
+  | StartRooMigrationMessage
   | SkipLegacyMigrationMessage
   | ClearLegacyDataMessage
   | FinalizeLegacyMigrationMessage
