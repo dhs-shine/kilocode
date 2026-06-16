@@ -685,8 +685,15 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         name: "docs.open",
         title: "Open docs",
         run: () => {
-          open(KiloApp.DOCS_URL).catch(() => {}) // kilocode_change
           dialog.clear()
+          open(KiloApp.DOCS_URL).catch(() => {
+            dialog.replace(() => (
+              <DialogAlert
+                title="Cannot open browser"
+                message={`No display detected.\n\nOpen the docs manually:\n${KiloApp.DOCS_URL}`}
+              />
+            ))
+          }) // kilocode_change
         },
         category: "System",
       },
