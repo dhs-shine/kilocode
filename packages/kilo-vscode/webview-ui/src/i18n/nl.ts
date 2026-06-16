@@ -1507,10 +1507,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
-  "settings.display.codeEdit.title": "Code Edit Blocks",
-  "settings.display.codeEdit.description": "Choose whether code edit and diff blocks start expanded or collapsed.",
-  "settings.display.codeEdit.expanded": "Expanded",
-  "settings.display.codeEdit.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Blokken met codebewerkingen",
+  "settings.display.codeEdit.description":
+    "Kies of blokken met codebewerkingen en verschillen standaard uitgeklapt of ingeklapt zijn.",
+  "settings.display.codeEdit.expanded": "Uitgeklapt",
+  "settings.display.codeEdit.collapsed": "Ingeklapt",
 
   "settings.providers.defaultModel.title": "Standaard Model",
   "settings.providers.defaultModel.description": "Primair model voor gesprekken",
