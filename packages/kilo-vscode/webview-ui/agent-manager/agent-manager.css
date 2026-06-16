@@ -1875,7 +1875,6 @@ body.am-wt-dragging-active * {
 /* Ensure virtualized accordion rows span the panel without per-row rounded corners. */
 .am-diff-content [data-component="accordion"],
 .am-review-diff-content [data-component="accordion"] {
-  --radius-lg: 0;
   width: 100% !important;
   align-items: stretch !important;
 }
@@ -1888,6 +1887,13 @@ body.am-wt-dragging-active * {
 .am-review-diff-content [data-slot="accordion-trigger"] {
   width: 100% !important;
   align-self: stretch !important;
+}
+
+.am-diff-content [data-slot="accordion-trigger"],
+.am-review-diff-content [data-slot="accordion-trigger"],
+.am-diff-content [data-slot="accordion-content"],
+.am-review-diff-content [data-slot="accordion-content"] {
+  border-radius: 0 !important;
 }
 
 .am-diff-content [data-slot="accordion-item"][data-file-path],
