@@ -1,3 +1,4 @@
+# kilocode_change - new file
 name: test-vscode
 
 on:
@@ -8,7 +9,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-# kilocode_change start
 permissions:
   contents: read
   pull-requests: read
@@ -45,7 +45,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6 # kilocode_change
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -71,4 +71,3 @@ jobs:
       - name: Check for kilocode_change markers
         working-directory: packages/kilo-vscode
         run: bun run check-kilocode-change
-# kilocode_change end
