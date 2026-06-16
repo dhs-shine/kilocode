@@ -86,8 +86,12 @@ export async function refreshCodexAuth(input: Input) {
 
       try {
         const base = current && current.refresh !== token ? current : input.auth
-        const signal = AbortSignal.timeout(input.timeout ?? timeout)
-        const tokens = await input.refresh(base.refresh, signal)
+        const controller = new AbortController()
+        const timer = setTimeout(
+          () => controller.abort(new DOMException("The operation timed out.", "TimeoutError")),
+          input.timeout ?? timeout,
+        )
+        const tokens = await input.refresh(base.refresh, controller.signal).finally(() => clearTimeout(timer))
         const id = input.account(tokens) || base.accountId
         const next = {
           type: "oauth" as const,
