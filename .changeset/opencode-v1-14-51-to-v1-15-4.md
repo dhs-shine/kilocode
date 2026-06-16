@@ -5,7 +5,6 @@
 
 Changes from opencode v1.14.51 to v1.15.4 upstream:
 
-- Core Improvements: Added an Effect-based core event system for more complete event delivery across sessions and integrations.
 - Core Improvements: Clarified how to recover when the npm package is installed without its native binary.
 - Core Improvements: Reduced unnecessary prompting around shell, task, and todo flows.
 - Core Bugfixes: Ignored invalid exports in custom tool modules instead of failing tool loading.
@@ -30,5 +29,5 @@ Changes from opencode v1.14.51 to v1.15.4 upstream:
 - TUI Bugfixes: Fixed thinking mode defaults so reasoning starts collapsed consistently.
 - TUI Bugfixes: Limited session quick-switching to pinned sessions.
 - TUI Bugfixes: Fixed Markdown table rendering in chat output.
-- TUI Bugfixes: Fixed `opencode run --agent` resolving project-local agents.
+- TUI Bugfixes: Fixed `kilo run --agent` resolving project-local agents.
 - TUI Bugfixes: Fixed async commands losing the active instance context, which could break agent generation and GitHub-driven runs.
