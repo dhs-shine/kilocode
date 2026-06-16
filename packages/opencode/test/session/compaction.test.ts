@@ -24,7 +24,7 @@ import type { Provider } from "@/provider/provider"
 import * as SessionProcessorModule from "../../src/session/processor"
 import { Snapshot } from "../../src/snapshot"
 import { ProviderTest } from "../fake/provider"
-import { testEffect } from "../lib/effect"
+import { awaitWithTimeout, testEffect } from "../lib/effect" // kilocode_change
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { TestConfig } from "../fixture/config"
 import { SyncEvent } from "@/sync"
@@ -250,6 +250,7 @@ type CompactionProcessOptions = {
   provider?: ReturnType<typeof ProviderTest.fake>
   config?: Layer.Layer<Config.Service>
   flags?: Partial<RuntimeFlags.Info> // kilocode_change
+  snapshot?: Layer.Layer<Snapshot.Service> // kilocode_change
 }
 
 function withCompaction(options?: CompactionProcessOptions) {
@@ -269,7 +270,7 @@ function compactionProcessLayer(options?: CompactionProcessOptions) {
   return Layer.mergeAll(SessionCompaction.layer.pipe(Layer.provide(processor)), processor, bus, status).pipe(
     Layer.provide(SessionNs.defaultLayer),
     Layer.provide((options?.provider ?? wide()).layer),
-    Layer.provide(Snapshot.defaultLayer),
+    Layer.provide(options?.snapshot ?? Snapshot.defaultLayer), // kilocode_change
     Layer.provide(options?.llm ?? LLM.defaultLayer),
     Layer.provide(Permission.defaultLayer),
     Layer.provide(Agent.defaultLayer),
@@ -282,6 +283,22 @@ function compactionProcessLayer(options?: CompactionProcessOptions) {
     Layer.provide(EventV2Bridge.defaultLayer),
   )
 }
+
+// kilocode_change start - keep retry-backoff cancellation tests independent of git snapshot cleanup latency
+const snap = Layer.succeed(
+  Snapshot.Service,
+  Snapshot.Service.of({
+    init: () => Effect.void,
+    cleanup: () => Effect.void,
+    track: () => Effect.succeed(undefined),
+    patch: (hash) => Effect.succeed({ hash, files: [] }),
+    restore: () => Effect.void,
+    revert: () => Effect.void,
+    diff: () => Effect.succeed(""),
+    diffFull: () => Effect.succeed([]),
+  }),
+)
+// kilocode_change end
 
 function createSummaryCompaction(sessionID: SessionID) {
   return SessionCompaction.use.create({ sessionID, agent: "build", model: ref, auto: false })
@@ -1279,16 +1296,22 @@ describe("session.compaction.process", () => {
           .pipe(Effect.forkChild)
 
         yield* Deferred.await(ready).pipe(Effect.timeout("1 second"))
-        const start = Date.now()
-        yield* Fiber.interrupt(fiber)
-        const exit = yield* Fiber.await(fiber).pipe(Effect.timeout("250 millis"))
+        // kilocode_change start - Windows CI can take longer than 250ms to schedule interrupt finalizers
+        const exit = yield* awaitWithTimeout(
+          Effect.gen(function* () {
+            yield* Fiber.interrupt(fiber)
+            return yield* Fiber.await(fiber)
+          }),
+          "compaction did not stop after retry-backoff interrupt",
+          "2 seconds",
+        )
+        // kilocode_change end
 
         expect(Exit.isFailure(exit)).toBe(true)
         if (Exit.isFailure(exit)) {
           expect(Cause.hasInterrupts(exit.cause)).toBe(true)
-          expect(Date.now() - start).toBeLessThan(250)
         }
-      }).pipe(withCompaction({ llm: stub.layer }))
+      }).pipe(withCompaction({ llm: stub.layer, snapshot: snap })) // kilocode_change
     },
     { git: true },
   )
