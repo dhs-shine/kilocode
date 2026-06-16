@@ -5,21 +5,40 @@ on:
     branches:
       - main
       - dev
-    paths:
-      - "packages/kilo-vscode/**"
-      - "packages/ui/**"
-      - "packages/kilo-ui/**"
-      - ".github/workflows/test-vscode.yml"
   pull_request:
-    paths:
-      - "packages/kilo-vscode/**"
-      - "packages/ui/**"
-      - "packages/kilo-ui/**"
-      - ".github/workflows/test-vscode.yml"
   workflow_dispatch:
 
+# kilocode_change start
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
+  changes:
+    name: detect VS Code changes
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    outputs:
+      vscode: ${{ steps.filter.outputs.vscode }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Detect VS Code changes
+        id: filter
+        uses: Kilo-Org/paths-filter@668c092af3649c4b664c54e4b704aa46782f6f7c # v3
+        with:
+          base: ${{ github.ref_name }}
+          predicate-quantifier: every
+          filters: |
+            vscode:
+              - '**'
+              - '!packages/kilo-jetbrains/**'
+              - '!packages/kilo-docs/**'
+              - '!docs/**'
+
   unit:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.vscode == 'true'
     name: unit tests
     runs-on: blacksmith-4vcpu-ubuntu-2404
     defaults:
@@ -53,3 +72,4 @@ jobs:
       - name: Check for kilocode_change markers
         working-directory: packages/kilo-vscode
         run: bun run check-kilocode-change
+# kilocode_change end
