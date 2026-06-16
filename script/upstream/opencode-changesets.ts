@@ -28,7 +28,7 @@ const bump: Bump = "minor"
 const drop = ["Desktop", "SDK"]
 
 const usage = `
-Usage: bun script/upstream/opencode-changesets.ts <from> <to>
+Usage: bun script/upstream/opencode-changesets.ts --from <version> --to <version>
 
 Creates one changeset for upstream opencode releases in the semver range (from, to].
 
@@ -37,8 +37,7 @@ Options:
       --to <version>    Ending opencode version, inclusive
   -h, --help            Show this help message
 
-Examples:
-  bun script/upstream/opencode-changesets.ts 1.17.0 1.17.7
+Example:
   bun script/upstream/opencode-changesets.ts --from v1.16.0 --to v1.17.7
 `
 
@@ -241,7 +240,6 @@ function parse_opts() {
       to: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
-    allowPositionals: true,
   })
 
   if (parsed.values.help) {
@@ -249,11 +247,8 @@ function parse_opts() {
     process.exit(0)
   }
 
-  const from = parsed.values.from ?? parsed.positionals[0]
-  const to = parsed.values.to ?? parsed.positionals[1]
-  const named = Boolean(parsed.values.from || parsed.values.to)
-  if (named && parsed.positionals.length > 0) throw new Error("Use either positional versions or --from/--to, not both")
-  if (!named && parsed.positionals.length !== 2) throw new Error("Expected exactly two positional versions")
+  const from = parsed.values.from
+  const to = parsed.values.to
   if (!from || !to) throw new Error("Expected from and to opencode versions")
 
   return { from, to, root: path.resolve(import.meta.dir, "../..") } satisfies Opts

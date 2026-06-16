@@ -66,7 +66,7 @@ bun run merge.ts --version v1.1.50 --base-branch catrielmuller/kilo-opencode-v1.
 After merging upstream opencode releases, use `opencode-changesets.ts` to turn the upstream GitHub release notes into Kilo changesets:
 
 ```bash
-bun script/upstream/opencode-changesets.ts 1.17.0 1.17.7
+bun script/upstream/opencode-changesets.ts --from 1.17.0 --to 1.17.7
 ```
 
 The script fetches releases from `anomalyco/opencode`, selects published releases in the semver range `(from, to]`, and writes one `.changeset/opencode-vX-Y-Z-to-vX-Y-Z.md` file for the whole range. It requires the target release to exist, merges notes from every release into shared `##` sections and `###` categories, then folds those headings into each bullet (for example, `Core Bugfixes: ...`) so Changesets can embed the notes cleanly in package changelogs. It generates a minor changeset for the fixed release group, `@kilocode/cli` and `kilo-code`. Generated notes omit contributor thank-you blocks and the upstream `Desktop` and `SDK` sections by default because Kilo does not ship the opencode desktop app and SDK release notes are not user-facing for Kilo.
