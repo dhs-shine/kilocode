@@ -4,9 +4,9 @@ export function parseSwitchLink(path: string, query: string) {
   if (!paths.has(path)) return
 
   const params = new URLSearchParams(query)
-  const modelID = params.get("model")
-  if (!modelID) return
-
+  const modelID = params.get("model") || undefined
   const agent = params.get("agent") || params.get("mode") || undefined
-  return { modelID, ...(agent && { agent }) }
+  if (!modelID && !agent) return
+
+  return { ...(modelID && { modelID }), ...(agent && { agent }) }
 }

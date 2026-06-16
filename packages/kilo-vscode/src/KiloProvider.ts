@@ -301,7 +301,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private configWarningsShown = false
   /** Cached notificationsLoaded payload */
   private cachedNotificationsMessage: unknown = null
-  private pendingKiloModel: { modelID: string; agent?: string } | null = null
+  private pendingKiloModel: { modelID?: string; agent?: string } | null = null
   private pendingReviewComments: { comments: unknown[]; autoSend: boolean }[] = []
   private readyResolvers: (() => void)[] = []
   private promptRecoveryQueued = false
@@ -716,8 +716,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.postMessage({ type: "openCloudSession", sessionId })
   }
 
-  public selectKiloModel(modelID: string, agent?: string): void {
-    this.pendingKiloModel = { modelID, ...(agent && { agent }) }
+  public selectKiloModel(modelID?: string, agent?: string): void {
+    if (!modelID && !agent) return
+    this.pendingKiloModel = { ...(modelID && { modelID }), ...(agent && { agent }) }
     this.flushPendingKiloModel()
   }
 

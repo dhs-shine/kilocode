@@ -241,7 +241,7 @@ export interface OpenCloudSessionMessage {
 
 export interface SelectKiloModelMessage {
   type: "selectKiloModel"
-  modelID: string
+  modelID?: string
   agent?: string
 }
 

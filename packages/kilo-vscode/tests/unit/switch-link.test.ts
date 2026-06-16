@@ -8,16 +8,21 @@ describe("parseSwitchLink", () => {
     })
   })
 
-  it("includes an optional agent", () => {
+  it("parses an agent without a model", () => {
+    expect(parseSwitchLink("/kilocode/switch", "agent=plan")).toEqual({
+      agent: "plan",
+    })
+  })
+
+  it("parses a model and agent together", () => {
     expect(parseSwitchLink("/kilocode/switch", "model=kilo-auto%2Ffree&agent=plan")).toEqual({
       modelID: "kilo-auto/free",
       agent: "plan",
     })
   })
 
-  it("accepts mode as an agent alias", () => {
-    expect(parseSwitchLink("/kilocode/switch", "model=kilo-auto%2Ffree&mode=code")).toEqual({
-      modelID: "kilo-auto/free",
+  it("accepts mode as an agent alias without a model", () => {
+    expect(parseSwitchLink("/kilocode/switch", "mode=code")).toEqual({
       agent: "code",
     })
   })
@@ -35,8 +40,8 @@ describe("parseSwitchLink", () => {
     })
   })
 
-  it("rejects unsupported routes and missing models", () => {
+  it("rejects unsupported routes and empty selections", () => {
     expect(parseSwitchLink("/kilocode/other", "model=kilo-auto%2Ffree")).toBeUndefined()
-    expect(parseSwitchLink("/kilocode/switch", "agent=plan")).toBeUndefined()
+    expect(parseSwitchLink("/kilocode/switch", "")).toBeUndefined()
   })
 })
