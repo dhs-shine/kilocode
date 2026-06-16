@@ -44,7 +44,6 @@ jobs:
               - '**'
               - '!packages/kilo-vscode/**'
               - '!packages/kilo-docs/**'
-              - '!docs/**'
   unit:
     name: unit (${{ matrix.settings.name }})
     strategy:
