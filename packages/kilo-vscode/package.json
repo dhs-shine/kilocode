@@ -1051,6 +1051,8 @@
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",
     "@playwright/test": "1.57.0",
+    "@storybook/addon-a11y": "10.2.10",
+    "@storybook/addon-docs": "10.2.10",
     "@types/diff": "^6.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",

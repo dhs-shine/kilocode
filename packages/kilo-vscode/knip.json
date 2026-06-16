@@ -12,9 +12,7 @@
     "src/**/__tests__/**/*.{ts,spec.ts}",
     "src/**/*.test.ts",
     "tests/**/*.{ts,mts}",
-    "script/*.ts",
-    "webview-ui/src/stories/**/*.stories.@(ts|tsx)",
-    "webview-ui/src/stories/*.tsx"
+    "script/*.ts"
   ],
   "project": ["src/**/*.ts", "webview-ui/**/*.{ts,tsx}"],
   "ignoreExportsUsedInFile": true,
