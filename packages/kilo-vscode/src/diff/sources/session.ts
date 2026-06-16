@@ -68,7 +68,7 @@ export function toSessionDiffFile(raw: SnapshotFileDiff): DiffFile {
   // parse it, so short-circuit to empty strings.
   const view = raw.patch === "" ? null : normalize(raw)
   return {
-    file: raw.file,
+    file: raw.file ?? "",
     before: view ? text(view, "deletions") : "",
     after: view ? text(view, "additions") : "",
     patch: raw.patch,
@@ -77,6 +77,8 @@ export function toSessionDiffFile(raw: SnapshotFileDiff): DiffFile {
     status: raw.status,
     tracked: true,
     generatedLike: false,
-    summarized: raw.patch === "",
+    // A zero-stat empty patch has no text body to fetch; nonzero stats
+    // indicate a deferred large-file summary.
+    summarized: raw.patch === "" && (raw.additions !== 0 || raw.deletions !== 0),
   }
 }
