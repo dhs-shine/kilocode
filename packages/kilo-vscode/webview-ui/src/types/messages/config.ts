@@ -109,6 +109,7 @@ export interface BrowserSettings {
 }
 
 export type TerminalCommandDisplay = "expanded" | "collapsed"
+export type CodeEditDisplay = "expanded" | "collapsed"
 
 export interface Config {
   permission?: PermissionConfig
@@ -129,6 +130,7 @@ export interface Config {
   snapshot?: boolean
   remote_control?: boolean
   terminal_command_display?: TerminalCommandDisplay
+  code_edit_display?: CodeEditDisplay
   hide_prompt_training_models?: boolean
   share?: "manual" | "auto" | "disabled"
   username?: string
