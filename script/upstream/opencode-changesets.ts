@@ -24,7 +24,7 @@ type Group = Map<string, Map<string, string[]>>
 
 const repo = "anomalyco/opencode"
 const pkgs = ["@kilocode/cli", "kilo-code"]
-const bump: Bump = "patch"
+const bump: Bump = "minor"
 const drop = ["Desktop", "SDK"]
 
 const usage = `
@@ -103,11 +103,13 @@ function filter(input: string, sections: string[]) {
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim()
 }
 
-function add(groups: Group, section: string, category: string, line: string) {
+function add(groups: Group, section: string, category: string, lines: string[]) {
+  const text = lines.join("\n").trim()
+  if (!text) return
   if (!groups.has(section)) groups.set(section, new Map())
   const group = groups.get(section)!
   if (!group.has(category)) group.set(category, [])
-  group.get(category)!.push(line)
+  group.get(category)!.push(text)
 }
 
 function collect(releases: Release[]) {
@@ -117,10 +119,16 @@ function collect(releases: Release[]) {
     const text = filter(body(release), drop)
     let section = "Core"
     let category = ""
+    const block: string[] = []
+
+    const flush = () => {
+      add(groups, section, category, block.splice(0))
+    }
 
     for (const line of text.split("\n")) {
       const heading = line.match(/^##\s+(.+?)\s*$/)
       if (heading) {
+        flush()
         section = heading[1].trim()
         category = ""
         if (!groups.has(section)) groups.set(section, new Map())
@@ -129,15 +137,19 @@ function collect(releases: Release[]) {
 
       const sub = line.match(/^###\s+(.+?)\s*$/)
       if (sub) {
+        flush()
         category = sub[1].trim()
         if (!groups.has(section)) groups.set(section, new Map())
         if (!groups.get(section)!.has(category)) groups.get(section)!.set(category, [])
         continue
       }
 
-      if (!line.trim()) continue
-      add(groups, section, category, line)
+      if (!line.trim() && block.length === 0) continue
+      if (line.match(/^[-*]\s+/) && block.length > 0) flush()
+      block.push(line)
     }
+
+    flush()
   }
 
   return groups
@@ -151,8 +163,11 @@ function render(groups: Group) {
       if (items.length === 0) continue
       const prefix = [section, category].filter(Boolean).join(" ")
       for (const item of items) {
-        const text = item.replace(/^\s*[-*]\s+/, "").trim()
-        lines.push(`- ${prefix}: ${text}`)
+        const text = item.replace(/^\s*[-*]\s+/, "").trimEnd()
+        const body = text.split("\n")
+        const [first = "", ...rest] = body
+        lines.push(`- ${prefix}: ${first.trim()}`)
+        lines.push(...rest.map((line) => (line.trim() ? `  ${line}` : "")))
       }
     }
   }
@@ -170,7 +185,7 @@ export function select(releases: Release[], from: string, to: string) {
   if (semver.gt(base, head) || base === head) throw new Error(`Expected from version to be lower than to version`)
 
   const seen = new Set<string>()
-  return releases
+  const selected = releases
     .filter((release) => !release.draft)
     .filter((release) => !release.prerelease)
     .map((release) => ({ release, version: semver.valid(release.tag_name.replace(/^v/, "")) }))
@@ -182,6 +197,12 @@ export function select(releases: Release[], from: string, to: string) {
     })
     .sort((a, b) => semver.compare(a.version, b.version))
     .map((item) => ({ ...item.release, tag_name: tag(item.version) }))
+
+  if (!selected.some((release) => release.tag_name === tag(head))) {
+    throw new Error(`Target opencode release does not exist or is not published: ${tag(head)}`)
+  }
+
+  return selected
 }
 
 export function changeset(releases: Release[], from: string, to: string) {
@@ -230,6 +251,9 @@ function parse_opts() {
 
   const from = parsed.values.from ?? parsed.positionals[0]
   const to = parsed.values.to ?? parsed.positionals[1]
+  const named = Boolean(parsed.values.from || parsed.values.to)
+  if (named && parsed.positionals.length > 0) throw new Error("Use either positional versions or --from/--to, not both")
+  if (!named && parsed.positionals.length !== 2) throw new Error("Expected exactly two positional versions")
   if (!from || !to) throw new Error("Expected from and to opencode versions")
 
   return { from, to, root: path.resolve(import.meta.dir, "../..") } satisfies Opts
@@ -246,7 +270,7 @@ export async function run(opts: Opts) {
 }
 
 if (import.meta.main) {
-  await run(parse_opts()).catch((err) => {
+  await (async () => run(parse_opts()))().catch((err) => {
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`)
     process.exit(1)
   })
