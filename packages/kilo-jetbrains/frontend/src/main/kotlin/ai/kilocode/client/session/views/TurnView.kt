@@ -47,6 +47,7 @@ class TurnView(
         val view = MessageView(msg, openFile, style, openUrl, selection, openAttachment, resize, repo, hover)
         messages[msg.info.id] = view
         add(view)
+        syncCopyToolbars()
         revalidate()
         return view
     }
@@ -56,7 +57,13 @@ class TurnView(
         val view = messages.remove(msgId) ?: return
         remove(view)
         Disposer.dispose(view)
+        syncCopyToolbars()
         revalidate()
+    }
+
+    fun syncCopyToolbars() {
+        val id = messages.values.reversed().firstNotNullOfOrNull { it.latestAssistantCopyId() }
+        for (view in messages.values) view.syncCopyToolbar(id)
     }
 
     /** Look up a nested [MessageView] by message id. */
@@ -71,6 +78,7 @@ class TurnView(
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         for (view in messages.values) view.applyStyle(style)
+        syncCopyToolbars()
         revalidate()
         repaint()
     }

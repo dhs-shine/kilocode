@@ -1,25 +1,15 @@
 package ai.kilocode.client.session.ui.selection
 
-import ai.kilocode.client.plugin.KiloBundle
-import ai.kilocode.client.ui.HoverIcon
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.ide.CopyPasteManager
-import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.ui.popup.JBPopupFactory
-import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.AWTEvent
 import java.awt.Component
-import java.awt.Cursor
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.awt.event.AWTEventListener
-import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -30,23 +20,13 @@ internal class SessionHoverCopyOverlay(
     parent: Disposable,
 ) : JPanel(null), Disposable {
     private var target: SessionCopyTarget? = null
-    private var balloon: Balloon? = null
-    private val button = HoverIcon(fill = true).apply {
-        icon = AllIcons.Actions.Copy
-        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        toolTipText = KiloBundle.message("session.copy.hover")
-    }
+    private val copy = SessionCopyButton(fill = true) { target?.copyText() }
+    private val button = copy.button
 
     init {
         isVisible = false
         isOpaque = false
         add(button)
-        button.addActionListener { copy() }
-        button.addMouseListener(object : MouseAdapter() {
-            override fun mouseExited(e: MouseEvent) {
-                dismiss()
-            }
-        })
 
         val listener = AWTEventListener { event ->
             val mouse = event as? MouseEvent ?: return@AWTEventListener
@@ -134,33 +114,13 @@ internal class SessionHoverCopyOverlay(
     }
 
     @RequiresEdt
-    private fun dismiss() {
-        balloon?.hide()
-        balloon = null
-    }
-
-    @RequiresEdt
     private fun conceal() {
-        dismiss()
+        copy.dismiss()
         if (target == null && !isVisible) return
         target = null
         isVisible = false
         revalidate()
         repaint()
-    }
-
-    @RequiresEdt
-    private fun copy() {
-        val text = target?.copyText()?.takeIf { it.isNotEmpty() } ?: return
-        CopyPasteManager.getInstance().setContents(StringSelection(text))
-        dismiss()
-        balloon = JBPopupFactory.getInstance()
-            .createHtmlTextBalloonBuilder(KiloBundle.message("session.copy.copied"), null, null, null)
-            .createBalloon()
-            .also { item ->
-                item.setAnimationEnabled(false)
-                item.show(RelativePoint(button, Point(button.width / 2, 0)), Balloon.Position.above)
-            }
     }
 
     override fun dispose() = Unit
