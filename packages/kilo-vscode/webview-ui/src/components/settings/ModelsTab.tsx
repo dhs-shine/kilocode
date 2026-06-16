@@ -43,9 +43,7 @@ const ModelsTab: Component = () => {
 
   const subagentModel = createMemo(() => parseModelString(config().subagent_model ?? undefined))
   const speechModel = createMemo(() => selectedSpeechToTextModel(config()))
-  const speechOption = createMemo(() =>
-    SPEECH_TO_TEXT_MODEL_OPTIONS.find((item) => item.value === speechModel()),
-  )
+  const speechOption = createMemo(() => SPEECH_TO_TEXT_MODEL_OPTIONS.find((item) => item.value === speechModel()))
   const kiloReady = createMemo(() => hasSpeechToTextAccess(config(), provider.authStates()))
   const variantKey = createMemo(() => config().subagent_model ?? undefined)
   const subagentVariants = createMemo(() => Object.keys(provider.findModel(subagentModel())?.variants ?? {}))
