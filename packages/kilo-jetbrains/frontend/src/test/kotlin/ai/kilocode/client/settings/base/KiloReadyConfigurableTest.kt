@@ -14,11 +14,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import java.awt.BorderLayout
 import java.awt.Container
 import javax.swing.AbstractButton
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
+import javax.swing.JScrollPane
 import javax.swing.text.JTextComponent
 
 class KiloReadyConfigurableTest : BasePlatformTestCase() {
@@ -151,8 +153,24 @@ class KiloReadyConfigurableTest : BasePlatformTestCase() {
         edt { assertFalse(root.progress.isVisible) }
     }
 
-    private fun create(overlay: Boolean = false): FakeConfigurable {
-        val view = FakeConfigurable(overlay)
+    fun `test no scroll shell hosts ready component directly`() {
+        val view = create(scroll = false)
+        val root = edt { view.createComponent() as SettingsOverlayPanel }
+        flushUntil { rpc.connected }
+
+        rpc.state.value = KiloAppStateDto(KiloAppStatusDto.READY)
+        flushUntil { edt { view.created == 1 } }
+
+        edt {
+            assertFalse(root is SettingsPanel)
+            assertTrue(components(root).filterIsInstance<JScrollPane>().isEmpty())
+            assertSame(view.ready, (root.content.layout as BorderLayout).getLayoutComponent(BorderLayout.CENTER))
+            assertTrue(text(root).contains("Ready content"))
+        }
+    }
+
+    private fun create(overlay: Boolean = false, scroll: Boolean = true): FakeConfigurable {
+        val view = FakeConfigurable(overlay, scroll)
         cfg = view
         return view
     }
@@ -200,9 +218,14 @@ class KiloReadyConfigurableTest : BasePlatformTestCase() {
         visit(root)
     }
 
-    private class FakeConfigurable(private val overlay: Boolean = false) : KiloReadyConfigurable() {
+    private class FakeConfigurable(
+        private val overlay: Boolean = false,
+        private val scroll: Boolean = true,
+    ) : KiloReadyConfigurable() {
         val field = JPanel()
         val focuses = mutableListOf<String>()
+        var ready: JComponent? = null
+            private set
         var readyPanel: SettingsPanel? = null
             private set
         var created = 0
@@ -227,10 +250,15 @@ class KiloReadyConfigurableTest : BasePlatformTestCase() {
                 val panel = SettingsPanel()
                 panel.setContent(JPanel().apply { add(JLabel("Ready content")) })
                 readyPanel = panel
+                ready = panel
                 return panel
             }
-            return JPanel().apply { add(JLabel("Ready content")) }
+            val panel = JPanel().apply { add(JLabel("Ready content")) }
+            ready = panel
+            return panel
         }
+
+        override fun scrollReadyShell(): Boolean = scroll
 
         override fun isModifiedReady(): Boolean = modified
 

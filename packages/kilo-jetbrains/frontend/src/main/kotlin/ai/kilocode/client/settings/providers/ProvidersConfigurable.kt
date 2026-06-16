@@ -31,6 +31,8 @@ class ProvidersConfigurable : KiloReadyConfigurable() {
 
     override fun cancelScopeBeforeReadyDispose(): Boolean = true
 
+    override fun scrollReadyShell(): Boolean = false
+
     override fun disposeReadyComponent(component: JComponent) {
         val panel = ui ?: return
         ui = null

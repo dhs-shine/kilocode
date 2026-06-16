@@ -23,21 +23,22 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.BorderLayout
 import javax.swing.JComponent
 
 abstract class KiloReadyConfigurable : SearchableConfigurable, Configurable.NoScroll {
-    private var shell: SettingsPanel? = null
+    private var shell: SettingsOverlayPanel? = null
     private var scope: CoroutineScope? = null
     private var ready: JComponent? = null
 
     @RequiresEdt
     override fun createComponent(): JComponent {
         checkEdt()
-        val root = SettingsPanel()
+        val root = if (scrollReadyShell()) SettingsPanel() else SettingsOverlayPanel()
         val cs = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         shell = root
         scope = cs
-        root.setContent(unavailable())
+        setContent(root, unavailable())
         cs.launch { service<KiloAppService>().connect() }
         cs.launch {
             service<KiloAppService>().state.collect { state ->
@@ -97,8 +98,19 @@ abstract class KiloReadyConfigurable : SearchableConfigurable, Configurable.NoSc
         ready = panel
         val root = shell
         if (panel is SettingsOverlayPanel) panel.setOverlayHost(root)
-        root?.setContent(panel)
+        if (root != null) setContent(root, panel)
         onReadyComponentCreated(panel)
+    }
+
+    private fun setContent(root: SettingsOverlayPanel, component: JComponent) {
+        if (root is SettingsPanel) {
+            root.setContent(component)
+            return
+        }
+        root.content.removeAll()
+        root.content.add(component, BorderLayout.CENTER)
+        root.revalidate()
+        root.repaint()
     }
 
     private fun unavailable(): JComponent {
@@ -128,6 +140,7 @@ abstract class KiloReadyConfigurable : SearchableConfigurable, Configurable.NoSc
     protected open fun onReadyComponentCreated(component: JComponent) = Unit
     protected open fun cancelScopeBeforeReadyDispose(): Boolean = false
     protected open fun disposeReadyComponent(component: JComponent) = Unit
+    protected open fun scrollReadyShell(): Boolean = true
 
     private fun checkEdt() {
         check(ApplicationManager.getApplication().isDispatchThread) { "Settings configurable UI must run on EDT" }
