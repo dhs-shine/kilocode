@@ -167,8 +167,8 @@ Allow git commands automatically, but prompt for everything else:
 {
   "permission": {
     "bash": {
-      "git *": "allow",
-      "*": "ask"
+      "*": "ask",
+      "git *": "allow"
     }
   }
 }
@@ -182,8 +182,8 @@ Prompt before reading `.env` files, but allow all other reads:
 {
   "permission": {
     "read": {
-      "*.env": "ask",
-      "*": "allow"
+      "*": "allow",
+      "*.env": "ask"
     }
   }
 }
@@ -197,11 +197,11 @@ Deny `rm -rf` commands, allow common dev commands, and ask for anything else:
 {
   "permission": {
     "bash": {
+      "*": "ask",
       "rm -rf *": "deny",
       "npm *": "allow",
       "bun *": "allow",
-      "git *": "allow",
-      "*": "ask"
+      "git *": "allow"
     }
   }
 }
@@ -219,7 +219,7 @@ Different agents can have different permission levels. Override the default perm
   "agent": {
     "code": {
       "permission": {
-        "bash": { "git *": "allow", "*": "ask" }
+        "bash": { "*": "ask", "git *": "allow" }
       }
     },
     "plan": {
@@ -243,11 +243,11 @@ description: Reviews code for quality and best practices
 mode: subagent
 permission:
   bash:
-    "git *": allow
     "*": ask
+    "git *": allow
   read:
-    "*.env": ask
     "*": allow
+    "*.env": ask
 ---
 ```
 
@@ -288,12 +288,12 @@ This is a custom example showing the available configuration options — it does
 ```json
 {
   "permission": {
-    "read": { "*.env": "ask", "*": "allow" },
-    "edit": { "*.env": "ask", "*": "allow" },
+    "read": { "*": "allow", "*.env": "ask" },
+    "edit": { "*": "allow", "*.env": "ask" },
     "glob": { "*": "allow" },
     "grep": { "*": "allow" },
     "list": { "*": "allow" },
-    "bash": { "git *": "allow", "npm *": "allow", "*": "ask" },
+    "bash": { "*": "ask", "git *": "allow", "npm *": "allow" },
     "task": { "*": "allow" },
     "skill": { "*": "allow" },
     "lsp": { "*": "allow" },
@@ -307,7 +307,7 @@ This is a custom example showing the available configuration options — it does
   "agent": {
     "code": {
       "permission": {
-        "bash": { "git *": "allow", "npm *": "allow", "*": "ask" }
+        "bash": { "*": "ask", "git *": "allow", "npm *": "allow" }
       }
     }
   }
