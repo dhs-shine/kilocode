@@ -138,6 +138,7 @@
     "@kobalte/core": "catalog:",
     "@kilocode/kilo-ui": "workspace:*",
     "@opencode-ai/ui": "workspace:*",
+    "@pierre/diffs": "catalog:",
     "solid-js": "catalog:"
   },
   "devDependencies": {
