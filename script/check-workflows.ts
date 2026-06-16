@@ -53,7 +53,6 @@ const active = new Set([
   "source-check-links.yml",
   "test-vscode.yml",
   "test.yml",
-  "triage.yml",
   "typecheck.yml",
   "visual-regression.yml",
   "watch-opencode-releases.yml",
