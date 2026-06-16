@@ -22,8 +22,6 @@ type Opts = {
   packages: string[]
   bump: Bump
   drop: string[]
-  dry: boolean
-  force: boolean
   prerelease: boolean
 }
 
@@ -42,14 +40,12 @@ Options:
       --bump <type>             Changeset bump type: major, minor, patch (default: patch)
       --drop-section <heading>  Omit a markdown ## section by heading (repeatable; defaults to Desktop and SDK)
       --no-default-drop-section Do not drop the default Desktop and SDK sections
-      --dry-run                 Print changesets without writing files
-      --force                   Overwrite existing generated changeset files
       --include-prerelease      Include prerelease GitHub releases
   -h, --help                    Show this help message
 
 Examples:
   bun script/upstream/opencode-changesets.ts 1.17.0 1.17.7
-  bun script/upstream/opencode-changesets.ts --from v1.16.0 --to v1.17.7 --dry-run
+  bun script/upstream/opencode-changesets.ts --from v1.16.0 --to v1.17.7
 `
 
 function clean(input: string) {
@@ -233,8 +229,6 @@ function opts() {
       bump: { type: "string", default: "patch" },
       "drop-section": { type: "string", multiple: true },
       "no-default-drop-section": { type: "boolean", default: false },
-      "dry-run": { type: "boolean", default: false },
-      force: { type: "boolean", default: false },
       "include-prerelease": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -261,8 +255,6 @@ function opts() {
     packages: parsed.values.package?.length ? parsed.values.package : ["@kilocode/cli", "kilo-code"],
     bump,
     drop: [...(parsed.values["no-default-drop-section"] ? [] : ["Desktop", "SDK"]), ...(parsed.values["drop-section"] ?? [])],
-    dry: parsed.values["dry-run"],
-    force: parsed.values.force,
     prerelease: parsed.values["include-prerelease"],
   } satisfies Opts
 }
@@ -271,13 +263,6 @@ async function write(releases: Release[], opts: Opts) {
   const dir = path.join(opts.root, ".changeset")
   const file = path.join(dir, slug(opts.from, opts.to))
   const text = changeset(releases, opts)
-
-  if (opts.dry) {
-    process.stdout.write(`--- ${path.relative(opts.root, file)} ---\n${text}\n`)
-    return
-  }
-
-  if (!opts.force && (await Bun.file(file).exists())) throw new Error(`Changeset already exists: ${file}`)
   await Bun.write(file, text)
   process.stdout.write(`Wrote ${path.relative(opts.root, file)}\n`)
 }

@@ -71,12 +71,6 @@ bun script/upstream/opencode-changesets.ts 1.17.0 1.17.7
 
 The script fetches releases from `anomalyco/opencode`, selects published releases in the semver range `(from, to]`, and writes one `.changeset/opencode-vX-Y-Z-to-vX-Y-Z.md` file for the whole range. It merges notes from every release into shared `##` sections and `###` categories, then folds those headings into each bullet (for example, `Core Bugfixes: ...`) so Changesets can embed the notes cleanly in package changelogs. It defaults to patch changesets for the fixed release group, `@kilocode/cli` and `kilo-code`. Generated notes omit contributor thank-you blocks and the upstream `Desktop` and `SDK` sections by default because Kilo does not ship the opencode desktop app and SDK release notes are not user-facing for Kilo.
 
-Preview without writing files:
-
-```bash
-bun script/upstream/opencode-changesets.ts --from v1.16.0 --to v1.17.7 --dry-run
-```
-
 Useful options:
 
 | Option | Description |
@@ -86,7 +80,6 @@ Useful options:
 | `--bump <major|minor|patch>` | Set the generated changeset bump type |
 | `--drop-section <heading>` | Omit a markdown `##` section by heading; repeat for multiple sections |
 | `--no-default-drop-section` | Disable the default dropped sections, such as `Desktop` and `SDK` |
-| `--force` | Overwrite existing generated changeset files |
 | `--include-prerelease` | Include prerelease GitHub releases |
 
 ## Merge Process
