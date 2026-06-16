@@ -199,6 +199,26 @@ Different agents can have different permission levels. Override the default perm
 
 In this example, the `code` agent can run `git` commands automatically and asks for other shell commands, while the `plan` agent cannot run shell commands at all.
 
+## Markdown Agent Files
+
+If you define agents in Markdown files, the `permission` frontmatter uses the same `allow` / `ask` / `deny` values and glob patterns as `kilo.jsonc`:
+
+```markdown
+---
+description: Reviews code for quality and best practices
+mode: subagent
+permission:
+  bash:
+    "git *": allow
+    "*": ask
+  read:
+    "*.env": ask
+    "*": allow
+---
+```
+
+This is the same permission shape described in [Agent Permissions](/docs/customize/agent-permissions), just shown in the agent-file format.
+
 ## Runtime Permission Requests
 
 When a tool is set to `"ask"`, Kilo pauses and displays a permission prompt. You have three options:

@@ -6,7 +6,7 @@ platform: new
 
 # Agent Permissions
 
-Agent permissions decide whether a tool call is allowed, asks for approval, or is denied. You can define permissions globally in `kilo.jsonc` or per agent in an agent entry or Markdown frontmatter.
+Agent permissions decide whether a tool call is allowed, asks for approval, or is denied. This page shows the agent-file form of those rules, written as YAML frontmatter. The same `permission` keys also work in `kilo.jsonc` if you prefer to configure them globally.
 
 ## Actions
 
@@ -18,7 +18,7 @@ Each permission rule uses one of these actions:
 | `ask` | Prompt before running the matching tool call. |
 | `deny` | Block the matching tool call. |
 
-Rules can be written as a scalar action for the whole permission or as a pattern map:
+You can write each permission as one action for the whole tool or as a pattern map:
 
 ```yaml
 permission:
@@ -182,5 +182,6 @@ This allows delegation only to `code-reviewer` and `docs-writer`.
 
 - [Custom Modes](/docs/customize/custom-modes)
 - [Custom Subagents](/docs/customize/custom-subagents)
+- [Auto-Approving Actions](/docs/getting-started/settings/auto-approving-actions)
 - [.kilocodeignore](/docs/customize/context/kilocodeignore)
 - [Tool Use Overview](/docs/automate/tools)
