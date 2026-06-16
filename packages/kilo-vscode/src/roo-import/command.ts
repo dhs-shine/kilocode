@@ -52,6 +52,8 @@ export async function importRooCodeSessionsCommand(
   if (!picked || picked.length === 0) return
 
   const selected = picked.map((p) => p.id)
+  let imported = 0
+  let failed = 0
 
   await vscode.window.withProgress(
     {
@@ -60,24 +62,31 @@ export async function importRooCodeSessionsCommand(
       cancellable: false,
     },
     async (progress) => {
-      let done = 0
-      for (const id of selected) {
+      for (const [index, id] of selected.entries()) {
         const session = sessions.find((s) => s.id === id)
         const item = items.find((i) => i.id === id)
         const selection: MigrationSessionSelection = { id }
-        const meta = buildSessionMeta(session, done, selected.length)
+        const meta = buildSessionMeta(session, index, selected.length)
 
         progress.report({
-          message: `${done + 1} / ${selected.length}: ${session?.title ?? id}`,
+          message: `${index + 1} / ${selected.length}: ${session?.title ?? id}`,
           increment: 100 / selected.length,
         })
 
-        await migrate(selection, context, client, meta, undefined, { dir, item })
-        done++
+        const result = await migrate(selection, context, client, meta, undefined, { dir, item })
+        if (result.ok) {
+          imported++
+        } else {
+          failed++
+          console.error(`[Kilo New] Roo Code import: session ${id} failed — ${result.message}`)
+        }
       }
-      progress.report({ message: `Done — imported ${done} session(s).`, increment: 0 })
     },
   )
 
-  void vscode.window.showInformationMessage(`Roo Code import complete: ${selected.length} session(s) imported.`)
+  const msg =
+    failed === 0
+      ? `Roo Code import complete: ${imported} session(s) imported.`
+      : `Roo Code import finished: ${imported} imported, ${failed} failed. Check the output for details.`
+  void vscode.window.showInformationMessage(msg)
 }

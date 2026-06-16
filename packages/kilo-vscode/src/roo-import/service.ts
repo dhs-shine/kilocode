@@ -5,6 +5,10 @@
  * Uses the same data format as the legacy Kilo Code migration — Roo Code
  * stores tasks under `<globalStorage>/<extensionId>/tasks/<id>/api_conversation_history.json`,
  * identical to the format the existing migration pipeline already handles.
+ *
+ * Rich metadata (title, workspace, timestamp) is read from `history_item.json`
+ * when available, falling back to parsing the first user message in the
+ * conversation file.
  */
 
 import * as path from "node:path"
@@ -12,8 +16,16 @@ import * as vscode from "vscode"
 import type { MigrationSessionInfo } from "../legacy-migration/legacy-types"
 import type { LegacyHistoryItem } from "../legacy-migration/sessions/lib/legacy-types"
 
-/** Known Roo Code VS Code extension IDs, most common first. */
-const ROO_CODE_EXTENSION_IDS = ["roovscode.roo-cline", "roovscode.roo-code"]
+/**
+ * Known Roo Code VS Code extension IDs.
+ * Includes stable, nightly, and alternate publisher variants.
+ */
+const ROO_CODE_EXTENSION_IDS = [
+  "roovscode.roo-cline",
+  "roovscode.roo-code",
+  "rooveterinaryinc.roo-code",
+  "rooveterinaryinc.roo-code-nightly",
+]
 
 export interface RooImportSource {
   /** Absolute path to the Roo Code tasks directory. */
@@ -55,28 +67,28 @@ async function scanTasksDir(dir: string): Promise<RooImportSource | null> {
 
   for (const [name, type] of entries) {
     if (type !== vscode.FileType.Directory) continue
-    const histFile = vscode.Uri.file(path.join(dir, name, "api_conversation_history.json"))
+    const taskDir = path.join(dir, name)
+    const histFile = vscode.Uri.file(path.join(taskDir, "api_conversation_history.json"))
     const exists = await vscode.workspace.fs.stat(histFile).then(
       () => true,
       () => false,
     )
     if (!exists) continue
 
-    const ts = parseTaskTimestamp(name)
-    const title = await extractTitleFromHistory(path.join(dir, name, "api_conversation_history.json"), name)
+    const meta = await readHistoryItem(taskDir, name)
 
     sessions.push({
       id: name,
-      title,
-      directory: "",
-      time: ts,
+      title: meta.title,
+      directory: meta.workspace,
+      time: meta.ts,
     })
 
     items.push({
       id: name,
-      ts,
-      task: title,
-      workspace: "",
+      ts: meta.ts,
+      task: meta.title,
+      workspace: meta.workspace,
     })
   }
 
@@ -87,6 +99,39 @@ async function scanTasksDir(dir: string): Promise<RooImportSource | null> {
   items.sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0))
 
   return { dir, sessions, items }
+}
+
+interface TaskMeta {
+  title: string
+  workspace: string
+  ts: number
+}
+
+/**
+ * Reads task metadata from `history_item.json` when available (Roo Code stores
+ * the title, workspace, and timestamp there). Falls back to parsing the first
+ * user message in `api_conversation_history.json` and the task ID as a timestamp.
+ */
+async function readHistoryItem(taskDir: string, id: string): Promise<TaskMeta> {
+  const file = path.join(taskDir, "history_item.json")
+  try {
+    const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(file))
+    const json = JSON.parse(Buffer.from(bytes).toString("utf8")) as Record<string, unknown>
+    const ts = typeof json.ts === "number" ? json.ts : parseTaskTimestamp(id)
+    const title = typeof json.task === "string" && json.task.trim() ? json.task.trim().slice(0, 120) : undefined
+    const workspace = typeof json.workspace === "string" ? json.workspace : ""
+    return {
+      title: title ?? formatFallbackTitle(id),
+      workspace,
+      ts,
+    }
+  } catch {
+    // history_item.json not available — fall back to conversation file
+  }
+
+  const ts = parseTaskTimestamp(id)
+  const title = await extractTitleFromHistory(path.join(taskDir, "api_conversation_history.json"), id)
+  return { title, workspace: "", ts }
 }
 
 /**
