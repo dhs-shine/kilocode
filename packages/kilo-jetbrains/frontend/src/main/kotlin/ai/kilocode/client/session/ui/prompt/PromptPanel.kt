@@ -22,6 +22,10 @@ import ai.kilocode.rpc.dto.PromptPartDto
 import com.intellij.icons.AllIcons
 import com.intellij.codeInsight.completion.CodeCompletionHandlerBase
 import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.codeInsight.lookup.LookupPositionStrategy
+import com.intellij.codeInsight.lookup.LookupPresentation
+import com.intellij.codeInsight.lookup.impl.LookupImpl
 import com.intellij.ide.DataManager
 import com.intellij.ide.dnd.DnDEvent
 import com.intellij.ide.dnd.DnDSupport
@@ -460,11 +464,17 @@ class PromptPanel(
         if (!popup) return
         ApplicationManager.getApplication().invokeLater {
             if (project.isDisposed) return@invokeLater
-            editor.getEditor(false)?.let {
-                CodeCompletionHandlerBase.createHandler(CompletionType.BASIC, true, false, true)
-                    .invokeCompletion(project, it, 1)
-            }
+            editor.getEditor(false)?.let(::showCompletion)
         }
+    }
+
+    private fun showCompletion(ed: com.intellij.openapi.editor.Editor) {
+        CodeCompletionHandlerBase.createHandler(CompletionType.BASIC, true, false, true)
+            .invokeCompletion(project, ed, 1)
+        val lookup = LookupManager.getActiveLookup(ed) as? LookupImpl ?: return
+        lookup.presentation = LookupPresentation.Builder(lookup.presentation)
+            .withPositionStrategy(LookupPositionStrategy.ONLY_ABOVE)
+            .build()
     }
 
     @RequiresEdt

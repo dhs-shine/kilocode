@@ -21,10 +21,16 @@ import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
+import com.intellij.ide.actions.searcheverywhere.FoundItemDescriptor
+import com.intellij.ide.util.gotoByName.ChooseByNameInScopeItemProvider
+import com.intellij.ide.util.gotoByName.ChooseByNamePopup
+import com.intellij.ide.util.gotoByName.ChooseByNameViewModel
+import com.intellij.ide.util.gotoByName.GotoFileModel
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -33,9 +39,10 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.psi.codeStyle.NameUtil
-import com.intellij.psi.search.FilenameIndex
+import com.intellij.navigation.NavigationItem
+import com.intellij.psi.PsiFileSystemItem
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.util.indexing.FindSymbolParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -308,22 +315,53 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
     }
 
     private fun search(project: Project, base: Path, query: String, limit: Int): List<WorkspaceFileDto> {
+        val text = query.trim()
+        if (text.isBlank()) return emptyList()
         val scope = GlobalSearchScope.projectScope(project)
-        val matcher = NameUtil.buildMatcher("*${query.trim()}").build()
-        val names = mutableListOf<String>()
-        FilenameIndex.processAllFileNames({ name ->
-            if (matcher.matches(name)) names += name
-            names.size < SEARCH_CAP
-        }, scope, null)
-        return names.asSequence()
-            .flatMap { name -> FilenameIndex.getVirtualFilesByName(name, scope).asSequence() }
+        val model = object : GotoFileModel(project) {
+            override fun acceptItem(item: NavigationItem): Boolean {
+                val psi = item as? PsiFileSystemItem ?: return false
+                val path = file(psi.virtualFile.path) ?: return false
+                return path.startsWith(base) && super.acceptItem(item)
+            }
+
+            override fun loadInitialCheckBoxState(): Boolean = false
+
+            override fun saveInitialCheckBoxState(state: Boolean) {}
+        }
+        val view = object : ChooseByNameViewModel {
+            override fun getProject(): Project = project
+
+            override fun getModel() = model
+
+            override fun isSearchInAnyPlace(): Boolean = model.useMiddleMatching()
+
+            override fun transformPattern(pattern: String): String = ChooseByNamePopup.getTransformedPattern(pattern, model)
+
+            override fun canShowListForEmptyPattern(): Boolean = false
+
+            override fun getMaximumListSizeLimit(): Int = limit
+        }
+        val provider = model.getItemProvider(null)
+        val params = FindSymbolParameters.wrap(text, scope)
+        val found = mutableListOf<FoundItemDescriptor<*>>()
+        val indicator = EmptyProgressIndicator()
+        if (provider is ChooseByNameInScopeItemProvider) {
+            provider.filterElementsWithWeights(view, params, indicator) { item ->
+                found += item
+                found.size < SEARCH_CAP
+            }
+        } else {
+            provider.filterElements(view, text, false, indicator) { item ->
+                found += FoundItemDescriptor(item, 0)
+                found.size < SEARCH_CAP
+            }
+        }
+        return found.asSequence()
+            .sortedByDescending { it.weight }
+            .mapNotNull { item -> (item.item as? PsiFileSystemItem)?.virtualFile }
             .mapNotNull { vf -> fileDto(base, vf) }
             .distinctBy { it.path }
-            .sortedWith(
-                compareByDescending<WorkspaceFileDto> { matcher.matchingDegree(it.name) }
-                    .thenBy { it.path.length }
-                    .thenBy { it.path },
-            )
             .take(limit)
             .toList()
     }

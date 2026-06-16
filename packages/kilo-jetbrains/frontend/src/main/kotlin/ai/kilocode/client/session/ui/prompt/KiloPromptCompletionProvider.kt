@@ -55,7 +55,7 @@ class KiloPromptCompletionProvider(
     override fun fillCompletionVariants(parameters: CompletionParameters, prefix: String, result: CompletionResultSet) {
         when (token(parameters.originalFile.text, parameters.offset)?.kind) {
             Kind.SLASH -> slash(prefix, result)
-            Kind.MENTION -> mention(parameters, prefix, result)
+            Kind.MENTION -> mention(prefix, result)
             null -> Unit
         }
         result.stopHere()
@@ -70,7 +70,8 @@ class KiloPromptCompletionProvider(
             .forEach { command -> out.addElement(server(command)) }
     }
 
-    private fun mention(parameters: CompletionParameters, prefix: String, result: CompletionResultSet) {
+    private fun mention(prefix: String, result: CompletionResultSet) {
+        result.restartCompletionWhenNothingMatches()
         val out = applyPrefixMatcher(result, prefix)
         val search = runBlockingCancellable { service.searchFiles(workspace.directory, prefix, 50) }
         if ("git-changes".startsWith(prefix, ignoreCase = true) && search.git) {
