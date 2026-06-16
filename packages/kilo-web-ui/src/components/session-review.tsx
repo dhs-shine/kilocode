@@ -1,1 +1,1 @@
-export * from "@kilocode/kilo-ui/session-review"
+export * from "@opencode-ai/ui/session-review"
