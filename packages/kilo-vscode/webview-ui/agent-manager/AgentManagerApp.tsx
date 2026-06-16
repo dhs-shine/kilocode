@@ -101,7 +101,7 @@ import { reorderTabs, applyTabOrder, firstOrderedTitle } from "./tab-order"
 import { createTabOrderSync } from "./tab-order-sync"
 import { ConstrainDragYAxis } from "./sortable-tab"
 import { isTerminalTabId, createTerminalState, createTerminalHandlers, createTerminalMessageHandler } from "./terminal"
-import { renderTab, renderTerminalLayer, renderNewTabButton } from "./tab-rendering"
+import { focusCurrentTab, renderTab, renderTerminalLayer, renderNewTabButton } from "./tab-rendering"
 import { useTabScroll } from "./tab-scroll"
 import { DiffPanel } from "./DiffPanel"
 import { createRevertFile } from "./revert-file"
@@ -110,7 +110,8 @@ import { ApplyDialog } from "./ApplyDialog"
 import { groupApplyConflicts } from "./apply-conflicts"
 import type { ReviewComment } from "../diff-viewer/review-comments"
 import { clearReviewComposer, createReviewComposer } from "../diff-viewer/review-annotations"
-import { CurrentTabsMenu, createCurrentTabItems, focusCurrentTab } from "./CurrentTabsMenu"
+import { SidebarSearchMenu, type SidebarSearchMenuRef } from "./SidebarSearchMenu"
+import { createSidebarSearch, type SidebarSearchItem } from "./sidebar-search"
 import { BranchSelect } from "../src/components/shared/BranchSelect"
 import { WorktreeItem } from "./WorktreeItem"
 import SectionHeader from "./SectionHeader"
@@ -171,6 +172,7 @@ const defaultBindings: Record<string, string> = {
   nextSession: isMac ? "⌘⌥↓" : "Ctrl+Alt+↓",
   previousTab: isMac ? "⌘⌥←" : "Ctrl+Alt+←",
   nextTab: isMac ? "⌘⌥→" : "Ctrl+Alt+→",
+  search: isMac ? "⌘F" : "Ctrl+F",
   showTerminal: isMac ? "⌘/" : "Ctrl+/",
   newTerminal: isMac ? "⌘⇧T" : "Ctrl+Shift+T",
   runScript: isMac ? "⌘E" : "Ctrl+E",
@@ -197,6 +199,7 @@ const AgentManagerContent: Component = () => {
   const session = useSession()
   const vscode = useVSCode()
   const dialog = useDialog()
+  let sidebarSearchMenu: SidebarSearchMenuRef | undefined
 
   const [kb, setKb] = createSignal<Record<string, string>>(defaultBindings)
 
@@ -964,6 +967,37 @@ const AgentManagerContent: Component = () => {
     return true
   }
 
+  const sidebarSearch = createSidebarSearch({
+    worktrees: sortedWorktrees,
+    sections,
+    local: localSessions,
+    localBranch: repoBranch,
+    selection,
+    sessionId: session.currentSessionID,
+    statuses: session.allStatusMap,
+    permissions: session.permissions,
+    questions: session.questions,
+    label: worktreeLabel,
+    sessions: sessionsForWorktree,
+    pending: isPending,
+    busy: (id) => busyWorktrees().has(id) || (runStatuses()[id]?.state ?? "idle") !== "idle",
+    localBusy: isLocalBusy,
+    t,
+  })
+  const focusSidebarSearchItem = (item: SidebarSearchItem) => {
+    if (item.section?.collapsed)
+      vscode.postMessage({ type: "agentManager.toggleSectionCollapsed", sectionId: item.section.id })
+    setHistory(false)
+    if (item.kind === "local") return selectLocal()
+    if (item.kind === "worktree") return selectWorktree(item.worktreeId)
+    if (item.location === "local") selectLocal()
+    if (item.location === "worktree" && item.worktreeId) selectWorktree(item.worktreeId)
+    terms.setActiveId(undefined)
+    setReviewActive(false)
+    setActivePendingId(undefined)
+    session.selectSession(item.sessionId)
+  }
+
   const cycleAgent = (direction: 1 | -1) => {
     const available = session.agents().filter((a) => a.mode !== "subagent" && !a.hidden)
     if (available.length <= 1) return
@@ -990,7 +1024,13 @@ const AgentManagerContent: Component = () => {
       else if (msg.action === "sessionNext") navigate("down")
       else if (msg.action === "tabPrevious") navigateTab("left")
       else if (msg.action === "tabNext") navigateTab("right")
-      else if (msg.action === "showTerminal") {
+      else if (msg.action === "search") {
+        if (!sidebarCollapsed()) sidebarSearchMenu?.open()
+        else {
+          expandSidebar()
+          requestAnimationFrame(() => sidebarSearchMenu?.open())
+        }
+      } else if (msg.action === "showTerminal") {
         // Cmd+/ opens the legacy VS Code integrated terminal for the
         // active session (or local). The new xterm tab affordance has
         // its own keybind (Cmd+Shift+T) so both coexist.
@@ -2027,20 +2067,6 @@ const AgentManagerContent: Component = () => {
       activateTerminal: termHandlers.activate,
     })
 
-  const tabMenuItems = createCurrentTabItems({
-    tabIds,
-    tabLookup,
-    statusMap: session.allStatusMap,
-    permissions: session.permissions,
-    questions: session.questions,
-    visibleTabId,
-    terms,
-    reviewId: REVIEW_TAB_ID,
-    isTerminal: isTerminalTabId,
-    isPending,
-    t,
-  })
-
   // Close the currently active tab via keyboard shortcut.
   // If no tabs remain, fall through to close the selected worktree.
   const closeActiveTab = () => {
@@ -2203,8 +2229,25 @@ const AgentManagerContent: Component = () => {
         <div class={`am-section ${sessionsCollapsed() ? "am-section-grow" : ""}`}>
           <div class="am-section-header">
             <span class="am-section-label">{t("agentManager.section.worktrees")}</span>
-            <Show when={isGitRepo()}>
-              <div class="am-section-actions">
+            <div class="am-section-actions">
+              <SidebarSearchMenu
+                ref={(value) => {
+                  sidebarSearchMenu = value
+                }}
+                items={sidebarSearch.items}
+                current={sidebarSearch.current}
+                keybind={kb().search ?? ""}
+                labels={{
+                  search: t("agentManager.sidebarSearch.label"),
+                  scope: t("agentManager.sidebarSearch.scope"),
+                  sessions: t("agentManager.section.sessions"),
+                  contexts: t("agentManager.sidebarSearch.contexts"),
+                  waiting: t("agentManager.tabsMenu.status.waiting"),
+                  retry: t("agentManager.tabsMenu.status.retry"),
+                }}
+                onSelect={focusSidebarSearchItem}
+              />
+              <Show when={isGitRepo()}>
                 <div class="am-split-button">
                   <IconButton
                     icon="plus"
@@ -2292,8 +2335,8 @@ const AgentManagerContent: Component = () => {
                     </DropdownMenu.Content>
                   </DropdownMenu.Portal>
                 </DropdownMenu>
-              </div>
-            </Show>
+              </Show>
+            </div>
           </div>
           <div class="am-worktree-list">
             <Show
@@ -2658,14 +2701,6 @@ const AgentManagerContent: Component = () => {
             <div class="am-tab-bar" onPointerLeave={releaseTabs}>
               <div class="am-tab-leading">
                 <SidebarToggleButton collapsed={sidebarCollapsed()} onClick={toggleSidebar} />
-                <CurrentTabsMenu
-                  items={tabMenuItems}
-                  label={t("agentManager.tabsMenu.label")}
-                  searchLabel={t("agentManager.tabsMenu.search")}
-                  emptyLabel={t("agentManager.tabsMenu.empty")}
-                  activeId={visibleTabId}
-                  onSelect={focusTab}
-                />
               </div>
               <div class="am-tab-scroll-area">
                 <div class={`am-tab-fade am-tab-fade-left ${tabScroll.showLeft() ? "am-tab-fade-visible" : ""}`} />

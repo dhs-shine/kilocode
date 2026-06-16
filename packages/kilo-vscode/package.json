@@ -236,6 +236,11 @@
         "category": "Kilo Code"
       },
       {
+        "command": "kilo-code.new.agentManager.search",
+        "title": "Agent Manager: Search Worktrees and Sessions",
+        "category": "Kilo Code"
+      },
+      {
         "command": "kilo-code.new.agentManager.showTerminal",
         "title": "Agent Manager: Focus Terminal",
         "category": "Kilo Code",
@@ -628,6 +633,12 @@
         "key": "ctrl+alt+right",
         "mac": "cmd+alt+right",
         "when": "activeWebviewPanelId == 'kilo-code.new.AgentManagerPanel'"
+      },
+      {
+        "command": "kilo-code.new.agentManager.search",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
+        "when": "activeWebviewPanelId == 'kilo-code.new.AgentManagerPanel' && !terminalFocus"
       },
       {
         "command": "kilo-code.new.agentManager.showTerminal",

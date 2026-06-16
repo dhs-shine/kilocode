@@ -55,11 +55,12 @@ export const dict = {
   "agentManager.tab.terminal": "Terminale",
   "agentManager.tab.openTerminal": "Apri terminale",
   "agentManager.tab.newOptions": "Altre opzioni nuova scheda",
-  "agentManager.tabsMenu.label": "Cerca e cambia scheda",
-  "agentManager.tabsMenu.search": "Cerca schede...",
-  "agentManager.tabsMenu.empty": "Nessuna scheda corrispondente",
   "agentManager.tabsMenu.status.waiting": "Attendi",
   "agentManager.tabsMenu.status.retry": "Riprova",
+  "agentManager.sidebarSearch.label": "Cerca Worktree e sessioni",
+  "agentManager.sidebarSearch.scope":
+    "Cerca nell'area di lavoro locale, nelle sessioni locali, nei Worktree e nelle relative sessioni",
+  "agentManager.sidebarSearch.contexts": "LOCALE & WORKTREE",
 
   "agentManager.terminal.new": "Nuova scheda terminale",
   "agentManager.terminal.ended": "terminale terminato - chiudi la scheda per nasconderlo",

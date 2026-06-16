@@ -51,11 +51,12 @@ export const dict = {
   "agentManager.tab.terminal": "Terminal",
   "agentManager.tab.openTerminal": "Terminal öffnen",
   "agentManager.tab.newOptions": "Weitere Tab-Optionen",
-  "agentManager.tabsMenu.label": "Offene Tabs suchen",
-  "agentManager.tabsMenu.search": "Tabs suchen...",
-  "agentManager.tabsMenu.empty": "Keine passenden Tabs",
   "agentManager.tabsMenu.status.waiting": "Warten",
   "agentManager.tabsMenu.status.retry": "Erneut",
+  "agentManager.sidebarSearch.label": "Worktrees und Sitzungen durchsuchen",
+  "agentManager.sidebarSearch.scope":
+    "Durchsucht den lokalen Arbeitsbereich, lokale Sitzungen, Worktrees und deren Sitzungen",
+  "agentManager.sidebarSearch.contexts": "LOKAL & WORKTREES",
 
   "agentManager.terminal.new": "Neuer Terminal-Tab",
   "agentManager.terminal.ended": "Terminal beendet — Tab schließen zum Verwerfen",

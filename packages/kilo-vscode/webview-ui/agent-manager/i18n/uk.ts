@@ -55,11 +55,12 @@ export const dict = {
   "agentManager.tab.terminal": "Термінал",
   "agentManager.tab.openTerminal": "Відкрити термінал",
   "agentManager.tab.newOptions": "Інші параметри нової вкладки",
-  "agentManager.tabsMenu.label": "Шукати відкриті вкладки",
-  "agentManager.tabsMenu.search": "Шукати вкладки...",
-  "agentManager.tabsMenu.empty": "Немає відповідних вкладок",
   "agentManager.tabsMenu.status.waiting": "Очікує",
   "agentManager.tabsMenu.status.retry": "Повтор",
+  "agentManager.sidebarSearch.label": "Пошук робочих дерев і сесій",
+  "agentManager.sidebarSearch.scope":
+    "Пошук локального робочого простору, локальних сесій, робочих дерев і призначених їм сесій",
+  "agentManager.sidebarSearch.contexts": "ЛОКАЛЬНИЙ & РОБОЧІ ДЕРЕВА",
 
   "agentManager.terminal.new": "Нова вкладка термінала",
   "agentManager.terminal.ended": "термінал завершено — закрийте вкладку, щоб відхилити",
