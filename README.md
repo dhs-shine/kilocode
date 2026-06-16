@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=kilocode.Kilo-Code"><img src="https://raster.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace" height="20"></a>
-  <a href="https://www.npmjs.com/package/@kilocode/cli"><img alt="npm" src="https://img.shields.io/npm/v/@kilocode/cli?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/@kilocode/cli"><img alt="npm" src="https://raster.shields.io/npm/v/@kilocode/cli?style=flat" height="20" /></a>
   <a href="https://x.com/kilocode"><img src="https://raster.shields.io/badge/kilocode-000000?style=flat&logo=x&logoColor=white" alt="X (Twitter)" height="20"></a>
   <a href="https://blog.kilo.ai"><img src="https://raster.shields.io/badge/Blog-555?style=flat&logo=substack&logoColor=white" alt="Blog" height="20"></a>
   <a href="https://kilo.ai/discord"><img src="https://raster.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Discord" height="20"></a>
@@ -103,7 +103,7 @@ Spin up your always-on AI agent at [app.kilo.ai/claw](https://app.kilo.ai/claw).
 Download the latest binary from the [Releases page](https://github.com/Kilo-Org/kilocode/releases).
 
 | Platform | Asset |
-| --- | --- |
+|---|---|
 | Windows (most PCs) | `kilo-windows-x64.zip` |
 | macOS (Apple Silicon) | `kilo-darwin-arm64.zip` |
 | macOS (Intel) | `kilo-darwin-x64.zip` |
