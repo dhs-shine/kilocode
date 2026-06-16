@@ -1872,9 +1872,10 @@ body.am-wt-dragging-active * {
   --sticky-accordion-top: 0px;
 }
 
-/* Ensure accordion headers always span full panel width */
+/* Ensure virtualized accordion rows span the panel without per-row rounded corners. */
 .am-diff-content [data-component="accordion"],
 .am-review-diff-content [data-component="accordion"] {
+  --radius-lg: 0;
   width: 100% !important;
   align-items: stretch !important;
 }
