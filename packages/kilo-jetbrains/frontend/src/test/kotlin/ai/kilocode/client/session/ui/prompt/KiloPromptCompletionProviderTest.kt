@@ -77,6 +77,18 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         assertEquals(listOf("git"), rpc.searchQueries)
     }
 
+    fun `test blank mention completion includes special and root entries`() {
+        rpc.searchResult = FileSearchResultDto(
+            files = listOf(file("src", directory = true), file("README.md")),
+            git = true,
+        )
+
+        complete("@<caret>")
+
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "git-changes", "src", "README.md")
+        assertEquals(listOf(""), rpc.searchQueries)
+    }
+
     fun `test highlights known slash command at start`() {
         assertEquals(
             listOf(KiloPromptCompletionProvider.Highlight(0, 4, KiloPromptCompletionProvider.HighlightKind.COMMAND)),
@@ -155,5 +167,9 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         }
     }
 
-    private fun file(path: String) = WorkspaceFileDto(path = path, name = path.substringAfterLast('/'))
+    private fun file(path: String, directory: Boolean = false) = WorkspaceFileDto(
+        path = path,
+        name = path.substringAfterLast('/'),
+        directory = directory,
+    )
 }

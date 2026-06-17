@@ -36,6 +36,7 @@ import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -314,7 +315,7 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
 
     private fun search(project: Project, base: Path, query: String, limit: Int): List<WorkspaceFileDto> {
         val text = query.trim()
-        if (text.isBlank()) return emptyList()
+        if (text.isBlank()) return roots(project, base, limit)
         val scope = GlobalSearchScope.projectScope(project)
         val model = object : GotoFileModel(project) {
             override fun acceptItem(item: NavigationItem): Boolean {
@@ -360,6 +361,21 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
             .mapNotNull { item -> (item.item as? PsiFileSystemItem)?.virtualFile }
             .mapNotNull { vf -> fileDto(base, vf) }
             .distinctBy { it.path }
+            .take(limit)
+            .toList()
+    }
+
+    private fun roots(project: Project, base: Path, limit: Int): List<WorkspaceFileDto> {
+        val root = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(base) ?: return emptyList()
+        val index = ProjectFileIndex.getInstance(project)
+        return root.children.asSequence()
+            .filter { it.name != ".git" }
+            .filterNot { index.isExcluded(it) }
+            .mapNotNull { fileDto(base, it) }
+            .sortedWith(
+                compareByDescending<WorkspaceFileDto> { it.directory }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name },
+            )
             .take(limit)
             .toList()
     }
