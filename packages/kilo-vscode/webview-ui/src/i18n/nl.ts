@@ -1494,10 +1494,6 @@ export const dict = {
 
   "settings.display.username.title": "Gebruikersnaam",
   "settings.display.username.description": "Aangepaste gebruikersnaam weergegeven in gesprekken",
-  "settings.display.layout.title": "Lay-out",
-  "settings.display.layout.description": "Lay-outmodus voor de chatinterface",
-  "settings.display.layout.auto": "Auto",
-  "settings.display.layout.stretch": "Uitrekken",
   "settings.display.fontSize.title": "Lettergrootte",
   "settings.display.fontSize.description": "Pas de lettergrootte van de Kilo webview UI onafhankelijk van VS Code aan.",
   "settings.display.reasoningAutoCollapse.title": "Redenering automatisch inklappen",
@@ -1507,6 +1503,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Blokken met codebewerkingen",
+  "settings.display.codeEdit.description":
+    "Kies of blokken met codebewerkingen en verschillen standaard uitgeklapt of ingeklapt zijn.",
+  "settings.display.codeEdit.expanded": "Uitgeklapt",
+  "settings.display.codeEdit.collapsed": "Ingeklapt",
 
   "settings.providers.defaultModel.title": "Standaard Model",
   "settings.providers.defaultModel.description": "Primair model voor gesprekken",

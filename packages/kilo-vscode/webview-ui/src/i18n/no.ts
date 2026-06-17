@@ -1517,10 +1517,6 @@ export const dict = {
 
   "settings.display.username.title": "Brukernavn",
   "settings.display.username.description": "Egendefinert brukernavn i samtaler",
-  "settings.display.layout.title": "Layout",
-  "settings.display.layout.description": "Layoutmodus for chatgrensesnittet",
-  "settings.display.layout.auto": "Automatisk",
-  "settings.display.layout.stretch": "Strekk",
   "settings.display.fontSize.title": "Skriftstørrelse",
   "settings.display.fontSize.description": "Juster skriftstørrelsen for Kilo webview UI uavhengig av VS Code.",
   "settings.display.reasoningAutoCollapse.title": "Skjul resonnement automatisk",
@@ -1530,6 +1526,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Blokker for kodeendringer",
+  "settings.display.codeEdit.description":
+    "Velg om blokker for kodeendringer og forskjeller skal være utvidet eller skjult fra start.",
+  "settings.display.codeEdit.expanded": "Utvidet",
+  "settings.display.codeEdit.collapsed": "Skjult",
   "settings.providers.defaultModel.title": "Standardmodell",
   "settings.providers.defaultModel.description": "Primær modell for samtaler",
   "settings.providers.smallModel.title": "Liten modell",

@@ -1490,10 +1490,6 @@ export const dict = {
 
   "settings.display.username.title": "اسم المستخدم",
   "settings.display.username.description": "اسم مستخدم مخصص في المحادثات",
-  "settings.display.layout.title": "التخطيط",
-  "settings.display.layout.description": "وضع التخطيط لواجهة الدردشة",
-  "settings.display.layout.auto": "تلقائي",
-  "settings.display.layout.stretch": "تمديد",
   "settings.display.fontSize.title": "حجم الخط",
   "settings.display.fontSize.description": "اضبط حجم خط webview UI الخاص بـ Kilo بشكل مستقل عن VS Code.",
   "settings.display.reasoningAutoCollapse.title": "طي الاستدلال تلقائيًا",
@@ -1503,6 +1499,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "كتل تعديلات التعليمات البرمجية",
+  "settings.display.codeEdit.description":
+    "اختر ما إذا كانت الكتل التي تعرض تعديلات التعليمات البرمجية والفروقات تبدأ موسّعة أم مطوية.",
+  "settings.display.codeEdit.expanded": "موسّعة",
+  "settings.display.codeEdit.collapsed": "مطوية",
   "settings.providers.defaultModel.title": "النموذج الافتراضي",
   "settings.providers.defaultModel.description": "النموذج الأساسي للمحادثات",
   "settings.providers.smallModel.title": "نموذج صغير",

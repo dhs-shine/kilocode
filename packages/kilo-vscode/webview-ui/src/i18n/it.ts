@@ -1350,10 +1350,6 @@ export const dict = {
     "es. Genera messaggi di commit in spagnolo seguendo il formato conventional commits. Restituisci SOLO il messaggio di commit.",
   "settings.display.username.title": "Nome utente",
   "settings.display.username.description": "Nome utente personalizzato mostrato nelle conversazioni",
-  "settings.display.layout.title": "Layout",
-  "settings.display.layout.description": "Modalità layout per l'interfaccia chat",
-  "settings.display.layout.auto": "Auto",
-  "settings.display.layout.stretch": "Esteso",
   "settings.display.fontSize.title": "Dimensione font",
   "settings.display.fontSize.description":
     "Regola la dimensione del font della webview Kilo indipendentemente da VS Code.",
@@ -1364,6 +1360,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Scegli se i blocchi comando terminale iniziano espansi o compressi.",
   "settings.display.terminalCommand.expanded": "Espansi",
   "settings.display.terminalCommand.collapsed": "Compressi",
+  "settings.display.codeEdit.title": "Blocchi di modifica del codice",
+  "settings.display.codeEdit.description":
+    "Scegli se i blocchi delle modifiche al codice e delle differenze iniziano espansi o compressi.",
+  "settings.display.codeEdit.expanded": "Espansi",
+  "settings.display.codeEdit.collapsed": "Compressi",
   "settings.providers.defaultModel.title": "Modello predefinito",
   "settings.providers.defaultModel.description": "Modello principale per le conversazioni",
   "settings.providers.smallModel.title": "Modello leggero",

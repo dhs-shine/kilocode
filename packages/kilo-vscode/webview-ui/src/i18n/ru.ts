@@ -1528,10 +1528,6 @@ export const dict = {
 
   "settings.display.username.title": "Имя пользователя",
   "settings.display.username.description": "Пользовательское имя в разговорах",
-  "settings.display.layout.title": "Макет",
-  "settings.display.layout.description": "Режим макета для интерфейса чата",
-  "settings.display.layout.auto": "Авто",
-  "settings.display.layout.stretch": "Растянуть",
   "settings.display.fontSize.title": "Размер шрифта",
   "settings.display.fontSize.description": "Настройте размер шрифта webview UI для Kilo независимо от VS Code.",
   "settings.display.reasoningAutoCollapse.title": "Автоматически сворачивать рассуждение",
@@ -1541,6 +1537,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Блоки изменений кода",
+  "settings.display.codeEdit.description":
+    "Выберите, будут ли блоки изменений кода и различий изначально развёрнуты или свёрнуты.",
+  "settings.display.codeEdit.expanded": "Развёрнуты",
+  "settings.display.codeEdit.collapsed": "Свёрнуты",
   "settings.providers.defaultModel.title": "Модель по умолчанию",
   "settings.providers.defaultModel.description": "Основная модель для разговоров",
   "settings.providers.smallModel.title": "Малая модель",
