@@ -110,7 +110,7 @@ function isAgentManagerShortcut(e: KeyboardEvent): boolean {
   const key = e.key.toLowerCase()
   if (e.altKey && ["arrowleft", "arrowright", "arrowup", "arrowdown"].includes(key)) return true
   if (["t", "w", "n", "d", "e", "f"].includes(key)) return true
-  if (e.shiftKey && ["w", "n", "o", "m", "/", "?"].includes(key)) return true
+  if (e.shiftKey && ["w", "n", "o", "r", "m", "/", "?"].includes(key)) return true
   if (/^[1-9]$/.test(key)) return true
   if (key === "/") return true
   return false

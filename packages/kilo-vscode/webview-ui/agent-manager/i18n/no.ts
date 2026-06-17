@@ -80,6 +80,7 @@ export const dict = {
   "agentManager.shortcuts.nextItem": "Neste element",
   "agentManager.shortcuts.newWorktree": "Nytt Worktree",
   "agentManager.shortcuts.openWorktree": "Åpne Worktree",
+  "agentManager.shortcuts.openPR": "Åpne pull request",
   "agentManager.shortcuts.advancedWorktree": "Konfigurer nytt worktree",
   "agentManager.shortcuts.deleteWorktree": "Slett Worktree",
   "agentManager.shortcuts.previousTab": "Forrige fane",
