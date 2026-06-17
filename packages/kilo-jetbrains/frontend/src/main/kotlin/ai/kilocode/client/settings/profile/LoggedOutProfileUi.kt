@@ -5,6 +5,8 @@ import ai.kilocode.client.settings.auth.DeviceOAuthInfo
 import ai.kilocode.client.settings.auth.DeviceOAuthPanel
 import ai.kilocode.client.settings.auth.DeviceOAuthText
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.util.UiTimerSource
+import ai.kilocode.client.util.UiTimers
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.components.JBLabel
@@ -33,6 +35,7 @@ internal class LoggedOutProfileUi(
     private val retry: () -> Unit,
     private val cancel: () -> Unit,
     private val browse: (String) -> Unit,
+    private val timers: UiTimerSource = UiTimers,
 ) : JPanel(BorderLayout()) {
 
     private val cards = JPanel(CardLayout())
@@ -60,6 +63,7 @@ internal class LoggedOutProfileUi(
         cancel = cancel,
         browse = browse,
         prefix = "kilo.login",
+        timers = timers,
     )
 
     private val initiatingIcon = AsyncProcessIcon("KiloInitiating").also { it.suspend() }

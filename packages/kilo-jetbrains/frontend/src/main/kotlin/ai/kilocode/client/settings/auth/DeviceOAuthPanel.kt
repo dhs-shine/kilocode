@@ -4,6 +4,8 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.RoundedContentPanel
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.util.UiTimerSource
+import ai.kilocode.client.util.UiTimers
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.ui.popup.Balloon
@@ -29,7 +31,6 @@ import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.SwingConstants
-import javax.swing.Timer
 
 internal data class DeviceOAuthInfo(
     val url: String,
@@ -48,6 +49,7 @@ internal class DeviceOAuthPanel(
     private val cancel: () -> Unit,
     private val browse: (String) -> Unit,
     private val prefix: String,
+    private val timers: UiTimerSource = UiTimers,
 ) : JPanel(GridBagLayout()) {
     val urlField = JBTextField().apply {
         isEditable = false
@@ -100,7 +102,7 @@ internal class DeviceOAuthPanel(
     private var started = 0L
     private var expires = 900
     private var last: String? = null
-    private val timer = Timer(1000) { syncTime() }
+    private val timer = timers.timer(1000) { syncTime() }
 
     init {
         border = JBUI.Borders.empty(UiStyle.Gap.pad())
@@ -182,7 +184,7 @@ internal class DeviceOAuthPanel(
 
     @RequiresEdt
     private fun syncTime() {
-        val elapsed = ((System.currentTimeMillis() - started) / 1000).toInt()
+        val elapsed = ((timers.now() - started) / 1000).toInt()
         val remain = (expires - elapsed).coerceAtLeast(0)
         val min = remain / 60
         val sec = remain % 60
