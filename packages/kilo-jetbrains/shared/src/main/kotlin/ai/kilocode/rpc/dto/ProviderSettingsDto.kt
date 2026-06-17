@@ -11,6 +11,8 @@ data class ProviderSettingsDto(
     val config: Map<String, CustomProviderConfigDto> = emptyMap(),
     val disabled: List<String> = emptyList(),
     val enabled: List<String> = emptyList(),
+    val disabledScopes: Map<String, List<String>> = emptyMap(),
+    val enabledScopes: Map<String, List<String>> = emptyMap(),
     val errors: List<LoadErrorDto> = emptyList(),
 )
 
@@ -150,4 +152,5 @@ data class CustomProviderConfigDto(
     val options: Map<String, String> = emptyMap(),
     val headers: Map<String, String> = emptyMap(),
     val models: Map<String, CustomModelDto> = emptyMap(),
+    val scope: String = "global",
 )

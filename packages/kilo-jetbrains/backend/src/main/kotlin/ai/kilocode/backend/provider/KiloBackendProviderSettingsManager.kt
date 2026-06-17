@@ -7,6 +7,7 @@ import ai.kilocode.backend.rpc.KiloWorkspaceDtoMapper
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.CustomModelFetchDto
 import ai.kilocode.rpc.dto.CustomModelFetchResultDto
+import ai.kilocode.rpc.dto.CustomProviderConfigDto
 import ai.kilocode.rpc.dto.CustomProviderSaveDto
 import ai.kilocode.rpc.dto.LoadErrorDto
 import ai.kilocode.rpc.dto.ProviderActionResultDto
@@ -53,15 +54,18 @@ internal class KiloBackendProviderSettingsManager(
         val auth = load("provider_auth", errors) {
             KiloCliDataParser.parseProviderAuth(get("/provider/auth?directory=${enc(directory)}"))
         } ?: emptyMap()
+        val empty = ParsedConfig(emptyMap(), emptyList(), emptyList())
         val global = load("global_config", errors) {
-            KiloCliDataParser.parseProviderConfig(get("/global/config"))
-        } ?: (emptyMap<String, ai.kilocode.rpc.dto.CustomProviderConfigDto>() to (emptyList<String>() to emptyList()))
+            parsed(get("/global/config"))
+        } ?: empty
         val local = load("workspace_config", errors) {
-            KiloCliDataParser.parseProviderConfig(get("/config?directory=${enc(directory)}"))
-        } ?: (emptyMap<String, ai.kilocode.rpc.dto.CustomProviderConfigDto>() to (emptyList<String>() to emptyList()))
-        val cfg = global.first + local.first
-        val disabled = (global.second.first + local.second.first).distinct().sorted()
-        val enabled = (global.second.second + local.second.second).distinct().sorted()
+            parsed(get("/config?directory=${enc(directory)}"))
+        } ?: empty
+        val cfg = scopedConfig(global.config, local.config)
+        val disabled = (global.disabled + local.disabled).distinct().sorted()
+        val enabled = (global.enabled + local.enabled).distinct().sorted()
+        val disabledScopes = scopedIds(global.disabled, local.disabled)
+        val enabledScopes = scopedIds(global.enabled, local.enabled)
         val result = ProviderSettingsDto(
             providers = providers?.first ?: emptyList(),
             connected = providers?.second ?: emptyList(),
@@ -70,6 +74,8 @@ internal class KiloBackendProviderSettingsManager(
             config = cfg,
             disabled = disabled,
             enabled = enabled,
+            disabledScopes = disabledScopes,
+            enabledScopes = enabledScopes,
             errors = errors,
         )
         result.providers.forEach { provider ->
@@ -118,13 +124,15 @@ internal class KiloBackendProviderSettingsManager(
             return ProviderActionResultDto(current, error = "Provider is not connected.")
         }
         if (cfg?.npm == "@ai-sdk/openai-compatible") {
-            patch(KiloCliDataParser.buildCustomProviderDeletePatch(input.providerId))
+            patch(input.directory, cfg.scope, KiloCliDataParser.buildCustomProviderDeletePatch(input.providerId))
             deleteAuth(input.providerId)
             dispose()
             return ProviderActionResultDto(state(input.directory))
         }
         if (provider?.source == "config") {
-            patch(KiloCliDataParser.buildDisabledProviderPatch(current.disabled + input.providerId))
+            val scope = cfg?.scope ?: "global"
+            val ids = disabledFor(current, scope) + input.providerId
+            patch(input.directory, scope, KiloCliDataParser.buildDisabledProviderPatch(ids))
             dispose()
             return ProviderActionResultDto(state(input.directory))
         }
@@ -135,7 +143,10 @@ internal class KiloBackendProviderSettingsManager(
 
     suspend fun enable(input: ProviderEnableDto): ProviderActionResultDto {
         val current = state(input.directory)
-        patch(KiloCliDataParser.buildDisabledProviderPatch(current.disabled.filter { it != input.providerId }))
+        val scopes = current.disabledScopes[input.providerId]?.takeIf { it.isNotEmpty() } ?: listOf("global")
+        scopes.distinct().forEach { scope ->
+            patch(input.directory, scope, KiloCliDataParser.buildDisabledProviderPatch(disabledFor(current, scope).filter { it != input.providerId }))
+        }
         dispose()
         return ProviderActionResultDto(state(input.directory))
     }
@@ -193,6 +204,41 @@ internal class KiloBackendProviderSettingsManager(
     private suspend fun post(path: String, body: String, timeoutSeconds: Long = CALL_TIMEOUT_SECONDS) = request(Request.Builder().url(url(path)).post(body.toRequestBody(JSON)).build(), timeoutSeconds)
     private suspend fun put(path: String, body: String) = request(Request.Builder().url(url(path)).put(body.toRequestBody(JSON)).build())
     private suspend fun patch(body: String) = request(Request.Builder().url(url("/global/config")).patch(body.toRequestBody(JSON)).build())
+    private suspend fun patch(directory: String, scope: String, body: String) {
+        val path = if (scope == "workspace") "/config?directory=${enc(directory)}" else "/global/config"
+        request(Request.Builder().url(url(path)).patch(body.toRequestBody(JSON)).build())
+    }
+
+    private fun parsed(raw: String): ParsedConfig {
+        val result = KiloCliDataParser.parseProviderConfig(raw)
+        return ParsedConfig(result.first, result.second.first, result.second.second)
+    }
+
+    private fun scopedConfig(global: Map<String, CustomProviderConfigDto>, local: Map<String, CustomProviderConfigDto>): Map<String, CustomProviderConfigDto> {
+        val ids = (global.keys + local.keys).distinct()
+        return ids.mapNotNull { id ->
+            val localCfg = local[id]
+            val globalCfg = global[id]
+            val cfg = localCfg ?: globalCfg ?: return@mapNotNull null
+            val scope = if (localCfg != null && (globalCfg == null || localCfg.withoutScope() != globalCfg.withoutScope())) "workspace" else "global"
+            id to cfg.copy(scope = scope)
+        }.toMap()
+    }
+
+    private fun scopedIds(global: List<String>, local: List<String>): Map<String, List<String>> {
+        val globals = global.toSet()
+        return (global + local).distinct().associateWith { id ->
+            buildList {
+                if (id in globals) add("global")
+                if (id in local && id !in globals) add("workspace")
+            }
+        }
+    }
+
+    private fun disabledFor(state: ProviderSettingsDto, scope: String): List<String> =
+        state.disabledScopes.entries.filter { scope in it.value }.map { it.key }
+
+    private fun CustomProviderConfigDto.withoutScope() = copy(scope = "global")
 
     private suspend fun deleteAuth(id: String) {
         runCatching { request(Request.Builder().url(url("/auth/${enc(id)}")).delete().build()) }
@@ -239,4 +285,10 @@ internal class KiloBackendProviderSettingsManager(
         if (input.models.any { it.id.isBlank() }) return "Model IDs cannot be empty."
         return null
     }
+
+    private data class ParsedConfig(
+        val config: Map<String, CustomProviderConfigDto>,
+        val disabled: List<String>,
+        val enabled: List<String>,
+    )
 }

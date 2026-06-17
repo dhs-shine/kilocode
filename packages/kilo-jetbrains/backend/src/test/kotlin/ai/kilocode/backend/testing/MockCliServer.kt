@@ -55,6 +55,8 @@ class MockCliServer : AutoCloseable {
     @Volatile var lastAuthPutBody: String? = null
     @Volatile var lastAuthDeletePath: String? = null
     @Volatile var lastConfigPatchBody: String? = null
+    @Volatile var lastWorkspaceConfigPatchPath: String? = null
+    @Volatile var lastWorkspaceConfigPatchBody: String? = null
     @Volatile var lastOrganizationSetBody: String? = null
 
     // Project-scoped REST responses
@@ -283,6 +285,11 @@ class MockCliServer : AutoCloseable {
                 }
                 bare == "/global/dispose" && method == "POST" -> respond(output, disposeStatus, "true")
                 path.startsWith("/config/warnings") -> respond(output, warningsStatus, warnings)
+                bare == "/config" && method == "PATCH" -> {
+                    lastWorkspaceConfigPatchPath = path
+                    lastWorkspaceConfigPatchBody = body
+                    respond(output, workspaceConfigStatus, workspaceConfig)
+                }
                 bare == "/config" -> respond(output, workspaceConfigStatus, workspaceConfig)
                 path.startsWith("/kilo/notifications") -> respond(output, notificationsStatus, notifications)
                 path.startsWith("/kilo/profile") && method == "GET" -> {

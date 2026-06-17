@@ -6,6 +6,7 @@ import ai.kilocode.backend.testing.FakeCliServer
 import ai.kilocode.backend.testing.MockCliServer
 import ai.kilocode.backend.testing.TestLog
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
+import ai.kilocode.rpc.dto.ProviderEnableDto
 import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -78,7 +79,115 @@ class KiloBackendProviderSettingsManagerTest {
 
         assertNull(result.error)
         assertContains(mock.lastConfigPatchBody.orEmpty(), "\"local-openai\":null")
+        assertNull(mock.lastWorkspaceConfigPatchBody)
         assertEquals("/auth/local-openai", mock.lastAuthDeletePath)
+        assertEquals(1, mock.requestCount("/global/dispose"))
+    }
+
+    @Test
+    fun `state marks provider config scopes`() = runBlocking {
+        mock.config = """{
+            "provider":{
+                "global-openai":{"name":"Global OpenAI","npm":"@ai-sdk/openai-compatible","options":{"baseURL":"https://global.test"}},
+                "overridden-openai":{"name":"Global Override","npm":"@ai-sdk/openai-compatible","options":{"baseURL":"https://global.test"}}
+            },
+            "disabled_providers":["global-disabled"],
+            "enabled_providers":["global-enabled"]
+        }""".trimIndent()
+        mock.workspaceConfig = """{
+            "provider":{
+                "global-openai":{"name":"Global OpenAI","npm":"@ai-sdk/openai-compatible","options":{"baseURL":"https://global.test"}},
+                "overridden-openai":{"name":"Workspace Override","npm":"@ai-sdk/openai-compatible","options":{"baseURL":"https://workspace.test"}},
+                "workspace-openai":{"name":"Workspace OpenAI","npm":"@ai-sdk/openai-compatible","options":{"baseURL":"https://workspace.test"}}
+            },
+            "disabled_providers":["global-disabled","workspace-disabled"],
+            "enabled_providers":["global-enabled","workspace-enabled"]
+        }""".trimIndent()
+        val manager = manager()
+
+        val state = manager.state("/test")
+
+        assertEquals("global", state.config["global-openai"]?.scope)
+        assertEquals("workspace", state.config["overridden-openai"]?.scope)
+        assertEquals("workspace", state.config["workspace-openai"]?.scope)
+        assertEquals(listOf("global"), state.disabledScopes["global-disabled"])
+        assertEquals(listOf("workspace"), state.disabledScopes["workspace-disabled"])
+        assertEquals(listOf("global"), state.enabledScopes["global-enabled"])
+        assertEquals(listOf("workspace"), state.enabledScopes["workspace-enabled"])
+    }
+
+    @Test
+    fun `disconnecting workspace openai compatible custom provider patches workspace config`() = runBlocking {
+        mock.workspaceConfig = """{
+            "provider":{
+                "local-openai":{"name":"Local OpenAI","npm":"@ai-sdk/openai-compatible","options":{"baseURL":"http://localhost:11434"}}
+            }
+        }""".trimIndent()
+        mock.providers = """{
+            "all":[{"id":"local-openai","name":"Local OpenAI","source":"config","models":{}}],
+            "default":{},
+            "connected":["local-openai"],
+            "failed":[]
+        }""".trimIndent()
+        val manager = manager()
+
+        mock.resetCounts()
+        val result = manager.disconnect(ProviderDisconnectDto("/test project", "local-openai"))
+
+        assertNull(result.error)
+        assertNull(mock.lastConfigPatchBody)
+        assertEquals("/config?directory=%2Ftest+project", mock.lastWorkspaceConfigPatchPath)
+        assertContains(mock.lastWorkspaceConfigPatchBody.orEmpty(), "\"local-openai\":null")
+        assertEquals("/auth/local-openai", mock.lastAuthDeletePath)
+        assertEquals(1, mock.requestCount("/global/dispose"))
+    }
+
+    @Test
+    fun `disconnecting workspace configured provider patches workspace disabled providers`() = runBlocking {
+        mock.config = """{"disabled_providers":["global-disabled"]}"""
+        mock.workspaceConfig = """{
+            "provider":{"anthropic":{"name":"Anthropic","npm":"@ai-sdk/anthropic"}},
+            "disabled_providers":["global-disabled","workspace-disabled"]
+        }""".trimIndent()
+        mock.providers = """{
+            "all":[{"id":"anthropic","name":"Anthropic","source":"config","models":{}}],
+            "default":{},
+            "connected":[],
+            "failed":[]
+        }""".trimIndent()
+        val manager = manager()
+
+        mock.resetCounts()
+        val result = manager.disconnect(ProviderDisconnectDto("/test", "anthropic"))
+
+        assertNull(result.error)
+        assertNull(mock.lastConfigPatchBody)
+        assertContains(mock.lastWorkspaceConfigPatchBody.orEmpty(), "\"anthropic\"")
+        assertContains(mock.lastWorkspaceConfigPatchBody.orEmpty(), "\"workspace-disabled\"")
+        assertFalse(mock.lastWorkspaceConfigPatchBody.orEmpty().contains("global-disabled"))
+        assertEquals(1, mock.requestCount("/global/dispose"))
+    }
+
+    @Test
+    fun `enabling workspace disabled provider patches workspace disabled providers`() = runBlocking {
+        mock.config = """{"disabled_providers":["global-disabled"]}"""
+        mock.workspaceConfig = """{"disabled_providers":["global-disabled","workspace-disabled","anthropic"]}"""
+        mock.providers = """{
+            "all":[{"id":"anthropic","name":"Anthropic","source":"config","models":{}}],
+            "default":{},
+            "connected":[],
+            "failed":[]
+        }""".trimIndent()
+        val manager = manager()
+
+        mock.resetCounts()
+        val result = manager.enable(ProviderEnableDto("/test", "anthropic"))
+
+        assertNull(result.error)
+        assertNull(mock.lastConfigPatchBody)
+        assertContains(mock.lastWorkspaceConfigPatchBody.orEmpty(), "\"workspace-disabled\"")
+        assertFalse(mock.lastWorkspaceConfigPatchBody.orEmpty().contains("anthropic"))
+        assertFalse(mock.lastWorkspaceConfigPatchBody.orEmpty().contains("global-disabled"))
         assertEquals(1, mock.requestCount("/global/dispose"))
     }
 
