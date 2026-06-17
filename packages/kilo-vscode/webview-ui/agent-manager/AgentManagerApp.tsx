@@ -99,6 +99,7 @@ import {
 } from "./navigate"
 import { reorderTabs, applyTabOrder, firstOrderedTitle } from "./tab-order"
 import { createTabOrderSync } from "./tab-order-sync"
+import { reportRemoteSessions } from "./remote-sessions"
 import { ConstrainDragYAxis } from "./sortable-tab"
 import { isTerminalTabId, createTerminalState, createTerminalHandlers, createTerminalMessageHandler } from "./terminal"
 import { renderTab, renderTerminalLayer, renderNewTabButton } from "./tab-rendering"
@@ -544,6 +545,7 @@ const AgentManagerContent: Component = () => {
   )
 
   const isPending = (id: string) => id.startsWith(PENDING_PREFIX)
+  reportRemoteSessions(vscode, localSessionIDs, managedSessions, isPending)
 
   // Drag-and-drop state for tab reordering
   const [draggingTab, setDraggingTab] = createSignal<string | undefined>()

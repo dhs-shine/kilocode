@@ -249,6 +249,9 @@ export class AgentManagerProvider implements Disposable {
         this.statsPoller.stop()
         this.prBridge.poller.stop()
         this.diffs.stop()
+        this.activeSessionId = undefined
+        this.connectionService.unregisterFocused("agent-manager")
+        this.connectionService.registerOpen("agent-manager", [])
         this.panel = undefined
         this.onVisibilityChange?.(false)
       }

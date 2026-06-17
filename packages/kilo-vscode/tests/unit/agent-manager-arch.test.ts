@@ -210,6 +210,18 @@ describe("Agent Manager Provider Messages", () => {
     expect(body).toContain("await this.terminalRouter.dispose()")
     expect(body).not.toContain("void this.terminalRouter.dispose()")
   })
+
+  it("clears remote session registrations when the panel closes", () => {
+    const body = getMethodBody("attachPanel")
+    expect(body).toContain('this.connectionService.unregisterFocused("agent-manager")')
+    expect(body).toContain('this.connectionService.registerOpen("agent-manager", [])')
+    expect(body).toContain("this.activeSessionId = undefined")
+  })
+
+  it("reports all open Agent Manager sessions for remote control", () => {
+    const body = fs.readFileSync(TSX_FILE, "utf-8")
+    expect(body).toContain("reportRemoteSessions(vscode, localSessionIDs, managedSessions, isPending)")
+  })
 })
 
 describe("Agent Manager Model Picker", () => {
