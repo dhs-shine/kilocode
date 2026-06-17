@@ -1562,10 +1562,6 @@ export const dict = {
 
   "settings.display.username.title": "Nom d'utilisateur",
   "settings.display.username.description": "Nom d'utilisateur personnalisé dans les conversations",
-  "settings.display.layout.title": "Disposition",
-  "settings.display.layout.description": "Mode de disposition pour l'interface de chat",
-  "settings.display.layout.auto": "Automatique",
-  "settings.display.layout.stretch": "Étiré",
   "settings.display.fontSize.title": "Taille de la police",
   "settings.display.fontSize.description":
     "Ajustez la taille de la police de la webview UI de Kilo indépendamment de VS Code.",
@@ -1576,10 +1572,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
-  "settings.display.codeEdit.title": "Code Edit Blocks",
-  "settings.display.codeEdit.description": "Choose whether code edit and diff blocks start expanded or collapsed.",
-  "settings.display.codeEdit.expanded": "Expanded",
-  "settings.display.codeEdit.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Blocs de modification du code",
+  "settings.display.codeEdit.description":
+    "Choisissez si les blocs de modification du code et de différences sont initialement développés ou réduits.",
+  "settings.display.codeEdit.expanded": "Développés",
+  "settings.display.codeEdit.collapsed": "Réduits",
   "settings.providers.defaultModel.title": "Modèle par défaut",
   "settings.providers.defaultModel.description": "Modèle principal pour les conversations",
   "settings.providers.smallModel.title": "Petit modèle",
