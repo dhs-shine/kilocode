@@ -438,13 +438,13 @@ html[data-theme="kilo-vscode"] [data-component="todos"] {
   [data-slot="checkbox-checkbox-label"] {
     color: var(--text-weak);
     font-size: var(--kilo-font-size-12);
-    line-height: 16px;
+    line-height: var(--kilo-font-size-16);
   }
 
   [data-slot="message-part-todo-hidden"] {
     color: var(--text-weaker);
     font-size: var(--kilo-font-size-12);
-    line-height: 16px;
+    line-height: var(--kilo-font-size-16);
   }
 
   [data-slot="message-part-todo-content"][data-changed="changed"] {
@@ -630,7 +630,7 @@ html[data-theme="kilo-vscode"] [data-component="reasoning-part"] {
     color: var(--text-weak);
     font-size: var(--kilo-font-size-12);
     font-weight: var(--font-weight-regular);
-    line-height: 16px;
+    line-height: var(--kilo-font-size-16);
 
     [data-component="icon"] {
       color: var(--text-weak);
@@ -641,7 +641,7 @@ html[data-theme="kilo-vscode"] [data-component="reasoning-part"] {
   [data-slot="reasoning-title"] {
     color: var(--text-weak);
     font-weight: var(--font-weight-regular);
-    line-height: 16px;
+    line-height: var(--kilo-font-size-16);
   }
 
   [data-slot="reasoning-label"] + [data-slot="reasoning-title"]::before {
@@ -675,7 +675,7 @@ html[data-theme="kilo-vscode"] [data-component="reasoning-part"] {
 
     [data-component="markdown"] {
       font-size: var(--kilo-font-size-12);
-      line-height: 16px;
+      line-height: var(--kilo-font-size-16);
     }
   }
 }

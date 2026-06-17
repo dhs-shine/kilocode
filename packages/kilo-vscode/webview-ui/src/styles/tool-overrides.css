@@ -1,12 +1,4 @@
 /* ============================================
-   Todo tool — align checkboxes with icon in header
-   ============================================ */
-
-[data-component="todos"] {
-  padding: 8px 12px 10px;
-}
-
-/* ============================================
    Task Tool (sub-agent, v1.0.25 style)
    tool-output scrollable container size override
    ============================================ */

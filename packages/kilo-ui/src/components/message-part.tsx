@@ -2114,24 +2114,39 @@ function BashCopyButton(props: { value: () => string; label: string }) {
   )
 }
 
-function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?: string }) {
+function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?: string; active?: boolean }) {
   const data = useData()
   const i18n = useI18n()
-  const state = { signal: { aborted: false } }
-  let ref: HTMLDivElement | undefined
+  const cmdState = { signal: { aborted: false } }
+  const outState = { signal: { aborted: false } }
+  let cmdRef: HTMLDivElement | undefined
+  let outRef: HTMLDivElement | undefined
 
   createEffect(() => {
-    state.signal.aborted = true
+    cmdState.signal.aborted = true
+    if (!props.active) return
     const cmd = props.cmd
-    if (!ref || !cmd) return
+    if (!cmdRef || !cmd) return
     const signal = { aborted: false }
-    state.signal = signal
-    ref.innerHTML = `<pre data-slot="bash-pre"><code data-lang="shellscript">${escapeHtml(cmd)}</code></pre>`
-    void deferredHighlight(ref, undefined, signal)
+    cmdState.signal = signal
+    cmdRef.innerHTML = `<pre data-slot="bash-pre"><code data-lang="shellscript">${escapeHtml(cmd)}</code></pre>`
+    void deferredHighlight(cmdRef, undefined, signal)
+  })
+
+  createEffect(() => {
+    outState.signal.aborted = true
+    if (!props.active) return
+    const out = props.output
+    if (!outRef || !out) return
+    const signal = { aborted: false }
+    outState.signal = signal
+    outRef.innerHTML = `<pre data-slot="bash-pre"><code data-lang="log">${escapeHtml(out)}</code></pre>`
+    void deferredHighlight(outRef, undefined, signal)
   })
 
   onCleanup(() => {
-    state.signal.aborted = true
+    cmdState.signal.aborted = true
+    outState.signal.aborted = true
   })
 
   const openInEditor = () => {
@@ -2152,7 +2167,7 @@ function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?
             <span data-slot="bash-prompt" aria-hidden="true">
               $
             </span>
-            <div data-slot="bash-section-code" data-scrollable ref={ref} />
+            <div data-slot="bash-section-code" data-scrollable ref={cmdRef} />
             <div data-slot="bash-section-actions">
               <BashCopyButton value={() => props.cmd} label={i18n.t("ui.message.copy")} />
             </div>
@@ -2162,11 +2177,7 @@ function BashHighlightedOutput(props: { cmd: string; output: string; outputPath?
       <Show when={props.output}>
         <div data-slot="bash-terminal" data-kind="output">
           <div data-slot="bash-section" data-kind="output">
-            <div data-slot="bash-section-code" data-scrollable>
-              <pre data-slot="bash-pre">
-                <code>{props.output}</code>
-              </pre>
-            </div>
+            <div data-slot="bash-section-code" data-scrollable ref={outRef} />
             <div data-slot="bash-section-actions">
               <Show when={data.openContent || (props.outputPath && data.openFile)}>
                 <Tooltip value={i18n.t("ui.messagePart.openInEditor")} placement="bottom" gutter={4}>
@@ -2236,7 +2247,7 @@ ToolRegistry.register({
         }
       >
         <Show when={mounted()}>
-          <BashHighlightedOutput cmd={cmd()} output={out()} outputPath={props.metadata.outputPath} />
+          <BashHighlightedOutput cmd={cmd()} output={out()} outputPath={props.metadata.outputPath} active={open()} />
         </Show>
       </BasicTool>
     )
