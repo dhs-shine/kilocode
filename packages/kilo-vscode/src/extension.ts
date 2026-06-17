@@ -435,6 +435,9 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("kilo-code.new.agentManager.nextTab", () => {
       agentManagerProvider.postMessage({ type: "action", action: "tabNext" })
     }),
+    vscode.commands.registerCommand("kilo-code.new.agentManager.search", () => {
+      agentManagerProvider.postMessage({ type: "action", action: "search" })
+    }),
     vscode.commands.registerCommand("kilo-code.new.agentManager.showTerminal", () => {
       // Route through the webview so it can reach into the active session
       // state and open the VS Code integrated terminal for it.
@@ -491,12 +494,14 @@ export function activate(context: vscode.ExtensionContext) {
           return
         }
 
-        if (uri.path !== "/kilocode/model") return
-        const modelID = new URLSearchParams(uri.query).get("model")
-        if (!modelID) return
-        console.log("[Kilo New] URI handler: selecting linked Kilo model:", modelID)
+        if (uri.path !== "/kilocode/switch" && uri.path !== "/kilocode/model") return
+        const params = new URLSearchParams(uri.query)
+        const modelID = params.get("model") || undefined
+        const agent = params.get("agent") || undefined
+        if (!modelID && !agent) return
+        console.log("[Kilo New] URI handler: applying linked Kilo selection:", { modelID, agent })
         await vscode.commands.executeCommand(`${KiloProvider.viewType}.focus`)
-        provider.selectKiloModel(modelID)
+        provider.selectKiloModel(modelID, agent)
       },
     }),
   )
