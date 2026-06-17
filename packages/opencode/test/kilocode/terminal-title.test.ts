@@ -18,26 +18,26 @@ function data(input: Partial<KiloTerminalTitle.Data> = {}): KiloTerminalTitle.Da
 }
 
 describe("KiloTerminalTitle", () => {
-  test("format_noIndicator_returnsBaseTitle", () => {
-    expect(KiloTerminalTitle.format({ base, indicator: "none" })).toBe("Kilo CLI")
-  })
-
-  test("format_workingPrefix_prependsThinkingIcon", () => {
+  test("format_noneStyle_hidesStatusIcon", () => {
     expect(KiloTerminalTitle.format({ base, title: "Build status", indicator: "working" })).toBe(
-      "◔ Kilo CLI | Build status",
+      "Kilo CLI | Build status",
     )
   })
 
-  test("format_attentionPrefix_prependsWarningIcon", () => {
-    expect(KiloTerminalTitle.format({ base, title: "Build status", indicator: "attention" })).toBe(
-      "⚠ Kilo CLI | Build status",
-    )
+  test("format_noIndicator_returnsBaseTitle", () => {
+    expect(KiloTerminalTitle.format({ base, indicator: "none", icon: "unicode" })).toBe("Kilo CLI")
   })
 
-  test("format_finishedPrefix_prependsCheckIcon", () => {
-    expect(KiloTerminalTitle.format({ base, title: "Build status", indicator: "finished" })).toBe(
-      "✓ Kilo CLI | Build status",
-    )
+  test("format_unicodeStyle_usesUnicodeIcons", () => {
+    expect(KiloTerminalTitle.format({ base, indicator: "working", icon: "unicode" })).toBe("◔ Kilo CLI")
+    expect(KiloTerminalTitle.format({ base, indicator: "attention", icon: "unicode" })).toBe("⚠ Kilo CLI")
+    expect(KiloTerminalTitle.format({ base, indicator: "finished", icon: "unicode" })).toBe("✓ Kilo CLI")
+  })
+
+  test("format_emojiStyle_usesEmojiIcons", () => {
+    expect(KiloTerminalTitle.format({ base, indicator: "working", icon: "emojis" })).toBe("💭 Kilo CLI")
+    expect(KiloTerminalTitle.format({ base, indicator: "attention", icon: "emojis" })).toBe("🔶 Kilo CLI")
+    expect(KiloTerminalTitle.format({ base, indicator: "finished", icon: "emojis" })).toBe("✅ Kilo CLI")
   })
 
   test("format_longSessionTitle_truncatesToExistingLimit", () => {
@@ -46,6 +46,7 @@ describe("KiloTerminalTitle", () => {
         base,
         title: "12345678901234567890123456789012345678901234567890",
         indicator: "working",
+        icon: "unicode",
       }),
     ).toBe("◔ Kilo CLI | 1234567890123456789012345678901234567...")
   })
@@ -68,6 +69,7 @@ describe("KiloTerminalTitle", () => {
         id: "parent",
         data: data({ session_status: { parent: { type: "busy" } } }),
         done: {},
+        icon: "unicode",
       }),
     ).toEqual({ title: "◔ Kilo CLI | Build status", id: "parent", active: true, indicator: "working" })
   })

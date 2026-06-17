@@ -10912,6 +10912,11 @@
                       "type": "boolean"
                     }
                   },
+                  "title_icon": {
+                    "type": "string",
+                    "enum": ["none", "unicode", "emojis"],
+                    "description": "Status icon style shown in terminal titles"
+                  },
                   "scroll_speed": {
                     "anyOf": [
                       {
@@ -21216,6 +21221,11 @@
             "additionalProperties": {
               "type": "boolean"
             }
+          },
+          "title_icon": {
+            "type": "string",
+            "enum": ["none", "unicode", "emojis"],
+            "description": "Status icon style shown in terminal titles"
           },
           "scroll_speed": {
             "anyOf": [

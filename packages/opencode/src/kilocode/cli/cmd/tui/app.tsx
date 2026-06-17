@@ -25,6 +25,7 @@ import { initializeTUIDependencies } from "@kilocode/kilo-gateway/tui"
 import { DialogProcessList } from "@/kilocode/cli/cmd/tui/component/dialog-process-list"
 import { useIndexingWarnings } from "@/kilocode/cli/cmd/tui/indexing-warning"
 import { KiloTerminalTitle } from "./terminal-title"
+import type { KiloTitleIcon } from "./title-icon"
 import { Session as SessionApi } from "@/session/session"
 
 // Re-export so upstream can render the route without importing directly
@@ -122,10 +123,11 @@ export function getTerminalTitle(input: {
   base: string
   sync: ReturnType<typeof useSync>
   done: Record<string, true>
+  icon?: KiloTitleIcon.Value
 }): KiloTerminalTitle.Result | undefined {
   if (input.route.data.type === "home") {
     return {
-      title: KiloTerminalTitle.format({ base: input.base, indicator: "none" }),
+      title: KiloTerminalTitle.format({ base: input.base, indicator: "none", icon: input.icon }),
       active: false,
       indicator: "none",
     }
@@ -137,18 +139,24 @@ export function getTerminalTitle(input: {
       id: input.route.data.sessionID,
       data: input.sync.data,
       done: input.done,
+      icon: input.icon,
     })
     const session = input.sync.session.get(input.route.data.sessionID)
     const title = !session || SessionApi.isDefaultTitle(session.title) ? undefined : session.title
     return {
       ...state,
-      title: KiloTerminalTitle.format({ base: input.base, title, indicator: state.indicator }),
+      title: KiloTerminalTitle.format({ base: input.base, title, indicator: state.indicator, icon: input.icon }),
     }
   }
 
   if (input.route.data.type === "plugin") {
     return {
-      title: KiloTerminalTitle.format({ base: input.base, title: input.route.data.id, indicator: "none" }),
+      title: KiloTerminalTitle.format({
+        base: input.base,
+        title: input.route.data.id,
+        indicator: "none",
+        icon: input.icon,
+      }),
       active: false,
       indicator: "none",
     }
@@ -156,7 +164,7 @@ export function getTerminalTitle(input: {
 
   if (input.route.data.type === "kiloclaw") {
     return {
-      title: KiloTerminalTitle.format({ base: input.base, title: "KiloClaw", indicator: "none" }),
+      title: KiloTerminalTitle.format({ base: input.base, title: "KiloClaw", indicator: "none", icon: input.icon }),
       active: false,
       indicator: "none",
     }

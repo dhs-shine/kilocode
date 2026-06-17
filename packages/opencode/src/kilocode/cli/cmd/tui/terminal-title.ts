@@ -1,3 +1,5 @@
+import { KiloTitleIcon } from "./title-icon"
+
 type Session = {
   id: string
   title: string
@@ -44,28 +46,48 @@ export namespace KiloTerminalTitle {
     indicator: Indicator
   }
 
-  const icon = {
-    none: "",
-    working: "◔",
-    attention: "⚠",
-    finished: "✓",
-  } satisfies Record<Indicator, string>
+  const icons = {
+    none: {
+      none: "",
+      working: "",
+      attention: "",
+      finished: "",
+    },
+    unicode: {
+      none: "",
+      working: "◔",
+      attention: "⚠",
+      finished: "✓",
+    },
+    emojis: {
+      none: "",
+      working: "💭",
+      attention: "🔶",
+      finished: "✅",
+    },
+  } satisfies Record<KiloTitleIcon.Value, Record<Indicator, string>>
 
-  export function format(input: { base: string; title?: string; indicator: Indicator }) {
+  export function format(input: { base: string; title?: string; indicator: Indicator; icon?: KiloTitleIcon.Value }) {
     const text = input.title ? `${input.base} | ${truncate(input.title)}` : input.base
-    const prefix = icon[input.indicator]
+    const prefix = icons[input.icon ?? KiloTitleIcon.Default][input.indicator]
     if (!prefix) return text
     return `${prefix} ${text}`
   }
 
-  export function session(input: { base: string; id: string; data: Data; done: Record<string, true> }): Result {
+  export function session(input: {
+    base: string
+    id: string
+    data: Data
+    done: Record<string, true>
+    icon?: KiloTitleIcon.Value
+  }): Result {
     const info = input.data.session.find((item) => item.id === input.id)
     const id = root(input.data.session, input.id)
     const ids = family(input.data.session, id)
     const indicator = state({ data: input.data, ids, done: input.done[id] === true })
 
     return {
-      title: format({ base: input.base, title: info?.title, indicator }),
+      title: format({ base: input.base, title: info?.title, indicator, icon: input.icon }),
       id,
       active: indicator === "working" || indicator === "attention",
       indicator,

@@ -371,6 +371,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       base: titleDefault,
       sync,
       done: untrack(done),
+      icon: tuiConfig.title_icon,
     })
     if (kiloTitle) {
       const id = kiloTitle.id
