@@ -13,7 +13,7 @@ Use Security Agent to identify reachable Dependabot alerts, prioritize findings,
 
 Before enabling Security Agent, make sure you have:
 
-1. The [Kilo GitHub App](https://kilo.ai/docs/automate/integrations#connecting-github) installed with the `vulnerability_alerts` permission.
+1. The [Kilo GitHub App](/docs/automate/integrations#connecting-github) installed with the `vulnerability_alerts` permission.
 2. [Dependabot alerts](https://docs.github.com/en/code-security/dependabot/dependabot-alerts) enabled on target repositories.
 3. Kilo Code credits for AI model usage.
 
