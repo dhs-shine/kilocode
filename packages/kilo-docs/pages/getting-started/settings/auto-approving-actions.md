@@ -45,10 +45,11 @@ The Auto Approve tab lists the following tool-specific permissions. Some tools a
 | `glob` | File pattern matching / searching by name |
 | `grep` | Searching file contents by regex |
 | `task` | Launching sub-agents |
+| `agent_manager` | Starting Agent Manager local or worktree sessions |
 | `skill` | Loading specialized skills |
 | `lsp` | Language server protocol operations |
 | `todoread` / `todowrite` | Reading and updating the todo list |
-| `websearch` / `codesearch` | Performing web or code searches |
+| `websearch` | Performing web searches |
 | `webfetch` | Fetching content from URLs |
 | `doom_loop` | Allowing the agent to continue after repeated failures |
 
@@ -61,7 +62,11 @@ When a tool is set to `"ask"`, Kilo pauses and displays a permission prompt with
 | **Run** | Allow this specific invocation |
 | **Deny** | Block this specific invocation |
 
+Use the shield button in the prompt controls to toggle runtime auto-approve for permission prompts without opening Settings. When enabled, the shield is highlighted and pending permission prompts are approved automatically. The runtime state stays synced across the sidebar, open Kilo tabs, and Agent Manager session views.
+
 Expand **Manage Auto-Approve Rules** to add commands or patterns to your allowed or denied lists. These rules are then appended to the bottom of the approval rules in settings and the config file.
+
+For the `agent_manager` tool, runtime approvals use the requested mode as the pattern: `worktree` or `local`.
 
 ## MCP Tool Permissions
 
@@ -112,13 +117,47 @@ Permissions are configured under the `permission` key in `kilo.jsonc`. The follo
 | `skill` | Loading specialized skills |
 | `lsp` | Language server protocol operations |
 | `todoread` / `todowrite` | Reading and updating the todo list |
-| `websearch` / `codesearch` | Performing web or code searches |
+| `websearch` | Performing web searches |
 | `webfetch` | Fetching content from URLs |
 | `doom_loop` | Allowing the agent to continue after repeated failures |
 
 ## Glob-Pattern Rules
 
 Instead of a simple `"allow"` or `"deny"`, each tool can use glob-pattern rules for granular control. Patterns are matched against the tool's arguments (command strings, file paths, etc.), and the last matching rule wins.
+
+### Rule Precedence
+
+Permission rules are evaluated in config order. When more than one rule matches the requested permission and target pattern, the last matching rule wins.
+
+Put broad fallbacks first and exceptions after them:
+
+```json
+{
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "uv *": "allow"
+    }
+  }
+}
+```
+
+With that config, `uv pip install ...` is allowed because `uv *` appears after the catch-all `*`.
+
+If you put the catch-all last, it overrides the earlier specific rule:
+
+```json
+{
+  "permission": {
+    "bash": {
+      "uv *": "allow",
+      "*": "ask"
+    }
+  }
+}
+```
+
+With that config, `uv pip install ...` asks because the later `*` rule also matches.
 
 ### Example: Shell Commands
 
@@ -128,8 +167,8 @@ Allow git commands automatically, but prompt for everything else:
 {
   "permission": {
     "bash": {
-      "git *": "allow",
-      "*": "ask"
+      "*": "ask",
+      "git *": "allow"
     }
   }
 }
@@ -143,8 +182,8 @@ Prompt before reading `.env` files, but allow all other reads:
 {
   "permission": {
     "read": {
-      "*.env": "ask",
-      "*": "allow"
+      "*": "allow",
+      "*.env": "ask"
     }
   }
 }
@@ -158,11 +197,11 @@ Deny `rm -rf` commands, allow common dev commands, and ask for anything else:
 {
   "permission": {
     "bash": {
+      "*": "ask",
       "rm -rf *": "deny",
       "npm *": "allow",
       "bun *": "allow",
-      "git *": "allow",
-      "*": "ask"
+      "git *": "allow"
     }
   }
 }
@@ -180,7 +219,7 @@ Different agents can have different permission levels. Override the default perm
   "agent": {
     "code": {
       "permission": {
-        "bash": { "git *": "allow", "*": "ask" }
+        "bash": { "*": "ask", "git *": "allow" }
       }
     },
     "plan": {
@@ -194,6 +233,26 @@ Different agents can have different permission levels. Override the default perm
 
 In this example, the `code` agent can run `git` commands automatically and asks for other shell commands, while the `plan` agent cannot run shell commands at all.
 
+## Markdown Agent Files
+
+If you define agents in Markdown files, the `permission` frontmatter uses the same `allow` / `ask` / `deny` values and glob patterns as `kilo.jsonc`:
+
+```markdown
+---
+description: Reviews code for quality and best practices
+mode: subagent
+permission:
+  bash:
+    "*": ask
+    "git *": allow
+  read:
+    "*": allow
+    "*.env": ask
+---
+```
+
+This is the same permission shape described in [Agent Permissions](/docs/customize/agent-permissions), just shown in the agent-file format.
+
 ## Runtime Permission Requests
 
 When a tool is set to `"ask"`, Kilo pauses and displays a permission prompt. You have three options:
@@ -201,8 +260,10 @@ When a tool is set to `"ask"`, Kilo pauses and displays a permission prompt. You
 | Option | Behavior |
 |---|---|
 | **Allow once** | Allow this specific invocation only |
-| **Allow always** | Allow this tool (or pattern) for the rest of the session |
+| **Allow always** | Save an allow rule for the matching tool or pattern in your global config |
 | **Reject** | Block this specific invocation |
+
+For shell commands, saved approvals are written under `permission.bash` and apply across CLI sessions.
 
 ## Defaults
 
@@ -227,12 +288,12 @@ This is a custom example showing the available configuration options — it does
 ```json
 {
   "permission": {
-    "read": { "*.env": "ask", "*": "allow" },
-    "edit": { "*.env": "ask", "*": "allow" },
+    "read": { "*": "allow", "*.env": "ask" },
+    "edit": { "*": "allow", "*.env": "ask" },
     "glob": { "*": "allow" },
     "grep": { "*": "allow" },
     "list": { "*": "allow" },
-    "bash": { "git *": "allow", "npm *": "allow", "*": "ask" },
+    "bash": { "*": "ask", "git *": "allow", "npm *": "allow" },
     "task": { "*": "allow" },
     "skill": { "*": "allow" },
     "lsp": { "*": "allow" },
@@ -240,14 +301,13 @@ This is a custom example showing the available configuration options — it does
     "todowrite": { "*": "allow" },
     "webfetch": { "*": "allow" },
     "websearch": { "*": "allow" },
-    "codesearch": { "*": "allow" },
     "external_directory": { "*": "ask" },
     "doom_loop": { "*": "ask" }
   },
   "agent": {
     "code": {
       "permission": {
-        "bash": { "git *": "allow", "npm *": "allow", "*": "ask" }
+        "bash": { "*": "ask", "git *": "allow", "npm *": "allow" }
       }
     }
   }

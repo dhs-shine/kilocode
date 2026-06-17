@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 
 const entry = "file:///tmp/kilo-cache/node_modules/@lancedb/lancedb/dist/index.js"
 const add = mock(async () => ({ directory: "/tmp/kilo-cache", entrypoint: entry }))
-const real = await import("../../src/npm/index")
+const real = await import("@opencode-ai/core/npm")
 
-mock.module("../../src/npm/index", () => ({
+mock.module("@opencode-ai/core/npm", () => ({
   ...real,
   Npm: {
     ...real.Npm,
@@ -37,6 +37,24 @@ describe("LanceDBRuntime", () => {
 
     expect(add).not.toHaveBeenCalled()
     expect(process.env[env]).toBeUndefined()
+  })
+
+  test("guides Intel Mac users to Qdrant", async () => {
+    const { LanceDBRuntime } = await import("../../src/kilocode/lancedb")
+    const platform = Object.getOwnPropertyDescriptor(process, "platform")!
+    const arch = Object.getOwnPropertyDescriptor(process, "arch")!
+    Object.defineProperty(process, "platform", { ...platform, value: "darwin" })
+    Object.defineProperty(process, "arch", { ...arch, value: "x64" })
+
+    try {
+      await expect(LanceDBRuntime.ensure("lancedb")).rejects.toThrow(
+        'LanceDB is not supported on Intel Macs. Set "indexing.vectorStore" to "qdrant" and configure a Qdrant server.',
+      )
+      expect(add).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(process, "platform", platform)
+      Object.defineProperty(process, "arch", arch)
+    }
   })
 
   test("installs the pinned package and exports a file URL for lancedb", async () => {

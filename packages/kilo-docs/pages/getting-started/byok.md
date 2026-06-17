@@ -24,6 +24,7 @@ Use your provider API key to route matching models through your account:
 
 - Anthropic
 - AWS Bedrock
+- DeepSeek
 - Fireworks
 - Google AI Studio
 - Inception
@@ -32,6 +33,7 @@ Use your provider API key to route matching models through your account:
 - Moonshot AI (Kimi)
 - Novita
 - OpenAI
+- Xiaomi
 - xAI
 - Z.ai
 
@@ -41,9 +43,18 @@ These providers offer coding-focused subscriptions or dedicated endpoints. Bring
 
 - BytePlus Coding Plan
 - Chutes BYOK
+- CrofAI
+- Inceptron BYOK
 - Kimi Code
+- Martian
 - Mistral Codestral
 - Neuralwatt
+- Ollama Cloud
+- OpenCode Go
+- OrcaRouter
+- Synthetic
+- Xiaomi Token Plan (Europe)
+- Xiaomi Token Plan (Singapore)
 - Z.ai Coding Plan
 
 ## Add a BYOK key

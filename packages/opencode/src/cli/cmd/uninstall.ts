@@ -1,14 +1,14 @@
 import type { Argv } from "yargs"
 import { UI } from "../ui"
 import * as prompts from "@clack/prompts"
-import { AppRuntime } from "@/effect/app-runtime"
 import { Installation } from "../../installation"
-import { Global } from "../../global"
+import { Global } from "@opencode-ai/core/global"
 import fs from "fs/promises"
 import path from "path"
 import os from "os"
-import { Filesystem } from "../../util"
-import { Process } from "../../util"
+import { Filesystem } from "@/util/filesystem"
+import { Process } from "@/util/process"
+import { Brew as KiloBrew } from "@/kilocode/installation" // kilocode_change
 
 interface UninstallArgs {
   keepConfig: boolean
@@ -58,7 +58,7 @@ export const UninstallCommand = {
     UI.empty()
     prompts.intro("Uninstall Kilo") // kilocode_change
 
-    const method = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.method()))
+    const method = await Installation.method()
     prompts.log.info(`Installation method: ${method}`)
 
     const targets = await collectRemovalTargets(args, method)
@@ -134,7 +134,7 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
       pnpm: "pnpm uninstall -g @kilocode/cli", // kilocode_change
       bun: "bun remove -g @kilocode/cli", // kilocode_change
       yarn: "yarn global remove @kilocode/cli", // kilocode_change
-      brew: "brew uninstall opencode",
+      brew: `brew uninstall ${KiloBrew.name}`, // kilocode_change
       choco: "choco uninstall kilo", // kilocode_change
       scoop: "scoop uninstall kilo", // kilocode_change
     }
@@ -185,7 +185,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
       pnpm: ["pnpm", "uninstall", "-g", "@kilocode/cli"], // kilocode_change
       bun: ["bun", "remove", "-g", "@kilocode/cli"], // kilocode_change
       yarn: ["yarn", "global", "remove", "@kilocode/cli"], // kilocode_change
-      brew: ["brew", "uninstall", "opencode"],
+      brew: ["brew", "uninstall", KiloBrew.name], // kilocode_change
       choco: ["choco", "uninstall", "kilo"], // kilocode_change
       scoop: ["scoop", "uninstall", "kilo"], // kilocode_change
     }

@@ -143,6 +143,7 @@ class ChatLogSummaryTest {
                 providerID = "kilo",
                 modelID = "gpt-5",
                 agent = "code",
+                variant = "medium",
             )
         )
 
@@ -150,6 +151,27 @@ class ChatLogSummaryTest {
         assertTrue(out.contains("types=text"), out)
         assertTrue(out.contains("agent=code"), out)
         assertTrue(out.contains("model=kilo/gpt-5"), out)
+        assertTrue(out.contains("variant=medium"), out)
+    }
+
+    @Test
+    fun `prompt dto summary redacts file attachment urls`() {
+        System.setProperty("kilo.dev.log.chat.content", "preview")
+
+        val out = ChatLogSummary.prompt(
+            PromptDto(
+                parts = listOf(
+                    PromptPartDto(type = "text", text = "inspect"),
+                    PromptPartDto(type = "file", mime = "image/png", url = "file:///secret/path.png", filename = "path.png"),
+                )
+            )
+        )
+
+        assertTrue(out.contains("attachments=1"), out)
+        assertTrue(out.contains("media=1"), out)
+        assertTrue(out.contains("attachmentTypes=image/png"), out)
+        assertFalse(out.contains("secret"), out)
+        assertFalse(out.contains("file:///"), out)
     }
 
     @Test

@@ -1,5 +1,12 @@
 import { describe, it, expect } from "bun:test"
-import { deepMerge, stripNulls, ConfigState } from "../../webview-ui/src/utils/config-utils"
+import {
+  configUnsetPaths,
+  ConfigState,
+  deepMerge,
+  mergeScopedConfig,
+  pruneConfigSet,
+  stripNulls,
+} from "../../webview-ui/src/utils/config-utils"
 import type { Config } from "../../webview-ui/src/types/messages"
 
 // ---------------------------------------------------------------------------
@@ -31,6 +38,46 @@ describe("deepMerge", () => {
     const target: Config = { instructions: ["a", "b"] }
     const source: Partial<Config> = { instructions: ["c"] }
     expect(deepMerge(target, source)).toEqual({ instructions: ["c"] })
+  })
+
+  it("preserves explicit false values in nested agent config", () => {
+    const target: Config = { agent: { code: { disable: true, hidden: true } } }
+    const source: Partial<Config> = { agent: { code: { disable: false, hidden: false } } }
+    const result = deepMerge(target, source)
+    expect(result.agent?.code?.disable).toBe(false)
+    expect(result.agent?.code?.hidden).toBe(false)
+  })
+})
+
+describe("scoped config normalization", () => {
+  it("preserves indexing null overrides while stripping unrelated nulls", () => {
+    const target = { username: "alice", indexing: { model: "global", dimension: 1024 } } as Config
+    const source = { username: null, indexing: { model: null, dimension: null } } as unknown as Partial<Config>
+
+    expect(mergeScopedConfig(target, source)).toEqual({ indexing: { model: null, dimension: null } })
+  })
+
+  it("builds clean set and unset payloads while preserving indexing null overrides", () => {
+    const patch = {
+      formatter: {},
+      username: null,
+      indexing: {
+        model: null,
+        dimension: null,
+        searchMinScore: undefined,
+        qdrant: { apiKey: undefined },
+      },
+    }
+
+    expect(pruneConfigSet(patch)).toEqual({
+      formatter: {},
+      indexing: { model: null, dimension: null },
+    })
+    expect(configUnsetPaths(patch)).toEqual([
+      ["username"],
+      ["indexing", "searchMinScore"],
+      ["indexing", "qdrant", "apiKey"],
+    ])
   })
 })
 
@@ -99,6 +146,43 @@ describe("ConfigState", () => {
       expect(s.config.agent?.code?.steps).toBe(5)
       expect(s.config.agent?.code?.temperature).toBe(0.9)
     })
+
+    it("preserves explicit false agent flags across configLoaded pushes", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({ agent: { code: { disable: true, hidden: true } } })
+      s.updateConfig({ agent: { code: { disable: false, hidden: false } } })
+
+      s.handleConfigLoaded({ agent: { code: { disable: true, hidden: true } } })
+
+      expect(s.config.agent?.code?.disable).toBe(false)
+      expect(s.config.agent?.code?.hidden).toBe(false)
+    })
+
+    it("preserves clearing default_agent when the current default is hidden", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({ default_agent: "code", agent: { code: { hidden: false } } })
+
+      s.updateConfig({ agent: { code: { hidden: true } } })
+      s.updateConfig({ default_agent: null })
+
+      s.handleConfigLoaded({ default_agent: "code", agent: { code: { hidden: false } } })
+
+      expect(s.config.agent?.code?.hidden).toBe(true)
+      expect(s.config.default_agent).toBeUndefined()
+    })
+
+    it("preserves clearing default_agent when the current default is disabled", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({ default_agent: "code", agent: { code: { disable: false } } })
+
+      s.updateConfig({ agent: { code: { disable: true } } })
+      s.updateConfig({ default_agent: null })
+
+      s.handleConfigLoaded({ default_agent: "code", agent: { code: { disable: false } } })
+
+      expect(s.config.agent?.code?.disable).toBe(true)
+      expect(s.config.default_agent).toBeUndefined()
+    })
   })
 
   describe("configUpdated while draft is pending", () => {
@@ -129,6 +213,86 @@ describe("ConfigState", () => {
       expect(s.saving).toBe(false)
       expect(Object.keys(s.draft).length).toBe(0)
     })
+
+    it("clears default_agent when update confirms a null-sentinel save", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({ default_agent: "code" })
+      s.updateConfig({ default_agent: null })
+      s.saveConfig()
+
+      // Server confirms the write by returning config without default_agent.
+      s.handleConfigUpdated({})
+
+      expect(s.config.default_agent).toBeUndefined()
+      expect(s.dirty).toBe(false)
+      expect(s.saving).toBe(false)
+      expect(Object.keys(s.draft).length).toBe(0)
+    })
+
+    it("preserves the null delete sentinel in the pending save payload", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({ default_agent: "code" })
+      s.updateConfig({ default_agent: null })
+
+      expect(s.draft.default_agent).toBeNull()
+
+      s.saveConfig()
+
+      expect(s.saving).toBe(true)
+      expect(s.draft.default_agent).toBeNull()
+    })
+  })
+
+  describe("configSaved while a save is in-flight", () => {
+    it("clears the draft after a confirmed write even if merged refresh is pending", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({ agent: { code: { prompt: "Review" } } })
+      s.updateConfig({ agent: { code: { prompt: null } } })
+      s.saveConfig()
+
+      s.handleConfigSaved()
+
+      expect(s.saving).toBe(false)
+      expect(s.dirty).toBe(false)
+      expect(Object.keys(s.draft).length).toBe(0)
+      expect(s.saved.agent?.code?.prompt).toBeUndefined()
+      expect(s.config.agent?.code?.prompt).toBeUndefined()
+    })
+  })
+
+  describe("configSaveFailed while a save is in-flight", () => {
+    it("preserves pending null-sentinel clears so the user can retry", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({ agent: { code: { prompt: "Review", temperature: 0.7 } }, default_agent: "code" })
+      s.updateConfig({ agent: { code: { prompt: null, temperature: null } } })
+      s.updateConfig({ default_agent: null })
+      s.saveConfig()
+
+      s.handleConfigSaveFailed({ agent: { code: { prompt: "Review", temperature: 0.7 } }, default_agent: "code" })
+
+      expect(s.saving).toBe(false)
+      expect(s.dirty).toBe(true)
+      expect(s.draft.agent?.code?.prompt).toBeNull()
+      expect(s.draft.agent?.code?.temperature).toBeNull()
+      expect(s.draft.default_agent).toBeNull()
+      expect(s.config.agent?.code?.prompt).toBeUndefined()
+      expect(s.config.agent?.code?.temperature).toBeUndefined()
+      expect(s.config.default_agent).toBeUndefined()
+    })
+  })
+
+  it("ignores repeated save attempts while a save is already in-flight", () => {
+    const s = new ConfigState()
+    s.handleConfigLoaded({ snapshot: true })
+    s.updateConfig({ snapshot: false })
+
+    s.saveConfig()
+    s.saveConfig()
+    s.handleConfigUpdated({ snapshot: false })
+
+    expect(s.saving).toBe(false)
+    expect(s.dirty).toBe(false)
+    expect(s.config.snapshot).toBe(false)
   })
 
   it("configLoaded is ignored while save is in-flight", () => {
@@ -202,6 +366,29 @@ describe("ConfigState", () => {
       expect(s.dirty).toBe(false)
       expect(s.saving).toBe(false)
       expect(Object.keys(s.draft).length).toBe(0)
+    })
+  })
+
+  describe("clearing an agent variant override", () => {
+    it("keeps null in the draft so the backend receives a delete sentinel", () => {
+      const s = new ConfigState()
+      s.handleConfigLoaded({
+        agent: {
+          explore: {
+            model: "kilo/anthropic/claude-sonnet-4-6",
+            variant: "high",
+          },
+        },
+      })
+
+      s.updateConfig({ agent: { explore: { variant: null } } })
+
+      expect(s.config.agent?.explore?.variant).toBeUndefined()
+      expect(s.dirty).toBe(true)
+      expect(s.draft.agent?.explore?.variant).toBeNull()
+      expect(JSON.parse(JSON.stringify(s.draft))).toEqual({
+        agent: { explore: { variant: null } },
+      })
     })
   })
 

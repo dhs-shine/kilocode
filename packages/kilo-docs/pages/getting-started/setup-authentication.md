@@ -46,7 +46,7 @@ That's it! You're ready to [start your first task](/docs/getting-started/quickst
 {% /tabs %}
 
 {% callout type="tip" title="Add Credits" %}
-[Add credits to your account](https://app.kilo.ai/profile), or sign up for [Kilo Pass](https://kilo.ai/features/kilo-pass).
+[Add credits to your account](https://app.kilo.ai/profile), or sign up for [Kilo Pass](https://kilo.ai/pricing/kilo-pass).
 {% /callout %}
 
 ## Kilo Gateway API Key
@@ -123,7 +123,7 @@ Set the API key as an environment variable:
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-Or use `kilo auth login` for providers that support OAuth (like GitHub Copilot).
+Or use `kilo auth login` for providers that support OAuth, such as GitHub Copilot or ChatGPT Plus/Pro.
 
 To set a default model:
 

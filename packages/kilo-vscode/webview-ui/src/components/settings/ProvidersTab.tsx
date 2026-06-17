@@ -17,7 +17,7 @@ import ProviderConnectDialog from "./ProviderConnectDialog"
 import ProviderSelectDialog from "./ProviderSelectDialog"
 import { CUSTOM_PROVIDER_ID, isPopularProvider, providerIcon, providerNoteKey, sortProviders } from "./provider-catalog"
 import { disabledProviderOptions, providersWithKiloFallback, visibleConnectedIds } from "./provider-visibility"
-import { KILO_PROVIDER_ID, CUSTOM_PROVIDER_PACKAGE } from "../../../../src/shared/provider-model"
+import { isCustomProviderPackage, KILO_PROVIDER_ID } from "../../../../src/shared/provider-model"
 import { createProviderAction } from "../../utils/provider-action"
 
 type ProviderSource = "env" | "api" | "config" | "custom"
@@ -35,7 +35,7 @@ const ProvidersTab: Component = () => {
 
   onCleanup(action.dispose)
 
-  const kiloLoggedIn = createMemo(() => !!server.profileData())
+  const kiloLoggedIn = createMemo(() => !!provider.authStates()[KILO_PROVIDER_ID])
 
   const connectedProviders = createMemo(() => {
     const ids = visibleConnectedIds(provider.connected(), provider.authStates())
@@ -79,7 +79,7 @@ const ProvidersTab: Component = () => {
     if (current === "api") return language.t("provider.connect.method.apiKey")
     if (current === "config") {
       const cfg = config().provider?.[item.id]
-      if (cfg?.npm === "@ai-sdk/openai-compatible") return language.t("settings.providers.tag.custom")
+      if (isCustomProviderPackage(cfg?.npm)) return language.t("settings.providers.tag.custom")
       return language.t("settings.providers.tag.config")
     }
     if (item.id === "openai" && current === "custom") return language.t("settings.providers.tag.chatgpt")
@@ -93,7 +93,7 @@ const ProvidersTab: Component = () => {
 
   function isCustom(item: Provider) {
     const cfg = config().provider?.[item.id]
-    return cfg?.npm === CUSTOM_PROVIDER_PACKAGE
+    return isCustomProviderPackage(cfg?.npm)
   }
 
   function editProvider(item: Provider) {
@@ -140,7 +140,11 @@ const ProvidersTab: Component = () => {
 
   function connectProvider(item: Provider) {
     if (item.id === KILO_PROVIDER_ID) {
-      server.startLogin()
+      // Route Kilo Gateway sign-in through the Profile view so the user sees
+      // the full device-auth UI (URL, QR, code, timer, cancel). Triggering
+      // `startLogin()` from here alone would run the flow silently with no
+      // way to recover if the browser is dismissed.
+      server.goToLogin()
       return
     }
     dialog.show(() => <ProviderConnectDialog providerID={item.id} />)
@@ -171,13 +175,19 @@ const ProvidersTab: Component = () => {
             }}
           >
             <ProviderIcon id="synthetic" width={20} height={20} />
-            <span style={{ "font-size": "14px", "font-weight": "500", color: "var(--vscode-foreground)" }}>
+            <span
+              style={{
+                "font-size": "var(--kilo-font-size-14)",
+                "font-weight": "500",
+                color: "var(--vscode-foreground)",
+              }}
+            >
               Kilo Gateway
             </span>
             <Show
               when={kiloLoggedIn()}
               fallback={
-                <Button size="small" variant="secondary" onClick={() => server.startLogin()}>
+                <Button size="small" variant="secondary" onClick={() => server.goToLogin()}>
                   {language.t("common.signIn")}
                 </Button>
               }
@@ -199,7 +209,7 @@ const ProvidersTab: Component = () => {
             <div
               style={{
                 padding: "16px 0",
-                "font-size": "14px",
+                "font-size": "var(--kilo-font-size-14)",
                 color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
               }}
             >
@@ -225,7 +235,7 @@ const ProvidersTab: Component = () => {
                   <ProviderIcon id={providerIcon(item.id)} width={20} height={20} />
                   <span
                     style={{
-                      "font-size": "14px",
+                      "font-size": "var(--kilo-font-size-14)",
                       "font-weight": "500",
                       color: "var(--vscode-foreground)",
                       overflow: "hidden",
@@ -241,7 +251,7 @@ const ProvidersTab: Component = () => {
                   <Show when={!canDisconnect(item)}>
                     <span
                       style={{
-                        "font-size": "14px",
+                        "font-size": "var(--kilo-font-size-14)",
                         color: "var(--text-base, var(--vscode-descriptionForeground))",
                         "padding-right": "12px",
                       }}
@@ -261,7 +271,7 @@ const ProvidersTab: Component = () => {
                       </Button>
                     </Show>
                     <Button size="large" variant="ghost" onClick={() => disconnect(item.id, item.name)}>
-                      {language.t("common.disconnect")}
+                      {language.t(isCustom(item) ? "common.delete" : "common.disconnect")}
                     </Button>
                   </Show>
                 </div>
@@ -295,7 +305,13 @@ const ProvidersTab: Component = () => {
                 <div style={{ display: "flex", "flex-direction": "column", "min-width": 0 }}>
                   <div style={{ display: "flex", "align-items": "center", gap: "12px" }}>
                     <ProviderIcon id={providerIcon(item.id)} width={20} height={20} />
-                    <span style={{ "font-size": "14px", "font-weight": "500", color: "var(--vscode-foreground)" }}>
+                    <span
+                      style={{
+                        "font-size": "var(--kilo-font-size-14)",
+                        "font-weight": "500",
+                        color: "var(--vscode-foreground)",
+                      }}
+                    >
                       {item.name}
                     </span>
                   </div>
@@ -303,7 +319,7 @@ const ProvidersTab: Component = () => {
                     {(key) => (
                       <span
                         style={{
-                          "font-size": "12px",
+                          "font-size": "var(--kilo-font-size-12)",
                           color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
                           "padding-left": "32px",
                         }}
@@ -336,14 +352,20 @@ const ProvidersTab: Component = () => {
           <div style={{ display: "flex", "flex-direction": "column", "min-width": 0 }}>
             <div style={{ display: "flex", "flex-wrap": "wrap", "align-items": "center", gap: "12px" }}>
               <ProviderIcon id="synthetic" width={20} height={20} />
-              <span style={{ "font-size": "14px", "font-weight": "500", color: "var(--vscode-foreground)" }}>
+              <span
+                style={{
+                  "font-size": "var(--kilo-font-size-14)",
+                  "font-weight": "500",
+                  color: "var(--vscode-foreground)",
+                }}
+              >
                 {language.t("provider.custom.title")}
               </span>
               <Tag>{language.t("settings.providers.tag.custom")}</Tag>
             </div>
             <span
               style={{
-                "font-size": "12px",
+                "font-size": "var(--kilo-font-size-12)",
                 color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
                 "padding-left": "32px",
               }}
@@ -374,7 +396,7 @@ const ProvidersTab: Component = () => {
       <Card>
         <div
           style={{
-            "font-size": "12px",
+            "font-size": "var(--kilo-font-size-12)",
             color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
             "padding-bottom": "8px",
             "border-bottom": "1px solid var(--border-weak-base)",
@@ -435,7 +457,7 @@ const ProvidersTab: Component = () => {
                 <ProviderIcon id={providerIcon(id)} width={20} height={20} />
                 <span
                   style={{
-                    "font-size": "14px",
+                    "font-size": "var(--kilo-font-size-14)",
                     "font-weight": "500",
                     color: "var(--vscode-foreground)",
                     overflow: "hidden",
@@ -448,7 +470,7 @@ const ProvidersTab: Component = () => {
                 <Tag>{language.t("settings.providers.disabled")}</Tag>
               </div>
               <Button size="large" variant="ghost" onClick={() => enableProvider(index())}>
-                {language.t("common.delete")}
+                {language.t("settings.providers.disabled.enable")}
               </Button>
             </div>
           )}

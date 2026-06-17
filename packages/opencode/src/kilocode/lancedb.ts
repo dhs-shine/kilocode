@@ -1,4 +1,4 @@
-import { Npm } from "@/npm"
+import { Npm } from "@opencode-ai/core/npm"
 
 export namespace LanceDBRuntime {
   export const env = "KILO_LANCEDB_PATH"
@@ -25,6 +25,11 @@ export namespace LanceDBRuntime {
   export async function ensure(store?: string) {
     if (store !== "lancedb") return
     if (process.env[env]) return
+    if (process.platform === "darwin" && process.arch === "x64") {
+      throw new Error(
+        'LanceDB is not supported on Intel Macs. Set "indexing.vectorStore" to "qdrant" and configure a Qdrant server.',
+      )
+    }
     if (box.ready) return box.ready
 
     box.ready = (async () => {

@@ -3,16 +3,18 @@ import { createSimpleContext } from "./helper"
 import { batch, createEffect, createMemo } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
+import { useRoute } from "@tui/context/route"
+import { useEvent } from "@tui/context/event"
 import { uniqueBy } from "remeda"
 import path from "path"
-import { Global } from "@/global"
+import { Global } from "@opencode-ai/core/global"
 import { iife } from "@/util/iife"
 import { useToast } from "../ui/toast"
 import { useArgs } from "./args"
 import { useSDK } from "./sdk"
 import { useProject } from "./project" // kilocode_change
 import { RGBA } from "@opentui/core"
-import { Filesystem } from "@/util"
+import { Filesystem } from "@/util/filesystem"
 
 export function parseModel(model: string) {
   const [providerID, ...rest] = model.split("/")
@@ -151,6 +153,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       const filePath = path.join(Global.Path.state, "model.json")
       const state = {
         pending: false,
+        writer: Promise.resolve() as Promise<unknown>, // kilocode_change - serialize writes
       }
 
       // kilocode_change start - keep configured-agent selections process-local
@@ -180,12 +183,15 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           return
         }
         state.pending = false
-        Filesystem.writeJson(filePath, {
-          model: modelStore.model, // kilocode_change
+        // kilocode_change start - serialize writes so a slow first write cannot overwrite a later one
+        const data = {
+          model: modelStore.model,
           recent: modelStore.recent,
           favorite: modelStore.favorite,
           variant: modelStore.variant,
-        })
+        }
+        state.writer = state.writer.then(() => Filesystem.writeJson(filePath, data)).catch(() => {})
+        // kilocode_change end
       }
 
       Filesystem.readJson(filePath)
@@ -264,6 +270,15 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         // kilocode_change start - expose persisted per-agent pick separately from overrides
         saved(name: string) {
           return modelStore.model[name]
+        },
+        // kilocode_change end
+        // kilocode_change start - resolve once all queued writes (atomic write+rename) have settled.
+        // Used by tests to deterministically await the writer chain instead of sleeping for a fixed
+        // duration, which is too slow on Windows CI where temp-file rename can exceed 50ms under AV.
+        async flush() {
+          const deadline = Date.now() + 5000
+          while (state.pending && Date.now() < deadline) await new Promise((r) => setTimeout(r, 0))
+          await state.writer
         },
         // kilocode_change end
         recent() {
@@ -434,6 +449,95 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       }
     })
 
+    const session = iife(() => {
+      const [sessionStore, setSessionStore] = createStore<{
+        ready: boolean
+        pinned: string[]
+      }>({
+        ready: false,
+        pinned: [],
+      })
+
+      const filePath = path.join(Global.Path.state, "session.json")
+      const state = {
+        pending: false,
+      }
+
+      function save() {
+        if (!sessionStore.ready) {
+          state.pending = true
+          return
+        }
+        state.pending = false
+        void Filesystem.writeJson(filePath, {
+          pinned: sessionStore.pinned,
+        })
+      }
+
+      Filesystem.readJson(filePath)
+        .then((x: any) => {
+          if (Array.isArray(x.pinned)) setSessionStore("pinned", x.pinned)
+        })
+        .catch(() => {})
+        .finally(() => {
+          setSessionStore("ready", true)
+          if (state.pending) save()
+        })
+
+      const route = useRoute()
+      const event = useEvent()
+
+      const slots = createMemo(() => {
+        const existing = new Set(sync.data.session.filter((x) => x.parentID === undefined).map((x) => x.id))
+        return sessionStore.pinned.filter((id) => existing.has(id)).slice(0, 9)
+      })
+
+      function prune(sessionID: string) {
+        batch(() => {
+          if (sessionStore.pinned.includes(sessionID)) {
+            setSessionStore(
+              "pinned",
+              sessionStore.pinned.filter((x) => x !== sessionID),
+            )
+          }
+          save()
+        })
+      }
+
+      event.onSync("session.deleted.1", (evt) => {
+        prune(evt.data.sessionID)
+      })
+
+      return {
+        get ready() {
+          return sessionStore.ready
+        },
+        pinned() {
+          return sessionStore.pinned
+        },
+        slots,
+        isPinned(sessionID: string) {
+          return sessionStore.pinned.includes(sessionID)
+        },
+        togglePin(sessionID: string) {
+          batch(() => {
+            const exists = sessionStore.pinned.includes(sessionID)
+            const next = exists
+              ? sessionStore.pinned.filter((x) => x !== sessionID)
+              : [...sessionStore.pinned, sessionID]
+            setSessionStore("pinned", next)
+            save()
+          })
+        },
+        quickSwitch(slot: number) {
+          const target = slots()[slot - 1]
+          if (!target) return
+          if (route.data.type === "session" && route.data.sessionID === target) return
+          route.navigate({ type: "session", sessionID: target })
+        },
+      }
+    })
+
     const mcp = {
       isEnabled(name: string) {
         const status = sync.data.mcp[name]
@@ -451,26 +555,25 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       },
     }
 
-    // kilocode_change - validate configured agent model when agent changes
     createEffect(() => {
       // kilocode_change start - configured models resolve directly without persistence
       if (!model.ready) return
       const value = agent.current()
-      if (!value) return // guard against empty agent list during org switch
-      if (!value.model) return
+      if (!value?.model) return
       if (isModelValid(value.model)) return
       toast.show({
         variant: "warning",
         message: `Agent ${value.name}'s configured model ${value.model.providerID}/${value.model.modelID} is not valid`,
         duration: 3000,
       })
-      // kilocode_change end
     })
+    // kilocode_change end
 
     const result = {
       model,
       agent,
       mcp,
+      session,
     }
     return result
   },

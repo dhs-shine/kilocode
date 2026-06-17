@@ -41,9 +41,23 @@ There are two primary config files:
 - **Global config:** `~/.config/kilo/kilo.jsonc` — applies to all projects. On Windows, this is `C:\Users\<username>\.config\kilo\kilo.jsonc`.
 - **Project config:** `kilo.jsonc` in your project root, or `.kilo/kilo.jsonc` for a cleaner setup. The `.kilo/` version takes priority if both exist.
 
+Use **Local Config** or **Global Config** in the Settings header to open the matching config file from VS Code. If multiple config files are available, choose the exact file from the picker. If the recommended file does not exist yet, Kilo creates it before opening it.
+
 {% callout type="warning" %}
 If you check config files into version control, make sure they do not contain API keys or other secrets (e.g., `provider.*.options.apiKey`). Use environment variables for credentials instead.
 {% /callout %}
+
+### Voice Transcription Model
+
+When the Kilo provider is enabled and you are signed in, choose the transcription model under **Models** > **Speech to Text Model**. This stores `experimental.speech_to_text_model` in your global Kilo CLI config:
+
+```json
+{
+  "experimental": {
+    "speech_to_text_model": "openai/whisper-large-v3-turbo"
+  }
+}
+```
 
 ### Reasoning Blocks
 
@@ -66,6 +80,10 @@ Terminal command blocks stay expanded by default in the VS Code chat UI. Choose 
 ```
 
 Valid values are `expanded` and `collapsed`.
+
+### Markdown Diff Rendering
+
+Markdown files in Kilo diff viewers can be shown as rendered Markdown instead of a raw text diff. Use the eye/code toggle in a Markdown file header, or set `kilo-code.new.diff.renderMarkdown` to `true` to render Markdown files by default.
 
 ### Export and Import
 
@@ -187,13 +205,13 @@ Use this option only if you are certain you want to remove all Kilo Code data or
 
 The new extension exposes experimental features via the **Experimental** tab in Settings (click the gear icon {% codicon name="gear" /%} → Experimental).
 
-Available experimental toggles include:
+Available experimental settings include:
 
-- **Share mode** — `manual`, `auto`, or `disabled` session sharing
-- **LSP integration** — expose language server diagnostics to the agent
-- **Paste summary** — summarize large clipboard pastes before including them
-- **Batch tool** — allow the agent to batch multiple tool calls in one step
-- **OpenTelemetry** — enable Kilo telemetry and optional OTLP export when configured
+- **Share mode** - `manual`, `auto`, or `disabled` session sharing
+- **LSP integration** - expose language server diagnostics to the agent
+- **Paste summary** - summarize large clipboard pastes before including them
+- **Batch tool** - allow the agent to batch multiple tool calls in one step
+- **OpenTelemetry** - enable Kilo telemetry and optional OTLP export when configured
 
 Advanced options not exposed in the UI can be configured via the `experimental` key in `kilo.jsonc`:
 

@@ -1,21 +1,18 @@
-// kilocode_change - new file
 import path from "path"
 import { pathToFileURL } from "url"
 import { existsSync } from "fs"
-import z from "zod"
 import { Effect, Schema } from "effect"
 import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser"
 import { mergeDeep } from "remeda"
-import { Log } from "../../util"
-import { Global } from "../../global"
-import { NamedError } from "@opencode-ai/shared/util/error"
-import type { AppFileSystem } from "@opencode-ai/shared/filesystem"
+import * as Log from "@opencode-ai/core/util/log"
+import { Global } from "@opencode-ai/core/global"
+import { NamedError } from "@opencode-ai/core/util/error"
+import type { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { Bus } from "@/bus"
 import { isRecord } from "@/util/record"
 import { ConfigError } from "../../config/error"
-import { Filesystem } from "@/util"
-import type { Config } from "../../config"
-import type { ConfigAgent } from "../../config"
+import type { Config } from "../../config/config"
+import type { ConfigAgent } from "../../config/agent"
 import { ModesMigrator } from "../modes-migrator"
 import { fetchOrganizationModes } from "@kilocode/kilo-gateway"
 import { RulesMigrator } from "../rules-migrator"
@@ -68,7 +65,7 @@ export namespace KilocodeConfig {
    *
    * This mirrors the Kilo project-config load chain: prefer existing config files
    * in ancestor config directories, then existing root config files, and create
-   * `.kilo/kilo.json` when no project config exists yet.
+   * `.kilo/kilo.jsonc` when no project config exists yet.
    */
   export const projectConfigUpdateTarget = Effect.fn("KilocodeConfig.projectConfigUpdateTarget")(function* (input: {
     fs: AppFileSystem.Interface
@@ -82,7 +79,7 @@ export namespace KilocodeConfig {
       .up({ targets: [...ALL_CONFIG_FILES], start: input.directory, stop: input.worktree })
       .pipe(Effect.orDie)
     const files = [...dirs.flatMap((dir) => ALL_CONFIG_FILES.map((file) => path.join(dir, file))), ...roots]
-    return files.find((file) => existsSync(file)) ?? path.join(input.directory, ".kilo", "kilo.json")
+    return files.find((file) => existsSync(file)) ?? path.join(input.directory, ".kilo", "kilo.jsonc")
   })
 
   export const updateProjectConfig = Effect.fn("KilocodeConfig.updateProjectConfig")(function* (input: {
@@ -96,10 +93,12 @@ export namespace KilocodeConfig {
     writable: (config: Config.Info) => Config.Info
   }) {
     const file = yield* projectConfigUpdateTarget(input)
-    const before = (yield* input.read(file)) ?? "{}"
+    const source = yield* input.read(file)
+    const before = source ?? "{}"
     const patch = input.writable(input.config)
 
     if (file.endsWith(".jsonc")) {
+      if (source === undefined && Object.keys(mergeConfig({}, patch)).length === 0) return
       const updated = input.patch(before, patch)
       yield* input.fs.writeWithDirs(file, updated).pipe(Effect.orDie)
       return
@@ -107,8 +106,32 @@ export namespace KilocodeConfig {
 
     const existing = input.parse(before, file)
     const merged = mergeConfig(input.writable(existing), patch)
+    if (source === undefined && Object.keys(merged).length === 0) return
     yield* input.fs.writeWithDirs(file, JSON.stringify(merged, null, 2)).pipe(Effect.orDie)
   })
+
+  export function scopeIndexing(info: Config.Info, scope: "global" | "local"): Config.Info {
+    if (scope !== "global") return info
+    return stripGlobalIndexing(info)
+  }
+
+  export function retireIndexingFlag(info: Record<string, unknown>, source: string) {
+    if (!isRecord(info.experimental) || !("semantic_indexing" in info.experimental)) return info
+    const experimental = { ...info.experimental }
+    delete experimental.semantic_indexing
+    log.warn("ignored retired experimental.semantic_indexing config; use indexing.enabled instead", { path: source })
+    return { ...info, experimental }
+  }
+
+  function stripGlobalIndexing(info: Config.Info): Config.Info {
+    // Indexing provider/storage settings can be global, but enablement is exposed separately from project enablement.
+    if (info.indexing?.enabled === undefined) return info
+    const indexing = Object.fromEntries(Object.entries(info.indexing).filter(([key]) => key !== "enabled"))
+    if (Object.keys(indexing).length > 0) return { ...info, indexing }
+    const copy = { ...info }
+    delete copy.indexing
+    return copy
+  }
 
   // ── Warning helpers ──────────────────────────────────────────────────
 
@@ -132,8 +155,10 @@ export namespace KilocodeConfig {
     return undefined
   }
 
-  /** Format Zod issues into a human-readable string. */
-  export function formatIssues(issues: z.core.$ZodIssue[]) {
+  type Issue = { readonly message: string; readonly path: readonly string[]; readonly [key: string]: unknown }
+
+  /** Format schema issues into a human-readable string. */
+  export function formatIssues(issues: readonly Issue[]) {
     return issues
       .map((issue) => {
         const loc = issue.path.map(String).join(".")
@@ -147,7 +172,7 @@ export namespace KilocodeConfig {
   export async function handleInvalid(
     kind: "agent" | "command",
     item: string,
-    issues: z.core.$ZodIssue[],
+    issues: readonly Issue[],
     cause: Error,
     warnings?: Config.Warning[],
   ) {
@@ -156,8 +181,9 @@ export namespace KilocodeConfig {
     const err = new ConfigError.InvalidError({ path: item, issues }, { cause })
     if (warnings) warnings.push({ path: item, message, detail: text || undefined })
     try {
-      const { Session } = await import("@/session")
-      Bus.publish(Session.Event.Error, { error: new NamedError.Unknown({ message }).toObject() })
+      const [{ Session }, { capture }] = await Promise.all([import("@/session/session"), import("@/kilocode/instance")])
+      const ctx = capture()
+      if (ctx) Bus.publish(ctx, Session.Event.Error, { error: new NamedError.Unknown({ message }).toObject() })
     } catch (e) {
       log.warn("could not publish session error", { message, err: e })
     }
@@ -245,8 +271,8 @@ export namespace KilocodeConfig {
       log.warn("failed to load kilocode rules", { error: err })
     }
 
-    // Load Kilocode MCP servers (skip global VSCode extension paths unless running in the extension)
-    const skipGlobal = process.env["KILO_PLATFORM"] !== "vscode"
+    // Load Kilocode MCP servers (skip global VSCode extension paths unless running in an editor or Console daemon)
+    const skipGlobal = process.env["KILO_PLATFORM"] !== "vscode" && process.env["KILOCODE_FEATURE"] !== "daemon"
     const mcp = await McpMigrator.loadMcpConfig(input.projectDir, skipGlobal)
     if (Object.keys(mcp).length > 0) {
       result = input.merge(result, { mcp })
@@ -319,14 +345,20 @@ export namespace KilocodeConfig {
     // no global config → new user, they'll get the new bash:ask default
     if (existing.length === 0 && !hasLegacy) return
 
+    const configs: Array<{ file: string; data: Record<string, unknown> }> = []
     // check if any config file already has an explicit bash permission
     for (const file of existing) {
       const text = await Bun.file(file)
         .text()
         .catch(() => "")
       const data = parseJsonc(text) ?? {}
-      if (data.permission?.bash) return
+      configs.push({ file, data })
+      if (isRecord(data.permission) && data.permission.bash) return
     }
+
+    // A schema-only file is generated for editor completion. It does not mean
+    // the user predates the bash permission default.
+    if (!hasLegacy && configs.every((item) => Object.keys(item.data).every((key) => key === "$schema"))) return
 
     // also check legacy TOML config for bash permission
     if (hasLegacy) {

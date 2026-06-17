@@ -136,6 +136,27 @@ Imported work stays associated with its branch or worktree and can be continued 
 - Use session history to reopen local sessions or preview cloud sessions
 - Continue a cloud session locally from Agent Manager using the same extension sign-in and provider settings
 
+### Renaming Worktrees
+
+Double-click a worktree name to edit its label inline. You can also right-click the worktree and choose **Rename**. Press `Enter` or click outside the field to save, or press `Escape` to cancel.
+
+Renaming a worktree changes only the label shown in Agent Manager. It does not rename the underlying git branch.
+
+## Starting Sessions From Chat
+
+Kilo can start Agent Manager sessions from chat with the `agent_manager` tool. It is available by default only in the VS Code extension because Agent Manager is an extension feature.
+
+The tool supports two modes:
+
+| Mode | Behavior |
+|---|---|
+| `worktree` | Creates one Agent Manager git worktree and session per task |
+| `local` | Creates Agent Manager sessions in the current workspace without git worktree isolation |
+
+Each request can include 1-20 tasks. Each task must include at least one of `prompt`, `name`, or `branchName`. Use `versions: true` only when the tasks are alternate versions of the same work to compare; otherwise, multiple tasks start as independent sessions.
+
+The tool uses the `agent_manager` permission. Approval prompts are scoped to the requested mode, so approving `worktree` does not automatically approve `local`.
+
 ## Sections
 
 Sections let you group worktrees into collapsible, color-coded folders in the sidebar. Use them to organize your workflow however you like — by status ("Review Pending", "In Progress"), by project area ("Frontend", "Backend"), priority, or any other scheme that fits.
@@ -153,7 +174,7 @@ Sections let you group worktrees into collapsible, color-coded folders in the si
 
 Multi-version worktrees (created via Multi-Version Mode) are moved together — assigning one version to a section moves all versions in the group.
 
-### Renaming
+### Renaming Sections
 
 Right-click the section header and select **Rename Section**. An inline text field appears — type the new name and press `Enter` to confirm or `Escape` to cancel.
 
@@ -187,6 +208,7 @@ Press `Cmd+D` (macOS) / `Ctrl+D` (Windows/Linux) to toggle the diff panel. It sh
 - Select files and click **Apply to local** to copy the worktree's changes onto your local checkout of the base branch
 - Conflicts are surfaced with a resolution dialog
 - Supports unified and split diff views
+- Markdown files include an eye/code toggle in the file header to switch between rendered Markdown and the raw diff
 - **Drag file headers into chat** — drag a file header from the diff panel into the chat input to insert an `@file` mention, giving the agent context about specific changed files
 
 See [Agent Manager Workflows](/docs/automate/agent-manager-workflows#merging-worktree-and-parent-branch) for the full integration story, including when to apply locally vs. merge directly vs. open a pull request.

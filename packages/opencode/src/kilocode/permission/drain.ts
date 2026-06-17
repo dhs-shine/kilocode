@@ -2,6 +2,7 @@ import { Bus } from "@/bus"
 import { Deferred, Effect } from "effect"
 import { Permission } from "@/permission"
 import { ConfigProtection } from "@/kilocode/permission/config-paths"
+import { Instance } from "@/kilocode/instance"
 
 interface PendingEntry {
   info: Permission.Request
@@ -27,8 +28,10 @@ export function drainCovered(
       // Never auto-resolve config file edit permissions
       if (ConfigProtection.isRequest(entry.info)) continue
       const actions = entry.info.patterns.map((pattern: string) => {
-        const rule = Permission.evaluate(entry.info.permission, pattern, entry.ruleset, approved)
-        const hard = entry.hardRuleset ? Permission.evaluate(entry.info.permission, pattern, entry.hardRuleset) : undefined
+        const rule = Permission.resolve(entry.info.permission, pattern, entry.ruleset, approved)
+        const hard = entry.hardRuleset
+          ? Permission.evaluate(entry.info.permission, pattern, entry.hardRuleset)
+          : undefined
         if (hard?.action === "deny") return hard
         return rule
       })
@@ -37,14 +40,14 @@ export function drainCovered(
       if (!denied && !allowed) continue
       pending.delete(id)
       if (denied) {
-        void Bus.publish(Permission.Event.Replied, {
+        void Bus.publish(Instance.current, Permission.Event.Replied, {
           sessionID: entry.info.sessionID,
           requestID: entry.info.id,
           reply: "reject",
         })
         yield* Deferred.fail(entry.deferred, new Permission.RejectedError())
       } else {
-        void Bus.publish(Permission.Event.Replied, {
+        void Bus.publish(Instance.current, Permission.Event.Replied, {
           sessionID: entry.info.sessionID,
           requestID: entry.info.id,
           reply: "always",

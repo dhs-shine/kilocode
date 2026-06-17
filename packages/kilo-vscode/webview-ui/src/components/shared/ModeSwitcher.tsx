@@ -7,12 +7,13 @@
  * ModeSwitcher     — thin wrapper wired to session context for chat usage.
  */
 
-import { Component, createSignal, onCleanup, For, Show } from "solid-js"
+import { type Accessor, Component, createSignal, onCleanup, For, Show } from "solid-js"
 import { PopupSelector } from "./PopupSelector"
 import { Button } from "@kilocode/kilo-ui/button"
 import { useSession } from "../../context/session"
 import { useLanguage } from "../../context/language"
 import type { AgentInfo } from "../../types/messages"
+import { isEnterKeyCommitNotIme } from "../../utils/ime-enter"
 
 /** Format an agent for display. Uses displayName if available, otherwise title-cases the slug. */
 function formatAgentLabel(agent: AgentInfo): string {
@@ -34,6 +35,8 @@ export interface ModeSwitcherBaseProps {
   value: string
   /** Called when the user picks an agent */
   onSelect: (name: string) => void
+  /** Delay outside dismissal while the popover opens inside a dialog. */
+  deferDismiss?: boolean
 }
 
 export const ModeSwitcherBase: Component<ModeSwitcherBaseProps> = (props) => {
@@ -85,7 +88,7 @@ export const ModeSwitcherBase: Component<ModeSwitcherBaseProps> = (props) => {
     } else if (e.key === "End") {
       e.preventDefault()
       focusItem(len - 1)
-    } else if (e.key === "Enter" || e.key === " ") {
+    } else if (e.key === " " || isEnterKeyCommitNotIme(e)) {
       e.preventDefault()
       if (cur >= 0 && cur < len) pick(props.agents[cur].name)
     }
@@ -103,6 +106,7 @@ export const ModeSwitcherBase: Component<ModeSwitcherBaseProps> = (props) => {
         expanded={false}
         placement="top-start"
         minHeight={100}
+        deferDismiss={props.deferDismiss}
         open={open()}
         onOpenChange={onOpen}
         triggerAs={Button}
@@ -139,7 +143,7 @@ export const ModeSwitcherBase: Component<ModeSwitcherBaseProps> = (props) => {
                     <Show when={agent.deprecated}>
                       <span
                         style={{
-                          "font-size": "10px",
+                          "font-size": "var(--kilo-font-size-10)",
                           padding: "1px 5px",
                           "border-radius": "3px",
                           background: "var(--vscode-editorWarning-foreground, #cca700)",
@@ -167,15 +171,20 @@ export const ModeSwitcherBase: Component<ModeSwitcherBaseProps> = (props) => {
 // Chat-specific wrapper (backwards-compatible)
 // ---------------------------------------------------------------------------
 
-export const ModeSwitcher: Component = () => {
+interface ModeSwitcherProps {
+  sessionID?: Accessor<string | undefined>
+}
+
+export const ModeSwitcher: Component<ModeSwitcherProps> = (props) => {
   const session = useSession()
+  const id = () => props.sessionID?.()
 
   return (
     <ModeSwitcherBase
       agents={session.agents()}
-      value={session.selectedAgent()}
+      value={session.selectedAgent(id())}
       onSelect={(name) => {
-        session.selectAgent(name)
+        session.selectAgent(name, id())
         requestAnimationFrame(() => window.dispatchEvent(new Event("focusPrompt")))
       }}
     />
