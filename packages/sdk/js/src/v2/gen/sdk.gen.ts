@@ -91,6 +91,8 @@ import type {
   InstanceDisposeResponses,
   KiloAudioTranscriptionsErrors,
   KiloAudioTranscriptionsResponses,
+  KiloAuthStatusErrors,
+  KiloAuthStatusResponses,
   KiloClawChatCredentialsResponses,
   KiloClawStatusErrors,
   KiloClawStatusResponses,
@@ -1195,6 +1197,7 @@ export class Session extends HeyApiClient {
       workspace?: string
       projectID?: string
       worktrees?: boolean
+      current?: "true" | "false"
       roots?: boolean | "true" | "false"
       start?: number
       cursor?: number
@@ -1213,6 +1216,7 @@ export class Session extends HeyApiClient {
             { in: "query", key: "workspace" },
             { in: "query", key: "projectID" },
             { in: "query", key: "worktrees" },
+            { in: "query", key: "current" },
             { in: "query", key: "roots" },
             { in: "query", key: "start" },
             { in: "query", key: "cursor" },
@@ -1649,7 +1653,7 @@ export class Worktree extends HeyApiClient {
   /**
    * List worktrees
    *
-   * List all sandbox worktrees for the current project.
+   * List all git worktrees for the current project and whether Kilo manages them.
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
@@ -5046,14 +5050,14 @@ export class Model extends HeyApiClient {
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
-      instance?: {
+      location?: {
         directory?: string
         workspace?: string
       }
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "instance" }] }])
+    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "location" }] }])
     return (options?.client ?? this.client).get<V2ModelListResponses, unknown, ThrowOnError>({
       url: "/api/model",
       ...options,
@@ -5070,14 +5074,14 @@ export class Provider2 extends HeyApiClient {
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
-      instance?: {
+      location?: {
         directory?: string
         workspace?: string
       }
     },
     options?: Options<never, ThrowOnError>,
   ) {
-    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "instance" }] }])
+    const params = buildClientParams([parameters], [{ args: [{ in: "query", key: "location" }] }])
     return (options?.client ?? this.client).get<V2ProviderListResponses, unknown, ThrowOnError>({
       url: "/api/provider",
       ...options,
@@ -5093,7 +5097,7 @@ export class Provider2 extends HeyApiClient {
   public get<ThrowOnError extends boolean = false>(
     parameters: {
       providerID: string
-      instance?: {
+      location?: {
         directory?: string
         workspace?: string
       }
@@ -5106,7 +5110,7 @@ export class Provider2 extends HeyApiClient {
         {
           args: [
             { in: "path", key: "providerID" },
-            { in: "query", key: "instance" },
+            { in: "query", key: "location" },
           ],
         },
       ],
@@ -6522,6 +6526,36 @@ export class Kilo extends HeyApiClient {
   }
 
   /**
+   * Get Kilo authentication status
+   *
+   * Check whether a locally stored Kilo credential can authenticate Gateway requests
+   */
+  public authStatus<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<KiloAuthStatusResponses, KiloAuthStatusErrors, ThrowOnError>({
+      url: "/kilo/auth-status",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
    * Get organization custom modes
    *
    * Fetch custom modes defined for the current organization
@@ -7169,7 +7203,7 @@ export class Kilocode extends HeyApiClient {
   /**
    * Remove a skill
    *
-   * Remove a skill by deleting its directory from disk and clearing it from cache.
+   * Remove a skill by deleting its manifest from disk and clearing it from cache.
    */
   public removeSkill<ThrowOnError extends boolean = false>(
     parameters?: {

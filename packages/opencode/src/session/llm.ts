@@ -44,7 +44,7 @@ import { KiloSessionOverflow } from "@/kilocode/session/overflow"
 import { SessionExport } from "@/kilocode/session-export"
 import { getActiveOrg } from "@/kilocode/session-export/eligibility"
 // kilocode_change end
-import { InstallationVersion } from "@opencode-ai/core/installation/version"
+import { USER_AGENT } from "@/installation" // kilocode_change
 import { EffectBridge } from "@/effect/bridge"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import * as Option from "effect/Option"
@@ -215,7 +215,7 @@ const live: Layer.Layer<
           maxOutputTokens:
             input.model.api.npm === "@ai-sdk/openai-compatible" && input.model.api.id.toLowerCase().includes("gpt-5")
               ? undefined
-              : ProviderTransform.maxOutputTokens(input.model),
+              : ProviderTransform.maxOutputTokens(input.model, flags.outputTokenMax),
           // kilocode_change end
           options,
         },
@@ -296,7 +296,7 @@ const live: Layer.Layer<
         KiloSessionOverflow.shouldCompact({
           cfg,
           model: input.model,
-          usable: usable({ cfg, model: input.model }),
+          usable: usable({ cfg, model: input.model, outputTokenMax: flags.outputTokenMax }), // kilocode_change
           tokens: usage.normalized,
           continuation: usage.continuation,
         })
@@ -346,7 +346,7 @@ const live: Layer.Layer<
 
         const bridge = yield* EffectBridge.make()
         const approvedToolsForSession = new Set<string>()
-        workflowModel.approvalHandler = InstanceState.bind(async (approvalTools) => {
+        workflowModel.approvalHandler = bridge.bind(async (approvalTools) => {
           const uniqueNames = [...new Set(approvalTools.map((t: { name: string }) => t.name))] as string[]
           // Auto-approve tools that were already approved in this session
           // (prevents infinite approval loops for server-side MCP tools)
@@ -491,12 +491,12 @@ const live: Layer.Layer<
                 "x-kilo-session": input.sessionID,
                 "x-kilo-request": input.user.id,
                 "x-kilo-client": flags.client,
-                "User-Agent": `opencode/${InstallationVersion}`,
+                "User-Agent": USER_AGENT, // kilocode_change
               }
             : {
                 "x-session-affinity": input.sessionID,
                 ...(input.parentSessionID ? { "x-parent-session-id": input.parentSessionID } : {}),
-                "User-Agent": `opencode/${InstallationVersion}`,
+                "User-Agent": USER_AGENT, // kilocode_change
                 ...(input.model.providerID !== "anthropic" ? DEFAULT_HEADERS : undefined), // kilocode_change
               }),
           // kilocode_change start - headers for kilo provider
