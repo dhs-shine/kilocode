@@ -77,6 +77,7 @@ export const dict = {
   "agentManager.shortcuts.nextItem": "รายการถัดไป",
   "agentManager.shortcuts.newWorktree": "Worktree ใหม่",
   "agentManager.shortcuts.openWorktree": "เปิด Worktree",
+  "agentManager.shortcuts.openPR": "เปิด Pull Request",
   "agentManager.shortcuts.advancedWorktree": "กำหนดค่า worktree ใหม่",
   "agentManager.shortcuts.deleteWorktree": "ลบ Worktree",
   "agentManager.shortcuts.previousTab": "แท็บก่อนหน้า",
