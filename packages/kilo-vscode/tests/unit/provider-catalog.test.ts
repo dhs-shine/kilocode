@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test"
 
 import type { Provider } from "../../webview-ui/src/types/messages"
-import { isPopularProvider, popularProviderIndex, sortProviders } from "../../webview-ui/src/components/settings/provider-catalog"
+import {
+  isPopularProvider,
+  popularProviderIndex,
+  sortProviders,
+} from "../../webview-ui/src/components/settings/provider-catalog"
 
 function provider(id: string, metadata?: Provider["metadata"]): Provider {
   return {
