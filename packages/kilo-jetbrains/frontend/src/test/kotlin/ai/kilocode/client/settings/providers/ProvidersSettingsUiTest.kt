@@ -163,6 +163,23 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         assertEquals("Popular providers", providerListSectionTitle(rows, 0))
     }
 
+    fun `test popular rows use fallback order without metadata`() {
+        val rows = providerListRows(
+            ProviderSettingsDto(
+                providers = listOf(
+                    provider("unknown", "Unknown"),
+                    provider("openai", "OpenAI"),
+                    provider("anthropic", "Anthropic"),
+                ),
+            ),
+            "",
+        )
+
+        assertEquals(listOf("anthropic", "openai", "unknown"), rows.map { it.key })
+        assertEquals("Popular providers", providerListSectionTitle(rows, 0))
+        assertEquals("All providers", providerListSectionTitle(rows, 2))
+    }
+
     fun `test connected providers appear first and are not duplicated in popular section`() {
         val rows = providerListRows(
             ProviderSettingsDto(
