@@ -1746,6 +1746,18 @@ export class AgentManagerProvider implements Disposable {
         getClient: () => this.connectionService.getClient(),
         createWorktreeOnDisk: (opts) => this.createWorktreeOnDisk(opts),
         runSetupScript: (p, b, id) => this.runSetupScriptForWorktree(p, b, id),
+        cleanupWorktree: async (id) => {
+          await this.onDeleteWorktree(id)
+        },
+        notifyError: (error, result, id) => {
+          this.postToWebview({
+            type: "agentManager.worktreeSetup",
+            status: "error",
+            message: error,
+            branch: result.branch,
+            worktreeId: id,
+          })
+        },
         getStateManager: () => this.getStateManager(),
         registerWorktreeSession: (sid, dir) => this.registerWorktreeSession(sid, dir),
         registerSession: (session) => this.panel?.sessions.registerSession(session),
