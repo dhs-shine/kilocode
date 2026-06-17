@@ -1630,9 +1630,15 @@ export type Model = {
 export type Provider = {
   id: string
   name: string
+  description?: string
   source: "env" | "config" | "custom" | "api"
   env: Array<string>
   key?: string
+  metadata?: {
+    noteKey?: string
+    icon?: string
+    priority?: number
+  }
   options: {
     [key: string]: unknown
   }
@@ -2335,6 +2341,10 @@ export type TuiConfigGetResponse = {
   plugin_enabled?: {
     [key: string]: boolean
   }
+  /**
+   * Status icon style shown in terminal titles
+   */
+  title_icon?: "none" | "unicode" | "emojis"
   scroll_speed?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
   scroll_acceleration?: {
     enabled: boolean
@@ -9628,6 +9638,10 @@ export type TuiConfigUpdateData = {
     plugin_enabled?: {
       [key: string]: boolean
     }
+    /**
+     * Status icon style shown in terminal titles
+     */
+    title_icon?: "none" | "unicode" | "emojis"
     scroll_speed?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
     scroll_acceleration?: {
       enabled: boolean

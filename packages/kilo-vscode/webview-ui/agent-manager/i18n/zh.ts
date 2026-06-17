@@ -77,6 +77,7 @@ export const dict = {
   "agentManager.shortcuts.nextItem": "下一项",
   "agentManager.shortcuts.newWorktree": "新建 Worktree",
   "agentManager.shortcuts.openWorktree": "打开 Worktree",
+  "agentManager.shortcuts.openPR": "打开 PR",
   "agentManager.shortcuts.advancedWorktree": "配置新 worktree",
   "agentManager.shortcuts.deleteWorktree": "删除 Worktree",
   "agentManager.shortcuts.previousTab": "上一个标签页",

@@ -5384,6 +5384,7 @@ export class Config3 extends HeyApiClient {
       plugin_enabled?: {
         [key: string]: boolean
       }
+      title_icon?: "none" | "unicode" | "emojis"
       scroll_speed?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
       scroll_acceleration?: {
         enabled: boolean
@@ -5412,6 +5413,7 @@ export class Config3 extends HeyApiClient {
             { in: "body", key: "keybinds" },
             { in: "body", key: "plugin" },
             { in: "body", key: "plugin_enabled" },
+            { in: "body", key: "title_icon" },
             { in: "body", key: "scroll_speed" },
             { in: "body", key: "scroll_acceleration" },
             { in: "body", key: "diff_style" },

@@ -12572,6 +12572,11 @@
                       "type": "boolean"
                     }
                   },
+                  "title_icon": {
+                    "type": "string",
+                    "enum": ["none", "unicode", "emojis"],
+                    "description": "Status icon style shown in terminal titles"
+                  },
                   "scroll_speed": {
                     "anyOf": [
                       {
@@ -21319,6 +21324,9 @@
           "name": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "source": {
             "type": "string",
             "enum": ["env", "config", "custom", "api"]
@@ -21331,6 +21339,21 @@
           },
           "key": {
             "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "noteKey": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "priority": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
           },
           "options": {
             "type": "object"
@@ -23431,6 +23454,11 @@
             "additionalProperties": {
               "type": "boolean"
             }
+          },
+          "title_icon": {
+            "type": "string",
+            "enum": ["none", "unicode", "emojis"],
+            "description": "Status icon style shown in terminal titles"
           },
           "scroll_speed": {
             "anyOf": [
