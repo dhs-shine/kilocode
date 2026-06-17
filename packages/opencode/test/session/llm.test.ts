@@ -23,7 +23,7 @@ import { Permission } from "@/permission"
 import { LLMAISDK } from "@/session/llm/ai-sdk"
 import { Session as SessionNs } from "@/session/session"
 
-type ConfigModel = NonNullable<NonNullable<Config.Info["provider"]>[string]["models"]>[string]
+type ConfigModel = NonNullable<NonNullable<NonNullable<Config.Info["provider"]>[string]>["models"]>[string] // kilocode_change
 
 const openAIConfig = (model: ModelsDev.Provider["models"][string], baseURL: string): Partial<Config.Info> => {
   const { experimental: _experimental, ...configModel } = model
@@ -443,6 +443,35 @@ describe("session.llm.ai-sdk adapter", () => {
       { type: "reasoning-end", id: "reasoning-0" },
     ])
   })
+
+  // kilocode_change start - preserve AI SDK raw usage for Kilo provider billing
+  test("preserves raw usage in native usage provider metadata", async () => {
+    const events = await adapt([
+      uncheckedAdapterEvent({
+        type: "finish-step",
+        finishReason: "stop",
+        usage: {
+          inputTokens: 10,
+          outputTokens: 5,
+          totalTokens: 15,
+          raw: {
+            cost: 0.01,
+            cost_details: { upstream_inference_cost: 0.02 },
+          },
+        },
+      }),
+    ])
+
+    const step = events[0]
+    if (step.type !== "step-finish") throw new Error("expected step-finish")
+    expect(step.usage?.providerMetadata).toEqual({
+      aiSdk: {
+        cost: 0.01,
+        cost_details: { upstream_inference_cost: 0.02 },
+      },
+    })
+  })
+  // kilocode_change end
 
   // Anthropic emits cache write counts in providerMetadata.anthropic.cacheCreationInputTokens
   // rather than usage.inputTokenDetails.cacheWriteTokens. Session.getUsage falls back to the

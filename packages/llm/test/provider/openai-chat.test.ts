@@ -19,7 +19,6 @@ const model = OpenAIChat.route
   .with({
     endpoint: {
       baseURL: "https://api.openai.test/v1/",
-      apiKey: "fixture", // kilocode_change
     },
     auth: Auth.bearer("test"),
   })

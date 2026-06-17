@@ -29,7 +29,8 @@ export function VirtualDiffList<T>(props: VirtualDiffListProps<T>) {
           data={props.data}
           scrollRef={state.scroll}
           keepMounted={props.keep}
-          overscan={4}
+          // Use a 4-row overscan, so 4x the estimated row size.
+          bufferSize={1680}
           itemSize={420}
         >
           {props.render}

@@ -26,6 +26,7 @@ import { type DeepMutable } from "@opencode-ai/core/schema"
 import * as KiloAgent from "@/kilocode/agent" // kilocode_change
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { Reference } from "@/reference/reference" // kilocode_change
+import { ConfigReference } from "@/config/reference" // kilocode_change
 
 export const Info = Schema.Struct({
   name: Schema.String,
@@ -368,7 +369,7 @@ export const layer = Layer.effect(
 
         if (flags.experimentalScout) {
           const resolvedReferences = Reference.resolveAll({
-            references: cfg.reference ?? {},
+            references: ConfigReference.normalize(cfg.reference ?? {}), // kilocode_change
             directory: ctx.directory,
             worktree: ctx.worktree,
           })

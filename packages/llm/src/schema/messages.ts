@@ -51,40 +51,41 @@ export type ToolResultMediaPart = Schema.Schema.Type<typeof ToolResultMediaPart>
 export const ToolResultContentPart = Schema.Union([TextPart, ToolResultMediaPart])
 export type ToolResultContentPart = Schema.Schema.Type<typeof ToolResultContentPart>
 
+// kilocode_change start - avoid circular inference rejected by Kilo's newer tsgo
+const toolResultValueSchema = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal("json"),
+    value: Schema.Unknown,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("text"),
+    value: Schema.Unknown,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("error"),
+    value: Schema.Unknown,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("content"),
+    value: Schema.Array(ToolResultContentPart),
+  }),
+]).annotate({ identifier: "LLM.ToolResult" })
+export type ToolResultValue = Schema.Schema.Type<typeof toolResultValueSchema>
+
 const isToolResultValue = (value: unknown): value is ToolResultValue =>
   isRecord(value) &&
   (value.type === "text" || value.type === "json" || value.type === "error" || value.type === "content") &&
   "value" in value
 
-export const ToolResultValue = Object.assign(
-  Schema.Union([
-    Schema.Struct({
-      type: Schema.Literal("json"),
-      value: Schema.Unknown,
-    }),
-    Schema.Struct({
-      type: Schema.Literal("text"),
-      value: Schema.Unknown,
-    }),
-    Schema.Struct({
-      type: Schema.Literal("error"),
-      value: Schema.Unknown,
-    }),
-    Schema.Struct({
-      type: Schema.Literal("content"),
-      value: Schema.Array(ToolResultContentPart),
-    }),
-  ]).annotate({ identifier: "LLM.ToolResult" }),
-  {
-    is: isToolResultValue,
-    make: (value: unknown, type: ToolResultValue["type"] = "json"): ToolResultValue => {
-      if (isToolResultValue(value)) return value
-      if (type === "content") return { type, value: Array.isArray(value) ? value : [] }
-      return { type, value }
-    },
+export const ToolResultValue = Object.assign(toolResultValueSchema, {
+  is: isToolResultValue,
+  make: (value: unknown, type: ToolResultValue["type"] = "json"): ToolResultValue => {
+    if (isToolResultValue(value)) return value
+    if (type === "content") return { type, value: Array.isArray(value) ? value : [] }
+    return { type, value }
   },
-)
-export type ToolResultValue = Schema.Schema.Type<typeof ToolResultValue>
+})
+// kilocode_change end
 
 export const ToolCallPart = Object.assign(
   Schema.Struct({

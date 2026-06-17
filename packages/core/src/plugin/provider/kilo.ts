@@ -1,10 +1,9 @@
-// kilocode_change - new file
-import { createKilo, KILO_OPENROUTER_BASE } from "@kilocode/kilo-gateway"
+import { createKilo, KILO_OPENROUTER_BASE } from "@kilocode/kilo-gateway" // kilocode_change
 import { Effect } from "effect"
 import { PluginV2 } from "../../plugin"
-import { ProviderV2 } from "../../provider"
+import { ProviderV2 } from "../../provider" // kilocode_change
 
-const id = ProviderV2.ID.make("kilo")
+const id = ProviderV2.ID.make("kilo") // kilocode_change
 
 export const KiloPlugin = PluginV2.define({
   id: PluginV2.ID.make("kilo"),
@@ -12,8 +11,9 @@ export const KiloPlugin = PluginV2.define({
     return {
       "catalog.transform": Effect.fn(function* (evt) {
         for (const item of evt.data) {
-          if (item.provider.id !== id) continue
+          if (item.provider.id !== id) continue // kilocode_change
           evt.provider.update(item.provider.id, (provider) => {
+            // kilocode_change start
             const options = provider.options.aisdk.provider
             const token = options.kilocodeToken ?? options.apiKey ?? process.env.KILO_API_KEY
             const org = process.env.KILO_ORG_ID ?? options.kilocodeOrganizationId
@@ -23,18 +23,23 @@ export const KiloPlugin = PluginV2.define({
               package: "@kilocode/kilo-gateway",
               url: KILO_OPENROUTER_BASE,
             }
+            // kilocode_change end
             provider.options.headers["HTTP-Referer"] = "https://kilo.ai/"
+            // kilocode_change start
             provider.options.headers["X-Title"] = "Kilo Code"
             options.kilocodeToken = token ?? "anonymous"
             if (org) options.kilocodeOrganizationId = org
             if (!provider.enabled) provider.enabled = { via: "custom", data: { anonymous: true } }
+            // kilocode_change end
           })
         }
       }),
+      // kilocode_change start
       "aisdk.sdk": Effect.fn(function* (evt) {
         if (evt.model.providerID !== id) return
         evt.sdk = createKilo(evt.options)
       }),
+      // kilocode_change end
     }
   }),
 })

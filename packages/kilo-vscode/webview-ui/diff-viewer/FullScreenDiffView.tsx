@@ -171,7 +171,7 @@ export const FullScreenDiffView: Component<FullScreenDiffViewProps> = (props) =>
 
   const preserveScroll = (fn: () => void) => {
     const handle = virtualizer()
-    const index = handle?.findStartIndex()
+    const index = handle?.findItemIndex(handle.scrollOffset)
     const file = index === undefined ? undefined : rows()[index]?.file
     const offset = index === undefined ? 0 : (handle?.scrollOffset ?? 0) - (handle?.getItemOffset(index) ?? 0)
     fn()
@@ -462,8 +462,9 @@ export const FullScreenDiffView: Component<FullScreenDiffViewProps> = (props) =>
     requestAnimationFrame(() => {
       const index = rows().findIndex((diff) => diff.file === path)
       if (index < 0) return
-      const current = virtualizer()?.findStartIndex() ?? index
-      virtualizer()?.scrollToIndex(index, { offset: -8, smooth: Math.abs(index - current) <= 8 })
+      const handle = virtualizer()
+      const current = handle?.findItemIndex(handle.scrollOffset) ?? index
+      handle?.scrollToIndex(index, { offset: -8, smooth: Math.abs(index - current) <= 8 })
     })
   }
 
@@ -474,7 +475,7 @@ export const FullScreenDiffView: Component<FullScreenDiffViewProps> = (props) =>
   const syncActiveFileFromScroll = () => {
     const handle = virtualizer()
     if (!handle) return
-    const file = rows()[handle.findStartIndex()]?.file
+    const file = rows()[handle.findItemIndex(handle.scrollOffset)]?.file
     if (file) setActiveFile(file)
   }
 

@@ -171,7 +171,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
       return
     }
     if (!handle || saved.keys.length === 0) return
-    const index = handle.findStartIndex()
+    const index = handle.findItemIndex(handle.scrollOffset)
     const key = saved.keys[index]
     if (!key) return
     setScroll(id, { type: "anchor", key, offset: handle.scrollOffset - handle.getItemOffset(index) })
@@ -314,7 +314,8 @@ export const MessageList: Component<MessageListProps> = (props) => {
                     scrollRef={scrollEl()}
                     shift={session.messageMutation() === "prepend"}
                     cache={measurement()}
-                    overscan={2}
+                    // Use a 2-row overscan, so 2x the estimated row size.
+                    bufferSize={520}
                     itemSize={260}
                   >
                     {(row, index) => (

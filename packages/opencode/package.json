@@ -122,6 +122,7 @@
     "@octokit/graphql": "9.0.2",
     "@octokit/rest": "catalog:",
     "@openauthjs/openauth": "catalog:",
+    "@opencode-ai/llm": "workspace:*",
     "@opencode-ai/script": "workspace:*",
     "@opencode-ai/ui": "workspace:*",
     "@openrouter/ai-sdk-provider": "2.9.0",
@@ -196,8 +197,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "yargs": "18.0.0",
     "zod": "catalog:",
-    "zod-to-json-schema": "3.24.5",
-    "@opencode-ai/llm": "workspace:*"
+    "zod-to-json-schema": "3.24.5"
   },
   "overrides": {
     "drizzle-orm": "catalog:"
