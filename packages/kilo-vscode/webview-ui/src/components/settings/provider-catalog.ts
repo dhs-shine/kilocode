@@ -12,13 +12,15 @@ export const CUSTOM_PROVIDER_ID = "_custom"
 const fallback = new Set<string>(FALLBACK_PROVIDER_IDS)
 
 export function isPopularProvider(provider: Provider | string) {
-  if (typeof provider !== "string") return provider.metadata?.priority !== undefined
-  return fallback.has(provider)
+  const id = typeof provider === "string" ? provider : provider.id
+  if (typeof provider !== "string" && provider.metadata?.priority !== undefined) return true
+  return fallback.has(id)
 }
 
 export function popularProviderIndex(provider: Provider | string) {
-  if (typeof provider !== "string") return provider.metadata?.priority ?? Number.MAX_SAFE_INTEGER
-  return providerOrderIndex(provider, FALLBACK_PROVIDER_IDS)
+  const id = typeof provider === "string" ? provider : provider.id
+  if (typeof provider !== "string" && provider.metadata?.priority !== undefined) return provider.metadata.priority
+  return providerOrderIndex(id, FALLBACK_PROVIDER_IDS)
 }
 
 function validIcon(id: string | undefined): IconName | undefined {
