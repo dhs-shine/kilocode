@@ -24,19 +24,19 @@ describe("KiloTerminalTitle", () => {
 
   test("format_workingPrefix_prependsThinkingIcon", () => {
     expect(KiloTerminalTitle.format({ base, title: "Build status", indicator: "working" })).toBe(
-      "💭 Kilo CLI | Build status",
+      "◔ Kilo CLI | Build status",
     )
   })
 
   test("format_attentionPrefix_prependsWarningIcon", () => {
     expect(KiloTerminalTitle.format({ base, title: "Build status", indicator: "attention" })).toBe(
-      "🔶 Kilo CLI | Build status",
+      "⚠ Kilo CLI | Build status",
     )
   })
 
   test("format_finishedPrefix_prependsCheckIcon", () => {
     expect(KiloTerminalTitle.format({ base, title: "Build status", indicator: "finished" })).toBe(
-      "✅ Kilo CLI | Build status",
+      "✓ Kilo CLI | Build status",
     )
   })
 
@@ -47,7 +47,7 @@ describe("KiloTerminalTitle", () => {
         title: "12345678901234567890123456789012345678901234567890",
         indicator: "working",
       }),
-    ).toBe("💭 Kilo CLI | 1234567890123456789012345678901234567...")
+    ).toBe("◔ Kilo CLI | 1234567890123456789012345678901234567...")
   })
 
   test("session_newIdleSession_hasNoIndicator", () => {
@@ -69,7 +69,7 @@ describe("KiloTerminalTitle", () => {
         data: data({ session_status: { parent: { type: "busy" } } }),
         done: {},
       }),
-    ).toEqual({ title: "💭 Kilo CLI | Build status", id: "parent", active: true, indicator: "working" })
+    ).toEqual({ title: "◔ Kilo CLI | Build status", id: "parent", active: true, indicator: "working" })
   })
 
   test("session_pendingPermission_overridesBusy", () => {

@@ -46,9 +46,9 @@ export namespace KiloTerminalTitle {
 
   const icon = {
     none: "",
-    working: "💭",
-    attention: "🔶",
-    finished: "✅",
+    working: "◔",
+    attention: "⚠",
+    finished: "✓",
   } satisfies Record<Indicator, string>
 
   export function format(input: { base: string; title?: string; indicator: Indicator }) {
