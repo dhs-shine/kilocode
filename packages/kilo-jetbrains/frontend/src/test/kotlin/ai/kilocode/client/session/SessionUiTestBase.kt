@@ -29,11 +29,15 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.awt.Container
+import java.util.concurrent.Executors
 import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import javax.swing.JLabel
@@ -42,6 +46,7 @@ import javax.swing.JScrollBar
 
 @Suppress("UnstableApiUsage")
 abstract class SessionUiTestBase : BasePlatformTestCase() {
+    private lateinit var dispatcher: ExecutorCoroutineDispatcher
     protected lateinit var scope: CoroutineScope
     protected lateinit var sessions: KiloSessionService
     protected lateinit var app: KiloAppService
@@ -53,7 +58,8 @@ abstract class SessionUiTestBase : BasePlatformTestCase() {
 
     override fun setUp() {
         super.setUp()
-        scope = CoroutineScope(SupervisorJob())
+        dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+        scope = CoroutineScope(SupervisorJob() + dispatcher)
 
         rpc = FakeSessionRpcApi()
         appRpc = FakeAppRpcApi().also {
@@ -76,6 +82,8 @@ abstract class SessionUiTestBase : BasePlatformTestCase() {
         try {
             Disposer.dispose(ui)
             scope.cancel()
+            await(scope.coroutineContext[kotlinx.coroutines.Job]!!)
+            dispatcher.close()
         } finally {
             super.tearDown()
         }
@@ -116,10 +124,19 @@ abstract class SessionUiTestBase : BasePlatformTestCase() {
         (scrollView() as? Container)?.doLayout()
     }
 
-    protected fun settle() = runBlocking {
+    protected fun settle() {
         repeat(5) {
-            delay(100)
+            await(scope.launch {})
             UIUtil.dispatchAllInvocationEvents()
+        }
+    }
+
+    private fun await(job: kotlinx.coroutines.Job) {
+        val end = System.nanoTime() + 5_000_000_000L
+        while (!job.isCompleted) {
+            check(System.nanoTime() < end) { "Timed out draining test coroutines" }
+            UIUtil.dispatchAllInvocationEvents()
+            Thread.yield()
         }
     }
 
@@ -141,7 +158,7 @@ abstract class SessionUiTestBase : BasePlatformTestCase() {
             emit(ChatEventDto.MessageUpdated("ses_test", message(id)), flush = false)
             emit(ChatEventDto.PartUpdated("ses_test", part("part_$i", id, "text", text(i))), flush = false)
         }
-        settleShort(100)
+        settle()
         forceFlush()
         drainScroll()
     }
@@ -149,7 +166,7 @@ abstract class SessionUiTestBase : BasePlatformTestCase() {
     protected fun emit(event: ChatEventDto, flush: Boolean = true) {
         runBlocking { rpc.events.emit(event) }
         if (flush) {
-            settleShort(20)
+            settle()
             forceFlush()
         }
     }

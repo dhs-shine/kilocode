@@ -34,10 +34,14 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import java.awt.event.HierarchyEvent
+import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -96,6 +100,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
     protected lateinit var workspaces: KiloWorkspaceService
     protected lateinit var workspace: Workspace
 
+    private lateinit var dispatcher: ExecutorCoroutineDispatcher
     protected lateinit var scope: CoroutineScope
     protected lateinit var parent: Disposable
 
@@ -105,7 +110,8 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         appRpc = FakeAppRpcApi()
         projectRpc = FakeWorkspaceRpcApi()
 
-        scope = CoroutineScope(SupervisorJob())
+        dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+        scope = CoroutineScope(SupervisorJob() + dispatcher)
         parent = Disposer.newDisposable("test")
 
         sessions = KiloSessionService(project, scope, rpc)
@@ -118,6 +124,8 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         try {
             Disposer.dispose(parent)
             scope.cancel()
+            await(scope.coroutineContext[kotlinx.coroutines.Job]!!)
+            dispatcher.close()
         } finally {
             super.tearDown()
         }
@@ -222,23 +230,14 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
 
     // ------ EDT + coroutine helpers ------
 
-    /** Let coroutines settle without forcing buffered controller delivery. */
-    protected fun settle() = runBlocking {
-        repeat(5) {
-            delay(100)
-            edt { UIUtil.dispatchAllInvocationEvents() }
-        }
+    /** Drain background coroutine and EDT work without forcing buffered controller delivery. */
+    protected fun settle() {
+        drain(false)
     }
 
-    /** Let coroutines settle, force buffered controller delivery, then drain EDT. */
-    protected fun flush() = runBlocking {
-        repeat(5) {
-            delay(100)
-            edt {
-                controllers.forEach { it.flushEvents() }
-                UIUtil.dispatchAllInvocationEvents()
-            }
-        }
+    /** Drain background work, force buffered controller delivery, then drain EDT. */
+    protected fun flush() {
+        drain(true)
     }
 
     protected fun pause(ms: Long) = runBlocking {
@@ -246,6 +245,25 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         repeat((ms / tick).coerceAtLeast(1).toInt()) {
             delay(tick)
             edt { UIUtil.dispatchAllInvocationEvents() }
+        }
+    }
+
+    private fun drain(force: Boolean) {
+        repeat(5) {
+            await(scope.launch {})
+            edt {
+                if (force) controllers.forEach { it.flushEvents() }
+                UIUtil.dispatchAllInvocationEvents()
+            }
+        }
+    }
+
+    private fun await(job: kotlinx.coroutines.Job) {
+        val end = System.nanoTime() + 5_000_000_000L
+        while (!job.isCompleted) {
+            check(System.nanoTime() < end) { "Timed out draining test coroutines" }
+            edt { UIUtil.dispatchAllInvocationEvents() }
+            Thread.yield()
         }
     }
 
