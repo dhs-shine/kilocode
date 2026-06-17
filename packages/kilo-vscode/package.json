@@ -290,6 +290,11 @@
         "category": "Kilo Code"
       },
       {
+        "command": "kilo-code.new.agentManager.openPR",
+        "title": "Agent Manager: Open Pull Request",
+        "category": "Kilo Code"
+      },
+      {
         "command": "kilo-code.new.agentManager.closeWorktree",
         "title": "Agent Manager: Close Worktree",
         "category": "Kilo Code"
@@ -692,6 +697,12 @@
         "command": "kilo-code.new.agentManager.openWorktree",
         "key": "ctrl+shift+o",
         "mac": "cmd+shift+o",
+        "when": "activeWebviewPanelId == 'kilo-code.new.AgentManagerPanel'"
+      },
+      {
+        "command": "kilo-code.new.agentManager.openPR",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
         "when": "activeWebviewPanelId == 'kilo-code.new.AgentManagerPanel'"
       },
       {
