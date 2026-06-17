@@ -35,92 +35,17 @@
 ## [7.0.1-rc.10] - 2026-06-17
 
 ### Added
-- feat(agent-manager): track feature button usage by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11241
-- feat(provider): add MiniMax M-series reasoning toggle by @kapelame in https://github.com/Kilo-Org/kilocode/pull/11236
-- feat(vscode): expand custom provider configuration by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11239
-- feat(vscode): align chat content in readable lane by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11308
-- feat(vscode): remove dead layout setting from Display settings by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11312
-- feat(cli): add prompt-training model filter to Kilo Console by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11262
-- feat(cli): share codebase indexes across worktrees by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11182
-- feat(agent-manager): add close others tab action by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11331
-- feat(vscode): render images in diff viewer by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11258
-- feat(agent-manager): add quick search for worktrees and sessions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11294
-- feat(vscode): support agent switch links by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11317
-- feat(cli): show terminal title status indicators by @shssoichiro in https://github.com/Kilo-Org/kilocode/pull/10781
-- feat(agent-manager): open pull requests with keyboard shortcut by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11367
-- feat(jetbrains): add session copy controls by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11324
+
+- Provider settings management, including provider catalog sections, provider descriptions, provider settings actions, disconnect flows, provider auth handling, and provider/model picker improvements.
+- Session copy controls for chat messages.
 
 ### Fixed
-- fix(ci): skip watch-opencode-releases on forks by @vkeerthivikram in https://github.com/Kilo-Org/kilocode/pull/11269
-- fix(jetbrains): cap prompt input growth by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11275
-- fix(cli): rebrand OpenCode leftovers by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11270
-- fix(jetbrains): clean up restartless unload by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11278
-- fix(cli): stabilize Kilo Console worktree flows by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11279
-- fix(vscode): count pending submission time by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11113
-- fix: support unauthenticated OpenAI-compatible indexing by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11242
-- fix(cli): load Atomic Chat as bundled plugin by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11291
-- fix(vscode): remove diff viewer corner artifacts by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11297
-- fix(cli): improve guidelines for `kilo agent create` by @shssoichiro in https://github.com/Kilo-Org/kilocode/pull/11201
-- fix(vscode): stabilize expanded edit blocks by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11302
-- fix(cli): clean up slow snapshot progress by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11305
-- fix(core): always deny tool calls for system agents by @shssoichiro in https://github.com/Kilo-Org/kilocode/pull/10091
-- fix(cli): restore permission override tests by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11315
-- fix(cli): prevent tests from deleting session database by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11316
-- fix(vscode): remove chat input separator by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11318
-- fix(docs): update Composio toolkits link by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11328
-- fix(vscode): keep custom provider picker open after partial add by @truffle-dev in https://github.com/Kilo-Org/kilocode/pull/10195
-- fix(webview-ui): ignore Enter during IME composition by @singhvishalkr in https://github.com/Kilo-Org/kilocode/pull/10261
-- fix(vscode): restore authenticated speech input by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11295
-- fix(vscode): announce compact Settings tabs by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11348
-- fix(vscode): highlight exact changed characters in diffs by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11349
-- fix(cli): serialize Codex OAuth refresh across processes by @cooper-oai in https://github.com/Kilo-Org/kilocode/pull/10758
-- fix(cli): skip bundled Atomic Chat in plugin loader by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11354
-- fix(vscode): show line numbers in edit approval diffs by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11357
-- fix(cli): identify Kilo in LLM user agent by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11347
-- fix(cli): comment out tips for GitHub Actions features Kilo doesn't offer by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11361
-- fix(agent-manager): clean up failed session moves by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11358
-- fix(jetbrains): harden release skill by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11332
-- fix(kilo-docs): copy JetBrains EAP URL without newline by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11310
-- fix(vscode): widen chat readable lane from 78ch to 88ch for more content space by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11366
-- fix(vscode): improve screen reader model navigation by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11352
-- fix: sync remote sessions across extension surfaces by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11351
-- fix(cli): bound Telemetry.shutdown so unreachable PostHog endpoint cannot block CLI exit by @truffle-dev in https://github.com/Kilo-Org/kilocode/pull/9807
-- fix: silence interrupted session notifications by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11373
 
-### Changed
-- release(jetbrains): v7.0.1-rc.9 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11271
-- Add opencode changeset generator by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11257
-- docs: clarify checkpoint behavior without Git by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11233
-- docs(kilo-docs): document inline session renaming by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/10824
-- docs(kilo-docs): clarify Mistral AI BYOK label by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11290
-- test(jetbrains): make session timeout tests deterministic by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11292
-- ci: disable upstream issue maintenance workflows by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11289
-- [codex] Add code edit block display setting by @Githubguy132010 in https://github.com/Kilo-Org/kilocode/pull/11080
-- ux(cli): change `/copy` command to copy last message by @shssoichiro in https://github.com/Kilo-Org/kilocode/pull/10929
-- Docs: update mobile Kilo Pass link by @evanjacobson in https://github.com/Kilo-Org/kilocode/pull/10700
-- Docs: document webhook trigger overview by @evanjacobson in https://github.com/Kilo-Org/kilocode/pull/10702
-- Docs: document organization custom modes by @evanjacobson in https://github.com/Kilo-Org/kilocode/pull/10693
-- Docs: add DoltHub coverage by @evanjacobson in https://github.com/Kilo-Org/kilocode/pull/10699
-- Docs: update Kilo Pass links by @evanjacobson in https://github.com/Kilo-Org/kilocode/pull/10697
-- refactor(kilo-console): use Kilo UI boundary by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11288
-- test(cli): remove session cancellation timing races by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11299
-- ci: skip unrelated JetBrains tests by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11293
-- docs: document VS Code model deep link protocol handler by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11189
-- docs: rename Development Tools to Settings, add Linear and Composio integration pages by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11313
-- Revise README for improved clarity and details by @bturcotte520 in https://github.com/Kilo-Org/kilocode/pull/11326
-- docs(customize): clarify agent permission rules by @singhvishalkr in https://github.com/Kilo-Org/kilocode/pull/11141
-- ci: add jetbrains container image and fix containers.yml trigger by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11306
-- test(jetbrains): inject UI timers per test by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11309
-- ci: extract JetBrains test workflow by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11339
-- chore: remove 33 unused dependencies across monorepo by @idreesmuhammadqazi-create in https://github.com/Kilo-Org/kilocode/pull/10993
-- chore: remove stale sst-env.d.ts artifacts by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11344
-- chore(cli): remove unused @hono/zod-validator dependency by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11345
-- perf(jetbrains): eliminate fixed waits from session tests by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11343
-- adding alternate language readmes by @bturcotte520 in https://github.com/Kilo-Org/kilocode/pull/11335
-- Polish VS Code tool call previews by @Drixled in https://github.com/Kilo-Org/kilocode/pull/11146
-- Add JetBrains provider settings management by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11221
-- ci: complete the JetBrains test container by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11372
-
+- Cap JetBrains prompt input growth and hide soft wrap glyphs in the prompt field.
+- Keep JetBrains provider toolbars and authentication overlays fixed, and improve provider API key dialog sizing.
+- Clean up restartless unload behavior.
+- Silence interrupted session notifications across clients.
+- Always deny tool calls for system agents.
 
 ## [7.0.1-rc.9] - 2026-06-15
 
