@@ -147,10 +147,13 @@ async function exchangeCodeForTokens(code: string, redirectUri: string, pkce: Pk
   return response.json()
 }
 
-async function refreshAccessToken(refreshToken: string, issuer = ISSUER): Promise<TokenResponse> {
+// kilocode_change start
+async function refreshAccessToken(refreshToken: string, issuer = ISSUER, signal?: AbortSignal): Promise<TokenResponse> {
   const response = await fetch(`${issuer}/oauth/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    signal,
+    headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": `kilo/${InstallationVersion}` },
+    // kilocode_change end
     body: new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: refreshToken,
@@ -463,7 +466,7 @@ export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPlug
                   input,
                   getAuth,
                   auth: currentAuth,
-                  refresh: (token) => refreshAccessToken(token, issuer),
+                  refresh: (token, signal) => refreshAccessToken(token, issuer, signal),
                   account: extractAccountId,
                 })
                   .then((auth) => ({

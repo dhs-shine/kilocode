@@ -7,7 +7,7 @@ import type { MessageV2 } from "../message-v2"
 import type { Provider } from "@/provider/provider"
 import { ProviderTransform } from "@/provider/transform"
 import { SystemPrompt } from "../system"
-import { InstallationVersion } from "@opencode-ai/core/installation/version"
+import { USER_AGENT } from "@/installation" // kilocode_change
 import { Effect, Record } from "effect"
 import { jsonSchema, tool as aiTool, type ModelMessage, type Tool } from "ai"
 import type { Plugin } from "@/plugin"
@@ -25,8 +25,6 @@ import {
 import { Identity } from "@kilocode/kilo-telemetry"
 import { KiloSession } from "@/kilocode/session"
 // kilocode_change end
-
-const USER_AGENT = `opencode/${InstallationVersion}`
 
 type PrepareInput = {
   readonly user: MessageV2.User

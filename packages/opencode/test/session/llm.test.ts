@@ -22,6 +22,7 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { Permission } from "@/permission"
 import { LLMAISDK } from "@/session/llm/ai-sdk"
 import { Session as SessionNs } from "@/session/session"
+import { USER_AGENT } from "../../src/installation" // kilocode_change
 
 type ConfigModel = NonNullable<NonNullable<NonNullable<Config.Info["provider"]>[string]>["models"]>[string] // kilocode_change
 
@@ -1773,8 +1774,10 @@ describe("session.llm.stream", () => {
 
         const capture = yield* Effect.promise(() => request)
         const body = capture.body
+        const headers = capture.headers // kilocode_change
 
         expect(capture.url.pathname.endsWith("/messages")).toBe(true)
+        expect(headers.get("User-Agent")?.split(" ")[0]).toBe(USER_AGENT) // kilocode_change
         const messages = body.messages as Array<{ role: string; content: Array<Record<string, unknown>> }>
         expect(messages[0]?.role).toBe("user")
         expect(messages[0]?.content[0]).toMatchObject({
