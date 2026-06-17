@@ -7,7 +7,6 @@ import path from "path"
 import { fileURLToPath } from "url"
 import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
 import { createRequire } from "module" // kilocode_change
-import { prepareModelsSnapshot } from "./kilocode/models-snapshot" // kilocode_change
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -104,7 +103,7 @@ async function copyKiloConsole(input: string, outputDir: string) {
 }
 // kilocode_change end
 
-// kilocode_change start - validate compiled binaries load the sidecar models snapshot
+// kilocode_change start - validate compiled binaries load the embedded models snapshot
 function smokeEnv(root: string) {
   const env = { ...process.env }
   delete env.KILO_MODELS_PATH
@@ -129,7 +128,7 @@ async function smokeModels(binaryPath: string) {
   try {
     const out = await $`${binaryPath} --pure models anthropic`.env(smokeEnv(root)).text()
     if (out.split(/\r?\n/).some((line) => line.startsWith("anthropic/"))) return
-    throw new Error("Compiled binary did not list Anthropic models from the sidecar snapshot")
+    throw new Error("Compiled binary did not list Anthropic models from the embedded snapshot")
   } finally {
     await fs.promises
       .rm(root, { recursive: true, force: true })
@@ -250,13 +249,6 @@ const targets = singleFlag
     })
   : allTargets
 
-// kilocode_change start - prepare one validated models snapshot before any target compile
-const snapshot = await prepareModelsSnapshot()
-console.log(
-  `Prepared models snapshot from ${snapshot.source} (${snapshot.providers} providers, ${snapshot.models} models)`,
-)
-// kilocode_change end
-
 await $`rm -rf dist`
 const kiloConsoleDist = await buildKiloConsole() // kilocode_change
 
@@ -338,7 +330,6 @@ for (const item of targets) {
     },
   })
 
-  await fs.promises.copyFile(snapshot.path, path.resolve(dir, `dist/${name}/bin/models-snapshot.json`)) // kilocode_change
   await copyTreeSitterWasms(path.resolve(dir, `dist/${name}/bin`)) // kilocode_change
   await copyKiloConsole(kiloConsoleDist, path.resolve(dir, `dist/${name}/bin`)) // kilocode_change
 
