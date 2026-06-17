@@ -23,7 +23,7 @@ jobs:
         run: bun turbo typecheck --filter='!@kilocode/kilo-jetbrains'
 
       - name: Build Kilo Console
-        run: bun run --cwd packages/kilo-console build
+        run: bun turbo build --filter=@kilocode/kilo-console
       # kilocode_change end
 
   # kilocode_change start
