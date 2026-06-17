@@ -185,6 +185,7 @@ const defaultBindings: Record<string, string> = {
   advancedWorktree: isMac ? "⌘⇧N" : "Ctrl+Shift+N",
   closeWorktree: isMac ? "⌘⇧W" : "Ctrl+Shift+W",
   openWorktree: isMac ? "⌘⇧O" : "Ctrl+Shift+O",
+  openPR: isMac ? "⌘⇧R" : "Ctrl+Shift+R",
   agentManagerOpen: isMac ? "⌘⇧M" : "Ctrl+Shift+M",
   cycleAgentMode: isMac ? "⌘." : "Ctrl+.",
   cyclePreviousAgentMode: isMac ? "⌘⇧." : "Ctrl+Shift+.",
@@ -505,6 +506,13 @@ const AgentManagerContent: Component = () => {
     vscode.postMessage({ type: "agentManager.openWorktree", worktreeId: sel })
   }
   const openWindow = metrics.click("open_worktree_window", "tab_toolbar", openWorktreeDirectory)
+
+  const openSelectedPR = () => {
+    const sel = selection()
+    if (!sel || sel === LOCAL || !prStatuses()[sel]) return
+    metrics.track("open_pull_request", "keyboard_shortcut")
+    vscode.postMessage({ type: "agentManager.openPR", worktreeId: sel })
+  }
 
   const runWorktree = (id: string) => {
     const state = runStatuses()[id]?.state ?? "idle"
@@ -1047,6 +1055,7 @@ const AgentManagerContent: Component = () => {
       else if (msg.action === "closeTab") closeActiveTab()
       else if (msg.action === "newWorktree") handleNewWorktreeOrPromote()
       else if (msg.action === "openWorktree") openWorktreeDirectory()
+      else if (msg.action === "openPR") openSelectedPR()
       else if (msg.action === "runScript") runSelected()
       else if (msg.action === "advancedWorktree") showAdvancedWorktreeDialog()
       else if (msg.action === "closeWorktree") closeSelectedWorktree()
@@ -1076,8 +1085,8 @@ const AgentManagerContent: Component = () => {
       if (["t", "w", "n", "d", "e", "f"].includes(e.key.toLowerCase()) && !e.shiftKey) {
         e.preventDefault()
       }
-      // Prevent defaults for shift variants (close worktree, advanced/new open worktree)
-      if (["w", "n", "o"].includes(e.key.toLowerCase()) && e.shiftKey) {
+      // Prevent defaults for shift variants (close worktree, advanced/new/open worktree, open PR)
+      if (["w", "n", "o", "r"].includes(e.key.toLowerCase()) && e.shiftKey) {
         e.preventDefault()
       }
       // Prevent browser defaults for shortcuts help (Cmd/Ctrl+Shift+/)

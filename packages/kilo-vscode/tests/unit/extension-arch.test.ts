@@ -114,6 +114,17 @@ describe("Extension — package.json command sync", () => {
       when: "activeWebviewPanelId == 'kilo-code.new.AgentManagerPanel' && !terminalFocus",
     })
   })
+
+  it("scopes the open PR shortcut to Agent Manager", () => {
+    const binding = pkg.contributes?.keybindings?.find(
+      (item: { command: string }) => item.command === "kilo-code.new.agentManager.openPR",
+    )
+    expect(binding).toMatchObject({
+      key: "ctrl+shift+r",
+      mac: "cmd+shift+r",
+      when: "activeWebviewPanelId == 'kilo-code.new.AgentManagerPanel'",
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------

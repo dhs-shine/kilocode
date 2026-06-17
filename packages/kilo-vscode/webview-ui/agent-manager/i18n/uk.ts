@@ -87,6 +87,7 @@ export const dict = {
   "agentManager.shortcuts.nextItem": "Наступний елемент",
   "agentManager.shortcuts.newWorktree": "Нове робоче дерево",
   "agentManager.shortcuts.openWorktree": "Відкрити робоче дерево",
+  "agentManager.shortcuts.openPR": "Відкрити PR",
   "agentManager.shortcuts.advancedWorktree": "Налаштувати нове worktree",
   "agentManager.shortcuts.deleteWorktree": "Видалити робоче дерево",
   "agentManager.shortcuts.previousTab": "Попередня вкладка",

@@ -81,6 +81,7 @@ export const dict = {
   "agentManager.shortcuts.nextItem": "Sljedeći element",
   "agentManager.shortcuts.newWorktree": "Novi Worktree",
   "agentManager.shortcuts.openWorktree": "Otvori worktree",
+  "agentManager.shortcuts.openPR": "Otvori PR",
   "agentManager.shortcuts.advancedWorktree": "Konfiguriši novi worktree",
   "agentManager.shortcuts.deleteWorktree": "Obriši Worktree",
   "agentManager.shortcuts.previousTab": "Prethodna kartica",

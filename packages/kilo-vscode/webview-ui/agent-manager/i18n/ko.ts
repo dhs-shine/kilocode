@@ -80,6 +80,7 @@ export const dict = {
   "agentManager.shortcuts.nextItem": "다음 항목",
   "agentManager.shortcuts.newWorktree": "새 Worktree",
   "agentManager.shortcuts.openWorktree": "Worktree 열기",
+  "agentManager.shortcuts.openPR": "PR 열기",
   "agentManager.shortcuts.advancedWorktree": "새 worktree 구성",
   "agentManager.shortcuts.deleteWorktree": "Worktree 삭제",
   "agentManager.shortcuts.previousTab": "이전 탭",
