@@ -11,17 +11,16 @@ import {
 import { useVSCode } from "./vscode"
 import type { KilocodeNotification, ExtensionMessage } from "../types/messages"
 
-// Static notifications always shown unconditionally (not fetched from API, not dismissable)
+// Static notifications always shown unconditionally (not fetched from API)
 const STATIC_NOTIFICATIONS: KilocodeNotification[] = [
   {
     id: "star-giveaway-june-2026",
     title: "GitHub Star Giveaway",
-    message: "GitHub Star Giveaway: $500 to 2 people who star us by June 24th",
-    action: { actionText: "Star us on GitHub", actionURL: "https://github.com/Kilo-Org/kilocode/" },
+    message:
+      "We're giving away $500 of AI Credits when we reach 25,000 stars on GitHub. Support us:",
+    action: { actionText: "github.com/Kilo-Org/kilocode", actionURL: "https://github.com/Kilo-Org/kilocode/" },
   },
 ]
-
-const STATIC_IDS = new Set(STATIC_NOTIFICATIONS.map((n) => n.id))
 
 interface NotificationsContextValue {
   notifications: Accessor<KilocodeNotification[]>
@@ -65,13 +64,11 @@ export const NotificationsProvider: ParentComponent = (props) => {
 
   const filteredNotifications = createMemo(() => {
     const dismissed = dismissedIds()
-    const api = notifications().filter((n) => !dismissed.includes(n.id))
-    return [...STATIC_NOTIFICATIONS, ...api]
+    const all = [...STATIC_NOTIFICATIONS, ...notifications()]
+    return all.filter((n) => !dismissed.includes(n.id))
   })
 
   const dismiss = (id: string) => {
-    // Static notifications are always shown and cannot be dismissed
-    if (STATIC_IDS.has(id)) return
     setDismissedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
     vscode.postMessage({ type: "dismissNotification", notificationId: id })
   }
