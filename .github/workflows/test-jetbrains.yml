@@ -55,6 +55,9 @@ jobs:
       - name: Mark workspace as git-safe
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      - name: Install font libraries for JBR
+        run: apt-get install -y --no-install-recommends libfreetype6 libfontconfig1 fonts-dejavu-core
+
       - name: Install dependencies
         run: bun install
 
