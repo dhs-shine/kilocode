@@ -20,6 +20,7 @@ import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.PromptPartDto
 import com.intellij.icons.AllIcons
+import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.CodeCompletionHandlerBase
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.lookup.LookupManager
@@ -33,6 +34,7 @@ import com.intellij.ide.dnd.FileCopyPasteUtil
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.UiDataProvider
@@ -50,6 +52,7 @@ import com.intellij.openapi.keymap.Keymap
 import com.intellij.openapi.keymap.KeymapManagerListener
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.AnimatedIcon
 import com.intellij.ui.JBColor
@@ -105,6 +108,7 @@ class PromptPanel(
         private val WAND_ICON: Icon = IconLoader.getIcon("/icons/wand-sparkles.svg", PromptPanel::class.java)
         private val MENTION_KEY = DefaultLanguageHighlighterColors.METADATA
         private val COMMAND_KEY = DefaultLanguageHighlighterColors.KEYWORD
+        private const val COMPLETION_ACTION_TEXT = "Kilo Prompt Completion"
     }
 
     val mode = ModePicker()
@@ -130,6 +134,8 @@ class PromptPanel(
     private val highlighters = mutableListOf<RangeHighlighter>()
     private val strip = PromptAttachmentStrip(project) { removeAttachment(it) }
     private var bus: MessageBusConnection? = null
+    private var completionAction: AnAction? = null
+    private var completionTarget: JComponent? = null
     private var autoApprove = false
     private var attachment = true
     private var submitting = false
@@ -157,11 +163,13 @@ class PromptPanel(
             ed.settings.isUseSoftWraps = true
             ed.settings.isPaintSoftWraps = false
             ed.settings.isAdditionalPageAtBottom = false
+            ed.putUserData(AutoPopupController.ALWAYS_AUTO_POPUP, true)
             ed.putUserData(PROMPT_ATTACHMENT_PASTE_HANDLER_KEY, PromptAttachmentPasteHandler { processPaste(it) })
             ed.scrollPane.verticalScrollBarPolicy =
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
             ed.scrollPane.horizontalScrollBarPolicy =
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            installCompletionShortcut(ed)
             installFileDrop(ed.contentComponent, "editor")
             installFileDrop(ed.scrollPane, "scroll")
             syncHighlights()
@@ -413,6 +421,7 @@ class PromptPanel(
         root = null
         bus?.disconnect()
         bus = null
+        uninstallCompletionShortcut()
         super.removeNotify()
     }
 
@@ -519,6 +528,34 @@ class PromptPanel(
         lookup.presentation = LookupPresentation.Builder(lookup.presentation)
             .withPositionStrategy(LookupPositionStrategy.ONLY_ABOVE)
             .build()
+    }
+
+    @RequiresEdt
+    private fun installCompletionShortcut(ed: com.intellij.openapi.editor.Editor) {
+        if (completion == null) return
+        val base = ActionManager.getInstance().getAction(IdeActions.ACTION_CODE_COMPLETION) ?: return
+        val action = completionAction ?: object : DumbAwareAction(COMPLETION_ACTION_TEXT) {
+            override fun actionPerformed(e: AnActionEvent) {
+                editor.getEditor(false)?.let(::showCompletion)
+            }
+        }.also { completionAction = it }
+        uninstallCompletionShortcut()
+        val target = ed.contentComponent
+        action.registerCustomShortcutSet(base.shortcutSet, target)
+        completionTarget = target
+    }
+
+    @RequiresEdt
+    private fun refreshCompletionShortcut() {
+        val ed = editor.getEditor(false) ?: return
+        installCompletionShortcut(ed)
+    }
+
+    @RequiresEdt
+    private fun uninstallCompletionShortcut() {
+        val target = completionTarget ?: return
+        completionAction?.unregisterCustomShortcutSet(target)
+        completionTarget = null
     }
 
     @RequiresEdt
@@ -638,6 +675,7 @@ class PromptPanel(
             override fun activeKeymapChanged(keymap: Keymap?) {
                 editor.setPlaceholder(placeholder())
                 syncTooltip()
+                refreshCompletionShortcut()
             }
 
             override fun shortcutsChanged(keymap: Keymap, actionIds: Collection<String>, fromSettings: Boolean) {
@@ -646,6 +684,7 @@ class PromptPanel(
                     editor.setPlaceholder(placeholder())
                     syncTooltip()
                 }
+                if (IdeActions.ACTION_CODE_COMPLETION in actionIds) refreshCompletionShortcut()
             }
         })
     }

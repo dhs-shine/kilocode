@@ -14,6 +14,7 @@ import com.intellij.openapi.components.Service
 import ai.kilocode.log.KiloLog
 import fleet.rpc.client.durable
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flow
@@ -130,6 +131,8 @@ class KiloWorkspaceService internal constructor(
     suspend fun searchFiles(directory: String, query: String, limit: Int = 50): FileSearchResultDto {
         return try {
             call { searchFiles(directory, query, limit) }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             LOG.warn("workspace file search failed for directory=$directory query=$query", e)
             FileSearchResultDto()

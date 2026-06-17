@@ -15,12 +15,18 @@ import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import com.intellij.icons.AllIcons
+import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.notification.Notification
 import com.intellij.notification.Notifications
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionUiKind
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.UiDataProvider
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.Editor
@@ -255,6 +261,39 @@ class PromptPanelTest : BasePlatformTestCase() {
             UIUtil.dispatchAllInvocationEvents()
             assertTrue(field.getEditor(false)!!.markupModel.allHighlighters.size <= 2)
         }
+    }
+
+    fun `test prompt local completion shortcut opens mention lookup`() {
+        rpc.searchResult = ai.kilocode.rpc.dto.FileSearchResultDto(
+            files = listOf(ai.kilocode.rpc.dto.WorkspaceFileDto("src/deploy.ts", "deploy.ts")),
+        )
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        field.text = "@dep"
+        val editor = field.getEditor(false)!!
+        editor.caretModel.moveToOffset(field.text.length)
+
+        invokeCompletionAction(editor)
+        val items = waitForLookupItems(editor)
+
+        assertTrue("items=$items", items.contains("src/deploy.ts"))
+    }
+
+    fun `test prompt local completion shortcut opens slash lookup`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        field.text = "/ne"
+        val editor = field.getEditor(false)!!
+        editor.caretModel.moveToOffset(field.text.length)
+
+        invokeCompletionAction(editor)
+        val items = waitForLookupItems(editor)
+
+        assertTrue("items=$items", items.contains("new"))
     }
 
     fun `test prompt editor shrinks when lines are removed`() {
@@ -795,8 +834,41 @@ class PromptPanelTest : BasePlatformTestCase() {
     private fun completion() = KiloPromptCompletionProvider(
         workspace = workspaces.workspace("/test"),
         service = workspaces,
-        actions = listOf(KiloPromptCompletionProvider.SlashAction("new", "New") {}),
+        actions = listOf(
+            KiloPromptCompletionProvider.SlashAction("new", "New") {},
+            KiloPromptCompletionProvider.SlashAction("next", "Next") {},
+        ),
     )
+
+    private fun invokeCompletionAction(editor: Editor) {
+        val action = ActionUtil.getActions(editor.contentComponent).first { item ->
+            item.templatePresentation.text == "Kilo Prompt Completion"
+        }
+        val event = event(action, editor)
+        ActionUtil.updateAction(action, event)
+        ActionUtil.performAction(action, event)
+    }
+
+    private fun waitForLookupItems(editor: Editor): List<String> {
+        repeat(50) {
+            UIUtil.dispatchAllInvocationEvents()
+            val items = LookupManager.getActiveLookup(editor)?.items.orEmpty().map { item -> item.lookupString }
+            if (items.isNotEmpty()) return items
+            Thread.sleep(20)
+        }
+        return LookupManager.getActiveLookup(editor)?.items.orEmpty().map { it.lookupString }
+    }
+
+    private fun event(action: AnAction, editor: Editor): AnActionEvent {
+        val ctx = DataContext { id ->
+            when (id) {
+                CommonDataKeys.EDITOR.name -> editor
+                CommonDataKeys.PROJECT.name -> project
+                else -> null
+            }
+        }
+        return AnActionEvent.createEvent(action, ctx, null, ActionPlaces.UNKNOWN, ActionUiKind.NONE, null)
+    }
 
     private fun spans(field: EditorTextField): List<Pair<String, com.intellij.openapi.editor.colors.TextAttributesKey?>> {
         val editor = field.getEditor(false)!!
