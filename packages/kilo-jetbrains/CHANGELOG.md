@@ -34,11 +34,18 @@
 
 ## [7.0.1-rc.11] - 2026-06-17
 
-### Changed
-- refactor(cli): fork TUI tips by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11365
-- release(jetbrains): v7.0.1-rc.10 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11374
-- ci(jetbrains): install deps before publish build by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11378
+### Added
 
+- Provider settings management, including provider catalog sections, provider descriptions, provider settings actions, disconnect flows, provider auth handling, and provider/model picker improvements.
+- Session copy controls for chat messages.
+
+### Fixed
+
+- Cap JetBrains prompt input growth and hide soft wrap glyphs in the prompt field.
+- Keep JetBrains provider toolbars and authentication overlays fixed, and improve provider API key dialog sizing.
+- Clean up restartless unload behavior.
+- Silence interrupted session notifications across clients.
+- Always deny tool calls for system agents.
 
 ## [7.0.1-rc.10] - 2026-06-17
 
