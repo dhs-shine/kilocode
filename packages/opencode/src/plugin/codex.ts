@@ -124,6 +124,11 @@ interface TokenResponse {
   expires_in?: number
 }
 
+interface CodexAuthPluginOptions {
+  issuer?: string
+  codexApiEndpoint?: string
+}
+
 async function exchangeCodeForTokens(code: string, redirectUri: string, pkce: PkceCodes): Promise<TokenResponse> {
   const response = await fetch(`${ISSUER}/oauth/token`, {
     method: "POST",
@@ -142,8 +147,8 @@ async function exchangeCodeForTokens(code: string, redirectUri: string, pkce: Pk
   return response.json()
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
-  const response = await fetch(`${ISSUER}/oauth/token`, {
+async function refreshAccessToken(refreshToken: string, issuer = ISSUER): Promise<TokenResponse> {
+  const response = await fetch(`${issuer}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -376,7 +381,10 @@ function waitForOAuthCallback(pkce: PkceCodes, state: string): Promise<TokenResp
   })
 }
 
-export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
+export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPluginOptions = {}): Promise<Hooks> {
+  const issuer = options.issuer ?? ISSUER
+  const codexApiEndpoint = options.codexApiEndpoint ?? CODEX_API_ENDPOINT
+
   return {
     provider: {
       id: "openai",
@@ -417,6 +425,13 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
         const auth = await getAuth()
         if (auth.type !== "oauth") return {}
 
+        let refreshPromise:
+          | Promise<{
+              access: string
+              accountId: string | undefined
+            }>
+          | undefined
+
         return {
           apiKey: OAUTH_DUMMY_KEY,
           async fetch(requestInput: RequestInfo | URL, init?: RequestInit) {
@@ -441,16 +456,29 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
 
             // Check if token needs refresh
             if (!currentAuth.access || currentAuth.expires < Date.now()) {
-              log.info("refreshing codex access token")
-              // kilocode_change start
-              await refreshCodexAuth({
-                input,
-                getAuth,
-                auth: currentAuth,
-                refresh: refreshAccessToken,
-                account: extractAccountId,
-              })
-              // kilocode_change end
+              if (!refreshPromise) {
+                log.info("refreshing codex access token")
+                // kilocode_change start
+                refreshPromise = refreshCodexAuth({
+                  input,
+                  getAuth,
+                  auth: currentAuth,
+                  refresh: (token) => refreshAccessToken(token, issuer),
+                  account: extractAccountId,
+                })
+                  .then((auth) => ({
+                    access: auth.access,
+                    accountId: auth.accountId,
+                  }))
+                  .finally(() => {
+                    refreshPromise = undefined
+                  })
+                // kilocode_change end
+              }
+
+              const refreshed = await refreshPromise
+              currentAuth.access = refreshed.access
+              authWithAccount.accountId = refreshed.accountId
             }
 
             // Build headers
@@ -484,7 +512,7 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
                 : new URL(typeof requestInput === "string" ? requestInput : requestInput.url)
             const url =
               parsed.pathname.includes("/v1/responses") || parsed.pathname.includes("/chat/completions")
-                ? new URL(CODEX_API_ENDPOINT)
+                ? new URL(codexApiEndpoint)
                 : parsed
 
             return fetch(url, {

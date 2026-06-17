@@ -16,6 +16,8 @@ const require = createRequire(import.meta.url) // kilocode_change
 
 process.chdir(dir)
 
+const generated = await import("./generate.ts")
+
 import { Script } from "@opencode-ai/script"
 import pkg from "../package.json"
 import { LanceDBRuntime } from "../src/kilocode/lancedb" // kilocode_change
@@ -325,6 +327,7 @@ for (const item of targets) {
     define: {
       KILO_VERSION: `'${Script.version}'`,
       KILO_MIGRATIONS: JSON.stringify(migrations),
+      KILO_MODELS_DEV: generated.modelsData,
       OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
       KILO_WORKER_PATH: workerPath,
       KILO_SESSION_EXPORT_WORKER_PATH: sessionExportWorkerPath, // kilocode_change

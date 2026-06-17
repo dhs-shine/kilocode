@@ -144,12 +144,14 @@ function buildPrompt(input: { previousSummary?: string; context: string[] }) {
   return [anchor, SUMMARY_TEMPLATE, ...input.context].join("\n\n")
 }
 
-function preserveRecentBudget(input: { cfg: Config.Info; model: Provider.Model; outputTokenMax?: number }) { // kilocode_change
+// kilocode_change start
+function preserveRecentBudget(input: { cfg: Config.Info; model: Provider.Model; outputTokenMax?: number }) {
   return (
     input.cfg.compaction?.preserve_recent_tokens ??
     Math.min(MAX_PRESERVE_RECENT_TOKENS, Math.max(MIN_PRESERVE_RECENT_TOKENS, Math.floor(usable(input) * 0.25)))
   )
 }
+// kilocode_change end
 
 function turns(messages: MessageV2.WithParts[]) {
   const result: Turn[] = []
@@ -522,7 +524,9 @@ export const layer = Layer.effect(
         })
       }
 
-      if (fallback === "continue" && input.auto) { // kilocode_change
+      // kilocode_change start
+      if (fallback === "continue" && input.auto) {
+        // kilocode_change end
         if (replay) {
           // kilocode_change start - compact oversized replay turns instead of looping into replay overflow
           replay = yield* KiloCompactionChunks.replay({

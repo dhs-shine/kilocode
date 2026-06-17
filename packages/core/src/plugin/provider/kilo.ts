@@ -10,23 +10,26 @@ export const KiloPlugin = PluginV2.define({
   id: PluginV2.ID.make("kilo"),
   effect: Effect.gen(function* () {
     return {
-      "provider.update": Effect.fn(function* (evt) {
-        if (evt.provider.id !== id) return
+      "catalog.transform": Effect.fn(function* (evt) {
+        for (const item of evt.data) {
+          if (item.provider.id !== id) continue
+          evt.provider.update(item.provider.id, (provider) => {
+            const options = provider.options.aisdk.provider
+            const token = options.kilocodeToken ?? options.apiKey ?? process.env.KILO_API_KEY
+            const org = process.env.KILO_ORG_ID ?? options.kilocodeOrganizationId
 
-        const options = evt.provider.options.aisdk.provider
-        const token = options.kilocodeToken ?? options.apiKey ?? process.env.KILO_API_KEY
-        const org = process.env.KILO_ORG_ID ?? options.kilocodeOrganizationId
-
-        evt.provider.endpoint = {
-          type: "aisdk",
-          package: "@kilocode/kilo-gateway",
-          url: KILO_OPENROUTER_BASE,
+            provider.endpoint = {
+              type: "aisdk",
+              package: "@kilocode/kilo-gateway",
+              url: KILO_OPENROUTER_BASE,
+            }
+            provider.options.headers["HTTP-Referer"] = "https://kilo.ai/"
+            provider.options.headers["X-Title"] = "Kilo Code"
+            options.kilocodeToken = token ?? "anonymous"
+            if (org) options.kilocodeOrganizationId = org
+            if (!provider.enabled) provider.enabled = { via: "custom", data: { anonymous: true } }
+          })
         }
-        evt.provider.options.headers["HTTP-Referer"] = "https://kilo.ai/"
-        evt.provider.options.headers["X-Title"] = "Kilo Code"
-        options.kilocodeToken = token ?? "anonymous"
-        if (org) options.kilocodeOrganizationId = org
-        if (!evt.provider.enabled) evt.provider.enabled = { via: "custom", data: { anonymous: true } }
       }),
       "aisdk.sdk": Effect.fn(function* (evt) {
         if (evt.model.providerID !== id) return
