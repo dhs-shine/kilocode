@@ -63,6 +63,14 @@ class KiloSettingsConfigurable : SearchableConfigurable {
         providers.border = JBUI.Borders.emptyBottom(4)
         panel.next(providers)
 
+        val behavior = ActionLink(KiloBundle.message("settings.agentBehavior.displayName")) { e ->
+            val src = e.source as? JComponent ?: return@ActionLink
+            val settings = Settings.KEY.getData(DataManager.getInstance().getDataContext(src)) ?: return@ActionLink
+            open(settings, AgentBehaviorConfigurable.ID)
+        }
+        behavior.border = JBUI.Borders.emptyBottom(4)
+        panel.next(behavior)
+
         return panel
     }
 

@@ -54,6 +54,49 @@
                 bundle="messages.KiloBundle"
                 key="settings.providers.displayName"/>
 
+        <applicationConfigurable
+                parentId="ai.kilocode.jetbrains.settings"
+                id="ai.kilocode.jetbrains.settings.agentBehavior"
+                groupWeight="1"
+                instance="ai.kilocode.client.settings.AgentBehaviorConfigurable"
+                bundle="messages.KiloBundle"
+                key="settings.agentBehavior.displayName"/>
+
+        <applicationConfigurable
+                parentId="ai.kilocode.jetbrains.settings.agentBehavior"
+                id="ai.kilocode.jetbrains.settings.agentBehavior.agents"
+                instance="ai.kilocode.client.settings.agentbehavior.AgentsConfigurable"
+                bundle="messages.KiloBundle"
+                key="settings.agentBehavior.agents.displayName"/>
+
+        <applicationConfigurable
+                parentId="ai.kilocode.jetbrains.settings.agentBehavior"
+                id="ai.kilocode.jetbrains.settings.agentBehavior.mcp"
+                instance="ai.kilocode.client.settings.agentbehavior.McpConfigurable"
+                bundle="messages.KiloBundle"
+                key="settings.agentBehavior.mcp.displayName"/>
+
+        <applicationConfigurable
+                parentId="ai.kilocode.jetbrains.settings.agentBehavior"
+                id="ai.kilocode.jetbrains.settings.agentBehavior.rules"
+                instance="ai.kilocode.client.settings.agentbehavior.RulesConfigurable"
+                bundle="messages.KiloBundle"
+                key="settings.agentBehavior.rules.displayName"/>
+
+        <applicationConfigurable
+                parentId="ai.kilocode.jetbrains.settings.agentBehavior"
+                id="ai.kilocode.jetbrains.settings.agentBehavior.workflows"
+                instance="ai.kilocode.client.settings.agentbehavior.WorkflowsConfigurable"
+                bundle="messages.KiloBundle"
+                key="settings.agentBehavior.workflows.displayName"/>
+
+        <applicationConfigurable
+                parentId="ai.kilocode.jetbrains.settings.agentBehavior"
+                id="ai.kilocode.jetbrains.settings.agentBehavior.skills"
+                instance="ai.kilocode.client.settings.agentbehavior.SkillsConfigurable"
+                bundle="messages.KiloBundle"
+                key="settings.agentBehavior.skills.displayName"/>
+
         <registryKey key="kilo.session.condense"
                      description="Enable event condensing in the session update queue (merges redundant snapshots before model delivery)."
                      defaultValue="true"

@@ -7,6 +7,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.Color
 import javax.swing.AbstractButton
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.UIManager
 
@@ -229,6 +230,11 @@ object UiStyle {
             button.isBorderPainted = true
             button.isContentAreaFilled = false
             button.isFocusPainted = false
+        }
+
+        fun comingSoonButton(text: String): JButton = JButton(text).apply {
+            isEnabled = false
+            toolTipText = "Coming soon"
         }
     }
 }
