@@ -161,6 +161,7 @@ function fakeRuntime(outputTokenMax?: number) {
               return input.assistantMessage
             },
             updateToolCall: Effect.fn("TestSessionProcessor.updateToolCall")(() => Effect.succeed(undefined)),
+            metadata: Effect.fn("TestSessionProcessor.metadata")(() => Effect.void),
             completeToolCall: Effect.fn("TestSessionProcessor.completeToolCall")(() => Effect.void),
             process: Effect.fn("TestSessionProcessor.process")((stream: LLM.StreamInput) =>
               Effect.gen(function* () {

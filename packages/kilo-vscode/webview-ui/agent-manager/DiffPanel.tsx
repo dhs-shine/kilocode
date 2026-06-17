@@ -174,7 +174,7 @@ export const DiffPanel: Component<DiffPanelProps> = (props) => {
   // row. Raw scrollTop is not stable once the virtualizer remeasures dynamic rows.
   const preserveScroll = (fn: () => void) => {
     const handle = virtualizer()
-    const index = handle?.findItemIndex(handle.scrollOffset)
+    const index = handle?.findStartIndex()
     const file = index === undefined ? undefined : rows()[index]?.file
     const offset = index === undefined ? 0 : (handle?.scrollOffset ?? 0) - (handle?.getItemOffset(index) ?? 0)
     fn()

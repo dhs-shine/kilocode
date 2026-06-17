@@ -179,7 +179,7 @@ export function resolve(permission: string, pattern: string, ruleset: Ruleset, .
   const evalFn =
     permission === "external_directory"
       ? (permission: string, pattern: string, ...sets: Ruleset[]) =>
-          ExternalDirectoryPermission.evaluate(permission, pattern, ...sets.map((set) => [...set]))
+          ExternalDirectoryPermission.evaluate(permission, pattern, ...sets)
       : evaluate
   const base = ReadPermission.harden(permission, pattern, evalFn(permission, pattern, ruleset))
   const saved = evalFn(permission, pattern, ...overrides)
@@ -195,7 +195,7 @@ export function resolve(permission: string, pattern: string, ruleset: Ruleset, .
 
 function veto(permission: string, pattern: string, ruleset?: Ruleset) {
   if (!ruleset) return false
-  return ExternalDirectoryPermission.evaluate(permission, pattern, [...ruleset]).action === "deny"
+  return ExternalDirectoryPermission.evaluate(permission, pattern, ruleset).action === "deny"
 }
 
 function subset(permission: string, ruleset: Ruleset) {

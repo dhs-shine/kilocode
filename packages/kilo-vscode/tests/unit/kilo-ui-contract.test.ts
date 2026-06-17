@@ -287,7 +287,7 @@ describe("Collapsed deferred tool details contract (source)", () => {
 
   it("uses an explicit details hint before touching deferred children", () => {
     expect(basic).toContain("hasDetails?: boolean")
-    expect(basic).toContain("props.hasDetails ?? !!props.children")
+    expect(basic).toContain("props.hasDetails ?? !!hasChildren()")
     expect(basic).toMatch(/<Show when=\{!props\.defer \|\| ready\(\)\}>\{props\.children\}<\/Show>/)
   })
 

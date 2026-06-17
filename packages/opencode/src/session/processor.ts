@@ -45,6 +45,12 @@ export interface Handle {
     toolCallID: string,
     update: (part: MessageV2.ToolPart) => MessageV2.ToolPart,
   ) => Effect.Effect<MessageV2.ToolPart | undefined>
+  // kilocode_change start
+  readonly metadata: (
+    toolCallID: string,
+    input: { title?: string; metadata?: Record<string, any> },
+  ) => Effect.Effect<void>
+  // kilocode_change end
   readonly completeToolCall: (
     toolCallID: string,
     output: {
@@ -82,6 +88,7 @@ type ToolCall = {
 
 interface ProcessorContext extends Input {
   toolcalls: Record<string, ToolCall>
+  toolmeta: Record<string, { title?: string; metadata?: Record<string, any> }> // kilocode_change
   shouldBreak: boolean
   snapshot: string | undefined
   blocked: boolean
@@ -133,6 +140,7 @@ export const layer = Layer.effect(
         sessionID: input.sessionID,
         model: input.model,
         toolcalls: {},
+        toolmeta: {}, // kilocode_change
         shouldBreak: false,
         snapshot: initialSnapshot,
         blocked: false,
@@ -159,6 +167,7 @@ export const layer = Layer.effect(
       const settleToolCall = Effect.fn("SessionProcessor.settleToolCall")(function* (toolCallID: string) {
         const done = ctx.toolcalls[toolCallID]?.done
         delete ctx.toolcalls[toolCallID]
+        delete ctx.toolmeta[toolCallID] // kilocode_change
         if (done) yield* Deferred.succeed(done, undefined).pipe(Effect.ignore)
       })
 
@@ -172,6 +181,7 @@ export const layer = Layer.effect(
         })
         if (!part || part.type !== "tool") {
           delete ctx.toolcalls[toolCallID]
+          delete ctx.toolmeta[toolCallID] // kilocode_change
           return undefined
         }
         return { call, part }
@@ -204,6 +214,33 @@ export const layer = Layer.effect(
         }
         return part
       })
+
+      // kilocode_change start - buffer metadata emitted before tool-call registration
+      const metadata = Effect.fn("SessionProcessor.metadata")(function* (
+        toolCallID: string,
+        input: { title?: string; metadata?: Record<string, any> },
+      ) {
+        const match = yield* readToolCall(toolCallID)
+        if (!match || match.part.state.status !== "running") {
+          ctx.toolmeta[toolCallID] = {
+            ...ctx.toolmeta[toolCallID],
+            ...input,
+          }
+          return
+        }
+        yield* updateToolCall(toolCallID, (part) => {
+          if (part.state.status !== "running") return part
+          return {
+            ...part,
+            state: {
+              ...part.state,
+              title: input.title ?? part.state.title,
+              metadata: input.metadata ?? part.state.metadata,
+            },
+          }
+        })
+      })
+      // kilocode_change end
 
       const completeToolCall = Effect.fn("SessionProcessor.completeToolCall")(function* (
         toolCallID: string,
@@ -462,21 +499,32 @@ export const layer = Layer.effect(
                 timestamp: DateTime.makeUnsafe(Date.now()),
               })
             }
+            // kilocode_change start - apply metadata buffered before the running transition
+            const meta = ctx.toolmeta[value.id]
             yield* updateToolCall(value.id, (match) => ({
               ...match,
               tool: value.name,
               state:
                 match.state.status === "running"
-                  ? { ...match.state, input }
+                  ? {
+                      ...match.state,
+                      input,
+                      title: meta?.title ?? match.state.title,
+                      metadata: meta?.metadata ?? match.state.metadata,
+                    }
                   : {
                       status: "running",
                       input,
+                      title: meta?.title,
+                      metadata: meta?.metadata,
                       time: { start: Date.now() },
                     },
               metadata: match.metadata?.providerExecuted
                 ? { ...value.providerMetadata, providerExecuted: true }
                 : value.providerMetadata,
             }))
+            delete ctx.toolmeta[value.id]
+            // kilocode_change end
 
             const parts = MessageV2.parts(ctx.assistantMessage.id)
             const recentParts = parts.slice(-DOOM_LOOP_THRESHOLD)
@@ -871,6 +919,7 @@ export const layer = Layer.effect(
           })
         }
         ctx.toolcalls = {}
+        ctx.toolmeta = {} // kilocode_change
         KiloSessionProcessor.guardEmptyToolCalls(ctx.assistantMessage, MessageV2.parts(ctx.assistantMessage.id)) // kilocode_change
         ctx.assistantMessage.time.completed = Date.now()
         // kilocode_change start - reconcile cost with any subagent propagation written during tool calls (#6321)
@@ -1010,6 +1059,7 @@ export const layer = Layer.effect(
           return ctx.assistantMessage
         },
         updateToolCall,
+        metadata, // kilocode_change
         completeToolCall,
         ...output, // kilocode_change
         process,
