@@ -3,7 +3,16 @@ import { useTerminalDimensions } from "@opentui/solid"
 import { createMemo, Show } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import type { Model } from "@kilocode/sdk/v2"
-import { avgPrice, fmtCachedPrice, fmtContext, fmtDate, fmtPrice } from "./model-info-panel-utils"
+import { FreeModelDisclosure } from "./free-model-disclosure"
+import {
+  avgPrice,
+  fmtAttemptCost,
+  fmtCachedPrice,
+  fmtContext,
+  fmtDate,
+  fmtPrice,
+  fmtScore,
+} from "./model-info-panel-utils"
 
 interface Props {
   model: Model
@@ -59,19 +68,16 @@ export function ModelInfoPanel(props: Props) {
       gap={1}
       flexShrink={0}
     >
-      <scrollbox
-        maxHeight={maxHeight()}
-        paddingRight={1}
-      >
+      <scrollbox maxHeight={maxHeight()} paddingRight={1}>
         <box>
           <text fg={theme.text} attributes={TextAttributes.BOLD}>
             {m().name ?? m().id ?? "Model"}
           </text>
           <text fg={theme.textMuted}>{props.provider ?? m().providerID ?? ""}</text>
         </box>
-        <Show when={m().isFree}>
+        <Show when={FreeModelDisclosure.collectsData(m())}>
           <box>
-            <text fg={theme.text}>Free</text>
+            <text fg={theme.text}>{FreeModelDisclosure.panel}</text>
           </box>
         </Show>
         <Show when={m().family}>
@@ -114,6 +120,23 @@ export function ModelInfoPanel(props: Props) {
             </box>
           </box>
         </Show>
+        <Show when={m().terminalBench}>
+          {(bench) => (
+            <box>
+              <text fg={theme.text}>
+                <b>Terminal Bench 2.0</b>
+              </text>
+              <box flexDirection="row" justifyContent="space-between">
+                <text fg={theme.textMuted}>Completion</text>
+                <text fg={theme.text}>{fmtScore(bench().overallScore)}</text>
+              </box>
+              <box flexDirection="row" justifyContent="space-between">
+                <text fg={theme.textMuted}>Cost / attempt</text>
+                <text fg={theme.text}>{fmtAttemptCost(bench().avgAttemptCostUsd)}</text>
+              </box>
+            </box>
+          )}
+        </Show>
         <Show when={caps()?.reasoning || inputLine() || outputLine()}>
           <box flexDirection="column">
             <Show when={caps()?.reasoning}>
@@ -141,7 +164,7 @@ export function ModelInfoPanel(props: Props) {
           </box>
         </Show>
         <Show when={desc()}>
-          <text fg={theme.textMuted}>{" "}</text>
+          <text fg={theme.textMuted}> </text>
           <text fg={theme.textMuted} width={23}>
             {desc()}
           </text>

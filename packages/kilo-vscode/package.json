@@ -2,7 +2,7 @@
   "name": "kilo-code",
   "displayName": "Kilo Code: AI Coding Agent, Copilot, and Autocomplete",
   "description": "Open Source AI coding agent that generates code from natural language, automates tasks, and runs terminal commands. Features inline autocomplete, browser automation, automated refactoring, and custom modes for planning, coding, and debugging. Supports 500+ AI models including Claude (Anthropic), Gemini, Grok, GPT, Codex and GLM.",
-  "version": "7.2.52",
+  "version": "7.3.46",
   "icon": "assets/icons/logo-outline-black.png",
   "galleryBanner": {
     "color": "#FFFFFF",
@@ -31,22 +31,31 @@
   ],
   "keywords": [
     "kilo",
-    "claude",
-    "dev",
-    "mcp",
-    "openrouter",
-    "coding",
-    "agent",
-    "autonomous",
-    "chatgpt",
-    "sonnet",
-    "ai",
-    "llama",
     "Kilo Code",
-    "kilocode"
+    "kilocode",
+    "ai",
+    "agent",
+    "agentic",
+    "coding",
+    "coding agent",
+    "coding assistant",
+    "autocomplete",
+    "code completion",
+    "pair programming",
+    "chat",
+    "terminal",
+    "chatgpt",
+    "claude",
+    "sonnet",
+    "anthropic",
+    "openai",
+    "zoo code",
+    "opencode",
+    "open code"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onUri"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -93,41 +102,84 @@
       {
         "command": "kilo-code.new.plusButtonClicked",
         "title": "New Task",
+        "category": "Kilo Code",
         "icon": "$(add)"
       },
       {
         "command": "kilo-code.new.agentManagerOpen",
         "title": "Agent Manager",
+        "category": "Kilo Code",
         "icon": "$(organization)"
       },
       {
         "command": "kilo-code.new.kiloClawOpen",
         "title": "KiloClaw",
+        "category": "Kilo Code",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "kilo-code.new.marketplaceButtonClicked",
         "title": "Marketplace",
+        "category": "Kilo Code",
         "icon": "$(extensions)"
       },
       {
         "command": "kilo-code.new.historyButtonClicked",
         "title": "History",
+        "category": "Kilo Code",
         "icon": "$(history)"
       },
       {
         "command": "kilo-code.new.profileButtonClicked",
         "title": "Profile",
+        "category": "Kilo Code",
         "icon": "$(account)"
       },
       {
         "command": "kilo-code.new.settingsButtonClicked",
         "title": "Settings",
+        "category": "Kilo Code",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "kilo-code.new.sidebarTitle.plusButtonClicked",
+        "title": "New Task",
+        "icon": "$(add)"
+      },
+      {
+        "command": "kilo-code.new.sidebarTitle.agentManagerOpen",
+        "title": "Agent Manager",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "kilo-code.new.sidebarTitle.kiloClawOpen",
+        "title": "KiloClaw",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "kilo-code.new.sidebarTitle.marketplaceButtonClicked",
+        "title": "Marketplace",
+        "icon": "$(extensions)"
+      },
+      {
+        "command": "kilo-code.new.sidebarTitle.historyButtonClicked",
+        "title": "History",
+        "icon": "$(history)"
+      },
+      {
+        "command": "kilo-code.new.sidebarTitle.profileButtonClicked",
+        "title": "Profile",
+        "icon": "$(account)"
+      },
+      {
+        "command": "kilo-code.new.sidebarTitle.settingsButtonClicked",
+        "title": "Settings",
         "icon": "$(settings-gear)"
       },
       {
         "command": "kilo-code.new.openInTab",
-        "title": "Kilo Code",
+        "title": "Open in Tab",
+        "category": "Kilo Code",
         "icon": {
           "light": "assets/icons/kilo-light.svg",
           "dark": "assets/icons/kilo-dark.svg"
@@ -151,6 +203,16 @@
       {
         "command": "kilo-code.new.autocomplete.cancelSuggestions",
         "title": "Cancel Suggested Edits",
+        "category": "Kilo Code"
+      },
+      {
+        "command": "kilo-code.new.autocomplete.nextEdit.acceptOrJump",
+        "title": "Next Edit: Accept or Jump to Suggested Edit",
+        "category": "Kilo Code"
+      },
+      {
+        "command": "kilo-code.new.autocomplete.nextEdit.dismiss",
+        "title": "Next Edit: Dismiss Pending Suggestion",
         "category": "Kilo Code"
       },
       {
@@ -363,39 +425,69 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "kilo-code.new.sidebarTitle.plusButtonClicked",
+          "when": "false"
+        },
+        {
+          "command": "kilo-code.new.sidebarTitle.historyButtonClicked",
+          "when": "false"
+        },
+        {
+          "command": "kilo-code.new.sidebarTitle.agentManagerOpen",
+          "when": "false"
+        },
+        {
+          "command": "kilo-code.new.sidebarTitle.kiloClawOpen",
+          "when": "false"
+        },
+        {
+          "command": "kilo-code.new.sidebarTitle.marketplaceButtonClicked",
+          "when": "false"
+        },
+        {
+          "command": "kilo-code.new.sidebarTitle.profileButtonClicked",
+          "when": "false"
+        },
+        {
+          "command": "kilo-code.new.sidebarTitle.settingsButtonClicked",
+          "when": "false"
+        }
+      ],
       "view/title": [
         {
-          "command": "kilo-code.new.plusButtonClicked",
+          "command": "kilo-code.new.sidebarTitle.plusButtonClicked",
           "group": "navigation@0",
           "when": "view == kilo-code.SidebarProvider"
         },
         {
-          "command": "kilo-code.new.historyButtonClicked",
+          "command": "kilo-code.new.sidebarTitle.historyButtonClicked",
           "group": "navigation@1",
           "when": "view == kilo-code.SidebarProvider"
         },
         {
-          "command": "kilo-code.new.agentManagerOpen",
+          "command": "kilo-code.new.sidebarTitle.agentManagerOpen",
           "group": "navigation@2",
           "when": "view == kilo-code.SidebarProvider"
         },
         {
-          "command": "kilo-code.new.kiloClawOpen",
+          "command": "kilo-code.new.sidebarTitle.kiloClawOpen",
           "group": "navigation@3",
           "when": "view == kilo-code.SidebarProvider"
         },
         {
-          "command": "kilo-code.new.marketplaceButtonClicked",
+          "command": "kilo-code.new.sidebarTitle.marketplaceButtonClicked",
           "group": "navigation@4",
           "when": "view == kilo-code.SidebarProvider"
         },
         {
-          "command": "kilo-code.new.profileButtonClicked",
+          "command": "kilo-code.new.sidebarTitle.profileButtonClicked",
           "group": "navigation@5",
           "when": "view == kilo-code.SidebarProvider"
         },
         {
-          "command": "kilo-code.new.settingsButtonClicked",
+          "command": "kilo-code.new.sidebarTitle.settingsButtonClicked",
           "group": "navigation@6",
           "when": "view == kilo-code.SidebarProvider"
         }
@@ -685,6 +777,16 @@
         "key": "ctrl+l",
         "mac": "cmd+l",
         "when": "editorTextFocus && !editorTabMovesFocus && !inSnippetMode && kilocode.autocomplete.enableSmartInlineTaskKeybinding && github.copilot.completions.enabled"
+      },
+      {
+        "command": "kilo-code.new.autocomplete.nextEdit.acceptOrJump",
+        "key": "tab",
+        "when": "editorTextFocus && !editorTabMovesFocus && !inSnippetMode && !suggestWidgetVisible && kilo-code.nextEdit.hasPendingSuggestion"
+      },
+      {
+        "command": "kilo-code.new.autocomplete.nextEdit.dismiss",
+        "key": "escape",
+        "when": "editorTextFocus && !editorTabMovesFocus && !inSnippetMode && kilo-code.nextEdit.hasPendingSuggestion"
       }
     ],
     "configuration": {
@@ -714,7 +816,8 @@
             "bs",
             "tr",
             "nl",
-            "uk"
+            "uk",
+            "it"
           ],
           "enumDescriptions": [
             "Auto (VS Code language)",
@@ -736,7 +839,8 @@
             "Bosanski",
             "Türkçe",
             "Nederlands",
-            "Українська"
+            "Українська",
+            "Italiano"
           ]
         },
         "kilo-code.new.model.providerID": {
@@ -753,13 +857,35 @@
           "type": "string",
           "enum": [
             "mistralai/codestral-2508",
-            "inception/mercury-edit"
+            "inception/mercury-edit-2",
+            "inception/mercury-next-edit",
+            "codestral-2508",
+            "mercury-edit-2",
+            "mercury-next-edit"
           ],
           "enumDescriptions": [
-            "Codestral by Mistral AI (default)",
-            "Mercury Edit by Inception"
+            "Codestral via Kilo Gateway",
+            "Mercury Edit 2 (FIM) via Kilo Gateway",
+            "Mercury Edit 2 (Next Edit), multi-line edit predictions with jump-to-edit UX, via Kilo Gateway",
+            "Codestral via your connected Mistral provider API key",
+            "Mercury Edit 2 (FIM) via your connected Inception provider API key",
+            "Mercury Edit 2 (Next Edit), multi-line edit predictions with jump-to-edit UX, via your connected Inception provider API key"
           ],
-          "description": "Model to use for inline autocomplete suggestions"
+          "description": "Model to use for inline autocomplete suggestions. If unset, the recommended default is used."
+        },
+        "kilo-code.new.autocomplete.provider": {
+          "type": "string",
+          "enum": [
+            "kilo",
+            "mistral",
+            "inception"
+          ],
+          "enumDescriptions": [
+            "Use autocomplete models through Kilo Gateway",
+            "Use autocomplete models through your connected Mistral provider API key",
+            "Use autocomplete models through your connected Inception provider API key"
+          ],
+          "description": "Provider to use for inline autocomplete suggestions. If unset, Kilo Gateway is used."
         },
         "kilo-code.new.autocomplete.enableAutoTrigger": {
           "type": "boolean",
@@ -775,6 +901,10 @@
           "type": "boolean",
           "default": false,
           "description": "Enable chat textarea autocomplete"
+        },
+        "kilo-code.new.speechToText.model": {
+          "type": "string",
+          "description": "Model to use for experimental speech-to-text voice input. Requires Kilo Gateway."
         },
         "kilo-code.new.claudeCodeCompat": {
           "type": "boolean",
@@ -813,52 +943,87 @@
           "default": false,
           "description": "Run browser automation in headless mode (no visible window). When disabled, you can watch the agent interact with the browser."
         },
-        "kilo-code.new.notifications.agent": {
+        "kilo-code.new.attention.enabled": {
           "type": "boolean",
-          "default": true,
-          "description": "Show notification when agent completes a task"
+          "default": false,
+          "description": "Play sounds when sessions complete, error, or need input"
         },
-        "kilo-code.new.notifications.permissions": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show notification on permission requests"
-        },
-        "kilo-code.new.notifications.errors": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show notification on errors"
-        },
-        "kilo-code.new.sounds.agent": {
+        "kilo-code.new.attention.sound": {
           "type": "string",
           "default": "default",
           "enum": [
             "default",
-            "none"
+            "system",
+            "alert-01",
+            "alert-02",
+            "alert-03",
+            "alert-04",
+            "alert-05",
+            "alert-06",
+            "alert-07",
+            "alert-08",
+            "alert-09",
+            "alert-10",
+            "bip-bop-01",
+            "bip-bop-02",
+            "bip-bop-03",
+            "bip-bop-04",
+            "bip-bop-05",
+            "bip-bop-06",
+            "bip-bop-07",
+            "bip-bop-08",
+            "bip-bop-09",
+            "bip-bop-10",
+            "staplebops-01",
+            "staplebops-02",
+            "staplebops-03",
+            "staplebops-04",
+            "staplebops-05",
+            "staplebops-06",
+            "staplebops-07",
+            "nope-01",
+            "nope-02",
+            "nope-03",
+            "nope-04",
+            "nope-05",
+            "nope-06",
+            "nope-07",
+            "nope-08",
+            "nope-09",
+            "nope-10",
+            "nope-11",
+            "nope-12",
+            "yup-01",
+            "yup-02",
+            "yup-03",
+            "yup-04",
+            "yup-05",
+            "yup-06"
           ],
-          "description": "Sound to play when agent completes"
-        },
-        "kilo-code.new.sounds.permissions": {
-          "type": "string",
-          "default": "default",
-          "enum": [
-            "default",
-            "none"
-          ],
-          "description": "Sound to play on permission requests"
-        },
-        "kilo-code.new.sounds.errors": {
-          "type": "string",
-          "default": "default",
-          "enum": [
-            "default",
-            "none"
-          ],
-          "description": "Sound to play on errors"
+          "description": "Use different sounds for completion, input, and errors, or choose one sound for every event"
         },
         "kilo-code.new.showTaskTimeline": {
           "type": "boolean",
           "default": true,
           "description": "Show the task timeline graph in the chat header"
+        },
+        "kilo-code.new.agentWorkStyle": {
+          "type": "string",
+          "scope": "application",
+          "default": "unset",
+          "enum": [
+            "unset",
+            "human-in-the-loop",
+            "autonomous",
+            "skipped"
+          ],
+          "enumDescriptions": [
+            "Show work style onboarding so you can choose again",
+            "Human in the Loop: review agent actions as they happen",
+            "High autonomy: let Kilo take most actions with fewer interruptions",
+            "Onboarding was skipped without changing work style settings"
+          ],
+          "description": "Preferred agent work style. Set to Unset to show the onboarding flow again."
         },
         "kilo-code.new.diff.renderMarkdown": {
           "type": "boolean",
@@ -886,13 +1051,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
-    "check-kilocode-change": "! grep -rn 'kilocode_change' . ../kilo-ui/ --exclude='package.json' --exclude='*.md' --exclude-dir='node_modules' --exclude-dir='dist' | grep -v '`kilocode_change`'",
+    "check-kilocode-change": "! grep -rIn 'kilocode_change' . ../kilo-ui/ --exclude='package.json' --exclude='*.md' --exclude-dir='node_modules' --exclude-dir='dist' | grep -v '`kilocode_change`'",
     "lint": "eslint src webview-ui",
     "test": "vscode-test",
     "test:unit": "bun test tests/unit/",
     "rebuild-sdk": "bun run --cwd ../sdk/js build",
     "storybook": "storybook dev -p 6007",
     "build-storybook": "storybook build -o storybook-static",
+    "test:a11y": "playwright test tests/accessibility.spec.ts",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "snapshot:build": "bun script/dev-snapshot.ts build",
@@ -900,7 +1066,9 @@
     "extension": "bun script/launch.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.11.3",
     "@playwright/test": "1.57.0",
+    "@storybook/addon-a11y": "10.2.10",
     "@storybook/addon-docs": "10.2.10",
     "@types/diff": "^6.0.0",
     "@types/mocha": "^10.0.10",
@@ -932,8 +1100,10 @@
     "@kilocode/kilo-i18n": "workspace:*",
     "@kilocode/kilo-indexing": "workspace:*",
     "@kilocode/kilo-ui": "workspace:*",
+    "@kilocode/plugin": "workspace:*",
     "@kilocode/sdk": "workspace:*",
     "@opencode-ai/ui": "workspace:*",
+    "@pierre/diffs": "catalog:",
     "@thisbeyond/solid-dnd": "0.7.5",
     "@xterm/addon-clipboard": "0.2.0",
     "@xterm/addon-fit": "0.11.0",
@@ -957,5 +1127,6 @@
     "web-tree-sitter": "^0.24.7",
     "yaml": "2.8.3",
     "zod": "^3.24.2"
-  }
+  },
+  "peerDependencies": {}
 }

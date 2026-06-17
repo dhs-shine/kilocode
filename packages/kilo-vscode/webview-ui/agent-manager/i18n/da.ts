@@ -1,5 +1,7 @@
 export const dict = {
   "agentManager.local": "lokal",
+  "agentManager.sidebar.collapse": "Skjul sidebjælke",
+  "agentManager.sidebar.expand": "Vis sidebjælke",
   "agentManager.section.worktrees": "WORKTREES",
   "agentManager.section.sessions": "SESSIONER",
   "agentManager.notGitRepo": "Ikke et git-repository",
@@ -44,6 +46,7 @@ export const dict = {
   "agentManager.session.readonly": "Skrivebeskyttet session",
   "agentManager.session.noSessions": "Ingen åbne sessioner",
   "agentManager.tab.close": "Luk",
+  "agentManager.tab.closeOthers": "Luk andre",
   "agentManager.tab.closeTab": "Luk fane",
   "agentManager.tab.forkSession": "Forgren session",
   "agentManager.tab.terminal": "Terminal",
@@ -53,7 +56,6 @@ export const dict = {
   "agentManager.tabsMenu.search": "Søg faner...",
   "agentManager.tabsMenu.empty": "Ingen matchende faner",
   "agentManager.tabsMenu.status.waiting": "Venter",
-  "agentManager.tabsMenu.status.working": "Arbejder",
   "agentManager.tabsMenu.status.retry": "Igen",
 
   "agentManager.terminal.new": "Ny terminalfane",

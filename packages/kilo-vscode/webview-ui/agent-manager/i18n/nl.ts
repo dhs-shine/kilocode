@@ -1,5 +1,7 @@
 export const dict = {
   "agentManager.local": "lokaal",
+  "agentManager.sidebar.collapse": "Zijbalk inklappen",
+  "agentManager.sidebar.expand": "Zijbalk tonen",
   "agentManager.section.worktrees": "WORKTREES",
   "agentManager.section.sessions": "SESSIES",
   "agentManager.notGitRepo": "Geen git repository",
@@ -48,6 +50,7 @@ export const dict = {
   "agentManager.session.noSessions": "Geen open sessies",
 
   "agentManager.tab.close": "Sluiten",
+  "agentManager.tab.closeOthers": "Andere sluiten",
   "agentManager.tab.closeTab": "Tabblad sluiten",
   "agentManager.tab.forkSession": "Sessie forken",
   "agentManager.tab.terminal": "Terminal",
@@ -57,7 +60,6 @@ export const dict = {
   "agentManager.tabsMenu.search": "Tabbladen zoeken...",
   "agentManager.tabsMenu.empty": "Geen overeenkomende tabbladen",
   "agentManager.tabsMenu.status.waiting": "Wacht",
-  "agentManager.tabsMenu.status.working": "Bezig",
   "agentManager.tabsMenu.status.retry": "Opnieuw",
 
   "agentManager.terminal.new": "Nieuw terminaltabblad",

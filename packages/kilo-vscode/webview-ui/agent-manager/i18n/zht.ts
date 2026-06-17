@@ -1,5 +1,7 @@
 export const dict = {
   "agentManager.local": "本機",
+  "agentManager.sidebar.collapse": "收合側邊欄",
+  "agentManager.sidebar.expand": "顯示側邊欄",
   "agentManager.section.worktrees": "WORKTREES",
   "agentManager.section.sessions": "工作階段",
   "agentManager.notGitRepo": "不是 git 儲存庫",
@@ -44,6 +46,7 @@ export const dict = {
   "agentManager.session.readonly": "唯讀工作階段",
   "agentManager.session.noSessions": "沒有開啟的工作階段",
   "agentManager.tab.close": "關閉",
+  "agentManager.tab.closeOthers": "關閉其他分頁",
   "agentManager.tab.closeTab": "關閉分頁",
   "agentManager.tab.forkSession": "複製工作階段",
   "agentManager.tab.terminal": "終端機",
@@ -53,7 +56,6 @@ export const dict = {
   "agentManager.tabsMenu.search": "搜尋分頁...",
   "agentManager.tabsMenu.empty": "沒有相符的分頁",
   "agentManager.tabsMenu.status.waiting": "等待",
-  "agentManager.tabsMenu.status.working": "工作中",
   "agentManager.tabsMenu.status.retry": "重試",
 
   "agentManager.terminal.new": "新增終端分頁",

@@ -1,4 +1,4 @@
-import { Effect, Layer, ManagedRuntime } from "effect"
+import { Layer, ManagedRuntime } from "effect"
 import { attach } from "./run-service"
 import * as Observability from "@opencode-ai/core/effect/observability"
 
@@ -14,7 +14,8 @@ import { FileWatcher } from "@/file/watcher"
 import { Storage } from "@/storage/storage"
 import { Snapshot } from "@/snapshot"
 import { Plugin } from "@/plugin"
-import { ModelsDev } from "@/provider/models"
+import { ModelsDev } from "@opencode-ai/core/models"
+import { ModelCache } from "@/provider/model-cache" // kilocode_change
 import { Provider } from "@/provider/provider"
 import { ProviderAuth } from "@/provider/auth"
 import { Agent } from "@/agent/agent"
@@ -40,21 +41,26 @@ import { Command } from "@/command"
 import { Truncate } from "@/tool/truncate"
 import { ToolRegistry } from "@/tool/registry"
 import { Format } from "@/format"
-import { InstanceBootstrap } from "@/project/bootstrap"
-import { InstanceStore } from "@/project/instance-store"
+import { InstanceLayer } from "@/project/instance-layer"
 import { Project } from "@/project/project"
 import { Vcs } from "@/project/vcs"
+import { Reference } from "@/reference/reference"
 import { Workspace } from "@/control-plane/workspace"
 import { Worktree } from "@/worktree"
 import { Pty } from "@/pty"
+import { PtyTicket } from "@/pty/ticket"
 import { Installation } from "@/installation"
 import { ShareNext } from "@/share/share-next"
 import { SessionShare } from "@/share/session"
 import { SyncEvent } from "@/sync"
 import { Npm } from "@opencode-ai/core/npm"
 import { memoMap } from "@opencode-ai/core/effect/memo-map"
+import { DataMigration } from "@/data-migration"
+import { BackgroundJob } from "@/background/job"
+import { EventV2Bridge } from "@/event-v2-bridge"
+import { RuntimeFlags } from "@/effect/runtime-flags"
 
-export const AppLayer = Layer.mergeAll(
+const CoreLayer = Layer.mergeAll(
   Npm.defaultLayer,
   AppFileSystem.defaultLayer,
   Bus.defaultLayer,
@@ -68,17 +74,23 @@ export const AppLayer = Layer.mergeAll(
   Storage.defaultLayer,
   Snapshot.defaultLayer,
   Plugin.defaultLayer,
+  ModelCache.defaultLayer, // kilocode_change
   ModelsDev.defaultLayer,
   Provider.defaultLayer,
   ProviderAuth.defaultLayer,
   Agent.defaultLayer,
   Skill.defaultLayer,
   Discovery.defaultLayer,
+)
+
+const SessionLayer = Layer.mergeAll(
   Question.defaultLayer,
   Permission.defaultLayer,
   Todo.defaultLayer,
   Session.defaultLayer,
   SessionStatus.defaultLayer,
+  BackgroundJob.defaultLayer,
+  RuntimeFlags.defaultLayer,
   SessionRunState.defaultLayer,
   SessionProcessor.defaultLayer,
   SessionCompaction.defaultLayer,
@@ -92,20 +104,30 @@ export const AppLayer = Layer.mergeAll(
   McpAuth.defaultLayer,
   Command.defaultLayer,
   Truncate.defaultLayer,
+)
+
+const FeatureLayer = Layer.mergeAll(
   ToolRegistry.defaultLayer,
   Format.defaultLayer,
-  InstanceBootstrap.defaultLayer,
-  InstanceStore.defaultLayer,
   Project.defaultLayer,
   Vcs.defaultLayer,
+  Reference.defaultLayer,
   Workspace.defaultLayer,
-  Worktree.defaultLayer,
+  Worktree.appLayer,
   Pty.defaultLayer,
+  PtyTicket.defaultLayer,
   Installation.defaultLayer,
   ShareNext.defaultLayer,
   SessionShare.defaultLayer,
   SyncEvent.defaultLayer,
-).pipe(Layer.provideMerge(Observability.layer))
+  EventV2Bridge.defaultLayer,
+  DataMigration.defaultLayer,
+)
+
+export const AppLayer = Layer.mergeAll(CoreLayer, SessionLayer, FeatureLayer).pipe(
+  Layer.provideMerge(InstanceLayer.layer),
+  Layer.provideMerge(Observability.layer),
+)
 
 const rt = ManagedRuntime.make(AppLayer, { memoMap })
 type Runtime = Pick<typeof rt, "runSync" | "runPromise" | "runPromiseExit" | "runFork" | "runCallback" | "dispose">
@@ -131,16 +153,4 @@ export const AppRuntime: Runtime = {
     return rt.runCallback(wrap(effect))
   },
   dispose: () => rt.dispose(),
-}
-
-let bootstrapRun: Promise<Effect.Effect<void>>
-export function getBootstrapRunEffect(): Promise<Effect.Effect<void>> {
-  if (!bootstrapRun) {
-    bootstrapRun = AppRuntime.runPromise(
-      Effect.gen(function* () {
-        return (yield* InstanceBootstrap.Service).run
-      }),
-    )
-  }
-  return bootstrapRun
 }

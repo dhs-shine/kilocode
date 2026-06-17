@@ -1,5 +1,7 @@
 export const dict = {
   "agentManager.local": "local",
+  "agentManager.sidebar.collapse": "Contraer barra lateral",
+  "agentManager.sidebar.expand": "Mostrar barra lateral",
   "agentManager.section.worktrees": "WORKTREES",
   "agentManager.section.sessions": "SESIONES",
   "agentManager.notGitRepo": "No es un repositorio git",
@@ -44,6 +46,7 @@ export const dict = {
   "agentManager.session.readonly": "Sesión de solo lectura",
   "agentManager.session.noSessions": "No hay sesiones abiertas",
   "agentManager.tab.close": "Cerrar",
+  "agentManager.tab.closeOthers": "Cerrar otras",
   "agentManager.tab.closeTab": "Cerrar pestaña",
   "agentManager.tab.forkSession": "Bifurcar sesión",
   "agentManager.tab.terminal": "Terminal",
@@ -53,7 +56,6 @@ export const dict = {
   "agentManager.tabsMenu.search": "Buscar pestañas...",
   "agentManager.tabsMenu.empty": "No hay pestañas coincidentes",
   "agentManager.tabsMenu.status.waiting": "Espera",
-  "agentManager.tabsMenu.status.working": "En curso",
   "agentManager.tabsMenu.status.retry": "Reintento",
 
   "agentManager.terminal.new": "Nueva pestaña de terminal",

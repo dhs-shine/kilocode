@@ -1,5 +1,7 @@
 export const dict = {
   "agentManager.local": "ローカル",
+  "agentManager.sidebar.collapse": "サイドバーを折りたたむ",
+  "agentManager.sidebar.expand": "サイドバーを表示",
   "agentManager.section.worktrees": "WORKTREES",
   "agentManager.section.sessions": "セッション",
   "agentManager.notGitRepo": "gitリポジトリではありません",
@@ -44,6 +46,7 @@ export const dict = {
   "agentManager.session.readonly": "読み取り専用セッション",
   "agentManager.session.noSessions": "開いているセッションがありません",
   "agentManager.tab.close": "閉じる",
+  "agentManager.tab.closeOthers": "他を閉じる",
   "agentManager.tab.closeTab": "タブを閉じる",
   "agentManager.tab.forkSession": "セッションをフォーク",
   "agentManager.tab.terminal": "ターミナル",
@@ -53,7 +56,6 @@ export const dict = {
   "agentManager.tabsMenu.search": "タブを検索...",
   "agentManager.tabsMenu.empty": "一致するタブがありません",
   "agentManager.tabsMenu.status.waiting": "待機",
-  "agentManager.tabsMenu.status.working": "実行中",
   "agentManager.tabsMenu.status.retry": "再試行",
 
   "agentManager.terminal.new": "新しいターミナルタブ",

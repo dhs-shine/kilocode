@@ -5,12 +5,20 @@ import type { SessionMode } from "../../context/worktree-mode"
 import type { MarketplaceItem, MarketplaceInstalledMetadata } from "../marketplace"
 import type { ConnectionState, ServerInfo, SessionStatus } from "./connection"
 import type { FileAttachment, Part } from "./parts"
-import type { CloudSessionInfo, Message, MessageLoadMode, SessionInfo } from "./sessions"
+import type {
+  CloudSessionInfo,
+  Message,
+  MessageLoadMode,
+  SessionCloseReason,
+  SessionInfo,
+  SessionUpdate,
+} from "./sessions"
 import type { PermissionRequest } from "./permissions"
 import type { QuestionRequest, SuggestionRequest, TodoItem } from "./questions"
 import type { ModelSelection, Provider, ProviderAuthState } from "./providers"
 import type { AgentInfo, SkillInfo, SlashCommandInfo } from "./agents"
 import type { BrowserSettings, Config, FeatureFlags, IndexingStatus, KiloEmbeddingModelCatalog } from "./config"
+import type { WorkStyle, WorkStyleState } from "../../../../src/shared/work-style-presets"
 import type { KilocodeNotification, ProfileData } from "./profile"
 import type {
   AgentManagerApplyWorktreeDiffConflict,
@@ -24,6 +32,7 @@ import type {
   ReviewComment,
   RunStatus,
   SectionState,
+  TerminalFont,
   WorktreeErrorCode,
   WorktreeFileDiff,
   WorktreeGitStats,
@@ -94,6 +103,7 @@ export interface SendMessageFailedMessage {
   draftID?: string
   messageID?: string
   files?: FileAttachment[]
+  review?: import("../../../../src/shared/review-comments").ReviewMessageData
 }
 
 // Wire shape lives in src/shared/stream-messages.ts; narrow `part` to the
@@ -110,6 +120,12 @@ export interface SessionStatusMessage {
   attempt?: number
   message?: string
   next?: number
+}
+
+export interface SessionTurnClosedMessage {
+  type: "sessionTurnClosed"
+  sessionID: string
+  reason: SessionCloseReason
 }
 
 export interface SessionErrorMessage {
@@ -153,7 +169,7 @@ export interface SessionForkedMessage {
 
 export interface SessionUpdatedMessage {
   type: "sessionUpdated"
-  session: SessionInfo
+  session: SessionUpdate
 }
 
 export interface SessionDeletedMessage {
@@ -174,6 +190,7 @@ export interface MessagesLoadedMessage {
   mode?: Exclude<MessageLoadMode, "focus">
   cursor?: string
   hasMore?: boolean
+  since?: number
 }
 
 export interface MessageCreatedMessage {
@@ -222,6 +239,11 @@ export interface OpenCloudSessionMessage {
   sessionId: string
 }
 
+export interface SelectKiloModelMessage {
+  type: "selectKiloModel"
+  modelID: string
+}
+
 export interface ActionMessage {
   type: "action"
   action: string
@@ -241,6 +263,13 @@ export interface AppendReviewCommentsMessage {
   type: "appendReviewComments"
   comments: ReviewComment[]
   autoSend?: boolean
+}
+
+export interface AppendReviewCommentsToTerminalMessage {
+  type: "appendReviewCommentsToTerminal"
+  comments: ReviewComment[]
+  autoSend?: boolean
+  targetTerminalId: string
 }
 
 export interface TriggerTaskMessage {
@@ -322,13 +351,39 @@ export interface AutocompleteSettingsLoadedMessage {
     enableAutoTrigger: boolean
     enableSmartInlineTaskKeybinding: boolean
     enableChatAutocomplete: boolean
-    model: string
+    /** `null` means "no explicit setting — use the resolved default." */
+    provider: string | null
+    /** `null` means "no explicit setting — use the resolved default." */
+    model: string | null
   }
 }
 
 export interface ChatCompletionResultMessage {
   type: "chatCompletionResult"
   text: string
+  requestId: string
+}
+
+export interface SpeechToTextResultMessage {
+  type: "speechToTextResult"
+  text: string
+  requestId: string
+}
+
+export interface SpeechToTextStartedMessage {
+  type: "speechToTextStarted"
+  requestId: string
+}
+
+export interface SpeechToTextCancelledMessage {
+  type: "speechToTextCancelled"
+  requestId: string
+}
+
+export interface SpeechToTextErrorMessage {
+  type: "speechToTextError"
+  error: string
+  code?: string
   requestId: string
 }
 
@@ -415,6 +470,7 @@ export interface ConfigLoadedMessage {
   type: "configLoaded"
   config: Config
   globalConfig?: Config
+  projectConfig?: Config
   features: FeatureFlags
 }
 
@@ -422,6 +478,7 @@ export interface ConfigUpdatedMessage {
   type: "configUpdated"
   config: Config
   globalConfig?: Config
+  projectConfig?: Config
   features: FeatureFlags
 }
 
@@ -439,18 +496,30 @@ export interface GlobalConfigLoadedMessage {
 export interface NotificationSettingsLoadedMessage {
   type: "notificationSettingsLoaded"
   settings: {
-    notifyAgent: boolean
-    notifyPermissions: boolean
-    notifyErrors: boolean
-    soundAgent: string
-    soundPermissions: string
-    soundErrors: string
+    attentionEnabled: boolean
+    attentionSound: string
   }
 }
 
 export interface TimelineSettingLoadedMessage {
   type: "timelineSettingLoaded"
   visible: boolean
+}
+
+export interface WorkStyleLoadedMessage {
+  type: "workStyleLoaded"
+  style: WorkStyleState
+}
+
+export interface WorkStyleAppliedMessage {
+  type: "workStyleApplied"
+  style: WorkStyle
+}
+
+export interface WorkStyleApplyFailedMessage {
+  type: "workStyleApplyFailed"
+  message: string
+  rollbackFailed: boolean
 }
 
 export interface NotificationsLoadedMessage {
@@ -512,6 +581,7 @@ export interface AgentManagerStateMessage {
   tabOrder?: Record<string, string[]>
   worktreeOrder?: string[]
   sessionsCollapsed?: boolean
+  sidebarCollapsed?: boolean
   reviewDiffStyle?: "unified" | "split"
   reviewMarkdownRender?: boolean
   isGitRepo?: boolean
@@ -532,6 +602,12 @@ export interface AgentManagerTerminalCreatedMessage {
   terminalId: string
   title: string
   wsUrl: string
+  font: TerminalFont
+}
+
+export interface AgentManagerTerminalFontChangedMessage {
+  type: "agentManager.terminal.fontChanged"
+  font: TerminalFont
 }
 
 export interface AgentManagerTerminalClosedMessage {
@@ -805,6 +881,7 @@ export interface MarketplaceDataMessage {
   marketplaceItems: MarketplaceItem[]
   marketplaceInstalledMetadata: MarketplaceInstalledMetadata
   errors?: string[]
+  showAgentMigrationBanner?: boolean
 }
 
 export interface MarketplaceInstallResultMessage {
@@ -892,6 +969,7 @@ export type ExtensionMessage =
   | PartsUpdatedMessage
   | PartRemovedMessage
   | SessionStatusMessage
+  | SessionTurnClosedMessage
   | SessionErrorMessage
   | PermissionRequestMessage
   | PermissionResolvedMessage
@@ -922,6 +1000,10 @@ export type ExtensionMessage =
   | CommandsLoadedMessage
   | AutocompleteSettingsLoadedMessage
   | ChatCompletionResultMessage
+  | SpeechToTextStartedMessage
+  | SpeechToTextCancelledMessage
+  | SpeechToTextResultMessage
+  | SpeechToTextErrorMessage
   | FileSearchResultMessage
   | TerminalContextResultMessage
   | TerminalContextErrorMessage
@@ -941,6 +1023,9 @@ export type ExtensionMessage =
   | GlobalConfigLoadedMessage
   | NotificationSettingsLoadedMessage
   | TimelineSettingLoadedMessage
+  | WorkStyleLoadedMessage
+  | WorkStyleAppliedMessage
+  | WorkStyleApplyFailedMessage
   | NotificationsLoadedMessage
   | AgentManagerSessionMetaMessage
   | AgentManagerRepoInfoMessage
@@ -957,12 +1042,14 @@ export type ExtensionMessage =
   | SetChatBoxMessage
   | AppendChatBoxMessage
   | AppendReviewCommentsMessage
+  | AppendReviewCommentsToTerminalMessage
   | TriggerTaskMessage
   | VariantsLoadedMessage
   | CloudSessionDataLoadedMessage
   | CloudSessionImportedMessage
   | CloudSessionImportFailedMessage
   | OpenCloudSessionMessage
+  | SelectKiloModelMessage
   | AgentManagerBranchesMessage
   | AgentManagerExternalWorktreesMessage
   | AgentManagerImportResultMessage
@@ -976,6 +1063,7 @@ export type ExtensionMessage =
   | AgentManagerLocalStatsMessage
   | AgentManagerPRStatusMessage
   | AgentManagerTerminalCreatedMessage
+  | AgentManagerTerminalFontChangedMessage
   | AgentManagerTerminalClosedMessage
   | AgentManagerTerminalErrorMessage
   // legacy-migration start

@@ -65,6 +65,7 @@ export const MODELS_FETCH_TIMEOUT_MS = 10 * 1000
  */
 export const HEADER_ORGANIZATIONID = "X-KILOCODE-ORGANIZATIONID"
 export const HEADER_TASKID = "X-KILOCODE-TASKID"
+export const HEADER_PARENT_TASKID = "X-KILOCODE-PARENT-TASKID"
 export const HEADER_PROJECTID = "X-KILOCODE-PROJECTID"
 export const HEADER_TESTER = "X-KILOCODE-TESTER"
 export const HEADER_EDITORNAME = "X-KILOCODE-EDITORNAME"
@@ -99,4 +100,11 @@ export const PROMPTS = [
   "gpt55",
 ] as const
 
-export const AI_SDK_PROVIDERS = ["alibaba", "anthropic", "openai", "openai-compatible", "openrouter"] as const
+export const AI_SDK_PROVIDERS = [
+  "alibaba",
+  "anthropic",
+  "mistral",
+  "openai",
+  "openai-compatible",
+  "openrouter",
+] as const

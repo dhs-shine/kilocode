@@ -1,5 +1,7 @@
 export const dict = {
   "agentManager.local": "local",
+  "agentManager.sidebar.collapse": "Collapse sidebar",
+  "agentManager.sidebar.expand": "Show sidebar",
   "agentManager.section.worktrees": "WORKTREES",
   "agentManager.section.sessions": "SESSIONS",
   "agentManager.notGitRepo": "Not a git repository",
@@ -48,6 +50,7 @@ export const dict = {
   "agentManager.session.noSessions": "No sessions open",
 
   "agentManager.tab.close": "Close",
+  "agentManager.tab.closeOthers": "Close Others",
   "agentManager.tab.closeTab": "Close tab",
   "agentManager.tab.forkSession": "Fork Session",
   "agentManager.tab.terminal": "Terminal",
@@ -57,7 +60,6 @@ export const dict = {
   "agentManager.tabsMenu.search": "Search tabs...",
   "agentManager.tabsMenu.empty": "No matching tabs",
   "agentManager.tabsMenu.status.waiting": "Wait",
-  "agentManager.tabsMenu.status.working": "Work",
   "agentManager.tabsMenu.status.retry": "Retry",
 
   "agentManager.terminal.new": "New Terminal Tab",

@@ -1,5 +1,7 @@
 export const dict = {
   "agentManager.local": "ในเครื่อง",
+  "agentManager.sidebar.collapse": "ย่อแถบด้านข้าง",
+  "agentManager.sidebar.expand": "แสดงแถบด้านข้าง",
   "agentManager.section.worktrees": "WORKTREES",
   "agentManager.section.sessions": "เซสชัน",
   "agentManager.notGitRepo": "ไม่ใช่ git repository",
@@ -44,6 +46,7 @@ export const dict = {
   "agentManager.session.readonly": "เซสชันอ่านอย่างเดียว",
   "agentManager.session.noSessions": "ไม่มีเซสชันที่เปิดอยู่",
   "agentManager.tab.close": "ปิด",
+  "agentManager.tab.closeOthers": "ปิดแท็บอื่น",
   "agentManager.tab.closeTab": "ปิดแท็บ",
   "agentManager.tab.forkSession": "แยกเซสชัน",
   "agentManager.tab.terminal": "เทอร์มินัล",
@@ -53,7 +56,6 @@ export const dict = {
   "agentManager.tabsMenu.search": "ค้นหาแท็บ...",
   "agentManager.tabsMenu.empty": "ไม่มีแท็บที่ตรงกัน",
   "agentManager.tabsMenu.status.waiting": "รอ",
-  "agentManager.tabsMenu.status.working": "ทำงาน",
   "agentManager.tabsMenu.status.retry": "ลองใหม่",
 
   "agentManager.terminal.new": "แท็บเทอร์มินัลใหม่",

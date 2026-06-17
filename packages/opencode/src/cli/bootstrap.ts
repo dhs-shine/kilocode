@@ -1,18 +1,11 @@
-import { Instance } from "../project/instance"
-import { InstanceStore } from "../project/instance-store"
-import { getBootstrapRunEffect } from "../effect/app-runtime"
+import { InstanceRuntime } from "../project/instance-runtime"
+import { context } from "../project/instance-context"
 
 export async function bootstrap<T>(directory: string, cb: () => Promise<T>) {
-  return Instance.provide({
-    directory,
-    init: await getBootstrapRunEffect(),
-    fn: async () => {
-      try {
-        const result = await cb()
-        return result
-      } finally {
-        await InstanceStore.disposeInstance(Instance.current)
-      }
-    },
-  })
+  const ctx = await InstanceRuntime.load({ directory })
+  try {
+    return await context.provide(ctx, cb)
+  } finally {
+    await InstanceRuntime.disposeInstance(ctx)
+  }
 }

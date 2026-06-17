@@ -1,5 +1,7 @@
 export const dict = {
   "agentManager.local": "локальний",
+  "agentManager.sidebar.collapse": "Згорнути бічну панель",
+  "agentManager.sidebar.expand": "Показати бічну панель",
   "agentManager.section.worktrees": "РОБОЧІ ДЕРЕВА",
   "agentManager.section.sessions": "СЕСІЇ",
   "agentManager.notGitRepo": "Не є git-репозиторієм",
@@ -48,6 +50,7 @@ export const dict = {
   "agentManager.session.noSessions": "Немає відкритих сесій",
 
   "agentManager.tab.close": "Закрити",
+  "agentManager.tab.closeOthers": "Закрити інші",
   "agentManager.tab.closeTab": "Закрити вкладку",
   "agentManager.tab.forkSession": "Розгалужити сесію",
   "agentManager.tab.terminal": "Термінал",
@@ -57,7 +60,6 @@ export const dict = {
   "agentManager.tabsMenu.search": "Шукати вкладки...",
   "agentManager.tabsMenu.empty": "Немає відповідних вкладок",
   "agentManager.tabsMenu.status.waiting": "Очікує",
-  "agentManager.tabsMenu.status.working": "Працює",
   "agentManager.tabsMenu.status.retry": "Повтор",
 
   "agentManager.terminal.new": "Нова вкладка термінала",
