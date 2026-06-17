@@ -1287,10 +1287,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "Mowa na tekst",
   "settings.experimental.speechToText.description":
     "Włącz wprowadzanie głosowe w polach promptów przy użyciu konta Kilo za pośrednictwem Kilo Gateway.",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "Włącz i zaloguj się do dostawcy Kilo, aby korzystać ze Speech to Text. Speech to Text jest obecnie obsługiwane tylko z Kilo Gateway.",
-  "settings.experimental.speechToTextModel.title": "Model mowy na tekst",
-  "settings.experimental.speechToTextModel.description":
+  "settings.models.speechToTextModel.title": "Model mowy na tekst",
+  "settings.models.speechToTextModel.description":
     "Wybierz model transkrypcji Kilo Gateway dla wprowadzania głosowego.",
   "settings.experimental.continueOnDeny.title": "Kontynuuj przy odmowie",
   "settings.experimental.continueOnDeny.description": "Kontynuuj pętlę agenta po odmowie uprawnienia",
@@ -1527,10 +1527,6 @@ export const dict = {
 
   "settings.display.username.title": "Nazwa użytkownika",
   "settings.display.username.description": "Niestandardowa nazwa użytkownika w rozmowach",
-  "settings.display.layout.title": "Układ",
-  "settings.display.layout.description": "Tryb układu interfejsu czatu",
-  "settings.display.layout.auto": "Automatyczny",
-  "settings.display.layout.stretch": "Rozciągnij",
   "settings.display.fontSize.title": "Rozmiar czcionki",
   "settings.display.fontSize.description": "Dostosuj rozmiar czcionki webview UI Kilo niezależnie od VS Code.",
   "settings.display.reasoningAutoCollapse.title": "Automatycznie zwijaj rozumowanie",
@@ -1540,10 +1536,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
-  "settings.display.codeEdit.title": "Code Edit Blocks",
-  "settings.display.codeEdit.description": "Choose whether code edit and diff blocks start expanded or collapsed.",
-  "settings.display.codeEdit.expanded": "Expanded",
-  "settings.display.codeEdit.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Bloki edycji kodu",
+  "settings.display.codeEdit.description":
+    "Wybierz, czy bloki edycji kodu i podglądy różnic mają być początkowo rozwinięte czy zwinięte.",
+  "settings.display.codeEdit.expanded": "Rozwinięte",
+  "settings.display.codeEdit.collapsed": "Zwinięte",
   "settings.providers.defaultModel.title": "Domyślny model",
   "settings.providers.defaultModel.description": "Główny model do rozmów",
   "settings.providers.smallModel.title": "Mały model",

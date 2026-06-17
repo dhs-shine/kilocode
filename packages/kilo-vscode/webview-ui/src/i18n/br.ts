@@ -1329,10 +1329,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "Fala para texto",
   "settings.experimental.speechToText.description":
     "Ative a entrada de voz nos campos de prompt usando sua conta do Kilo por meio do Kilo Gateway.",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "Ative e faça login no provedor Kilo para usar o Speech to Text. Atualmente, o Speech to Text é compatível apenas com o Kilo Gateway.",
-  "settings.experimental.speechToTextModel.title": "Modelo de fala para texto",
-  "settings.experimental.speechToTextModel.description":
+  "settings.models.speechToTextModel.title": "Modelo de fala para texto",
+  "settings.models.speechToTextModel.description":
     "Escolha o modelo de transcrição do Kilo Gateway para entrada de voz.",
   "settings.experimental.continueOnDeny.title": "Continuar ao negar",
   "settings.experimental.continueOnDeny.description": "Continuar o loop do agente quando uma permissão é negada",
@@ -1534,10 +1534,6 @@ export const dict = {
 
   "settings.display.username.title": "Nome de usuário",
   "settings.display.username.description": "Nome de usuário personalizado nas conversas",
-  "settings.display.layout.title": "Layout",
-  "settings.display.layout.description": "Modo de layout para a interface de chat",
-  "settings.display.layout.auto": "Automático",
-  "settings.display.layout.stretch": "Esticar",
   "settings.display.fontSize.title": "Tamanho da fonte",
   "settings.display.fontSize.description":
     "Ajuste o tamanho da fonte da webview UI do Kilo independentemente do VS Code.",
@@ -1548,10 +1544,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
-  "settings.display.codeEdit.title": "Code Edit Blocks",
-  "settings.display.codeEdit.description": "Choose whether code edit and diff blocks start expanded or collapsed.",
-  "settings.display.codeEdit.expanded": "Expanded",
-  "settings.display.codeEdit.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Blocos de edição de código",
+  "settings.display.codeEdit.description":
+    "Escolha se os blocos que exibem edições de código e diferenças começam expandidos ou recolhidos.",
+  "settings.display.codeEdit.expanded": "Expandidos",
+  "settings.display.codeEdit.collapsed": "Recolhidos",
   "settings.providers.defaultModel.title": "Modelo padrão",
   "settings.providers.defaultModel.description": "Modelo principal para conversas",
   "settings.providers.smallModel.title": "Modelo pequeno",

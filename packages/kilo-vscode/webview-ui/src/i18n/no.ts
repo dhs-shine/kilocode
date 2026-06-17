@@ -1287,10 +1287,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "Tale til tekst",
   "settings.experimental.speechToText.description":
     "Aktiver taleinndata i prompt-felt ved å bruke din Kilo-konto gjennom Kilo Gateway.",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "Aktiver og logg på Kilo-leverandøren for å bruke Speech to Text. Speech to Text støttes for øyeblikket bare med Kilo Gateway.",
-  "settings.experimental.speechToTextModel.title": "Tale-til-tekst-modell",
-  "settings.experimental.speechToTextModel.description": "Velg Kilo Gateway-transkripsjonsmodellen for taleinndata.",
+  "settings.models.speechToTextModel.title": "Tale-til-tekst-modell",
+  "settings.models.speechToTextModel.description": "Velg Kilo Gateway-transkripsjonsmodellen for taleinndata.",
   "settings.experimental.continueOnDeny.title": "Fortsett ved avvisning",
   "settings.experimental.continueOnDeny.description": "Fortsett agentløkken når en tillatelse avvises",
   "settings.experimental.mcpTimeout.title": "MCP-tidsavbrudd (ms)",
@@ -1517,10 +1517,6 @@ export const dict = {
 
   "settings.display.username.title": "Brukernavn",
   "settings.display.username.description": "Egendefinert brukernavn i samtaler",
-  "settings.display.layout.title": "Layout",
-  "settings.display.layout.description": "Layoutmodus for chatgrensesnittet",
-  "settings.display.layout.auto": "Automatisk",
-  "settings.display.layout.stretch": "Strekk",
   "settings.display.fontSize.title": "Skriftstørrelse",
   "settings.display.fontSize.description": "Juster skriftstørrelsen for Kilo webview UI uavhengig av VS Code.",
   "settings.display.reasoningAutoCollapse.title": "Skjul resonnement automatisk",
@@ -1530,10 +1526,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
-  "settings.display.codeEdit.title": "Code Edit Blocks",
-  "settings.display.codeEdit.description": "Choose whether code edit and diff blocks start expanded or collapsed.",
-  "settings.display.codeEdit.expanded": "Expanded",
-  "settings.display.codeEdit.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Blokker for kodeendringer",
+  "settings.display.codeEdit.description":
+    "Velg om blokker for kodeendringer og forskjeller skal være utvidet eller skjult fra start.",
+  "settings.display.codeEdit.expanded": "Utvidet",
+  "settings.display.codeEdit.collapsed": "Skjult",
   "settings.providers.defaultModel.title": "Standardmodell",
   "settings.providers.defaultModel.description": "Primær modell for samtaler",
   "settings.providers.smallModel.title": "Liten modell",

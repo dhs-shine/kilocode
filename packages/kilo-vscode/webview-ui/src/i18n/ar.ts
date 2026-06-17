@@ -1298,10 +1298,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "تحويل الصوت إلى نص",
   "settings.experimental.speechToText.description":
     "تمكين الإدخال الصوتي في حقول المطالبة باستخدام حساب Kilo الخاص بك من خلال Kilo Gateway.",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "قم بتمكين وتسجيل الدخول إلى مزود Kilo لاستخدام Speech to Text. ميزة Speech to Text مدعومة حاليًا فقط مع Kilo Gateway.",
-  "settings.experimental.speechToTextModel.title": "نموذج تحويل الصوت إلى نص",
-  "settings.experimental.speechToTextModel.description": "اختر نموذج نسخ Kilo Gateway للإدخال الصوتي.",
+  "settings.models.speechToTextModel.title": "نموذج تحويل الصوت إلى نص",
+  "settings.models.speechToTextModel.description": "اختر نموذج نسخ Kilo Gateway للإدخال الصوتي.",
   "settings.experimental.continueOnDeny.title": "المتابعة عند الرفض",
   "settings.experimental.continueOnDeny.description": "متابعة حلقة الوكيل عند رفض الإذن",
   "settings.experimental.mcpTimeout.title": "مهلة MCP (مللي ثانية)",
@@ -1490,10 +1490,6 @@ export const dict = {
 
   "settings.display.username.title": "اسم المستخدم",
   "settings.display.username.description": "اسم مستخدم مخصص في المحادثات",
-  "settings.display.layout.title": "التخطيط",
-  "settings.display.layout.description": "وضع التخطيط لواجهة الدردشة",
-  "settings.display.layout.auto": "تلقائي",
-  "settings.display.layout.stretch": "تمديد",
   "settings.display.fontSize.title": "حجم الخط",
   "settings.display.fontSize.description": "اضبط حجم خط webview UI الخاص بـ Kilo بشكل مستقل عن VS Code.",
   "settings.display.reasoningAutoCollapse.title": "طي الاستدلال تلقائيًا",
@@ -1503,10 +1499,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
-  "settings.display.codeEdit.title": "Code Edit Blocks",
-  "settings.display.codeEdit.description": "Choose whether code edit and diff blocks start expanded or collapsed.",
-  "settings.display.codeEdit.expanded": "Expanded",
-  "settings.display.codeEdit.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "كتل تعديلات التعليمات البرمجية",
+  "settings.display.codeEdit.description":
+    "اختر ما إذا كانت الكتل التي تعرض تعديلات التعليمات البرمجية والفروقات تبدأ موسّعة أم مطوية.",
+  "settings.display.codeEdit.expanded": "موسّعة",
+  "settings.display.codeEdit.collapsed": "مطوية",
   "settings.providers.defaultModel.title": "النموذج الافتراضي",
   "settings.providers.defaultModel.description": "النموذج الأساسي للمحادثات",
   "settings.providers.smallModel.title": "نموذج صغير",

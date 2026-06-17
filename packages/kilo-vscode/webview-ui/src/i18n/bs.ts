@@ -1328,11 +1328,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "Govor u tekst",
   "settings.experimental.speechToText.description":
     "Omogućite glasovni unos u poljima za promptove koristeći vaš Kilo račun preko Kilo Gateway.",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "Omogućite i prijavite se na Kilo provajder da biste koristili Speech to Text. Speech to Text je trenutno podržan samo uz Kilo Gateway.",
-  "settings.experimental.speechToTextModel.title": "Model govora u tekst",
-  "settings.experimental.speechToTextModel.description":
-    "Odaberite Kilo Gateway model za transkripciju za glasovni unos.",
+  "settings.models.speechToTextModel.title": "Model govora u tekst",
+  "settings.models.speechToTextModel.description": "Odaberite Kilo Gateway model za transkripciju za glasovni unos.",
   "settings.experimental.continueOnDeny.title": "Nastavi pri odbijanju",
   "settings.experimental.continueOnDeny.description": "Nastavi petlju agenta kada je dozvola odbijena",
   "settings.experimental.mcpTimeout.title": "MCP istek vremena (ms)",
@@ -1530,10 +1529,6 @@ export const dict = {
 
   "settings.display.username.title": "Korisničko ime",
   "settings.display.username.description": "Prilagođeno korisničko ime u razgovorima",
-  "settings.display.layout.title": "Raspored",
-  "settings.display.layout.description": "Način rasporeda za sučelje chata",
-  "settings.display.layout.auto": "Automatski",
-  "settings.display.layout.stretch": "Rastegni",
   "settings.display.fontSize.title": "Veličina fonta",
   "settings.display.fontSize.description": "Prilagodite veličinu fonta za Kilo webview UI nezavisno od VS Code-a.",
   "settings.display.reasoningAutoCollapse.title": "Automatski sažmi razmišljanje",
@@ -1543,10 +1538,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
-  "settings.display.codeEdit.title": "Code Edit Blocks",
-  "settings.display.codeEdit.description": "Choose whether code edit and diff blocks start expanded or collapsed.",
-  "settings.display.codeEdit.expanded": "Expanded",
-  "settings.display.codeEdit.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Blokovi izmjena koda",
+  "settings.display.codeEdit.description":
+    "Odaberite da li će blokovi koji prikazuju izmjene koda i razlike u početku biti prošireni ili sažeti.",
+  "settings.display.codeEdit.expanded": "Prošireni",
+  "settings.display.codeEdit.collapsed": "Sažeti",
   "settings.providers.defaultModel.title": "Zadani model",
   "settings.providers.defaultModel.description": "Primarni model za razgovore",
   "settings.providers.smallModel.title": "Mali model",

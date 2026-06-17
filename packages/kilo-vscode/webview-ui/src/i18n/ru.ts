@@ -1327,11 +1327,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "Речь в текст",
   "settings.experimental.speechToText.description":
     "Включите голосовой ввод в полях запросов, используя вашу учетную запись Kilo через Kilo Gateway.",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "Включите провайдер Kilo и выполните вход, чтобы использовать Speech to Text. В настоящее время Speech to Text поддерживается только с Kilo Gateway.",
-  "settings.experimental.speechToTextModel.title": "Модель речи в текст",
-  "settings.experimental.speechToTextModel.description":
-    "Выберите модель транскрипции Kilo Gateway для голосового ввода.",
+  "settings.models.speechToTextModel.title": "Модель речи в текст",
+  "settings.models.speechToTextModel.description": "Выберите модель транскрипции Kilo Gateway для голосового ввода.",
   "settings.experimental.continueOnDeny.title": "Продолжить при отказе",
   "settings.experimental.continueOnDeny.description": "Продолжить цикл агента при отказе в разрешении",
   "settings.experimental.mcpTimeout.title": "Таймаут MCP (мс)",
@@ -1528,10 +1527,6 @@ export const dict = {
 
   "settings.display.username.title": "Имя пользователя",
   "settings.display.username.description": "Пользовательское имя в разговорах",
-  "settings.display.layout.title": "Макет",
-  "settings.display.layout.description": "Режим макета для интерфейса чата",
-  "settings.display.layout.auto": "Авто",
-  "settings.display.layout.stretch": "Растянуть",
   "settings.display.fontSize.title": "Размер шрифта",
   "settings.display.fontSize.description": "Настройте размер шрифта webview UI для Kilo независимо от VS Code.",
   "settings.display.reasoningAutoCollapse.title": "Автоматически сворачивать рассуждение",
@@ -1541,10 +1536,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
-  "settings.display.codeEdit.title": "Code Edit Blocks",
-  "settings.display.codeEdit.description": "Choose whether code edit and diff blocks start expanded or collapsed.",
-  "settings.display.codeEdit.expanded": "Expanded",
-  "settings.display.codeEdit.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Блоки изменений кода",
+  "settings.display.codeEdit.description":
+    "Выберите, будут ли блоки изменений кода и различий изначально развёрнуты или свёрнуты.",
+  "settings.display.codeEdit.expanded": "Развёрнуты",
+  "settings.display.codeEdit.collapsed": "Свёрнуты",
   "settings.providers.defaultModel.title": "Модель по умолчанию",
   "settings.providers.defaultModel.description": "Основная модель для разговоров",
   "settings.providers.smallModel.title": "Малая модель",

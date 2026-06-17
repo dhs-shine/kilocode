@@ -1316,10 +1316,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "音声認識",
   "settings.experimental.speechToText.description":
     "Kilo Gateway経由でKiloアカウントを使用して、プロンプトフィールドでの音声入力を有効にします。",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "Speech to Text を使用するには、Kilo プロバイダーを有効にしてサインインしてください。現在、Speech to Text は Kilo Gateway でのみサポートされています。",
-  "settings.experimental.speechToTextModel.title": "音声認識モデル",
-  "settings.experimental.speechToTextModel.description": "音声入力に使用するKilo Gateway文字起こしモデルを選択します。",
+  "settings.models.speechToTextModel.title": "音声認識モデル",
+  "settings.models.speechToTextModel.description": "音声入力に使用するKilo Gateway文字起こしモデルを選択します。",
   "settings.experimental.continueOnDeny.title": "拒否時に続行",
   "settings.experimental.continueOnDeny.description": "権限が拒否された場合にエージェントループを続行",
   "settings.experimental.mcpTimeout.title": "MCPタイムアウト（ミリ秒）",
@@ -1514,10 +1514,6 @@ export const dict = {
 
   "settings.display.username.title": "ユーザー名",
   "settings.display.username.description": "会話に表示されるカスタムユーザー名",
-  "settings.display.layout.title": "レイアウト",
-  "settings.display.layout.description": "チャットインターフェースのレイアウトモード",
-  "settings.display.layout.auto": "自動",
-  "settings.display.layout.stretch": "ストレッチ",
   "settings.display.fontSize.title": "フォントサイズ",
   "settings.display.fontSize.description": "VS Code とは独立して Kilo webview UI のフォントサイズを調整します。",
   "settings.display.reasoningAutoCollapse.title": "推論を自動で折りたたむ",
@@ -1527,10 +1523,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
-  "settings.display.codeEdit.title": "Code Edit Blocks",
-  "settings.display.codeEdit.description": "Choose whether code edit and diff blocks start expanded or collapsed.",
-  "settings.display.codeEdit.expanded": "Expanded",
-  "settings.display.codeEdit.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "コード編集ブロック",
+  "settings.display.codeEdit.description":
+    "コード編集ブロックと差分ブロックを最初から展開するか折りたたむかを選択します。",
+  "settings.display.codeEdit.expanded": "展開",
+  "settings.display.codeEdit.collapsed": "折りたたみ",
   "settings.providers.defaultModel.title": "デフォルトモデル",
   "settings.providers.defaultModel.description": "会話のプライマリモデル",
   "settings.providers.smallModel.title": "小型モデル",
