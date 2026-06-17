@@ -184,6 +184,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} sažeto",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} sažeto, {{large}} velikih",
   "agentManager.review.largeFileCollapsed": "Velika datoteka (sažeto)",
+  "agentManager.review.image": "Slika",
+  "agentManager.review.imageBefore": "Prije",
+  "agentManager.review.imageAfter": "Poslije",
+  "agentManager.review.imageTooLarge": "Slika je prevelika za pregled ({{size}}).",
+  "agentManager.review.imageUnreadable": "Ova slika se nije mogla prikazati.",
+  "agentManager.review.imageUnavailable": "Pregled slike nije dostupan za ovaj snimak sesije.",
   "agentManager.review.endOfLongDiff": "Došli ste do kraja!",
 
   "agentManager.import.pullRequest": "Pull Request",

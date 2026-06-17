@@ -182,6 +182,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} zwiniętych",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} zwiniętych, {{large}} dużych",
   "agentManager.review.largeFileCollapsed": "Duży plik (zwinięty)",
+  "agentManager.review.image": "Obraz",
+  "agentManager.review.imageBefore": "Przed",
+  "agentManager.review.imageAfter": "Po",
+  "agentManager.review.imageTooLarge": "Obraz jest zbyt duży, aby wyświetlić podgląd ({{size}}).",
+  "agentManager.review.imageUnreadable": "Nie można wyświetlić tego obrazu.",
+  "agentManager.review.imageUnavailable": "Podgląd obrazu jest niedostępny dla tej migawki sesji.",
   "agentManager.review.endOfLongDiff": "Dotarłeś do końca!",
 
   "agentManager.import.pullRequest": "Prośba o scalenie",

@@ -184,6 +184,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} repliés",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} repliés, {{large}} volumineux",
   "agentManager.review.largeFileCollapsed": "Fichier volumineux (replié)",
+  "agentManager.review.image": "Image",
+  "agentManager.review.imageBefore": "Avant",
+  "agentManager.review.imageAfter": "Après",
+  "agentManager.review.imageTooLarge": "L’image est trop volumineuse pour être prévisualisée ({{size}}).",
+  "agentManager.review.imageUnreadable": "Cette image n’a pas pu être affichée.",
+  "agentManager.review.imageUnavailable": "L’aperçu de l’image n’est pas disponible pour cet instantané de session.",
   "agentManager.review.endOfLongDiff": "Vous êtes arrivé à la fin !",
 
   "agentManager.import.pullRequest": "Pull Request",

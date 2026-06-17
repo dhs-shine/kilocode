@@ -183,6 +183,13 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} contraídos",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} contraídos, {{large}} grandes",
   "agentManager.review.largeFileCollapsed": "Archivo grande (contraído)",
+  "agentManager.review.image": "Imagen",
+  "agentManager.review.imageBefore": "Antes",
+  "agentManager.review.imageAfter": "Después",
+  "agentManager.review.imageTooLarge": "La imagen es demasiado grande para previsualizarla ({{size}}).",
+  "agentManager.review.imageUnreadable": "No se pudo renderizar esta imagen.",
+  "agentManager.review.imageUnavailable":
+    "La vista previa de la imagen no está disponible para esta instantánea de la sesión.",
   "agentManager.review.endOfLongDiff": "¡Llegaste al final!",
 
   "agentManager.import.pullRequest": "Pull Request",

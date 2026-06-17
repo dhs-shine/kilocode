@@ -183,6 +183,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} 件折りたたみ",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} 件折りたたみ、{{large}} 件がサイズ大",
   "agentManager.review.largeFileCollapsed": "大きなファイル（折りたたみ）",
+  "agentManager.review.image": "画像",
+  "agentManager.review.imageBefore": "変更前",
+  "agentManager.review.imageAfter": "変更後",
+  "agentManager.review.imageTooLarge": "画像が大きすぎるためプレビューできません（{{size}}）。",
+  "agentManager.review.imageUnreadable": "この画像を表示できませんでした。",
+  "agentManager.review.imageUnavailable": "このセッションスナップショットでは画像プレビューを利用できません。",
   "agentManager.review.endOfLongDiff": "最後まで到達しました！",
 
   "agentManager.import.pullRequest": "Pull Request",

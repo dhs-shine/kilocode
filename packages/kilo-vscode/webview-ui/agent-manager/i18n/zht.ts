@@ -178,6 +178,12 @@ export const dict = {
   "agentManager.review.collapsedOnly": "{{count}} 個已摺疊",
   "agentManager.review.collapsedWithLarge": "{{collapsed}} 個已摺疊，{{large}} 個過大",
   "agentManager.review.largeFileCollapsed": "大型檔案（已摺疊）",
+  "agentManager.review.image": "圖片",
+  "agentManager.review.imageBefore": "變更前",
+  "agentManager.review.imageAfter": "變更後",
+  "agentManager.review.imageTooLarge": "圖片太大，無法預覽（{{size}}）。",
+  "agentManager.review.imageUnreadable": "無法呈現此圖片。",
+  "agentManager.review.imageUnavailable": "此工作階段快照無法預覽圖片。",
   "agentManager.review.endOfLongDiff": "你已經到最後了！",
 
   "agentManager.import.pullRequest": "Pull Request",
