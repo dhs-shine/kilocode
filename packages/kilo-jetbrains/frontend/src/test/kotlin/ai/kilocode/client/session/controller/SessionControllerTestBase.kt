@@ -8,6 +8,7 @@ import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.testing.FakeAppRpcApi
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.client.testing.FakeSessionRpcApi
+import ai.kilocode.client.testing.TestCoroutines
 import ai.kilocode.client.testing.TestUiTimers
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
@@ -35,14 +36,8 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import java.awt.event.HierarchyEvent
-import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExecutorCoroutineDispatcher
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -102,7 +97,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
     protected lateinit var workspace: Workspace
     protected lateinit var timers: TestUiTimers
 
-    private lateinit var dispatcher: ExecutorCoroutineDispatcher
+    private lateinit var coroutines: TestCoroutines
     protected lateinit var scope: CoroutineScope
     protected lateinit var parent: Disposable
 
@@ -113,8 +108,8 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         projectRpc = FakeWorkspaceRpcApi()
         timers = TestUiTimers()
 
-        dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-        scope = CoroutineScope(SupervisorJob() + dispatcher)
+        coroutines = TestCoroutines()
+        scope = coroutines.scope
         parent = Disposer.newDisposable("test")
 
         sessions = KiloSessionService(project, scope, rpc)
@@ -126,9 +121,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
     override fun tearDown() {
         try {
             Disposer.dispose(parent)
-            scope.cancel()
-            await(scope.coroutineContext[kotlinx.coroutines.Job]!!)
-            dispatcher.close()
+            coroutines.close { edt { UIUtil.dispatchAllInvocationEvents() } }
         } finally {
             super.tearDown()
         }
@@ -258,21 +251,11 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
     }
 
     private fun drain(force: Boolean) {
-        repeat(5) {
-            await(scope.launch {})
+        coroutines.drain {
             edt {
                 if (force) controllers.forEach { it.flushEvents() }
                 UIUtil.dispatchAllInvocationEvents()
             }
-        }
-    }
-
-    private fun await(job: kotlinx.coroutines.Job) {
-        val end = System.nanoTime() + 5_000_000_000L
-        while (!job.isCompleted) {
-            check(System.nanoTime() < end) { "Timed out draining test coroutines" }
-            edt { UIUtil.dispatchAllInvocationEvents() }
-            Thread.yield()
         }
     }
 
