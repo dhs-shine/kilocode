@@ -23,6 +23,8 @@ const BASIC_TOOL_FILE = path.join(MONOREPO_ROOT, "packages/ui/src/components/bas
 const DATA_CONTEXT_FILE = path.join(MONOREPO_ROOT, "packages/ui/src/context/data.tsx")
 const MESSAGE_PART_FILE = path.join(MONOREPO_ROOT, "packages/ui/src/components/message-part.tsx")
 const KILO_MESSAGE_PART_FILE = path.join(MONOREPO_ROOT, "packages/kilo-ui/src/components/message-part.tsx")
+const KILO_MESSAGE_PART_CSS_FILE = path.join(MONOREPO_ROOT, "packages/kilo-ui/src/components/message-part.css")
+const SHELL_ROLLING_FILE = path.join(MONOREPO_ROOT, "packages/kilo-ui/src/components/shell-rolling-results.tsx")
 const ASSISTANT_MESSAGE_FILE = path.join(
   MONOREPO_ROOT,
   "packages/kilo-vscode/webview-ui/src/components/chat/AssistantMessage.tsx",
@@ -199,6 +201,10 @@ describe("Bash tool static terminal preview (source)", () => {
     expect(block).toContain("BashHighlightedOutput")
   })
 
+  it("animates expanded bash details", () => {
+    expect(block).toMatch(/allowPendingToggle\s+animated\s+trigger=/)
+  })
+
   it("BashHighlightedOutput syntax highlights the command next to the prompt", () => {
     expect(src).toContain('data-slot="bash-terminal" data-kind="command"')
     expect(src).toContain('data-slot="bash-prompt"')
@@ -243,6 +249,23 @@ describe("Bash tool static terminal preview (source)", () => {
 
   it("bash tool passes outputPath from metadata to BashHighlightedOutput", () => {
     expect(block).toContain("props.metadata.outputPath")
+  })
+})
+
+describe("Expanded tool motion and typography (source)", () => {
+  it("animates completed rolling shell details", () => {
+    const src = fs.readFileSync(SHELL_ROLLING_FILE, "utf-8")
+    expect(src).toContain("useCollapsible({")
+    expect(src).toContain("content: () => contentRef")
+    expect(src).toContain("body: () => bodyRef")
+  })
+
+  it("uses the assistant markdown line-height ratio for reasoning output", () => {
+    const css = fs.readFileSync(KILO_MESSAGE_PART_CSS_FILE, "utf-8")
+    const block = css.match(
+      /html\[data-theme="kilo-vscode"\] \[data-component="reasoning-part"\][\s\S]*?(?=@keyframes reasoning-pulse)/,
+    )?.[0]
+    expect(block).toMatch(/\[data-component="markdown"\]\s*\{[^}]*line-height:\s*160%;/)
   })
 })
 

@@ -2235,6 +2235,7 @@ ToolRegistry.register({
         defaultOpen={props.defaultOpen ?? true}
         onOpenChange={setOpen}
         allowPendingToggle
+        animated
         trigger={
           <div data-slot="basic-tool-tool-info-structured">
             <div data-slot="basic-tool-tool-info-main">
