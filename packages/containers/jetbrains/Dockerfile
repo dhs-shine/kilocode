@@ -1,17 +1,6 @@
 # kilocode_change start
 ARG REGISTRY=ghcr.io/kilo-org
-FROM ${REGISTRY}/build/bun-node:24.04 AS bun-cache
-
-WORKDIR /src
-COPY package.json bun.lock bunfig.toml ./
-COPY packages ./packages
-COPY patches ./patches
-RUN bun install --frozen-lockfile --ignore-scripts --cache-dir=/bun-cache
-
-FROM ${REGISTRY}/build/bun-node:24.04
-
-COPY --from=bun-cache /bun-cache/ /opt/bun/install/cache/
-ENV BUN_INSTALL_CACHE_DIR=/opt/bun/install/cache
+FROM ${REGISTRY}/build/bun-node:24.04 AS runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GRADLE_VERSION=9.4.1
@@ -47,4 +36,17 @@ RUN set -euo pipefail; \
     rm "${dir}/gradle-${GRADLE_VERSION}-bin.zip"; \
     java -version; \
     "${dir}/gradle-${GRADLE_VERSION}/bin/gradle" --version
+
+FROM ${REGISTRY}/build/bun-node:24.04 AS bun-cache
+
+WORKDIR /src
+COPY package.json bun.lock bunfig.toml ./
+COPY packages ./packages
+COPY patches ./patches
+RUN bun install --frozen-lockfile --ignore-scripts --cache-dir=/bun-cache
+
+FROM runtime
+
+ENV BUN_INSTALL_CACHE_DIR=/opt/bun/install/cache
+COPY --from=bun-cache /bun-cache/ /opt/bun/install/cache/
 # kilocode_change end
