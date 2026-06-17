@@ -236,6 +236,11 @@
         "category": "Kilo Code"
       },
       {
+        "command": "kilo-code.new.agentManager.search",
+        "title": "Agent Manager: Search Worktrees and Sessions",
+        "category": "Kilo Code"
+      },
+      {
         "command": "kilo-code.new.agentManager.showTerminal",
         "title": "Agent Manager: Focus Terminal",
         "category": "Kilo Code",
@@ -630,6 +635,12 @@
         "when": "activeWebviewPanelId == 'kilo-code.new.AgentManagerPanel'"
       },
       {
+        "command": "kilo-code.new.agentManager.search",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
+        "when": "activeWebviewPanelId == 'kilo-code.new.AgentManagerPanel' && !terminalFocus"
+      },
+      {
         "command": "kilo-code.new.agentManager.showTerminal",
         "key": "ctrl+/",
         "mac": "cmd+/",
@@ -901,10 +912,6 @@
           "type": "boolean",
           "default": false,
           "description": "Enable chat textarea autocomplete"
-        },
-        "kilo-code.new.speechToText.model": {
-          "type": "string",
-          "description": "Model to use for experimental speech-to-text voice input. Requires Kilo Gateway."
         },
         "kilo-code.new.claudeCodeCompat": {
           "type": "boolean",

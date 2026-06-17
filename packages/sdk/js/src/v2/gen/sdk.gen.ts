@@ -91,6 +91,8 @@ import type {
   InstanceDisposeResponses,
   KiloAudioTranscriptionsErrors,
   KiloAudioTranscriptionsResponses,
+  KiloAuthStatusErrors,
+  KiloAuthStatusResponses,
   KiloClawChatCredentialsResponses,
   KiloClawStatusErrors,
   KiloClawStatusResponses,
@@ -6518,6 +6520,36 @@ export class Kilo extends HeyApiClient {
     )
     return (options?.client ?? this.client).get<KiloProfileResponses, KiloProfileErrors, ThrowOnError>({
       url: "/kilo/profile",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Get Kilo authentication status
+   *
+   * Check whether a locally stored Kilo credential can authenticate Gateway requests
+   */
+  public authStatus<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<KiloAuthStatusResponses, KiloAuthStatusErrors, ThrowOnError>({
+      url: "/kilo/auth-status",
       ...options,
       ...params,
     })
