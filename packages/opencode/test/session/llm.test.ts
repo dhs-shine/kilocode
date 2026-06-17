@@ -399,7 +399,7 @@ describe("session.llm.stream", () => {
 
         const capture = await request
         const body = capture.body
-        const headers = capture.headers
+        const headers = capture.headers // kilocode_change
         const url = capture.url
 
         expect(url.pathname.startsWith("/v1/")).toBe(true)
@@ -1160,7 +1160,7 @@ describe("session.llm.stream", () => {
 
         const capture = await request
         const body = capture.body
-        const headers = capture.headers
+        const headers = capture.headers // kilocode_change
 
         expect(capture.url.pathname.endsWith("/messages")).toBe(true)
         expect(headers.get("User-Agent")?.split(" ")[0]).toBe(USER_AGENT) // kilocode_change
