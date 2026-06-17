@@ -32,6 +32,14 @@
 
 ## [Unreleased]
 
+## [7.0.1-rc.11] - 2026-06-17
+
+### Changed
+- refactor(cli): fork TUI tips by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11365
+- release(jetbrains): v7.0.1-rc.10 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11374
+- ci(jetbrains): install deps before publish build by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11378
+
+
 ## [7.0.1-rc.10] - 2026-06-17
 
 ### Added
