@@ -52,11 +52,12 @@ export const dict = {
   "agentManager.tab.terminal": "Terminal",
   "agentManager.tab.openTerminal": "Otwórz Terminal",
   "agentManager.tab.newOptions": "Więcej opcji nowej karty",
-  "agentManager.tabsMenu.label": "Szukaj otwartych kart",
-  "agentManager.tabsMenu.search": "Szukaj kart...",
-  "agentManager.tabsMenu.empty": "Brak pasujących kart",
   "agentManager.tabsMenu.status.waiting": "Czeka",
   "agentManager.tabsMenu.status.retry": "Ponów",
+  "agentManager.sidebarSearch.label": "Wyszukaj Worktree i sesje",
+  "agentManager.sidebarSearch.scope":
+    "Przeszukuje lokalny obszar roboczy, lokalne sesje, Worktree i przypisane do nich sesje",
+  "agentManager.sidebarSearch.contexts": "LOKALNE & WORKTREES",
 
   "agentManager.terminal.new": "Nowa karta terminala",
   "agentManager.terminal.ended": "terminal zakończony — zamknij kartę, aby zamknąć",

@@ -52,11 +52,12 @@ export const dict = {
   "agentManager.tab.terminal": "Terminal",
   "agentManager.tab.openTerminal": "Abrir Terminal",
   "agentManager.tab.newOptions": "Mais opções de nova aba",
-  "agentManager.tabsMenu.label": "Pesquisar abas abertas",
-  "agentManager.tabsMenu.search": "Pesquisar abas...",
-  "agentManager.tabsMenu.empty": "Nenhuma aba correspondente",
   "agentManager.tabsMenu.status.waiting": "Espera",
   "agentManager.tabsMenu.status.retry": "Repetir",
+  "agentManager.sidebarSearch.label": "Pesquisar Worktrees e sessões",
+  "agentManager.sidebarSearch.scope":
+    "Pesquisa o espaço de trabalho local, as sessões locais, os Worktrees e suas sessões",
+  "agentManager.sidebarSearch.contexts": "LOCAL & WORKTREES",
 
   "agentManager.terminal.new": "Nova aba de terminal",
   "agentManager.terminal.ended": "terminal encerrado — feche a aba para dispensar",

@@ -435,6 +435,9 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("kilo-code.new.agentManager.nextTab", () => {
       agentManagerProvider.postMessage({ type: "action", action: "tabNext" })
     }),
+    vscode.commands.registerCommand("kilo-code.new.agentManager.search", () => {
+      agentManagerProvider.postMessage({ type: "action", action: "search" })
+    }),
     vscode.commands.registerCommand("kilo-code.new.agentManager.showTerminal", () => {
       // Route through the webview so it can reach into the active session
       // state and open the VS Code integrated terminal for it.
