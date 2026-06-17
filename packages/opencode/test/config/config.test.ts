@@ -40,6 +40,8 @@ import { ConfigPlugin } from "@/config/plugin"
 import { AccountTest } from "../fake/account"
 import { AuthTest } from "../fake/auth"
 import { NpmTest } from "../fake/npm"
+import { isIndexingPlugin } from "@kilocode/kilo-indexing/detect" // kilocode_change
+import { isAtomicChatPlugin } from "@/kilocode/atomic-chat-feature" // kilocode_change
 
 const testFlock = EffectFlock.defaultLayer
 
@@ -1342,7 +1344,11 @@ test("keeps plugin origins aligned with merged plugin list", async () => {
       expect(names).toContain("global-only@1.0.0")
       expect(names).toContain("local-only@1.0.0")
 
-      expect(origins.map((item) => item.spec)).toEqual(plugins)
+      // kilocode_change start - bundled plugins intentionally have no external plugin origins
+      expect(origins.map((item) => item.spec)).toEqual(
+        plugins.filter((item) => !isIndexingPlugin(item) && !isAtomicChatPlugin(item)),
+      )
+      // kilocode_change end
       const hit = origins.find((item) => ConfigPlugin.pluginSpecifier(item.spec) === "shared-plugin@2.0.0")
       expect(hit?.scope).toBe("local")
     },

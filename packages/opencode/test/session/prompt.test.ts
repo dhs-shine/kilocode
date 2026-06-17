@@ -1067,7 +1067,7 @@ it.instance(
         expect(exit.value.info.role).toBe("assistant")
       }
     }),
-  3_000,
+  10_000, // kilocode_change - Windows CI can take longer to cancel the live loop
 )
 
 // kilocode_change start
@@ -1344,7 +1344,7 @@ it.instance(
       const a = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
       yield* llm.wait(1)
       const b = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* Effect.sleep(50)
+      yield* Effect.yieldNow // kilocode_change - let the queued caller join without a wall-clock race
 
       yield* prompt.cancel(chat.id)
       const [exitA, exitB] = yield* Effect.all([Fiber.await(a), Fiber.await(b)])
@@ -1355,7 +1355,7 @@ it.instance(
       }
     }),
   { git: true },
-  3_000,
+  10_000, // kilocode_change - Windows CI can take longer to cancel queued live loops
 )
 
 // Queue semantics
@@ -1392,7 +1392,7 @@ it.instance(
       const a = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
       yield* llm.wait(1)
       const b = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* Effect.sleep(50)
+      yield* Effect.yieldNow // kilocode_change - let the queued caller join without a wall-clock race
       yield* Deferred.succeed(gate, void 0)
 
       const [ea, eb] = yield* Effect.all([Fiber.await(a), Fiber.await(b)])
@@ -1765,7 +1765,7 @@ it.instance(
       yield* waitForBusy(chat.id)
 
       const loop = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* Effect.sleep(50)
+      yield* Effect.yieldNow // kilocode_change - give the queued loop a scheduler turn instead of a wall-clock window
 
       expect(yield* llm.calls).toBe(0)
 
@@ -1803,7 +1803,7 @@ it.instance(
 
       const a = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
       const b = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* Effect.sleep(50)
+      yield* Effect.yieldNow // kilocode_change - give the queued loops a scheduler turn instead of a wall-clock window
 
       expect(yield* llm.calls).toBe(0)
 
@@ -2005,7 +2005,7 @@ unixNoLLMServer(
       yield* waitForBusy(chat.id)
 
       const loop = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
-      yield* Effect.sleep(50)
+      yield* Effect.yieldNow // kilocode_change - give the queued loop a scheduler turn before cancelling
 
       yield* prompt.cancel(chat.id)
 

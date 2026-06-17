@@ -24,6 +24,7 @@ import { resetDatabase } from "../fixture/db"
 import { disposeAllInstances, TestInstance, tmpdirScoped } from "../fixture/fixture"
 import { awaitWithTimeout, testEffect } from "../lib/effect"
 import { testProviderConfig } from "../lib/test-provider"
+import { pollWithTimeout, testEffect } from "../lib/effect" // kilocode_change
 
 const noopBootstrap = Layer.succeed(InstanceBootstrap.Service, InstanceBootstrap.Service.of({ run: Effect.void }))
 const it = testEffect(
@@ -170,6 +171,15 @@ function statuses(input: Record<string, Captured>) {
 function firstPartText(value: unknown) {
   return record(array(record(value).parts)[0]).text
 }
+
+// kilocode_change start
+function texts(value: unknown) {
+  return array(value)
+    .flatMap((item) => array(record(item).parts))
+    .map((part) => record(part).text)
+    .filter((text): text is string => typeof text === "string")
+}
+// kilocode_change end
 
 function sessionTitles(value: unknown) {
   return array(value)
@@ -719,6 +729,7 @@ describe("HttpApi SDK", () => {
             parts: [{ type: "text", text: "hello" }],
           }),
         )
+        // kilocode_change start
         const asyncPrompt = yield* capture(() =>
           sdk.session.promptAsync({
             sessionID,
@@ -727,18 +738,20 @@ describe("HttpApi SDK", () => {
             parts: [{ type: "text", text: "async hello" }],
           }),
         )
-        const messages = yield* capture(() => sdk.session.messages({ sessionID }))
+        const messages = yield* pollWithTimeout(
+          capture(() => sdk.session.messages({ sessionID })).pipe(
+            Effect.map((messages) => (texts(messages.data).includes("async hello") ? messages : undefined)),
+          ),
+          "async no-reply prompt message was not persisted",
+        )
 
         return {
           statuses: statuses({ session, prompt, asyncPrompt, messages }),
           promptRole: record(record(prompt.data).info).role,
           messageCount: array(messages.data).length,
-          messageTexts: array(messages.data)
-            .flatMap((item) => array(record(item).parts))
-            .map((part) => record(part).text)
-            .filter((text): text is string => typeof text === "string")
-            .sort(),
+          messageTexts: texts(messages.data).sort(),
         }
+        // kilocode_change end
       }),
     ),
   )

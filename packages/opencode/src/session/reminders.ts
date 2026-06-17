@@ -1,4 +1,3 @@
-import path from "path"
 import { Effect } from "effect"
 import { KiloSessionPrompt } from "@/kilocode/session/prompt" // kilocode_change
 import { Agent } from "@/agent/agent"
@@ -8,9 +7,7 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { PartID } from "./schema"
 import { MessageV2 } from "./message-v2"
 import * as Session from "./session"
-import PROMPT_PLAN from "./prompt/plan.txt"
 import CODE_SWITCH from "./prompt/code-switch.txt" // kilocode_change
-import PLAN_MODE from "./prompt/plan-mode.txt"
 
 export const apply = Effect.fn("SessionReminders.apply")(function* (input: {
   messages: MessageV2.WithParts[]
@@ -23,27 +20,19 @@ export const apply = Effect.fn("SessionReminders.apply")(function* (input: {
   const userMessage = input.messages.findLast((msg) => msg.info.role === "user")
   if (!userMessage) return input.messages
 
+  // kilocode_change start - shared planning reminder path
+  // No-op unless the active agent is plan-like.
+  yield* Effect.promise(() =>
+    KiloSessionPrompt.insertPlanReminders({
+      agent: input.agent,
+      session: input.session,
+      userMessage,
+      messages: input.messages,
+    }),
+  )
+  // kilocode_change end
+
   if (!flags.experimentalPlanMode) {
-    // kilocode_change start - inject plan file path so agent writes to .kilo/plans/
-    yield* Effect.promise(() =>
-      KiloSessionPrompt.insertPlanReminders({
-        agent: input.agent,
-        session: input.session,
-        userMessage,
-        messages: input.messages,
-      }),
-    )
-    // kilocode_change end
-    if (input.agent.name === "plan") {
-      userMessage.parts.push({
-        id: PartID.ascending(),
-        messageID: userMessage.info.id,
-        sessionID: userMessage.info.sessionID,
-        type: "text",
-        text: PROMPT_PLAN,
-        synthetic: true,
-      })
-    }
     const wasPlan = input.messages.some((msg) => msg.info.role === "assistant" && msg.info.agent === "plan")
     if (wasPlan && input.agent.name === "code") {
       // kilocode_change - renamed from "build" to "code"
@@ -78,26 +67,9 @@ export const apply = Effect.fn("SessionReminders.apply")(function* (input: {
     return input.messages
   }
 
-  if (input.agent.name !== "plan" || assistantMessage?.info.agent === "plan") return input.messages
-
-  const ctx = yield* InstanceState.context
-  const plan = Session.plan(input.session, ctx)
-  const exists = yield* fsys.existsSafe(plan)
-  if (!exists) yield* fsys.ensureDir(path.dirname(plan)).pipe(Effect.catch(Effect.die))
-  const part = yield* sessions.updatePart({
-    id: PartID.ascending(),
-    messageID: userMessage.info.id,
-    sessionID: userMessage.info.sessionID,
-    type: "text",
-    text: PLAN_MODE.replace("${planInfo}", () =>
-      exists
-        ? `A plan file already exists at ${plan}. You can read it and make incremental edits using the edit tool.`
-        : `No plan file exists yet. You should create your plan at ${plan} using the write tool.`,
-    ),
-    synthetic: true,
-  })
-  userMessage.parts.push(part)
+  // kilocode_change start - replace native Plan's separate prompt with the shared reminder above
   return input.messages
+  // kilocode_change end
 })
 
 export * as SessionReminders from "./reminders"

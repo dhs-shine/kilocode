@@ -1208,15 +1208,15 @@
         ],
         "responses": {
           "200": {
-            "description": "List of worktree directories",
+            "description": "List of worktrees",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "$ref": "#/components/schemas/WorktreeListItem"
                   },
-                  "description": "List of worktree directories"
+                  "description": "List of worktrees"
                 }
               }
             }
@@ -1239,7 +1239,7 @@
             }
           }
         },
-        "description": "List all sandbox worktrees for the current project.",
+        "description": "List all git worktrees for the current project and whether Kilo manages them.",
         "summary": "List worktrees",
         "x-codeSamples": [
           {
@@ -1714,6 +1714,15 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            },
+            "required": false
+          },
+          {
+            "name": "current",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
             },
             "required": false
           },
@@ -13087,6 +13096,79 @@
         ]
       }
     },
+    "/kilo/auth-status": {
+      "get": {
+        "tags": ["kilo"],
+        "operationId": "kilo.authStatus",
+        "parameters": [
+          {
+            "name": "directory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "workspace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kilo authentication status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["api", "oauth"]
+                    }
+                  },
+                  "required": ["authenticated"],
+                  "additionalProperties": false,
+                  "description": "Kilo authentication status"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BadRequest | InvalidRequestError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/effect_HttpApiError_BadRequest"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Check whether a locally stored Kilo credential can authenticate Gateway requests",
+        "summary": "Get Kilo authentication status",
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.kilo.authStatus({\n  ...\n})"
+          }
+        ]
+      }
+    },
     "/kilo/modes": {
       "get": {
         "tags": ["kilo"],
@@ -20582,6 +20664,10 @@
             "type": "string",
             "enum": ["expanded", "collapsed"]
           },
+          "code_edit_display": {
+            "type": "string",
+            "enum": ["expanded", "collapsed"]
+          },
           "hide_prompt_training_models": {
             "type": "boolean"
           },
@@ -21315,6 +21401,19 @@
         "items": {
           "type": "string"
         }
+      },
+      "WorktreeListItem": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "managed": {
+            "type": "boolean"
+          }
+        },
+        "required": ["directory", "managed"],
+        "additionalProperties": false
       },
       "WorktreeError": {
         "type": "object",
