@@ -1,6 +1,17 @@
 # kilocode_change start
 ARG REGISTRY=ghcr.io/kilo-org
+FROM ${REGISTRY}/build/bun-node:24.04 AS bun-cache
+
+WORKDIR /src
+COPY package.json bun.lock bunfig.toml ./
+COPY packages ./packages
+COPY patches ./patches
+RUN bun install --frozen-lockfile --ignore-scripts --cache-dir=/bun-cache
+
 FROM ${REGISTRY}/build/bun-node:24.04
+
+COPY --from=bun-cache /bun-cache/ /opt/bun/install/cache/
+ENV BUN_INSTALL_CACHE_DIR=/opt/bun/install/cache
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GRADLE_VERSION=9.4.1
