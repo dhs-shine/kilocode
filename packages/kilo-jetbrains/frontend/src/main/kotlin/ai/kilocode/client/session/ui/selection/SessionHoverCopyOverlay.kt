@@ -123,5 +123,7 @@ internal class SessionHoverCopyOverlay(
         repaint()
     }
 
-    override fun dispose() = Unit
+    override fun dispose() {
+        clear()
+    }
 }

@@ -352,10 +352,7 @@ class MessageView(
     @RequiresEdt
     fun setPromptHovered(value: Boolean) {
         if (role != SessionUiStyle.View.Message.USER_ROLE) return
-        if (promptHover == value) {
-            syncPromptToolbar()
-            return
-        }
+        if (promptHover == value) return
         promptHover = value
         syncPromptToolbar()
     }
