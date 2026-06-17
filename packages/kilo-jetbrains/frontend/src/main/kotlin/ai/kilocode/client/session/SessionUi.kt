@@ -46,6 +46,8 @@ import ai.kilocode.client.settings.KiloSettingsConfigurable
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.client.util.UiTimerSource
+import ai.kilocode.client.util.UiTimers
 import ai.kilocode.client.vfs.KiloVfsManager
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.rpc.dto.PromptDto
@@ -83,7 +85,6 @@ import java.net.URI
 import java.nio.file.Path
 import javax.swing.JComponent
 import javax.swing.JPanel
-import javax.swing.Timer
 import javax.swing.UIManager
 
 /**
@@ -103,6 +104,7 @@ class SessionUi(
     private val manager: SessionManager? = null,
     private val workspaces: KiloWorkspaceService = service(),
     private val migration: MigrationUiController = service<KiloMigrationService>(),
+    private val timers: UiTimerSource = UiTimers,
 ) : JPanel(BorderLayout()), Disposable, SessionEditorStyleTarget, UiDataProvider {
 
     companion object {
@@ -139,17 +141,16 @@ class SessionUi(
         afterUpdate = { if (!opening) scroll.followBottom(it) },
         loaded = ::onSessionLoaded,
         openProfileAction = ::openProfileSettings,
+        timers = timers,
     )
 
 
     private lateinit var root: SessionRootPanel
     private lateinit var account: SessionAccountOverlay
     private lateinit var drop: SessionDropOverlay
-    private val hide = Timer(HIDE_MS) {
-        if (disposed || !this::drop.isInitialized) return@Timer
+    private val hide = timers.timer(HIDE_MS, repeats = false) {
+        if (disposed || !this::drop.isInitialized) return@timer
         drop.setActive(false)
-    }.apply {
-        isRepeats = false
     }
 
     private lateinit var sessionContent: JPanel
@@ -433,6 +434,7 @@ class SessionUi(
                         history = { manager?.showHistory() },
                         activity = { manager?.activity() ?: sessions.activity() },
                         titles = { manager?.titles().orEmpty() },
+                        timers = timers,
                     )
                     empty = panel
                     scroll.show(panel.view)
