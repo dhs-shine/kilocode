@@ -399,7 +399,7 @@ describe("session.llm.stream", () => {
 
         const capture = await request
         const body = capture.body
-        const headers = capture.headers // kilocode_change
+        const headers = capture.headers
         const url = capture.url
 
         expect(url.pathname.startsWith("/v1/")).toBe(true)
