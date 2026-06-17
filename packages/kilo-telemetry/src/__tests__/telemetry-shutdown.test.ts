@@ -3,16 +3,19 @@
 // top-level `Telemetry` import there resolve the real PostHog into the module
 // cache before the mock is set, making the test rely on bun:test's cache
 // invalidation timing rather than testing the shutdown path directly.
-import { describe, test, expect, mock } from "bun:test"
+import { beforeEach, describe, test, expect, mock } from "bun:test"
+
+const timeout = "Timeout while shutting down PostHog. Some events may not have been sent."
 
 mock.module("posthog-node", () => ({
   PostHog: class {
     async flush() {
       flushCalls += 1
-      await new Promise((resolve) => setTimeout(resolve, 60_000))
+      throw new Error("flush should not be called")
     }
     async shutdown(timeoutMs?: number) {
       shutdownCalls.push(timeoutMs)
+      throw timeout
     }
     optIn() {}
     optOut() {}
@@ -25,6 +28,11 @@ let flushCalls = 0
 const shutdownCalls: Array<number | undefined> = []
 
 describe("Telemetry.shutdown timeout (#9788)", () => {
+  beforeEach(() => {
+    flushCalls = 0
+    shutdownCalls.length = 0
+  })
+
   test("passes timeoutMs through to PostHog.shutdown and skips unbounded explicit flush()", async () => {
     // Reproduces the CLI exit hang reported in #9788: when the PostHog endpoint
     // is unreachable (offline, firewall, DNS adblock resolving the host to
@@ -36,12 +44,9 @@ describe("Telemetry.shutdown timeout (#9788)", () => {
     const { Telemetry } = await import("../telemetry.js")
     const { Client } = await import("../client.js")
     Client.init()
-    const start = Date.now()
-    await Telemetry.shutdown(50)
-    const elapsed = Date.now() - start
+    await expect(Telemetry.shutdown(50)).rejects.toBe(timeout)
 
     expect(flushCalls).toBe(0)
     expect(shutdownCalls).toEqual([50])
-    expect(elapsed).toBeLessThan(1000)
   })
 })
