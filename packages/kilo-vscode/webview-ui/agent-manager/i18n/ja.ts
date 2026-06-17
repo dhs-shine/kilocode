@@ -81,6 +81,7 @@ export const dict = {
   "agentManager.shortcuts.nextItem": "次の項目",
   "agentManager.shortcuts.newWorktree": "新しいWorktree",
   "agentManager.shortcuts.openWorktree": "Worktreeを開く",
+  "agentManager.shortcuts.openPR": "PRを開く",
   "agentManager.shortcuts.advancedWorktree": "新規 worktree の構成",
   "agentManager.shortcuts.deleteWorktree": "Worktreeを削除",
   "agentManager.shortcuts.previousTab": "前のタブ",
