@@ -2243,6 +2243,10 @@ export type TuiConfigGetResponse = {
   plugin_enabled?: {
     [key: string]: boolean
   }
+  /**
+   * Status icon style shown in terminal titles
+   */
+  title_icon?: "none" | "unicode" | "emojis"
   scroll_speed?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
   scroll_acceleration?: {
     enabled: boolean
@@ -8644,6 +8648,10 @@ export type TuiConfigUpdateData = {
     plugin_enabled?: {
       [key: string]: boolean
     }
+    /**
+     * Status icon style shown in terminal titles
+     */
+    title_icon?: "none" | "unicode" | "emojis"
     scroll_speed?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
     scroll_acceleration?: {
       enabled: boolean
