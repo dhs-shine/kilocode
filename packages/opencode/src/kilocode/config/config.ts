@@ -2,7 +2,7 @@ import path from "path"
 import { pathToFileURL } from "url"
 import { existsSync } from "fs"
 import { Effect, Schema } from "effect"
-import { applyEdits, findNodeAtLocation, modify, parse as parseJsonc, parseTree } from "jsonc-parser"
+import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser"
 import { mergeDeep } from "remeda"
 import * as Log from "@opencode-ai/core/util/log"
 import { Global } from "@opencode-ai/core/global"
@@ -353,7 +353,7 @@ export namespace KilocodeConfig {
         .catch(() => "")
       const data = parseJsonc(text) ?? {}
       configs.push({ file, data })
-      if (isRecord(data.permission) && data.permission.bash) return
+      if (typeof data.permission === "string" || (isRecord(data.permission) && data.permission.bash)) return
     }
 
     // A schema-only file is generated for editor completion. It does not mean
@@ -373,24 +373,16 @@ export namespace KilocodeConfig {
       .catch(() => "{}")
 
     if (target.endsWith(".jsonc")) {
-      const tree = parseTree(text)
-      const permission = tree && findNodeAtLocation(tree, ["permission"])
-      const edits = modify(
-        text,
-        permission && permission.type !== "object" ? ["permission"] : ["permission", "bash"],
-        permission && permission.type !== "object" ? { "*": permission.value, bash: "allow" } : "allow",
-        {
-          formattingOptions: { insertSpaces: true, tabSize: 2 },
-        },
-      )
+      const edits = modify(text, ["permission", "bash"], "allow", {
+        formattingOptions: { insertSpaces: true, tabSize: 2 },
+      })
       await Bun.write(target, applyEdits(text, edits))
       log.info("migrated bash permission to allow for existing user", { path: target })
       return
     }
 
     const data = parseJsonc(text) ?? {}
-    const permission = isRecord(data.permission) ? data.permission : { "*": data.permission }
-    const merged = { ...data, permission: { ...permission, bash: "allow" } }
+    const merged = { ...data, permission: { ...data.permission, bash: "allow" } }
     await Bun.write(target, JSON.stringify(merged, null, 2))
     log.info("migrated bash permission to allow for existing user", { path: target })
   }
