@@ -127,6 +127,7 @@ export const layer = Layer.effect(
     const events = yield* EventV2.Service
     const file = path.join(global.data, "account.json")
     const legacyFile = path.join(global.data, "auth.json")
+    const prior = path.join(global.data, "auth-v2.json") // kilocode_change
 
     const writeMigrated = Effect.fnUntraced(function* (raw: Record<string, unknown>) {
       const migrated = migrate(raw)
@@ -161,6 +162,16 @@ export const layer = Layer.effect(
         if ("version" in raw && raw.version === 2) return raw as Writable
         return yield* writeMigrated(raw as Record<string, unknown>)
       }
+
+      // kilocode_change start - migrate the previous Kilo multi-account store after the current store
+      const previous = yield* fsys.readJson(prior).pipe(Effect.orElseSucceed(() => null))
+      if (previous && typeof previous === "object" && "version" in previous && previous.version === 2) {
+        yield* fsys
+          .writeJson(file, previous, 0o600)
+          .pipe(Effect.mapError((cause) => new FileWriteError({ operation: "migrate", cause })))
+        return previous as Writable
+      }
+      // kilocode_change end
 
       return { version: 2, accounts: {}, active: {} }
     })

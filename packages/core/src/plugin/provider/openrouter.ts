@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import { ModelV2 } from "../../model"
 import { PluginV2 } from "../../plugin"
+import { ProviderV2 } from "../../provider" // kilocode_change
 
 export const OpenRouterPlugin = PluginV2.define({
   id: PluginV2.ID.make("openrouter"),
@@ -10,6 +11,7 @@ export const OpenRouterPlugin = PluginV2.define({
         for (const item of evt.data) {
           if (item.provider.endpoint.type !== "aisdk") continue
           if (item.provider.endpoint.package !== "@openrouter/ai-sdk-provider") continue
+          if (item.provider.id !== ProviderV2.ID.openrouter) continue // kilocode_change
           evt.provider.update(item.provider.id, (provider) => {
             provider.options.headers["HTTP-Referer"] = "https://kilo.ai/" // kilocode_change
             provider.options.headers["X-Title"] = "Kilo Code" // kilocode_change

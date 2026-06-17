@@ -57,6 +57,17 @@ export const dict: Record<string, string> = {
   "ui.sessionTurn.error.freeUsageExceeded": "Перевищено ліміт безкоштовного використання",
   "ui.sessionTurn.error.addCredits": "Додати кредити",
 
+  // kilocode_change start - complete upstream usage-exceeded translations
+  "dialog.usageExceeded.freeTier.title": "Досягнуто безкоштовного ліміту",
+  "dialog.usageExceeded.freeTier.description":
+    "Підпишіться на Kilo Go, щоб отримати надійний доступ до найкращих моделей із відкритим кодом, від $5 на місяць.",
+  "dialog.usageExceeded.freeTier.actionLabel": "Підписатися",
+  "dialog.usageExceeded.accountRateLimit.title": "Досягнуто ліміту Go",
+  "dialog.usageExceeded.accountRateLimit.description":
+    "Досягнуто ліміту використання. Щоб продовжити користуватися цією моделлю зараз, увімкніть використання доступного балансу",
+  "dialog.usageExceeded.accountRateLimit.actionLabel": "Відкрити налаштування",
+  // kilocode_change end
+
   "ui.sessionTurn.status.delegating": "Делегування роботи",
   // kilocode_change start
   "ui.sessionTurn.status.delegatingWaitingPermission": "Subagent waiting for permission",

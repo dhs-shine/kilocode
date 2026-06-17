@@ -413,7 +413,7 @@ describe("OpenAI Responses route", () => {
         LLM.request({
           model: OpenAI.configure({
             baseURL: "https://api.openai.test/v1/",
-            apiKey: "test", // kilocode_change
+            apiKey: "test",
             providerOptions: { openai: { promptCacheKey: "model_cache" } },
           }).model("gpt-4.1-mini"),
           prompt: "no cache",

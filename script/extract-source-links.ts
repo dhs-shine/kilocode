@@ -93,6 +93,7 @@ function shouldExclude(url: string): boolean {
 }
 
 function shouldSkipFile(filepath: string): boolean {
+  if (filepath === "packages/opencode/src/cli/cmd/account.ts") return true // kilocode_change - command is not registered in Kilo
   const rel = path.relative(ROOT, filepath)
   const parts = rel.split(path.sep)
   if (parts.some((p) => SKIP_DIRS.includes(p))) return true

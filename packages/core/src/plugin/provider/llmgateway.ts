@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 import { PluginV2 } from "../../plugin"
+import { ProviderV2 } from "../../provider" // kilocode_change
 
 export const LLMGatewayPlugin = PluginV2.define({
   id: PluginV2.ID.make("llmgateway"),
@@ -11,10 +12,13 @@ export const LLMGatewayPlugin = PluginV2.define({
           if (item.provider.endpoint.type !== "aisdk") continue
           if (item.provider.endpoint.package !== "@ai-sdk/openai-compatible") continue
           if (item.provider.endpoint.url !== "https://api.llmgateway.io/v1") continue
+          if (item.provider.id !== ProviderV2.ID.make("llmgateway")) continue // kilocode_change
           evt.provider.update(item.provider.id, (provider) => {
             provider.options.headers["HTTP-Referer"] = "https://kilo.ai/" // kilocode_change
-            provider.options.headers["X-Title"] = "Kilo Code" // kilocode_change
-            provider.options.headers["X-Source"] = "kilo" // kilocode_change
+            // kilocode_change start
+            provider.options.headers["X-Title"] = "Kilo Code"
+            provider.options.headers["X-Source"] = "kilo"
+            // kilocode_change end
           })
         }
       }),

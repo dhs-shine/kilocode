@@ -360,10 +360,12 @@ function process<Def extends Definition>(
       // InstanceRef/WorkspaceRef and the full Effect context. Both the bus
       // publish and the GlobalBus emit run inside the forked Effect so they
       // share the same instance/workspace lookup.
-      // kilocode_change start - encode EventV2 properties before crossing the legacy boundary
+      // kilocode_change start
       const publish = (value: unknown) =>
+        // kilocode_change end
         options.bridge.fork(
           Effect.gen(function* () {
+            // kilocode_change start - encode EventV2 properties before crossing the legacy boundary
             if (def.wire) {
               yield* options.bus.publish(
                 { type: def.type, properties: EffectSchema.toEncoded(def.properties) },
@@ -373,6 +375,7 @@ function process<Def extends Definition>(
             } else {
               yield* options.bus.publish(def, value as Properties<Def>, { id: event.id })
             }
+            // kilocode_change end
             const instance = yield* InstanceState.context
             const workspace = yield* InstanceState.workspaceID
             GlobalBus.emit("event", {
@@ -390,7 +393,6 @@ function process<Def extends Definition>(
             })
           }),
         )
-      // kilocode_change end
       if (result instanceof Promise) {
         void result.then(publish)
       } else {

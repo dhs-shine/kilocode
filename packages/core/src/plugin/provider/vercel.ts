@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 import { PluginV2 } from "../../plugin"
+import { ProviderV2 } from "../../provider" // kilocode_change
 
 export const VercelPlugin = PluginV2.define({
   id: PluginV2.ID.make("vercel"),
@@ -9,6 +10,7 @@ export const VercelPlugin = PluginV2.define({
         for (const item of evt.data) {
           if (item.provider.endpoint.type !== "aisdk") continue
           if (item.provider.endpoint.package !== "@ai-sdk/vercel") continue
+          if (item.provider.id !== ProviderV2.ID.make("vercel")) continue // kilocode_change
           evt.provider.update(item.provider.id, (provider) => {
             provider.options.headers["http-referer"] = "https://kilo.ai/" // kilocode_change
             provider.options.headers["x-title"] = "Kilo Code" // kilocode_change

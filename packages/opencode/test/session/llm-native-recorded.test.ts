@@ -26,8 +26,9 @@ import { TestInstance } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 
 const FIXTURES_DIR = path.join(import.meta.dir, "../fixtures/recordings")
+const KILO_FIXTURES_DIR = path.join(FIXTURES_DIR, "kilocode") // kilocode_change
 
-const zenURL = (connection: string) => `https://console.opencode.ai/proxy/connections/${connection}/v1`
+const zenURL = (connection: string) => `https://console.opencode.ai/proxy/connections/${connection}/v1` // kilocode_change
 
 const replayOpenAIOAuth = {
   type: "oauth",
@@ -157,7 +158,7 @@ const RECORDED_SCENARIOS = [
   },
   {
     id: "opencode-proxy",
-    name: "OpenCode proxy",
+    name: "OpenCode proxy", // kilocode_change
     providerID: ProviderID.opencode,
     modelID: "gpt-5.2-codex",
     cassette: "session/native-zen-tool-loop",
@@ -219,7 +220,11 @@ function isSelected(scenario: RecordedScenario) {
 }
 
 const canRun = (scenario: RecordedScenario) =>
-  shouldRecord ? scenario.canRecord() : HttpRecorder.hasCassetteSync(scenario.cassette, { directory: FIXTURES_DIR })
+  // kilocode_change start
+  shouldRecord
+    ? scenario.canRecord()
+    : HttpRecorder.hasCassetteSync(scenario.cassette, { directory: KILO_FIXTURES_DIR })
+  // kilocode_change end
 
 const recordError = (scenario: RecordedScenario) =>
   scenario.id === "openai-oauth"
@@ -303,7 +308,7 @@ function recordedNativeLLMLayer(scenario: RecordedScenario) {
       Layer.provide(Plugin.defaultLayer),
       Layer.provide(recordedClient),
       Layer.provide(
-        HttpRecorder.Cassette.fileSystem({ directory: FIXTURES_DIR }).pipe(Layer.provide(NodeFileSystem.layer)),
+        HttpRecorder.Cassette.fileSystem({ directory: KILO_FIXTURES_DIR }).pipe(Layer.provide(NodeFileSystem.layer)), // kilocode_change
       ),
       Layer.provide(RuntimeFlags.layer({ experimentalNativeLlm: true })),
     ),
