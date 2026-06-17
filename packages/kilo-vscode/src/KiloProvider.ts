@@ -94,10 +94,8 @@ import { hasGit } from "./kilo-provider/git-status"
 // legacy-migration start
 import {
   checkAndShowMigrationWizard,
-  handleRequestLegacyMigrationData,
-  handleRequestRooMigrationData,
-  handleStartLegacyMigration,
-  handleStartRooMigration,
+  handleRequestMigrationData,
+  handleStartMigration,
   handleFinalizeLegacyMigration,
   handleSkipLegacyMigration,
   handleClearLegacyData,
@@ -321,9 +319,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private readonly confirmations = new MessageConfirmation()
   private unsubscribeEvent: (() => void) | null = null
   private unsubscribeState: (() => void) | null = null
-  /** Cached legacy migration data so migrate() doesn't re-read from disk/SecretStorage. */ // legacy-migration
-  private cachedLegacyData: import("./legacy-migration/legacy-types").LegacyMigrationData | null = null // legacy-migration
-  private cachedRooSource: import("./roo-import/service").RooImportSource | null = null
+  /** Cached migration data so migration doesn't re-read from disk/SecretStorage. */ // legacy-migration
+  private migrationCache: MigrationContext["migrationCache"] = new Map()
   /** Guard to prevent checkAndShowMigrationWizard running concurrently. */ // legacy-migration
   private migrationCheckInFlight = false // legacy-migration
   private unsubscribeNotificationDismiss: (() => void) | null = null
@@ -1205,17 +1202,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           break
         }
         // legacy-migration start
-        case "requestLegacyMigrationData":
-          void handleRequestLegacyMigrationData(this.migrationCtx)
+        case "requestMigrationData":
+          void handleRequestMigrationData(this.migrationCtx, message.source, message.operationId)
           break
-        case "requestRooMigrationData":
-          void handleRequestRooMigrationData(this.migrationCtx)
-          break
-        case "startLegacyMigration":
-          void handleStartLegacyMigration(this.migrationCtx, message.selections)
-          break
-        case "startRooMigration":
-          void handleStartRooMigration(this.migrationCtx, message.selections)
+        case "startMigration":
+          void handleStartMigration(this.migrationCtx, message.source, message.operationId, message.selections)
           break
         case "skipLegacyMigration":
           void handleSkipLegacyMigration(this.migrationCtx)
@@ -1390,7 +1381,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       // legacy-migration start
       // Subscribe to migration-complete broadcast from any KiloProvider instance
       this.unsubscribeMigrationComplete = this.connectionService.onMigrationComplete(() => {
-        this.postMessage({ type: "migrationState", needed: false })
+        this.postMessage({ type: "migrationState", needed: false, source: "legacy" })
       })
       // legacy-migration end
 
@@ -3525,18 +3516,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       client: this.client,
       extensionContext: this.extensionContext,
       postMessage: (msg) => this.postMessage(msg),
-      get cachedLegacyData() {
-        return self.cachedLegacyData
-      },
-      set cachedLegacyData(data) {
-        self.cachedLegacyData = data
-      },
-      get cachedRooSource() {
-        return self.cachedRooSource
-      },
-      set cachedRooSource(data) {
-        self.cachedRooSource = data
-      },
+      migrationCache: self.migrationCache,
       get migrationCheckInFlight() {
         return self.migrationCheckInFlight
       },

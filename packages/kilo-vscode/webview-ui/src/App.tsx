@@ -279,6 +279,7 @@ const AppContent: Component = () => {
       // legacy-migration: state-driven migration wizard
       if (message?.type === "migrationState") {
         console.log("[Kilo New] App: 🔄 migrationState:", message.needed)
+        setMigrationSource(message.source)
         setMigrationNeeded(message.needed)
       }
     }
@@ -339,15 +340,9 @@ const AppContent: Component = () => {
               <Settings
                 tab={settingsTab()}
                 onTabChange={setSettingsTab}
-                onMigrateClick={() => {
-                  setMigrationSource("legacy")
+                onMigrationClick={(source) => {
+                  setMigrationSource(source)
                   setMigrationNeeded(true)
-                  vscode.postMessage({ type: "requestLegacyMigrationData" })
-                }}
-                onImportRooClick={() => {
-                  setMigrationSource("roo")
-                  setMigrationNeeded(true)
-                  vscode.postMessage({ type: "requestRooMigrationData" })
                 }}
               />
             </Match>

@@ -24,14 +24,15 @@ export async function parseSession(
   dir: string,
   item?: LegacyHistoryItem,
   input?: LegacyApiMessage[],
+  key = id,
 ): Promise<NormalizedSession> {
   const root = await normalizeLegacyPath(item?.workspace)
   const next = item ? { ...item, workspace: root } : undefined
   const project = createProject(next)
-  const session = createSession(id, next, project.id, root)
+  const session = createSession(id, next, project.id, root, key)
   const conversation = input ?? parseFile(await getApiConversationHistory(id, dir))
-  const messages = parseMessagesFromConversation(conversation, id, root, next)
-  const parts = parsePartsFromConversation(conversation, id, item)
+  const messages = parseMessagesFromConversation(conversation, key, root, next)
+  const parts = parsePartsFromConversation(conversation, key, item)
 
   return {
     project,

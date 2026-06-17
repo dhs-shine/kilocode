@@ -5,15 +5,14 @@ import { showToast } from "@kilocode/kilo-ui/toast"
 import { useLanguage } from "../../context/language"
 import { useVSCode } from "../../context/vscode"
 import { useConfig } from "../../context/config"
-import type { Config, ConnectionState, ExtensionMessage } from "../../types/messages"
+import type { Config, ConnectionState, ExtensionMessage, MigrationSource } from "../../types/messages"
 import { buildExport, parseImport, MAX_IMPORT_SIZE } from "./settings-io"
 
 export interface AboutKiloCodeTabProps {
   port: number | null
   connectionState: ConnectionState
   extensionVersion?: string
-  onMigrateClick?: () => void // legacy-migration
-  onImportRooClick?: () => void
+  onMigrationClick?: (source: MigrationSource) => void // legacy-migration
 }
 
 const AboutKiloCodeTab: Component<AboutKiloCodeTabProps> = (props) => {
@@ -330,37 +329,17 @@ const AboutKiloCodeTab: Component<AboutKiloCodeTabProps> = (props) => {
           {language.t("settings.aboutKiloCode.legacyMigration.description")}
         </p>
         <div style={{ display: "flex", gap: "8px", "flex-wrap": "wrap" }}>
-          <button
-            type="button"
-            onClick={() => props.onMigrateClick?.()}
-            style={{
-              background: "var(--vscode-button-background)",
-              color: "var(--vscode-button-foreground)",
-              border: "none",
-              padding: "6px 14px",
-              "border-radius": "2px",
-              cursor: "pointer",
-              "font-size": "var(--kilo-font-size-12)",
-            }}
-          >
+          <Button variant="secondary" size="small" onClick={() => props.onMigrationClick?.("legacy")}>
             {language.t("settings.legacyMigration.link")}
-          </button>
-          <button
-            type="button"
-            onClick={() => props.onImportRooClick?.()}
+          </Button>
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={() => props.onMigrationClick?.("roo")}
             title={language.t("settings.aboutKiloCode.rooImport.description")}
-            style={{
-              background: "var(--vscode-button-background)",
-              color: "var(--vscode-button-foreground)",
-              border: "none",
-              padding: "6px 14px",
-              "border-radius": "2px",
-              cursor: "pointer",
-              "font-size": "var(--kilo-font-size-12)",
-            }}
           >
             {language.t("settings.aboutKiloCode.rooImport.button")}
-          </button>
+          </Button>
         </div>
       </div>
       {/* legacy-migration end */}

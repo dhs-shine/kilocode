@@ -10,11 +10,9 @@ import type { WorkStyle, WorkStyleState } from "../../../../src/shared/work-styl
 import type {
   ClearLegacyDataMessage,
   FinalizeLegacyMigrationMessage,
-  RequestLegacyMigrationDataMessage,
-  RequestRooMigrationDataMessage,
+  RequestMigrationDataMessage,
   SkipLegacyMigrationMessage,
-  StartLegacyMigrationMessage,
-  StartRooMigrationMessage,
+  StartMigrationMessage,
 } from "./migration"
 
 // ============================================
@@ -1226,10 +1224,8 @@ export type WebviewMessage =
   | RefreshPRMessage
   | OpenPRMessage
   // legacy-migration start
-  | RequestLegacyMigrationDataMessage
-  | RequestRooMigrationDataMessage
-  | StartLegacyMigrationMessage
-  | StartRooMigrationMessage
+  | RequestMigrationDataMessage
+  | StartMigrationMessage
   | SkipLegacyMigrationMessage
   | ClearLegacyDataMessage
   | FinalizeLegacyMigrationMessage

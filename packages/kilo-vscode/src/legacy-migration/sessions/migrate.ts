@@ -3,17 +3,9 @@ import type { KiloClient } from "@kilocode/sdk/v2/client"
 import { getMigrationErrorMessage } from "../errors/migration-error"
 import type { MigrationSessionInfo, MigrationSessionProgress, MigrationSessionSelection } from "../legacy-types"
 import { createSessionID } from "./lib/ids"
-import type { LegacyApiMessage, LegacyHistoryItem } from "./lib/legacy-types"
+import type { SessionSource } from "../task-store"
+import type { LegacyHistoryItem } from "./lib/legacy-types"
 import { parseSession } from "./parser"
-
-export interface MigrateOverrides {
-  /** Custom tasks directory — skips the `context.globalStorageUri/tasks` default and `taskHistory` lookup. */
-  dir?: string
-  /** Pre-resolved history item — used when a custom dir is provided and globalState is unavailable. */
-  item?: LegacyHistoryItem
-  /** Pre-parsed conversation — used by importers with non-legacy storage files. */
-  conversation?: LegacyApiMessage[]
-}
 
 type Result =
   | {
@@ -39,20 +31,24 @@ export async function migrate(
   input: MigrationSessionSelection,
   context: vscode.ExtensionContext,
   client: KiloClient,
-  meta?: {
+  _meta?: {
     session: MigrationSessionInfo
     index: number
     total: number
   },
   onProgress?: ProgressCallback,
-  overrides?: MigrateOverrides,
+  resolved?: SessionSource,
 ): Promise<Result> {
-  const dir = overrides?.dir ?? vscode.Uri.joinPath(context.globalStorageUri, "tasks").fsPath
-  const items = overrides?.dir ? [] : context.globalState.get<LegacyHistoryItem[]>("taskHistory", [])
-  const item = overrides?.item ?? items.find((i) => i.id === input.id)
+  const items = context.globalState.get<LegacyHistoryItem[]>("taskHistory", [])
+  const source = resolved ?? {
+    id: input.id,
+    dir: vscode.Uri.joinPath(context.globalStorageUri, "tasks").fsPath,
+    item: items.find((item) => item.id === input.id),
+  }
+  const key = source.namespace ? `${source.namespace}:${source.id}` : source.id
 
   const progress = (next: Progress) => {
-    if (!meta || !onProgress) return
+    if (!onProgress) return
     onProgress(next)
   }
 
@@ -78,12 +74,12 @@ export async function migrate(
 
   try {
     if (!input.force) {
-      const result = await client.session.get({ sessionID: createSessionID(input.id) })
+      const result = await client.session.get({ sessionID: createSessionID(key) })
       if (result.data) return skip()
     }
 
     progress({ phase: "preparing" })
-    const payload = await parseSession(input.id, dir, item, overrides?.conversation)
+    const payload = await parseSession(source.id, source.dir, source.item, undefined, key)
     progress({ phase: "storing" })
     const project = await client.kilocode.sessionImport.project(payload.project, { throwOnError: true })
     const projectID = project.data?.id ?? payload.project.id
