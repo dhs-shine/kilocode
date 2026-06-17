@@ -69,7 +69,7 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
     }
 
     fun `test mention completion includes matching special items`() {
-        rpc.searchResult = FileSearchResultDto(git = true, terminal = true)
+        rpc.searchResult = FileSearchResultDto(git = true)
 
         complete("@git<caret>")
 
@@ -103,11 +103,21 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
     fun `test highlights special mentions without tracked paths`() {
         assertEquals(
             listOf(
-                KiloPromptCompletionProvider.Highlight(4, 13, KiloPromptCompletionProvider.HighlightKind.MENTION),
-                KiloPromptCompletionProvider.Highlight(18, 30, KiloPromptCompletionProvider.HighlightKind.MENTION),
+                KiloPromptCompletionProvider.Highlight(4, 16, KiloPromptCompletionProvider.HighlightKind.MENTION),
             ),
-            provider.highlights("use @terminal and @git-changes").sortedBy { it.start },
+            provider.highlights("use @git-changes").sortedBy { it.start },
         )
+    }
+
+    fun `test serverCommand routes only known server commands`() {
+        rpc.state.value = KiloWorkspaceStateDto(KiloWorkspaceStatusDto.READY, commands = listOf(CommandDto("deploy")))
+
+        waitFor { provider.serverCommand("/deploy x") != null }
+
+        assertEquals("deploy" to "x", provider.serverCommand("/deploy x"))
+        assertNull(provider.serverCommand("/new"))
+        assertNull(provider.serverCommand("hi /deploy"))
+        assertNull(provider.serverCommand("/unknown"))
     }
 
     fun `test highlights tracked mentions longest first`() {

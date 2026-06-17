@@ -221,12 +221,12 @@ class PromptPanelTest : BasePlatformTestCase() {
         val field = panel.defaultFocusedComponent as EditorTextField
 
         realize(panel, 260, 400)
-        field.text = "/new use @terminal and @unknown"
+        field.text = "/new use @git-changes and @unknown"
         UIUtil.dispatchAllInvocationEvents()
 
         val spans = spans(field)
         assertTrue(spans.contains("/new" to DefaultLanguageHighlighterColors.KEYWORD))
-        assertTrue(spans.contains("@terminal" to DefaultLanguageHighlighterColors.METADATA))
+        assertTrue(spans.contains("@git-changes" to DefaultLanguageHighlighterColors.METADATA))
         assertFalse(spans.any { it.first == "@unknown" })
     }
 
@@ -235,7 +235,7 @@ class PromptPanelTest : BasePlatformTestCase() {
         val field = panel.defaultFocusedComponent as EditorTextField
 
         realize(panel, 260, 400)
-        field.text = "use @terminal"
+        field.text = "use @git-changes"
         UIUtil.dispatchAllInvocationEvents()
         assertEquals(1, field.getEditor(false)!!.markupModel.allHighlighters.size)
 
@@ -251,7 +251,7 @@ class PromptPanelTest : BasePlatformTestCase() {
 
         realize(panel, 260, 400)
         repeat(50) {
-            field.text = if (it % 2 == 0) "/new @terminal" else "/new @git-changes"
+            field.text = if (it % 2 == 0) "/new @git-changes" else "/new @git-changes now"
             UIUtil.dispatchAllInvocationEvents()
             assertTrue(field.getEditor(false)!!.markupModel.allHighlighters.size <= 2)
         }

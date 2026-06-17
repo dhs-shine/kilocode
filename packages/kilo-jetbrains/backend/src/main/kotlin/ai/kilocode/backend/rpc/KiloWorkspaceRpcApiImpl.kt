@@ -203,8 +203,6 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         }
     }
 
-    override suspend fun terminalOutput(directory: String): String? = null
-
     override suspend fun gitChanges(directory: String): String? = withContext(Dispatchers.IO) {
         val base = file(clean(directory) ?: directory) ?: return@withContext null
         if (!gitAvailable(base)) return@withContext null

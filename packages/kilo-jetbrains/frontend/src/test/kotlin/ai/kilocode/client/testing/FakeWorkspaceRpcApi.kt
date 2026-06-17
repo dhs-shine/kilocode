@@ -30,7 +30,6 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var fileMatches = emptyList<WorkspaceFileDto>()
     var searchResult = FileSearchResultDto()
     var search: ((String) -> FileSearchResultDto)? = null
-    var terminalOutput: String? = null
     var gitChanges: String? = null
     var openResult = true
     var localConfigPath = "/test/.kilo/kilo.jsonc"
@@ -80,11 +79,6 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
         assertNotEdt("searchFiles")
         searchQueries.add(query)
         return search?.invoke(query) ?: searchResult
-    }
-
-    override suspend fun terminalOutput(directory: String): String? {
-        assertNotEdt("terminalOutput")
-        return terminalOutput
     }
 
     override suspend fun gitChanges(directory: String): String? {

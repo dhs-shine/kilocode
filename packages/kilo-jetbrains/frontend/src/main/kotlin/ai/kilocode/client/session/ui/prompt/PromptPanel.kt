@@ -512,6 +512,7 @@ class PromptPanel(
     }
 
     private fun showCompletion(ed: com.intellij.openapi.editor.Editor) {
+        // Uses IntelliJ impl/internal completion APIs; revisit on platform upgrades.
         CodeCompletionHandlerBase.createHandler(CompletionType.BASIC, true, false, true)
             .invokeCompletion(project, ed, 1)
         val lookup = LookupManager.getActiveLookup(ed) as? LookupImpl ?: return

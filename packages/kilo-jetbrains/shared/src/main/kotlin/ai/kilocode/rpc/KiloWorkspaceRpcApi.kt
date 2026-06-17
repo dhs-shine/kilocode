@@ -50,9 +50,6 @@ interface KiloWorkspaceRpcApi : RemoteApi<Unit> {
     /** Fuzzy file/folder search via the backend IDE index. */
     suspend fun searchFiles(directory: String, query: String, limit: Int = 50): FileSearchResultDto
 
-    /** Best-effort active terminal scrollback for @terminal mentions. */
-    suspend fun terminalOutput(directory: String): String?
-
     /** Current uncommitted git changes as a unified diff for @git-changes mentions. */
     suspend fun gitChanges(directory: String): String?
 

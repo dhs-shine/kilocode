@@ -136,15 +136,6 @@ class KiloWorkspaceService internal constructor(
         }
     }
 
-    suspend fun terminalOutput(directory: String): String? {
-        return try {
-            call { terminalOutput(directory) }
-        } catch (e: Exception) {
-            LOG.warn("terminal output lookup failed for directory=$directory", e)
-            null
-        }
-    }
-
     suspend fun gitChanges(directory: String): String? {
         return try {
             call { gitChanges(directory) }

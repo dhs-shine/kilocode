@@ -51,6 +51,16 @@ class KiloPromptCompletionProvider(
 
     fun clientNames(): Set<String> = actions.mapTo(mutableSetOf()) { it.name }
 
+    fun serverCommand(text: String): Pair<String, String>? {
+        val raw = text.trimStart()
+        if (!raw.startsWith('/')) return null
+        val name = raw.drop(1).takeWhile { !it.isWhitespace() }
+        if (name.isBlank()) return null
+        if (name in clientNames()) return null
+        if (workspace.state.value.commands.none { it.name == name }) return null
+        return name to raw.drop(name.length + 1).trimStart()
+    }
+
     fun highlights(text: String): List<Highlight> = buildList {
         val command = text.takeIf { it.startsWith('/') }
             ?.drop(1)
@@ -62,7 +72,7 @@ class KiloPromptCompletionProvider(
         }
 
         val ranges = mutableListOf<IntRange>()
-        val values = (mentionPaths() + setOf("terminal", "git-changes"))
+        val values = (mentionPaths() + setOf("git-changes"))
             .filter { it.isNotBlank() }
             .sortedByDescending { it.length }
         values.forEach { value ->
@@ -117,9 +127,6 @@ class KiloPromptCompletionProvider(
         val search = search(prefix)
         if ("git-changes".startsWith(prefix, ignoreCase = true) && search.git) {
             out.addElement(special("git-changes", KiloBundle.message("prompt.mention.gitChanges")))
-        }
-        if ("terminal".startsWith(prefix, ignoreCase = true) && search.terminal) {
-            out.addElement(special("terminal", KiloBundle.message("prompt.mention.terminal")))
         }
         if (search.indexing) {
             val msg = KiloBundle.message("prompt.mention.indexing")
