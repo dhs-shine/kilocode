@@ -7,6 +7,9 @@ import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
+import com.intellij.codeInsight.lookup.LookupElementPresentation
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.textCompletion.TextCompletionUtil
 import kotlinx.coroutines.CoroutineScope
@@ -86,7 +89,18 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         complete("@<caret>")
 
         assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "git-changes", "src", "README.md")
+        val items = myFixture.lookupElementStrings.orEmpty()
+        assertEquals("git-changes", items.first())
         assertEquals(listOf(""), rpc.searchQueries)
+    }
+
+    fun `test mention completion renders file type icons`() {
+        rpc.searchResult = FileSearchResultDto(files = listOf(file("image.png"), file("src", directory = true)))
+
+        complete("@<caret>")
+
+        assertEquals(FileTypeManager.getInstance().getFileTypeByFileName("image.png").icon ?: AllIcons.FileTypes.Text, icon("image.png"))
+        assertSame(AllIcons.Nodes.Folder, icon("src"))
     }
 
     fun `test highlights known slash command at start`() {
@@ -166,6 +180,10 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
             Thread.sleep(20)
         }
     }
+
+    private fun icon(value: String) = LookupElementPresentation().also { item(value).renderElement(it) }.icon
+
+    private fun item(value: String) = myFixture.lookupElements.orEmpty().first { it.lookupString == value }
 
     private fun file(path: String, directory: Boolean = false) = WorkspaceFileDto(
         path = path,

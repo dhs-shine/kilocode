@@ -11,11 +11,13 @@ import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.completion.PlainPrefixMatcher
+import com.intellij.codeInsight.completion.PrioritizedLookupElement
 import com.intellij.codeInsight.lookup.CharFilter
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.util.textCompletion.TextCompletionProvider
@@ -126,7 +128,7 @@ class KiloPromptCompletionProvider(
         val out = result.withPrefixMatcher(PlainPrefixMatcher.ALWAYS_TRUE)
         val search = search(prefix)
         if ("git-changes".startsWith(prefix, ignoreCase = true) && search.git) {
-            out.addElement(special("git-changes", KiloBundle.message("prompt.mention.gitChanges")))
+            out.addElement(prioritize(special("git-changes", KiloBundle.message("prompt.mention.gitChanges"))))
         }
         if (search.indexing) {
             val msg = KiloBundle.message("prompt.mention.indexing")
@@ -171,12 +173,20 @@ class KiloPromptCompletionProvider(
         .withIcon(AllIcons.Nodes.Tag)
         .withInsertHandler { ctx, _ -> replace(ctx, "@$name ", false) }
 
+    private fun prioritize(element: LookupElement): LookupElement =
+        PrioritizedLookupElement.withGrouping(PrioritizedLookupElement.withPriority(element, 100.0), 100)
+
     private fun file(file: WorkspaceFileDto): LookupElement = LookupElementBuilder.create(file.path)
         .withPresentableText("@${file.path}")
         .withTailText(parent(file.path), true)
-        .withIcon(if (file.directory) AllIcons.Nodes.Folder else AllIcons.FileTypes.Text)
+        .withIcon(icon(file))
         .withLookupString(file.name)
         .withInsertHandler { ctx, _ -> replace(ctx, "@${file.path} ", true, file.path) }
+
+    private fun icon(file: WorkspaceFileDto) = when {
+        file.directory -> AllIcons.Nodes.Folder
+        else -> FileTypeManager.getInstance().getFileTypeByFileName(file.name).icon ?: AllIcons.FileTypes.Text
+    }
 
     private fun replace(ctx: InsertionContext, value: String, trim: Boolean, path: String? = null) {
         val text = ctx.document.text
