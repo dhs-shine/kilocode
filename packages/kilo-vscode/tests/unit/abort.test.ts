@@ -1,11 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { KiloClient } from "@kilocode/sdk/v2/client"
-import {
-  abortSession,
-  resolveAbortDirectories,
-  updateActiveSessionDirectory,
-  type ActiveSessionDirectories,
-} from "../../src/kilo-provider/abort"
+import { abortSession, SessionAbort } from "../../src/kilo-provider/abort"
 
 function client(calls: unknown[], fail = false) {
   return {
@@ -19,31 +14,50 @@ function client(calls: unknown[], fail = false) {
   } as unknown as KiloClient
 }
 
-describe("active session directories", () => {
-  function update(active: ActiveSessionDirectories, status: "busy" | "idle", dir: string) {
-    updateActiveSessionDirectory({ active, sessionID: "session_1", status, dir })
-  }
+describe("SessionAbort", () => {
+  it("stops the active owner and current mapped directory", async () => {
+    const calls: unknown[] = []
+    const aborts = new SessionAbort()
+    aborts.observe("session_1", "busy", "/repo")
 
-  it("includes the active owner and current mapped directory", () => {
-    const active: ActiveSessionDirectories = new Map()
-    update(active, "busy", "/repo")
-
-    expect(resolveAbortDirectories(active, "session_1", "/repo/worktree")).toEqual(["/repo", "/repo/worktree"])
+    expect(await aborts.stop(client(calls), "session_1", "/repo/worktree")).toBe(true)
+    expect(calls).toEqual([
+      {
+        type: "abort",
+        params: { sessionID: "session_1", directory: "/repo" },
+        opts: { throwOnError: true },
+      },
+      {
+        type: "abort",
+        params: { sessionID: "session_1", directory: "/repo/worktree" },
+        opts: { throwOnError: true },
+      },
+    ])
   })
 
-  it("removes an owner when its instance becomes idle", () => {
-    const active: ActiveSessionDirectories = new Map()
-    update(active, "busy", "/repo")
-    update(active, "idle", "/repo")
+  it("forgets an owner when its instance becomes idle", async () => {
+    const calls: unknown[] = []
+    const aborts = new SessionAbort()
+    aborts.observe("session_1", "busy", "/repo")
+    aborts.observe("session_1", "idle", "/repo")
 
-    expect(resolveAbortDirectories(active, "session_1", "/repo/worktree")).toEqual(["/repo/worktree"])
+    expect(await aborts.stop(client(calls), "session_1", "/repo/worktree")).toBe(false)
+    expect(calls).toEqual([
+      {
+        type: "abort",
+        params: { sessionID: "session_1", directory: "/repo/worktree" },
+        opts: { throwOnError: true },
+      },
+    ])
   })
 
-  it("deduplicates equivalent directory paths", () => {
-    const active: ActiveSessionDirectories = new Map()
-    update(active, "busy", "/repo/worktree")
+  it("deduplicates equivalent directory paths", async () => {
+    const calls: unknown[] = []
+    const aborts = new SessionAbort()
+    aborts.observe("session_1", "busy", "/repo/worktree")
 
-    expect(resolveAbortDirectories(active, "session_1", "/repo/worktree/.")).toEqual(["/repo/worktree"])
+    expect(await aborts.stop(client(calls), "session_1", "/repo/worktree/.")).toBe(true)
+    expect(calls).toHaveLength(1)
   })
 })
 
