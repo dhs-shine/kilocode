@@ -14,12 +14,6 @@ Kilo Code supports a wide range of AI model providers that offer APIs compatible
 
 This document focuses on setting up providers _other than_ the official OpenAI API (which has its own [dedicated configuration page](/docs/ai-providers/openai)).
 
-{% callout type="warning" %}
-Do not use a custom OpenAI-compatible provider for Azure OpenAI GPT-5 deployments. Azure GPT-5 rejects the `max_tokens` parameter used by generic OpenAI-compatible providers and requires Azure-specific handling.
-
-Use Kilo Code's native `azure` provider instead. If your Azure deployment name differs from the model name you select in Kilo, map it with the model `id` field in `kilo.json`.
-{% /callout %}
-
 ## General Configuration
 
 {% tabs %}
@@ -27,7 +21,7 @@ Use Kilo Code's native `azure` provider instead. If your Azure deployment name d
 
 The key to using an OpenAI-compatible provider is to configure two main settings:
 
-1.  **Base URL:** This is the API endpoint for the provider. It will _not_ be `https://api.openai.com/v1` (that's for the official OpenAI API). For Azure OpenAI GPT-5, do not enter your Azure endpoint here. Configure the native `azure` provider instead.
+1.  **Base URL:** This is the API endpoint for the provider. It will _not_ be `https://api.openai.com/v1` (that's for the official OpenAI API).
 2.  **API Key:** This is the secret key you obtain from the provider.
 3.  **Model ID:** This is the model name of the specific model.
 
@@ -59,8 +53,8 @@ You'll find these settings in the Kilo Code settings panel (click the {% codicon
 
 - **Provider ID** — A unique identifier (e.g., `my-provider`).
 - **Display name** — A human-readable name shown in the UI.
-- **Provider API** — Select **OpenAI Compatible** for an OpenAI Chat Completions-compatible endpoint. The custom provider dialog also supports **OpenAI Responses** and **Anthropic Messages** for endpoints that implement those protocols.
-- **Base URL** — The provider's API endpoint (e.g., `https://api.your-provider.com/v1`). Kilo auto-fetches available models when a valid URL exposes an OpenAI-compatible models endpoint. For Azure OpenAI GPT-5, use the native `azure` provider instead.
+- **Provider API** — Select **OpenAI Compatible** for an OpenAI Chat Completions-compatible endpoint. Use **OpenAI Responses** for OpenAI models, including Azure OpenAI, and xAI models. Use **Anthropic Messages** for Anthropic and MiniMax models.
+- **Base URL** — The provider's API endpoint (e.g., `https://api.your-provider.com/v1`). Kilo auto-fetches available models when a valid URL exposes an OpenAI-compatible models endpoint.
 - **API key** — Your API key. Optional — leave empty if authentication is handled via headers.
 - **Models** — Add models manually or select from the auto-fetched list (see [Automatic Model Detection](#automatic-model-detection) below).
 - **Headers** (optional) — Custom HTTP headers as key-value pairs.
@@ -121,9 +115,9 @@ Then set your default model using the `provider-id/model-id` format:
 
 **Configuration fields:**
 
-- **`npm`** — The API protocol package. Use `@ai-sdk/openai-compatible` for OpenAI Chat Completions-compatible endpoints (the default when omitted), `@ai-sdk/openai` for OpenAI Responses, or `@ai-sdk/anthropic` for Anthropic Messages.
+- **`npm`** — The API protocol package. Use `@ai-sdk/openai-compatible` for OpenAI Chat Completions-compatible endpoints (the default when omitted). Use `@ai-sdk/openai` for OpenAI models, including Azure OpenAI, and xAI models. Use `@ai-sdk/anthropic` for Anthropic and MiniMax models.
 - **`models`** — A map of model IDs to model definitions. Each model should include a `name` and `limit` with `context` and `output` token counts. If `limit.context` or `limit.output` is omitted, it defaults to `0`, which limits context management.
-- **`options.baseURL`** — The base URL of your provider's API endpoint. For Azure OpenAI GPT-5, configure `provider.azure` instead.
+- **`options.baseURL`** — The base URL of your provider's API endpoint.
 - **`options.apiKey`** — Your API key. Use any non-empty string (e.g., `"none"`) if the provider doesn't require authentication.
 
 You can also set the API key via an environment variable instead of putting it in the config file. Use the `env` field to specify which variable to read:

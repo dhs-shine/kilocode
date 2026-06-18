@@ -80,8 +80,8 @@ Custom providers can use three API protocols. In `kilo.jsonc`, set the provider-
 | Provider API | `npm` value | Use for |
 |---|---|---|
 | OpenAI Compatible | `@ai-sdk/openai-compatible` | OpenAI Chat Completions-compatible endpoints. This is the default when `npm` is omitted. |
-| OpenAI Responses | `@ai-sdk/openai` | Endpoints that implement the OpenAI Responses API. |
-| Anthropic Messages | `@ai-sdk/anthropic` | Endpoints that implement the Anthropic Messages API. |
+| OpenAI Responses | `@ai-sdk/openai` | Recommended for OpenAI models, including Azure OpenAI, and xAI models. |
+| Anthropic Messages | `@ai-sdk/anthropic` | Recommended for Anthropic and MiniMax models. |
 
 For example, configure a custom endpoint that implements the OpenAI Responses API like this:
 
@@ -103,8 +103,6 @@ For example, configure a custom endpoint that implements the OpenAI Responses AP
   },
 }
 ```
-
-Use `"npm": "@ai-sdk/anthropic"` instead for an Anthropic Messages endpoint. You can also override the package for one model with `provider.<provider_id>.models.<model_id>.provider.npm`.
 
 ## Model Configuration Fields
 
@@ -327,13 +325,10 @@ MiniMax's OpenAI-compatible Chat Completions API supports the optional boolean `
   "thinking": {
     "reasoning_split": true,
   },
-  "standard": {
-    "reasoning_split": false,
-  },
 }
 ```
 
-With `true`, MiniMax returns thinking separately in `reasoning_content` and `reasoning_details`; with `false`, thinking remains embedded in `content`. This setting changes only the response format, not whether the model thinks. Leave it unset for providers that do not support it.
+With `true`, MiniMax returns thinking separately in `reasoning_content` and `reasoning_details`. This setting changes only the response format, not whether the model thinks. Leave it unset for providers that do not support it.
 
 ### Using the id field to map model names
 
@@ -358,7 +353,7 @@ If the model key in your config differs from what the provider expects, use the 
 
 Here `my-local-llama` is the key you use in your config and model picker, while `meta-llama-3.1-8b-instruct` is the actual model identifier sent to the LM Studio API.
 
-For Azure OpenAI, use the native `azure` provider and set `id` to your Azure deployment name when it differs from the model key. Do not configure Azure GPT-5 family deployments under `openai-compatible`, because that provider sends `max_tokens` and Azure GPT-5 expects `max_completion_tokens`.
+When using the native `azure` provider, set `id` to your Azure deployment name when it differs from the model key.
 
 ```jsonc
 {
