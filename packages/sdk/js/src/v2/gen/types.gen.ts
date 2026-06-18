@@ -302,6 +302,7 @@ export type BackgroundProcessInfo = {
   description?: string
   ports: Array<number>
   status: "starting" | "running" | "ready" | "exited" | "failed" | "stopping" | "stopped"
+  lifetime: "session" | "parent" | "persistent"
   ready: boolean
   exitCode?: number
   signal?: string
@@ -3133,6 +3134,7 @@ export type EventBackgroundProcessUpdated = {
   type: "background_process.updated"
   properties: {
     info: BackgroundProcessInfo
+    scope: string
   }
 }
 
@@ -3142,6 +3144,7 @@ export type EventBackgroundProcessDeleted = {
   properties: {
     sessionID: string
     processID: string
+    scope: string
   }
 }
 

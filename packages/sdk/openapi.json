@@ -16576,6 +16576,12 @@
             "$ref": "#/components/schemas/EventSessionIdle"
           },
           {
+            "$ref": "#/components/schemas/EventInstallationUpdated"
+          },
+          {
+            "$ref": "#/components/schemas/EventInstallationUpdate-available"
+          },
+          {
             "$ref": "#/components/schemas/EventSuggestionShown"
           },
           {
@@ -16625,12 +16631,6 @@
           },
           {
             "$ref": "#/components/schemas/EventPtyDeleted"
-          },
-          {
-            "$ref": "#/components/schemas/EventInstallationUpdated"
-          },
-          {
-            "$ref": "#/components/schemas/EventInstallationUpdate-available"
           },
           {
             "$ref": "#/components/schemas/EventMessageUpdated"
@@ -17369,6 +17369,10 @@
             "type": "string",
             "enum": ["starting", "running", "ready", "exited", "failed", "stopping", "stopped"]
           },
+          "lifetime": {
+            "type": "string",
+            "enum": ["session", "parent", "persistent"]
+          },
           "ready": {
             "type": "boolean"
           },
@@ -17402,7 +17406,7 @@
             "additionalProperties": false
           }
         },
-        "required": ["id", "sessionID", "command", "cwd", "ports", "status", "ready", "output", "time"],
+        "required": ["id", "sessionID", "command", "cwd", "ports", "status", "lifetime", "ready", "output", "time"],
         "additionalProperties": false
       },
       "SnapshotFileDiff": {
@@ -19346,6 +19350,12 @@
                 "$ref": "#/components/schemas/EventSessionIdle"
               },
               {
+                "$ref": "#/components/schemas/EventInstallationUpdated"
+              },
+              {
+                "$ref": "#/components/schemas/EventInstallationUpdate-available"
+              },
+              {
                 "$ref": "#/components/schemas/EventSuggestionShown"
               },
               {
@@ -19395,12 +19405,6 @@
               },
               {
                 "$ref": "#/components/schemas/EventPtyDeleted"
-              },
-              {
-                "$ref": "#/components/schemas/EventInstallationUpdated"
-              },
-              {
-                "$ref": "#/components/schemas/EventInstallationUpdate-available"
               },
               {
                 "$ref": "#/components/schemas/EventMessageUpdated"
@@ -26107,9 +26111,12 @@
             "properties": {
               "info": {
                 "$ref": "#/components/schemas/BackgroundProcessInfo"
+              },
+              "scope": {
+                "type": "string"
               }
             },
-            "required": ["info"],
+            "required": ["info", "scope"],
             "additionalProperties": false
           }
         },
@@ -26135,9 +26142,12 @@
               },
               "processID": {
                 "type": "string"
+              },
+              "scope": {
+                "type": "string"
               }
             },
-            "required": ["sessionID", "processID"],
+            "required": ["sessionID", "processID", "scope"],
             "additionalProperties": false
           }
         },
@@ -26356,6 +26366,54 @@
               }
             },
             "required": ["sessionID"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventInstallationUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["installation.updated"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": ["version"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "type", "properties"],
+        "additionalProperties": false
+      },
+      "EventInstallationUpdate-available": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["installation.update-available"]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": ["version"],
             "additionalProperties": false
           }
         },
@@ -26810,54 +26868,6 @@
               }
             },
             "required": ["id"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventInstallationUpdated": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["installation.updated"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "version": {
-                "type": "string"
-              }
-            },
-            "required": ["version"],
-            "additionalProperties": false
-          }
-        },
-        "required": ["id", "type", "properties"],
-        "additionalProperties": false
-      },
-      "EventInstallationUpdate-available": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["installation.update-available"]
-          },
-          "properties": {
-            "type": "object",
-            "properties": {
-              "version": {
-                "type": "string"
-              }
-            },
-            "required": ["version"],
             "additionalProperties": false
           }
         },
