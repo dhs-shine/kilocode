@@ -1529,8 +1529,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "ترحيل الإصدار القديم",
   "settings.aboutKiloCode.legacyMigration.description":
     "ترحيل الإعدادات من تثبيت سابق لـ Kilo Code، بما في ذلك مفاتيح API لمقدمي الخدمة والنموذج الافتراضي.",
-  "settings.aboutKiloCode.rooImport.description": "Import conversation history from a Roo Code installation.",
-  "settings.aboutKiloCode.rooImport.button": "Import Sessions from Roo Code",
+  "settings.aboutKiloCode.rooImport.description": "استيراد سجل المحادثات من تثبيت Roo Code.",
+  "settings.aboutKiloCode.rooImport.button": "استيراد الجلسات من Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "ما الجديد في Kilo Code",
