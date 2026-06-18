@@ -328,7 +328,7 @@ MiniMax's OpenAI-compatible Chat Completions API supports the optional boolean `
 }
 ```
 
-With `true`, MiniMax returns thinking separately in `reasoning_content` and `reasoning_details`. This setting changes only the response format, not whether the model thinks. Leave it unset for providers that do not support it.
+With `true`, MiniMax returns thinking separately in `reasoning_content` and `reasoning_details`. This setting changes only the response format, not whether the model thinks. Leave it unset for providers that do not support it, including MiniMax using the Anthropic Messages API.
 
 ### Using the id field to map model names
 
