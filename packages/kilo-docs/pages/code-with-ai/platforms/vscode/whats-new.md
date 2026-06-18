@@ -66,7 +66,7 @@ For Markdown files, use the eye/code toggle in the file header to switch between
 
 ### How do I do code reviews in the new extension?
 
-You can now trigger local AI-powered code reviews directly by using two commands: **`/local-review`** to review all changes on your current branch vs the base branch, and **`/local-review-uncommitted`** to review staged and unstaged changes.
+You can now trigger local AI-powered code reviews directly with **`/review`**, which can review either all changes on your current branch vs the base branch or staged and unstaged changes.
 See the [Code Reviews](/docs/automate/code-reviews/overview) documentation for the full setup and options.
 
 ### How can I see the cost of each model?

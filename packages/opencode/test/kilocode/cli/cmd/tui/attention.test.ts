@@ -67,7 +67,7 @@ function suggestion(id: string, sessionID = "session"): SuggestionRequest {
     id,
     sessionID,
     text: "Review the changes",
-    actions: [{ label: "Review", prompt: "/local-review-uncommitted" }],
+    actions: [{ label: "Review", prompt: "/review uncommitted" }],
   }
 }
 

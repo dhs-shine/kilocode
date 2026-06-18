@@ -738,7 +738,7 @@ describe("session prompt queue", () => {
             const base = Suggestion.show({
               sessionID: session.id,
               text: "Run review?",
-              actions: [{ label: "Review", prompt: "/local-review-uncommitted" }],
+              actions: [{ label: "Review", prompt: "/review uncommitted" }],
             }).catch((err) => {
               if (err instanceof Suggestion.DismissedError) return "dismissed"
               throw err
@@ -814,7 +814,7 @@ describe("session prompt queue", () => {
             Suggestion.show({
               sessionID,
               text: "Run review?",
-              actions: [{ label: "Review", prompt: "/local-review-uncommitted" }],
+              actions: [{ label: "Review", prompt: "/review uncommitted" }],
             }),
           ).rejects.toBeInstanceOf(Suggestion.DismissedError)
         } finally {

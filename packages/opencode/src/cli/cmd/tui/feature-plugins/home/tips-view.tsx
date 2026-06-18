@@ -279,7 +279,7 @@ const TIPS: Tip[] = [
   "Run {highlight}docker run -it --rm ghcr.io/anomalyco/opencode{/highlight} for containerized use",
   "Use {highlight}/connect{/highlight} with OpenCode Zen for curated, tested models",
   "Commit your project's {highlight}AGENTS.md{/highlight} file to Git for team sharing",
-  "Use {highlight}/review{/highlight} to review uncommitted changes, branches, or PRs",
+  "Use {highlight}/review{/highlight} to review uncommitted changes or branch diffs",
   (shortcuts) => `Use ${commandText("/help", shortcuts.helpShow())} to show the help dialog`,
   "Use {highlight}/rename{/highlight} to rename the current session",
   ...(process.platform === "win32"

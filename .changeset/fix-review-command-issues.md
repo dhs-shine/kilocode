@@ -2,4 +2,4 @@
 "@kilocode/cli": patch
 ---
 
-Redirect deprecated `/review` command: detect commit/branch/PR arguments and guide users to `/local-review` instead of silently reviewing uncommitted changes.
+Replace `/local-review` and `/local-review-uncommitted` with `/review`, which now chooses between uncommitted and branch review scopes.

@@ -51,7 +51,7 @@ describe("Suggestion.show auto-dismiss on queued followup", () => {
           Suggestion.show({
             sessionID,
             text: "Run review?",
-            actions: [{ label: "Review", prompt: "/local-review-uncommitted" }],
+            actions: [{ label: "Review", prompt: "/review uncommitted" }],
           }),
         ).rejects.toBeInstanceOf(Suggestion.DismissedError)
         expect(await Suggestion.list()).toEqual([])

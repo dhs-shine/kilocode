@@ -2,7 +2,7 @@ import { afterEach, describe, expect, mock, spyOn, test } from "bun:test"
 import { Effect } from "effect"
 import { Telemetry } from "@kilocode/kilo-telemetry"
 import { Command } from "../../../src/command"
-import { localReviewUncommittedCommand } from "../../../src/kilocode/review/command"
+import { reviewCommand } from "../../../src/kilocode/review/command"
 import { provideTestInstance } from "../../fixture/fixture"
 import { Suggestion } from "../../../src/kilocode/suggestion"
 import { resolvePrompt } from "../../../src/kilocode/suggestion/tool"
@@ -16,12 +16,12 @@ afterEach(() => {
 describe("suggestion", () => {
   test("resolves review command arguments into static templates", async () => {
     const commands = Command.Service.of({
-      get: (name) => Effect.succeed(name === "local-review-uncommitted" ? localReviewUncommittedCommand() : undefined),
-      list: () => Effect.succeed([localReviewUncommittedCommand()]),
+      get: (name) => Effect.succeed(name === "review" ? reviewCommand() : undefined),
+      list: () => Effect.succeed([reviewCommand()]),
     })
-    const out = await Effect.runPromise(resolvePrompt("/local-review-uncommitted --focus telemetry", commands))
+    const out = await Effect.runPromise(resolvePrompt("/review uncommitted --focus telemetry", commands))
 
-    expect(out).toContain("## User Input\n\n--focus telemetry")
+    expect(out).toContain("## User Input\n\nuncommitted --focus telemetry")
     expect(out).not.toContain("$ARGUMENTS")
   })
 
@@ -34,7 +34,7 @@ describe("suggestion", () => {
           sessionID: "ses_test",
           text: "Run review?",
           blocking: false,
-          actions: [{ label: "Start", description: "Run it", prompt: "/local-review-uncommitted" }],
+          actions: [{ label: "Start", description: "Run it", prompt: "/review uncommitted" }],
         })
 
         const list = await Suggestion.list()
@@ -57,7 +57,7 @@ describe("suggestion", () => {
           sessionID: "ses_test",
           text: "Next step?",
           actions: [
-            { label: "Review", description: "Start review", prompt: "/local-review-uncommitted" },
+            { label: "Review", description: "Start review", prompt: "/review uncommitted" },
             { label: "Test", description: "Run tests", prompt: "Run the relevant tests now." },
           ],
         })
@@ -84,7 +84,7 @@ describe("suggestion", () => {
         const ask = Suggestion.show({
           sessionID: "ses_test",
           text: "Review changes?",
-          actions: [{ label: "Review", prompt: "/local-review-uncommitted --focus tests" }],
+          actions: [{ label: "Review", prompt: "/review uncommitted --focus tests" }],
         })
 
         const list = await Suggestion.list()
@@ -96,10 +96,10 @@ describe("suggestion", () => {
           requestId: list[0]!.id,
           index: 0,
           tool: "suggest",
-          command: "local-review-uncommitted",
+          command: "review",
           actionCount: 1,
         })
-        await expect(ask).resolves.toEqual({ label: "Review", prompt: "/local-review-uncommitted --focus tests" })
+        await expect(ask).resolves.toEqual({ label: "Review", prompt: "/review uncommitted --focus tests" })
       },
     })
   })
@@ -113,7 +113,7 @@ describe("suggestion", () => {
         const ask = Suggestion.show({
           sessionID: "ses_test",
           text: "Review changes?",
-          actions: [{ label: "Review", prompt: "/local-review-uncommitted --focus tests" }],
+          actions: [{ label: "Review", prompt: "/review uncommitted --focus tests" }],
         })
 
         const list = await Suggestion.list()
@@ -124,7 +124,7 @@ describe("suggestion", () => {
           requestId: list[0]!.id,
           index: 0,
           tool: "suggest",
-          command: "local-review-uncommitted",
+          command: "review",
           actionCount: 1,
         })
 
@@ -134,7 +134,7 @@ describe("suggestion", () => {
     })
   })
 
-  test("show and accept parse local review arguments as local-review", async () => {
+  test("show and accept parse branch review arguments as review", async () => {
     await using tmp = await tmpdir({ git: true })
     await provideTestInstance({
       directory: tmp.path,
@@ -145,7 +145,7 @@ describe("suggestion", () => {
           sessionID: "ses_test",
           text: "Review release?",
           actions: [
-            { label: "Review", prompt: "/local-review release -- focus on tests" },
+            { label: "Review", prompt: "/review release -- focus on tests" },
             { label: "Skip", prompt: "Skip this review." },
           ],
         })
@@ -158,7 +158,7 @@ describe("suggestion", () => {
           requestId: list[0]!.id,
           index: 0,
           tool: "suggest",
-          command: "local-review",
+          command: "review",
           actionCount: 2,
         })
 
@@ -170,10 +170,10 @@ describe("suggestion", () => {
           requestId: list[0]!.id,
           index: 0,
           tool: "suggest",
-          command: "local-review",
+          command: "review",
           actionCount: 2,
         })
-        await expect(ask).resolves.toEqual({ label: "Review", prompt: "/local-review release -- focus on tests" })
+        await expect(ask).resolves.toEqual({ label: "Review", prompt: "/review release -- focus on tests" })
       },
     })
   })
@@ -211,7 +211,7 @@ describe("suggestion", () => {
         const ask = Suggestion.show({
           sessionID: "ses_test",
           text: "Review changes?",
-          actions: [{ label: "Review", prompt: "/local-review" }],
+          actions: [{ label: "Review", prompt: "/review" }],
         })
 
         const list = await Suggestion.list()
@@ -234,7 +234,7 @@ describe("suggestion", () => {
         const ask = Suggestion.show({
           sessionID: "ses_test",
           text: "Review changes?",
-          actions: [{ label: "Review", prompt: "/local-review" }],
+          actions: [{ label: "Review", prompt: "/review" }],
         })
 
         const list = await Suggestion.list()
@@ -255,7 +255,7 @@ describe("suggestion", () => {
         const ask = Suggestion.show({
           sessionID: "ses_test",
           text: "Review changes?",
-          actions: [{ label: "Start", prompt: "/local-review-uncommitted" }],
+          actions: [{ label: "Start", prompt: "/review uncommitted" }],
         })
 
         const list = await Suggestion.list()

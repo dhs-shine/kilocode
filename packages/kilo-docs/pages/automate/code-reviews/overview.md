@@ -59,18 +59,18 @@ Code Reviewer is also available locally. This is valuable for developers who wan
 {% tabs %}
 {% tab label="VSCode" %}
 
-Two slash commands are available for local code reviews:
+Use `/review` for local code reviews:
 
-- **`/local-review`** — Review all changes on your current branch vs the base branch
-- **`/local-review-uncommitted`** — Review uncommitted changes (staged + unstaged)
+- **`/review branch`** — Review all changes on your current branch vs the base branch
+- **`/review uncommitted`** — Review uncommitted changes (staged + unstaged)
 
 {% /tab %}
 {% tab label="CLI" %}
 
-Two slash commands are available for local code reviews:
+Use `/review` for local code reviews:
 
-- **`/local-review`** — Review all changes on your current branch vs the base branch
-- **`/local-review-uncommitted`** — Review uncommitted changes (staged + unstaged)
+- **`/review branch`** — Review all changes on your current branch vs the base branch
+- **`/review uncommitted`** — Review uncommitted changes (staged + unstaged)
 
 {% /tab %}
 {% tab label="VSCode (Legacy)" %}

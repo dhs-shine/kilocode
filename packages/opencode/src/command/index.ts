@@ -7,7 +7,7 @@ import { Effect, Layer, Context, Schema } from "effect"
 import { Config } from "@/config/config"
 import { MCP } from "../mcp"
 import { Skill } from "../skill"
-import { localReviewCommand, localReviewUncommittedCommand, deprecatedReviewCommand } from "@/kilocode/review/command" // kilocode_change
+import { reviewCommand } from "@/kilocode/review/command" // kilocode_change
 import PROMPT_INITIALIZE from "./template/initialize.txt"
 
 type State = {
@@ -53,10 +53,6 @@ export function hints(template: string) {
 export const Default = {
   INIT: "init",
   REVIEW: "review",
-  // kilocode_change start
-  LOCAL_REVIEW: "local-review",
-  LOCAL_REVIEW_UNCOMMITTED: "local-review-uncommitted",
-  // kilocode_change end
 } as const
 
 export interface Interface {
@@ -109,14 +105,7 @@ export const layer = Layer.effect(
         },
         hints: hints(PROMPT_INITIALIZE),
       }
-      // kilocode_change start - redirect deprecated /review to /local-review-uncommitted
-      commands[Default.REVIEW] = { ...deprecatedReviewCommand(), source: "command" }
-      // kilocode_change end
-
-      // kilocode_change start
-      commands[Default.LOCAL_REVIEW] = localReviewCommand()
-      commands[Default.LOCAL_REVIEW_UNCOMMITTED] = localReviewUncommittedCommand()
-      // kilocode_change end
+      commands[Default.REVIEW] = reviewCommand() // kilocode_change
 
       for (const [name, command] of Object.entries(cfg.command ?? {})) {
         commands[name] = {

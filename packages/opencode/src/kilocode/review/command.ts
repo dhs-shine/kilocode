@@ -1,11 +1,9 @@
 import type { Command } from "@/command"
 import type { ReviewCommand } from "@kilocode/kilo-telemetry"
-import LOCAL_REVIEW from "./local-review.txt"
-import LOCAL_REVIEW_UNCOMMITTED from "./local-review-uncommitted.txt"
-import DEPRECATED_REVIEW from "./deprecated-review.txt"
+import REVIEW from "./review.txt"
 
 export function isReviewCommand(command: string | undefined): command is ReviewCommand {
-  return command === "review" || command === "local-review" || command === "local-review-uncommitted"
+  return command === "review"
 }
 
 export function parseReviewCommand(prompt: string | undefined): ReviewCommand | undefined {
@@ -14,38 +12,11 @@ export function parseReviewCommand(prompt: string | undefined): ReviewCommand | 
   if (isReviewCommand(name)) return name
 }
 
-/**
- * /review (deprecated) - redirects argument-based calls to /local-review, falls back to uncommitted review
- */
-export function deprecatedReviewCommand(): Command.Info {
+export function reviewCommand(): Command.Info {
   return {
     name: "review",
-    description: "DEPRECATED: use /local-review-uncommitted or /local-review instead",
-    template: DEPRECATED_REVIEW,
-    hints: ["$ARGUMENTS"],
-  }
-}
-
-/**
- * /local-review-uncommitted - local review (uncommitted changes)
- */
-export function localReviewUncommittedCommand(): Command.Info {
-  return {
-    name: "local-review-uncommitted",
-    description: "local review (uncommitted changes)",
-    template: LOCAL_REVIEW_UNCOMMITTED,
-    hints: ["$ARGUMENTS"],
-  }
-}
-
-/**
- * /local-review - local review (current branch vs base)
- */
-export function localReviewCommand(): Command.Info {
-  return {
-    name: "local-review",
-    description: "local review (current branch, optional base or instructions)",
-    template: LOCAL_REVIEW,
+    description: "local code review",
+    template: REVIEW,
     hints: ["$ARGUMENTS"],
   }
 }

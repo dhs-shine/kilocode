@@ -83,7 +83,7 @@ describe("tool.suggest", () => {
       const result = yield* tool.execute(
         {
           suggest: "Run review?",
-          actions: [{ label: "Start", prompt: "/local-review-uncommitted" }],
+          actions: [{ label: "Start", prompt: "/review uncommitted" }],
         },
         ctx as any,
       )
@@ -100,10 +100,10 @@ describe("tool.suggest", () => {
       show.mockResolvedValueOnce({
         label: "Start review",
         description: "Run a local review now",
-        prompt: "/local-review-uncommitted",
+        prompt: "/review uncommitted",
       })
-      cmds["local-review-uncommitted"] = {
-        name: "local-review-uncommitted",
+      cmds["review"] = {
+        name: "review",
         description: "local review (uncommitted changes)",
         template: Promise.resolve("Review these uncommitted changes:\n\n## Files Changed\n..."),
         hints: [],
@@ -112,7 +112,7 @@ describe("tool.suggest", () => {
       const result = yield* tool.execute(
         {
           suggest: "Run review?",
-          actions: [{ label: "Start review", prompt: "/local-review-uncommitted" }],
+          actions: [{ label: "Start review", prompt: "/review uncommitted" }],
         },
         ctx as any,
       )
@@ -124,9 +124,9 @@ describe("tool.suggest", () => {
       expect(result.metadata.accepted).toEqual({
         label: "Start review",
         description: "Run a local review now",
-        prompt: "/local-review-uncommitted",
+        prompt: "/review uncommitted",
       })
-      expect(names).toEqual(["local-review-uncommitted"])
+      expect(names).toEqual(["review"])
     }),
   )
 
@@ -181,10 +181,10 @@ describe("tool.suggest", () => {
       const tool = yield* init()
       show.mockResolvedValueOnce({
         label: "Start review",
-        prompt: "/local-review-uncommitted",
+        prompt: "/review uncommitted",
       })
-      cmds["local-review-uncommitted"] = {
-        name: "local-review-uncommitted",
+      cmds["review"] = {
+        name: "review",
         description: "local review (uncommitted changes)",
         template: Promise.reject(new Error("git not found")),
         hints: [],
@@ -193,13 +193,13 @@ describe("tool.suggest", () => {
       const result = yield* tool.execute(
         {
           suggest: "Run review?",
-          actions: [{ label: "Start review", prompt: "/local-review-uncommitted" }],
+          actions: [{ label: "Start review", prompt: "/review uncommitted" }],
         },
         ctx as any,
       )
 
       expect(result.title).toBe("User accepted: Start review")
-      expect(result.output).toContain("/local-review-uncommitted")
+      expect(result.output).toContain("/review uncommitted")
       expect(result.metadata.dismissed).toBe(false)
     }),
   )
@@ -215,7 +215,7 @@ describe("tool.suggest", () => {
       yield* tool.execute(
         {
           suggest: "Run review?",
-          actions: [{ label: "Start", prompt: "/local-review-uncommitted" }],
+          actions: [{ label: "Start", prompt: "/review uncommitted" }],
         },
         ctx as any,
       )
