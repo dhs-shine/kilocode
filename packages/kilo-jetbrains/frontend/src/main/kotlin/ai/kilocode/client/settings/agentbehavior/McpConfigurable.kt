@@ -1,4 +1,4 @@
-package ai.kilocode.client.settings.agentBehavior
+package ai.kilocode.client.settings.agentbehavior
 
 import ai.kilocode.client.app.KiloAgentBehaviorService
 import ai.kilocode.client.app.KiloAppService

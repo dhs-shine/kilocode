@@ -1,4 +1,4 @@
-package ai.kilocode.client.settings.agentBehavior
+package ai.kilocode.client.settings.agentbehavior
 
 import ai.kilocode.client.settings.base.KiloReadyConfigurable
 import com.intellij.openapi.project.ProjectManager
