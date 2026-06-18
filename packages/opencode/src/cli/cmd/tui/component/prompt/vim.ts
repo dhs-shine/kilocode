@@ -318,6 +318,49 @@ function resolveMotion(text: string, pos: number, key: string, count: number, aw
 
 // --- operators -------------------------------------------------------------
 
+/**
+ * Apply a `d`/`c`/`y` operator to whole lines spanning [start, contentEnd],
+ * where `contentEnd` is the offset of the last line's trailing newline (or EOF
+ * when the last line has none). Centralises the fiddly EOF rules so delete,
+ * change and yank stay consistent:
+ *   - yank/delete take the line(s) plus one adjoining newline (trailing, or the
+ *     leading one when deleting through EOF) and the register is always
+ *     newline-terminated so `p` pastes as full lines;
+ *   - change removes only the line *content*, leaving an empty line to type on.
+ */
+function linewiseOperate(
+  doc: VimDoc,
+  state: VimState,
+  operator: "d" | "c" | "y",
+  start: number,
+  contentEnd: number,
+): VimResult {
+  const text = doc.text
+  const hasTrailingNewline = contentEnd < text.length
+  const yanked = text.slice(start, hasTrailingNewline ? contentEnd + 1 : contentEnd)
+  state.register = { text: yanked.endsWith("\n") ? yanked : yanked + "\n", linewise: true }
+
+  if (operator === "y") {
+    doc.setCursor(clampNormal(text, start))
+    return { handled: true }
+  }
+
+  if (operator === "c") {
+    // Keep the line, clear its content, and type on the now-empty line.
+    if (contentEnd > start) doc.remove(start, contentEnd)
+    doc.setCursor(start)
+    state.mode = "insert"
+    return { handled: true, enteredInsert: true }
+  }
+
+  // delete: remove the line(s) and one adjoining newline.
+  const delStart = hasTrailingNewline ? start : start > 0 ? start - 1 : 0
+  const delEnd = hasTrailingNewline ? contentEnd + 1 : contentEnd
+  doc.remove(delStart, delEnd)
+  doc.setCursor(clampNormal(doc.text, delStart))
+  return { handled: true }
+}
+
 function applyOperator(
   doc: VimDoc,
   state: VimState,
@@ -326,48 +369,33 @@ function applyOperator(
   pos: number,
 ): VimResult {
   const text = doc.text
-  let start = pos
-  let end = motion.target
 
   if (motion.linewise) {
     const a = Math.min(pos, motion.target)
     const b = Math.max(pos, motion.target)
-    start = lineStart(text, a)
-    // Include the trailing newline so whole lines are removed.
-    const lastLineEnd = lineEnd(text, b)
-    end = lastLineEnd < text.length ? lastLineEnd + 1 : lastLineEnd
-    // If this is the final line (no trailing newline) also swallow the preceding one.
-    if (end === text.length && start > 0 && operator !== "y") start = Math.max(0, start - 1)
-  } else {
-    start = Math.min(pos, motion.target)
-    end = Math.max(pos, motion.target)
-    if (motion.inclusive) end = Math.min(text.length, end + 1)
+    return linewiseOperate(doc, state, operator, lineStart(text, a), lineEnd(text, b))
   }
+
+  const start = Math.min(pos, motion.target)
+  let end = Math.max(pos, motion.target)
+  if (motion.inclusive) end = Math.min(text.length, end + 1)
 
   if (start === end) return { handled: true }
 
-  const removed = doc.text.slice(start, end)
-  state.register = { text: removed, linewise: motion.linewise }
+  state.register = { text: text.slice(start, end), linewise: false }
 
   if (operator === "y") {
-    doc.setCursor(clampNormal(doc.text, motion.linewise ? lineStart(text, Math.min(pos, motion.target)) : start))
+    doc.setCursor(clampNormal(text, start))
     return { handled: true }
   }
 
   doc.remove(start, end)
   if (operator === "c") {
-    if (motion.linewise) {
-      // `cc` keeps the line but clears it; reinsert a newline placeholder.
-      doc.insert(start, "\n")
-      doc.setCursor(start)
-    } else {
-      doc.setCursor(start)
-    }
+    doc.setCursor(start)
     state.mode = "insert"
     return { handled: true, enteredInsert: true }
   }
 
-  // delete
   doc.setCursor(clampNormal(doc.text, start))
   return { handled: true }
 }
@@ -377,35 +405,12 @@ function doubledOperator(doc: VimDoc, state: VimState, operator: "d" | "c" | "y"
   const text = doc.text
   const reps = Math.max(1, parseInt(state.countDigits || "1", 10))
   const start = lineStart(text, doc.cursor)
-  let end = start
-  for (let i = 0; i < reps; i++) {
-    end = lineEnd(text, end)
-    if (end < text.length) end += 1
-    else break
+  let contentEnd = lineEnd(text, start)
+  for (let i = 1; i < reps; i++) {
+    if (contentEnd >= text.length) break
+    contentEnd = lineEnd(text, contentEnd + 1)
   }
-  const removed = text.slice(start, end)
-  state.register = { text: removed.endsWith("\n") ? removed : removed + "\n", linewise: true }
-
-  if (operator === "y") {
-    doc.setCursor(clampNormal(text, start))
-    return { handled: true }
-  }
-
-  if (operator === "c") {
-    doc.remove(start, end)
-    doc.insert(start, "\n")
-    doc.setCursor(start)
-    state.mode = "insert"
-    return { handled: true, enteredInsert: true }
-  }
-
-  // dd: also remove a trailing-line edge case so the cursor lands sanely.
-  let delStart = start
-  let delEnd = end
-  if (delEnd === text.length && delStart > 0) delStart = lineStart(text, delStart - 1)
-  doc.remove(delStart, delEnd)
-  doc.setCursor(clampNormal(doc.text, delStart))
-  return { handled: true }
+  return linewiseOperate(doc, state, operator, start, contentEnd)
 }
 
 function paste(doc: VimDoc, state: VimState, after: boolean): VimResult {
@@ -414,16 +419,24 @@ function paste(doc: VimDoc, state: VimState, after: boolean): VimResult {
   const payload = repeat(reg.text, Math.max(1, parseInt(state.countDigits || "1", 10)))
   if (reg.linewise) {
     const body = payload.endsWith("\n") ? payload : payload + "\n"
-    const insertAt = after
-      ? Math.min(doc.text.length, lineEnd(doc.text, doc.cursor) + 1)
-      : lineStart(doc.text, doc.cursor)
-    // Ensure there is a newline boundary when pasting after the final line.
-    if (after && insertAt > doc.text.length) {
-      doc.insert(doc.text.length, "\n" + body)
-      doc.setCursor(doc.text.length)
+    if (after) {
+      const le = lineEnd(doc.text, doc.cursor)
+      if (le < doc.text.length) {
+        // Normal case: paste a new line after the current line's newline.
+        doc.insert(le + 1, body)
+        doc.setCursor(clampNormal(doc.text, le + 1))
+      } else {
+        // Current line is the final line and has no trailing newline; add the
+        // separator ourselves so the pasted line is not merged onto it.
+        const core = body.endsWith("\n") ? body.slice(0, -1) : body
+        const at = doc.text.length
+        doc.insert(at, "\n" + core)
+        doc.setCursor(clampNormal(doc.text, at + 1))
+      }
     } else {
-      doc.insert(insertAt, body)
-      doc.setCursor(clampNormal(doc.text, insertAt))
+      const at = lineStart(doc.text, doc.cursor)
+      doc.insert(at, body)
+      doc.setCursor(clampNormal(doc.text, at))
     }
     return { handled: true }
   }
@@ -711,27 +724,6 @@ export function enterNormal(doc: VimDoc, state: VimState) {
 
 // --- visual mode -----------------------------------------------------------
 
-interface VisualBounds {
-  /** Operation range start (inclusive). */
-  start: number
-  /** Operation range end (exclusive), already including the inclusive char / newline. */
-  end: number
-  linewise: boolean
-}
-
-function visualBounds(doc: VimDoc, state: VimState): VisualBounds {
-  const anchor = state.visualAnchor ?? doc.cursor
-  const a = Math.min(anchor, doc.cursor)
-  const b = Math.max(anchor, doc.cursor)
-  if (state.mode === "visual-line") {
-    const start = lineStart(doc.text, a)
-    const last = lineEnd(doc.text, b)
-    return { start, end: last < doc.text.length ? last + 1 : last, linewise: true }
-  }
-  // Charwise selection is inclusive of the character under the cursor.
-  return { start: a, end: Math.min(doc.text.length, b + 1), linewise: false }
-}
-
 function updateVisualSelection(doc: VimDoc, state: VimState) {
   if (doc.text.length === 0) {
     doc.clearSelection()
@@ -757,48 +749,43 @@ export function exitVisual(doc: VimDoc, state: VimState) {
 }
 
 function visualOperate(doc: VimDoc, state: VimState, op: "d" | "c" | "y"): VimResult {
-  const bounds = visualBounds(doc, state)
-  const linewise = bounds.linewise
+  const linewise = state.mode === "visual-line"
+  const anchor = state.visualAnchor ?? doc.cursor
+  const a = Math.min(anchor, doc.cursor)
+  const b = Math.max(anchor, doc.cursor)
   doc.clearSelection()
   state.visualAnchor = undefined
 
-  if (bounds.start === bounds.end) {
-    exitVisual(doc, state)
-    return { handled: true }
-  }
-
-  const removed = doc.text.slice(bounds.start, bounds.end)
-  state.register = {
-    text: linewise && !removed.endsWith("\n") ? removed + "\n" : removed,
-    linewise,
-  }
-
-  if (op === "y") {
-    state.mode = "normal"
-    resetPending(state)
-    doc.setCursor(clampNormal(doc.text, linewise ? lineStart(doc.text, bounds.start) : bounds.start))
-    return { handled: true }
-  }
-
-  doc.remove(bounds.start, bounds.end)
-
-  if (op === "c") {
-    if (linewise) {
-      doc.insert(bounds.start, "\n")
-      doc.setCursor(bounds.start)
-    } else {
-      doc.setCursor(bounds.start)
+  let result: VimResult
+  if (linewise) {
+    result = linewiseOperate(doc, state, op, lineStart(doc.text, a), lineEnd(doc.text, b))
+  } else {
+    const start = a
+    const end = Math.min(doc.text.length, b + 1) // charwise visual is inclusive
+    if (start === end) {
+      exitVisual(doc, state)
+      return { handled: true }
     }
-    state.mode = "insert"
-    resetPending(state)
-    return { handled: true, enteredInsert: true }
+    state.register = { text: doc.text.slice(start, end), linewise: false }
+    if (op === "y") {
+      doc.setCursor(clampNormal(doc.text, start))
+      result = { handled: true }
+    } else {
+      doc.remove(start, end)
+      if (op === "c") {
+        doc.setCursor(start)
+        state.mode = "insert"
+        result = { handled: true, enteredInsert: true }
+      } else {
+        doc.setCursor(clampNormal(doc.text, start))
+        result = { handled: true }
+      }
+    }
   }
 
-  // delete
-  state.mode = "normal"
+  if (!result.enteredInsert) state.mode = "normal"
   resetPending(state)
-  doc.setCursor(clampNormal(doc.text, bounds.start))
-  return { handled: true }
+  return result
 }
 
 /**

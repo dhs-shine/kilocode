@@ -440,6 +440,9 @@ export function Prompt(props: PromptProps) {
   createEffect(() => {
     if (!vimEnabled()) {
       if (vimState.mode !== "insert") resetVim()
+      // Restore the default (non-vim) cursor so a block cursor from NORMAL/VISUAL
+      // mode does not linger after vim mode is turned off.
+      if (input && !input.isDestroyed) input.cursorStyle = { style: "block", blinking: true }
       return
     }
     cursorVersion()
@@ -965,6 +968,7 @@ export function Prompt(props: PromptProps) {
           input.clear()
           setStore("prompt", { input: "", parts: [] })
           setStore("extmarkToPartIndex", new Map())
+          resetVim() // kilocode_change
           dialog.clear()
         },
       },
@@ -980,6 +984,7 @@ export function Prompt(props: PromptProps) {
             setStore("prompt", { input: entry.input, parts: entry.parts })
             restoreExtmarksFromParts(entry.parts)
             input.gotoBufferEnd()
+            resetVim() // kilocode_change
           }
           dialog.clear()
         },
@@ -997,6 +1002,7 @@ export function Prompt(props: PromptProps) {
                 setStore("prompt", { input: entry.input, parts: entry.parts })
                 restoreExtmarksFromParts(entry.parts)
                 input.gotoBufferEnd()
+                resetVim() // kilocode_change
               }}
             />
           ))
@@ -1119,6 +1125,7 @@ export function Prompt(props: PromptProps) {
             setStore("prompt", item)
             setStore("mode", item.mode ?? "normal")
             restoreExtmarksFromParts(item.parts)
+            resetVim() // kilocode_change - recalled history starts in insert mode
             input.cursorOffset = 0
           },
         },
@@ -1155,6 +1162,7 @@ export function Prompt(props: PromptProps) {
             setStore("prompt", item)
             setStore("mode", item.mode ?? "normal")
             restoreExtmarksFromParts(item.parts)
+            resetVim() // kilocode_change - recalled history starts in insert mode
             input.cursorOffset = input.plainText.length
           },
         },
@@ -1557,6 +1565,7 @@ export function Prompt(props: PromptProps) {
       parts: [],
     })
     setStore("extmarkToPartIndex", new Map())
+    resetVim() // kilocode_change - don't leak stale vim mode/selection into an emptied prompt
   }
 
   const highlight = createMemo(() => {

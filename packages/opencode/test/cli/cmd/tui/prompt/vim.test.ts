@@ -241,6 +241,58 @@ describe("vim edits", () => {
   })
 })
 
+describe("vim linewise EOF edge cases", () => {
+  test("dd on the final line keeps the preceding line", () => {
+    const doc = new MockDoc("a\nb\nc", 4)
+    const state = createVimState("normal")
+    feed(doc, state, "dd")
+    expect(doc.text).toBe("a\nb")
+  })
+
+  test("dd on the only line empties the buffer", () => {
+    const doc = new MockDoc("abc", 1)
+    const state = createVimState("normal")
+    feed(doc, state, "dd")
+    expect(doc.text).toBe("")
+  })
+
+  test("dG deletes through EOF without dropping an extra line", () => {
+    const doc = new MockDoc("a\nb\nc", 2)
+    const state = createVimState("normal")
+    feed(doc, state, "dG")
+    expect(doc.text).toBe("a")
+  })
+
+  test("cc on the final line leaves one empty line to type on", () => {
+    const doc = new MockDoc("a\nb\nc", 4)
+    const state = createVimState("normal")
+    feed(doc, state, "cc")
+    expect(doc.text).toBe("a\nb\n")
+    expect(state.mode).toBe("insert")
+  })
+
+  test("cc on a middle line clears it but keeps the line", () => {
+    const doc = new MockDoc("a\nb\nc", 2)
+    const state = createVimState("normal")
+    feed(doc, state, "cc")
+    expect(doc.text).toBe("a\n\nc")
+  })
+
+  test("yy + p after the final line keeps a separating newline", () => {
+    const doc = new MockDoc("a\nb\nc", 4)
+    const state = createVimState("normal")
+    feed(doc, state, "yyp")
+    expect(doc.text).toBe("a\nb\nc\nc")
+  })
+
+  test("V + d through EOF keeps the preceding line", () => {
+    const doc = new MockDoc("a\nb\nc", 4)
+    const state = createVimState("normal")
+    feed(doc, state, "Vd")
+    expect(doc.text).toBe("a\nb")
+  })
+})
+
 describe("vim yank/paste", () => {
   test("yy then p duplicates the line below", () => {
     const doc = new MockDoc("one\ntwo", 0)
