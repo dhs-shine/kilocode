@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { KiloClient, SessionStatus } from "@kilocode/sdk/v2/client"
+import type { KiloClient } from "@kilocode/sdk/v2/client"
 import {
   abortSession,
   resolveAbortDirectories,
@@ -20,56 +20,26 @@ function client(calls: unknown[], fail = false) {
 }
 
 describe("active session directories", () => {
-  function update(active: ActiveSessionDirectories, type: SessionStatus["type"], dir?: string) {
-    const status: SessionStatus =
-      type === "retry"
-        ? { type, attempt: 1, message: "retrying", next: 1 }
-        : type === "offline"
-          ? { type, requestID: "request_1", message: "offline" }
-          : { type }
+  function update(active: ActiveSessionDirectories, status: "busy" | "idle", dir: string) {
     updateActiveSessionDirectory({ active, sessionID: "session_1", status, dir })
   }
 
-  it("includes the active owner and current session directory", () => {
+  it("includes the active owner and current mapped directory", () => {
     const active: ActiveSessionDirectories = new Map()
-    update(active, "busy", "/repo/source")
+    update(active, "busy", "/repo")
 
-    expect(resolveAbortDirectories(active, "session_1", "/repo/worktree")).toEqual(["/repo/source", "/repo/worktree"])
+    expect(resolveAbortDirectories(active, "session_1", "/repo/worktree")).toEqual(["/repo", "/repo/worktree"])
   })
 
-  it("falls back to the current directory after the active turn becomes idle", () => {
+  it("removes an owner when its instance becomes idle", () => {
     const active: ActiveSessionDirectories = new Map()
-    update(active, "busy", "/repo/source")
-    update(active, "idle", "/repo/source")
+    update(active, "busy", "/repo")
+    update(active, "idle", "/repo")
 
     expect(resolveAbortDirectories(active, "session_1", "/repo/worktree")).toEqual(["/repo/worktree"])
   })
 
-  it("retains active directories when an unrelated instance reports idle", () => {
-    const active: ActiveSessionDirectories = new Map()
-    update(active, "retry", "/repo/source")
-    update(active, "idle", "/repo/worktree")
-    update(active, "idle")
-
-    expect(resolveAbortDirectories(active, "session_1", "/repo/worktree")).toEqual(["/repo/source", "/repo/worktree"])
-  })
-
-  it("tracks concurrent instances and ignores delayed idle events from the old one", () => {
-    const active: ActiveSessionDirectories = new Map()
-    update(active, "busy", "/repo/source")
-    update(active, "offline", "/repo/worktree")
-
-    expect(resolveAbortDirectories(active, "session_1", "/repo/fallback")).toEqual([
-      "/repo/source",
-      "/repo/worktree",
-      "/repo/fallback",
-    ])
-
-    update(active, "idle", "/repo/source")
-    expect(resolveAbortDirectories(active, "session_1", "/repo/fallback")).toEqual(["/repo/worktree", "/repo/fallback"])
-  })
-
-  it("deduplicates the current directory when it is already active", () => {
+  it("deduplicates equivalent directory paths", () => {
     const active: ActiveSessionDirectories = new Map()
     update(active, "busy", "/repo/worktree")
 

@@ -16,7 +16,6 @@ export async function seedSessionStatuses(
   map: Map<string, SessionStatus["type"]>,
   post: (msg: unknown) => void,
   reconcile = true,
-  update?: (sessionID: string, status: SessionStatus, source: "snapshot" | "reconcile") => SessionStatus | undefined,
 ): Promise<void> {
   try {
     const result = await client.session.status({ directory: dir })
@@ -25,14 +24,12 @@ export async function seedSessionStatuses(
 
     // Seed/update entries the server knows about
     for (const [sid, info] of Object.entries(active) as [string, SessionStatus][]) {
-      const status = update ? update(sid, info, "snapshot") : info
-      if (!status) continue
-      map.set(sid, status.type)
+      map.set(sid, info.type)
       post({
         type: "sessionStatus",
         sessionID: sid,
-        status: status.type,
-        ...(status.type === "retry" ? { attempt: status.attempt, message: status.message, next: status.next } : {}),
+        status: info.type,
+        ...(info.type === "retry" ? { attempt: info.attempt, message: info.message, next: info.next } : {}),
       })
     }
 
@@ -43,15 +40,8 @@ export async function seedSessionStatuses(
     if (reconcile) {
       for (const [sid, status] of map) {
         if (status !== "idle" && !active[sid]) {
-          const next = update ? update(sid, { type: "idle" }, "reconcile") : { type: "idle" as const }
-          if (!next) continue
-          map.set(sid, next.type)
-          post({
-            type: "sessionStatus",
-            sessionID: sid,
-            status: next.type,
-            ...(next.type === "retry" ? { attempt: next.attempt, message: next.message, next: next.next } : {}),
-          })
+          map.set(sid, "idle")
+          post({ type: "sessionStatus", sessionID: sid, status: "idle" })
         }
       }
     }

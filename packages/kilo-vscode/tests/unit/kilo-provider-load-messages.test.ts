@@ -1,5 +1,4 @@
 import { describe, it, expect, spyOn } from "bun:test"
-import type { SessionStatus } from "@kilocode/sdk/v2/client"
 import type { PartUpdate } from "../../src/shared/stream-messages"
 
 // vscode mock is provided by the shared preload (tests/setup/vscode-mock.ts)
@@ -45,8 +44,6 @@ function createClient(options?: {
   deleteDeferred?: Deferred<unknown>
   sessionData?: unknown
   sessionGet?: (params: { sessionID: string; directory?: string }) => Promise<{ data: unknown }>
-  statusData?: Record<string, SessionStatus>
-  statusDeferred?: Deferred<{ data: Record<string, SessionStatus> }>
   abortFailures?: string[]
 }) {
   const calls: { before?: string; limit?: number }[] = []
@@ -62,7 +59,7 @@ function createClient(options?: {
         if (options?.sessionGet) return options.sessionGet(params)
         return { data: options?.sessionData ?? null }
       },
-      status: async () => options?.statusDeferred?.promise ?? { data: options?.statusData ?? {} },
+      status: async () => ({ data: {} }),
       abort: async (params: { sessionID: string; directory?: string }) => {
         aborted.push(params)
         if (params.directory && options?.abortFailures?.includes(params.directory)) throw new Error("abort failed")
@@ -126,14 +123,11 @@ type ProviderInternals = {
   currentSession: { id: string; directory?: string } | null
   contextSessionID: string | undefined
   sessionDirectories: Map<string, string>
-  activeSessionDirectories: Map<string, Map<string, SessionStatus>>
   trackedSessionIds: Set<string>
   streams: { push: (msg: PartUpdate) => void }
   stopCurrentSessionProcesses: (next?: string) => void
   handleEvent: (event: unknown, directory?: string) => void
   handleAbort: (sid?: string) => Promise<void>
-  seedSessionStatusMap: (reconcile?: boolean) => Promise<void>
-  refreshSessionDetails: (sid: string, dir: string, signal?: AbortSignal) => void
   handleLoadMessages: (sid: string, opts?: { mode?: string; before?: string; limit?: number }) => Promise<void>
   handleDeleteSession: (sid: string) => Promise<void>
 }
@@ -153,9 +147,30 @@ function makeProvider(client: ReturnType<typeof createClient>) {
 }
 
 describe("KiloProvider.handleAbort", () => {
-  it("keeps the active owner when a running session moves to a worktree", async () => {
+  it("aborts the original owner after a running session moves to a worktree", async () => {
     const client = createClient()
     const { provider, internal, sent } = makeProvider(client)
+    internal.handleEvent(
+      {
+        type: "session.status",
+        properties: { sessionID: "s1", status: { type: "busy" } },
+      },
+      "/repo",
+    )
+    provider.setSessionDirectory("s1", "/repo/worktree")
+
+    await internal.handleAbort("s1")
+
+    expect(client.aborted).toEqual([
+      { sessionID: "s1", directory: "/repo" },
+      { sessionID: "s1", directory: "/repo/worktree" },
+    ])
+    expect(sent.at(-1)).toMatchObject({ type: "sessionStatus", sessionID: "s1", status: "idle" })
+  })
+
+  it("preserves the original owner when the status event lacks a directory", async () => {
+    const client = createClient()
+    const { provider, internal } = makeProvider(client)
     internal.handleEvent({
       type: "session.status",
       properties: { sessionID: "s1", status: { type: "busy" } },
@@ -168,30 +183,9 @@ describe("KiloProvider.handleAbort", () => {
       { sessionID: "s1", directory: "/repo" },
       { sessionID: "s1", directory: "/repo/worktree" },
     ])
-    expect(sent.at(-1)).toMatchObject({ type: "sessionStatus", sessionID: "s1", status: "idle" })
   })
 
-  it("preserves a directory-qualified owner instead of inferring the current directory", async () => {
-    const client = createClient()
-    const { provider, internal } = makeProvider(client)
-    internal.handleEvent(
-      {
-        type: "session.status",
-        properties: { sessionID: "s1", status: { type: "busy" } },
-      },
-      "/repo/source",
-    )
-    provider.setSessionDirectory("s1", "/repo/worktree")
-
-    await internal.handleAbort("s1")
-
-    expect(client.aborted).toEqual([
-      { sessionID: "s1", directory: "/repo/source" },
-      { sessionID: "s1", directory: "/repo/worktree" },
-    ])
-  })
-
-  it("attempts every owner when one abort request fails", async () => {
+  it("attempts every owner and stays busy when one abort fails", async () => {
     const error = spyOn(console, "error").mockImplementation(() => {})
     const client = createClient({ abortFailures: ["/repo"] })
     const { provider, internal, sent } = makeProvider(client)
@@ -213,174 +207,6 @@ describe("KiloProvider.handleAbort", () => {
     expect(sent.at(-1)).toMatchObject({ type: "sessionStatus", sessionID: "s1", status: "busy" })
     expect(error).toHaveBeenCalledTimes(1)
     error.mockRestore()
-  })
-
-  it("restores the remaining owner status when another owner reports idle", () => {
-    const client = createClient()
-    const { internal, sent } = makeProvider(client)
-    internal.handleEvent(
-      {
-        type: "session.status",
-        properties: { sessionID: "s1", status: { type: "offline", requestID: "request_1", message: "offline" } },
-      },
-      "/repo/source",
-    )
-    internal.handleEvent(
-      {
-        type: "session.status",
-        properties: { sessionID: "s1", status: { type: "retry", attempt: 1, message: "retry", next: 1 } },
-      },
-      "/repo/worktree",
-    )
-    internal.handleEvent(
-      {
-        type: "session.status",
-        properties: { sessionID: "s1", status: { type: "idle" } },
-      },
-      "/repo/worktree",
-    )
-
-    const statuses = sent.flatMap((msg) =>
-      typeof msg === "object" && msg && (msg as { type?: unknown }).type === "sessionStatus"
-        ? [(msg as { status: string }).status]
-        : [],
-    )
-    expect(statuses).toEqual(["offline", "retry", "offline"])
-
-    internal.handleEvent(
-      {
-        type: "session.status",
-        properties: { sessionID: "s1", status: { type: "idle" } },
-      },
-      "/repo/source",
-    )
-    expect(
-      sent.flatMap((msg) =>
-        typeof msg === "object" && msg && (msg as { type?: unknown }).type === "sessionStatus"
-          ? [(msg as { status: string }).status]
-          : [],
-      ),
-    ).toEqual(["offline", "retry", "offline", "idle"])
-  })
-
-  it("restores the remaining owner when an active instance is disposed", () => {
-    const client = createClient()
-    const { internal, sent } = makeProvider(client)
-    internal.handleEvent(
-      {
-        type: "session.status",
-        properties: { sessionID: "s1", status: { type: "offline", requestID: "request_1", message: "offline" } },
-      },
-      "/repo/source",
-    )
-    internal.handleEvent(
-      {
-        type: "session.status",
-        properties: { sessionID: "s1", status: { type: "retry", attempt: 1, message: "retry", next: 1 } },
-      },
-      "/repo/worktree",
-    )
-
-    internal.handleEvent({
-      type: "server.instance.disposed",
-      properties: { directory: "/repo/worktree" },
-    })
-
-    expect(
-      sent.flatMap((msg) =>
-        typeof msg === "object" && msg && (msg as { type?: unknown }).type === "sessionStatus"
-          ? [(msg as { status: string }).status]
-          : [],
-      ),
-    ).toEqual(["offline", "retry", "offline"])
-  })
-
-  it("records an active owner discovered during status seeding", async () => {
-    const client = createClient({ statusData: { s1: { type: "busy" } } })
-    const { provider, internal } = makeProvider(client)
-    provider.setSessionDirectory("s1", "/repo/worktree")
-
-    await internal.seedSessionStatusMap()
-    await internal.handleAbort("s1")
-
-    expect(client.aborted).toEqual([
-      { sessionID: "s1", directory: "/repo" },
-      { sessionID: "s1", directory: "/repo/worktree" },
-    ])
-  })
-
-  it("records a worktree owner discovered while refreshing session details", async () => {
-    const status = defer<{ data: Record<string, SessionStatus> }>()
-    const client = createClient({ statusDeferred: status })
-    const { provider, internal } = makeProvider(client)
-    provider.setSessionDirectory("s1", "/repo/worktree")
-    internal.trackedSessionIds.add("s1")
-
-    internal.refreshSessionDetails("s1", "/repo/worktree")
-    status.resolve({ data: { s1: { type: "busy" } } })
-    await Bun.sleep(0)
-    provider.clearSessionDirectory("s1")
-    await internal.handleAbort("s1")
-
-    expect(client.aborted).toEqual([
-      { sessionID: "s1", directory: "/repo/worktree" },
-      { sessionID: "s1", directory: "/repo" },
-    ])
-  })
-
-  it("does not overwrite a newer busy event with a stale status seed", async () => {
-    const status = defer<{ data: Record<string, SessionStatus> }>()
-    const client = createClient({ statusDeferred: status })
-    const { provider, internal, sent } = makeProvider(client)
-    provider.setSessionDirectory("s1", "/repo/worktree")
-
-    const seed = internal.seedSessionStatusMap()
-    internal.handleEvent(
-      {
-        type: "session.status",
-        properties: { sessionID: "s1", status: { type: "busy" } },
-      },
-      "/repo",
-    )
-    status.resolve({ data: {} })
-    await seed
-    await internal.handleAbort("s1")
-
-    expect(client.aborted).toEqual([
-      { sessionID: "s1", directory: "/repo" },
-      { sessionID: "s1", directory: "/repo/worktree" },
-    ])
-    expect(
-      sent.flatMap((msg) =>
-        typeof msg === "object" && msg && (msg as { type?: unknown }).type === "sessionStatus"
-          ? [(msg as { status: string }).status]
-          : [],
-      ),
-    ).toEqual(["busy", "idle"])
-  })
-
-  it("keeps a seeded owner when another directory reports a newer status", async () => {
-    const status = defer<{ data: Record<string, SessionStatus> }>()
-    const client = createClient({ statusDeferred: status })
-    const { provider, internal } = makeProvider(client)
-    provider.setSessionDirectory("s1", "/repo/worktree")
-
-    const seed = internal.seedSessionStatusMap()
-    internal.handleEvent(
-      {
-        type: "session.status",
-        properties: { sessionID: "s1", status: { type: "busy" } },
-      },
-      "/repo/worktree",
-    )
-    status.resolve({ data: { s1: { type: "busy" } } })
-    await seed
-    await internal.handleAbort("s1")
-
-    expect(client.aborted).toEqual([
-      { sessionID: "s1", directory: "/repo/worktree" },
-      { sessionID: "s1", directory: "/repo" },
-    ])
   })
 })
 

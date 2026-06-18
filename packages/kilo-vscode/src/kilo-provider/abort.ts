@@ -1,42 +1,34 @@
 import type { KiloClient, SessionStatus } from "@kilocode/sdk/v2/client"
 import { sameDirectory } from "../kilo-provider-utils"
 
-export type ActiveSessionDirectories = Map<string, Map<string, SessionStatus>>
+export type ActiveSessionDirectories = Map<string, Set<string>>
 
 export function updateActiveSessionDirectory(input: {
   active: ActiveSessionDirectories
   sessionID: string
-  status: SessionStatus
+  status: SessionStatus["type"]
   dir?: string
 }) {
   const target = input.dir
   if (!target) return
-  const entries = input.active.get(input.sessionID)
-  if (input.status.type === "idle") {
-    if (!entries) return
-    for (const dir of entries.keys()) {
-      if (sameDirectory(dir, target)) entries.delete(dir)
+  const dirs = input.active.get(input.sessionID)
+  if (input.status === "idle") {
+    if (!dirs) return
+    for (const dir of dirs) {
+      if (sameDirectory(dir, target)) dirs.delete(dir)
     }
-    if (entries.size === 0) input.active.delete(input.sessionID)
+    if (dirs.size === 0) input.active.delete(input.sessionID)
     return
   }
-  if (!entries) {
-    input.active.set(input.sessionID, new Map([[target, input.status]]))
+  if (!dirs) {
+    input.active.set(input.sessionID, new Set([target]))
     return
   }
-  for (const dir of entries.keys()) {
-    if (sameDirectory(dir, target)) entries.delete(dir)
-  }
-  entries.set(target, input.status)
-}
-
-export function resolveActiveSessionStatus(active: ActiveSessionDirectories, sessionID: string) {
-  const statuses = [...(active.get(sessionID)?.values() ?? [])]
-  return statuses[statuses.length - 1]
+  if (![...dirs].some((dir) => sameDirectory(dir, target))) dirs.add(target)
 }
 
 export function resolveAbortDirectories(active: ActiveSessionDirectories, sessionID: string, fallback: string) {
-  const dirs = [...(active.get(sessionID)?.keys() ?? [])]
+  const dirs = [...(active.get(sessionID) ?? [])]
   if (!dirs.some((dir) => sameDirectory(dir, fallback))) dirs.push(fallback)
   return dirs
 }
