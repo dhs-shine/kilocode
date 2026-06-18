@@ -33,7 +33,7 @@
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings"
                 id="ai.kilocode.jetbrains.settings.profile"
-                groupWeight="2"
+                groupWeight="4"
                 instance="ai.kilocode.client.settings.profile.UserProfileConfigurable"
                 bundle="messages.KiloBundle"
                 key="settings.profile.displayName"/>
@@ -41,7 +41,7 @@
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings"
                 id="ai.kilocode.jetbrains.settings.models"
-                groupWeight="1"
+                groupWeight="3"
                 instance="ai.kilocode.client.settings.models.ModelsConfigurable"
                 bundle="messages.KiloBundle"
                 key="settings.models.displayName"/>
@@ -49,7 +49,7 @@
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings"
                 id="ai.kilocode.jetbrains.settings.providers"
-                groupWeight="1"
+                groupWeight="2"
                 instance="ai.kilocode.client.settings.providers.ProvidersConfigurable"
                 bundle="messages.KiloBundle"
                 key="settings.providers.displayName"/>
@@ -65,35 +65,35 @@
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings.agentBehavior"
                 id="ai.kilocode.jetbrains.settings.agentBehavior.agents"
-                instance="ai.kilocode.client.settings.agentbehavior.AgentsConfigurable"
+                instance="ai.kilocode.client.settings.agentBehavior.AgentsConfigurable"
                 bundle="messages.KiloBundle"
                 key="settings.agentBehavior.agents.displayName"/>
 
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings.agentBehavior"
                 id="ai.kilocode.jetbrains.settings.agentBehavior.mcp"
-                instance="ai.kilocode.client.settings.agentbehavior.McpConfigurable"
+                instance="ai.kilocode.client.settings.agentBehavior.McpConfigurable"
                 bundle="messages.KiloBundle"
                 key="settings.agentBehavior.mcp.displayName"/>
 
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings.agentBehavior"
                 id="ai.kilocode.jetbrains.settings.agentBehavior.rules"
-                instance="ai.kilocode.client.settings.agentbehavior.RulesConfigurable"
+                instance="ai.kilocode.client.settings.agentBehavior.RulesConfigurable"
                 bundle="messages.KiloBundle"
                 key="settings.agentBehavior.rules.displayName"/>
 
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings.agentBehavior"
                 id="ai.kilocode.jetbrains.settings.agentBehavior.workflows"
-                instance="ai.kilocode.client.settings.agentbehavior.WorkflowsConfigurable"
+                instance="ai.kilocode.client.settings.agentBehavior.WorkflowsConfigurable"
                 bundle="messages.KiloBundle"
                 key="settings.agentBehavior.workflows.displayName"/>
 
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings.agentBehavior"
                 id="ai.kilocode.jetbrains.settings.agentBehavior.skills"
-                instance="ai.kilocode.client.settings.agentbehavior.SkillsConfigurable"
+                instance="ai.kilocode.client.settings.agentBehavior.SkillsConfigurable"
                 bundle="messages.KiloBundle"
                 key="settings.agentBehavior.skills.displayName"/>
 

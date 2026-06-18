@@ -1,11 +1,11 @@
 package ai.kilocode.client.settings
 
 import ai.kilocode.client.plugin.KiloBundle
-import ai.kilocode.client.settings.agentbehavior.AgentsConfigurable
-import ai.kilocode.client.settings.agentbehavior.McpConfigurable
-import ai.kilocode.client.settings.agentbehavior.RulesConfigurable
-import ai.kilocode.client.settings.agentbehavior.SkillsConfigurable
-import ai.kilocode.client.settings.agentbehavior.WorkflowsConfigurable
+import ai.kilocode.client.settings.agentBehavior.AgentsConfigurable
+import ai.kilocode.client.settings.agentBehavior.McpConfigurable
+import ai.kilocode.client.settings.agentBehavior.RulesConfigurable
+import ai.kilocode.client.settings.agentBehavior.SkillsConfigurable
+import ai.kilocode.client.settings.agentBehavior.WorkflowsConfigurable
 import ai.kilocode.client.ui.layout.Stack
 import com.intellij.ide.DataManager
 import com.intellij.openapi.options.SearchableConfigurable

@@ -1,11 +1,10 @@
-package ai.kilocode.client.settings.agentbehavior
+package ai.kilocode.client.settings.agentBehavior
 
 import ai.kilocode.client.app.KiloAgentBehaviorService
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.BaseContentPanel
 import ai.kilocode.client.settings.base.SettingsRow
-import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.ConfigPatchDto
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
@@ -29,7 +28,6 @@ class McpSettingsUi(private val cs: CoroutineScope, private val dir: String) : B
     private val rows = section(KiloBundle.message("settings.agentBehavior.mcp.displayName"))
 
     init {
-        next(UiStyle.Components.comingSoonButton(KiloBundle.message("settings.agentBehavior.browseMarketplace")))
         load()
     }
 

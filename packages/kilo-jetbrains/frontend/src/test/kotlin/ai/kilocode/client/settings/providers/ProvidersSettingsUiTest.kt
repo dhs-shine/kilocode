@@ -140,7 +140,27 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             )
         }
 
-        edt { assertEquals(listOf(ProviderListAction.DISCONNECT), rows(content).single().actions) }
+        edt {
+            val row = rows(content).single()
+            assertEquals(listOf(ProviderListAction.DISCONNECT), row.actions)
+            assertTrue(row.badges.isEmpty())
+        }
+    }
+
+    fun `test custom providers have no badge while env providers keep env badge`() {
+        val rows = providerListRows(
+            ProviderSettingsDto(
+                providers = listOf(
+                    provider("local-openai", "Local OpenAI", source = "custom"),
+                    provider("env-provider", "Env Provider", source = "env"),
+                ),
+                config = mapOf("local-openai" to CustomProviderConfigDto("local-openai", npm = "@ai-sdk/openai-compatible")),
+            ),
+            "",
+        )
+
+        assertTrue(rows.single { it.key == "local-openai" }.badges.isEmpty())
+        assertEquals(listOf("env"), rows.single { it.key == "env-provider" }.badges.map { it.text })
     }
 
     fun `test popular rows use vscode order including kilo`() {
