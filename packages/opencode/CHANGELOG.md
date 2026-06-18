@@ -1,5 +1,7 @@
 # @kilocode/cli
 
+## 7.3.49
+
 ## 7.3.48
 
 ### Minor Changes
