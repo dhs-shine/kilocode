@@ -60,14 +60,6 @@ export interface MigrationStateMessage {
   type: "migrationState"
   needed: boolean
   source: "legacy"
-  data?: {
-    providers: MigrationProviderInfo[]
-    mcpServers: MigrationMcpServerInfo[]
-    customModes: MigrationCustomModeInfo[]
-    sessions?: MigrationSessionInfo[]
-    defaultModel?: { provider: string; model: string }
-    settings?: LegacySettings
-  }
 }
 
 export interface MigrationDataMessage {

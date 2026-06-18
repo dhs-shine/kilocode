@@ -119,18 +119,11 @@ export async function checkAndShowMigrationWizard(ctx: MigrationContext): Promis
   if (!data.hasData) return
 
   console.log("[Kilo New] KiloProvider: 🔄 Legacy data detected, showing migration wizard")
+  // The wizard re-requests the data via requestMigrationData on mount, so only the flag is sent here.
   ctx.postMessage({
     type: "migrationState",
     needed: true,
     source: "legacy",
-    data: {
-      providers: data.providers,
-      mcpServers: data.mcpServers,
-      customModes: data.customModes,
-      sessions: data.sessions,
-      defaultModel: data.defaultModel,
-      settings: data.settings,
-    },
   })
 }
 
