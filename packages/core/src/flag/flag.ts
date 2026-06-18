@@ -8,6 +8,10 @@ function truthy(key: string) {
 const KILO_EXPERIMENTAL = truthy("KILO_EXPERIMENTAL")
 const copy = process.env["KILO_EXPERIMENTAL_DISABLE_COPY_ON_SELECT"]
 
+function enabledByExperimental(key: string) {
+  return process.env[key] === undefined ? KILO_EXPERIMENTAL : truthy(key)
+}
+
 export const Flag = {
   OTEL_EXPORTER_OTLP_ENDPOINT: process.env["OTEL_EXPORTER_OTLP_ENDPOINT"],
   OTEL_EXPORTER_OTLP_HEADERS: process.env["OTEL_EXPORTER_OTLP_HEADERS"],
@@ -42,7 +46,8 @@ export const Flag = {
   KILO_DB: process.env["KILO_DB"],
 
   KILO_WORKSPACE_ID: process.env["KILO_WORKSPACE_ID"],
-  KILO_EXPERIMENTAL_WORKSPACES: KILO_EXPERIMENTAL || truthy("KILO_EXPERIMENTAL_WORKSPACES"),
+  KILO_EXPERIMENTAL_WORKSPACES: enabledByExperimental("KILO_EXPERIMENTAL_WORKSPACES"),
+  KILO_EXPERIMENTAL_SESSION_SWITCHER: enabledByExperimental("KILO_EXPERIMENTAL_SESSION_SWITCHER"),
 
   // Evaluated at access time (not module load) because tests, the CLI, and
   // external tooling set these env vars at runtime.

@@ -45,6 +45,7 @@ export const MessagesQuery = Schema.Struct({
 export const StatusMap = Schema.Record(Schema.String, SessionStatus.Info)
 export const UpdatePayload = Schema.Struct({
   title: Schema.optional(Schema.String),
+  metadata: Schema.optional(Session.Metadata),
   permission: Schema.optional(Permission.Ruleset),
   time: Schema.optional(
     Schema.Struct({
@@ -236,7 +237,7 @@ export const SessionApi = HttpApi.make("session")
         HttpApiEndpoint.post("fork", SessionPaths.fork, {
           params: { sessionID: SessionID },
           query: WorkspaceRoutingQuery,
-          payload: Schema.optional(ForkPayload),
+          payload: [HttpApiSchema.NoContent, ForkPayload],
           success: described(Session.Info, "200"),
           error: [HttpApiError.BadRequest, ApiNotFoundError],
         }).annotateMerge(
