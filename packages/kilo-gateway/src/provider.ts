@@ -19,6 +19,21 @@ export function buildRequestHeaders(defaultHeaders: Record<string, string>, requ
   return headers
 }
 
+export function addDataCollection(body: BodyInit | null | undefined, value?: "allow" | "deny") {
+  if (!value || typeof body !== "string") return body
+  const data = (() => {
+    try {
+      return JSON.parse(body) as unknown
+    } catch {
+      return undefined
+    }
+  })()
+  if (typeof data !== "object" || data === null || Array.isArray(data)) return body
+  const current = "provider" in data ? data.provider : undefined
+  const provider = typeof current === "object" && current !== null && !Array.isArray(current) ? current : {}
+  return JSON.stringify({ ...data, provider: { ...provider, data_collection: value } })
+}
+
 /**
  * Create a KiloCode provider instance
  *
@@ -55,7 +70,7 @@ export function createKilo(options: KiloProviderOptions = {}): KiloProvider {
   const originalFetch = options.fetch ?? fetch
   const wrappedFetch = async (input: string | URL | Request, init?: RequestInit) => {
     const headers = buildRequestHeaders(customHeaders, init?.headers)
-    const body = sanitizeResponsesBody(input, init?.body)
+    const body = addDataCollection(sanitizeResponsesBody(input, init?.body), options.dataCollection)
 
     // Add authorization if API key exists
     if (apiKey) {
