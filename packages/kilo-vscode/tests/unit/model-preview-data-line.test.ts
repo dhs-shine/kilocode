@@ -31,6 +31,15 @@ describe("model preview data collection line", () => {
     )
   })
 
+  it("renders BYOK availability independently from free and training metadata", () => {
+    expect(selector).toContain("hasByok(model)")
+    expect(preview).toContain("hasByok(model())")
+    expect(agent).toContain("hasByok(model)")
+    expect(selector).toContain(">BYOK</Tag>")
+    expect(preview).toContain(">BYOK</span>")
+    expect(agent).toContain(">BYOK</span>")
+  })
+
   it("uses the book open check icon for all webview model data disclosures", () => {
     expect(selector).toContain('Icon name="book-open-check"')
     expect(selector).not.toContain('Icon name="warning"')

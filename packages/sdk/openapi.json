@@ -21282,6 +21282,9 @@
           "mayTrainOnYourPrompts": {
             "type": "boolean"
           },
+          "hasUserByokAvailable": {
+            "type": "boolean"
+          },
           "terminalBench": {
             "type": "object",
             "properties": {
