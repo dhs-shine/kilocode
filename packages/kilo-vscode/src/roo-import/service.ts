@@ -24,7 +24,7 @@ export async function detectRooCodeSessions(context: vscode.ExtensionContext): P
 
   for (const root of ROOTS) {
     const dir = path.join(parent, root, "tasks")
-    const scan = await scanTaskStore(dir, [], "roo")
+    const scan = await scanTaskStore(dir, [], { namespace: "roo", mode: "discover" })
     diagnostics.push(...scan.diagnostics)
     for (const [id, entry] of [...scan.catalog].sort(([a], [b]) => a.localeCompare(b))) {
       if (!catalog.has(id)) catalog.set(id, entry)

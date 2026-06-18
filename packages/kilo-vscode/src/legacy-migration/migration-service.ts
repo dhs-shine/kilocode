@@ -121,7 +121,7 @@ export async function detectLegacyData(context: vscode.ExtensionContext): Promis
 async function readSessionCatalog(context: vscode.ExtensionContext) {
   const items = context.globalState.get<LegacyHistoryItem[]>("taskHistory", [])
   const dir = vscode.Uri.joinPath(context.globalStorageUri, "tasks").fsPath
-  return (await scanTaskStore(dir, items)).catalog
+  return (await scanTaskStore(dir, items, { mode: "history" })).catalog
 }
 
 // ---------------------------------------------------------------------------

@@ -40,11 +40,54 @@ export function resolveSession(catalog: SessionCatalog, id: string) {
   return catalog.get(id)?.source
 }
 
+export type ScanMode = "history" | "discover"
+
+export interface ScanOptions {
+  namespace?: string
+  /**
+   * "history" trusts the provided history items and only checks that each task's
+   * conversation file still exists (cheap stat, used by legacy migration).
+   * "discover" enumerates every task directory on disk and parses conversation
+   * files to recover titles (used when no history is available, e.g. Roo import).
+   */
+  mode?: ScanMode
+}
+
 export async function scanTaskStore(
   dir: string,
   items: LegacyHistoryItem[] = [],
-  namespace?: string,
+  options: ScanOptions = {},
 ): Promise<TaskScan> {
+  const mode = options.mode ?? (items.length ? "history" : "discover")
+  return mode === "history"
+    ? scanFromHistory(dir, items, options.namespace)
+    : scanFromDisk(dir, items, options.namespace)
+}
+
+/** Builds a catalog from known history items, only confirming each conversation file exists. */
+async function scanFromHistory(dir: string, items: LegacyHistoryItem[], namespace?: string): Promise<TaskScan> {
+  const catalog: SessionCatalog = new Map()
+
+  for (const item of items) {
+    if (catalog.has(item.id)) continue
+    if (!(await exists(path.join(dir, item.id, API_FILE)))) continue
+    catalog.set(item.id, {
+      id: item.id,
+      session: {
+        id: item.id,
+        title: item.task?.trim() || fallbackTitle(item.id),
+        directory: item.workspace?.trim() || "",
+        time: item.ts ?? timestamp(item.id),
+      },
+      source: { id: item.id, dir, item, namespace },
+    })
+  }
+
+  return { catalog, diagnostics: [] }
+}
+
+/** Enumerates every task directory on disk and parses conversation files to recover titles. */
+async function scanFromDisk(dir: string, items: LegacyHistoryItem[], namespace?: string): Promise<TaskScan> {
   const entries = await vscode.workspace.fs.readDirectory(vscode.Uri.file(dir)).then(
     (value) => value,
     () => [] as [string, vscode.FileType][],
