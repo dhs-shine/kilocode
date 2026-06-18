@@ -11,12 +11,14 @@
  *   edits:     x X, D C, s, r{char}, dd cc yy, d/c/y + motion, p P
  *   inserts:   i I a A o O
  *   history:   u (undo), <C-r> (redo)
+ *   visual:    v (charwise), V (linewise); motions extend the selection,
+ *              d/x/c/s/y operate on it, o swaps ends, Esc/v/V exit
  *
  * This is a practical subset, not a complete vim. A few behaviours are
  * approximations of real vim and are documented inline.
  */
 
-export type VimMode = "insert" | "normal"
+export type VimMode = "insert" | "normal" | "visual" | "visual-line"
 
 /**
  * Minimal mutable document the engine operates on. Offsets are character
@@ -32,6 +34,10 @@ export interface VimDoc {
   remove(start: number, end: number): string
   undo(): void
   redo(): void
+  /** Highlight the half-open range [start, end) (used to show a visual selection). */
+  setSelection(start: number, end: number): void
+  /** Clear any visual selection highlight. */
+  clearSelection(): void
 }
 
 export interface VimRegister {
@@ -52,6 +58,8 @@ export interface VimState {
   register: VimRegister
   /** Sticky column preserved across consecutive `j`/`k` moves (vim behaviour). */
   desiredColumn?: number
+  /** Fixed end of the selection in visual modes; the cursor is the moving end. */
+  visualAnchor?: number
 }
 
 export function createVimState(mode: VimMode = "insert"): VimState {
@@ -531,6 +539,15 @@ export function handleNormalKey(doc: VimDoc, state: VimState, input: VimKey): Vi
     return { handled: true }
   }
 
+  // Visual mode entry.
+  if (key === "v" || key === "V") {
+    state.mode = key === "v" ? "visual" : "visual-line"
+    state.visualAnchor = doc.cursor
+    state.countDigits = ""
+    updateVisualSelection(doc, state)
+    return { handled: true }
+  }
+
   // Insert-mode transitions.
   switch (key) {
     case "i":
@@ -683,11 +700,196 @@ function resetPending(state: VimState) {
 /** Switch to NORMAL mode, clamping the cursor like vim does on `<Esc>`. */
 export function enterNormal(doc: VimDoc, state: VimState) {
   state.mode = "normal"
+  state.visualAnchor = undefined
+  doc.clearSelection()
   resetPending(state)
   // On leaving insert mode vim moves the cursor one left (unless at line start).
   const start = lineStart(doc.text, doc.cursor)
   if (doc.cursor > start) doc.setCursor(doc.cursor - 1)
   doc.setCursor(clampNormal(doc.text, doc.cursor))
+}
+
+// --- visual mode -----------------------------------------------------------
+
+interface VisualBounds {
+  /** Operation range start (inclusive). */
+  start: number
+  /** Operation range end (exclusive), already including the inclusive char / newline. */
+  end: number
+  linewise: boolean
+}
+
+function visualBounds(doc: VimDoc, state: VimState): VisualBounds {
+  const anchor = state.visualAnchor ?? doc.cursor
+  const a = Math.min(anchor, doc.cursor)
+  const b = Math.max(anchor, doc.cursor)
+  if (state.mode === "visual-line") {
+    const start = lineStart(doc.text, a)
+    const last = lineEnd(doc.text, b)
+    return { start, end: last < doc.text.length ? last + 1 : last, linewise: true }
+  }
+  // Charwise selection is inclusive of the character under the cursor.
+  return { start: a, end: Math.min(doc.text.length, b + 1), linewise: false }
+}
+
+function updateVisualSelection(doc: VimDoc, state: VimState) {
+  if (doc.text.length === 0) {
+    doc.clearSelection()
+    return
+  }
+  const anchor = state.visualAnchor ?? doc.cursor
+  const a = Math.min(anchor, doc.cursor)
+  const b = Math.max(anchor, doc.cursor)
+  if (state.mode === "visual-line") {
+    doc.setSelection(lineStart(doc.text, a), lineEnd(doc.text, b))
+    return
+  }
+  doc.setSelection(a, Math.min(doc.text.length, b + 1))
+}
+
+/** Leave any visual mode and return to NORMAL, clearing the highlight. */
+export function exitVisual(doc: VimDoc, state: VimState) {
+  state.mode = "normal"
+  state.visualAnchor = undefined
+  doc.clearSelection()
+  resetPending(state)
+  doc.setCursor(clampNormal(doc.text, doc.cursor))
+}
+
+function visualOperate(doc: VimDoc, state: VimState, op: "d" | "c" | "y"): VimResult {
+  const bounds = visualBounds(doc, state)
+  const linewise = bounds.linewise
+  doc.clearSelection()
+  state.visualAnchor = undefined
+
+  if (bounds.start === bounds.end) {
+    exitVisual(doc, state)
+    return { handled: true }
+  }
+
+  const removed = doc.text.slice(bounds.start, bounds.end)
+  state.register = {
+    text: linewise && !removed.endsWith("\n") ? removed + "\n" : removed,
+    linewise,
+  }
+
+  if (op === "y") {
+    state.mode = "normal"
+    resetPending(state)
+    doc.setCursor(clampNormal(doc.text, linewise ? lineStart(doc.text, bounds.start) : bounds.start))
+    return { handled: true }
+  }
+
+  doc.remove(bounds.start, bounds.end)
+
+  if (op === "c") {
+    if (linewise) {
+      doc.insert(bounds.start, "\n")
+      doc.setCursor(bounds.start)
+    } else {
+      doc.setCursor(bounds.start)
+    }
+    state.mode = "insert"
+    resetPending(state)
+    return { handled: true, enteredInsert: true }
+  }
+
+  // delete
+  state.mode = "normal"
+  resetPending(state)
+  doc.setCursor(clampNormal(doc.text, bounds.start))
+  return { handled: true }
+}
+
+/**
+ * Process a key in VISUAL / VISUAL-LINE mode. Mutates `state` and `doc`. The
+ * caller routes here when `state.mode` is "visual" or "visual-line".
+ */
+export function handleVisualKey(doc: VimDoc, state: VimState, input: VimKey): VimResult {
+  const { key } = input
+
+  if (key === "escape") {
+    exitVisual(doc, state)
+    return { handled: true }
+  }
+
+  // Numeric count (a leading 0 is the line-start motion, not a count).
+  if (/[0-9]/.test(key) && !(key === "0" && state.countDigits === "")) {
+    state.countDigits += key
+    return { handled: true }
+  }
+  const count = state.countDigits ? parseInt(state.countDigits, 10) : 0
+
+  // `g` prefix (gg).
+  if (key === "g" && !state.awaitingG) {
+    state.awaitingG = true
+    return { handled: true }
+  }
+  if (state.awaitingG) {
+    const motion = resolveMotion(doc.text, doc.cursor, key, count, true)
+    state.awaitingG = false
+    state.countDigits = ""
+    if (motion) {
+      doc.setCursor(clampNormal(doc.text, motion.target))
+      updateVisualSelection(doc, state)
+    }
+    return { handled: true }
+  }
+
+  // Toggle / switch visual sub-modes.
+  if (key === "v") {
+    if (state.mode === "visual") exitVisual(doc, state)
+    else {
+      state.mode = "visual"
+      updateVisualSelection(doc, state)
+    }
+    state.countDigits = ""
+    return { handled: true }
+  }
+  if (key === "V") {
+    if (state.mode === "visual-line") exitVisual(doc, state)
+    else {
+      state.mode = "visual-line"
+      updateVisualSelection(doc, state)
+    }
+    state.countDigits = ""
+    return { handled: true }
+  }
+
+  // Swap the moving end with the anchor.
+  if (key === "o") {
+    const anchor = state.visualAnchor ?? doc.cursor
+    state.visualAnchor = doc.cursor
+    doc.setCursor(clampNormal(doc.text, anchor))
+    updateVisualSelection(doc, state)
+    state.countDigits = ""
+    return { handled: true }
+  }
+
+  // Operators act on the selection, then leave visual mode.
+  if (key === "d" || key === "x") return finishSimple(state, visualOperate(doc, state, "d"))
+  if (key === "c" || key === "s") return finishSimple(state, visualOperate(doc, state, "c"))
+  if (key === "y") return finishSimple(state, visualOperate(doc, state, "y"))
+
+  // Motions extend the selection.
+  if (key === "j" || key === "k") {
+    moveVertical(doc, state, key === "j" ? +1 : -1, Math.max(1, count))
+    updateVisualSelection(doc, state)
+    state.countDigits = ""
+    return { handled: true }
+  }
+  const motion = resolveMotion(doc.text, doc.cursor, key, count, false)
+  if (motion) {
+    state.desiredColumn = undefined
+    doc.setCursor(clampNormal(doc.text, motion.target))
+    updateVisualSelection(doc, state)
+    state.countDigits = ""
+    return { handled: true }
+  }
+
+  // Unknown key: swallow so nothing leaks into the prompt.
+  state.countDigits = ""
+  return { handled: true }
 }
 
 export function enterInsert(state: VimState) {

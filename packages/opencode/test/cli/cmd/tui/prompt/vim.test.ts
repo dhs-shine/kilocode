@@ -3,6 +3,7 @@ import {
   createVimState,
   enterNormal,
   handleNormalKey,
+  handleVisualKey,
   lineEnd,
   lineStart,
   clampNormal,
@@ -16,10 +17,18 @@ class MockDoc implements VimDoc {
   private _cursor: number
   private history: { text: string; cursor: number }[] = []
   private future: { text: string; cursor: number }[] = []
+  selection: { start: number; end: number } | null = null
 
   constructor(text = "", cursor = 0) {
     this._text = text
     this._cursor = cursor
+  }
+
+  setSelection(start: number, end: number) {
+    this.selection = { start, end }
+  }
+  clearSelection() {
+    this.selection = null
   }
 
   get text() {
@@ -79,7 +88,8 @@ function feed(doc: MockDoc, state: ReturnType<typeof createVimState>, keys: stri
       vk = { key: keys[i]! }
       i += 1
     }
-    handleNormalKey(doc, state, vk)
+    if (state.mode === "visual" || state.mode === "visual-line") handleVisualKey(doc, state, vk)
+    else handleNormalKey(doc, state, vk)
   }
 }
 
@@ -245,6 +255,105 @@ describe("vim yank/paste", () => {
     feed(doc, state, "dw") // text => "bar", register "foo "
     feed(doc, state, "p")
     expect(doc.text).toContain("foo")
+  })
+})
+
+describe("vim visual mode", () => {
+  test("v enters visual and selects the char under the cursor", () => {
+    const doc = new MockDoc("hello", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "v")
+    expect(state.mode).toBe("visual")
+    expect(doc.selection).toEqual({ start: 0, end: 1 })
+  })
+
+  test("v + motion extends the selection", () => {
+    const doc = new MockDoc("hello world", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "v")
+    feed(doc, state, "e") // select "hello"
+    expect(doc.selection).toEqual({ start: 0, end: 5 })
+  })
+
+  test("vw d deletes the selection", () => {
+    const doc = new MockDoc("foo bar", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "v")
+    feed(doc, state, "e") // select "foo"
+    feed(doc, state, "d")
+    expect(doc.text).toBe(" bar")
+    expect(state.mode).toBe("normal")
+    expect(doc.selection).toBeNull()
+  })
+
+  test("visual y yanks selection; p pastes it", () => {
+    const doc = new MockDoc("foo bar", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "v")
+    feed(doc, state, "e") // select "foo"
+    feed(doc, state, "y")
+    expect(state.mode).toBe("normal")
+    expect(state.register.text).toBe("foo")
+    feed(doc, state, "p")
+    expect(doc.text).toContain("foo")
+  })
+
+  test("visual c deletes selection and enters insert", () => {
+    const doc = new MockDoc("foo bar", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "v")
+    feed(doc, state, "e")
+    feed(doc, state, "c")
+    expect(doc.text).toBe(" bar")
+    expect(state.mode).toBe("insert")
+  })
+
+  test("V selects whole lines and d deletes them", () => {
+    const doc = new MockDoc("one\ntwo\nthree", 4)
+    const state = createVimState("normal")
+    feed(doc, state, "V") // line "two"
+    expect(state.mode).toBe("visual-line")
+    feed(doc, state, "d")
+    expect(doc.text).toBe("one\nthree")
+    expect(state.mode).toBe("normal")
+  })
+
+  test("V + j extends across lines", () => {
+    const doc = new MockDoc("one\ntwo\nthree", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "V")
+    feed(doc, state, "j") // lines one+two
+    feed(doc, state, "d")
+    expect(doc.text).toBe("three")
+  })
+
+  test("escape leaves visual mode and clears selection", () => {
+    const doc = new MockDoc("hello", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "v")
+    feed(doc, state, "ll")
+    feed(doc, state, "<esc>")
+    expect(state.mode).toBe("normal")
+    expect(doc.selection).toBeNull()
+  })
+
+  test("v again toggles visual mode off", () => {
+    const doc = new MockDoc("hello", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "v")
+    feed(doc, state, "v")
+    expect(state.mode).toBe("normal")
+    expect(doc.selection).toBeNull()
+  })
+
+  test("o swaps the selection ends", () => {
+    const doc = new MockDoc("hello world", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "v")
+    feed(doc, state, "ll") // anchor 0, cursor 2
+    feed(doc, state, "o") // swap: anchor 2, cursor 0
+    expect(doc.cursor).toBe(0)
+    expect(state.visualAnchor).toBe(2)
   })
 })
 

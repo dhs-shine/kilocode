@@ -71,6 +71,7 @@ import {
   createVimState,
   enterNormal as vimEnterNormal,
   handleNormalKey as vimHandleNormalKey,
+  handleVisualKey as vimHandleVisualKey,
   type VimDoc,
   type VimKey,
 } from "./vim"
@@ -216,7 +217,7 @@ export function Prompt(props: PromptProps) {
   const [cursorVersion, setCursorVersion] = createSignal(0)
   // kilocode_change start - vim modal editing for the prompt
   const vimState = createVimState("insert")
-  const [vimMode, setVimMode] = createSignal<"insert" | "normal">("insert")
+  const [vimMode, setVimMode] = createSignal<"insert" | "normal" | "visual" | "visual-line">("insert")
   const vimEnabled = createMemo(() => kv.get("vim_enabled", tuiConfig.vim ?? false))
   function syncVimMode() {
     if (vimState.mode !== vimMode()) setVimMode(vimState.mode)
@@ -229,6 +230,8 @@ export function Prompt(props: PromptProps) {
     vimState.awaitingReplace = false
     vimState.countDigits = ""
     vimState.desiredColumn = undefined
+    vimState.visualAnchor = undefined
+    if (input && !input.isDestroyed) input.clearSelection()
     setVimMode("insert")
   }
   function vimDoc(): VimDoc {
@@ -258,6 +261,12 @@ export function Prompt(props: PromptProps) {
       redo() {
         input.redo()
       },
+      setSelection(start: number, end: number) {
+        input.setSelection(start, end)
+      },
+      clearSelection() {
+        input.clearSelection()
+      },
     }
   }
   /**
@@ -279,9 +288,12 @@ export function Prompt(props: PromptProps) {
       return false
     }
 
-    // NORMAL mode. Keep Enter (submit) and Tab (autocomplete) working rather
-    // than emulating strict vim line motions for them.
-    if (e.name === "return" || e.name === "enter" || e.name === "tab") return false
+    const visual = vimState.mode === "visual" || vimState.mode === "visual-line"
+
+    // In NORMAL mode keep Enter (submit) and Tab (autocomplete) working rather
+    // than emulating strict vim line motions for them. In VISUAL mode the user
+    // is selecting, so let the engine handle those keys instead.
+    if (!visual && (e.name === "return" || e.name === "enter" || e.name === "tab")) return false
 
     // Let global ctrl/meta combos (e.g. ctrl+c to exit) through, except ctrl+r
     // which is vim redo.
@@ -292,7 +304,7 @@ export function Prompt(props: PromptProps) {
       ? { key: e.name, ctrl: true }
       : { key: e.sequence && e.sequence.length === 1 ? e.sequence : e.name }
 
-    const result = vimHandleNormalKey(vimDoc(), vimState, key)
+    const result = visual ? vimHandleVisualKey(vimDoc(), vimState, key) : vimHandleNormalKey(vimDoc(), vimState, key)
     if (result.handled) syncVimMode()
     return result.handled
   }
@@ -432,8 +444,8 @@ export function Prompt(props: PromptProps) {
     }
     cursorVersion()
     if (!input || input.isDestroyed) return
-    // Block cursor in NORMAL mode, bar cursor in INSERT mode (vim convention).
-    input.cursorStyle = vimMode() === "normal" ? { style: "block", blinking: false } : { style: "line", blinking: true }
+    // Block cursor in NORMAL/VISUAL modes, bar cursor in INSERT mode (vim convention).
+    input.cursorStyle = vimMode() === "insert" ? { style: "line", blinking: true } : { style: "block", blinking: false }
   })
   // kilocode_change end
 
@@ -1752,11 +1764,24 @@ export function Prompt(props: PromptProps) {
                           <text>
                             <span
                               style={{
-                                fg: fadeColor(vimMode() === "normal" ? theme.success : theme.info, agentMetaAlpha()),
+                                fg: fadeColor(
+                                  vimMode() === "insert"
+                                    ? theme.info
+                                    : vimMode() === "visual" || vimMode() === "visual-line"
+                                      ? theme.warning
+                                      : theme.success,
+                                  agentMetaAlpha(),
+                                ),
                                 bold: true,
                               }}
                             >
-                              {vimMode() === "normal" ? "NORMAL" : "INSERT"}
+                              {vimMode() === "insert"
+                                ? "INSERT"
+                                : vimMode() === "visual"
+                                  ? "VISUAL"
+                                  : vimMode() === "visual-line"
+                                    ? "V-LINE"
+                                    : "NORMAL"}
                             </span>
                           </text>
                         </box>
