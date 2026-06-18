@@ -40,7 +40,7 @@ const testAllow: Record<string, { count: number; reason: string }> = {
   "provider/provider.test.ts": { count: 3, reason: "existing runtime integration test" },
   "server/experimental-session-list.test.ts": { count: 2, reason: "Kilo session list integration test" },
   "server/httpapi-event.test.ts": { count: 6, reason: "event stream integration test" },
-  "kilocode/server/listener-runtime.test.ts": { count: 3, reason: "listener and AppRuntime integration test" },
+  "kilocode/server/listener-runtime.test.ts": { count: 4, reason: "listener and AppRuntime integration test" },
   "session/llm.test.ts": { count: 2, reason: "existing runtime integration test" },
   "tool/recall.test.ts": { count: 11, reason: "existing runtime integration test" },
 }

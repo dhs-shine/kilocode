@@ -922,11 +922,22 @@ it.live(
         })
 
         if (tool.state.status !== "running") return
-        expect(typeof tool.state.metadata?.sessionId).toBe("string")
+        const child = tool.state.metadata?.sessionId // kilocode_change
+        expect(typeof child).toBe("string") // kilocode_change
         expect(tool.state.title).toBe("inspect bug")
         expect(tool.state.metadata?.model).toBeDefined()
 
+        // kilocode_change start - cancelling a parent directly stops its active task subagent
+        if (typeof child !== "string") return
+        const childID = SessionID.make(child)
+        const status = yield* SessionStatus.Service
+        yield* waitFor(
+          "running task subagent",
+          status.get(childID).pipe(Effect.map((info) => (info.type === "busy" ? true : undefined))),
+        )
         yield* prompt.cancel(chat.id)
+        expect((yield* status.get(childID)).type).toBe("idle")
+        // kilocode_change end
         yield* Fiber.await(fiber)
       }),
       { git: true, config: providerCfg },

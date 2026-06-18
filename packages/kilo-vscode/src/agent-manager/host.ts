@@ -44,6 +44,7 @@ export interface SessionProvider {
    *  The callback receives the new session and its directory so the Agent Manager
    *  can route it to the correct worktree instead of LOCAL. */
   onFollowupAdopted(cb: (session: Session, directory: string) => void): void
+  abortSessions(ids: readonly string[]): Promise<void>
   dispose(): void
 }
 

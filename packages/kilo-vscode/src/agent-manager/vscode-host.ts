@@ -119,6 +119,7 @@ export class VscodeHost implements Host {
       registerSession: (s) => provider.registerSession(s),
       recoverPendingPrompts: () => provider.recoverPendingPrompts(),
       onFollowupAdopted: (cb) => provider.onFollowupAdopted(cb),
+      abortSessions: (ids) => provider.abortSessions(ids),
       dispose: () => provider.dispose(),
     }
 
