@@ -141,6 +141,10 @@ export async function handleRequestMigrationData(
   operationId: string,
 ): Promise<void> {
   if (!ctx.extensionContext) return
+  // A new request means a new wizard session; drop any entry from an abandoned one.
+  for (const key of ctx.migrationCache.keys()) {
+    if (key !== operationId) ctx.migrationCache.delete(key)
+  }
   const data = await (async () => {
     if (source === "roo") {
       const roo = await detectRooCodeSessions(ctx.extensionContext as Parameters<typeof detectRooCodeSessions>[0])
@@ -264,11 +268,16 @@ export async function handleStartMigration(
   operationId: string,
   selections: MigrationSelections,
 ): Promise<void> {
-  if (source === "roo") {
-    await startRooMigration(ctx, operationId, selections)
-    return
+  try {
+    if (source === "roo") {
+      await startRooMigration(ctx, operationId, selections)
+      return
+    }
+    await startLegacyMigration(ctx, operationId, selections)
+  } finally {
+    // The operation has finished (or thrown); its cached discovery is no longer needed.
+    ctx.migrationCache.delete(operationId)
   }
-  await startLegacyMigration(ctx, operationId, selections)
 }
 
 export async function handleFinalizeLegacyMigration(ctx: MigrationContext): Promise<void> {
