@@ -51,7 +51,11 @@ You'll find these settings in the Kilo Code settings panel (click the {% codicon
 1. Open **Settings** (gear icon) and go to the **Providers** tab.
 2. Scroll to the bottom and click **Custom provider**.
 
+![Custom provider button](/docs/img/custom-models/custom-provider-button.png)
+
 3. Fill in the custom provider dialog:
+
+![Custom provider configuration dialog](/docs/img/custom-models/custom-provider-details.png)
 
 - **Provider ID** — A unique identifier (e.g., `my-provider`).
 - **Display name** — A human-readable name shown in the UI.
