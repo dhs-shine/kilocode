@@ -1,6 +1,13 @@
 import * as path from "node:path"
 import * as vscode from "vscode"
-import { listSessions, scanTaskStore, type ScanDiagnostic, type SessionCatalog } from "../legacy-migration/task-store"
+import {
+  listSessions,
+  readTaskIndex,
+  scanTaskStore,
+  type ScanDiagnostic,
+  type SessionCatalog,
+  type SessionEntry,
+} from "../legacy-migration/task-store"
 
 const ROOTS = [
   "roovscode.roo-cline",
@@ -16,18 +23,29 @@ export interface RooImportSource {
   diagnostics: ScanDiagnostic[]
 }
 
-/** Scans every known Roo storage root and keeps the first deterministic copy of duplicate task IDs. */
-export async function detectRooCodeSessions(context: vscode.ExtensionContext): Promise<RooImportSource | null> {
+/** Scans every known Roo storage root and keeps the most recent, complete copy of duplicate task IDs. */
+export async function detectRooCodeSessions(
+  context: vscode.ExtensionContext,
+  customPath?: string,
+): Promise<RooImportSource | null> {
   const parent = path.dirname(context.globalStorageUri.fsPath)
+  const configured = customPath ?? vscode.workspace.getConfiguration("roo-cline").get<unknown>("customStoragePath", "")
+  const custom = typeof configured === "string" ? configured.trim() : ""
+  const roots = [
+    ...ROOTS.map((root) => path.join(parent, root, "tasks")),
+    ...(custom ? [path.join(custom, "tasks")] : []),
+  ]
+  const dirs = [...new Map(roots.map((dir) => [path.resolve(dir), dir])).values()]
   const catalog: SessionCatalog = new Map()
   const diagnostics: ScanDiagnostic[] = []
 
-  for (const root of ROOTS) {
-    const dir = path.join(parent, root, "tasks")
-    const scan = await scanTaskStore(dir, [], { namespace: "roo", mode: "discover" })
+  for (const dir of dirs) {
+    const items = await readTaskIndex(dir)
+    const scan = await scanTaskStore(dir, items, { namespace: "roo", mode: "discover" })
     diagnostics.push(...scan.diagnostics)
     for (const [id, entry] of [...scan.catalog].sort(([a], [b]) => a.localeCompare(b))) {
-      if (!catalog.has(id)) catalog.set(id, entry)
+      const current = catalog.get(id)
+      if (!current || compare(entry, current) >= 0) catalog.set(id, entry)
     }
   }
 
@@ -37,4 +55,10 @@ export async function detectRooCodeSessions(context: vscode.ExtensionContext): P
 
   const sessions = listSessions(catalog)
   return sessions.length ? { catalog, sessions, diagnostics } : null
+}
+
+function compare(a: SessionEntry, b: SessionEntry) {
+  const complete = (entry: SessionEntry) =>
+    Number(Boolean(entry.source.item?.task?.trim())) + Number(Boolean(entry.source.item?.mode))
+  return (a.source.mtime ?? 0) - (b.source.mtime ?? 0) || a.session.time - b.session.time || complete(a) - complete(b)
 }

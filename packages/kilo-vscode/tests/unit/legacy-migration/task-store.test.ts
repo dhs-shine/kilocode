@@ -38,7 +38,9 @@ describe("task store history scan", () => {
     const scan = await scanTaskStore(dir, items, { mode: "history" })
 
     // "gone" is dropped (no file) and on-disk orphans are never considered (no enumeration).
-    expect(listSessions(scan.catalog)).toEqual([{ id: "keep", title: "Keep me", directory: "/repo", time: 1700000000000 }])
+    expect(listSessions(scan.catalog)).toEqual([
+      { id: "keep", title: "Keep me", directory: "/repo", time: 1700000000000 },
+    ])
     expect(resolveSession(scan.catalog, "keep")).toMatchObject({ id: "keep", dir })
     expect(scan.diagnostics).toEqual([])
     expect(listed).toBe(false)

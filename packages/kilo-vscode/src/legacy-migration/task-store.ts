@@ -11,6 +11,7 @@ export interface SessionSource {
   dir: string
   item?: LegacyHistoryItem
   namespace?: string
+  mtime?: number
 }
 
 export interface SessionEntry {
@@ -24,7 +25,7 @@ export type SessionCatalog = Map<string, SessionEntry>
 export interface ScanDiagnostic {
   id: string
   dir: string
-  reason: "ui-only" | "malformed"
+  reason: "ui-only" | "malformed" | "missing-workspace"
 }
 
 export interface TaskScan {
@@ -110,40 +111,74 @@ async function scanFromDisk(dir: string, items: LegacyHistoryItem[], namespace?:
       continue
     }
 
-    const item = history.get(id) ?? (await readHistoryItem(root, id, valid.data))
+    const item = await readHistoryItem(root, id, valid.data, history.get(id))
+    const workspace = item.workspace?.trim()
+    if (!workspace) {
+      diagnostics.push({ id, dir, reason: "missing-workspace" })
+      continue
+    }
     catalog.set(id, {
       id,
       session: {
         id,
         title: item.task?.trim() || fallbackTitle(id),
-        directory: item.workspace?.trim() || "",
+        directory: workspace,
         time: item.ts ?? timestamp(id),
       },
-      source: { id, dir, item, namespace },
+      source: { id, dir, item, namespace, mtime: valid.mtime },
     })
   }
 
   return { catalog, diagnostics }
 }
 
-async function readHistory(file: string) {
-  return Promise.resolve(vscode.workspace.fs.readFile(vscode.Uri.file(file)))
+export async function readTaskIndex(dir: string): Promise<LegacyHistoryItem[]> {
+  return Promise.resolve(vscode.workspace.fs.readFile(vscode.Uri.file(path.join(dir, "_index.json"))))
     .then((bytes) => {
+      const json = JSON.parse(Buffer.from(bytes).toString("utf8")) as { entries?: unknown }
+      if (!Array.isArray(json.entries)) return []
+      return json.entries.flatMap((value) => {
+        if (!value || typeof value !== "object") return []
+        const item = value as Record<string, unknown>
+        if (typeof item.id !== "string") return []
+        return [parseRecord(item, item.id)]
+      })
+    })
+    .catch(() => [])
+}
+
+async function readHistory(file: string) {
+  const uri = vscode.Uri.file(file)
+  return Promise.all([vscode.workspace.fs.readFile(uri), vscode.workspace.fs.stat(uri)])
+    .then(([bytes, stat]) => {
       const json = JSON.parse(Buffer.from(bytes).toString("utf8")) as unknown
-      return { exists: true as const, valid: Array.isArray(json), data: Array.isArray(json) ? json : [] }
+      return {
+        exists: true as const,
+        valid: Array.isArray(json),
+        data: Array.isArray(json) ? json : [],
+        mtime: stat.mtime,
+      }
     })
     .catch((error) => {
-      if (error instanceof SyntaxError) return { exists: true as const, valid: false, data: [] as unknown[] }
-      return { exists: false as const, valid: false, data: [] as unknown[] }
+      if (error instanceof SyntaxError) {
+        return { exists: true as const, valid: false, data: [] as unknown[], mtime: 0 }
+      }
+      return { exists: false as const, valid: false, data: [] as unknown[], mtime: 0 }
     })
 }
 
-async function readHistoryItem(root: string, id: string, messages: unknown[]): Promise<LegacyHistoryItem> {
+async function readHistoryItem(
+  root: string,
+  id: string,
+  messages: unknown[],
+  indexed?: LegacyHistoryItem,
+): Promise<LegacyHistoryItem> {
   const file = path.join(root, "history_item.json")
   const stored = await Promise.resolve(vscode.workspace.fs.readFile(vscode.Uri.file(file)))
     .then((bytes) => parseItem(Buffer.from(bytes).toString("utf8"), id))
     .catch(() => undefined)
   if (stored) return stored
+  if (indexed) return indexed
 
   return {
     id,
@@ -154,13 +189,18 @@ async function readHistoryItem(root: string, id: string, messages: unknown[]): P
 }
 
 function parseItem(input: string, id: string): LegacyHistoryItem | undefined {
-  const json = JSON.parse(input) as Record<string, unknown>
+  return parseRecord(JSON.parse(input) as Record<string, unknown>, id)
+}
+
+function parseRecord(json: Record<string, unknown>, id: string): LegacyHistoryItem {
   return {
     id,
     task: typeof json.task === "string" ? json.task.trim().slice(0, 120) : fallbackTitle(id),
     workspace: typeof json.workspace === "string" ? json.workspace : "",
     ts: typeof json.ts === "number" ? json.ts : timestamp(id),
     mode: typeof json.mode === "string" ? json.mode : undefined,
+    rootTaskId: typeof json.rootTaskId === "string" ? json.rootTaskId : undefined,
+    parentTaskId: typeof json.parentTaskId === "string" ? json.parentTaskId : undefined,
   }
 }
 

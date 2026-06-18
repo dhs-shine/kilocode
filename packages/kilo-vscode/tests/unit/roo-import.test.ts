@@ -7,51 +7,110 @@ import { detectRooCodeSessions } from "../../src/roo-import/service"
 const enc = new TextEncoder()
 const first = "/storage/roovscode.roo-cline/tasks"
 const second = "/storage/rooveterinaryinc.roo-cline/tasks"
+const customRoot = "/custom/roo/tasks"
 const id = "1781613537275"
 const other = "1781613537276"
+const missing = "1781613537277"
+const customId = "1781613537278"
 const special = "__proto__"
 
 type Fs = typeof vscode.workspace.fs
 const fs = vscode.workspace.fs as Fs
-const original = { readDirectory: fs.readDirectory, readFile: fs.readFile, stat: fs.stat }
+const original = {
+  readDirectory: fs.readDirectory,
+  readFile: fs.readFile,
+  stat: fs.stat,
+}
+
+let files: Map<string, { value: string; mtime: number }>
+let dirs: Map<string, string[]>
 
 describe("roo import", () => {
   beforeEach(() => {
-    const files = new Map([
-      [`${first}/${id}/api_conversation_history.json`, JSON.stringify([{ role: "user", content: "First root" }])],
-      [`${first}/${special}/api_conversation_history.json`, JSON.stringify([{ role: "user", content: "Special" }])],
+    files = new Map([
+      [
+        `${first}/${id}/api_conversation_history.json`,
+        { value: JSON.stringify([{ role: "user", content: "First root" }]), mtime: 10 },
+      ],
+      [
+        `${first}/${special}/api_conversation_history.json`,
+        { value: JSON.stringify([{ role: "user", content: "Special" }]), mtime: 10 },
+      ],
       [
         `${first}/${id}/history_item.json`,
-        JSON.stringify({ id, ts: Number(id), task: "First root", workspace: "/repo", mode: "architect" }),
+        {
+          value: JSON.stringify({ id, ts: Number(id), task: "First root", workspace: "/old", mode: "architect" }),
+          mtime: 10,
+        },
       ],
-      [`${second}/${id}/api_conversation_history.json`, JSON.stringify([{ role: "user", content: "Duplicate" }])],
-      [`${second}/${other}/ui_messages.json`, JSON.stringify([{ type: "say", text: "UI only" }])],
-      [`${second}/bad/api_conversation_history.json`, "not json"],
+      [
+        `${first}/_index.json`,
+        {
+          value: JSON.stringify({
+            version: 1,
+            entries: [{ id: special, ts: 1, task: "Special", workspace: "/indexed" }],
+          }),
+          mtime: 10,
+        },
+      ],
+      [
+        `${second}/${id}/api_conversation_history.json`,
+        { value: JSON.stringify([{ role: "user", content: "New root" }]), mtime: 20 },
+      ],
+      [
+        `${second}/${id}/history_item.json`,
+        { value: JSON.stringify({ id, ts: Number(id) + 1, task: "New root", workspace: "/new" }), mtime: 20 },
+      ],
+      [
+        `${second}/_index.json`,
+        {
+          value: JSON.stringify({
+            version: 1,
+            entries: [{ id, ts: Number(id), task: "Stale index", workspace: "/stale" }],
+          }),
+          mtime: 10,
+        },
+      ],
+      [`${second}/${other}/ui_messages.json`, { value: JSON.stringify([{ type: "say", text: "UI only" }]), mtime: 20 }],
+      [`${second}/bad/api_conversation_history.json`, { value: "not json", mtime: 20 }],
+      [
+        `${second}/${missing}/api_conversation_history.json`,
+        { value: JSON.stringify([{ role: "user", content: "No workspace" }]), mtime: 20 },
+      ],
+      [
+        `${customRoot}/${customId}/api_conversation_history.json`,
+        { value: JSON.stringify([{ role: "user", content: "Custom root" }]), mtime: 30 },
+      ],
+      [
+        `${customRoot}/_index.json`,
+        {
+          value: JSON.stringify({
+            version: 1,
+            entries: [{ id: customId, ts: Number(customId), task: "Custom root", workspace: "/custom-repo" }],
+          }),
+          mtime: 30,
+        },
+      ],
+    ])
+    dirs = new Map([
+      [first, [id, special]],
+      [second, [id, other, "bad", missing]],
+      [customRoot, [customId]],
     ])
 
     fs.readDirectory = async (uri) => {
-      if (uri.fsPath === first) {
-        return [
-          [id, vscode.FileType.Directory],
-          [special, vscode.FileType.Directory],
-        ]
-      }
-      if (uri.fsPath === second) {
-        return [
-          [id, vscode.FileType.Directory],
-          [other, vscode.FileType.Directory],
-          ["bad", vscode.FileType.Directory],
-        ]
-      }
+      const entries = dirs.get(uri.fsPath)
+      if (entries) return entries.map((entry) => [entry, vscode.FileType.Directory])
       throw new Error(`missing dir ${uri.fsPath}`)
     }
     fs.stat = async (uri) => {
-      if (files.has(uri.fsPath)) return { type: vscode.FileType.File, ctime: 0, mtime: 0, size: 1 }
+      const file = files.get(uri.fsPath)
+      if (file) return { type: vscode.FileType.File, ctime: 0, mtime: file.mtime, size: file.value.length }
       throw new Error(`missing file ${uri.fsPath}`)
     }
     fs.readFile = async (uri) => {
-      const value = files.get(uri.fsPath)
-      if (value) return enc.encode(value)
+      const file = files.get(uri.fsPath)
+      if (file) return enc.encode(file.value)
       throw new Error(`missing file ${uri.fsPath}`)
     }
   })
@@ -62,20 +121,35 @@ describe("roo import", () => {
     fs.stat = original.stat
   })
 
-  it("merges all roots, deterministically deduplicates, and diagnoses skipped tasks", async () => {
+  it("recovers indexed metadata, selects the newest duplicate, and diagnoses unusable tasks", async () => {
     const source = await detectRooCodeSessions({ globalStorageUri: { fsPath: "/storage/kilocode.kilo-code" } } as never)
 
     expect(source?.sessions).toEqual([
-      { id, title: "First root", directory: "/repo", time: Number(id) },
-      { id: special, title: "Special", directory: "", time: 0 },
+      { id, title: "New root", directory: "/new", time: Number(id) + 1 },
+      { id: special, title: "Special", directory: "/indexed", time: 1 },
     ])
-    expect(source?.catalog.get(id)?.source).toMatchObject({ id, dir: first, namespace: "roo" })
+    expect(source?.catalog.get(id)?.source).toMatchObject({ id, dir: second, namespace: "roo", mtime: 20 })
     expect(source?.catalog.get(special)?.source).toMatchObject({ id: special, dir: first, namespace: "roo" })
-    expect(source?.catalog.get(id)?.source.item).toMatchObject({ mode: "architect" })
     expect(source?.diagnostics.map((item) => [item.id, item.reason])).toEqual([
       [other, "ui-only"],
+      [missing, "missing-workspace"],
       ["bad", "malformed"],
     ])
+  })
+
+  it("discovers sessions in Roo's configured custom storage path", async () => {
+    const source = await detectRooCodeSessions(
+      { globalStorageUri: { fsPath: "/storage/kilocode.kilo-code" } } as never,
+      "/custom/roo",
+    )
+
+    expect(source?.sessions).toContainEqual({
+      id: customId,
+      title: "Custom root",
+      directory: "/custom-repo",
+      time: Number(customId),
+    })
+    expect(source?.catalog.get(customId)?.source.dir).toBe(customRoot)
   })
 
   it("namespaces generated Roo IDs without changing the visible session slug", async () => {
