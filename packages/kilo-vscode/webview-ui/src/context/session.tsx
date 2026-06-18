@@ -57,6 +57,7 @@ import {
   buildCostBreakdown,
   buildSessionToolParts,
   childID,
+  reconcileSessionToolParts,
   removeSessionToolPart,
   removeSessionToolPartsForMessage,
   upsertSessionToolPart,
@@ -1291,7 +1292,7 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   function setTools(sessionID: string, tools: ToolPart[]) {
-    setStore("toolParts", sessionID, reconcile(tools, { key: "id" }))
+    setStore("toolParts", sessionID, reconcileSessionToolParts(tools))
   }
 
   function rebuildToolParts(sessionID: string, messages: Message[], parts?: Record<string, Part[]>) {
