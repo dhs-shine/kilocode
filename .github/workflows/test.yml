@@ -69,7 +69,7 @@ jobs:
       - name: Cache Turbo
         uses: actions/cache@v5 # kilocode_change
         with:
-          path: node_modules/.cache/turbo
+          path: .turbo/cache
           key: turbo-${{ runner.os }}-${{ hashFiles('turbo.json', '**/package.json') }}-${{ github.sha }}
           restore-keys: |
             turbo-${{ runner.os }}-${{ hashFiles('turbo.json', '**/package.json') }}-
