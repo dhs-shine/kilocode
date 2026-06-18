@@ -82,7 +82,12 @@ import { syncHandlers } from "./handlers/sync"
 import { tuiHandlers } from "./handlers/tui"
 import { v2Handlers } from "./handlers/v2"
 import { workspaceHandlers } from "./handlers/workspace"
-import { provide as provideKiloHttpApiHandlers } from "@/kilocode/server/httpapi/server" // kilocode_change
+// kilocode_change start
+import {
+  provide as provideKiloHttpApiHandlers,
+  provideListener as provideKiloListenerRoutes,
+} from "@/kilocode/server/httpapi/server"
+// kilocode_change end
 import { instanceContextLayer, instanceRouterMiddleware } from "./middleware/instance-context"
 import { workspaceRouterMiddleware, workspaceRoutingLayer } from "./middleware/workspace-routing"
 import { disposeMiddleware } from "./lifecycle"
@@ -249,6 +254,14 @@ export function createRoutes(
     Layer.provide(Observability.layer),
   )
 }
+
+// kilocode_change start - keep listener routes local while application services come from AppRuntime
+export function createListenerRoutes(corsOptions?: CorsOptions) {
+  return Layer.mergeAll(rootApiRoutes, eventApiRoutes, instanceRoutes, docRoute, uiRoute).pipe(
+    provideKiloListenerRoutes(corsOptions),
+  )
+}
+// kilocode_change end
 
 export const routes = createRoutes()
 

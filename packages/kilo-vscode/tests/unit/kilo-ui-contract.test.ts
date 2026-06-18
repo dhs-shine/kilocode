@@ -201,8 +201,9 @@ describe("Bash tool static terminal preview (source)", () => {
     expect(block).toContain("BashHighlightedOutput")
   })
 
-  it("animates expanded bash details", () => {
-    expect(block).toMatch(/allowPendingToggle\s+animated\s+trigger=/)
+  it("does not animate expanded bash details", () => {
+    expect(block).toMatch(/allowPendingToggle\s+trigger=/)
+    expect(block).not.toMatch(/allowPendingToggle\s+animated/)
   })
 
   it("BashHighlightedOutput syntax highlights the command next to the prompt", () => {
