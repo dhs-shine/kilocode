@@ -155,7 +155,7 @@ describe("Kilo task nesting", () => {
     ),
   )
 
-  it.live("disables nested task and question tools even when global permissions allow them", () =>
+  it.live("disables nested and human-driven tools even when global permissions allow them", () =>
     provideTmpdirInstance(
       () =>
         Effect.gen(function* () {
@@ -187,6 +187,7 @@ describe("Kilo task nesting", () => {
           const child = yield* sessions.get(result.metadata.sessionId)
           expect(seen?.tools?.task).toBe(false)
           expect(seen?.tools?.question).toBe(false)
+          expect(seen?.tools?.interactive_terminal).toBe(false)
           expect(child.permission).toEqual(
             expect.arrayContaining([
               {
@@ -199,6 +200,11 @@ describe("Kilo task nesting", () => {
                 pattern: "*",
                 action: "deny",
               },
+              {
+                permission: "interactive_terminal",
+                pattern: "*",
+                action: "deny",
+              },
             ]),
           )
         }),
@@ -207,6 +213,7 @@ describe("Kilo task nesting", () => {
           permission: {
             task: "allow",
             question: "allow",
+            interactive_terminal: "allow",
           },
         },
       },

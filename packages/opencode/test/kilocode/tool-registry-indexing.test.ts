@@ -177,6 +177,40 @@ describe("kilocode tool registry indexing", () => {
     ),
   )
 
+  it.live("omits interactive_terminal from subagent definitions", () =>
+    Effect.acquireUseRelease(
+      Effect.sync(() => {
+        const prev = process.env["KILO_CLIENT"]
+        process.env["KILO_CLIENT"] = "cli"
+        return prev
+      }),
+      () =>
+        provideTmpdirInstance(
+          () =>
+            Effect.gen(function* () {
+              const agent = yield* Agent.Service
+              const build = yield* agent.get("build")
+              const explore = yield* agent.get("explore")
+              const registry = yield* ToolRegistry.Service
+              const primary = yield* registry.tools({ ...ref, agent: build })
+              const subagent = yield* registry.tools({ ...ref, agent: explore })
+
+              expect(primary.map((tool) => tool.id)).toContain("interactive_terminal")
+              expect(subagent.map((tool) => tool.id)).not.toContain("interactive_terminal")
+            }),
+          {
+            git: true,
+            config: { permission: { interactive_terminal: "allow" } },
+          },
+        ),
+      (prev) =>
+        Effect.sync(() => {
+          if (prev === undefined) delete process.env["KILO_CLIENT"]
+          if (prev !== undefined) process.env["KILO_CLIENT"] = prev
+        }),
+    ),
+  )
+
   test("conditionally includes Kilo registry extras", () => {
     const prev = process.env["KILO_CLIENT"]
     const def = (id: string): Tool.Def => ({
@@ -191,6 +225,7 @@ describe("kilocode tool registry indexing", () => {
       recall: def("recall"),
       manager: def("agent_manager"),
       process: def("background_process"),
+      terminal: def("interactive_terminal"),
     }
 
     try {
@@ -199,9 +234,10 @@ describe("kilocode tool registry indexing", () => {
         "semantic_search",
         "recall",
         "background_process",
+        "interactive_terminal",
       ])
       expect(KiloToolRegistry.extra(tools, { experimental: { codebase_search: true } }).map((tool) => tool.id)).toEqual(
-        ["codebase_search", "semantic_search", "recall", "background_process"],
+        ["codebase_search", "semantic_search", "recall", "background_process", "interactive_terminal"],
       )
 
       process.env["KILO_CLIENT"] = "vscode"
@@ -215,6 +251,12 @@ describe("kilocode tool registry indexing", () => {
       ])
 
       process.env["KILO_CLIENT"] = "desktop"
+      expect(KiloToolRegistry.extra(tools, {}).map((tool) => tool.id)).toEqual(["semantic_search", "recall"])
+
+      process.env["KILO_CLIENT"] = "run"
+      expect(KiloToolRegistry.extra(tools, {}).map((tool) => tool.id)).toEqual(["semantic_search", "recall"])
+
+      process.env["KILO_CLIENT"] = "acp"
       expect(KiloToolRegistry.extra(tools, {}).map((tool) => tool.id)).toEqual(["semantic_search", "recall"])
     } finally {
       if (prev === undefined) delete process.env["KILO_CLIENT"]

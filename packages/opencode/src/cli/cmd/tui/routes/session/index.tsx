@@ -52,6 +52,7 @@ import type { QuestionTool } from "@/tool/question"
 import type { SkillTool } from "@/tool/skill"
 // kilocode_change start
 import type { BackgroundProcessTool } from "@/kilocode/tool/background-process"
+import type { InteractiveTerminalTool } from "@/kilocode/tool/interactive-terminal"
 import type { SemanticSearchTool } from "@/kilocode/tool/semantic-search"
 // kilocode_change end
 import { useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
@@ -86,6 +87,7 @@ import { QuestionPrompt } from "./question"
 import { Suggest } from "@/kilocode/suggestion/tui/render"
 import { SuggestPrompt } from "@/kilocode/suggestion/tui/prompt"
 import { NetworkPrompt } from "./network"
+import { TerminalPrompt } from "./terminal"
 // kilocode_change end
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import * as Model from "../../util/model"
@@ -231,6 +233,11 @@ export function Session() {
     if (session()?.parentID) return []
     return children().flatMap((x) => sync.data.network[x.id] ?? [])
   })
+  const terminals = createMemo(() => {
+    if (session()?.parentID) return []
+    return children().flatMap((x) => sync.data.interactive_terminal[x.id] ?? [])
+  })
+  const terminal = createMemo(() => terminals()[0])
   const blockingQuestions = createMemo(() => questions().filter((q) => q.blocking !== false))
   const nonBlockingQuestions = createMemo(() => questions().filter((q) => q.blocking === false))
   const question = createMemo(() => blockingQuestions()[0] ?? nonBlockingQuestions()[0])
@@ -243,13 +250,15 @@ export function Session() {
       permissions().length === 0 &&
       blockingQuestions().length === 0 &&
       blockingSuggestions().length === 0 &&
-      network().length === 0,
+      network().length === 0 &&
+      terminals().length === 0,
   )
   const networkVisible = createMemo(
     () =>
       permissions().length === 0 &&
       blockingQuestions().length === 0 &&
       blockingSuggestions().length === 0 &&
+      terminals().length === 0 &&
       network().length > 0,
   )
   const disabled = createMemo(
@@ -257,7 +266,8 @@ export function Session() {
       permissions().length > 0 ||
       blockingQuestions().length > 0 ||
       blockingSuggestions().length > 0 ||
-      network().length > 0,
+      network().length > 0 ||
+      terminals().length > 0,
   )
   // kilocode_change end
 
@@ -1363,11 +1373,15 @@ export function Session() {
                 </For>
               </scrollbox>
               <box flexShrink={0}>
-                <Show when={permissions().length > 0}>
+                {/* kilocode_change - the terminal owns the input area while active */}
+                <Show when={!terminal() && permissions().length > 0}>
                   <PermissionPrompt request={permissions()[0]} />
                 </Show>
                 {/* kilocode_change start */}
-                <Show when={permissions().length === 0 && question()} keyed>
+                <Show when={terminal()} keyed>
+                  {(value) => <TerminalPrompt sessionID={value.info.sessionID} terminalID={value.info.id} />}
+                </Show>
+                <Show when={!terminal() && permissions().length === 0 ? question() : undefined} keyed>
                   {(request) => (
                     <QuestionPrompt
                       request={request}
@@ -1376,7 +1390,7 @@ export function Session() {
                     />
                   )}
                 </Show>
-                <Show when={permissions().length === 0 && !question()}>
+                <Show when={!terminal() && permissions().length === 0 && !question()}>
                   <Show when={blockingSuggestion()} keyed>
                     {(request) => <SuggestPrompt request={request} />}
                   </Show>
@@ -1387,7 +1401,7 @@ export function Session() {
                 <Show when={networkVisible()}>
                   <NetworkPrompt request={network()[0]} />
                 </Show>
-                <Show when={!session()?.parentID}>
+                <Show when={!terminal() && !session()?.parentID}>
                   <TuiPluginRuntime.Slot
                     name="session_prompt"
                     mode="replace"
@@ -1816,6 +1830,9 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
         {/* kilocode_change start */}
         <Match when={props.part.tool === "background_process"}>
           <BackgroundProcess {...toolprops} />
+        </Match>
+        <Match when={props.part.tool === "interactive_terminal"}>
+          <InteractiveTerminal {...toolprops} />
         </Match>
         <Match when={props.part.tool === "semantic_search"}>
           <SemanticSearch {...toolprops} />
@@ -2265,6 +2282,44 @@ function BackgroundProcess(props: ToolProps<typeof BackgroundProcessTool>) {
       {title()}
       <Show when={dir()}> in {dir()}</Show>
       <Show when={cmd()}> · $ {cmd()}</Show>
+      <Show when={status()}> ({status()})</Show>
+    </InlineTool>
+  )
+}
+
+function InteractiveTerminal(props: ToolProps<typeof InteractiveTerminalTool>) {
+  const sync = useSync()
+  const pathFormatter = usePathFormatter()
+  const running = createMemo(() => props.part.state.status === "running")
+  const command = createMemo(() => (typeof props.input.command === "string" ? props.input.command : ""))
+  const description = createMemo(() => props.input.description || command() || "interactive command")
+  const dir = createMemo(() => {
+    const raw = props.input.workdir
+    if (!raw || raw === ".") return undefined
+    const base = sync.path.directory
+    if (!base) return pathFormatter.format(raw)
+    const abs = path.resolve(base, raw)
+    if (abs === base) return undefined
+    return pathFormatter.format(abs)
+  })
+  const status = createMemo(() => {
+    if (props.metadata.closedBy === "user") return "closed by user"
+    if (props.metadata.closedBy === "abort") return "cancelled"
+    if (props.metadata.closedBy !== "exit") return undefined
+    return typeof props.metadata.exitCode === "number" ? `exit ${props.metadata.exitCode}` : "completed"
+  })
+
+  return (
+    <InlineTool
+      icon="$"
+      pending="Opening interactive terminal..."
+      complete={description()}
+      spinner={running()}
+      part={props.part}
+    >
+      Interactive terminal: {description()}
+      <Show when={dir()}> in {dir()}</Show>
+      <Show when={command()}> · $ {command()}</Show>
       <Show when={status()}> ({status()})</Show>
     </InlineTool>
   )

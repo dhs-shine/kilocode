@@ -25,8 +25,10 @@
 //   event arrives, the queue entry is removed and the footer falls back
 //   to the next pending request or to the prompt view.
 import type { Part, PermissionRequest, QuestionRequest, ToolPart } from "@kilocode/sdk/v2"
+import type { RunInteractiveTerminalSnapshot } from "@/kilocode/cli/cmd/run/types" // kilocode_change
 import type { Event } from "./event"
 import * as Locale from "@/util/locale"
+import { appendTerminalOutput } from "@/kilocode/interactive-terminal/output" // kilocode_change
 import { toolView } from "./tool"
 import type { FooterOutput, FooterPatch, FooterView, StreamCommit } from "./types"
 
@@ -71,6 +73,7 @@ export type SessionData = {
   call: Map<string, Dict>
   permissions: PermissionRequest[]
   questions: QuestionRequest[]
+  terminal?: RunInteractiveTerminalSnapshot // kilocode_change
   role: Map<string, MessageRole>
   msg: Map<string, string>
   part: Map<string, PartKind>
@@ -206,7 +209,17 @@ function out(data: SessionData, commits: SessionCommit[], footer?: FooterOutput)
   }
 }
 
-export function pickBlockerView(input: { permission?: PermissionRequest; question?: QuestionRequest }): FooterView {
+export function pickBlockerView(input: {
+  permission?: PermissionRequest
+  question?: QuestionRequest
+  terminal?: RunInteractiveTerminalSnapshot // kilocode_change
+}): FooterView {
+  // kilocode_change start
+  if (input.terminal) {
+    return { type: "interactive_terminal", terminal: input.terminal }
+  }
+  // kilocode_change end
+
   if (input.permission) {
     return { type: "permission", request: input.permission }
   }
@@ -219,6 +232,12 @@ export function pickBlockerView(input: { permission?: PermissionRequest; questio
 }
 
 export function blockerStatus(view: FooterView) {
+  // kilocode_change start
+  if (view.type === "interactive_terminal") {
+    return "interactive terminal"
+  }
+  // kilocode_change end
+
   if (view.type === "permission") {
     return "awaiting permission"
   }
@@ -232,6 +251,7 @@ export function blockerStatus(view: FooterView) {
 
 function pickSessionView(data: SessionData): FooterView {
   return pickBlockerView({
+    terminal: data.terminal, // kilocode_change
     permission: data.permissions[0],
     question: data.questions[0],
   })
@@ -907,6 +927,44 @@ export function reduceSessionData(input: SessionDataInput): SessionDataOutput {
     drop(data, part.id)
     return out(data, commits)
   }
+
+  // kilocode_change start - direct interactive mode terminal footer
+  if (event.type === "interactive_terminal.updated") {
+    if (event.properties.info.sessionID !== input.sessionID) {
+      return out(data, commits)
+    }
+
+    const current = data.terminal
+    data.terminal = {
+      info: event.properties.info,
+      output: current?.info.id === event.properties.info.id ? current.output : "",
+      cursor: current?.info.id === event.properties.info.id ? current.cursor : 0,
+    }
+    return queueOut(data, commits)
+  }
+
+  if (event.type === "interactive_terminal.data") {
+    if (event.properties.sessionID !== input.sessionID || data.terminal?.info.id !== event.properties.terminalID) {
+      return out(data, commits)
+    }
+
+    data.terminal = {
+      ...data.terminal,
+      output: appendTerminalOutput(data.terminal.output, event.properties.data),
+      cursor: event.properties.cursor,
+    }
+    return queueOut(data, commits)
+  }
+
+  if (event.type === "interactive_terminal.deleted") {
+    if (event.properties.sessionID !== input.sessionID || data.terminal?.info.id !== event.properties.terminalID) {
+      return out(data, commits)
+    }
+
+    data.terminal = undefined
+    return queueOut(data, commits)
+  }
+  // kilocode_change end
 
   if (event.type === "permission.asked") {
     if (event.properties.sessionID !== input.sessionID) {

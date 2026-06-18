@@ -381,6 +381,11 @@ export const RunCommand = effectCmd({
               pattern: "*",
             },
             {
+              permission: "interactive_terminal", // kilocode_change - non-interactive runs cannot take over a terminal
+              action: "deny",
+              pattern: "*",
+            },
+            {
               permission: "plan_enter",
               action: "deny",
               pattern: "*",

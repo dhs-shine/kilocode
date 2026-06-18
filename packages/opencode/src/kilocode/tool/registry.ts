@@ -3,6 +3,7 @@ import { CodebaseSearchTool } from "../../tool/warpgrep"
 import { RecallTool } from "../../tool/recall"
 import { AgentManagerTool } from "./agent-manager"
 import { BackgroundProcessTool } from "./background-process"
+import { InteractiveTerminalTool } from "./interactive-terminal"
 import * as Tool from "../../tool/tool"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Effect } from "effect"
@@ -29,14 +30,21 @@ export namespace KiloToolRegistry {
       const recall = yield* RecallTool
       const manager = yield* AgentManagerTool
       const process = yield* BackgroundProcessTool
-      return { codebase, recall, manager, process }
+      const terminal = yield* InteractiveTerminalTool
+      return { codebase, recall, manager, process, terminal }
     })
   }
 
   /** Finalize Kilo-specific tools into Tool.Defs. Call this inside the InstanceState state Effect —
    * it has no Service deps beyond what Tool.init itself needs. */
   export function build(
-    tools: { codebase: Tool.Info; recall: Tool.Info; manager: Tool.Info; process: Tool.Info },
+    tools: {
+      codebase: Tool.Info
+      recall: Tool.Info
+      manager: Tool.Info
+      process: Tool.Info
+      terminal?: Tool.Info
+    },
     deps: Deps,
     loaders: Loaders = {},
   ) {
@@ -47,8 +55,9 @@ export namespace KiloToolRegistry {
         manager: Tool.init(tools.manager),
         process: Tool.init(tools.process),
       })
+      const terminal = tools.terminal ? yield* Tool.init(tools.terminal) : undefined
       const semantic = yield* semanticTool(deps, loaders)
-      return { ...base, semantic }
+      return { ...base, terminal, semantic }
     })
   }
 
@@ -85,9 +94,22 @@ export namespace KiloToolRegistry {
     })
   }
 
+  /** Hide human-driven tools from agents that cannot interact with the user directly. */
+  export function available(tool: Tool.Def, agent: Agent.Info) {
+    if (tool.id !== "interactive_terminal") return true
+    return agent.mode === "primary"
+  }
+
   /** Kilo-specific tools to append to the builtin list */
   export function extra(
-    tools: { codebase: Tool.Def; semantic?: Tool.Def; recall: Tool.Def; manager: Tool.Def; process: Tool.Def },
+    tools: {
+      codebase: Tool.Def
+      semantic?: Tool.Def
+      recall: Tool.Def
+      manager: Tool.Def
+      process: Tool.Def
+      terminal?: Tool.Def
+    },
     cfg: { experimental?: { codebase_search?: boolean } },
   ): Tool.Def[] {
     return [
@@ -95,6 +117,7 @@ export namespace KiloToolRegistry {
       ...(tools.semantic ? [tools.semantic] : []),
       tools.recall,
       ...(Flag.KILO_CLIENT === "cli" || Flag.KILO_CLIENT === "vscode" ? [tools.process] : []),
+      ...(Flag.KILO_CLIENT === "cli" && tools.terminal ? [tools.terminal] : []),
       // The extension is the only client that can consume the Agent Manager start event.
       ...(Flag.KILO_CLIENT === "vscode" ? [tools.manager] : []),
     ]

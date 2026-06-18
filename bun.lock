@@ -114,7 +114,6 @@
         "@kilocode/kilo-web-ui": "workspace:*",
         "@kilocode/sdk": "workspace:*",
         "@lottiefiles/dotlottie-web": "0.74.0",
-        "@opencode-ai/ui": "workspace:*",
         "@solidjs/router": "catalog:",
         "ghostty-web": "0.4.0",
         "solid-js": "catalog:",
@@ -366,6 +365,8 @@
       "dependencies": {
         "@kilocode/kilo-ui": "workspace:*",
         "@kobalte/core": "catalog:",
+        "@opencode-ai/ui": "workspace:*",
+        "@pierre/diffs": "catalog:",
         "solid-js": "catalog:",
       },
       "devDependencies": {
