@@ -72,7 +72,13 @@ import { fetchMessagePage, MESSAGE_PAGE_LIMIT } from "./kilo-provider/message-pa
 import { childID } from "./kilo-provider/task-session"
 import { VisibleTaskStreams } from "./kilo-provider/visible-task-streams"
 import { handleNetworkEvent, clearNetworkWaits } from "./kilo-provider/network"
-import { abortSession } from "./kilo-provider/abort"
+import {
+  abortSession,
+  resolveAbortDirectories,
+  resolveActiveSessionStatus,
+  updateActiveSessionDirectory,
+  type ActiveSessionDirectories,
+} from "./kilo-provider/abort"
 import {
   buildAutocompleteSettingsMessage,
   validAutocompleteSetting,
@@ -310,6 +316,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private syncedChildSessions: Set<string> = new Set()
   private sessionStatusMap = new Map<string, SessionStatus["type"]>() // Latest status used for destructive config warnings.
   private sessionDirectories = new Map<string, string>() // Per-session directory overrides, such as Agent Manager worktrees.
+  private activeSessionDirectories: ActiveSessionDirectories = new Map()
+  private sessionStatusRevision = 0
+  private sessionStatusRevisions = new Map<string, Map<string, number>>()
   private projectID: string | undefined // Current workspace project ID used to filter sessions.
   private loadMessagesAbort: AbortController | null = null // Current load request cancellation.
   private lastReconciledAt = new Map<string, number>() // Per-session focus-mode reconcile timestamp.
@@ -657,10 +666,28 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
    * When set, all operations for this session use this directory instead of the workspace root.
    */
   public setSessionDirectory(sessionId: string, directory: string): void {
+    const status = this.sessionStatusMap.get(sessionId)
+    if (status && status !== "idle" && !this.activeSessionDirectories.has(sessionId)) {
+      updateActiveSessionDirectory({
+        active: this.activeSessionDirectories,
+        sessionID: sessionId,
+        status: { type: "busy" },
+        dir: this.getWorkspaceDirectory(sessionId),
+      })
+    }
     this.sessionDirectories.set(sessionId, directory)
   }
 
   public clearSessionDirectory(sessionId: string): void {
+    const status = this.sessionStatusMap.get(sessionId)
+    if (status && status !== "idle" && !this.activeSessionDirectories.has(sessionId)) {
+      updateActiveSessionDirectory({
+        active: this.activeSessionDirectories,
+        sessionID: sessionId,
+        status: { type: "busy" },
+        dir: this.getWorkspaceDirectory(sessionId),
+      })
+    }
     this.sessionDirectories.delete(sessionId)
   }
 
@@ -1513,17 +1540,28 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       })
       .catch((e: unknown) => console.warn("[Kilo New] KiloProvider: getSession failed (non-critical):", e))
     this.postMessage({ type: "workspaceDirectoryChanged", directory: this.getWorkspaceDirectory(sessionID) })
+    const revision = this.sessionStatusRevision
     this.client.session
       .status({ directory: dir })
       .then((r) => {
         if (!r.data || signal?.aborted) return
         for (const [sid, info] of Object.entries(r.data) as [string, SessionStatus][]) {
-          if (!this.trackedSessionIds.has(sid)) continue
+          if (!this.trackedSessionIds.has(sid) || this.statusChanged(sid, dir, revision)) continue
+          this.markStatus(sid, dir)
+          updateActiveSessionDirectory({
+            active: this.activeSessionDirectories,
+            sessionID: sid,
+            status: info,
+            dir,
+          })
+          const status = resolveActiveSessionStatus(this.activeSessionDirectories, sid) ?? info
+          this.sessionStatusMap.set(sid, status.type)
           this.postMessage({
             type: "sessionStatus",
             sessionID: sid,
-            status: info.type,
-            ...(info.type === "retry" ? { attempt: info.attempt, message: info.message, next: info.next } : {}),
+            status: status.type,
+            ...(status.type === "retry" ? { attempt: status.attempt, message: status.message, next: status.next } : {}),
+            ...(status.type === "offline" ? { message: status.message } : {}),
           })
         }
       })
@@ -1755,6 +1793,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.visibleTaskStreams.delete(sessionID)
       this.syncedChildSessions.delete(sessionID)
       this.sessionDirectories.delete(sessionID)
+      this.activeSessionDirectories.delete(sessionID)
+      this.sessionStatusRevisions.delete(sessionID)
       this.lastReconciledAt.delete(sessionID)
       this.connectionService.pruneSession(sessionID)
       if (this.currentSession?.id === sessionID) {
@@ -2192,6 +2232,20 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.postMessage(message)
   }
 
+  private markStatus(sessionID: string, dir?: string): void {
+    this.sessionStatusRevision += 1
+    const revisions = this.sessionStatusRevisions.get(sessionID) ?? new Map<string, number>()
+    const key = dir ? ([...revisions.keys()].find((entry) => entry && sameDirectory(entry, dir)) ?? dir) : ""
+    revisions.set(key, this.sessionStatusRevision)
+    this.sessionStatusRevisions.set(sessionID, revisions)
+  }
+
+  private statusChanged(sessionID: string, dir: string, revision: number): boolean {
+    const revisions = this.sessionStatusRevisions.get(sessionID)
+    if (!revisions) return false
+    return [...revisions].some(([entry, current]) => current > revision && (!entry || sameDirectory(entry, dir)))
+  }
+
   /**
    * Seed sessionStatusMap with current session statuses on connect.
    * Without this, the Settings panel (which has no tracked sessions) would see
@@ -2204,7 +2258,24 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private async seedSessionStatusMap(reconcile = true): Promise<void> {
     if (!this.client || this.connectionState !== "connected") return
     const dir = this.getWorkspaceDirectory()
-    await seedSessionStatuses(this.client, dir, this.sessionStatusMap, (msg) => this.postMessage(msg), reconcile)
+    const revision = this.sessionStatusRevision
+    await seedSessionStatuses(
+      this.client,
+      dir,
+      this.sessionStatusMap,
+      (msg) => this.postMessage(msg),
+      reconcile,
+      (sessionID, status) => {
+        if (this.statusChanged(sessionID, dir, revision)) return
+        updateActiveSessionDirectory({
+          active: this.activeSessionDirectories,
+          sessionID,
+          status,
+          dir,
+        })
+        return resolveActiveSessionStatus(this.activeSessionDirectories, sessionID) ?? status
+      },
+    )
   }
 
   /**
@@ -2754,23 +2825,55 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   }
 
   private async handleAbort(sessionID?: string): Promise<void> {
-    if (!this.client) {
-      return
-    }
+    const client = this.client
+    if (!client) return
 
     const targetSessionID = sessionID || this.currentSession?.id
-    if (!targetSessionID) {
-      return
-    }
+    if (!targetSessionID) return
 
-    try {
-      await abortSession({
-        client: this.client,
+    const dirs = resolveAbortDirectories(
+      this.activeSessionDirectories,
+      targetSessionID,
+      this.getWorkspaceDirectory(targetSessionID),
+    )
+    const results = await Promise.allSettled(
+      dirs.map((dir) =>
+        abortSession({
+          client,
+          sessionID: targetSessionID,
+          dir,
+        }),
+      ),
+    )
+    const failures = results.flatMap((result, index) =>
+      result.status === "rejected" ? [{ dir: dirs[index], error: result.reason }] : [],
+    )
+    for (const [index, result] of results.entries()) {
+      if (result.status !== "fulfilled") continue
+      const dir = dirs[index]
+      if (!dir) continue
+      this.markStatus(targetSessionID, dir)
+      updateActiveSessionDirectory({
+        active: this.activeSessionDirectories,
         sessionID: targetSessionID,
-        dir: this.getWorkspaceDirectory(targetSessionID),
+        status: { type: "idle" },
+        dir,
       })
-    } catch (error) {
-      console.error("[Kilo New] KiloProvider: Failed to abort session:", error)
+    }
+    const status = resolveActiveSessionStatus(this.activeSessionDirectories, targetSessionID) ?? {
+      type: "idle" as const,
+    }
+    this.sessionStatusMap.set(targetSessionID, status.type)
+    this.streams.flush(targetSessionID)
+    this.postMessage({
+      type: "sessionStatus",
+      sessionID: targetSessionID,
+      status: status.type,
+      ...(status.type === "retry" ? { attempt: status.attempt, message: status.message, next: status.next } : {}),
+      ...(status.type === "offline" ? { message: status.message } : {}),
+    })
+    if (failures.length > 0) {
+      console.error("[Kilo New] KiloProvider: Failed to abort session in one or more directories:", failures)
     }
   }
 
@@ -3155,8 +3258,16 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     // busy-session warning on Save.
     if (event.type === "session.status") {
       const sid = event.properties.sessionID
-      this.sessionStatusMap.set(sid, event.properties.status.type)
-      const msg = mapSSEEventToWebviewMessage(event, sid)
+      this.markStatus(sid, directory)
+      updateActiveSessionDirectory({
+        active: this.activeSessionDirectories,
+        sessionID: sid,
+        status: event.properties.status,
+        dir: directory,
+      })
+      const status = resolveActiveSessionStatus(this.activeSessionDirectories, sid) ?? event.properties.status
+      this.sessionStatusMap.set(sid, status.type)
+      const msg = mapSSEEventToWebviewMessage({ ...event, properties: { ...event.properties, status } }, sid)
       if (msg) {
         this.streams.flush(sid)
         this.postMessage(msg)
@@ -3188,6 +3299,31 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     if (event.type === "server.instance.disposed") {
       const props = event.properties as Record<string, unknown> | null
       const dir = typeof props?.directory === "string" ? props.directory : undefined
+      if (dir) {
+        for (const sessionID of [...this.activeSessionDirectories.keys()]) {
+          const entries = this.activeSessionDirectories.get(sessionID)
+          if (![...(entries?.keys() ?? [])].some((entry) => sameDirectory(entry, dir))) continue
+          this.markStatus(sessionID, dir)
+          updateActiveSessionDirectory({
+            active: this.activeSessionDirectories,
+            sessionID,
+            status: { type: "idle" },
+            dir,
+          })
+          const status = resolveActiveSessionStatus(this.activeSessionDirectories, sessionID) ?? {
+            type: "idle" as const,
+          }
+          this.sessionStatusMap.set(sessionID, status.type)
+          this.streams.flush(sessionID)
+          this.postMessage({
+            type: "sessionStatus",
+            sessionID,
+            status: status.type,
+            ...(status.type === "retry" ? { attempt: status.attempt, message: status.message, next: status.next } : {}),
+            ...(status.type === "offline" ? { message: status.message } : {}),
+          })
+        }
+      }
       if (dir && !sameDirectory(dir, this.getWorkspaceDirectory())) return
       void this.reloadAfterAuthChange()
       return
@@ -3600,6 +3736,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.trackedSessionIds.clear()
     this.syncedChildSessions.clear()
     this.sessionDirectories.clear()
+    this.activeSessionDirectories.clear()
+    this.sessionStatusRevisions.clear()
     this.sessionStatusMap.clear()
     this.ignoreController?.dispose()
     this.chatAutocomplete?.dispose()
