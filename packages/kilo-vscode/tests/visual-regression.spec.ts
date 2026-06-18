@@ -58,10 +58,14 @@ async function settle(page: Page) {
     await document.fonts.ready
   })
   await frames()
-  await page.waitForFunction(() => {
-    const root = document.querySelector("#storybook-root")
-    return root && !root.querySelector('pre > code[data-lang]:not([data-lang="mermaid"])')
-  })
+  await page.waitForFunction(
+    () => {
+      const root = document.querySelector("#storybook-root")
+      return root && !root.querySelector('pre > code[data-lang]:not([data-lang="mermaid"])')
+    },
+    undefined,
+    { timeout: 5_000 },
+  )
   await frames()
 }
 
