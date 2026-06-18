@@ -20,7 +20,9 @@ import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.prompt.KiloPromptCompletionProvider
+import ai.kilocode.client.session.ui.prompt.MentionAction
 import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.session.ui.prompt.SlashAction
 import ai.kilocode.client.session.ui.prompt.gitChangesPart
 import ai.kilocode.client.session.ui.prompt.mentionFileParts
 import ai.kilocode.client.session.ui.account.SessionAccountOverlay
@@ -337,6 +339,8 @@ class SessionUi(
             workspace = workspace,
             service = workspaces,
             actions = slashActions(),
+            mentions = mentionActions(),
+            scope = cs,
         )
         prompt = PromptPanel(
             project = project,
@@ -598,48 +602,39 @@ class SessionUi(
         scroll.followBottom(follow)
     }
 
-    private fun slashActions(): List<KiloPromptCompletionProvider.SlashAction> = listOf(
-        KiloPromptCompletionProvider.SlashAction(
-            "new",
-            KiloBundle.message("prompt.slash.new"),
-        ) { manager?.newSession() },
-        KiloPromptCompletionProvider.SlashAction(
-            "sessions",
-            KiloBundle.message("prompt.slash.sessions"),
-            listOf("history", "resume"),
-        ) { manager?.showHistory() },
-        KiloPromptCompletionProvider.SlashAction(
-            "models",
-            KiloBundle.message("prompt.slash.models"),
-        ) { prompt.model.open() },
-        KiloPromptCompletionProvider.SlashAction(
-            "agents",
-            KiloBundle.message("prompt.slash.agents"),
-            listOf("modes"),
-        ) { prompt.mode.open() },
-        KiloPromptCompletionProvider.SlashAction(
-            "variant",
-            KiloBundle.message("prompt.slash.variant"),
-            listOf("reasoning"),
-        ) { prompt.reasoning.open() },
-        KiloPromptCompletionProvider.SlashAction(
-            "compact",
-            KiloBundle.message("prompt.slash.compact"),
-            listOf("smol"),
-        ) { controller.compact() },
-        KiloPromptCompletionProvider.SlashAction(
-            "settings",
-            KiloBundle.message("prompt.slash.settings"),
-        ) { openKiloSettings() },
-        KiloPromptCompletionProvider.SlashAction(
-            "help",
-            KiloBundle.message("prompt.slash.help"),
-        ) { BrowserUtil.browse("https://kilo.ai/docs") },
+    private fun slashActions(): List<SlashAction> {
+        val fns: Map<SlashAction.Spec, () -> Unit> = mapOf(
+            SlashAction.NEW to { manager?.newSession() },
+            SlashAction.SESSIONS to { manager?.showHistory() },
+            SlashAction.MODELS to { prompt.model.open() },
+            SlashAction.AGENTS to { prompt.mode.open() },
+            SlashAction.VARIANT to { prompt.reasoning.open() },
+            SlashAction.COMPACT to { controller.compact() },
+            SlashAction.SETTINGS to { openKiloSettings() },
+            SlashAction.HELP to { BrowserUtil.browse("https://kilo.ai/docs") },
+        )
+        return SlashAction.ALL.map { spec -> bind(spec, fns.getValue(spec)) }
+    }
+
+    private fun bind(spec: SlashAction.Spec, action: () -> Unit) = SlashAction(
+        spec.name,
+        KiloBundle.message(spec.descriptionKey),
+        spec.hints,
+        action,
+    )
+
+    private fun mentionActions(): List<MentionAction> = MentionAction.ALL.map(::bind)
+
+    private fun bind(spec: MentionAction.Spec) = MentionAction(
+        spec.name,
+        KiloBundle.message(spec.descriptionKey),
+        spec.hints,
+        spec.available,
     )
 
     private fun mentionParts(text: String, paths: Set<String>): List<PromptPartDto> = buildList {
         addAll(mentionFileParts(text, paths, workspace.directory))
-        if (text.contains("@git-changes")) {
+        if (text.contains(MentionAction.GIT_CHANGES.token)) {
             gitChangesPart(text, runBlockingCancellable { workspaces.gitChanges(workspace.directory) })?.let(::add)
         }
     }

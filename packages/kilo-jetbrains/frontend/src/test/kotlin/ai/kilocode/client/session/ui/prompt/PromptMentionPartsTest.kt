@@ -34,23 +34,23 @@ class PromptMentionPartsTest : BasePlatformTestCase() {
     }
 
     fun `test gitChangesPart builds encoded data part`() {
-        val part = gitChangesPart("review @git-changes", "hello world+plus")!!
+        val part = gitChangesPart("review ${MentionAction.GIT_CHANGES.token}", "hello world+plus")!!
 
         assertEquals("file", part.type)
         assertEquals("text/plain", part.mime)
-        assertEquals("git-changes.txt", part.filename)
+        assertEquals(MentionAction.GIT_CHANGES.filename, part.filename)
         assertEquals("data:text/plain;charset=utf-8,hello%20world%2Bplus", part.url)
         assertEquals("resource", part.source?.type)
-        assertEquals("git-changes", part.source?.uri)
+        assertEquals(MentionAction.GIT_CHANGES.uri, part.source?.uri)
         assertEquals("jetbrains", part.source?.clientName)
-        assertEquals("@git-changes", part.source?.text?.value)
+        assertEquals(MentionAction.GIT_CHANGES.token, part.source?.text?.value)
         assertEquals(7.0, part.source?.text?.start)
         assertEquals(19.0, part.source?.text?.end)
     }
 
     fun `test gitChangesPart ignores missing blank and non boundary matches`() {
-        assertNull(gitChangesPart("review @git-changes", null))
-        assertNull(gitChangesPart("review @git-changes", "  "))
-        assertNull(gitChangesPart("review @git-changes-foo", "diff"))
+        assertNull(gitChangesPart("review ${MentionAction.GIT_CHANGES.token}", null))
+        assertNull(gitChangesPart("review ${MentionAction.GIT_CHANGES.token}", "  "))
+        assertNull(gitChangesPart("review ${MentionAction.GIT_CHANGES.token}-foo", "diff"))
     }
 }

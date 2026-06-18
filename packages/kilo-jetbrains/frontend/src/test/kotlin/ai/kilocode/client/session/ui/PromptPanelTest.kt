@@ -8,11 +8,13 @@ import ai.kilocode.client.session.ui.attachment.AttachmentCard
 import ai.kilocode.client.session.ui.attachment.AttachmentCardItem
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.prompt.KiloPromptCompletionProvider
+import ai.kilocode.client.session.ui.prompt.MentionAction
 import ai.kilocode.client.session.ui.prompt.PROMPT_ATTACHMENT_PASTE_HANDLER_KEY
 import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteHandler
 import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.PromptPanel
+import ai.kilocode.client.session.ui.prompt.SlashAction
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
@@ -238,14 +240,14 @@ class PromptPanelTest : BasePlatformTestCase() {
         rpc.fileResolver = { emptyList() }
 
         realize(panel, 260, 400)
-        field.text = "/new use @git-changes and @unknown "
+        field.text = "/new use ${MentionAction.GIT_CHANGES.token} and @unknown "
         field.getEditor(false)!!.caretModel.moveToOffset(field.text.length)
         panel.refreshHighlights()
         waitForSend { spans(field).any { it.first == "@unknown" } }
 
         val spans = spans(field)
         assertTrue(spans.contains("/new" to DefaultLanguageHighlighterColors.KEYWORD))
-        assertTrue(spans.contains("@git-changes" to DefaultLanguageHighlighterColors.METADATA))
+        assertTrue(spans.contains(MentionAction.GIT_CHANGES.token to DefaultLanguageHighlighterColors.METADATA))
         assertTrue(spans.contains("@unknown" to CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES))
     }
 
@@ -334,7 +336,7 @@ class PromptPanelTest : BasePlatformTestCase() {
         val field = panel.defaultFocusedComponent as EditorTextField
 
         realize(panel, 260, 400)
-        field.text = "use @git-changes"
+        field.text = "use ${MentionAction.GIT_CHANGES.token}"
         UIUtil.dispatchAllInvocationEvents()
         assertEquals(1, field.getEditor(false)!!.markupModel.allHighlighters.size)
 
@@ -350,7 +352,11 @@ class PromptPanelTest : BasePlatformTestCase() {
 
         realize(panel, 260, 400)
         repeat(50) {
-            field.text = if (it % 2 == 0) "/new @git-changes" else "/new @git-changes now"
+            field.text = if (it % 2 == 0) {
+                "/new ${MentionAction.GIT_CHANGES.token}"
+            } else {
+                "/new ${MentionAction.GIT_CHANGES.token} now"
+            }
             UIUtil.dispatchAllInvocationEvents()
             assertTrue(field.getEditor(false)!!.markupModel.allHighlighters.size <= 2)
         }
@@ -947,9 +953,14 @@ class PromptPanelTest : BasePlatformTestCase() {
         workspace = workspaces.workspace("/test"),
         service = workspaces,
         actions = listOf(
-            KiloPromptCompletionProvider.SlashAction("new", "New") {},
-            KiloPromptCompletionProvider.SlashAction("next", "Next") {},
+            SlashAction(SlashAction.NEW.name, "New") {},
+            SlashAction("next", "Next") {},
         ),
+        mentions = listOf(MentionAction(
+            MentionAction.GIT_CHANGES.name,
+            "Git Changes",
+            available = MentionAction.GIT_CHANGES.available,
+        )),
         scope = scope,
     )
 

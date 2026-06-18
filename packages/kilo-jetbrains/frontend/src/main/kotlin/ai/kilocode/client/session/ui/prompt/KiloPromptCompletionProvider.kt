@@ -30,19 +30,13 @@ class KiloPromptCompletionProvider(
     private val workspace: Workspace,
     private val service: KiloWorkspaceService,
     private val actions: List<SlashAction>,
+    private val mentions: List<MentionAction>,
     private val scope: CoroutineScope,
 ) : TextCompletionProvider, DumbAware {
     private val paths = Collections.synchronizedSet(mutableSetOf<String>())
     private val exists = Collections.synchronizedMap(mutableMapOf<String, Boolean>())
     private val pending = Collections.synchronizedSet(mutableSetOf<String>())
     private val cache = ConcurrentHashMap<String, FileSearchResultDto>()
-
-    data class SlashAction(
-        val name: String,
-        val description: String,
-        val hints: List<String> = emptyList(),
-        val action: () -> Unit,
-    )
 
     data class Highlight(val start: Int, val end: Int, val kind: HighlightKind)
 
@@ -69,6 +63,8 @@ class KiloPromptCompletionProvider(
 
     fun clientNames(): Set<String> = actions.mapTo(mutableSetOf()) { it.name }
 
+    fun mentionNames(): Set<String> = mentions.mapTo(mutableSetOf()) { it.name }
+
     fun serverCommand(text: String): Pair<String, String>? {
         val raw = text.trimStart()
         if (!raw.startsWith('/')) return null
@@ -92,7 +88,7 @@ class KiloPromptCompletionProvider(
         mentionSpans(text).forEach { span ->
             val under = caret in span.start..span.end
             when {
-                span.value == "git-changes" -> add(Highlight(span.start, span.end, HighlightKind.MENTION))
+                span.value in mentionNames() -> add(Highlight(span.start, span.end, HighlightKind.MENTION))
                 span.value in paths || exists[span.value] == true -> add(Highlight(span.start, span.end, HighlightKind.MENTION))
                 under -> Unit
                 exists[span.value] == false -> add(Highlight(span.start, span.end, HighlightKind.INVALID))
@@ -103,7 +99,7 @@ class KiloPromptCompletionProvider(
     fun validate(text: String, caret: Int, onResolved: () -> Unit) {
         mentionSpans(text).forEach { span ->
             val value = span.value
-            if (value == "git-changes") return@forEach
+            if (value in mentionNames()) return@forEach
             if (value in paths) return@forEach
             if (caret in span.start..span.end) return@forEach
             if (exists.containsKey(value)) return@forEach
@@ -156,10 +152,8 @@ class KiloPromptCompletionProvider(
         result.restartCompletionOnAnyPrefixChange()
         val out = result.withPrefixMatcher(PlainPrefixMatcher.ALWAYS_TRUE)
         val search = search(prefix)
-        val git = "git-changes".startsWith(prefix, ignoreCase = true) && search.git
-        if (git) {
-            out.addElement(prioritize(special("git-changes", KiloBundle.message("prompt.mention.gitChanges"))))
-        }
+        val known = mentions.filter { action -> matches(prefix, action.name, action.hints) && action.available(search) }
+        known.forEach { action -> out.addElement(prioritize(resource(action))) }
         if (search.indexing) {
             val msg = KiloBundle.message("prompt.mention.indexing")
             result.addLookupAdvertisement(msg)
@@ -167,7 +161,7 @@ class KiloPromptCompletionProvider(
             return
         }
         search.files.forEach { file -> out.addElement(file(file)) }
-        if (!git && search.files.isEmpty()) {
+        if (known.isEmpty() && search.files.isEmpty()) {
             val msg = KiloBundle.message("prompt.completion.noMatches")
             out.addElement(info(prefix, msg))
         }
@@ -215,11 +209,12 @@ class KiloPromptCompletionProvider(
         .withIcon(AllIcons.Nodes.Function)
         .withInsertHandler { ctx, _ -> replace(ctx, "/${command.name} ", false) }
 
-    private fun special(name: String, text: String): LookupElement = LookupElementBuilder.create(name)
-        .withPresentableText("@$name")
-        .withTailText("  $text", true)
+    private fun resource(action: MentionAction): LookupElement = LookupElementBuilder.create(action.name)
+        .withPresentableText("@${action.name}")
+        .withTailText("  ${action.description}", true)
+        .withLookupStrings(action.hints)
         .withIcon(AllIcons.Nodes.Tag)
-        .withInsertHandler { ctx, _ -> replace(ctx, "@$name ", false) }
+        .withInsertHandler { ctx, _ -> replace(ctx, "@${action.name} ", false) }
 
     private fun prioritize(element: LookupElement): LookupElement =
         PrioritizedLookupElement.withGrouping(PrioritizedLookupElement.withPriority(element, 100.0), 100)

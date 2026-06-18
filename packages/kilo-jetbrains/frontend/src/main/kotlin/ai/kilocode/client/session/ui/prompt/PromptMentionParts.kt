@@ -26,13 +26,14 @@ fun mentionFileParts(text: String, paths: Set<String>, directory: String): List<
 }
 
 fun gitChangesPart(text: String, diff: String?): PromptPartDto? {
-    val raw = "@git-changes"
+    val spec = MentionAction.GIT_CHANGES
+    val raw = spec.token
     val start = text.indexOf(raw)
     if (start < 0) return null
     val end = start + raw.length
     if (end < text.length && !text[end].isWhitespace()) return null
     val value = diff?.takeIf { it.isNotBlank() } ?: return null
-    return dataPart("git-changes.txt", value, source("resource", raw, start, uri = "git-changes"))
+    return dataPart(spec.filename, value, source("resource", raw, start, uri = spec.uri))
 }
 
 private fun dataPart(name: String, text: String, source: PartSourceDto? = null): PromptPartDto {

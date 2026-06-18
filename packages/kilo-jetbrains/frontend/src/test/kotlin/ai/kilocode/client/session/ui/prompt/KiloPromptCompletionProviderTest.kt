@@ -33,9 +33,14 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
             workspace = workspaces.workspace("/test"),
             service = workspaces,
             actions = listOf(
-                KiloPromptCompletionProvider.SlashAction("new", "New") {},
-                KiloPromptCompletionProvider.SlashAction("next", "Next") {},
+                SlashAction(SlashAction.NEW.name, "New") {},
+                SlashAction("next", "Next") {},
             ),
+            mentions = listOf(MentionAction(
+                MentionAction.GIT_CHANGES.name,
+                "Git Changes",
+                available = MentionAction.GIT_CHANGES.available,
+            )),
             scope = scope,
         )
     }
@@ -98,7 +103,7 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
 
         complete("@git<caret>")
 
-        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "git-changes")
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), MentionAction.GIT_CHANGES.name)
         assertEquals(listOf("git"), rpc.searchQueries)
     }
 
@@ -163,9 +168,9 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
 
         complete("@<caret>")
 
-        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "git-changes", "src", "README.md")
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), MentionAction.GIT_CHANGES.name, "src", "README.md")
         val items = myFixture.lookupElementStrings.orEmpty()
-        assertEquals("git-changes", items.first())
+        assertEquals(MentionAction.GIT_CHANGES.name, items.first())
         assertEquals(listOf(""), rpc.searchQueries)
     }
 
@@ -179,7 +184,7 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         waitFor { rpc.searchQueries.contains("") }
         complete("@<caret>")
 
-        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "git-changes", "src", "README.md")
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), MentionAction.GIT_CHANGES.name, "src", "README.md")
         assertEquals(listOf(""), rpc.searchQueries)
     }
 
@@ -220,7 +225,7 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
             listOf(
                 KiloPromptCompletionProvider.Highlight(4, 16, KiloPromptCompletionProvider.HighlightKind.MENTION),
             ),
-            provider.highlights("use @git-changes").sortedBy { it.start },
+            provider.highlights("use ${MentionAction.GIT_CHANGES.token}").sortedBy { it.start },
         )
     }
 
