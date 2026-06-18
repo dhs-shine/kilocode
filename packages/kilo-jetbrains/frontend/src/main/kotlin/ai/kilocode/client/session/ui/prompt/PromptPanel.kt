@@ -20,10 +20,9 @@ import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.PromptPartDto
 import com.intellij.icons.AllIcons
-import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.CodeCompletionHandlerBase
 import com.intellij.codeInsight.completion.CompletionType
-import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.codeInsight.lookup.LookupManagerListener
 import com.intellij.codeInsight.lookup.LookupPositionStrategy
 import com.intellij.codeInsight.lookup.LookupPresentation
 import com.intellij.codeInsight.lookup.impl.LookupImpl
@@ -42,7 +41,10 @@ import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.colors.CodeInsightColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
+import com.intellij.openapi.editor.event.CaretEvent
+import com.intellij.openapi.editor.event.CaretListener
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.markup.HighlighterLayer
@@ -108,6 +110,7 @@ class PromptPanel(
         private val WAND_ICON: Icon = IconLoader.getIcon("/icons/wand-sparkles.svg", PromptPanel::class.java)
         private val MENTION_KEY = DefaultLanguageHighlighterColors.METADATA
         private val COMMAND_KEY = DefaultLanguageHighlighterColors.KEYWORD
+        private val INVALID_KEY = CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES
         private const val COMPLETION_ACTION_TEXT = "Kilo Prompt Completion"
     }
 
@@ -134,8 +137,10 @@ class PromptPanel(
     private val highlighters = mutableListOf<RangeHighlighter>()
     private val strip = PromptAttachmentStrip(project) { removeAttachment(it) }
     private var bus: MessageBusConnection? = null
+    private var lookupBus: MessageBusConnection? = null
     private var completionAction: AnAction? = null
     private var completionTarget: JComponent? = null
+    private var mentionCaret = false
     private var autoApprove = false
     private var attachment = true
     private var submitting = false
@@ -163,7 +168,6 @@ class PromptPanel(
             ed.settings.isUseSoftWraps = true
             ed.settings.isPaintSoftWraps = false
             ed.settings.isAdditionalPageAtBottom = false
-            ed.putUserData(AutoPopupController.ALWAYS_AUTO_POPUP, true)
             ed.putUserData(PROMPT_ATTACHMENT_PASTE_HANDLER_KEY, PromptAttachmentPasteHandler { processPaste(it) })
             ed.scrollPane.verticalScrollBarPolicy =
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
@@ -173,6 +177,15 @@ class PromptPanel(
             installFileDrop(ed.contentComponent, "editor")
             installFileDrop(ed.scrollPane, "scroll")
             syncHighlights()
+            ed.caretModel.addCaretListener(object : CaretListener {
+                override fun caretPositionChanged(e: CaretEvent) {
+                    val provider = completion ?: return
+                    val inside = provider.inside(ed.document.text, ed.caretModel.offset)
+                    if (mentionCaret == inside) return
+                    mentionCaret = inside
+                    syncHighlights()
+                }
+            })
             ed.contentComponent.addFocusListener(object : FocusAdapter() {
                 override fun focusGained(e: FocusEvent) {
                     repaint()
@@ -286,6 +299,7 @@ class PromptPanel(
     @RequiresEdt
     fun setReady(value: Boolean) {
         ready = value
+        if (value) completion?.prewarm()
         if (!value) invalidateEnhancement() else syncEnhance()
     }
 
@@ -367,6 +381,7 @@ class PromptPanel(
         editor.text = ""
         attachments.clear()
         completion?.clearMentions()
+        completion?.prewarm()
         strip.clear()
         syncEditorHeight()
         syncHighlights()
@@ -379,7 +394,14 @@ class PromptPanel(
         highlighters.forEach(ed.markupModel::removeHighlighter)
         highlighters.clear()
         val length = ed.document.textLength
-        provider.highlights(ed.document.text).forEach { item ->
+        val text = ed.document.text
+        val caret = ed.caretModel.offset
+        provider.validate(text, caret) {
+            ApplicationManager.getApplication().invokeLater {
+                if (!project.isDisposed) refreshHighlights()
+            }
+        }
+        provider.highlights(text, caret).forEach { item ->
             val start = item.start.coerceIn(0, length)
             val end = item.end.coerceIn(start, length)
             if (start == end) return@forEach
@@ -391,11 +413,13 @@ class PromptPanel(
                 HighlighterTargetArea.EXACT_RANGE,
             )
         }
+        mentionCaret = provider.inside(text, caret)
     }
 
     private fun key(kind: KiloPromptCompletionProvider.HighlightKind): TextAttributesKey = when (kind) {
         KiloPromptCompletionProvider.HighlightKind.MENTION -> MENTION_KEY
         KiloPromptCompletionProvider.HighlightKind.COMMAND -> COMMAND_KEY
+        KiloPromptCompletionProvider.HighlightKind.INVALID -> INVALID_KEY
     }
 
     @RequiresEdt
@@ -414,6 +438,7 @@ class PromptPanel(
         super.addNotify()
         bindRoot()
         bindKeymap()
+        bindLookup()
     }
 
     override fun removeNotify() {
@@ -421,6 +446,8 @@ class PromptPanel(
         root = null
         bus?.disconnect()
         bus = null
+        lookupBus?.disconnect()
+        lookupBus = null
         uninstallCompletionShortcut()
         super.removeNotify()
     }
@@ -524,10 +551,6 @@ class PromptPanel(
         // Uses IntelliJ impl/internal completion APIs; revisit on platform upgrades.
         CodeCompletionHandlerBase.createHandler(CompletionType.BASIC, true, false, true)
             .invokeCompletion(project, ed, 1)
-        val lookup = LookupManager.getActiveLookup(ed) as? LookupImpl ?: return
-        lookup.presentation = LookupPresentation.Builder(lookup.presentation)
-            .withPositionStrategy(LookupPositionStrategy.ONLY_ABOVE)
-            .build()
     }
 
     @RequiresEdt
@@ -686,6 +709,20 @@ class PromptPanel(
                 }
                 if (IdeActions.ACTION_CODE_COMPLETION in actionIds) refreshCompletionShortcut()
             }
+        })
+    }
+
+    @RequiresEdt
+    private fun bindLookup() {
+        if (lookupBus != null) return
+        val connection = project.messageBus.connect()
+        lookupBus = connection
+        connection.subscribe(LookupManagerListener.TOPIC, LookupManagerListener { _, next ->
+            val lookup = next as? LookupImpl ?: return@LookupManagerListener
+            if (lookup.editor !== editor.getEditor(false)) return@LookupManagerListener
+            lookup.presentation = LookupPresentation.Builder(lookup.presentation)
+                .withPositionStrategy(LookupPositionStrategy.ONLY_ABOVE)
+                .build()
         })
     }
 

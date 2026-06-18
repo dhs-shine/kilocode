@@ -14,8 +14,13 @@ import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
+import ai.kilocode.rpc.dto.FileSearchResultDto
+import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.icons.AllIcons
+import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.codeInsight.lookup.LookupPositionStrategy
+import com.intellij.codeInsight.lookup.impl.LookupImpl
 import com.intellij.notification.Notification
 import com.intellij.notification.Notifications
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -25,6 +30,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.ApplicationManager
@@ -32,6 +38,10 @@ import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.actions.PasteAction
+import com.intellij.openapi.editor.colors.CodeInsightColors
+import com.intellij.openapi.command.undo.UndoManager
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -225,15 +235,98 @@ class PromptPanelTest : BasePlatformTestCase() {
     fun `test prompt editor highlights validated commands and mentions`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
         val field = panel.defaultFocusedComponent as EditorTextField
+        rpc.fileResolver = { emptyList() }
 
         realize(panel, 260, 400)
-        field.text = "/new use @git-changes and @unknown"
-        UIUtil.dispatchAllInvocationEvents()
+        field.text = "/new use @git-changes and @unknown "
+        field.getEditor(false)!!.caretModel.moveToOffset(field.text.length)
+        panel.refreshHighlights()
+        waitForSend { spans(field).any { it.first == "@unknown" } }
 
         val spans = spans(field)
         assertTrue(spans.contains("/new" to DefaultLanguageHighlighterColors.KEYWORD))
         assertTrue(spans.contains("@git-changes" to DefaultLanguageHighlighterColors.METADATA))
-        assertFalse(spans.any { it.first == "@unknown" })
+        assertTrue(spans.contains("@unknown" to CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES))
+    }
+
+    fun `test prompt editor exposes file editor for undo redo`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        val editor = field.getEditor(false)!!
+        WriteCommandAction.runWriteCommandAction(project) {
+            editor.document.insertString(0, "hello")
+        }
+        val sink = TestSink()
+        (field as UiDataProvider).uiDataSnapshot(sink)
+        val file = sink.file as? TextEditor ?: error("missing file editor")
+
+        assertNotNull(file)
+        assertSame(editor.document, file.editor.document)
+        UndoManager.getInstance(project).undo(file)
+        assertEquals("", editor.document.text)
+        UndoManager.getInstance(project).redo(file)
+        assertEquals("hello", editor.document.text)
+    }
+
+    fun `test prompt editor highlights missing mention as wrong reference`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+        rpc.fileResolver = { emptyList() }
+
+        realize(panel, 260, 400)
+        field.text = "@missing "
+        field.getEditor(false)!!.caretModel.moveToOffset(field.text.length)
+        panel.refreshHighlights()
+        waitForSend { spans(field).contains("@missing" to CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES) }
+
+        assertTrue(spans(field).contains("@missing" to CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES))
+    }
+
+    fun `test accepted file mention highlights immediately`() {
+        rpc.searchResult = FileSearchResultDto(files = listOf(file("src/deploy.ts")))
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        field.text = "@dep"
+        val editor = field.getEditor(false)!!
+        editor.caretModel.moveToOffset(field.text.length)
+
+        invokeCompletionAction(editor)
+        waitForLookupItems(editor)
+        acceptLookup(editor)
+        waitForSend { spans(field).contains("@src/deploy.ts" to DefaultLanguageHighlighterColors.METADATA) }
+
+        assertTrue(spans(field).contains("@src/deploy.ts" to DefaultLanguageHighlighterColors.METADATA))
+    }
+
+    fun `test invalid edited file mention highlights after caret leaves token`() {
+        rpc.searchResult = FileSearchResultDto(files = listOf(file("src/deploy.ts")))
+        rpc.fileResolver = { path -> if (path == "src/deploy.ts") listOf(file(path)) else emptyList() }
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        field.text = "@dep"
+        val editor = field.getEditor(false)!!
+        editor.caretModel.moveToOffset(field.text.length)
+        invokeCompletionAction(editor)
+        waitForLookupItems(editor)
+        acceptLookup(editor)
+        waitForSend { spans(field).contains("@src/deploy.ts" to DefaultLanguageHighlighterColors.METADATA) }
+
+        val offset = field.text.indexOf(' ')
+        WriteCommandAction.runWriteCommandAction(project) {
+            editor.document.insertString(offset, "x")
+        }
+        editor.caretModel.moveToOffset(offset + 1)
+        UIUtil.dispatchAllInvocationEvents()
+        editor.caretModel.moveToOffset(field.text.length)
+        waitForSend { spans(field).contains("@src/deploy.tsx" to CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES) }
+
+        assertTrue(spans(field).contains("@src/deploy.tsx" to CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES))
     }
 
     fun `test prompt clear removes prompt highlighters`() {
@@ -294,6 +387,25 @@ class PromptPanelTest : BasePlatformTestCase() {
         val items = waitForLookupItems(editor)
 
         assertTrue("items=$items", items.contains("new"))
+    }
+
+    fun `test prompt completion lookup is positioned above caret`() {
+        rpc.searchResult = FileSearchResultDto(
+            files = listOf(WorkspaceFileDto("src/deploy.ts", "deploy.ts")),
+        )
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        field.text = "@dep"
+        val editor = field.getEditor(false)!!
+        editor.caretModel.moveToOffset(field.text.length)
+
+        invokeCompletionAction(editor)
+        waitForLookupItems(editor)
+        val lookup = LookupManager.getActiveLookup(editor) as? LookupImpl ?: error("missing lookup")
+
+        assertEquals(LookupPositionStrategy.ONLY_ABOVE, lookup.presentation.positionStrategy)
     }
 
     fun `test prompt editor shrinks when lines are removed`() {
@@ -838,6 +950,7 @@ class PromptPanelTest : BasePlatformTestCase() {
             KiloPromptCompletionProvider.SlashAction("new", "New") {},
             KiloPromptCompletionProvider.SlashAction("next", "Next") {},
         ),
+        scope = scope,
     )
 
     private fun invokeCompletionAction(editor: Editor) {
@@ -858,6 +971,17 @@ class PromptPanelTest : BasePlatformTestCase() {
         }
         return LookupManager.getActiveLookup(editor)?.items.orEmpty().map { it.lookupString }
     }
+
+    private fun acceptLookup(editor: Editor) {
+        val lookup = LookupManager.getActiveLookup(editor) as? LookupImpl ?: error("missing lookup")
+        lookup.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+        UIUtil.dispatchAllInvocationEvents()
+    }
+
+    private fun file(path: String) = WorkspaceFileDto(
+        path = path,
+        name = path.substringAfterLast('/'),
+    )
 
     private fun event(action: AnAction, editor: Editor): AnActionEvent {
         val ctx = DataContext { id ->
@@ -942,9 +1066,11 @@ class PromptPanelTest : BasePlatformTestCase() {
 
     private class TestSink : DataSink {
         var send: Any? = null
+        var file: Any? = null
 
         override fun <T : Any> set(key: com.intellij.openapi.actionSystem.DataKey<T>, data: T?) {
             if (key == PromptDataKeys.SEND) send = data
+            if (key == PlatformCoreDataKeys.FILE_EDITOR) file = data
         }
 
         override fun <T : Any> setNull(key: com.intellij.openapi.actionSystem.DataKey<T>) {

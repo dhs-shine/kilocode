@@ -8,10 +8,10 @@ import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
-import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.completion.PlainPrefixMatcher
 import com.intellij.codeInsight.completion.PrioritizedLookupElement
+import com.intellij.codeInsight.lookup.AutoCompletionPolicy
 import com.intellij.codeInsight.lookup.CharFilter
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
@@ -21,17 +21,21 @@ import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.util.textCompletion.TextCompletionProvider
+import java.util.concurrent.ConcurrentHashMap
 import java.util.Collections
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 class KiloPromptCompletionProvider(
     private val workspace: Workspace,
     private val service: KiloWorkspaceService,
     private val actions: List<SlashAction>,
+    private val scope: CoroutineScope,
 ) : TextCompletionProvider, DumbAware {
     private val paths = Collections.synchronizedSet(mutableSetOf<String>())
-
-    @Volatile
-    private var cached: Pair<String, FileSearchResultDto>? = null
+    private val exists = Collections.synchronizedMap(mutableMapOf<String, Boolean>())
+    private val pending = Collections.synchronizedSet(mutableSetOf<String>())
+    private val cache = ConcurrentHashMap<String, FileSearchResultDto>()
 
     data class SlashAction(
         val name: String,
@@ -42,14 +46,26 @@ class KiloPromptCompletionProvider(
 
     data class Highlight(val start: Int, val end: Int, val kind: HighlightKind)
 
-    enum class HighlightKind { MENTION, COMMAND }
+    enum class HighlightKind { MENTION, COMMAND, INVALID }
 
     fun mentionPaths(): Set<String> = paths.toSet()
 
     fun clearMentions() {
         paths.clear()
-        cached = null
+        exists.clear()
+        pending.clear()
+        cache.clear()
     }
+
+    fun prewarm() {
+        if (cache.containsKey("")) return
+        scope.launch {
+            val result = service.searchFiles(workspace.directory, "", 50)
+            if (result.files.isNotEmpty() || result.git) cache.putIfAbsent("", result)
+        }
+    }
+
+    fun inside(text: String, caret: Int): Boolean = mentionSpans(text).any { span -> caret in span.start..span.end }
 
     fun clientNames(): Set<String> = actions.mapTo(mutableSetOf()) { it.name }
 
@@ -63,7 +79,7 @@ class KiloPromptCompletionProvider(
         return name to raw.drop(name.length + 1).trimStart()
     }
 
-    fun highlights(text: String): List<Highlight> = buildList {
+    fun highlights(text: String, caret: Int = -1): List<Highlight> = buildList {
         val command = text.takeIf { it.startsWith('/') }
             ?.drop(1)
             ?.takeWhile { !it.isWhitespace() }
@@ -73,22 +89,30 @@ class KiloPromptCompletionProvider(
             add(Highlight(0, command.length + 1, HighlightKind.COMMAND))
         }
 
-        val ranges = mutableListOf<IntRange>()
-        val values = (mentionPaths() + setOf("git-changes"))
-            .filter { it.isNotBlank() }
-            .sortedByDescending { it.length }
-        values.forEach { value ->
-            val raw = "@$value"
-            var idx = text.indexOf(raw)
-            while (idx >= 0) {
-                val end = idx + raw.length
-                val valid = end == text.length || text[end].isWhitespace()
-                val range = idx until end
-                if (valid && ranges.none { it.first < end && idx < it.last + 1 }) {
-                    ranges += range
-                    add(Highlight(idx, end, HighlightKind.MENTION))
-                }
-                idx = text.indexOf(raw, idx + 1)
+        mentionSpans(text).forEach { span ->
+            val under = caret in span.start..span.end
+            when {
+                span.value == "git-changes" -> add(Highlight(span.start, span.end, HighlightKind.MENTION))
+                span.value in paths || exists[span.value] == true -> add(Highlight(span.start, span.end, HighlightKind.MENTION))
+                under -> Unit
+                exists[span.value] == false -> add(Highlight(span.start, span.end, HighlightKind.INVALID))
+            }
+        }
+    }
+
+    fun validate(text: String, caret: Int, onResolved: () -> Unit) {
+        mentionSpans(text).forEach { span ->
+            val value = span.value
+            if (value == "git-changes") return@forEach
+            if (value in paths) return@forEach
+            if (caret in span.start..span.end) return@forEach
+            if (exists.containsKey(value)) return@forEach
+            if (!pending.add(value)) return@forEach
+            scope.launch {
+                val ok = runCatching { service.files(workspace.directory, value).isNotEmpty() }.getOrDefault(false)
+                exists[value] = ok
+                pending.remove(value)
+                onResolved()
             }
         }
     }
@@ -115,39 +139,63 @@ class KiloPromptCompletionProvider(
     }
 
     private fun slash(prefix: String, result: CompletionResultSet) {
+        result.restartCompletionOnAnyPrefixChange()
         val out = applyPrefixMatcher(result, prefix)
         val names = clientNames()
         actions.forEach { action -> out.addElement(client(action)) }
         workspace.state.value.commands
             .filter { it.name !in names }
             .forEach { command -> out.addElement(server(command)) }
+        if (actions.any { matches(prefix, it.name, it.hints) }) return
+        if (workspace.state.value.commands.any { it.name !in names && matches(prefix, it.name, it.hints) }) return
+        result.withPrefixMatcher(PlainPrefixMatcher.ALWAYS_TRUE)
+            .addElement(info(prefix, KiloBundle.message("prompt.completion.noMatches")))
     }
 
     private fun mention(prefix: String, result: CompletionResultSet) {
         result.restartCompletionOnAnyPrefixChange()
         val out = result.withPrefixMatcher(PlainPrefixMatcher.ALWAYS_TRUE)
         val search = search(prefix)
-        if ("git-changes".startsWith(prefix, ignoreCase = true) && search.git) {
+        val git = "git-changes".startsWith(prefix, ignoreCase = true) && search.git
+        if (git) {
             out.addElement(prioritize(special("git-changes", KiloBundle.message("prompt.mention.gitChanges"))))
         }
         if (search.indexing) {
             val msg = KiloBundle.message("prompt.mention.indexing")
             result.addLookupAdvertisement(msg)
-            out.addElement(LookupElementBuilder.create(msg)
-                .withPresentableText(msg)
-                .withIcon(AllIcons.General.Information)
-                .withInsertHandler { _, _ -> })
+            out.addElement(info(prefix, msg))
             return
         }
         search.files.forEach { file -> out.addElement(file(file)) }
+        if (!git && search.files.isEmpty()) {
+            val msg = KiloBundle.message("prompt.completion.noMatches")
+            out.addElement(info(prefix, msg))
+        }
     }
 
-    private fun search(prefix: String): FileSearchResultDto {
-        cached?.takeIf { it.first == prefix }?.let { return it.second }
+    private fun search(prefix: String): FileSearchResultDto = cache[prefix] ?: fetch(prefix)
+
+    private fun fetch(prefix: String): FileSearchResultDto {
         val result = runBlockingCancellable { service.searchFiles(workspace.directory, prefix, 50) }
-        cached = prefix to result
+        cache[prefix] = result
         return result
     }
+
+    private fun info(prefix: String, msg: String): LookupElement = LookupElementBuilder.create(msg)
+        .withPresentableText(msg)
+        .withIcon(AllIcons.General.Information)
+        .withInsertHandler { ctx, _ ->
+            val start = (ctx.startOffset - prefix.length).coerceAtLeast(0)
+            val tail = ctx.tailOffset.coerceAtMost(ctx.document.textLength)
+            val end = (tail until ctx.document.textLength).firstOrNull { ctx.document.text[it].isWhitespace() }
+                ?: ctx.document.textLength
+            ctx.document.replaceString(start, end, prefix)
+            ctx.editor.caretModel.moveToOffset(start + prefix.length)
+        }
+        .withAutoCompletionPolicy(AutoCompletionPolicy.NEVER_AUTOCOMPLETE)
+
+    private fun matches(prefix: String, name: String, hints: List<String>): Boolean =
+        (listOf(name) + hints).any { it.startsWith(prefix, ignoreCase = true) }
 
     private fun client(action: SlashAction): LookupElement = LookupElementBuilder.create(action.name)
         .withPresentableText("/${action.name}")
@@ -192,13 +240,19 @@ class KiloPromptCompletionProvider(
         val text = ctx.document.text
         val offset = ctx.startOffset.coerceAtMost(text.length)
         val start = (offset - 1 downTo 0).firstOrNull { text[it].isWhitespace() }?.plus(1) ?: 0
-        val end = ctx.tailOffset.coerceAtMost(text.length)
+        val end = tokenEnd(text, start)
         val next = text.getOrNull(end)
         val insert = if (trim && next?.isWhitespace() == true) value.trimEnd() else value
+        path?.let {
+            paths.add(it)
+            exists[it] = true
+        }
         ctx.document.replaceString(start, end, insert)
         ctx.editor.caretModel.moveToOffset(start + insert.length)
-        path?.let(paths::add)
     }
+
+    private fun tokenEnd(text: String, start: Int): Int =
+        (start until text.length).firstOrNull { text[it].isWhitespace() } ?: text.length
 
     private fun parent(path: String): String {
         val idx = path.lastIndexOf('/')
@@ -207,15 +261,29 @@ class KiloPromptCompletionProvider(
     }
 
     private fun token(text: String, offset: Int): Token? {
-        val head = text.take(offset.coerceIn(0, text.length))
-        val start = (head.length - 1 downTo 0).firstOrNull { head[it].isWhitespace() }?.plus(1) ?: 0
-        val raw = head.substring(start)
-        if (raw.startsWith("/") && head.take(start).isBlank() && raw.indexOf(' ') < 0) return Token(Kind.SLASH, raw.drop(1))
-        if (raw.startsWith("@") && raw.indexOf(' ') < 0) return Token(Kind.MENTION, raw.drop(1))
+        val pos = offset.coerceIn(0, text.length)
+        val start = (pos - 1 downTo 0).firstOrNull { text[it].isWhitespace() }?.plus(1) ?: 0
+        val end = (pos until text.length).firstOrNull { text[it].isWhitespace() } ?: text.length
+        val head = text.substring(start, pos)
+        val raw = text.substring(start, end)
+        if (raw.startsWith("/") && text.take(start).isBlank() && raw.indexOf(' ') < 0) return Token(Kind.SLASH, head.drop(1))
+        if (raw.startsWith("@") && raw.indexOf(' ') < 0) return Token(Kind.MENTION, head.drop(1))
         return null
     }
 
     private data class Token(val kind: Kind, val prefix: String)
+
+    private data class Span(val start: Int, val end: Int, val value: String)
+
+    private fun mentionSpans(text: String): List<Span> = buildList {
+        var pos = 0
+        while (pos < text.length) {
+            val start = (pos until text.length).firstOrNull { !text[it].isWhitespace() } ?: return@buildList
+            val end = tokenEnd(text, start)
+            if (text[start] == '@' && end > start + 1) add(Span(start, end, text.substring(start + 1, end)))
+            pos = end + 1
+        }
+    }
 
     private enum class Kind { SLASH, MENTION }
 }

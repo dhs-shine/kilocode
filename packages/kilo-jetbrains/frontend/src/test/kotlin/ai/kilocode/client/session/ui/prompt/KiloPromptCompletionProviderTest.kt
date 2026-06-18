@@ -1,6 +1,7 @@
 package ai.kilocode.client.session.ui.prompt
 
 import ai.kilocode.client.app.KiloWorkspaceService
+import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.rpc.dto.CommandDto
 import ai.kilocode.rpc.dto.FileSearchResultDto
@@ -31,7 +32,11 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         provider = KiloPromptCompletionProvider(
             workspace = workspaces.workspace("/test"),
             service = workspaces,
-            actions = listOf(KiloPromptCompletionProvider.SlashAction("new", "New") {}),
+            actions = listOf(
+                KiloPromptCompletionProvider.SlashAction("new", "New") {},
+                KiloPromptCompletionProvider.SlashAction("next", "Next") {},
+            ),
+            scope = scope,
         )
     }
 
@@ -49,7 +54,24 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         complete("@sfb<caret>")
 
         assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "src/foo/Bar.kt")
+        assertFalse(myFixture.lookupElementStrings.orEmpty().contains(noMatches()))
         assertEquals(listOf("sfb"), rpc.searchQueries)
+    }
+
+    fun `test mention completion opens in middle of token`() {
+        rpc.searchResult = FileSearchResultDto(files = listOf(file("src/deploy.ts")))
+
+        complete("@dep<caret>loy")
+
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "src/deploy.ts")
+        assertEquals(listOf("dep"), rpc.searchQueries)
+    }
+
+    fun `test slash completion opens in middle of token`() {
+        complete("/ne<caret>w")
+
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "new")
+        assertFalse(myFixture.lookupElementStrings.orEmpty().contains(noMatches()))
     }
 
     fun `test mention completion reuses identical prefix result`() {
@@ -80,6 +102,59 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         assertEquals(listOf("git"), rpc.searchQueries)
     }
 
+    fun `test mention completion keeps no-match placeholder`() {
+        rpc.searchResult = FileSearchResultDto()
+
+        complete("@zzz<caret>")
+
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), noMatches())
+        assertFalse(myFixture.lookupElementStrings.orEmpty().contains("src/foo/Bar.kt"))
+        assertEquals(listOf("zzz"), rpc.searchQueries)
+    }
+
+    fun `test accepting mention no-match placeholder preserves prefix`() {
+        rpc.searchResult = FileSearchResultDto()
+
+        complete("@zzz<caret>")
+        myFixture.type('\n')
+
+        assertEquals("@zzz", myFixture.editor.document.text)
+        assertTrue(provider.mentionPaths().isEmpty())
+    }
+
+    fun `test accepting mention mid token replaces glued suffix`() {
+        rpc.searchResult = FileSearchResultDto(files = listOf(file("backend/deploy-dev.sh")))
+
+        complete("@backend/deploy<caret>-dev.sh")
+        myFixture.type('\n')
+
+        assertEquals("@backend/deploy-dev.sh ", myFixture.editor.document.text)
+        assertTrue(provider.mentionPaths().contains("backend/deploy-dev.sh"))
+    }
+
+    fun `test accepting mention mid token trims before trailing content`() {
+        rpc.searchResult = FileSearchResultDto(files = listOf(file("backend/deploy-dev.sh")))
+
+        complete("@backend/deploy<caret>-dev.sh tail")
+        myFixture.type('\n')
+
+        assertEquals("@backend/deploy-dev.sh tail", myFixture.editor.document.text)
+        assertTrue(provider.mentionPaths().contains("backend/deploy-dev.sh"))
+    }
+
+    fun `test slash completion keeps no-match placeholder`() {
+        complete("/zzz<caret>")
+
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), noMatches())
+    }
+
+    fun `test slash completion hides placeholder for real matches`() {
+        complete("/ne<caret>")
+
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "new")
+        assertFalse(myFixture.lookupElementStrings.orEmpty().contains(noMatches()))
+    }
+
     fun `test blank mention completion includes special and root entries`() {
         rpc.searchResult = FileSearchResultDto(
             files = listOf(file("src", directory = true), file("README.md")),
@@ -91,6 +166,20 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "git-changes", "src", "README.md")
         val items = myFixture.lookupElementStrings.orEmpty()
         assertEquals("git-changes", items.first())
+        assertEquals(listOf(""), rpc.searchQueries)
+    }
+
+    fun `test prewarm serves blank mention completion from cache`() {
+        rpc.searchResult = FileSearchResultDto(
+            files = listOf(file("src", directory = true), file("README.md")),
+            git = true,
+        )
+
+        provider.prewarm()
+        waitFor { rpc.searchQueries.contains("") }
+        complete("@<caret>")
+
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "git-changes", "src", "README.md")
         assertEquals(listOf(""), rpc.searchQueries)
     }
 
@@ -156,8 +245,38 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         )
     }
 
-    fun `test highlights ignore untracked mentions`() {
+    fun `test highlights unknown mentions are pending before validation`() {
         assertTrue(provider.highlights("see @unknownPath").isEmpty())
+    }
+
+    fun `test highlights unresolved mention after validation`() {
+        var done = false
+        rpc.fileResolver = { emptyList() }
+
+        provider.validate("see @unknownPath", -1) { done = true }
+        waitFor { done }
+
+        assertEquals(
+            listOf(KiloPromptCompletionProvider.Highlight(4, 16, KiloPromptCompletionProvider.HighlightKind.INVALID)),
+            provider.highlights("see @unknownPath", -1),
+        )
+    }
+
+    fun `test highlights existing hand typed mention after validation`() {
+        var done = false
+        rpc.fileResolver = { path -> if (path == "src/x.kt") listOf(file(path)) else emptyList() }
+
+        provider.validate("see @src/x.kt", -1) { done = true }
+        waitFor { done }
+
+        assertEquals(
+            listOf(KiloPromptCompletionProvider.Highlight(4, 13, KiloPromptCompletionProvider.HighlightKind.MENTION)),
+            provider.highlights("see @src/x.kt", -1),
+        )
+    }
+
+    fun `test mention under caret is not flagged`() {
+        assertTrue(provider.highlights("@nope", caret = 5).isEmpty())
     }
 
     private fun complete(text: String) {
@@ -190,4 +309,6 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         name = path.substringAfterLast('/'),
         directory = directory,
     )
+
+    private fun noMatches() = KiloBundle.message("prompt.completion.noMatches")
 }
