@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import type { KiloClient } from "@kilocode/sdk/v2/client"
 import { getMigrationErrorMessage } from "../errors/migration-error"
-import type { MigrationSessionInfo, MigrationSessionProgress, MigrationSessionSelection } from "../legacy-types"
+import type { MigrationSessionProgress, MigrationSessionSelection } from "../legacy-types"
 import { createSessionID } from "./lib/ids"
 import type { SessionSource } from "../task-store"
 import type { LegacyHistoryItem } from "./lib/legacy-types"
@@ -31,11 +31,6 @@ export async function migrate(
   input: MigrationSessionSelection,
   context: vscode.ExtensionContext,
   client: KiloClient,
-  _meta?: {
-    session: MigrationSessionInfo
-    index: number
-    total: number
-  },
   onProgress?: ProgressCallback,
   resolved?: SessionSource,
 ): Promise<Result> {

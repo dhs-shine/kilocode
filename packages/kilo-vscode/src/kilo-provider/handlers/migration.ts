@@ -197,7 +197,6 @@ async function startRooMigration(
         selection,
         ctx.extensionContext as Parameters<typeof migrateSession>[1],
         ctx.client as KiloClient,
-        undefined,
         progress,
         resolved,
       ),

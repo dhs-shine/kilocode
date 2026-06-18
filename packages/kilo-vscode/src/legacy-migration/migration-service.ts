@@ -264,8 +264,7 @@ export async function migrate(
         selections: selections.sessions,
         sessions,
         resolve: (id) => resolveSession(catalog, id),
-        migrate: (selection, source, progress) =>
-          migrateSession(selection, context, client, undefined, progress, source),
+        migrate: (selection, source, progress) => migrateSession(selection, context, client, progress, source),
         onProgress,
         onSessionProgress,
       })),
