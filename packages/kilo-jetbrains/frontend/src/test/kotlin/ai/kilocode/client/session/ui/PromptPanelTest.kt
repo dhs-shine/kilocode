@@ -18,6 +18,7 @@ import ai.kilocode.client.session.ui.prompt.SlashAction
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
+import com.intellij.ide.actions.UndoRedoAction
 import com.intellij.icons.AllIcons
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupManager
@@ -25,6 +26,7 @@ import com.intellij.codeInsight.lookup.LookupPositionStrategy
 import com.intellij.codeInsight.lookup.impl.LookupImpl
 import com.intellij.notification.Notification
 import com.intellij.notification.Notifications
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.AnAction
@@ -32,17 +34,18 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.actions.PasteAction
 import com.intellij.openapi.editor.colors.CodeInsightColors
-import com.intellij.openapi.command.undo.UndoManager
-import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.testFramework.PlatformTestUtil
@@ -269,6 +272,44 @@ class PromptPanelTest : BasePlatformTestCase() {
         UndoManager.getInstance(project).undo(file)
         assertEquals("", editor.document.text)
         UndoManager.getInstance(project).redo(file)
+        assertEquals("hello", editor.document.text)
+    }
+
+    fun `test prompt editor platform undo redo actions target prompt editor`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        val editor = field.getEditor(false)!!
+        WriteCommandAction.runWriteCommandAction(project) {
+            editor.document.insertString(0, "hello")
+        }
+        assertSame(true, editor.contentComponent.getClientProperty(UndoRedoAction.IGNORE_SWING_UNDO_MANAGER))
+        val sink = TestSink()
+        (field as UiDataProvider).uiDataSnapshot(sink)
+        val file = sink.file as? TextEditor ?: error("missing file editor")
+        assertSame(editor.document, file.editor.document)
+        assertTrue("prompt file editor should have undo", UndoManager.getInstance(project).isUndoAvailable(file))
+
+        invokeAction(IdeActions.ACTION_UNDO, editor.contentComponent, file)
+        assertEquals("", editor.document.text)
+        invokeAction(IdeActions.ACTION_REDO, editor.contentComponent, file)
+        assertEquals("hello", editor.document.text)
+    }
+
+    fun `test prompt editor component undo redo shortcuts target prompt editor`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> }, completion = completion())
+        val field = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 260, 400)
+        val editor = field.getEditor(false)!!
+        WriteCommandAction.runWriteCommandAction(project) {
+            editor.document.insertString(0, "hello")
+        }
+
+        invokeComponentAction("Kilo Session Undo", editor)
+        assertEquals("", editor.document.text)
+        invokeComponentAction("Kilo Session Redo", editor)
         assertEquals("hello", editor.document.text)
     }
 
@@ -971,6 +1012,34 @@ class PromptPanelTest : BasePlatformTestCase() {
         val event = event(action, editor)
         ActionUtil.updateAction(action, event)
         ActionUtil.performAction(action, event)
+    }
+
+    private fun invokeComponentAction(text: String, editor: Editor) {
+        val action = ActionUtil.getActions(editor.contentComponent).first { item ->
+            item.templatePresentation.text == text
+        }
+        val event = event(action, editor)
+        ActionUtil.updateAction(action, event)
+        assertTrue("action $text should be enabled", event.presentation.isEnabled)
+        ActionUtil.performAction(action, event)
+        UIUtil.dispatchAllInvocationEvents()
+    }
+
+    private fun invokeAction(id: String, component: java.awt.Component, file: TextEditor) {
+        val action = ActionManager.getInstance().getAction(id) ?: error("missing action $id")
+        val ctx = DataContext { data ->
+            when (data) {
+                CommonDataKeys.PROJECT.name -> project
+                PlatformCoreDataKeys.CONTEXT_COMPONENT.name -> component
+                PlatformCoreDataKeys.FILE_EDITOR.name -> file
+                else -> null
+            }
+        }
+        val event = AnActionEvent.createEvent(action, ctx, null, ActionPlaces.UNKNOWN, ActionUiKind.NONE, null)
+        ActionUtil.updateAction(action, event)
+        assertTrue("action $id should be enabled", event.presentation.isEnabled)
+        ActionUtil.performAction(action, event)
+        UIUtil.dispatchAllInvocationEvents()
     }
 
     private fun waitForLookupItems(editor: Editor): List<String> {
