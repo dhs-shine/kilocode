@@ -88,6 +88,31 @@
 
 ## [Unreleased]
 
+## [7.0.1-rc.12] - 2026-06-18
+
+### Added
+- feat(vscode): import sessions from Roo Code by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11303
+
+### Fixed
+- fix(cli): handle string permission migration by @noobezlol in https://github.com/Kilo-Org/kilocode/pull/10788
+- fix(cli): restore source file when reverting a move across folders by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/9758
+- fix(cli): restore Kilo Console release build by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11387
+- fix(vscode): prevent shell output from blanking webview by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11402
+- fix(cli): share session runtime with HTTP listeners by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11410
+- fix(vscode): stop moved active sessions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11404
+- fix: deny Kilo Gateway data collection by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11412
+
+### Changed
+- release(jetbrains): v7.0.1-rc.11 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11382
+- Add top-level announcement notification by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11379
+- ci(jetbrains): run inside pre-built container, drop manual setup steps by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11342
+- test(vscode): stabilize visual regression snapshots by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11401
+- docs(kilo-docs): remove Managed Indexing documentation by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11400
+- OpenCode v1.15.9 by @imanolmzd-svg in https://github.com/Kilo-Org/kilocode/pull/11356
+- Revert "Add top-level announcement notification" by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11419
+- docs: add Auto Efficient tier to Auto Model documentation by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11431
+
+
 ## [7.0.1-rc.11] - 2026-06-17
 
 ### Added
