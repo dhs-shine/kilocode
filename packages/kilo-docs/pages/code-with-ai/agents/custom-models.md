@@ -32,7 +32,8 @@ Add custom models under the `provider.<provider_id>.models` key in your config f
 
 - **Provider ID** — A unique identifier using lowercase letters, numbers, hyphens, or underscores (e.g., `myprovider`). This becomes the `provider_id` in the `provider_id/model_id` format.
 - **Display name** — A human-readable name shown in the UI (e.g., `My AI Provider`).
-- **Base URL** — The OpenAI-compatible API endpoint (e.g., `https://api.myprovider.com/v1`). When a valid URL is entered, Kilo automatically fetches available models from the endpoint.
+- **Provider API** — The protocol used by the provider: **OpenAI Compatible** (default), **OpenAI Responses**, or **Anthropic Messages**.
+- **Base URL** — The provider's API endpoint (e.g., `https://api.myprovider.com/v1`). When a valid URL is entered, Kilo automatically fetches available models from the endpoint if it exposes an OpenAI-compatible models endpoint.
 - **API key** — Your provider's API key. Optional — leave empty if you manage authentication via headers.
 - **Models** — Add models manually by ID and display name, or select from the auto-fetched list that appears after entering a valid base URL.
 - **Headers** (optional) — Add custom HTTP headers as key-value pairs if your provider requires them.
@@ -71,6 +72,39 @@ The `model` key uses the format `provider_id/model_id`, where:
 
 - **`provider_id`** is the key under `provider` (e.g., `lmstudio`, `ollama`, `openai`, `anthropic`, `openai-compatible`)
 - **`model_id`** is the key under `provider.<provider_id>.models` (e.g., `my-custom-model`)
+
+## Provider API
+
+Custom providers can use three API protocols. In `kilo.jsonc`, set the provider-level `npm` field to the corresponding AI SDK package:
+
+| Provider API | `npm` value | Use for |
+|---|---|---|
+| OpenAI Compatible | `@ai-sdk/openai-compatible` | OpenAI Chat Completions-compatible endpoints. This is the default when `npm` is omitted. |
+| OpenAI Responses | `@ai-sdk/openai` | Endpoints that implement the OpenAI Responses API. |
+| Anthropic Messages | `@ai-sdk/anthropic` | Endpoints that implement the Anthropic Messages API. |
+
+For example, configure a custom endpoint that implements the OpenAI Responses API like this:
+
+```jsonc
+{
+  "provider": {
+    "my-provider": {
+      "npm": "@ai-sdk/openai",
+      "options": {
+        "apiKey": "{env:MY_PROVIDER_API_KEY}",
+        "baseURL": "https://api.my-provider.com/v1",
+      },
+      "models": {
+        "my-model": {
+          "name": "My Model",
+        },
+      },
+    },
+  },
+}
+```
+
+Use `"npm": "@ai-sdk/anthropic"` instead for an Anthropic Messages endpoint. You can also override the package for one model with `provider.<provider_id>.models.<model_id>.provider.npm`.
 
 ## Model Configuration Fields
 
@@ -253,7 +287,7 @@ Connect to any provider that exposes an OpenAI-compatible API:
 
 ### Configuring model options and variants
 
-Override options or define reasoning variants for a built-in model:
+Override options or define reasoning variants for a built-in model. Variant fields are provider-specific and are merged into the request when you select that variant.
 
 ```jsonc
 {
@@ -285,6 +319,21 @@ Override options or define reasoning variants for a built-in model:
   },
 }
 ```
+
+MiniMax's OpenAI-compatible Chat Completions API supports the optional boolean `reasoning_split` field. Set it on the relevant variant to control how the API returns thinking content:
+
+```jsonc
+"variants": {
+  "thinking": {
+    "reasoning_split": true,
+  },
+  "standard": {
+    "reasoning_split": false,
+  },
+}
+```
+
+With `true`, MiniMax returns thinking separately in `reasoning_content` and `reasoning_details`; with `false`, thinking remains embedded in `content`. This setting changes only the response format, not whether the model thinks. Leave it unset for providers that do not support it.
 
 ### Using the id field to map model names
 
