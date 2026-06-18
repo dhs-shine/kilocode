@@ -20,12 +20,8 @@ Changes from opencode v1.15.4 to v1.15.9 upstream:
 - Core Bugfixes: Reduce missed `/event` updates caused by a subscription race
 - Core Bugfixes: Sort the v2 session list by most recently updated
 - Core Bugfixes: Zed editor context now only activates inside Zed terminals.
-- Core Bugfixes: The v2 HTTP API now exposes catalog errors.
-- Core Bugfixes: The v2 HTTP API now exposes request errors.
-- Core Bugfixes: The v2 OpenAPI spec now preserves endpoint error responses.
-- Core Bugfixes: `opencode login` now defaults to `https://console.opencode.ai`.
 - Core Bugfixes: Agent and command names now resolve correctly from relative config paths.
-- Core Bugfixes: Invalid `OPENCODE_PERMISSION` JSON no longer crashes startup.
+- Core Bugfixes: Invalid `KILO_PERMISSION` JSON no longer crashes startup.
 - Core Bugfixes: Plugin tools with missing `args` no longer break tool loading.
 - Core Bugfixes: Restored legacy `PgUp` and `PgDn` TUI keybind aliases.
 - Core Bugfixes: Native runtime now prefers the console provider token for OpenCode models.
