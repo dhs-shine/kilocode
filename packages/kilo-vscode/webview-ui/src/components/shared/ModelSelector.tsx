@@ -939,13 +939,13 @@ export const ModelSelectorBase: Component<ModelSelectorBaseProps> = (props) => {
                                         </span>
                                         <Show when={isFree(model) || hasByok(model) || isDataCollectedModel(model)}>
                                           <span class="model-selector-free-data">
-                                            <Show when={isFree(model)}>
+                                            <Show when={isFree(model) && !hasByok(model)}>
                                               <span class="model-selector-data-badge">
                                                 <Tag data-variant="member">{freeLabel()}</Tag>
                                               </span>
                                             </Show>
                                             <Show when={hasByok(model)}>
-                                              <span class="model-selector-data-badge">
+                                              <span class="model-selector-data-badge model-selector-data-badge--byok">
                                                 <Tag data-variant="member">BYOK</Tag>
                                               </span>
                                             </Show>

@@ -93,7 +93,7 @@ export const ModelPreview: Component<Props> = (props) => {
                   </div>
                   <Show when={model().isFree || hasByok(model()) || isDataCollectedModel(model())}>
                     <span class="model-preview-free-data">
-                      <Show when={model().isFree}>
+                      <Show when={model().isFree && !hasByok(model())}>
                         <span class="model-preview-badge model-preview-badge--free">{freeLabel()}</span>
                       </Show>
                       <Show when={hasByok(model())}>

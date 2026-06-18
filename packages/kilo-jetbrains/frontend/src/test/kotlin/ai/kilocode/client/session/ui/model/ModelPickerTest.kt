@@ -397,8 +397,12 @@ class ModelPickerTest : BasePlatformTestCase() {
         assertEquals("Data may be used for training", renderer.warningTooltip())
     }
 
-    fun `test renderer shows BYOK badge when available`() {
-        val row = ModelPickerRow(ModelPicker.Item("claude", "Claude", "kilo", "Kilo", byok = true), "Kilo", false)
+    fun `test renderer shows BYOK instead of free when both are available`() {
+        val row = ModelPickerRow(
+            ModelPicker.Item("claude", "Claude", "kilo", "Kilo", free = true, byok = true),
+            "Kilo",
+            false,
+        )
         val model = CollectionListModel(listOf(row))
         val renderer = ModelPickerRenderer(model, { null }, { emptySet() })
         val list = JBList(model)

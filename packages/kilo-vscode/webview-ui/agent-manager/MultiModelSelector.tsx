@@ -118,7 +118,7 @@ export const MultiModelSelector: Component<{
                         <span class="am-mm-item-name">{model.name}</span>
                         <Show when={model.isFree || hasByok(model) || isDataCollectedModel(model)}>
                           <span class="am-mm-free-data">
-                            <Show when={model.isFree}>
+                            <Show when={model.isFree && !hasByok(model)}>
                               <span class="am-mm-free-badge">{freeLabel()}</span>
                             </Show>
                             <Show when={hasByok(model)}>

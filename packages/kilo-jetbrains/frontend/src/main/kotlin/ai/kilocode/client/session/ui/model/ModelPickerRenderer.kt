@@ -160,7 +160,7 @@ internal class ModelPickerRenderer(
         title.append(name.model, SimpleTextAttributes(SimpleTextAttributes.STYLE_BOLD, fg))
 
         warn.isVisible = ModelText.collectsData(item)
-        badgeLabel.isVisible = item.free
+        badgeLabel.isVisible = item.free && !item.byok
         byokLabel.isVisible = item.byok
         provider.isVisible = value.favorite
         provider.text = item.providerName
