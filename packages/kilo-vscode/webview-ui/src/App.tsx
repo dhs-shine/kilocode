@@ -82,7 +82,7 @@ export const DataBridge: Component<{ children: any }> = (props) => {
   })
 
   const providerData = createMemo(() => ({
-    all: Object.values(prov.providers()) as unknown as any[],
+    all: new Map(Object.entries(prov.providers())),
     connected: prov.connected(),
     default: prov.defaults(),
   }))
