@@ -115,7 +115,7 @@ Then set your default model using the `provider-id/model-id` format:
 
 **Configuration fields:**
 
-- **`npm`** — The API protocol package. Use `@ai-sdk/openai-compatible` for OpenAI Chat Completions-compatible endpoints (the default when omitted). Use `@ai-sdk/openai` for OpenAI models, including Azure OpenAI, and xAI models. Use `@ai-sdk/anthropic` for Anthropic and MiniMax models.
+- **`npm`** — The API protocol package. Use `@ai-sdk/openai-compatible` for OpenAI Chat Completions-compatible endpoints (the default when omitted), `@ai-sdk/openai` for OpenAI Responses endpoints, or `@ai-sdk/anthropic` for Anthropic Messages endpoints.
 - **`models`** — A map of model IDs to model definitions. Each model should include a `name` and `limit` with `context` and `output` token counts. If `limit.context` or `limit.output` is omitted, it defaults to `0`, which limits context management.
 - **`options.baseURL`** — The base URL of your provider's API endpoint.
 - **`options.apiKey`** — Your API key. Use any non-empty string (e.g., `"none"`) if the provider doesn't require authentication.

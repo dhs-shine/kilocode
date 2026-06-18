@@ -32,7 +32,7 @@ Add custom models under the `provider.<provider_id>.models` key in your config f
 
 - **Provider ID** — A unique identifier using lowercase letters, numbers, hyphens, or underscores (e.g., `myprovider`). This becomes the `provider_id` in the `provider_id/model_id` format.
 - **Display name** — A human-readable name shown in the UI (e.g., `My AI Provider`).
-- **Provider API** — The protocol used by the provider: **OpenAI Compatible** (default), **OpenAI Responses**, or **Anthropic Messages**.
+- **Provider API** — The protocol used by the provider. Use **OpenAI Responses** for OpenAI models, including Azure OpenAI, and xAI models. Use **Anthropic Messages** for Anthropic and MiniMax models. **OpenAI Compatible** is the default for other OpenAI Chat Completions-compatible endpoints.
 - **Base URL** — The provider's API endpoint (e.g., `https://api.myprovider.com/v1`). When a valid URL is entered, Kilo automatically fetches available models from the endpoint if it exposes an OpenAI-compatible models endpoint.
 - **API key** — Your provider's API key. Optional — leave empty if you manage authentication via headers.
 - **Models** — Add models manually by ID and display name, or select from the auto-fetched list that appears after entering a valid base URL.
@@ -80,8 +80,8 @@ Custom providers can use three API protocols. In `kilo.jsonc`, set the provider-
 | Provider API | `npm` value | Use for |
 |---|---|---|
 | OpenAI Compatible | `@ai-sdk/openai-compatible` | OpenAI Chat Completions-compatible endpoints. This is the default when `npm` is omitted. |
-| OpenAI Responses | `@ai-sdk/openai` | Recommended for OpenAI models, including Azure OpenAI, and xAI models. |
-| Anthropic Messages | `@ai-sdk/anthropic` | Recommended for Anthropic and MiniMax models. |
+| OpenAI Responses | `@ai-sdk/openai` | Endpoints that implement the OpenAI Responses API. |
+| Anthropic Messages | `@ai-sdk/anthropic` | Endpoints that implement the Anthropic Messages API. |
 
 For example, configure a custom endpoint that implements the OpenAI Responses API like this:
 
