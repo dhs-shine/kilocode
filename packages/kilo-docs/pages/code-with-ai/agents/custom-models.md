@@ -10,7 +10,7 @@ Kilo Code ships with a curated list of models for each provider, but you can use
 
 - Using a newly released model before it's added to the built-in catalog
 - Running a custom or fine-tuned model via LM Studio, Ollama, or another local provider
-- Connecting to a self-hosted model behind an OpenAI-compatible API
+- Connecting to a self-hosted model through a custom API endpoint
 - Configuring model-specific options like token limits, pricing, or reasoning settings
 
 ## Defining a Custom Model
@@ -24,15 +24,11 @@ Add custom models under the `provider.<provider_id>.models` key in your config f
 
 2. Scroll to the bottom of the provider list and click **Custom provider**.
 
-![Custom provider button in the Providers tab](/docs/img/custom-models/custom-provider-button.png)
-
 3. Fill in the custom provider dialog:
-
-![Custom provider configuration dialog](/docs/img/custom-models/custom-provider-details.png)
 
 - **Provider ID** — A unique identifier using lowercase letters, numbers, hyphens, or underscores (e.g., `myprovider`). This becomes the `provider_id` in the `provider_id/model_id` format.
 - **Display name** — A human-readable name shown in the UI (e.g., `My AI Provider`).
-- **Provider API** — The protocol used by the provider. Use **OpenAI Responses** for OpenAI models, including Azure OpenAI, and xAI models. Use **Anthropic Messages** for Anthropic and MiniMax models. **OpenAI Compatible** is the default for other OpenAI Chat Completions-compatible endpoints.
+- **Provider API** — The protocol used by the provider. Use **OpenAI Responses** for OpenAI and xAI models. Use **Anthropic Messages** for Anthropic and MiniMax models. **OpenAI Compatible** is the default for other OpenAI Chat Completions-compatible endpoints.
 - **Base URL** — The provider's API endpoint (e.g., `https://api.myprovider.com/v1`). When a valid URL is entered, Kilo automatically fetches available models from the endpoint if it exposes an OpenAI-compatible models endpoint.
 - **API key** — Your provider's API key. Optional — leave empty if you manage authentication via headers.
 - **Models** — Add models manually by ID and display name, or select from the auto-fetched list that appears after entering a valid base URL.
@@ -72,37 +68,6 @@ The `model` key uses the format `provider_id/model_id`, where:
 
 - **`provider_id`** is the key under `provider` (e.g., `lmstudio`, `ollama`, `openai`, `anthropic`, `openai-compatible`)
 - **`model_id`** is the key under `provider.<provider_id>.models` (e.g., `my-custom-model`)
-
-## Provider API
-
-Custom providers can use three API protocols. In `kilo.jsonc`, set the provider-level `npm` field to the corresponding AI SDK package:
-
-| Provider API | `npm` value | Use for |
-|---|---|---|
-| OpenAI Compatible | `@ai-sdk/openai-compatible` | OpenAI Chat Completions-compatible endpoints. This is the default when `npm` is omitted. |
-| OpenAI Responses | `@ai-sdk/openai` | Endpoints that implement the OpenAI Responses API. |
-| Anthropic Messages | `@ai-sdk/anthropic` | Endpoints that implement the Anthropic Messages API. |
-
-For example, configure a custom endpoint that implements the OpenAI Responses API like this:
-
-```jsonc
-{
-  "provider": {
-    "my-provider": {
-      "npm": "@ai-sdk/openai",
-      "options": {
-        "apiKey": "{env:MY_PROVIDER_API_KEY}",
-        "baseURL": "https://api.my-provider.com/v1",
-      },
-      "models": {
-        "my-model": {
-          "name": "My Model",
-        },
-      },
-    },
-  },
-}
-```
 
 ## Model Configuration Fields
 
@@ -353,7 +318,7 @@ If the model key in your config differs from what the provider expects, use the 
 
 Here `my-local-llama` is the key you use in your config and model picker, while `meta-llama-3.1-8b-instruct` is the actual model identifier sent to the LM Studio API.
 
-When using the native `azure` provider, set `id` to your Azure deployment name when it differs from the model key.
+For Azure OpenAI, use the native `azure` provider and set `id` to your Azure deployment name when it differs from the model key. Do not configure Azure GPT-5 family deployments under `openai-compatible`, because that provider sends `max_tokens` and Azure GPT-5 expects `max_completion_tokens`.
 
 ```jsonc
 {
