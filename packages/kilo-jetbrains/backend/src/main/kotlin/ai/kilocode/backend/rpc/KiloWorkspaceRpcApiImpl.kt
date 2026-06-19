@@ -59,6 +59,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 
@@ -86,6 +87,8 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
     }
 
     private val app: KiloBackendAppService get() = service()
+
+    private val gitCache = ConcurrentHashMap<String, Boolean>()
 
     private val manager: KiloBackendWorkspaceManager
         get() = app.workspaces
@@ -191,8 +194,8 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
 
     override suspend fun searchFiles(directory: String, query: String, limit: Int): FileSearchResultDto {
         val base = file(clean(directory) ?: directory) ?: return FileSearchResultDto()
-        val project = project(base) ?: return FileSearchResultDto(git = gitAvailable(base))
-        val git = gitAvailable(base)
+        val git = withContext(Dispatchers.IO) { gitAvailable(base) }
+        val project = project(base) ?: return FileSearchResultDto(git = git)
         if (DumbService.getInstance(project).isDumb) return FileSearchResultDto(indexing = true, git = git)
         return try {
             val files = readAction { search(project, base, query, limit.coerceIn(1, 200)) }
@@ -387,13 +390,13 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
 
     private fun fileDto(base: Path, vf: VirtualFile): WorkspaceFileDto? {
         val path = file(vf.path) ?: return null
-        if (!path.startsWith(base)) return null
-        val rel = base.relativize(path).toString().replace('\\', '/')
-        if (rel.isBlank()) return null
+        val rel = relativeWithinBase(base, path) ?: return null
         return WorkspaceFileDto(rel, vf.name, vf.isDirectory)
     }
 
-    private fun gitAvailable(base: Path): Boolean = Files.exists(base.resolve(".git")) || git(base, "rev-parse", "--is-inside-work-tree").trim() == "true"
+    private fun gitAvailable(base: Path): Boolean = gitCache.getOrPut(base.toString()) {
+        Files.exists(base.resolve(".git")) || git(base, "rev-parse", "--is-inside-work-tree").trim() == "true"
+    }
 
     private fun git(base: Path, vararg args: String): String {
         return try {
@@ -449,3 +452,14 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
 }
 
 private fun encode(value: String) = URLEncoder.encode(value, Charsets.UTF_8)
+
+/**
+ * Relativizes [target] against [base], returning the forward-slash relative path, or null if
+ * [target] is not strictly inside [base] (path-traversal guard) or equals the base itself.
+ */
+internal fun relativeWithinBase(base: Path, target: Path): String? {
+    val path = target.normalize()
+    if (!path.startsWith(base)) return null
+    val rel = base.relativize(path).toString().replace('\\', '/')
+    return rel.ifBlank { null }
+}

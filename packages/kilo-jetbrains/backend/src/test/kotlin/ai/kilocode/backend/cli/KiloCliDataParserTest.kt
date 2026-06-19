@@ -1639,6 +1639,24 @@ class KiloCliDataParserTest {
             assertTrue(result.contains(""""source":{"type":"file","text":{"value":"@src/a.kt","start":0.0,"end":9.0},"path":"src/a.kt"}"""), result)
         }
 
+        @Test
+        fun `buildCommandJson - includes agent variant model and arguments`() {
+            val prompt = PromptDto(
+                parts = emptyList(),
+                agent = "code",
+                variant = "high",
+                providerID = "kilo",
+                modelID = "gpt-5",
+            )
+
+            val result = KiloCliDataParser.buildCommandJson("review", "src/", prompt)
+
+            assertEquals(
+                """{"command":"review","arguments":"src/","agent":"code","variant":"high","model":"kilo/gpt-5"}""",
+                result,
+            )
+        }
+
         // ---- buildSummarizeJson ----
 
         @Test

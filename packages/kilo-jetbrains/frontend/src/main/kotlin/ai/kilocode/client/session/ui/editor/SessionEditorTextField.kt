@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.ui.editor
 
+import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.SendPromptContext
 import com.intellij.ide.actions.UndoRedoAction
@@ -51,8 +52,8 @@ internal open class SessionEditorTextField(
     project,
     PlainTextFileType.INSTANCE,
 ) {
-    private val undo = action("Kilo Session Undo", true)
-    private val redo = action("Kilo Session Redo", false)
+    private val undo = action(KiloBundle.message("session.editor.undo"), true)
+    private val redo = action(KiloBundle.message("session.editor.redo"), false)
 
     init {
         addSettingsProvider(::install)

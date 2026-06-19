@@ -21,7 +21,6 @@ import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.util.textCompletion.TextCompletionProvider
-import java.util.concurrent.ConcurrentHashMap
 import java.util.Collections
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -36,7 +35,11 @@ class KiloPromptCompletionProvider(
     private val paths = Collections.synchronizedSet(mutableSetOf<String>())
     private val exists = Collections.synchronizedMap(mutableMapOf<String, Boolean>())
     private val pending = Collections.synchronizedSet(mutableSetOf<String>())
-    private val cache = ConcurrentHashMap<String, FileSearchResultDto>()
+    private val cache: MutableMap<String, FileSearchResultDto> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, FileSearchResultDto>(64, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<String, FileSearchResultDto>) = size > 64
+        },
+    )
 
     data class Highlight(val start: Int, val end: Int, val kind: HighlightKind)
 
@@ -60,8 +63,6 @@ class KiloPromptCompletionProvider(
     }
 
     fun inside(text: String, caret: Int): Boolean = mentionSpans(text).any { span -> caret in span.start..span.end }
-
-    fun clientNames(): Set<String> = actions.mapTo(mutableSetOf()) { it.name }
 
     private fun clientTokens(): Set<String> = actions.flatMapTo(mutableSetOf()) { action ->
         listOf(action.name) + action.hints

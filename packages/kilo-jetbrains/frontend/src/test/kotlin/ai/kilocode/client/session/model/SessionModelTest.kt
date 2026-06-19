@@ -187,6 +187,57 @@ class SessionModelTest : BasePlatformTestCase() {
         assertEquals("ContentAdded m1/p1", events.single().toString())
     }
 
+    fun `test updateContent non synthetic text unhides previous synthetic user text`() {
+        model.addMessage(msg("m1", "user"))
+        model.updateContent("m1", part("p1", "m1", "text", text = "hidden", synthetic = true))
+        events.clear()
+
+        model.updateContent("m1", part("p1", "m1", "text", text = "visible now"))
+
+        assertModel("""
+            user#m1
+            text#p1:
+              visible now
+        """)
+        assertEquals("ContentAdded m1/p1", events.single().toString())
+    }
+
+    fun `test removeMessage clears hiddenText so a later non-synthetic part renders`() {
+        model.addMessage(msg("m1", "user"))
+        model.updateContent("m1", part("p1", "m1", "text", text = "hidden", synthetic = true))
+
+        model.removeMessage("m1")
+        events.clear()
+
+        model.addMessage(msg("m1", "user"))
+        model.updateContent("m1", part("p1", "m1", "text", text = "visible now"))
+
+        assertModel("""
+            user#m1
+            text#p1:
+              visible now
+        """)
+        assertEquals("ContentAdded m1/p1", events.last().toString())
+    }
+
+    fun `test clear resets hiddenText so a later non-synthetic part renders`() {
+        model.addMessage(msg("m1", "user"))
+        model.updateContent("m1", part("p1", "m1", "text", text = "hidden", synthetic = true))
+
+        model.clear()
+        events.clear()
+
+        model.addMessage(msg("m1", "user"))
+        model.updateContent("m1", part("p1", "m1", "text", text = "visible now"))
+
+        assertModel("""
+            user#m1
+            text#p1:
+              visible now
+        """)
+        assertEquals("ContentAdded m1/p1", events.last().toString())
+    }
+
     fun `test updateContent reasoning creates Reasoning content`() {
         model.addMessage(msg("m1", "assistant"))
 

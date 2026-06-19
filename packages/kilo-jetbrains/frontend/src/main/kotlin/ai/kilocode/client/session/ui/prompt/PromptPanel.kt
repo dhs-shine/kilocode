@@ -111,7 +111,6 @@ class PromptPanel(
         private val MENTION_KEY = DefaultLanguageHighlighterColors.METADATA
         private val COMMAND_KEY = DefaultLanguageHighlighterColors.KEYWORD
         private val INVALID_KEY = CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES
-        private const val COMPLETION_ACTION_TEXT = "Kilo Prompt Completion"
     }
 
     val mode = ModePicker()
@@ -547,6 +546,8 @@ class PromptPanel(
         }
     }
 
+    @RequiresEdt
+    @Suppress("UnstableApiUsage")
     private fun showCompletion(ed: com.intellij.openapi.editor.Editor) {
         // Run completion synchronously and locally on this frontend-only editor. The public entry
         // points (ACTION_CODE_COMPLETION, AutoPopupController.scheduleAutoPopup) route through
@@ -562,7 +563,7 @@ class PromptPanel(
     private fun installCompletionShortcut(ed: com.intellij.openapi.editor.Editor) {
         if (completion == null) return
         val base = ActionManager.getInstance().getAction(IdeActions.ACTION_CODE_COMPLETION) ?: return
-        val action = completionAction ?: object : DumbAwareAction(COMPLETION_ACTION_TEXT) {
+        val action = completionAction ?: object : DumbAwareAction(KiloBundle.message("prompt.completion.action")) {
             override fun actionPerformed(e: AnActionEvent) {
                 editor.getEditor(false)?.let(::showCompletion)
             }
