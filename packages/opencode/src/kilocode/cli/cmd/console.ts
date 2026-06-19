@@ -5,10 +5,7 @@ import { serverUrls } from "@/kilocode/cli/server-urls"
 import { AppRuntime } from "@/effect/app-runtime"
 import { Daemon } from "@/kilocode/daemon/daemon"
 import { warnPort } from "@/kilocode/cli/port-warning"
-
-function publicUrl(state: Daemon.State) {
-  return new URL("/console", state.url).toString()
-}
+import { hasDisplay } from "@/kilocode/cli/cmd/tui/util/display"
 
 function browserUrl(state: Daemon.State) {
   const url = new URL("/console", state.url)
@@ -53,9 +50,13 @@ export const KiloConsoleCommand = cmd({
     const consoleLocal = `${urls.local}/console`
     const consoleNetwork = urls.network ? `${urls.network}/console` : undefined
 
-    await launch(browserUrl(state)).catch((err) => {
-      console.warn(`Could not open browser automatically: ${err instanceof Error ? err.message : String(err)}`)
-    })
+    if (hasDisplay()) {
+      await launch(browserUrl(state)).catch((err) => {
+        console.warn(`Could not open browser automatically: ${err instanceof Error ? err.message : String(err)}`)
+      })
+    } else {
+      console.warn("No display detected; open the Kilo Console URL manually")
+    }
     console.log("Kilo Console:")
     console.log(`  Local:   ${consoleLocal}`)
     if (consoleNetwork) console.log(`  Network: ${consoleNetwork}`)
