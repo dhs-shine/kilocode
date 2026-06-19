@@ -91,14 +91,14 @@ export const MessageList: Component<MessageListProps> = (props) => {
   const [virtualizer, setVirtualizer] = createSignal<VirtualizerHandle>()
   const [layout, setLayout] = createSignal("")
 
-  const boundary = () => session.revert()?.messageID
+  const revert = () => session.revert() ?? undefined
   const turns = createMemo((prev: MessageTurn[] | undefined) =>
     stableMessageTurns(
-      messageTurns(session.messages(), boundary(), (msg) => session.getParts(msg.id)),
+      messageTurns(session.messages(), revert(), (msg) => session.getParts(msg.id)),
       prev,
     ),
   )
-  const isEmpty = () => turns().length === 0 && !session.loading() && !boundary()
+  const isEmpty = () => turns().length === 0 && !session.loading() && !revert()
 
   const activeUserID = createMemo(() =>
     getActiveUserMessageID(session.messages(), session.statusInfo(), (msg) => session.getParts(msg.id)),
@@ -115,6 +115,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
         queued: queuedIDs(),
         live: new Set(active ? [active] : []),
         hidden: session.isErrorHidden,
+        revert: revert(),
       },
       prev,
     )
@@ -326,7 +327,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
                 </For>
               </div>
             </Show>
-            <Show when={boundary()}>
+            <Show when={revert()}>
               <RevertBanner />
             </Show>
             <For each={partition().queued}>{(row) => <TranscriptRowView row={row} />}</For>
