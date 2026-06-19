@@ -101,17 +101,8 @@ export const dict = {
 
   "dialog.provider.search.placeholder": "Пошук провайдера",
   "dialog.provider.empty": "Провайдерів не знайдено",
-  "dialog.provider.group.popular": "Популярні",
   "dialog.provider.group.other": "Інші",
   "dialog.provider.tag.recommended": "Рекомендовано",
-  "dialog.provider.opencode.note": "Добірка моделей включаючи Claude, GPT, Gemini та інші",
-  "dialog.provider.anthropic.note": "Прямий доступ до моделей Claude включаючи Pro та Max",
-  "dialog.provider.deepseek.note": "Моделі DeepSeek для завдань міркування та програмування",
-  "dialog.provider.copilot.note": "Моделі Claude для допомоги з кодуванням",
-  "dialog.provider.openai.note": "Моделі GPT для швидких і потужних загальних завдань ШІ",
-  "dialog.provider.google.note": "Моделі Gemini для швидких і структурованих відповідей",
-  "dialog.provider.openrouter.note": "Доступ до всіх підтримуваних моделей від одного провайдера",
-  "dialog.provider.vercel.note": "Уніфікований доступ до моделей ШІ з інтелектуальною маршрутизацією",
 
   "dialog.model.select.title": "Вибір моделі",
   "dialog.model.search.placeholder": "Пошук моделі",
@@ -1315,11 +1306,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "Мовлення в текст",
   "settings.experimental.speechToText.description":
     "Увімкніть голосове введення в полях запитів, використовуючи ваш обліковий запис Kilo через Kilo Gateway.",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "Увімкніть провайдер Kilo та виконайте вхід, щоб використовувати Speech to Text. Наразі Speech to Text підтримується лише з Kilo Gateway.",
-  "settings.experimental.speechToTextModel.title": "Модель мовлення в текст",
-  "settings.experimental.speechToTextModel.description":
-    "Виберіть модель транскрипції Kilo Gateway для голосового введення.",
+  "settings.models.speechToTextModel.title": "Модель мовлення в текст",
+  "settings.models.speechToTextModel.description": "Виберіть модель транскрипції Kilo Gateway для голосового введення.",
   "settings.experimental.continueOnDeny.title": "Продовжувати при відхиленні",
   "settings.experimental.continueOnDeny.description": "Продовжувати цикл агента, коли дозвіл відхилено",
   "settings.experimental.mcpTimeout.title": "Тайм-аут MCP (мс)",
@@ -1535,6 +1525,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Перенесення зі старої версії",
   "settings.aboutKiloCode.legacyMigration.description":
     "Перенести налаштування з попередньої версії Kilo Code, включаючи API-ключі провайдерів та стандартну модель.",
+  "settings.aboutKiloCode.rooImport.description": "Імпортувати історію розмов з інсталяції Roo Code.",
+  "settings.aboutKiloCode.rooImport.button": "Імпортувати сесії з Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Що нового в Kilo Code",

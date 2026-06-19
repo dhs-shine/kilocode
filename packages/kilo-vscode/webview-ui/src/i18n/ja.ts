@@ -101,17 +101,8 @@ export const dict = {
 
   "dialog.provider.search.placeholder": "プロバイダーを検索",
   "dialog.provider.empty": "プロバイダーが見つかりません",
-  "dialog.provider.group.popular": "人気",
   "dialog.provider.group.other": "その他",
   "dialog.provider.tag.recommended": "推奨",
-  "dialog.provider.opencode.note": "Claude、GPT、Geminiなどの厳選されたモデル",
-  "dialog.provider.anthropic.note": "Claude Pro/MaxまたはAPIキーで接続",
-  "dialog.provider.deepseek.note": "推論とコーディングタスク向けのDeepSeekモデル",
-  "dialog.provider.openai.note": "ChatGPT Pro/PlusまたはAPIキーで接続",
-  "dialog.provider.google.note": "高速で構造化された応答のためのGeminiモデル",
-  "dialog.provider.openrouter.note": "1つのプロバイダーからすべてのモデルにアクセス",
-  "dialog.provider.vercel.note": "スマートルーティングによるAIモデルへの統合アクセス",
-  "dialog.provider.copilot.note": "CopilotまたはAPIキーで接続",
 
   "dialog.model.select.title": "モデルを選択",
   "dialog.model.search.placeholder": "モデルを検索",
@@ -1316,10 +1307,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "音声認識",
   "settings.experimental.speechToText.description":
     "Kilo Gateway経由でKiloアカウントを使用して、プロンプトフィールドでの音声入力を有効にします。",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "Speech to Text を使用するには、Kilo プロバイダーを有効にしてサインインしてください。現在、Speech to Text は Kilo Gateway でのみサポートされています。",
-  "settings.experimental.speechToTextModel.title": "音声認識モデル",
-  "settings.experimental.speechToTextModel.description": "音声入力に使用するKilo Gateway文字起こしモデルを選択します。",
+  "settings.models.speechToTextModel.title": "音声認識モデル",
+  "settings.models.speechToTextModel.description": "音声入力に使用するKilo Gateway文字起こしモデルを選択します。",
   "settings.experimental.continueOnDeny.title": "拒否時に続行",
   "settings.experimental.continueOnDeny.description": "権限が拒否された場合にエージェントループを続行",
   "settings.experimental.mcpTimeout.title": "MCPタイムアウト（ミリ秒）",
@@ -1552,6 +1543,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "レガシー移行",
   "settings.aboutKiloCode.legacyMigration.description":
     "プロバイダーのAPIキーやデフォルトモデルなど、以前にインストールしたKilo Codeから設定を移行します。",
+  "settings.aboutKiloCode.rooImport.description": "インストールしたRoo Codeから会話履歴を移行します。",
+  "settings.aboutKiloCode.rooImport.button": "Roo Codeからセッションをインポート",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Kilo Codeの新機能",
