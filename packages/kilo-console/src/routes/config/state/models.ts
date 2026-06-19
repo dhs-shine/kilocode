@@ -2,7 +2,7 @@ import { createMemo, createSignal } from "solid-js"
 import type { Model, Provider } from "@kilocode/sdk/v2/client"
 import { saveModelState, type ModelRef } from "../../../client"
 import { useConfig } from "../../../context/config"
-import { visible } from "./privacy"
+import { hasGateway, visible } from "./privacy"
 
 export const capabilities = [
   "toolcall",
@@ -88,6 +88,7 @@ export function useModelSettings() {
       })),
     )
   })
+  const gateway = createMemo(() => hasGateway(providers()))
 
   const max = createMemo(() => {
     const values = all().map((item) => item.model.limit.context)
@@ -233,6 +234,7 @@ export function useModelSettings() {
     fav,
     favorite,
     max,
+    gateway,
     providers,
     capabilities,
     toggle,

@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { visible } from "./privacy"
+import { hasGateway, visible } from "./privacy"
 
 describe("model privacy filter", () => {
+  test("detects when Kilo Gateway models are present", () => {
+    expect(hasGateway([{ id: "kilo" }, { id: "openai" }])).toBe(true)
+    expect(hasGateway([{ id: "openai" }])).toBe(false)
+  })
+
   test("shows every model when disabled", () => {
     expect(visible({ mayTrainOnYourPrompts: true }, false)).toBe(true)
   })
