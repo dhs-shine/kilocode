@@ -434,6 +434,11 @@ export class AgentManagerProvider implements Disposable {
 
     if (m.type === "agentManager.persistSession" || m.type === "agentManager.forgetSession") {
       const persist = m.type === "agentManager.persistSession"
+      if (persist && m.draftID) {
+        this.panel?.sessions.acknowledgeDraft(m.draftID, m.sessionId)
+        this.panelSessions.delete(m.draftID)
+        this.panelSessions.add(m.sessionId)
+      }
       void this.stateReady?.then(() => {
         const state = this.getStateManager()
         if (!state) return

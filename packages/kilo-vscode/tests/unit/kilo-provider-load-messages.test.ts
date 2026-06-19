@@ -294,6 +294,20 @@ describe("KiloProvider.handleAbort", () => {
 
     expect(client.aborted).toEqual([{ sessionID: "created", directory: "/repo" }])
     expect(client.prompts).toEqual([])
+
+    await provider.abortSessions(["pending:1"])
+    expect(client.aborted).toHaveLength(1)
+  })
+
+  it("releases draft routing after the webview adopts the created session", async () => {
+    const client = createClient()
+    const { provider, internal } = makeProvider(client)
+
+    expect(await internal.resolveSession(undefined, "pending:1", "local")).toBeDefined()
+    provider.acknowledgeDraft("pending:1", "created")
+    await provider.abortSessions(["pending:1"])
+
+    expect(client.aborted).toEqual([])
   })
 })
 

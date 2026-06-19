@@ -2655,7 +2655,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       const sid = resolved!.sid
       const dir = resolved!.dir
       const editorContext = await this.gatherEditorContext(dir)
-      if (draftID && this.closedDrafts.has(draftID)) return
+      if (draftID && this.closedDrafts.delete(draftID)) {
+        this.draftSessions.delete(draftID)
+        return
+      }
 
       if (messageID) {
         this.connectionService.recordMessageSessionId(messageID, sid)
@@ -2771,6 +2774,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         files,
       })
     }
+  }
+
+  public acknowledgeDraft(draftID: string, sessionID: string): void {
+    if (this.draftSessions.get(draftID) !== sessionID) return
+    this.draftSessions.delete(draftID)
+    this.closedDrafts.delete(draftID)
   }
 
   public async abortSessions(ids: readonly string[]): Promise<void> {

@@ -1160,7 +1160,11 @@ const AgentManagerContent: Component = () => {
         tabOrderSync.append(LOCAL, created.session.id)
         setSelection(LOCAL)
       }
-      vscode.postMessage({ type: "agentManager.persistSession", sessionId: created.session.id })
+      vscode.postMessage({
+        type: "agentManager.persistSession",
+        sessionId: created.session.id,
+        draftID: created.draftID,
+      })
       if (focus) session.selectSession(created.session.id)
     })
 

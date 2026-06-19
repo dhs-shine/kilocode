@@ -240,6 +240,7 @@ describe("Agent Manager Provider Messages", () => {
     expect(body).toContain("this.activeSessionId = undefined")
     const messages = getMethodBody("onSessionMessage")
     expect(messages).toContain("if (m.draftID) this.panelSessions.add(m.draftID)")
+    expect(messages).toContain("this.panel?.sessions.acknowledgeDraft(m.draftID, m.sessionId)")
     expect(messages).toContain("for (const id of m.sessionIDs) this.panelSessions.add(id)")
   })
 

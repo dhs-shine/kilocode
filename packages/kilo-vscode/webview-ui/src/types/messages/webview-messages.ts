@@ -561,6 +561,7 @@ export interface CloseSessionRequest {
 export interface PersistSessionRequest {
   type: "agentManager.persistSession"
   sessionId: string
+  draftID?: string
 }
 
 /** Remove a non-worktree session from agent-manager.json. */
