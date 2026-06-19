@@ -63,15 +63,22 @@ class KiloPromptCompletionProvider(
 
     fun clientNames(): Set<String> = actions.mapTo(mutableSetOf()) { it.name }
 
+    private fun clientTokens(): Set<String> = actions.flatMapTo(mutableSetOf()) { action ->
+        listOf(action.name) + action.hints
+    }
+
+    fun clientAction(text: String): SlashAction? {
+        val name = commandName(text) ?: return null
+        return actions.firstOrNull { action -> name == action.name || name in action.hints }
+    }
+
     fun mentionNames(): Set<String> = mentions.mapTo(mutableSetOf()) { it.name }
 
     fun serverCommand(text: String): Pair<String, String>? {
-        val raw = text.trimStart()
-        if (!raw.startsWith('/')) return null
-        val name = raw.drop(1).takeWhile { !it.isWhitespace() }
-        if (name.isBlank()) return null
-        if (name in clientNames()) return null
+        val name = commandName(text) ?: return null
+        if (actions.any { action -> name == action.name || name in action.hints }) return null
         if (workspace.state.value.commands.none { it.name == name }) return null
+        val raw = text.trimStart()
         return name to raw.drop(name.length + 1).trimStart()
     }
 
@@ -81,7 +88,7 @@ class KiloPromptCompletionProvider(
             ?.takeWhile { !it.isWhitespace() }
             ?.takeIf { it.isNotBlank() }
         val commands = workspace.state.value.commands.mapTo(mutableSetOf()) { it.name }
-        if (command != null && (command in clientNames() || command in commands)) {
+        if (command != null && (clientAction("/$command") != null || command in commands)) {
             add(Highlight(0, command.length + 1, HighlightKind.COMMAND))
         }
 
@@ -136,14 +143,14 @@ class KiloPromptCompletionProvider(
 
     private fun slash(prefix: String, result: CompletionResultSet) {
         result.restartCompletionOnAnyPrefixChange()
-        val out = applyPrefixMatcher(result, prefix)
-        val names = clientNames()
-        actions.forEach { action -> out.addElement(client(action)) }
-        workspace.state.value.commands
-            .filter { it.name !in names }
-            .forEach { command -> out.addElement(server(command)) }
-        if (actions.any { matches(prefix, it.name, it.hints) }) return
-        if (workspace.state.value.commands.any { it.name !in names && matches(prefix, it.name, it.hints) }) return
+        val out = result.withPrefixMatcher(PlainPrefixMatcher.ALWAYS_TRUE)
+        val names = clientTokens()
+        val clients = actions.filter { action -> matches(prefix, action.name, action.hints) }
+        clients.forEach { action -> out.addElement(client(action)) }
+        val commands = workspace.state.value.commands
+            .filter { it.name !in names && matches(prefix, it.name, it.hints) }
+        commands.forEach { command -> out.addElement(server(command)) }
+        if (clients.isNotEmpty() || commands.isNotEmpty()) return
         result.withPrefixMatcher(PlainPrefixMatcher.ALWAYS_TRUE)
             .addElement(info(prefix, KiloBundle.message("prompt.completion.noMatches")))
     }
@@ -190,6 +197,12 @@ class KiloPromptCompletionProvider(
 
     private fun matches(prefix: String, name: String, hints: List<String>): Boolean =
         (listOf(name) + hints).any { it.startsWith(prefix, ignoreCase = true) }
+
+    private fun commandName(text: String): String? {
+        val raw = text.trimStart()
+        if (!raw.startsWith('/')) return null
+        return raw.drop(1).takeWhile { !it.isWhitespace() }.takeIf { it.isNotBlank() }
+    }
 
     private fun client(action: SlashAction): LookupElement = LookupElementBuilder.create(action.name)
         .withPresentableText("/${action.name}")

@@ -28,6 +28,7 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var models = ModelsWorkspaceDto()
     var modelsGate: CompletableDeferred<Unit>? = null
     var fileMatches = emptyList<WorkspaceFileDto>()
+    var fileResolver: ((String) -> List<WorkspaceFileDto>)? = null
     var searchResult = FileSearchResultDto()
     var search: ((String) -> FileSearchResultDto)? = null
     var gitChanges: String? = null
@@ -72,7 +73,7 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     override suspend fun files(directory: String, path: String): List<WorkspaceFileDto> {
         assertNotEdt("files")
         fileCalls.add(directory to path)
-        return fileMatches
+        return fileResolver?.invoke(path) ?: fileMatches
     }
 
     override suspend fun searchFiles(directory: String, query: String, limit: Int): FileSearchResultDto {

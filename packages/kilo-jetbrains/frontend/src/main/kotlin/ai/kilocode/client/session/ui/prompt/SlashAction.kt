@@ -13,12 +13,12 @@ data class SlashAction(
     )
 
     companion object {
-        val NEW = Spec("new", "prompt.slash.new")
-        val SESSIONS = Spec("sessions", "prompt.slash.sessions", listOf("history", "resume"))
+        val NEW = Spec("new", "prompt.slash.new", listOf("clear"))
+        val SESSIONS = Spec("sessions", "prompt.slash.sessions", listOf("history", "resume", "continue"))
         val MODELS = Spec("models", "prompt.slash.models")
         val AGENTS = Spec("agents", "prompt.slash.agents", listOf("modes"))
-        val VARIANT = Spec("variant", "prompt.slash.variant", listOf("reasoning"))
-        val COMPACT = Spec("compact", "prompt.slash.compact", listOf("smol"))
+        val VARIANT = Spec("variant", "prompt.slash.variant", listOf("reasoning", "variants", "thinking"))
+        val COMPACT = Spec("compact", "prompt.slash.compact", listOf("smol", "condense"))
         val SETTINGS = Spec("settings", "prompt.slash.settings")
         val HELP = Spec("help", "prompt.slash.help")
 

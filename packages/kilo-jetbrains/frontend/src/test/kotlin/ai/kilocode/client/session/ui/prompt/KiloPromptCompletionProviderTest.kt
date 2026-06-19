@@ -33,7 +33,8 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
             workspace = workspaces.workspace("/test"),
             service = workspaces,
             actions = listOf(
-                SlashAction(SlashAction.NEW.name, "New") {},
+                SlashAction(SlashAction.NEW.name, "New", listOf("clear")) {},
+                SlashAction("sessions", "Sessions", listOf("continue")) {},
                 SlashAction("next", "Next") {},
             ),
             mentions = listOf(MentionAction(
@@ -160,6 +161,13 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         assertFalse(myFixture.lookupElementStrings.orEmpty().contains(noMatches()))
     }
 
+    fun `test slash completion matches client aliases`() {
+        complete("/cle<caret>")
+
+        assertContainsElements(myFixture.lookupElementStrings.orEmpty(), "new")
+        assertFalse(myFixture.lookupElementStrings.orEmpty().contains(noMatches()))
+    }
+
     fun `test blank mention completion includes special and root entries`() {
         rpc.searchResult = FileSearchResultDto(
             files = listOf(file("src", directory = true), file("README.md")),
@@ -204,6 +212,13 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         )
     }
 
+    fun `test highlights client slash command aliases at start`() {
+        assertEquals(
+            listOf(KiloPromptCompletionProvider.Highlight(0, 6, KiloPromptCompletionProvider.HighlightKind.COMMAND)),
+            provider.highlights("/clear"),
+        )
+    }
+
     fun `test highlights server slash command at start`() {
         rpc.state.value = KiloWorkspaceStateDto(KiloWorkspaceStatusDto.READY, commands = listOf(CommandDto("deploy")))
 
@@ -238,6 +253,19 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         assertNull(provider.serverCommand("/new"))
         assertNull(provider.serverCommand("hi /deploy"))
         assertNull(provider.serverCommand("/unknown"))
+    }
+
+    fun `test clientAction resolves canonical names and aliases`() {
+        assertEquals(SlashAction.NEW.name, provider.clientAction("/new")?.name)
+        assertEquals(SlashAction.NEW.name, provider.clientAction("/clear")?.name)
+        assertEquals("sessions", provider.clientAction("/continue")?.name)
+        assertNull(provider.clientAction("hi /clear"))
+    }
+
+    fun `test serverCommand does not route client aliases`() {
+        rpc.state.value = KiloWorkspaceStateDto(KiloWorkspaceStatusDto.READY, commands = listOf(CommandDto("clear")))
+
+        assertNull(provider.serverCommand("/clear"))
     }
 
     fun `test highlights tracked mentions longest first`() {

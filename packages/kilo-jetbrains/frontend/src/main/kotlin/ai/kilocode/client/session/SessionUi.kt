@@ -596,9 +596,19 @@ class SessionUi(
         }
         prompt.clear()
         val follow = scroll.atBottom()
+        val action = completion.clientAction(text)
+        if (action != null) {
+            action.action()
+            scroll.followBottom(follow)
+            return
+        }
         val command = completion.serverCommand(text)
-        if (command != null) controller.command(command.first, command.second, files)
-        else controller.prompt(text, files)
+        if (command != null) {
+            controller.command(command.first, command.second, files)
+            scroll.followBottom(follow)
+            return
+        }
+        controller.prompt(text, files)
         scroll.followBottom(follow)
     }
 
