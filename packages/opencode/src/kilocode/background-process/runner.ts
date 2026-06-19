@@ -131,15 +131,24 @@ export namespace BackgroundProcessRunner {
     return result
   }
 
+  // Grace window after the leader exits during which we keep walking from its
+  // pid. A detached descendant spawned just before the leader died may not yet
+  // be visible in Win32_Process, and its ParentProcessId still points at the
+  // (now dead) leader, so seeding the walk from the leader's pid for a short
+  // window lets us capture it before concluding the tree is empty.
+  const GRACE = 1_000
+
   async function windows(input: Input, child: ReturnType<typeof spawn>, done: Promise<number>) {
     const pid = child.pid
     if (!pid) throw new Error("Background process runner child did not provide a pid")
     let code: number | undefined
+    let exited: number | undefined
     let failure: unknown
     let seen = new Map<number, string>()
     void done.then(
       (value) => {
         code = value
+        exited = Date.now()
       },
       (err) => {
         failure = err
@@ -147,7 +156,8 @@ export namespace BackgroundProcessRunner {
     )
     while (true) {
       if (failure) throw failure
-      seen = await descendants(pid, seen, code === undefined)
+      const active = code === undefined || (exited !== undefined && Date.now() - exited < GRACE)
+      seen = await descendants(pid, seen, active)
       if (await Bun.file(input.control).exists()) {
         await Promise.all(
           [pid, ...seen.keys()].map((item) =>
@@ -163,7 +173,7 @@ export namespace BackgroundProcessRunner {
         }
         throw new Error("Background process runner could not terminate its Windows process tree")
       }
-      if (code !== undefined && seen.size === 0) return code
+      if (code !== undefined && !active && seen.size === 0) return code
       await Bun.sleep(100)
     }
   }
