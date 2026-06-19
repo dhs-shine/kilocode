@@ -32,6 +32,20 @@ describe("deleteDraftsForSession", () => {
   })
 
   it("clears drafts that PromptInput's draftKey effect recreates after the batch", () => {
+    // Production race:
+    //   1. handleSessionDeleted batches setCurrentSessionID(undefined) +
+    //      setDraftSessionID(undefined) and (in the original layout) the draft-cleanup helper.
+    //   2. PromptInput's createEffect(on(draftKey, ...)) runs after the batch and sees the
+    //      key transition, then calls saveDraft(prev, currentText, currentImages) which
+    //      writes the live prompt and any attached image data URLs back into the
+    //      ":session:<id>" key.
+    //   3. deleteDraftsForSession runs after the effect and clears the re-added entry.
+    //
+    // The helper is called twice here to model that exact order: once representing the
+    // call that runs alongside the batch, and once representing the call that runs after
+    // the Solid effect. If the post-batch call is removed (regression to a single in-batch
+    // call), the re-add between the two calls would survive and the final assertions fail —
+    // the test therefore does not pass under a single-cleanup implementation.
     const img = {
       id: "i1",
       filename: "x.png",
@@ -41,6 +55,7 @@ describe("deleteDraftsForSession", () => {
     drafts.set("prompt:default:session:a", "draft a")
     imageDrafts.set("prompt:default:session:a", [img])
     deleteDraftsForSession("a")
+    // The createEffect's saveDraft re-writes the live prompt into the just-cleared entry.
     drafts.set("prompt:default:session:a", "draft a")
     imageDrafts.set("prompt:default:session:a", [img])
 

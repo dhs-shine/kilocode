@@ -1921,6 +1921,18 @@ export const SessionProvider: ParentComponent = (props) => {
           delete map[sessionID]
         }),
       )
+      setStore(
+        "sessionOverrides",
+        produce((map) => {
+          delete map[sessionID]
+        }),
+      )
+      setStore(
+        "variantSelections",
+        produce((variants) => {
+          for (const key of sessionVariantKeys(variants, sessionID)) delete variants[key]
+        }),
+      )
       if (currentSessionID() === sessionID) {
         setCurrentSessionID(undefined)
         setLoading(false)

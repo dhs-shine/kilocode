@@ -1327,12 +1327,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           // session.deleted must always pass through so the webview can run its cleanup
           // (messages, parts, stash, todos, permissions, drafts, etc.) — including for
           // sessions that were never explicitly tracked here (e.g. child sessions
-          // cascade-deleted with the parent, or external CLI deletions). Auto-track so the
-          // guard inside handleEvent also lets the event through.
-          if (event.type === "session.deleted") {
-            this.trackedSessionIds.add(sessionId)
-            return true
-          }
+          // cascade-deleted with the parent, or external CLI deletions). We deliberately
+          // do NOT re-track the deleted id: handleLoadMessages intentionally drops late
+          // responses for sessions that have been pruned, and re-tracking would let an
+          // in-flight messagesLoaded response resurrect transcript state for a session
+          // the webview just cleaned up.
+          if (event.type === "session.deleted") return true
 
           return this.trackedSessionIds.has(sessionId)
         },
@@ -3180,7 +3180,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     // Events with sessionID → only forward if this webview tracks that session
     // message.part.* events are always session-scoped; drop if session unknown.
     if (!sessionID && isSessionScopedPartEvent(event.type)) return
-    if (event.type !== "indexing.status" && sessionID && !this.trackedSessionIds.has(sessionID)) {
+    if (
+      event.type !== "indexing.status" &&
+      event.type !== "session.deleted" &&
+      sessionID &&
+      !this.trackedSessionIds.has(sessionID)
+    ) {
       return
     }
 
