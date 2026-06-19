@@ -47,6 +47,7 @@ function add(sessionID: SessionID, role: "user" | "assistant", data: Stored<Mess
       .values({ id: partID, message_id: messageID, session_id: sessionID, time_created: Date.now(), data })
       .run()
   })
+  return { messageID, partID }
 }
 
 function run(query: string, signal?: AbortSignal) {
@@ -80,6 +81,35 @@ describe("RecallSearch", () => {
         add(user.id, "user", { type: "text", text: "ranking-needle" })
         add(assistant.id, "assistant", { type: "text", text: "ranking-needle" })
         expect((await run("ranking-needle")).results.map((item) => item.id)).toEqual([title.id, user.id, assistant.id])
+      },
+    })
+  })
+
+  test("excludes the active user turn from recall results", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await provideTestInstance({
+      directory: tmp.path,
+      fn: async () => {
+        const sessions = await Effect.runPromise(Session.Service.pipe(Effect.provide(Session.defaultLayer)))
+        const historical = await Effect.runPromise(sessions.create({ title: "Historical" }))
+        const active = await Effect.runPromise(sessions.create({ title: "exclusive-recall-needle" }))
+        add(historical.id, "user", { type: "text", text: "exclusive-recall-needle" })
+        add(active.id, "user", { type: "text", text: "older unrelated turn" })
+        add(active.id, "user", { type: "text", text: "exclusive-recall-needle" })
+        add(active.id, "assistant", { type: "text", text: "exclusive-recall-needle" })
+        add(active.id, "user", { type: "text", text: "exclusive-recall-needle", synthetic: true })
+        const current = add(active.id, "assistant", { type: "text", text: "exclusive-recall-needle" })
+        const messages = await Effect.runPromise(sessions.messages({ sessionID: active.id }))
+
+        const result = await RecallSearch.search({
+          query: "exclusive-recall-needle",
+          projectID: Instance.project.id,
+          directories: [Instance.worktree],
+          limit: 1,
+          excludeSessionID: active.id,
+          excludeFromMessageID: RecallSearch.active(messages, current.messageID),
+        })
+        expect(result.results.map((item) => item.id)).toEqual([historical.id])
       },
     })
   })
@@ -133,6 +163,12 @@ describe("RecallSearch", () => {
           type: "file",
           mime: "text/plain",
           url: "data:text/plain;base64,aGlkZGVuLWRhdGEtdXJs",
+          source: {
+            type: "resource",
+            clientName: "test",
+            uri: "data:text/plain;base64,aGlkZGVuLXJlc291cmNlLXVyaQ==",
+            text: { value: "hidden", start: 0, end: 6 },
+          },
         })
         add(session.id, "assistant", { type: "reasoning", text: "hidden-reasoning", time: { start: 1, end: 2 } })
         add(session.id, "user", { type: "text", text: "hidden-synthetic", synthetic: true })
@@ -141,6 +177,7 @@ describe("RecallSearch", () => {
         expect((await run("EADDRINUSE")).results[0]?.matches[0]?.source).toBe("error")
         expect((await run("url-only-cedar")).results[0]?.matches[0]?.source).toBe("reference")
         expect((await run("aGlkZGVuLWRhdGEtdXJs")).results).toEqual([])
+        expect((await run("aGlkZGVuLXJlc291cmNlLXVyaQ")).results).toEqual([])
         expect((await run("hidden-success-output")).results).toEqual([])
         expect((await run("hidden-reasoning")).results).toEqual([])
         expect((await run("hidden-synthetic")).results).toEqual([])

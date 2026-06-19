@@ -1,15 +1,14 @@
 import path from "path"
 import { eq, inArray } from "drizzle-orm"
 import { Database } from "@/storage/db"
+import type { MessageV2 } from "@/session/message-v2"
 import { SessionTable } from "@/session/session.sql"
-import type { PartID, SessionID } from "@/session/schema"
+import type { MessageID, PartID, SessionID } from "@/session/schema"
 import { Filesystem } from "@/util/filesystem"
 import { ProjectTable } from "@/project/project.sql"
 import { ProjectID } from "@/project/schema"
 
 export namespace RecallSearch {
-  const BATCH_SIZE = 64
-  const MAX_BATCH_PARTS = 1_024
   const PAGE_SIZE = 1_024
   const MAX_QUERY = 256
   const MAX_TERMS = 12
@@ -34,7 +33,8 @@ export namespace RecallSearch {
           THEN coalesce(json_extract(p.data, '$.url'), '') ELSE '' END || ' ' ||
         coalesce(json_extract(p.data, '$.source.path'), '') || ' ' ||
         coalesce(json_extract(p.data, '$.source.name'), '') || ' ' ||
-        coalesce(json_extract(p.data, '$.source.uri'), '') || ' ' ||
+        CASE WHEN coalesce(json_extract(p.data, '$.source.uri'), '') NOT LIKE 'data:%'
+          THEN coalesce(json_extract(p.data, '$.source.uri'), '') ELSE '' END || ' ' ||
         coalesce(json_extract(p.data, '$.source.clientName'), '')
       )
       ELSE coalesce(json_extract(p.data, '$.state.error'), '')
@@ -52,39 +52,23 @@ export namespace RecallSearch {
   const SEARCH_SQL = `
     SELECT ${FIELDS_SQL}
     FROM json_each(?) AS ids
-    CROSS JOIN message AS m INDEXED BY message_session_time_created_id_idx
-    CROSS JOIN part AS p INDEXED BY part_message_id_id_idx
-    WHERE m.session_id = ids.value
-      AND p.message_id = m.id
-      AND p.session_id = m.session_id
-      AND p.rowid <= ?
-      AND (${FILTER_SQL})`
-
-  const HYDRATE_SQL = `
-    SELECT ${FIELDS_SQL}
-    FROM json_each(?) AS ids
     CROSS JOIN part AS p
     CROSS JOIN message AS m
     WHERE p.id = ids.value
       AND m.id = p.message_id
       AND m.session_id = p.session_id
+      AND NOT (m.session_id = ? AND m.id >= ?)
       AND (${FILTER_SQL})`
-
-  const COUNT_SQL = `
-    SELECT p.session_id AS sessionID, count(*) AS count
-    FROM json_each(?) AS ids
-    CROSS JOIN part AS p INDEXED BY part_session_idx
-    WHERE p.session_id = ids.value AND p.rowid <= ?
-    GROUP BY p.session_id`
 
   const PAGE_SQL = `
     SELECT p.rowid AS rowid, p.id AS partID
     FROM part AS p INDEXED BY part_session_idx
-    WHERE p.session_id = ? AND p.rowid > ? AND p.rowid <= ?
+    WHERE p.session_id = ? AND p.rowid > ? AND p.rowid <= ? AND p.id <= ?
     ORDER BY p.rowid
     LIMIT ${PAGE_SIZE}`
 
-  const END_SQL = "SELECT max(rowid) AS rowid FROM part"
+  const END_ROWID_SQL = "SELECT max(rowid) AS rowid FROM part"
+  const END_ID_SQL = "SELECT max(id) AS id FROM part"
 
   export type Source = "user" | "assistant" | "reference" | "error"
 
@@ -128,11 +112,6 @@ export namespace RecallSearch {
     text: string
   }
 
-  type CountRow = {
-    sessionID: SessionID
-    count: number
-  }
-
   type PageRow = {
     rowid: number
     partID: PartID
@@ -144,6 +123,8 @@ export namespace RecallSearch {
     directories: string[]
     limit?: number
     signal?: AbortSignal
+    excludeSessionID?: SessionID
+    excludeFromMessageID?: MessageID
   }): Promise<Output> {
     const parsed = parse(input.query)
     const limit = input.limit ?? 20
@@ -173,7 +154,7 @@ export namespace RecallSearch {
       const directory = Filesystem.resolve(row.directory)
       if (!roots.some((root) => Filesystem.contains(root, directory))) continue
 
-      const title = fold(row.title)
+      const title = row.id === input.excludeSessionID ? "" : fold(row.title)
       const titleMask = mask(title, parsed.terms)
       items.set(row.id, {
         id: row.id,
@@ -193,88 +174,64 @@ export namespace RecallSearch {
 
     const ids = [...items.keys()]
     const sqlite = Database.Client().$client
-    const end = sqlite.prepare<{ rowid: number | null }, []>(END_SQL).get()?.rowid ?? 0
-    const counts = new Map(
-      sqlite
-        .prepare<CountRow, [string, number]>(COUNT_SQL)
-        .all(JSON.stringify(ids), end)
-        .map((row) => [row.sessionID, row.count] as const),
-    )
-    const statement = sqlite.prepare<Row, [string, number]>(SEARCH_SQL)
-    const hydrate = sqlite.prepare<Row, [string]>(HYDRATE_SQL)
-    const page = sqlite.prepare<PageRow, [string, number, number]>(PAGE_SQL)
+    const rowid = sqlite.prepare<{ rowid: number | null }, []>(END_ROWID_SQL).get()?.rowid ?? 0
+    const partID = sqlite.prepare<{ id: string | null }, []>(END_ID_SQL).get()?.id ?? ""
+    const statement = sqlite.prepare<Row, [string, string, string]>(SEARCH_SQL)
+    const page = sqlite.prepare<PageRow, [string, number, number, string]>(PAGE_SQL)
+    const excludeSessionID = input.excludeSessionID ?? ""
+    const excludeFromMessageID = input.excludeFromMessageID ?? ""
+    let parts = 0
 
-    const consume = (rows: Row[]) => {
-      abort(input.signal)
-      for (let index = 0; index < rows.length; index++) {
-        if (index % 128 === 0) abort(input.signal)
-        const row = rows[index]
-        const item = items.get(row.sessionID)
-        if (!item || !row.text) continue
+    const consume = (row: Row) => {
+      const item = items.get(row.sessionID)
+      if (!item || !row.text) return
 
-        const normalized = fold(row.text)
-        const matched = mask(normalized, parsed.terms)
-        if (matched === 0) continue
+      const normalized = fold(row.text)
+      const matched = mask(normalized, parsed.terms)
+      if (matched === 0) return
 
-        item.mask |= matched
-        item.sourceMask[row.source] |= matched
-        const phrase = normalized.includes(parsed.phrase)
-        item.phrase = Math.max(item.phrase, phrase ? weight(row.source) : 0)
-        candidate(
-          item.candidates,
-          {
-            source: row.source,
-            partID: row.partID,
-            mask: matched,
-            phrase,
-          },
-          () => excerpt(row.text, parsed),
-        )
-      }
+      item.mask |= matched
+      item.sourceMask[row.source] |= matched
+      const phrase = normalized.includes(parsed.phrase)
+      item.phrase = Math.max(item.phrase, phrase ? weight(row.source) : 0)
+      candidate(
+        item.candidates,
+        {
+          source: row.source,
+          partID: row.partID,
+          mask: matched,
+          phrase,
+        },
+        () => excerpt(row.text, parsed),
+      )
     }
 
-    const scan = async (batch: SessionID[]) => {
-      if (batch.length === 0) return
+    for (let index = 0; index < ids.length; index++) {
       abort(input.signal)
-      consume(statement.all(JSON.stringify(batch), end))
+      const sessionID = ids[index]
+      let cursor = 0
+      while (cursor < rowid) {
+        const rows = page.all(sessionID, cursor, rowid, partID)
+        if (rows.length === 0) break
+        cursor = rows.at(-1)!.rowid
+        for (const row of statement.iterate(
+          JSON.stringify(rows.map((entry) => entry.partID)),
+          excludeSessionID,
+          excludeFromMessageID,
+        )) {
+          consume(row)
+        }
+        parts += rows.length
+        if (rows.length < PAGE_SIZE) break
+        await pause()
+        abort(input.signal)
+      }
+      if (index % 16 !== 15) continue
       await pause()
       abort(input.signal)
     }
-
-    const large = async (sessionID: SessionID) => {
-      let cursor = 0
-      while (cursor < end) {
-        abort(input.signal)
-        const rows = page.all(sessionID, cursor, end)
-        if (rows.length === 0) break
-        cursor = rows.at(-1)!.rowid
-        consume(hydrate.all(JSON.stringify(rows.map((row) => row.partID))))
-        await pause()
-        abort(input.signal)
-        if (rows.length < PAGE_SIZE) break
-      }
-    }
-
-    let batch: SessionID[] = []
-    let size = 0
-    for (const sessionID of ids) {
-      const count = counts.get(sessionID) ?? 0
-      if (count > MAX_BATCH_PARTS) {
-        await scan(batch)
-        batch = []
-        size = 0
-        await large(sessionID)
-        continue
-      }
-      if (batch.length >= BATCH_SIZE || size + count > MAX_BATCH_PARTS) {
-        await scan(batch)
-        batch = []
-        size = 0
-      }
-      batch.push(sessionID)
-      size += count
-    }
-    await scan(batch)
+    await pause()
+    abort(input.signal)
 
     const full = (1 << parsed.terms.length) - 1
     const best: Item[] = []
@@ -292,12 +249,20 @@ export namespace RecallSearch {
           item,
       ),
       sessions: items.size,
-      parts: [...counts.values()].reduce((total, count) => total + count, 0),
+      parts,
     }
   }
 
   export function inert(value: string) {
     return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+  }
+
+  export function active(messages: MessageV2.WithParts[], messageID: MessageID) {
+    const user = messages.findLast(
+      (message) =>
+        message.info.role === "user" && message.parts.some((part) => part.type !== "text" || !part.synthetic),
+    )
+    return user?.info.id ?? messageID
   }
 
   function family(id: string) {
