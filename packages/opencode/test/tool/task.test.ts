@@ -528,7 +528,6 @@ describe("tool.task", () => {
               },
             }
           }),
-        loop: (input) => Effect.succeed(reply({ sessionID: input.sessionID, parts: [] }, "done")),
       }
 
       const exit = yield* def
@@ -1057,7 +1056,6 @@ describe("tool.task cost propagation", () => {
               abort.abort()
               return yield* Effect.interrupt
             }),
-          loop: (input) => Effect.succeed(reply({ sessionID: input.sessionID, parts: [] }, "done")),
         }
 
         yield* def

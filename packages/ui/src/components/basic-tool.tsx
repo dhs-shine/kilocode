@@ -38,7 +38,6 @@ export interface BasicToolProps {
   animated?: boolean
   allowPendingToggle?: boolean // kilocode_change
   onSubtitleClick?: () => void
-  onOpenChange?: (open: boolean) => void // kilocode_change
   onTriggerClick?: JSX.EventHandlerUnion<HTMLElement, MouseEvent>
   triggerHref?: string
   clickable?: boolean

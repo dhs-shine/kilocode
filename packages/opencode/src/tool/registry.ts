@@ -99,6 +99,7 @@ export const layer: Layer.Layer<
   | Agent.Service
   | Skill.Service
   | Session.Service
+  | SessionStatus.Service // kilocode_change
   | BackgroundJob.Service
   | Provider.Service
   | Git.Service
@@ -435,7 +436,11 @@ export const defaultLayer = Layer.suspend(
         Layer.provide(Truncate.defaultLayer),
       )
       // kilocode_change start - provide Kilo-owned registry dependencies
-      .pipe(Layer.provide(Command.defaultLayer), Layer.provide(RuntimeFlags.defaultLayer)),
+      .pipe(
+        Layer.provide(Command.defaultLayer),
+        Layer.provide(RuntimeFlags.defaultLayer),
+        Layer.provide(SessionStatus.defaultLayer),
+      ),
   // kilocode_change end
 )
 
