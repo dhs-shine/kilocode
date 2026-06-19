@@ -738,6 +738,6 @@ html[data-theme="kilo-vscode"] [data-component="reasoning-part"] {
 
 @media (prefers-reduced-motion: reduce) {
   [data-component="reasoning-part"] [data-slot="collapsible-content"] {
-    animation: none;
+    animation-duration: 0.01ms;
   }
 }

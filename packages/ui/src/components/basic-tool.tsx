@@ -176,6 +176,14 @@ export function BasicTool(props: BasicToolProps) {
     props.onOpenChange?.(value) // kilocode_change
   }
 
+  // kilocode_change start
+  const end = (event: AnimationEvent) => {
+    if (event.target !== event.currentTarget) return
+    if (!props.retainDetails || open()) return
+    setState("ready", false)
+  }
+  // kilocode_change end
+
   const trigger = () => (
     <div
       data-component="tool-trigger"
@@ -300,7 +308,7 @@ export function BasicTool(props: BasicToolProps) {
       </Show>
       {/* kilocode_change start */}
       <Show when={!props.animated && (hasChildren() || hasDetails()) && !props.hideDetails}>
-        <Collapsible.Content>
+        <Collapsible.Content onAnimationEnd={end}>
           <Show when={!props.defer || ready()}>{props.children}</Show>
         </Collapsible.Content>
       </Show>
