@@ -1,20 +1,90 @@
 import path from "path"
-import { and, asc, desc, eq, gt, gte, inArray, lte, sql } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { Database } from "@/storage/db"
-import { MessageTable, PartTable, SessionTable } from "@/session/session.sql"
-import type { SessionID } from "@/session/schema"
+import { SessionTable } from "@/session/session.sql"
+import type { PartID, SessionID } from "@/session/schema"
 import { Filesystem } from "@/util/filesystem"
 import { ProjectTable } from "@/project/project.sql"
 import { ProjectID } from "@/project/schema"
 
 export namespace RecallSearch {
-  const SESSION_BATCH = 64
-  const PART_BATCH = 256
+  const BATCH_SIZE = 64
+  const MAX_BATCH_PARTS = 1_024
+  const PAGE_SIZE = 1_024
   const MAX_QUERY = 256
   const MAX_TERMS = 12
   const MAX_SNIPPETS = 3
   const SNIPPET_CHARS = 360
   const SNIPPET_CONTEXT = 120
+  const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" })
+
+  const FIELDS_SQL = `
+    p.id AS partID,
+    p.session_id AS sessionID,
+    CASE
+      WHEN json_extract(p.data, '$.type') = 'text' THEN json_extract(m.data, '$.role')
+      WHEN json_extract(p.data, '$.type') = 'file' THEN 'reference'
+      ELSE 'error'
+    END AS source,
+    CASE
+      WHEN json_extract(p.data, '$.type') = 'text' THEN coalesce(json_extract(p.data, '$.text'), '')
+      WHEN json_extract(p.data, '$.type') = 'file' THEN trim(
+        coalesce(json_extract(p.data, '$.filename'), '') || ' ' ||
+        CASE WHEN coalesce(json_extract(p.data, '$.url'), '') NOT LIKE 'data:%'
+          THEN coalesce(json_extract(p.data, '$.url'), '') ELSE '' END || ' ' ||
+        coalesce(json_extract(p.data, '$.source.path'), '') || ' ' ||
+        coalesce(json_extract(p.data, '$.source.name'), '') || ' ' ||
+        coalesce(json_extract(p.data, '$.source.uri'), '') || ' ' ||
+        coalesce(json_extract(p.data, '$.source.clientName'), '')
+      )
+      ELSE coalesce(json_extract(p.data, '$.state.error'), '')
+    END AS text`
+
+  const FILTER_SQL = `
+    (json_extract(p.data, '$.type') = 'text'
+      AND json_extract(m.data, '$.role') IN ('user', 'assistant')
+      AND coalesce(json_extract(p.data, '$.synthetic'), 0) = 0
+      AND coalesce(json_extract(p.data, '$.ignored'), 0) = 0)
+    OR json_extract(p.data, '$.type') = 'file'
+    OR (json_extract(p.data, '$.type') = 'tool'
+      AND json_extract(p.data, '$.state.status') = 'error')`
+
+  const SEARCH_SQL = `
+    SELECT ${FIELDS_SQL}
+    FROM json_each(?) AS ids
+    CROSS JOIN message AS m INDEXED BY message_session_time_created_id_idx
+    CROSS JOIN part AS p INDEXED BY part_message_id_id_idx
+    WHERE m.session_id = ids.value
+      AND p.message_id = m.id
+      AND p.session_id = m.session_id
+      AND p.rowid <= ?
+      AND (${FILTER_SQL})`
+
+  const HYDRATE_SQL = `
+    SELECT ${FIELDS_SQL}
+    FROM json_each(?) AS ids
+    CROSS JOIN part AS p
+    CROSS JOIN message AS m
+    WHERE p.id = ids.value
+      AND m.id = p.message_id
+      AND m.session_id = p.session_id
+      AND (${FILTER_SQL})`
+
+  const COUNT_SQL = `
+    SELECT p.session_id AS sessionID, count(*) AS count
+    FROM json_each(?) AS ids
+    CROSS JOIN part AS p INDEXED BY part_session_idx
+    WHERE p.session_id = ids.value AND p.rowid <= ?
+    GROUP BY p.session_id`
+
+  const PAGE_SQL = `
+    SELECT p.rowid AS rowid, p.id AS partID
+    FROM part AS p INDEXED BY part_session_idx
+    WHERE p.session_id = ? AND p.rowid > ? AND p.rowid <= ?
+    ORDER BY p.rowid
+    LIMIT ${PAGE_SIZE}`
+
+  const END_SQL = "SELECT max(rowid) AS rowid FROM part"
 
   export type Source = "user" | "assistant" | "reference" | "error"
 
@@ -46,12 +116,26 @@ export namespace RecallSearch {
   type Item = Result & {
     phrase: number
     titleMask: number
-    userMask: number
-    assistantMask: number
-    referenceMask: number
-    errorMask: number
+    sourceMask: Record<Source, number>
     mask: number
-    candidates: Candidate[]
+    candidates: Array<Candidate | undefined>
+  }
+
+  type Row = {
+    partID: PartID
+    sessionID: SessionID
+    source: Source
+    text: string
+  }
+
+  type CountRow = {
+    sessionID: SessionID
+    count: number
+  }
+
+  type PageRow = {
+    rowid: number
+    partID: PartID
   }
 
   export async function search(input: {
@@ -70,139 +154,129 @@ export namespace RecallSearch {
     const roots = [...new Set(input.directories.map(Filesystem.resolve))]
     if (roots.length === 0) return { results: [], sessions: 0, parts: 0 }
 
-    const projects = new Set(family(input.projectID))
-    const anchor = Database.use((db) =>
-      db.select({ id: SessionTable.id }).from(SessionTable).orderBy(asc(SessionTable.id)).limit(1).get(),
-    )
-    if (!anchor) return { results: [], sessions: 0, parts: 0 }
-
-    const rowid = sql<number>`${PartTable}.rowid`
-    const last = Database.use((db) => db.select({ rowid }).from(PartTable).orderBy(desc(rowid)).limit(1).get())
-    const full = (1 << parsed.terms.length) - 1
-    const items = new Map<string, Item>()
-    let cursor: SessionID | undefined
-    let sessions = 0
-
-    while (true) {
-      abort(input.signal)
-      const rows = Database.use((db) =>
-        db
-          .select({
-            id: SessionTable.id,
-            projectID: SessionTable.project_id,
-            title: SessionTable.title,
-            directory: SessionTable.directory,
-            updated: SessionTable.time_updated,
-          })
-          .from(SessionTable)
-          .where(and(cursor ? gt(SessionTable.id, cursor) : undefined, gte(SessionTable.id, anchor.id)))
-          .orderBy(asc(SessionTable.id))
-          .limit(SESSION_BATCH)
-          .all(),
-      )
-      if (rows.length === 0) break
-
-      cursor = rows.at(-1)!.id
-      for (const row of rows) {
-        if (!projects.has(row.projectID)) continue
-        const directory = Filesystem.resolve(row.directory)
-        if (!roots.some((root) => Filesystem.contains(root, directory))) continue
-
-        const title = fold(row.title)
-        const titleMask = mask(title, parsed.terms)
-        items.set(row.id, {
-          id: row.id,
-          title: row.title,
-          directory: row.directory,
-          updated: row.updated,
-          matches: [],
-          phrase: title.includes(parsed.phrase) ? 5 : 0,
-          titleMask,
-          userMask: 0,
-          assistantMask: 0,
-          referenceMask: 0,
-          errorMask: 0,
-          mask: titleMask,
-          candidates: [],
+    abort(input.signal)
+    const projects = family(input.projectID).map((id) => ProjectID.make(id))
+    const rows = Database.use((db) =>
+      db
+        .select({
+          id: SessionTable.id,
+          title: SessionTable.title,
+          directory: SessionTable.directory,
+          updated: SessionTable.time_updated,
         })
-        sessions++
-      }
-      if (rows.length < SESSION_BATCH) break
-      await pause()
-    }
+        .from(SessionTable)
+        .where(inArray(SessionTable.project_id, projects))
+        .all(),
+    )
+    const items = new Map<SessionID, Item>()
+    for (const row of rows) {
+      const directory = Filesystem.resolve(row.directory)
+      if (!roots.some((root) => Filesystem.contains(root, directory))) continue
 
-    let part = 0
-    let parts = 0
-    const end = last?.rowid ?? 0
-    while (part < end && items.size > 0) {
+      const title = fold(row.title)
+      const titleMask = mask(title, parsed.terms)
+      items.set(row.id, {
+        id: row.id,
+        title: row.title,
+        directory: row.directory,
+        updated: row.updated,
+        matches: [],
+        phrase: title.includes(parsed.phrase) ? 5 : 0,
+        titleMask,
+        sourceMask: { user: 0, assistant: 0, reference: 0, error: 0 },
+        mask: titleMask,
+        candidates: Array.from({ length: parsed.terms.length }),
+      })
+    }
+    abort(input.signal)
+    if (items.size === 0) return { results: [], sessions: 0, parts: 0 }
+
+    const ids = [...items.keys()]
+    const sqlite = Database.Client().$client
+    const end = sqlite.prepare<{ rowid: number | null }, []>(END_SQL).get()?.rowid ?? 0
+    const counts = new Map(
+      sqlite
+        .prepare<CountRow, [string, number]>(COUNT_SQL)
+        .all(JSON.stringify(ids), end)
+        .map((row) => [row.sessionID, row.count] as const),
+    )
+    const statement = sqlite.prepare<Row, [string, number]>(SEARCH_SQL)
+    const hydrate = sqlite.prepare<Row, [string]>(HYDRATE_SQL)
+    const page = sqlite.prepare<PageRow, [string, number, number]>(PAGE_SQL)
+
+    const consume = (rows: Row[]) => {
       abort(input.signal)
-      const page = Database.use((db) =>
-        db
-          .select({ rowid, id: PartTable.id, sessionID: PartTable.session_id })
-          .from(PartTable)
-          .where(and(gt(rowid, part), lte(rowid, end)))
-          .orderBy(asc(rowid))
-          .limit(PART_BATCH)
-          .all(),
-      )
-      if (page.length === 0) break
+      for (let index = 0; index < rows.length; index++) {
+        if (index % 128 === 0) abort(input.signal)
+        const row = rows[index]
+        const item = items.get(row.sessionID)
+        if (!item || !row.text) continue
 
-      part = page.at(-1)!.rowid
-      const selected = page.filter((entry) => items.has(entry.sessionID))
-      parts += selected.length
-      if (selected.length > 0) {
-        const rows = Database.use((db) =>
-          db
-            .select({
-              id: PartTable.id,
-              sessionID: PartTable.session_id,
-              source: source(),
-              text: content(),
-            })
-            .from(PartTable)
-            .innerJoin(
-              MessageTable,
-              and(eq(MessageTable.id, PartTable.message_id), eq(MessageTable.session_id, PartTable.session_id)),
-            )
-            .where(
-              inArray(
-                PartTable.id,
-                selected.map((entry) => entry.id),
-              ),
-            )
-            .all(),
-        )
+        const normalized = fold(row.text)
+        const matched = mask(normalized, parsed.terms)
+        if (matched === 0) continue
 
-        for (const row of rows) {
-          if (!row.text) continue
-          const normalized = fold(row.text)
-          const matched = mask(normalized, parsed.terms)
-          if (matched === 0) continue
-
-          const item = items.get(row.sessionID)
-          if (!item) continue
-          item.mask |= matched
-          if (row.source === "user") item.userMask |= matched
-          if (row.source === "assistant") item.assistantMask |= matched
-          if (row.source === "reference") item.referenceMask |= matched
-          if (row.source === "error") item.errorMask |= matched
-
-          const phrase = normalized.indexOf(parsed.phrase)
-          const position = phrase >= 0 ? phrase : first(normalized, parsed.terms)
-          item.phrase = Math.max(item.phrase, phrase >= 0 ? weight(row.source) : 0)
-          candidate(item.candidates, {
+        item.mask |= matched
+        item.sourceMask[row.source] |= matched
+        const phrase = normalized.includes(parsed.phrase)
+        item.phrase = Math.max(item.phrase, phrase ? weight(row.source) : 0)
+        candidate(
+          item.candidates,
+          {
             source: row.source,
-            partID: row.id,
-            text: excerpt(row.text, position),
+            partID: row.partID,
             mask: matched,
-            phrase: phrase >= 0,
-          })
-        }
+            phrase,
+          },
+          () => excerpt(row.text, parsed),
+        )
       }
-      if (page.length < PART_BATCH) break
-      await pause()
     }
 
+    const scan = async (batch: SessionID[]) => {
+      if (batch.length === 0) return
+      abort(input.signal)
+      consume(statement.all(JSON.stringify(batch), end))
+      await pause()
+      abort(input.signal)
+    }
+
+    const large = async (sessionID: SessionID) => {
+      let cursor = 0
+      while (cursor < end) {
+        abort(input.signal)
+        const rows = page.all(sessionID, cursor, end)
+        if (rows.length === 0) break
+        cursor = rows.at(-1)!.rowid
+        consume(hydrate.all(JSON.stringify(rows.map((row) => row.partID))))
+        await pause()
+        abort(input.signal)
+        if (rows.length < PAGE_SIZE) break
+      }
+    }
+
+    let batch: SessionID[] = []
+    let size = 0
+    for (const sessionID of ids) {
+      const count = counts.get(sessionID) ?? 0
+      if (count > MAX_BATCH_PARTS) {
+        await scan(batch)
+        batch = []
+        size = 0
+        await large(sessionID)
+        continue
+      }
+      if (batch.length >= BATCH_SIZE || size + count > MAX_BATCH_PARTS) {
+        await scan(batch)
+        batch = []
+        size = 0
+      }
+      batch.push(sessionID)
+      size += count
+    }
+    await scan(batch)
+
+    const full = (1 << parsed.terms.length) - 1
     const best: Item[] = []
     for (const item of items.values()) {
       if ((item.mask & full) !== full) continue
@@ -214,20 +288,11 @@ export namespace RecallSearch {
 
     return {
       results: best.map(
-        ({
-          phrase: _phrase,
-          titleMask: _titleMask,
-          userMask: _userMask,
-          assistantMask: _assistantMask,
-          referenceMask: _referenceMask,
-          errorMask: _errorMask,
-          mask: _mask,
-          candidates: _candidates,
-          ...item
-        }) => item,
+        ({ phrase: _phrase, titleMask: _title, sourceMask: _source, mask: _mask, candidates: _candidates, ...item }) =>
+          item,
       ),
-      sessions,
-      parts,
+      sessions: items.size,
+      parts: [...counts.values()].reduce((total, count) => total + count, 0),
     }
   }
 
@@ -262,46 +327,12 @@ export namespace RecallSearch {
     return { phrase, terms }
   }
 
-  function content() {
-    const role = sql<string>`json_extract(${MessageTable.data}, '$.role')`
-    return sql<string>`case
-      when json_extract(${PartTable.data}, '$.type') = 'text'
-        and ${role} in ('user', 'assistant')
-        and coalesce(json_extract(${PartTable.data}, '$.synthetic'), 0) = 0
-        and coalesce(json_extract(${PartTable.data}, '$.ignored'), 0) = 0
-        then coalesce(json_extract(${PartTable.data}, '$.text'), '')
-      when json_extract(${PartTable.data}, '$.type') = 'file' then trim(
-        coalesce(json_extract(${PartTable.data}, '$.filename'), '') || ' ' ||
-        coalesce(json_extract(${PartTable.data}, '$.source.path'), '') || ' ' ||
-        coalesce(json_extract(${PartTable.data}, '$.source.name'), '')
-      )
-      when json_extract(${PartTable.data}, '$.type') = 'tool'
-        and json_extract(${PartTable.data}, '$.state.status') = 'error'
-        then coalesce(json_extract(${PartTable.data}, '$.state.error'), '')
-      else ''
-    end`
-  }
-
-  function source() {
-    const kind = sql<string>`json_extract(${PartTable.data}, '$.type')`
-    const role = sql<Source>`json_extract(${MessageTable.data}, '$.role')`
-    return sql<Source>`case when ${kind} = 'text' then ${role} when ${kind} = 'file' then 'reference' else 'error' end`
-  }
-
   function fold(value: string) {
     return value.normalize("NFKC").toLowerCase()
   }
 
   function mask(value: string, terms: string[]) {
     return terms.reduce((result, term, index) => result | (value.includes(term) ? 1 << index : 0), 0)
-  }
-
-  function first(value: string, terms: string[]) {
-    return terms.reduce((result, term) => {
-      const position = value.indexOf(term)
-      if (position < 0) return result
-      return result < 0 ? position : Math.min(result, position)
-    }, -1)
   }
 
   function bits(value: number) {
@@ -317,34 +348,39 @@ export namespace RecallSearch {
     return 1
   }
 
-  function candidate(items: Candidate[], item: Candidate) {
-    items.push(item)
-    items.sort((a, b) => {
-      if (a.phrase !== b.phrase) return Number(b.phrase) - Number(a.phrase)
-      if (weight(a.source) !== weight(b.source)) return weight(b.source) - weight(a.source)
-      return bits(b.mask) - bits(a.mask)
-    })
-    const kept: Candidate[] = []
-    let covered = 0
-    for (const value of items) {
-      if ((value.mask & ~covered) === 0) continue
-      kept.push(value)
-      covered |= value.mask
+  function candidate(items: Array<Candidate | undefined>, item: Omit<Candidate, "text">, text: () => string) {
+    const indexes: number[] = []
+    for (let index = 0; index < items.length; index++) {
+      if ((item.mask & (1 << index)) === 0) continue
+      const current = items[index]
+      if (current && compareCandidate(current, item) <= 0) continue
+      indexes.push(index)
     }
-    items.splice(0, items.length, ...kept)
+    if (indexes.length === 0) return
+    const next = { ...item, text: text() }
+    for (const index of indexes) items[index] = next
+  }
+
+  function compareCandidate(a: Omit<Candidate, "text">, b: Omit<Candidate, "text">) {
+    if (a.phrase !== b.phrase) return Number(b.phrase) - Number(a.phrase)
+    if (weight(a.source) !== weight(b.source)) return weight(b.source) - weight(a.source)
+    if (bits(a.mask) !== bits(b.mask)) return bits(b.mask) - bits(a.mask)
+    return a.partID.localeCompare(b.partID)
   }
 
   function snippets(item: Item, full: number) {
+    const candidates = [...new Set(item.candidates.filter((value) => value !== undefined))]
     const result: Match[] = []
     let missing = full & ~item.titleMask
-    for (const value of item.candidates) {
-      if (result.length >= MAX_SNIPPETS) break
-      if (missing && (value.mask & missing) === 0) continue
+    while (result.length < MAX_SNIPPETS && missing !== 0) {
+      candidates.sort((a, b) => bits(b.mask & missing) - bits(a.mask & missing) || compareCandidate(a, b))
+      const value = candidates.shift()
+      if (!value || (value.mask & missing) === 0) break
       result.push({ source: value.source, partID: value.partID, text: value.text })
       missing &= ~value.mask
     }
-    if (result.length === 0 && item.candidates[0]) {
-      const value = item.candidates[0]
+    if (result.length === 0 && candidates[0]) {
+      const value = candidates.sort(compareCandidate)[0]
       result.push({ source: value.source, partID: value.partID, text: value.text })
     }
     return result
@@ -353,18 +389,38 @@ export namespace RecallSearch {
   function compare(a: Item, b: Item) {
     if (a.phrase !== b.phrase) return b.phrase - a.phrase
     if (bits(a.titleMask) !== bits(b.titleMask)) return bits(b.titleMask) - bits(a.titleMask)
-    if (bits(a.userMask) !== bits(b.userMask)) return bits(b.userMask) - bits(a.userMask)
-    if (bits(a.assistantMask) !== bits(b.assistantMask)) return bits(b.assistantMask) - bits(a.assistantMask)
-    if (bits(a.referenceMask) !== bits(b.referenceMask)) return bits(b.referenceMask) - bits(a.referenceMask)
-    if (bits(a.errorMask) !== bits(b.errorMask)) return bits(b.errorMask) - bits(a.errorMask)
+    for (const source of ["user", "assistant", "reference", "error"] as const) {
+      if (bits(a.sourceMask[source]) !== bits(b.sourceMask[source])) {
+        return bits(b.sourceMask[source]) - bits(a.sourceMask[source])
+      }
+    }
     if (a.updated !== b.updated) return b.updated - a.updated
     return a.id.localeCompare(b.id)
   }
 
-  function excerpt(text: string, position: number) {
+  function excerpt(text: string, query: { phrase: string; terms: string[] }) {
+    const raw = text.toLowerCase()
+    const phrase = raw.indexOf(query.phrase)
+    const positions = query.terms.map((term) => raw.indexOf(term)).filter((position) => position >= 0)
+    const direct = phrase >= 0 ? phrase : positions.length ? Math.min(...positions) : -1
+    const ascii = direct >= 0 && !/[^\x00-\x7F]/.test(text.slice(0, direct))
+    const position = ascii ? direct : locate(text, query)
     const start = Math.max(0, position - SNIPPET_CONTEXT)
     const value = text.slice(start, start + SNIPPET_CHARS).trim()
     return `${start > 0 ? "..." : ""}${value}${start + SNIPPET_CHARS < text.length ? "..." : ""}`
+  }
+
+  function locate(text: string, query: { phrase: string; terms: string[] }) {
+    const normalized = fold(text)
+    const phrase = normalized.indexOf(query.phrase)
+    const positions = query.terms.map((term) => normalized.indexOf(term)).filter((position) => position >= 0)
+    const target = phrase >= 0 ? phrase : positions.length ? Math.min(...positions) : 0
+    let offset = 0
+    for (const item of segmenter.segment(text)) {
+      offset += fold(item.segment).length
+      if (offset > target) return item.index
+    }
+    return 0
   }
 
   function abort(signal?: AbortSignal) {

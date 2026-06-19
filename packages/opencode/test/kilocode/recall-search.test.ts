@@ -73,6 +73,13 @@ describe("RecallSearch", () => {
         const result = await run("zephyr cobalt")
         expect(result.results.map((item) => item.id)).toEqual([session.id])
         expect(result.results[0]?.matches.map((item) => item.source)).toEqual(["user", "assistant"])
+
+        const title = await Effect.runPromise(sessions.create({ title: "ranking-needle" }))
+        const user = await Effect.runPromise(sessions.create({ title: "User rank" }))
+        const assistant = await Effect.runPromise(sessions.create({ title: "Assistant rank" }))
+        add(user.id, "user", { type: "text", text: "ranking-needle" })
+        add(assistant.id, "assistant", { type: "text", text: "ranking-needle" })
+        expect((await run("ranking-needle")).results.map((item) => item.id)).toEqual([title.id, user.id, assistant.id])
       },
     })
   })
@@ -117,11 +124,23 @@ describe("RecallSearch", () => {
             time: { start: 1, end: 2 },
           },
         })
+        add(session.id, "user", {
+          type: "file",
+          mime: "text/plain",
+          url: "file:///tmp/url-only-cedar.ts",
+        })
+        add(session.id, "user", {
+          type: "file",
+          mime: "text/plain",
+          url: "data:text/plain;base64,aGlkZGVuLWRhdGEtdXJs",
+        })
         add(session.id, "assistant", { type: "reasoning", text: "hidden-reasoning", time: { start: 1, end: 2 } })
         add(session.id, "user", { type: "text", text: "hidden-synthetic", synthetic: true })
 
         expect((await run("RecallSearch")).results[0]?.matches[0]?.source).toBe("reference")
         expect((await run("EADDRINUSE")).results[0]?.matches[0]?.source).toBe("error")
+        expect((await run("url-only-cedar")).results[0]?.matches[0]?.source).toBe("reference")
+        expect((await run("aGlkZGVuLWRhdGEtdXJs")).results).toEqual([])
         expect((await run("hidden-success-output")).results).toEqual([])
         expect((await run("hidden-reasoning")).results).toEqual([])
         expect((await run("hidden-synthetic")).results).toEqual([])
@@ -174,6 +193,7 @@ describe("RecallSearch", () => {
         const sessions = await Effect.runPromise(Session.Service.pipe(Effect.provide(Session.defaultLayer)))
         const session = await Effect.runPromise(sessions.create({ title: "Large session" }))
         add(session.id, "user", { type: "text", text: "job_id reached 100%" })
+        add(session.id, "user", { type: "text", text: `${"x".repeat(1_000)} Compatibility ＦＯＯ marker` })
         add(session.id, "user", {
           type: "text",
           text: `terminal ${"x".repeat(20_000)} terminal needle ${"y".repeat(20_000)}`,
@@ -181,6 +201,9 @@ describe("RecallSearch", () => {
         for (let index = 0; index < 300; index++) add(session.id, "user", { type: "text", text: `noise ${index}` })
 
         expect((await run("job_id 100%")).results.map((item) => item.id)).toEqual([session.id])
+        const compatibility = await run("foo")
+        expect(compatibility.results.map((item) => item.id)).toEqual([session.id])
+        expect(compatibility.results[0]?.matches[0]?.text).toContain("ＦＯＯ")
         const snippet = (await run("terminal needle")).results[0]?.matches[0]?.text ?? ""
         expect(snippet).toContain("terminal needle")
         expect(snippet.length).toBeLessThan(370)
