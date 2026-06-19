@@ -52,11 +52,16 @@ describe("server URL display", () => {
     })
   })
 
-  test("formats IPv6 bind URLs", () => {
+  test("formats IPv6 bind URLs without advertising IPv4 interfaces", () => {
     expect(serverUrls("::1", 4096)).toStrictEqual({
       local: "http://[::1]:4096",
       network: undefined,
       bind: "http://[::1]:4096",
+    })
+    expect(serverUrls("::", 4096)).toStrictEqual({
+      local: "http://[::1]:4096",
+      network: undefined,
+      bind: "http://[::]:4096",
     })
   })
 })

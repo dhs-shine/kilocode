@@ -27,9 +27,8 @@ function format(hostname: string, port: number) {
 
 export function serverUrls(hostname: string, port: number) {
   const bind = format(hostname, port)
-  const wildcard = hostname === "0.0.0.0" || hostname === "::"
-  const local = wildcard ? format("localhost", port) : bind
-  const ip = wildcard ? getNetworkIPs()[0] : undefined
+  const local = hostname === "0.0.0.0" ? format("localhost", port) : hostname === "::" ? format("::1", port) : bind
+  const ip = hostname === "0.0.0.0" ? getNetworkIPs()[0] : undefined
 
   return {
     local,
