@@ -1,4 +1,5 @@
 // kilocode_change - new file
+import { isIP } from "net"
 import { networkInterfaces } from "os"
 
 export function getNetworkIPs() {
@@ -17,17 +18,22 @@ export function getNetworkIPs() {
   return results
 }
 
-export function serverUrls(hostname: string, port: number) {
-  const local = `http://localhost:${port}`
-  const bindStr = `http://${hostname}:${port}`
+function format(hostname: string, port: number) {
+  const url = new URL("http://localhost")
+  url.hostname = isIP(hostname) === 6 ? `[${hostname}]` : hostname
+  url.port = String(port)
+  return url.origin
+}
 
-  const isLoopback = hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1"
-  const ips = getNetworkIPs()
-  const lanUrl = ips.length > 0 ? `http://${ips[0]}:${port}` : undefined
+export function serverUrls(hostname: string, port: number) {
+  const bind = format(hostname, port)
+  const wildcard = hostname === "0.0.0.0" || hostname === "::"
+  const local = wildcard ? format("localhost", port) : bind
+  const ip = wildcard ? getNetworkIPs()[0] : undefined
 
   return {
     local,
-    network: isLoopback ? lanUrl : bindStr,
-    bind: bindStr,
+    network: ip ? format(ip, port) : undefined,
+    bind,
   }
 }
