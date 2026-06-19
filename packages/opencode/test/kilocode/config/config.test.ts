@@ -440,6 +440,31 @@ describe("linked worktree config", () => {
     }
   })
 
+  test("uses nested primary config directories as local fallbacks", async () => {
+    await using primary = await tmpdir({ git: true })
+    const worktree = path.join(path.dirname(primary.path), `${path.basename(primary.path)}-config-nested`)
+    const directory = path.join(worktree, "packages", "app")
+    await $`git worktree add -b config-nested-worktree ${worktree}`.cwd(primary.path).quiet()
+
+    try {
+      await Bun.write(path.join(directory, "placeholder"), "")
+      await Bun.write(
+        path.join(primary.path, "packages", ".kilocode", "kilo.jsonc"),
+        JSON.stringify({ snapshot: true, autoupdate: "notify", share: "disabled" }),
+      )
+      await Bun.write(path.join(primary.path, "packages", ".kilo", "kilo.jsonc"), JSON.stringify({ snapshot: false }))
+      await Bun.write(path.join(directory, ".kilo", "kilo.jsonc"), JSON.stringify({ share: "manual" }))
+
+      const config = await provideTestInstance({ directory, fn: load })
+
+      expect(config.snapshot).toBe(false)
+      expect(config.autoupdate).toBe("notify")
+      expect(config.share).toBe("manual")
+    } finally {
+      await $`git worktree remove --force ${worktree}`.cwd(primary.path).quiet().nothrow()
+    }
+  })
+
   test("keeps KILO_CONFIG_DIR above the primary fallback", async () => {
     await using primary = await tmpdir({ git: true })
     await using explicit = await tmpdir()

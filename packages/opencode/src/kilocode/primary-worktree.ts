@@ -4,11 +4,37 @@ import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { Effect } from "effect"
 import { Git } from "../git"
 
-export const primaryPaths = Effect.fn("PrimaryWorktree.paths")(function* (dir: string, names: readonly string[]) {
-  const cwd = AppFileSystem.normalizePath(path.resolve(dir))
+export const primaryPaths = Effect.fn("PrimaryWorktree.paths")(function* (
+  dir: string,
+  root: string,
+  names: readonly string[],
+) {
+  const cwd = AppFileSystem.normalizePath(path.resolve(root))
   const primary = yield* primaryWorktree(cwd)
   if (!primary || primary === cwd) return []
-  return names.map((name) => path.join(primary, name)).filter(existsSync)
+
+  // Mirror the active directory's path relative to the linked-worktree root into the primary checkout.
+  // If the directory is outside that root, fall back to searching from the primary checkout root only.
+  const active = AppFileSystem.normalizePath(path.resolve(dir))
+  const rel = path.relative(cwd, active)
+  const parts = rel ? rel.split(path.sep) : []
+  if (path.isAbsolute(rel) || parts[0] === "..") parts.length = 0
+
+  // Search the mirrored directory and each ancestor up to the primary root, preserving nearest-first order.
+  const dirs = []
+  for (const index of parts.keys()) {
+    dirs.push(path.join(primary, ...parts.slice(0, parts.length - index)))
+  }
+  dirs.push(primary)
+
+  const found = []
+  for (const dir of dirs) {
+    for (const name of names) {
+      const file = path.join(dir, name)
+      if (existsSync(file)) found.push(file)
+    }
+  }
+  return found
 })
 
 export const primaryWorktree = Effect.fn("PrimaryWorktree.find")(function* (dir: string) {

@@ -32,6 +32,7 @@ describe("worktree project skills", () => {
     Effect.gen(function* () {
       const primary = yield* tmpdirScoped({ git: true })
       const dir = path.join(path.dirname(primary), `${path.basename(primary)}-feature`)
+      const directory = path.join(dir, "packages", "app")
       const skills = [
         [".kilo", "kilo"],
         [".agents", "agents"],
@@ -62,8 +63,9 @@ description: Shared primary skill.
       yield* Effect.promise(() => $`git worktree add -b worktree-project-skills ${dir}`.cwd(primary).quiet())
 
       yield* Effect.promise(() =>
-        Promise.all(
-          skills.flatMap(([root, name]) => [
+        Promise.all([
+          Bun.write(path.join(directory, "placeholder"), ""),
+          ...skills.flatMap(([root, name]) => [
             Bun.write(
               path.join(primary, root, "skills", `${name}-fallback`, "SKILL.md"),
               `---
@@ -85,10 +87,32 @@ description: Worktree override.
 `,
             ),
           ]),
-        ),
+          ...skills.slice(1).map(([root, name]) =>
+            Bun.write(
+              path.join(primary, "packages", root, "skills", `${name}-nested`, "SKILL.md"),
+              `---
+name: ${name}-nested
+description: Nested primary-only fallback.
+---
+
+# Nested fallback
+`,
+            ),
+          ),
+          Bun.write(
+            path.join(dir, "packages", ".agents", "skills", "agents-nested", "SKILL.md"),
+            `---
+name: agents-nested
+description: Nested worktree override.
+---
+
+# Nested worktree
+`,
+          ),
+        ]),
       )
 
-      const list = yield* provideInstance(dir)(
+      const list = yield* provideInstance(directory)(
         Effect.gen(function* () {
           const skill = yield* Skill.Service
           return yield* skill.all()
@@ -103,6 +127,12 @@ description: Worktree override.
           path.join(dir, root, "skills", `${name}-shared`, "SKILL.md"),
         )
       }
+      expect(list.find((item) => item.name === "claude-nested")?.location).toBe(
+        path.join(primary, "packages", ".claude", "skills", "claude-nested", "SKILL.md"),
+      )
+      expect(list.find((item) => item.name === "agents-nested")?.location).toBe(
+        path.join(dir, "packages", ".agents", "skills", "agents-nested", "SKILL.md"),
+      )
     }),
   )
 })

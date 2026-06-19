@@ -4,7 +4,7 @@ import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { Effect, Layer } from "effect"
 import path from "path"
 import { Git } from "../../src/git"
-import { primaryWorktree } from "../../src/kilocode/primary-worktree"
+import { primaryPaths, primaryWorktree } from "../../src/kilocode/primary-worktree"
 import { tmpdirScoped } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 
@@ -31,6 +31,34 @@ describe("primaryWorktree", () => {
       yield* Effect.promise(() => $`git worktree add -b primary-worktree-test ${worktree}`.cwd(repo).quiet())
 
       expect(yield* primaryWorktree(worktree)).toBe(repo)
+    }),
+  )
+
+  it.live("maps nested ancestor paths into the primary checkout", () =>
+    Effect.gen(function* () {
+      const repo = yield* tmpdirScoped({ git: true })
+      const worktree = path.join(path.dirname(repo), `${path.basename(repo)}-paths`)
+      const dir = path.join(worktree, "packages", "app")
+      yield* Effect.addFinalizer(() =>
+        Effect.promise(() => $`git worktree remove --force ${worktree}`.cwd(repo).quiet().nothrow()).pipe(
+          Effect.asVoid,
+        ),
+      )
+      yield* Effect.promise(() => $`git worktree add -b primary-paths-test ${worktree}`.cwd(repo).quiet())
+      yield* Effect.promise(() =>
+        Promise.all([
+          Bun.write(path.join(dir, "placeholder"), ""),
+          Bun.write(path.join(repo, ".agents", "placeholder"), ""),
+          Bun.write(path.join(repo, "packages", ".claude", "placeholder"), ""),
+          Bun.write(path.join(repo, "packages", "app", ".agents", "placeholder"), ""),
+        ]),
+      )
+
+      expect(yield* primaryPaths(dir, worktree, [".claude", ".agents"])).toEqual([
+        path.join(repo, "packages", "app", ".agents"),
+        path.join(repo, "packages", ".claude"),
+        path.join(repo, ".agents"),
+      ])
     }),
   )
 
