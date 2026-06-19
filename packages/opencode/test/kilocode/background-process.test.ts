@@ -19,10 +19,10 @@ function quote(input: string) {
   return `'${value.replaceAll("'", "'\\''")}'`
 }
 
-async function script(dir: string, name: string, source: string) {
+async function script(dir: string, name: string, source: string, exec = process.execPath) {
   const file = path.join(dir, name)
   await Bun.write(file, source)
-  const bin = quote(process.execPath)
+  const bin = quote(exec)
   const arg = quote(file)
   if (Shell.ps(Shell.acceptable())) return `& ${bin} ${arg}`
   return `${bin} ${arg}`
@@ -610,15 +610,24 @@ setInterval(() => {}, 1_000)
       const sessionID = SessionID.descending()
       const child = path.join(test.directory, "descendant.mjs")
       yield* Effect.promise(() => Bun.write(child, "setInterval(() => {}, 1_000)\n"))
+      // Bun kills its detached children when their parent exits on Windows (oven-sh/bun#31603).
+      const exec = process.platform === "win32" ? "node" : process.execPath
       const command = yield* Effect.promise(() =>
         script(
           test.directory,
-          "leader.mjs",
+          "leader.cjs",
           `const { spawn } = require("child_process")
-const child = spawn(process.execPath, [${JSON.stringify(child)}], { stdio: "ignore" })
+console.log("leader:" + process.pid)
+const child = spawn(process.execPath, [${JSON.stringify(child)}], {
+  stdio: "ignore",
+  detached: process.platform === "win32",
+  windowsHide: true,
+})
 child.unref()
 console.log("child:" + child.pid)
+if (process.platform === "win32") setTimeout(() => {}, 5_000)
 `,
+          exec,
         ),
       )
       const info = yield* Effect.promise(() =>
@@ -630,21 +639,41 @@ console.log("child:" + child.pid)
           ready: { pattern: "child:", timeout: 5_000 },
         }),
       )
-      const match = info.output.match(/child:(\d+)/)
-      const pid = Number(match?.[1])
-      expect(pid).toBeGreaterThan(0)
-      if (process.platform === "win32") {
-        yield* Effect.promise(() => Bun.sleep(500))
-        expect(alive(info.pid)).toBe(true)
-      } else {
-        yield* Effect.promise(() => until(() => !alive(info.pid), "persistent leader did not exit"))
+      const leader = Number(info.output.match(/leader:(\d+)/)?.[1])
+      const pid = Number(info.output.match(/child:(\d+)/)?.[1])
+      const runner = info.pid
+      try {
+        expect(leader).toBeGreaterThan(0)
+        expect(pid).toBeGreaterThan(0)
+        yield* Effect.promise(() => until(() => !alive(leader), "persistent command leader did not exit", 10_000))
+        if (process.platform === "win32") {
+          // Assert after the runner's one-second ancestry grace window has elapsed.
+          yield* Effect.promise(() => Bun.sleep(2_000))
+          expect(alive(runner)).toBe(true)
+        }
+        if (process.platform !== "win32") {
+          yield* Effect.promise(() => until(() => !alive(runner), "persistent runner did not exit"))
+        }
+        const current = yield* Effect.promise(() => BackgroundProcess.get(info.id))
+        expect(current?.status === "running" || current?.status === "ready").toBe(true)
+        expect(alive(pid)).toBe(true)
+        yield* Effect.promise(() => BackgroundProcess.stop(info.id))
+        yield* Effect.promise(() => until(() => !alive(pid), "persistent descendant was not terminated"))
+      } finally {
+        yield* Effect.promise(async () => {
+          await Promise.allSettled([BackgroundProcess.stop(info.id)])
+          for (const item of [pid, runner]) {
+            if (!item || !alive(item)) continue
+            try {
+              process.kill(item, "SIGKILL")
+            } catch (err) {
+              if (alive(item)) throw err
+            }
+          }
+        })
       }
-      const current = yield* Effect.promise(() => BackgroundProcess.get(info.id))
-      expect(current?.status === "running" || current?.status === "ready").toBe(true)
-      expect(alive(pid)).toBe(true)
-      yield* Effect.promise(() => BackgroundProcess.stop(info.id))
-      yield* Effect.promise(() => until(() => !alive(pid), "persistent descendant was not terminated"))
     }),
+    30_000,
   )
 
   it.instance("rejects invalid readiness patterns before launching", () =>

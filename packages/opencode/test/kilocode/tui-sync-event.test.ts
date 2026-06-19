@@ -96,6 +96,39 @@ describe("TUI sync event wire format", () => {
     }
   })
 
+  test("syncs persistent process events across git worktrees", async () => {
+    const { app, emit, sync } = await mount()
+    const sessionID = "ses_project_process"
+    const processID = "bgp_project_process"
+
+    try {
+      emit({
+        directory: "/tmp/other-worktree",
+        project: "proj_test",
+        payload: {
+          type: "background_process.updated",
+          properties: {
+            info: processInfo(processID, sessionID, "persistent", 1),
+            scope: "/tmp/project-root",
+          },
+        },
+      } as unknown as GlobalEvent)
+      await wait(() => sync.data.background_process[sessionID]?.some((item) => item.id === processID))
+
+      emit({
+        directory: "/tmp/other-worktree",
+        project: "proj_test",
+        payload: {
+          type: "background_process.deleted",
+          properties: { sessionID, processID, scope: "/tmp/project-root" },
+        },
+      } as unknown as GlobalEvent)
+      await wait(() => sync.data.background_process[sessionID] === undefined)
+    } finally {
+      app.renderer.destroy()
+    }
+  })
+
   test("moves inherited processes between session buckets", async () => {
     const { app, emit, sync } = await mount()
     const child = "ses_child"

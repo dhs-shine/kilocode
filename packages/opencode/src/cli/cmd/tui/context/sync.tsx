@@ -145,7 +145,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     // kilocode_change start
     function processScope(scope: string) {
       const current = project.instance.path()
-      return scope === current.directory || scope === current.worktree
+      return scope === current.directory || scope === current.worktree || scope === project.data.project.worktree
     }
 
     function evict(sessionID: string) {
