@@ -1324,6 +1324,16 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           // for the busy-session warning on Save.
           if (event.type === "session.status") return true
 
+          // session.deleted must always pass through so the webview can run its cleanup
+          // (messages, parts, stash, todos, permissions, drafts, etc.) — including for
+          // sessions that were never explicitly tracked here (e.g. child sessions
+          // cascade-deleted with the parent, or external CLI deletions). Auto-track so the
+          // guard inside handleEvent also lets the event through.
+          if (event.type === "session.deleted") {
+            this.trackedSessionIds.add(sessionId)
+            return true
+          }
+
           return this.trackedSessionIds.has(sessionId)
         },
         (payload, directory) => {
@@ -3079,7 +3089,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
               : sessionPatchToWebview(event.properties.sessionID, event.properties.info),
         }
       case "session.deleted":
-        return null
+        return {
+          type: "sessionDeleted" as const,
+          sessionID: event.properties.sessionID,
+        }
     }
   }
 

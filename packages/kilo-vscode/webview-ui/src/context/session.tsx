@@ -1923,8 +1923,10 @@ export const SessionProvider: ParentComponent = (props) => {
       )
       if (currentSessionID() === sessionID) {
         setCurrentSessionID(undefined)
-        setDraftSessionID(undefined)
         setLoading(false)
+      }
+      if (draftSessionID() === sessionID) {
+        setDraftSessionID(undefined)
       }
     })
     deleteDraftsForSession(sessionID)

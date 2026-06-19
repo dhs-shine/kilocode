@@ -120,11 +120,15 @@ describe("isPromptBlocked signature contract", () => {
 describe("handleSessionDeleted draft cleanup contract", () => {
   const source = readFile(SESSION_FILE)
 
-  it("clears draftSessionID alongside currentSessionID when deleting the active session", () => {
+  it("clears draftSessionID independently of currentSessionID when it equals the deleted id", () => {
     const body = extractFunctionBody(source, "handleSessionDeleted")
+    const draftBlock = body.match(/if \(draftSessionID\(\) === sessionID\) \{([\s\S]*?)\}/)
+    expect(draftBlock).not.toBeNull()
+    expect(draftBlock![1]).toContain("setDraftSessionID(undefined)")
+    // Must be a sibling check, not nested inside the currentSessionID branch —
+    // otherwise a deleted but non-active session leaves draftSessionID stale.
     const activeBlock = body.match(/if \(currentSessionID\(\) === sessionID\) \{([\s\S]*?)\}/)
-    expect(activeBlock).not.toBeNull()
-    expect(activeBlock![1]).toContain("setDraftSessionID(undefined)")
+    expect(activeBlock![1]).not.toContain("setDraftSessionID")
   })
 
   it("calls deleteDraftsForSession outside the cleanup batch so PromptInput's recreate is also cleaned up", () => {
