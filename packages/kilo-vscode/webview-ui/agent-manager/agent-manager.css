@@ -2932,16 +2932,25 @@ body.am-wt-dragging-active * {
   white-space: nowrap;
 }
 
-.am-mm-free-badge {
+.am-mm-free-badge,
+.am-mm-byok-badge {
   display: inline-flex;
   align-items: center;
   padding: 1px 4px;
   border-radius: var(--radius-sm);
-  color: #fff;
-  background: var(--vscode-testing-iconPassed, #4caf50);
   font-size: var(--kilo-font-size-10);
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.am-mm-free-badge {
+  color: #fff;
+  background: var(--vscode-testing-iconPassed, #4caf50);
+}
+
+.am-mm-byok-badge {
+  color: var(--vscode-badge-foreground);
+  background: var(--vscode-badge-background);
 }
 
 .am-mm-free-data-icon {
