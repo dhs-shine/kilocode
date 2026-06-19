@@ -105,17 +105,8 @@ export const dict = {
 
   "dialog.provider.search.placeholder": "搜索提供商",
   "dialog.provider.empty": "未找到提供商",
-  "dialog.provider.group.popular": "热门",
   "dialog.provider.group.other": "其他",
   "dialog.provider.tag.recommended": "推荐",
-  "dialog.provider.anthropic.note": "使用 Claude Pro/Max 或 API 密钥连接",
-  "dialog.provider.deepseek.note": "用于推理和编程任务的 DeepSeek 模型",
-  "dialog.provider.openai.note": "使用 ChatGPT Pro/Plus 或 API 密钥连接",
-  "dialog.provider.copilot.note": "使用 Copilot 或 API 密钥连接",
-  "dialog.provider.opencode.note": "使用 OpenCode Zen 或 API 密钥连接",
-  "dialog.provider.google.note": "使用 Google 账号或 API 密钥连接",
-  "dialog.provider.openrouter.note": "使用 OpenRouter 账号或 API 密钥连接",
-  "dialog.provider.vercel.note": "使用 Vercel 账号或 API 密钥连接",
 
   "dialog.model.select.title": "选择模型",
   "dialog.model.search.placeholder": "搜索模型",
@@ -1286,10 +1277,10 @@ export const dict = {
   "settings.experimental.codebaseSearch.description": "启用 AI 驱动的自然语言代码库搜索",
   "settings.experimental.speechToText.title": "语音转文本",
   "settings.experimental.speechToText.description": "通过 Kilo Gateway 使用您的 Kilo 帐户在提示词字段中启用语音输入。",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "启用并登录 Kilo 提供商以使用 Speech to Text。Speech to Text 目前仅支持通过 Kilo Gateway 使用。",
-  "settings.experimental.speechToTextModel.title": "语音转文本模型",
-  "settings.experimental.speechToTextModel.description": "选择用于语音输入的 Kilo Gateway 转录模型。",
+  "settings.models.speechToTextModel.title": "语音转文本模型",
+  "settings.models.speechToTextModel.description": "选择用于语音输入的 Kilo Gateway 转录模型。",
   "settings.experimental.continueOnDeny.title": "拒绝后继续",
   "settings.experimental.continueOnDeny.description": "权限被拒绝时继续智能体循环",
   "settings.experimental.mcpTimeout.title": "MCP 超时（毫秒）",
@@ -1498,6 +1489,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "旧版迁移",
   "settings.aboutKiloCode.legacyMigration.description":
     "从旧版 Kilo Code 安装迁移设置，包括提供商 API 密钥和默认模型。",
+  "settings.aboutKiloCode.rooImport.description": "从 Roo Code 安装导入对话历史记录。",
+  "settings.aboutKiloCode.rooImport.button": "从 Roo Code 导入会话",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Kilo Code 新功能",
