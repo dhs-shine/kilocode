@@ -394,8 +394,11 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         return WorkspaceFileDto(rel, vf.name, vf.isDirectory)
     }
 
-    private fun gitAvailable(base: Path): Boolean = gitCache.getOrPut(base.toString()) {
-        Files.exists(base.resolve(".git")) || git(base, "rev-parse", "--is-inside-work-tree").trim() == "true"
+    private fun gitAvailable(base: Path): Boolean {
+        if (Files.exists(base.resolve(".git"))) return true
+        return gitCache.getOrPut(base.toString()) {
+            git(base, "rev-parse", "--is-inside-work-tree").trim() == "true"
+        }
     }
 
     private fun git(base: Path, vararg args: String): String {
