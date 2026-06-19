@@ -19,7 +19,7 @@ import {
   WorkspaceRoutingQuery,
   WorkspaceRoutingQueryFields,
 } from "../middleware/workspace-routing"
-import { ApiNotFoundError } from "../errors"
+import { ApiNotFoundError, PermissionNotFoundError, SessionBusyError } from "../errors"
 import { described } from "./metadata"
 import { QueryBoolean } from "./query"
 
@@ -118,7 +118,7 @@ export const SessionApi = HttpApi.make("session")
           OpenApi.annotations({
             identifier: "session.list",
             summary: "List sessions",
-            description: "Get a list of all OpenCode sessions, sorted by most recently updated.",
+            description: "Get a list of all Kilo sessions, sorted by most recently updated.", // kilocode_change
           }),
         ),
         HttpApiEndpoint.get("status", SessionPaths.status, {
@@ -141,7 +141,7 @@ export const SessionApi = HttpApi.make("session")
           OpenApi.annotations({
             identifier: "session.get",
             summary: "Get session",
-            description: "Retrieve detailed information about a specific OpenCode session.",
+            description: "Retrieve detailed information about a specific Kilo session.", // kilocode_change
           }),
         ),
         HttpApiEndpoint.get("children", SessionPaths.children, {
@@ -212,7 +212,7 @@ export const SessionApi = HttpApi.make("session")
           OpenApi.annotations({
             identifier: "session.create",
             summary: "Create session",
-            description: "Create a new OpenCode session for interacting with AI assistants and managing conversations.",
+            description: "Create a new Kilo session for interacting with AI assistants and managing conversations.", // kilocode_change
           }),
         ),
         HttpApiEndpoint.delete("remove", SessionPaths.remove, {
@@ -361,7 +361,7 @@ export const SessionApi = HttpApi.make("session")
           query: WorkspaceRoutingQuery,
           payload: ShellPayload,
           success: described(MessageV2.WithParts, "Created message"),
-          error: [HttpApiError.BadRequest, ApiNotFoundError],
+          error: [HttpApiError.BadRequest, ApiNotFoundError, SessionBusyError],
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "session.shell",
@@ -374,7 +374,7 @@ export const SessionApi = HttpApi.make("session")
           query: WorkspaceRoutingQuery,
           payload: RevertPayload,
           success: described(Session.Info, "Updated session"),
-          error: [HttpApiError.BadRequest, ApiNotFoundError],
+          error: [HttpApiError.BadRequest, ApiNotFoundError, SessionBusyError],
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "session.revert",
@@ -387,7 +387,7 @@ export const SessionApi = HttpApi.make("session")
           params: { sessionID: SessionID },
           query: WorkspaceRoutingQuery,
           success: described(Session.Info, "Updated session"),
-          error: [HttpApiError.BadRequest, ApiNotFoundError],
+          error: [HttpApiError.BadRequest, ApiNotFoundError, SessionBusyError],
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "session.unrevert",
@@ -400,7 +400,7 @@ export const SessionApi = HttpApi.make("session")
           query: WorkspaceRoutingQuery,
           payload: PermissionResponsePayload,
           success: described(Schema.Boolean, "Permission processed successfully"),
-          error: [HttpApiError.BadRequest, ApiNotFoundError],
+          error: [HttpApiError.BadRequest, ApiNotFoundError, PermissionNotFoundError],
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "permission.respond",
@@ -413,7 +413,7 @@ export const SessionApi = HttpApi.make("session")
           params: { sessionID: SessionID, messageID: MessageID },
           query: WorkspaceRoutingQuery,
           success: described(Schema.Boolean, "Successfully deleted message"),
-          error: [HttpApiError.BadRequest, ApiNotFoundError],
+          error: [HttpApiError.BadRequest, ApiNotFoundError, SessionBusyError],
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "session.deleteMessage",

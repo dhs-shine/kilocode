@@ -12,11 +12,12 @@ import { ProjectID } from "@/project/schema"
 import { Filesystem } from "@/util/filesystem"
 import { SessionTable } from "@/session/session.sql"
 import * as Log from "@opencode-ai/core/util/log"
-import type { LanguageModelUsage, ProviderMetadata } from "ai"
+import type { ProviderMetadata, Usage } from "@opencode-ai/llm"
 import type { Provider } from "@/provider/provider"
 import { zod as toZod } from "@opencode-ai/core/effect-zod"
 import { ENV_FEATURE } from "@kilocode/kilo-gateway"
 import { fn } from "@/kilocode/fn"
+import path from "path"
 
 export namespace KiloSession {
   const log = Log.create({ service: "session.kilo" })
@@ -157,10 +158,9 @@ export namespace KiloSession {
    *   1. OpenRouter chat completions  -> `metadata.openrouter.usage.cost`
    *                                      (`costDetails.upstreamInferenceCost` for Kilo)
    *   2. Anthropic Messages or OpenAI Responses via OpenRouter
-   *                                   -> `usage.raw.cost_details.upstream_inference_cost`
-   *      (the `@ai-sdk/anthropic` and `@ai-sdk/openai` providers both surface the verbatim
-   *      provider usage object on `LanguageModelUsage.raw`, so OpenRouter's upstream
-   *      inference cost lands there with snake_case preserved)
+   *                                   -> `usage.providerMetadata.<provider>.cost_details`
+   *      (native LLM usage retains the verbatim provider payload under its provider key,
+   *      so OpenRouter's upstream inference cost remains available with snake_case preserved)
    *   3. Anthropic Messages or OpenAI Responses via Vercel AI Gateway
    *                                   -> `metadata.gateway.marketCost` (defensive: the
    *      gateway emits this in the SSE `provider_metadata` field, which the current AI SDK
@@ -177,7 +177,7 @@ export namespace KiloSession {
    */
   export function providerCost(input: {
     metadata?: ProviderMetadata
-    usage?: LanguageModelUsage
+    usage?: Usage
     provider?: Provider.Info
     providerID: string
   }): number | undefined {
@@ -203,16 +203,17 @@ export namespace KiloSession {
       if (cost !== undefined) return cost
     }
 
-    // 2. Anthropic Messages or OpenAI Responses via OpenRouter. The `@ai-sdk/anthropic`
-    //    (`convertAnthropicUsage`) and `@ai-sdk/openai` (`convertOpenAIResponsesUsage`)
-    //    providers both copy the verbatim provider usage object onto `usage.raw`, so
-    //    OpenRouter's upstream inference cost lands at
-    //    `usage.raw.cost_details.upstream_inference_cost` with snake_case preserved.
-    //    Kilo doesn't charge end users a per-request fee, so the top-level `cost` field
-    //    (the OpenRouter fee) would understate the user's true spend; only the upstream
-    //    cost is meaningful here.
-    const raw = input.usage?.raw as { cost_details?: { upstream_inference_cost?: number } } | undefined
-    const upstream = num(raw?.cost_details?.upstream_inference_cost)
+    // 2. Anthropic Messages or OpenAI Responses via OpenRouter. Native LLM usage keeps
+    //    each provider's verbatim usage payload under `providerMetadata`, so OpenRouter's
+    //    upstream inference cost remains available with snake_case preserved. Kilo doesn't
+    //    charge end users a per-request fee, so only the upstream cost is meaningful here.
+    const usage = input.usage?.providerMetadata
+    const anthropic = usage?.["anthropic"]?.["cost_details"] as { upstream_inference_cost?: number } | undefined
+    const openai = usage?.["openai"]?.["cost_details"] as { upstream_inference_cost?: number } | undefined
+    const aiSdk = usage?.["aiSdk"]?.["cost_details"] as { upstream_inference_cost?: number } | undefined
+    const upstream = num(
+      anthropic?.upstream_inference_cost ?? openai?.upstream_inference_cost ?? aiSdk?.upstream_inference_cost,
+    )
     if (upstream !== undefined) return upstream
 
     // 3. Anthropic Messages or OpenAI Responses via Vercel AI Gateway. `cost` is the
@@ -316,6 +317,7 @@ export namespace KiloSession {
     projectID?: string
     directory?: string
     directories?: string[]
+    currentDirectory?: string
     roots?: boolean
     start?: number
     cursor?: number
@@ -360,6 +362,19 @@ export namespace KiloSession {
 
     const limit = input.limit ?? 100
     const dirs = [...new Set((input.directories ?? []).map((dir) => Filesystem.resolve(dir)))]
+    const sorted = [...dirs].sort((a, b) => b.length - a.length)
+    const worktree = (dir: string) => {
+      for (const root of sorted) {
+        if (!Filesystem.contains(root, dir)) continue
+        const rel = path.relative(root, dir)
+        const parts = rel.split(path.sep)
+        if ((parts[0] === ".kilo" || parts[0] === ".kilocode") && parts[1] === "worktrees" && parts[2]) {
+          return path.join(root, parts[0], parts[1], parts[2])
+        }
+        return root
+      }
+    }
+    const current = input.currentDirectory ? worktree(Filesystem.resolve(input.currentDirectory)) : undefined
 
     const rows = Database.use((db) => {
       const query =
@@ -377,7 +392,10 @@ export namespace KiloSession {
       dirs.length > 0
         ? rows.filter((row) => {
             const dir = Filesystem.resolve(row.directory)
-            return dirs.some((root) => Filesystem.contains(root, dir))
+            const root = worktree(dir)
+            if (!root) return false
+            if (input.currentDirectory) return root === current
+            return true
           })
         : rows
 

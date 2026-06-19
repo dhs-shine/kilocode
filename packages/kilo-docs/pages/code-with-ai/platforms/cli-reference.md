@@ -186,6 +186,8 @@ Options:
       --port                          port for the local server (defaults to random port if no value provided)  [number]
       --variant                       model variant (provider-specific reasoning effort, e.g., high, max, minimal)  [string]
       --thinking                      show thinking blocks  [boolean]
+      --replay                        replay visible session history on interactive resume  [boolean] [default: false]
+      --replay-limit                  cap visible interactive replay to the newest N messages  [number]
   -i, --interactive                   run in direct interactive split-footer mode  [boolean] [default: false]
       --dangerously-skip-permissions  auto-approve permissions that are not explicitly denied (dangerous!)  [boolean] [default: false]
       --auto                          auto-approve all permissions (for autonomous/pipeline usage)  [boolean] [default: false]
@@ -650,7 +652,7 @@ Positionals:
 Options:
       --help     Show help  [boolean]
       --version  Show version number  [boolean]
-  -m, --method   installation method to use  [string] [choices: "curl", "npm", "pnpm", "bun", "brew", "choco", "scoop"]
+  -m, --method   installation method to use  [string] [choices: "curl", "npm", "yarn", "pnpm", "bun", "brew", "choco", "scoop"]
 ```
 
 ## kilo uninstall
@@ -671,6 +673,21 @@ Options:
 
 ```
 starts a headless kilo server
+
+Options:
+  --help         Show help  [boolean]
+  --version      Show version number  [boolean]
+  --port         port to listen on  [number] [default: 0]
+  --hostname     hostname to listen on  [string] [default: "127.0.0.1"]
+  --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)  [boolean] [default: false]
+  --mdns-domain  custom domain name for mDNS service (default: kilo.local)  [string] [default: "kilo.local"]
+  --cors         additional domains to allow for CORS  [array] [default: []]
+```
+
+## kilo web
+
+```
+start kilo server and open web interface
 
 Options:
   --help         Show help  [boolean]
@@ -766,6 +783,42 @@ Positionals:
 Options:
   --help     Show help  [boolean]
   --version  Show version number  [boolean]
+```
+
+## kilo github
+
+```
+manage GitHub agent
+
+Commands:
+  kilo github install  install the GitHub agent
+  kilo github run      run the GitHub agent
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+```
+
+### kilo github install
+
+```
+install the GitHub agent
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+```
+
+### kilo github run
+
+```
+run the GitHub agent
+
+Options:
+  --help     Show help  [boolean]
+  --version  Show version number  [boolean]
+  --event    GitHub mock event to run the agent for  [string]
+  --token    GitHub personal access token (github_pat_********)  [string]
 ```
 
 ## kilo pr
@@ -903,8 +956,6 @@ Options:
 ```
 
 ## kilo console
-
-Open Kilo Console to manage CLI configuration, including **Settings > CLI > Notifications**. See [CLI Notifications and Sounds](/docs/code-with-ai/platforms/cli#cli-notifications-and-sounds) for the equivalent `tui.json` settings and custom sound overrides.
 
 ```
 open the local Kilo Console

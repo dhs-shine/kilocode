@@ -101,17 +101,8 @@ export const dict = {
 
   "dialog.provider.search.placeholder": "Sağlayıcı ara",
   "dialog.provider.empty": "Sağlayıcı bulunamadı",
-  "dialog.provider.group.popular": "Popüler",
   "dialog.provider.group.other": "Diğer",
   "dialog.provider.tag.recommended": "Önerilen",
-  "dialog.provider.opencode.note": "Claude, GPT, Gemini ve daha fazlasını içeren seçilmiş modeller",
-  "dialog.provider.anthropic.note": "Pro ve Max dahil Claude modellerine doğrudan erişim",
-  "dialog.provider.deepseek.note": "Muhakeme ve kodlama görevleri için DeepSeek modelleri",
-  "dialog.provider.copilot.note": "Kodlama yardımı için Claude modelleri",
-  "dialog.provider.openai.note": "Hızlı ve yetenekli genel yapay zeka görevleri için GPT modelleri",
-  "dialog.provider.google.note": "Hızlı ve yapılandırılmış yanıtlar için Gemini modelleri",
-  "dialog.provider.openrouter.note": "Tek bir sağlayıcıdan tüm desteklenen modellere eriş",
-  "dialog.provider.vercel.note": "Akıllı yönlendirme ile yapay zeka modellerine birleşik erişim",
 
   "dialog.model.select.title": "Model seç",
   "dialog.model.search.placeholder": "Model ara",
@@ -529,6 +520,8 @@ export const dict = {
   "notification.permission.titleSubagent": "İzin gerekli (alt ajan)",
   "notification.permission.description": "{{projectName}} içindeki {{sessionTitle}} izin gerektiriyor",
   "ui.permission.manageAutoApprove": "Otomatik Onay Kurallarını Yönet",
+  "ui.permission.doomLoop.prompt": "{{tool}} aracında olası bir döngü algılandı. Çalıştırmaya devam edilsin mi?",
+  "ui.permission.doomLoop.rule": "{{tool}} çağrılarına devam et",
   "ui.permission.rule.addToAllowed": "İzin listesine ekle",
   "ui.permission.rule.removeFromAllowed": "İzin listesinden kaldır",
   "ui.permission.rule.addToDenied": "Engel listesine ekle",
@@ -842,6 +835,7 @@ export const dict = {
   "provider.custom.field.providerID.description": "Küçük harfler, rakamlar, tire veya alt çizgi",
   "provider.custom.field.name.label": "Görünen ad",
   "provider.custom.field.name.placeholder": "Yapay Zeka Sağlayıcım",
+  "provider.custom.field.package.label": "Provider API",
   "provider.custom.field.baseURL.label": "Temel URL",
   "provider.custom.field.baseURL.placeholder": "https://api.saglayicim.com/v1",
   "provider.custom.field.apiKey.label": "API anahtarı",
@@ -868,6 +862,11 @@ export const dict = {
   "provider.custom.models.variants.thinking.placeholder": "thinking",
   "provider.custom.models.variants.thinking.enabled": "enabled",
   "provider.custom.models.variants.thinking.disabled": "disabled",
+  "provider.custom.models.variants.thinking.adaptive": "adaptive",
+  "provider.custom.models.variants.splitReasoning.label": "Split reasoning (required for e.g. MiniMax)",
+  "provider.custom.models.variants.splitReasoning.placeholder": "reasoning_split",
+  "provider.custom.models.variants.splitReasoning.true": "true",
+  "provider.custom.models.variants.splitReasoning.false": "false",
   "provider.custom.models.variants.chatTemplateArgs.label":
     "Sohbet şablonu argümanları ile düşünmeyi etkinleştir (ör. Hugging Face)",
   "provider.custom.models.variants.chatTemplateArgs.placeholder": "chat_template_args",
@@ -881,6 +880,13 @@ export const dict = {
   "provider.custom.models.variants.reasoningEffort.medium": "medium",
   "provider.custom.models.variants.reasoningEffort.high": "high",
   "provider.custom.models.variants.reasoningEffort.xhigh": "xhigh",
+  "provider.custom.models.variants.outputEffort.label": "Output effort (e.g. Anthropic)",
+  "provider.custom.models.variants.outputEffort.placeholder": "effort",
+  "provider.custom.models.variants.outputEffort.low": "low",
+  "provider.custom.models.variants.outputEffort.medium": "medium",
+  "provider.custom.models.variants.outputEffort.high": "high",
+  "provider.custom.models.variants.outputEffort.xhigh": "xhigh",
+  "provider.custom.models.variants.outputEffort.max": "max",
   "provider.custom.models.remove": "Modeli kaldır",
   "provider.custom.models.add": "Model ekle",
   "provider.custom.models.fetch": "Modelleri getir",
@@ -1009,6 +1015,33 @@ export const dict = {
   "feedback.dialog.github": "GitHub'da sorun bildirin",
   "feedback.dialog.discord": "Discord topluluğumuza katılın",
   "feedback.dialog.support": "Müşteri Desteği",
+  "workStyle.onboarding.welcome": "Kilo'ya hoş geldiniz",
+  "workStyle.onboarding.title": "Nasıl çalışmak istediğinizi seçin",
+  "workStyle.onboarding.description":
+    "İzinler, akıl yürütme blokları, terminal çıktısı ve bağlam zaman çizelgesi için başlangıç varsayılanlarını belirler. Yalnızca bir kez uygulanır ve daha önce özelleştirdiğiniz ayarları atlar.",
+  "workStyle.onboarding.skip": "Şimdilik atla",
+  "workStyle.onboarding.settingsNote": "Bu seçenekleri istediğiniz zaman şuradan değiştirebilirsiniz:",
+  "workStyle.onboarding.settings": "Ayarlar.",
+  "workStyle.toast.saved.title": "Mod başarıyla kaydedildi",
+  "workStyle.toast.saved.description": "Tercihlerinizi istediğiniz zaman Ayarlar'dan güncelleyebilirsiniz.",
+  "workStyle.toast.saved.action": "Ayarlara git",
+  "workStyle.choice.permissions": "İzinler",
+  "workStyle.choice.bash": "Bash",
+  "workStyle.choice.visibility": "Görünürlük",
+  "workStyle.choice.human-in-the-loop.eyebrow": "İnsan denetimli",
+  "workStyle.choice.human-in-the-loop.title": "Önce inceleyin",
+  "workStyle.choice.human-in-the-loop.description": "Kilo çalışırken duraklar ve planını size gösterir.",
+  "workStyle.choice.human-in-the-loop.permissions":
+    "Dosyaları düzenlemeden veya komutları çalıştırmadan önce izin ister.",
+  "workStyle.choice.human-in-the-loop.bash": "Her terminal komutunu çalıştırmadan önce izin ister.",
+  "workStyle.choice.human-in-the-loop.visibility": "Akıl yürütme dahil tüm konuşma ayrıntılarını gösterir.",
+  "workStyle.choice.autonomous.eyebrow": "Daha az kesinti",
+  "workStyle.choice.autonomous.title": "Yüksek özerklik",
+  "workStyle.choice.autonomous.description": "Daha az kesinti, daha sade bir arayüz.",
+  "workStyle.choice.autonomous.permissions":
+    "Çalışma alanındaki dosyaları izin istemeden düzenler ve komutları çalıştırır.",
+  "workStyle.choice.autonomous.bash": "Çalışma alanında terminal komutlarını onay almadan çalıştırabilir.",
+  "workStyle.choice.autonomous.visibility": "Ayrıntılar siz genişletene kadar daraltılmış olarak kalır.",
   "session.cloud.import.title": "Buluttan içe aktar",
   "session.cloud.import.placeholder": "Oturum kimliği, URL veya kilo import komutu",
   "session.cloud.import.button": "İçe Aktar",
@@ -1241,6 +1274,10 @@ export const dict = {
   "settings.notifications.errors.title": "Hatalar",
   "settings.notifications.errors.description": "Hata oluştuğunda bildirim göster",
   "settings.notifications.sounds": "Sesler",
+  "settings.notifications.enable.title": "Sesli bildirimleri etkinleştir",
+  "settings.notifications.enable.description":
+    "Oturumlar tamamlandığında, bir hatayla karşılaşıldığında veya sizden giriş beklendiğinde ses çal",
+  "settings.notifications.testSound": "Test et",
   "settings.notifications.agentSound.title": "Ajan Tamamlanma Sesi",
   "settings.notifications.agentSound.description": "Ajan tamamlandığında çalınacak ses",
   "settings.notifications.permSound.title": "İzin İsteği Sesi",
@@ -1248,6 +1285,9 @@ export const dict = {
   "settings.notifications.errorSound.title": "Hata Sesi",
   "settings.notifications.errorSound.description": "Hata oluştuğunda çalınacak ses",
   "settings.notifications.sound.default": "Varsayılan",
+  "settings.notifications.sound.system": "Sistem",
+  "settings.notifications.sound.description":
+    "Varsayılan seçenekte tamamlanma, giriş ve hatalar için farklı sesler kullanılır. Diğer seçeneklerde tüm etkinlikler için tek bir ses kullanılır.",
   "settings.notifications.sound.none": "Yok",
 
   "settings.experimental.share.title": "Paylaşım Modu",
@@ -1267,10 +1307,10 @@ export const dict = {
   "settings.experimental.speechToText.title": "Sesten metne",
   "settings.experimental.speechToText.description":
     "Kilo Gateway üzerinden Kilo hesabınızı kullanarak komut alanlarında sesli girişi etkinleştirin.",
-  "settings.experimental.speechToText.disabledDescription":
+  "settings.models.speechToText.disabledDescription":
     "Speech to Text kullanmak için Kilo sağlayıcısını etkinleştirin ve giriş yapın. Speech to Text şu anda yalnızca Kilo Gateway ile desteklenmektedir.",
-  "settings.experimental.speechToTextModel.title": "Sesten metne modeli",
-  "settings.experimental.speechToTextModel.description": "Sesli giriş için Kilo Gateway transkripsiyon modelini seçin.",
+  "settings.models.speechToTextModel.title": "Sesten metne modeli",
+  "settings.models.speechToTextModel.description": "Sesli giriş için Kilo Gateway transkripsiyon modelini seçin.",
   "settings.experimental.continueOnDeny.title": "Reddetme Durumunda Devam Et",
   "settings.experimental.continueOnDeny.description": "Bir izin reddedildiğinde ajan döngüsüne devam et",
   "settings.experimental.mcpTimeout.title": "MCP Zaman Aşımı (ms)",
@@ -1434,10 +1474,6 @@ export const dict = {
 
   "settings.display.username.title": "Kullanıcı Adı",
   "settings.display.username.description": "Sohbetlerde görüntülenen özel kullanıcı adı",
-  "settings.display.layout.title": "Düzen",
-  "settings.display.layout.description": "Sohbet arayüzü için düzen modu",
-  "settings.display.layout.auto": "Otomatik",
-  "settings.display.layout.stretch": "Genişlet",
   "settings.display.fontSize.title": "Yazı Tipi Boyutu",
   "settings.display.fontSize.description": "Kilo webview UI yazı tipi boyutunu VS Code'dan bağımsız olarak ayarlayın.",
   "settings.display.reasoningAutoCollapse.title": "Akıl yürütmeyi otomatik daralt",
@@ -1447,6 +1483,11 @@ export const dict = {
   "settings.display.terminalCommand.description": "Choose whether terminal command blocks start expanded or collapsed.",
   "settings.display.terminalCommand.expanded": "Expanded",
   "settings.display.terminalCommand.collapsed": "Collapsed",
+  "settings.display.codeEdit.title": "Kod Düzenleme Blokları",
+  "settings.display.codeEdit.description":
+    "Kod düzenleme ve fark bloklarının başlangıçta genişletilmiş mi yoksa daraltılmış mı olacağını seçin.",
+  "settings.display.codeEdit.expanded": "Genişletilmiş",
+  "settings.display.codeEdit.collapsed": "Daraltılmış",
 
   "settings.providers.defaultModel.title": "Varsayılan Model",
   "settings.providers.defaultModel.description": "Sohbetler için birincil model",
@@ -1456,6 +1497,9 @@ export const dict = {
   "settings.providers.subagentModel.title": "Alt Aracı Modeli",
   "settings.providers.subagentModel.description":
     "task-tool alt aracıları için varsayılan model ve akıl yürütme çabası. Çağıran aracının modelini devralmak için boş bırakın.",
+  "settings.models.hidePromptTraining.title": "İstemlerle eğitilen modelleri gizle",
+  "settings.models.hidePromptTraining.description":
+    "Sağlayıcıları istemlerinizi eğitim için kullanabilecek Kilo Gateway modellerini gizleyin.",
   "settings.providers.modeModels": "Mod Başına Model",
   "settings.providers.modeModels.description":
     "Belirli modlar için varsayılan modeli geçersiz kılın. Ayarlanmadıysa genel varsayılan model kullanılır.",
@@ -1484,6 +1528,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Eski Sürüm Taşıma",
   "settings.aboutKiloCode.legacyMigration.description":
     "Sağlayıcı API anahtarları ve varsayılan model dahil olmak üzere Kilo Code'un önceki yüklemesinden ayarları taşıyın.",
+  "settings.aboutKiloCode.rooImport.description": "Bir Roo Code yüklemesinden konuşma geçmişini içe aktarın.",
+  "settings.aboutKiloCode.rooImport.button": "Roo Code'dan Oturumları İçe Aktar",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Kilo Code'daki Yenilikler",

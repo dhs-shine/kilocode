@@ -1,5 +1,271 @@
 # kilo-code
 
+## 7.3.49
+
+### Minor Changes
+
+- [#11303](https://github.com/Kilo-Org/kilocode/pull/11303) [`6faa3f1`](https://github.com/Kilo-Org/kilocode/commit/6faa3f14b619144a1353f169a0a2855dcbf69bbb) - Add an "Import Sessions from Roo Code" button in the About settings tab that discovers and imports conversation history from an existing Roo Code installation, reusing the existing migration wizard.
+
+## 7.3.48
+
+### Minor Changes
+
+- [#11239](https://github.com/Kilo-Org/kilocode/pull/11239) [`a5b87fa`](https://github.com/Kilo-Org/kilocode/commit/a5b87fafa37f223877d07cfba2882b298a25f742) - Support multiple provider APIs, adaptive thinking, split reasoning, and output effort variants for custom providers.
+
+- [#11331](https://github.com/Kilo-Org/kilocode/pull/11331) [`c5bd1b3`](https://github.com/Kilo-Org/kilocode/commit/c5bd1b3e0959e019b015ca73c8db71726a5ffba3) - Support closing other Agent Manager tabs from the tab context menu.
+
+- [#11098](https://github.com/Kilo-Org/kilocode/pull/11098) [`b0ec91c`](https://github.com/Kilo-Org/kilocode/commit/b0ec91cef439633eef955d44747e03bb5e15ee4f) - Offer opt-in attention sounds when sessions finish, error, or need input across the sidebar, editor tabs, and Agent Manager.
+
+- [#11367](https://github.com/Kilo-Org/kilocode/pull/11367) [`1933cf7`](https://github.com/Kilo-Org/kilocode/commit/1933cf7cab911e295b99cb0ecf8821312e47c23e) - Open the selected Agent Manager worktree's pull request with Cmd/Ctrl+Shift+R.
+
+- [#11308](https://github.com/Kilo-Org/kilocode/pull/11308) [`d56bfdd`](https://github.com/Kilo-Org/kilocode/commit/d56bfdd9aa8c3112550be11f4761c66918283dde) - Keep conversations readable across the sidebar, editor tabs, and Agent Manager by aligning messages, tool output, and the composer in one centered lane.
+
+- [#11258](https://github.com/Kilo-Org/kilocode/pull/11258) [`056e069`](https://github.com/Kilo-Org/kilocode/commit/056e06911b0bf4232021e8a56676ae9b3f888bb0) - Render image changes in diff viewers and open images with VS Code's image preview.
+
+- [#11294](https://github.com/Kilo-Org/kilocode/pull/11294) [`c961f66`](https://github.com/Kilo-Org/kilocode/commit/c961f66bd4f38c922640d721d1ebdbcc9f97c0a6) - Search and switch between local sessions, worktrees, and their sessions from the Agent Manager sidebar.
+
+- [#11317](https://github.com/Kilo-Org/kilocode/pull/11317) [`a2ccf57`](https://github.com/Kilo-Org/kilocode/commit/a2ccf574a7b3f1414b9e9d785265dc9c4d16b44e) - Support VS Code switch links that select a Kilo model, agent, or both.
+
+### Patch Changes
+
+- [#11242](https://github.com/Kilo-Org/kilocode/pull/11242) [`9211000`](https://github.com/Kilo-Org/kilocode/commit/9211000aadd909f0d46746604c3e963966a59660) - Support unauthenticated OpenAI-compatible endpoints for codebase indexing without requiring a placeholder API key.
+
+- [#11249](https://github.com/Kilo-Org/kilocode/pull/11249) [`2c30dc7`](https://github.com/Kilo-Org/kilocode/commit/2c30dc75ce18c018f603a30d1c9e3c70fe8fc036) - Show a clear, retryable provider rate-limit error instead of raw response JSON in chat.
+
+- [#11080](https://github.com/Kilo-Org/kilocode/pull/11080) [`e335f97`](https://github.com/Kilo-Org/kilocode/commit/e335f97856c2a13ab75c2cb6e24f7df2626d41a0) Thanks [@Githubguy132010](https://github.com/Githubguy132010)! - Support opening code edit and diff blocks expanded by default in the VS Code chat.
+
+- [#11297](https://github.com/Kilo-Org/kilocode/pull/11297) [`06da363`](https://github.com/Kilo-Org/kilocode/commit/06da3635993c17053d33cfd64d5002f3868eba11) - Remove stray rounded corners between files in the Changes diff viewer.
+
+- [#11352](https://github.com/Kilo-Org/kilocode/pull/11352) [`5dd5c9a`](https://github.com/Kilo-Org/kilocode/commit/5dd5c9a0de5d92b1646c647e3efbeeee29937721) - Improve screen reader navigation and provider group controls in the model picker.
+
+- [#10788](https://github.com/Kilo-Org/kilocode/pull/10788) [`941007b`](https://github.com/Kilo-Org/kilocode/commit/941007b68dfa9500ad604620ae861accf2a74643) Thanks [@noobezlol](https://github.com/noobezlol)! - Handle string-form permission values when migrating bash permissions.
+
+- [#11158](https://github.com/Kilo-Org/kilocode/pull/11158) [`8ff8371`](https://github.com/Kilo-Org/kilocode/commit/8ff83711766ff6b18ea23d1990d6fedd8e79c5ae) - Add a shared model setting to hide Kilo Gateway models that may train on your prompts across Kilo clients.
+
+- [#11349](https://github.com/Kilo-Org/kilocode/pull/11349) [`a5395a3`](https://github.com/Kilo-Org/kilocode/commit/a5395a35210b92d658b8efacea0fb9d25ddb27d0) - Highlight the exact changed characters within modified diff lines.
+
+- [#10261](https://github.com/Kilo-Org/kilocode/pull/10261) [`8efc296`](https://github.com/Kilo-Org/kilocode/commit/8efc296ae54292183579e004eae52813a96abe0d) Thanks [@singhvishalkr](https://github.com/singhvishalkr)! - Ignore Enter while IME composition is active (including Windows virtual-key 229) so composed text is not accidentally submitted from chat and sidebar inputs.
+
+- [#11236](https://github.com/Kilo-Org/kilocode/pull/11236) [`1511d13`](https://github.com/Kilo-Org/kilocode/commit/1511d13b3f7f20001d2111f14bdfae7155372cf8) Thanks [@kapelame](https://github.com/kapelame)! - Add an instant/thinking reasoning toggle for MiniMax M-series models, matching the existing glm/kimi/qwen behavior.
+
+- [#11358](https://github.com/Kilo-Org/kilocode/pull/11358) [`0920b3f`](https://github.com/Kilo-Org/kilocode/commit/0920b3ffa8ec5f7b327681f446af1616d6d652a2) - Clean up incomplete worktrees when moving a session fails to transfer its Git changes.
+
+- [#11348](https://github.com/Kilo-Org/kilocode/pull/11348) [`d190725`](https://github.com/Kilo-Org/kilocode/commit/d190725c3cfd30741aa0e19dac3ee7d626654bd1) - Announce every Settings tab by name to screen readers in compact sidebars.
+
+- [#11257](https://github.com/Kilo-Org/kilocode/pull/11257) [`f42789d`](https://github.com/Kilo-Org/kilocode/commit/f42789d0ef5585aad4080bdc5c96856675cd9503) - Changes from opencode v1.14.51 to v1.15.4 upstream:
+  - Core Improvements: Clarified how to recover when the npm package is installed without its native binary.
+  - Core Improvements: Reduced unnecessary prompting around shell, task, and todo flows.
+  - Core Bugfixes: Ignored invalid exports in custom tool modules instead of failing tool loading.
+  - Core Bugfixes: Ignored project instruction lookup errors so sessions keep loading when project instruction discovery fails.
+  - Core Bugfixes: Fixed versioned event projector lookups so event replay uses the right handlers.
+  - Core Bugfixes: Avoid duplicate consecutive entries in prompt history.
+  - Core Bugfixes: Show full config validation errors during TUI startup instead of a generic failure.
+  - Core Bugfixes: Fixed npm installs so the CLI can recover and fetch the right native binary on more setups.
+  - Core Bugfixes: Fixed multiline `@` mentions in prompts.
+  - Core Bugfixes: Preserved custom tool metadata from Zod schemas.
+  - Core Bugfixes: Preserved custom tool argument descriptions in generated schemas.
+  - Core Bugfixes: Fixed file watching in repos where `.git` is a symlink. (@kagura-agent)
+  - Core Bugfixes: Fixed sync events not reaching project-scoped subscribers in injected instances.
+  - Core Bugfixes: Reduced wasted work when reading very large files after output truncation.
+  - Core Bugfixes: Fixed project-scoped bus events so file watcher and update notifications reach the right instance.
+  - Core Bugfixes: Fixed custom LSP servers not sending refresh events after they initialize.
+  - Core Bugfixes: Hid background subagent task instructions unless experimental background mode is enabled.
+  - TUI Improvements: Added a collapsed thinking view that can be expanded inline.
+  - TUI Improvements: Added pinned sessions with quick-switch slots in the session picker.
+  - TUI Improvements: Newly pinned sessions now stay at the end of the pinned list instead of jumping to the top.
+  - TUI Improvements: Made Markdown H1 headings easier to distinguish.
+  - TUI Bugfixes: Fixed thinking mode defaults so reasoning starts collapsed consistently.
+  - TUI Bugfixes: Limited session quick-switching to pinned sessions.
+  - TUI Bugfixes: Fixed Markdown table rendering in chat output.
+  - TUI Bugfixes: Fixed `kilo run --agent` resolving project-local agents.
+  - TUI Bugfixes: Fixed async commands losing the active instance context, which could break agent generation and GitHub-driven runs.
+
+- [#11356](https://github.com/Kilo-Org/kilocode/pull/11356) [`326ff35`](https://github.com/Kilo-Org/kilocode/commit/326ff351460342f93b0bf97f0beb6383357c5d05) - Changes from opencode v1.15.4 to v1.15.9 upstream:
+  - Core Improvements: Preview the native OpenAI runtime path behind an experimental flag
+  - Core Improvements: Add `--replay` and `--replay-limit` to show recent history when resuming interactive runs
+  - Core Improvements: Added a diff viewer in the TUI for reviewing changes.
+  - Core Improvements: Collapsed single-child directories in the diff viewer file tree.
+  - Core Improvements: Added shell mode to the `run` prompt.
+  - Core Improvements: Replaced subagent tabs with an on-demand picker in `run`.
+  - Core Improvements: Plugin file load errors no longer break the rest of plugin loading.
+  - Core Improvements: Anthropic API-key models now use the native runtime.
+  - Core Improvements: The v2 HTTP API now exposes structured public error schemas.
+  - Core Improvements: Added Grok OAuth sign-in, including device-code login. (@Jaaneek)
+  - Core Improvements: Redesigned the diff viewer with a file tree and refreshed layout.
+  - Core Bugfixes: Fix plugin tools using `ask` so tool calls complete correctly
+  - Core Bugfixes: Reduce missed `/event` updates caused by a subscription race
+  - Core Bugfixes: Sort the v2 session list by most recently updated
+  - Core Bugfixes: Zed editor context now only activates inside Zed terminals.
+  - Core Bugfixes: Agent and command names now resolve correctly from relative config paths.
+  - Core Bugfixes: Invalid `KILO_PERMISSION` JSON no longer crashes startup.
+  - Core Bugfixes: Plugin tools with missing `args` no longer break tool loading.
+  - Core Bugfixes: Restored legacy `PgUp` and `PgDn` TUI keybind aliases.
+  - Core Bugfixes: Native runtime now prefers the console provider token for OpenCode models.
+  - Core Bugfixes: V2 session APIs now return safe `UnknownError` responses with log reference IDs when stored messages are corrupt.
+  - Core Bugfixes: Generic API 500s no longer expose config details from server errors.
+  - Core Bugfixes: Unknown API errors now include reference IDs so you can match responses to server logs.
+  - Core Bugfixes: V2 session APIs now return `503 ServiceUnavailableError` for mutations that are not available yet.
+  - Core Bugfixes: V2 session APIs now return `SessionNotFoundError` for missing sessions.
+  - Core Bugfixes: Deduped concurrent Codex OAuth refreshes to avoid repeated refresh failures. (@cooper-oai)
+  - Core Bugfixes: Restored native OpenAI OAuth requests.
+  - Core Bugfixes: Tool schema failures now surface as friendly tool errors.
+  - Core Bugfixes: Added PDF attachment support for Grok.
+  - Core Bugfixes: Restored OpenAI reasoning streams.
+  - Core Bugfixes: Return to the previous screen when closing the diff viewer.
+  - Core Bugfixes: Show clearer errors when a default model is invalid or unavailable.
+  - Core Bugfixes: Surface missing PTY session errors instead of failing generically.
+  - Core Bugfixes: Improve diff viewer empty states and context handling.
+  - Core Bugfixes: Show clearer errors when a skill invocation fails as expected.
+  - Core Bugfixes: Show clearer errors when an installation upgrade fails.
+  - Core Bugfixes: Show clearer project not found errors from the HTTP API.
+  - Core Bugfixes: Return PTY error bodies from the HTTP API.
+  - Core Bugfixes: Enable the diff viewer by default.
+  - Core Bugfixes: Return MCP server not found errors from the HTTP API.
+  - Core Bugfixes: Let MCP OAuth configs set a callback port and include configured scopes in client metadata. (@sebin)
+  - Core Bugfixes: Use working Vertex Anthropic endpoints for `us` and `eu` multi-region setups. (@JPFrancoia)
+  - Core Bugfixes: Return session busy error bodies from the HTTP API.
+  - Core Bugfixes: Preserve native reasoning continuation metadata across turns.
+  - TUI Improvements: Refresh the prompt layout after pasting content
+  - TUI Improvements: The diff viewer now focuses the first file automatically.
+  - TUI Improvements: Copy the current worktree path from the command palette.
+  - TUI Bugfixes: Keep file references scoped to the current workspace
+  - TUI Bugfixes: Preserve pasted prompt content when copying
+  - TUI Bugfixes: Collapse very long tool output lines to keep the layout readable
+  - TUI Bugfixes: Use a higher-contrast paste summary badge color in some themes (@kagura-agent)
+  - TUI Bugfixes: Imported sessions now refresh their directory and relative path fields correctly. (@OpeOginni)
+  - TUI Bugfixes: Collapsed thinking labels now use clearer punctuation.
+  - TUI Bugfixes: New sessions now default to the local project.
+  - TUI Bugfixes: Single-select question checkmarks no longer run into option labels.
+  - TUI Bugfixes: Refine diff viewer keyboard shortcuts.
+  - TUI Bugfixes: Restore question prompt key handling.
+  - TUI Bugfixes: Keep the spinner color aligned with the active agent. (@OpeOginni)
+
+- [#11146](https://github.com/Kilo-Org/kilocode/pull/11146) [`481f836`](https://github.com/Kilo-Org/kilocode/commit/481f8361cfc5ea4be929d9afd63d996ed51131af) Thanks [@Drixled](https://github.com/Drixled)! - Polish chat tool-call previews for shell, search, and background-process output.
+
+- [#11373](https://github.com/Kilo-Org/kilocode/pull/11373) [`f21a34a`](https://github.com/Kilo-Org/kilocode/commit/f21a34a1e63107da085eb9e57172ca6025d2dbe0) - Skip attention sounds when a session is manually interrupted.
+
+- [#11351](https://github.com/Kilo-Org/kilocode/pull/11351) [`94bdfb9`](https://github.com/Kilo-Org/kilocode/commit/94bdfb9f8e4d88205f876e7936e10908c68a8b44) - Enable remote control from Agent Manager without disrupting concurrent sidebar sessions, and include all open Agent Manager sessions.
+
+- [#11318](https://github.com/Kilo-Org/kilocode/pull/11318) [`7f18708`](https://github.com/Kilo-Org/kilocode/commit/7f18708308ad47fd14f876ed4a25c4322bd29751) - Remove the divider between agent conversations and the prompt input across extension chat views.
+
+- [#11295](https://github.com/Kilo-Org/kilocode/pull/11295) [`2fa0890`](https://github.com/Kilo-Org/kilocode/commit/2fa0890928f7dd060125ad4f4083b8bd2bf3e69b) - Restore speech input when profile details are unavailable, move transcription model selection to the Models tab, and default transcription to Whisper Large V3 Turbo.
+
+- [#11221](https://github.com/Kilo-Org/kilocode/pull/11221) [`9b73bf9`](https://github.com/Kilo-Org/kilocode/commit/9b73bf91e4303249f30517d4cacfa8287680a82c) - Restore popular provider suggestions in the VS Code provider settings panel when provider metadata is unavailable.
+
+- [#11410](https://github.com/Kilo-Org/kilocode/pull/11410) [`344a6a5`](https://github.com/Kilo-Org/kilocode/commit/344a6a5f0f8377d8ab38792e6141d08947a7dc19) - Keep server controls and events connected to active sessions and subagents.
+
+- [#11221](https://github.com/Kilo-Org/kilocode/pull/11221) [`987da27`](https://github.com/Kilo-Org/kilocode/commit/987da2728731e1da1c974996b5bcddafe745cea7) - Show shared provider descriptions and provider icons in JetBrains and VS Code provider settings.
+
+- [#11357](https://github.com/Kilo-Org/kilocode/pull/11357) [`14cb3df`](https://github.com/Kilo-Org/kilocode/commit/14cb3dfd048ba4217bcd1f26ad7b76ce9a2a2e7f) - Show line numbers in edit approval diffs, including compact sidebar views.
+
+- [#11402](https://github.com/Kilo-Org/kilocode/pull/11402) [`146c4f4`](https://github.com/Kilo-Org/kilocode/commit/146c4f4396fd45c6bfc567f9b3ee1de46e26a3b6) - Prevent large highlighted shell outputs from blanking the VS Code webview when expanded.
+
+- [#11404](https://github.com/Kilo-Org/kilocode/pull/11404) [`f35d9c5`](https://github.com/Kilo-Org/kilocode/commit/f35d9c5fa3017dcc35d260b5669daf87411419f5) - Keep the Stop button working when an active session moves between the workspace and an Agent Manager worktree.
+
+- [#11366](https://github.com/Kilo-Org/kilocode/pull/11366) [`4739954`](https://github.com/Kilo-Org/kilocode/commit/47399547e1d60f016542f6a83fbf91a2bce91692) - Widen the sidebar chat readable lane from 78ch to 88ch so tools and content use a little more screen space.
+
+- Updated dependencies [[`9211000`](https://github.com/Kilo-Org/kilocode/commit/9211000aadd909f0d46746604c3e963966a59660), [`2fa0890`](https://github.com/Kilo-Org/kilocode/commit/2fa0890928f7dd060125ad4f4083b8bd2bf3e69b), [`973d02c`](https://github.com/Kilo-Org/kilocode/commit/973d02cfd15b3bf3eefefe92e7fb61059eba26f7), [`66af690`](https://github.com/Kilo-Org/kilocode/commit/66af6907005b99bb39a0869b35dfe1ec180cc0b5)]:
+  - @kilocode/kilo-indexing@7.4.0
+  - @kilocode/sdk@7.4.0
+  - @kilocode/kilo-ui@7.3.47
+  - @kilocode/plugin@7.3.47
+  - @opencode-ai/ui@7.3.47
+  - @kilocode/kilo-gateway@7.3.47
+
+## 7.3.46
+
+### Patch Changes
+
+- [#11184](https://github.com/Kilo-Org/kilocode/pull/11184) [`adf03a9`](https://github.com/Kilo-Org/kilocode/commit/adf03a98245e8877c580cb1f77a7e0ea4f0af61d) - Support model-specific reasoning overrides for task subagents, including custom subagents with their own model and variant settings.
+
+- [#11238](https://github.com/Kilo-Org/kilocode/pull/11238) [`fb2db2e`](https://github.com/Kilo-Org/kilocode/commit/fb2db2e0182b637d92d3158da9dbea953974cf71) - Allow reasoning to be removed from custom provider models after it has been enabled.
+
+- [#11232](https://github.com/Kilo-Org/kilocode/pull/11232) [`f326be4`](https://github.com/Kilo-Org/kilocode/commit/f326be4b6c9d5af9d944c8e5e7f9c524c173052f) - Clarify potential loop permission prompts and auto-approval rules with localized tool names.
+
+- [#11183](https://github.com/Kilo-Org/kilocode/pull/11183) [`1fd0960`](https://github.com/Kilo-Org/kilocode/commit/1fd0960cbcc82cb78a17c62332c08c5a7ba7d7c4) - Restore reverted sessions on the first Redo click.
+
+- [#11169](https://github.com/Kilo-Org/kilocode/pull/11169) [`e2939c7`](https://github.com/Kilo-Org/kilocode/commit/e2939c7557a08e2377c2dbbc0433f4817f4a121f) - Route question responses to the worktree where the question was created.
+
+- [#11240](https://github.com/Kilo-Org/kilocode/pull/11240) [`f820e57`](https://github.com/Kilo-Org/kilocode/commit/f820e57bab6c1ddd26f73964160bee7134488b96) - Prevent skill removal from recursively deleting working directories.
+
+## 7.3.45
+
+### Minor Changes
+
+- [#9750](https://github.com/Kilo-Org/kilocode/pull/9750) [`57f2e79`](https://github.com/Kilo-Org/kilocode/commit/57f2e794ca2301108dd01c73f43d0171c00756c6) - Support choosing an agent autonomy preset during VS Code onboarding.
+
+- [#10827](https://github.com/Kilo-Org/kilocode/pull/10827) [`235e769`](https://github.com/Kilo-Org/kilocode/commit/235e769fb359531da4716999ef5feac839affdcc) - Support selecting Kilo Gateway catalog models from VS Code deep links.
+
+### Patch Changes
+
+- [#11152](https://github.com/Kilo-Org/kilocode/pull/11152) [`b23d3df`](https://github.com/Kilo-Org/kilocode/commit/b23d3dfd756461ae02e2ed2872aded09d65dc1af) - Allow Escape to stop Agent Manager prompts while their sessions are still starting.
+
+- [#11173](https://github.com/Kilo-Org/kilocode/pull/11173) [`555dc23`](https://github.com/Kilo-Org/kilocode/commit/555dc2359373774a68e546b1dbe58d9d942d453f) - Show submitted review comments as interactive message cards instead of raw markdown.
+
+- [#11175](https://github.com/Kilo-Org/kilocode/pull/11175) [`fb62e61`](https://github.com/Kilo-Org/kilocode/commit/fb62e61caf1a4a14ec8db30648e9f008e70604b3) - Hide turn outcome warnings caused only by unfinished to-dos.
+
+## 7.3.44
+
+### Minor Changes
+
+- [#11082](https://github.com/Kilo-Org/kilocode/pull/11082) [`a16e82a`](https://github.com/Kilo-Org/kilocode/commit/a16e82a77abf883c2c07c11464d50e08a518acd7) - Use embedded LanceDB as the default semantic search vector store so indexing works without a separate Qdrant server. Existing Qdrant users and Intel Mac users can select `qdrant` with `indexing.vectorStore`.
+
+### Patch Changes
+
+- [#11001](https://github.com/Kilo-Org/kilocode/pull/11001) [`b64d7e0`](https://github.com/Kilo-Org/kilocode/commit/b64d7e00953a6b99b3e41019d811a3917c465880) - Preserve existing Agent Manager worktrees and use deterministic suffixes when explicit branch names collide.
+
+- [#10084](https://github.com/Kilo-Org/kilocode/pull/10084) [`f180658`](https://github.com/Kilo-Org/kilocode/commit/f180658b99e88825f27fdd84dd34cdddb5347792) Thanks [@sylwester-liljegren](https://github.com/sylwester-liljegren)! - Group Kilo Code commands in the VS Code command palette and clarify the Open in Tab command title.
+
+- [#11118](https://github.com/Kilo-Org/kilocode/pull/11118) [`143ae8e`](https://github.com/Kilo-Org/kilocode/commit/143ae8e99205e7c8bc4743a1ff33e6ac8d456cc6) - Dismiss stale permission prompts when another view has already answered them.
+
+- [#11094](https://github.com/Kilo-Org/kilocode/pull/11094) [`4acc1f8`](https://github.com/Kilo-Org/kilocode/commit/4acc1f8bcccc48f01fc046d799f5546bff247407) - Keep large chat transcripts responsive by mounting only viewport-visible conversation rows.
+
+- [#11154](https://github.com/Kilo-Org/kilocode/pull/11154) [`9129844`](https://github.com/Kilo-Org/kilocode/commit/9129844225e2e0bc551cd91dcdbacf046992e94b) - Load large Agent Manager change reviews faster without deferring file previews.
+
+- [#11075](https://github.com/Kilo-Org/kilocode/pull/11075) [`e17ce0c`](https://github.com/Kilo-Org/kilocode/commit/e17ce0c9ecaf4cc4cad3e0fd99b28bef561705fc) - Speed up large session forks by retaining final task outcomes instead of duplicating resumable subagent histories, and load completed task details only when expanded.
+
+- [#11081](https://github.com/Kilo-Org/kilocode/pull/11081) [`9c279a1`](https://github.com/Kilo-Org/kilocode/commit/9c279a16b4a14fc117f34d7aa19e771149031931) - Show model free and prompt-training indicators only when their explicit catalog metadata is enabled.
+
+- [#11100](https://github.com/Kilo-Org/kilocode/pull/11100) [`5b38d29`](https://github.com/Kilo-Org/kilocode/commit/5b38d299c439e076857e84390a9355372190557a) - Keep HTTP status codes beside tool error titles when error details wrap.
+
+- [#11101](https://github.com/Kilo-Org/kilocode/pull/11101) [`294c532`](https://github.com/Kilo-Org/kilocode/commit/294c532f6a355b78ed86d2188891883b07e90cc8) - Prevent task subagents from asking questions that users cannot answer from the parent session.
+
+- [#11103](https://github.com/Kilo-Org/kilocode/pull/11103) [`8b2a100`](https://github.com/Kilo-Org/kilocode/commit/8b2a100084496deca171243ddd50a26fa74343f2) - Show the first Agent Manager Local prompt and progress indicator immediately while its session is being created.
+
+- [#11104](https://github.com/Kilo-Org/kilocode/pull/11104) [`514af4c`](https://github.com/Kilo-Org/kilocode/commit/514af4c36145610e22d3888b7b5836fab1351272) - Open subagent transcripts faster while preserving live reasoning and paginating long histories.
+
+- [#11151](https://github.com/Kilo-Org/kilocode/pull/11151) [`77fe7c9`](https://github.com/Kilo-Org/kilocode/commit/77fe7c9e3fee173276401ad45774e2031d394443) - Keep binary and audio files collapsed in diff reviews instead of showing empty diff panels.
+
+- [#11097](https://github.com/Kilo-Org/kilocode/pull/11097) [`f8ec1dc`](https://github.com/Kilo-Org/kilocode/commit/f8ec1dc7a8c0ab0b88d1cd14e35182adef33847a) - Remove the unsupported paste-summary toggle from VS Code settings.
+
+- [#11091](https://github.com/Kilo-Org/kilocode/pull/11091) [`57bef8a`](https://github.com/Kilo-Org/kilocode/commit/57bef8ae68793c9b627ba0400b596bf932311e17) - Prevent streamed tool calls from executing twice and leaving answered questions disabled in VS Code.
+
+- [#11031](https://github.com/Kilo-Org/kilocode/pull/11031) [`bbfd59b`](https://github.com/Kilo-Org/kilocode/commit/bbfd59b85c383277fd8db77fcfd0ec56ea1a25d8) - Remove the unsupported code search tool.
+
+- [#11133](https://github.com/Kilo-Org/kilocode/pull/11133) [`68fd8cc`](https://github.com/Kilo-Org/kilocode/commit/68fd8ccce4d0a9b6987ea9c620a072a15b924c9c) - Keep permission approvals working when continuing or switching Agent Manager worktree sessions.
+
+- [#10866](https://github.com/Kilo-Org/kilocode/pull/10866) [`d5112ed`](https://github.com/Kilo-Org/kilocode/commit/d5112edf90d33333d1064c7ab885cf0a4d92d892) - Support configuring code indexing separately for global and project settings in Kilo Console, the CLI TUI, and VS Code.
+
+- [#11051](https://github.com/Kilo-Org/kilocode/pull/11051) [`856fc66`](https://github.com/Kilo-Org/kilocode/commit/856fc6665617d0a9753bc857fcd2c745b663196f) - Keep custom-answer selection in sync and show one submit action while entering custom text.
+
+- [#11031](https://github.com/Kilo-Org/kilocode/pull/11031) [`b2798ef`](https://github.com/Kilo-Org/kilocode/commit/b2798ef41e2b7875442aacaac65397a2d2be3b74) - Preserve complete session state when applying partial session updates in VS Code.
+
+- [#11087](https://github.com/Kilo-Org/kilocode/pull/11087) [`5969a4c`](https://github.com/Kilo-Org/kilocode/commit/5969a4c210beaf3dc968a56da541cfcdd7989d84) - Restore persisted sessions across development extension branches and worktrees.
+
+- [#11153](https://github.com/Kilo-Org/kilocode/pull/11153) [`7955f86`](https://github.com/Kilo-Org/kilocode/commit/7955f865d8f05920bf6a03e8daa5193da6e6b5f9) - Keep streamed conversation content visually stable while preserving virtualized transcript history.
+
+- [#11144](https://github.com/Kilo-Org/kilocode/pull/11144) [`287f75a`](https://github.com/Kilo-Org/kilocode/commit/287f75aa2bc84d931baccfb217dda0618be07ea9) - Agent Manager terminals now use `terminal.integrated.fontFamily` and `terminal.integrated.fontSize` (including Nerd Font glyphs) instead of the editor font.
+
+- [#11154](https://github.com/Kilo-Org/kilocode/pull/11154) [`9129844`](https://github.com/Kilo-Org/kilocode/commit/9129844225e2e0bc551cd91dcdbacf046992e94b) - Keep expanded Agent Manager reviews responsive by virtualizing file rows and preserving anchored scrolling.
+
+- [#11074](https://github.com/Kilo-Org/kilocode/pull/11074) [`915ecfb`](https://github.com/Kilo-Org/kilocode/commit/915ecfbefbaf1b0a7f5876dedbca6c79008ee771) - Start MCP servers while Agent Manager worktree sessions initialize to reduce the delay before the first response.
+
+- Updated dependencies [[`a16e82a`](https://github.com/Kilo-Org/kilocode/commit/a16e82a77abf883c2c07c11464d50e08a518acd7), [`e17ce0c`](https://github.com/Kilo-Org/kilocode/commit/e17ce0c9ecaf4cc4cad3e0fd99b28bef561705fc), [`9c279a1`](https://github.com/Kilo-Org/kilocode/commit/9c279a16b4a14fc117f34d7aa19e771149031931), [`57bef8a`](https://github.com/Kilo-Org/kilocode/commit/57bef8ae68793c9b627ba0400b596bf932311e17), [`b75af0d`](https://github.com/Kilo-Org/kilocode/commit/b75af0de8865234a745f71eac03bf2bdea2271b4)]:
+  - @kilocode/kilo-indexing@7.4.0
+  - @kilocode/kilo-ui@7.3.43
+  - @kilocode/kilo-gateway@7.3.43
+  - @opencode-ai/ui@7.3.43
+
 ## 7.3.42
 
 ### Minor Changes

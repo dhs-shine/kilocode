@@ -31,7 +31,7 @@ import { WorktreeDiffController } from "./worktree-diff-controller"
 import { WorktreeImporter } from "./worktree-importer"
 import { recordPromotionHandoff } from "./promotion-handoff"
 import { restoreWorktrees } from "./state-recovery"
-import { diffSummary as localDiffSummary, diffFile as localDiffFile } from "./local-diff"
+import { createLocalDiff, diffSummary as localDiffSummary } from "./local-diff"
 import { parseToolRequest, startFromTool, type ToolRequest } from "./tool-start"
 import { stopSessionProcesses } from "../kilo-provider/background-process"
 
@@ -126,13 +126,14 @@ export class AgentManagerProvider implements Disposable {
     })
     const semaphore = new Semaphore(3)
     this.gitOps = new GitOps({ log: (...args) => this.log(...args), semaphore })
+    const local = createLocalDiff(this.gitOps, (...args) => this.log(...args))
     this.diffs = new WorktreeDiffController({
       getState: () => this.getStateManager(),
       getRoot: () => this.getRoot(),
       getStateReady: () => this.stateReady,
       git: this.gitOps,
-      localDiff: (dir, base) => localDiffSummary(this.gitOps, dir, base, (...args) => this.log(...args)),
-      localDiffFile: (dir, base, file) => localDiffFile(this.gitOps, dir, base, file, (...args) => this.log(...args)),
+      localDiff: local.summary,
+      localDiffFile: local.file,
       post: (msg) => this.postToWebview(msg),
       log: (...args) => this.log(...args),
     })
@@ -248,6 +249,9 @@ export class AgentManagerProvider implements Disposable {
         this.statsPoller.stop()
         this.prBridge.poller.stop()
         this.diffs.stop()
+        this.activeSessionId = undefined
+        this.connectionService.unregisterFocused("agent-manager")
+        this.connectionService.registerOpen("agent-manager", [])
         this.panel = undefined
         this.onVisibilityChange?.(false)
       }
@@ -1745,6 +1749,18 @@ export class AgentManagerProvider implements Disposable {
         getClient: () => this.connectionService.getClient(),
         createWorktreeOnDisk: (opts) => this.createWorktreeOnDisk(opts),
         runSetupScript: (p, b, id) => this.runSetupScriptForWorktree(p, b, id),
+        cleanupWorktree: async (id) => {
+          await this.onDeleteWorktree(id)
+        },
+        notifyError: (error, result, id) => {
+          this.postToWebview({
+            type: "agentManager.worktreeSetup",
+            status: "error",
+            message: error,
+            branch: result.branch,
+            worktreeId: id,
+          })
+        },
         getStateManager: () => this.getStateManager(),
         registerWorktreeSession: (sid, dir) => this.registerWorktreeSession(sid, dir),
         registerSession: (session) => this.panel?.sessions.registerSession(session),

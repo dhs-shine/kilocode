@@ -1,10 +1,11 @@
 import { Slug } from "@opencode-ai/core/util/slug"
+import { serviceUse } from "@/effect/service-use"
 import path from "path"
 import { BackgroundJob } from "@/background/job"
 import { BusEvent } from "@/bus/bus-event"
 import { Bus } from "@/bus"
 import { Decimal } from "decimal.js"
-import { type ProviderMetadata, type LanguageModelUsage } from "ai"
+import type { ProviderMetadata, Usage } from "@opencode-ai/llm"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
 
 import { Database } from "@/storage/db"
@@ -17,9 +18,9 @@ import { PartTable, SessionTable } from "./session.sql"
 import { Storage } from "@/storage/storage"
 import * as Log from "@opencode-ai/core/util/log"
 import { MessageV2 } from "./message-v2"
-import type { InstanceContext } from "../project/instance"
+import type { InstanceContext } from "../project/instance-context"
 import { InstanceState } from "@/effect/instance-state"
-import { Instance } from "@/project/instance" // kilocode_change - children() uses Instance.current to scope by project_id
+import { capture } from "@/kilocode/instance" // kilocode_change - children() scopes by current project when available
 import { Snapshot } from "@/snapshot"
 import { ProjectID } from "../project/schema"
 import { WorkspaceID } from "../control-plane/schema"
@@ -99,7 +100,7 @@ export function fromRow(row: SessionRow): Info {
     },
     share,
     revert,
-    permission: row.permission ?? undefined,
+    permission: row.permission ? [...row.permission] : undefined,
     time: {
       created: row.time_created,
       updated: row.time_updated,
@@ -381,7 +382,7 @@ export function plan(input: { slug: string; time: { created: number } }, instanc
 
 export const getUsage = (input: {
   model: Provider.Model
-  usage: LanguageModelUsage
+  usage: Usage
   metadata?: ProviderMetadata
   provider?: Provider.Info // kilocode_change
 }) => {
@@ -391,14 +392,12 @@ export const getUsage = (input: {
   }
   const inputTokens = safe(input.usage.inputTokens ?? 0)
   const outputTokens = safe(input.usage.outputTokens ?? 0)
-  const reasoningTokens = safe(input.usage.outputTokenDetails?.reasoningTokens ?? input.usage.reasoningTokens ?? 0)
+  const reasoningTokens = safe(input.usage.reasoningTokens ?? 0)
 
-  const cacheReadInputTokens = safe(
-    input.usage.inputTokenDetails?.cacheReadTokens ?? input.usage.cachedInputTokens ?? 0,
-  )
+  const cacheReadInputTokens = safe(input.usage.cacheReadInputTokens ?? 0)
   const cacheWriteInputTokens = safe(
     Number(
-      input.usage.inputTokenDetails?.cacheWriteTokens ??
+      input.usage.cacheWriteInputTokens ??
         input.metadata?.["anthropic"]?.["cacheCreationInputTokens"] ??
         // google-vertex-anthropic returns metadata under "vertex" key
         // (AnthropicMessagesLanguageModel custom provider key from 'vertex.anthropic.messages')
@@ -522,6 +521,8 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Session") {}
 
+export const use = serviceUse(Service)
+
 export type Patch = Types.DeepMutable<SyncEvent.Event<typeof Event.Updated>["data"]["info"]>
 
 const db = <T>(fn: (d: Parameters<typeof Database.use>[0] extends (trx: infer D) => any ? D : never) => T) =>
@@ -565,7 +566,7 @@ export const layer: Layer.Layer<
         title: input.title ?? createDefaultTitle(!!input.parentID),
         agent: input.agent,
         model: input.model,
-        permission: input.permission,
+        permission: input.permission ? [...input.permission] : undefined,
         cost: 0,
         tokens: EmptyTokens,
         time: {
@@ -608,9 +609,9 @@ export const layer: Layer.Layer<
 
     // kilocode_change start - scope by project_id when instance context is available
     const children = Effect.fn("Session.children")(function* (parentID: SessionID) {
-      const ctx = yield* Effect.try({ try: () => Instance.current, catch: () => undefined }).pipe(Effect.option)
+      const ctx = capture()
       const conditions = [eq(SessionTable.parent_id, parentID)]
-      if (Option.isSome(ctx)) conditions.push(eq(SessionTable.project_id, ctx.value.project.id))
+      if (ctx) conditions.push(eq(SessionTable.project_id, ctx.project.id))
       const rows = yield* db((d) =>
         d
           .select()
@@ -648,7 +649,7 @@ export const layer: Layer.Layer<
           )
         }
         // kilocode_change end
-        yield* sync.run(Event.Deleted, { sessionID, info: session }, { publish: hasInstance }) // kilocode_change
+        yield* sync.run(Event.Deleted, { sessionID, info: session }, { publish: hasInstance })
         // kilocode_change - capture final session-export workspace delta on close/delete
         const workspaceKey = hasInstance ? yield* InstanceState.directory : undefined // kilocode_change
         yield* Effect.promise(() => SessionExport.onSessionClose(sessionID, workspaceKey)) // kilocode_change
@@ -661,10 +662,11 @@ export const layer: Layer.Layer<
     const updateMessage = <T extends MessageV2.Info>(msg: T): Effect.Effect<T> =>
       Effect.gen(function* () {
         // kilocode_change start - ignore FK errors when session was deleted while processor was still running
-        yield* KiloSession.runSyncSafe(
-          sync.run(MessageV2.Event.Updated, { sessionID: msg.sessionID, info: msg }),
-          { type: "message update", id: msg.id, sessionID: msg.sessionID },
-        )
+        yield* KiloSession.runSyncSafe(sync.run(MessageV2.Event.Updated, { sessionID: msg.sessionID, info: msg }), {
+          type: "message update",
+          id: msg.id,
+          sessionID: msg.sessionID,
+        })
         // kilocode_change end
         return msg
       }).pipe(Effect.withSpan("Session.updateMessage"))
@@ -727,7 +729,7 @@ export const layer: Layer.Layer<
         model: input?.model,
         permission: input?.permission,
         platform: input?.platform, // kilocode_change
-        workspaceID: input?.workspaceID ?? workspace, // kilocode_change - allow explicit override
+        workspaceID: input?.workspaceID ?? workspace,
       })
       return session
     })
@@ -808,7 +810,7 @@ export const layer: Layer.Layer<
       sessionID: SessionID
       permission: Permission.Ruleset
     }) {
-      yield* patch(input.sessionID, { permission: input.permission, time: { updated: Date.now() } })
+      yield* patch(input.sessionID, { permission: [...input.permission], time: { updated: Date.now() } })
     })
 
     const setRevert = Effect.fn("Session.setRevert")(function* (input: {
@@ -1026,6 +1028,7 @@ export function* listGlobal(input?: {
   projectID?: string
   directory?: string
   directories?: string[]
+  currentDirectory?: string
   roots?: boolean
   start?: number
   cursor?: number
