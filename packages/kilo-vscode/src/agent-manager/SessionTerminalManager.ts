@@ -220,10 +220,10 @@ export class SessionTerminalManager {
       return await this.host.executeCommand(id, ...args)
     } finally {
       const handler = this.commandHandlers.get(id)
-      if (!handler) return
-      const replacement = this.tryRegisterCommand(id, handler)
-      if (!replacement) return
-      this.commandDisposables.set(id, replacement)
+      if (handler) {
+        const replacement = this.tryRegisterCommand(id, handler)
+        if (replacement) this.commandDisposables.set(id, replacement)
+      }
     }
   }
 
