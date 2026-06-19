@@ -111,7 +111,7 @@ export function useModelSettings() {
       .filter((item) => (upper() !== undefined ? item.model.limit.context <= upper()! : true))
       .filter((item) => (reason() === "reasoning" ? item.model.capabilities.reasoning : true))
       .filter((item) => (reason() === "standard" ? !item.model.capabilities.reasoning : true))
-      .filter((item) => visible(item.model, privacy()))
+      .filter((item) => visible(item.provider, item.model, privacy()))
       .filter((item) => (starred() ? fav(item) : true))
       .filter((item) => caps().every((cap) => has(item.model, cap)))
       .filter((item) => {
