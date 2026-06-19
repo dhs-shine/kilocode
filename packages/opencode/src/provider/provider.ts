@@ -36,6 +36,7 @@ import {
   patchModelsDevModel as patchKiloModel,
   patchConfigModel as patchKiloConfigModel,
   patchCustomLoaderResult,
+  patchKiloProviderPrivacy,
   kiloSmallModelPriority,
   buildTimeoutSignal,
 } from "@/kilocode/provider/provider"
@@ -1525,6 +1526,7 @@ export const layer = Layer.effect(
           if (provider.options) partial.options = provider.options
           mergeProvider(providerID, partial)
         }
+        patchKiloProviderPrivacy(providers[ProviderID.make("kilo")], cfg) // kilocode_change
 
         const gitlab = ProviderID.make("gitlab")
         if (discoveryLoaders[gitlab] && providers[gitlab] && isProviderAllowed(gitlab)) {

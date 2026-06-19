@@ -1,5 +1,11 @@
 # kilo-code
 
+## 7.3.49
+
+### Minor Changes
+
+- [#11303](https://github.com/Kilo-Org/kilocode/pull/11303) [`6faa3f1`](https://github.com/Kilo-Org/kilocode/commit/6faa3f14b619144a1353f169a0a2855dcbf69bbb) - Add an "Import Sessions from Roo Code" button in the About settings tab that discovers and imports conversation history from an existing Roo Code installation, reusing the existing migration wizard.
+
 ## 7.3.48
 
 ### Minor Changes

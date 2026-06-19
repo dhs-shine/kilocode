@@ -1,6 +1,6 @@
 {
   "name": "@opencode-ai/ui",
-  "version": "7.3.46",
+  "version": "7.3.49",
   "type": "module",
   "license": "MIT",
   "exports": {
@@ -42,8 +42,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-icons-spritesheet": "3.0.1",
-    "vite-plugin-solid": "catalog:",
-    "@types/luxon": "catalog:"
+    "vite-plugin-solid": "catalog:"
   },
   "dependencies": {
     "@kobalte/core": "catalog:",
@@ -72,12 +71,7 @@
     "strip-ansi": "7.1.2",
     "virtua": "catalog:",
     "@typescript/native-preview": "catalog:",
-    "@opencode-ai/core": "workspace:*",
-    "@shikijs/transformers": "3.9.2",
-    "@solid-primitives/bounds": "0.1.3",
-    "luxon": "catalog:",
-    "marked-katex-extension": "5.1.6",
-    "marked-shiki": "catalog:"
+    "@opencode-ai/core": "workspace:*"
   },
   "peerDependencies": {}
 }
