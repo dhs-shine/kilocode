@@ -2556,8 +2556,10 @@ export const SessionProvider: ParentComponent = (props) => {
   const userMessages = createMemo(() => messages().filter((m) => m.role === "user"))
 
   function visible(sessionID: string) {
-    return filterVisibleMessages(store.messages[sessionID] ?? [], store.sessions[sessionID]?.revert?.messageID, (msg) =>
-      getParts(msg.id),
+    return filterVisibleMessages(
+      store.messages[sessionID] ?? [],
+      store.sessions[sessionID]?.revert ?? undefined,
+      (msg) => getParts(msg.id),
     )
   }
 
