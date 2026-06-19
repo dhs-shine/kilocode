@@ -296,6 +296,10 @@ export namespace RecallSearch {
     }
   }
 
+  export function inert(value: string) {
+    return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+  }
+
   function family(id: string) {
     const row = Database.use((db) =>
       db

@@ -98,7 +98,7 @@ async function search(
 
   return {
     title: `Search: "${params.query}" (${found.results.length} results)`,
-    output: lines.join("\n"),
+    output: RecallSearch.inert(lines.join("\n")),
     metadata: { searchedSessions: found.sessions, searchedParts: found.parts },
   }
 }
@@ -170,8 +170,8 @@ async function read(
   }
 
   return {
-    title: `Read: ${session.title}`,
-    output: lines.join("\n"),
+    title: `Read: ${RecallSearch.inert(session.title)}`,
+    output: RecallSearch.inert(lines.join("\n")),
     metadata: {},
   }
 }
