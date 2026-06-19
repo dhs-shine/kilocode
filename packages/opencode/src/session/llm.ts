@@ -336,20 +336,6 @@ const live: Layer.Layer<
       )
       // Default runtime path: AI SDK owns provider execution and tool dispatch;
       // LLMAISDK.toLLMEvents below normalizes fullStream parts for the processor.
-      // Pass chunkTimeout from provider/model options to streamText for AI SDK-level
-      // chunk idle timeout detection. This catches silenced stream dropouts where
-      // the TCP connection stays open but no SSE chunks arrive. // kilocode_change
-      const chunkTimeout =
-        typeof prepared.params.options["chunkTimeout"] === "number"
-          ? prepared.params.options["chunkTimeout"]
-          : typeof item.options?.["chunkTimeout"] === "number"
-            ? item.options["chunkTimeout"]
-            : undefined // kilocode_change
-      if (chunkTimeout) {
-        // kilocode_change
-        l.debug("chunk idle timeout configured", { chunkTimeout }) // kilocode_change
-      } // kilocode_change
-
       const result = streamText({
         // kilocode_change
         onError(error) {
@@ -387,9 +373,7 @@ const live: Layer.Layer<
         toolChoice: input.toolChoice,
         maxOutputTokens: prepared.params.maxOutputTokens,
         abortSignal: input.abort,
-        // Stream chunk idle timeout: aborts if no SSE chunk arrives within the window.
-        // Catches silent provider dropouts that keep the TCP connection alive but stop sending data. // kilocode_change
-        ...(chunkTimeout ? { timeout: { chunkMs: chunkTimeout } } : {}), // kilocode_change
+        ...KiloLLM.timeout({ options: prepared.params.options, fallback: item.options, log: l }), // kilocode_change
         headers: prepared.headers,
         maxRetries: input.retries ?? 0,
         messages: prepared.messages,
