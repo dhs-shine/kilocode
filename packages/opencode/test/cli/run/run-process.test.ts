@@ -8,6 +8,7 @@ import { Effect } from "effect"
 import { cliIt } from "../../lib/cli-process"
 
 describe("opencode run (non-interactive subprocess)", () => {
+  // kilocode_change start
   // Keep full CLI subprocesses serial within this file; the test runner already
   // executes files in parallel, and nested concurrency exhausts Windows CI.
   // Happy path: prompt completes, output reaches stdout, process exits 0.
@@ -23,7 +24,9 @@ describe("opencode run (non-interactive subprocess)", () => {
       }),
     60_000,
   )
+  // kilocode_change end
 
+  // kilocode_change start
   // Regression for #27371: an unknown model used to hang the process forever
   // waiting on a session.status === idle event that never arrived. The fix
   // makes the SDK call surface an error promptly so the process exits 1.
@@ -41,7 +44,9 @@ describe("opencode run (non-interactive subprocess)", () => {
       }),
     60_000,
   )
+  // kilocode_change end
 
+  // kilocode_change start
   // Locks in the current behavior: when the LLM stream errors mid-response
   // (the prompt was accepted, then the upstream provider failed), opencode
   // emits a session.error event and the process exits 0 today.
@@ -58,7 +63,9 @@ describe("opencode run (non-interactive subprocess)", () => {
       }),
     60_000,
   )
+  // kilocode_change end
 
+  // kilocode_change start
   // --format json puts one JSON object per line on stdout for each emitted
   // event. Consumers (CI scripts, tooling) parse this stream. Asserts the
   // shape so a future event-emit change has to update this expectation.
@@ -82,4 +89,5 @@ describe("opencode run (non-interactive subprocess)", () => {
       }),
     60_000,
   )
+  // kilocode_change end
 })
