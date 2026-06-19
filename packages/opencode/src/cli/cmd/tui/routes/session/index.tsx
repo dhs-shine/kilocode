@@ -22,7 +22,7 @@ import { useSync } from "@tui/context/sync"
 import { useEvent } from "@tui/context/event"
 import { SplitBorder } from "@tui/component/border"
 import { Spinner } from "@tui/component/spinner"
-import { selectedForeground, useTheme } from "@tui/context/theme"
+import { generateSubtleSyntax, selectedForeground, useTheme } from "@tui/context/theme"
 import { BoxRenderable, ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
 // kilocode_change start
 import type { KeyEvent } from "@opentui/core"
@@ -57,7 +57,6 @@ import type { SemanticSearchTool } from "@/kilocode/tool/semantic-search"
 import { useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
 import { useSDK } from "@tui/context/sdk"
 import { useEditorContext } from "@tui/context/editor"
-import type { DialogContext } from "@tui/ui/dialog"
 import { useDialog } from "../../ui/dialog"
 import { TodoItem } from "../../component/todo-item"
 import { DialogMessage } from "./dialog-message"
@@ -99,13 +98,14 @@ import { session as banner } from "@/kilocode/cli/logo"
 import { formatMarkdownTables } from "../../util/markdown"
 import { submitFeedback } from "@/kilocode/cli/cmd/tui/feedback"
 // kilocode_change end
+import { nextThinkingMode, reasoningTitle, useThinkingMode, type ThinkingMode } from "../../context/thinking"
 import { getScrollAcceleration } from "../../util/scroll"
+import { collapseToolOutput } from "../../util/collapse-tool-output"
 import { TuiPluginRuntime } from "@/cli/cmd/tui/plugin/runtime"
 import { DialogRetryAction } from "../../component/dialog-retry-action"
 import { SessionRetry } from "@/session/retry"
 import { getRevertDiffFiles } from "../../util/revert-diff"
-import { useCommandPalette } from "../../context/command-palette"
-import { useBindings, useCommandShortcut } from "../../keymap"
+import { KILO_BASE_MODE, useBindings, useCommandShortcut, useOpencodeKeymap } from "../../keymap"
 import { PathFormatterProvider, usePathFormatter } from "../../context/path-format"
 
 addDefaultParsers(parsers.parsers)
@@ -178,6 +178,7 @@ const context = createContext<{
   width: number
   sessionID: string
   conceal: () => boolean
+  thinkingMode: () => ThinkingMode
   showThinking: () => boolean
   showTimestamps: () => boolean
   showDetails: () => boolean
@@ -271,7 +272,9 @@ export function Session() {
   const [sidebar, setSidebar] = kv.signal<"auto" | "hide">("sidebar", "auto")
   const [sidebarOpen, setSidebarOpen] = createSignal(false)
   const [conceal, setConceal] = createSignal(true)
-  const [showThinking, setShowThinking] = kv.signal("thinking_visibility", true)
+  const thinking = useThinkingMode()
+  const thinkingMode = thinking.mode
+  const showThinking = createMemo(() => true)
   const [timestamps, setTimestamps] = kv.signal<"hide" | "show">("timestamps", "hide")
   const [showDetails, setShowDetails] = kv.signal("tool_details_visibility", true)
   const [showAssistantMetadata, _setShowAssistantMetadata] = kv.signal("assistant_metadata_visibility", true)
@@ -399,7 +402,7 @@ export function Session() {
     seeded = true
     r.set(route.prompt)
   }
-  const command = useCommandPalette()
+  const keymap = useOpencodeKeymap()
   const dialog = useDialog()
   const renderer = useRenderer()
 
@@ -783,7 +786,11 @@ export function Session() {
       },
     },
     {
-      title: showThinking() ? "Hide thinking" : "Show thinking",
+      title: (() => {
+        const next = nextThinkingMode(thinkingMode())
+        if (next === "hide") return "Collapse thinking"
+        return "Expand thinking"
+      })(),
       value: "session.toggle.thinking",
       category: "Session",
       slash: {
@@ -791,7 +798,7 @@ export function Session() {
         aliases: ["toggle-thinking"],
       },
       run: () => {
-        setShowThinking((prev) => !prev)
+        thinking.set(nextThinkingMode(thinkingMode()))
         dialog.clear()
       },
     },
@@ -951,6 +958,11 @@ export function Session() {
       title: "Copy last assistant message",
       value: "messages.copy",
       category: "Session",
+      // kilocode_change start - /copy copies the latest assistant response
+      slash: {
+        name: "copy",
+      },
+      // kilocode_change end
       run: () => {
         const revertID = session()?.revert?.messageID
         const lastAssistantMessage = messages().findLast(
@@ -1008,7 +1020,7 @@ export function Session() {
       value: "session.copy",
       category: "Session",
       slash: {
-        name: "copy",
+        name: "copy-session", // kilocode_change - transcript copy moved off /copy
       },
       run: async () => {
         try {
@@ -1174,7 +1186,7 @@ export function Session() {
   }))
 
   useBindings(() => ({
-    enabled: command.matcher,
+    mode: KILO_BASE_MODE,
     bindings: tuiConfig.keybinds.gather("session", sessionBindingCommands),
   }))
 
@@ -1213,6 +1225,7 @@ export function Session() {
           },
           sessionID: route.sessionID,
           conceal,
+          thinkingMode,
           showThinking,
           showTimestamps,
           showDetails,
@@ -1257,7 +1270,6 @@ export function Session() {
                     <Switch>
                       <Match when={message.id === revert()?.messageID}>
                         {(function () {
-                          const command = useCommandPalette()
                           const redoShortcut = useCommandShortcut("session.redo")
                           const [hover, setHover] = createSignal(false)
                           const dialog = useDialog()
@@ -1269,7 +1281,7 @@ export function Session() {
                               "Are you sure you want to restore the reverted messages?",
                             )
                             if (confirmed) {
-                              command.run("session.redo")
+                              keymap.dispatchCommand("session.redo")
                             }
                           }
 
@@ -1647,35 +1659,80 @@ const PART_MAPPING = {
 }
 
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
-  const { theme, subtleSyntax } = useTheme()
+  const { theme } = useTheme()
   const ctx = use()
+  // Collapsed by default in hide mode: a single line throughout, so the
+  // layout never shifts. Click to open the full markdown block, click to close.
+  const [expanded, setExpanded] = createSignal(false)
+
   const content = createMemo(() => {
-    // Filter out redacted reasoning chunks from OpenRouter
-    // OpenRouter sends encrypted reasoning data that appears as [REDACTED]
+    // OpenRouter encrypts some reasoning blocks; drop the placeholder.
     return props.part.text.replace("[REDACTED]", "").trim()
   })
+  // Reasoning is finalized when the server sets `time.end` (see processor.ts).
+  // Flips independently of the parent message completing.
+  const isDone = createMemo(() => props.part.time.end !== undefined)
+  const inMinimal = createMemo(() => ctx.thinkingMode() === "hide")
+  const duration = createMemo(() => {
+    const end = props.part.time.end
+    return end === undefined ? 0 : Math.max(0, end - props.part.time.start)
+  })
+  // OpenAI / Copilot / opencode-via-OpenAI emit `**Title**\n\n<body>` summary
+  // blocks. Surface the title both while streaming and after settling so the
+  // collapsed line carries real signal, not just a duration.
+  const title = createMemo(() => reasoningTitle(content()))
+  // Keep markdown emphasis for the existing thinking color/concealment, but render it without italics.
+  const syntax = createMemo(() => generateSubtleSyntax(theme, { "markup.italic": { italic: false } }))
+
+  const toggle = () => {
+    if (!inMinimal()) return
+    setExpanded((prev) => !prev)
+  }
+
   return (
-    <Show when={content() && ctx.showThinking()}>
-      <box
-        id={"text-" + props.part.id}
-        paddingLeft={2}
-        marginTop={1}
-        flexDirection="column"
-        border={["left"]}
-        customBorderChars={SplitBorder.customBorderChars}
-        borderColor={theme.backgroundElement}
-      >
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
-          streaming={true}
-          syntaxStyle={subtleSyntax()}
-          content={"_Thinking:_ " + content()}
-          conceal={ctx.conceal()}
-          fg={theme.textMuted}
-        />
-      </box>
+    <Show when={content()}>
+      <Switch>
+        <Match when={!inMinimal() || expanded()}>
+          {/* Full markdown block: `show` mode, or `hide` after the user opens it. */}
+          <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexDirection="column" onMouseUp={toggle}>
+            <code
+              filetype="markdown"
+              drawUnstyledText={false}
+              streaming={true}
+              syntaxStyle={syntax()}
+              // `_Thinking:_`/`_Thought:_` still drives markdown emphasis color and conceals the underscores;
+              // the syntax override above removes only the italic attribute from that emphasis token.
+              content={(inMinimal() ? "- " : "") + (isDone() ? "_Thought:_ " : "_Thinking:_ ") + content()}
+              conceal={ctx.conceal()}
+              fg={theme.textMuted}
+            />
+          </box>
+        </Match>
+        <Match when={isDone()}>
+          <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0} onMouseUp={toggle}>
+            <CollapsedReasoningText title={title()} duration={duration()} />
+          </box>
+        </Match>
+        <Match when={true}>
+          <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0} onMouseUp={toggle}>
+            <Spinner color={theme.textMuted}>{title() ? "Thinking: " + title() : "Thinking"}</Spinner>
+          </box>
+        </Match>
+      </Switch>
     </Show>
+  )
+}
+
+function CollapsedReasoningText(props: { title: string | null; duration: number }) {
+  const { theme } = useTheme()
+  const duration = () => Locale.duration(props.duration)
+
+  return (
+    <text fg={theme.warning} wrapMode="none">
+      <span style={{ fg: theme.warning }}>
+        {props.title ? "+ Thought: " + props.title + " · " + duration() : "+ Thought: " + duration()}
+      </span>
+    </text>
   )
 }
 
@@ -1693,6 +1750,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
           streaming={true}
           internalBlockMode="top-level"
           content={props.part.text.trim()}
+          tableOptions={{ style: "grid" }}
           conceal={ctx.conceal()}
           fg={theme.markdownText}
           bg={theme.background}
@@ -1825,12 +1883,12 @@ function GenericTool(props: ToolProps<any>) {
   const ctx = use()
   const output = createMemo(() => props.output?.trim() ?? "")
   const [expanded, setExpanded] = createSignal(false)
-  const lines = createMemo(() => output().split("\n"))
   const maxLines = 3
-  const overflow = createMemo(() => lines().length > maxLines)
+  const maxChars = createMemo(() => maxLines * Math.max(20, ctx.width - 6))
+  const collapsed = createMemo(() => collapseToolOutput(output(), maxLines, maxChars()))
   const limited = createMemo(() => {
-    if (expanded() || !overflow()) return output()
-    return [...lines().slice(0, maxLines), "…"].join("\n")
+    if (expanded() || !collapsed().overflow) return output()
+    return collapsed().output
   })
 
   return (
@@ -1845,11 +1903,11 @@ function GenericTool(props: ToolProps<any>) {
       <BlockTool
         title={`# ${props.tool} ${input(props.input)}`}
         part={props.part}
-        onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
+        onClick={collapsed().overflow ? () => setExpanded((prev) => !prev) : undefined}
       >
         <box gap={1}>
           <text fg={theme.text}>{limited()}</text>
-          <Show when={overflow()}>
+          <Show when={collapsed().overflow}>
             <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
           </Show>
         </box>
@@ -2000,14 +2058,16 @@ function BlockTool(props: {
 function Shell(props: ToolProps<typeof ShellTool>) {
   const { theme } = useTheme()
   const pathFormatter = usePathFormatter()
+  const ctx = use()
   const isRunning = createMemo(() => props.part.state.status === "running")
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
   const [expanded, setExpanded] = createSignal(false)
-  const lines = createMemo(() => output().split("\n"))
-  const overflow = createMemo(() => lines().length > 10)
+  const maxLines = 10
+  const maxChars = createMemo(() => maxLines * Math.max(20, ctx.width - 6))
+  const collapsed = createMemo(() => collapseToolOutput(output(), maxLines, maxChars()))
   const limited = createMemo(() => {
-    if (expanded() || !overflow()) return output()
-    return [...lines().slice(0, 10), "…"].join("\n")
+    if (expanded() || !collapsed().overflow) return output()
+    return collapsed().output
   })
 
   const workdirDisplay = createMemo(() => {
@@ -2031,14 +2091,14 @@ function Shell(props: ToolProps<typeof ShellTool>) {
           title={title()}
           part={props.part}
           spinner={isRunning()}
-          onClick={overflow() ? () => setExpanded((prev) => !prev) : undefined}
+          onClick={collapsed().overflow ? () => setExpanded((prev) => !prev) : undefined}
         >
           <box gap={1}>
             <text fg={theme.text}>$ {props.input.command}</text>
             <Show when={output()}>
               <text fg={theme.text}>{limited()}</text>
             </Show>
-            <Show when={overflow()}>
+            <Show when={collapsed().overflow}>
               <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
             </Show>
           </box>

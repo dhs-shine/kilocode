@@ -10,9 +10,9 @@ import type { WorkStyle, WorkStyleState } from "../../../../src/shared/work-styl
 import type {
   ClearLegacyDataMessage,
   FinalizeLegacyMigrationMessage,
-  RequestLegacyMigrationDataMessage,
+  RequestMigrationDataMessage,
   SkipLegacyMigrationMessage,
-  StartLegacyMigrationMessage,
+  StartMigrationMessage,
 } from "./migration"
 
 // ============================================
@@ -451,6 +451,11 @@ export interface UpdateConfigMessage {
 
 export interface RequestNotificationSettingsMessage {
   type: "requestNotificationSettings"
+}
+
+export interface TestNotificationMessage {
+  type: "testNotification"
+  sound: string
 }
 
 export interface ResetAllSettingsRequest {
@@ -971,6 +976,13 @@ export interface FetchCustomProviderModelsMessage {
   requestId: string
   baseURL: string
   apiKey?: string
+  /**
+   * When editing an existing provider and the key field is untouched, the
+   * webview has no key to send (keys are stripped before they reach it).
+   * It sends the providerID instead so the extension can authenticate the
+   * fetch with the stored key — which never crosses into the webview.
+   */
+  providerID?: string
   headers?: Record<string, string>
 }
 
@@ -1156,6 +1168,7 @@ export type WebviewMessage =
   | UpdateConfigMessage
   | OpenSettingsTabRequest
   | RequestNotificationSettingsMessage
+  | TestNotificationMessage
   | ResetAllSettingsRequest
   | SettingsTabChangedMessage
   | SyncSessionRequest
@@ -1211,8 +1224,8 @@ export type WebviewMessage =
   | RefreshPRMessage
   | OpenPRMessage
   // legacy-migration start
-  | RequestLegacyMigrationDataMessage
-  | StartLegacyMigrationMessage
+  | RequestMigrationDataMessage
+  | StartMigrationMessage
   | SkipLegacyMigrationMessage
   | ClearLegacyDataMessage
   | FinalizeLegacyMigrationMessage
