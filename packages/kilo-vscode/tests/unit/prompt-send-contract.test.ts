@@ -18,6 +18,7 @@ const ROOT = path.resolve(import.meta.dir, "../..")
 const SESSION_FILE = path.join(ROOT, "webview-ui/src/context/session.tsx")
 const CHATVIEW_FILE = path.join(ROOT, "webview-ui/src/components/chat/ChatView.tsx")
 const PROMPT_UTILS_FILE = path.join(ROOT, "webview-ui/src/components/chat/prompt-input-utils.ts")
+const KILOPROVIDER_FILE = path.join(ROOT, "src/KiloProvider.ts")
 
 function readFile(filePath: string): string {
   return fs.readFileSync(filePath, "utf-8")
@@ -148,5 +149,30 @@ describe("handleSessionDeleted draft cleanup contract", () => {
     expect(body).toMatch(
       /setLoaded\(\s*\(prev\)\s*=>\s*\{[\s\S]*?prev\.has\(sessionID\)[\s\S]*?next\.delete\(sessionID\)[\s\S]*?\}\)/,
     )
+  })
+
+  it("drops respondingPermissions entries that belong to the deleted session", () => {
+    // setPermissions is cleared by removeSessionPermissions, but respondingPermissions
+    // (the Set of in-flight permission ids) is a separate accessor that doesn't know
+    // which ids belong to which session. Without an explicit prune here, a permission
+    // request that the user was responding to when the session was deleted would keep
+    // its id resident and block future requests with the same id.
+    const body = extractFunctionBody(source, "handleSessionDeleted")
+    expect(body).toContain("setRespondingPermissions")
+  })
+})
+
+describe("KiloProvider pruneDeletedSession contract", () => {
+  const source = readFile(KILOPROVIDER_FILE)
+
+  it("drops sessionStatusMap entries alongside the other per-session caches", () => {
+    // sessionStatusMap is the source of truth for the destructive-config busy-session
+    // warning (sessionStatusMap.size === 0 short-circuit, the allStatusMap fed to the
+    // Settings panel). Without this prune, deleted sessions stay marked as
+    // busy/retry/etc. until provider dispose, suppressing the "you have a busy session"
+    // warning for the new current session.
+    const match = source.match(/pruneDeletedSession\(sessionID: string\): void \{([\s\S]*?)\n  \}/)
+    expect(match).not.toBeNull()
+    expect(match![1]).toContain("this.sessionStatusMap.delete(sessionID)")
   })
 })

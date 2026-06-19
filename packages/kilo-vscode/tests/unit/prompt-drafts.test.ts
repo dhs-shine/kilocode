@@ -1,4 +1,5 @@
 import { beforeEach, describe, it, expect } from "bun:test"
+import { createEffect, createRoot, createSignal, on } from "solid-js"
 import { deleteDraftsForSession, drafts, imageDrafts, reviewDrafts } from "../../webview-ui/src/utils/draft-store"
 import { pendingDraftKey, scopeDraftKey, sessionDraftKey } from "../../webview-ui/src/utils/prompt-drafts"
 
@@ -32,37 +33,69 @@ describe("deleteDraftsForSession", () => {
   })
 
   it("clears drafts that PromptInput's draftKey effect recreates after the batch", () => {
-    // Production race:
+    // Production race that motivated the post-batch deleteDraftsForSession call:
     //   1. handleSessionDeleted batches setCurrentSessionID(undefined) +
-    //      setDraftSessionID(undefined) and (in the original layout) the draft-cleanup helper.
-    //   2. PromptInput's createEffect(on(draftKey, ...)) runs after the batch and sees the
-    //      key transition, then calls saveDraft(prev, currentText, currentImages) which
-    //      writes the live prompt and any attached image data URLs back into the
-    //      ":session:<id>" key.
+    //      setDraftSessionID(undefined). PromptInput's draftKey memo transitions from
+    //      ":session:<id>" to the "new" bucket.
+    //   2. PromptInput's createEffect(on(draftKey, ...)) runs after the batch and calls
+    //      saveDraft(prev, currentText, currentImages), writing the live prompt and any
+    //      attached image data URLs back into the just-cleared ":session:<id>" key.
     //   3. deleteDraftsForSession runs after the effect and clears the re-added entry.
     //
-    // The helper is called twice here to model that exact order: once representing the
-    // call that runs alongside the batch, and once representing the call that runs after
-    // the Solid effect. If the post-batch call is removed (regression to a single in-batch
-    // call), the re-add between the two calls would survive and the final assertions fail —
-    // the test therefore does not pass under a single-cleanup implementation.
+    // The test wires the same reactive plumbing — real Solid createSignal/createEffect/on
+    // against the same scopeDraftKey/sessionDraftKey/pendingDraftKey helpers PromptInput
+    // uses — so a regression that moves the cleanup back inside the batch (or drops it
+    // entirely) leaks the recreated draft and the final assertion fails.
     const img = {
       id: "i1",
       filename: "x.png",
       mime: "image/png",
       dataUrl: "data:image/png;base64,AAAA",
     }
-    drafts.set("prompt:default:session:a", "draft a")
-    imageDrafts.set("prompt:default:session:a", [img])
-    deleteDraftsForSession("a")
-    // The createEffect's saveDraft re-writes the live prompt into the just-cleared entry.
-    drafts.set("prompt:default:session:a", "draft a")
-    imageDrafts.set("prompt:default:session:a", [img])
+    const draftKey = "prompt:default:session:race"
 
-    deleteDraftsForSession("a")
+    createRoot((dispose) => {
+      // Live prompt state, the way PromptInput tracks it.
+      const [text, setText] = createSignal("draft a")
+      const [images] = createSignal([img])
+      const [currentSessionID, setCurrentSessionID] = createSignal<string | undefined>("race")
+      const [draftSessionID, setDraftSessionID] = createSignal<string | undefined>("race")
 
-    expect(drafts.has("prompt:default:session:a")).toBe(false)
-    expect(imageDrafts.has("prompt:default:session:a")).toBe(false)
+      const boxKey = "prompt:default"
+      const rawKey = () =>
+        sessionDraftKey(currentSessionID()) ?? pendingDraftKey(draftSessionID() ?? undefined) ?? "new"
+      const key = () => scopeDraftKey(boxKey, rawKey())
+
+      // Pre-deletion: the user has unsent text and an attached image for this session.
+      drafts.set(draftKey, text())
+      imageDrafts.set(draftKey, images())
+
+      // Mirror the saveDraft behavior PromptInput's effect runs when draftKey transitions.
+      createEffect(
+        on(key, (k, prev) => {
+          if (prev !== undefined && prev !== k) {
+            drafts.set(prev, text())
+            imageDrafts.set(prev, images())
+          }
+        }),
+      )
+
+      // Production batch: clear the ids so draftKey transitions off ":session:<id>".
+      setCurrentSessionID(undefined)
+      setDraftSessionID(undefined)
+      // Solid has now run the effect; the recreate happened. Sanity-check before cleanup.
+      expect(drafts.has(draftKey)).toBe(true)
+      expect(imageDrafts.has(draftKey)).toBe(true)
+
+      // The post-batch cleanup. A single in-batch call (run before the effect) would
+      // have been wiped by the recreate above and not catch this — the post-batch
+      // call is what actually frees the entry.
+      deleteDraftsForSession("race")
+      dispose()
+    })
+
+    expect(drafts.has(draftKey)).toBe(false)
+    expect(imageDrafts.has(draftKey)).toBe(false)
   })
 })
 

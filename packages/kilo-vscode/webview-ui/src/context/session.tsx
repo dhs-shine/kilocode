@@ -1915,7 +1915,19 @@ export const SessionProvider: ParentComponent = (props) => {
           return next
         })
       }
+      const staleResponding = new Set(
+        permissions()
+          .filter((p) => p.sessionID === sessionID)
+          .map((p) => p.id),
+      )
       setPermissions((prev) => removeSessionPermissions(prev, sessionID))
+      setRespondingPermissions((prev) => {
+        if (staleResponding.size === 0) return prev
+        const next = new Set(prev)
+        for (const id of staleResponding) next.delete(id)
+        if (next.size === prev.size) return prev
+        return next
+      })
       setLoaded((prev) => {
         if (!prev.has(sessionID)) return prev
         const next = new Set(prev)
