@@ -160,6 +160,7 @@ export const defaultConfig: MergeConfig = {
     "packages/desktop/**",
     "packages/desktop-electron/**",
     "packages/cli/**",
+    "packages/stats/**",
     "sdks/vscode/**",
     // GitHub Action - Kilo version is fully ported and complete
     "github/index.ts",

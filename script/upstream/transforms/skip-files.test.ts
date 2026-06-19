@@ -16,6 +16,11 @@ test("matches upstream CLI scaffold glob paths", () => {
   expect(shouldSkip("packages/cli/src/index.ts", ["packages/cli/**"])).toBe(true)
 })
 
+test("matches upstream stats package glob paths", () => {
+  expect(shouldSkip("packages/stats/app/package.json", ["packages/stats/**"])).toBe(true)
+  expect(shouldSkip("packages/stats/core/src/index.ts", ["packages/stats/**"])).toBe(true)
+})
+
 test("matches removed vscode sdk glob paths", () => {
   expect(shouldSkip("sdks/vscode/package.json", ["sdks/vscode/**"])).toBe(true)
   expect(shouldSkip("sdks/vscode/src/extension.ts", ["sdks/vscode/**"])).toBe(true)
