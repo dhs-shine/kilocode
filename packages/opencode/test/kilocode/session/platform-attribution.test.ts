@@ -5,7 +5,7 @@ import * as Log from "@opencode-ai/core/util/log"
 import { Bus } from "@/bus"
 import { Session as SessionNs } from "@/session/session"
 import { SessionPrompt } from "@/session/prompt"
-import { AppRuntime } from "../../../src/effect/app-runtime"
+import { AppRuntime, type AppServices } from "../../../src/effect/app-runtime"
 import { KiloSession } from "../../../src/kilocode/session"
 import { provideTestInstance } from "../../fixture/fixture"
 import { MessageID, type SessionID } from "../../../src/session/schema"
@@ -14,12 +14,16 @@ import { ModelID, ProviderID } from "../../../src/provider/schema"
 const projectRoot = path.join(__dirname, "../../..")
 void Log.init({ print: false })
 
+function run<A, E, R extends AppServices>(effect: Effect.Effect<A, E, R>) {
+  return AppRuntime.runPromise(effect)
+}
+
 function create(input?: SessionNs.CreateInput) {
-  return AppRuntime.runPromise(SessionNs.Service.use((svc) => svc.create(input)))
+  return run(SessionNs.Service.use((svc) => svc.create(input)))
 }
 
 function seed(id: SessionID) {
-  return AppRuntime.runPromise(
+  return run(
     SessionNs.Service.use((svc) =>
       Effect.gen(function* () {
         const user = yield* svc.updateMessage({
@@ -51,7 +55,7 @@ function seed(id: SessionID) {
 }
 
 function remove(id: SessionID) {
-  return AppRuntime.runPromise(SessionNs.Service.use((svc) => svc.remove(id)))
+  return run(SessionNs.Service.use((svc) => svc.remove(id)))
 }
 
 describe("session platform attribution", () => {
@@ -103,7 +107,7 @@ describe("session platform attribution", () => {
         expect(KiloSession.resolveParent(child.id)).toBeUndefined()
 
         const closed = Promise.withResolvers<SessionID | undefined>()
-        const unsubscribe = await AppRuntime.runPromise(
+        const unsubscribe = await run(
           Bus.Service.use((bus) =>
             bus.subscribeCallback(KiloSession.Event.TurnClose, (event) => {
               if (event.properties.sessionID === child.id) closed.resolve(event.properties.parentID)
@@ -111,7 +115,7 @@ describe("session platform attribution", () => {
           ),
         )
 
-        await AppRuntime.runPromise(SessionPrompt.Service.use((prompt) => prompt.loop({ sessionID: child.id })))
+        await run(SessionPrompt.Service.use((prompt) => prompt.loop({ sessionID: child.id })))
         expect(await closed.promise).toBe(root.id)
         unsubscribe()
         await remove(root.id)
