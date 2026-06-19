@@ -30,6 +30,25 @@ describe("deleteDraftsForSession", () => {
     deleteDraftsForSession("")
     expect(drafts.get("prompt:default:session:a")).toBe("draft a")
   })
+
+  it("clears drafts that PromptInput's draftKey effect recreates after the batch", () => {
+    const img = {
+      id: "i1",
+      filename: "x.png",
+      mime: "image/png",
+      dataUrl: "data:image/png;base64,AAAA",
+    }
+    drafts.set("prompt:default:session:a", "draft a")
+    imageDrafts.set("prompt:default:session:a", [img])
+    deleteDraftsForSession("a")
+    drafts.set("prompt:default:session:a", "draft a")
+    imageDrafts.set("prompt:default:session:a", [img])
+
+    deleteDraftsForSession("a")
+
+    expect(drafts.has("prompt:default:session:a")).toBe(false)
+    expect(imageDrafts.has("prompt:default:session:a")).toBe(false)
+  })
 })
 
 describe("sessionDraftKey", () => {

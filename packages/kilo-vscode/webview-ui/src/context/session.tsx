@@ -1911,12 +1911,13 @@ export const SessionProvider: ParentComponent = (props) => {
           delete map[sessionID]
         }),
       )
-      deleteDraftsForSession(sessionID)
       if (currentSessionID() === sessionID) {
         setCurrentSessionID(undefined)
+        setDraftSessionID(undefined)
         setLoading(false)
       }
     })
+    deleteDraftsForSession(sessionID)
   }
 
   // Splices the message from the store and deletes its parts.

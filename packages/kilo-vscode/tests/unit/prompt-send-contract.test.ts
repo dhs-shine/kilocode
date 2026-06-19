@@ -116,3 +116,23 @@ describe("isPromptBlocked signature contract", () => {
     expect(params).toHaveLength(1)
   })
 })
+
+describe("handleSessionDeleted draft cleanup contract", () => {
+  const source = readFile(SESSION_FILE)
+
+  it("clears draftSessionID alongside currentSessionID when deleting the active session", () => {
+    const body = extractFunctionBody(source, "handleSessionDeleted")
+    const activeBlock = body.match(/if \(currentSessionID\(\) === sessionID\) \{([\s\S]*?)\}/)
+    expect(activeBlock).not.toBeNull()
+    expect(activeBlock![1]).toContain("setDraftSessionID(undefined)")
+  })
+
+  it("calls deleteDraftsForSession outside the cleanup batch so PromptInput's recreate is also cleaned up", () => {
+    const body = extractFunctionBody(source, "handleSessionDeleted")
+    const batchMatch = body.match(/batch\(\(\) => \{([\s\S]*?)\}\)/)
+    expect(batchMatch).not.toBeNull()
+    expect(batchMatch![1]).not.toContain("deleteDraftsForSession(sessionID)")
+    const postBatch = body.slice((batchMatch!.index ?? 0) + batchMatch![0].length)
+    expect(postBatch).toContain("deleteDraftsForSession(sessionID)")
+  })
+})
