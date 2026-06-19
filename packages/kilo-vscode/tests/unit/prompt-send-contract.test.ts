@@ -139,4 +139,14 @@ describe("handleSessionDeleted draft cleanup contract", () => {
     const postBatch = body.slice((batchMatch!.index ?? 0) + batchMatch![0].length)
     expect(postBatch).toContain("deleteDraftsForSession(sessionID)")
   })
+
+  it("removes the deleted id from the loaded Set so cascade/external deletes free the marker", () => {
+    // The user-initiated deleteSession() path prunes loaded optimistically, but
+    // cascade deletes and external CLI/TUI deletes only come through
+    // handleSessionDeleted. Without this, those ids stay in loaded until reload.
+    const body = extractFunctionBody(source, "handleSessionDeleted")
+    expect(body).toMatch(
+      /setLoaded\(\s*\(prev\)\s*=>\s*\{[\s\S]*?prev\.has\(sessionID\)[\s\S]*?next\.delete\(sessionID\)[\s\S]*?\}\)/,
+    )
+  })
 })

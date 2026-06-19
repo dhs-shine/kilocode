@@ -1910,6 +1910,12 @@ export const SessionProvider: ParentComponent = (props) => {
         })
       }
       setPermissions((prev) => removeSessionPermissions(prev, sessionID))
+      setLoaded((prev) => {
+        if (!prev.has(sessionID)) return prev
+        const next = new Set(prev)
+        next.delete(sessionID)
+        return next
+      })
       setStatusMap(
         produce((map) => {
           delete map[sessionID]
