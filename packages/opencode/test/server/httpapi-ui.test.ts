@@ -339,7 +339,7 @@ describe("HttpApi UI fallback", () => {
         headers: { authorization: `Basic ${btoa("opencode:sec:ret")}` },
       })
 
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(404) // kilocode_change - auth succeeds, but Kilo does not proxy a fallback UI
     }),
   )
 

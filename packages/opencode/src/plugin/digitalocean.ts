@@ -16,7 +16,7 @@ const OAUTH_PORT = 1456
 const OAUTH_REDIRECT_PATH = "/auth/callback"
 const OAUTH_TOKEN_PATH = "/auth/token"
 const ROUTER_REFRESH_INTERVAL_MS = 5 * 60 * 1000
-const OAUTH_SCOPES = "genai:read inference:query" // kilocode_change
+const OAUTH_SCOPES = "genai:read inference:query"
 
 interface ImplicitTokenPayload {
   access_token: string

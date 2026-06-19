@@ -259,7 +259,7 @@ export function createRoutes(
 
 // kilocode_change start - keep listener routes local while application services come from AppRuntime
 export function createListenerRoutes(corsOptions?: CorsOptions) {
-  return Layer.mergeAll(rootApiRoutes, eventApiRoutes, instanceRoutes, docRoute, uiRoute).pipe(
+  return Layer.mergeAll(rootApiRoutes, eventApiRoutes, ptyConnectApiRoutes, instanceRoutes, docRoute, uiRoute).pipe(
     provideKiloListenerRoutes(corsOptions),
   )
 }

@@ -79,8 +79,8 @@ export const TuiInfo = Schema.Struct({
   plugin_enabled: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
   leader_timeout: Schema.optional(KeymapLeaderTimeout),
   attention: Schema.optional(Attention),
-  title_icon: Schema.optional(KiloTitleIcon.Value),
-  prompt: Schema.optional(Prompt), // kilocode_change
+  title_icon: Schema.optional(KiloTitleIcon.Value), // kilocode_change
+  prompt: Schema.optional(Prompt),
   scroll_speed: Schema.optional(ScrollSpeed).annotate({
     description: "TUI scroll speed",
   }),
