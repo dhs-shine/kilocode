@@ -1,5 +1,3 @@
-@file:Suppress("UnstableApiUsage")
-
 package ai.kilocode.backend.rpc
 
 import ai.kilocode.backend.app.KiloAppState
@@ -201,6 +199,9 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
             FileSearchResultDto(files = files, git = git)
         } catch (e: IndexNotReadyException) {
             FileSearchResultDto(indexing = true, git = git)
+        } catch (e: LinkageError) {
+            LOG.warn("file search API unavailable; returning no suggestions", e)
+            FileSearchResultDto(git = git)
         }
     }
 
@@ -313,6 +314,10 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
         } ?: projects.firstOrNull()
     }
 
+    // Uses the IDE Go-to-File engine (com.intellij.ide.util.gotoByName.*). These are public but
+    // unstable lang-impl classes (not @ApiStatus.Internal) -- the same engine behind Search Everywhere,
+    // chosen for proven large-repo performance. searchFiles() degrades gracefully on LinkageError.
+    @Suppress("UnstableApiUsage")
     private fun search(project: Project, base: Path, query: String, limit: Int): List<WorkspaceFileDto> {
         val text = query.trim()
         if (text.isBlank()) return roots(project, base, limit)

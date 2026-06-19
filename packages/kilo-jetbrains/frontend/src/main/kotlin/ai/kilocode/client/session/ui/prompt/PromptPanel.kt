@@ -22,10 +22,10 @@ import ai.kilocode.rpc.dto.PromptPartDto
 import com.intellij.icons.AllIcons
 import com.intellij.codeInsight.completion.CodeCompletionHandlerBase
 import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.codeInsight.lookup.LookupEx
 import com.intellij.codeInsight.lookup.LookupManagerListener
 import com.intellij.codeInsight.lookup.LookupPositionStrategy
 import com.intellij.codeInsight.lookup.LookupPresentation
-import com.intellij.codeInsight.lookup.impl.LookupImpl
 import com.intellij.ide.DataManager
 import com.intellij.ide.dnd.DnDEvent
 import com.intellij.ide.dnd.DnDSupport
@@ -548,7 +548,12 @@ class PromptPanel(
     }
 
     private fun showCompletion(ed: com.intellij.openapi.editor.Editor) {
-        // Uses IntelliJ impl/internal completion APIs; revisit on platform upgrades.
+        // Run completion synchronously and locally on this frontend-only editor. The public entry
+        // points (ACTION_CODE_COMPLETION, AutoPopupController.scheduleAutoPopup) route through
+        // split-mode RD/autopopup machinery that targets a backend-shared editor: in split mode they
+        // either dispatch to the backend (which has no editor and asserts) or get cancelled before the
+        // popup shows. CodeCompletionHandlerBase is public (not @ApiStatus.Internal) and is the only
+        // API that drives the completion engine directly against this local editor.
         CodeCompletionHandlerBase.createHandler(CompletionType.BASIC, true, false, true)
             .invokeCompletion(project, ed, 1)
     }
@@ -718,7 +723,9 @@ class PromptPanel(
         val connection = project.messageBus.connect()
         lookupBus = connection
         connection.subscribe(LookupManagerListener.TOPIC, LookupManagerListener { _, next ->
-            val lookup = next as? LookupImpl ?: return@LookupManagerListener
+            // LookupPresentation/LookupPositionStrategy are @ApiStatus.Experimental (no stable API
+            // forces the lookup above the caret). LookupEx is the public lookup interface.
+            val lookup = next as? LookupEx ?: return@LookupManagerListener
             if (lookup.editor !== editor.getEditor(false)) return@LookupManagerListener
             lookup.presentation = LookupPresentation.Builder(lookup.presentation)
                 .withPositionStrategy(LookupPositionStrategy.ONLY_ABOVE)
