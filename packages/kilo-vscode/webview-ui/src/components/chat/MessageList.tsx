@@ -63,6 +63,8 @@ interface MessageListProps {
   readonly?: boolean
   /** Optionally replace the standard welcome content while the conversation is empty. */
   emptyState?: () => JSX.Element
+  /** Announce transcript changes as a live log. Disable for multi-session surfaces with concurrent streams. */
+  announce?: boolean
 }
 
 export const MessageList: Component<MessageListProps> = (props) => {
@@ -73,6 +75,19 @@ export const MessageList: Component<MessageListProps> = (props) => {
   const autoScroll = createAutoScroll({
     working: () => session.status() !== "idle",
   })
+  const [announcement, setAnnouncement] = createSignal("")
+  createEffect(
+    (prev: { sid?: string; working: boolean }) => {
+      const sid = session.currentSessionID()
+      const working = session.status() !== "idle"
+      if (working && (!prev.working || prev.sid !== sid)) setAnnouncement(language.t("session.status.working"))
+      if (!working && prev.working && prev.sid === sid) {
+        setAnnouncement(language.t("settings.agentBehaviour.editMode.save"))
+      }
+      return { sid, working }
+    },
+    { sid: undefined, working: false },
+  )
 
   // Explicit output-producing actions resume auto-scroll before appending.
   const onResumeAutoScroll = () => autoScroll.resume()
@@ -260,13 +275,25 @@ export const MessageList: Component<MessageListProps> = (props) => {
 
   return (
     <div class="message-list-container">
+      <Show when={props.announce === false}>
+        <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {announcement()}
+        </div>
+      </Show>
       <Show when={isEmpty()}>
         <div class="welcome-header">
           <AccountSwitcher class="account-switcher-welcome" />
           <KiloNotifications />
         </div>
       </Show>
-      <div ref={setScrollRef} onScroll={handleScroll} class="message-list" role="log" aria-live="polite">
+      <div
+        ref={setScrollRef}
+        onScroll={handleScroll}
+        class="message-list"
+        role={props.announce === false ? undefined : "log"}
+        aria-live={props.announce === false ? undefined : "polite"}
+        aria-busy={props.announce === false && session.status() !== "idle" ? "true" : undefined}
+      >
         <div ref={autoScroll.contentRef} class={isEmpty() ? "message-list-content-empty" : "message-list-content"}>
           <Show when={session.loading()}>
             <div class="message-list-loading" role="status">

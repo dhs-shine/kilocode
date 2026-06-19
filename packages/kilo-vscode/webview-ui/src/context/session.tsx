@@ -57,6 +57,7 @@ import {
   buildCostBreakdown,
   buildSessionToolParts,
   childID,
+  reconcileSessionToolParts,
   removeSessionToolPart,
   removeSessionToolPartsForMessage,
   upsertSessionToolPart,
@@ -1290,12 +1291,16 @@ export const SessionProvider: ParentComponent = (props) => {
     return true
   }
 
+  function setTools(sessionID: string, tools: ToolPart[]) {
+    setStore("toolParts", sessionID, reconcileSessionToolParts(tools))
+  }
+
   function rebuildToolParts(sessionID: string, messages: Message[], parts?: Record<string, Part[]>) {
     const tools = buildSessionToolParts(
       messages,
       (msg) => parts?.[msg.id] ?? store.parts[msg.id] ?? stash.peek(msg.id) ?? msg.parts,
     )
-    setStore("toolParts", sessionID, tools)
+    setTools(sessionID, tools)
   }
 
   function messageParts(messages: Message[]): Record<string, Part[]> {
@@ -1310,16 +1315,17 @@ export const SessionProvider: ParentComponent = (props) => {
     const sid = sessionID ?? part.sessionID
     if (!sid) return
     if (part.type !== "tool") return
-    setStore("toolParts", sid, (tools = []) => upsertSessionToolPart(tools, part, { id: messageID, sessionID: sid }))
+    const tools = upsertSessionToolPart(store.toolParts[sid] ?? [], part, { id: messageID, sessionID: sid })
+    setTools(sid, tools)
   }
 
   function dropToolPart(sessionID: string | undefined, partID: string) {
     if (!sessionID) return
-    setStore("toolParts", sessionID, (tools = []) => removeSessionToolPart(tools, partID))
+    setTools(sessionID, removeSessionToolPart(store.toolParts[sessionID] ?? [], partID))
   }
 
   function dropMessageTools(sessionID: string, messageID: string) {
-    setStore("toolParts", sessionID, (tools = []) => removeSessionToolPartsForMessage(tools, messageID))
+    setTools(sessionID, removeSessionToolPartsForMessage(store.toolParts[sessionID] ?? [], messageID))
   }
 
   function handleMessagesLoaded(
