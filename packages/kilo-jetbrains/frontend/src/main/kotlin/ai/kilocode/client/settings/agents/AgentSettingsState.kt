@@ -29,6 +29,14 @@ internal data class AgentEditDraft(
     val steps: Long? = null,
 )
 
+internal fun canDelete(agent: AgentEditDraft) = !agent.native
+
+internal fun canEditMode(agent: AgentEditDraft) = !agent.native
+
+internal fun canEditVisibility(agent: AgentEditDraft) = !agent.native
+
+internal fun canEditDescription(agent: AgentEditDraft) = !agent.native
+
 internal fun agentsDraft(config: ConfigDto?, details: List<AgentDetailDto>): AgentsDraft {
     val items = details.associate { detail ->
         val cfg = config?.agent?.get(detail.name)
@@ -58,7 +66,9 @@ internal fun agentsDraft(config: ConfigDto?, details: List<AgentDetailDto>): Age
 }
 
 internal fun updateAgent(draft: AgentsDraft, agent: AgentEditDraft): AgentsDraft {
-    val def = draft.defaultAgent.takeUnless { it == agent.name && (agent.hidden || agent.disable || KiloCliParser.isSubagent(agent.mode)) }
+    val restricted = !canEditMode(agent) || !canEditVisibility(agent)
+    val clear = !restricted && (agent.hidden || agent.disable || KiloCliParser.isSubagent(agent.mode))
+    val def = draft.defaultAgent.takeUnless { it == agent.name && clear }
     return draft.copy(defaultAgent = def, agents = draft.agents + (agent.name to agent))
 }
 
@@ -101,18 +111,21 @@ private fun patchAgent(from: AgentEditDraft, to: AgentEditDraft): AgentConfigPat
         null
     }
 
-    val mode = if (from.mode != to.mode && to.mode != to.defaultMode) to.mode else null
-    if (from.mode != to.mode && to.mode == to.defaultMode) clear += "mode"
+    val modeEditable = canEditMode(from) && canEditMode(to)
+    val visibilityEditable = canEditVisibility(from) && canEditVisibility(to)
+    val descriptionEditable = canEditDescription(from) && canEditDescription(to)
+    val mode = if (modeEditable && from.mode != to.mode && to.mode != to.defaultMode) to.mode else null
+    if (modeEditable && from.mode != to.mode && to.mode == to.defaultMode) clear += "mode"
 
     val patch = AgentConfigPatchDto(
         clear = clear,
         model = text("model", from.model, to.model),
         variant = text("variant", from.variant, to.variant),
         prompt = text("prompt", from.prompt, to.prompt),
-        description = text("description", from.description, to.description),
+        description = if (descriptionEditable) text("description", from.description, to.description) else null,
         mode = mode,
-        hidden = to.hidden.takeIf { from.hidden != to.hidden },
-        disable = to.disable.takeIf { from.disable != to.disable },
+        hidden = to.hidden.takeIf { visibilityEditable && from.hidden != to.hidden },
+        disable = to.disable.takeIf { visibilityEditable && from.disable != to.disable },
         temperature = number("temperature", from.temperature, to.temperature),
         top_p = number("top_p", from.topP, to.topP),
         steps = long("steps", from.steps, to.steps),

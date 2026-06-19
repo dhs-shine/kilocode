@@ -20,6 +20,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.service
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.ui.components.JBLabel
 import kotlinx.coroutines.CoroutineScope
@@ -90,8 +91,12 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
     }
 
     override fun onCell(key: String, cellId: String) {
-        if (cellId != EDIT_CELL) return
         val agent = draft.agents[key] ?: return
+        if (cellId == DELETE_CELL) {
+            remove(agent)
+            return
+        }
+        if (cellId != EDIT_CELL) return
         val dialog = AgentEditDialog(agent)
         if (!dialog.showAndGet()) return
         draft = updateAgent(draft, dialog.result())
@@ -128,7 +133,6 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
     }
 
     private fun rows(): List<SettingsListItem> = draft.agents.values.map { item ->
-        val custom = !item.native
         object : SettingsListItem {
             override val key = item.name
             override val title = item.displayName ?: item.name
@@ -142,7 +146,7 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
                 SettingsBadge(
                     KiloBundle.message("settings.agentBehavior.badge.custom"),
                     UiStyle.Badge.Primary,
-                ).takeIf { custom },
+                ).takeIf { canDelete(item) },
                 SettingsBadge(KiloBundle.message("settings.agentBehavior.badge.hidden")).takeIf { item.hidden },
                 SettingsBadge(KiloBundle.message("settings.agentBehavior.badge.disabled")).takeIf { item.disable },
                 SettingsBadge(
@@ -157,8 +161,38 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
                     KiloBundle.message("settings.agentBehavior.delete"),
                     icon = AllIcons.Actions.GC,
                     iconOnly = true,
-                ).takeIf { custom },
+                ).takeIf { canDelete(item) },
             )
+        }
+    }
+
+    private fun remove(agent: AgentEditDraft) {
+        if (!canDelete(agent)) return
+        val result = Messages.showYesNoDialog(
+            KiloBundle.message("settings.agentBehavior.agents.delete.message", agent.displayName ?: agent.name),
+            KiloBundle.message("settings.agentBehavior.agents.delete.title"),
+            KiloBundle.message("settings.agentBehavior.delete"),
+            Messages.getCancelButton(),
+            Messages.getQuestionIcon(),
+        )
+        if (result != Messages.YES) return
+        cs.launch {
+            val removed = service<KiloAgentBehaviorService>().removeAgent(dir, agent.name)
+            if (!removed) return@launch
+            withContext(edt) {
+                base = base.copy(
+                    defaultAgent = base.defaultAgent.takeUnless { it == agent.name },
+                    agents = base.agents - agent.name,
+                )
+                draft = draft.copy(
+                    defaultAgent = draft.defaultAgent.takeUnless { it == agent.name },
+                    agents = draft.agents - agent.name,
+                )
+                details = details.filter { it.name != agent.name }
+                syncNames()
+                syncPicker()
+                view.update(rows())
+            }
         }
     }
 

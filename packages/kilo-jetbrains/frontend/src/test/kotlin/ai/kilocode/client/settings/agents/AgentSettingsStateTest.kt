@@ -42,6 +42,13 @@ class AgentSettingsStateTest {
     }
 
     @Test
+    fun `draft preserves native details`() {
+        val draft = agentsDraft(null, listOf(detail("ask", native = true)))
+
+        assertTrue(draft.agents.getValue("ask").native)
+    }
+
+    @Test
     fun `patch emits changed fields only`() {
         val from = AgentsDraft(agents = mapOf("code" to AgentEditDraft(name = "code", description = "Old")))
         val to = updateAgent(from, from.agents.getValue("code").copy(
@@ -66,6 +73,45 @@ class AgentSettingsStateTest {
         assertEquals(4, agent?.steps)
         assertEquals(true, agent?.hidden)
         assertEquals(true, agent?.disable)
+        assertEquals(emptyList(), agent?.clear)
+    }
+
+    @Test
+    fun `patch emits custom mode and visibility changes`() {
+        val from = AgentsDraft(agents = mapOf("custom" to AgentEditDraft(name = "custom")))
+        val to = updateAgent(from, from.agents.getValue("custom").copy(
+            mode = KiloCliParser.MODE_ALL,
+            hidden = true,
+            disable = true,
+        ))
+
+        val agent = patch(from, to)?.agents?.get("custom")
+        assertEquals(KiloCliParser.MODE_ALL, agent?.mode)
+        assertEquals(true, agent?.hidden)
+        assertEquals(true, agent?.disable)
+    }
+
+    @Test
+    fun `patch ignores native description mode and visibility changes`() {
+        val from = AgentsDraft(agents = mapOf("ask" to AgentEditDraft(
+            name = "ask",
+            description = "Built in",
+            native = true,
+        )))
+        val to = updateAgent(from, from.agents.getValue("ask").copy(
+            description = "Changed",
+            mode = KiloCliParser.MODE_SUBAGENT,
+            hidden = true,
+            disable = true,
+            prompt = "Prompt",
+        ))
+
+        val agent = patch(from, to)?.agents?.get("ask")
+        assertEquals("Prompt", agent?.prompt)
+        assertNull(agent?.description)
+        assertNull(agent?.mode)
+        assertNull(agent?.hidden)
+        assertNull(agent?.disable)
         assertEquals(emptyList(), agent?.clear)
     }
 
@@ -104,13 +150,23 @@ class AgentSettingsStateTest {
     }
 
     @Test
-    fun `hiding or disabling default clears default agent`() {
+    fun `hiding disabling or making custom default subagent clears default agent`() {
         val agent = AgentEditDraft(name = "code")
         val draft = AgentsDraft(defaultAgent = "code", agents = mapOf("code" to agent))
 
         assertNull(updateAgent(draft, agent.copy(hidden = true)).defaultAgent)
         assertNull(updateAgent(draft, agent.copy(disable = true)).defaultAgent)
         assertNull(updateAgent(draft, agent.copy(mode = KiloCliParser.MODE_SUBAGENT)).defaultAgent)
+    }
+
+    @Test
+    fun `native restricted changes do not clear default agent`() {
+        val agent = AgentEditDraft(name = "ask", native = true)
+        val draft = AgentsDraft(defaultAgent = "ask", agents = mapOf("ask" to agent))
+
+        assertEquals("ask", updateAgent(draft, agent.copy(hidden = true)).defaultAgent)
+        assertEquals("ask", updateAgent(draft, agent.copy(disable = true)).defaultAgent)
+        assertEquals("ask", updateAgent(draft, agent.copy(mode = KiloCliParser.MODE_SUBAGENT)).defaultAgent)
     }
 
     @Test
@@ -125,5 +181,6 @@ class AgentSettingsStateTest {
         name: String,
         description: String? = null,
         mode: String = KiloCliParser.MODE_PRIMARY,
-    ) = AgentDetailDto(name = name, displayName = name, description = description, mode = mode)
+        native: Boolean = false,
+    ) = AgentDetailDto(name = name, displayName = name, description = description, mode = mode, native = native)
 }
