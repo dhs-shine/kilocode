@@ -14,6 +14,7 @@ import { Account } from "../../src/account/account"
 import { AccessToken, AccountID, OrgID } from "../../src/account/schema"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { Env } from "../../src/env"
+import { Git } from "../../src/git" // kilocode_change
 import {
   provideTmpdirInstance,
   TestInstance,
@@ -95,6 +96,7 @@ const configLayer = (
   } = {},
 ) =>
   Config.layer.pipe(
+    Layer.provide(Git.defaultLayer), // kilocode_change
     Layer.provide(testFlock),
     Layer.provide(Env.defaultLayer),
     Layer.provide(options.auth ?? AuthTest.empty),
@@ -1682,6 +1684,7 @@ test("remote well-known config can use FetchHttpClient layer", async () => {
       Effect.scoped,
       Effect.provide(
         Config.layer.pipe(
+          Layer.provide(Git.defaultLayer), // kilocode_change
           Layer.provide(testFlock),
           Layer.provide(AppFileSystem.defaultLayer),
           Layer.provide(Env.defaultLayer),

@@ -1802,7 +1802,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
           syntaxStyle={syntax()}
           streaming={true}
           internalBlockMode="top-level"
-          content={props.part.text.trim()}
+          content={content()} // kilocode_change
           tableOptions={{ style: "grid" }}
           conceal={ctx.conceal()}
           fg={theme.markdownText}

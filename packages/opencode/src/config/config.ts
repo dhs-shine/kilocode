@@ -50,6 +50,8 @@ import z from "zod" // kilocode_change - Kilo config compatibility schemas
 // kilocode_change start
 import { ZodOverride } from "@opencode-ai/core/effect-zod"
 import { KilocodeConfig } from "../kilocode/config/config"
+import { primaryPaths } from "../kilocode/primary-worktree"
+import { Git } from "@/git"
 import { KilocodeDefaultPlugins } from "@/kilocode/config/default-plugins"
 import { KilocodeGlobalConfigStamp } from "@/kilocode/config/global-stamp"
 import {
@@ -523,6 +525,7 @@ export const layer = Layer.effect(
     const env = yield* Env.Service
     const npmSvc = yield* Npm.Service
     const http = yield* HttpClient.HttpClient
+    const git = yield* Git.Service // kilocode_change
 
     const readConfigFile = (filepath: string) => fs.readFileStringSafe(filepath).pipe(Effect.orDie)
 
@@ -828,7 +831,7 @@ export const layer = Layer.effect(
         if (!Flag.KILO_DISABLE_PROJECT_CONFIG) {
           // kilocode_change start - also discover kilo.json project files
           for (const name of ["kilo", "opencode"] as const) {
-            for (const file of yield* ConfigPaths.files(name, ctx.directory, ctx.project.worktree).pipe(Effect.orDie)) {
+            for (const file of yield* ConfigPaths.files(name, ctx.directory, ctx.worktree).pipe(Effect.orDie)) {
               yield* merge(
                 file,
                 yield* loadFile(file, authEnv).pipe(
@@ -848,7 +851,15 @@ export const layer = Layer.effect(
         result.mode = result.mode || {}
         result.plugin = result.plugin || []
 
-        const directories = yield* ConfigPaths.directories(ctx.directory, ctx.project.worktree) // kilocode_change
+        // kilocode_change start - include config directories from the primary checkout
+        const directories = yield* ConfigPaths.directories(ctx.directory, ctx.worktree)
+        const primary = Flag.KILO_DISABLE_PROJECT_CONFIG
+          ? []
+          : yield* primaryPaths(ctx.worktree, KilocodeConfig.ALL_CONFIG_DIR_SUFFIXES)
+        // Load primary fallbacks before active-worktree config, then track them as local.
+        directories.splice(1, 0, ...primary)
+        const primarySet = new Set(primary)
+        // kilocode_change end
 
         if (Flag.KILO_CONFIG_DIR) {
           log.debug("loading config from KILO_CONFIG_DIR", { path: Flag.KILO_CONFIG_DIR })
@@ -858,6 +869,7 @@ export const layer = Layer.effect(
 
         // kilocode_change start
         for (const dir of unique(directories)) {
+          const scope = primarySet.has(dir) ? "local" : undefined
           if (KilocodeConfig.isConfigDir(dir, Flag.KILO_CONFIG_DIR)) {
             for (const file of KilocodeConfig.ALL_CONFIG_FILES) {
               const source = path.join(dir, file)
@@ -870,6 +882,7 @@ export const layer = Layer.effect(
                     return Effect.succeed({} as Info)
                   }),
                 ),
+                scope,
               )
               result.agent ??= {}
               result.mode ??= {}
@@ -914,7 +927,7 @@ export const layer = Layer.effect(
           // Auto-discovered plugins under `.opencode/plugin(s)` are already local files, so ConfigPlugin.load
           // returns normalized Specs and we only need to attach origin metadata here.
           const list = yield* Effect.promise(() => ConfigPlugin.load(dir))
-          yield* mergePluginOrigins(dir, list)
+          yield* mergePluginOrigins(dir, list, scope) // kilocode_change
         }
 
         if (process.env.KILO_CONFIG_CONTENT) {
@@ -1071,7 +1084,7 @@ export const layer = Layer.effect(
 
     const state = yield* InstanceState.make<State>(
       Effect.fn("Config.state")(function* (ctx) {
-        return yield* loadInstanceState(ctx).pipe(Effect.orDie)
+        return yield* loadInstanceState(ctx).pipe(Effect.provideService(Git.Service, git), Effect.orDie) // kilocode_change
       }),
     )
 
@@ -1206,6 +1219,7 @@ export const layer = Layer.effect(
 )
 
 export const defaultLayer = layer.pipe(
+  Layer.provide(Git.defaultLayer), // kilocode_change
   Layer.provide(EffectFlock.defaultLayer),
   Layer.provide(AppFileSystem.defaultLayer),
   Layer.provide(Env.defaultLayer),

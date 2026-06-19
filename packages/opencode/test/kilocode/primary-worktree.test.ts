@@ -1,44 +1,119 @@
 import { $ } from "bun"
-import { describe, expect, test } from "bun:test"
+import { describe, expect } from "bun:test"
+import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
+import { Effect, Layer } from "effect"
 import path from "path"
+import { Git } from "../../src/git"
 import { primaryWorktree } from "../../src/kilocode/primary-worktree"
-import { tmpdir } from "../fixture/fixture"
+import { tmpdirScoped } from "../fixture/fixture"
+import { testEffect } from "../lib/effect"
+
+const it = testEffect(Layer.mergeAll(Git.defaultLayer, CrossSpawnSpawner.defaultLayer))
 
 describe("primaryWorktree", () => {
-  test("returns the current checkout for a normal repository", async () => {
-    await using repo = await tmpdir({ git: true })
+  it.live("returns the current checkout for a normal repository", () =>
+    Effect.gen(function* () {
+      const repo = yield* tmpdirScoped({ git: true })
 
-    expect(primaryWorktree(repo.path)).toBe(repo.path)
-  })
+      expect(yield* primaryWorktree(repo)).toBe(repo)
+    }),
+  )
 
-  test("returns the primary checkout for a linked worktree", async () => {
-    await using repo = await tmpdir({ git: true })
-    const worktree = path.join(repo.path, ".kilo", "worktrees", "feature")
-    await $`git worktree add -b primary-worktree-test ${worktree}`.cwd(repo.path).quiet()
+  it.live("returns the primary checkout for a sibling linked worktree", () =>
+    Effect.gen(function* () {
+      const repo = yield* tmpdirScoped({ git: true })
+      const worktree = path.join(path.dirname(repo), `${path.basename(repo)}-feature`)
+      yield* Effect.addFinalizer(() =>
+        Effect.promise(() => $`git worktree remove --force ${worktree}`.cwd(repo).quiet().nothrow()).pipe(
+          Effect.asVoid,
+        ),
+      )
+      yield* Effect.promise(() => $`git worktree add -b primary-worktree-test ${worktree}`.cwd(repo).quiet())
 
-    expect(primaryWorktree(worktree)).toBe(repo.path)
-  })
+      expect(yield* primaryWorktree(worktree)).toBe(repo)
+    }),
+  )
 
-  test("returns undefined outside a Git repository", async () => {
-    await using dir = await tmpdir()
+  it.live("returns undefined outside a Git repository", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
 
-    expect(primaryWorktree(dir.path)).toBeUndefined()
-  })
+      expect(yield* primaryWorktree(dir)).toBeUndefined()
+    }),
+  )
 
-  test("supports repository paths containing spaces", async () => {
-    await using dir = await tmpdir()
-    const repo = path.join(dir.path, "repo with spaces")
-    await $`git init ${repo}`.quiet()
+  it.live("rechecks a path after it becomes a Git repository", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
+      expect(yield* primaryWorktree(dir)).toBeUndefined()
 
-    expect(primaryWorktree(repo)).toBe(repo)
-  })
+      yield* Effect.promise(() => $`git init ${dir}`.quiet())
+      expect(yield* primaryWorktree(dir)).toBe(dir)
+    }),
+  )
 
-  test("returns a submodule checkout instead of its internal git directory", async () => {
-    await using parent = await tmpdir({ git: true })
-    await using child = await tmpdir({ git: true })
-    await $`git -c protocol.file.allow=always submodule add ${child.path} sub`.cwd(parent.path).quiet()
-    const submodule = path.join(parent.path, "sub")
+  it.live("supports repository paths containing spaces", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
+      const repo = path.join(dir, "repo with spaces")
+      yield* Effect.promise(() => $`git init ${repo}`.quiet())
 
-    expect(primaryWorktree(submodule)).toBe(submodule)
-  })
+      expect(yield* primaryWorktree(repo)).toBe(repo)
+    }),
+  )
+
+  it.live("supports primary checkout paths containing newlines", () =>
+    Effect.gen(function* () {
+      if (process.platform === "win32") return
+      const dir = yield* tmpdirScoped()
+      const repo = path.join(dir, "primary-checkout\n")
+      const worktree = path.join(dir, "feature")
+      yield* Effect.promise(() => $`git init ${repo}`.quiet())
+      yield* Effect.promise(() =>
+        $`git -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false commit --allow-empty -m init`
+          .cwd(repo)
+          .quiet(),
+      )
+      yield* Effect.addFinalizer(() =>
+        Effect.promise(() => $`git worktree remove --force ${worktree}`.cwd(repo).quiet().nothrow()).pipe(
+          Effect.asVoid,
+        ),
+      )
+      yield* Effect.promise(() => $`git worktree add -b primary-newline-worktree ${worktree}`.cwd(repo).quiet())
+
+      expect(yield* primaryWorktree(worktree)).toBe(repo)
+    }),
+  )
+
+  it.live("returns a submodule checkout instead of its internal git directory", () =>
+    Effect.gen(function* () {
+      const parent = yield* tmpdirScoped({ git: true })
+      const child = yield* tmpdirScoped({ git: true })
+      yield* Effect.promise(() => $`git -c protocol.file.allow=always submodule add ${child} sub`.cwd(parent).quiet())
+      const submodule = path.join(parent, "sub")
+
+      expect(yield* primaryWorktree(submodule)).toBe(submodule)
+    }),
+  )
+
+  it.live("supports a separate Git directory", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
+      const repo = path.join(dir, "checkout")
+      const store = path.join(dir, "git-store")
+      yield* Effect.promise(() => $`git init --separate-git-dir=${store} ${repo}`.quiet())
+
+      expect(yield* primaryWorktree(repo)).toBe(repo)
+    }),
+  )
+
+  it.live("returns undefined for a bare repository", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
+      const repo = path.join(dir, "bare.git")
+      yield* Effect.promise(() => $`git init --bare ${repo}`.quiet())
+
+      expect(yield* primaryWorktree(repo)).toBeUndefined()
+    }),
+  )
 })
