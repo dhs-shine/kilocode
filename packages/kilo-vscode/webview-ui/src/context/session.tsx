@@ -72,6 +72,7 @@ import { getVariant, sessionVariantKeys, transferVariants, variantKey } from "./
 import { KILO_AUTO, KILO_PROVIDER_ID, parseModelString } from "../../../src/shared/provider-model"
 import { reviewMetadata, type ReviewMessageData } from "../../../src/shared/review-comments"
 import { visibleMessages as filterVisibleMessages } from "./session-queue"
+import { deleteDraftsForSession } from "../utils/draft-store"
 import { createAbortState } from "./abort-state"
 
 const RECENT_LIMIT = 5
@@ -1910,6 +1911,7 @@ export const SessionProvider: ParentComponent = (props) => {
           delete map[sessionID]
         }),
       )
+      deleteDraftsForSession(sessionID)
       if (currentSessionID() === sessionID) {
         setCurrentSessionID(undefined)
         setLoading(false)

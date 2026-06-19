@@ -46,13 +46,9 @@ import {
 import type { ReviewComment, SendMessageFailedMessage, TextPart } from "../../types/messages"
 import { formatReviewCommentsMarkdown } from "../../utils/review-comment-markdown"
 import { pendingDraftKey, scopeDraftKey, sessionDraftKey } from "../../utils/prompt-drafts"
+import { drafts, imageDrafts, reviewDrafts } from "../../utils/draft-store"
 import { ReviewComments } from "./ReviewComments"
 import { partReview, reviewBody } from "../../../../src/shared/review-comments"
-
-// Per-session input text storage (module-level so it survives remounts)
-const drafts = new Map<string, string>()
-const reviewDrafts = new Map<string, ReviewComment[]>()
-const imageDrafts = new Map<string, ImageAttachment[]>()
 
 function mergeReviewComments(current: ReviewComment[], incoming: ReviewComment[]): ReviewComment[] {
   if (incoming.length === 0) return current
