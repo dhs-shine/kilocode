@@ -6,10 +6,16 @@ import { Provider } from "@/provider/provider"
 import { Filesystem } from "@/util/filesystem"
 
 export namespace KiloRun {
-  export const isBuiltin = isBuiltinCommand
+  export async function resolveBuiltin(sdk: KiloClient, command?: string, directory?: string) {
+    if (!isBuiltinCommand(command)) return
+    const result = await sdk.command.list({ directory })
+    if (result.error) return
+    if (result.data?.some((item) => item.name === command)) return
+    return command
+  }
 
-  export function validateBuiltin(args: { command?: string; continue?: boolean; session?: string }) {
-    if (!isBuiltin(args.command)) return
+  export function validateBuiltin(args: { command?: BuiltinCommand; continue?: boolean; session?: string }) {
+    if (!args.command) return
     if (args.continue || args.session) return
     UI.error(`--command ${args.command} requires --continue or --session`)
     process.exit(1)
@@ -20,11 +26,12 @@ export namespace KiloRun {
     sessionID: string,
     command: BuiltinCommand,
     model?: string,
+    current?: { id: string; providerID: string },
     directory?: string,
   ) {
-    const selected = await resolve(sdk, model)
+    const selected = resolve(model, current)
     if (!selected) {
-      UI.error("No model specified and no default provider configured")
+      UI.error("No model specified and session has no model")
       process.exit(1)
     }
 
@@ -57,14 +64,11 @@ export namespace KiloRunDaemon {
   }
 }
 
-async function resolve(sdk: KiloClient, model?: string) {
+function resolve(model?: string, current?: { id: string; providerID: string }) {
   if (model) {
     const parsed = Provider.parseModel(model)
     return { providerID: parsed.providerID, modelID: parsed.modelID }
   }
-  const result = await sdk.config.providers()
-  const defaults = result.data?.default ?? {}
-  const providerID = Object.keys(defaults)[0]
-  if (!providerID) return undefined
-  return { providerID, modelID: defaults[providerID] }
+  if (!current) return
+  return { providerID: current.providerID, modelID: current.id }
 }
