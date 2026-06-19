@@ -31,6 +31,7 @@ export interface BasicToolProps {
   defaultOpen?: boolean
   forceOpen?: boolean
   defer?: boolean
+  retainDetails?: boolean // kilocode_change
   hasDetails?: boolean // kilocode_change
   locked?: boolean
   animated?: boolean
@@ -125,7 +126,7 @@ export function BasicTool(props: BasicToolProps) {
         if (!props.defer) return
         if (!value) {
           cancel()
-          setState("ready", false)
+          if (!props.retainDetails) setState("ready", false) // kilocode_change
           return
         }
 
