@@ -113,6 +113,7 @@ data class ConfigPatchDto(
 
 @Serializable
 data class AgentConfigPatchDto(
+    val clear: List<String> = emptyList(),
     val model: String? = null,
     val variant: String? = null,
     val prompt: String? = null,

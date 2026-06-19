@@ -1681,8 +1681,14 @@ class KiloCliDataParserTest {
 
         @Test
         fun `buildConfigPatch - per-agent model clear emits null`() {
-            val patch = ConfigPatchDto(agents = linkedMapOf("code" to AgentConfigPatchDto(model = null)))
+            val patch = ConfigPatchDto(agents = linkedMapOf("code" to AgentConfigPatchDto(clear = listOf("model"))))
             assertEquals("{\"agent\":{\"code\":{\"model\":null}}}", KiloCliDataParser.buildConfigPatch(patch))
+        }
+
+        @Test
+        fun `buildConfigPatch - per-agent description patch does not clear model`() {
+            val patch = ConfigPatchDto(agents = linkedMapOf("code" to AgentConfigPatchDto(description = "New description")))
+            assertEquals("{\"agent\":{\"code\":{\"description\":\"New description\"}}}", KiloCliDataParser.buildConfigPatch(patch))
         }
 
         @Test

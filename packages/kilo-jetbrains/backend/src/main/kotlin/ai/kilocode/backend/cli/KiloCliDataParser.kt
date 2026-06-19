@@ -667,7 +667,8 @@ object KiloCliDataParser {
             if (patch.agents.isNotEmpty()) {
                 put("agent", buildJsonObject {
                     for ((name, agent) in patch.agents) put(name, buildJsonObject {
-                        put("model", agent.model?.let(::JsonPrimitive) ?: JsonNull)
+                        for (field in agent.clear) put(field, JsonNull)
+                        if (agent.model != null) put("model", agent.model)
                         if (agent.variant != null) put("variant", agent.variant)
                         if (agent.prompt != null) put("prompt", agent.prompt)
                         if (agent.description != null) put("description", agent.description)

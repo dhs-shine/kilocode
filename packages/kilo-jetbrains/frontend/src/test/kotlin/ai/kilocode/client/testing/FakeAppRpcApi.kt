@@ -136,7 +136,34 @@ class FakeAppRpcApi : KiloAppRpcApi {
     private fun applyPatch(config: ConfigDto, patch: ConfigPatchDto): ConfigDto {
         val values = patch.values
         val agents = patch.agents.entries.fold(config.agent) { acc, (name, item) ->
-            acc + (name to (acc[name] ?: AgentConfigDto()).copy(model = item.model))
+            val cfg = acc[name] ?: AgentConfigDto()
+            val cleared = item.clear.fold(cfg) { next, field ->
+                when (field) {
+                    "model" -> next.copy(model = null)
+                    "variant" -> next.copy(variant = null)
+                    "prompt" -> next.copy(prompt = null)
+                    "description" -> next.copy(description = null)
+                    "mode" -> next.copy(mode = null)
+                    "temperature" -> next.copy(temperature = null)
+                    "top_p" -> next.copy(top_p = null)
+                    "steps" -> next.copy(steps = null)
+                    "permission" -> next.copy(permission = null)
+                    else -> next
+                }
+            }
+            acc + (name to cleared.copy(
+                model = item.model ?: cleared.model,
+                variant = item.variant ?: cleared.variant,
+                prompt = item.prompt ?: cleared.prompt,
+                description = item.description ?: cleared.description,
+                mode = item.mode ?: cleared.mode,
+                hidden = item.hidden ?: cleared.hidden,
+                disable = item.disable ?: cleared.disable,
+                temperature = item.temperature ?: cleared.temperature,
+                top_p = item.top_p ?: cleared.top_p,
+                steps = item.steps ?: cleared.steps,
+                permission = item.permission ?: cleared.permission,
+            ))
         }
         return config.copy(
             model = if (values.containsKey("model")) values["model"] else config.model,

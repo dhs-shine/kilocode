@@ -1,6 +1,7 @@
 package ai.kilocode.client.settings
 
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.settings.agents.AgentBehaviorConfigurable
 import ai.kilocode.client.settings.models.ModelsConfigurable
 import ai.kilocode.client.settings.providers.ProvidersConfigurable
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
