@@ -1,5 +1,7 @@
 import type { Command } from "@/command"
 import type { ReviewCommand } from "@kilocode/kilo-telemetry"
+import LOCAL from "./local-review.txt"
+import UNCOMMITTED from "./local-review-uncommitted.txt"
 import REVIEW from "./review.txt"
 
 export function isReviewCommand(command: string | undefined): command is ReviewCommand {
@@ -17,6 +19,17 @@ export function reviewCommand(): Command.Info {
     name: "review",
     description: "local code review",
     template: REVIEW,
+    hints: ["$ARGUMENTS"],
+  }
+}
+
+export function legacyReviewCommand(name: string): Command.Info | undefined {
+  const uncommitted = name === "local-review-uncommitted"
+  if (name !== "local-review" && !uncommitted) return
+  return {
+    name,
+    description: uncommitted ? "local review (uncommitted changes)" : "local review (current branch, optional base or instructions)",
+    template: uncommitted ? UNCOMMITTED : LOCAL,
     hints: ["$ARGUMENTS"],
   }
 }

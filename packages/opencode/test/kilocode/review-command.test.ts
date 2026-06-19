@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { parseReviewCommand, reviewCommand } from "../../src/kilocode/review/command"
+import { legacyReviewCommand, parseReviewCommand, reviewCommand } from "../../src/kilocode/review/command"
 
 function expectReviewFixContract(text: string) {
   expect(text).toContain("During the initial review phase")
@@ -106,5 +106,20 @@ describe("review command", () => {
     expect(text).toContain("performance")
     expect(text).toContain("business logic")
     expect(text).toContain("NO_FINDINGS")
+  })
+})
+
+describe("legacy review command aliases", () => {
+  test("resolve old slash command names with their original scopes", () => {
+    const branch = legacyReviewCommand("local-review")
+    const uncommitted = legacyReviewCommand("local-review-uncommitted")
+
+    expect(branch?.name).toBe("local-review")
+    expect(branch?.template).toContain("local branch review")
+    expect(branch?.template).toContain("typed after `/local-review`")
+    expect(uncommitted?.name).toBe("local-review-uncommitted")
+    expect(uncommitted?.template).toContain("local uncommitted review")
+    expect(uncommitted?.template).toContain("typed after `/local-review-uncommitted`")
+    expect(legacyReviewCommand("review")).toBeUndefined()
   })
 })
