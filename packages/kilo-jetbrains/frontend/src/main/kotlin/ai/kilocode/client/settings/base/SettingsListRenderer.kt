@@ -112,9 +112,8 @@ internal class SettingsListRenderer(
         cells.isVisible = visible.isNotEmpty()
         cellPane.isVisible = visible.isNotEmpty()
         for (cell in visible) {
-            cells.add(CellLabel(cell).apply {
+            cells.add(SettingsListActionCell(cell).apply {
                 isEnabled = cell.enabled
-                if (!cell.iconOnly) UiStyle.Components.actionLabel(this, isEnabled)
             })
         }
     }
@@ -133,12 +132,19 @@ internal class SettingsListRenderer(
 
     internal fun iconSize() = icon.icon?.let { Dimension(it.iconWidth, it.iconHeight) }
 
-    private class CellLabel(cell: SettingsListCell) : JBLabel(cell.label) {
-        init {
-            if (cell.iconOnly) text = ""
-            icon = cell.icon
-            toolTipText = cell.label.takeIf { it.isNotBlank() }
-            horizontalAlignment = SwingConstants.CENTER
-        }
+}
+
+internal class SettingsListActionCell(cell: SettingsListCell) : JBLabel(cell.label) {
+    init {
+        if (cell.iconOnly) text = ""
+        icon = cell.icon
+        toolTipText = cell.label.takeIf { it.isNotBlank() }
+        horizontalAlignment = SwingConstants.CENTER
+        if (!cell.iconOnly) UiStyle.Components.actionLabel(this, isEnabled)
+    }
+
+    override fun setEnabled(enabled: Boolean) {
+        super.setEnabled(enabled)
+        if (text.isNotBlank()) UiStyle.Components.actionLabel(this, enabled)
     }
 }

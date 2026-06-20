@@ -5,6 +5,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
 import java.awt.Dimension
 import java.awt.Point
+import java.awt.event.InputEvent
 import java.awt.event.MouseEvent
 
 class SettingsListViewTest : BasePlatformTestCase() {
@@ -42,11 +43,70 @@ class SettingsListViewTest : BasePlatformTestCase() {
         }
     }
 
-    private fun item(id: String, name: String, note: String?) = object : SettingsListItem {
+    fun `test action click invokes from full rendered area`() {
+        edt {
+            val calls = mutableListOf<String>()
+            val view = SettingsListView("Empty") { key, id -> calls += "$key:$id" }
+            val row = item("with", "Alpha", null, SettingsListCell("edit", "Edit"))
+            view.update(listOf(row))
+            view.list.size = Dimension(320, 80)
+            view.list.doLayout()
+            UIUtil.dispatchAllInvocationEvents()
+
+            val bounds = view.list.getCellBounds(0, 0)
+            val area = settingsListCellBounds(view.list, bounds, row, selected = true).getValue("edit")
+            val point = Point(area.x + area.width - 1, area.y + area.height - 1)
+
+            click(view, point)
+
+            assertEquals(listOf("with:edit"), calls)
+        }
+    }
+
+    fun `test disabled action click does not invoke`() {
+        edt {
+            val calls = mutableListOf<String>()
+            val view = SettingsListView("Empty") { key, id -> calls += "$key:$id" }
+            val row = item("with", "Alpha", null, SettingsListCell("edit", "Edit", enabled = false))
+            view.update(listOf(row))
+            view.list.size = Dimension(320, 80)
+            view.list.doLayout()
+            UIUtil.dispatchAllInvocationEvents()
+
+            val bounds = view.list.getCellBounds(0, 0)
+            val area = settingsListCellBounds(view.list, bounds, row, selected = true).getValue("edit")
+
+            click(view, center(area))
+
+            assertTrue(calls.isEmpty())
+        }
+    }
+
+    private fun item(id: String, name: String, note: String?, vararg cells: SettingsListCell) = object : SettingsListItem {
         override val key = id
         override val title = name
         override val description = note
+        override val cells = cells.toList()
     }
+
+    private fun center(rect: java.awt.Rectangle) = Point(rect.x + rect.width / 2, rect.y + rect.height / 2)
+
+    private fun click(view: SettingsListView, point: Point) {
+        view.list.dispatchEvent(mouse(view, MouseEvent.MOUSE_PRESSED, point))
+        view.list.dispatchEvent(mouse(view, MouseEvent.MOUSE_RELEASED, point))
+    }
+
+    private fun mouse(view: SettingsListView, id: Int, point: Point) = MouseEvent(
+        view.list,
+        id,
+        System.currentTimeMillis(),
+        if (id == MouseEvent.MOUSE_PRESSED) InputEvent.BUTTON1_DOWN_MASK else 0,
+        point.x,
+        point.y,
+        1,
+        false,
+        MouseEvent.BUTTON1,
+    )
 
     private fun event(list: javax.swing.JList<*>, point: Point) = MouseEvent(
         list,

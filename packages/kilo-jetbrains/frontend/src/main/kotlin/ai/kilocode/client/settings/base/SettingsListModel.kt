@@ -2,6 +2,7 @@ package ai.kilocode.client.settings.base
 
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.util.ui.JBUI
+import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
 import javax.swing.Icon
@@ -62,24 +63,29 @@ internal fun settingsListCellBounds(
     selected: Boolean,
 ): Map<String, Rectangle> {
     val height = settingsListCellHeight(list)
-    val top = bounds.y + (bounds.height - height) / 2
     var edge = bounds.x + bounds.width - UiStyle.Gap.pad()
     val out = linkedMapOf<String, Rectangle>()
     for (cell in settingsListVisibleCells(item, selected).asReversed()) {
-        val width = settingsListCellWidth(list, cell)
+        val size = settingsListCellSize(list, cell)
+        val width = size.width
+        val h = height.coerceAtLeast(size.height)
+        val top = bounds.y + (bounds.height - h) / 2
         val left = edge - width
-        out[cell.id] = Rectangle(left, top, width, height)
+        out[cell.id] = Rectangle(left, top, width, h)
         edge = left - JBUI.scale(CELL_GAP)
     }
     return out
 }
 
-private fun settingsListCellWidth(list: JList<*>, cell: SettingsListCell): Int {
-    val metrics = list.getFontMetrics(list.font)
-    val icon = cell.icon?.iconWidth ?: 0
-    val gap = if (icon > 0 && !cell.iconOnly && cell.label.isNotBlank()) JBUI.CurrentTheme.ActionsList.elementIconGap() else 0
-    val text = if (cell.iconOnly) 0 else metrics.stringWidth(cell.label)
-    return icon + gap + text + UiStyle.Gap.pad() * 2
+internal fun settingsListCellSize(list: JList<*>, cell: SettingsListCell): Dimension {
+    val label = SettingsListActionCell(cell).apply {
+        font = list.font
+        isEnabled = cell.enabled
+    }
+    val size = label.preferredSize
+    if (!cell.iconOnly) return size
+    val min = settingsListCellHeight(list)
+    return Dimension(size.width.coerceAtLeast(min), size.height.coerceAtLeast(min))
 }
 
 private fun settingsListCellHeight(list: JList<*>): Int {

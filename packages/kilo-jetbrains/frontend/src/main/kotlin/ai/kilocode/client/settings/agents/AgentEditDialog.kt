@@ -1,13 +1,16 @@
 package ai.kilocode.client.settings.agents
 
 import ai.kilocode.cli.KiloCliParser
+import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.settings.base.BaseContentPanel
 import ai.kilocode.client.settings.base.SettingsRow
 import ai.kilocode.client.settings.base.SettingsStackedRow
 import ai.kilocode.client.settings.base.SettingsToggle
 import ai.kilocode.client.settings.base.SettingsRows
+import ai.kilocode.client.settings.models.ModelSettingPicker
 import ai.kilocode.client.ui.FilledBadgeIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
@@ -25,11 +28,22 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import java.awt.Dimension
+import java.awt.Rectangle
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.Scrollable
 import javax.swing.ScrollPaneConstants
+import javax.swing.SwingConstants
+import javax.swing.text.AbstractDocument
+import javax.swing.text.AttributeSet
+import javax.swing.text.DocumentFilter
 
-internal class AgentEditDialog(private val agent: AgentEditDraft) : DialogWrapper(true) {
+internal class AgentEditDialog(
+    private val agent: AgentEditDraft,
+    app: KiloAppService,
+    items: List<ModelPicker.Item>,
+) : DialogWrapper(true) {
     private val description = JBTextArea(agent.description.orEmpty()).apply {
         rows = 3
         lineWrap = true
@@ -38,15 +52,24 @@ internal class AgentEditDialog(private val agent: AgentEditDraft) : DialogWrappe
         border = JBUI.Borders.empty()
     }
     private val prompt = PromptField(agent.prompt.orEmpty())
-    private val model = JBTextField(agent.model.orEmpty())
-    private val variant = JBTextField(agent.variant.orEmpty())
+    private var selected = agent.model
+    private val model = ModelSettingPicker().apply {
+        picker.emptyText = KiloBundle.message("settings.agentBehavior.agents.edit.default")
+        picker.placement = ModelPicker.Placement.BELOW
+        picker.favorites = { app.favorites.value }
+        picker.onFavoriteToggle = { app.toggleModelFavorite(it.provider, it.id) }
+        picker.onSelect = { selected = it.key }
+        picker.onClear = { selected = null }
+        setItems(items, agent.model)
+    }
+    private val variant = NumericField(agent.variant.orEmpty(), decimal = true)
     private val mode = ComboBox(arrayOf(KiloCliParser.MODE_PRIMARY, KiloCliParser.MODE_SUBAGENT, KiloCliParser.MODE_ALL)).apply {
         selectedItem = agent.mode
         isEnabled = canEditMode(agent)
     }
-    private val temperature = JBTextField(agent.temperature?.toString().orEmpty())
-    private val top = JBTextField(agent.topP?.toString().orEmpty())
-    private val steps = JBTextField(agent.steps?.toString().orEmpty())
+    private val temperature = NumericField(agent.temperature?.toString().orEmpty(), decimal = true)
+    private val top = NumericField(agent.topP?.toString().orEmpty(), decimal = true)
+    private val steps = NumericField(agent.steps?.toString().orEmpty(), decimal = false)
     private var hidden = agent.hidden
     private var disabled = agent.disable
 
@@ -59,7 +82,7 @@ internal class AgentEditDialog(private val agent: AgentEditDraft) : DialogWrappe
     fun result(): AgentEditDraft = agent.copy(
         description = text(description.text),
         prompt = text(prompt.text),
-        model = text(model.text),
+        model = selected,
         variant = text(variant.text),
         mode = mode.selectedItem?.toString() ?: agent.mode,
         hidden = hidden,
@@ -71,7 +94,12 @@ internal class AgentEditDialog(private val agent: AgentEditDraft) : DialogWrappe
 
     override fun createCenterPanel(): JComponent {
         val panel = BaseContentPanel().apply {
-            border = JBUI.Borders.empty(UiStyle.Gap.pad())
+            border = JBUI.Borders.empty(
+                UiStyle.Gap.pad(),
+                UiStyle.Gap.pad(),
+                UiStyle.Gap.pad(),
+                UiStyle.Gap.pad() * 2,
+            )
         }
         SettingsRows().apply {
             row(SettingsStackedRow(
@@ -85,7 +113,7 @@ internal class AgentEditDialog(private val agent: AgentEditDraft) : DialogWrappe
             ))
             panel.next(this)
         }
-        panel.section(KiloBundle.message("settings.agentBehavior.agents.edit.instructions")).apply {
+        SettingsRows().apply {
             row(SettingsStackedRow(
                 KiloBundle.message("settings.agentBehavior.agents.edit.description"),
                 if (canEditDescription(agent)) {
@@ -108,6 +136,7 @@ internal class AgentEditDialog(private val agent: AgentEditDraft) : DialogWrappe
                 },
                 scroll(prompt),
             ))
+            panel.next(this)
         }
         panel.section(KiloBundle.message("settings.agentBehavior.agents.edit.model")).apply {
             row(SettingsRow(
@@ -157,8 +186,13 @@ internal class AgentEditDialog(private val agent: AgentEditDraft) : DialogWrappe
                 SettingsToggle(disabled) { disabled = it }.apply { isEnabled = visible },
             ))
         }
-        return JPanel(BorderLayout()).apply {
+        val content = ScrollContent().apply {
             add(Stack.vertical().next(panel), BorderLayout.CENTER)
+        }
+        return JBScrollPane(content).apply {
+            border = JBUI.Borders.empty()
+            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
         }
     }
 
@@ -179,7 +213,7 @@ internal class AgentEditDialog(private val agent: AgentEditDraft) : DialogWrappe
         return ValidationInfo(KiloBundle.message("settings.agentBehavior.agents.edit.mode.invalid"), mode)
     }
 
-    private fun validateNumber(field: JBTextField, key: String, min: Double? = null, max: Double? = null): ValidationInfo? {
+    private fun validateNumber(field: NumericField, key: String, min: Double? = null, max: Double? = null): ValidationInfo? {
         val value = field.text.trim()
         if (value.isBlank()) return null
         val parsed = value.toDoubleOrNull()
@@ -195,6 +229,49 @@ internal class AgentEditDialog(private val agent: AgentEditDraft) : DialogWrappe
         val parsed = value.toLongOrNull()
         if (parsed != null && parsed > 0) return null
         return ValidationInfo(KiloBundle.message("settings.agentBehavior.agents.edit.steps.invalid"), steps)
+    }
+
+    private class NumericField(value: String, decimal: Boolean) : JBTextField(value) {
+        init {
+            columns = NUMERIC_COLUMNS
+            emptyText.text = KiloBundle.message("settings.agentBehavior.agents.edit.default")
+            (document as AbstractDocument).documentFilter = NumericFilter(decimal)
+        }
+    }
+
+    private class NumericFilter(private val decimal: Boolean) : DocumentFilter() {
+        override fun insertString(fb: FilterBypass, offset: Int, string: String?, attr: AttributeSet?) {
+            replace(fb, offset, 0, string, attr)
+        }
+
+        override fun replace(fb: FilterBypass, offset: Int, length: Int, text: String?, attrs: AttributeSet?) {
+            val value = text ?: ""
+            val next = StringBuilder(fb.document.getText(0, fb.document.length))
+                .replace(offset, offset + length, value)
+                .toString()
+            if (next.isEmpty() || valid(next)) super.replace(fb, offset, length, value, attrs)
+        }
+
+        private fun valid(value: String): Boolean {
+            if (!decimal) return value.all(Char::isDigit)
+            if (value.count { it == '.' } > 1) return false
+            return value.all { it.isDigit() || it == '.' }
+        }
+    }
+
+    private class ScrollContent : JPanel(BorderLayout()), Scrollable {
+        override fun getPreferredScrollableViewportSize(): Dimension = preferredSize
+
+        override fun getScrollableUnitIncrement(visibleRect: Rectangle, orientation: Int, direction: Int): Int = UiStyle.Gap.pad()
+
+        override fun getScrollableBlockIncrement(visibleRect: Rectangle, orientation: Int, direction: Int): Int {
+            if (orientation == SwingConstants.VERTICAL) return (visibleRect.height - UiStyle.Gap.pad()).coerceAtLeast(UiStyle.Gap.pad())
+            return (visibleRect.width - UiStyle.Gap.pad()).coerceAtLeast(UiStyle.Gap.pad())
+        }
+
+        override fun getScrollableTracksViewportWidth(): Boolean = true
+
+        override fun getScrollableTracksViewportHeight(): Boolean = false
     }
 
     private fun scroll(area: JBTextArea) = JBScrollPane(area).apply {
@@ -276,5 +353,6 @@ private fun editorPad() = JBUI.Borders.empty(
     JBUI.scale(SessionUiStyle.View.Prompt.SHELL_HORIZONTAL_PADDING),
 )
 
+private const val NUMERIC_COLUMNS = 15
 private const val PROMPT_ROWS = 8
 private const val PROMPT_CHROME = 24

@@ -3,7 +3,10 @@ package ai.kilocode.client.settings.agents
 import ai.kilocode.cli.KiloCliParser
 import ai.kilocode.client.app.KiloAgentBehaviorService
 import ai.kilocode.client.app.KiloAppService
+import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.session.ui.model.ModelPicker
+import ai.kilocode.client.session.ui.model.ModelText
 import ai.kilocode.client.settings.base.SettingsBadge
 import ai.kilocode.client.settings.base.SettingsListCell
 import ai.kilocode.client.settings.base.SettingsListItem
@@ -11,6 +14,7 @@ import ai.kilocode.client.settings.base.SettingsListPanel
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.rpc.dto.AgentDetailDto
+import ai.kilocode.rpc.dto.ProvidersDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -45,6 +49,7 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
     private var base = agentsDraft(service<KiloAppService>().state.value.config, emptyList())
     private var draft = base
     private var details = emptyList<AgentDetailDto>()
+    private var models = emptyList<ModelPicker.Item>()
     private var names = emptyList<String>()
     private lateinit var picker: JComboBox<String>
     private var syncing = false
@@ -55,6 +60,7 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
 
     override suspend fun fetch(): List<SettingsListItem> {
         val agents = service<KiloAgentBehaviorService>().agents(dir)
+        models = items(service<KiloWorkspaceService>().models(dir).providers)
         val next = agentsDraft(service<KiloAppService>().state.value.config, agents)
         if (draft.agents.isEmpty() || !modified()) {
             base = next
@@ -97,7 +103,7 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
             return
         }
         if (cellId != EDIT_CELL) return
-        val dialog = AgentEditDialog(agent)
+        val dialog = AgentEditDialog(agent, service(), models)
         if (!dialog.showAndGet()) return
         draft = updateAgent(draft, dialog.result())
         syncNames()
@@ -226,6 +232,20 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
     private companion object {
         const val EDIT_CELL = "edit"
         const val DELETE_CELL = "delete"
+        const val KILO_PROVIDER = "kilo"
+    }
+
+    private fun items(providers: ProvidersDto?): List<ModelPicker.Item> {
+        val cfg = providers ?: return emptyList()
+        return cfg.providers
+            .filter { it.id == KILO_PROVIDER || it.id in cfg.connected }
+            .flatMap { provider ->
+                provider.models.mapNotNull { (id, item) ->
+                    val model = ModelPicker.Item(id, item.name, provider.id, provider.name, item.recommendedIndex, item.free, item.variants)
+                    if (ModelText.small(model)) return@mapNotNull null
+                    model
+                }
+            }
     }
 }
 

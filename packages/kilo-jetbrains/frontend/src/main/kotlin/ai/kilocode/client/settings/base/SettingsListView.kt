@@ -38,6 +38,7 @@ internal class SettingsListView(
     }
     private var items = emptyList<SettingsListItem>()
     private var filter = ""
+    private var press: Press? = null
     internal var onSelect: (() -> Unit)? = null
 
     fun setEmptyText(text: String) {
@@ -52,14 +53,29 @@ internal class SettingsListView(
             JComponent.WHEN_FOCUSED,
         )
         list.addMouseListener(object : MouseAdapter() {
+            override fun mousePressed(e: MouseEvent) {
+                if (!UIUtil.isActionClick(e, MouseEvent.MOUSE_PRESSED, true)) return
+                press = null
+                val hit = hit(e) ?: return
+                press = Press(hit.item.key, hit.id ?: return)
+            }
+
+            override fun mouseClicked(e: MouseEvent) {
+                if (e.clickCount != 2 || !UIUtil.isActionClick(e, MouseEvent.MOUSE_CLICKED, true)) return
+                val hit = hit(e, enabled = false) ?: return
+                if (hit.id != null) return
+                val item = hit.item
+                primary(item)
+                e.consume()
+            }
+
             override fun mouseReleased(e: MouseEvent) {
                 if (!UIUtil.isActionClick(e, MouseEvent.MOUSE_RELEASED, true)) return
-                val idx = list.locationToIndex(e.point)
-                val bounds = idx.takeIf { it >= 0 }?.let { list.getCellBounds(it, it) } ?: return
-                if (!bounds.contains(e.point)) return
-                val item = model.getElementAt(idx)
-                val id = settingsListCellAt(list, bounds, e.point, item, idx == list.selectedIndex) ?: return
-                onCell(item.key, id)
+                val down = press ?: return
+                press = null
+                val hit = hit(e) ?: return
+                if (hit.item.key != down.key || hit.id != down.id) return
+                onCell(hit.item.key, down.id)
                 e.consume()
             }
         })
@@ -132,13 +148,38 @@ internal class SettingsListView(
     fun primary() {
         checkEdt()
         val item = list.selectedValue ?: return
+        primary(item)
+    }
+
+    private fun primary(item: SettingsListItem) {
         val cell = settingsListVisibleCells(item, true).firstOrNull { it.enabled } ?: return
         onCell(item.key, cell.id)
+    }
+
+    private fun hit(e: MouseEvent, enabled: Boolean = true): Hit? {
+        val idx = list.locationToIndex(e.point)
+        val bounds = idx.takeIf { it >= 0 }?.let { list.getCellBounds(it, it) } ?: return null
+        if (!bounds.contains(e.point)) return null
+        val item = model.getElementAt(idx)
+        val selected = idx == list.selectedIndex
+        val id = if (enabled) {
+            settingsListCellAt(list, bounds, e.point, item, selected)
+        } else {
+            settingsListCellBounds(list, bounds, item, selected)
+                .entries
+                .firstOrNull { it.value.contains(e.point) }
+                ?.key
+        }
+        return Hit(item, id)
     }
 
     private fun checkEdt() {
         check(ApplicationManager.getApplication().isDispatchThread) { "Settings list updates must run on EDT" }
     }
+
+    private data class Hit(val item: SettingsListItem, val id: String?)
+
+    private data class Press(val key: String, val id: String)
 }
 
 private fun settingsListIndex(items: List<SettingsListItem>, key: String?): Int {
