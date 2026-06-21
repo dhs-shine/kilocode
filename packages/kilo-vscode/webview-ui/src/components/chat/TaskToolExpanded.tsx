@@ -102,7 +102,6 @@ const TaskToolRenderer: Component<ToolProps> = (props) => {
     on(running, (active) => {
       autoScroll.scrollRef(active ? view : undefined)
       autoScroll.contentRef(active ? body : undefined)
-      if (!active && view) view.scrollTop = 0
     }),
   )
 
