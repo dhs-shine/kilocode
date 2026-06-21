@@ -312,6 +312,43 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         assertTrue(provider.highlights("@nope", caret = 5).isEmpty())
     }
 
+    fun `test mentionAt resolves tracked file mention`() {
+        addMention("src/a.ts", "@ts")
+
+        assertEquals(
+            KiloPromptCompletionProvider.MentionHit(4, 13, "src/a.ts", true),
+            provider.mentionAt("see @src/a.ts", 6),
+        )
+    }
+
+    fun `test mentionAt marks unresolved file mention after validation`() {
+        var done = false
+        rpc.fileResolver = { emptyList() }
+
+        provider.validate("see @missing.ts", -1) { done = true }
+        waitFor { done }
+
+        assertEquals(
+            KiloPromptCompletionProvider.MentionHit(4, 15, "missing.ts", false),
+            provider.mentionAt("see @missing.ts", 6),
+        )
+    }
+
+    fun `test mentionAt ignores special pending and out of range`() {
+        assertNull(provider.mentionAt("use ${MentionAction.GIT_CHANGES.token}", 6))
+        assertNull(provider.mentionAt("see @unvalidated.ts", 6))
+        assertNull(provider.mentionAt("hello world", 3))
+    }
+
+    fun `test navigate opens resolved mention file`() {
+        rpc.fileResolver = { path -> if (path == "src/a.ts") listOf(file(path)) else emptyList() }
+
+        provider.navigate("src/a.ts")
+        waitFor { rpc.opened.contains("src/a.ts") }
+
+        assertTrue(rpc.opened.contains("src/a.ts"))
+    }
+
     private fun complete(text: String) {
         val file = myFixture.configureByText("prompt.txt", text)
         TextCompletionUtil.installProvider(file, provider, true)

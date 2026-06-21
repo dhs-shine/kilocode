@@ -45,7 +45,27 @@ class KiloPromptCompletionProvider(
 
     enum class HighlightKind { MENTION, COMMAND, INVALID }
 
+    /** A file mention token at a caret/mouse offset, with whether it resolves to a real file. */
+    data class MentionHit(val start: Int, val end: Int, val value: String, val resolved: Boolean)
+
     fun mentionPaths(): Set<String> = paths.toSet()
+
+    /**
+     * The file mention spanning [offset], or null when the offset is outside a mention,
+     * on a special (`@git-changes`) token, or on a mention not yet validated.
+     */
+    fun mentionAt(text: String, offset: Int): MentionHit? {
+        val span = mentionSpans(text).firstOrNull { offset in it.start..it.end } ?: return null
+        if (span.value in mentionNames()) return null
+        val resolved = span.value in paths || exists[span.value] == true
+        if (!resolved && exists[span.value] != false) return null
+        return MentionHit(span.start, span.end, span.value, resolved)
+    }
+
+    /** Open a resolved file mention using the workspace's go-to-file plumbing. */
+    fun navigate(value: String) {
+        scope.launch { service.openPath(workspace.directory, value) }
+    }
 
     fun clearMentions() {
         paths.clear()
