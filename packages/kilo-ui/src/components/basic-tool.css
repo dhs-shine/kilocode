@@ -453,7 +453,8 @@ html[data-theme="kilo-vscode"] [data-component="tool-part-wrapper"][data-part-ty
 
 @media (prefers-reduced-motion: reduce) {
   html[data-theme="kilo-vscode"] [data-component="tool-part-wrapper"][data-part-type="tool"] {
-    [data-component="collapsible"].tool-collapsible > [data-slot="collapsible-content"] {
+    [data-component="collapsible"].tool-collapsible > [data-slot="collapsible-content"][data-expanded],
+    [data-component="collapsible"].tool-collapsible > [data-slot="collapsible-content"][data-closed] {
       animation-duration: 0.01ms;
     }
   }
