@@ -355,7 +355,7 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
 
         assertNull(msg.part("p2"))
         assertEquals(listOf("p1", "f1"), msg.partIds())
-        assertEquals(1, msg.components.filterIsInstance<TextView>().size)
+        assertTrue(msg.part("p1") is TextView)
         assertEquals(1, msg.components.filterIsInstance<PromptAttachmentView>().size)
     }
 

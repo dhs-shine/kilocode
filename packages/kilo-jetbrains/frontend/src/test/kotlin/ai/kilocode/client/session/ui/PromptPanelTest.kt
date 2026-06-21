@@ -15,6 +15,8 @@ import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.session.ui.prompt.SlashAction
+import ai.kilocode.client.session.ui.selection.SessionSelection
+import ai.kilocode.client.test.CopyProviderSink
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
@@ -33,6 +35,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
@@ -47,6 +50,7 @@ import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.actions.PasteAction
 import com.intellij.openapi.editor.colors.CodeInsightColors
 import com.intellij.openapi.fileEditor.TextEditor
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -481,6 +485,49 @@ class PromptPanelTest : BasePlatformTestCase() {
         panel.clear()
 
         assertEquals(min, editor.preferredSize.height)
+    }
+
+    fun `test prompt editor exposes selection copy provider`() {
+        val selection = SessionSelection()
+        val panel = PromptPanel(project = project, selection = selection, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+        val editor = panel.defaultFocusedComponent as EditorTextField
+        val host = JPanel()
+        host.add(panel)
+        host.addNotify()
+        try {
+            editor.text = "alpha prompt"
+
+            editor.getEditor(true)!!.selectionModel.setSelection(0, 5)
+            val sink = TestSink()
+            (editor as UiDataProvider).uiDataSnapshot(sink)
+            sink.copy!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+            assertEquals("alpha", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+        } finally {
+            editor.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
+            selection.dispose()
+        }
+    }
+
+    fun `test prompt editor copies full content without selection`() {
+        val selection = SessionSelection()
+        val panel = PromptPanel(project = project, selection = selection, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+        val editor = panel.defaultFocusedComponent as EditorTextField
+        val host = JPanel()
+        host.add(panel)
+        host.addNotify()
+        try {
+            editor.text = "alpha prompt"
+
+            val sink = TestSink()
+            (editor as UiDataProvider).uiDataSnapshot(sink)
+            sink.copy!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+            assertEquals("alpha prompt", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+        } finally {
+            editor.getEditor(false)?.let(EditorFactory.getInstance()::releaseEditor)
+            selection.dispose()
+        }
     }
 
     fun `test attachment only prompt can send`() {
@@ -1144,36 +1191,14 @@ class PromptPanelTest : BasePlatformTestCase() {
         }
     }
 
-    private class TestSink : DataSink {
+    private class TestSink : CopyProviderSink() {
         var send: Any? = null
         var file: Any? = null
 
-        override fun <T : Any> set(key: com.intellij.openapi.actionSystem.DataKey<T>, data: T?) {
+        override fun <T : Any> set(key: DataKey<T>, data: T?) {
+            super.set(key, data)
             if (key == PromptDataKeys.SEND) send = data
             if (key == PlatformCoreDataKeys.FILE_EDITOR) file = data
-        }
-
-        override fun <T : Any> setNull(key: com.intellij.openapi.actionSystem.DataKey<T>) {
-        }
-
-        override fun <T : Any> lazyNull(key: com.intellij.openapi.actionSystem.DataKey<T>) {
-        }
-
-        override fun <T : Any> lazyValue(
-            key: com.intellij.openapi.actionSystem.DataKey<T>,
-            data: (com.intellij.openapi.actionSystem.DataMap) -> T?,
-        ) {
-        }
-
-        override fun uiDataSnapshot(provider: com.intellij.openapi.actionSystem.UiDataProvider) {
-            provider.uiDataSnapshot(this)
-        }
-
-        override fun dataSnapshot(provider: com.intellij.openapi.actionSystem.DataSnapshotProvider) {
-            provider.dataSnapshot(this)
-        }
-
-        override fun uiDataSnapshot(provider: com.intellij.openapi.actionSystem.DataProvider) {
         }
     }
 

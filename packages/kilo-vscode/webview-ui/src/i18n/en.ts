@@ -101,17 +101,8 @@ export const dict = {
 
   "dialog.provider.search.placeholder": "Search providers",
   "dialog.provider.empty": "No providers found",
-  "dialog.provider.group.popular": "Popular",
   "dialog.provider.group.other": "Other",
   "dialog.provider.tag.recommended": "Recommended",
-  "dialog.provider.opencode.note": "Curated models including Claude, GPT, Gemini and more",
-  "dialog.provider.anthropic.note": "Direct access to Claude models, including Pro and Max",
-  "dialog.provider.deepseek.note": "DeepSeek models for reasoning and coding tasks",
-  "dialog.provider.copilot.note": "Claude models for coding assistance",
-  "dialog.provider.openai.note": "GPT and Codex models with API key or ChatGPT login",
-  "dialog.provider.google.note": "Gemini models for fast, structured responses",
-  "dialog.provider.openrouter.note": "Access all supported models from one provider",
-  "dialog.provider.vercel.note": "Unified access to AI models with smart routing",
 
   "dialog.model.select.title": "Select model",
   "dialog.model.search.placeholder": "Search models",
@@ -801,10 +792,10 @@ export const dict = {
   "settings.providers.tag.other": "Other",
   "settings.providers.connected.environmentDescription": "Connected from your environment variables",
   "settings.providers.action.signInChatGPT": "Sign in with ChatGPT",
-  "settings.providers.custom.description": "Add an OpenAI-compatible provider by base URL.",
+  "settings.providers.custom.description": "Add a custom provider by base URL.",
 
   "provider.custom.title": "Custom provider",
-  "provider.custom.description.prefix": "Configure an OpenAI-compatible provider. See the ",
+  "provider.custom.description.prefix": "Configure a custom provider. See the ",
   "provider.custom.description.link": "provider config docs",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "Provider ID",
@@ -1536,7 +1527,7 @@ export const dict = {
   "settings.providers.enabled": "Enabled Providers (Allowlist)",
   "settings.providers.enabled.description": "If set, only these providers will be available (exclusive allowlist)",
   "settings.providers.notSet": "Not set (use server default)",
-  "settings.providers.custom.note": "Add an OpenAI-compatible provider by base URL.",
+  "settings.providers.custom.note": "Add a custom provider by base URL.",
   "settings.providers.search.placeholder": "Search providers",
   "settings.providers.select.placeholder": "Select provider...",
 
@@ -1555,6 +1546,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Legacy Migration",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migrate settings from a previous installation of Kilo Code, including provider API keys and default model.",
+  "settings.aboutKiloCode.rooImport.description": "Import conversation history from a Roo Code installation.",
+  "settings.aboutKiloCode.rooImport.button": "Import Sessions from Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "What's New in Kilo Code",

@@ -3,6 +3,7 @@ package ai.kilocode.client.session.ui.editor
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
 import ai.kilocode.client.session.ui.prompt.SendPromptContext
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import com.intellij.ide.actions.UndoRedoAction
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -40,6 +41,7 @@ internal open class SessionEditorTextField(
     private val project: Project,
     private val ctx: SendPromptContext? = null,
     completion: TextCompletionProvider? = null,
+    private val selection: SessionSelection? = null,
 ) : EditorTextField(
     completion?.let {
         LanguageTextField.createDocument(
@@ -61,6 +63,7 @@ internal open class SessionEditorTextField(
 
     override fun uiDataSnapshot(sink: DataSink) {
         super.uiDataSnapshot(sink)
+        selection?.provideCopy(sink) { text }
         ctx?.let { sink.set(PromptDataKeys.SEND, it) }
         file()?.let { sink.set(PlatformCoreDataKeys.FILE_EDITOR, it) }
     }

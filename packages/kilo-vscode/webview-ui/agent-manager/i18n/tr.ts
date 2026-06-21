@@ -86,6 +86,7 @@ export const dict = {
   "agentManager.shortcuts.nextItem": "Sonraki öğe",
   "agentManager.shortcuts.newWorktree": "Yeni worktree",
   "agentManager.shortcuts.openWorktree": "Worktree aç",
+  "agentManager.shortcuts.openPR": "Pull request'i aç",
   "agentManager.shortcuts.advancedWorktree": "Yeni worktree yapılandır",
   "agentManager.shortcuts.deleteWorktree": "Worktree'yi sil",
   "agentManager.shortcuts.previousTab": "Önceki sekme",
