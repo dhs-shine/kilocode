@@ -5,6 +5,7 @@ package ai.kilocode.client.app
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.KiloAgentBehaviorRpcApi
 import ai.kilocode.rpc.dto.AgentDetailDto
+import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.CommandDto
 import ai.kilocode.rpc.dto.McpStatusDto
 import ai.kilocode.rpc.dto.SkillDto
@@ -39,6 +40,8 @@ class KiloAgentBehaviorService internal constructor(
     suspend fun removeSkill(directory: String, location: String): Boolean = safe(false) { call { removeSkill(directory, location) } }
 
     suspend fun removeAgent(directory: String, name: String): Boolean = safe(false) { call { removeAgent(directory, name) } }
+
+    suspend fun createAgent(directory: String, input: AgentCreateDto): Boolean = safe(false) { call { createAgent(directory, input) } }
 
     suspend fun mcpConnect(directory: String, name: String): Boolean = safe(false) { call { mcpConnect(directory, name) } }
 

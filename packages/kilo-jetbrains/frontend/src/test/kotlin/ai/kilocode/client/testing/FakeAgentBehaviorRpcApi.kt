@@ -1,6 +1,7 @@
 package ai.kilocode.client.testing
 
 import ai.kilocode.rpc.KiloAgentBehaviorRpcApi
+import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.AgentDetailDto
 import ai.kilocode.rpc.dto.CommandDto
 import ai.kilocode.rpc.dto.McpStatusDto
@@ -10,6 +11,9 @@ class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
     var agents = emptyList<AgentDetailDto>()
     val agentCalls = mutableListOf<String>()
     val removals = mutableListOf<String>()
+    val creations = mutableListOf<AgentCreateDto>()
+    var createError: Exception? = null
+    var removeError: Exception? = null
 
     override suspend fun agents(directory: String): List<AgentDetailDto> {
         assertNotEdt("agentBehavior.agents")
@@ -29,8 +33,22 @@ class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
 
     override suspend fun removeAgent(directory: String, name: String): Boolean {
         assertNotEdt("agentBehavior.removeAgent")
+        removeError?.let { throw it }
         removals.add(name)
         agents = agents.filterNot { it.name == name }
+        return true
+    }
+
+    override suspend fun createAgent(directory: String, input: AgentCreateDto): Boolean {
+        assertNotEdt("agentBehavior.createAgent")
+        createError?.let { throw it }
+        creations.add(input)
+        agents = agents.filterNot { it.name == input.name } + AgentDetailDto(
+            name = input.name,
+            description = input.description,
+            mode = input.mode,
+            native = false,
+        )
         return true
     }
 

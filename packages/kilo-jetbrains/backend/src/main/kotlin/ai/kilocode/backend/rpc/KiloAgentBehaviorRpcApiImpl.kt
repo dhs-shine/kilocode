@@ -6,7 +6,9 @@ import ai.kilocode.backend.app.KiloBackendAppService
 import ai.kilocode.backend.cli.KiloClaudeCompatSettings
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.KiloAgentBehaviorRpcApi
+import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.AgentDetailDto
+import ai.kilocode.jetbrains.api.model.AgentBuilderSaveRequest
 import ai.kilocode.rpc.dto.CommandDto
 import ai.kilocode.rpc.dto.McpStatusDto
 import ai.kilocode.rpc.dto.PermissionRuleItemDto
@@ -68,6 +70,20 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
 
     override suspend fun removeAgent(directory: String, name: String): Boolean =
         post(directory, "/kilocode/agent/remove", JsonObject(mapOf("name" to JsonPrimitive(name))))
+
+    override suspend fun createAgent(directory: String, input: AgentCreateDto): Boolean {
+        app.requireReady()
+        val api = app.api ?: throw IllegalStateException("Kilo API is unavailable")
+        val req = AgentBuilderSaveRequest(
+            prompt = input.prompt,
+            id = input.name,
+            scope = scope(input.scope),
+            description = input.description,
+            mode = mode(input.mode),
+        )
+        api.agentBuilderSave(input.name, directory = directory, workspace = null, agentBuilderSaveRequest = req)
+        return true
+    }
 
     override suspend fun commands(directory: String): List<CommandDto> = get(directory, "/command").array().mapNotNull { item ->
         val obj = item.jsonObject
@@ -162,6 +178,17 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
         val getter = obj.javaClass.methods.firstOrNull { it.parameterCount == 0 && it.name == "get$suffix" }
             ?: obj.javaClass.methods.firstOrNull { it.parameterCount == 0 && it.name == name }
         return getter?.invoke(obj)
+    }
+
+    private fun scope(value: String): AgentBuilderSaveRequest.Scope = when (value) {
+        AgentBuilderSaveRequest.Scope.GLOBAL.value -> AgentBuilderSaveRequest.Scope.GLOBAL
+        else -> AgentBuilderSaveRequest.Scope.PROJECT
+    }
+
+    private fun mode(value: String): AgentBuilderSaveRequest.Mode = when (value) {
+        AgentBuilderSaveRequest.Mode.SUBAGENT.value -> AgentBuilderSaveRequest.Mode.SUBAGENT
+        AgentBuilderSaveRequest.Mode.ALL.value -> AgentBuilderSaveRequest.Mode.ALL
+        else -> AgentBuilderSaveRequest.Mode.PRIMARY
     }
 
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)

@@ -225,8 +225,23 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
         true,
     ).apply {
         templatePresentation.icon = AllIcons.General.Add
-        add(PlaceholderAction(KiloBundle.message("settings.agentBehavior.agents.create")))
+        add(CreateAction())
         add(PlaceholderAction(KiloBundle.message("settings.agentBehavior.agents.import")))
+    }
+
+    private inner class CreateAction : DumbAwareAction(KiloBundle.message("settings.agentBehavior.agents.create")) {
+        override fun getActionUpdateThread() = ActionUpdateThread.EDT
+
+        override fun actionPerformed(e: AnActionEvent) {
+            val dialog = AgentCreateDialog(draft.agents.keys)
+            if (!dialog.showAndGet()) return
+            val input = dialog.result()
+            cs.launch {
+                val created = service<KiloAgentBehaviorService>().createAgent(dir, input)
+                if (!created) return@launch
+                withContext(edt) { reload() }
+            }
+        }
     }
 
     private companion object {

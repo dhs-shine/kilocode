@@ -166,6 +166,7 @@ class FakeAppRpcApi : KiloAppRpcApi {
             ))
         }
         return config.copy(
+            defaultAgent = if (values.containsKey("default_agent")) values["default_agent"] else config.defaultAgent,
             model = if (values.containsKey("model")) values["model"] else config.model,
             smallModel = if (values.containsKey("small_model")) values["small_model"] else config.smallModel,
             subagentModel = if (values.containsKey("subagent_model")) values["subagent_model"] else config.subagentModel,

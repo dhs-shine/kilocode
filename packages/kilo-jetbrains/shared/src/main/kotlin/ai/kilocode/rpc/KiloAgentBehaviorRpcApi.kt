@@ -1,6 +1,7 @@
 package ai.kilocode.rpc
 
 import ai.kilocode.rpc.dto.AgentDetailDto
+import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.CommandDto
 import ai.kilocode.rpc.dto.McpStatusDto
 import ai.kilocode.rpc.dto.SkillDto
@@ -24,6 +25,8 @@ interface KiloAgentBehaviorRpcApi : RemoteApi<Unit> {
     suspend fun removeSkill(directory: String, location: String): Boolean
 
     suspend fun removeAgent(directory: String, name: String): Boolean
+
+    suspend fun createAgent(directory: String, input: AgentCreateDto): Boolean
 
     suspend fun commands(directory: String): List<CommandDto>
 

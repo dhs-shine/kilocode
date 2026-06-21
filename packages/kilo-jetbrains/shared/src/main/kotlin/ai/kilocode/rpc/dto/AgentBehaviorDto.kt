@@ -1,5 +1,6 @@
 package ai.kilocode.rpc.dto
 
+import ai.kilocode.cli.KiloCliParser
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -12,6 +13,15 @@ data class AgentDetailDto(
     val hidden: Boolean? = null,
     val deprecated: Boolean? = null,
     val permission: List<PermissionRuleItemDto> = emptyList(),
+)
+
+@Serializable
+data class AgentCreateDto(
+    val name: String,
+    val prompt: String,
+    val mode: String = KiloCliParser.MODE_PRIMARY,
+    val description: String? = null,
+    val scope: String = "project",
 )
 
 @Serializable
