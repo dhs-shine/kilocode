@@ -293,7 +293,7 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
         assertEquals(listOf("p1"), msg.partIds())
         assertNull(msg.part("p2"))
         assertNull(msg.part("f1"))
-        assertEquals("read @src/a.kt", (msg.part("p1") as TextView).markdown())
+        assertEquals("read [@src/a.kt](src/a.kt)", (msg.part("p1") as TextView).markdown())
         assertEquals(0, msg.components.filterIsInstance<PromptAttachmentView>().size)
     }
 

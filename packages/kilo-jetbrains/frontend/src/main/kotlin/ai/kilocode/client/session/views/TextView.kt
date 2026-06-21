@@ -18,7 +18,7 @@ import java.awt.BorderLayout
 open class TextView(
     text: Text,
     transparent: Boolean = true,
-    openUrl: (String) -> Unit = {},
+    private val openUrl: (String) -> Unit = {},
     selection: SessionSelection? = null,
 ) : PartView() {
 
@@ -31,7 +31,7 @@ open class TextView(
         isOpaque = false
         Disposer.register(this, md)
         md.opaque = !transparent
-        md.addLinkListener { openUrl(it.href) }
+        md.addLinkListener { onLink(it.href) }
         applyStyle(SessionEditorStyle.current())
         add(md.component, BorderLayout.CENTER)
         if (text.content.isNotEmpty()) md.set(text.content.toString())
@@ -52,7 +52,11 @@ open class TextView(
     /** Current markdown source — used by tests to assert rendered content. */
     fun markdown(): String = md.markdown()
 
+    internal fun simulateLink(href: String) = md.simulateLink(href)
+
     internal fun contentOpaque() = md.opaque
+
+    protected open fun onLink(href: String) = openUrl(href)
 
     override fun applyStyle(style: SessionEditorStyle) {
         val font = styleFont(style)
@@ -74,7 +78,7 @@ open class TextView(
 
     protected open fun styleBackground(style: SessionEditorStyle) = style.editorBackground
 
-    private fun refresh() {
+    protected fun refresh() {
         revalidate()
         repaint()
     }
