@@ -7,6 +7,10 @@
   margin-inline: -6px;
   max-height: 200px;
   background: var(--surface-tool-output-base);
+
+  > [data-component="task-tools"] {
+    padding: 0;
+  }
 }
 
 /* ============================================
