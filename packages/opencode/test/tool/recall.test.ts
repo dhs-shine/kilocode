@@ -42,7 +42,7 @@ describe("tool.recall", () => {
 
     try {
       await $`git worktree add ${worktree} -b test-branch-${Date.now()}`.cwd(first.path).quiet()
-      await Bun.write(path.join(first.path, ".git", "opencode"), "stale-project-id")
+      await Bun.write(path.join(first.path, ".git", "kilo"), "stale-project-id") // kilocode_change
 
       try {
         await provideTestInstance({
@@ -112,7 +112,7 @@ describe("tool.recall", () => {
 
     try {
       await $`git worktree add ${worktree} -b test-branch-${Date.now()}`.cwd(first.path).quiet()
-      await Bun.write(path.join(first.path, ".git", "opencode"), "stale-project-id")
+      await Bun.write(path.join(first.path, ".git", "kilo"), "stale-project-id") // kilocode_change
 
       try {
         const session = await provideTestInstance({

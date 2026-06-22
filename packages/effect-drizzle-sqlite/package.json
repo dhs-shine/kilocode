@@ -25,5 +25,6 @@
   "dependencies": {
     "drizzle-orm": "catalog:",
     "effect": "catalog:"
-  }
+  },
+  "peerDependencies": {}
 }
