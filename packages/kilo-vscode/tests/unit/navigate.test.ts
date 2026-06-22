@@ -6,6 +6,7 @@ import {
   restoreLocalSessions,
   reconcileLocalSessions,
   filterUnassignedSessions,
+  admitCreatedSession,
   remoteSessions,
   LOCAL,
 } from "../../webview-ui/agent-manager/navigate"
@@ -289,6 +290,28 @@ describe("filterUnassignedSessions", () => {
   })
 })
 
+describe("admitCreatedSession", () => {
+  const local = ["local", "pending"]
+  const worktree = new Set(["worktree"])
+
+  it("admits new root sessions and resolves their pending draft", () => {
+    expect(admitCreatedSession({ id: "root", parentID: null }, "pending", local, worktree)).toEqual({
+      pending: "pending",
+    })
+    expect(admitCreatedSession({ id: "root" }, undefined, local, worktree)).toEqual({ pending: undefined })
+  })
+
+  it("rejects subagents before they can become tabs", () => {
+    expect(admitCreatedSession({ id: "child", parentID: "root" }, undefined, local, worktree)).toBeUndefined()
+    expect(admitCreatedSession({ id: "child", parentID: "" }, undefined, local, worktree)).toBeUndefined()
+  })
+
+  it("rejects existing local and worktree sessions", () => {
+    expect(admitCreatedSession({ id: "local" }, undefined, local, worktree)).toBeUndefined()
+    expect(admitCreatedSession({ id: "worktree" }, undefined, local, worktree)).toBeUndefined()
+  })
+})
+
 describe("restoreLocalSessions", () => {
   const identity = (items: { id: string }[], _order: string[]) => items
   const isPending = (id: string) => id.startsWith("pending-")
@@ -423,6 +446,7 @@ describe("remoteSessions", () => {
 
 describe("reconcileLocalSessions", () => {
   const isPending = (id: string) => id.startsWith("pending-")
+  const loaded = (...ids: string[]) => ids.map((id) => ({ id }))
 
   it("keeps restored local sessions through a partial restart refresh", () => {
     const managed = [
@@ -431,7 +455,7 @@ describe("reconcileLocalSessions", () => {
     ]
     const restored = restoreLocalSessions(managed, [], undefined, isPending, (items) => items)?.filter(Boolean) ?? []
 
-    const result = reconcileLocalSessions(restored, ["worktree-1"], managed, isPending)
+    const result = reconcileLocalSessions(restored, loaded("worktree-1"), managed, isPending)
 
     expect(restored).toEqual(["local-1"])
     expect(result).toBeUndefined()
@@ -454,7 +478,7 @@ describe("reconcileLocalSessions", () => {
   it("does not forget persisted local sessions when only worktree sessions loaded", () => {
     const result = reconcileLocalSessions(
       ["local-1"],
-      ["worktree-1"],
+      loaded("worktree-1"),
       [
         { id: "local-1", worktreeId: null },
         { id: "worktree-1", worktreeId: "wt-1" },
@@ -466,10 +490,10 @@ describe("reconcileLocalSessions", () => {
   })
 
   it("waits for managed state before removing sessions restored from webview state", () => {
-    const beforeState = reconcileLocalSessions(["local-1"], ["worktree-1"], [], isPending)
+    const beforeState = reconcileLocalSessions(["local-1"], loaded("worktree-1"), [], isPending)
     const afterState = reconcileLocalSessions(
       ["local-1"],
-      ["worktree-1"],
+      loaded("worktree-1"),
       [
         { id: "local-1", worktreeId: null },
         { id: "worktree-1", worktreeId: "wt-1" },
@@ -482,7 +506,7 @@ describe("reconcileLocalSessions", () => {
   })
 
   it("forgets stale local sessions missing from loaded and managed state", () => {
-    const result = reconcileLocalSessions(["s1", "gone"], ["s1"], [{ id: "s1", worktreeId: null }], isPending)
+    const result = reconcileLocalSessions(["s1", "gone"], loaded("s1"), [{ id: "s1", worktreeId: null }], isPending)
 
     expect(result).toEqual({ ids: ["s1"], forget: ["gone"] })
   })
@@ -490,7 +514,7 @@ describe("reconcileLocalSessions", () => {
   it("evicts worktree sessions that raced into local state without forgetting them", () => {
     const result = reconcileLocalSessions(
       ["local-1", "worktree-1"],
-      ["local-1", "worktree-1"],
+      loaded("local-1", "worktree-1"),
       [
         { id: "local-1", worktreeId: null },
         { id: "worktree-1", worktreeId: "wt-1" },
@@ -499,6 +523,34 @@ describe("reconcileLocalSessions", () => {
     )
 
     expect(result).toEqual({ ids: ["local-1"], forget: [] })
+  })
+
+  it("evicts and forgets a subagent leaked into local tabs", () => {
+    const result = reconcileLocalSessions(
+      ["root", "child"],
+      [{ id: "root" }, { id: "child", parentID: "root" }],
+      [
+        { id: "root", worktreeId: null },
+        { id: "child", worktreeId: null },
+      ],
+      isPending,
+    )
+
+    expect(result).toEqual({ ids: ["root"], forget: ["child"] })
+  })
+
+  it("forgets a subagent leaked into a worktree", () => {
+    const result = reconcileLocalSessions(
+      ["root"],
+      [{ id: "root" }, { id: "child", parentID: "root" }],
+      [
+        { id: "root", worktreeId: null },
+        { id: "child", worktreeId: "wt-1" },
+      ],
+      isPending,
+    )
+
+    expect(result).toEqual({ ids: ["root"], forget: ["child"] })
   })
 
   it("keeps pending local tabs during reconciliation", () => {
