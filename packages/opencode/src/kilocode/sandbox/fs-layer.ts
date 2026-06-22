@@ -78,7 +78,7 @@ function wrap(fs: AppFileSystem.Interface, config: Config.Interface): AppFileSys
     remove: (path) => Effect.gen(function* () { yield* guard(path); return yield* fs.remove(path) }),
     chmod: (path, mode) => Effect.gen(function* () { yield* guard(path); return yield* fs.chmod(path, mode) }),
     truncate: (path, size) => Effect.gen(function* () { yield* guard(path); return yield* fs.truncate(path, size) }),
-    link: (target, linkPath) => Effect.gen(function* () { yield* guard(linkPath); return yield* fs.link(target, linkPath) }),
+    link: (target, linkPath) => Effect.gen(function* () { yield* guard(target); yield* guard(linkPath); return yield* fs.link(target, linkPath) }),
     symlink: (target, linkPath) => Effect.gen(function* () { yield* guard(linkPath); return yield* fs.symlink(target, linkPath) }),
   }
 }

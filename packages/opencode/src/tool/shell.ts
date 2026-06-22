@@ -311,7 +311,6 @@ const ask = Effect.fn("ShellTool.ask")(function* (
   })
 })
 
-// kilocode_change start - sandbox wrapper
 function cmd(shell: string, command: string, cwd: string, env: NodeJS.ProcessEnv) {
   if (process.platform === "win32" && Shell.ps(shell)) {
     // kilocode_change start - encoded PowerShell args
@@ -333,6 +332,7 @@ function cmd(shell: string, command: string, cwd: string, env: NodeJS.ProcessEnv
   })
 }
 
+// kilocode_change start - sandbox wrapper
 function sandboxedCmd(
   scope: Sandbox.Scope,
   shell: string,
@@ -550,14 +550,12 @@ export const ShellTool = Tool.define(
           const handle = yield* spawner.spawn(
             input.sandbox
               ? sandboxedCmd(
-                  // kilocode_change start - enrich sandbox scope with approved external dirs
                   Sandbox.enrichedScope(yield* InstanceState.context, yield* config.get()),
                   input.shell,
                   input.command,
                   input.cwd,
                   input.env,
                 )
-              // kilocode_change end
               : cmd(input.shell, input.command, input.cwd, input.env),
           )
           // kilocode_change end

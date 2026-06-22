@@ -183,19 +183,21 @@ const ExperimentalTab: Component = () => {
           />
         </SettingsRow>
 
-        <SettingsRow
-          title={language.t("settings.experimental.sandbox.title")}
-          description={language.t("settings.experimental.sandbox.description")}
-          last
-        >
-          <Switch
-            checked={experimental().sandbox ?? false}
-            onChange={(checked) => updateExperimental("sandbox", checked)}
-            hideLabel
+        <Show when={typeof navigator !== "undefined" && /Mac/i.test(navigator.platform)}>
+          <SettingsRow
+            title={language.t("settings.experimental.sandbox.title")}
+            description={language.t("settings.experimental.sandbox.description")}
+            last
           >
-            {language.t("settings.experimental.sandbox.title")}
-          </Switch>
-        </SettingsRow>
+            <Switch
+              checked={experimental().sandbox ?? false}
+              onChange={(checked) => updateExperimental("sandbox", checked)}
+              hideLabel
+            >
+              {language.t("settings.experimental.sandbox.title")}
+            </Switch>
+          </SettingsRow>
+        </Show>
       </Card>
 
       {/* Tool toggles */}
