@@ -23,4 +23,19 @@ describe("PowerShell arguments", () => {
   test.each(["powershell", "pwsh"])("routes %s through the Kilo argument builder", (shell) => {
     expect(Shell.args(shell, command, "/tmp")).toEqual(PowerShell.args(command))
   })
+
+  test("keeps script-level prologue before the UTF-8 console setup", () => {
+    const input = `#requires -Version 5.1
+using namespace System.Text
+param(
+  [string]$Name
+)
+Write-Output $Name`
+    const value = PowerShell.args(input)[4]
+    const setup = value.indexOf("[Console]::InputEncoding")
+
+    expect(value.startsWith("#requires -Version 5.1")).toBe(true)
+    expect(setup).toBeGreaterThan(value.indexOf(")"))
+    expect(setup).toBeLessThan(value.indexOf("Write-Output"))
+  })
 })
