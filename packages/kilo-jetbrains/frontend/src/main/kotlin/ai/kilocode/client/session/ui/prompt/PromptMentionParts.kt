@@ -30,7 +30,7 @@ fun gitChangesPart(text: String, diff: String?): PromptPartDto? {
     val raw = spec.token
     val start = text.mentionStart(raw) ?: return null
     val value = diff?.takeIf { it.isNotBlank() } ?: return null
-    return dataPart(spec.filename, value, source("resource", raw, start, uri = spec.uri))
+    return dataPart(spec.filename, value)
 }
 
 private fun String.mentionStart(token: String): Int? {
@@ -48,10 +48,8 @@ private fun dataPart(name: String, text: String, source: PartSourceDto? = null):
     return PromptPartDto(type = "file", mime = "text/plain", url = "data:text/plain;charset=utf-8,$data", filename = name, source = source)
 }
 
-private fun source(type: String, token: String, start: Int, path: String? = null, uri: String? = null) = PartSourceDto(
+private fun source(type: String, token: String, start: Int, path: String? = null) = PartSourceDto(
     type = type,
     text = PartSourceTextDto(value = token, start = start.toDouble(), end = (start + token.length).toDouble()),
     path = path,
-    uri = uri,
-    clientName = if (type == "resource") "jetbrains" else null,
 )

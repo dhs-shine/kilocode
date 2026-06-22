@@ -1715,6 +1715,23 @@ class KiloCliDataParserTest {
         }
 
         @Test
+        fun `buildPromptJson - data file part without source omits source metadata`() {
+            val prompt = PromptDto(parts = listOf(PromptPartDto(
+                type = "file",
+                mime = "text/plain",
+                url = "data:text/plain;charset=utf-8,diff%20content",
+                filename = "git-changes.txt",
+            )))
+
+            val result = KiloCliDataParser.buildPromptJson(prompt)
+
+            assertEquals(
+                """{"parts":[{"type":"file","mime":"text/plain","url":"data:text/plain;charset=utf-8,diff%20content","filename":"git-changes.txt"}]}""",
+                result,
+            )
+        }
+
+        @Test
         fun `buildCommandJson - file part includes source metadata`() {
             val prompt = PromptDto(parts = listOf(PromptPartDto(
                 type = "file",
