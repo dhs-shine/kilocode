@@ -294,6 +294,18 @@ class TextViewTest : BasePlatformTestCase() {
         assertEquals("read [@src/a.kt](src/a.kt)", out)
     }
 
+    fun `test linkifyMentions fallback does not relink generated markdown`() {
+        val out = linkifyMentions(
+            "read @src/a.kt and @src/a.kt",
+            listOf(
+                PromptMention("@src/a.kt", "src/a.kt", 5, 14),
+                PromptMention("@src/a.kt", "src/a.kt", 0, 4),
+            ),
+        )
+
+        assertEquals("read [@src/a.kt](src/a.kt) and [@src/a.kt](src/a.kt)", out)
+    }
+
     fun `test linkifyMentions leaves text without mentions unchanged`() {
         assertEquals("read @src/a.kt", linkifyMentions("read @src/a.kt", emptyList()))
     }
