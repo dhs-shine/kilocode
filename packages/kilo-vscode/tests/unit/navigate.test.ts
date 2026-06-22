@@ -193,16 +193,16 @@ describe("adjacentHint", () => {
 
 describe("filterUnassignedSessions", () => {
   const at = (day: number) => `2026-01-${String(day).padStart(2, "0")}T00:00:00.000Z`
-  const info = (id: string, day: number, parentID?: string | null) => ({
+  const info = (id: string, day: number, parentID: string | null = null) => ({
     id,
     createdAt: at(day),
-    ...(parentID === undefined ? {} : { parentID }),
+    parentID,
   })
 
-  it("keeps root sessions with undefined parent IDs", () => {
-    const result = filterUnassignedSessions([info("old", 1), info("new", 3)], new Set(), new Set())
+  it("filters sparse session updates until ancestry is known", () => {
+    const result = filterUnassignedSessions([{ id: "unknown", createdAt: at(1) }], new Set(), new Set())
 
-    expect(result.map((s) => s.id)).toEqual(["new", "old"])
+    expect(result).toEqual([])
   })
 
   it("keeps root sessions with null parent IDs", () => {
@@ -298,17 +298,20 @@ describe("admitCreatedSession", () => {
     expect(admitCreatedSession({ id: "root", parentID: null }, "pending", local, worktree)).toEqual({
       pending: "pending",
     })
-    expect(admitCreatedSession({ id: "root" }, undefined, local, worktree)).toEqual({ pending: undefined })
+    expect(admitCreatedSession({ id: "root", parentID: null }, undefined, local, worktree)).toEqual({
+      pending: undefined,
+    })
   })
 
-  it("rejects subagents before they can become tabs", () => {
+  it("rejects subagents and sparse updates before they can become tabs", () => {
+    expect(admitCreatedSession({ id: "unknown" }, undefined, local, worktree)).toBeUndefined()
     expect(admitCreatedSession({ id: "child", parentID: "root" }, undefined, local, worktree)).toBeUndefined()
     expect(admitCreatedSession({ id: "child", parentID: "" }, undefined, local, worktree)).toBeUndefined()
   })
 
   it("rejects existing local and worktree sessions", () => {
-    expect(admitCreatedSession({ id: "local" }, undefined, local, worktree)).toBeUndefined()
-    expect(admitCreatedSession({ id: "worktree" }, undefined, local, worktree)).toBeUndefined()
+    expect(admitCreatedSession({ id: "local", parentID: null }, undefined, local, worktree)).toBeUndefined()
+    expect(admitCreatedSession({ id: "worktree", parentID: null }, undefined, local, worktree)).toBeUndefined()
   })
 })
 

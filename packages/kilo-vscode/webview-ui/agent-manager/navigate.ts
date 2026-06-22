@@ -22,7 +22,7 @@ export function filterUnassignedSessions<T extends SessionLike>(
   local: Set<string>,
 ): T[] {
   return [...sessions]
-    .filter((s) => isRootSession(s) && !worktree.has(s.id) && !local.has(s.id))
+    .filter((s) => s.parentID === null && !worktree.has(s.id) && !local.has(s.id))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
 
@@ -32,7 +32,7 @@ export function admitCreatedSession(
   local: string[],
   worktree: Set<string>,
 ): { pending: string | undefined } | undefined {
-  if (!isRootSession(session)) return
+  if (session.parentID !== null) return
   const pending = draft && local.includes(draft) ? draft : undefined
   if (!pending && local.includes(session.id)) return
   if (worktree.has(session.id)) return
