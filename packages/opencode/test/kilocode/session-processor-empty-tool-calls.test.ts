@@ -545,4 +545,78 @@ describe("session processor empty tool-calls", () => {
       { git: true },
     ),
   )
+
+  it.effect("persists routed model metadata on step-finish parts", () =>
+    provideTmpdirInstance(
+      (dir) =>
+        Effect.gen(function* () {
+          const test = yield* TestLLM
+          const processors = yield* SessionProcessor.Service
+          const session = yield* Session.Service
+
+          yield* test.reply(
+            LLMEvent.stepStart({ index: 0 }),
+            LLMEvent.stepFinish({
+              index: 0,
+              reason: "stop",
+              usage: usage(),
+              providerMetadata: { kilocode: { routedModelID: "openai/gpt-5.5-20260423" } },
+            }),
+            LLMEvent.finish({ reason: "stop", usage: usage() }),
+          )
+
+          const chat = yield* session.create({})
+          const parent = yield* session.updateMessage({
+            id: MessageID.ascending(),
+            role: "user",
+            sessionID: chat.id,
+            agent: "code",
+            model: ref,
+            time: { created: Date.now() },
+          })
+          const msg: MessageV2.Assistant = {
+            id: MessageID.ascending(),
+            role: "assistant",
+            sessionID: chat.id,
+            parentID: parent.id,
+            mode: "code",
+            agent: "code",
+            path: { cwd: path.resolve(dir), root: path.resolve(dir) },
+            cost: 0,
+            tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+            modelID: ref.modelID,
+            providerID: ref.providerID,
+            time: { created: Date.now() },
+          }
+          yield* session.updateMessage(msg)
+
+          const mdl = model()
+          const handle = yield* processors.create({
+            assistantMessage: msg,
+            sessionID: chat.id,
+            model: mdl,
+          })
+
+          const input: LLM.StreamInput = {
+            user: parent as MessageV2.User,
+            sessionID: chat.id,
+            model: mdl,
+            agent: { name: "code", mode: "primary", permission: [], options: {} } as any,
+            system: [],
+            messages: [],
+            tools: {},
+          }
+
+          yield* handle.process(input)
+          const parts = MessageV2.parts(msg.id)
+          const part = parts.find((item): item is MessageV2.StepFinishPart => item.type === "step-finish")
+
+          expect(part?.model).toEqual({
+            providerID: ref.providerID,
+            modelID: ModelID.make("openai/gpt-5.5-20260423"),
+          })
+        }),
+      { git: true },
+    ),
+  )
 })

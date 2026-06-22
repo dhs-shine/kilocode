@@ -758,6 +758,10 @@ export type StepFinishPart = {
   type: "step-finish"
   reason: string
   snapshot?: string
+  model?: {
+    providerID: string
+    modelID: string
+  }
   cost: number
   tokens: {
     total?: number

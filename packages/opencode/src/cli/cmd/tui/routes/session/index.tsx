@@ -30,7 +30,16 @@ import type { CommandContext } from "@opentui/keymap"
 // kilocode_change end
 import { Prompt, type PromptRef } from "@tui/component/prompt"
 // kilocode_change start
-import type { AssistantMessage, Part, Provider, ToolPart, UserMessage, TextPart, ReasoningPart } from "@kilocode/sdk/v2"
+import type {
+  AssistantMessage,
+  Part,
+  Provider,
+  ToolPart,
+  UserMessage,
+  TextPart,
+  ReasoningPart,
+  StepFinishPart,
+} from "@kilocode/sdk/v2"
 import * as Log from "@opencode-ai/core/util/log"
 // kilocode_change end
 import { useLocal } from "@tui/context/local"
@@ -1684,9 +1693,31 @@ const PART_MAPPING = {
   text: TextPart,
   tool: ToolPart,
   reasoning: ReasoningPart,
+  "step-finish": StepFinishPart, // kilocode_change
 }
 
 const INLINE_TOOL_ICON_WIDTH = 2
+
+// kilocode_change start - show concrete routed models reported by gateway/provider responses
+function StepFinishPart(props: { last: boolean; part: StepFinishPart; message: AssistantMessage }) {
+  const ctx = use()
+  const { theme } = useTheme()
+  const routed = createMemo(() => {
+    const model = props.part.model
+    if (!model) return undefined
+    if (model.providerID === props.message.providerID && model.modelID === props.message.modelID) return undefined
+    return Model.name(ctx.providers(), model.providerID, model.modelID)
+  })
+
+  return (
+    <Show when={routed()}>
+      <box paddingLeft={3} marginTop={1}>
+        <text fg={theme.textMuted}>Routed to {routed()}</text>
+      </box>
+    </Show>
+  )
+}
+// kilocode_change end
 
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
   const { theme } = useTheme()

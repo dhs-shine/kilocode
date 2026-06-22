@@ -105,4 +105,13 @@ describe("timeline labels", () => {
   it("returns 'Step finish' for step-finish", () => {
     expect(label(mkStepFinish())).toBe("Step finish")
   })
+
+  it("includes model ID for step-finish with model", () => {
+    expect(
+      label({
+        ...mkStepFinish(),
+        model: { providerID: "kilo", modelID: "openai/gpt-5.5" },
+      }),
+    ).toBe("Step finish · openai/gpt-5.5")
+  })
 })

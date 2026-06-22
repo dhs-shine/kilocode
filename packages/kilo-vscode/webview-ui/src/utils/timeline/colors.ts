@@ -84,7 +84,7 @@ export function label(part: Part): string {
     case "step-start":
       return "Step start"
     case "step-finish":
-      return "Step finish"
+      return part.model?.modelID ? `Step finish · ${part.model.modelID}` : "Step finish"
     default:
       return "Unknown"
   }
