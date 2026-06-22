@@ -168,25 +168,16 @@ internal class AgentEditDialog(
                 steps,
             ))
         }
-        panel.section(KiloBundle.message("settings.agentBehavior.agents.edit.visibility")).apply {
-            val visible = canEditVisibility(agent)
+        if (canEditVisibility(agent)) panel.section(KiloBundle.message("settings.agentBehavior.agents.edit.visibility")).apply {
             row(SettingsRow(
                 KiloBundle.message("settings.agentBehavior.agents.edit.hidden"),
-                if (visible) {
-                    KiloBundle.message("settings.agentBehavior.agents.edit.hidden.description")
-                } else {
-                    KiloBundle.message("settings.agentBehavior.agents.edit.visibility.native.description")
-                },
-                SettingsToggle(hidden) { hidden = it }.apply { isEnabled = visible },
+                KiloBundle.message("settings.agentBehavior.agents.edit.hidden.description"),
+                SettingsToggle(hidden) { hidden = it },
             ))
             row(SettingsRow(
                 KiloBundle.message("settings.agentBehavior.agents.edit.disabled"),
-                if (visible) {
-                    KiloBundle.message("settings.agentBehavior.agents.edit.disabled.description")
-                } else {
-                    KiloBundle.message("settings.agentBehavior.agents.edit.visibility.native.description")
-                },
-                SettingsToggle(disabled) { disabled = it }.apply { isEnabled = visible },
+                KiloBundle.message("settings.agentBehavior.agents.edit.disabled.description"),
+                SettingsToggle(disabled) { disabled = it },
             ))
         }
         val content = ScrollContent().apply {

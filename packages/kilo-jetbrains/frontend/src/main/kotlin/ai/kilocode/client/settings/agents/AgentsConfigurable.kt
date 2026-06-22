@@ -158,7 +158,7 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
             override val badges = listOfNotNull(
                 SettingsBadge(
                     KiloBundle.message("settings.agentBehavior.badge.subagent"),
-                    UiStyle.Badge.Primary,
+                    UiStyle.Badge.Highlight,
                 ).takeIf { KiloCliParser.isSubagent(item.mode) },
                 SettingsBadge(
                     KiloBundle.message("settings.agentBehavior.badge.custom"),

@@ -101,7 +101,7 @@ class AgentEditDialogTest : BasePlatformTestCase() {
         assertTrue(result.disable)
     }
 
-    fun `test native agent restricts editing`() {
+    fun `test native agent omits restricted editing`() {
         val agent = draft().copy(
             name = "ask",
             description = "Built in",
@@ -114,8 +114,8 @@ class AgentEditDialogTest : BasePlatformTestCase() {
             val root = d.contentForTest()
             assertFalse(field<JBTextArea>(root, title("description")).isEditable)
             assertFalse(field<ComboBox<*>>(root, title("mode")).isEnabled)
-            assertFalse(field<SettingsToggle>(root, title("hidden")).isEnabled)
-            assertFalse(field<SettingsToggle>(root, title("disabled")).isEnabled)
+            assertFalse(hasRow(root, title("hidden")))
+            assertFalse(hasRow(root, title("disabled")))
             val result = d.result()
             assertEquals("Built in", result.description)
             assertEquals(KiloCliParser.MODE_PRIMARY, result.mode)
@@ -140,6 +140,12 @@ class AgentEditDialogTest : BasePlatformTestCase() {
 
     private fun rowByTitle(root: Component, title: String): Container =
         descendants(root).filterIsInstance<Container>().first { item ->
+            (item is SettingsRow || item is SettingsStackedRow) &&
+                descendants(item).any { it is JLabel && it.text == title }
+        }
+
+    private fun hasRow(root: Component, title: String): Boolean =
+        descendants(root).filterIsInstance<Container>().any { item ->
             (item is SettingsRow || item is SettingsStackedRow) &&
                 descendants(item).any { it is JLabel && it.text == title }
         }
