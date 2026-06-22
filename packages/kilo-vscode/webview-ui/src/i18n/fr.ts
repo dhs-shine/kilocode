@@ -291,8 +291,10 @@ export const dict = {
   "prompt.action.indexing": "Paramètres d'indexation",
   "prompt.action.sandbox.enable": "Activer le sandbox",
   "prompt.action.sandbox.disable": "Désactiver le sandbox",
-  "prompt.action.sandbox.enabled": "Le sandbox est activé. Les commandes shell de l'agent sont limitées aux répertoires du projet et de Kilo.",
-  "prompt.action.sandbox.disabled": "Le sandbox est désactivé. Cliquez pour limiter les écritures des commandes shell de l'agent aux répertoires du projet et de Kilo.",
+  "prompt.action.sandbox.enabled":
+    "Le sandbox est activé. Les commandes shell de l'agent sont limitées aux répertoires du projet et de Kilo.",
+  "prompt.action.sandbox.disabled":
+    "Le sandbox est désactivé. Cliquez pour limiter les écritures des commandes shell de l'agent aux répertoires du projet et de Kilo.",
 
   "speechToText.tooltip.start": "Démarrer la saisie vocale avec Kilo Gateway",
   "speechToText.tooltip.stop": "Arrêter la capture audio",
@@ -1493,7 +1495,8 @@ export const dict = {
   "settings.agentBehaviour.workflows.detail.description": "Description",
   "settings.agentBehaviour.workflows.detail.template": "Modèle",
   "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description": "Exécuter les commandes shell de l'agent dans un sandbox au niveau du système d'exploitation qui restreint les écritures aux répertoires d'état du projet et de Kilo",
+  "settings.experimental.sandbox.description":
+    "Exécuter les commandes shell de l'agent dans un sandbox au niveau du système d'exploitation qui restreint les écritures aux répertoires d'état du projet et de Kilo",
 
   "settings.autoApprove.description":
     "Définissez comment les outils sont autorisés à s'exécuter. La plupart des outils sont définis sur Autoriser par défaut. doom_loop et external_directory sont définis sur Demander par défaut.",

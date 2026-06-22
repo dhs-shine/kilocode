@@ -289,8 +289,10 @@ export const dict = {
   "prompt.action.indexing": "Configurações de indexação",
   "prompt.action.sandbox.enable": "Ativar sandbox",
   "prompt.action.sandbox.disable": "Desativar sandbox",
-  "prompt.action.sandbox.enabled": "Sandbox ativado. Os comandos shell do agente estão limitados aos diretórios do projeto e do Kilo.",
-  "prompt.action.sandbox.disabled": "Sandbox desativado. Clique para limitar as escritas dos comandos shell do agente aos diretórios do projeto e do Kilo.",
+  "prompt.action.sandbox.enabled":
+    "Sandbox ativado. Os comandos shell do agente estão limitados aos diretórios do projeto e do Kilo.",
+  "prompt.action.sandbox.disabled":
+    "Sandbox desativado. Clique para limitar as escritas dos comandos shell do agente aos diretórios do projeto e do Kilo.",
 
   "speechToText.tooltip.start": "Iniciar entrada de voz com o Kilo Gateway",
   "speechToText.tooltip.stop": "Parar captura",
@@ -1468,7 +1470,8 @@ export const dict = {
   "settings.agentBehaviour.workflows.detail.description": "Descrição",
   "settings.agentBehaviour.workflows.detail.template": "Modelo",
   "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description": "Executar os comandos shell do agente dentro de um sandbox a nível de sistema operacional que restringe escritas aos diretórios de estado do projeto e do Kilo",
+  "settings.experimental.sandbox.description":
+    "Executar os comandos shell do agente dentro de um sandbox a nível de sistema operacional que restringe escritas aos diretórios de estado do projeto e do Kilo",
 
   "settings.autoApprove.description":
     "Defina como as ferramentas têm permissão para serem executadas. A maioria das ferramentas tem o padrão Permitir. doom_loop e external_directory têm o padrão Perguntar.",

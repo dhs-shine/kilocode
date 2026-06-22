@@ -138,7 +138,7 @@ export const EditTool = Tool.define(
                 })
                 yield* EncodedIO.write(afs, filePath, Bom.join(contentNew, desiredBom), source.encoding) // kilocode_change - encoding-aware write (mkdirs) replaces afs.writeWithDirs
                 if (yield* format.file(filePath)) {
-                  contentNew = yield* Bom.syncFile(afs, filePath, desiredBom)
+                  contentNew = yield* EncodedIO.sync(afs, filePath, desiredBom, source.encoding)
                 }
                 yield* bus.publish(File.Event.Edited, { file: filePath })
                 yield* bus.publish(FileWatcher.Event.Updated, {
@@ -188,7 +188,7 @@ export const EditTool = Tool.define(
 
               yield* EncodedIO.write(afs, filePath, Bom.join(contentNew, desiredBom), source.encoding) // kilocode_change - encoding-aware write replaces afs.writeWithDirs
               if (yield* format.file(filePath)) {
-                contentNew = yield* Bom.syncFile(afs, filePath, desiredBom)
+                contentNew = yield* EncodedIO.sync(afs, filePath, desiredBom, source.encoding)
               }
               yield* bus.publish(File.Event.Edited, { file: filePath })
               yield* bus.publish(FileWatcher.Event.Updated, {

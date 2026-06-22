@@ -286,8 +286,10 @@ export const dict = {
   "prompt.action.indexing": "インデックス設定",
   "prompt.action.sandbox.enable": "サンドボックスを有効化",
   "prompt.action.sandbox.disable": "サンドボックスを無効化",
-  "prompt.action.sandbox.enabled": "サンドボックスが有効です。エージェントのシェルコマンドは、プロジェクトおよびKiloディレクトリに制限されています。",
-  "prompt.action.sandbox.disabled": "サンドボックスが無効です。クリックしてエージェントのシェルコマンドの書き込みをプロジェクトおよびKiloディレクトリに制限します。",
+  "prompt.action.sandbox.enabled":
+    "サンドボックスが有効です。エージェントのシェルコマンドは、プロジェクトおよびKiloディレクトリに制限されています。",
+  "prompt.action.sandbox.disabled":
+    "サンドボックスが無効です。クリックしてエージェントのシェルコマンドの書き込みをプロジェクトおよびKiloディレクトリに制限します。",
 
   "speechToText.tooltip.start": "Kilo Gatewayで音声入力を開始",
   "speechToText.tooltip.stop": "音声キャプチャを停止",
@@ -1451,7 +1453,8 @@ export const dict = {
   "settings.agentBehaviour.workflows.detail.description": "説明",
   "settings.agentBehaviour.workflows.detail.template": "テンプレート",
   "settings.experimental.sandbox.title": "サンドボックス",
-  "settings.experimental.sandbox.description": "エージェントのシェルコマンドを、プロジェクトおよびKiloの状態ディレクトリへの書き込みを制限するOSレベルのサンドボックス内で実行",
+  "settings.experimental.sandbox.description":
+    "エージェントのシェルコマンドを、プロジェクトおよびKiloの状態ディレクトリへの書き込みを制限するOSレベルのサンドボックス内で実行",
 
   "settings.autoApprove.description":
     "ツールの実行許可を定義します。ほとんどのツールはデフォルトで「許可」されます。doom_loop と external_directory はデフォルトで「確認」になります。",

@@ -290,8 +290,10 @@ export const dict = {
     "De knop 'Prompt verbeteren' helpt je prompt te verbeteren door extra context, verduidelijking of herformulering te bieden. Typ hier een prompt en klik nogmaals op de knop om te zien hoe het werkt.",
   "prompt.action.sandbox.enable": "Sandbox inschakelen",
   "prompt.action.sandbox.disable": "Sandbox uitschakelen",
-  "prompt.action.sandbox.enabled": "Sandbox is ingeschakeld. Shell-opdrachten van de agent zijn beperkt tot de project- en Kilo-mappen.",
-  "prompt.action.sandbox.disabled": "Sandbox is uitgeschakeld. Klik om schrijfbewerkingen van shell-opdrachten van de agent te beperken tot de project- en Kilo-mappen.",
+  "prompt.action.sandbox.enabled":
+    "Sandbox is ingeschakeld. Shell-opdrachten van de agent zijn beperkt tot de project- en Kilo-mappen.",
+  "prompt.action.sandbox.disabled":
+    "Sandbox is uitgeschakeld. Klik om schrijfbewerkingen van shell-opdrachten van de agent te beperken tot de project- en Kilo-mappen.",
 
   "speechToText.tooltip.start": "Spraakinvoer starten met Kilo Gateway",
   "speechToText.tooltip.stop": "Audio vastleggen stoppen",
@@ -1337,7 +1339,8 @@ export const dict = {
   "settings.experimental.remote.hint": "Gebruik /remote in de chat om te schakelen",
   "settings.experimental.toolToggles": "Tool Schakelaars",
   "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description": "Shell-opdrachten van de agent uitvoeren in een sandbox op besturingssysteemniveau die schrijfbewerkingen beperkt tot de project- en Kilo-statusmappen",
+  "settings.experimental.sandbox.description":
+    "Shell-opdrachten van de agent uitvoeren in een sandbox op besturingssysteemniveau die schrijfbewerkingen beperkt tot de project- en Kilo-statusmappen",
 
   "settings.agentBehaviour.defaultAgent.title": "Standaard Agent",
   "settings.agentBehaviour.defaultAgent.description": "Agent om te gebruiken wanneer er geen is opgegeven",

@@ -286,7 +286,8 @@ export const dict = {
   "prompt.action.sandbox.enable": "تفعيل sandbox",
   "prompt.action.sandbox.disable": "تعطيل sandbox",
   "prompt.action.sandbox.enabled": "sandbox مُفعّل. أوامر shell الخاصة بالوكيل مقتصرة على مجلدات المشروع و Kilo.",
-  "prompt.action.sandbox.disabled": "sandbox مُعطّل. انقر لتقييد كتابة أوامر shell الخاصة بالوكيل على مجلدات المشروع و Kilo.",
+  "prompt.action.sandbox.disabled":
+    "sandbox مُعطّل. انقر لتقييد كتابة أوامر shell الخاصة بالوكيل على مجلدات المشروع و Kilo.",
 
   "speechToText.tooltip.start": "بدء الإدخال الصوتي باستخدام Kilo Gateway",
   "speechToText.tooltip.stop": "إيقاف التقاط الصوت",
@@ -1430,7 +1431,8 @@ export const dict = {
   "settings.agentBehaviour.workflows.detail.description": "الوصف",
   "settings.agentBehaviour.workflows.detail.template": "القالب",
   "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description": "تشغيل أوامر shell الخاصة بالوكيل داخل sandbox على مستوى نظام التشغيل يقيّد الكتابة على مجلدات حالة المشروع و Kilo",
+  "settings.experimental.sandbox.description":
+    "تشغيل أوامر shell الخاصة بالوكيل داخل sandbox على مستوى نظام التشغيل يقيّد الكتابة على مجلدات حالة المشروع و Kilo",
 
   "settings.autoApprove.description":
     "تحديد كيفية السماح بتشغيل الأدوات. معظم الأدوات معينة افتراضياً على السماح. doom_loop و external_directory معينة افتراضياً على السؤال.",

@@ -2,6 +2,7 @@ import { Effect } from "effect"
 import { dirname } from "node:path"
 import type { AppFileSystem } from "@opencode-ai/core/filesystem"
 import * as Encoding from "../encoding"
+import * as Bom from "@/util/bom"
 
 /**
  * Encoding-aware file operations routed through the application's filesystem
@@ -22,4 +23,17 @@ export const write = (fs: AppFileSystem.Interface, path: string, text: string, e
   Effect.gen(function* () {
     yield* fs.ensureDir(dirname(path)).pipe(Effect.mapError(wrap))
     yield* fs.writeFile(path, Encoding.encode(text, encoding)).pipe(Effect.mapError(wrap))
+  })
+
+export const sync = (fs: AppFileSystem.Interface, path: string, bom: boolean, encoding: string) =>
+  Effect.gen(function* () {
+    const current = yield* read(fs, path)
+    const target =
+      encoding === Encoding.UTF8_BOM && !bom
+        ? Encoding.DEFAULT
+        : encoding === Encoding.DEFAULT && bom
+          ? Encoding.UTF8_BOM
+          : encoding
+    yield* write(fs, path, Bom.join(current.text, bom), target)
+    return current.text
   })

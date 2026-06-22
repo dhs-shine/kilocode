@@ -288,7 +288,8 @@ export const dict = {
   "prompt.action.sandbox.enable": "Включить песочницу",
   "prompt.action.sandbox.disable": "Отключить песочницу",
   "prompt.action.sandbox.enabled": "Песочница включена. Команды оболочки агента ограничены каталогами проекта и Kilo.",
-  "prompt.action.sandbox.disabled": "Песочница отключена. Нажмите, чтобы ограничить запись команд оболочки агента каталогами проекта и Kilo.",
+  "prompt.action.sandbox.disabled":
+    "Песочница отключена. Нажмите, чтобы ограничить запись команд оболочки агента каталогами проекта и Kilo.",
 
   "speechToText.tooltip.start": "Начать голосовой ввод с Kilo Gateway",
   "speechToText.tooltip.stop": "Остановить захват звука",
@@ -1461,7 +1462,8 @@ export const dict = {
   "settings.agentBehaviour.workflows.detail.description": "Описание",
   "settings.agentBehaviour.workflows.detail.template": "Шаблон",
   "settings.experimental.sandbox.title": "Песочница",
-  "settings.experimental.sandbox.description": "Выполнять команды оболочки агента в песочнице на уровне ОС, которая ограничивает запись в каталоги состояния проекта и Kilo",
+  "settings.experimental.sandbox.description":
+    "Выполнять команды оболочки агента в песочнице на уровне ОС, которая ограничивает запись в каталоги состояния проекта и Kilo",
 
   "settings.autoApprove.description":
     "Определите правила запуска инструментов. Большинство инструментов по умолчанию Разрешены. Для doom_loop и external_directory по умолчанию установлено Спрашивать.",

@@ -273,7 +273,7 @@ export const ApplyPatchTool = Tool.define(
 
         if (edited) {
           if (yield* format.file(edited)) {
-            yield* Bom.syncFile(afs, edited, change.bom)
+            yield* EncodedIO.sync(afs, edited, change.bom, change.encoding)
           }
           yield* bus.publish(File.Event.Edited, { file: edited })
         }
