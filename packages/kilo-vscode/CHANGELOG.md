@@ -1,5 +1,7 @@
 # kilo-code
 
+## 7.3.51
+
 ## 7.3.50
 
 ### Minor Changes

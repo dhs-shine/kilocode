@@ -1,5 +1,13 @@
 # @kilocode/cli
 
+## 7.3.51
+
+### Minor Changes
+
+- [#11478](https://github.com/Kilo-Org/kilocode/pull/11478) [`9611c8b`](https://github.com/Kilo-Org/kilocode/commit/9611c8b1ef2d623f7c486c5a0019ee0f590ce02d) - Support stopping the daemon with `kilo console stop` and keeping console or daemon commands attached with `--foreground`
+
+- [#10005](https://github.com/Kilo-Org/kilocode/pull/10005) [`1d030dc`](https://github.com/Kilo-Org/kilocode/commit/1d030dcbbb6782181af684c8321b7349682bba5f) - Support `kilo run --command compact` and `--command summarize` to compact the current session, matching the TUI's `/compact` and `/summarize` slash commands.
+
 ## 7.3.50
 
 ### Minor Changes
