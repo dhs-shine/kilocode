@@ -25,6 +25,15 @@ class PromptMentionPartsTest : BasePlatformTestCase() {
         assertTrue(mentionFileParts("read @src/Main.kt", setOf("src/Other.kt"), "/repo").isEmpty())
     }
 
+    fun `test mentionFileParts ignores edited mention suffix`() {
+        assertTrue(mentionFileParts("read @src/Main.kt-extra", setOf("src/Main.kt"), "/repo").isEmpty())
+        assertTrue(mentionFileParts("read @src/Main.kt.bak", setOf("src/Main.kt"), "/repo").isEmpty())
+    }
+
+    fun `test mentionFileParts ignores embedded mention text`() {
+        assertTrue(mentionFileParts("read foo@src/Main.kt", setOf("src/Main.kt"), "/repo").isEmpty())
+    }
+
     fun `test mentionFileParts keeps absolute paths absolute`() {
         val path = "/tmp/abs.txt"
         val part = mentionFileParts("read @$path", setOf(path), "/repo").single()
@@ -52,5 +61,6 @@ class PromptMentionPartsTest : BasePlatformTestCase() {
         assertNull(gitChangesPart("review ${MentionAction.GIT_CHANGES.token}", null))
         assertNull(gitChangesPart("review ${MentionAction.GIT_CHANGES.token}", "  "))
         assertNull(gitChangesPart("review ${MentionAction.GIT_CHANGES.token}-foo", "diff"))
+        assertNull(gitChangesPart("review foo${MentionAction.GIT_CHANGES.token}", "diff"))
     }
 }

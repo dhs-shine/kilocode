@@ -8,9 +8,9 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
 fun mentionFileParts(text: String, paths: Set<String>, directory: String): List<PromptPartDto> = buildList {
-    paths.filter { text.contains("@$it") }.forEach { path ->
+    paths.forEach { path ->
         val token = "@$path"
-        val start = text.indexOf(token).takeIf { it >= 0 } ?: return@forEach
+        val start = text.mentionStart(token) ?: return@forEach
         val target = runCatching {
             val item = Path.of(path)
             if (item.isAbsolute) item else Path.of(directory).resolve(item).normalize()
@@ -28,12 +28,19 @@ fun mentionFileParts(text: String, paths: Set<String>, directory: String): List<
 fun gitChangesPart(text: String, diff: String?): PromptPartDto? {
     val spec = MentionAction.GIT_CHANGES
     val raw = spec.token
-    val start = text.indexOf(raw)
-    if (start < 0) return null
-    val end = start + raw.length
-    if (end < text.length && !text[end].isWhitespace()) return null
+    val start = text.mentionStart(raw) ?: return null
     val value = diff?.takeIf { it.isNotBlank() } ?: return null
     return dataPart(spec.filename, value, source("resource", raw, start, uri = spec.uri))
+}
+
+private fun String.mentionStart(token: String): Int? {
+    var pos = indexOf(token)
+    while (pos >= 0) {
+        val end = pos + token.length
+        if ((pos == 0 || this[pos - 1].isWhitespace()) && (end == length || this[end].isWhitespace())) return pos
+        pos = indexOf(token, pos + 1)
+    }
+    return null
 }
 
 private fun dataPart(name: String, text: String, source: PartSourceDto? = null): PromptPartDto {
