@@ -74,8 +74,7 @@ internal class ModelPickerRenderer(
     }
     private val byok = FilledBadgeIcon(
         "BYOK",
-        UiStyle.Colors.badgeBg(),
-        UiStyle.Colors.badgeFg(),
+        UiStyle.Badge.Highlight,
     )
     private val byokLabel = BadgeLabel(byok).apply {
         border = JBUI.Borders.emptyLeft(JBUI.CurrentTheme.ActionsList.elementIconGap())

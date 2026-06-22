@@ -267,7 +267,17 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
             .filter { it.id == KILO_PROVIDER || it.id in cfg.connected }
             .flatMap { provider ->
                 provider.models.mapNotNull { (id, item) ->
-                    val model = ModelPicker.Item(id, item.name, provider.id, provider.name, item.recommendedIndex, item.free, item.variants)
+                    val model = ModelPicker.Item(
+                        id,
+                        item.name,
+                        provider.id,
+                        provider.name,
+                        item.recommendedIndex,
+                        free = item.free,
+                        byok = item.byok,
+                        variants = item.variants,
+                        mayTrainOnYourPrompts = item.mayTrainOnYourPrompts,
+                    )
                     if (ModelText.small(model)) return@mapNotNull null
                     model
                 }
