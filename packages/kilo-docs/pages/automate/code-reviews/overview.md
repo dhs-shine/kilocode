@@ -78,7 +78,7 @@ By default, Code Reviews uses sub-agents only when they materially improve cover
 
 The reviewer does not spawn sub-agents for a single-file or straightforward typo/config change. Sub-agents are read-only and do not post comments themselves. They return findings with path, line, severity, and rationale. The main reviewer remains responsible for verifying findings, removing duplicates, checking that inline comments target valid diff lines, and posting the final comments and summary.
 
-### Changing Sub-Agent Behavior
+#### Changing Sub-Agent Behavior
 
 `REVIEW.md` can replace the default sub-agent guidance. Use it to change both how many sub-agents Kilo should use and what each one should inspect.
 
