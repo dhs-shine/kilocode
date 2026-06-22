@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Effect } from "effect"
+import { KiloRoutedModel } from "../../src/kilocode/session/routed-model"
+import { ModelID, ProviderID } from "../../src/provider/schema"
 import { LLMAISDK } from "../../src/session/llm/ai-sdk"
 
 describe("session routed model", () => {
@@ -51,5 +53,32 @@ describe("session routed model", () => {
     const event = events[0]
     if (event.type !== "step-finish") throw new Error("expected step-finish")
     expect(event.providerMetadata).toEqual(meta)
+  })
+
+  test("reads routed model only for selected Kilo auto models", () => {
+    const meta = { kilocode: { routedModelID: "openai/gpt-5.5-20260423" } }
+
+    expect(
+      KiloRoutedModel.readAuto(meta, {
+        providerID: ProviderID.kilo,
+        modelID: "kilo-auto/efficient",
+      }),
+    ).toEqual({
+      providerID: ProviderID.kilo,
+      modelID: ModelID.make("openai/gpt-5.5-20260423"),
+    })
+
+    expect(
+      KiloRoutedModel.readAuto(meta, {
+        providerID: ProviderID.kilo,
+        modelID: "openai/gpt-5.5",
+      }),
+    ).toBeUndefined()
+    expect(
+      KiloRoutedModel.readAuto(meta, {
+        providerID: ProviderID.openai,
+        modelID: "gpt-5.5",
+      }),
+    ).toBeUndefined()
   })
 })

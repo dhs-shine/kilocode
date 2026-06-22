@@ -1,5 +1,5 @@
 import type { ProviderMetadata } from "@opencode-ai/llm"
-import { ModelID, type ProviderID } from "@/provider/schema"
+import { ModelID, ProviderID } from "@/provider/schema"
 
 export namespace KiloRoutedModel {
   const ns = "kilocode"
@@ -26,5 +26,17 @@ export namespace KiloRoutedModel {
       providerID,
       modelID: ModelID.make(id),
     }
+  }
+
+  export function readAuto(
+    meta: ProviderMetadata | undefined,
+    input: { providerID: ProviderID; modelID: string; selected?: string },
+  ) {
+    if (input.providerID !== ProviderID.kilo) return undefined
+    if (!input.modelID.startsWith("kilo-auto/")) return undefined
+    const model = read(meta, input.providerID)
+    if (!model) return undefined
+    if (model.modelID === input.modelID || model.modelID === input.selected) return undefined
+    return model
   }
 }

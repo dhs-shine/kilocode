@@ -1703,6 +1703,8 @@ function StepFinishPart(props: { last: boolean; part: StepFinishPart; message: A
   const ctx = use()
   const { theme } = useTheme()
   const routed = createMemo(() => {
+    if (props.message.providerID !== "kilo") return undefined
+    if (!props.message.modelID.startsWith("kilo-auto/")) return undefined
     const model = props.part.model
     if (!model) return undefined
     if (model.providerID === props.message.providerID && model.modelID === props.message.modelID) return undefined

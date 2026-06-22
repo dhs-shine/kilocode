@@ -687,11 +687,11 @@ export const layer = Layer.effect(
               metadata: value.providerMetadata,
             })
             // kilocode_change start
-            const routed = KiloRoutedModel.read(value.providerMetadata, ctx.model.providerID)
-            const model =
-              routed && routed.modelID !== ctx.model.id && routed.modelID !== ctx.assistantMessage.modelID
-                ? routed
-                : undefined
+            const model = KiloRoutedModel.readAuto(value.providerMetadata, {
+              providerID: ctx.model.providerID,
+              modelID: ctx.model.id,
+              selected: ctx.assistantMessage.modelID,
+            })
             // kilocode_change end
             // kilocode_change start - guard against finish-step without start-step:
             // ctx.stepStart is 0 until `start-step` fires, which would feed a

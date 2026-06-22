@@ -108,10 +108,39 @@ describe("timeline labels", () => {
 
   it("includes model ID for step-finish with model", () => {
     expect(
-      label({
-        ...mkStepFinish(),
-        model: { providerID: "kilo", modelID: "openai/gpt-5.5" },
-      }),
+      label(
+        {
+          ...mkStepFinish(),
+          model: { providerID: "kilo", modelID: "openai/gpt-5.5" },
+        },
+        {
+          id: "m1",
+          sessionID: "s1",
+          role: "assistant",
+          createdAt: "now",
+          providerID: "kilo",
+          modelID: "kilo-auto/efficient",
+        },
+      ),
     ).toBe("Step finish · openai/gpt-5.5")
+  })
+
+  it("keeps step-finish unchanged for non-auto models", () => {
+    expect(
+      label(
+        {
+          ...mkStepFinish(),
+          model: { providerID: "kilo", modelID: "openai/gpt-5.5" },
+        },
+        {
+          id: "m1",
+          sessionID: "s1",
+          role: "assistant",
+          createdAt: "now",
+          providerID: "kilo",
+          modelID: "openai/gpt-5.5",
+        },
+      ),
+    ).toBe("Step finish")
   })
 })

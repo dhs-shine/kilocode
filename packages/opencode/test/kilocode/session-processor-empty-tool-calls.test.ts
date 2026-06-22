@@ -46,10 +46,10 @@ class TestLLM extends Context.Service<
   }
 >()("@test/EmptyToolCallsLLM") {}
 
-function model(): Provider.Model {
+function model(selection = ref): Provider.Model {
   return {
-    id: "test-model",
-    providerID: "test",
+    id: selection.modelID,
+    providerID: selection.providerID,
     name: "Test",
     limit: { context: 128000, output: 4096 },
     cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
@@ -553,6 +553,10 @@ describe("session processor empty tool-calls", () => {
           const test = yield* TestLLM
           const processors = yield* SessionProcessor.Service
           const session = yield* Session.Service
+          const selection = {
+            providerID: ProviderID.kilo,
+            modelID: ModelID.make("kilo-auto/efficient"),
+          }
 
           yield* test.reply(
             LLMEvent.stepStart({ index: 0 }),
@@ -571,7 +575,7 @@ describe("session processor empty tool-calls", () => {
             role: "user",
             sessionID: chat.id,
             agent: "code",
-            model: ref,
+            model: selection,
             time: { created: Date.now() },
           })
           const msg: MessageV2.Assistant = {
@@ -584,13 +588,13 @@ describe("session processor empty tool-calls", () => {
             path: { cwd: path.resolve(dir), root: path.resolve(dir) },
             cost: 0,
             tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
-            modelID: ref.modelID,
-            providerID: ref.providerID,
+            modelID: selection.modelID,
+            providerID: selection.providerID,
             time: { created: Date.now() },
           }
           yield* session.updateMessage(msg)
 
-          const mdl = model()
+          const mdl = model(selection)
           const handle = yield* processors.create({
             assistantMessage: msg,
             sessionID: chat.id,
@@ -612,7 +616,7 @@ describe("session processor empty tool-calls", () => {
           const part = parts.find((item): item is MessageV2.StepFinishPart => item.type === "step-finish")
 
           expect(part?.model).toEqual({
-            providerID: ref.providerID,
+            providerID: selection.providerID,
             modelID: ModelID.make("openai/gpt-5.5-20260423"),
           })
         }),
