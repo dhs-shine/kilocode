@@ -27,6 +27,11 @@ describe("PowerShell arguments", () => {
   test("keeps script-level prologue before the UTF-8 console setup", () => {
     const input = `#requires -Version 5.1
 using namespace System.Text
+<#
+Block comment before attributes.
+#>
+[CmdletBinding()]
+[OutputType([string])]
 param(
   [string]$Name
 )
@@ -35,7 +40,9 @@ Write-Output $Name`
     const setup = value.indexOf("[Console]::InputEncoding")
 
     expect(value.startsWith("#requires -Version 5.1")).toBe(true)
-    expect(setup).toBeGreaterThan(value.indexOf(")"))
+    expect(value.slice(0, setup)).toContain("[CmdletBinding()]")
+    expect(value.slice(0, setup)).toContain("[OutputType([string])]")
+    expect(value.slice(0, setup)).toContain("param(")
     expect(setup).toBeLessThan(value.indexOf("Write-Output"))
   })
 })

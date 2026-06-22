@@ -17,24 +17,60 @@ function script(command: string) {
 
 function prologue(command: string) {
   const pos = scan(command, 0)
-  const body = command.slice(pos)
-  const match = /^\s*param\s*\(/i.exec(body)
+  const attr = attrs(command, pos)
+  const body = command.slice(attr)
+  const match = /^param\s*\(/i.exec(body)
   if (!match) return pos
 
-  const start = match[0].lastIndexOf("(")
-  const end = block(body, start)
+  const start = attr + match[0].lastIndexOf("(")
+  const end = block(command, start, "(", ")")
   if (end === undefined) return pos
-  return pos + end
+  return end
+}
+
+function attrs(command: string, start: number) {
+  let pos = start
+  while (pos < command.length) {
+    const next = scan(command, pos)
+    if (command[next] !== "[") return next
+    const end = block(command, next, "[", "]")
+    if (end === undefined) return start
+    pos = end
+  }
+  return pos
 }
 
 function scan(command: string, start: number) {
   let pos = start
   while (pos < command.length) {
+    const next = trivia(command, pos)
+    if (next !== pos) {
+      pos = next
+      continue
+    }
     const end = line(command, pos)
     const value = command.slice(pos, end)
-    const text = value.trimStart()
-    if (text.trim() === "" || text.startsWith("#") || /^using\s+(?:assembly|module|namespace|type)\b/i.test(text)) {
+    if (/^using\s+(?:assembly|module|namespace|type)\b/i.test(value)) {
       pos = end
+      continue
+    }
+    return pos
+  }
+  return pos
+}
+
+function trivia(command: string, start: number) {
+  let pos = start
+  while (pos < command.length) {
+    while (/\s/.test(command[pos] ?? "")) pos++
+    if (command[pos] === "#") {
+      pos = line(command, pos)
+      continue
+    }
+    if (command.startsWith("<#", pos)) {
+      const end = command.indexOf("#>", pos + 2)
+      if (end === -1) return command.length
+      pos = end + 2
       continue
     }
     return pos
@@ -48,7 +84,7 @@ function line(command: string, start: number) {
   return index + 1
 }
 
-function block(command: string, start: number) {
+function block(command: string, start: number, open: string, close: string) {
   let depth = 0
   let quote: string | undefined
   for (let pos = start; pos < command.length; pos++) {
@@ -69,12 +105,18 @@ function block(command: string, start: number) {
       quote = char
       continue
     }
+    if (command.startsWith("<#", pos)) {
+      const end = command.indexOf("#>", pos + 2)
+      if (end === -1) return
+      pos = end + 1
+      continue
+    }
     if (char === "#") {
       pos = line(command, pos) - 1
       continue
     }
-    if (char === "(") depth++
-    if (char === ")") {
+    if (char === open) depth++
+    if (char === close) {
       depth--
       if (depth === 0) return pos + 1
     }
