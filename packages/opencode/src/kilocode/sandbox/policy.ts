@@ -1,12 +1,12 @@
 import { Effect } from "effect"
 import { Global } from "@opencode-ai/core/global"
-import { run as runSandbox, type PathRule, type Profile } from "@kilocode/sandbox"
+import { run as runSandbox, type Profile } from "@kilocode/sandbox"
 import { Config } from "@/config/config"
 import { InstanceState } from "@/effect/instance-state"
 import type { InstanceContext } from "@/project/instance-context"
 
-function root(path: string): PathRule {
-  return { path, kind: "subtree" }
+function root(path: string) {
+  return { path, kind: "subtree" as const }
 }
 
 export function profile(ctx: InstanceContext): Profile {

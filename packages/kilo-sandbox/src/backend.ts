@@ -17,21 +17,15 @@ export interface Support {
   readonly reason?: string | undefined
 }
 
-export interface PreparedLaunch extends Launch {
-  readonly sandboxed: boolean
-  readonly support: Support
-}
-
 export interface Backend {
   readonly support: Support
-  readonly prepare: (profile: Profile, launch: Launch) => Effect.Effect<PreparedLaunch, never, Scope.Scope>
+  readonly prepare: (profile: Profile, launch: Launch) => Effect.Effect<Launch, never, Scope.Scope>
 }
 
 function unavailable(reason: string): Backend {
-  const support: Support = { available: false, reason }
   return {
-    support,
-    prepare: (_profile, launch) => Effect.succeed({ ...launch, sandboxed: false, support }),
+    support: { available: false, reason },
+    prepare: (_profile, launch) => Effect.succeed(launch),
   }
 }
 
@@ -50,28 +44,32 @@ function select(): Backend {
 
 const backend = select()
 
-export const support: Effect.Effect<Support> = Effect.succeed(backend.support)
-
 function environment(profile: Profile, launch: Launch) {
   const source = { ...launch.environment, ...profile.environment.set }
   const denied = new Set(profile.environment.deny)
-  const result: Record<string, string> = {}
-  for (const [key, value] of Object.entries(source)) {
-    if (value !== undefined && !denied.has(key)) result[key] = value
-  }
-  return result
+  return Object.fromEntries(
+    Object.entries(source).filter(([key, value]) => value !== undefined && !denied.has(key)),
+  ) as Record<string, string>
 }
 
-function acquire(launch: Launch): Effect.Effect<PreparedLaunch, never, Scope.Scope> {
+export function prepare(launch: Launch) {
   return Effect.gen(function* () {
     const profile = yield* current
-    if (!profile) return { ...launch, sandboxed: false, support: backend.support }
-    return yield* backend.prepare(profile, { ...launch, environment: environment(profile, launch) })
+    if (!profile) return launch
+    const next = { ...launch, environment: environment(profile, launch) }
+    if (!backend.support.available) return next
+    return yield* backend.prepare(profile, next)
   })
 }
 
-export function prepare(launch: Launch): Effect.Effect<PreparedLaunch, never, Scope.Scope> {
-  return acquire(launch)
+function unsupported(command: string) {
+  return PlatformError.systemError({
+    _tag: "PermissionDenied",
+    module: "Sandbox",
+    method: "prepareCommand",
+    pathOrDescriptor: command,
+    description: backend.support.reason ?? "The process sandbox backend is unavailable",
+  })
 }
 
 export function prepareCommand(
@@ -80,8 +78,8 @@ export function prepareCommand(
   env: Readonly<Record<string, string | undefined>> | undefined,
 ) {
   return Effect.gen(function* () {
-    const profile = yield* current
-    if (!profile) return command
+    if (!(yield* current)) return command
+    if (!backend.support.available) return yield* Effect.fail(unsupported(command.command))
     const launch = yield* prepare({
       command: command.command,
       args: command.args,
@@ -89,17 +87,6 @@ export function prepareCommand(
       environment: env,
       shell: command.options.shell,
     })
-    if (!launch.sandboxed) {
-      return yield* Effect.fail(
-        PlatformError.systemError({
-          _tag: "PermissionDenied",
-          module: "Sandbox",
-          method: "prepareCommand",
-          pathOrDescriptor: command.command,
-          description: launch.support.reason ?? "The process sandbox backend is unavailable",
-        }),
-      )
-    }
     return ChildProcess.make(launch.command, launch.args, {
       ...command.options,
       cwd: launch.cwd,
@@ -109,3 +96,5 @@ export function prepareCommand(
     })
   })
 }
+
+export const backendSupport = backend.support

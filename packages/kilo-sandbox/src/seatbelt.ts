@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import { Effect } from "effect"
-import type { Backend, Launch, PreparedLaunch, Support } from "./backend"
+import type { Backend, Launch, Support } from "./backend"
 import type { PathRule, Profile } from "./profile"
 import { base } from "./seatbelt-base"
 
@@ -52,7 +52,7 @@ function policy(profile: Profile) {
   }
 }
 
-export function generate(profile: Profile, launch: Launch, support: Support): PreparedLaunch {
+export function generate(profile: Profile, launch: Launch): Launch {
   const generated = policy(profile)
   const args = ["-p", generated.value, ...generated.params.map((param) => `-D${param.key}=${param.value}`)]
   const command = launch.shell ? (typeof launch.shell === "string" ? launch.shell : "/bin/sh") : launch.command
@@ -62,8 +62,6 @@ export function generate(profile: Profile, launch: Launch, support: Support): Pr
     ...launch,
     command: executable,
     args,
-    sandboxed: true,
-    support,
   }
 }
 
@@ -73,8 +71,5 @@ const available: Support = existsSync(executable)
 
 export const seatbelt: Backend = {
   support: available,
-  prepare: (profile, launch) =>
-    available.available
-      ? Effect.succeed(generate(profile, launch, available))
-      : Effect.succeed({ ...launch, sandboxed: false, support: available }),
+  prepare: (profile, launch) => Effect.succeed(generate(profile, launch)),
 }

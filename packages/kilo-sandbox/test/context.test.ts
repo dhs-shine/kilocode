@@ -3,7 +3,8 @@ import { mkdir, mkdtemp, realpath, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { Effect } from "effect"
-import { assertWrite, current, enabled, run, type Profile } from "../src"
+import { assertWrite, current, enabled, run } from "../src/context"
+import type { Profile } from "../src/profile"
 
 function makeProfile(
   allowWrite: Profile["filesystem"]["allowWrite"],

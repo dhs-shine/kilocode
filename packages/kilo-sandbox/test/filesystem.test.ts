@@ -4,7 +4,9 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { NodeFileSystem } from "@effect/platform-node"
 import { Effect, FileSystem, Layer, Scope, Stream } from "effect"
-import { layer, run, type Profile } from "../src"
+import { run } from "../src/context"
+import { layer } from "../src/filesystem"
+import type { Profile } from "../src/profile"
 
 const live = layer.pipe(Layer.provide(NodeFileSystem.layer))
 

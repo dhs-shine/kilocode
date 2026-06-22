@@ -1060,7 +1060,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   : language.t("prompt.action.autoApprove.enable")
               }
               aria-pressed={autoApprove()}
-              class={`prompt-auto-approve-button ${autoApprove() ? "prompt-auto-approve-button--active" : ""}`}
+              class={`prompt-status-button ${autoApprove() ? "prompt-status-button--active" : ""}`}
             >
               <Icon name="shield" size="small" />
             </Button>
@@ -1084,7 +1084,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 sandbox() ? language.t("prompt.action.sandbox.disable") : language.t("prompt.action.sandbox.enable")
               }
               aria-pressed={sandbox()}
-              class={`prompt-sandbox-button ${sandbox() ? "prompt-sandbox-button--active" : ""}`}
+              class={`prompt-status-button ${sandbox() ? "prompt-status-button--active" : ""}`}
             >
               <Icon name="lock" size="small" />
             </Button>

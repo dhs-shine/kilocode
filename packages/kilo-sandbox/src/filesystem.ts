@@ -2,65 +2,27 @@ import { tmpdir } from "node:os"
 import { Effect, FileSystem, Layer, Sink } from "effect"
 import { assertEntry, assertPath, current } from "./context"
 
-function tempDirectory(fs: FileSystem.FileSystem, options?: Parameters<FileSystem.FileSystem["makeTempDirectory"]>[0]) {
-  return Effect.gen(function* () {
-    const profile = yield* current
-    if (!profile) return yield* fs.makeTempDirectory(options)
-    const directory = options?.directory ?? profile.filesystem.temporaryDirectory ?? tmpdir()
-    yield* assertPath(directory, "makeTempDirectory")
-    const next =
-      options?.directory === undefined && profile.filesystem.temporaryDirectory
-        ? { ...options, directory: profile.filesystem.temporaryDirectory }
-        : options
-    return yield* fs.makeTempDirectory(next)
-  })
+interface TempOptions {
+  readonly directory?: string | undefined
+  readonly prefix?: string | undefined
+  readonly suffix?: string | undefined
 }
 
-function tempDirectoryScoped(
-  fs: FileSystem.FileSystem,
-  options?: Parameters<FileSystem.FileSystem["makeTempDirectoryScoped"]>[0],
+function temp<E, R>(
+  method: string,
+  options: TempOptions | undefined,
+  create: (options?: TempOptions) => Effect.Effect<string, E, R>,
 ) {
   return Effect.gen(function* () {
     const profile = yield* current
-    if (!profile) return yield* fs.makeTempDirectoryScoped(options)
+    if (!profile) return yield* create(options)
     const directory = options?.directory ?? profile.filesystem.temporaryDirectory ?? tmpdir()
-    yield* assertPath(directory, "makeTempDirectoryScoped")
-    const next =
+    yield* assertPath(directory, method)
+    return yield* create(
       options?.directory === undefined && profile.filesystem.temporaryDirectory
         ? { ...options, directory: profile.filesystem.temporaryDirectory }
-        : options
-    return yield* fs.makeTempDirectoryScoped(next)
-  })
-}
-
-function tempFile(fs: FileSystem.FileSystem, options?: Parameters<FileSystem.FileSystem["makeTempFile"]>[0]) {
-  return Effect.gen(function* () {
-    const profile = yield* current
-    if (!profile) return yield* fs.makeTempFile(options)
-    const directory = options?.directory ?? profile.filesystem.temporaryDirectory ?? tmpdir()
-    yield* assertPath(directory, "makeTempFile")
-    const next =
-      options?.directory === undefined && profile.filesystem.temporaryDirectory
-        ? { ...options, directory: profile.filesystem.temporaryDirectory }
-        : options
-    return yield* fs.makeTempFile(next)
-  })
-}
-
-function tempFileScoped(
-  fs: FileSystem.FileSystem,
-  options?: Parameters<FileSystem.FileSystem["makeTempFileScoped"]>[0],
-) {
-  return Effect.gen(function* () {
-    const profile = yield* current
-    if (!profile) return yield* fs.makeTempFileScoped(options)
-    const directory = options?.directory ?? profile.filesystem.temporaryDirectory ?? tmpdir()
-    yield* assertPath(directory, "makeTempFileScoped")
-    const next =
-      options?.directory === undefined && profile.filesystem.temporaryDirectory
-        ? { ...options, directory: profile.filesystem.temporaryDirectory }
-        : options
-    return yield* fs.makeTempFileScoped(next)
+        : options,
+    )
   })
 }
 
@@ -75,10 +37,10 @@ export function decorateFileSystem(fs: FileSystem.FileSystem): FileSystem.FileSy
       assertPath(from, "link").pipe(Effect.andThen(assertPath(to, "link")), Effect.andThen(fs.link(from, to))),
     makeDirectory: (path, options) =>
       assertPath(path, "makeDirectory").pipe(Effect.andThen(fs.makeDirectory(path, options))),
-    makeTempDirectory: (options) => tempDirectory(fs, options),
-    makeTempDirectoryScoped: (options) => tempDirectoryScoped(fs, options),
-    makeTempFile: (options) => tempFile(fs, options),
-    makeTempFileScoped: (options) => tempFileScoped(fs, options),
+    makeTempDirectory: (options) => temp("makeTempDirectory", options, fs.makeTempDirectory),
+    makeTempDirectoryScoped: (options) => temp("makeTempDirectoryScoped", options, fs.makeTempDirectoryScoped),
+    makeTempFile: (options) => temp("makeTempFile", options, fs.makeTempFile),
+    makeTempFileScoped: (options) => temp("makeTempFileScoped", options, fs.makeTempFileScoped),
     open: (path, options) => {
       if ((options?.flag ?? "r") === "r") return fs.open(path, options)
       return assertPath(path, "open").pipe(Effect.andThen(fs.open(path, options)))

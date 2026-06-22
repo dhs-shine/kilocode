@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { Effect } from "effect"
-import { prepare, run, support, type Launch, type Profile } from "../src"
+import { backendSupport, prepare, type Launch } from "../src/backend"
+import { run } from "../src/context"
+import type { Profile } from "../src/profile"
 import { generate } from "../src/seatbelt"
 
 function makeProfile(): Profile {
@@ -24,8 +26,7 @@ const launch: Launch = {
 
 describe("sandbox launch preparation", () => {
   test("generates a globally overriding overlapping deny policy with parameterized paths", () => {
-    const state = { available: true }
-    const result = generate(makeProfile(), launch, state)
+    const result = generate(makeProfile(), launch)
     const policy = result.args[1]
     expect(policy).toContain('(require-any (literal (param "ALLOW_WRITE_0")) (subpath (param "ALLOW_WRITE_0")))')
     expect(policy).toContain('(require-not (literal (param "DENY_WRITE_0")))')
@@ -41,22 +42,15 @@ describe("sandbox launch preparation", () => {
   })
 
   test("places shell commands inside the sandbox backend", () => {
-    const result = generate(
-      makeProfile(),
-      { ...launch, command: "echo hello", args: [], shell: "/bin/zsh" },
-      {
-        available: true,
-      },
-    )
+    const result = generate(makeProfile(), { ...launch, command: "echo hello", args: [], shell: "/bin/zsh" })
     expect(result.args.slice(-4)).toEqual(["--", "/bin/zsh", "-c", "echo hello"])
 
-    const args = generate(
-      makeProfile(),
-      { ...launch, command: "printf", args: ["%s", "hello world"], shell: true },
-      {
-        available: true,
-      },
-    )
+    const args = generate(makeProfile(), {
+      ...launch,
+      command: "printf",
+      args: ["%s", "hello world"],
+      shell: true,
+    })
     expect(args.args.slice(-4)).toEqual(["--", "/bin/sh", "-c", "printf '%s' 'hello world'"])
   })
 
@@ -66,7 +60,6 @@ describe("sandbox launch preparation", () => {
     expect(result.args).toBe(launch.args)
     expect(result.cwd).toBe(launch.cwd)
     expect(result.environment).toBe(launch.environment)
-    expect(result.sandboxed).toBe(false)
   })
 
   test("merges profile environment values and applies exact deny names", async () => {
@@ -77,9 +70,8 @@ describe("sandbox launch preparation", () => {
     expect(result.environment?.PATH).toBeUndefined()
   })
 
-  test("reports backend support with a reason when unavailable", async () => {
-    const result = await Effect.runPromise(support)
-    expect(typeof result.available).toBe("boolean")
-    if (!result.available) expect(result.reason?.length).toBeGreaterThan(0)
+  test("reports backend support with a reason when unavailable", () => {
+    expect(typeof backendSupport.available).toBe("boolean")
+    if (!backendSupport.available) expect(backendSupport.reason?.length).toBeGreaterThan(0)
   })
 })
