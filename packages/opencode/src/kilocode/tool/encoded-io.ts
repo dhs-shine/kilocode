@@ -1,19 +1,25 @@
 import { Effect } from "effect"
+import { dirname } from "node:path"
+import type { AppFileSystem } from "@opencode-ai/core/filesystem"
 import * as Encoding from "../encoding"
 
 /**
- * Effect wrappers around {@link Encoding.read} and {@link Encoding.write} so
- * tool code can preserve file encoding without leaking Node/async boilerplate
- * into each call site. Uses {@link Effect.tryPromise} so I/O failures surface
- * as typed errors that can be recovered with `.pipe(Effect.catch(...))`.
- *
- * Consumers should import this module as a namespace:
- *   import * as EncodedIO from "../kilocode/tool/encoded-io"
+ * Encoding-aware file operations routed through the application's filesystem
+ * capability so active sandbox profiles apply to tool writes.
  */
 
 const wrap = (cause: unknown) => (cause instanceof Error ? cause : new Error(String(cause)))
 
-export const read = (path: string) => Effect.tryPromise({ try: () => Encoding.read(path), catch: wrap })
+export const read = (fs: AppFileSystem.Interface, path: string) =>
+  Effect.gen(function* () {
+    const bytes = yield* fs.readFile(path).pipe(Effect.mapError(wrap))
+    const data = Buffer.from(bytes)
+    const encoding = Encoding.detect(data)
+    return { text: Encoding.decode(data, encoding), encoding }
+  })
 
-export const write = (path: string, text: string, encoding: string = Encoding.DEFAULT) =>
-  Effect.tryPromise({ try: () => Encoding.write(path, text, encoding), catch: wrap })
+export const write = (fs: AppFileSystem.Interface, path: string, text: string, encoding: string = Encoding.DEFAULT) =>
+  Effect.gen(function* () {
+    yield* fs.ensureDir(dirname(path)).pipe(Effect.mapError(wrap))
+    yield* fs.writeFile(path, Encoding.encode(text, encoding)).pipe(Effect.mapError(wrap))
+  })

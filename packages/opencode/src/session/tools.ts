@@ -19,6 +19,7 @@ import { SessionProcessor } from "./processor"
 import { PartID } from "./schema"
 import * as Log from "@opencode-ai/core/util/log"
 import { EffectBridge } from "@/effect/bridge"
+import * as SandboxPolicy from "@/kilocode/sandbox/policy" // kilocode_change
 
 const log = Log.create({ service: "session.tools" })
 
@@ -64,7 +65,10 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
           sessionID: input.session.id,
           tool: { messageID: input.processor.message.id, callID: options.toolCallId },
         },
-      }).pipe(Effect.orDie),
+      }).pipe(
+        Effect.tap(() => SandboxPolicy.approved(req)), // kilocode_change - grant this tool call's approved external writes
+        Effect.orDie,
+      ),
     // kilocode_change end
   })
 
@@ -86,7 +90,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID },
               { args },
             )
-            const result = yield* item.execute(args, ctx)
+            const result = yield* SandboxPolicy.execute(item.execute(args, ctx)) // kilocode_change
             const output = {
               ...result,
               attachments: result.attachments?.map((attachment) => ({
