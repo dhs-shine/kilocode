@@ -152,18 +152,30 @@ export function useSlashCommand(vscode: VSCodeContext, exclude?: Set<string> | A
     vscode.postMessage({ type: "requestCommands" })
   }
 
+  const getMatchScore = (cmd: SlashCommandEntry, lower: string): number => {
+    const name = cmd.name.toLowerCase()
+    if (name === lower) return 3
+    if (name.startsWith(lower)) return 2
+    if (name.includes(lower)) return 1
+    if (cmd.description?.toLowerCase().includes(lower)) return 1
+    if (cmd.hints.some((h) => h.toLowerCase().includes(lower))) return 1
+    return 0
+  }
+
   const results = () => {
     const q = query()
     if (q === null) return []
     const all = commands()
     if (!q) return all
     const lower = q.toLowerCase()
-    return all.filter(
-      (cmd) =>
-        cmd.name.toLowerCase().includes(lower) ||
-        cmd.description?.toLowerCase().includes(lower) ||
-        cmd.hints.some((h) => h.toLowerCase().includes(lower)),
-    )
+    return all
+      .filter(
+        (cmd) =>
+          cmd.name.toLowerCase().includes(lower) ||
+          cmd.description?.toLowerCase().includes(lower) ||
+          cmd.hints.some((h) => h.toLowerCase().includes(lower)),
+      )
+      .sort((a, b) => getMatchScore(b, lower) - getMatchScore(a, lower))
   }
 
   const unsubscribe = vscode.onMessage((message) => {
