@@ -14,6 +14,7 @@ import ai.kilocode.rpc.dto.ModelSelectionUpdateDto
 import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.ModelVariantUpdateDto
 import ai.kilocode.rpc.dto.ProfileDto
+import ai.kilocode.rpc.dto.SkillsConfigDto
 import ai.kilocode.rpc.dto.TelemetryCaptureDto
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
@@ -39,6 +40,7 @@ class FakeAppRpcApi : KiloAppRpcApi {
         private set
     var configUpdateGate: CompletableDeferred<Unit>? = null
     var configUpdateError: Exception? = null
+    var configUpdateReturnStale = false
 
     var connected = false
         private set
@@ -130,6 +132,7 @@ class FakeAppRpcApi : KiloAppRpcApi {
         val current = state.value
         val next = current.copy(config = applyPatch(current.config ?: ConfigDto(), patch))
         state.value = next
+        if (configUpdateReturnStale) return current
         return next
     }
 
@@ -171,6 +174,8 @@ class FakeAppRpcApi : KiloAppRpcApi {
             smallModel = if (values.containsKey("small_model")) values["small_model"] else config.smallModel,
             subagentModel = if (values.containsKey("subagent_model")) values["subagent_model"] else config.subagentModel,
             subagentVariant = if (values.containsKey("subagent_variant")) values["subagent_variant"] else config.subagentVariant,
+            instructions = patch.instructions ?: config.instructions,
+            skills = patch.skills?.let { SkillsConfigDto(paths = it.paths.orEmpty(), urls = it.urls.orEmpty()) } ?: config.skills,
             agent = agents,
         )
     }

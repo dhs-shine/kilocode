@@ -3,6 +3,8 @@ package ai.kilocode.client.settings.agents
 import ai.kilocode.client.app.KiloAgentBehaviorService
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.settings.base.SettingsDraftPage
+import ai.kilocode.client.settings.base.SettingsDraftState
 import ai.kilocode.client.settings.base.SettingsBadge
 import ai.kilocode.client.settings.base.SettingsListCell
 import ai.kilocode.client.settings.base.SettingsListItem
@@ -10,9 +12,14 @@ import ai.kilocode.client.settings.base.SettingsListPanel
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.ConfigPatchDto
 import ai.kilocode.rpc.dto.SkillsPatchDto
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.service
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.swing.JComponent
 
 class SkillsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
@@ -24,11 +31,13 @@ class SkillsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.skills" }
 }
 
-internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir: String) : SettingsListPanel(cs), AgentBehaviorPage {
-    private var basePaths = service<KiloAppService>().state.value.config?.skills?.paths.orEmpty()
-    private var baseUrls = service<KiloAppService>().state.value.config?.skills?.urls.orEmpty()
-    private var paths = basePaths
-    private var urls = baseUrls
+internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir: String) : SettingsListPanel(cs), SettingsDraftPage {
+    private val state = SettingsDraftState(skillsDraft())
+    private var draft: SkillsDraft
+        get() = state.draft
+        set(value) {
+            state.draft = value
+        }
 
     init {
         start()
@@ -36,10 +45,7 @@ internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir:
 
     override suspend fun fetch(): List<SettingsListItem> {
         val config = service<KiloAppService>().state.value.config?.skills
-        basePaths = config?.paths.orEmpty()
-        baseUrls = config?.urls.orEmpty()
-        if (paths == basePaths) paths = basePaths
-        if (urls == baseUrls) urls = baseUrls
+        state.accept(SkillsDraft(config?.paths.orEmpty(), config?.urls.orEmpty()))
         val discovered = service<KiloAgentBehaviorService>().skills(dir)
         return localRows() + discovered.map { skill ->
             val builtin = skill.location == "builtin"
@@ -58,8 +64,8 @@ internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir:
     }
 
     private fun localRows(): List<SettingsListItem> {
-        val pathRows = paths.mapIndexed { index, value -> local("path:$index", value, KiloBundle.message("settings.agentBehavior.skills.paths")) }
-        val urlRows = urls.mapIndexed { index, value -> local("url:$index", value, KiloBundle.message("settings.agentBehavior.skills.urls")) }
+        val pathRows = draft.paths.mapIndexed { index, value -> local("path:$index", value, KiloBundle.message("settings.agentBehavior.skills.paths")) }
+        val urlRows = draft.urls.mapIndexed { index, value -> local("url:$index", value, KiloBundle.message("settings.agentBehavior.skills.urls")) }
         return pathRows + urlRows
     }
 
@@ -75,12 +81,12 @@ internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir:
         when {
             key.startsWith("path:") -> {
                 val index = key.removePrefix("path:").toIntOrNull() ?: return
-                paths = paths.filterIndexed { idx, _ -> idx != index }
+                state.update { copy(paths = paths.filterIndexed { idx, _ -> idx != index }) }
                 reload()
             }
             key.startsWith("url:") -> {
                 val index = key.removePrefix("url:").toIntOrNull() ?: return
-                urls = urls.filterIndexed { idx, _ -> idx != index }
+                state.update { copy(urls = urls.filterIndexed { idx, _ -> idx != index }) }
                 reload()
             }
             key.startsWith("skill:") -> {
@@ -95,23 +101,40 @@ internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir:
 
     override fun searchPlaceholder() = KiloBundle.message("settings.agentBehavior.skills.search")
 
-    override fun modified(): Boolean = paths != basePaths || urls != baseUrls
+    override fun modified(): Boolean = state.modified()
 
     override fun applyDraft() {
+        val token = state.start() ?: return
         cs.launch {
-            val state = service<KiloAppService>().updateConfig(ConfigPatchDto(skills = SkillsPatchDto(paths = paths, urls = urls)))
-            basePaths = state?.config?.skills?.paths ?: paths
-            baseUrls = state?.config?.skills?.urls ?: urls
+            val patch = ConfigPatchDto(skills = SkillsPatchDto(paths = token.target.paths, urls = token.target.urls))
+            val state = service<KiloAppService>().updateConfig(patch)
+            withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
+                if (state == null) {
+                    this@SkillsSettingsUi.state.fail(token, KiloBundle.message("settings.agentBehavior.save.failed"))
+                    return@withContext
+                }
+                this@SkillsSettingsUi.state.complete(token, skillsDraft())
+                reload()
+            }
         }
     }
 
     override fun resetDraft() {
-        paths = basePaths
-        urls = baseUrls
+        state.reset()
         reload()
     }
 
     private fun removeCell() = SettingsListCell(REMOVE_CELL, KiloBundle.message("settings.agentBehavior.remove"))
 
     private companion object { const val REMOVE_CELL = "remove" }
+}
+
+private data class SkillsDraft(
+    val paths: List<String> = emptyList(),
+    val urls: List<String> = emptyList(),
+)
+
+private fun skillsDraft(): SkillsDraft {
+    val cfg = service<KiloAppService>().state.value.config?.skills
+    return SkillsDraft(cfg?.paths.orEmpty(), cfg?.urls.orEmpty())
 }

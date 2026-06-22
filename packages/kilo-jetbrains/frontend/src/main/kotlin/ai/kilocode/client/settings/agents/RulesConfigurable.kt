@@ -4,6 +4,8 @@ import ai.kilocode.client.app.KiloAgentBehaviorService
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.BaseContentPanel
+import ai.kilocode.client.settings.base.SettingsDraftPage
+import ai.kilocode.client.settings.base.SettingsDraftState
 import ai.kilocode.client.settings.base.SettingsListEditor
 import ai.kilocode.client.settings.base.SettingsRow
 import ai.kilocode.client.settings.base.SettingsToggle
@@ -25,10 +27,14 @@ class RulesConfigurable : AgentBehaviorConfigurableBase<RulesSettingsUi>() {
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.rules" }
 }
 
-class RulesSettingsUi(private val cs: CoroutineScope) : BaseContentPanel(), AgentBehaviorPage {
-    private var base = service<KiloAppService>().state.value.config?.instructions.orEmpty()
-    private var draft = base
-    private val editor = SettingsListEditor(draft) { draft = it }
+class RulesSettingsUi(private val cs: CoroutineScope) : BaseContentPanel(), SettingsDraftPage {
+    private val state = SettingsDraftState(service<KiloAppService>().state.value.config?.instructions.orEmpty())
+    private var draft: List<String>
+        get() = state.draft
+        set(value) {
+            state.draft = value
+        }
+    private val editor = SettingsListEditor(draft) { state.update { it } }
 
     init {
         val rows = section(KiloBundle.message("settings.agentBehavior.rules.instructions.title"), KiloBundle.message("settings.agentBehavior.rules.instructions.description"))
@@ -48,17 +54,25 @@ class RulesSettingsUi(private val cs: CoroutineScope) : BaseContentPanel(), Agen
         }
     }
 
-    override fun modified(): Boolean = draft != base
+    override fun modified(): Boolean = state.modified()
 
     override fun applyDraft() {
+        val token = state.start() ?: return
         cs.launch {
-            val state = service<KiloAppService>().updateConfig(ConfigPatchDto(instructions = draft))
-            base = state?.config?.instructions ?: draft
+            val state = service<KiloAppService>().updateConfig(ConfigPatchDto(instructions = token.target))
+            withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
+                if (state == null) {
+                    this@RulesSettingsUi.state.fail(token, KiloBundle.message("settings.agentBehavior.save.failed"))
+                    return@withContext
+                }
+                this@RulesSettingsUi.state.complete(token, state.config?.instructions.orEmpty())
+                editor.update(draft)
+            }
         }
     }
 
     override fun resetDraft() {
-        draft = base
-        editor.update(base)
+        state.reset()
+        editor.update(draft)
     }
 }

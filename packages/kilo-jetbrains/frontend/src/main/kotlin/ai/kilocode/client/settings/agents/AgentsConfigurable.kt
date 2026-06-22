@@ -11,6 +11,8 @@ import ai.kilocode.client.settings.base.SettingsBadge
 import ai.kilocode.client.settings.base.SettingsListCell
 import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.SettingsListPanel
+import ai.kilocode.client.settings.base.SettingsDraftPage
+import ai.kilocode.client.settings.base.SettingsDraftState
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.rpc.dto.AgentDetailDto
@@ -45,9 +47,15 @@ class AgentsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.agents" }
 }
 
-internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir: String) : SettingsListPanel(cs), AgentBehaviorPage {
-    private var base = agentsDraft(service<KiloAppService>().state.value.config, emptyList())
-    private var draft = base
+internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir: String) : SettingsListPanel(cs), SettingsDraftPage {
+    private val app get() = service<KiloAppService>()
+    private val state = SettingsDraftState(agentsDraft(app.state.value.config, emptyList()), ::savedMatches)
+    private var draft: AgentsDraft
+        get() = state.draft
+        set(value) {
+            state.draft = value
+        }
+    private val base get() = state.baseline
     private var details = emptyList<AgentDetailDto>()
     private var models = emptyList<ModelPicker.Item>()
     private var names = emptyList<String>()
@@ -62,13 +70,10 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
         val agents = service<KiloAgentBehaviorService>().agents(dir)
         models = items(service<KiloWorkspaceService>().models(dir).providers)
         val next = agentsDraft(service<KiloAppService>().state.value.config, agents)
-        if (draft.agents.isEmpty() || !modified()) {
-            base = next
-            draft = next
-        } else {
-            base = next
-            draft = draft.copy(agents = next.agents + draft.agents)
-        }
+        val dirty = state.modified()
+        val edit = draft
+        state.accept(next)
+        if (dirty) draft = edit.copy(agents = next.agents + edit.agents)
         details = agents
         syncNames()
         return rows()
@@ -90,7 +95,7 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
             selectedItem = draft.defaultAgent.orEmpty()
             addActionListener {
                 if (syncing) return@addActionListener
-                draft = draft.copy(defaultAgent = (selectedItem as? String)?.takeIf { it.isNotBlank() })
+                state.update { copy(defaultAgent = (selectedItem as? String)?.takeIf { it.isNotBlank() }) }
             }
         }
         return picker
@@ -105,7 +110,7 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
         if (cellId != EDIT_CELL) return
         val dialog = AgentEditDialog(agent, service(), models)
         if (!dialog.showAndGet()) return
-        draft = updateAgent(draft, dialog.result())
+        state.update { updateAgent(this, dialog.result()) }
         syncNames()
         syncPicker()
         view.update(rows())
@@ -113,17 +118,23 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
 
     override fun searchPlaceholder() = KiloBundle.message("settings.agentBehavior.agents.search")
 
-    override fun modified(): Boolean = !savedMatches(base, draft)
+    override fun modified(): Boolean = state.modified()
 
     override fun applyDraft() {
         val change = patch(base, draft) ?: return
-        val applied = draft
+        val token = state.start() ?: return
+        syncNames()
+        syncPicker()
+        view.update(rows())
         cs.launch {
             val state = service<KiloAppService>().updateConfig(change)
-            val next = state?.config?.let { agentsDraft(it, details) } ?: applied
             withContext(edt) {
-                base = next
-                if (savedMatches(applied, draft)) draft = next
+                if (state == null) {
+                    this@AgentsSettingsUi.state.fail(token, KiloBundle.message("settings.agentBehavior.save.failed"))
+                } else {
+                    val next = agentsDraft(state.config, details)
+                    this@AgentsSettingsUi.state.complete(token, next)
+                }
                 syncNames()
                 syncPicker()
                 view.update(rows())
@@ -132,7 +143,7 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
     }
 
     override fun resetDraft() {
-        draft = base
+        state.reset()
         syncNames()
         syncPicker()
         view.update(rows())
@@ -186,10 +197,10 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
             val removed = service<KiloAgentBehaviorService>().removeAgent(dir, agent.name)
             if (!removed) return@launch
             withContext(edt) {
-                base = base.copy(
+                state.accept(base.copy(
                     defaultAgent = base.defaultAgent.takeUnless { it == agent.name },
                     agents = base.agents - agent.name,
-                )
+                ))
                 draft = draft.copy(
                     defaultAgent = draft.defaultAgent.takeUnless { it == agent.name },
                     agents = draft.agents - agent.name,
