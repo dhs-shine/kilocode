@@ -317,7 +317,13 @@ class TextViewTest : BasePlatformTestCase() {
         msg.parts["blank"] = file("blank", "text/plain", "@src/b.kt", "", 0, 9)
         msg.parts["plain"] = FileAttachment("plain").also { it.mime = "text/plain" }
 
-        assertEquals(listOf(PromptMention("@src/a.kt", "src/a.kt", 0, 9)), promptMentions(msg))
+        val mentions = promptMentions(msg)
+        assertEquals(1, mentions.size)
+        assertEquals("@src/a.kt", mentions.single().token)
+        assertEquals("src/a.kt", mentions.single().path)
+        assertEquals(0, mentions.single().start)
+        assertEquals(9, mentions.single().end)
+        assertSame(msg.parts["keep"], mentions.single().attachment)
     }
 
     fun `test prompt view renders mention as link`() {
@@ -345,6 +351,25 @@ class TextViewTest : BasePlatformTestCase() {
 
         assertEquals(listOf("src/a file.kt"), files)
         assertEquals(listOf("https://kilocode.ai/docs"), urls)
+    }
+
+    fun `test prompt view routes attachment backed mention link to attachment opener`() {
+        val opened = mutableListOf<FileAttachment>()
+        val item = file("f1", "text/plain", "@git-changes", "git-changes", 7, 19).also {
+            it.url = "data:text/plain;charset=utf-8,diff%20content"
+            it.filename = "git-changes.txt"
+        }
+        val text = Text("p1").also { it.content.append("review @git-changes") }
+        val view = PromptView(
+            text,
+            openFile = { error("should not open file") },
+            openAttachment = { opened.add(it) },
+            mentions = listOf(PromptMention("@git-changes", "git-changes", 7, 19, item)),
+        )
+
+        view.simulateLink("git-changes")
+
+        assertEquals(listOf(item), opened)
     }
 
     fun `test prompt view setMentions refreshes existing prompt`() {

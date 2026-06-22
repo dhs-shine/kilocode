@@ -27,10 +27,9 @@ fun mentionFileParts(text: String, paths: Set<String>, directory: String): List<
 
 fun gitChangesPart(text: String, diff: String?): PromptPartDto? {
     val spec = MentionAction.GIT_CHANGES
-    val raw = spec.token
-    val start = text.mentionStart(raw) ?: return null
+    val start = text.mentionStart(spec.token) ?: return null
     val value = diff?.takeIf { it.isNotBlank() } ?: return null
-    return dataPart(spec.filename, value)
+    return dataPart(spec.filename, value, source("file", spec.token, start, path = spec.uri))
 }
 
 private fun String.mentionStart(token: String): Int? {
@@ -48,7 +47,12 @@ private fun dataPart(name: String, text: String, source: PartSourceDto? = null):
     return PromptPartDto(type = "file", mime = "text/plain", url = "data:text/plain;charset=utf-8,$data", filename = name, source = source)
 }
 
-private fun source(type: String, token: String, start: Int, path: String? = null) = PartSourceDto(
+private fun source(
+    type: String,
+    token: String,
+    start: Int,
+    path: String? = null,
+) = PartSourceDto(
     type = type,
     text = PartSourceTextDto(value = token, start = start.toDouble(), end = (start + token.length).toDouble()),
     path = path,

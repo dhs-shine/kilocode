@@ -8,6 +8,7 @@ data class PromptMention(
     val path: String,
     val start: Int,
     val end: Int,
+    val attachment: FileAttachment? = null,
 )
 
 fun promptMentions(msg: Message): List<PromptMention> = msg.parts.values.mapNotNull { part ->
@@ -20,6 +21,7 @@ fun promptMentions(msg: Message): List<PromptMention> = msg.parts.values.mapNotN
         path = path,
         start = source.text.start.toInt(),
         end = source.text.end.toInt(),
+        attachment = part,
     )
 }
 

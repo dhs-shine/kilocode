@@ -49,7 +49,13 @@ class PromptMentionPartsTest : BasePlatformTestCase() {
         assertEquals("text/plain", part.mime)
         assertEquals(MentionAction.GIT_CHANGES.filename, part.filename)
         assertEquals("data:text/plain;charset=utf-8,hello%20world%2Bplus", part.url)
-        assertNull(part.source)
+        assertEquals("file", part.source?.type)
+        assertEquals(MentionAction.GIT_CHANGES.uri, part.source?.path)
+        assertNull(part.source?.clientName)
+        assertNull(part.source?.uri)
+        assertEquals(MentionAction.GIT_CHANGES.token, part.source?.text?.value)
+        assertEquals(7.0, part.source?.text?.start)
+        assertEquals(19.0, part.source?.text?.end)
     }
 
     fun `test gitChangesPart ignores missing blank and non boundary matches`() {

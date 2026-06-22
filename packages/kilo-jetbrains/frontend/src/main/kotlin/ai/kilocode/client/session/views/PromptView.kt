@@ -1,6 +1,7 @@
 package ai.kilocode.client.session.views
 
 import ai.kilocode.client.session.model.Text
+import ai.kilocode.client.session.model.FileAttachment
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
@@ -11,6 +12,7 @@ import com.intellij.util.ui.JBUI
 class PromptView(
     text: Text,
     private val openFile: (String) -> Unit = {},
+    private val openAttachment: (FileAttachment) -> Unit = {},
     openUrl: (String) -> Unit = {},
     selection: SessionSelection? = null,
     mentions: List<PromptMention> = emptyList(),
@@ -49,6 +51,10 @@ class PromptView(
     override fun onLink(href: String) {
         val mention = mentions.firstOrNull { it.path == href || path(it.path) == href }
         if (mention != null) {
+            mention.attachment?.let {
+                openAttachment(it)
+                return
+            }
             openFile(mention.path)
             return
         }

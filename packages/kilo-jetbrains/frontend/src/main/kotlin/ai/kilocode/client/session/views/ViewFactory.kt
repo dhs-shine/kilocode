@@ -73,7 +73,7 @@ object ViewFactory {
         mentions: List<PromptMention> = emptyList(),
         openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, openFile, openUrl) },
     ): PartView = when (content) {
-        is Text -> PromptView(content, openFile = openFile, openUrl = openUrl, selection = selection, mentions = mentions)
+        is Text -> PromptView(content, openFile = openFile, openAttachment = openAttachment, openUrl = openUrl, selection = selection, mentions = mentions)
         else -> create(content, openFile, openUrl, selection, repo, openAttachment)
     }
 

@@ -168,7 +168,8 @@ class KiloBackendChatManager(
                     val raw = response.body?.string()
                     log.warn("prompt_async failed: HTTP $code")
                     raw?.let { log.debug { "${ChatLogSummary.sid(id)} kind=prompt op=prompt_async error=${ChatLogSummary.body(it)}" } }
-                    throw RuntimeException("prompt_async failed: HTTP $code")
+                    val detail = raw?.takeIf { it.isNotBlank() }?.let { ": ${ChatLogSummary.body(it)}" }.orEmpty()
+                    throw RuntimeException("prompt_async failed: HTTP $code$detail")
                 }
                 log.debug { "${ChatLogSummary.sid(id)} kind=prompt op=prompt_async ok=true code=$code" }
             }

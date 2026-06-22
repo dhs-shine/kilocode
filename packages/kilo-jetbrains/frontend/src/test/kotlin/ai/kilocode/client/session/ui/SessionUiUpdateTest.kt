@@ -297,6 +297,32 @@ class SessionUiUpdateTest : BasePlatformTestCase() {
         assertEquals(0, msg.components.filterIsInstance<PromptAttachmentView>().size)
     }
 
+    fun `test user git changes mention hides synthetic data attachment card`() {
+        model.upsertMessage(msg("u1", "user"))
+        model.updateContent("u1", part("p1", "u1", "text", text = "review @git-changes"))
+        model.updateContent("u1", PartDto(
+            id = "f1",
+            sessionID = "ses",
+            messageID = "u1",
+            type = "file",
+            mime = "text/plain",
+            url = "data:text/plain;charset=utf-8,diff%20content",
+            filename = "git-changes.txt",
+            source = PartSourceDto(
+                type = "file",
+                text = PartSourceTextDto("@git-changes", 7.0, 19.0),
+                path = "git-changes",
+            ),
+        ))
+
+        val msg = panel.findMessage("u1")!!
+
+        assertEquals(listOf("p1"), msg.partIds())
+        assertNull(msg.part("f1"))
+        assertEquals("review [@git-changes](git-changes)", (msg.part("p1") as TextView).markdown())
+        assertEquals(0, msg.components.filterIsInstance<PromptAttachmentView>().size)
+    }
+
     fun `test source less text attachment still renders in prompt strip`() {
         model.upsertMessage(msg("u1", "user"))
         model.updateContent("u1", PartDto(
