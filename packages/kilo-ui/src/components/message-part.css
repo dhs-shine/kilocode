@@ -686,8 +686,10 @@ html[data-theme="kilo-vscode"] [data-component="reasoning-part"] {
     width: calc(100% + 12px);
   }
 
-  [data-slot="reasoning-details"] {
-    padding-top: 6px;
+  [data-slot="reasoning-details"]::before {
+    display: block;
+    height: 6px;
+    content: "";
   }
 
   [data-slot="reasoning-content"] {

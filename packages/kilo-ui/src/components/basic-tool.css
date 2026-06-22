@@ -181,8 +181,10 @@ html[data-theme="kilo-vscode"] [data-component="tool-part-wrapper"][data-part-ty
       animation: tool-card-up 160ms cubic-bezier(0.77, 0, 0.175, 1);
     }
 
-    [data-slot="basic-tool-details"] {
-      padding-top: 6px;
+    [data-slot="basic-tool-details"]::before {
+      display: block;
+      height: 6px;
+      content: "";
     }
 
     [data-slot="collapsible-trigger"] {
