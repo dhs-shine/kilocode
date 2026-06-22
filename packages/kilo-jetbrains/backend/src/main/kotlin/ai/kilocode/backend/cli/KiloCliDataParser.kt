@@ -1039,10 +1039,12 @@ object KiloCliDataParser {
             temperature = model.temperature,
             toolCall = model.toolCall,
             free = model.free,
+            byok = model.byok,
             status = model.status,
             recommendedIndex = model.recommendedIndex,
             variants = model.variants,
             limit = model.limit?.let { ModelLimitDto(it.context, it.input, it.output) },
+            mayTrainOnYourPrompts = model.mayTrainOnYourPrompts,
         )
     }
 
@@ -1057,6 +1059,7 @@ object KiloCliDataParser {
             temperature = cap.bool("temperature"),
             toolCall = cap.bool("toolcall"),
             free = obj.bool("isFree"),
+            byok = obj.bool("hasUserByokAvailable"),
             status = obj.str("status"),
             recommendedIndex = obj.num("recommendedIndex"),
             variants = parseVariants(obj),
@@ -1067,6 +1070,7 @@ object KiloCliDataParser {
                     output = it.long("output") ?: 0,
                 )
             },
+            mayTrainOnYourPrompts = obj.bool("mayTrainOnYourPrompts"),
         )
     }
 

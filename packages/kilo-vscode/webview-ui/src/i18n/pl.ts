@@ -823,7 +823,7 @@ export const dict = {
   "settings.providers.tag.customProvider": "Niestandardowy dostawca",
   "settings.providers.connected.environmentDescription": "Połączony z twoich zmiennych środowiskowych",
   "settings.providers.action.signInChatGPT": "Zaloguj przez ChatGPT",
-  "settings.providers.custom.description": "Dodaj dostawcę kompatybilnego z OpenAI przez bazowy URL.",
+  "settings.providers.custom.description": "Dodaj niestandardowego dostawcę przez bazowy URL.",
   "settings.providers.subagentModel.title": "Model podagenta",
   "settings.providers.subagentModel.description":
     "Domyślny model i wysiłek wnioskowania dla podagentów task-tool. Pozostaw puste, aby odziedziczyć model agenta wywołującego.",
@@ -831,11 +831,11 @@ export const dict = {
   "settings.models.hidePromptTraining.description":
     "Ukryj modele Kilo Gateway, których dostawcy mogą używać Twoich promptów do trenowania.",
   "settings.providers.modeModels": "Model na tryb",
-  "settings.providers.custom.note": "Dodaj dostawcę kompatybilnego z OpenAI przez bazowy URL.",
+  "settings.providers.custom.note": "Dodaj niestandardowego dostawcę przez bazowy URL.",
   "settings.providers.modeModels.description":
     "Zastąp domyślny model dla określonych trybów. Jeśli nie ustawiono, używany jest globalny domyślny model.",
   "provider.custom.title": "Niestandardowy dostawca",
-  "provider.custom.description.prefix": "Skonfiguruj dostawcę kompatybilnego z OpenAI. Zobacz ",
+  "provider.custom.description.prefix": "Skonfiguruj niestandardowego dostawcę. Zobacz ",
   "provider.custom.description.link": "dokumentację konfiguracji dostawcy",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "ID dostawcy",
@@ -1556,6 +1556,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Migracja starszej wersji",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migruj ustawienia z poprzedniej instalacji Kilo Code, w tym klucze API dostawców i domyślny model.",
+  "settings.aboutKiloCode.rooImport.description": "Importuj historię rozmów z instalacji Roo Code.",
+  "settings.aboutKiloCode.rooImport.button": "Importuj sesje z Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Co nowego w Kilo Code",

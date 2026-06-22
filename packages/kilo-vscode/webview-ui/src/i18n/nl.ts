@@ -826,10 +826,10 @@ export const dict = {
   "settings.providers.tag.other": "Overige",
   "settings.providers.connected.environmentDescription": "Gekoppeld via je omgevingsvariabelen",
   "settings.providers.action.signInChatGPT": "Inloggen met ChatGPT",
-  "settings.providers.custom.description": "Voeg een OpenAI-compatibele provider toe via basis-URL.",
+  "settings.providers.custom.description": "Voeg een aangepaste provider toe via basis-URL.",
 
   "provider.custom.title": "Aangepaste provider",
-  "provider.custom.description.prefix": "Configureer een OpenAI-compatibele provider. Zie de ",
+  "provider.custom.description.prefix": "Configureer een aangepaste provider. Zie de ",
   "provider.custom.description.link": "provider configuratie documentatie",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "Provider-ID",
@@ -1521,7 +1521,7 @@ export const dict = {
   "settings.providers.enabled.description":
     "Indien ingesteld, zijn alleen deze providers beschikbaar (exclusieve allowlist)",
   "settings.providers.notSet": "Niet ingesteld (gebruik server standaard)",
-  "settings.providers.custom.note": "Voeg een OpenAI-compatibele provider toe via base URL.",
+  "settings.providers.custom.note": "Voeg een aangepaste provider toe via base URL.",
   "settings.providers.search.placeholder": "Zoek providers",
   "settings.providers.select.placeholder": "Selecteer provider...",
 
@@ -1540,6 +1540,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Legacy Migratie",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migreer instellingen van een eerdere installatie van Kilo Code, inclusief provider API-sleutels en standaard model.",
+  "settings.aboutKiloCode.rooImport.description": "Importeer gespreksgeschiedenis van een Roo Code installatie.",
+  "settings.aboutKiloCode.rooImport.button": "Sessies importeren uit Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Wat is er Nieuw in Kilo Code",

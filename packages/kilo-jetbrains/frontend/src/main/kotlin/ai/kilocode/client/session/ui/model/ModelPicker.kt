@@ -7,6 +7,7 @@ import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.PopupShowOptions
 import com.intellij.openapi.ui.popup.util.PopupUtil
+import com.intellij.ui.JBColor
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.NewUI
@@ -55,8 +56,10 @@ class ModelPicker : PickerButton() {
         val providerName: String,
         val recommendedIndex: Double? = null,
         val free: Boolean = false,
+        val byok: Boolean = false,
         val variants: List<String> = emptyList(),
         val attachment: Boolean = false,
+        val mayTrainOnYourPrompts: Boolean = false,
     ) {
         val key: String get() = "$provider/$id"
 
@@ -472,5 +475,7 @@ internal object ModelText {
 
     fun freeLabel(): String = KiloBundle.message("model.picker.free")
 
-    fun collectsData(item: ModelPicker.Item): Boolean = item.free && item.provider == "kilo"
+    fun collectsData(item: ModelPicker.Item): Boolean = item.mayTrainOnYourPrompts
+
+    fun freeBg(): JBColor = JBColor.namedColor("Kilo.ModelPicker.freeBadgeBackground", JBColor(0x95D6AC, 0x7FCA99))
 }

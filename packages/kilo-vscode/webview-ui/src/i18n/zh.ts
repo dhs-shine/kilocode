@@ -838,16 +838,16 @@ export const dict = {
   "settings.providers.tag.customProvider": "自定义提供商",
   "settings.providers.connected.environmentDescription": "从您的环境变量连接",
   "settings.providers.action.signInChatGPT": "使用 ChatGPT 登录",
-  "settings.providers.custom.description": "通过基础 URL 添加 OpenAI 兼容的提供商。",
+  "settings.providers.custom.description": "通过基础 URL 添加自定义提供商。",
   "settings.providers.subagentModel.title": "子代理模型",
   "settings.providers.subagentModel.description": "task-tool 子代理的默认模型和推理工作量。留空以继承调用代理的模型。",
   "settings.models.hidePromptTraining.title": "隐藏使用提示词训练的模型",
   "settings.models.hidePromptTraining.description": "隐藏提供商可能会使用您的提示词进行训练的 Kilo Gateway 模型。",
   "settings.providers.modeModels": "按模式选择模型",
-  "settings.providers.custom.note": "通过 Base URL 添加 OpenAI 兼容提供商。",
+  "settings.providers.custom.note": "通过 Base URL 添加自定义提供商。",
   "settings.providers.modeModels.description": "为特定模式覆盖默认模型。如果未设置，将使用全局默认模型。",
   "provider.custom.title": "自定义提供商",
-  "provider.custom.description.prefix": "配置 OpenAI 兼容的提供商。请参阅",
+  "provider.custom.description.prefix": "配置自定义提供商。请参阅",
   "provider.custom.description.link": "提供商配置文档",
   "provider.custom.description.suffix": "。",
   "provider.custom.field.providerID.label": "提供商 ID",
@@ -1489,6 +1489,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "旧版迁移",
   "settings.aboutKiloCode.legacyMigration.description":
     "从旧版 Kilo Code 安装迁移设置，包括提供商 API 密钥和默认模型。",
+  "settings.aboutKiloCode.rooImport.description": "从 Roo Code 安装导入对话历史记录。",
+  "settings.aboutKiloCode.rooImport.button": "从 Roo Code 导入会话",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Kilo Code 新功能",

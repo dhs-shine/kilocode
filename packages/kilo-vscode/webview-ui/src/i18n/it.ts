@@ -689,9 +689,9 @@ export const dict = {
   "settings.providers.tag.other": "Altro",
   "settings.providers.connected.environmentDescription": "Connesso dalle variabili d'ambiente",
   "settings.providers.action.signInChatGPT": "Accedi con ChatGPT",
-  "settings.providers.custom.description": "Aggiungi un provider compatibile con OpenAI tramite URL base.",
+  "settings.providers.custom.description": "Aggiungi un provider personalizzato tramite URL base.",
   "provider.custom.title": "Provider personalizzato",
-  "provider.custom.description.prefix": "Configura un provider compatibile con OpenAI. Vedi la ",
+  "provider.custom.description.prefix": "Configura un provider personalizzato. Vedi la ",
   "provider.custom.description.link": "documentazione di configurazione provider",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "ID provider",
@@ -1371,7 +1371,7 @@ export const dict = {
   "settings.providers.enabled.description":
     "Se impostato, saranno disponibili solo questi provider (allowlist esclusiva)",
   "settings.providers.notSet": "Non impostato (usa default server)",
-  "settings.providers.custom.note": "Aggiungi un provider compatibile con OpenAI tramite URL base.",
+  "settings.providers.custom.note": "Aggiungi un provider personalizzato tramite URL base.",
   "settings.providers.search.placeholder": "Cerca provider",
   "settings.providers.select.placeholder": "Seleziona provider...",
   "dialog.model.notSet": "Non impostato",
@@ -1383,6 +1383,9 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Migrazione legacy",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migra le impostazioni da una precedente installazione di Kilo Code, incluse API key dei provider e modello predefinito.",
+  "settings.aboutKiloCode.rooImport.description":
+    "Importa la cronologia delle conversazioni da una installazione di Roo Code.",
+  "settings.aboutKiloCode.rooImport.button": "Importa sessioni da Roo Code",
   "migration.whatsNew.title": "Novità in Kilo Code",
   "migration.whatsNew.subtitle": "Abbiamo ricostruito l'estensione su fondamenta più veloci ed efficienti.",
   "migration.whatsNew.features.performance.title": "Prestazioni agente più rapide",

@@ -811,7 +811,7 @@ export const dict = {
   "settings.providers.tag.customProvider": "مزود مخصص",
   "settings.providers.connected.environmentDescription": "متصل من متغيرات البيئة الخاصة بك",
   "settings.providers.action.signInChatGPT": "تسجيل الدخول باستخدام ChatGPT",
-  "settings.providers.custom.description": "أضف مزوداً متوافقاً مع OpenAI عبر عنوان URL الأساسي.",
+  "settings.providers.custom.description": "أضف مزودًا مخصصًا عبر عنوان URL الأساسي.",
   "settings.providers.subagentModel.title": "نموذج الوكيل الفرعي",
   "settings.providers.subagentModel.description":
     "النموذج الافتراضي وجهد التفكير للوكلاء الفرعيين لـ task-tool. اتركه فارغًا ليرث نموذج الوكيل المستدعي.",
@@ -819,11 +819,11 @@ export const dict = {
   "settings.models.hidePromptTraining.description":
     "إخفاء نماذج Kilo Gateway التي قد يستخدم مزودوها مطالباتك لأغراض التدريب.",
   "settings.providers.modeModels": "نموذج لكل وضع",
-  "settings.providers.custom.note": "أضف موفرًا متوافقًا مع OpenAI عبر عنوان URL الأساسي.",
+  "settings.providers.custom.note": "أضف مزودًا مخصصًا عبر عنوان URL الأساسي.",
   "settings.providers.modeModels.description":
     "تجاوز النموذج الافتراضي لأوضاع محددة. إذا لم يتم التعيين، يتم استخدام النموذج الافتراضي العام.",
   "provider.custom.title": "مزود مخصص",
-  "provider.custom.description.prefix": "قم بتكوين مزود متوافق مع OpenAI. انظر ",
+  "provider.custom.description.prefix": "قم بتكوين مزود مخصص. انظر ",
   "provider.custom.description.link": "وثائق تكوين المزود",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "معرف المزود",
@@ -1520,6 +1520,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "ترحيل الإصدار القديم",
   "settings.aboutKiloCode.legacyMigration.description":
     "ترحيل الإعدادات من تثبيت سابق لـ Kilo Code، بما في ذلك مفاتيح API لمقدمي الخدمة والنموذج الافتراضي.",
+  "settings.aboutKiloCode.rooImport.description": "استيراد سجل المحادثات من تثبيت Roo Code.",
+  "settings.aboutKiloCode.rooImport.button": "استيراد الجلسات من Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "ما الجديد في Kilo Code",
