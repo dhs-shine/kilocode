@@ -61,7 +61,7 @@ To use it:
 
 1. Create `REVIEW.md` at the repository root.
 2. Commit it to the base branch used by pull requests or merge requests.
-3. Open Code Reviews settings and enable **Use REVIEW.md**.
+3. Open Code Reviews settings in the [Kilo web app](https://app.kilo.ai/code-reviews) and enable **Use REVIEW.md**.
 4. Save the configuration and run a review.
 
 Kilo reads `REVIEW.md` from the PR/MR base branch, not the feature branch. That prevents an unreviewed change from rewriting the review policy used to evaluate itself. If the file is disabled, missing, empty, or unreadable, Kilo falls back to built-in guidance. If it is longer than 10,000 characters, Kilo truncates it and notes that in the review summary footer.
