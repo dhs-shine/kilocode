@@ -16,6 +16,7 @@ import { Snapshot } from "@/snapshot"
 import { Plugin } from "@/plugin"
 import { ModelsDev } from "@opencode-ai/core/models-dev"
 import { ModelCache } from "@/provider/model-cache" // kilocode_change
+import { layer as sandboxFsRaw } from "@/kilocode/sandbox/fs-layer" // kilocode_change
 import { Provider } from "@/provider/provider"
 import { ProviderAuth } from "@/provider/auth"
 import { Agent } from "@/agent/agent"
@@ -60,9 +61,13 @@ import { BackgroundJob } from "@/background/job"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 
+// kilocode_change start - wrap AppFileSystem with sandbox enforcement layer
+const SandboxFsLayer = sandboxFsRaw.pipe(Layer.provide(Layer.mergeAll(AppFileSystem.defaultLayer, Config.defaultLayer)))
+// kilocode_change end
+
 const CoreLayer = Layer.mergeAll(
   Npm.defaultLayer,
-  AppFileSystem.defaultLayer,
+  SandboxFsLayer, // kilocode_change - was AppFileSystem.defaultLayer
   Bus.defaultLayer,
   Auth.defaultLayer,
   Account.defaultLayer,

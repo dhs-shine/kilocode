@@ -78,7 +78,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const session = useSession()
   const server = useServer()
   const indexing = useIndexing()
-  const { config, features } = useConfig()
+  const { config, features, updateConfig, saveConfig } = useConfig()
   const provider = useProvider()
   const language = useLanguage()
   const vscode = useVSCode()
@@ -142,6 +142,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const [reviewComments, setReviewComments] = createSignal<ReviewComment[]>([])
   const [enhancing, setEnhancing] = createSignal(false)
   const [autoApprove, setAutoApprove] = createSignal(false)
+  const sandbox = () => config().experimental?.sandbox ?? false
   let enhanceCounter = 0
   let preEnhanceText: string | null = null
 
@@ -1062,6 +1063,34 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               class={`prompt-auto-approve-button ${autoApprove() ? "prompt-auto-approve-button--active" : ""}`}
             >
               <Icon name="shield" size="small" />
+            </Button>
+          </Tooltip>
+          <Tooltip
+            value={
+              sandbox()
+                ? language.t("prompt.action.sandbox.enabled")
+                : language.t("prompt.action.sandbox.disabled")
+            }
+            placement="top"
+          >
+            <Button
+              variant="ghost"
+              size="small"
+              onClick={() => {
+                updateConfig({
+                  experimental: { ...config().experimental, sandbox: !sandbox() },
+                })
+                saveConfig()
+              }}
+              aria-label={
+                sandbox()
+                  ? language.t("prompt.action.sandbox.disable")
+                  : language.t("prompt.action.sandbox.enable")
+              }
+              aria-pressed={sandbox()}
+              class={`prompt-sandbox-button ${sandbox() ? "prompt-sandbox-button--active" : ""}`}
+            >
+              <Icon name="lock" size="small" />
             </Button>
           </Tooltip>
           <Tooltip value={language.t("prompt.action.enhance")} placement="top">

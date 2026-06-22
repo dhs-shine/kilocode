@@ -20,6 +20,7 @@ import * as Truncate from "./truncate"
 import { Plugin } from "@/plugin"
 import { normalizeUrls } from "@/kilocode/util/url" // kilocode_change
 import { CommandTimeout } from "@/kilocode/command-timeout" // kilocode_change
+import * as Sandbox from "@/kilocode/sandbox" // kilocode_change
 import { ChildProcess } from "effect/unstable/process"
 import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
 import { ShellPrompt, type Parameters } from "./shell/prompt"
@@ -310,6 +311,7 @@ const ask = Effect.fn("ShellTool.ask")(function* (
   })
 })
 
+// kilocode_change start - sandbox wrapper
 function cmd(shell: string, command: string, cwd: string, env: NodeJS.ProcessEnv) {
   if (process.platform === "win32" && Shell.ps(shell)) {
     // kilocode_change start - encoded PowerShell args
@@ -330,6 +332,32 @@ function cmd(shell: string, command: string, cwd: string, env: NodeJS.ProcessEnv
     detached: process.platform !== "win32",
   })
 }
+
+function sandboxedCmd(
+  scope: Sandbox.Scope,
+  shell: string,
+  command: string,
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+) {
+  if (process.platform === "win32" && Shell.ps(shell)) {
+    return ChildProcess.make(shell, Shell.args(shell, command, cwd), {
+      cwd,
+      env,
+      stdin: "ignore",
+      detached: false,
+    })
+  }
+
+  const wrapped = Sandbox.wrap(scope, shell, ["-c", command])
+  return ChildProcess.make(wrapped.command, wrapped.args, {
+    cwd,
+    env,
+    stdin: "ignore",
+    detached: process.platform !== "win32",
+  })
+}
+// kilocode_change end
 const parser = lazy(async () => {
   const { Parser } = await import("web-tree-sitter")
   const { default: treeWasm } = await import("web-tree-sitter/tree-sitter.wasm" as string, {
@@ -467,6 +495,7 @@ export const ShellTool = Tool.define(
         env: NodeJS.ProcessEnv
         timeout: number
         description: string
+        sandbox?: boolean // kilocode_change
       },
       ctx: Tool.Context,
     ) {
@@ -517,7 +546,21 @@ export const ShellTool = Tool.define(
       const code: number | null = yield* Effect.scoped(
         Effect.gen(function* () {
           yield* Effect.addFinalizer(closeSink)
-          const handle = yield* spawner.spawn(cmd(input.shell, input.command, input.cwd, input.env))
+          // kilocode_change start - sandbox wrapping
+          const handle = yield* spawner.spawn(
+            input.sandbox
+              ? sandboxedCmd(
+                  // kilocode_change start - enrich sandbox scope with approved external dirs
+                  Sandbox.enrichedScope(yield* InstanceState.context, yield* config.get()),
+                  input.shell,
+                  input.command,
+                  input.cwd,
+                  input.env,
+                )
+              // kilocode_change end
+              : cmd(input.shell, input.command, input.cwd, input.env),
+          )
+          // kilocode_change end
 
           yield* Effect.forkScoped(
             Stream.runForEach(Stream.decodeText(handle.all), (chunk) => {
@@ -675,6 +718,8 @@ export const ShellTool = Tool.define(
                 }),
               )
 
+              // kilocode_change start - read config fresh per execution
+              const liveCfg = yield* config.get()
               return yield* run(
                 {
                   shell,
@@ -683,9 +728,11 @@ export const ShellTool = Tool.define(
                   env: yield* shellEnv(ctx, cwd),
                   timeout,
                   description: params.description ?? params.command, // kilocode_change
+                  sandbox: liveCfg.experimental?.sandbox ?? false,
                 },
                 ctx,
               )
+              // kilocode_change end
             }),
         }
       })

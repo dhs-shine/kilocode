@@ -1,0 +1,6 @@
+export { generate, available } from "./seatbelt"
+export { wrap } from "./spawn"
+export { resolve, withExternalDirs } from "./scope"
+export { assertWritable, enrichedScope } from "./guard"
+export { layer as fsLayer } from "./fs-layer"
+export type { Scope, Root } from "./scope"
