@@ -8,7 +8,6 @@ function makeProfile(): Profile {
     filesystem: {
       allowWrite: [{ path: "/workspace", kind: "subtree" }],
       denyWrite: [{ path: "/workspace/.git", kind: "subtree" }],
-      writeRules: [],
       denyNames: [".git"],
     },
     network: { mode: "deny", allowedHosts: ["example.com"] },
@@ -39,31 +38,6 @@ describe("sandbox launch preparation", () => {
     expect(result.args).toContain("-DALLOW_WRITE_0=/workspace")
     expect(result.args).toContain("-DDENY_WRITE_0=/workspace/.git")
     expect(result.args.slice(-3)).toEqual(["--", "/bin/echo", "hello"])
-  })
-
-  test("preserves ordered external write rules in the process policy", () => {
-    const profile = makeProfile()
-    const result = generate(
-      {
-        ...profile,
-        filesystem: {
-          ...profile.filesystem,
-          writeRules: [
-            { rule: { path: "/tmp", kind: "subtree" }, action: "allow" },
-            { rule: { path: "/tmp/private", kind: "subtree" }, action: "ask" },
-            { rule: { path: "/tmp/private/approved", kind: "subtree" }, action: "allow" },
-          ],
-        },
-      },
-      launch,
-      { available: true },
-    )
-    const policy = result.args[1]
-    expect(policy).toContain('(require-not (subpath (param "WRITE_RULE_1")))')
-    expect(policy).toContain('(subpath (param "WRITE_RULE_2"))')
-    expect(result.args).toContain("-DWRITE_RULE_0=/tmp")
-    expect(result.args).toContain("-DWRITE_RULE_1=/tmp/private")
-    expect(result.args).toContain("-DWRITE_RULE_2=/tmp/private/approved")
   })
 
   test("places shell commands inside the sandbox backend", () => {

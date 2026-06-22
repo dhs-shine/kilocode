@@ -1,7 +1,7 @@
 import { lstatSync, readlinkSync, realpathSync } from "node:fs"
 import path from "node:path"
 import { Effect, PlatformError } from "effect"
-import type { PathRule, Profile, WriteRule } from "./profile"
+import type { PathRule, Profile } from "./profile"
 
 function code(cause: unknown) {
   if (typeof cause !== "object" || cause === null || !("code" in cause)) return undefined
@@ -68,11 +68,6 @@ export function normalize(profile: Profile): Effect.Effect<Profile, PlatformErro
   return Effect.gen(function* () {
     const allowWrite = yield* Effect.forEach(profile.filesystem.allowWrite, normalizeRule)
     const denyWrite = yield* Effect.forEach(profile.filesystem.denyWrite, normalizeRule)
-    const writeRules = yield* Effect.forEach(
-      profile.filesystem.writeRules,
-      (item): Effect.Effect<WriteRule, PlatformError.PlatformError> =>
-        Effect.map(normalizeRule(item.rule), (rule) => ({ ...item, rule })),
-    )
     const temporaryDirectory = profile.filesystem.temporaryDirectory
       ? yield* canonicalize(profile.filesystem.temporaryDirectory)
       : undefined
@@ -82,7 +77,6 @@ export function normalize(profile: Profile): Effect.Effect<Profile, PlatformErro
       filesystem: {
         allowWrite,
         denyWrite,
-        writeRules,
         denyNames: profile.filesystem.denyNames,
         ...(temporaryDirectory === undefined ? {} : { temporaryDirectory }),
       },

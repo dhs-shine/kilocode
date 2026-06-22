@@ -37,8 +37,10 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
   const run = yield* EffectBridge.make()
   const plugin = yield* Plugin.Service
   const permission = yield* Permission.Service
-  const agents = yield* Agent.Service // kilocode_change
-  const sessions = yield* Session.Service // kilocode_change
+  // kilocode_change start
+  const agents = yield* Agent.Service
+  const sessions = yield* Session.Service
+  // kilocode_change end
   const registry = yield* ToolRegistry.Service
   const mcp = yield* MCP.Service
   const truncate = yield* Truncate.Service
@@ -51,8 +53,8 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
     extra: { model: input.model, bypassAgentCheck: input.bypassAgentCheck, promptOps: input.promptOps },
     agent: input.agent.name,
     messages: input.messages,
-    metadata: (val) => input.processor.metadata(options.toolCallId, val), // kilocode_change
-    // kilocode_change start - resolve permissions at ask time so active tools see config edits
+    // kilocode_change start
+    metadata: (val) => input.processor.metadata(options.toolCallId, val),
     ask: (req) =>
       KiloSessionPrompt.askPermission({
         permission,
@@ -65,12 +67,9 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
           sessionID: input.session.id,
           tool: { messageID: input.processor.message.id, callID: options.toolCallId },
         },
-      }).pipe(
-        Effect.tap(() => SandboxPolicy.approved(req)), // kilocode_change - grant this tool call's approved external writes
-        Effect.orDie,
-      ),
-    // kilocode_change end
+      }).pipe(Effect.orDie),
   })
+  // kilocode_change end
 
   for (const item of yield* registry.tools({
     modelID: ModelID.make(input.model.api.id),
@@ -90,7 +89,9 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID },
               { args },
             )
-            const result = yield* SandboxPolicy.execute(item.execute(args, ctx)) // kilocode_change
+            // kilocode_change start
+            const result = yield* SandboxPolicy.execute(item.execute(args, ctx))
+            // kilocode_change end
             const output = {
               ...result,
               attachments: result.attachments?.map((attachment) => ({

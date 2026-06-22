@@ -13,7 +13,6 @@ function makeProfile(root: string, temporaryDirectory?: string): Profile {
     filesystem: {
       allowWrite: [{ path: root, kind: "subtree" }],
       denyWrite: [],
-      writeRules: [],
       denyNames: [],
       ...(temporaryDirectory === undefined ? {} : { temporaryDirectory }),
     },

@@ -5,15 +5,9 @@ export interface PathRule {
   readonly kind: PathKind
 }
 
-export interface WriteRule {
-  readonly rule: PathRule
-  readonly action: "allow" | "deny" | "ask"
-}
-
 export interface FilesystemProfile {
   readonly allowWrite: ReadonlyArray<PathRule>
   readonly denyWrite: ReadonlyArray<PathRule>
-  readonly writeRules: ReadonlyArray<WriteRule>
   readonly denyNames: ReadonlyArray<string>
   readonly temporaryDirectory?: string | undefined
 }

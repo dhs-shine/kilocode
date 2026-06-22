@@ -36,27 +36,16 @@ function policy(profile: Profile) {
     params.push({ key, value: rule.path })
     return filter(rule, key)
   })
-  const rules = profile.filesystem.writeRules.map((item, index) => {
-    const key = `WRITE_RULE_${index}`
-    params.push({ key, value: item.rule.path })
-    return { ...item, key }
-  })
-  const external = rules.flatMap((item, index) => {
-    if (item.action !== "allow") return []
-    const later = rules.slice(index + 1).flatMap((rule) => exclude(rule.rule, rule.key))
-    return [`(require-all ${filter(item.rule, item.key)} ${later.join(" ")})`]
-  })
   const deny = profile.filesystem.denyWrite.flatMap((rule, index) => {
     const key = `DENY_WRITE_${index}`
     params.push({ key, value: rule.path })
     return exclude(rule, key)
   })
   const names = profile.filesystem.denyNames.map((name) => `(require-not (regex #"(^|/)${escape(name)}(/|$)"))`)
-  const sources = [...allow, ...external]
   const write =
-    sources.length === 0
+    allow.length === 0
       ? ""
-      : `(allow file-write*\n  (require-all\n    (require-any ${sources.join(" ")})\n    ${[...deny, ...names].join("\n    ")}\n  )\n)`
+      : `(allow file-write*\n  (require-all\n    (require-any ${allow.join(" ")})\n    ${[...deny, ...names].join("\n    ")}\n  )\n)`
   return {
     value: [base, "; reads are not confined by the file-level sandbox\n(allow file-read*)", write].join("\n"),
     params,
