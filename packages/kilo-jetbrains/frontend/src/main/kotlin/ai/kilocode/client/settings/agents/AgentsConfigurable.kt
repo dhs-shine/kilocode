@@ -154,7 +154,6 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
             override val key = item.name
             override val title = item.displayName ?: item.name
             override val description = item.description
-            override val section = KiloBundle.message("settings.agentBehavior.agents.available")
             override val badges = listOfNotNull(
                 SettingsBadge(
                     KiloBundle.message("settings.agentBehavior.badge.subagent"),

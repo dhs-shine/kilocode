@@ -30,7 +30,6 @@ internal class WorkflowsSettingsUi(cs: CoroutineScope, private val dir: String) 
                 override val key = item.name
                 override val title = "/${item.name}"
                 override val description = item.description ?: item.template
-                override val section = KiloBundle.message("settings.agentBehavior.workflows.displayName")
                 override val badges = listOfNotNull(item.source?.let { source ->
                     val style = when (source) {
                         "command" -> UiStyle.Badge.Primary

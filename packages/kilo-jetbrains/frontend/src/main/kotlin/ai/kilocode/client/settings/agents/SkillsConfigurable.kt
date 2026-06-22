@@ -53,7 +53,6 @@ internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir:
                 override val key = "skill:${skill.location}"
                 override val title = skill.name
                 override val description = skill.description ?: skill.location
-                override val section = KiloBundle.message("settings.agentBehavior.skills.discovered")
                 override val badges = listOf(
                     if (builtin) SettingsBadge(KiloBundle.message("settings.agentBehavior.badge.builtin"))
                     else SettingsBadge(KiloBundle.message("settings.agentBehavior.badge.custom"), UiStyle.Badge.Primary),
