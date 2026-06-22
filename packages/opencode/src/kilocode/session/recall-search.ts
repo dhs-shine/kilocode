@@ -57,7 +57,12 @@ export namespace RecallSearch {
     WHERE p.id = ids.value
       AND m.id = p.message_id
       AND m.session_id = p.session_id
-      AND NOT (m.session_id = ? AND m.id >= ?)
+      AND NOT (
+        m.session_id = ? AND (
+          (json_extract(m.data, '$.role') = 'user' AND m.id >= ?)
+          OR (json_extract(m.data, '$.role') = 'assistant' AND json_extract(m.data, '$.parentID') >= ?)
+        )
+      )
       AND (${FILTER_SQL})`
 
   const PAGE_SQL = `
@@ -176,7 +181,7 @@ export namespace RecallSearch {
     const sqlite = Database.Client().$client
     const rowid = sqlite.prepare<{ rowid: number | null }, []>(END_ROWID_SQL).get()?.rowid ?? 0
     const partID = sqlite.prepare<{ id: string | null }, []>(END_ID_SQL).get()?.id ?? ""
-    const statement = sqlite.prepare<Row, [string, string, string]>(SEARCH_SQL)
+    const statement = sqlite.prepare<Row, [string, string, string, string]>(SEARCH_SQL)
     const page = sqlite.prepare<PageRow, [string, number, number, string]>(PAGE_SQL)
     const excludeSessionID = input.excludeSessionID ?? ""
     const excludeFromMessageID = input.excludeFromMessageID ?? ""
@@ -217,6 +222,7 @@ export namespace RecallSearch {
         for (const row of statement.iterate(
           JSON.stringify(rows.map((entry) => entry.partID)),
           excludeSessionID,
+          excludeFromMessageID,
           excludeFromMessageID,
         )) {
           consume(row)
@@ -263,6 +269,15 @@ export namespace RecallSearch {
         message.info.role === "user" && message.parts.some((part) => part.type !== "text" || !part.synthetic),
     )
     return user?.info.id ?? messageID
+  }
+
+  export function visible(messages: MessageV2.WithParts[], messageID: MessageID) {
+    return messages.filter((message) => before(message.info, messageID))
+  }
+
+  function before(info: MessageV2.Info, messageID: MessageID) {
+    if (info.role === "user") return info.id < messageID
+    return info.parentID < messageID
   }
 
   function family(id: string) {

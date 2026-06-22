@@ -55,6 +55,49 @@ const create = (title: string, text?: string | string[]) =>
     ),
   )
 
+const add = (input: { sessionID: SessionID; role: "user" | "assistant"; text: string; parentID?: MessageID }) =>
+  AppRuntime.runPromise(
+    Session.Service.use((svc) =>
+      Effect.gen(function* () {
+        const messageID = MessageID.ascending()
+        if (input.role === "user") {
+          yield* svc.updateMessage({
+            id: messageID,
+            sessionID: input.sessionID,
+            role: "user",
+            time: { created: Date.now() },
+            agent: "code",
+            model: { providerID: ProviderID.make("test"), modelID: ModelID.make("test") },
+          })
+        } else {
+          yield* svc.updateMessage({
+            id: messageID,
+            sessionID: input.sessionID,
+            role: "assistant",
+            time: { created: Date.now(), completed: Date.now() },
+            parentID: input.parentID ?? MessageID.ascending(),
+            modelID: ModelID.make("test"),
+            providerID: ProviderID.make("test"),
+            mode: "code",
+            agent: "code",
+            path: { cwd: "/tmp", root: "/tmp" },
+            cost: 0,
+            tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+            finish: "stop",
+          })
+        }
+        yield* svc.updatePart({
+          id: PartID.ascending(),
+          messageID,
+          sessionID: input.sessionID,
+          type: "text",
+          text: input.text,
+        })
+        return messageID
+      }),
+    ),
+  )
+
 describe("tool.recall", () => {
   test("search is limited to the current project worktrees", async () => {
     await using first = await tmpdir({ git: true })
@@ -128,6 +171,34 @@ describe("tool.recall", () => {
     } finally {
       await $`git worktree remove ${worktree}`.cwd(first.path).quiet().nothrow()
     }
+  })
+
+  test("read includes prior assistant tail written after an active queued prompt", async () => {
+    await using tmp = await tmpdir({ git: true })
+
+    const result = await provideTestInstance({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await create("queued read")
+        const previous = await add({ sessionID: session.id, role: "user", text: "previous request" })
+        const active = await add({ sessionID: session.id, role: "user", text: "active queued prompt" })
+        await add({ sessionID: session.id, role: "assistant", text: "visible prior assistant tail", parentID: previous })
+        await add({ sessionID: session.id, role: "assistant", text: "hidden current assistant", parentID: active })
+        const info = await AppRuntime.runPromise(RecallTool)
+        const tool = await AppRuntime.runPromise(info.init())
+        return AppRuntime.runPromise(
+          Effect.gen(function* () {
+            const sessions = yield* Session.Service
+            const messages = yield* sessions.messages({ sessionID: session.id })
+            return yield* tool.execute({ mode: "read", sessionID: session.id }, { ...ctx, sessionID: session.id, messages })
+          }),
+        )
+      },
+    })
+
+    expect(result.output).toContain("visible prior assistant tail")
+    expect(result.output).not.toContain("active queued prompt")
+    expect(result.output).not.toContain("hidden current assistant")
   })
 
   test("read rejects sessions from another project", async () => {

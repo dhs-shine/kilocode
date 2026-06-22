@@ -151,7 +151,7 @@ async function read(
 
   const msgs = await bridge.promise(sessions.messages({ sessionID: session.id }))
   const boundary = KiloSessionPromptQueue.active(ctx.sessionID) ?? RecallSearch.active(ctx.messages, ctx.messageID)
-  const visible = session.id === ctx.sessionID ? msgs.filter((message) => message.info.id < boundary) : msgs
+  const visible = session.id === ctx.sessionID ? RecallSearch.visible(msgs, boundary) : msgs
   const lines: string[] = [
     `# Session: ${session.title}`,
     `Directory: ${session.directory}`,

@@ -15,7 +15,12 @@ type Stored<T> = T extends unknown ? Omit<T, "id" | "sessionID" | "messageID"> :
 
 afterEach(resetDatabase)
 
-function add(sessionID: SessionID, role: "user" | "assistant", data: Stored<MessageV2.Part>) {
+function add(
+  sessionID: SessionID,
+  role: "user" | "assistant",
+  data: Stored<MessageV2.Part>,
+  opts?: { parentID?: MessageID },
+) {
   const messageID = MessageID.ascending()
   const message: Stored<MessageV2.Info> =
     role === "user"
@@ -28,7 +33,7 @@ function add(sessionID: SessionID, role: "user" | "assistant", data: Stored<Mess
       : {
           role,
           time: { created: Date.now(), completed: Date.now() },
-          parentID: MessageID.ascending(),
+          parentID: opts?.parentID ?? MessageID.ascending(),
           modelID: ModelID.make("test"),
           providerID: ProviderID.make("test"),
           mode: "code",
@@ -110,6 +115,55 @@ describe("RecallSearch", () => {
           excludeFromMessageID: RecallSearch.active(messages, current.messageID),
         })
         expect(result.results.map((item) => item.id)).toEqual([historical.id])
+      },
+    })
+  })
+
+  test("keeps prior assistant tail written after an active queued prompt", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await provideTestInstance({
+      directory: tmp.path,
+      fn: async () => {
+        const sessions = await Effect.runPromise(Session.Service.pipe(Effect.provide(Session.defaultLayer)))
+        const session = await Effect.runPromise(sessions.create({ title: "Queued turn" }))
+        const previous = add(session.id, "user", { type: "text", text: "previous request" })
+        const active = add(session.id, "user", { type: "text", text: "queued prompt current-turn-needle" })
+        const tail = add(
+          session.id,
+          "assistant",
+          { type: "text", text: "prior assistant tail tail-turn-needle" },
+          { parentID: previous.messageID },
+        )
+        add(
+          session.id,
+          "assistant",
+          { type: "text", text: "current assistant current-turn-needle" },
+          { parentID: active.messageID },
+        )
+
+        const messages = await Effect.runPromise(sessions.messages({ sessionID: session.id }))
+        expect(RecallSearch.visible(messages, active.messageID).map((message) => message.info.id)).toEqual([
+          previous.messageID,
+          tail.messageID,
+        ])
+
+        const result = await RecallSearch.search({
+          query: "tail-turn-needle",
+          projectID: Instance.project.id,
+          directories: [Instance.worktree],
+          excludeSessionID: session.id,
+          excludeFromMessageID: active.messageID,
+        })
+        expect(result.results.map((item) => item.id)).toEqual([session.id])
+
+        const current = await RecallSearch.search({
+          query: "current-turn-needle",
+          projectID: Instance.project.id,
+          directories: [Instance.worktree],
+          excludeSessionID: session.id,
+          excludeFromMessageID: active.messageID,
+        })
+        expect(current.results).toEqual([])
       },
     })
   })
