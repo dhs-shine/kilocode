@@ -46,12 +46,15 @@ internal class AgentCreateDialog(private val names: Collection<String>) : Dialog
         wrapStyleWord = true
         border = JBUI.Borders.empty()
     }
+    private var center: JComponent? = null
 
     init {
         title = KiloBundle.message("settings.agentBehavior.agents.create.title")
         init()
         initValidation()
     }
+
+    internal fun contentForTest(): JComponent = center ?: error("center panel not built")
 
     fun result(): AgentCreateDto = AgentCreateDto(
         name = id.text.trim(),
@@ -108,7 +111,7 @@ internal class AgentCreateDialog(private val names: Collection<String>) : Dialog
             border = JBUI.Borders.empty()
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-        }
+        }.also { center = it }
     }
 
     override fun getPreferredFocusedComponent(): JComponent = id

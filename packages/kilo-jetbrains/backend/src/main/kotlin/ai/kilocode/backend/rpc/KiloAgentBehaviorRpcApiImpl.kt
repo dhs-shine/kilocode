@@ -44,7 +44,7 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
     override suspend fun agents(directory: String): List<AgentDetailDto> {
         app.requireReady()
         val api = app.api ?: throw IllegalStateException("Kilo API is unavailable")
-        return api.appAgents(directory = directory).map { item ->
+        return withContext(Dispatchers.IO) { api.appAgents(directory = directory) }.map { item ->
             AgentDetailDto(
                 name = item.name,
                 displayName = item.displayName,
@@ -81,7 +81,9 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
             description = input.description,
             mode = mode(input.mode),
         )
-        api.agentBuilderSave(input.name, directory = directory, workspace = null, agentBuilderSaveRequest = req)
+        withContext(Dispatchers.IO) {
+            api.agentBuilderSave(input.name, directory = directory, workspace = null, agentBuilderSaveRequest = req)
+        }
         return true
     }
 

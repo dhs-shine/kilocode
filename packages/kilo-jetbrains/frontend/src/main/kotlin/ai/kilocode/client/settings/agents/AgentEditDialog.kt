@@ -72,12 +72,15 @@ internal class AgentEditDialog(
     private val steps = NumericField(agent.steps?.toString().orEmpty(), decimal = false)
     private var hidden = agent.hidden
     private var disabled = agent.disable
+    private var center: JComponent? = null
 
     init {
         title = KiloBundle.message("settings.agentBehavior.agents.edit.title", agent.displayName ?: agent.name)
         init()
         initValidation()
     }
+
+    internal fun contentForTest(): JComponent = center ?: error("center panel not built")
 
     fun result(): AgentEditDraft = agent.copy(
         description = text(description.text),
@@ -193,7 +196,7 @@ internal class AgentEditDialog(
             border = JBUI.Borders.empty()
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-        }
+        }.also { center = it }
     }
 
     override fun getPreferredFocusedComponent(): JComponent = description
