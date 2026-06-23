@@ -15,6 +15,7 @@ import {
 } from "../types"
 import {
   findMatchingSuggestion as _findMatchingSuggestion,
+  findCoveringPendingRequest,
   applyFirstLineOnly as _applyFirstLineOnly,
   calcDebounceDelay,
   MatchingSuggestionWithFillIn as _MatchingSuggestionWithFillIn,
@@ -32,9 +33,20 @@ import { postprocessAutocompleteSuggestion } from "./uselessSuggestionFilter"
 import { shouldSkipAutocomplete } from "./contextualSkip"
 import { FileIgnoreController } from "../shims/FileIgnoreController"
 import { AutocompleteTelemetry } from "./AutocompleteTelemetry"
+import {
+  autocompleteScope,
+  getNotebookContext,
+  notebookUri,
+  supportsNotebook,
+} from "../continuedev/core/autocomplete/notebook"
 import { ErrorBackoff } from "./ErrorBackoff"
 
 const MAX_SUGGESTIONS_HISTORY = 20
+
+export function accessible(controller: FileIgnoreController, document: vscode.TextDocument): boolean {
+  const uri = notebookUri(document.uri)
+  return controller.validateAccess(uri?.fsPath ?? document.fileName)
+}
 
 /**
  * Minimum debounce delay in milliseconds.
@@ -70,11 +82,12 @@ export type { CostTrackingCallback, AutocompletePrompt, MatchingSuggestionResult
 export type MatchingSuggestionWithFillIn = _MatchingSuggestionWithFillIn
 
 export function findMatchingSuggestion(
+  scope: string,
   prefix: string,
   suffix: string,
   suggestionsHistory: FillInAtCursorSuggestion[],
 ): MatchingSuggestionWithFillIn | null {
-  return _findMatchingSuggestion(prefix, suffix, suggestionsHistory)
+  return _findMatchingSuggestion(scope, prefix, suffix, suggestionsHistory)
 }
 
 export function applyFirstLineOnly(
@@ -178,6 +191,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
   public updateSuggestions(fillInAtCursor: FillInAtCursorSuggestion): void {
     const isDuplicate = this.suggestionsHistory.some(
       (existing) =>
+        existing.scope === fillInAtCursor.scope &&
         existing.text === fillInAtCursor.text &&
         existing.prefix === fillInAtCursor.prefix &&
         existing.suffix === fillInAtCursor.suffix,
@@ -211,7 +225,16 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
       recentlyEditedRanges,
     }
 
-    const autocompleteInput = contextToAutocompleteInput(context)
+    const input = contextToAutocompleteInput(context)
+    const notebook = getNotebookContext(document, position)
+    const autocompleteInput = notebook
+      ? {
+          ...input,
+          filepath: notebook.filepath,
+          pos: { line: notebook.position.line, character: notebook.position.character },
+          manuallyPassFileContents: notebook.contents,
+        }
+      : input
 
     const { prefix, suffix } = extractPrefixSuffix(document, position)
     const languageId = document.languageId
@@ -235,6 +258,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
 
   private processSuggestion(
     suggestionText: string,
+    scope: string,
     prefix: string,
     suffix: string,
     telemetryContext: AutocompleteContext,
@@ -242,7 +266,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
   ): FillInAtCursorSuggestion {
     if (!suggestionText) {
       this.telemetry?.captureSuggestionFiltered("empty_response", telemetryContext)
-      return { text: "", prefix, suffix }
+      return { text: "", scope, prefix, suffix }
     }
 
     const processedText = postprocessAutocompleteSuggestion({
@@ -254,11 +278,11 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
     })
 
     if (processedText) {
-      return { text: processedText, prefix, suffix }
+      return { text: processedText, scope, prefix, suffix }
     }
 
     this.telemetry?.captureSuggestionFiltered("filtered_by_postprocessing", telemetryContext)
-    return { text: "", prefix, suffix }
+    return { text: "", scope, prefix, suffix }
   }
 
   private async disposeIgnoreController(): Promise<void> {
@@ -336,6 +360,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
     _token: vscode.CancellationToken,
   ): Promise<vscode.InlineCompletionItem[] | vscode.InlineCompletionList> {
     vscode.commands.executeCommand("setContext", "kilo-code.new.autocomplete.hasSuggestions", false)
+    if (!supportsNotebook(document)) return []
 
     // Build telemetry context
     const telemetryContext: AutocompleteContext = {
@@ -389,8 +414,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
             return []
           }
 
-          const isAccessible = controller.validateAccess(document.fileName)
-          if (!isAccessible) {
+          if (!accessible(controller, document)) {
             return []
           }
         } catch {
@@ -399,10 +423,14 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
         }
       }
 
+      const scope = autocompleteScope(document)
       const { prefix, suffix } = extractPrefixSuffix(document, position)
 
       // Check cache first - allow mid-word lookups from cache
-      const matchingResult = applyFirstLineOnly(findMatchingSuggestion(prefix, suffix, this.suggestionsHistory), prefix)
+      const matchingResult = applyFirstLineOnly(
+        findMatchingSuggestion(scope, prefix, suffix, this.suggestionsHistory),
+        prefix,
+      )
 
       if (matchingResult !== null) {
         this.lastSuggestion = {
@@ -425,9 +453,12 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
 
       const { prompt, prefix: promptPrefix, suffix: promptSuffix } = await this.getPrompt(document, position)
 
-      await this.debouncedFetchAndCacheSuggestion(prompt, promptPrefix, promptSuffix, document.languageId)
+      await this.debouncedFetchAndCacheSuggestion(scope, prompt, promptPrefix, promptSuffix, document.languageId)
 
-      const cachedResult = applyFirstLineOnly(findMatchingSuggestion(prefix, suffix, this.suggestionsHistory), prefix)
+      const cachedResult = applyFirstLineOnly(
+        findMatchingSuggestion(scope, prefix, suffix, this.suggestionsHistory),
+        prefix,
+      )
       if (cachedResult) {
         this.lastSuggestion = {
           ...telemetryContext,
@@ -446,31 +477,6 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
       // do not catch, just let the error cascade
       return []
     }
-  }
-
-  /**
-   * Find a pending request that covers the current prefix/suffix.
-   * A request covers the current position if:
-   * 1. The suffix matches (user hasn't changed text after cursor)
-   * 2. The current prefix either equals or extends the pending prefix
-   *    (user is typing forward, not backspacing or editing earlier)
-   *
-   * @returns The covering pending request, or null if none found
-   */
-  private findCoveringPendingRequest(prefix: string, suffix: string): PendingRequest | null {
-    for (const pendingRequest of this.pendingRequests) {
-      // Suffix must match exactly (text after cursor unchanged)
-      if (suffix !== pendingRequest.suffix) {
-        continue
-      }
-
-      // Current prefix must start with the pending prefix (user typed more)
-      // or be exactly equal (same position)
-      if (prefix.startsWith(pendingRequest.prefix)) {
-        return pendingRequest
-      }
-    }
-    return null
   }
 
   /**
@@ -499,13 +505,14 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
    * - If a pending request covers the current prefix/suffix, reuse it instead of starting a new one
    */
   private debouncedFetchAndCacheSuggestion(
+    scope: string,
     prompt: AutocompletePrompt,
     prefix: string,
     suffix: string,
     languageId: string,
   ): Promise<void> {
     // Check if any existing pending request covers this one
-    const coveringRequest = this.findCoveringPendingRequest(prefix, suffix)
+    const coveringRequest = findCoveringPendingRequest(scope, prefix, suffix, this.pendingRequests)
     if (coveringRequest) {
       // Wait for the existing request to complete - no need to start a new one
       return coveringRequest.promise
@@ -515,8 +522,8 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
     // but still track it as a pending request so subsequent calls can reuse it
     if (this.isFirstCall && this.debounceTimer === null) {
       this.isFirstCall = false
-      const promise = this.fetchAndCacheSuggestion(prompt, prefix, suffix, languageId)
-      const leading: PendingRequest = { prefix, suffix, promise }
+      const promise = this.fetchAndCacheSuggestion(scope, prompt, prefix, suffix, languageId)
+      const leading: PendingRequest = { scope, prefix, suffix, promise }
       promise.finally(() => this.removePendingRequest(leading))
       this.pendingRequests.push(leading)
       return promise
@@ -533,6 +540,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
 
     // Create the pending request object first so we can reference it in the cleanup
     const pendingRequest: PendingRequest = {
+      scope,
       prefix,
       suffix,
       promise: null!, // Will be set immediately below
@@ -545,7 +553,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
         this.debouncedPendingRequest = null
         this.isFirstCall = true // Reset for next sequence
         try {
-          await this.fetchAndCacheSuggestion(prompt, prefix, suffix, languageId)
+          await this.fetchAndCacheSuggestion(scope, prompt, prefix, suffix, languageId)
         } finally {
           this.removePendingRequest(pendingRequest)
           resolve()
@@ -566,6 +574,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
   }
 
   public async fetchAndCacheSuggestion(
+    scope: string,
     prompt: AutocompletePrompt,
     prefix: string,
     suffix: string,
@@ -592,9 +601,9 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
     }
 
     try {
-      // Curry processSuggestion with prefix, suffix, telemetry context, and languageId
+      // Curry processSuggestion with request context
       const curriedProcessSuggestion = (text: string) =>
-        this.processSuggestion(text, prefix, suffix, telemetryContext, languageId)
+        this.processSuggestion(text, scope, prefix, suffix, telemetryContext, languageId)
 
       const result = await this.fimPromptBuilder.getFromFIM(
         this.connectionService,
