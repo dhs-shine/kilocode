@@ -1,11 +1,12 @@
 import { createContext, createMemo, Show, useContext } from "solid-js"
-import type { Part, Provider, StepFinishPart } from "@kilocode/sdk/v2"
+import type { AssistantMessage, Part, Provider, StepFinishPart } from "@kilocode/sdk/v2"
 import { useTheme } from "@tui/context/theme"
 import * as Model from "@tui/util/model"
 import { KiloRoutedModel } from "@/kilocode/session/routed-model"
 
 export namespace RoutedModelMeta {
   type Providers = Provider[] | ReadonlyMap<string, Provider> | undefined
+  type Message = Pick<AssistantMessage, "providerID" | "modelID">
 
   export type Info = {
     labels: ReadonlyMap<string, string>
@@ -37,17 +38,25 @@ export namespace RoutedModelMeta {
     return KiloRoutedModel.displayName(text)
   }
 
+  function routed(model: StepFinishPart["model"], message: Message) {
+    if (!model) return undefined
+    if (message.providerID !== "kilo") return undefined
+    if (!message.modelID.startsWith("kilo-auto/")) return undefined
+    if (model.providerID === message.providerID && model.modelID === message.modelID) return undefined
+    return model
+  }
+
   function finish(parts: Part[], index: number, details: boolean) {
     const part = parts.slice(index + 1).find((item) => boundary(item, details))
     if (part?.type !== "step-finish") return undefined
     return part
   }
 
-  export function info(list: Providers, parts: Part[], details: boolean): Info {
+  export function info(list: Providers, parts: Part[], details: boolean, message: Message): Info {
     const entries = parts.flatMap((part, index) => {
       if (!eligible(part, details)) return []
       const item = finish(parts, index, details)
-      const text = label(list, item?.model)
+      const text = label(list, routed(item?.model, message))
       if (!item || !text) return []
       return [[part.id, text, item.id] as const]
     })

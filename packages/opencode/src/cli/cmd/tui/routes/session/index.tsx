@@ -1599,7 +1599,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
   const sync = useSync()
   const messages = createMemo(() => sync.data.message[props.message.sessionID] ?? [])
   const model = createMemo(() => Model.name(ctx.providers(), props.message.providerID, props.message.modelID))
-  const routed = createMemo(() => RoutedModelMeta.info(ctx.providers(), props.parts, ctx.showDetails())) // kilocode_change
+  const routed = createMemo(() => RoutedModelMeta.info(ctx.providers(), props.parts, ctx.showDetails(), props.message)) // kilocode_change
 
   const final = createMemo(() => {
     return props.message.finish && !["tool-calls", "unknown"].includes(props.message.finish)
