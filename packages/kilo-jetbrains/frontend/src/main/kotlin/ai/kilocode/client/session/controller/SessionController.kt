@@ -54,6 +54,7 @@ import ai.kilocode.log.KiloLog
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
@@ -142,6 +143,7 @@ class SessionController(
     private var tool: String? = null
     private var eventJob: Job? = null
     private var drainJob: Job? = null
+    private var creating: CompletableDeferred<String?>? = null
     private val childJobs: MutableMap<String, Job> = mutableMapOf()
     private val childIds: MutableSet<String> = mutableSetOf()
     private var sessionLoadState: SessionLoadState = SessionLoadState.Idle
@@ -273,7 +275,7 @@ class SessionController(
         showSession()
         cs.launch {
             try {
-                val id = sid ?: createSession() ?: return@launch
+                val id = sid ?: session().await() ?: return@launch
                 send(id)
                 capture("Conversation Message", sessionProps(id) + mapOf("source" to data.source, "hasExistingSession" to data.exists.toString()) + data.props)
                 LOG.debug { "${ChatLogSummary.sid(id)} kind=${data.kind} dispatched=true" }
@@ -289,6 +291,25 @@ class SessionController(
                 }
             }
         }
+    }
+
+    private fun session(): CompletableDeferred<String?> {
+        val pending = creating
+        if (pending != null) return pending
+        val next = CompletableDeferred<String?>()
+        creating = next
+        cs.launch {
+            try {
+                next.complete(createSession())
+            } catch (e: Exception) {
+                next.completeExceptionally(e)
+            } finally {
+                edt {
+                    if (creating === next) creating = null
+                }
+            }
+        }
+        return next
     }
 
     private suspend fun createSession(): String? {

@@ -6,6 +6,7 @@ import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.ProviderDto
+import kotlinx.coroutines.CompletableDeferred
 
 class SessionCreationTest : SessionControllerTestBase() {
 
@@ -41,6 +42,38 @@ class SessionCreationTest : SessionControllerTestBase() {
         assertEquals(1, rpc.creates)
         assertEquals(2, rpc.prompts.size)
         assertEquals("ses_test", rpc.prompts[1].first)
+    }
+
+    fun `test concurrent first prompts share session creation`() {
+        rpc.createGate = CompletableDeferred()
+        val m = controller()
+
+        edt {
+            m.prompt("first")
+            m.prompt("second")
+        }
+        rpc.createGate?.complete(Unit)
+        flush()
+
+        assertEquals(1, rpc.creates)
+        assertEquals(listOf("ses_test", "ses_test"), rpc.prompts.map { it.first })
+        assertEquals(listOf("first", "second"), rpc.prompts.map { it.third.parts.single().text.toString() }.sorted())
+    }
+
+    fun `test concurrent first prompt and command share session creation`() {
+        rpc.createGate = CompletableDeferred()
+        val m = controller()
+
+        edt {
+            m.prompt("first")
+            m.command("deploy", "prod")
+        }
+        rpc.createGate?.complete(Unit)
+        flush()
+
+        assertEquals(1, rpc.creates)
+        assertEquals("ses_test", rpc.prompts.single().first)
+        assertEquals("ses_test", rpc.commands.single().id)
     }
 
     fun `test prompt with existing ID skips creation`() {
