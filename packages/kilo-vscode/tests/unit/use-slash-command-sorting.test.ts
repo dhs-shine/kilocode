@@ -15,12 +15,25 @@ function createVscodeContext() {
   }
 }
 
-function runHook(query: string) {
+function runHook(
+  query: string,
+  serverCommands?: {
+    name: string
+    description?: string
+    hints: string[]
+    source?: "command" | "mcp" | "skill"
+  }[],
+) {
   const ctx = createVscodeContext()
   let result: ReturnType<typeof useSlashCommand>
 
   createRoot((dispose) => {
     result = useSlashCommand(ctx)
+    if (serverCommands) {
+      for (const handler of ctx.handlers) {
+        handler({ type: "commandsLoaded", commands: serverCommands })
+      }
+    }
     result.onInput(`/${query}`, query.length + 1)
     dispose()
   })
@@ -75,5 +88,19 @@ describe("useSlashCommand sorting with built-in commands", () => {
     const hook = runHook("help")
     const names = hook.results().map((c) => c.name)
     expect(names[0]).toBe("help")
+  })
+
+  it("merges server commands alongside built-in commands", () => {
+    const server = [{ name: "custom-cmd", description: "Custom command", hints: [], source: "command" as const }]
+    const hook = runHook("custom", server)
+    const names = hook.results().map((c) => c.name)
+    expect(names).toContain("custom-cmd")
+  })
+
+  it("excludes server commands that duplicate built-in command names", () => {
+    const server = [{ name: "compact", description: "Server compact", hints: [], source: "command" as const }]
+    const hook = runHook("compact", server)
+    const names = hook.results().map((c) => c.name)
+    expect(names.filter((n) => n === "compact").length).toBe(1)
   })
 })
