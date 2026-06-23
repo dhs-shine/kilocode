@@ -102,7 +102,9 @@ const bold = (s: string) => (tty ? `\x1b[1m${s}\x1b[0m` : s)
 // ---------------------------------------------------------------------------
 
 const glob = new Bun.Glob("**/*.test.{ts,tsx}")
-const all = (await Array.fromAsync(glob.scan({ cwd: path.join(root, "test") }))).sort()
+const all = (await Array.fromAsync(glob.scan({ cwd: path.join(root, "test") })))
+  .map((file) => file.replaceAll("\\", "/"))
+  .sort()
 
 export const skipped = new Set([
   // Upstream browser OAuth integration tests bind the fixed callback port and

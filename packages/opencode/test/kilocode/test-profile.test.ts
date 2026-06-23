@@ -17,6 +17,17 @@ describe("test profiles", () => {
     expect(result.files).toContain("kilocode/sessions/remote-sender.test.ts")
   })
 
+  test("normalizes Windows test paths", () => {
+    const result = TestProfile.resolve(
+      "darwin",
+      all.map((file) => file.replaceAll("/", "\\")),
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.files).toContain("pty/pty-session.test.ts")
+    expect(result.files.some((file) => file.includes("\\"))).toBe(false)
+  })
+
   test("unknown profiles fail with available names", () => {
     const result = TestProfile.resolve("unknown", all)
     expect(result).toEqual({

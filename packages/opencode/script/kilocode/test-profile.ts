@@ -44,6 +44,7 @@ export namespace TestProfile {
   export const names = Object.keys(profiles)
 
   export function resolve(name: string, all: readonly string[]) {
+    const files = all.map((file) => file.replaceAll("\\", "/"))
     const profile = profiles[name as keyof typeof profiles]
     if (!profile) {
       return {
@@ -74,7 +75,7 @@ export namespace TestProfile {
       )
       .map(([group]) => group)
     const globs = patterns.map((pattern) => ({ pattern, glob: new Bun.Glob(pattern) }))
-    const unmatched = globs.filter((item) => !all.some((file) => item.glob.match(file))).map((item) => item.pattern)
+    const unmatched = globs.filter((item) => !files.some((file) => item.glob.match(file))).map((item) => item.pattern)
     const errors = [
       malformed.length > 0 ? `Malformed patterns: ${malformed.join(", ")}` : "",
       duplicates.length > 0 ? `Duplicate patterns: ${duplicates.join(", ")}` : "",
@@ -93,7 +94,7 @@ export namespace TestProfile {
     return {
       ok: true as const,
       description: profile.description,
-      files: all.filter((file) => globs.some((item) => item.glob.match(file))),
+      files: files.filter((file) => globs.some((item) => item.glob.match(file))),
     }
   }
 }
