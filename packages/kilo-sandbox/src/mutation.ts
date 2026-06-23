@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process"
+import type { Writable } from "node:stream"
+import { finished } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
 import { Context, Effect, PlatformError } from "effect"
 import { confine } from "./backend"
@@ -96,6 +98,12 @@ function output(stream: NodeJS.ReadableStream) {
   })
 }
 
+export function send(stream: Writable, data: string) {
+  const done = finished(stream)
+  stream.end(data)
+  return done
+}
+
 export type Runner = (
   profile: Profile,
   request: Request,
@@ -128,10 +136,12 @@ export const mutate: Runner = (profile, request) =>
           })
           const stdout = output(proc.stdout)
           const stderr = output(proc.stderr)
-          proc.stdin.end(JSON.stringify(request))
-          const [out, err, code] = await Promise.all([stdout, stderr, exited]).finally(() =>
-            signal.removeEventListener("abort", abort),
-          )
+          const [, out, err, code] = await Promise.all([
+            send(proc.stdin, JSON.stringify(request)),
+            stdout,
+            stderr,
+            exited,
+          ]).finally(() => signal.removeEventListener("abort", abort))
           if (code !== 0) {
             throw infrastructure(path, err.toString("utf8").trim() || `Filesystem worker exited with code ${code}`)
           }

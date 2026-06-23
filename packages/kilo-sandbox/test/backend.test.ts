@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test"
+import { spawn } from "node:child_process"
 import { Effect } from "effect"
 import { backendSupport, prepare, type Launch } from "../src/backend"
 import { run } from "../src/context"
+import { send } from "../src/mutation"
 import type { Profile } from "../src/profile"
 import { generate } from "../src/seatbelt"
 
@@ -68,6 +70,23 @@ describe("sandbox launch preparation", () => {
     expect(result.environment?.DROP).toBeUndefined()
     expect(result.environment?.RESET).toBeUndefined()
     expect(result.environment?.PATH).toBeUndefined()
+  })
+
+  test("contains request pipe errors when a worker exits early", async () => {
+    const proc = spawn(process.execPath, ["-e", "setTimeout(() => process.exit(1), 5)"], {
+      env: { ...process.env, BUN_BE_BUN: "1" },
+      stdio: ["pipe", "ignore", "ignore"],
+    })
+    const exited = new Promise<void>((resolve, reject) => {
+      proc.once("error", reject)
+      proc.once("close", () => resolve())
+    })
+    const cause = await send(proc.stdin, "x".repeat(16 * 1024 * 1024)).then(
+      () => undefined,
+      (error: unknown) => error,
+    )
+    await exited
+    expect(cause).toBeInstanceOf(Error)
   })
 
   test("reports backend support with a reason when unavailable", () => {
