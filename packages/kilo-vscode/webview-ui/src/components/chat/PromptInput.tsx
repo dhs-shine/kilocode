@@ -78,7 +78,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const session = useSession()
   const server = useServer()
   const indexing = useIndexing()
-  const { config, features, updateConfig, saveConfig } = useConfig()
+  const { config, features } = useConfig()
   const provider = useProvider()
   const language = useLanguage()
   const vscode = useVSCode()
@@ -1075,12 +1075,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               <Button
                 variant="ghost"
                 size="small"
-                onClick={() => {
-                  updateConfig({
-                    experimental: { ...config().experimental, sandbox: !sandbox() },
+                onClick={() =>
+                  vscode.postMessage({
+                    type: "updateConfig",
+                    config: { experimental: { sandbox: !sandbox() } },
                   })
-                  saveConfig()
-                }}
+                }
                 aria-label={
                   sandbox() ? language.t("prompt.action.sandbox.disable") : language.t("prompt.action.sandbox.enable")
                 }
