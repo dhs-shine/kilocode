@@ -134,6 +134,40 @@ describe("cli tree-sitter resources", () => {
       await fs.rm(root, { recursive: true, force: true })
     }
   })
+
+  it("removes stale sandbox resources when the source has none", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-vscode-sandbox-stale-"))
+    try {
+      const source = path.join(root, "dist", "bin", "kilo")
+      const target = path.join(root, "extension", "bin", "kilo")
+      const helper = path.join(path.dirname(target), "bwrap")
+      const license = path.join(path.dirname(target), "licenses", "bubblewrap", "COPYING")
+
+      await fs.mkdir(path.dirname(source), { recursive: true })
+      await fs.mkdir(path.dirname(license), { recursive: true })
+      await fs.writeFile(source, "binary")
+      await fs.writeFile(target, "binary")
+      await fs.writeFile(helper, "stale helper")
+      await fs.writeFile(license, "stale license")
+
+      await copySandboxResources(source, target)
+
+      expect(
+        await fs.stat(helper).then(
+          () => true,
+          () => false,
+        ),
+      ).toBe(false)
+      expect(
+        await fs.stat(path.dirname(license)).then(
+          () => true,
+          () => false,
+        ),
+      ).toBe(false)
+    } finally {
+      await fs.rm(root, { recursive: true, force: true })
+    }
+  })
 })
 
 describe("toErrorMessage", () => {
