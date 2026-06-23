@@ -1,10 +1,11 @@
 import { Effect, Layer } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { assertNetwork, networkHttpLayer } from "@kilocode/sandbox"
+import { opaque } from "./network-tools"
 
 const Builtin = Symbol("kilo.sandbox.builtinTool")
 const Remote = Symbol("kilo.sandbox.remoteMcp")
-const indirect = new Set(["codebase_search", "semantic_search", "lsp"])
+const indirect = new Set<string>(opaque.map((item) => item.id))
 
 export const httpLayer = networkHttpLayer.pipe(Layer.provide(FetchHttpClient.layer))
 

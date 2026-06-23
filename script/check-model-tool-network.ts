@@ -9,6 +9,7 @@
 // outside the scanned directories. Runtime enforcement remains in @kilocode/sandbox.
 
 import path from "node:path"
+import { opaque } from "../packages/opencode/src/kilocode/sandbox/network-tools"
 
 const root = path.resolve(import.meta.dir, "..")
 const source = path.join(root, "packages", "opencode", "src")
@@ -33,12 +34,13 @@ const checks = [
       /\bnew\s+(?:WarpGrepClient|OpenAI|QdrantClient|BedrockRuntimeClient|WebSocket|EventSource|StreamableHTTPClientTransport|SSEClientTransport)\s*\(/g,
   },
 ]
-const allow: Record<string, { count: number; reason: string }> = {
-  "tool/warpgrep.ts:ad hoc network client": {
-    count: 1,
-    reason: "opaque SDK traffic is denied by the common executeTool network boundary",
-  },
-}
+const allow = new Map(
+  opaque.flatMap((item) =>
+    "client" in item
+      ? [[`${item.file}:${item.client.name}`, { ...item.client, file: item.file, id: item.id }] as const]
+      : [],
+  ),
+)
 const hits: Array<{ file: string; name: string; line: number }> = []
 const glob = new Bun.Glob("**/*.ts")
 
@@ -58,8 +60,8 @@ for (const dir of dirs) {
   }
 }
 
-const invalid = hits.filter((hit) => !allow[`${hit.file}:${hit.name}`])
-const drift = Object.entries(allow).flatMap(([key, entry]) => {
+const invalid = hits.filter((hit) => !allow.has(`${hit.file}:${hit.name}`))
+const clients = [...allow.entries()].flatMap(([key, entry]) => {
   const split = key.lastIndexOf(":")
   const file = key.slice(0, split)
   const name = key.slice(split + 1)
@@ -67,11 +69,27 @@ const drift = Object.entries(allow).flatMap(([key, entry]) => {
   if (count === entry.count) return []
   return [`  packages/opencode/src/${file}: expected ${entry.count} ${name} site(s), found ${count} (${entry.reason})`]
 })
+const tools = (
+  await Promise.all(
+    opaque.map(async (item) => {
+      const text = await Bun.file(path.join(source, item.file)).text()
+      const id = item.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      if (new RegExp(`Tool\\.define\\(\\s*["']${id}["']`).test(text)) return []
+      return [`  packages/opencode/src/${item.file}: opaque classification must match Tool.define("${item.id}")`]
+    }),
+  )
+).flat()
+const drift = [...clients, ...tools]
 
+const network = await Bun.file(path.join(source, "kilocode", "sandbox", "network.ts")).text()
 const registry = await Bun.file(path.join(source, "tool", "registry.ts")).text()
 const session = await Bun.file(path.join(source, "session", "tools.ts")).text()
 const mcp = await Bun.file(path.join(source, "mcp", "index.ts")).text()
 const structure = [
+  ...(!network.includes('import { opaque } from "./network-tools"') ||
+  !network.includes("opaque.map((item) => item.id)")
+    ? ["  kilocode/sandbox/network.ts must derive runtime opaque tool IDs from network-tools.ts"]
+    : []),
   ...(!registry.includes("Layer.provide(ToolNetwork.httpLayer)")
     ? ["  tool/registry.ts must provide the policy-aware ToolNetwork HTTP layer"]
     : []),
