@@ -1,0 +1,112 @@
+#!/usr/bin/env bun
+// kilocode_change - new file
+
+import path from "node:path"
+
+const root = path.resolve(import.meta.dir, "..")
+const source = path.join(root, "packages", "opencode", "src")
+const dirs = ["tool", "kilocode/tool"]
+const checks = [
+  { name: "direct fetch", pattern: /\b(?:globalThis\.)?fetch\s*\(/g },
+  { name: "raw FetchHttpClient layer", pattern: /\bFetchHttpClient\.layer\b/g },
+  { name: "direct Bun socket", pattern: /\bBun\.(?:connect|udpSocket)\s*\(/g },
+  {
+    name: "raw network module",
+    pattern:
+      /\bfrom\s+["'](?:(?:node:)?(?:http|https|http2|net|tls|dgram)(?:\/[^"']*)?|(?:undici|axios|got)(?:\/[^"']*)?)["']/g,
+  },
+  {
+    name: "dynamic network module",
+    pattern:
+      /\b(?:require|import)\s*\(\s*["'](?:(?:node:)?(?:http|https|http2|net|tls|dgram)(?:\/[^"']*)?|(?:undici|axios|got)(?:\/[^"']*)?)["']/g,
+  },
+  {
+    name: "ad hoc network client",
+    pattern:
+      /\bnew\s+(?:WarpGrepClient|OpenAI|QdrantClient|BedrockRuntimeClient|WebSocket|EventSource|StreamableHTTPClientTransport|SSEClientTransport)\s*\(/g,
+  },
+]
+const allow: Record<string, { count: number; reason: string }> = {
+  "tool/warpgrep.ts:ad hoc network client": {
+    count: 1,
+    reason: "opaque SDK traffic is denied by the common executeTool network boundary",
+  },
+}
+const hits: Array<{ file: string; name: string; line: number }> = []
+const glob = new Bun.Glob("**/*.ts")
+
+for (const dir of dirs) {
+  for (const file of glob.scanSync({ cwd: path.join(source, dir), onlyFiles: true })) {
+    const rel = path.posix.join(dir, file.replaceAll("\\", "/"))
+    const text = await Bun.file(path.join(source, rel)).text()
+    for (const check of checks) {
+      for (const match of text.matchAll(check.pattern)) {
+        hits.push({
+          file: rel,
+          name: check.name,
+          line: text.slice(0, match.index ?? 0).split("\n").length,
+        })
+      }
+    }
+  }
+}
+
+const invalid = hits.filter((hit) => !allow[`${hit.file}:${hit.name}`])
+const drift = Object.entries(allow).flatMap(([key, entry]) => {
+  const split = key.lastIndexOf(":")
+  const file = key.slice(0, split)
+  const name = key.slice(split + 1)
+  const count = hits.filter((hit) => hit.file === file && hit.name === name).length
+  if (count === entry.count) return []
+  return [`  packages/opencode/src/${file}: expected ${entry.count} ${name} site(s), found ${count} (${entry.reason})`]
+})
+
+const registry = await Bun.file(path.join(source, "tool", "registry.ts")).text()
+const session = await Bun.file(path.join(source, "session", "tools.ts")).text()
+const mcp = await Bun.file(path.join(source, "mcp", "index.ts")).text()
+const structure = [
+  ...(!registry.includes("Layer.provide(ToolNetwork.httpLayer)")
+    ? ["  tool/registry.ts must provide the policy-aware ToolNetwork HTTP layer"]
+    : []),
+  ...(registry.includes("FetchHttpClient.layer")
+    ? ["  tool/registry.ts must not provide a raw FetchHttpClient layer"]
+    : []),
+  ...(!registry.includes("ToolNetwork.builtin(result)")
+    ? ["  tool/registry.ts must distinguish built-in tools from untrusted custom tools"]
+    : []),
+  ...(!session.includes("SandboxPolicy.executeTool(item,")
+    ? ["  session/tools.ts must route built-in and custom tools through executeTool"]
+    : []),
+  ...(!mcp.includes("SandboxNetwork.remote(tool)")
+    ? ["  mcp/index.ts must classify remote MCP delegated authority"]
+    : []),
+  ...(!session.includes("SandboxPolicy.executeMcp(")
+    ? ["  session/tools.ts must route MCP delegated authority through executeMcp"]
+    : []),
+]
+
+if (invalid.length > 0 || drift.length > 0 || structure.length > 0) {
+  if (invalid.length > 0) {
+    console.error("Found model-tool network clients that bypass the sandbox capability:")
+    for (const hit of invalid) console.error(`  packages/opencode/src/${hit.file}:${hit.line} (${hit.name})`)
+    console.error("")
+  }
+  if (drift.length > 0) {
+    console.error("Classified model-tool network exceptions no longer match source:")
+    for (const item of drift) console.error(item)
+    console.error("")
+  }
+  if (structure.length > 0) {
+    console.error("Model-tool network boundary wiring is incomplete:")
+    for (const item of structure) console.error(item)
+    console.error("")
+  }
+  console.error(
+    "Use the @kilocode/sandbox network capability or classify an opaque client at the common tool boundary.",
+  )
+  process.exit(1)
+}
+
+console.log(
+  `check-model-tool-network: ${hits.length} classified client site(s), policy-aware tool and MCP boundaries verified.`,
+)
