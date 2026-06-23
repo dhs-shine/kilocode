@@ -83,7 +83,7 @@ jobs:
           KILO_EXPERIMENTAL_DISABLE_FILEWATCHER: ${{ runner.os == 'Windows' && 'true' || 'false' }}
 
       - name: Run HttpApi exerciser gates
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' # kilocode_change
         working-directory: packages/opencode
         run: bun run test:httpapi
 
