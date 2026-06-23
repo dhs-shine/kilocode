@@ -1,11 +1,13 @@
 import { NodeFileSystem } from "@effect/platform-node"
+import { assertWrite, decorateFileSystem } from "@kilocode/sandbox" // kilocode_change
 import { dirname, isAbsolute, join, relative, resolve as pathResolve, sep } from "path" // kilocode_change - harden containment checks
 import { realpathSync } from "fs"
 import * as NFS from "fs/promises"
 import { lookup } from "mime-types"
-import { Effect, FileSystem, Layer, Schema, Context } from "effect"
+import { Context, Effect, FileSystem, Layer, Schema } from "effect"
 import type { PlatformError } from "effect/PlatformError"
 import { Glob } from "./util/glob"
+import { serviceUse } from "./effect/service-use"
 
 // kilocode_change start - Windows-resilient mkdir -p.
 // fs.mkdir(dir, { recursive: true }) should be idempotent, but on Windows
@@ -61,10 +63,12 @@ export namespace AppFileSystem {
 
   export class Service extends Context.Service<Service, Interface>()("@opencode/FileSystem") {}
 
+  export const use = serviceUse(Service)
+
   export const layer = Layer.effect(
     Service,
     Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
+      const fs = decorateFileSystem(yield* FileSystem.FileSystem) // kilocode_change
 
       const existsSafe = Effect.fn("FileSystem.existsSafe")(function* (path: string) {
         return yield* fs.exists(path).pipe(Effect.orElseSucceed(() => false))
@@ -113,7 +117,8 @@ export namespace AppFileSystem {
       })
 
       const ensureDir = Effect.fn("FileSystem.ensureDir")(function* (path: string) {
-        // kilocode_change start - use mkdirSafe to tolerate Windows EEXIST
+        // kilocode_change start - enforce the active sandbox and tolerate Windows EEXIST
+        yield* assertWrite(path)
         yield* Effect.tryPromise({
           try: () => mkdirSafe(path),
           catch: (cause) => new FileSystemError({ method: "ensureDir", cause }),
@@ -133,7 +138,8 @@ export namespace AppFileSystem {
             (e) => e.reason._tag === "NotFound",
             () =>
               Effect.gen(function* () {
-                // kilocode_change start - use mkdirSafe to tolerate Windows EEXIST
+                // kilocode_change start - enforce the active sandbox and tolerate Windows EEXIST
+                yield* assertWrite(dirname(path))
                 yield* Effect.tryPromise({
                   try: () => mkdirSafe(dirname(path)),
                   catch: (cause) => new FileSystemError({ method: "writeWithDirs:mkdir", cause }),
