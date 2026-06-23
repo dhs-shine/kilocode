@@ -83,6 +83,13 @@ jobs:
           KILO_EXPERIMENTAL_DISABLE_FILEWATCHER: ${{ runner.os == 'Windows' && 'true' || 'false' }}
           KILO_TEST_PROFILE: ${{ runner.os == 'macOS' && github.event_name == 'pull_request' && 'darwin' || '' }} # kilocode_change
 
+      # kilocode_change start - exercise the real Seatbelt confinement boundary only on macOS
+      - name: Run macOS sandbox confinement tests
+        if: runner.os == 'macOS'
+        working-directory: packages/opencode
+        run: bun test ./test/kilocode/sandbox/macos-confinement.test.ts --timeout 30000
+      # kilocode_change end
+
       - name: Run HttpApi exerciser gates
         if: runner.os == 'Linux' # kilocode_change
         working-directory: packages/opencode

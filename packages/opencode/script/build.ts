@@ -324,6 +324,7 @@ for (const item of targets) {
       KILO_WORKER_PATH: workerPath,
       KILO_SESSION_EXPORT_WORKER_PATH: sessionExportWorkerPath, // kilocode_change
       KILO_INDEXING_WORKER_PATH: indexingWorkerPath, // kilocode_change
+      KILO_SANDBOX_MUTATION_WORKER_PATH: `''`, // kilocode_change - dispatch through the compiled entrypoint
       KILO_CHANNEL: `'${Script.channel}'`,
       KILO_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
       KILO_BUILD_KIND: Script.release ? `'release'` : `'source'`, // kilocode_change

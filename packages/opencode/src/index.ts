@@ -44,6 +44,13 @@ import { KiloCli } from "@/kilocode/cli/setup" // kilocode_change
 
 const processMetadata = ensureProcessMetadata("main")
 
+// kilocode_change start - dispatch the one-shot sandbox mutation worker from the compiled CLI
+if (process.env.KILO_SANDBOX_MUTATION_WORKER === "1") {
+  await import("@kilocode/sandbox/mutation-worker")
+  process.exit(0)
+}
+// kilocode_change end
+
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
     e: errorMessage(e),

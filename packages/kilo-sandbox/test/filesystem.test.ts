@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import { lstat, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises"
+import { lstat, mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { NodeFileSystem } from "@effect/platform-node"
@@ -43,28 +43,34 @@ describe("sandbox FileSystem", () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  test("guards writes with PermissionDenied and forwards mutation options", async () => {
-    await execute(
-      run(
-        makeProfile(allowed),
-        Effect.gen(function* () {
-          const fs = yield* FileSystem.FileSystem
-          const nested = path.join(allowed, "nested", "directory")
-          yield* fs.makeDirectory(nested, { recursive: true, mode: 0o700 })
-          const file = path.join(nested, "value.txt")
-          yield* fs.writeFileString(file, "first", { flag: "wx", mode: 0o600 })
-          const exists = yield* fs.writeFileString(file, "second", { flag: "wx" }).pipe(Effect.flip)
-          expect(exists.reason._tag).toBe("AlreadyExists")
-          const denied = yield* fs.writeFileString(outside, "blocked").pipe(Effect.flip)
-          expect(denied.reason._tag).toBe("PermissionDenied")
-        }),
-      ),
-    )
-    expect(await readFile(path.join(allowed, "nested", "directory", "value.txt"), "utf8")).toBe("first")
-    expect(await readFile(outside, "utf8")).toBe("outside")
-  })
+  test.skipIf(process.platform !== "darwin")(
+    "guards writes with PermissionDenied and forwards mutation options through Seatbelt",
+    async () => {
+      await execute(
+        run(
+          makeProfile(allowed),
+          Effect.gen(function* () {
+            const fs = yield* FileSystem.FileSystem
+            const nested = path.join(allowed, "nested", "directory")
+            yield* fs.makeDirectory(nested, { recursive: true, mode: 0o700 })
+            const file = path.join(nested, "value.txt")
+            yield* fs.writeFileString(file, "first", { flag: "wx", mode: 0o600 })
+            const exists = yield* fs.writeFileString(file, "second", { flag: "wx" }).pipe(Effect.flip)
+            expect(exists.reason._tag).toBe("AlreadyExists")
+            const denied = yield* fs.writeFileString(outside, "blocked").pipe(Effect.flip)
+            expect(denied.reason._tag).toBe("PermissionDenied")
+          }),
+        ),
+      )
+      expect(await readFile(path.join(allowed, "nested", "directory", "value.txt"), "utf8")).toBe("first")
+      expect(await readFile(outside, "utf8")).toBe("outside")
+    },
+  )
 
   test("allows read-only open but guards writable open and sink", async () => {
+    const inside = path.join(allowed, "open.txt")
+    await mkdir(allowed, { recursive: true })
+    await writeFile(inside, "inside")
     await execute(
       run(
         makeProfile(allowed),
@@ -73,6 +79,9 @@ describe("sandbox FileSystem", () => {
           yield* fs.open(outside, { flag: "r" })
           const open = yield* fs.open(outside, { flag: "r+" }).pipe(Effect.flip)
           expect(open.reason._tag).toBe("PermissionDenied")
+          const restricted = yield* fs.open(inside, { flag: "r+" }).pipe(Effect.flip)
+          expect(restricted.reason._tag).toBe("PermissionDenied")
+          expect(restricted.reason.description).toContain("Writable file handles")
           const sink = yield* Stream.run(Stream.make(new TextEncoder().encode("blocked")), fs.sink(outside)).pipe(
             Effect.flip,
           )
@@ -82,50 +91,141 @@ describe("sandbox FileSystem", () => {
     )
   })
 
-  test("redirects default temporary files and directories and preserves their options", async () => {
-    await execute(
-      run(
-        makeProfile(allowed, allowed),
-        Effect.gen(function* () {
-          const fs = yield* FileSystem.FileSystem
-          yield* fs.makeDirectory(allowed, { recursive: true })
-          const directory = yield* fs.makeTempDirectory({ prefix: "directory-" })
-          const file = yield* fs.makeTempFile({ prefix: "file-", suffix: ".txt" })
-          expect(path.dirname(directory)).toBe(allowed)
-          expect(path.basename(directory).startsWith("directory-")).toBe(true)
-          expect(path.dirname(path.dirname(file))).toBe(allowed)
-          expect(path.basename(path.dirname(file)).startsWith("file-")).toBe(true)
-          expect(file.endsWith(".txt")).toBe(true)
-        }),
-      ),
-    )
-  })
+  test.skipIf(process.platform !== "darwin")(
+    "redirects default temporary files and directories and preserves their options",
+    async () => {
+      await execute(
+        run(
+          makeProfile(allowed, allowed),
+          Effect.gen(function* () {
+            const fs = yield* FileSystem.FileSystem
+            yield* fs.makeDirectory(allowed, { recursive: true })
+            const directory = yield* fs.makeTempDirectory({ prefix: "directory-" })
+            const file = yield* fs.makeTempFile({ prefix: "file-", suffix: ".txt" })
+            expect(path.dirname(directory)).toBe(allowed)
+            expect(path.basename(directory).startsWith("directory-")).toBe(true)
+            expect(path.dirname(path.dirname(file))).toBe(allowed)
+            expect(path.basename(path.dirname(file)).startsWith("file-")).toBe(true)
+            expect(file.endsWith(".txt")).toBe(true)
+          }),
+        ),
+      )
+    },
+  )
 
-  test("removes and renames allowed symlink entries without following their targets", async () => {
-    await mkdir(allowed, { recursive: true })
-    const removed = path.join(allowed, "removed-link")
-    const renamed = path.join(allowed, "renamed-link")
-    const moved = path.join(allowed, "moved-link")
-    await symlink(outside, removed)
-    await symlink(outside, renamed)
+  test.skipIf(process.platform !== "darwin")(
+    "preserves finite mutation data, options, timestamps, and links",
+    async () => {
+      const base = path.join(allowed, "operations")
+      const source = path.join(base, "source.bin")
+      const copy = path.join(base, "copy.bin")
+      const tree = path.join(base, "tree")
+      const copied = path.join(base, "copied")
+      const hard = path.join(base, "hard.bin")
+      const symbolic = path.join(base, "symbolic.bin")
+      const streamed = path.join(base, "streamed.bin")
+      const time = new Date("2024-01-02T03:04:05.000Z")
+      await execute(
+        run(
+          makeProfile(allowed),
+          Effect.gen(function* () {
+            const fs = yield* FileSystem.FileSystem
+            yield* fs.makeDirectory(tree, { recursive: true, mode: 0o700 })
+            yield* fs.writeFile(source, Uint8Array.from([0, 255, 1, 254]), { flag: "wx", mode: 0o600 })
+            yield* fs.chmod(source, 0o640)
+            yield* fs.chown(source, process.getuid!(), process.getgid!())
+            yield* fs.truncate(source, 3)
+            yield* fs.utimes(source, time, time)
+            yield* fs.copyFile(source, copy)
+            yield* fs.writeFileString(path.join(tree, "value.txt"), "tree")
+            yield* fs.copy(tree, copied, { overwrite: true, preserveTimestamps: true })
+            yield* fs.link(source, hard)
+            yield* fs.symlink("source.bin", symbolic)
+            yield* Stream.run(
+              Stream.make(Uint8Array.from([1, 2]), Uint8Array.from([3, 4])),
+              fs.sink(streamed, { flag: "wx", mode: 0o600 }),
+            )
+          }),
+        ),
+      )
+      expect([...(await readFile(source))]).toEqual([0, 255, 1])
+      expect([...(await readFile(copy))]).toEqual([0, 255, 1])
+      expect([...(await readFile(hard))]).toEqual([0, 255, 1])
+      expect([...(await readFile(symbolic))]).toEqual([0, 255, 1])
+      expect([...(await readFile(streamed))]).toEqual([1, 2, 3, 4])
+      expect(await readFile(path.join(copied, "value.txt"), "utf8")).toBe("tree")
+      const info = await stat(source)
+      expect(info.mode & 0o777).toBe(0o640)
+      expect(info.mtime.getTime()).toBe(time.getTime())
+    },
+  )
 
+  test.skipIf(process.platform !== "darwin")(
+    "cleans up scoped temporary files and directories through Seatbelt",
+    async () => {
+      const created: string[] = []
+      await execute(
+        run(
+          makeProfile(allowed, allowed),
+          Effect.gen(function* () {
+            const fs = yield* FileSystem.FileSystem
+            created.push(yield* fs.makeTempDirectoryScoped({ prefix: "scoped-directory-" }))
+            created.push(yield* fs.makeTempFileScoped({ prefix: "scoped-file-", suffix: ".txt" }))
+          }),
+        ),
+      )
+      for (const item of created) {
+        expect(
+          await lstat(item).then(
+            () => true,
+            () => false,
+          ),
+        ).toBe(false)
+      }
+    },
+  )
+
+  test.skipIf(process.platform !== "darwin")(
+    "removes and renames allowed symlink entries without following their targets",
+    async () => {
+      await mkdir(allowed, { recursive: true })
+      const removed = path.join(allowed, "removed-link")
+      const renamed = path.join(allowed, "renamed-link")
+      const moved = path.join(allowed, "moved-link")
+      await symlink(outside, removed)
+      await symlink(outside, renamed)
+
+      await execute(
+        run(
+          makeProfile(allowed),
+          Effect.gen(function* () {
+            const fs = yield* FileSystem.FileSystem
+            yield* fs.remove(removed)
+            yield* fs.rename(renamed, moved)
+          }),
+        ),
+      )
+      const missing = await lstat(removed).then(
+        () => false,
+        () => true,
+      )
+      expect(missing).toBe(true)
+      expect((await lstat(moved)).isSymbolicLink()).toBe(true)
+      expect(await readFile(outside, "utf8")).toBe("outside")
+    },
+  )
+
+  test.skipIf(process.platform === "darwin")("fails closed when the OS backend is unavailable", async () => {
     await execute(
       run(
         makeProfile(allowed),
         Effect.gen(function* () {
           const fs = yield* FileSystem.FileSystem
-          yield* fs.remove(removed)
-          yield* fs.rename(renamed, moved)
+          const denied = yield* fs.writeFileString(path.join(allowed, "blocked.txt"), "blocked").pipe(Effect.flip)
+          expect(denied.reason._tag).toBe("PermissionDenied")
         }),
       ),
     )
-    const missing = await lstat(removed).then(
-      () => false,
-      () => true,
-    )
-    expect(missing).toBe(true)
-    expect((await lstat(moved)).isSymbolicLink()).toBe(true)
-    expect(await readFile(outside, "utf8")).toBe("outside")
   })
 
   test("passes through mutations when no profile is active", async () => {

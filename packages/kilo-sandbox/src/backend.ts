@@ -47,9 +47,11 @@ const backend = select()
 function environment(profile: Profile, launch: Launch) {
   const source = { ...launch.environment, ...profile.environment.set }
   const denied = new Set(profile.environment.deny)
-  return Object.fromEntries(
-    Object.entries(source).filter(([key, value]) => value !== undefined && !denied.has(key)),
-  ) as Record<string, string>
+  const result: Record<string, string> = {}
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined && !denied.has(key)) result[key] = value
+  }
+  return result
 }
 
 export function prepare(launch: Launch) {
@@ -62,14 +64,19 @@ export function prepare(launch: Launch) {
   })
 }
 
-function unsupported(command: string) {
+function unsupported(command: string, method: string) {
   return PlatformError.systemError({
     _tag: "PermissionDenied",
     module: "Sandbox",
-    method: "prepareCommand",
+    method,
     pathOrDescriptor: command,
     description: backend.support.reason ?? "The process sandbox backend is unavailable",
   })
+}
+
+export function confine(profile: Profile, launch: Launch) {
+  if (!backend.support.available) return Effect.fail(unsupported(launch.command, "confine"))
+  return backend.prepare(profile, { ...launch, environment: environment(profile, launch) })
 }
 
 export function prepareCommand(
@@ -78,9 +85,9 @@ export function prepareCommand(
   env: Readonly<Record<string, string | undefined>> | undefined,
 ) {
   return Effect.gen(function* () {
-    if (!(yield* current)) return command
-    if (!backend.support.available) return yield* Effect.fail(unsupported(command.command))
-    const launch = yield* prepare({
+    const profile = yield* current
+    if (!profile) return command
+    const launch = yield* confine(profile, {
       command: command.command,
       args: command.args,
       cwd,
