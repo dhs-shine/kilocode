@@ -11,6 +11,7 @@ export namespace RoutedModelMeta {
   export type Info = {
     labels: ReadonlyMap<string, string>
     consumed: ReadonlySet<string>
+    footer?: string
   }
 
   const empty: Info = {
@@ -52,6 +53,14 @@ export namespace RoutedModelMeta {
     return part
   }
 
+  function footer(parts: Part[], message: Message) {
+    return parts
+      .filter((part): part is StepFinishPart => part.type === "step-finish")
+      .slice()
+      .reverse()
+      .find((part) => routed(part.model, message))
+  }
+
   export function info(list: Providers, parts: Part[], details: boolean, message: Message): Info {
     const entries = parts.flatMap((part, index) => {
       if (!eligible(part, details)) return []
@@ -60,9 +69,12 @@ export namespace RoutedModelMeta {
       if (!item || !text) return []
       return [[part.id, text, item.id] as const]
     })
+    const foot = footer(parts, message)
+    const text = label(list, routed(foot?.model, message))
     return {
       labels: new Map(entries.map((entry) => [entry[0], entry[1]] as const)),
-      consumed: new Set(entries.map((entry) => entry[2])),
+      consumed: new Set([...entries.map((entry) => entry[2]), ...(foot && text ? [foot.id] : [])]),
+      ...(text ? { footer: text } : {}),
     }
   }
 

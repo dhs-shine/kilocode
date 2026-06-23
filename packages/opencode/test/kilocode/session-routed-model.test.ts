@@ -24,6 +24,13 @@ describe("session routed model", () => {
     text: "thinking",
     time: { start: 0 },
   } as Part
+  const text = {
+    id: "text",
+    sessionID: "session",
+    messageID: "message",
+    type: "text",
+    text: "hello",
+  } as Part
   const finish = (model: NonNullable<StepFinishPart["model"]>) =>
     ({
       id: "finish",
@@ -105,6 +112,7 @@ describe("session routed model", () => {
       modelID: "kilo-auto/efficient",
     })
     expect(routed.labels.get("reasoning")).toBe("gpt-5.5")
+    expect(routed.footer).toBe("gpt-5.5")
     expect(routed.consumed.has("finish")).toBe(true)
 
     const explicit = RoutedModelMeta.info(undefined, parts, false, {
@@ -113,6 +121,7 @@ describe("session routed model", () => {
     })
     expect(explicit.labels.size).toBe(0)
     expect(explicit.consumed.size).toBe(0)
+    expect(explicit.footer).toBeUndefined()
 
     const same = RoutedModelMeta.info(
       undefined,
@@ -125,6 +134,19 @@ describe("session routed model", () => {
     )
     expect(same.labels.size).toBe(0)
     expect(same.consumed.size).toBe(0)
+    expect(same.footer).toBeUndefined()
+  })
+
+  test("shows compact footer labels for text-only auto selections", () => {
+    const parts = [text, finish({ providerID: "qwen", modelID: "qwen/qwen3.7-plus" })]
+
+    const routed = RoutedModelMeta.info(undefined, parts, false, {
+      providerID: "kilo",
+      modelID: "kilo-auto/efficient",
+    })
+    expect(routed.labels.size).toBe(0)
+    expect(routed.footer).toBe("qwen 3.7-plus")
+    expect(routed.consumed.has("finish")).toBe(true)
   })
 
   test("reads routed model only for selected Kilo auto models", () => {
