@@ -42,10 +42,6 @@ For everyday coding tasks, start with **Auto Efficient** or **Auto Balanced**. S
 
 Open the model selector dropdown in the Kilo Code chat interface and choose the tier you want. No other configuration is needed; routing happens automatically from that point forward.
 
-{% callout type="note" title="Auto Small is configured separately" %}
-`kilo-auto/small` (Auto Small) is **not** available in the standard chat model selector. It is configured separately as the `small_model` setting in Kilo Code settings — the model Kilo uses for background and lightweight tasks.
-{% /callout %}
-
 ## Tips for Optimizing Token Usage
 
 ### Choose the right context
