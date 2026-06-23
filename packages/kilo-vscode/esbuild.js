@@ -190,10 +190,10 @@ async function main() {
     entryPoints: ["src/extension.ts"],
     bundle: true,
     format: "cjs",
-    // ponytail: minifyIdentifiers disabled — esbuild renames @aws-sdk/credential-providers
-    // re-exports and Symbols to the same short identifier in CJS mode, causing
-    // "J_ is not a function (J_ is a Symbol)" at runtime. Syntax/whitespace minification
-    // is kept; only identifier mangling is disabled to fix the collision.
+    // Identifier minification is disabled for the Node.js extension bundle because esbuild
+    // renames @aws-sdk/credential-providers re-exports and internal Symbols to the same
+    // short identifier in CJS mode, causing "J_ is not a function (J_ is a Symbol)" at
+    // runtime. Syntax and whitespace minification are kept; only identifier mangling is off.
     minifyIdentifiers: false,
     minifySyntax: production,
     minifyWhitespace: production,
