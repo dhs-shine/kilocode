@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process"
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
 import type { Writable } from "node:stream"
 import { finished } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
@@ -98,10 +98,41 @@ function output(stream: NodeJS.ReadableStream) {
   })
 }
 
-export function send(stream: Writable, data: string) {
+function send(stream: Writable, data: string) {
   const done = finished(stream)
   stream.end(data)
   return done
+}
+
+export async function settle(
+  input: Promise<void>,
+  stdout: Promise<Buffer>,
+  stderr: Promise<Buffer>,
+  exited: Promise<number | null>,
+  path: string,
+) {
+  const delivery = input.then(
+    () => ({ ok: true as const }),
+    (cause: unknown) => ({ ok: false as const, cause }),
+  )
+  const [sent, out, err, code] = await Promise.all([delivery, stdout, stderr, exited])
+  if (code !== 0) {
+    throw infrastructure(
+      path,
+      err.toString("utf8").trim() || `Filesystem worker exited with code ${code}`,
+      sent.ok ? undefined : sent.cause,
+    )
+  }
+  if (!sent.ok) throw sent.cause
+  return out
+}
+
+async function exchange(proc: ChildProcessWithoutNullStreams, data: string, path: string) {
+  const exited = new Promise<number | null>((resolve, reject) => {
+    proc.once("error", reject)
+    proc.once("close", resolve)
+  })
+  return settle(send(proc.stdin, data), output(proc.stdout), output(proc.stderr), exited, path)
 }
 
 export type Runner = (
@@ -130,21 +161,9 @@ export const mutate: Runner = (profile, request) =>
           })
           const abort = () => proc.kill()
           signal.addEventListener("abort", abort, { once: true })
-          const exited = new Promise<number | null>((resolve, reject) => {
-            proc.once("error", reject)
-            proc.once("close", resolve)
-          })
-          const stdout = output(proc.stdout)
-          const stderr = output(proc.stderr)
-          const [, out, err, code] = await Promise.all([
-            send(proc.stdin, JSON.stringify(request)),
-            stdout,
-            stderr,
-            exited,
-          ]).finally(() => signal.removeEventListener("abort", abort))
-          if (code !== 0) {
-            throw infrastructure(path, err.toString("utf8").trim() || `Filesystem worker exited with code ${code}`)
-          }
+          const out = await exchange(proc, JSON.stringify(request), path).finally(() =>
+            signal.removeEventListener("abort", abort),
+          )
           try {
             const response: unknown = JSON.parse(out.toString("utf8"))
             if (isResponse(response)) return response

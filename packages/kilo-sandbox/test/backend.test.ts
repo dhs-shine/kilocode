@@ -1,9 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import { spawn } from "node:child_process"
-import { Effect } from "effect"
+import { Effect, PlatformError } from "effect"
 import { backendSupport, prepare, type Launch } from "../src/backend"
 import { run } from "../src/context"
-import { send } from "../src/mutation"
+import { settle } from "../src/mutation"
 import type { Profile } from "../src/profile"
 import { generate } from "../src/seatbelt"
 
@@ -72,21 +71,22 @@ describe("sandbox launch preparation", () => {
     expect(result.environment?.PATH).toBeUndefined()
   })
 
-  test("contains request pipe errors when a worker exits early", async () => {
-    const proc = spawn(process.execPath, ["-e", "setTimeout(() => process.exit(1), 5)"], {
-      env: { ...process.env, BUN_BE_BUN: "1" },
-      stdio: ["pipe", "ignore", "ignore"],
-    })
-    const exited = new Promise<void>((resolve, reject) => {
-      proc.once("error", reject)
-      proc.once("close", () => resolve())
-    })
-    const cause = await send(proc.stdin, "x".repeat(16 * 1024 * 1024)).then(
+  test("preserves worker stderr when the request pipe also fails", async () => {
+    const pipe = Object.assign(new Error("write EPIPE"), { code: "EPIPE" })
+    const cause = await settle(
+      Promise.reject(pipe),
+      Promise.resolve(Buffer.alloc(0)),
+      Promise.resolve(Buffer.from("useful worker failure")),
+      Promise.resolve(7),
+      "/workspace/value.txt",
+    ).then(
       () => undefined,
       (error: unknown) => error,
     )
-    await exited
-    expect(cause).toBeInstanceOf(Error)
+    expect(cause).toBeInstanceOf(PlatformError.PlatformError)
+    if (!(cause instanceof PlatformError.PlatformError)) return
+    expect(cause.reason.description).toBe("useful worker failure")
+    expect(cause.reason.cause).toBe(pipe)
   })
 
   test("reports backend support with a reason when unavailable", () => {
