@@ -84,6 +84,12 @@ jobs:
 
       - uses: ./.github/actions/setup-bun
 
+      - name: Setup Zig for Linux sandbox helpers
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: 0.14.0
+          use-cache: false
+
       - name: Build
         id: build
         run: |
@@ -179,6 +185,13 @@ jobs:
           smoke_host() {
             binary="$1"
             "$binary" --version
+            helper="$(dirname "$binary")/bwrap"
+            if [[ "${{ matrix.target }}" == linux-* ]]; then
+              test -x "$helper"
+              "$helper" --version
+              "$helper" --unshare-user --disable-userns --unshare-pid --die-with-parent --new-session \
+                --ro-bind / / --dev /dev --proc /proc -- "$helper" --version
+            fi
             root="$(mktemp -d)"
             trap 'rm -rf "$root"' RETURN
             (
@@ -214,6 +227,7 @@ jobs:
               # kilocode_change end
               binary="/dist/$PACKAGE/bin/kilo"
               "$binary" --version
+              "/dist/$PACKAGE/bin/bwrap" --version
               root="$(mktemp -d)"
               trap '\''rm -rf "$root"'\'' EXIT
               unset KILO_MODELS_PATH KILO_MODELS_URL KILO_CONFIG KILO_CONFIG_DIR

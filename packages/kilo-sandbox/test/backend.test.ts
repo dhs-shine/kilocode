@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import os from "node:os"
+import path from "node:path"
 import { Effect } from "effect"
 import { backendSupport, prepare, type Launch } from "../src/backend"
+import { generate as generateBubblewrap } from "../src/bubblewrap"
 import { run } from "../src/context"
 import type { Profile } from "../src/profile"
 import { generate } from "../src/seatbelt"
@@ -54,6 +58,55 @@ describe("sandbox launch preparation", () => {
     expect(args.args.slice(-4)).toEqual(["--", "/bin/sh", "-c", "printf '%s' 'hello world'"])
   })
 
+  test("layers Linux writable roots before protected git metadata without changing the network namespace", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "kilo-bubblewrap-policy-"))
+    const git = path.join(root, ".git")
+    mkdirSync(git)
+    writeFileSync(path.join(git, "config"), "original")
+    const profile: Profile = {
+      ...makeProfile(),
+      filesystem: {
+        allowWrite: [{ path: root, kind: "subtree" }],
+        denyWrite: [],
+        denyNames: [".git"],
+      },
+    }
+
+    try {
+      const result = generateBubblewrap(profile, { ...launch, cwd: root }, "/opt/kilo/bwrap")
+      const writable = result.args.indexOf("--bind")
+      const protectedPath = result.args.indexOf("--ro-bind", writable + 1)
+      expect(result.command).toBe("/opt/kilo/bwrap")
+      expect(writable).toBeGreaterThan(-1)
+      expect(protectedPath).toBeGreaterThan(writable)
+      expect(result.args.slice(protectedPath, protectedPath + 3)).toEqual(["--ro-bind", git, git])
+      expect(result.args).not.toContain("--unshare-net")
+      expect(result.args.slice(-3)).toEqual(["--", "/bin/echo", "hello"])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("rejects a Bubblewrap executable inside a writable root", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "kilo-bubblewrap-helper-"))
+    const helper = path.join(root, "bwrap")
+    writeFileSync(helper, "helper")
+    const profile: Profile = {
+      ...makeProfile(),
+      filesystem: {
+        allowWrite: [{ path: root, kind: "subtree" }],
+        denyWrite: [],
+        denyNames: [],
+      },
+    }
+
+    try {
+      expect(() => generateBubblewrap(profile, launch, helper)).toThrow("writable by the sandbox profile")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test("passes the launch through unchanged when no profile is active", async () => {
     const result = await Effect.runPromise(Effect.scoped(prepare(launch)))
     expect(result.command).toBe(launch.command)
@@ -71,7 +124,8 @@ describe("sandbox launch preparation", () => {
   })
 
   test("reports backend support with a reason when unavailable", () => {
-    expect(typeof backendSupport.available).toBe("boolean")
-    if (!backendSupport.available) expect(backendSupport.reason?.length).toBeGreaterThan(0)
+    const support = backendSupport()
+    expect(typeof support.available).toBe("boolean")
+    if (!support.available) expect(support.reason?.length).toBeGreaterThan(0)
   })
 })

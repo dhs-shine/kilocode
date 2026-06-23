@@ -1,5 +1,6 @@
 import { Effect, PlatformError, Scope } from "effect"
 import { ChildProcess } from "effect/unstable/process"
+import { bubblewrap } from "./bubblewrap"
 import { current } from "./context"
 import type { Profile } from "./profile"
 import { seatbelt } from "./seatbelt"
@@ -18,13 +19,16 @@ export interface Support {
 }
 
 export interface Backend {
-  readonly support: Support
-  readonly prepare: (profile: Profile, launch: Launch) => Effect.Effect<Launch, never, Scope.Scope>
+  readonly support: () => Support
+  readonly prepare: (
+    profile: Profile,
+    launch: Launch,
+  ) => Effect.Effect<Launch, PlatformError.PlatformError, Scope.Scope>
 }
 
 function unavailable(reason: string): Backend {
   return {
-    support: { available: false, reason },
+    support: () => ({ available: false, reason }),
     prepare: (_profile, launch) => Effect.succeed(launch),
   }
 }
@@ -34,7 +38,7 @@ function select(): Backend {
     case "darwin":
       return seatbelt
     case "linux":
-      return unavailable("The Linux sandbox backend is not available")
+      return bubblewrap
     case "win32":
       return unavailable("The Windows sandbox backend is not available")
     default:
@@ -57,18 +61,18 @@ export function prepare(launch: Launch) {
     const profile = yield* current
     if (!profile) return launch
     const next = { ...launch, environment: environment(profile, launch) }
-    if (!backend.support.available) return next
+    if (!backend.support().available) return next
     return yield* backend.prepare(profile, next)
   })
 }
 
-function unsupported(command: string) {
+function unsupported(command: string, support: Support) {
   return PlatformError.systemError({
     _tag: "PermissionDenied",
     module: "Sandbox",
     method: "prepareCommand",
     pathOrDescriptor: command,
-    description: backend.support.reason ?? "The process sandbox backend is unavailable",
+    description: support.reason ?? "The process sandbox backend is unavailable",
   })
 }
 
@@ -79,7 +83,8 @@ export function prepareCommand(
 ) {
   return Effect.gen(function* () {
     if (!(yield* current)) return command
-    if (!backend.support.available) return yield* Effect.fail(unsupported(command.command))
+    const support = backend.support()
+    if (!support.available) return yield* Effect.fail(unsupported(command.command, support))
     const launch = yield* prepare({
       command: command.command,
       args: command.args,
@@ -97,4 +102,6 @@ export function prepareCommand(
   })
 }
 
-export const backendSupport = backend.support
+export function backendSupport() {
+  return backend.support()
+}

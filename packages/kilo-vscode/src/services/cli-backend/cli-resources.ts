@@ -37,3 +37,20 @@ export async function copyTreeSitterResources(source: string, target: string): P
   await fs.promises.rm(to, { recursive: true, force: true })
   await fs.promises.cp(from, to, { recursive: true })
 }
+
+export async function copySandboxResources(source: string, target: string): Promise<void> {
+  const from = path.dirname(source)
+  const to = path.dirname(target)
+  const bwrap = path.join(from, "bwrap")
+  if (!fs.existsSync(bwrap)) return
+
+  const helper = path.join(to, "bwrap")
+  await fs.promises.copyFile(bwrap, helper)
+  await fs.promises.chmod(helper, 0o755)
+
+  const licenses = path.join(from, "licenses")
+  if (!fs.existsSync(licenses)) return
+  const destination = path.join(to, "licenses")
+  await fs.promises.rm(destination, { recursive: true, force: true })
+  await fs.promises.cp(licenses, destination, { recursive: true })
+}

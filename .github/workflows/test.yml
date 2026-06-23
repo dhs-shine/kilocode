@@ -63,6 +63,19 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
+      - name: Setup Zig for Linux sandbox helper
+        if: runner.os == 'Linux'
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: 0.14.0
+          use-cache: false
+
+      - name: Build Linux sandbox helper
+        if: runner.os == 'Linux'
+        run: |
+          bun packages/opencode/script/kilocode/bubblewrap.ts --arch x64 --output "$RUNNER_TEMP/bwrap"
+          echo "KILO_BWRAP_PATH=$RUNNER_TEMP/bwrap" >> "$GITHUB_ENV"
+
       - name: Configure git identity
         run: |
           git config --global user.email "kilo-maintainer[bot]@users.noreply.github.com"
@@ -82,6 +95,12 @@ jobs:
         env:
           KILO_EXPERIMENTAL_DISABLE_FILEWATCHER: ${{ runner.os == 'Windows' && 'true' || 'false' }}
           KILO_TEST_PROFILE: ${{ runner.os == 'macOS' && github.event_name == 'pull_request' && 'darwin' || '' }} # kilocode_change
+
+      - name: Test nested mount rejection
+        if: runner.os == 'Linux'
+        run: |
+          sudo env PATH="$PATH" KILO_BWRAP_PATH="$KILO_BWRAP_PATH" KILO_TEST_PRIVILEGED_MOUNTS=1 \
+            "$(command -v bun)" test packages/core/test/kilocode/linux-sandbox.test.ts -t "nested mount"
 
       - name: Run HttpApi exerciser gates
         if: runner.os == 'Linux' # kilocode_change

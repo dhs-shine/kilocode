@@ -7,6 +7,7 @@ import {
   toErrorMessage,
 } from "../../src/services/cli-backend/server-manager"
 import {
+  copySandboxResources,
   copyTreeSitterResources,
   resolveTreeSitterEnv,
   treeSitterDirForBinary,
@@ -100,6 +101,34 @@ describe("cli tree-sitter resources", () => {
       expect(await fs.readFile(path.join(treeSitterDirForBinary(target), "tree-sitter.wasm"), "utf8")).toBe("runtime")
       expect(await fs.readFile(path.join(treeSitterDirForBinary(target), "tree-sitter-typescript.wasm"), "utf8")).toBe(
         "language",
+      )
+    } finally {
+      await fs.rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it("copies the Linux sandbox helper and license resources", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-vscode-sandbox-"))
+    try {
+      const source = path.join(root, "dist", "bin", "kilo")
+      const target = path.join(root, "extension", "bin", "kilo")
+      const helper = path.join(path.dirname(source), "bwrap")
+      const license = path.join(path.dirname(source), "licenses", "bubblewrap", "COPYING")
+
+      await fs.mkdir(path.dirname(license), { recursive: true })
+      await fs.mkdir(path.dirname(target), { recursive: true })
+      await fs.writeFile(source, "binary")
+      await fs.writeFile(target, "binary")
+      await fs.writeFile(helper, "helper")
+      await fs.writeFile(license, "LGPL")
+
+      await copySandboxResources(source, target)
+
+      const copied = path.join(path.dirname(target), "bwrap")
+      expect(await fs.readFile(copied, "utf8")).toBe("helper")
+      expect((await fs.stat(copied)).mode & 0o111).not.toBe(0)
+      expect(await fs.readFile(path.join(path.dirname(target), "licenses", "bubblewrap", "COPYING"), "utf8")).toBe(
+        "LGPL",
       )
     } finally {
       await fs.rm(root, { recursive: true, force: true })

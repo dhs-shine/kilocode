@@ -137,6 +137,20 @@ function copyResources(source) {
     fs.rmSync(target, { recursive: true, force: true })
     fs.cpSync(dir, target, { recursive: true })
   }
+
+  const bwrap = path.join(path.dirname(source), "bwrap")
+  if (fs.existsSync(bwrap)) {
+    const target = path.join(__dirname, "bin", "bwrap")
+    fs.copyFileSync(bwrap, target)
+    fs.chmodSync(target, 0o755)
+  }
+
+  const licenses = path.join(path.dirname(source), "licenses")
+  if (fs.existsSync(licenses)) {
+    const target = path.join(__dirname, "bin", "licenses")
+    fs.rmSync(target, { recursive: true, force: true })
+    fs.cpSync(licenses, target, { recursive: true })
+  }
 }
 
 function copyBinary(source) {
