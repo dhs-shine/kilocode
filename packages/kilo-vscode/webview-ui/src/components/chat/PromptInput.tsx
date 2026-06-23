@@ -1065,30 +1065,32 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               <Icon name="shield" size="small" />
             </Button>
           </Tooltip>
-          <Tooltip
-            value={
-              sandbox() ? language.t("prompt.action.sandbox.enabled") : language.t("prompt.action.sandbox.disabled")
-            }
-            placement="top"
-          >
-            <Button
-              variant="ghost"
-              size="small"
-              onClick={() => {
-                updateConfig({
-                  experimental: { ...config().experimental, sandbox: !sandbox() },
-                })
-                saveConfig()
-              }}
-              aria-label={
-                sandbox() ? language.t("prompt.action.sandbox.disable") : language.t("prompt.action.sandbox.enable")
+          <Show when={features().sandboxControls}>
+            <Tooltip
+              value={
+                sandbox() ? language.t("prompt.action.sandbox.enabled") : language.t("prompt.action.sandbox.disabled")
               }
-              aria-pressed={sandbox()}
-              class={`prompt-status-button ${sandbox() ? "prompt-status-button--active" : ""}`}
+              placement="top"
             >
-              <Icon name="lock" size="small" />
-            </Button>
-          </Tooltip>
+              <Button
+                variant="ghost"
+                size="small"
+                onClick={() => {
+                  updateConfig({
+                    experimental: { ...config().experimental, sandbox: !sandbox() },
+                  })
+                  saveConfig()
+                }}
+                aria-label={
+                  sandbox() ? language.t("prompt.action.sandbox.disable") : language.t("prompt.action.sandbox.enable")
+                }
+                aria-pressed={sandbox()}
+                class={`prompt-status-button ${sandbox() ? "prompt-status-button--active" : ""}`}
+              >
+                <Icon name="lock" size="small" />
+              </Button>
+            </Tooltip>
+          </Show>
           <Tooltip value={language.t("prompt.action.enhance")} placement="top">
             <Button
               variant="ghost"
