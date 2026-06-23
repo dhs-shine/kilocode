@@ -1,4 +1,4 @@
-import { createSignal, createMemo, For, Show } from "solid-js"
+import { createSignal, createMemo, createEffect, For, Show } from "solid-js"
 import { TextField } from "@kilocode/kilo-ui/text-field"
 import { Select } from "@kilocode/kilo-ui/select"
 import { Tag } from "@kilocode/kilo-ui/tag"
@@ -10,7 +10,7 @@ import type {
   MarketplaceInstalledMetadata,
 } from "../../types/marketplace"
 import { useLanguage } from "../../context/language"
-import { isInstalled } from "./utils"
+import { filterItems } from "./utils"
 import { ItemCard } from "./ItemCard"
 import { MarketplaceContribute } from "./MarketplaceContribute"
 
@@ -23,7 +23,6 @@ interface Props {
   items: MarketplaceItem[]
   metadata: MarketplaceInstalledMetadata
   fetching: boolean
-  type: "mcp" | "agent" | "skill"
   searchPlaceholder: string
   emptyMessage: string
   onInstall: (item: MarketplaceItem) => void
@@ -34,7 +33,7 @@ export const MarketplaceListView = (props: Props) => {
   const { t } = useLanguage()
   const [search, setSearch] = createSignal("")
   const [status, setStatus] = createSignal<StatusOption>({ value: "all", label: t("marketplace.filter.all") })
-  const [tags, setTags] = createSignal<string[]>([])
+  const [categories, setCategories] = createSignal<string[]>([])
 
   const options = (): StatusOption[] => [
     { value: "all", label: t("marketplace.filter.all") },
@@ -42,51 +41,32 @@ export const MarketplaceListView = (props: Props) => {
     { value: "notInstalled", label: t("marketplace.filter.notInstalled") },
   ]
 
-  const tagsFor = (item: MarketplaceItem): string[] => {
-    if (item.type === "skill") return [(item as SkillMarketplaceItem).displayCategory]
-    return item.tags ?? []
-  }
+  const label = (category: string) =>
+    category
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
 
-  const allTags = createMemo(() => {
-    const counts = new Map<string, number>()
-    for (const item of props.items) {
-      for (const tag of tagsFor(item)) counts.set(tag, (counts.get(tag) ?? 0) + 1)
-    }
-    const min = props.type === "mcp" ? 5 : 1
-    return Array.from(counts.entries())
-      .filter(([, n]) => n >= min)
-      .map(([tag]) => tag)
-      .sort()
-  })
+  const allCategories = createMemo(() => Array.from(new Set(props.items.map((item) => item.category))).sort())
 
-  const toggleTag = (tag: string) => {
-    const current = tags()
-    if (current.includes(tag)) {
-      setTags(current.filter((t) => t !== tag))
-    } else {
-      setTags([...current, tag])
-    }
-  }
-
-  const filtered = createMemo(() => {
-    const q = search().toLowerCase()
-    const s = status().value
-    const active = tags()
-    return props.items.filter((item) => {
-      if (s === "installed" && !isInstalled(item.id, item.type, props.metadata)) return false
-      if (s === "notInstalled" && isInstalled(item.id, item.type, props.metadata)) return false
-      if (active.length > 0 && !active.some((tag) => tagsFor(item).includes(tag))) return false
-      if (!q) return true
-      const skill = item.type === "skill" ? (item as SkillMarketplaceItem) : undefined
-      return (
-        item.id.toLowerCase().includes(q) ||
-        item.name.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q) ||
-        (item.author?.toLowerCase().includes(q) ?? false) ||
-        (skill?.displayName.toLowerCase().includes(q) ?? false)
-      )
+  createEffect(() => {
+    const available = new Set(allCategories())
+    setCategories((current) => {
+      const next = current.filter((category) => available.has(category))
+      return next.length === current.length ? current : next
     })
   })
+
+  const toggleCategory = (category: string) => {
+    const current = categories()
+    if (current.includes(category)) {
+      setCategories(current.filter((value) => value !== category))
+      return
+    }
+    setCategories([...current, category])
+  }
+
+  const filtered = createMemo(() => filterItems(props.items, props.metadata, search(), status().value, categories()))
 
   return (
     <div class="marketplace-list">
@@ -102,16 +82,17 @@ export const MarketplaceListView = (props: Props) => {
           onSelect={(v: StatusOption | undefined) => v && setStatus(v)}
         />
       </div>
-      <Show when={allTags().length > 0}>
-        <div class="marketplace-active-tags">
-          <For each={allTags()}>
-            {(tag) => (
+      <Show when={allCategories().length > 0}>
+        <div class="marketplace-categories">
+          <For each={allCategories()}>
+            {(category) => (
               <button
-                class="marketplace-tag-filter"
-                classList={{ active: tags().includes(tag) }}
-                onClick={() => toggleTag(tag)}
+                class="marketplace-category-filter"
+                classList={{ active: categories().includes(category) }}
+                aria-pressed={categories().includes(category)}
+                onClick={() => toggleCategory(category)}
               >
-                <Tag>{tag}</Tag>
+                <Tag>{label(category)}</Tag>
               </button>
             )}
           </For>
@@ -147,7 +128,7 @@ export const MarketplaceListView = (props: Props) => {
                     linkUrl={skill?.githubUrl ?? mcp?.url}
                     onInstall={props.onInstall}
                     onRemove={props.onRemove}
-                    footer={<For each={tagsFor(item)}>{(tag) => <Tag>{tag}</Tag>}</For>}
+                    footer={<Tag>{label(item.category)}</Tag>}
                   />
                 )
               }}
