@@ -19,6 +19,7 @@ import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.test.CopyProviderSink
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.rpc.dto.FileSearchResultDto
+import ai.kilocode.rpc.dto.PromptPartDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.ide.actions.UndoRedoAction
 import com.intellij.icons.AllIcons
@@ -542,6 +543,31 @@ class PromptPanelTest : BasePlatformTestCase() {
         waitForSend { sent }
 
         assertTrue(sent)
+    }
+
+    fun `test submit resolves mentions from current text`() {
+        var text: String? = null
+        var sent: List<PromptPartDto>? = null
+        val part = PromptPartDto(type = "file", mime = "text/plain", url = "file:///repo/src/x.kt")
+        val panel = PromptPanel(
+            project = project,
+            onSend = { _, files -> sent = files },
+            onAbort = {},
+            onEnhance = { _, _ -> },
+            onMentions = { value ->
+                text = value
+                listOf(part)
+            },
+        )
+        val editor = panel.defaultFocusedComponent as EditorTextField
+        panel.setReady(true)
+
+        editor.text = "read @src/x.kt"
+        panel.send()
+        waitForSend { sent != null }
+
+        assertEquals("read @src/x.kt", text)
+        assertEquals(listOf(part), sent)
     }
 
     fun `test clear removes attachments`() {

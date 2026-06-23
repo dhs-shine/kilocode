@@ -48,18 +48,6 @@ class KiloPromptCompletionProvider(
     /** A file mention token at a caret/mouse offset, with whether it resolves to a real file. */
     data class MentionHit(val start: Int, val end: Int, val value: String, val resolved: Boolean)
 
-    fun mentionPaths(text: String? = null): Set<String> {
-        val known = paths.toSet()
-        if (text == null) return known
-        return mentionSpans(text).mapNotNullTo(known.toMutableSet()) { span ->
-            when {
-                span.value in mentionNames() -> null
-                span.value in known || exists[span.value] == true -> span.value
-                else -> null
-            }
-        }
-    }
-
     /**
      * The file mention spanning [offset], or null when the offset is outside a mention,
      * on a special (`@git-changes`) token, or on a mention not yet validated.
@@ -312,17 +300,7 @@ class KiloPromptCompletionProvider(
 
     private data class Token(val kind: Kind, val prefix: String)
 
-    private data class Span(val start: Int, val end: Int, val value: String)
-
-    private fun mentionSpans(text: String): List<Span> = buildList {
-        var pos = 0
-        while (pos < text.length) {
-            val start = (pos until text.length).firstOrNull { !text[it].isWhitespace() } ?: return@buildList
-            val end = tokenEnd(text, start)
-            if (text[start] == '@' && end > start + 1) add(Span(start, end, text.substring(start + 1, end)))
-            pos = end + 1
-        }
-    }
+    private fun mentionSpans(text: String): List<Mention> = promptMentions(text)
 
     private enum class Kind { SLASH, MENTION }
 }

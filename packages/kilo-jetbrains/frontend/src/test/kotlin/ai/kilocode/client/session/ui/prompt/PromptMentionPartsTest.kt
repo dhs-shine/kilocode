@@ -1,9 +1,36 @@
 package ai.kilocode.client.session.ui.prompt
 
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import junit.framework.TestCase
+import kotlinx.coroutines.runBlocking
 import java.nio.file.Path
 
-class PromptMentionPartsTest : BasePlatformTestCase() {
+class PromptMentionPartsTest : TestCase() {
+
+    fun `test promptMentions parses boundary mentions`() {
+        assertEquals(
+            listOf(Mention("src/Main.kt", 5, 17), Mention("README.md", 22, 32)),
+            promptMentions("read @src/Main.kt and @README.md"),
+        )
+        assertEquals(listOf(Mention("src/x.kt", 4, 13)), promptMentions("see @src/x.kt"))
+    }
+
+    fun `test promptMentions ignores embedded and bare markers`() {
+        assertTrue(promptMentions("read foo@src/Main.kt and @").isEmpty())
+    }
+
+    fun `test promptMentions handles whitespace and punctuation as token text`() {
+        assertEquals(
+            listOf(Mention("src/a.kt", 4, 13), Mention("src/b.kt,", 14, 24)),
+            promptMentions("see\t@src/a.kt\n@src/b.kt,"),
+        )
+    }
+
+    fun `test fileMentions drops reserved names and deduplicates`() {
+        assertEquals(
+            listOf(Mention("src/a.kt", 5, 14), Mention("src/b.kt", 38, 47)),
+            fileMentions("read @src/a.kt ${MentionAction.GIT_CHANGES.token} @src/a.kt @src/b.kt", setOf(MentionAction.GIT_CHANGES.name)),
+        )
+    }
 
     fun `test mentionFileParts builds file part for tracked relative path`() {
         val parts = mentionFileParts("read @src/Main.kt", setOf("src/Main.kt"), "/repo")
@@ -40,6 +67,73 @@ class PromptMentionPartsTest : BasePlatformTestCase() {
 
         assertEquals(Path.of(path).toUri().toString(), part.url)
         assertEquals("abs.txt", part.filename)
+    }
+
+    fun `test mentionParts validates hand typed mention at send time`() = runBlocking {
+        val parts = mentionParts(
+            text = "read @src/Main.kt",
+            directory = "/repo",
+            reserved = setOf(MentionAction.GIT_CHANGES.name),
+            resolve = { path -> path == "src/Main.kt" },
+            gitChanges = { null },
+        )
+
+        val part = parts.single()
+        assertEquals(Path.of("/repo/src/Main.kt").toUri().toString(), part.url)
+        assertEquals("@src/Main.kt", part.source?.text?.value)
+        assertEquals(5.0, part.source?.text?.start)
+    }
+
+    fun `test mentionParts drops unresolved file mentions`() = runBlocking {
+        assertTrue(mentionParts(
+            text = "read @src/Main.kt",
+            directory = "/repo",
+            reserved = setOf(MentionAction.GIT_CHANGES.name),
+            resolve = { false },
+            gitChanges = { null },
+        ).isEmpty())
+    }
+
+    fun `test mentionParts handles mixed resolved reserved and git changes`() = runBlocking {
+        val parts = mentionParts(
+            text = "read @src/Main.kt @missing.kt ${MentionAction.GIT_CHANGES.token}",
+            directory = "/repo",
+            reserved = setOf(MentionAction.GIT_CHANGES.name),
+            resolve = { path -> path == "src/Main.kt" },
+            gitChanges = { "diff" },
+        )
+
+        assertEquals(2, parts.size)
+        assertEquals("Main.kt", parts[0].filename)
+        assertEquals(MentionAction.GIT_CHANGES.filename, parts[1].filename)
+        assertEquals(MentionAction.GIT_CHANGES.uri, parts[1].source?.path)
+    }
+
+    fun `test mentionParts skips blank git changes`() = runBlocking {
+        assertTrue(mentionParts(
+            text = "review ${MentionAction.GIT_CHANGES.token}",
+            directory = "/repo",
+            reserved = setOf(MentionAction.GIT_CHANGES.name),
+            resolve = { true },
+            gitChanges = { "  " },
+        ).isEmpty())
+    }
+
+    fun `test mentionParts skips git lookup without token`() = runBlocking {
+        var called = false
+
+        mentionParts(
+            text = "read @src/Main.kt",
+            directory = "/repo",
+            reserved = setOf(MentionAction.GIT_CHANGES.name),
+            resolve = { false },
+            gitChanges = {
+                called = true
+                "diff"
+            },
+        )
+
+        assertFalse(called)
     }
 
     fun `test gitChangesPart builds encoded data part`() {

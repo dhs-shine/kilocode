@@ -125,7 +125,7 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         myFixture.type('\n')
 
         assertEquals("@zzz", myFixture.editor.document.text)
-        assertTrue(provider.mentionPaths().isEmpty())
+        assertNull(provider.mentionAt("@zzz", 1))
     }
 
     fun `test accepting mention mid token replaces glued suffix`() {
@@ -135,7 +135,10 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         myFixture.type('\n')
 
         assertEquals("@backend/deploy-dev.sh ", myFixture.editor.document.text)
-        assertTrue(provider.mentionPaths().contains("backend/deploy-dev.sh"))
+        assertEquals(
+            KiloPromptCompletionProvider.MentionHit(0, 22, "backend/deploy-dev.sh", true),
+            provider.mentionAt(myFixture.editor.document.text, 1),
+        )
     }
 
     fun `test accepting mention mid token trims before trailing content`() {
@@ -145,7 +148,10 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         myFixture.type('\n')
 
         assertEquals("@backend/deploy-dev.sh tail", myFixture.editor.document.text)
-        assertTrue(provider.mentionPaths().contains("backend/deploy-dev.sh"))
+        assertEquals(
+            KiloPromptCompletionProvider.MentionHit(0, 22, "backend/deploy-dev.sh", true),
+            provider.mentionAt(myFixture.editor.document.text, 1),
+        )
     }
 
     fun `test slash completion keeps no-match placeholder`() {
@@ -308,16 +314,6 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         )
     }
 
-    fun `test mentionPaths includes existing hand typed mentions from text`() {
-        var done = false
-        rpc.fileResolver = { path -> if (path == "src/x.kt") listOf(file(path)) else emptyList() }
-
-        provider.validate("see @src/x.kt and ${MentionAction.GIT_CHANGES.token}", -1) { done = true }
-        waitFor { done }
-
-        assertEquals(setOf("src/x.kt"), provider.mentionPaths("see @src/x.kt and ${MentionAction.GIT_CHANGES.token}"))
-    }
-
     fun `test mention under caret is not flagged`() {
         assertTrue(provider.highlights("@nope", caret = 5).isEmpty())
     }
@@ -369,7 +365,7 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         rpc.searchResult = FileSearchResultDto(files = listOf(file(path)))
         complete("$query<caret>")
         myFixture.type('\n')
-        assertTrue(provider.mentionPaths().contains(path))
+        assertEquals(path, provider.mentionAt("@$path", 1)?.value)
     }
 
     private fun waitFor(done: () -> Boolean) {

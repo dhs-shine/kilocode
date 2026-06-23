@@ -98,7 +98,7 @@ class PromptPanel(
     private val onSend: (String, List<PromptPartDto>) -> Unit,
     private val onAbort: () -> Unit,
     private val onEnhance: (String, (Result<String>) -> Unit) -> Unit,
-    private val onMentions: (String, Set<String>) -> List<PromptPartDto> = { _, _ -> emptyList() },
+    private val onMentions: (String) -> List<PromptPartDto> = { emptyList() },
     private val completion: KiloPromptCompletionProvider? = null,
     private val selection: SessionSelection? = null,
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext, UiDataProvider {
@@ -521,7 +521,7 @@ class PromptPanel(
         ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val files = items.map { it.part() }
-                val mentioned = onMentions(txt, completion?.mentionPaths(txt).orEmpty())
+                val mentioned = onMentions(txt)
                 ApplicationManager.getApplication().invokeLater {
                     submitting = false
                     if (project.isDisposed) return@invokeLater

@@ -23,8 +23,7 @@ import ai.kilocode.client.session.ui.prompt.KiloPromptCompletionProvider
 import ai.kilocode.client.session.ui.prompt.MentionAction
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.session.ui.prompt.SlashAction
-import ai.kilocode.client.session.ui.prompt.gitChangesPart
-import ai.kilocode.client.session.ui.prompt.mentionFileParts
+import ai.kilocode.client.session.ui.prompt.mentionParts as promptMentionParts
 import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.SessionDropOverlay
 import ai.kilocode.client.session.ui.SessionRootPanel
@@ -655,11 +654,15 @@ class SessionUi(
         spec.available,
     )
 
-    private fun mentionParts(text: String, paths: Set<String>): List<PromptPartDto> = buildList {
-        addAll(mentionFileParts(text, paths, workspace.directory))
-        if (text.contains(MentionAction.GIT_CHANGES.token)) {
-            gitChangesPart(text, runBlockingCancellable { workspaces.gitChanges(workspace.directory) })?.let(::add)
-        }
+    private fun mentionParts(text: String): List<PromptPartDto> = runBlockingCancellable {
+        val names = MentionAction.ALL.mapTo(mutableSetOf()) { it.name }
+        promptMentionParts(
+            text = text,
+            directory = workspace.directory,
+            reserved = names,
+            resolve = { path -> workspaces.files(workspace.directory, path).isNotEmpty() },
+            gitChanges = { workspaces.gitChanges(workspace.directory) },
+        )
     }
 
     private fun openFile(path: String) {

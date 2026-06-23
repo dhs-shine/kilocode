@@ -3,16 +3,49 @@ package ai.kilocode.client.session.ui.prompt
 import ai.kilocode.rpc.dto.PartSourceDto
 import ai.kilocode.rpc.dto.PartSourceTextDto
 import ai.kilocode.rpc.dto.PromptPartDto
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
+data class Mention(val value: String, val start: Int, val end: Int)
+
+fun promptMentions(text: String): List<Mention> = buildList {
+    var pos = 0
+    while (pos < text.length) {
+        val start = (pos until text.length).firstOrNull { !text[it].isWhitespace() } ?: return@buildList
+        val end = tokenEnd(text, start)
+        if (text[start] == '@' && end > start + 1) add(Mention(text.substring(start + 1, end), start, end))
+        pos = end + 1
+    }
+}
+
+fun fileMentions(text: String, reserved: Set<String>): List<Mention> {
+    val seen = mutableSetOf<String>()
+    return promptMentions(text).filter { item -> item.value !in reserved && seen.add(item.value) }
+}
+
+suspend fun mentionParts(
+    text: String,
+    directory: String,
+    reserved: Set<String>,
+    resolve: suspend (String) -> Boolean,
+    gitChanges: suspend () -> String?,
+): List<PromptPartDto> = coroutineScope {
+    val files = fileMentions(text, reserved)
+    val paths = files.map { item -> async { item.value to resolve(item.value) } }
+        .mapNotNullTo(mutableSetOf()) { item -> item.await().takeIf { it.second }?.first }
+    buildList {
+        addAll(mentionFileParts(text, paths, directory))
+        if (text.contains(MentionAction.GIT_CHANGES.token)) gitChangesPart(text, gitChanges())?.let(::add)
+    }
+}
+
 fun mentionFileParts(text: String, paths: Set<String>, directory: String): List<PromptPartDto> = buildList {
-    paths.forEach { path ->
-        val token = "@$path"
-        val start = text.mentionStart(token) ?: return@forEach
+    fileMentions(text, emptySet()).filter { item -> item.value in paths }.forEach { mention ->
         val target = runCatching {
-            val item = Path.of(path)
+            val item = Path.of(mention.value)
             if (item.isAbsolute) item else Path.of(directory).resolve(item).normalize()
         }.getOrNull() ?: return@forEach
         add(PromptPartDto(
@@ -20,7 +53,7 @@ fun mentionFileParts(text: String, paths: Set<String>, directory: String): List<
             mime = "text/plain",
             url = target.toUri().toString(),
             filename = target.fileName?.toString(),
-            source = source("file", token, start, path = path),
+            source = source("file", "@${mention.value}", mention.start, path = mention.value),
         ))
     }
 }
@@ -32,15 +65,12 @@ fun gitChangesPart(text: String, diff: String?): PromptPartDto? {
     return dataPart(spec.filename, value, source("file", spec.token, start, path = spec.uri))
 }
 
-private fun String.mentionStart(token: String): Int? {
-    var pos = indexOf(token)
-    while (pos >= 0) {
-        val end = pos + token.length
-        if ((pos == 0 || this[pos - 1].isWhitespace()) && (end == length || this[end].isWhitespace())) return pos
-        pos = indexOf(token, pos + 1)
-    }
-    return null
-}
+private fun String.mentionStart(token: String): Int? = promptMentions(this)
+    .firstOrNull { item -> "@${item.value}" == token }
+    ?.start
+
+private fun tokenEnd(text: String, start: Int): Int =
+    (start until text.length).firstOrNull { text[it].isWhitespace() } ?: text.length
 
 private fun dataPart(name: String, text: String, source: PartSourceDto? = null): PromptPartDto {
     val data = URLEncoder.encode(text, StandardCharsets.UTF_8).replace("+", "%20")
