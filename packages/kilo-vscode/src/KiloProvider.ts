@@ -1808,7 +1808,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
    * confirms) and the SSE session.deleted path (cascaded child deletes and
    * external CLI/TUI deletes that arrive via the event stream), so both paths
    * leave trackedSessionIds, sessionDirectories, and the related Maps in the
-   * same state.
+   * same state — including currentSession / contextSessionID / focused-session
+   * registration. Without clearing those three, resolveSession() would still
+   * see the deleted id via this.currentSession and the next send would target
+   * a session the backend has already deleted.
    */
   private pruneDeletedSession(sessionID: string): void {
     this.trackedSessionIds.delete(sessionID)
@@ -1823,6 +1826,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.refreshes.delete(sessionID)
     this.sessionStatusMap.delete(sessionID)
     this.connectionService.pruneSession(sessionID)
+    if (this.currentSession?.id === sessionID) {
+      this.contextSessionID = undefined
+      this.setCurrentSession(null)
+    }
+    if (this.streams.active === sessionID) this.focusSession(undefined)
   }
 
   /**

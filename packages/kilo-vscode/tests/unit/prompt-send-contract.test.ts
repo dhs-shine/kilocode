@@ -19,6 +19,7 @@ const SESSION_FILE = path.join(ROOT, "webview-ui/src/context/session.tsx")
 const CHATVIEW_FILE = path.join(ROOT, "webview-ui/src/components/chat/ChatView.tsx")
 const PROMPT_UTILS_FILE = path.join(ROOT, "webview-ui/src/components/chat/prompt-input-utils.ts")
 const KILOPROVIDER_FILE = path.join(ROOT, "src/KiloProvider.ts")
+const CONNECTION_SERVICE_FILE = path.join(ROOT, "src/services/cli-backend/connection-service.ts")
 
 function readFile(filePath: string): string {
   return fs.readFileSync(filePath, "utf-8")
@@ -174,5 +175,83 @@ describe("KiloProvider pruneDeletedSession contract", () => {
     const match = source.match(/pruneDeletedSession\(sessionID: string\): void \{([\s\S]*?)\n  \}/)
     expect(match).not.toBeNull()
     expect(match![1]).toContain("this.sessionStatusMap.delete(sessionID)")
+  })
+
+  it("clears currentSession and contextSessionID when the deleted id matches", () => {
+    // The SSE session.deleted path runs pruneDeletedSession; if it leaves
+    // currentSession pointing at the deleted session, resolveSession() in the
+    // next sendMessage falls back to currentSession.id and targets a session
+    // the backend has already deleted. The user-initiated delete path
+    // (handleDeleteSession) does this clearing after the prune; pruneDeletedSession
+    // itself must do the same so the SSE path is symmetric.
+    const match = source.match(/pruneDeletedSession\(sessionID: string\): void \{([\s\S]*?)\n  \}/)
+    expect(match).not.toBeNull()
+    expect(match![1]).toMatch(
+      /if \(this\.currentSession\?\.id === sessionID\)\s*\{[\s\S]*?this\.contextSessionID = undefined[\s\S]*?this\.setCurrentSession\(null\)/,
+    )
+  })
+
+  it("unfocuses the streams when the deleted id matches the focused session", () => {
+    // Without this, connectionService.focused still reports the deleted id to
+    // the backend (viewed.focused), and focusSession() never calls
+    // unregisterFocused for this instance.
+    const match = source.match(/pruneDeletedSession\(sessionID: string\): void \{([\s\S]*?)\n  \}/)
+    expect(match).not.toBeNull()
+    expect(match![1]).toMatch(/if \(this\.streams\.active === sessionID\) this\.focusSession\(undefined\)/)
+  })
+})
+
+describe("sendMessage / sendCommand draft id contract", () => {
+  const source = readFile(SESSION_FILE)
+
+  it("sendMessage mints a draftID when there is no current session and none was supplied", () => {
+    // External session deletions leave currentSessionID() undefined and clear
+    // draftSessionID(). Without minting a draftID here, the webview posts
+    // {type: "sendMessage", sessionID: undefined, draftID: undefined} and the
+    // extension's sessionCreated echo has no key to migrate the in-flight draft
+    // from ":pending:<id>" to ":session:<newSessionId>". The user loses the
+    // typed message and the new session starts empty.
+    const body = extractFunctionBody(source, "sendMessage")
+    expect(body).toMatch(/!sid && !draftID \? crypto\.randomUUID\(\) : draftID/)
+  })
+
+  it("sendCommand mints a draftID when there is no current session and none was supplied", () => {
+    const body = extractFunctionBody(source, "sendCommand")
+    expect(body).toMatch(/!sid && !draftID \? crypto\.randomUUID\(\) : draftID/)
+  })
+})
+
+describe("PromptInput restoreFailed fallback contract", () => {
+  const PROMPT_FILE = path.join(ROOT, "webview-ui/src/components/chat/PromptInput.tsx")
+  const source = readFile(PROMPT_FILE)
+
+  it("ignores failed.sessionID when it does not match the current session and there is no current session", () => {
+    // External deletes can leave failed.sessionID pointing at a session that is
+    // no longer currentSessionID() (or no current session at all). In that case
+    // the session-derived target key is stale and the restoration would be
+    // skipped, losing the user's text. Treat a stale sessionID as undefined so
+    // restoreFailed falls back to the pending/draftID or "new" key the original
+    // send was actually scoped under.
+    const match = source.match(/const restoreFailed = \(failed: SendMessageFailedMessage\) => \{([\s\S]*?)\n  \}/)
+    expect(match).not.toBeNull()
+    expect(match![1]).toMatch(/const effectiveSessionID/)
+    expect(match![1]).toMatch(/failed\.sessionID && \(!currentSid \|\| failed\.sessionID === currentSid\)/)
+    expect(match![1]).toMatch(/sessionDraftKey\(effectiveSessionID\)/)
+  })
+})
+
+describe("KiloConnectionService pruneSession contract", () => {
+  const source = readFile(CONNECTION_SERVICE_FILE)
+
+  it("drops the deleted session from focused and opened Maps", () => {
+    // KiloProvider's pruneDeletedSession calls connectionService.pruneSession.
+    // Without clearing focused/opened entries whose value is the deleted id,
+    // the backend keeps receiving viewed.focused with the dead session id and
+    // any background tab opener stays registered for it.
+    const match = source.match(/pruneSession\(sessionId: string\): void \{([\s\S]*?)\n  \}/)
+    expect(match).not.toBeNull()
+    expect(match![1]).toMatch(/this\.focused\.delete\(key\)/)
+    expect(match![1]).toMatch(/this\.opened\.(?:set|delete)/)
+    expect(match![1]).toMatch(/this\.flushViewed\(\)/)
   })
 })

@@ -333,11 +333,19 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   })
 
   const restoreFailed = (failed: SendMessageFailedMessage) => {
-    // Only restore a failed draft when the user has not started another one.
+    // The session a send targeted may no longer be current by the time the
+    // failure arrives (e.g. the active session was deleted externally while
+    // the round-trip was in flight, or the extension created a new session
+    // mid-send). Prefer the failure's draftID when the session id is stale or
+    // missing, since that's the only key the original draft was saved under.
+    const currentSid = session.currentSessionID()
+    const effectiveSessionID =
+      failed.sessionID && (!currentSid || failed.sessionID === currentSid) ? failed.sessionID : undefined
     const target = scopeDraftKey(
       boxKey(),
-      sessionDraftKey(failed.sessionID) ?? pendingDraftKey(failed.draftID) ?? "new",
+      sessionDraftKey(effectiveSessionID) ?? pendingDraftKey(failed.draftID) ?? "new",
     )
+    // Only restore a failed draft when the user has not started another one.
     if (target !== draftKey() || text().trim() || reviewComments().length > 0 || imageAttach.images().length > 0) return
 
     const draft = failed.review ? reviewBody(failed.review, failed.text) : failed.text

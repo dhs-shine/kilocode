@@ -2207,7 +2207,14 @@ export const SessionProvider: ParentComponent = (props) => {
       rejectQuestion(q.id)
     }
 
-    const scope = draftID ?? sid
+    // When there is no current session and the caller didn't supply a draftID
+    // (e.g. the active session was just deleted externally), mint a fresh
+    // draftID so the extension can echo it back in sessionCreated and the
+    // webview can migrate the in-flight draft from ":pending:<id>" into the
+    // newly created session. Without this, the round-trip has no key to tie
+    // the unsent text to the new session and the user's typed message is lost.
+    const effectiveDraftID = !sid && !draftID ? crypto.randomUUID() : draftID
+    const scope = effectiveDraftID ?? sid
     if (scope) {
       clearClose(scope)
       addOptimistic(scope, messageID, text, files, review)
@@ -2221,7 +2228,7 @@ export const SessionProvider: ParentComponent = (props) => {
       text,
       messageID,
       sessionID: sid,
-      draftID,
+      draftID: effectiveDraftID,
       providerID,
       modelID,
       agent,
@@ -2275,7 +2282,10 @@ export const SessionProvider: ParentComponent = (props) => {
       rejectQuestion(q.id)
     }
 
-    const scope = draftID ?? sid
+    // See sendMessage: mint a draftID when there's no current session so the
+    // extension can attach the round-trip sessionCreated migration to it.
+    const effectiveDraftID = !sid && !draftID ? crypto.randomUUID() : draftID
+    const scope = effectiveDraftID ?? sid
     if (scope) {
       clearClose(scope)
       addOptimistic(scope, messageID, `/${command} ${args}`.trim(), files)
@@ -2290,7 +2300,7 @@ export const SessionProvider: ParentComponent = (props) => {
       arguments: args,
       messageID,
       sessionID: sid,
-      draftID,
+      draftID: effectiveDraftID,
       providerID,
       modelID,
       agent,
