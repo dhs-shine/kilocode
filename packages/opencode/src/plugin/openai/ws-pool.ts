@@ -142,7 +142,7 @@ export function createWebSocketFetch(options?: CreateWebSocketFetchOptions) {
       })
       if (await firstEvent) return response
       if (!entry.fallback) return response
-      discard(response)
+      discard(response) // kilocode_change
       log.debug("http fallback", { key, reason: "websocket_retries_exhausted" })
       return httpFetch(input, httpInit)
     } catch (error) {
@@ -216,11 +216,13 @@ function failedResponse(error: ProviderError.ResponseStreamError) {
   )
 }
 
+// kilocode_change start
 function discard(response: Response) {
   void response.text().catch((error) => {
     log.debug("discard websocket response", { error: error instanceof Error ? error.message : String(error) })
   })
 }
+// kilocode_change end
 
 async function socket(
   entry: PoolEntry,
