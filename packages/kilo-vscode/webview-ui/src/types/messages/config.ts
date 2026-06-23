@@ -44,6 +44,7 @@ export interface ExperimentalConfig {
   primary_tools?: string[]
   continue_loop_on_deny?: boolean
   mcp_timeout?: number
+  sandbox?: boolean
 }
 
 export interface CommitMessageConfig {
