@@ -84,11 +84,13 @@ jobs:
 
       - uses: ./.github/actions/setup-bun
 
+      # kilocode_change start
       - name: Setup Zig for Linux sandbox helpers
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
         with:
           version: 0.14.0
           use-cache: false
+      # kilocode_change end
 
       - name: Build
         id: build
@@ -225,9 +227,9 @@ jobs:
               # as optional packages and must be installed for any Bun-compiled musl binary to run.
               apk add --no-cache libstdc++ libgcc
               # kilocode_change end
-              binary="/dist/$PACKAGE/bin/kilo"
+              binary="/dist/$PACKAGE/bin/kilo" # kilocode_change
               "$binary" --version
-              "/dist/$PACKAGE/bin/bwrap" --version
+              "/dist/$PACKAGE/bin/bwrap" --version # kilocode_change
               root="$(mktemp -d)"
               trap '\''rm -rf "$root"'\'' EXIT
               unset KILO_MODELS_PATH KILO_MODELS_URL KILO_CONFIG KILO_CONFIG_DIR
