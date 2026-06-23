@@ -93,5 +93,9 @@ html[data-theme="kilo-vscode"]
     border-radius: 0;
     background: transparent;
     box-shadow: none;
+
+    [data-component="markdown-code"] {
+      background: transparent;
+    }
   }
 }
