@@ -66,10 +66,13 @@ jobs:
       # kilocode_change start
       - name: Setup Zig for Linux sandbox helper
         if: runner.os == 'Linux'
-        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
-        with:
-          version: 0.14.0
-          use-cache: false
+        run: |
+          curl --fail --location --retry 3 \
+            https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz \
+            --output "$RUNNER_TEMP/zig.tar.xz"
+          echo "473ec26806133cf4d1918caf1a410f8403a13d979726a9045b421b685031a982  $RUNNER_TEMP/zig.tar.xz" | sha256sum --check --status
+          tar -xJf "$RUNNER_TEMP/zig.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/zig-linux-x86_64-0.14.0" >> "$GITHUB_PATH"
 
       - name: Build Linux sandbox helper
         if: runner.os == 'Linux'
@@ -77,7 +80,6 @@ jobs:
           bun packages/opencode/script/kilocode/bubblewrap.ts --arch x64 --output "$RUNNER_TEMP/bwrap"
           echo "KILO_BWRAP_PATH=$RUNNER_TEMP/bwrap" >> "$GITHUB_ENV"
       # kilocode_change end
-
       - name: Configure git identity
         run: |
           git config --global user.email "kilo-maintainer[bot]@users.noreply.github.com"
@@ -105,7 +107,6 @@ jobs:
           sudo env PATH="$PATH" KILO_BWRAP_PATH="$KILO_BWRAP_PATH" KILO_TEST_PRIVILEGED_MOUNTS=1 \
             "$(command -v bun)" test packages/core/test/kilocode/linux-sandbox.test.ts -t "nested mount"
       # kilocode_change end
-
       - name: Run HttpApi exerciser gates
         if: runner.os == 'Linux' # kilocode_change
         working-directory: packages/opencode
