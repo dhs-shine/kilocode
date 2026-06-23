@@ -2,7 +2,7 @@ import { afterEach, describe, expect } from "bun:test"
 import path from "path"
 import fs from "fs/promises"
 import { fileURLToPath, pathToFileURL } from "url"
-import { Effect, Exit, Layer, Result, Schema } from "effect"
+import { Effect, Exit, Layer, Result, Schema } from "effect" // kilocode_change
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { ToolRegistry } from "@/tool/registry"
 import { Tool } from "@/tool/tool"
@@ -108,9 +108,11 @@ const scout = testEffect(
 const withBrokenPlugin = testEffect(
   Layer.mergeAll(registryLayer({ plugin: brokenPluginLayer }), node, Agent.defaultLayer),
 )
+// kilocode_change start
 const sandboxed = testEffect(
   Layer.mergeAll(registryLayer({ flags: { experimentalLspTool: true } }), node, Agent.defaultLayer),
-) // kilocode_change
+)
+// kilocode_change end
 
 afterEach(async () => {
   await disposeAllInstances()

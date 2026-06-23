@@ -5,14 +5,17 @@ import type { ComponentProps, ParentProps } from "solid-js"
 export interface SwitchProps extends ParentProps<ComponentProps<typeof Kobalte>> {
   hideLabel?: boolean
   description?: string
-  inputProps?: ComponentProps<typeof Kobalte.Input>
+  inputProps?: ComponentProps<typeof Kobalte.Input> // kilocode_change
 }
 
 export function Switch(props: SwitchProps) {
-  const [local, others] = splitProps(props, ["children", "class", "hideLabel", "description", "inputProps"])
+  const [local, others] = splitProps(
+    props,
+    ["children", "class", "hideLabel", "description", "inputProps"], // kilocode_change
+  )
   return (
     <Kobalte {...others} class={local.class} data-component="switch">
-      <Kobalte.Input {...local.inputProps} data-slot="switch-input" />
+      <Kobalte.Input {...local.inputProps} data-slot="switch-input" /> {/* kilocode_change */}
       <Show when={local.children}>
         <Kobalte.Label data-slot="switch-label" classList={{ "sr-only": local.hideLabel }}>
           {local.children}
