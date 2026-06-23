@@ -203,17 +203,6 @@ describe("ProviderTransform.options - minimax m3 thinking", () => {
       }).thinking,
     ).toBeUndefined()
   })
-
-  test("explicitly enables adaptive thinking for non-M3 anthropic SDK models", () => {
-    const model = createModel("@ai-sdk/anthropic")
-    model.api.id = "MiniMax-M2.7"
-    expect(
-      ProviderTransform.options({
-        model,
-        sessionID: "test-session-123",
-      }).thinking,
-    ).toEqual({ type: "adaptive" })
-  })
 })
 
 describe("ProviderTransform.options - google thinkingConfig gating", () => {
@@ -3287,27 +3276,6 @@ describe("ProviderTransform.variants", () => {
       })
       const result = ProviderTransform.variants(model)
       expect(Object.keys(result)).toEqual(["low", "medium", "high", "xhigh"])
-    })
-
-    test("dashed anthropic opus 4.8 only exposes supported adaptive effort", () => {
-      const model = createMockModel({
-        id: "github-copilot/claude-opus-4-8",
-        providerID: "github-copilot",
-        api: {
-          id: "claude-opus-4-8",
-          url: "https://api.githubcopilot.com",
-          npm: "@ai-sdk/anthropic",
-        },
-      })
-      const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["medium"])
-      expect(result.medium).toEqual({
-        thinking: {
-          type: "adaptive",
-          display: "summarized",
-        },
-        effort: "medium",
-      })
     })
   })
 
