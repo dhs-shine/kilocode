@@ -12,7 +12,7 @@ declare const KILO_SANDBOX_MUTATION_WORKER_PATH: string
 
 function worker() {
   if (typeof KILO_SANDBOX_MUTATION_WORKER_PATH === "undefined") {
-    return { path: fileURLToPath(new URL("./mutation-worker.ts", import.meta.url)), environment: {} }
+    return { path: fileURLToPath(new URL("./kilo-sandbox-mutation-worker.ts", import.meta.url)), environment: {} }
   }
   const path = KILO_SANDBOX_MUTATION_WORKER_PATH.startsWith(".")
     ? fileURLToPath(new URL(KILO_SANDBOX_MUTATION_WORKER_PATH, import.meta.url))
@@ -202,7 +202,10 @@ function returnsValue(
 export function batchMutations<A, E, R>(effect: Effect.Effect<A, E, R>) {
   return Effect.gen(function* () {
     const upstream = yield* currentRunner
-    const state: { profile?: Profile; operations: BatchOperation[] } = { operations: [] }
+    const state: { closed: boolean; profile?: Profile; operations: BatchOperation[] } = {
+      closed: false,
+      operations: [],
+    }
     const flush = () =>
       Effect.gen(function* () {
         const profile = state.profile
@@ -213,6 +216,7 @@ export function batchMutations<A, E, R>(effect: Effect.Effect<A, E, R>) {
       })
     const collect: Runner = (profile, request) =>
       Effect.gen(function* () {
+        if (state.closed) return yield* upstream(profile, request)
         if (state.profile && state.profile !== profile) yield* flush()
         if (returnsValue(request)) {
           yield* flush()
@@ -223,6 +227,7 @@ export function batchMutations<A, E, R>(effect: Effect.Effect<A, E, R>) {
         else state.operations.push(request)
         return undefined
       })
-    return yield* withRunner(collect, effect).pipe(Effect.onExit(() => flush()))
+    const close = flush().pipe(Effect.ensuring(Effect.sync(() => (state.closed = true))))
+    return yield* withRunner(collect, effect).pipe(Effect.onExit(() => close))
   })
 }

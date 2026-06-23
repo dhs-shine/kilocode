@@ -6,7 +6,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { Effect, FileSystem, Layer, Scope, Stream } from "effect"
 import { run } from "../src/context"
 import { layer } from "../src/filesystem"
-import { batchMutations, withRunner, type Runner } from "../src/mutation"
+import { batchMutations, currentRunner, withRunner, type Runner } from "../src/mutation"
 import type { Request } from "../src/mutation-protocol"
 import type { Profile } from "../src/profile"
 
@@ -118,6 +118,14 @@ describe("sandbox FileSystem", () => {
     expect(exit._tag).toBe("Failure")
     expect(requests).toHaveLength(1)
     expect(requests[0]).toMatchObject({ op: "batch", operations: [{ op: "writeFileString" }] })
+  })
+
+  test("delegates runners retained after a batch closes", async () => {
+    const requests: Request[] = []
+    const runner: Runner = (_profile, request) => Effect.sync(() => requests.push(request)).pipe(Effect.as(undefined))
+    const escaped = await execute(withRunner(runner, batchMutations(currentRunner)))
+    await execute(escaped(makeProfile(allowed), { op: "remove", path: path.join(allowed, "value.txt") }))
+    expect(requests).toEqual([{ op: "remove", path: path.join(allowed, "value.txt") }])
   })
 
   test("allows read-only open but guards writable open and sink", async () => {

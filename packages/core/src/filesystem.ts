@@ -1,5 +1,5 @@
 import { NodeFileSystem } from "@effect/platform-node"
-import { batchMutations, decorateFileSystem } from "@kilocode/sandbox" // kilocode_change
+import { decorateFileSystem, ensureDirectory } from "@kilocode/sandbox" // kilocode_change
 import { dirname, isAbsolute, join, relative, resolve as pathResolve, sep } from "path" // kilocode_change - harden containment checks
 import { realpathSync } from "fs"
 import * as NFS from "fs/promises"
@@ -8,20 +8,6 @@ import { Context, Effect, FileSystem, Layer, Schema } from "effect"
 import type { PlatformError } from "effect/PlatformError"
 import { Glob } from "./util/glob"
 import { serviceUse } from "./effect/service-use"
-
-// kilocode_change start - Windows-resilient, sandbox-confined mkdir -p.
-// Recursive mkdir should be idempotent, but Windows reparse points can still
-// produce EEXIST. Keep that compatibility while routing the syscall through
-// the decorated filesystem so an active OS sandbox confines it.
-function mkdirSafe(fs: FileSystem.FileSystem, dir: string) {
-  return fs.makeDirectory(dir, { recursive: true }).pipe(
-    Effect.catchIf(
-      (err) => err.reason._tag === "AlreadyExists",
-      () => Effect.void,
-    ),
-  )
-}
-// kilocode_change end
 
 export namespace AppFileSystem {
   export class FileSystemError extends Schema.TaggedErrorClass<FileSystemError>()("FileSystemError", {
@@ -104,16 +90,12 @@ export namespace AppFileSystem {
 
       const writeJson = Effect.fn("FileSystem.writeJson")(function* (path: string, data: unknown, mode?: number) {
         const content = JSON.stringify(data, null, 2)
-        yield* batchMutations(
-          Effect.gen(function* () {
-            yield* fs.writeFileString(path, content)
-            if (mode) yield* fs.chmod(path, mode)
-          }),
-        ) // kilocode_change - confine ordered write and mode changes in one worker
+        yield* fs.writeFileString(path, content)
+        if (mode) yield* fs.chmod(path, mode)
       })
 
       const ensureDir = Effect.fn("FileSystem.ensureDir")(function* (path: string) {
-        yield* mkdirSafe(fs, path) // kilocode_change - mutate through the sandbox-confined filesystem
+        yield* ensureDirectory(fs, path) // kilocode_change - mutate through the sandbox-confined filesystem
       })
 
       const writeWithDirs = Effect.fn("FileSystem.writeWithDirs")(function* (
@@ -121,14 +103,19 @@ export namespace AppFileSystem {
         content: string | Uint8Array,
         mode?: number,
       ) {
-        yield* batchMutations(
-          Effect.gen(function* () {
-            yield* mkdirSafe(fs, dirname(path))
-            if (typeof content === "string") yield* fs.writeFileString(path, content)
-            else yield* fs.writeFile(path, content)
-            if (mode) yield* fs.chmod(path, mode)
-          }),
-        ) // kilocode_change - confine parent creation, write, and mode changes in one worker
+        const write = typeof content === "string" ? fs.writeFileString(path, content) : fs.writeFile(path, content)
+
+        yield* write.pipe(
+          Effect.catchIf(
+            (e) => e.reason._tag === "NotFound",
+            () =>
+              Effect.gen(function* () {
+                yield* ensureDirectory(fs, dirname(path)) // kilocode_change - sandbox-confined mkdir
+                yield* write
+              }),
+          ),
+        )
+        if (mode) yield* fs.chmod(path, mode)
       })
 
       const glob = Effect.fn("FileSystem.glob")(function* (pattern: string, options?: Glob.Options) {

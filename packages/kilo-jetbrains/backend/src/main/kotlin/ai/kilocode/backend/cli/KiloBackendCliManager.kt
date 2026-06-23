@@ -88,7 +88,7 @@ class KiloBackendCliManager(
         val platform = platform()
         val exe = if (SystemInfo.isWindows) "kilo.exe" else "kilo"
         val target = File(PathManager.getSystemPath(), "kilo/bin/$exe")
-        val worker = File(target.parentFile, "sandbox-mutation-worker.js")
+        val worker = File(target.parentFile, "kilo-sandbox-mutation-worker.js")
 
         if (forceExtract) {
             log.info("Force re-extracting CLI resources under ${target.parentFile.absolutePath}")
@@ -99,7 +99,7 @@ class KiloBackendCliManager(
 
         extractResource("cli/$platform/$exe", target, executable = true)
         if (worker.exists()) worker.delete()
-        extractResource("cli/$platform/sandbox-mutation-worker.js", worker, executable = false)
+        extractResource("cli/$platform/kilo-sandbox-mutation-worker.js", worker, executable = false)
         return target
     }
 

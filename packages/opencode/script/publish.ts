@@ -118,7 +118,7 @@ if (!Script.preview) {
     "",
     "package() {",
     '  install -Dm755 ./kilo "${pkgdir}/usr/lib/kilo/kilo"', // kilocode_change
-    '  install -Dm644 ./sandbox-mutation-worker.js "${pkgdir}/usr/lib/kilo/sandbox-mutation-worker.js"', // kilocode_change
+    '  install -Dm644 ./kilo-sandbox-mutation-worker.js "${pkgdir}/usr/lib/kilo/kilo-sandbox-mutation-worker.js"', // kilocode_change
     '  install -dm755 "${pkgdir}/usr/bin" "${pkgdir}/usr/lib/kilo/tree-sitter"', // kilocode_change
     '  cp -r ./tree-sitter/. "${pkgdir}/usr/lib/kilo/tree-sitter/"', // kilocode_change
     "  printf '%s\\n' '#!/bin/sh' 'export KILO_TREE_SITTER_WASM_DIR=/usr/lib/kilo/tree-sitter' 'exec /usr/lib/kilo/kilo \"$@\"' > \"${pkgdir}/usr/bin/kilo\"", // kilocode_change
@@ -165,7 +165,7 @@ if (!Script.preview) {
     `      sha256 "${macX64Sha}"`,
     "",
     "      def install",
-    '        libexec.install "kilo", "sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
+    '        libexec.install "kilo", "kilo-sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
     '        (bin/"kilo").write_env_script libexec/"kilo", KILO_TREE_SITTER_WASM_DIR: libexec/"tree-sitter"', // kilocode_change
     "      end",
     "    end",
@@ -174,7 +174,7 @@ if (!Script.preview) {
     `      sha256 "${macArm64Sha}"`,
     "",
     "      def install",
-    '        libexec.install "kilo", "sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
+    '        libexec.install "kilo", "kilo-sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
     '        (bin/"kilo").write_env_script libexec/"kilo", KILO_TREE_SITTER_WASM_DIR: libexec/"tree-sitter"', // kilocode_change
     "      end",
     "    end",
@@ -185,7 +185,7 @@ if (!Script.preview) {
     `      url "https://github.com/Kilo-Org/kilocode/releases/download/v${Script.version}/kilo-linux-x64.tar.gz"`,
     `      sha256 "${x64Sha}"`,
     "      def install",
-    '        libexec.install "kilo", "sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
+    '        libexec.install "kilo", "kilo-sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
     '        (bin/"kilo").write_env_script libexec/"kilo", KILO_TREE_SITTER_WASM_DIR: libexec/"tree-sitter"', // kilocode_change
     "      end",
     "    end",
@@ -193,7 +193,7 @@ if (!Script.preview) {
     `      url "https://github.com/Kilo-Org/kilocode/releases/download/v${Script.version}/kilo-linux-arm64.tar.gz"`,
     `      sha256 "${arm64Sha}"`,
     "      def install",
-    '        libexec.install "kilo", "sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
+    '        libexec.install "kilo", "kilo-sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
     '        (bin/"kilo").write_env_script libexec/"kilo", KILO_TREE_SITTER_WASM_DIR: libexec/"tree-sitter"', // kilocode_change
     "      end",
     "    end",

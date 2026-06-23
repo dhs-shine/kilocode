@@ -321,11 +321,13 @@ describe.skipIf(process.platform !== "darwin").serial("real macOS sandbox confin
           ]),
         )
         expect(content).toEqual(["written", "edited\n", "patched\n", "second\n"])
-        expect(gate.requests).toHaveLength(1)
-        expect(gate.requests[0]).toMatchObject({
-          op: "batch",
-          operations: [{ op: "makeDirectory" }, { op: "writeFile" }, { op: "makeDirectory" }, { op: "writeFile" }],
-        })
+        expect(gate.requests).toHaveLength(2)
+        for (const request of gate.requests) {
+          expect(request).toMatchObject({
+            op: "batch",
+            operations: [{ op: "makeDirectory" }, { op: "writeFile" }],
+          })
+        }
       }),
     ),
   )

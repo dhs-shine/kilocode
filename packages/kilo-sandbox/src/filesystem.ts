@@ -12,6 +12,15 @@ interface TempOptions {
   readonly suffix?: string | undefined
 }
 
+export function ensureDirectory(fs: FileSystem.FileSystem, path: string) {
+  return fs.makeDirectory(path, { recursive: true }).pipe(
+    Effect.catchIf(
+      (err) => err.reason._tag === "AlreadyExists",
+      () => Effect.void,
+    ),
+  )
+}
+
 function execute(profile: Profile, request: Request, effect: Effect.Effect<void, PlatformError.PlatformError>) {
   return Effect.gen(function* () {
     yield* effect

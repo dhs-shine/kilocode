@@ -20,6 +20,7 @@ const generated = await import("./generate.ts")
 import { Script } from "@opencode-ai/script"
 import pkg from "../package.json"
 import { LanceDBRuntime } from "../src/kilocode/lancedb" // kilocode_change
+import { KiloSandboxWorker } from "./kilocode/kilo-sandbox-worker" // kilocode_change
 
 // Load migrations from migration directories
 const migrationDirs = (
@@ -56,7 +57,6 @@ const baselineFlag = process.argv.includes("--baseline")
 const skipInstall = process.argv.includes("--skip-install")
 const sourcemapsFlag = process.argv.includes("--sourcemaps")
 const plugin = createSolidTransformPlugin()
-const sandboxWorkerName = "sandbox-mutation-worker.js" // kilocode_change
 // kilocode_change - packages/app was removed; the web UI embed step is no longer applicable
 
 // kilocode_change start - codebase indexing
@@ -104,25 +104,6 @@ async function copyKiloConsole(input: string, outputDir: string) {
 }
 // kilocode_change end
 
-// kilocode_change start - package the finite filesystem worker without the CLI application graph
-async function bundleSandboxWorker() {
-  const result = await Bun.build({
-    entrypoints: ["../kilo-sandbox/src/mutation-worker.ts"],
-    target: "bun",
-    format: "esm",
-    minify: true,
-  })
-  if (!result.success || result.outputs.length !== 1) throw new Error("Could not bundle sandbox mutation worker")
-  return result.outputs[0]
-}
-
-async function copySandboxWorker(worker: Blob, outputDir: string) {
-  const target = path.join(outputDir, sandboxWorkerName)
-  await Bun.write(target, worker)
-  console.log(`copied sandbox mutation worker to ${target}`)
-}
-// kilocode_change end
-
 // kilocode_change start - validate compiled binaries load the embedded models snapshot
 function smokeEnv(root: string) {
   const env = { ...process.env }
@@ -153,51 +134,6 @@ async function smokeModels(binaryPath: string) {
     await fs.promises
       .rm(root, { recursive: true, force: true })
       .catch((err) => console.warn(`Failed to remove smoke test directory ${root}`, err))
-  }
-}
-
-async function smokeSandboxWorker(binaryPath: string) {
-  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "kilo-sandbox-worker-"))
-  const target = path.join(root, "value.txt")
-  const worker = path.join(path.dirname(binaryPath), sandboxWorkerName)
-  try {
-    const proc = Bun.spawn([binaryPath, worker], {
-      env: { ...process.env, BUN_BE_BUN: "1" },
-      stdin: "pipe",
-      stdout: "pipe",
-      stderr: "pipe",
-      windowsHide: true,
-    })
-    await proc.stdin.write(
-      JSON.stringify({
-        op: "batch",
-        operations: [
-          { op: "makeDirectory", path: root, options: { recursive: true } },
-          { op: "writeFileString", path: target, data: "worker" },
-        ],
-      }),
-    )
-    await proc.stdin.end()
-    const [stdout, stderr, code] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-      proc.exited,
-    ])
-    if (code !== 0) throw new Error(stderr || `Sandbox mutation worker exited ${code}`)
-    const response: unknown = JSON.parse(stdout)
-    if (
-      typeof response !== "object" ||
-      response === null ||
-      !("ok" in response) ||
-      response.ok !== true ||
-      (await Bun.file(target).text()) !== "worker"
-    ) {
-      throw new Error("Packaged sandbox mutation worker did not write the expected content")
-    }
-  } finally {
-    await fs.promises
-      .rm(root, { recursive: true, force: true })
-      .catch((err) => console.warn(`Failed to remove sandbox worker smoke test directory ${root}`, err))
   }
 }
 // kilocode_change end
@@ -316,7 +252,7 @@ const targets = singleFlag
 
 await $`rm -rf dist`
 const kiloConsoleDist = await buildKiloConsole() // kilocode_change
-const sandboxWorker = await bundleSandboxWorker() // kilocode_change
+const kiloSandboxWorker = await KiloSandboxWorker.bundle() // kilocode_change
 
 const binaries: Record<string, string> = {}
 if (!skipInstall) {
@@ -390,7 +326,7 @@ for (const item of targets) {
       KILO_WORKER_PATH: workerPath,
       KILO_SESSION_EXPORT_WORKER_PATH: sessionExportWorkerPath, // kilocode_change
       KILO_INDEXING_WORKER_PATH: indexingWorkerPath, // kilocode_change
-      KILO_SANDBOX_MUTATION_WORKER_PATH: JSON.stringify(sandboxWorkerName), // kilocode_change
+      KILO_SANDBOX_MUTATION_WORKER_PATH: JSON.stringify(KiloSandboxWorker.filename), // kilocode_change
       KILO_CHANNEL: `'${Script.channel}'`,
       KILO_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
       KILO_BUILD_KIND: Script.release ? `'release'` : `'source'`, // kilocode_change
@@ -399,7 +335,7 @@ for (const item of targets) {
 
   await copyTreeSitterWasms(path.resolve(dir, `dist/${name}/bin`)) // kilocode_change
   await copyKiloConsole(kiloConsoleDist, path.resolve(dir, `dist/${name}/bin`)) // kilocode_change
-  await copySandboxWorker(sandboxWorker, path.resolve(dir, `dist/${name}/bin`)) // kilocode_change
+  await KiloSandboxWorker.copy(kiloSandboxWorker, path.resolve(dir, `dist/${name}/bin`)) // kilocode_change
 
   // kilocode_change start - fix Nix-specific ELF interpreter paths for Linux binaries
   if (item.os === "linux") {
@@ -432,8 +368,8 @@ for (const item of targets) {
       console.log(`Running smoke test: ${binaryPath} --pure models anthropic`)
       await smokeModels(binaryPath)
       console.log("Models snapshot smoke test passed")
-      await smokeSandboxWorker(binaryPath)
-      console.log("Sandbox mutation worker smoke test passed")
+      await KiloSandboxWorker.smoke(binaryPath) // kilocode_change
+      console.log("Kilo sandbox mutation worker smoke test passed") // kilocode_change
     } catch (e) {
       console.error(`Smoke test failed for ${name}:`, e)
       process.exit(1)

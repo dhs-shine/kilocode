@@ -3,11 +3,11 @@ import { $ } from "bun"
 import { join, relative, dirname, basename } from "node:path"
 import { chmodSync, statSync, rmSync, readdirSync, existsSync } from "node:fs"
 import {
-  copySandboxWorker,
+  copyKiloSandboxWorker,
   copyTreeSitterResources,
-  hasSandboxWorker,
+  hasKiloSandboxWorker,
   hasTreeSitterResources,
-  sandboxWorkerForBinary,
+  kiloSandboxWorkerForBinary,
 } from "../src/services/cli-backend/cli-resources"
 import { currentFfmpegTarget, ensureFfmpegForTarget } from "./ffmpeg-helper"
 
@@ -105,7 +105,7 @@ async function findKiloBinaryInOpencodeDist(): Promise<string | null> {
   const preferred = join(distDir, `@kilocode`, tag, "bin", binName)
   try {
     statSync(preferred)
-    if (!hasTreeSitterResources(preferred) || !hasSandboxWorker(preferred)) return null
+    if (!hasTreeSitterResources(preferred) || !hasKiloSandboxWorker(preferred)) return null
     return preferred
   } catch {
     // fall through to generic search
@@ -131,7 +131,7 @@ async function findKiloBinaryInOpencodeDist(): Promise<string | null> {
         continue
       }
       if (e.isFile() && (e.name === "kilo" || e.name === "kilo.exe") && basename(dirname(p)) === "bin") {
-        if (!hasTreeSitterResources(p) || !hasSandboxWorker(p)) continue
+        if (!hasTreeSitterResources(p) || !hasKiloSandboxWorker(p)) continue
         return p
       }
     }
@@ -171,15 +171,15 @@ async function ensureBuiltBinary(): Promise<string> {
   return built
 }
 
-async function bundleSandboxWorker() {
+async function bundleKiloSandboxWorker() {
   const result = await Bun.build({
-    entrypoints: [join(sandboxDir, "src", "mutation-worker.ts")],
+    entrypoints: [join(sandboxDir, "src", "kilo-sandbox-mutation-worker.ts")],
     target: "bun",
     format: "esm",
     minify: true,
   })
-  if (!result.success || result.outputs.length !== 1) throw new Error("Could not bundle sandbox mutation worker")
-  await Bun.write(sandboxWorkerForBinary(targetBinPath), result.outputs[0])
+  if (!result.success || result.outputs.length !== 1) throw new Error("Could not bundle Kilo sandbox mutation worker")
+  await Bun.write(kiloSandboxWorkerForBinary(targetBinPath), result.outputs[0])
 }
 
 async function writeSourceWrapper() {
@@ -200,7 +200,7 @@ async function writeSourceWrapper() {
     ].join("\n"),
   )
   chmodSync(targetBinPath, 0o755)
-  await bundleSandboxWorker()
+  await bundleKiloSandboxWorker()
   await ensureFfmpegForTarget(currentFfmpegTarget(), targetBinDir)
 
   const hash = await cliSourceHash()
@@ -213,7 +213,7 @@ async function writeSourceWrapper() {
 async function main() {
   const targetFile = Bun.file(targetBinPath)
   const exists = await targetFile.exists()
-  const ready = exists && hasTreeSitterResources(targetBinPath) && hasSandboxWorker(targetBinPath)
+  const ready = exists && hasTreeSitterResources(targetBinPath) && hasKiloSandboxWorker(targetBinPath)
 
   const stale = ready && !forceRebuild && (await isStale())
   const rebuild = forceRebuild || stale || !ready
@@ -253,7 +253,7 @@ async function main() {
   await $`mkdir -p ${targetBinDir}`
   await $`cp ${sourceBinPath} ${targetBinPath}`
   await copyTreeSitterResources(sourceBinPath, targetBinPath)
-  await copySandboxWorker(sourceBinPath, targetBinPath)
+  await copyKiloSandboxWorker(sourceBinPath, targetBinPath)
   chmodSync(targetBinPath, 0o755)
   await ensureFfmpegForTarget(currentFfmpegTarget(), targetBinDir)
 
