@@ -7,10 +7,12 @@ import { Config } from "@/config/config"
 import { EffectBridge } from "@/effect/bridge"
 import { InstanceState } from "@/effect/instance-state"
 import { HeapSnapshot } from "@/kilocode/cli/heap-snapshot"
+import { ModelUsage } from "@/kilocode/session/model-usage"
 import { InstanceStore } from "@/project/instance-store"
 import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 import { Skill } from "@/skill"
 import { RemoveAgentPayload, RemoveSkillPayload } from "../groups/kilocode"
+import type { SessionID } from "@/session/schema"
 
 export const kilocodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilocode", (handlers) =>
   Effect.gen(function* () {
@@ -49,9 +51,18 @@ export const kilocodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilocode"
       return true
     })
 
+    const sessionModelUsage = Effect.fn("KilocodeHttpApi.sessionModelUsage")(function* (ctx: {
+      params: { sessionID: SessionID }
+    }) {
+      const usage = yield* ModelUsage.get(ctx.params.sessionID)
+      if (!usage) return yield* new HttpApiError.NotFound({})
+      return usage
+    })
+
     return handlers
       .handle("heapSnapshot", heapSnapshot)
       .handle("removeSkill", removeSkill)
       .handle("removeAgent", removeAgent)
+      .handle("sessionModelUsage", sessionModelUsage)
   }),
 )

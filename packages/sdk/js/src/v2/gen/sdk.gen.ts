@@ -154,6 +154,8 @@ import type {
   KilocodeSessionImportProjectResponses,
   KilocodeSessionImportSessionErrors,
   KilocodeSessionImportSessionResponses,
+  KilocodeSessionModelUsageErrors,
+  KilocodeSessionModelUsageResponses,
   KiloEditErrors,
   KiloEditResponses,
   KiloFimErrors,
@@ -7419,6 +7421,42 @@ export class Kilocode extends HeyApiClient {
         },
       },
     )
+  }
+
+  /**
+   * Get session model usage
+   *
+   * Get token usage and direct cost by model for the complete top-level session tree.
+   */
+  public sessionModelUsage<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<
+      KilocodeSessionModelUsageResponses,
+      KilocodeSessionModelUsageErrors,
+      ThrowOnError
+    >({
+      url: "/session/{sessionID}/model-usage",
+      ...options,
+      ...params,
+    })
   }
 
   private _heap?: Heap
