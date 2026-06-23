@@ -104,6 +104,7 @@ import { useTuiConfig } from "../../context/tui-config"
 // kilocode_change start
 import { splitDiffHunks } from "@/kilocode/tui/diff"
 import { session as banner } from "@/kilocode/cli/logo"
+import { RoutedModelMeta } from "@/kilocode/cli/cmd/tui/routes/session/routed-model-meta"
 
 import { formatMarkdownTables } from "../../util/markdown"
 import { submitFeedback } from "@/kilocode/cli/cmd/tui/feedback"
@@ -1598,6 +1599,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
   const sync = useSync()
   const messages = createMemo(() => sync.data.message[props.message.sessionID] ?? [])
   const model = createMemo(() => Model.name(ctx.providers(), props.message.providerID, props.message.modelID))
+  const routed = createMemo(() => RoutedModelMeta.info(ctx.providers(), props.parts, ctx.showDetails())) // kilocode_change
 
   const final = createMemo(() => {
     return props.message.finish && !["tool-calls", "unknown"].includes(props.message.finish)
@@ -1615,21 +1617,25 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
 
   return (
     <>
-      <For each={props.parts}>
-        {(part, index) => {
-          const component = createMemo(() => PART_MAPPING[part.type as keyof typeof PART_MAPPING])
-          return (
-            <Show when={component()}>
-              <Dynamic
-                last={index() === props.parts.length - 1}
-                component={component()}
-                part={part as any}
-                message={props.message}
-              />
-            </Show>
-          )
-        }}
-      </For>
+      {/* kilocode_change start - provide compact routed-model metadata to part renderers */}
+      <RoutedModelMeta.Context.Provider value={routed}>
+        <For each={props.parts}>
+          {(part, index) => {
+            const component = createMemo(() => PART_MAPPING[part.type as keyof typeof PART_MAPPING])
+            return (
+              <Show when={component()}>
+                <Dynamic
+                  last={index() === props.parts.length - 1}
+                  component={component()}
+                  part={part as any}
+                  message={props.message}
+                />
+              </Show>
+            )
+          }}
+        </For>
+      </RoutedModelMeta.Context.Provider>
+      {/* kilocode_change end */}
       <Show when={props.parts.some((x) => x.type === "tool" && x.tool === "task")}>
         <box paddingTop={1} paddingLeft={3}>
           <text fg={theme.text}>
@@ -1638,8 +1644,8 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
           </text>
         </box>
       </Show>
+      {/* kilocode_change start - Kilo-specific error display */}
       <Show when={props.message.error && props.message.error.name !== "MessageAbortedError"}>
-        {/* kilocode_change start - Kilo-specific error display */}
         <KiloErrorBlock
           error={props.message.error!}
           fallback={
@@ -1657,8 +1663,8 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
             </box>
           }
         />
-        {/* kilocode_change end */}
       </Show>
+      {/* kilocode_change end */}
       <Switch>
         <Match when={props.last || final() || props.message.error?.name === "MessageAbortedError"}>
           <box paddingLeft={3}>
@@ -1687,32 +1693,36 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
       </Switch>
     </>
   )
-}
+} // kilocode_change
 
+// kilocode_change start - register rendered step-finish parts
 const PART_MAPPING = {
   text: TextPart,
   tool: ToolPart,
   reasoning: ReasoningPart,
-  "step-finish": StepFinishPart, // kilocode_change
+  "step-finish": StepFinishPart,
 }
+// kilocode_change end
 
-const INLINE_TOOL_ICON_WIDTH = 2
+const INLINE_TOOL_ICON_WIDTH = 2 // kilocode_change
 
 // kilocode_change start - show concrete routed models reported by gateway/provider responses
 function StepFinishPart(props: { last: boolean; part: StepFinishPart; message: AssistantMessage }) {
   const ctx = use()
   const { theme } = useTheme()
+  const info = useContext(RoutedModelMeta.Context)
   const routed = createMemo(() => {
     if (props.message.providerID !== "kilo") return undefined
     if (!props.message.modelID.startsWith("kilo-auto/")) return undefined
     const model = props.part.model
     if (!model) return undefined
     if (model.providerID === props.message.providerID && model.modelID === props.message.modelID) return undefined
-    return Model.name(ctx.providers(), model.providerID, model.modelID)
+    return RoutedModelMeta.label(ctx.providers(), model)
   })
+  const consumed = createMemo(() => info().consumed.has(props.part.id))
 
   return (
-    <Show when={routed()}>
+    <Show when={routed() && !consumed()}>
       <box paddingLeft={3} marginTop={1}>
         <text fg={theme.textMuted}>Routed to {routed()}</text>
       </box>
@@ -1753,6 +1763,9 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
       <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexDirection="column" flexShrink={0}>
         <box onMouseUp={toggle}>
           <ReasoningHeader
+            /* kilocode_change start */
+            partID={props.part.id}
+            /* kilocode_change end */
             toggleable={inMinimal()}
             open={!inMinimal() || expanded()}
             done={isDone()}
@@ -1779,6 +1792,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 }
 
 function ReasoningHeader(props: {
+  partID: string // kilocode_change
   toggleable: boolean
   open: boolean
   done: boolean
@@ -1816,6 +1830,9 @@ function ReasoningHeader(props: {
               {props.duration}
             </span>
           </Show>
+          {/* kilocode_change start */}
+          <RoutedModelMeta.View id={props.partID} />
+          {/* kilocode_change end */}
         </text>
       </Match>
     </Switch>
@@ -2060,6 +2077,9 @@ function InlineTool(props: {
       complete={props.complete}
       pending={props.pending}
       spinner={props.spinner}
+      /* kilocode_change start */
+      routedID={props.part.id}
+      /* kilocode_change end */
       separateAfter={(id) =>
         sync.data.message[ctx.sessionID]?.some((message) => message.role === "user" && message.id === id) ?? false
       }
@@ -2091,6 +2111,7 @@ export function InlineToolRow(props: {
   complete: any
   pending: string
   spinner?: boolean
+  routedID?: string // kilocode_change
   children: JSX.Element
   separateAfter?: (id: string | undefined) => boolean
   onMouseOver?: () => void
@@ -2155,6 +2176,9 @@ export function InlineToolRow(props: {
                 attributes={props.denied ? TextAttributes.STRIKETHROUGH : undefined}
               >
                 {props.children}
+                {/* kilocode_change start */}
+                <RoutedModelMeta.View id={props.routedID} />
+                {/* kilocode_change end */}
               </text>
             </box>
           </Show>
@@ -2204,6 +2228,9 @@ function BlockTool(props: {
         fallback={
           <text paddingLeft={3} fg={theme.textMuted}>
             {props.title}
+            {/* kilocode_change start */}
+            <RoutedModelMeta.View id={props.part?.id} />
+            {/* kilocode_change end */}
           </text>
         }
       >

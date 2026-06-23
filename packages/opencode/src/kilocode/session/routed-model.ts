@@ -17,6 +17,20 @@ export namespace KiloRoutedModel {
     } satisfies ProviderMetadata
   }
 
+  export function display(modelID: string) {
+    return modelID.trim().replace(/-(?:\d{8}|\d{4}-\d{2}-\d{2})$/, "")
+  }
+
+  export function displayName(name: string) {
+    return name
+      .trim()
+      .replace(/^[^:]+:\s*/, "")
+      .replace(/^[^/\s]+\/(?=[^/]+$)/, "")
+      .replace(/\s*\([^)]*%\s*off[^)]*\)\s*$/i, "")
+      .replace(/^([A-Za-z]{2,})(?=\d)/, "$1 ")
+      .replace(/\s+/g, " ")
+  }
+
   export function read(meta: ProviderMetadata | undefined, providerID: ProviderID) {
     const value = meta?.[ns]?.[key]
     if (typeof value !== "string") return undefined

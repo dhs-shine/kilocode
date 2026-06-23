@@ -55,6 +55,18 @@ describe("session routed model", () => {
     expect(event.providerMetadata).toEqual(meta)
   })
 
+  test("shortens date-suffixed routed model ids for display", () => {
+    expect(KiloRoutedModel.display("moonshotai/kimi-k2.7-code-20260612")).toBe("moonshotai/kimi-k2.7-code")
+    expect(KiloRoutedModel.display("openai/gpt-5.5-2026-04-23")).toBe("openai/gpt-5.5")
+    expect(KiloRoutedModel.display("openai/gpt-5.5")).toBe("openai/gpt-5.5")
+  })
+
+  test("formats routed model names for compact display", () => {
+    expect(KiloRoutedModel.displayName("Qwen: Qwen3.7 Plus (20% off)")).toBe("Qwen 3.7 Plus")
+    expect(KiloRoutedModel.displayName("moonshotai/kimi-k2.7-code")).toBe("kimi-k2.7-code")
+    expect(KiloRoutedModel.displayName("o3")).toBe("o3")
+  })
+
   test("reads routed model only for selected Kilo auto models", () => {
     const meta = { kilocode: { routedModelID: "openai/gpt-5.5-20260423" } }
 
