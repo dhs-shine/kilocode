@@ -226,13 +226,15 @@ describe("PromptInput restoreFailed fallback contract", () => {
   const source = readFile(PROMPT_FILE)
 
   it("targets draftKey() instead of computing a key from failed.sessionID", () => {
-    // The naive "always include :new as a candidate" version rehydrated the
-    // failed draft into a fresh :new bucket whenever the user happened to be
-    // there at failure time — even if the original send was scoped to a
-    // session that has since been deleted or navigated away from. The current
-    // contract builds candidates from the keys the original send was actually
-    // scoped under, only falling back to :new when neither failed.sessionID
-    // nor failed.draftID are present.
+    // The contract: candidates come from the failure's sessionID/draftID
+    // (the keys the send was actually scoped to), plus :new ONLY when the
+    // user has effectively returned to the empty state (no current session
+    // and no pending draft). That covers both "session created mid-send
+    // and deleted before failure returns" (minted draftID path, where
+    // sessionCreated migrated draftSessionID to the new session id and
+    // handleSessionDeleted then cleared it) and "send from session -> that
+    // session deleted mid-round-trip" — in both cases draftKey() is :new
+    // but the failure still carries scope info that must be honored.
     const match = source.match(/const restoreFailed = \(failed: SendMessageFailedMessage\) => \{([\s\S]*?)\n  \}/)
     expect(match).not.toBeNull()
     expect(match![1]).not.toMatch(/const effectiveSessionID/)
@@ -243,10 +245,22 @@ describe("PromptInput restoreFailed fallback contract", () => {
       /if \(failed\.draftID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*pendingDraftKey\(failed\.draftID\)\)\)/,
     )
     expect(match![1]).toMatch(
-      /if \(!failed\.sessionID && !failed\.draftID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*"new"\)\)/,
+      /if \(!session\.currentSessionID\(\) && !session\.draftSessionID\(\)\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*"new"\)\)/,
     )
     expect(match![1]).toMatch(/const target = draftKey\(\)/)
     expect(match![1]).toMatch(/candidates\.has\(target\)/)
+  })
+
+  it("does NOT add :new when the user is on a different live session or pending draft", () => {
+    // Guard against the unconditional-:new regression: if the user has
+    // navigated to a different session/pending draft, the failed draft
+    // must NOT be rehydrated into that unrelated prompt even if the
+    // failure carries scope IDs that no longer match the live state.
+    const match = source.match(/const restoreFailed = \(failed: SendMessageFailedMessage\) => \{([\s\S]*?)\n  \}/)
+    expect(match).not.toBeNull()
+    expect(match![1]).not.toMatch(
+      /if \(!failed\.sessionID && !failed\.draftID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*"new"\)\)/,
+    )
   })
 })
 

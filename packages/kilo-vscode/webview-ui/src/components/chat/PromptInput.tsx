@@ -346,16 +346,21 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     if (text().trim() || reviewComments().length > 0 || imageAttach.images().length > 0) return
 
     // Build candidates from the keys the original send was actually scoped
-    // under. We must NOT include :new unconditionally: if the send was
-    // originally scoped to a session (or pending draft), but the user has
-    // since navigated to a fresh "new" bucket (e.g. started a new task or
-    // the active session was deleted mid-round-trip), unconditionally
-    // accepting :new would rehydrate the old failed draft into an unrelated
-    // empty prompt.
+    // under. :new is only added when the user has effectively returned to the
+    // empty state (no current session and no pending draft) — the common
+    // shape is "send -> session created mid-round-trip -> session deleted
+    // externally -> failure returns" or "send from session -> session deleted
+    // mid-round-trip -> failure returns". In both cases draftKey() has fallen
+    // to :new but the failure still carries the original scope IDs, and the
+    // drafts Map / textarea have been cleared by the saveDraft effect's
+    // transition + deleteDraftsForSession. Restoring into :new there puts the
+    // user's text back where they can see it. We deliberately do NOT add :new
+    // when the user is on a different live session/pending draft — that would
+    // rehydrate the old failure into an unrelated prompt.
     const candidates = new Set<string>()
     if (failed.sessionID) candidates.add(scopeDraftKey(boxKey(), sessionDraftKey(failed.sessionID)))
     if (failed.draftID) candidates.add(scopeDraftKey(boxKey(), pendingDraftKey(failed.draftID)))
-    if (!failed.sessionID && !failed.draftID) candidates.add(scopeDraftKey(boxKey(), "new"))
+    if (!session.currentSessionID() && !session.draftSessionID()) candidates.add(scopeDraftKey(boxKey(), "new"))
     const target = draftKey()
     if (!candidates.has(target)) return
 
