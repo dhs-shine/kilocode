@@ -9,7 +9,6 @@ import { backendSupport, run, type Profile } from "@kilocode/sandbox"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 
 const linux = process.platform === "linux" ? test : test.skip
-const privileged = process.platform === "linux" && process.env.KILO_TEST_PRIVILEGED_MOUNTS === "1" ? test : test.skip
 
 function profile(allow: ReadonlyArray<string>, denyNames: ReadonlyArray<string> = []): Profile {
   return {
@@ -466,34 +465,4 @@ linux("fails closed when Bubblewrap is unavailable", () => {
     encoding: "utf8",
   })
   expect(result.status, result.stderr).toBe(0)
-})
-
-privileged("allows a mounted writable root but rejects its nested mount points", async () => {
-  const root = await fixture()
-  const nested = path.join(root.project, "nested mount")
-  const mounted = spawnSync("mount", ["-t", "tmpfs", "tmpfs", root.project], { encoding: "utf8" })
-  expect(mounted.status, mounted.stderr).toBe(0)
-
-  try {
-    const allowed = path.join(root.project, "allowed.txt")
-    const script = `require("node:fs").writeFileSync(${JSON.stringify(allowed)}, "allowed")`
-    expect(Number(await Effect.runPromise(spawn(script, root.project, profile([root.project]))))).toBe(0)
-    expect(await fs.readFile(allowed, "utf8")).toBe("allowed")
-
-    await fs.mkdir(nested)
-    const child = spawnSync("mount", ["-t", "tmpfs", "tmpfs", nested], { encoding: "utf8" })
-    expect(child.status, child.stderr).toBe(0)
-    try {
-      await expect(Effect.runPromise(spawn("process.exit(0)", root.project, profile([root.project])))).rejects.toThrow(
-        "nested mount point",
-      )
-    } finally {
-      const unmounted = spawnSync("umount", [nested], { encoding: "utf8" })
-      expect(unmounted.status, unmounted.stderr).toBe(0)
-    }
-  } finally {
-    const unmounted = spawnSync("umount", [root.project], { encoding: "utf8" })
-    expect(unmounted.status, unmounted.stderr).toBe(0)
-    await fs.rm(root.root, { recursive: true, force: true })
-  }
 })

@@ -87,6 +87,28 @@ describe("sandbox launch preparation", () => {
     }
   })
 
+  test("allows a mounted writable root but rejects nested mount points", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "kilo-bubblewrap-mount-"))
+    const nested = path.join(root, "nested mount")
+    const profile: Profile = {
+      ...makeProfile(),
+      filesystem: {
+        allowWrite: [{ path: root, kind: "subtree" }],
+        denyWrite: [],
+        denyNames: [],
+      },
+    }
+
+    try {
+      expect(() => generateBubblewrap(profile, launch, "/opt/kilo/bwrap", [root])).not.toThrow()
+      expect(() => generateBubblewrap(profile, launch, "/opt/kilo/bwrap", [root, nested])).toThrow(
+        `Writable root contains a nested mount point: ${nested}`,
+      )
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test("rejects a Bubblewrap executable inside a writable root", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "kilo-bubblewrap-helper-"))
     const helper = path.join(root, "bwrap")

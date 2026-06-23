@@ -59,13 +59,11 @@ function mountpoints() {
     })
 }
 
-function validate(allow: ReadonlyArray<PathRule>, executable: string) {
+function validate(allow: ReadonlyArray<PathRule>, executable: string, mounts: ReadonlyArray<string>) {
   if (allow.some((rule) => beneath(rule.path, executable))) {
     throw new Error(`Bubblewrap executable is writable by the sandbox profile: ${executable}`)
   }
-  if (process.platform !== "linux") return
 
-  const mounts = mountpoints()
   for (const rule of allow) {
     if (rule.kind !== "subtree") continue
     const nested = mounts.find((mount) => mount !== rule.path && beneath(rule.path, mount))
@@ -106,9 +104,14 @@ function protectedPaths(profile: Profile, allow: ReadonlyArray<PathRule>) {
   return [...found].sort((a, b) => a.length - b.length)
 }
 
-export function generate(profile: Profile, launch: Launch, executable: string): Launch {
+export function generate(
+  profile: Profile,
+  launch: Launch,
+  executable: string,
+  mounts = process.platform === "linux" ? mountpoints() : [],
+): Launch {
   const allow = writable(profile)
-  validate(allow, executable)
+  validate(allow, executable, mounts)
   const args = [
     "--unshare-user",
     "--disable-userns",
