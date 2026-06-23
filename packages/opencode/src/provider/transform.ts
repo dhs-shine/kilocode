@@ -916,7 +916,7 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
         let efforts = [...adaptiveEfforts]
         if (model.providerID === "github-copilot") {
           // kilocode_change start - treat opus-4.8 like opus-4.7
-          if (model.api.id.includes("opus-4.7") || model.api.id.includes("opus-4.8")) {
+          if (["opus-4.7", "opus-4-7", "opus-4.8", "opus-4-8"].some((v) => model.api.id.includes(v))) {
             efforts = ["medium"]
           }
           // kilocode_change end
@@ -1206,7 +1206,7 @@ export function options(input: {
 
   const modelId = input.model.api.id.toLowerCase()
   // MiniMax's Anthropic interface defaults thinking off, unlike Chat Completions.
-  if (modelId.includes("minimax-m3") && input.model.api.npm === "@ai-sdk/anthropic") {
+  if (modelId.includes("minimax") && input.model.api.npm === "@ai-sdk/anthropic") { // kilocode_change
     result["thinking"] = { type: "adaptive" }
   }
 

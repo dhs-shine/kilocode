@@ -6,7 +6,6 @@ import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.ProviderDto
-import kotlinx.coroutines.CompletableDeferred
 
 class SessionCreationTest : SessionControllerTestBase() {
 
@@ -44,15 +43,13 @@ class SessionCreationTest : SessionControllerTestBase() {
         assertEquals("ses_test", rpc.prompts[1].first)
     }
 
-    fun `test concurrent first prompts share session creation`() {
-        rpc.createGate = CompletableDeferred()
+    fun `test same-turn first prompts share session creation`() {
         val m = controller()
 
         edt {
             m.prompt("first")
             m.prompt("second")
         }
-        rpc.createGate?.complete(Unit)
         flush()
 
         assertEquals(1, rpc.creates)
@@ -60,15 +57,13 @@ class SessionCreationTest : SessionControllerTestBase() {
         assertEquals(listOf("first", "second"), rpc.prompts.map { it.third.parts.single().text.toString() }.sorted())
     }
 
-    fun `test concurrent first prompt and command share session creation`() {
-        rpc.createGate = CompletableDeferred()
+    fun `test same-turn first prompt and command share session creation`() {
         val m = controller()
 
         edt {
             m.prompt("first")
             m.command("deploy", "prod")
         }
-        rpc.createGate?.complete(Unit)
         flush()
 
         assertEquals(1, rpc.creates)

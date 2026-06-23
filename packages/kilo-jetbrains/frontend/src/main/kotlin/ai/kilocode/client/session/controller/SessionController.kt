@@ -267,15 +267,17 @@ class SessionController(
     }
 
     private fun dispatch(data: Dispatch, send: suspend (String) -> Unit) {
+        assertEdt()
         capture("Conversation Send Clicked", sessionProps(sid ?: ref?.key) + mapOf(
             "source" to data.source,
             "hasExistingSession" to data.exists.toString(),
             "textLength" to bucket(data.text),
         ) + data.props)
         showSession()
+        val pending = sid?.let { CompletableDeferred(it) } ?: session()
         cs.launch {
             try {
-                val id = sid ?: session().await() ?: return@launch
+                val id = pending.await() ?: return@launch
                 send(id)
                 capture("Conversation Message", sessionProps(id) + mapOf("source" to data.source, "hasExistingSession" to data.exists.toString()) + data.props)
                 LOG.debug { "${ChatLogSummary.sid(id)} kind=${data.kind} dispatched=true" }
@@ -294,6 +296,7 @@ class SessionController(
     }
 
     private fun session(): CompletableDeferred<String?> {
+        assertEdt()
         val pending = creating
         if (pending != null) return pending
         val next = CompletableDeferred<String?>()

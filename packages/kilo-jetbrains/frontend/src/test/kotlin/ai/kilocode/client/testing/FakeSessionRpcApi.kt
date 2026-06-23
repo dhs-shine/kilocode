@@ -105,7 +105,6 @@ class FakeSessionRpcApi : KiloSessionRpcApi {
     val imports = mutableListOf<Pair<String, String>>()
     var creates = 0
         private set
-    var createGate: CompletableDeferred<Unit>? = null
 
     data class CloudCall(val directory: String, val cursor: String?, val limit: Int, val gitUrl: String?)
     data class AttachmentCall(val id: String, val directory: String, val messageId: String, val partId: String, val attachmentKey: String?)
@@ -115,7 +114,6 @@ class FakeSessionRpcApi : KiloSessionRpcApi {
 
     override suspend fun create(directory: String): SessionDto {
         assertNotEdt("create")
-        createGate?.await()
         creates++
         return session
     }
