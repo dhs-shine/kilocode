@@ -287,6 +287,12 @@ interface SessionContextValue {
   selectCloudSession: (cloudSessionId: string) => void
   draftSessionID: Accessor<string | undefined>
   setDraftSessionID: (id: string | undefined) => void
+  // True when the user explicitly transitioned to the empty state via
+  // clearCurrentSession() or by deleting their current/draft session.
+  // restoreFailed uses this to suppress restore into :new when the user
+  // asked for a fresh task vs. an external session.deleted landing them
+  // back in :new with a stale failure pending.
+  userClearedSession: Accessor<boolean>
 }
 
 export const SessionContext = createContext<SessionContextValue>()
@@ -301,6 +307,7 @@ export const SessionProvider: ParentComponent = (props) => {
   // Current session ID
   const [currentSessionID, setCurrentSessionID] = createSignal<string | undefined>()
   const [draftSessionID, setDraftSessionID] = createSignal<string | undefined>()
+  const [userClearedSession, setUserClearedSession] = createSignal(false)
 
   // Per-session status map — keyed by sessionID
   const [statusMap, setStatusMap] = createStore<Record<string, SessionStatusInfo>>({})
@@ -1225,6 +1232,7 @@ export const SessionProvider: ParentComponent = (props) => {
       if (!draftID || draft === draftID || active === draftID) {
         setCurrentSessionID(session.id)
         setDraftSessionID(session.id)
+        setUserClearedSession(false)
       }
     })
   }
@@ -2447,6 +2455,7 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   function clearCurrentSession() {
+    setUserClearedSession(true)
     setCurrentSessionID(undefined)
     setDraftSessionID(undefined)
     setCloudPreviewId(null)
@@ -2490,6 +2499,7 @@ export const SessionProvider: ParentComponent = (props) => {
     const ready = loaded().has(id)
     setCurrentSessionID(id)
     setDraftSessionID(id)
+    setUserClearedSession(false)
     setLoading(!ready)
     if (ready) {
       vscode.postMessage({ type: "loadMessages", sessionID: id, mode: "focus" })
@@ -2530,7 +2540,11 @@ export const SessionProvider: ParentComponent = (props) => {
       next.delete(id)
       return next
     })
-    vscode.postMessage({ type: "deleteSession", sessionID: id })
+    if (id === currentSessionID() || id === draftSessionID()) setUserClearedSession(true)
+    vscode.postMessage({
+      type: "deleteSession",
+      sessionID: id,
+    })
   }
 
   function renameSession(id: string, title: string) {
@@ -2861,6 +2875,7 @@ export const SessionProvider: ParentComponent = (props) => {
     selectCloudSession,
     draftSessionID,
     setDraftSessionID,
+    userClearedSession,
   }
 
   return <SessionContext.Provider value={value}>{props.children}</SessionContext.Provider>

@@ -228,13 +228,12 @@ describe("PromptInput restoreFailed fallback contract", () => {
   it("targets draftKey() instead of computing a key from failed.sessionID", () => {
     // The contract: candidates come from the failure's sessionID/draftID
     // (the keys the send was actually scoped to), plus :new ONLY when the
-    // user has effectively returned to the empty state (no current session
-    // and no pending draft). That covers both "session created mid-send
-    // and deleted before failure returns" (minted draftID path, where
-    // sessionCreated migrated draftSessionID to the new session id and
-    // handleSessionDeleted then cleared it) and "send from session -> that
-    // session deleted mid-round-trip" — in both cases draftKey() is :new
-    // but the failure still carries scope info that must be honored.
+    // user has effectively returned to the empty state via an EXTERNAL
+    // session.deleted — not via clearCurrentSession() or a user-clicked
+    // Delete on the current session. userClearedSession is the flag that
+    // distinguishes those two paths; it's set true in clearCurrentSession
+    // and in deleteSession when deleting the current/draft session, and
+    // reset false in handleSessionCreated/selectSession.
     const match = source.match(/const restoreFailed = \(failed: SendMessageFailedMessage\) => \{([\s\S]*?)\n  \}/)
     expect(match).not.toBeNull()
     expect(match![1]).not.toMatch(/const effectiveSessionID/)
@@ -245,8 +244,9 @@ describe("PromptInput restoreFailed fallback contract", () => {
       /if \(failed\.draftID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*pendingDraftKey\(failed\.draftID\)\)\)/,
     )
     expect(match![1]).toMatch(
-      /if \(!session\.currentSessionID\(\) && !session\.draftSessionID\(\)\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*"new"\)\)/,
+      /if \(\s*!session\.currentSessionID\(\)\s*&&\s*!session\.draftSessionID\(\)\s*&&\s*!session\.userClearedSession\(\)\s*\)/,
     )
+    expect(match![1]).toMatch(/candidates\.add\(scopeDraftKey\(boxKey\(\),\s*"new"\)\)/)
     expect(match![1]).toMatch(/const target = draftKey\(\)/)
     expect(match![1]).toMatch(/candidates\.has\(target\)/)
   })
@@ -261,6 +261,50 @@ describe("PromptInput restoreFailed fallback contract", () => {
     expect(match![1]).not.toMatch(
       /if \(!failed\.sessionID && !failed\.draftID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*"new"\)\)/,
     )
+  })
+})
+
+describe("SessionContext userClearedSession contract", () => {
+  const source = readFile(SESSION_FILE)
+
+  it("declares userClearedSession on the context interface", () => {
+    // restoreFailed uses session.userClearedSession() to decide whether :new
+    // is a legitimate restore target after the user clicks New Task or
+    // deletes their current/draft session. The accessor must be exposed.
+    expect(source).toMatch(/userClearedSession:\s*Accessor<boolean>/)
+  })
+
+  it("clearCurrentSession sets the flag", () => {
+    // User clicking New Task while a failure is pending must NOT restore
+    // the failed draft into the new prompt.
+    const body = extractFunctionBody(source, "clearCurrentSession")
+    expect(body).toMatch(/setUserClearedSession\(true\)/)
+  })
+
+  it("deleteSession sets the flag when deleting the current or draft session", () => {
+    // User clicking Delete on their current/draft session is morally the
+    // same as New Task — both land in :new without wanting a stale restore.
+    const body = extractFunctionBody(source, "deleteSession")
+    expect(body).toMatch(
+      /if \(id === currentSessionID\(\) \|\| id === draftSessionID\(\)\) setUserClearedSession\(true\)/,
+    )
+  })
+
+  it("handleSessionCreated resets the flag when adopting the new session", () => {
+    // After the user creates a new session, the flag is stale and must be
+    // cleared so a later external delete of that new session can restore
+    // into :new again.
+    const body = extractFunctionBody(source, "handleSessionCreated")
+    expect(body).toMatch(/setUserClearedSession\(false\)/)
+  })
+
+  it("selectSession resets the flag when picking an existing session", () => {
+    const body = extractFunctionBody(source, "selectSession")
+    expect(body).toMatch(/setUserClearedSession\(false\)/)
+  })
+
+  it("exposes userClearedSession in the SessionContext value", () => {
+    expect(source).toMatch(/userClearedSession,?\s*\n\s*\}/m)
   })
 })
 

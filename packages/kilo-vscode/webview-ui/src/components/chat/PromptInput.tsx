@@ -347,20 +347,26 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
     // Build candidates from the keys the original send was actually scoped
     // under. :new is only added when the user has effectively returned to the
-    // empty state (no current session and no pending draft) — the common
-    // shape is "send -> session created mid-round-trip -> session deleted
-    // externally -> failure returns" or "send from session -> session deleted
-    // mid-round-trip -> failure returns". In both cases draftKey() has fallen
-    // to :new but the failure still carries the original scope IDs, and the
-    // drafts Map / textarea have been cleared by the saveDraft effect's
-    // transition + deleteDraftsForSession. Restoring into :new there puts the
-    // user's text back where they can see it. We deliberately do NOT add :new
-    // when the user is on a different live session/pending draft — that would
-    // rehydrate the old failure into an unrelated prompt.
+    // empty state AND did not explicitly do so — i.e. no current session, no
+    // pending draft, and the last transition into :new was caused by an
+    // external session.deleted, not by clearCurrentSession() or a user-clicked
+    // Delete on the current session (tracked via userClearedSession). The
+    // external-delete case is "send -> session created mid-round-trip ->
+    // session deleted externally -> failure returns" or "send from session
+    // -> session deleted mid-round-trip -> failure returns" — restoring the
+    // failure's text back into :new is the right thing there. The user-clicked
+    // case must NOT restore, because the user explicitly asked for a fresh
+    // task and rehydrating an unrelated failed draft would pollute it.
     const candidates = new Set<string>()
     if (failed.sessionID) candidates.add(scopeDraftKey(boxKey(), sessionDraftKey(failed.sessionID)))
     if (failed.draftID) candidates.add(scopeDraftKey(boxKey(), pendingDraftKey(failed.draftID)))
-    if (!session.currentSessionID() && !session.draftSessionID()) candidates.add(scopeDraftKey(boxKey(), "new"))
+    if (
+      !session.currentSessionID() &&
+      !session.draftSessionID() &&
+      !session.userClearedSession()
+    ) {
+      candidates.add(scopeDraftKey(boxKey(), "new"))
+    }
     const target = draftKey()
     if (!candidates.has(target)) return
 
