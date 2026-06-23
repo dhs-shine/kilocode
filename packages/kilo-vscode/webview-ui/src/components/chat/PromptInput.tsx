@@ -345,19 +345,17 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     // Only restore a failed draft when the user has not started another one.
     if (text().trim() || reviewComments().length > 0 || imageAttach.images().length > 0) return
 
-    // The current draftKey() may have moved since the send (e.g. the
-    // extension created a new session mid-send and that session was then
-    // deleted externally, or no session existed at send time and one was
-    // created on the extension side). The send was originally scoped under
-    // one of three keys — :session:<sid>, :pending:<draftID>, or :new — so
-    // restore as long as the current draftKey still matches one of those.
-    // Targeting a stale :session:<deleted-id> while draftKey() is :new would
-    // silently drop the user's text/comments/images.
-    const candidates = new Set([
-      scopeDraftKey(boxKey(), sessionDraftKey(failed.sessionID)),
-      scopeDraftKey(boxKey(), pendingDraftKey(failed.draftID)),
-      scopeDraftKey(boxKey(), "new"),
-    ])
+    // Build candidates from the keys the original send was actually scoped
+    // under. We must NOT include :new unconditionally: if the send was
+    // originally scoped to a session (or pending draft), but the user has
+    // since navigated to a fresh "new" bucket (e.g. started a new task or
+    // the active session was deleted mid-round-trip), unconditionally
+    // accepting :new would rehydrate the old failed draft into an unrelated
+    // empty prompt.
+    const candidates = new Set<string>()
+    if (failed.sessionID) candidates.add(scopeDraftKey(boxKey(), sessionDraftKey(failed.sessionID)))
+    if (failed.draftID) candidates.add(scopeDraftKey(boxKey(), pendingDraftKey(failed.draftID)))
+    if (!failed.sessionID && !failed.draftID) candidates.add(scopeDraftKey(boxKey(), "new"))
     const target = draftKey()
     if (!candidates.has(target)) return
 

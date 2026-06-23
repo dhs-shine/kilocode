@@ -226,23 +226,25 @@ describe("PromptInput restoreFailed fallback contract", () => {
   const source = readFile(PROMPT_FILE)
 
   it("targets draftKey() instead of computing a key from failed.sessionID", () => {
-    // The previous version computed a target from failed.sessionID first and
-    // only fell back to pendingKey / "new" when that was undefined. That
-    // misses the case where the extension created a new session mid-send and
-    // that session was then deleted externally before the failure arrived:
-    // failed.sessionID points at the dead session while draftKey() has fallen
-    // back to the "new" bucket, so the guard bailed out and the user's text
-    // was silently dropped.
-    //
-    // The contract: restoreFailed checks whether the current draftKey() matches
-    // any of the three possible original-send buckets (:session:<sid>,
-    // :pending:<draftID>, :new) and writes back into draftKey() when it does.
+    // The naive "always include :new as a candidate" version rehydrated the
+    // failed draft into a fresh :new bucket whenever the user happened to be
+    // there at failure time — even if the original send was scoped to a
+    // session that has since been deleted or navigated away from. The current
+    // contract builds candidates from the keys the original send was actually
+    // scoped under, only falling back to :new when neither failed.sessionID
+    // nor failed.draftID are present.
     const match = source.match(/const restoreFailed = \(failed: SendMessageFailedMessage\) => \{([\s\S]*?)\n  \}/)
     expect(match).not.toBeNull()
     expect(match![1]).not.toMatch(/const effectiveSessionID/)
-    expect(match![1]).toMatch(/scopeDraftKey\(boxKey\(\),\s*sessionDraftKey\(failed\.sessionID\)\)/)
-    expect(match![1]).toMatch(/scopeDraftKey\(boxKey\(\),\s*pendingDraftKey\(failed\.draftID\)\)/)
-    expect(match![1]).toMatch(/scopeDraftKey\(boxKey\(\),\s*"new"\)/)
+    expect(match![1]).toMatch(
+      /if \(failed\.sessionID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*sessionDraftKey\(failed\.sessionID\)\)\)/,
+    )
+    expect(match![1]).toMatch(
+      /if \(failed\.draftID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*pendingDraftKey\(failed\.draftID\)\)\)/,
+    )
+    expect(match![1]).toMatch(
+      /if \(!failed\.sessionID && !failed\.draftID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*"new"\)\)/,
+    )
     expect(match![1]).toMatch(/const target = draftKey\(\)/)
     expect(match![1]).toMatch(/candidates\.has\(target\)/)
   })
