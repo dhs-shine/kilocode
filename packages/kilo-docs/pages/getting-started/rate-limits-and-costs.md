@@ -5,7 +5,7 @@ description: "How to choose the right Auto Model tier and reduce token spend in 
 
 # Cost Efficiency & Model Selection
 
-Kilo routes your requests through its gateway, and your costs depend primarily on which model you use. The single most effective way to control spend is to pick the right Auto Model tier for each job — and to keep your context lean.
+Kilo routes your requests through its gateway, and your costs primarily depend on the model you use. The single most effective way to control spend is to pick the right Auto Model tier for each job — and to keep your context lean.
 
 ## Understanding Auto Models
 
@@ -17,7 +17,6 @@ Auto Model is Kilo's smart routing system. Instead of selecting a specific provi
 | `kilo-auto/balanced` | Auto Balanced | Strong performance at a predictably lower cost — routes every request to one fixed high-quality model | Paid |
 | `kilo-auto/efficient` | Auto Efficient | Lowest cost per task — classifies each request by difficulty and routes to the cheapest benchmark-proven model for that task | Paid (lowest) |
 | `kilo-auto/free` | Auto Free | No credits required — rotates through available free models | Free |
-| `kilo-auto/small` | Auto Small | Lightweight background tasks (session titles, commit messages, summaries) — not intended for interactive chat | Paid (very low) |
 
 {% callout type="info" title="Live model assignments" %}
 The underlying models behind each tier are updated server-side as better options become available or as providers change pricing. See [kilo.ai/models](https://kilo.ai/models) for current model assignments and live pricing.
@@ -29,19 +28,19 @@ Both tiers are paid, but they optimize for different things.
 
 **Auto Balanced** routes every request to a single, fixed high-quality model. You get consistent, strong results with predictable cost — a reliable default for most developers.
 
-**Auto Efficient** goes further. It observes your coding session in context, classifies the difficulty of each request in real time, and routes it to the *cheapest model proven accurate enough* for that specific task, based on Kilo's continuously-running benchmarks. Routine tasks (small edits, lookups, quick explanations) are handled by leaner models; harder tasks (architecture, debugging, complex refactors) get a more capable model automatically.
+**Auto Efficient** goes further. It observes your coding session in context, classifies the difficulty of each request in real time, and routes it to the *cheapest model proven accurate enough* for that specific task, based on Kilo's continuously running benchmarks. Routine tasks (small edits, lookups, quick explanations) are handled by leaner models; harder tasks (architecture, debugging, complex refactors) automatically get a more capable model.
 
 Efficient is also session-aware: it stays with a model across related turns and only switches when a cheaper option is clearly worth it. If it cannot make a routing decision with confidence, it falls back to Balanced — so quality never drops below Balanced.
 
 Think of Efficient as Balanced with an intelligent cost optimizer layered on top.
 
 {% callout type="tip" %}
-For everyday coding tasks, start with **Auto Efficient**. Switch to **Auto Frontier** for complex architecture sessions or deep debugging where maximum capability matters.
+For everyday coding tasks, start with **Auto Efficient** or **Auto Balance**. Switch to **Auto Frontier** for complex architecture sessions or deep debugging where maximum capability matters.
 {% /callout %}
 
 ## How to Switch Auto Models
 
-Open the model selector dropdown in the Kilo Code chat interface and choose the tier you want. No other configuration is needed — routing happens automatically from that point forward.
+Open the model selector dropdown in the Kilo Code chat interface and choose the tier you want. No other configuration is needed; routing happens automatically from that point forward.
 
 ## Tips for Optimizing Token Usage
 
@@ -71,13 +70,13 @@ If you are not using MCP (Model Context Protocol) features, consider [disabling 
 
 ### Prompt caching
 
-Kilo automatically applies prompt caching on supported providers (Anthropic, Qwen). Repeated context — such as your system prompt and stable file contents — is reused from cache at a discounted rate. No action is required to benefit from this.
+Kilo automatically applies prompt caching on supported providers. Repeated context, such as your system prompt and stable file contents, is reused from cache at a discounted rate. No action is required to benefit from this.
 
 ## Rate Limits
 
 - **Free models** (`kilo-auto/free`): 200 requests per hour per IP.
 - **Paid models**: No hard rate limits are imposed by Kilo. Access is limited only by your credit balance.
-- **Client-side throttle**: The **Rate Limit (seconds)** setting in Advanced Settings adds a minimum delay between requests. This is useful if you are hitting upstream provider limits on a specific model.
+
 
 ## How Costs Are Calculated
 
