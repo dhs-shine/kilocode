@@ -308,6 +308,16 @@ class KiloPromptCompletionProviderTest : BasePlatformTestCase() {
         )
     }
 
+    fun `test mentionPaths includes existing hand typed mentions from text`() {
+        var done = false
+        rpc.fileResolver = { path -> if (path == "src/x.kt") listOf(file(path)) else emptyList() }
+
+        provider.validate("see @src/x.kt and ${MentionAction.GIT_CHANGES.token}", -1) { done = true }
+        waitFor { done }
+
+        assertEquals(setOf("src/x.kt"), provider.mentionPaths("see @src/x.kt and ${MentionAction.GIT_CHANGES.token}"))
+    }
+
     fun `test mention under caret is not flagged`() {
         assertTrue(provider.highlights("@nope", caret = 5).isEmpty())
     }

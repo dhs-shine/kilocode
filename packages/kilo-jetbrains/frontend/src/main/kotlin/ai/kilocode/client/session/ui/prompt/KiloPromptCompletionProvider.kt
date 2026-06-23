@@ -48,7 +48,17 @@ class KiloPromptCompletionProvider(
     /** A file mention token at a caret/mouse offset, with whether it resolves to a real file. */
     data class MentionHit(val start: Int, val end: Int, val value: String, val resolved: Boolean)
 
-    fun mentionPaths(): Set<String> = paths.toSet()
+    fun mentionPaths(text: String? = null): Set<String> {
+        val known = paths.toSet()
+        if (text == null) return known
+        return mentionSpans(text).mapNotNullTo(known.toMutableSet()) { span ->
+            when {
+                span.value in mentionNames() -> null
+                span.value in known || exists[span.value] == true -> span.value
+                else -> null
+            }
+        }
+    }
 
     /**
      * The file mention spanning [offset], or null when the offset is outside a mention,

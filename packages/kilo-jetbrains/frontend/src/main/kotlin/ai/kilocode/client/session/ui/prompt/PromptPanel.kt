@@ -521,7 +521,7 @@ class PromptPanel(
         ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val files = items.map { it.part() }
-                val mentioned = onMentions(txt, completion?.mentionPaths().orEmpty())
+                val mentioned = onMentions(txt, completion?.mentionPaths(txt).orEmpty())
                 ApplicationManager.getApplication().invokeLater {
                     submitting = false
                     if (project.isDisposed) return@invokeLater
