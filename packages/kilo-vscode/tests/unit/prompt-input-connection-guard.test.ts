@@ -21,13 +21,13 @@ describe("PromptInput connection guard", () => {
 
 describe("PromptInput sandbox toggle", () => {
   it("writes only the sandbox patch without saving pending settings drafts", () => {
-    const start = src.indexOf('<Show when={features().sandboxControls}>')
+    const start = src.indexOf("<Show when={features().sandboxControls}>")
     const end = src.indexOf("</Show>", start)
     const toggle = src.slice(start, end)
 
     expect(start).toBeGreaterThan(-1)
     expect(end).toBeGreaterThan(start)
-    expect(toggle).toContain('vscode.postMessage({')
+    expect(toggle).toContain("vscode.postMessage({")
     expect(toggle).toContain('type: "updateConfig"')
     expect(toggle).toContain("config: { experimental: { sandbox: !sandbox() } }")
     expect(toggle).not.toContain("saveConfig")
