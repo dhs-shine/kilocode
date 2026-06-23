@@ -35,7 +35,7 @@ Efficient is also session-aware: it stays with a model across related turns and 
 Think of Efficient as Balanced with an intelligent cost optimizer layered on top.
 
 {% callout type="tip" %}
-For everyday coding tasks, start with **Auto Efficient** or **Auto Balance**. Switch to **Auto Frontier** for complex architecture sessions or deep debugging where maximum capability matters.
+For everyday coding tasks, start with **Auto Efficient** or **Auto Balanced**. Switch to **Auto Frontier** for complex architecture sessions or deep debugging where maximum capability matters.
 {% /callout %}
 
 ## How to Switch Auto Models
