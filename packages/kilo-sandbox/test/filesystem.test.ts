@@ -125,6 +125,7 @@ describe("sandbox FileSystem", () => {
       const symbolic = path.join(base, "symbolic.bin")
       const streamed = path.join(base, "streamed.bin")
       const time = new Date("2024-01-02T03:04:05.000Z")
+      const copiedTime = new Date("2023-02-03T04:05:06.000Z")
       await execute(
         run(
           makeProfile(allowed),
@@ -137,7 +138,9 @@ describe("sandbox FileSystem", () => {
             yield* fs.truncate(source, 3)
             yield* fs.utimes(source, time, time)
             yield* fs.copyFile(source, copy)
-            yield* fs.writeFileString(path.join(tree, "value.txt"), "tree")
+            const value = path.join(tree, "value.txt")
+            yield* fs.writeFileString(value, "tree")
+            yield* fs.utimes(value, copiedTime, copiedTime)
             yield* fs.copy(tree, copied, { overwrite: true, preserveTimestamps: true })
             yield* fs.link(source, hard)
             yield* fs.symlink("source.bin", symbolic)
@@ -155,8 +158,10 @@ describe("sandbox FileSystem", () => {
       expect([...(await readFile(streamed))]).toEqual([1, 2, 3, 4])
       expect(await readFile(path.join(copied, "value.txt"), "utf8")).toBe("tree")
       const info = await stat(source)
+      const copiedInfo = await stat(path.join(copied, "value.txt"))
       expect(info.mode & 0o777).toBe(0o640)
       expect(info.mtime.getTime()).toBe(time.getTime())
+      expect(copiedInfo.mtime.getTime()).toBe(copiedTime.getTime())
     },
   )
 

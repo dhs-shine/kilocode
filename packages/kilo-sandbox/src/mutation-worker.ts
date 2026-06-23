@@ -120,4 +120,6 @@ const response: Response = await read()
     (value) => ({ ok: true, value }),
     (cause) => ({ ok: false, error: failure(cause) }),
   )
-process.stdout.write(JSON.stringify(response))
+await new Promise<void>((resolve, reject) => {
+  process.stdout.write(JSON.stringify(response), (error) => (error ? reject(error) : resolve()))
+})
