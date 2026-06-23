@@ -76,14 +76,19 @@ export namespace RoutedModelMeta {
     }
   }
 
-  export function View(props: { id?: string }) {
+  function Badge(props: { text: string }) {
     const { theme } = useTheme()
+
+    return <span style={{ fg: theme.textMuted }}> · {props.text}</span>
+  }
+
+  export function View(props: { id?: string }) {
     const info = useContext(Context)
     const text = createMemo(() => (props.id ? info().labels.get(props.id) : undefined))
 
     return (
       <Show when={text()}>
-        <span style={{ fg: theme.textMuted }}> · {text()}</span>
+        {(value) => <Badge text={value()} />}
       </Show>
     )
   }
