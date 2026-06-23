@@ -24,25 +24,28 @@ import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import java.awt.Container
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.event.InputEvent
 import java.awt.event.MouseEvent
+import javax.swing.JButton
 import javax.swing.JComboBox
+import javax.swing.JTextField
 
 class AgentsSettingsUiTest : BasePlatformTestCase() {
     private var scope: CoroutineScope? = null
     private var ui: AgentsSettingsUi? = null
+    private lateinit var app: KiloAppService
     private lateinit var appRpc: FakeAppRpcApi
     private lateinit var agentRpc: FakeAgentBehaviorRpcApi
 
@@ -104,49 +107,100 @@ class AgentsSettingsUiTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test adding an agent renders it after reload`() {
-        val panel = panel()
-        flushUntil { rows(panel).size == 5 }
+    fun `test adding an agent creates it and renders it after reload`() {
         val input = AgentCreateDto("reviewer", "Review code", description = "Reviews code")
+        var names = emptyList<String>()
+        val panel = panel { existing ->
+            names = existing.toList()
+            FakeCreateDialog(input)
+        }
+        flushUntil { rows(panel).size == 5 }
 
-        runBlocking { withContext(Dispatchers.Default) { service().createAgent(DIR, input) } }
-        edt { panel.reload(); true }
+        edt {
+            panel.CreateAction().perform()
+            true
+        }
         flushUntil { rows(panel).any { it.key == "reviewer" } }
 
         edt {
             val row = rows(panel).single { it.key == "reviewer" }
+            assertEquals(listOf("ask", "code", "hidden", "old", "worker"), names.sorted())
             assertEquals(listOf(input), agentRpc.creations)
+            assertEquals(listOf(DIR), agentRpc.createDirs)
             assertEquals("Reviews code", row.description)
+            assertEquals("reviewer", list(panel).selectedValue?.key)
             assertTrue(row.badges.any { it.text == "custom" })
             assertTrue(row.cells.any { it.id == DELETE_CELL })
             true
         }
     }
 
+    fun `test adding an agent waits for backend reload before refetching`() {
+        val input = AgentCreateDto("reviewer", "Review code", description = "Reviews code")
+        val loading = CompletableDeferred<Unit>()
+        val panel = panel { FakeCreateDialog(input) }
+        flushUntil { rows(panel).size == 5 }
+        agentRpc.afterCreate = { _, _ ->
+            app._state.value = app._state.value.copy(status = KiloAppStatusDto.LOADING)
+            loading.complete(Unit)
+        }
+
+        edt {
+            panel.CreateAction().perform()
+            true
+        }
+        runBlocking { loading.await() }
+        edt { UIUtil.dispatchAllInvocationEvents(); true }
+
+        assertFalse(edt { rows(panel).any { it.key == "reviewer" } })
+        assertEquals(listOf(DIR), agentRpc.agentCalls)
+        assertTrue(edt { text(panel).contains("Loading items") })
+
+        app._state.value = app._state.value.copy(status = KiloAppStatusDto.READY)
+        flushUntil { rows(panel).any { it.key == "reviewer" } }
+        assertEquals(listOf(DIR, DIR), agentRpc.agentCalls)
+    }
+
     fun `test deleting custom agent removes it`() {
+        val loading = CompletableDeferred<Unit>()
         val panel = panel()
         flushUntil { rows(panel).size == 5 }
         TestDialogManager.setTestDialog(TestDialog.YES)
+        agentRpc.afterRemove = { _, _ ->
+            app._state.value = app._state.value.copy(status = KiloAppStatusDto.LOADING)
+            loading.complete(Unit)
+        }
 
         edt {
             val list = list(panel)
             list.size = Dimension(420, 260)
             list.doLayout()
             val idx = rows(panel).indexOfFirst { it.key == "hidden" }
+            list.selectedIndex = idx
             val row = rows(panel)[idx]
             val bounds = list.getCellBounds(idx, idx)
             val area = settingsListCellBounds(list, bounds, row, selected = true).getValue(DELETE_CELL)
             click(list, center(area))
             true
         }
-        flushUntil { agentRpc.removals.contains("hidden") }
+        runBlocking { loading.await() }
+        edt { UIUtil.dispatchAllInvocationEvents(); true }
 
-        assertFalse(edt { rows(panel).any { it.key == "hidden" } })
+        assertTrue(edt { rows(panel).any { it.key == "hidden" } })
+        assertEquals(listOf(DIR), agentRpc.agentCalls)
+        assertTrue(edt { text(panel).contains("Loading items") })
+
+        app._state.value = app._state.value.copy(status = KiloAppStatusDto.READY)
+        flushUntil { !edt { rows(panel).any { it.key == "hidden" } } }
+
+        assertEquals(listOf("hidden"), agentRpc.removals)
+        assertEquals(listOf(DIR, DIR), agentRpc.agentCalls)
+        assertEquals("old", edt { list(panel).selectedValue?.key })
     }
 
-    private fun panel(): AgentsSettingsUi {
+    private fun panel(create: (Collection<String>) -> AgentCreateDialogHandle = ::AgentCreateDialog): AgentsSettingsUi {
         install()
-        val panel = edt { AgentsSettingsUi(scope!!, DIR) }
+        val panel = edt { AgentsSettingsUi(scope!!, DIR, create) }
         ui = panel
         return panel
     }
@@ -165,7 +219,7 @@ class AgentsSettingsUiTest : BasePlatformTestCase() {
             )
         }
         val workspaceRpc = FakeWorkspaceRpcApi().apply { models = ModelsWorkspaceDto(providers()) }
-        val app = KiloAppService(cs, appRpc)
+        app = KiloAppService(cs, appRpc)
         app._state.value = KiloAppStateDto(
             KiloAppStatusDto.READY,
             config = ConfigDto(
@@ -183,8 +237,6 @@ class AgentsSettingsUiTest : BasePlatformTestCase() {
         connected = listOf("kilo"),
         defaults = emptyMap(),
     )
-
-    private fun service() = com.intellij.openapi.components.service<KiloAgentBehaviorService>()
 
     private fun rows(panel: AgentsSettingsUi): List<SettingsListItem> {
         val model = list(panel).model
@@ -205,6 +257,19 @@ class AgentsSettingsUiTest : BasePlatformTestCase() {
         }
         visit(root)
         return out
+    }
+
+    private fun text(root: Container): String {
+        val out = mutableListOf<String>()
+        for (comp in components(root)) {
+            if (!comp.isVisible) continue
+            when (comp) {
+                is JButton -> comp.text?.let { out.add(it) }
+                is JBLabel -> comp.text?.let { out.add(it) }
+                is JTextField -> comp.text?.let { out.add(it) }
+            }
+        }
+        return out.joinToString("\n")
     }
 
     private fun center(rect: java.awt.Rectangle) = Point(rect.x + rect.width / 2, rect.y + rect.height / 2)
@@ -247,4 +312,10 @@ class AgentsSettingsUiTest : BasePlatformTestCase() {
         const val DIR = "/test"
         const val DELETE_CELL = "delete"
     }
+}
+
+private class FakeCreateDialog(private val input: AgentCreateDto) : AgentCreateDialogHandle {
+    override fun showAndGet() = true
+
+    override fun result() = input
 }

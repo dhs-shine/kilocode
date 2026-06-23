@@ -1,9 +1,11 @@
 package ai.kilocode.client.settings.base
 
+import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.log.KiloLog
+import ai.kilocode.rpc.dto.KiloAppStatusDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
@@ -18,6 +20,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.SearchTextField
@@ -27,7 +30,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import java.awt.event.KeyEvent
@@ -63,11 +69,28 @@ internal abstract class SettingsListPanel(
     @RequiresEdt
     fun reload() {
         checkEdt()
-        if (!launch("reload") { id ->
-            val items = fetch()
-            apply(id, items)
-        }) return
+        if (!reload(SettingsListSelection.Preserve)) return
         showProgress(loadingText())
+    }
+
+    @RequiresEdt
+    protected fun mutateAndReload(
+        selection: SettingsListSelection = SettingsListSelection.Preserve,
+        text: String = loadingText(),
+        block: suspend () -> Boolean,
+    ) {
+        checkEdt()
+        if (!launch("mutation") { id ->
+            val changed = block()
+            if (!changed) {
+                finish(id)
+                return@launch
+            }
+            waitForReady()
+            val items = fetch()
+            apply(id, items, selection)
+        }) return
+        showProgress(text)
     }
 
     protected abstract suspend fun fetch(): List<SettingsListItem>
@@ -89,6 +112,12 @@ internal abstract class SettingsListPanel(
     protected open fun showRefresh(): Boolean = true
 
     protected open fun afterApply() = Unit
+
+    @RequiresEdt
+    protected fun selectionIndex(): SettingsListSelection {
+        checkEdt()
+        return SettingsListSelection.Index(view.selectedIndex())
+    }
 
     private fun header(): JComponent {
         search.textEditor.registerKeyboardAction(
@@ -176,13 +205,41 @@ internal abstract class SettingsListPanel(
         return true
     }
 
-    private suspend fun apply(id: Int, items: List<SettingsListItem>) {
+    @RequiresEdt
+    private fun reload(selection: SettingsListSelection): Boolean {
+        checkEdt()
+        return launch("reload") { id ->
+            val items = fetch()
+            apply(id, items, selection)
+        }
+    }
+
+    private suspend fun apply(id: Int, items: List<SettingsListItem>, selection: SettingsListSelection) {
         withContext(edt) {
             if (!active(id)) return@withContext
             setBusy(false)
-            view.update(items)
+            view.update(items, selection)
             afterApply()
             clearProgress()
+        }
+    }
+
+    private suspend fun finish(id: Int) {
+        withContext(edt) {
+            if (!active(id)) return@withContext
+            setBusy(false)
+            clearProgress()
+        }
+    }
+
+    private suspend fun waitForReady() {
+        val flow = service<KiloAppService>().state
+        val saw = withTimeoutOrNull(RELOAD_START_TIMEOUT_MS) {
+            flow.first { it.status != KiloAppStatusDto.READY }
+        } != null
+        if (!saw) return
+        withTimeout(RELOAD_READY_TIMEOUT_MS) {
+            flow.first { it.status == KiloAppStatusDto.READY }
         }
     }
 
@@ -218,6 +275,8 @@ internal abstract class SettingsListPanel(
 
     private companion object {
         val LOG = KiloLog.create(SettingsListPanel::class.java)
+        const val RELOAD_START_TIMEOUT_MS = 500L
+        const val RELOAD_READY_TIMEOUT_MS = 10_000L
     }
 }
 

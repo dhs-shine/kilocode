@@ -93,10 +93,27 @@ internal class SettingsListView(
     }
 
     @RequiresEdt
-    fun update(items: List<SettingsListItem>) {
+    fun selectedIndex(): Int {
+        checkEdt()
+        return list.selectedIndex
+    }
+
+    @RequiresEdt
+    fun update(items: List<SettingsListItem>, selection: SettingsListSelection = SettingsListSelection.Preserve) {
         checkEdt()
         this.items = items
-        sync()
+        val key = when (selection) {
+            is SettingsListSelection.Key -> selection.key
+            is SettingsListSelection.Index -> null
+            SettingsListSelection.Preserve -> list.selectedValue?.key
+        }
+        val idx = when (selection) {
+            is SettingsListSelection.Index -> selection.index
+            is SettingsListSelection.Key,
+            SettingsListSelection.Preserve,
+            -> null
+        }
+        sync(key, idx)
     }
 
     @RequiresEdt
@@ -190,4 +207,10 @@ private fun settingsListIndex(items: List<SettingsListItem>, key: String?): Int 
 private fun settingsListIndex(items: List<SettingsListItem>, index: Int): Int {
     if (items.isEmpty()) return -1
     return index.coerceIn(0, items.lastIndex)
+}
+
+internal sealed interface SettingsListSelection {
+    data object Preserve : SettingsListSelection
+    data class Key(val key: String) : SettingsListSelection
+    data class Index(val index: Int) : SettingsListSelection
 }

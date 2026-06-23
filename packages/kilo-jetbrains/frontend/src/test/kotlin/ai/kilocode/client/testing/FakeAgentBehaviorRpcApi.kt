@@ -12,6 +12,9 @@ class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
     val agentCalls = mutableListOf<String>()
     val removals = mutableListOf<String>()
     val creations = mutableListOf<AgentCreateDto>()
+    val createDirs = mutableListOf<String>()
+    var afterCreate: (suspend (String, AgentCreateDto) -> Unit)? = null
+    var afterRemove: (suspend (String, String) -> Unit)? = null
     var createError: Exception? = null
     var removeError: Exception? = null
 
@@ -36,12 +39,14 @@ class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
         removeError?.let { throw it }
         removals.add(name)
         agents = agents.filterNot { it.name == name }
+        afterRemove?.invoke(directory, name)
         return true
     }
 
     override suspend fun createAgent(directory: String, input: AgentCreateDto): Boolean {
         assertNotEdt("agentBehavior.createAgent")
         createError?.let { throw it }
+        createDirs.add(directory)
         creations.add(input)
         agents = agents.filterNot { it.name == input.name } + AgentDetailDto(
             name = input.name,
@@ -49,6 +54,7 @@ class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
             mode = input.mode,
             native = false,
         )
+        afterCreate?.invoke(directory, input)
         return true
     }
 

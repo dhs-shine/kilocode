@@ -11,6 +11,7 @@ import ai.kilocode.client.settings.base.SettingsBadge
 import ai.kilocode.client.settings.base.SettingsListCell
 import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.SettingsListPanel
+import ai.kilocode.client.settings.base.SettingsListSelection
 import ai.kilocode.client.settings.base.SettingsDraftPage
 import ai.kilocode.client.settings.base.SettingsDraftState
 import ai.kilocode.client.ui.UiStyle
@@ -47,7 +48,11 @@ class AgentsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.agents" }
 }
 
-internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir: String) : SettingsListPanel(cs), SettingsDraftPage {
+internal class AgentsSettingsUi(
+    private val cs: CoroutineScope,
+    private val dir: String,
+    private val create: (Collection<String>) -> AgentCreateDialogHandle = ::AgentCreateDialog,
+) : SettingsListPanel(cs), SettingsDraftPage {
     private val app get() = service<KiloAppService>()
     private val state = SettingsDraftState(agentsDraft(app.state.value.config, emptyList()), ::savedMatches)
     private var draft: AgentsDraft
@@ -192,24 +197,29 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
             Messages.getQuestionIcon(),
         )
         if (result != Messages.YES) return
-        cs.launch {
+        val selection = selectionIndex()
+        mutateAndReload(selection) {
             val removed = service<KiloAgentBehaviorService>().removeAgent(dir, agent.name)
-            if (!removed) return@launch
+            if (!removed) return@mutateAndReload false
             withContext(edt) {
-                state.accept(base.copy(
-                    defaultAgent = base.defaultAgent.takeUnless { it == agent.name },
-                    agents = base.agents - agent.name,
-                ))
-                draft = draft.copy(
-                    defaultAgent = draft.defaultAgent.takeUnless { it == agent.name },
-                    agents = draft.agents - agent.name,
-                )
-                details = details.filter { it.name != agent.name }
-                syncNames()
-                syncPicker()
-                view.update(rows())
+                prune(agent.name)
             }
+            true
         }
+    }
+
+    private fun prune(name: String) {
+        state.accept(base.copy(
+            defaultAgent = base.defaultAgent.takeUnless { it == name },
+            agents = base.agents - name,
+        ))
+        draft = draft.copy(
+            defaultAgent = draft.defaultAgent.takeUnless { it == name },
+            agents = draft.agents - name,
+        )
+        details = details.filter { it.name != name }
+        syncNames()
+        syncPicker()
     }
 
     private fun syncNames() {
@@ -239,17 +249,17 @@ internal class AgentsSettingsUi(private val cs: CoroutineScope, private val dir:
         add(PlaceholderAction(KiloBundle.message("settings.agentBehavior.agents.import")))
     }
 
-    private inner class CreateAction : DumbAwareAction(KiloBundle.message("settings.agentBehavior.agents.create")) {
+    internal inner class CreateAction : DumbAwareAction(KiloBundle.message("settings.agentBehavior.agents.create")) {
         override fun getActionUpdateThread() = ActionUpdateThread.EDT
 
-        override fun actionPerformed(e: AnActionEvent) {
-            val dialog = AgentCreateDialog(draft.agents.keys)
+        override fun actionPerformed(e: AnActionEvent) = perform()
+
+        internal fun perform() {
+            val dialog = create(draft.agents.keys)
             if (!dialog.showAndGet()) return
             val input = dialog.result()
-            cs.launch {
-                val created = service<KiloAgentBehaviorService>().createAgent(dir, input)
-                if (!created) return@launch
-                withContext(edt) { reload() }
+            mutateAndReload(SettingsListSelection.Key(input.name)) {
+                service<KiloAgentBehaviorService>().createAgent(dir, input)
             }
         }
     }

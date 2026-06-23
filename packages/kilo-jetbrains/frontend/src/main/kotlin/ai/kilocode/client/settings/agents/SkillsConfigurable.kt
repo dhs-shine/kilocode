@@ -90,9 +90,8 @@ internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir:
             }
             key.startsWith("skill:") -> {
                 val location = key.removePrefix("skill:")
-                cs.launch {
+                mutateAndReload(selectionIndex()) {
                     service<KiloAgentBehaviorService>().removeSkill(dir, location)
-                    reload()
                 }
             }
         }

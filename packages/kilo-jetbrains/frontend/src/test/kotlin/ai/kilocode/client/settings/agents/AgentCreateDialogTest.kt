@@ -34,6 +34,12 @@ class AgentCreateDialogTest : BasePlatformTestCase() {
         assertEquals(AgentCreateDto("", "", KiloCliParser.MODE_PRIMARY, null, "project"), edt { d.result() })
     }
 
+    fun `test agent id field defaults to fifty columns`() {
+        val d = open(emptyList())
+
+        assertEquals(50, edt { field<JBTextField>(d.contentForTest(), title("name")).columns })
+    }
+
     fun `test reads form values into dto`() {
         val d = open(emptyList())
 

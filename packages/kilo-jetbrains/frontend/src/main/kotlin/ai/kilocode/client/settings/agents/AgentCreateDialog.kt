@@ -31,8 +31,13 @@ import javax.swing.Scrollable
 import javax.swing.ScrollPaneConstants
 import javax.swing.SwingConstants
 
-internal class AgentCreateDialog(private val names: Collection<String>) : DialogWrapper(true) {
-    private val id = JBTextField()
+internal interface AgentCreateDialogHandle {
+    fun showAndGet(): Boolean
+    fun result(): AgentCreateDto
+}
+
+internal class AgentCreateDialog(private val names: Collection<String>) : DialogWrapper(true), AgentCreateDialogHandle {
+    private val id = JBTextField().apply { columns = ID_COLUMNS }
     private val prompt = PromptField()
     private val mode = ComboBox(arrayOf(KiloCliParser.MODE_PRIMARY, KiloCliParser.MODE_SUBAGENT, KiloCliParser.MODE_ALL)).apply {
         selectedItem = KiloCliParser.MODE_PRIMARY
@@ -56,7 +61,7 @@ internal class AgentCreateDialog(private val names: Collection<String>) : Dialog
 
     internal fun contentForTest(): JComponent = center ?: error("center panel not built")
 
-    fun result(): AgentCreateDto = AgentCreateDto(
+    override fun result(): AgentCreateDto = AgentCreateDto(
         name = id.text.trim(),
         prompt = prompt.text.trim(),
         mode = mode.selectedItem?.toString() ?: KiloCliParser.MODE_PRIMARY,
@@ -181,6 +186,7 @@ internal class AgentCreateDialog(private val names: Collection<String>) : Dialog
     }
 
     private companion object {
+        const val ID_COLUMNS = 50
         const val PROMPT_ROWS = 8
         const val PROMPT_CHROME = 24
     }

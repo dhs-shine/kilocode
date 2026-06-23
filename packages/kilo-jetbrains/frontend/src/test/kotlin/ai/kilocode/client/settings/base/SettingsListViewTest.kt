@@ -82,6 +82,30 @@ class SettingsListViewTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test update selects preferred key`() {
+        edt {
+            val view = SettingsListView("Empty") { _, _ -> }
+            view.update(listOf(item("a", "Alpha", null), item("b", "Beta", null)))
+            view.update(
+                listOf(item("a", "Alpha", null), item("b", "Beta", null), item("c", "Gamma", null)),
+                SettingsListSelection.Key("c"),
+            )
+
+            assertEquals("c", view.selected()?.key)
+        }
+    }
+
+    fun `test update selects preferred index`() {
+        edt {
+            val view = SettingsListView("Empty") { _, _ -> }
+            view.update(listOf(item("a", "Alpha", null), item("b", "Beta", null), item("c", "Gamma", null)))
+            view.list.selectedIndex = 1
+            view.update(listOf(item("a", "Alpha", null), item("c", "Gamma", null)), SettingsListSelection.Index(1))
+
+            assertEquals("c", view.selected()?.key)
+        }
+    }
+
     private fun item(id: String, name: String, note: String?, vararg cells: SettingsListCell) = object : SettingsListItem {
         override val key = id
         override val title = name
