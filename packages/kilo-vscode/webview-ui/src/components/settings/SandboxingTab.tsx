@@ -5,6 +5,8 @@ import { useConfig } from "../../context/config"
 import { useLanguage } from "../../context/language"
 import SettingsRow from "./SettingsRow"
 
+const description = "sandbox-network-description"
+
 const SandboxingTab: Component = () => {
   const { config, updateConfig } = useConfig()
   const language = useLanguage()
@@ -15,10 +17,12 @@ const SandboxingTab: Component = () => {
       <SettingsRow
         title={language.t("settings.sandboxing.network.title")}
         description={language.t("settings.sandboxing.network.description")}
+        descriptionId={description}
         last
       >
         <Switch
           checked={experimental().sandbox_restrict_network !== false}
+          inputProps={{ "aria-describedby": description }}
           onChange={(checked) =>
             updateConfig({
               experimental: {

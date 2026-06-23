@@ -65,7 +65,7 @@ test.describe("settings tab accessibility", () => {
     await expect(tab).toHaveAttribute("aria-selected", "true")
     await expect(page.getByRole("tabpanel", { name: "Sandboxing" })).toBeVisible()
     const network = page.getByRole("switch", { name: "Restrict Network Access" })
-    await expect(page.getByText(/Local MCP servers and plugin hooks run outside this restriction/)).toBeVisible()
+    await expect(network).toHaveAccessibleDescription(/Local MCP servers and plugin hooks run outside this restriction/)
     await expect(network).toBeChecked()
     await page.locator('[data-slot="switch-control"]').click()
     await expect(network).not.toBeChecked()
