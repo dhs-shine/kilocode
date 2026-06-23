@@ -48,8 +48,8 @@ function unescape(value: string) {
   return value.replace(/\\([0-7]{3})/g, (_match, code: string) => String.fromCharCode(Number.parseInt(code, 8)))
 }
 
-function mountpoints() {
-  return readFileSync("/proc/self/mountinfo", "utf8")
+export function parseMountinfo(content: string) {
+  return content
     .split("\n")
     .filter(Boolean)
     .map((line) => {
@@ -57,6 +57,10 @@ function mountpoints() {
       if (!value) throw new Error("Could not parse /proc/self/mountinfo")
       return unescape(value)
     })
+}
+
+function mountpoints() {
+  return parseMountinfo(readFileSync("/proc/self/mountinfo", "utf8"))
 }
 
 function validate(allow: ReadonlyArray<PathRule>, executable: string, mounts: ReadonlyArray<string>) {

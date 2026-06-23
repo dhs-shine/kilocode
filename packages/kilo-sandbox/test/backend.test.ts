@@ -4,7 +4,7 @@ import os from "node:os"
 import path from "node:path"
 import { Effect } from "effect"
 import { backendSupport, prepare, type Launch } from "../src/backend"
-import { generate as generateBubblewrap } from "../src/bubblewrap"
+import { generate as generateBubblewrap, parseMountinfo } from "../src/bubblewrap"
 import { run } from "../src/context"
 import type { Profile } from "../src/profile"
 import { generate } from "../src/seatbelt"
@@ -85,6 +85,18 @@ describe("sandbox launch preparation", () => {
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
+  })
+
+  test("parses escaped mount points from Linux mountinfo", () => {
+    const content = [
+      String.raw`36 25 0:32 / / rw,relatime - overlay overlay rw`,
+      String.raw`37 36 0:33 / /tmp/kilo\040root rw - tmpfs tmpfs rw`,
+      String.raw`38 37 0:34 / /tmp/kilo\040root/nested\011mount rw - tmpfs tmpfs rw`,
+      String.raw`39 36 0:35 / /tmp/back\134slash rw - tmpfs tmpfs rw`,
+      "",
+    ].join("\n")
+
+    expect(parseMountinfo(content)).toEqual(["/", "/tmp/kilo root", "/tmp/kilo root/nested\tmount", "/tmp/back\\slash"])
   })
 
   test("allows a mounted writable root but rejects nested mount points", () => {
