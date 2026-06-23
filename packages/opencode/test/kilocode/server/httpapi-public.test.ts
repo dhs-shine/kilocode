@@ -6,7 +6,6 @@ import { BackgroundProcessPaths } from "../../../src/kilocode/server/httpapi/gro
 import { ConfigConsolePaths } from "../../../src/kilocode/server/httpapi/groups/config-console"
 import { IndexingPaths, KiloEmbeddingModel } from "../../../src/kilocode/server/httpapi/groups/indexing"
 import { KiloGatewayPaths } from "../../../src/kilocode/server/httpapi/groups/kilo-gateway"
-import { KilocodePaths } from "../../../src/kilocode/server/httpapi/groups/kilocode"
 import { NetworkPaths } from "../../../src/kilocode/server/httpapi/groups/network"
 import { TelemetryPaths } from "../../../src/kilocode/server/httpapi/groups/telemetry"
 import { ExperimentalPaths } from "../../../src/server/routes/instance/httpapi/groups/experimental"
@@ -137,7 +136,6 @@ describe("Kilo PublicApi OpenAPI contract", () => {
       { method: "get", path: ConfigConsolePaths.tuiConfig },
       { method: "get", path: ConfigConsolePaths.tuiKeybinds },
       { method: "patch", path: ConfigConsolePaths.tuiConfig },
-      { method: "get", path: KilocodePaths.sessionModelUsage },
     ] satisfies Array<{ method: Method; path: string }>
 
     for (const route of routes) {

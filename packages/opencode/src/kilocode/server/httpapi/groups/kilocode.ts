@@ -7,8 +7,6 @@ import {
   WorkspaceRoutingQuery,
 } from "@/server/routes/instance/httpapi/middleware/workspace-routing"
 import { described } from "@/server/routes/instance/httpapi/groups/metadata"
-import { ModelUsage } from "@/kilocode/session/model-usage"
-import { SessionID } from "@/session/schema"
 
 const root = "/kilocode"
 
@@ -24,7 +22,6 @@ export const KilocodePaths = {
   heapSnapshot: `${root}/heap/snapshot`,
   removeSkill: `${root}/skill/remove`,
   removeAgent: `${root}/agent/remove`,
-  sessionModelUsage: `/session/:sessionID/model-usage`,
 } as const
 
 export const KilocodeApi = HttpApi.make("kilocode")
@@ -65,18 +62,6 @@ export const KilocodeApi = HttpApi.make("kilocode")
             summary: "Remove a custom agent",
             description:
               "Remove a custom (non-native) agent by deleting its markdown file from disk and refreshing state.",
-          }),
-        ),
-        HttpApiEndpoint.get("sessionModelUsage", KilocodePaths.sessionModelUsage, {
-          params: { sessionID: SessionID },
-          query: WorkspaceRoutingQuery,
-          success: described(ModelUsage.Info, "Model usage for a session tree"),
-          error: HttpApiError.NotFound,
-        }).annotateMerge(
-          OpenApi.annotations({
-            identifier: "kilocode.sessionModelUsage",
-            summary: "Get session model usage",
-            description: "Get token usage and direct cost by model for the complete top-level session tree.",
           }),
         ),
       )
