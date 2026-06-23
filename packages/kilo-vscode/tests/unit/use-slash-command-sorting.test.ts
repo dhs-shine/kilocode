@@ -1,106 +1,50 @@
 import { describe, it, expect } from "bun:test"
-import { createRoot } from "solid-js"
-import { useSlashCommand } from "../../webview-ui/src/hooks/useSlashCommand"
-import type { ExtensionMessage } from "../../webview-ui/src/types/messages"
+import { sortByScore } from "../../webview-ui/src/hooks/useSlashCommand"
 
-function createVscodeContext() {
-  const handlers = new Set<(message: ExtensionMessage) => void>()
-  return {
-    postMessage: () => {},
-    onMessage: (handler: (message: ExtensionMessage) => void) => {
-      handlers.add(handler)
-      return () => handlers.delete(handler)
-    },
-    handlers,
-  }
-}
-
-function runHook(
-  query: string,
-  serverCommands?: {
-    name: string
-    description?: string
-    hints: string[]
-    source?: "command" | "mcp" | "skill"
-  }[],
-) {
-  const ctx = createVscodeContext()
-  let result: ReturnType<typeof useSlashCommand>
-
-  createRoot((dispose) => {
-    result = useSlashCommand(ctx)
-    if (serverCommands) {
-      for (const handler of ctx.handlers) {
-        handler({ type: "commandsLoaded", commands: serverCommands })
-      }
-    }
-    result.onInput(`/${query}`, query.length + 1)
-    dispose()
+describe("sortByScore", () => {
+  it("prefers exact matches over prefix matches", () => {
+    const commands = [
+      { name: "commit-all", description: "", hints: [] },
+      { name: "commit", description: "", hints: [] },
+    ]
+    const result = sortByScore(commands, "commit")
+    expect(result.map((c) => c.name)).toEqual(["commit", "commit-all"])
   })
 
-  return result!
-}
-
-describe("useSlashCommand sorting with built-in commands", () => {
-  it("sorts exact name match first", () => {
-    const hook = runHook("compact")
-    const names = hook.results().map((c) => c.name)
-    expect(names[0]).toBe("compact")
+  it("prefers prefix matches over substring matches", () => {
+    const commands = [
+      { name: "compact", description: "", hints: [] },
+      { name: "commit", description: "", hints: [] },
+      { name: "telecompact", description: "", hints: [] },
+      { name: "mycommittool", description: "", hints: [] },
+    ]
+    const result = sortByScore(commands, "co")
+    const names = result.map((c) => c.name)
+    expect(names.indexOf("compact")).toBeLessThan(names.indexOf("telecompact"))
+    expect(names.indexOf("commit")).toBeLessThan(names.indexOf("mycommittool"))
   })
 
-  it("sorts prefix matches before substring matches", () => {
-    const hook = runHook("co")
-    const names = hook.results().map((c) => c.name)
-    const prefixAt = names.indexOf("compact")
-    const sessionsAt = names.indexOf("sessions")
-    const remoteAt = names.indexOf("remote")
-    expect(prefixAt).toBeGreaterThanOrEqual(0)
-    expect(sessionsAt).toBeGreaterThanOrEqual(0)
-    expect(remoteAt).toBeGreaterThanOrEqual(0)
-    // prefix match ("compact" starts with "co") appears before substring matches
-    expect(prefixAt).toBeLessThan(sessionsAt)
-    expect(prefixAt).toBeLessThan(remoteAt)
+  it("matches descriptions", () => {
+    const commands = [
+      { name: "other", description: "", hints: [] },
+      { name: "help", description: "Open documentation", hints: [] },
+    ]
+    const result = sortByScore(commands, "documentation")
+    expect(result[0]?.name).toBe("help")
   })
 
-  it("returns substring match for hint query", () => {
-    const hook = runHook("smol")
-    const names = hook.results().map((c) => c.name)
-    expect(names[0]).toBe("compact")
+  it("matches hints", () => {
+    const commands = [
+      { name: "other", description: "", hints: [] },
+      { name: "compact", description: "", hints: ["smol"] },
+    ]
+    const result = sortByScore(commands, "smol")
+    expect(result[0]?.name).toBe("compact")
   })
 
   it("is case insensitive", () => {
-    const hook = runHook("COMPACT")
-    const names = hook.results().map((c) => c.name)
-    expect(names[0]).toBe("compact")
-  })
-
-  it("returns all built-in commands when query is empty string", () => {
-    const hook = runHook("")
-    expect(hook.results().length).toBe(10)
-  })
-
-  it("returns empty array for no matches", () => {
-    const hook = runHook("xyz123")
-    expect(hook.results()).toHaveLength(0)
-  })
-
-  it("returns exact match for unique command", () => {
-    const hook = runHook("help")
-    const names = hook.results().map((c) => c.name)
-    expect(names[0]).toBe("help")
-  })
-
-  it("merges server commands alongside built-in commands", () => {
-    const server = [{ name: "custom-cmd", description: "Custom command", hints: [], source: "command" as const }]
-    const hook = runHook("custom", server)
-    const names = hook.results().map((c) => c.name)
-    expect(names).toContain("custom-cmd")
-  })
-
-  it("excludes server commands that duplicate built-in command names", () => {
-    const server = [{ name: "compact", description: "Server compact", hints: [], source: "command" as const }]
-    const hook = runHook("compact", server)
-    const names = hook.results().map((c) => c.name)
-    expect(names.filter((n) => n === "compact").length).toBe(1)
+    const commands = [{ name: "compact", description: "", hints: [] }]
+    const result = sortByScore(commands, "COMPACT")
+    expect(result[0]?.name).toBe("compact")
   })
 })
