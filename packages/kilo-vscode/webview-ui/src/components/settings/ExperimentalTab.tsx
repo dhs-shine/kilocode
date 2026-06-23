@@ -171,6 +171,7 @@ const ExperimentalTab: Component = () => {
         <SettingsRow
           title={language.t("settings.experimental.mcpTimeout.title")}
           description={language.t("settings.experimental.mcpTimeout.description")}
+          last
         >
           <TextField
             value={String(experimental().mcp_timeout ?? 60000)}
@@ -181,20 +182,6 @@ const ExperimentalTab: Component = () => {
               }
             }}
           />
-        </SettingsRow>
-
-        <SettingsRow
-          title={language.t("settings.experimental.sandbox.title")}
-          description={language.t("settings.experimental.sandbox.description")}
-          last
-        >
-          <Switch
-            checked={experimental().sandbox ?? false}
-            onChange={(checked) => updateExperimental("sandbox", checked)}
-            hideLabel
-          >
-            {language.t("settings.experimental.sandbox.title")}
-          </Switch>
         </SettingsRow>
       </Card>
 
