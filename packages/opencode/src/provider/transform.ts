@@ -19,11 +19,6 @@ function mimeToModality(mime: string): Modality | undefined {
 
 export const OUTPUT_TOKEN_MAX = 32_000
 
-// OpenAI Responses `include` value that returns the encrypted reasoning state
-// needed for stateless multi-turn reasoning (store: false). Hoisted so every
-// branch that requests it stays in lockstep.
-const INCLUDE_ENCRYPTED_REASONING = ["reasoning.encrypted_content"] as const
-
 export function sanitizeSurrogates(content: string) {
   return content.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "\uFFFD")
 }
@@ -606,17 +601,9 @@ function openaiCompatibleReasoningEfforts(id: string) {
   return gpt5CodexReasoningEfforts(apiId) ?? versionedGpt5ReasoningEfforts(apiId) ?? OPENAI_EFFORTS
 }
 
-function anthropicOpus47OrLater(apiId: string) {
-  const version = /opus-(\d+)[.-](\d+)(?:[.@-]|$)/i.exec(apiId)
-  if (!version) return false
-  const major = Number(version[1])
-  const minor = Number(version[2])
-  return major > 4 || (major === 4 && minor >= 7)
-}
-
 function anthropicAdaptiveEfforts(apiId: string): string[] | null {
   // kilocode_change start - treat opus-4.8 like opus-4.7
-  if (anthropicOpus47OrLater(apiId)) {
+  if (["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"].some((v) => apiId.includes(v))) {
     return ["low", "medium", "high", "xhigh", "max"]
   }
   // kilocode_change end
@@ -655,7 +642,6 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
   if (!model.capabilities.reasoning) return {}
 
   const id = model.id.toLowerCase()
-  const adaptiveOpus = anthropicOpus47OrLater(model.api.id)
   const adaptiveEfforts = anthropicAdaptiveEfforts(model.api.id)
 
   if (
@@ -737,10 +723,6 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
               {
                 thinking: {
                   type: "adaptive",
-                  // Opus 4.7+ flips the API default for `display` to "omitted", which
-                  // returns empty thinking blocks. Force "summarized" so summaries
-                  // survive (4.6/Sonnet 4.6 already default to "summarized").
-                  ...(adaptiveOpus ? { display: "summarized" } : {}),
                 },
                 effort,
               },
@@ -814,7 +796,7 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
           {
             reasoningEffort: effort,
             reasoningSummary: "auto",
-            include: INCLUDE_ENCRYPTED_REASONING,
+            include: ["reasoning.encrypted_content"],
           },
         ]),
       )
@@ -850,7 +832,7 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
             {
               reasoningEffort: effort,
               reasoningSummary: "auto",
-              include: INCLUDE_ENCRYPTED_REASONING,
+              include: ["reasoning.encrypted_content"],
             },
           ]),
       )
@@ -863,7 +845,7 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
           {
             reasoningEffort: effort,
             reasoningSummary: "auto",
-            include: INCLUDE_ENCRYPTED_REASONING,
+            include: ["reasoning.encrypted_content"],
           },
         ]),
       )
@@ -898,7 +880,11 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
             {
               thinking: {
                 type: "adaptive",
-                ...(adaptiveOpus ? { display: "summarized" } : {}),
+                // kilocode_change start - treat opus-4.8 like opus-4.7
+                ...(["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"].some((v) => model.api.id.includes(v))
+                  ? { display: "summarized" }
+                  : {}),
+                // kilocode_change end
               },
               effort,
             },
@@ -935,7 +921,11 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
               reasoningConfig: {
                 type: "adaptive",
                 maxReasoningEffort: effort,
-                ...(adaptiveOpus ? { display: "summarized" } : {}),
+                // kilocode_change start - treat opus-4.8 like opus-4.7
+                ...(["opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8"].some((v) => model.api.id.includes(v))
+                  ? { display: "summarized" }
+                  : {}),
+                // kilocode_change end
               },
             },
           ]),
@@ -1187,6 +1177,7 @@ export function options(input: {
   }
   // kilocode_change end
 
+  // kilocode_change start
   // Enable thinking for reasoning models on alibaba-cn (DashScope).
   // DashScope's OpenAI-compatible API requires `enable_thinking: true` in the request body
   // to return reasoning_content. Without it, models like kimi-k2.5, qwen-plus, qwen3, qwq,
@@ -1200,6 +1191,7 @@ export function options(input: {
   ) {
     result["enable_thinking"] = true
   }
+  // kilocode_change end
 
   if (input.model.api.npm === "@ai-sdk/azure" && input.model.api.id.includes("gpt-5.5")) {
     result["reasoningSummary"] = "auto"
@@ -1217,9 +1209,6 @@ export function options(input: {
         input.model.api.npm === "@kilocode/kilo-gateway" // kilocode_change
       ) {
         result["reasoningSummary"] = "auto"
-        if (input.model.api.npm === "@ai-sdk/openai") {
-          result["include"] = INCLUDE_ENCRYPTED_REASONING
-        }
       }
     }
 
@@ -1241,7 +1230,7 @@ export function options(input: {
 
     if (input.model.providerID.startsWith("opencode")) {
       result["promptCacheKey"] = input.sessionID
-      result["include"] = INCLUDE_ENCRYPTED_REASONING
+      result["include"] = ["reasoning.encrypted_content"]
       result["reasoningSummary"] = "auto"
     }
   }
