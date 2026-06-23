@@ -225,18 +225,26 @@ describe("PromptInput restoreFailed fallback contract", () => {
   const PROMPT_FILE = path.join(ROOT, "webview-ui/src/components/chat/PromptInput.tsx")
   const source = readFile(PROMPT_FILE)
 
-  it("ignores failed.sessionID when it does not match the current session and there is no current session", () => {
-    // External deletes can leave failed.sessionID pointing at a session that is
-    // no longer currentSessionID() (or no current session at all). In that case
-    // the session-derived target key is stale and the restoration would be
-    // skipped, losing the user's text. Treat a stale sessionID as undefined so
-    // restoreFailed falls back to the pending/draftID or "new" key the original
-    // send was actually scoped under.
+  it("targets draftKey() instead of computing a key from failed.sessionID", () => {
+    // The previous version computed a target from failed.sessionID first and
+    // only fell back to pendingKey / "new" when that was undefined. That
+    // misses the case where the extension created a new session mid-send and
+    // that session was then deleted externally before the failure arrived:
+    // failed.sessionID points at the dead session while draftKey() has fallen
+    // back to the "new" bucket, so the guard bailed out and the user's text
+    // was silently dropped.
+    //
+    // The contract: restoreFailed checks whether the current draftKey() matches
+    // any of the three possible original-send buckets (:session:<sid>,
+    // :pending:<draftID>, :new) and writes back into draftKey() when it does.
     const match = source.match(/const restoreFailed = \(failed: SendMessageFailedMessage\) => \{([\s\S]*?)\n  \}/)
     expect(match).not.toBeNull()
-    expect(match![1]).toMatch(/const effectiveSessionID/)
-    expect(match![1]).toMatch(/failed\.sessionID && \(!currentSid \|\| failed\.sessionID === currentSid\)/)
-    expect(match![1]).toMatch(/sessionDraftKey\(effectiveSessionID\)/)
+    expect(match![1]).not.toMatch(/const effectiveSessionID/)
+    expect(match![1]).toMatch(/scopeDraftKey\(boxKey\(\),\s*sessionDraftKey\(failed\.sessionID\)\)/)
+    expect(match![1]).toMatch(/scopeDraftKey\(boxKey\(\),\s*pendingDraftKey\(failed\.draftID\)\)/)
+    expect(match![1]).toMatch(/scopeDraftKey\(boxKey\(\),\s*"new"\)/)
+    expect(match![1]).toMatch(/const target = draftKey\(\)/)
+    expect(match![1]).toMatch(/candidates\.has\(target\)/)
   })
 })
 

@@ -342,20 +342,24 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   })
 
   const restoreFailed = (failed: SendMessageFailedMessage) => {
-    // The session a send targeted may no longer be current by the time the
-    // failure arrives (e.g. the active session was deleted externally while
-    // the round-trip was in flight, or the extension created a new session
-    // mid-send). Prefer the failure's draftID when the session id is stale or
-    // missing, since that's the only key the original draft was saved under.
-    const currentSid = session.currentSessionID()
-    const effectiveSessionID =
-      failed.sessionID && (!currentSid || failed.sessionID === currentSid) ? failed.sessionID : undefined
-    const target = scopeDraftKey(
-      boxKey(),
-      sessionDraftKey(effectiveSessionID) ?? pendingDraftKey(failed.draftID) ?? "new",
-    )
     // Only restore a failed draft when the user has not started another one.
-    if (target !== draftKey() || text().trim() || reviewComments().length > 0 || imageAttach.images().length > 0) return
+    if (text().trim() || reviewComments().length > 0 || imageAttach.images().length > 0) return
+
+    // The current draftKey() may have moved since the send (e.g. the
+    // extension created a new session mid-send and that session was then
+    // deleted externally, or no session existed at send time and one was
+    // created on the extension side). The send was originally scoped under
+    // one of three keys — :session:<sid>, :pending:<draftID>, or :new — so
+    // restore as long as the current draftKey still matches one of those.
+    // Targeting a stale :session:<deleted-id> while draftKey() is :new would
+    // silently drop the user's text/comments/images.
+    const candidates = new Set([
+      scopeDraftKey(boxKey(), sessionDraftKey(failed.sessionID)),
+      scopeDraftKey(boxKey(), pendingDraftKey(failed.draftID)),
+      scopeDraftKey(boxKey(), "new"),
+    ])
+    const target = draftKey()
+    if (!candidates.has(target)) return
 
     const draft = failed.review ? reviewBody(failed.review, failed.text) : failed.text
     if (draft === undefined) return
