@@ -1,5 +1,11 @@
 # @kilocode/cli
 
+## 7.3.54
+
+### Patch Changes
+
+- [#11555](https://github.com/Kilo-Org/kilocode/pull/11555) [`5c1dcdf`](https://github.com/Kilo-Org/kilocode/commit/5c1dcdffca2fba153efe62a974727a066de25ba9) - Use the correct High and Max thinking variants for GLM 5.2 on OpenCode Go and compatible providers.
+
 ## 7.3.53
 
 ### Minor Changes
