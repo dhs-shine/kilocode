@@ -19,6 +19,8 @@ import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
+import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.execution.process.CapturingProcessHandler
 import com.intellij.ide.actions.searcheverywhere.FoundItemDescriptor
 import com.intellij.ide.util.gotoByName.ChooseByNameInScopeItemProvider
 import com.intellij.ide.util.gotoByName.ChooseByNamePopup
@@ -60,7 +62,6 @@ import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 
 /**
@@ -284,15 +285,9 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
     }
 
     private fun clean(path: String): String? {
-        val raw = path.trim().takeIf { it.isNotBlank() } ?: return null
-        return try {
-            val cut = raw.substringBefore('#').substringBefore('?')
-            val decoded = if (cut.startsWith("file:")) URI(cut).path else URLDecoder.decode(cut, StandardCharsets.UTF_8)
-            Path.of(decoded.replace('\\', '/')).normalize().toString()
-        } catch (e: Exception) {
-            LOG.debug { "Failed to normalize workspace file path: $path (${e.message})" }
-            null
-        }
+        val result = normalizeWorkspacePath(path)
+        if (result == null && path.isNotBlank()) LOG.debug { "Failed to normalize workspace file path: $path" }
+        return result
     }
 
     private fun file(path: String): Path? = try {
@@ -395,28 +390,11 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
     }
 
     private fun gitAvailable(base: Path): Boolean {
-        if (Files.exists(base.resolve(".git"))) return true
-        return gitCache.getOrPut(base.toString()) {
-            git(base, "rev-parse", "--is-inside-work-tree").trim() == "true"
-        }
+        return workspaceGitAvailable(base, gitCache)
     }
 
     private fun git(base: Path, vararg args: String): String {
-        return try {
-            val proc = ProcessBuilder(listOf("git") + args)
-                .directory(base.toFile())
-                .redirectErrorStream(true)
-                .start()
-            val done = proc.waitFor(5, TimeUnit.SECONDS)
-            if (!done) {
-                proc.destroyForcibly()
-                return ""
-            }
-            proc.inputStream.bufferedReader().readText().takeIf { proc.exitValue() == 0 }.orEmpty()
-        } catch (e: Exception) {
-            LOG.debug { "git command failed dir=$base args=${args.joinToString(" ")} message=${e.message}" }
-            ""
-        }
+        return runWorkspaceGit(base, *args)
     }
 
     private fun agent(a: Agent) = AgentInfo(
@@ -455,6 +433,34 @@ class KiloWorkspaceRpcApiImpl : KiloWorkspaceRpcApi {
 }
 
 private fun encode(value: String) = URLEncoder.encode(value, Charsets.UTF_8)
+
+internal fun normalizeWorkspacePath(path: String): String? {
+    val raw = path.trim().takeIf { it.isNotBlank() } ?: return null
+    return try {
+        val cut = raw.substringBefore('#').substringBefore('?')
+        val decoded = if (cut.startsWith("file:")) URI(cut).path else URLDecoder.decode(cut, StandardCharsets.UTF_8)
+        Path.of(decoded.replace('\\', '/')).normalize().toString()
+    } catch (_: Exception) {
+        null
+    }
+}
+
+internal fun workspaceGitAvailable(base: Path, cache: ConcurrentHashMap<String, Boolean> = ConcurrentHashMap()): Boolean {
+    if (Files.exists(base.resolve(".git"))) return true
+    return cache.getOrPut(base.toString()) {
+        runWorkspaceGit(base, "rev-parse", "--is-inside-work-tree").trim() == "true"
+    }
+}
+
+internal fun runWorkspaceGit(base: Path, vararg args: String): String {
+    return try {
+        val cmd = GeneralCommandLine(listOf("git") + args).withWorkDirectory(base.toFile())
+        val out = CapturingProcessHandler(cmd).runProcess(5_000)
+        out.stdout.takeIf { !out.isTimeout && out.exitCode == 0 }.orEmpty()
+    } catch (_: Exception) {
+        ""
+    }
+}
 
 /**
  * Relativizes [target] against [base], returning the forward-slash relative path, or null if

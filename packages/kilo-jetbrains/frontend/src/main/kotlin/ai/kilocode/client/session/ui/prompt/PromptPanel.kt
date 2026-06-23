@@ -841,59 +841,7 @@ class PromptPanel(
         syncEditorHeight()
     }
 
-    private inner class SendButton : JButton(), UiDataProvider {
-        private var over = false
-
-        init {
-            iconButton(this)
-            cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-            addMouseListener(object : MouseAdapter() {
-                override fun mouseEntered(e: MouseEvent) {
-                    sync(true)
-                }
-
-                override fun mouseExited(e: MouseEvent) {
-                    sync(false)
-                }
-            })
-        }
-
-        override fun getPreferredSize() = JBUI.size(
-            SessionUiStyle.View.Prompt.SEND_BUTTON_SIZE,
-            SessionUiStyle.View.Prompt.SEND_BUTTON_SIZE,
-        )
-
-        override fun uiDataSnapshot(sink: DataSink) {
-            sink.set(PromptDataKeys.SEND, this@PromptPanel)
-        }
-
-        override fun getMinimumSize() = preferredSize
-
-        override fun getMaximumSize() = preferredSize
-
-        override fun paintComponent(g: Graphics) {
-            if (over) {
-                val g2 = g.create() as Graphics2D
-                try {
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-                    g2.color = JBUI.CurrentTheme.ActionButton.hoverBackground()
-                    val arc = JBUI.scale(JBUI.getInt("Button.arc", SessionUiStyle.View.Prompt.CORNER_ARC))
-                    g2.fillRoundRect(0, 0, width, height, arc, arc)
-                } finally {
-                    g2.dispose()
-                }
-            }
-            super.paintComponent(g)
-        }
-
-        private fun sync(value: Boolean) {
-            if (over == value) return
-            over = value
-            repaint()
-        }
-    }
-
-    private inner class AutoApproveButton : JButton() {
+    private inner abstract class PromptButton : JButton() {
         private var over = false
 
         init {
@@ -942,5 +890,13 @@ class PromptPanel(
             repaint()
         }
     }
+
+    private inner class SendButton : PromptButton(), UiDataProvider {
+        override fun uiDataSnapshot(sink: DataSink) {
+            sink.set(PromptDataKeys.SEND, this@PromptPanel)
+        }
+    }
+
+    private inner class AutoApproveButton : PromptButton()
 
 }

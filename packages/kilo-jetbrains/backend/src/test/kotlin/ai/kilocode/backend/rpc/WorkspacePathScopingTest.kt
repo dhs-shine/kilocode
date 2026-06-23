@@ -1,9 +1,14 @@
 package ai.kilocode.backend.rpc
 
+import kotlinx.coroutines.runBlocking
+import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class WorkspacePathScopingTest {
     // Derive an absolute, OS-portable base from the real home dir so the test runs identically on
@@ -51,5 +56,95 @@ class WorkspacePathScopingTest {
     fun `prefix sibling is not treated as inside base`() {
         val sibling = base.resolveSibling(base.fileName.toString() + "-2")
         assertNull(relativeWithinBase(base, sibling.resolve("A.kt")))
+    }
+
+    @Test
+    fun `normalizes encoded file URLs`() {
+        val path = base.resolve("dir with spaces").resolve("A.kt")
+        val url = path.toUri().toString() + "?query#fragment"
+
+        assertEquals(path.normalize().toString(), normalizeWorkspacePath(url))
+    }
+
+    @Test
+    fun `normalizes escaped relative paths`() {
+        assertEquals("src/A.kt", normalizeWorkspacePath("src%2Ftmp%2F..%2FA.kt"))
+    }
+
+    @Test
+    fun `rejects blank and invalid paths`() {
+        assertNull(normalizeWorkspacePath("   "))
+        assertNull(normalizeWorkspacePath("file://%"))
+    }
+
+    @Test
+    fun `git availability detects temp repository`() {
+        val dir = repo() ?: return
+        try {
+            assertTrue(workspaceGitAvailable(dir))
+        } finally {
+            delete(dir)
+        }
+    }
+
+    @Test
+    fun `git changes returns capped large diff without blocking`() = runBlocking {
+        val dir = repo() ?: return@runBlocking
+        try {
+            val file = dir.resolve("large.txt")
+            file.writeText("base\n")
+            git(dir, "add", "large.txt")
+            git(dir, "commit", "-m", "base")
+            file.writeText((1..40_000).joinToString("\n") { "line-$it" } + "\n")
+
+            val diff = assertNotNull(KiloWorkspaceRpcApiImpl().gitChanges(dir.toString()))
+            assertTrue(diff.startsWith("diff --git"))
+            assertEquals(200_000, diff.length)
+        } finally {
+            delete(dir)
+        }
+    }
+
+    @Test
+    fun `git changes returns null outside git repositories`() = runBlocking {
+        val dir = Files.createTempDirectory("kilo-non-git")
+        try {
+            assertNull(KiloWorkspaceRpcApiImpl().gitChanges(dir.toString()))
+        } finally {
+            delete(dir)
+        }
+    }
+
+    private fun repo(): Path? {
+        if (!gitInstalled()) return null
+        val dir = Files.createTempDirectory("kilo-git")
+        git(dir, "init")
+        git(dir, "config", "user.email", "test@example.com")
+        git(dir, "config", "user.name", "Test User")
+        return dir
+    }
+
+    private fun gitInstalled(): Boolean {
+        return try {
+            ProcessBuilder("git", "--version").start().waitFor() == 0
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun git(dir: Path, vararg args: String) {
+        val proc = ProcessBuilder(listOf("git") + args)
+            .directory(dir.toFile())
+            .redirectErrorStream(true)
+            .start()
+        val out = proc.inputStream.bufferedReader().readText()
+        val code = proc.waitFor()
+        assertEquals(0, code, out)
+    }
+
+    private fun delete(dir: Path) {
+        Files.walk(dir).use { paths ->
+            paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+        }
     }
 }
