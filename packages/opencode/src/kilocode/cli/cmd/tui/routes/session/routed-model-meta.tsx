@@ -53,12 +53,10 @@ export namespace RoutedModelMeta {
     return part
   }
 
-  function footer(parts: Part[], message: Message) {
+  function footer(parts: Part[]) {
     return parts
       .filter((part): part is StepFinishPart => part.type === "step-finish")
-      .slice()
-      .reverse()
-      .find((part) => routed(part.model, message))
+      .at(-1)
   }
 
   export function info(list: Providers, parts: Part[], details: boolean, message: Message): Info {
@@ -69,7 +67,7 @@ export namespace RoutedModelMeta {
       if (!item || !text) return []
       return [[part.id, text, item.id] as const]
     })
-    const foot = footer(parts, message)
+    const foot = footer(parts)
     const text = label(list, routed(foot?.model, message))
     return {
       labels: new Map(entries.map((entry) => [entry[0], entry[1]] as const)),

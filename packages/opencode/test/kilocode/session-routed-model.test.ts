@@ -31,9 +31,9 @@ describe("session routed model", () => {
     type: "text",
     text: "hello",
   } as Part
-  const finish = (model: NonNullable<StepFinishPart["model"]>) =>
+  const finish = (model?: StepFinishPart["model"], id = "finish") =>
     ({
-      id: "finish",
+      id,
       sessionID: "session",
       messageID: "message",
       type: "step-finish",
@@ -147,6 +147,26 @@ describe("session routed model", () => {
     expect(routed.labels.size).toBe(0)
     expect(routed.footer).toBe("qwen 3.7-plus")
     expect(routed.consumed.has("finish")).toBe(true)
+  })
+
+  test("does not carry compact footer labels across steps", () => {
+    const more = { ...reason, id: "reasoning-2" } as Part
+    const parts = [
+      reason,
+      finish({ providerID: "qwen", modelID: "qwen/qwen3.7-plus" }, "first"),
+      more,
+      finish(undefined, "last"),
+    ]
+
+    const routed = RoutedModelMeta.info(undefined, parts, false, {
+      providerID: "kilo",
+      modelID: "kilo-auto/efficient",
+    })
+    expect(routed.labels.get("reasoning")).toBe("qwen 3.7-plus")
+    expect(routed.labels.has("reasoning-2")).toBe(false)
+    expect(routed.footer).toBeUndefined()
+    expect(routed.consumed.has("first")).toBe(true)
+    expect(routed.consumed.has("last")).toBe(false)
   })
 
   test("reads routed model only for selected Kilo auto models", () => {
