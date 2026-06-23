@@ -114,6 +114,7 @@ describe("cli tree-sitter resources", () => {
       const target = path.join(root, "extension", "bin", "kilo")
       const helper = path.join(path.dirname(source), "bwrap")
       const license = path.join(path.dirname(source), "licenses", "bubblewrap", "COPYING")
+      const notice = path.join(path.dirname(license), "NOTICE")
 
       await fs.mkdir(path.dirname(license), { recursive: true })
       await fs.mkdir(path.dirname(target), { recursive: true })
@@ -121,6 +122,7 @@ describe("cli tree-sitter resources", () => {
       await fs.writeFile(target, "binary")
       await fs.writeFile(helper, "helper")
       await fs.writeFile(license, "LGPL")
+      await fs.writeFile(notice, "SPDX-License-Identifier: LGPL-2.0-or-later")
 
       await copySandboxResources(source, target)
 
@@ -129,6 +131,9 @@ describe("cli tree-sitter resources", () => {
       expect((await fs.stat(copied)).mode & 0o111).not.toBe(0)
       expect(await fs.readFile(path.join(path.dirname(target), "licenses", "bubblewrap", "COPYING"), "utf8")).toBe(
         "LGPL",
+      )
+      expect(await fs.readFile(path.join(path.dirname(target), "licenses", "bubblewrap", "NOTICE"), "utf8")).toBe(
+        "SPDX-License-Identifier: LGPL-2.0-or-later",
       )
     } finally {
       await fs.rm(root, { recursive: true, force: true })

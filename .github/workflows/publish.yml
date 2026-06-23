@@ -190,6 +190,7 @@ jobs:
             helper="$(dirname "$binary")/bwrap"
             if [[ "${{ matrix.target }}" == linux-* ]]; then
               test -x "$helper"
+              grep -q '^SPDX-License-Identifier: LGPL-2.0-or-later$' "$(dirname "$binary")/licenses/bubblewrap/NOTICE"
               "$helper" --version
               "$helper" --unshare-user --disable-userns --unshare-pid --die-with-parent --new-session \
                 --ro-bind / / --dev /dev --proc /proc -- "$helper" --version
@@ -228,8 +229,9 @@ jobs:
               apk add --no-cache libstdc++ libgcc
               # kilocode_change end
               binary="/dist/$PACKAGE/bin/kilo" # kilocode_change
-              "$binary" --version
+              "$binary" --version # kilocode_change
               "/dist/$PACKAGE/bin/bwrap" --version # kilocode_change
+              grep -q '^SPDX-License-Identifier: LGPL-2.0-or-later$' "/dist/$PACKAGE/bin/licenses/bubblewrap/NOTICE" # kilocode_change
               root="$(mktemp -d)"
               trap '\''rm -rf "$root"'\'' EXIT
               unset KILO_MODELS_PATH KILO_MODELS_URL KILO_CONFIG KILO_CONFIG_DIR

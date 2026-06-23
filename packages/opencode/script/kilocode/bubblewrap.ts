@@ -40,6 +40,19 @@ const config = `#pragma once
 #define PACKAGE_VERSION "${version}"
 `
 
+const notice = `Bubblewrap ${version}
+
+SPDX-License-Identifier: LGPL-2.0-or-later
+Source: https://github.com/containers/bubblewrap/tree/${commit}
+
+Kilo distributes Bubblewrap as a separate executable. The complete license text is
+in COPYING. The exact corresponding source is in bubblewrap-${commit}.tar.gz, and
+the build recipe and generated compatibility headers are in build.ts.
+
+The executable is statically linked with musl. Its copyright and license notices
+are in MUSL-COPYRIGHT.
+`
+
 function sha256(file: string) {
   return createHash("sha256").update(readFileSync(file)).digest("hex")
 }
@@ -141,6 +154,7 @@ export async function stageBubblewrap(arch: "x64" | "arm64", dir: string) {
   rmSync(licenses, { recursive: true, force: true })
   mkdirSync(licenses, { recursive: true })
   copyFileSync(built.executable, path.join(dir, "bwrap"))
+  await Bun.write(path.join(licenses, "NOTICE"), notice)
   copyFileSync(built.license, path.join(licenses, "COPYING"))
   copyFileSync(built.musl, path.join(licenses, "MUSL-COPYRIGHT"))
   copyFileSync(built.archive, path.join(licenses, `bubblewrap-${commit}.tar.gz`))
