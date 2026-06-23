@@ -24,7 +24,7 @@ export namespace KiloRoutedModel {
   export function displayName(name: string) {
     return name
       .trim()
-      .replace(/^[^:]+:\s*/, "")
+      .replace(/^[^:]+:\s+/, "")
       .replace(/^[^/\s]+\/(?=[^/]+$)/, "")
       .replace(/\s*\([^)]*%\s*off[^)]*\)\s*$/i, "")
       .replace(/^([A-Za-z]{2,})(?=\d)/, "$1 ")

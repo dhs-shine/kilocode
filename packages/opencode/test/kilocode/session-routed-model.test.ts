@@ -89,6 +89,9 @@ describe("session routed model", () => {
 
   test("formats routed model names for compact display", () => {
     expect(KiloRoutedModel.displayName("Qwen: Qwen3.7 Plus (20% off)")).toBe("Qwen 3.7 Plus")
+    expect(KiloRoutedModel.displayName("anthropic.claude-opus-4-5-20251101-v1:0")).toBe(
+      "anthropic.claude-opus-4-5-20251101-v1:0",
+    )
     expect(KiloRoutedModel.displayName("moonshotai/kimi-k2.7-code")).toBe("kimi-k2.7-code")
     expect(KiloRoutedModel.displayName("o3")).toBe("o3")
   })
