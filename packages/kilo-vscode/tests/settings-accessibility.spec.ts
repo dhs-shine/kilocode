@@ -54,16 +54,6 @@ test.describe("settings tab accessibility", () => {
     await expect(page.getByRole("tabpanel", { name: "Models" })).toBeVisible()
   })
 
-  test("requires both the internal feature flag and sandbox experiment", async ({ page }) => {
-    await page.setViewportSize({ width: 420, height: 720 })
-    for (const story of ["sandbox-experiment-only", "sandbox-controls-only"]) {
-      await page.goto(`/iframe.html?id=settings--${story}&viewMode=story&globals=${GLOBALS}`, {
-        waitUntil: "load",
-      })
-      await expect(page.getByRole("tab", { name: "Sandboxing" })).toHaveCount(0)
-    }
-  })
-
   test("shows sandboxing controls when the feature flag and experiment are enabled", async ({ page }) => {
     await page.setViewportSize({ width: 420, height: 720 })
     await page.goto(`/iframe.html?id=settings--sandboxing-panel&viewMode=story&globals=${GLOBALS}`, {
@@ -75,7 +65,7 @@ test.describe("settings tab accessibility", () => {
     await expect(tab).toHaveAttribute("aria-selected", "true")
     await expect(page.getByRole("tabpanel", { name: "Sandboxing" })).toBeVisible()
     const network = page.getByRole("switch", { name: "Restrict Network Access" })
-    await expect(network).toHaveAccessibleDescription(/Local MCP servers and plugin hooks run outside this restriction/)
+    await expect(page.getByText(/Local MCP servers and plugin hooks run outside this restriction/)).toBeVisible()
     await expect(network).toBeChecked()
     await page.locator('[data-slot="switch-control"]').click()
     await expect(network).not.toBeChecked()

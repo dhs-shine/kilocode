@@ -1,6 +1,13 @@
 #!/usr/bin/env bun
 // kilocode_change - new file
 
+// This is a CI-only architecture test, not production network enforcement. Model tools run
+// inside the trusted kilo serve process, so macOS Seatbelt can only confine their spawned
+// children. In-process tools must use the policy-aware HTTP capability instead of direct fetch,
+// sockets, or ad hoc clients. Keep this narrow scan to prevent future tool implementations from
+// accidentally bypassing that boundary; trusted provider and model-inference code is intentionally
+// outside the scanned directories. Runtime enforcement remains in @kilocode/sandbox.
+
 import path from "node:path"
 
 const root = path.resolve(import.meta.dir, "..")
