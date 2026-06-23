@@ -103,9 +103,10 @@ jobs:
       # kilocode_change start
       - name: Test nested mount rejection
         if: runner.os == 'Linux'
+        working-directory: packages/core
         run: |
           sudo env PATH="$PATH" KILO_BWRAP_PATH="$KILO_BWRAP_PATH" KILO_TEST_PRIVILEGED_MOUNTS=1 \
-            "$(command -v bun)" test packages/core/test/kilocode/linux-sandbox.test.ts -t "nested mount"
+            "$(command -v bun)" test ./test/kilocode/linux-sandbox.test.ts -t "nested mount"
       # kilocode_change end
       - name: Run HttpApi exerciser gates
         if: runner.os == 'Linux' # kilocode_change
