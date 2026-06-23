@@ -2,7 +2,14 @@ import { afterEach, describe, expect } from "bun:test"
 import * as CrossSpawnSpawner from "@opencode-ai/core/cross-spawn-spawner"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import * as AppProcess from "@opencode-ai/core/process"
-import { mutate, run as sandbox, withRunner, type MutationRunner, type Profile } from "@kilocode/sandbox"
+import {
+  mutate,
+  run as sandbox,
+  withRunner,
+  type MutationRequest,
+  type MutationRunner,
+  type Profile,
+} from "@kilocode/sandbox"
 import { Effect, Exit, Layer } from "effect"
 import { ChildProcess } from "effect/unstable/process"
 import fs from "node:fs/promises"
@@ -27,9 +34,10 @@ import { WriteTool } from "@/tool/write"
 import { disposeAllInstances, provideTmpdirInstance } from "../../fixture/fixture"
 import { testEffect } from "../../lib/effect"
 
-const gate: { run?: (() => Promise<void>) | undefined } = {}
+const gate: { run?: (() => Promise<void>) | undefined; requests?: MutationRequest[] | undefined } = {}
 const runner: MutationRunner = (profile, request) =>
   Effect.gen(function* () {
+    gate.requests?.push(request)
     if (gate.run) yield* Effect.promise(gate.run)
     return yield* mutate(profile, request)
   })
@@ -171,6 +179,7 @@ const encoding = {
 
 afterEach(async () => {
   gate.run = undefined
+  gate.requests = undefined
   await disposeAllInstances()
 })
 
@@ -269,21 +278,54 @@ describe.skipIf(process.platform !== "darwin").serial("real macOS sandbox confin
         const write = path.join(dir, "nested", "write.txt")
         const edit = path.join(dir, "edit.txt")
         const patch = path.join(dir, "patch.txt")
+        const second = path.join(dir, "second.txt")
         yield* Effect.promise(async () => {
           await fs.mkdir(path.join(dir, ".tmp"), { recursive: true })
           await fs.writeFile(edit, "before\n")
           await fs.writeFile(patch, "before\n")
+          await fs.writeFile(second, "before\n")
         })
-        yield* sandbox(profile(dir), runWrite({ filePath: write, content: "written" }))
-        yield* sandbox(profile(dir), runEdit({ filePath: edit, oldString: "before", newString: "edited" }))
-        yield* sandbox(
-          profile(dir),
-          runPatch("*** Begin Patch\n*** Update File: patch.txt\n@@\n-before\n+patched\n*** End Patch"),
+        gate.requests = []
+        yield* withRunner(runner, sandbox(profile(dir), runWrite({ filePath: write, content: "written" })))
+        expect(gate.requests).toHaveLength(1)
+        expect(gate.requests[0]).toMatchObject({
+          op: "batch",
+          operations: [{ op: "makeDirectory" }, { op: "writeFile" }],
+        })
+        gate.requests = []
+        yield* withRunner(
+          runner,
+          sandbox(profile(dir), runEdit({ filePath: edit, oldString: "before", newString: "edited" })),
+        )
+        expect(gate.requests).toHaveLength(1)
+        expect(gate.requests[0]).toMatchObject({
+          op: "batch",
+          operations: [{ op: "makeDirectory" }, { op: "writeFile" }],
+        })
+        gate.requests = []
+        yield* withRunner(
+          runner,
+          sandbox(
+            profile(dir),
+            runPatch(
+              "*** Begin Patch\n*** Update File: patch.txt\n@@\n-before\n+patched\n*** Update File: second.txt\n@@\n-before\n+second\n*** End Patch",
+            ),
+          ),
         )
         const content = yield* Effect.promise(() =>
-          Promise.all([fs.readFile(write, "utf8"), fs.readFile(edit, "utf8"), fs.readFile(patch, "utf8")]),
+          Promise.all([
+            fs.readFile(write, "utf8"),
+            fs.readFile(edit, "utf8"),
+            fs.readFile(patch, "utf8"),
+            fs.readFile(second, "utf8"),
+          ]),
         )
-        expect(content).toEqual(["written", "edited\n", "patched\n"])
+        expect(content).toEqual(["written", "edited\n", "patched\n", "second\n"])
+        expect(gate.requests).toHaveLength(1)
+        expect(gate.requests[0]).toMatchObject({
+          op: "batch",
+          operations: [{ op: "makeDirectory" }, { op: "writeFile" }, { op: "makeDirectory" }, { op: "writeFile" }],
+        })
       }),
     ),
   )

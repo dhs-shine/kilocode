@@ -7,8 +7,7 @@
   "private": true,
   "description": "OS-neutral sandbox profiles and launch preparation for Kilo Code",
   "exports": {
-    ".": "./src/index.ts",
-    "./mutation-worker": "./src/mutation-worker.ts"
+    ".": "./src/index.ts"
   },
   "files": [
     "src"

@@ -16,7 +16,7 @@ export type Time =
   | { readonly type: "date"; readonly value: string }
   | { readonly type: "number"; readonly value: number }
 
-export type Request =
+export type Operation =
   | { readonly op: "chmod"; readonly path: string; readonly mode: number }
   | { readonly op: "chown"; readonly path: string; readonly uid: number; readonly gid: number }
   | { readonly op: "copy"; readonly from: string; readonly to: string; readonly options?: Options | undefined }
@@ -43,6 +43,9 @@ export type Request =
       readonly options?: Options | undefined
     }
 
+export type BatchOperation = Exclude<Operation, { readonly op: "makeTempDirectory" | "makeTempFile" }>
+export type Request = Operation | { readonly op: "batch"; readonly operations: ReadonlyArray<BatchOperation> }
+
 export interface Failure {
   readonly name?: string | undefined
   readonly message: string
@@ -51,6 +54,7 @@ export interface Failure {
   readonly syscall?: string | undefined
   readonly path?: string | undefined
   readonly dest?: string | undefined
+  readonly operation?: Operation["op"] | undefined
 }
 
 export type Response =
@@ -72,7 +76,7 @@ export function isResponse(value: unknown): value is Response {
   return value.value === undefined || typeof value.value === "string"
 }
 
-export function isRequest(value: unknown): value is Request {
+function isOperation(value: unknown): value is Operation {
   if (!isObject(value) || typeof value.op !== "string") return false
   const path = typeof value.path === "string"
   const from = typeof value.from === "string"
@@ -103,6 +107,16 @@ export function isRequest(value: unknown): value is Request {
     default:
       return false
   }
+}
+
+function isBatchOperation(value: unknown): value is BatchOperation {
+  return isOperation(value) && value.op !== "makeTempDirectory" && value.op !== "makeTempFile"
+}
+
+export function isRequest(value: unknown): value is Request {
+  if (!isObject(value) || typeof value.op !== "string") return false
+  if (value.op !== "batch") return isOperation(value)
+  return Array.isArray(value.operations) && value.operations.length > 0 && value.operations.every(isBatchOperation)
 }
 
 export function date(value: Date | number): Time {

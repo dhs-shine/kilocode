@@ -6,6 +6,8 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { Effect, FileSystem, Layer, Scope, Stream } from "effect"
 import { run } from "../src/context"
 import { layer } from "../src/filesystem"
+import { batchMutations, withRunner, type Runner } from "../src/mutation"
+import type { Request } from "../src/mutation-protocol"
 import type { Profile } from "../src/profile"
 
 const live = layer.pipe(Layer.provide(NodeFileSystem.layer))
@@ -66,6 +68,57 @@ describe("sandbox FileSystem", () => {
       expect(await readFile(outside, "utf8")).toBe("outside")
     },
   )
+
+  test("batches nested finite mutations in request order", async () => {
+    await mkdir(allowed, { recursive: true })
+    const requests: Request[] = []
+    const runner: Runner = (_profile, request) => Effect.sync(() => requests.push(request)).pipe(Effect.as(undefined))
+    await execute(
+      withRunner(
+        runner,
+        run(
+          makeProfile(allowed),
+          batchMutations(
+            Effect.gen(function* () {
+              const fs = yield* FileSystem.FileSystem
+              yield* fs.makeDirectory(path.join(allowed, "nested"), { recursive: true })
+              yield* batchMutations(fs.writeFileString(path.join(allowed, "nested", "value.txt"), "value"))
+              yield* fs.chmod(path.join(allowed, "nested", "value.txt"), 0o600)
+            }),
+          ),
+        ),
+      ),
+    )
+    expect(requests).toHaveLength(1)
+    expect(requests[0]).toMatchObject({
+      op: "batch",
+      operations: [{ op: "makeDirectory" }, { op: "writeFileString" }, { op: "chmod" }],
+    })
+  })
+
+  test("flushes queued mutations before propagating a later failure", async () => {
+    await mkdir(allowed, { recursive: true })
+    const requests: Request[] = []
+    const runner: Runner = (_profile, request) => Effect.sync(() => requests.push(request)).pipe(Effect.as(undefined))
+    const exit = await execute(
+      withRunner(
+        runner,
+        run(
+          makeProfile(allowed),
+          batchMutations(
+            Effect.gen(function* () {
+              const fs = yield* FileSystem.FileSystem
+              yield* fs.writeFileString(path.join(allowed, "value.txt"), "value")
+              return yield* Effect.fail("later failure")
+            }),
+          ),
+        ),
+      ).pipe(Effect.exit),
+    )
+    expect(exit._tag).toBe("Failure")
+    expect(requests).toHaveLength(1)
+    expect(requests[0]).toMatchObject({ op: "batch", operations: [{ op: "writeFileString" }] })
+  })
 
   test("allows read-only open but guards writable open and sink", async () => {
     const inside = path.join(allowed, "open.txt")

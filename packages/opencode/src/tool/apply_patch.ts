@@ -17,6 +17,7 @@ import { ConfigValidation } from "../kilocode/config-validation" // kilocode_cha
 import * as EncodedIO from "../kilocode/tool/encoded-io" // kilocode_change
 import { Format } from "../format"
 import * as Bom from "@/util/bom"
+import { batchMutations } from "@/kilocode/sandbox/mutation" // kilocode_change
 
 export const Parameters = Schema.Struct({
   patchText: Schema.String.annotate({ description: "The full patch text that describes all changes to be made" }),
@@ -241,43 +242,48 @@ export const ApplyPatchTool = Tool.define(
       // Apply the changes
       const updates: Array<{ file: string; event: "add" | "change" | "unlink" }> = []
 
+      // kilocode_change start - apply the verified ordered mutation set in one confined worker
+      yield* batchMutations(
+        Effect.gen(function* () {
+          for (const change of fileChanges) {
+            switch (change.type) {
+              case "add":
+                yield* EncodedIO.write(afs, change.filePath, Bom.join(change.newContent, change.bom), change.encoding)
+                updates.push({ file: change.filePath, event: "add" })
+                break
+
+              case "update":
+                yield* EncodedIO.write(afs, change.filePath, Bom.join(change.newContent, change.bom), change.encoding)
+                updates.push({ file: change.filePath, event: "change" })
+                break
+
+              case "move":
+                if (change.movePath) {
+                  yield* EncodedIO.write(afs, change.movePath, Bom.join(change.newContent, change.bom), change.encoding)
+                  yield* afs.remove(change.filePath)
+                  updates.push({ file: change.filePath, event: "unlink" })
+                  updates.push({ file: change.movePath, event: "add" })
+                }
+                break
+
+              case "delete":
+                yield* afs.remove(change.filePath)
+                updates.push({ file: change.filePath, event: "unlink" })
+                break
+            }
+          }
+        }),
+      )
+
       for (const change of fileChanges) {
         const edited = change.type === "delete" ? undefined : (change.movePath ?? change.filePath)
-        switch (change.type) {
-          case "add":
-            // Create parent directories (recursive: true is safe on existing/root dirs)
-            yield* EncodedIO.write(afs, change.filePath, Bom.join(change.newContent, change.bom), change.encoding) // kilocode_change - encoding-aware write (mkdirs) replaces afs.writeWithDirs
-            updates.push({ file: change.filePath, event: "add" })
-            break
-
-          case "update":
-            yield* EncodedIO.write(afs, change.filePath, Bom.join(change.newContent, change.bom), change.encoding) // kilocode_change - encoding-aware write replaces afs.writeWithDirs
-            updates.push({ file: change.filePath, event: "change" })
-            break
-
-          case "move":
-            if (change.movePath) {
-              // Create parent directories (recursive: true is safe on existing/root dirs)
-              yield* EncodedIO.write(afs, change.movePath, Bom.join(change.newContent, change.bom), change.encoding) // kilocode_change - encoding-aware write (mkdirs) replaces afs.writeWithDirs
-              yield* afs.remove(change.filePath)
-              updates.push({ file: change.filePath, event: "unlink" })
-              updates.push({ file: change.movePath, event: "add" })
-            }
-            break
-
-          case "delete":
-            yield* afs.remove(change.filePath)
-            updates.push({ file: change.filePath, event: "unlink" })
-            break
+        if (!edited) continue
+        if (yield* format.file(edited)) {
+          yield* EncodedIO.sync(afs, edited, change.bom, change.encoding)
         }
-
-        if (edited) {
-          if (yield* format.file(edited)) {
-            yield* EncodedIO.sync(afs, edited, change.bom, change.encoding)
-          }
-          yield* bus.publish(File.Event.Edited, { file: edited })
-        }
+        yield* bus.publish(File.Event.Edited, { file: edited })
       }
+      // kilocode_change end
 
       // Publish file change events
       for (const update of updates) {

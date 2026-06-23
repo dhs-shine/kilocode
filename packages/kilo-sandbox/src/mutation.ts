@@ -1,25 +1,23 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
+import { dirname, resolve } from "node:path"
 import type { Writable } from "node:stream"
 import { finished } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
 import { Context, Effect, PlatformError } from "effect"
 import { confine } from "./backend"
-import { isResponse, type Failure, type Request } from "./mutation-protocol"
+import { isResponse, type BatchOperation, type Failure, type Operation, type Request } from "./mutation-protocol"
 import type { Profile } from "./profile"
 
 declare const KILO_SANDBOX_MUTATION_WORKER_PATH: string
 
 function worker() {
   if (typeof KILO_SANDBOX_MUTATION_WORKER_PATH === "undefined") {
-    return { args: [fileURLToPath(new URL("./mutation-worker.ts", import.meta.url))], environment: {} }
-  }
-  if (KILO_SANDBOX_MUTATION_WORKER_PATH === "") {
-    return { args: [], environment: { KILO_SANDBOX_MUTATION_WORKER: "1" } }
+    return { path: fileURLToPath(new URL("./mutation-worker.ts", import.meta.url)), environment: {} }
   }
   const path = KILO_SANDBOX_MUTATION_WORKER_PATH.startsWith(".")
     ? fileURLToPath(new URL(KILO_SANDBOX_MUTATION_WORKER_PATH, import.meta.url))
-    : KILO_SANDBOX_MUTATION_WORKER_PATH
-  return { args: [path], environment: {} }
+    : resolve(dirname(process.execPath), KILO_SANDBOX_MUTATION_WORKER_PATH)
+  return { path, environment: { BUN_BE_BUN: "1" } }
 }
 
 function tag(code: string | undefined): PlatformError.SystemErrorTag {
@@ -83,7 +81,8 @@ function infrastructure(path: string, description: string, cause?: unknown) {
   })
 }
 
-function target(request: Request) {
+function target(request: Request): string {
+  if (request.op === "batch") return target(request.operations[0])
   if ("path" in request) return request.path
   if ("to" in request) return request.to
   return request.options?.directory ?? process.cwd()
@@ -146,7 +145,7 @@ export const mutate: Runner = (profile, request) =>
       const child = worker()
       const launch = yield* confine(profile, {
         command: process.execPath,
-        args: child.args,
+        args: [child.path],
         cwd: process.cwd(),
         environment: process.env,
       })
@@ -177,7 +176,7 @@ export const mutate: Runner = (profile, request) =>
             ? cause
             : infrastructure(path, cause instanceof Error ? cause.message : String(cause), cause),
       })
-      if (!result.ok) return yield* Effect.fail(failure(request.op, path, result.error))
+      if (!result.ok) return yield* Effect.fail(failure(result.error.operation ?? request.op, path, result.error))
       return result.value
     }),
   )
@@ -192,4 +191,38 @@ export const currentRunner: Effect.Effect<Runner> = Effect.gen(function* () {
 
 export function withRunner<A, E, R>(runner: Runner, effect: Effect.Effect<A, E, R>) {
   return effect.pipe(Effect.provideService(CurrentRunner, runner))
+}
+
+function returnsValue(
+  request: Request,
+): request is Extract<Operation, { readonly op: "makeTempDirectory" | "makeTempFile" }> {
+  return request.op === "makeTempDirectory" || request.op === "makeTempFile"
+}
+
+export function batchMutations<A, E, R>(effect: Effect.Effect<A, E, R>) {
+  return Effect.gen(function* () {
+    const upstream = yield* currentRunner
+    const state: { profile?: Profile; operations: BatchOperation[] } = { operations: [] }
+    const flush = () =>
+      Effect.gen(function* () {
+        const profile = state.profile
+        if (!profile || state.operations.length === 0) return
+        const operations = state.operations.splice(0)
+        state.profile = undefined
+        yield* upstream(profile, { op: "batch", operations })
+      })
+    const collect: Runner = (profile, request) =>
+      Effect.gen(function* () {
+        if (state.profile && state.profile !== profile) yield* flush()
+        if (returnsValue(request)) {
+          yield* flush()
+          return yield* upstream(profile, request)
+        }
+        state.profile = profile
+        if (request.op === "batch") state.operations.push(...request.operations)
+        else state.operations.push(request)
+        return undefined
+      })
+    return yield* withRunner(collect, effect).pipe(Effect.onExit(() => flush()))
+  })
 }

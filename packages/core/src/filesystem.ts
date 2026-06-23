@@ -1,5 +1,5 @@
 import { NodeFileSystem } from "@effect/platform-node"
-import { decorateFileSystem } from "@kilocode/sandbox" // kilocode_change
+import { batchMutations, decorateFileSystem } from "@kilocode/sandbox" // kilocode_change
 import { dirname, isAbsolute, join, relative, resolve as pathResolve, sep } from "path" // kilocode_change - harden containment checks
 import { realpathSync } from "fs"
 import * as NFS from "fs/promises"
@@ -104,8 +104,12 @@ export namespace AppFileSystem {
 
       const writeJson = Effect.fn("FileSystem.writeJson")(function* (path: string, data: unknown, mode?: number) {
         const content = JSON.stringify(data, null, 2)
-        yield* fs.writeFileString(path, content)
-        if (mode) yield* fs.chmod(path, mode)
+        yield* batchMutations(
+          Effect.gen(function* () {
+            yield* fs.writeFileString(path, content)
+            if (mode) yield* fs.chmod(path, mode)
+          }),
+        ) // kilocode_change - confine ordered write and mode changes in one worker
       })
 
       const ensureDir = Effect.fn("FileSystem.ensureDir")(function* (path: string) {
@@ -117,19 +121,14 @@ export namespace AppFileSystem {
         content: string | Uint8Array,
         mode?: number,
       ) {
-        const write = typeof content === "string" ? fs.writeFileString(path, content) : fs.writeFile(path, content)
-
-        yield* write.pipe(
-          Effect.catchIf(
-            (e) => e.reason._tag === "NotFound",
-            () =>
-              Effect.gen(function* () {
-                yield* mkdirSafe(fs, dirname(path)) // kilocode_change - confine parent creation at syscall time
-                yield* write
-              }),
-          ),
-        )
-        if (mode) yield* fs.chmod(path, mode)
+        yield* batchMutations(
+          Effect.gen(function* () {
+            yield* mkdirSafe(fs, dirname(path))
+            if (typeof content === "string") yield* fs.writeFileString(path, content)
+            else yield* fs.writeFile(path, content)
+            if (mode) yield* fs.chmod(path, mode)
+          }),
+        ) // kilocode_change - confine parent creation, write, and mode changes in one worker
       })
 
       const glob = Effect.fn("FileSystem.glob")(function* (pattern: string, options?: Glob.Options) {

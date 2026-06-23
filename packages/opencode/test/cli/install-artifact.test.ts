@@ -49,6 +49,7 @@ describe("npm install artifact behavior", () => {
       )
       const binary = "#!/bin/sh\n# binary\nexit 0\n"
       await Bun.write(path.join(bin, "kilo"), binary)
+      await Bun.write(path.join(bin, "sandbox-mutation-worker.js"), "worker")
       await Bun.write(path.join(bin, "tree-sitter", "tree-sitter.wasm"), "wasm")
       await Bun.write(path.join(bin, "console", "index.html"), "console")
       await Bun.write(path.join(bin, "console", "assets", "app.js"), "asset")
@@ -56,6 +57,7 @@ describe("npm install artifact behavior", () => {
       const proc = Bun.spawn([node, path.join(pkg, "postinstall.mjs")], { cwd: pkg })
       expect(await proc.exited).toBe(0)
       expect(await Bun.file(path.join(pkg, "bin", ".kilo")).text()).toBe(binary)
+      expect(await Bun.file(path.join(pkg, "bin", "sandbox-mutation-worker.js")).text()).toBe("worker")
       expect(await Bun.file(path.join(pkg, "bin", "tree-sitter", "tree-sitter.wasm")).text()).toBe("wasm")
       expect(await Bun.file(path.join(pkg, "bin", "console", "index.html")).text()).toBe("console")
       expect(await Bun.file(path.join(pkg, "bin", "console", "assets", "app.js")).text()).toBe("asset")

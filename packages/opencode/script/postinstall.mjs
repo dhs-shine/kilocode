@@ -137,6 +137,8 @@ function copyResources(source) {
     fs.rmSync(target, { recursive: true, force: true })
     fs.cpSync(dir, target, { recursive: true })
   }
+  const worker = path.join(path.dirname(source), "sandbox-mutation-worker.js")
+  if (fs.existsSync(worker)) fs.copyFileSync(worker, path.join(__dirname, "bin", "sandbox-mutation-worker.js"))
 }
 
 function copyBinary(source) {

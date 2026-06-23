@@ -7,8 +7,10 @@ import {
   toErrorMessage,
 } from "../../src/services/cli-backend/server-manager"
 import {
+  copySandboxWorker,
   copyTreeSitterResources,
   resolveTreeSitterEnv,
+  sandboxWorkerForBinary,
   treeSitterDirForBinary,
   treeSitterDirForExtension,
 } from "../../src/services/cli-backend/cli-resources"
@@ -67,6 +69,7 @@ describe("cli tree-sitter resources", () => {
 
     expect(treeSitterDirForBinary(bin)).toBe(`${root}/bin/tree-sitter`)
     expect(treeSitterDirForExtension(root)).toBe(`${root}/bin/tree-sitter`)
+    expect(sandboxWorkerForBinary(bin)).toBe(`${root}/bin/sandbox-mutation-worker.js`)
     expect(resolveTreeSitterEnv(root)).toEqual({ KILO_TREE_SITTER_WASM_DIR: `${root}/bin/tree-sitter` })
   })
 
@@ -76,9 +79,27 @@ describe("cli tree-sitter resources", () => {
 
     expect(treeSitterDirForBinary(bin)).toBe(String.raw`${root}\bin\tree-sitter`)
     expect(treeSitterDirForExtension(root)).toBe(String.raw`${root}\bin\tree-sitter`)
+    expect(sandboxWorkerForBinary(bin)).toBe(String.raw`${root}\bin\sandbox-mutation-worker.js`)
     expect(resolveTreeSitterEnv(root)).toEqual({
       KILO_TREE_SITTER_WASM_DIR: String.raw`${root}\bin\tree-sitter`,
     })
+  })
+
+  it("copies the sandbox worker with the packaged CLI binary", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-vscode-sandbox-worker-"))
+    try {
+      const source = path.join(root, "dist", "@kilocode", "cli-darwin-arm64", "bin", "kilo")
+      const target = path.join(root, "extension", "bin", "kilo")
+      await fs.mkdir(path.dirname(source), { recursive: true })
+      await fs.mkdir(path.dirname(target), { recursive: true })
+      await fs.writeFile(sandboxWorkerForBinary(source), "worker")
+
+      await copySandboxWorker(source, target)
+
+      expect(await fs.readFile(sandboxWorkerForBinary(target), "utf8")).toBe("worker")
+    } finally {
+      await fs.rm(root, { recursive: true, force: true })
+    }
   })
 
   it("copies runtime and language WASMs with the packaged CLI binary", async () => {

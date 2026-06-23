@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto"
 import * as fs from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { isRequest, type Failure, type Request, type Response, type Time } from "./mutation-protocol"
+import { isRequest, type Failure, type Operation, type Request, type Response, type Time } from "./mutation-protocol"
 
 function time(value: Time) {
   return value.type === "date" ? new Date(value.value) : value.value
@@ -17,7 +17,11 @@ function field(value: unknown, key: string) {
   return value[key]
 }
 
-function failure(cause: unknown): Failure {
+function isMutationFailure(value: unknown): value is { readonly error: Failure } {
+  return isObject(value) && isObject(value.error) && typeof value.error.message === "string"
+}
+
+function failure(cause: unknown, operation?: Operation["op"]): Failure {
   const error = cause instanceof Error ? cause : new Error(String(cause))
   const code = field(cause, "code")
   const errno = field(cause, "errno")
@@ -32,16 +36,17 @@ function failure(cause: unknown): Failure {
     syscall: typeof syscall === "string" ? syscall : undefined,
     path: typeof path === "string" ? path : undefined,
     dest: typeof dest === "string" ? dest : undefined,
+    operation,
   }
 }
 
-async function temporary(request: Extract<Request, { op: "makeTempDirectory" | "makeTempFile" }>) {
+async function temporary(request: Extract<Operation, { op: "makeTempDirectory" | "makeTempFile" }>) {
   const prefix = request.options?.prefix ?? ""
   const directory = request.options?.directory ? join(request.options.directory, ".") : tmpdir()
   return fs.mkdtemp(prefix ? join(directory, prefix) : directory + "/")
 }
 
-async function mutate(request: Request): Promise<string | undefined> {
+async function mutate(request: Operation): Promise<string | undefined> {
   switch (request.op) {
     case "chmod":
       await fs.chmod(request.path, request.mode)
@@ -114,11 +119,21 @@ async function read() {
   return value
 }
 
+function apply(operation: Operation) {
+  return mutate(operation).catch((cause) => Promise.reject({ error: failure(cause, operation.op) }))
+}
+
+async function execute(request: Request) {
+  if (request.op !== "batch") return apply(request)
+  for (const operation of request.operations) await apply(operation)
+  return undefined
+}
+
 const response: Response = await read()
-  .then(mutate)
+  .then(execute)
   .then(
     (value) => ({ ok: true, value }),
-    (cause) => ({ ok: false, error: failure(cause) }),
+    (cause) => ({ ok: false, error: isMutationFailure(cause) ? cause.error : failure(cause) }),
   )
 await new Promise<void>((resolve, reject) => {
   process.stdout.write(JSON.stringify(response), (error) => (error ? reject(error) : resolve()))
