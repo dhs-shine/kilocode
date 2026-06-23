@@ -1173,13 +1173,9 @@ export function options(input: {
     }
   }
 
-  const modelId = input.model.api.id.toLowerCase()
-  // MiniMax's Anthropic interface defaults thinking off, unlike Chat Completions.
-  if (modelId.includes("minimax-m3") && input.model.api.npm === "@ai-sdk/anthropic") {
-    result["thinking"] = { type: "adaptive" }
-  }
-
+  // kilocode_change start
   // Enable thinking by default for kimi models using anthropic SDK
+  const modelId = input.model.api.id.toLowerCase()
   if (
     (input.model.api.npm === "@ai-sdk/anthropic" || input.model.api.npm === "@ai-sdk/google-vertex/anthropic") &&
     (modelId.includes("k2p") || modelId.includes("kimi-k2.") || modelId.includes("kimi-k2p"))
@@ -1189,6 +1185,7 @@ export function options(input: {
       budgetTokens: Math.min(16_000, Math.floor(input.model.limit.output / 2 - 1)),
     }
   }
+  // kilocode_change end
 
   // Enable thinking for reasoning models on alibaba-cn (DashScope).
   // DashScope's OpenAI-compatible API requires `enable_thinking: true` in the request body
