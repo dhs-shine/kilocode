@@ -13,7 +13,7 @@ import { opaque } from "../packages/opencode/src/kilocode/sandbox/network-tools"
 
 const root = path.resolve(import.meta.dir, "..")
 const source = path.join(root, "packages", "opencode", "src")
-const dirs = ["tool", "kilocode/tool"]
+const dirs = ["tool", "kilocode/tool", "mcp"]
 const checks = [
   { name: "direct fetch", pattern: /\b(?:globalThis\.)?fetch\s*\(/g },
   { name: "raw FetchHttpClient layer", pattern: /\bFetchHttpClient\.layer\b/g },
@@ -34,19 +34,32 @@ const checks = [
       /\bnew\s+(?:WarpGrepClient|OpenAI|QdrantClient|BedrockRuntimeClient|WebSocket|EventSource|StreamableHTTPClientTransport|SSEClientTransport)\s*\(/g,
   },
 ]
-const allow = new Map(
-  opaque.flatMap((item) =>
+const allow = new Map([
+  ...opaque.flatMap((item) =>
     "client" in item
       ? [[`${item.file}:${item.client.name}`, { ...item.client, file: item.file, id: item.id }] as const]
       : [],
   ),
-)
+  [
+    "mcp/index.ts:ad hoc network client",
+    {
+      count: 3,
+      file: "mcp/index.ts",
+      id: "remote_mcp",
+      reason: "MCP SDK transports are classified as remote delegated authority before model execution",
+    },
+  ] as const,
+])
+const excluded = new Map([
+  ["mcp/oauth-callback.ts", "OAuth callback listener is trusted MCP control-plane setup, not model tool execution"],
+])
 const hits: Array<{ file: string; name: string; line: number }> = []
 const glob = new Bun.Glob("**/*.ts")
 
 for (const dir of dirs) {
   for (const file of glob.scanSync({ cwd: path.join(source, dir), onlyFiles: true })) {
     const rel = path.posix.join(dir, file.replaceAll("\\", "/"))
+    if (excluded.has(rel)) continue
     const text = await Bun.file(path.join(source, rel)).text()
     for (const check of checks) {
       for (const match of text.matchAll(check.pattern)) {
