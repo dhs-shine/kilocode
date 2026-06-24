@@ -2,12 +2,13 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 import { isResponse, type Request } from "../src/mutation-protocol"
 
 const roots: string[] = []
 
 async function worker(request: Request) {
-  const entry = new URL("../src/kilo-sandbox-mutation-worker.ts", import.meta.url).pathname
+  const entry = fileURLToPath(new URL("../src/kilo-sandbox-mutation-worker.ts", import.meta.url))
   const proc = Bun.spawn([process.execPath, entry], {
     stdin: "pipe",
     stdout: "pipe",
