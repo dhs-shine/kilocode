@@ -455,13 +455,13 @@ Organization audit reports are available to organization owners, billing manager
 
 Security Agent does not need to be enabled to view an existing report. The report page is available after GitHub integration and the initial Security Agent configuration have been set up. Setup-only states redirect to Settings.
 
-{% callout type="warning" %}
-Clearing orphaned findings permanently deletes findings for the selected repository. You cannot undo this action. Use it only if the repository will not be reconnected.
-{% /callout %}
+## Clear orphaned findings
 
 If repositories are removed from GitHub integration or become inaccessible, their findings can become orphaned. The Settings page shows a cleanup card when orphaned repositories exist.
 
+{% callout type="warning" %}
 Clearing orphaned findings permanently deletes findings for the selected repository. You cannot undo this action. Use it only if the repository will not be reconnected.
+{% /callout %}
 
 ## Compare with Code Reviews
 
