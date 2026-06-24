@@ -18728,6 +18728,19 @@
           "snapshot": {
             "type": "string"
           },
+          "model": {
+            "type": "object",
+            "properties": {
+              "providerID": {
+                "type": "string"
+              },
+              "modelID": {
+                "type": "string"
+              }
+            },
+            "required": ["providerID", "modelID"],
+            "additionalProperties": false
+          },
           "cost": {
             "type": "number"
           },
