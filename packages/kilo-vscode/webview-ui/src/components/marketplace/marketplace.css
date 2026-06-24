@@ -345,10 +345,12 @@ body.vscode-high-contrast-light {
     border: 1px solid var(--vscode-contrastBorder, transparent);
   }
 
+  .marketplace-type-filter,
   .marketplace-category-filter {
     border: 1px solid var(--vscode-contrastBorder, transparent);
   }
 
+  .marketplace-type-filter.active,
   .marketplace-category-filter.active {
     border-color: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
   }
