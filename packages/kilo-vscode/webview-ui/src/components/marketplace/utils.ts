@@ -20,14 +20,15 @@ export function installedScopes(
   return scopes
 }
 
-function matches(item: MarketplaceItem, query: string) {
+function matches(item: MarketplaceItem, query: string, labels: Partial<Record<MarketplaceItem["type"], string>>) {
   const skill = item.type === "skill" ? item : undefined
   return (
     item.id.toLowerCase().includes(query) ||
     item.name.toLowerCase().includes(query) ||
     item.description.toLowerCase().includes(query) ||
-    item.category.toLowerCase().includes(query) ||
+    item.category.replaceAll("-", " ").toLowerCase().includes(query) ||
     item.type.includes(query) ||
+    (labels[item.type]?.toLowerCase().includes(query) ?? false) ||
     (item.author?.toLowerCase().includes(query) ?? false) ||
     (skill?.displayName.toLowerCase().includes(query) ?? false)
   )
@@ -40,6 +41,7 @@ export function filterItems(
   status: string,
   categories: string[],
   types: MarketplaceItem["type"][],
+  labels: Partial<Record<MarketplaceItem["type"], string>> = {},
 ): MarketplaceItem[] {
   const query = search.trim().toLowerCase()
   return items
@@ -49,7 +51,7 @@ export function filterItems(
       if (types.length > 0 && !types.includes(item.type)) return false
       if (categories.length > 0 && !categories.includes(item.category)) return false
       if (!query) return true
-      return matches(item, query)
+      return matches(item, query, labels)
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 }

@@ -87,7 +87,11 @@ export const MarketplaceListView = (props: Props) => {
   }
 
   const filtered = createMemo(() =>
-    filterItems(props.items, props.metadata, search(), status().value, categories(), types()),
+    filterItems(props.items, props.metadata, search(), status().value, categories(), types(), {
+      agent: typeLabel("agent"),
+      mcp: typeLabel("mcp"),
+      skill: typeLabel("skill"),
+    }),
   )
 
   return (

@@ -95,7 +95,7 @@ describe("Marketplace installation metadata", () => {
         id: "warehouse",
         name: "Warehouse",
         description: "Queries data",
-        category: "data",
+        category: "web-automation",
         url: "https://example.com",
         content: "{}",
       },
@@ -114,6 +114,10 @@ describe("Marketplace installation metadata", () => {
     const metadata = { project: { "mcp:warehouse": { type: "mcp" } }, global: {} }
 
     expect(filterItems(items, metadata, "reviewer", "all", [], []).map((item) => item.id)).toEqual(["reviewer"])
+    expect(filterItems(items, metadata, "web automation", "all", [], []).map((item) => item.id)).toEqual(["warehouse"])
+    expect(
+      filterItems(items, metadata, "servidor mcp", "all", [], [], { mcp: "Servidor MCP" }).map((item) => item.id),
+    ).toEqual(["warehouse"])
     expect(filterItems(items, metadata, "", "all", ["business"], []).map((item) => item.id)).toEqual([
       "campaign-writer",
     ])
