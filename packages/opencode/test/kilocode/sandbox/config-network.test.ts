@@ -5,9 +5,12 @@ import { ProjectID } from "@/project/schema"
 import { InstanceRef } from "@/effect/instance-ref"
 import * as SandboxPolicy from "@/kilocode/sandbox/policy"
 import * as ToolNetwork from "@/kilocode/sandbox/network"
+import { SessionID } from "@/session/schema"
 import { TestConfig } from "../../fixture/config"
 import { testEffect } from "../../lib/effect"
 
+const sessionID = SessionID.make("ses_sandbox_config_network")
+const tool = ToolNetwork.builtin({ id: "webfetch" })
 const ctx = {
   directory: process.cwd(),
   worktree: process.cwd(),
@@ -55,7 +58,7 @@ restricted.live("keeps network restriction enabled by default", () => {
   const target = server()
   return Effect.gen(function* () {
     const http = yield* HttpClient.HttpClient
-    const exit = yield* SandboxPolicy.execute(http.get(target.server.url)).pipe(
+    const exit = yield* SandboxPolicy.executeTool(sessionID, tool, http.get(target.server.url)).pipe(
       Effect.provideService(InstanceRef, ctx),
       Effect.exit,
     )
@@ -69,7 +72,7 @@ open.live("allows tool network traffic when network restriction is disabled", ()
   const target = server()
   return Effect.gen(function* () {
     const http = yield* HttpClient.HttpClient
-    const response = yield* SandboxPolicy.execute(http.get(target.server.url)).pipe(
+    const response = yield* SandboxPolicy.executeTool(sessionID, tool, http.get(target.server.url)).pipe(
       Effect.provideService(InstanceRef, ctx),
     )
     expect(yield* response.text).toBe("sandbox-config-ok")
