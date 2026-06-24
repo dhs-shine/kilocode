@@ -865,7 +865,7 @@ export const layer = Layer.effect(
         const directories = yield* ConfigPaths.directories(ctx.directory, ctx.worktree)
         const primary = Flag.KILO_DISABLE_PROJECT_CONFIG
           ? []
-          : yield* primaryPaths(ctx.directory, ctx.worktree, [".kilocode", ".kilo", ".opencode"])
+          : yield* primaryPaths(ctx.directory, ctx.worktree, [".opencode", ".kilocode", ".kilo"])
         // Load primary fallbacks before active-worktree config, then track them as local.
         directories.splice(1, 0, ...primary)
         const primarySet = new Set(primary)
