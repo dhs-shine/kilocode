@@ -1,0 +1,106 @@
+import { describe, expect, test } from "bun:test"
+import { Agent } from "@/agent/agent"
+import { Notebook } from "@/kilocode/notebook/service"
+import * as KiloAgent from "@/kilocode/agent"
+import { NotebookEditTool, NotebookExecuteTool, NotebookReadTool } from "@/kilocode/tool/notebook-host"
+import { MessageID, SessionID } from "@/session/schema"
+import * as Tool from "@/tool/tool"
+import { Truncate } from "@/tool/truncate"
+import { Effect, Layer } from "effect"
+import { testEffect } from "../lib/effect"
+
+const calls: Notebook.Input[] = []
+const notebook = Layer.mock(Notebook.Service, {
+  request: (input) => {
+    calls.push(input)
+    if (input.operation === "read")
+      return Effect.succeed({
+        operation: "read" as const,
+        path: input.path,
+        version: 7,
+        cells: [{ index: 0, kind: "code" as const, language: "python", source: "x".repeat(200_000) }],
+      })
+    if (input.operation === "edit")
+      return Effect.succeed({
+        operation: "edit" as const,
+        path: input.path,
+        version: input.version + 1,
+        index: input.index,
+        action: input.edit.action,
+      })
+    return Effect.succeed({
+      operation: "execute" as const,
+      path: input.path,
+      version: input.version,
+      index: input.index,
+      status: "success" as const,
+      outputs: [],
+    })
+  },
+})
+const it = testEffect(Layer.mergeAll(notebook, Agent.defaultLayer, Truncate.defaultLayer))
+
+function context(asks: Parameters<Tool.Context["ask"]>[0][]): Tool.Context {
+  return {
+    sessionID: SessionID.make("ses_notebook_tools"),
+    messageID: MessageID.make("msg_notebook_tools"),
+    agent: "build",
+    abort: new AbortController().signal,
+    messages: [],
+    metadata: () => Effect.void,
+    ask: (input) => Effect.sync(() => asks.push(input)),
+  }
+}
+
+describe("native notebook tools", () => {
+  it.instance(
+    "uses dedicated permissions and bounded structured output",
+    () =>
+      Effect.gen(function* () {
+        calls.length = 0
+        const asks: Parameters<Tool.Context["ask"]>[0][] = []
+        const read = yield* NotebookReadTool.pipe(Effect.flatMap(Tool.init))
+        const edit = yield* NotebookEditTool.pipe(Effect.flatMap(Tool.init))
+        const execute = yield* NotebookExecuteTool.pipe(Effect.flatMap(Tool.init))
+        const ctx = context(asks)
+
+        const readResult = yield* read.execute({ path: "analysis.ipynb", include_outputs: true }, ctx)
+        const editResult = yield* edit.execute(
+          {
+            path: "analysis.ipynb",
+            expected_version: 7,
+            index: 0,
+            action: "replace",
+            kind: "code",
+            language: "python",
+            source: "print(42)",
+          },
+          ctx,
+        )
+        const executeResult = yield* execute.execute({ path: "analysis.ipynb", expected_version: 8, index: 0 }, ctx)
+
+        expect(asks.map((item) => item.permission)).toEqual(["notebook_read", "notebook_edit", "notebook_execute"])
+        expect(asks.every((item) => item.patterns[0] === "analysis.ipynb")).toBe(true)
+        expect(calls.map((item) => item.operation)).toEqual(["read", "edit", "execute"])
+        expect(readResult.output.length).toBeLessThanOrEqual(20_100)
+        expect(readResult.output).toContain("notebook result truncated")
+        expect(editResult.metadata.version).toBe(8)
+        expect(executeResult.metadata.index).toBe(0)
+      }),
+    { git: true },
+  )
+})
+
+test("uses dedicated VS Code notebook permission defaults", () => {
+  const prev = process.env.KILO_CLIENT
+  try {
+    process.env.KILO_CLIENT = "vscode"
+    const rules = KiloAgent.prepare({}).defaultsPatch
+    expect(rules.findLast((rule) => rule.permission === "notebook_read")?.action).toBe("allow")
+    expect(rules.findLast((rule) => rule.permission === "notebook_edit")?.action).toBe("ask")
+    expect(rules.findLast((rule) => rule.permission === "notebook_execute")?.action).toBe("ask")
+  } finally {
+    if (prev === undefined) delete process.env.KILO_CLIENT
+    if (prev !== undefined) process.env.KILO_CLIENT = prev
+  }
+})

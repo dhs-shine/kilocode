@@ -3,6 +3,7 @@ import { CodebaseSearchTool } from "../../tool/warpgrep"
 import { RecallTool } from "../../tool/recall"
 import { AgentManagerTool } from "./agent-manager"
 import { BackgroundProcessTool } from "./background-process"
+import { NotebookEditTool, NotebookExecuteTool, NotebookReadTool } from "./notebook-host"
 import * as Tool from "../../tool/tool"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Effect } from "effect"
@@ -37,14 +38,25 @@ export namespace KiloToolRegistry {
       const recall = yield* RecallTool
       const manager = yield* AgentManagerTool
       const process = yield* BackgroundProcessTool
-      return { codebase, recall, manager, process }
+      const notebookRead = yield* NotebookReadTool
+      const notebookEdit = yield* NotebookEditTool
+      const notebookExecute = yield* NotebookExecuteTool
+      return { codebase, recall, manager, process, notebookRead, notebookEdit, notebookExecute }
     })
   }
 
   /** Finalize Kilo-specific tools into Tool.Defs. Call this inside the InstanceState state Effect —
    * it has no Service deps beyond what Tool.init itself needs. */
   export function build(
-    tools: { codebase: Tool.Info; recall: Tool.Info; manager: Tool.Info; process: Tool.Info },
+    tools: {
+      codebase: Tool.Info
+      recall: Tool.Info
+      manager: Tool.Info
+      process: Tool.Info
+      notebookRead: Tool.Info
+      notebookEdit: Tool.Info
+      notebookExecute: Tool.Info
+    },
     deps: Deps,
     loaders: Loaders = {},
   ) {
@@ -54,6 +66,9 @@ export namespace KiloToolRegistry {
         recall: Tool.init(tools.recall),
         manager: Tool.init(tools.manager),
         process: Tool.init(tools.process),
+        notebookRead: Tool.init(tools.notebookRead),
+        notebookEdit: Tool.init(tools.notebookEdit),
+        notebookExecute: Tool.init(tools.notebookExecute),
       })
       const semantic = yield* semanticTool(deps, loaders)
       return { ...base, semantic }
@@ -99,7 +114,16 @@ export namespace KiloToolRegistry {
 
   /** Kilo-specific tools to append to the builtin list */
   export function extra(
-    tools: { codebase: Tool.Def; semantic?: Tool.Def; recall: Tool.Def; manager: Tool.Def; process: Tool.Def },
+    tools: {
+      codebase: Tool.Def
+      semantic?: Tool.Def
+      recall: Tool.Def
+      manager: Tool.Def
+      process: Tool.Def
+      notebookRead: Tool.Def
+      notebookEdit: Tool.Def
+      notebookExecute: Tool.Def
+    },
     cfg: { experimental?: { codebase_search?: boolean } },
   ): Tool.Def[] {
     return [
@@ -108,7 +132,9 @@ export namespace KiloToolRegistry {
       tools.recall,
       ...(Flag.KILO_CLIENT === "cli" || Flag.KILO_CLIENT === "vscode" ? [tools.process] : []),
       // The extension is the only client that can consume the Agent Manager start event.
-      ...(Flag.KILO_CLIENT === "vscode" ? [tools.manager] : []),
+      ...(Flag.KILO_CLIENT === "vscode"
+        ? [tools.manager, tools.notebookRead, tools.notebookEdit, tools.notebookExecute]
+        : []),
     ]
   }
 

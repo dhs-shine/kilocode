@@ -70,6 +70,8 @@ export class KiloConnectionService {
   private readonly favoritesChangeListeners: Set<FavoritesChangeListener> = new Set()
   private readonly clearPendingPromptsListeners: Set<ClearPendingPromptsListener> = new Set()
   private readonly directoryProviders: Set<DirectoryProvider> = new Set()
+  private rootDirectory: string | undefined = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+  private currentDirectory: string | undefined
   private readonly permissionDirectories: Map<string, string> = new Map()
   private readonly questionDirectories: Map<string, string> = new Map()
   private questionRevision = 0
@@ -97,6 +99,7 @@ export class KiloConnectionService {
    * Lazily start server + SSE. Multiple callers share the same promise.
    */
   async connect(workspaceDir: string): Promise<void> {
+    this.trackDirectory(workspaceDir)
     if (this.connectPromise) {
       return this.connectPromise
     }
@@ -136,11 +139,25 @@ export class KiloConnectionService {
    * or if the connection fails.
    */
   async getClientAsync(dir?: string): Promise<KiloClient> {
-    if (this.client && this.state === "connected") return this.client
     const root = dir ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
     if (!root) throw new Error("No workspace folder open")
+    this.trackDirectory(root)
+    if (this.client && this.state === "connected") return this.client
     await this.connect(root)
     return this.getClient()
+  }
+
+  /** Directories that may own directory-scoped requests on the shared backend. */
+  getKnownDirectories(): string[] {
+    const dirs = new Set<string>()
+    if (this.rootDirectory) dirs.add(this.rootDirectory)
+    if (this.currentDirectory) dirs.add(this.currentDirectory)
+    for (const provider of this.directoryProviders) {
+      for (const dir of provider()) {
+        if (dir) dirs.add(dir)
+      }
+    }
+    return [...dirs]
   }
 
   /**
@@ -425,6 +442,12 @@ export class KiloConnectionService {
     }
   }
 
+  private trackDirectory(dir: string): void {
+    if (!dir) return
+    this.rootDirectory ??= dir
+    this.currentDirectory = dir
+  }
+
   /**
    * Reject all pending permission requests and questions across every
    * directory known to any currently-mounted KiloProvider.
@@ -571,6 +594,8 @@ export class KiloConnectionService {
     this.favoritesChangeListeners.clear()
     this.clearPendingPromptsListeners.clear()
     this.directoryProviders.clear()
+    this.rootDirectory = undefined
+    this.currentDirectory = undefined
     this.messageSessionIdsByMessageId.clear()
     this.permissionDirectories.clear()
     this.questionDirectories.clear()

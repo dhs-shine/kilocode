@@ -1,0 +1,302 @@
+import type {
+  EventKilocodeNotebookCancelled,
+  EventKilocodeNotebookRequested,
+  KiloClient,
+  NotebookFailure,
+  NotebookRequest,
+  NotebookResult,
+} from "@kilocode/sdk/v2/client"
+import { FileIgnoreController } from "../autocomplete/shims/FileIgnoreController"
+import type { ConnectionState, KiloConnectionService } from "../cli-backend/connection-service"
+import type { SSEPayload } from "../cli-backend/sdk-sse-adapter"
+import { NotebookAdapter } from "./adapter"
+import { NotebookError } from "./path"
+
+const RETAINED_REQUESTS = 1_000
+const CODES = new Set<NotebookFailure["code"]>([
+  "cancelled",
+  "closed",
+  "disconnected",
+  "execution_failed",
+  "invalid_cell",
+  "invalid_path",
+  "no_kernel",
+  "not_found",
+  "stale_version",
+  "timeout",
+  "unsupported",
+])
+
+type NotebookAdapterLike = Pick<NotebookAdapter, "read" | "edit" | "execute">
+
+export interface NotebookBridgeContext {
+  adapter: NotebookAdapterLike
+  refresh?(): Promise<void>
+  dispose(): void
+}
+
+export interface NotebookBridgeOptions {
+  create?: (directory: string) => Promise<NotebookBridgeContext>
+}
+
+interface NotebookConnection {
+  onEvent(listener: (event: SSEPayload, directory?: string) => void): () => void
+  onStateChange(listener: (state: ConnectionState, error?: Error) => void): () => void
+  getClient(): KiloClient
+  getKnownDirectories(): string[]
+}
+
+interface ActiveRequest {
+  controller: AbortController
+  cancelled: boolean
+}
+
+type NotebookOutcome = { result: NotebookResult } | { error: NotebookFailure }
+
+async function createContext(directory: string): Promise<NotebookBridgeContext> {
+  const controller = new FileIgnoreController(directory)
+  await controller.initialize()
+  return {
+    adapter: new NotebookAdapter(controller),
+    refresh: () => controller.initialize(),
+    dispose: () => controller.dispose(),
+  }
+}
+
+function failure(error: unknown): NotebookFailure {
+  const message = error instanceof Error ? error.message : String(error)
+  if (error instanceof NotebookError && CODES.has(error.code as NotebookFailure["code"])) {
+    return { code: error.code as NotebookFailure["code"], message }
+  }
+  return { code: "execution_failed", message }
+}
+
+export class NotebookBridge {
+  private readonly contexts = new Map<string, Promise<NotebookBridgeContext>>()
+  private readonly active = new Map<string, ActiveRequest>()
+  private readonly origins = new Map<string, string>()
+  private readonly outcomes = new Map<string, NotebookOutcome>()
+  private readonly settled = new Set<string>()
+  private readonly unsubscribeEvent: () => void
+  private readonly unsubscribeState: () => void
+  private readonly create: (directory: string) => Promise<NotebookBridgeContext>
+  private disposed = false
+  private revision = 0
+  private backend: KiloClient | undefined
+
+  constructor(
+    private readonly connection: NotebookConnection,
+    options: NotebookBridgeOptions = {},
+  ) {
+    this.create = options.create ?? createContext
+    this.unsubscribeEvent = connection.onEvent((event, directory) => this.event(event, directory))
+    this.unsubscribeState = connection.onStateChange((state) => {
+      if (state !== "connected") return
+      const backend = connection.getClient()
+      if (this.backend && this.backend !== backend) this.reset()
+      this.backend = backend
+      const revision = ++this.revision
+      void this.recover(revision).catch((error: unknown) => {
+        console.error("[Kilo New] NotebookBridge: pending request recovery failed:", error)
+      })
+    })
+  }
+
+  dispose(): void {
+    if (this.disposed) return
+    this.disposed = true
+    this.revision += 1
+    this.unsubscribeEvent()
+    this.unsubscribeState()
+    for (const request of this.active.values()) {
+      request.cancelled = true
+      request.controller.abort()
+    }
+    this.active.clear()
+    for (const context of this.contexts.values()) {
+      void context
+        .then((value) => value.dispose())
+        .catch((error: unknown) => console.error("[Kilo New] NotebookBridge: context disposal failed:", error))
+    }
+    this.contexts.clear()
+    this.origins.clear()
+    this.outcomes.clear()
+    this.settled.clear()
+  }
+
+  private reset(): void {
+    for (const request of this.active.values()) {
+      request.cancelled = true
+      request.controller.abort()
+    }
+    this.active.clear()
+    this.origins.clear()
+    this.outcomes.clear()
+    this.settled.clear()
+  }
+
+  private event(event: SSEPayload, directory?: string): void {
+    if (event.type === "kilocode.notebook.requested") {
+      this.request(event as EventKilocodeNotebookRequested, directory)
+      return
+    }
+    if (event.type === "kilocode.notebook.cancelled") {
+      this.cancel(event as EventKilocodeNotebookCancelled, directory)
+    }
+  }
+
+  private request(event: EventKilocodeNotebookRequested, directory?: string): void {
+    const request = event.properties
+    const dir = this.origins.get(request.id) ?? directory
+    if (!dir || this.disposed || this.active.has(request.id) || this.settled.has(request.id)) return
+    this.remember(this.origins, request.id, dir)
+    const active = { controller: new AbortController(), cancelled: false }
+    this.active.set(request.id, active)
+    void this.run(request, dir, active).catch((error: unknown) => {
+      console.error(`[Kilo New] NotebookBridge: request ${request.id} failed:`, error)
+    })
+  }
+
+  private cancel(event: EventKilocodeNotebookCancelled, directory?: string): void {
+    const id = event.properties.requestID
+    const dir = this.origins.get(id) ?? directory
+    if (dir) this.remember(this.origins, id, dir)
+    this.remember(this.settled, id)
+    const active = this.active.get(id)
+    if (!active) return
+    active.cancelled = true
+    active.controller.abort()
+  }
+
+  private async run(request: NotebookRequest, directory: string, active: ActiveRequest): Promise<void> {
+    try {
+      const outcome = this.outcomes.get(request.id) ?? (await this.execute(request, directory, active))
+      if (!outcome || this.disposed || active.cancelled) return
+      this.rememberOutcome(request.id, outcome)
+      const accepted =
+        "result" in outcome
+          ? await this.reply(request.id, directory, outcome.result)
+          : await this.reject(request.id, directory, outcome.error)
+      if (accepted) this.remember(this.settled, request.id)
+    } finally {
+      if (this.active.get(request.id) === active) this.active.delete(request.id)
+    }
+  }
+
+  private async execute(
+    request: NotebookRequest,
+    directory: string,
+    active: ActiveRequest,
+  ): Promise<NotebookOutcome | undefined> {
+    try {
+      const context = await this.context(directory)
+      if (this.disposed || active.cancelled) return undefined
+      await context.refresh?.()
+      if (this.disposed || active.cancelled) return undefined
+      const result = await this.dispatch(context.adapter, request, directory, active.controller.signal)
+      return { result }
+    } catch (error) {
+      if (this.disposed || active.cancelled) return undefined
+      return { error: failure(error) }
+    }
+  }
+
+  private dispatch(
+    adapter: NotebookAdapterLike,
+    request: NotebookRequest,
+    directory: string,
+    signal: AbortSignal,
+  ): Promise<NotebookResult> {
+    if (request.operation === "read") {
+      return adapter.read({ path: request.path, directory, includeOutputs: request.includeOutputs })
+    }
+    if (request.operation === "edit") {
+      return adapter.edit({
+        path: request.path,
+        directory,
+        version: request.version,
+        index: request.index,
+        edit: request.edit,
+      })
+    }
+    return adapter.execute({
+      path: request.path,
+      directory,
+      version: request.version,
+      index: request.index,
+      signal,
+    })
+  }
+
+  private context(directory: string): Promise<NotebookBridgeContext> {
+    const existing = this.contexts.get(directory)
+    if (existing) return existing
+    const context = this.create(directory)
+    this.contexts.set(directory, context)
+    return context
+  }
+
+  private async reply(requestID: string, directory: string, result: NotebookResult): Promise<boolean> {
+    try {
+      const response = await this.connection.getClient().kilocode.notebook.reply({ requestID, directory, result })
+      if (!response.error) return true
+      console.error(`[Kilo New] NotebookBridge: reply ${requestID} failed:`, response.error)
+      return false
+    } catch (error) {
+      console.error(`[Kilo New] NotebookBridge: reply ${requestID} failed:`, error)
+      return false
+    }
+  }
+
+  private async reject(requestID: string, directory: string, error: NotebookFailure): Promise<boolean> {
+    try {
+      const response = await this.connection.getClient().kilocode.notebook.reject({ requestID, directory, error })
+      if (!response.error) return true
+      console.error(`[Kilo New] NotebookBridge: rejection ${requestID} failed:`, response.error)
+      return false
+    } catch (cause) {
+      console.error(`[Kilo New] NotebookBridge: rejection ${requestID} failed:`, cause)
+      return false
+    }
+  }
+
+  private async recover(revision: number): Promise<void> {
+    const client = this.connection.getClient()
+    for (const directory of this.connection.getKnownDirectories()) {
+      try {
+        const response = await client.kilocode.notebook.list({ directory })
+        if (this.disposed || revision !== this.revision) return
+        if (response.error) {
+          console.error(`[Kilo New] NotebookBridge: could not list requests for ${directory}:`, response.error)
+          continue
+        }
+        for (const request of response.data ?? []) {
+          this.request({ id: request.id, type: "kilocode.notebook.requested", properties: request }, directory)
+        }
+      } catch (error) {
+        console.error(`[Kilo New] NotebookBridge: could not list requests for ${directory}:`, error)
+      }
+    }
+  }
+
+  private rememberOutcome(id: string, outcome: NotebookOutcome): void {
+    this.outcomes.set(id, outcome)
+    if (this.outcomes.size <= RETAINED_REQUESTS) return
+    const oldest = this.outcomes.keys().next().value
+    if (oldest !== undefined) this.outcomes.delete(oldest)
+  }
+
+  private remember(map: Map<string, string>, id: string, value: string): void
+  private remember(set: Set<string>, id: string): void
+  private remember(target: Map<string, string> | Set<string>, id: string, value?: string): void {
+    if (target instanceof Map && value !== undefined) target.set(id, value)
+    if (target instanceof Set) target.add(id)
+    if (target.size <= RETAINED_REQUESTS) return
+    const oldest = target.keys().next().value
+    if (oldest !== undefined) target.delete(oldest)
+  }
+}
+
+export function createNotebookBridge(connection: KiloConnectionService): NotebookBridge {
+  return new NotebookBridge(connection)
+}
