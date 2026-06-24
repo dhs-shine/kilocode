@@ -54,7 +54,9 @@ export async function detectMarketplaceRelevance(
   return Object.fromEntries(
     items.flatMap((item) => {
       const filename = strings(item.suggest_for?.filename).filter((pattern) => files.get(pattern))
-      const vscodeExtension = strings(item.suggest_for?.vscode_extension).filter((id) => extensions.has(id.toLowerCase()))
+      const vscodeExtension = strings(item.suggest_for?.vscode_extension).filter((id) =>
+        extensions.has(id.toLowerCase()),
+      )
       if (!filename?.length && !vscodeExtension?.length) return []
       return [
         [
