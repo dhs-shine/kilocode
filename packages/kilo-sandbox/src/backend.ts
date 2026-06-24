@@ -1,6 +1,7 @@
 import { Effect, PlatformError, Scope } from "effect"
 import { ChildProcess } from "effect/unstable/process"
 import { current } from "./context"
+import { assertProcessNetwork, networkEnvironment } from "./network"
 import type { Profile } from "./profile"
 import { seatbelt } from "./seatbelt"
 
@@ -47,11 +48,10 @@ const backend = select()
 function environment(profile: Profile, launch: Launch) {
   const source = { ...launch.environment, ...profile.environment.set }
   const denied = new Set(profile.environment.deny)
-  const result: Record<string, string> = {}
-  for (const [key, value] of Object.entries(source)) {
-    if (value !== undefined && !denied.has(key)) result[key] = value
-  }
-  return result
+  const entries = Object.entries(source).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined && !denied.has(entry[0]),
+  )
+  return networkEnvironment(profile, Object.fromEntries(entries))
 }
 
 export function prepare(launch: Launch) {
@@ -59,6 +59,7 @@ export function prepare(launch: Launch) {
     const profile = yield* current
     if (!profile) return launch
     const next = { ...launch, environment: environment(profile, launch) }
+    yield* assertProcessNetwork(profile, launch.command)
     if (!backend.support.available) return next
     return yield* backend.prepare(profile, next)
   })
@@ -75,8 +76,12 @@ function unsupported(command: string, method: string) {
 }
 
 export function confine(profile: Profile, launch: Launch) {
-  if (!backend.support.available) return Effect.fail(unsupported(launch.command, "confine"))
-  return backend.prepare(profile, { ...launch, environment: environment(profile, launch) })
+  return Effect.gen(function* () {
+    const next = { ...launch, environment: environment(profile, launch) }
+    yield* assertProcessNetwork(profile, launch.command)
+    if (!backend.support.available) return yield* Effect.fail(unsupported(launch.command, "confine"))
+    return yield* backend.prepare(profile, next)
+  })
 }
 
 export function prepareCommand(

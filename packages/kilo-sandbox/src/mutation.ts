@@ -227,7 +227,7 @@ export function batchMutations<A, E, R>(effect: Effect.Effect<A, E, R>) {
         else state.operations.push(request)
         return undefined
       })
-    const close = flush().pipe(Effect.ensuring(Effect.sync(() => (state.closed = true))))
+    const close = Effect.sync(() => (state.closed = true)).pipe(Effect.andThen(flush()))
     return yield* withRunner(collect, effect).pipe(Effect.onExit(() => close))
   })
 }

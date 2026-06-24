@@ -128,6 +128,46 @@ describe("sandbox FileSystem", () => {
     expect(requests).toEqual([{ op: "remove", path: path.join(allowed, "value.txt") }])
   })
 
+  test("delegates retained runners while the final batch flush is in flight", async () => {
+    const requests: Request[] = []
+    const started = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    const profile = makeProfile(allowed)
+    const queued: Request = { op: "remove", path: path.join(allowed, "queued.txt") }
+    const late: Request = { op: "remove", path: path.join(allowed, "late.txt") }
+    const runner: Runner = (_profile, request) =>
+      Effect.promise(() => {
+        requests.push(request)
+        if (requests.length === 1) {
+          started.resolve()
+          return release.promise.then(() => undefined)
+        }
+        return Promise.resolve(undefined)
+      })
+    let escaped: Runner | undefined
+    const closing = execute(
+      withRunner(
+        runner,
+        batchMutations(
+          Effect.gen(function* () {
+            escaped = yield* currentRunner
+            yield* escaped(profile, queued)
+          }),
+        ),
+      ),
+    )
+
+    await started.promise
+    if (!escaped) throw new Error("Mutation runner did not escape")
+    try {
+      await execute(escaped(profile, late))
+      expect(requests).toEqual([{ op: "batch", operations: [queued] }, late])
+    } finally {
+      release.resolve()
+      await closing
+    }
+  })
+
   test("allows read-only open but guards writable open and sink", async () => {
     const inside = path.join(allowed, "open.txt")
     await mkdir(allowed, { recursive: true })

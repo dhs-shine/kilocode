@@ -74,7 +74,7 @@ function profile(root: string): Profile {
       denyNames: [".git"],
       temporaryDirectory: path.join(root, ".tmp"),
     },
-    network: { mode: "allow", allowedHosts: [] },
+    network: { mode: "deny", allowedHosts: [] },
     environment: { deny: [], set: {} },
   }
 }
