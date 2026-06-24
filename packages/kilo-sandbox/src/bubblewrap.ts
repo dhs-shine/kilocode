@@ -114,6 +114,9 @@ export function generate(
   executable: string,
   mounts = process.platform === "linux" ? mountpoints() : [],
 ): Launch {
+  if (profile.network.mode !== "allow" || profile.network.allowedHosts.length > 0) {
+    throw new Error("Linux process sandbox network restrictions are not supported")
+  }
   const allow = writable(profile)
   validate(allow, executable, mounts)
   const args = [
