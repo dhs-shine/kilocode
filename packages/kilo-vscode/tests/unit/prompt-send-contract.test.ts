@@ -226,17 +226,18 @@ describe("PromptInput restoreFailed fallback contract", () => {
   const source = readFile(PROMPT_FILE)
 
   it("targets draftKey() instead of computing a key from failed.sessionID", () => {
-    // The contract: candidates come from the failure's sessionID/draftID
+    // The contract: restoreFailed early-returns when userClearedSession is
+    // true (covers BOTH "user clicked New Task" and the Delete-current-session
+    // race window where currentSessionID/draftSessionID haven't been cleared
+    // yet but userClearedSession is already true). When the user did NOT
+    // explicitly clear, candidates come from the failure's sessionID/draftID
     // (the keys the send was actually scoped to), plus :new ONLY when the
-    // user has effectively returned to the empty state via an EXTERNAL
-    // session.deleted — not via clearCurrentSession() or a user-clicked
-    // Delete on the current session. userClearedSession is the flag that
-    // distinguishes those two paths; it's set true in clearCurrentSession
-    // and in deleteSession when deleting the current/draft session, and
-    // reset false in handleSessionCreated/selectSession.
+    // user has effectively returned to the empty state via an external
+    // session.deleted.
     const match = source.match(/const restoreFailed = \(failed: SendMessageFailedMessage\) => \{([\s\S]*?)\n  \}/)
     expect(match).not.toBeNull()
     expect(match![1]).not.toMatch(/const effectiveSessionID/)
+    expect(match![1]).toMatch(/if \(session\.userClearedSession\(\)\) return/)
     expect(match![1]).toMatch(
       /if \(failed\.sessionID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*sessionDraftKey\(failed\.sessionID\)\)\)/,
     )
@@ -244,9 +245,8 @@ describe("PromptInput restoreFailed fallback contract", () => {
       /if \(failed\.draftID\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*pendingDraftKey\(failed\.draftID\)\)\)/,
     )
     expect(match![1]).toMatch(
-      /if \(\s*!session\.currentSessionID\(\)\s*&&\s*!session\.draftSessionID\(\)\s*&&\s*!session\.userClearedSession\(\)\s*\)/,
+      /if \(!session\.currentSessionID\(\) && !session\.draftSessionID\(\)\) candidates\.add\(scopeDraftKey\(boxKey\(\),\s*"new"\)\)/,
     )
-    expect(match![1]).toMatch(/candidates\.add\(scopeDraftKey\(boxKey\(\),\s*"new"\)\)/)
     expect(match![1]).toMatch(/const target = draftKey\(\)/)
     expect(match![1]).toMatch(/candidates\.has\(target\)/)
   })

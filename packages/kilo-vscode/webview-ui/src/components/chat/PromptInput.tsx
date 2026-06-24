@@ -345,28 +345,29 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     // Only restore a failed draft when the user has not started another one.
     if (text().trim() || reviewComments().length > 0 || imageAttach.images().length > 0) return
 
+    // If the user explicitly transitioned out of the original send's scope
+    // (clearCurrentSession() or Delete on the current/draft session), don't
+    // restore anywhere. This covers BOTH the obvious "user clicked New Task
+    // and we land in :new" case AND the tighter race window where the user
+    // clicked Delete on the current session: the backend's sessionDeleted
+    // round-trip hasn't completed yet so currentSessionID/draftSessionID
+    // still point at the dead session, but userClearedSession is true. Without
+    // this guard, the session-scoped candidate on the previous lines would
+    // match the still-current draftKey and rehydrate the failed draft into
+    // the session the user explicitly chose to delete.
+    if (session.userClearedSession()) return
+
     // Build candidates from the keys the original send was actually scoped
     // under. :new is only added when the user has effectively returned to the
-    // empty state AND did not explicitly do so — i.e. no current session, no
-    // pending draft, and the last transition into :new was caused by an
-    // external session.deleted, not by clearCurrentSession() or a user-clicked
-    // Delete on the current session (tracked via userClearedSession). The
-    // external-delete case is "send -> session created mid-round-trip ->
-    // session deleted externally -> failure returns" or "send from session
-    // -> session deleted mid-round-trip -> failure returns" — restoring the
-    // failure's text back into :new is the right thing there. The user-clicked
-    // case must NOT restore, because the user explicitly asked for a fresh
-    // task and rehydrating an unrelated failed draft would pollute it.
+    // empty state — i.e. no current session and no pending draft. Combined
+    // with the userClearedSession early return above, this catches both
+    // "send from session -> session deleted mid-round-trip" and "send from
+    // :new (mints draftID) -> session created mid-round-trip -> session
+    // deleted externally" without rehydrating into any user-explicit clear.
     const candidates = new Set<string>()
     if (failed.sessionID) candidates.add(scopeDraftKey(boxKey(), sessionDraftKey(failed.sessionID)))
     if (failed.draftID) candidates.add(scopeDraftKey(boxKey(), pendingDraftKey(failed.draftID)))
-    if (
-      !session.currentSessionID() &&
-      !session.draftSessionID() &&
-      !session.userClearedSession()
-    ) {
-      candidates.add(scopeDraftKey(boxKey(), "new"))
-    }
+    if (!session.currentSessionID() && !session.draftSessionID()) candidates.add(scopeDraftKey(boxKey(), "new"))
     const target = draftKey()
     if (!candidates.has(target)) return
 
