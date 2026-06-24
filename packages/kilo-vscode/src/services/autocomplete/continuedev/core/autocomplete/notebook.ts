@@ -81,7 +81,8 @@ export function getNotebookContext(
   const lang = languageForId(document.languageId)
   if (!lang) return
 
-  const marker = document.languageId === "json" ? undefined : lang.singleLineComment
+  const json = document.languageId === "json" || document.languageId === "jsonc"
+  const marker = json ? undefined : lang.singleLineComment
   const comment = (text: string, label: string) =>
     text
       .split("\n")
@@ -89,12 +90,11 @@ export function getNotebookContext(
       .join("\n")
 
   const contents = cells
-    .map((cell) => {
+    .map((cell, index) => {
       const text = cell.document.getText()
+      if (index === resolved.index) return text
       if (cell.kind === vscode.NotebookCellKind.Markup) return comment(text, "markdown")
-      const sibling = languageForId(cell.document.languageId)
-      const strict = document.languageId === "json" || cell.document.languageId === "json"
-      if (sibling === lang && (!strict || cell.document.languageId === document.languageId)) return text
+      if (!json && languageForId(cell.document.languageId) === lang) return text
       return comment(text, cell.document.languageId)
     })
     .join("\n\n")

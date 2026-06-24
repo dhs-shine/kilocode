@@ -116,21 +116,23 @@ describe("notebook context", () => {
   it("omits foreign and markup content from strict JSON context", () => {
     const markdown = document("markdown", "Describe values", "markdown")
     const javascript = document("javascript", "const value = 1", "javascript")
+    const sibling = document("sibling", '{"other": 2}', "json")
     const current = document("current", '{"value": 1}', "json")
     const notebook = {
       uri: uri("file", "/workspace/example.ipynb"),
       getCells: () => [
         { kind: vscode.NotebookCellKind.Markup, document: markdown },
         { kind: vscode.NotebookCellKind.Code, document: javascript },
+        { kind: vscode.NotebookCellKind.Code, document: sibling },
         { kind: vscode.NotebookCellKind.Code, document: current },
       ],
     } as vscode.NotebookDocument
     notebooks([notebook])
 
     expect(getNotebookContext(current, new vscode.Position(0, 3))).toEqual({
-      contents: `\n\n\n\n{"value": 1}`,
+      contents: `\n\n\n\n\n\n{"value": 1}`,
       filepath: "/workspace/example.ipynb",
-      position: new vscode.Position(4, 3),
+      position: new vscode.Position(6, 3),
     })
   })
 
