@@ -17,7 +17,7 @@ interface ScopeOption {
   label: string
 }
 
-const MARKETPLACE_DOCS = "https://kilo.ai/docs/getting-started/settings"
+const MARKETPLACE_DOCS = "https://kilo.ai/docs/customize/marketplace"
 const MCP_DOCS = "https://kilo.ai/docs/automate/mcp/what-is-mcp"
 
 interface Props {
