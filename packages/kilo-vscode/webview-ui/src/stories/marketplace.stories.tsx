@@ -319,55 +319,17 @@ export const MixedListWithItems: Story = {
   ),
 }
 
-export const SkillsTabWithItems: Story = {
-  name: "Skills list — with items",
+export const EmptyList: Story = {
+  name: "Mixed list — empty state",
   render: () => (
     <StoryProviders>
-      <div style={{ width: "420px", height: "700px", overflow: "auto", padding: "12px" }}>
-        <MarketplaceListView
-          items={MOCK_SKILLS}
-          metadata={EMPTY_METADATA}
-          fetching={false}
-          searchPlaceholder="Search skills..."
-          emptyMessage="No skills found"
-          onInstall={noop}
-          onRemove={noop}
-        />
-      </div>
-    </StoryProviders>
-  ),
-}
-
-export const SkillsTabWithInstalled: Story = {
-  name: "Skills list — some installed",
-  render: () => (
-    <StoryProviders>
-      <div style={{ width: "420px", height: "700px", overflow: "auto", padding: "12px" }}>
-        <MarketplaceListView
-          items={MOCK_SKILLS}
-          metadata={PARTIAL_INSTALLED_SKILLS}
-          fetching={false}
-          searchPlaceholder="Search skills..."
-          emptyMessage="No skills found"
-          onInstall={noop}
-          onRemove={noop}
-        />
-      </div>
-    </StoryProviders>
-  ),
-}
-
-export const SkillsTabEmpty: Story = {
-  name: "Skills list — empty state",
-  render: () => (
-    <StoryProviders>
-      <div style={{ width: "420px", height: "400px", overflow: "auto", padding: "12px" }}>
+      <div style={{ "max-height": "400px", overflow: "auto", padding: "12px" }}>
         <MarketplaceListView
           items={[]}
           metadata={EMPTY_METADATA}
           fetching={false}
-          searchPlaceholder="Search skills..."
-          emptyMessage="No skills found"
+          searchPlaceholder="Search marketplace..."
+          emptyMessage="No items found"
           onInstall={noop}
           onRemove={noop}
         />
@@ -416,63 +378,6 @@ export const InstalledSkillCard: Story = {
 // MCP Stories
 // ---------------------------------------------------------------------------
 
-export const McpTabWithItems: Story = {
-  name: "MCP list — with items",
-  render: () => (
-    <StoryProviders>
-      <div style={{ width: "420px", height: "700px", overflow: "auto", padding: "12px" }}>
-        <MarketplaceListView
-          items={MOCK_MCPS}
-          metadata={EMPTY_METADATA}
-          fetching={false}
-          searchPlaceholder="Search MCP servers..."
-          emptyMessage="No MCP servers found"
-          onInstall={noop}
-          onRemove={noop}
-        />
-      </div>
-    </StoryProviders>
-  ),
-}
-
-export const McpTabWithInstalled: Story = {
-  name: "MCP list — some installed",
-  render: () => (
-    <StoryProviders>
-      <div style={{ width: "420px", height: "700px", overflow: "auto", padding: "12px" }}>
-        <MarketplaceListView
-          items={MOCK_MCPS}
-          metadata={PARTIAL_INSTALLED_MCPS}
-          fetching={false}
-          searchPlaceholder="Search MCP servers..."
-          emptyMessage="No MCP servers found"
-          onInstall={noop}
-          onRemove={noop}
-        />
-      </div>
-    </StoryProviders>
-  ),
-}
-
-export const McpTabEmpty: Story = {
-  name: "MCP list — empty state",
-  render: () => (
-    <StoryProviders>
-      <div style={{ width: "420px", height: "400px", overflow: "auto", padding: "12px" }}>
-        <MarketplaceListView
-          items={[]}
-          metadata={EMPTY_METADATA}
-          fetching={false}
-          searchPlaceholder="Search MCP servers..."
-          emptyMessage="No MCP servers found"
-          onInstall={noop}
-          onRemove={noop}
-        />
-      </div>
-    </StoryProviders>
-  ),
-}
-
 export const SingleMcpCard: Story = {
   name: "ItemCard — single MCP not installed",
   render: () => (
@@ -510,63 +415,6 @@ export const InstalledMcpCard: Story = {
 // ---------------------------------------------------------------------------
 // Mode Stories
 // ---------------------------------------------------------------------------
-
-export const AgentsTabWithItems: Story = {
-  name: "Agents list — with items",
-  render: () => (
-    <StoryProviders>
-      <div style={{ width: "420px", height: "700px", overflow: "auto", padding: "12px" }}>
-        <MarketplaceListView
-          items={MOCK_AGENTS}
-          metadata={EMPTY_METADATA}
-          fetching={false}
-          searchPlaceholder="Search agents..."
-          emptyMessage="No agents found"
-          onInstall={noop}
-          onRemove={noop}
-        />
-      </div>
-    </StoryProviders>
-  ),
-}
-
-export const AgentsTabWithInstalled: Story = {
-  name: "Agents list — some installed",
-  render: () => (
-    <StoryProviders>
-      <div style={{ width: "420px", height: "700px", overflow: "auto", padding: "12px" }}>
-        <MarketplaceListView
-          items={MOCK_AGENTS}
-          metadata={PARTIAL_INSTALLED_AGENTS}
-          fetching={false}
-          searchPlaceholder="Search agents..."
-          emptyMessage="No agents found"
-          onInstall={noop}
-          onRemove={noop}
-        />
-      </div>
-    </StoryProviders>
-  ),
-}
-
-export const AgentsTabEmpty: Story = {
-  name: "Agents list — empty state",
-  render: () => (
-    <StoryProviders>
-      <div style={{ width: "420px", height: "400px", overflow: "auto", padding: "12px" }}>
-        <MarketplaceListView
-          items={[]}
-          metadata={EMPTY_METADATA}
-          fetching={false}
-          searchPlaceholder="Search agents..."
-          emptyMessage="No agents found"
-          onInstall={noop}
-          onRemove={noop}
-        />
-      </div>
-    </StoryProviders>
-  ),
-}
 
 export const SingleAgentCard: Story = {
   name: "ItemCard — single agent not installed",
