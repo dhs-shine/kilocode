@@ -74,6 +74,22 @@ describe("Marketplace relevance", () => {
     expect(find.mock.calls).toContainEqual([remote, "*.ipynb"])
   })
 
+  it("ignores malformed suggestion metadata", async () => {
+    const malformed = {
+      ...items[0],
+      suggest_for: { filename: "*.component.ts", vscode_extension: [42] },
+    } as unknown as MarketplaceItem
+    const find = mock(async () => true)
+
+    const relevance = await detectMarketplaceRelevance([malformed], [vscode.Uri.file("/repo")], {
+      extensions: ["test.extension"],
+      find,
+    })
+
+    expect(relevance).toEqual({})
+    expect(find).not.toHaveBeenCalled()
+  })
+
   it("still matches installed extensions without a workspace", async () => {
     const find = mock(async () => true)
 

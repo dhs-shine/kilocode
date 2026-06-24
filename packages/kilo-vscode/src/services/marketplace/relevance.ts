@@ -3,6 +3,11 @@ import type { MarketplaceItem, MarketplaceRelevanceMetadata } from "./types"
 
 const EXCLUDE = "**/{node_modules,.git,dist,build,out,.kilo,.opencode,.kilocode}/**"
 
+function strings(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === "string")
+}
+
 interface RelevanceHost {
   extensions: readonly string[]
   find: (root: vscode.Uri, pattern: string) => Promise<boolean>
@@ -23,7 +28,7 @@ export async function detectMarketplaceRelevance(
   roots: readonly vscode.Uri[],
   source: RelevanceHost = context(),
 ): Promise<MarketplaceRelevanceMetadata> {
-  const patterns = Array.from(new Set(items.flatMap((item) => item.suggest_for?.filename ?? [])))
+  const patterns = Array.from(new Set(items.flatMap((item) => strings(item.suggest_for?.filename))))
   const files = new Map<string, boolean>()
 
   const batches = Array.from({ length: Math.ceil(patterns.length / 4) }, (_, index) =>
@@ -48,8 +53,8 @@ export async function detectMarketplaceRelevance(
   const extensions = new Set(source.extensions.map((id) => id.toLowerCase()))
   return Object.fromEntries(
     items.flatMap((item) => {
-      const filename = item.suggest_for?.filename?.filter((pattern) => files.get(pattern))
-      const vscodeExtension = item.suggest_for?.vscode_extension?.filter((id) => extensions.has(id.toLowerCase()))
+      const filename = strings(item.suggest_for?.filename).filter((pattern) => files.get(pattern))
+      const vscodeExtension = strings(item.suggest_for?.vscode_extension).filter((id) => extensions.has(id.toLowerCase()))
       if (!filename?.length && !vscodeExtension?.length) return []
       return [
         [
