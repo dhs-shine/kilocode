@@ -88,59 +88,22 @@
 
 ## [Unreleased]
 
-## [7.0.1-rc.13] - 2026-06-24
+## [7.0.1-rc.13] - 2026-06-23
 
 ### Added
-- feat: add account profile to Kilo Console by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11434
-- feat: indicate BYOK availability in model pickers by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11421
-- feat(cli): add a privacy filter to Console model Explore by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11301
-- feat(server,daemon): display local and network URLs when binding to 0.0.0.0 by @IamCoder18 in https://github.com/Kilo-Org/kilocode/pull/11028
-- feat(cli): support compact and summarize in kilo run --command by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/10005
-- feat(cli): improve daemon stop workflow by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11478
-- feat(cli): search local session transcripts by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11468
-- feat(gateway): default autocomplete to Mercury Next Edit by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11036
-- feat(vscode): let users hide disabled indexing button by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11570
-- feat(cli): centralize sandboxed agent writes by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11548
-- feat(jetbrains): add slash commands and mention completion by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11327
-- feat(sandbox): enforce macOS network isolation by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11603
+
+- Add slash command and file mention completion in the prompt.
+- Add support for clickable and explainable `@file` mentions in the prompt.
 
 ### Fixed
-- fix(vscode): widen chat readable lane by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11451
-- fix(vscode): tolerate duplicate panel command registration by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/10940
-- fix(vscode): keep diff identifiers intact by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11423
-- fix(agent-manager): stabilize concurrent subagent rendering by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11433
-- fix: silence subagent completion sounds by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11453
-- fix: hide provider errors after session revert by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11455
-- fix: add vercel bypass header to opencode release watcher by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11460
-- fix(agent-manager): speed up worktree hover cards by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11463
-- fix(console): add context to settings fields by @nyxst4ck in https://github.com/Kilo-Org/kilocode/pull/11446
-- fix(vscode): keep chat streaming after revert by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11464
-- fix(tui): show docs URL in dialog when browser cannot open on headless systems by @grandmaster451 in https://github.com/Kilo-Org/kilocode/pull/11319
-- fix(cli): improve headless docs dialog UX by @IamCoder18 in https://github.com/Kilo-Org/kilocode/pull/11212
-- fix(cli): scale local-review sub-agents based on diff size and complexity by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11155
-- fix(cli): preserve custom subagent permissions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11475
-- fix(jetbrains): disclose prompt-training models by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11467
-- fix(cli): restore read tool streaming by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11533
-- fix(cli): support MiniMax M3 thinking controls by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11552
-- fix(cli): support GLM 5.2 thinking variants by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11555
-- fix(cli): avoid encoded PowerShell commands by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11526
-- fix(core): create the default `.kilo/plans` directory automatically when Plan mode starts by @shssoichiro in https://github.com/Kilo-Org/kilocode/pull/11505
-- fix(vscode): silence auto-approved permissions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11573
-- fix(cli): isolate sandboxed worktree writes by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11584
-- fix(vscode): preserve code index across updates by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11588
-- fix(vscode): use fim fallback for chat autocomplete by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11592
+
+- Fix  prompt undo/redo behavior and restore prompt focus after history navigation.
+- Fix lazy session creation to avoid duplicate initialization.
+- Fix prompt-training model disclosure.
 
 ### Changed
-- release(jetbrains): v7.0.1-rc.12 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11435
-- docs: document prompt-training model visibility by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11416
-- docs(vscode): clarify custom provider protocol selection by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11418
-- docs(cli): propagate chunkTimeout to streamText and document provider options by @Fatty911 in https://github.com/Kilo-Org/kilocode/pull/9795
-- cli: skip automatic browser launch for kilo console on headless Linux by @IamCoder18 in https://github.com/Kilo-Org/kilocode/pull/11026
-- OpenCode v1.15.13 by @imanolmzd-svg in https://github.com/Kilo-Org/kilocode/pull/11450
-- docs: document REVIEW.md sub-agent guidance by @alex-alecu in https://github.com/Kilo-Org/kilocode/pull/11524
-- test(ci): run unit suite on macOS by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11567
-- test(ci): focus macOS PR tests on Darwin coverage by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11574
 
+- Update the bundled CLI to include upstream OpenCode 1.15.13 changes.
 
 ## [7.0.1-rc.12] - 2026-06-18
 
