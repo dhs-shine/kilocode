@@ -306,6 +306,31 @@ describe("SessionContext userClearedSession contract", () => {
   it("exposes userClearedSession in the SessionContext value", () => {
     expect(source).toMatch(/userClearedSession,?\s*\n\s*\}/m)
   })
+
+  it("sendMessage resets userClearedSession when starting a fresh draft from :new", () => {
+    // Race: user on session A, sends, failure pending; clicks New Task
+    // (userClearedSession=true), then types new text and clicks Send. We mint
+    // a draftID and adopt it as draftSessionID. If a failure for the new
+    // send returns BEFORE sessionCreated lands (so currentSessionID is
+    // still undefined and userClearedSession is still true), the failure's
+    // draftID matches draftSessionID() but the flag would suppress restore.
+    // Resetting the flag at the moment the user starts the new draft closes
+    // that window: the failure is for the current in-progress draft and must
+    // be restorable.
+    const body = extractFunctionBody(source, "sendMessage")
+    const block = body.match(/if \(!sid\) \{([\s\S]*?)\}/)
+    expect(block).not.toBeNull()
+    expect(block![1]).toMatch(/setUserClearedSession\(false\)/)
+    expect(block![1]).toMatch(/setDraftSessionID\(scope\)/)
+  })
+
+  it("sendCommand resets userClearedSession when starting a fresh draft from :new", () => {
+    const body = extractFunctionBody(source, "sendCommand")
+    const block = body.match(/if \(!sid\) \{([\s\S]*?)\}/)
+    expect(block).not.toBeNull()
+    expect(block![1]).toMatch(/setUserClearedSession\(false\)/)
+    expect(block![1]).toMatch(/setDraftSessionID\(scope\)/)
+  })
 })
 
 describe("KiloConnectionService pruneSession contract", () => {

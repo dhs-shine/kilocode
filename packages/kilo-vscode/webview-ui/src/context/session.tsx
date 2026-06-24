@@ -2227,7 +2227,13 @@ export const SessionProvider: ParentComponent = (props) => {
       clearClose(scope)
       addOptimistic(scope, messageID, text, files, review)
       startSubmission(scope, messageID)
-      if (!sid) setDraftSessionID(scope)
+      if (!sid) {
+        // The user is starting a fresh draft from the empty prompt. Clear
+        // any lingering userClearedSession flag so a failure that races ahead
+        // of sessionCreated is not suppressed as a stale clear.
+        setUserClearedSession(false)
+        setDraftSessionID(scope)
+      }
     }
     const agent = promptAgent(scope)
 
@@ -2298,7 +2304,13 @@ export const SessionProvider: ParentComponent = (props) => {
       clearClose(scope)
       addOptimistic(scope, messageID, `/${command} ${args}`.trim(), files)
       startSubmission(scope, messageID)
-      if (!sid) setDraftSessionID(scope)
+      if (!sid) {
+        // Same reasoning as sendMessage: starting a fresh draft from the
+        // empty prompt overrides any lingering userClearedSession flag so a
+        // failure that races ahead of sessionCreated is not suppressed.
+        setUserClearedSession(false)
+        setDraftSessionID(scope)
+      }
     }
     const agent = promptAgent(scope)
 
