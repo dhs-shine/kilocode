@@ -1,6 +1,7 @@
 import { Cause, Effect, Exit, Layer } from "effect"
 import { expect } from "bun:test"
 import { HttpClient } from "effect/unstable/http"
+import { backendSupport } from "@kilocode/sandbox"
 import { ProjectID } from "@/project/schema"
 import { InstanceRef } from "@/effect/instance-ref"
 import * as SandboxPolicy from "@/kilocode/sandbox/policy"
@@ -54,7 +55,7 @@ function server() {
 const restricted = testEffect(layer())
 const open = testEffect(layer(false))
 
-restricted.live("keeps network restriction enabled by default", () => {
+restricted.live("keeps network restriction enabled by default when the sandbox is available", () => {
   const target = server()
   return Effect.gen(function* () {
     const http = yield* HttpClient.HttpClient
@@ -62,6 +63,11 @@ restricted.live("keeps network restriction enabled by default", () => {
       Effect.provideService(InstanceRef, ctx),
       Effect.exit,
     )
+    if (!backendSupport.available) {
+      expect(Exit.isSuccess(exit)).toBe(true)
+      expect(target.requests()).toBe(1)
+      return
+    }
     expect(Exit.isFailure(exit)).toBe(true)
     if (Exit.isFailure(exit)) expect(Cause.pretty(exit.cause)).toContain("Sandbox denied outbound network access")
     expect(target.requests()).toBe(0)
