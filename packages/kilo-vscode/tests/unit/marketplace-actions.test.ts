@@ -7,7 +7,12 @@ import {
   type MarketplaceRemoveContext,
 } from "../../src/services/marketplace/actions"
 import type { McpMarketplaceItem } from "../../src/services/marketplace/types"
-import { filterItems, installedScopes, retain } from "../../webview-ui/src/components/marketplace/utils"
+import {
+  filterItems,
+  hasRelevantItems,
+  installedScopes,
+  retain,
+} from "../../webview-ui/src/components/marketplace/utils"
 import type { MarketplaceItem } from "../../webview-ui/src/types/marketplace"
 
 const project = "/repo"
@@ -133,11 +138,10 @@ describe("Marketplace installation metadata", () => {
         "mcp:warehouse": { vscodeExtension: ["data.warehouse"] },
       }).map((item) => item.id),
     ).toEqual(["reviewer", "warehouse"])
-    expect(
-      filterItems(items, metadata, "warehouse", "all", [], [], {}, true, {
-        "agent:reviewer": { filename: ["*.review.ts"] },
-      }),
-    ).toEqual([])
+    const relevance = { "agent:reviewer": { filename: ["*.review.ts"] } }
+    expect(filterItems(items, metadata, "warehouse", "all", [], [], {}, true, relevance)).toEqual([])
+    expect(hasRelevantItems(items, relevance)).toBe(true)
+    expect(hasRelevantItems(items, {})).toBe(false)
   })
 })
 

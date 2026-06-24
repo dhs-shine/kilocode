@@ -4,6 +4,10 @@ import type {
   MarketplaceRelevanceMetadata,
 } from "../../types/marketplace"
 
+export function hasRelevantItems(items: MarketplaceItem[], relevance: MarketplaceRelevanceMetadata): boolean {
+  return items.some((item) => !!relevance[`${item.type}:${item.id}`])
+}
+
 export function retain<T>(selected: T[], available: T[]): T[] {
   const values = new Set(available)
   const next = selected.filter((value) => values.has(value))

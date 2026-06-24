@@ -12,7 +12,7 @@ import type {
   MarketplaceRelevanceMetadata,
 } from "../../types/marketplace"
 import { useLanguage } from "../../context/language"
-import { filterItems, retain } from "./utils"
+import { filterItems, hasRelevantItems, retain } from "./utils"
 import { ItemCard } from "./ItemCard"
 import { MarketplaceContribute } from "./MarketplaceContribute"
 
@@ -171,7 +171,9 @@ export const MarketplaceListView = (props: Props) => {
           fallback={
             <div class="marketplace-empty">
               <span class="marketplace-empty-message">
-                {relevant() ? props.relevantEmptyMessage : props.emptyMessage}
+                {relevant() && !hasRelevantItems(props.items, props.relevance)
+                  ? props.relevantEmptyMessage
+                  : props.emptyMessage}
               </span>
               <MarketplaceContribute />
             </div>
