@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
+import * as vscode from "vscode"
 import { detectMarketplaceRelevance } from "../../src/services/marketplace/relevance"
 import type { MarketplaceItem } from "../../src/services/marketplace/types"
 
@@ -41,9 +42,10 @@ const items: MarketplaceItem[] = [
 
 describe("Marketplace relevance", () => {
   it("matches workspace files and installed extensions with deduplicated bounded searches", async () => {
-    const find = mock(async (_workspace: string, pattern: string) => pattern === "*.component.ts")
+    const root = vscode.Uri.file("/repo")
+    const find = mock(async (_root: vscode.Uri, pattern: string) => pattern === "*.component.ts")
 
-    const relevance = await detectMarketplaceRelevance(items, "/repo", {
+    const relevance = await detectMarketplaceRelevance(items, [root], {
       extensions: ["MS-ToolsAI.Jupyter"],
       find,
     })
@@ -56,15 +58,26 @@ describe("Marketplace relevance", () => {
       },
     })
     expect(find).toHaveBeenCalledTimes(3)
-    expect(find.mock.calls).toContainEqual(["/repo", "*.component.ts"])
-    expect(find.mock.calls).toContainEqual(["/repo", "*.ipynb"])
-    expect(find.mock.calls).toContainEqual(["/repo", "*.rs"])
+    expect(find.mock.calls).toContainEqual([root, "*.component.ts"])
+    expect(find.mock.calls).toContainEqual([root, "*.ipynb"])
+    expect(find.mock.calls).toContainEqual([root, "*.rs"])
+  })
+
+  it("searches every workspace root and preserves remote URIs", async () => {
+    const local = vscode.Uri.file("/repo")
+    const remote = vscode.Uri.parse("vscode-remote://ssh-remote+host/workspace")
+    const find = mock(async (root: vscode.Uri, pattern: string) => root === remote && pattern === "*.ipynb")
+
+    const relevance = await detectMarketplaceRelevance(items, [local, remote], { extensions: [], find })
+
+    expect(relevance).toEqual({ "mcp:jupyter": { filename: ["*.ipynb"] } })
+    expect(find.mock.calls).toContainEqual([remote, "*.ipynb"])
   })
 
   it("still matches installed extensions without a workspace", async () => {
     const find = mock(async () => true)
 
-    const relevance = await detectMarketplaceRelevance(items, undefined, {
+    const relevance = await detectMarketplaceRelevance(items, [], {
       extensions: ["ms-toolsai.jupyter"],
       find,
     })

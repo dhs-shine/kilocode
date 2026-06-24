@@ -5,14 +5,14 @@ const EXCLUDE = "**/{node_modules,.git,dist,build,out,.kilo,.opencode,.kilocode}
 
 interface RelevanceHost {
   extensions: readonly string[]
-  find: (workspace: string, pattern: string) => Promise<boolean>
+  find: (root: vscode.Uri, pattern: string) => Promise<boolean>
 }
 
 function context(): RelevanceHost {
   return {
     extensions: vscode.extensions.all.map((extension) => extension.id),
-    find: async (workspace, pattern) => {
-      const glob = new vscode.RelativePattern(workspace, `**/${pattern}`)
+    find: async (root, pattern) => {
+      const glob = new vscode.RelativePattern(root, `**/${pattern}`)
       return (await vscode.workspace.findFiles(glob, EXCLUDE, 1)).length > 0
     },
   }
@@ -20,27 +20,29 @@ function context(): RelevanceHost {
 
 export async function detectMarketplaceRelevance(
   items: MarketplaceItem[],
-  workspace?: string,
+  roots: readonly vscode.Uri[],
   source: RelevanceHost = context(),
 ): Promise<MarketplaceRelevanceMetadata> {
   const patterns = Array.from(new Set(items.flatMap((item) => item.suggest_for?.filename ?? [])))
   const files = new Map<string, boolean>()
 
-  if (workspace) {
-    const batches = Array.from({ length: Math.ceil(patterns.length / 4) }, (_, index) =>
-      patterns.slice(index * 4, index * 4 + 4),
+  const batches = Array.from({ length: Math.ceil(patterns.length / 4) }, (_, index) =>
+    patterns.slice(index * 4, index * 4 + 4),
+  )
+  for (const batch of batches) {
+    await Promise.all(
+      batch.map(async (pattern) => {
+        const found = await Promise.all(
+          roots.map((root) =>
+            source.find(root, pattern).catch((err: unknown) => {
+              console.warn(`[Kilo New] Marketplace relevance scan failed for ${pattern}:`, err)
+              return false
+            }),
+          ),
+        )
+        files.set(pattern, found.some(Boolean))
+      }),
     )
-    for (const batch of batches) {
-      await Promise.all(
-        batch.map(async (pattern) => {
-          const found = await source.find(workspace, pattern).catch((err: unknown) => {
-            console.warn(`[Kilo New] Marketplace relevance scan failed for ${pattern}:`, err)
-            return false
-          })
-          files.set(pattern, found)
-        }),
-      )
-    }
   }
 
   const extensions = new Set(source.extensions.map((id) => id.toLowerCase()))

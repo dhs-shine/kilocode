@@ -204,7 +204,7 @@ export class MarketplacePanelProvider implements vscode.Disposable {
     const generation = ++this.generation
     try {
       const project = this.project ?? undefined
-      const data = await fetchMarketplaceData(this.marketplaceCtx, project, this.directory())
+      const data = await fetchMarketplaceData(this.marketplaceCtx, project, this.directory(), this.relevanceRoots())
       if (generation !== this.generation) return
       const dismissed = this.context.globalState.get<boolean>("kilo.agentMigrationBannerDismissed") ?? false
       this.post({ type: "marketplaceData", ...data, showAgentMigrationBanner: !dismissed })
@@ -269,6 +269,12 @@ export class MarketplacePanelProvider implements vscode.Disposable {
 
   private directory(): string {
     return this.project ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? os.homedir()
+  }
+
+  private relevanceRoots(): vscode.Uri[] {
+    if (!this.project) return vscode.workspace.workspaceFolders?.map((folder) => folder.uri) ?? []
+    const folder = vscode.workspace.workspaceFolders?.find((item) => item.uri.fsPath === this.project)
+    return [folder?.uri ?? vscode.Uri.file(this.project)]
   }
 
   private openExternal(raw: unknown): void {

@@ -27,10 +27,10 @@ export class MarketplaceService {
     this.installer = new MarketplaceInstaller(this.paths)
   }
 
-  async fetchData(workspace?: string, skills?: CliSkill[]): Promise<MarketplaceDataResponse> {
+  async fetchData(workspace: string | undefined, skills: CliSkill[] | undefined, roots: readonly vscode.Uri[]) {
     const fetched = this.api.fetchAll()
     const metadata = this.detector.detect(workspace, skills)
-    const relevance = fetched.then((result) => this.relevance(result.items, workspace))
+    const relevance = fetched.then((result) => this.relevance(result.items, roots))
     const [items, installed, matches] = await Promise.all([fetched, metadata, relevance])
 
     return {
@@ -41,12 +41,12 @@ export class MarketplaceService {
     }
   }
 
-  private relevance(items: MarketplaceItem[], workspace?: string): Promise<MarketplaceRelevanceMetadata> {
-    const key = `${workspace ?? ""}:${items.map((item) => `${item.type}:${item.id}`).join(",")}`
+  private relevance(items: MarketplaceItem[], roots: readonly vscode.Uri[]): Promise<MarketplaceRelevanceMetadata> {
+    const key = `${roots.map((root) => root.toString()).join(",")}:${items.map((item) => `${item.type}:${item.id}`).join(",")}`
     const current = this.scans.get(key)
     if (current) return current
 
-    const scan = detectMarketplaceRelevance(items, workspace).finally(() => this.scans.delete(key))
+    const scan = detectMarketplaceRelevance(items, roots).finally(() => this.scans.delete(key))
     this.scans.set(key, scan)
     return scan
   }
