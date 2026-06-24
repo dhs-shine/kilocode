@@ -48,7 +48,7 @@ describe("filesystem mutation worker", () => {
 
     expect(response).toEqual({ ok: true })
     expect(await readFile(file, "utf8")).toBe("batched")
-    expect((await stat(file)).mode & 0o777).toBe(0o640)
+    if (process.platform !== "win32") expect((await stat(file)).mode & 0o777).toBe(0o640)
   })
 
   test("serializes single-operation filesystem failures", async () => {
