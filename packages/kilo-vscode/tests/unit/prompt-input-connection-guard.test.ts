@@ -36,6 +36,17 @@ describe("PromptInput sandbox toggle", () => {
     expect(toggle).not.toContain('type: "updateConfig"')
   })
 
+  it("keeps success feedback out of the webview toast region", () => {
+    const start = src.indexOf("const handleSandboxMessage =")
+    const end = src.indexOf("const unsubscribe =", start)
+    const handler = src.slice(start, end)
+
+    expect(start).toBeGreaterThan(-1)
+    expect(end).toBeGreaterThan(start)
+    expect(handler).toContain('variant: "error"')
+    expect(handler).not.toContain('variant: "success"')
+  })
+
   it("uses the internal flag for visibility and effective runtime state for the button", () => {
     expect(src).toContain("features().sandboxControls")
     expect(src).toContain("<Show when={sandboxVisible()}>")

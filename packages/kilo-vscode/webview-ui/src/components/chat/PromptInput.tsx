@@ -464,19 +464,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       sandboxAttempts = 0
       if (sandboxRetry) clearTimeout(sandboxRetry)
       sandboxRetry = undefined
-      if (matching) {
-        if (!state.available) {
-          showToast({
-            variant: "error",
-            title: language.t("common.requestFailed"),
-            description: state.reason,
-          })
-          return true
-        }
+      if (matching && !state.available) {
         showToast({
-          variant: "success",
-          title: language.t("settings.experimental.sandbox.title"),
-          description: language.t(state.enabled ? "prompt.action.sandbox.enabled" : "prompt.action.sandbox.disabled"),
+          variant: "error",
+          title: language.t("common.requestFailed"),
+          description: state.reason,
         })
       }
       return true
