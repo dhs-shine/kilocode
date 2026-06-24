@@ -10,6 +10,7 @@ import { backendSupport, run, type Profile } from "@kilocode/sandbox"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 
 const linux = process.platform === "linux" ? test : test.skip
+const linuxIPv6 = process.platform === "linux" && supportsIPv6() ? test : test.skip
 
 function profile(
   allow: ReadonlyArray<string>,
@@ -53,6 +54,11 @@ async function fixture() {
   return { root, project, outside }
 }
 
+function requireNetwork() {
+  const support = backendSupport({ mode: "deny", allowedHosts: [] })
+  expect(support.available, support.reason).toBe(true)
+}
+
 function tcp(hostname = "127.0.0.1") {
   let accepted = 0
   const listener = Bun.listen({
@@ -68,6 +74,17 @@ function tcp(hostname = "127.0.0.1") {
     },
   })
   return { listener, accepted: () => accepted }
+}
+
+function supportsIPv6() {
+  if (process.platform !== "linux") return false
+  try {
+    const probe = tcp("::1")
+    probe.listener.stop(true)
+    return true
+  } catch {
+    return false
+  }
 }
 
 async function udp() {
@@ -141,8 +158,7 @@ linux("confines writes from spawned processes to the profile allowlist", async (
 })
 
 linux("allows host loopback TCP in network allow mode and blocks it in deny mode", async () => {
-  const support = backendSupport({ mode: "deny", allowedHosts: [] })
-  expect(support.available, support.reason).toBe(true)
+  requireNetwork()
   const root = await fixture()
   const allowed = tcp()
   const blocked = tcp()
@@ -162,6 +178,7 @@ linux("allows host loopback TCP in network allow mode and blocks it in deny mode
 })
 
 linux("blocks UDP datagrams in network deny mode", async () => {
+  requireNetwork()
   const root = await fixture()
   const allowed = await udp()
   const blocked = await udp()
@@ -180,31 +197,42 @@ linux("blocks UDP datagrams in network deny mode", async () => {
   }
 })
 
-linux("blocks localhost and IPv6 loopback connections in network deny mode", async () => {
+linux("blocks localhost connections in network deny mode", async () => {
+  requireNetwork()
   const root = await fixture()
-  const localhost = tcp("127.0.0.1")
-  const ipv6 = tcp("::1")
+  const listener = tcp()
   const deny = profile([root.project], [], "deny")
 
   try {
     expect(
-      Number(
-        await Effect.runPromise(spawn(tcpClient(localhost.listener.port, false, "localhost"), root.project, deny)),
-      ),
+      Number(await Effect.runPromise(spawn(tcpClient(listener.listener.port, false, "localhost"), root.project, deny))),
     ).toBe(0)
-    expect(
-      Number(await Effect.runPromise(spawn(tcpClient(ipv6.listener.port, false, "::1"), root.project, deny))),
-    ).toBe(0)
-    expect(localhost.accepted()).toBe(0)
-    expect(ipv6.accepted()).toBe(0)
+    expect(listener.accepted()).toBe(0)
   } finally {
-    localhost.listener.stop(true)
-    ipv6.listener.stop(true)
+    listener.listener.stop(true)
+    await fs.rm(root.root, { recursive: true, force: true })
+  }
+})
+
+linuxIPv6("blocks IPv6 loopback connections in network deny mode", async () => {
+  requireNetwork()
+  const root = await fixture()
+  const listener = tcp("::1")
+  const deny = profile([root.project], [], "deny")
+
+  try {
+    expect(
+      Number(await Effect.runPromise(spawn(tcpClient(listener.listener.port, false, "::1"), root.project, deny))),
+    ).toBe(0)
+    expect(listener.accepted()).toBe(0)
+  } finally {
+    listener.listener.stop(true)
     await fs.rm(root.root, { recursive: true, force: true })
   }
 })
 
 linux("keeps loopback available between processes inside the denied network namespace", async () => {
+  requireNetwork()
   const root = await fixture()
   const child = [
     'const net = require("node:net")',
@@ -232,6 +260,7 @@ linux("keeps loopback available between processes inside the denied network name
 })
 
 linux("keeps descendants in the denied network namespace", async () => {
+  requireNetwork()
   const root = await fixture()
   const blocked = tcp()
   const child = tcpClient(blocked.listener.port, false)
@@ -251,6 +280,7 @@ linux("keeps descendants in the denied network namespace", async () => {
 })
 
 linux("preserves filesystem confinement in network deny mode", async () => {
+  requireNetwork()
   const root = await fixture()
   const allowed = path.join(root.project, "network-deny.txt")
   const sentinel = path.join(root.outside, "network-deny.txt")
