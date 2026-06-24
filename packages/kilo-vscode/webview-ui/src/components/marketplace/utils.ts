@@ -20,30 +20,36 @@ export function installedScopes(
   return scopes
 }
 
+function matches(item: MarketplaceItem, query: string) {
+  const skill = item.type === "skill" ? item : undefined
+  return (
+    item.id.toLowerCase().includes(query) ||
+    item.name.toLowerCase().includes(query) ||
+    item.description.toLowerCase().includes(query) ||
+    item.category.toLowerCase().includes(query) ||
+    item.type.includes(query) ||
+    (item.author?.toLowerCase().includes(query) ?? false) ||
+    (skill?.displayName.toLowerCase().includes(query) ?? false)
+  )
+}
+
 export function filterItems(
   items: MarketplaceItem[],
   metadata: MarketplaceInstalledMetadata,
   search: string,
   status: string,
   categories: string[],
+  types: MarketplaceItem["type"][],
 ): MarketplaceItem[] {
   const query = search.trim().toLowerCase()
   return items
     .filter((item) => {
       if (status === "installed" && !isInstalled(item.id, item.type, metadata)) return false
       if (status === "notInstalled" && isInstalled(item.id, item.type, metadata)) return false
+      if (types.length > 0 && !types.includes(item.type)) return false
       if (categories.length > 0 && !categories.includes(item.category)) return false
       if (!query) return true
-      const skill = item.type === "skill" ? item : undefined
-      return (
-        item.id.toLowerCase().includes(query) ||
-        item.name.toLowerCase().includes(query) ||
-        item.description.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query) ||
-        item.type.includes(query) ||
-        (item.author?.toLowerCase().includes(query) ?? false) ||
-        (skill?.displayName.toLowerCase().includes(query) ?? false)
-      )
+      return matches(item, query)
     })
     .sort((a, b) => a.name.localeCompare(b.name))
 }

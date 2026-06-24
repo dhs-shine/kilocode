@@ -49,7 +49,7 @@ export const ItemCard = (props: Props) => {
               {name()}
             </span>
           </Show>
-          <Tag class="marketplace-badge-type">{type()}</Tag>
+          <Tag class={`marketplace-badge-type marketplace-type-${props.item.type}`}>{type()}</Tag>
         </div>
         <Show when={props.item.author}>
           <span class="marketplace-card-author">

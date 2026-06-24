@@ -27,14 +27,16 @@
   flex: 1;
 }
 
-/* Category filters */
+/* Type and category filters */
 
+.marketplace-types,
 .marketplace-categories {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
+.marketplace-type-filter,
 .marketplace-category-filter {
   all: unset;
   cursor: pointer;
@@ -42,15 +44,18 @@
   transition: opacity 0.15s ease;
 }
 
+.marketplace-type-filter:hover,
 .marketplace-category-filter:hover {
   opacity: 0.8;
 }
 
+.marketplace-type-filter:focus-visible,
 .marketplace-category-filter:focus-visible {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: 2px;
 }
 
+.marketplace-type-filter.active,
 .marketplace-category-filter.active {
   opacity: 1;
 }
@@ -200,6 +205,28 @@
 
 .marketplace-badge-type {
   flex-shrink: 0;
+  letter-spacing: 0.4px;
+}
+
+.marketplace-type-agent [data-component="tag"],
+.marketplace-badge-type.marketplace-type-agent {
+  color: var(--text-on-success-base) !important;
+  background-color: color-mix(in srgb, var(--border-success-base) 14%, transparent) !important;
+  border-color: var(--border-success-base) !important;
+}
+
+.marketplace-type-mcp [data-component="tag"],
+.marketplace-badge-type.marketplace-type-mcp {
+  color: var(--text-on-info-base) !important;
+  background-color: color-mix(in srgb, var(--border-info-base) 14%, transparent) !important;
+  border-color: var(--border-info-base) !important;
+}
+
+.marketplace-type-skill [data-component="tag"],
+.marketplace-badge-type.marketplace-type-skill {
+  color: var(--text-on-warning-base) !important;
+  background-color: color-mix(in srgb, var(--border-warning-base) 14%, transparent) !important;
+  border-color: var(--border-warning-base) !important;
 }
 
 .marketplace-badge-installed {

@@ -113,9 +113,12 @@ describe("Marketplace installation metadata", () => {
     ]
     const metadata = { project: { "mcp:warehouse": { type: "mcp" } }, global: {} }
 
-    expect(filterItems(items, metadata, "reviewer", "all", []).map((item) => item.id)).toEqual(["reviewer"])
-    expect(filterItems(items, metadata, "", "all", ["business"]).map((item) => item.id)).toEqual(["campaign-writer"])
-    expect(filterItems(items, metadata, "", "installed", []).map((item) => item.id)).toEqual(["warehouse"])
+    expect(filterItems(items, metadata, "reviewer", "all", [], []).map((item) => item.id)).toEqual(["reviewer"])
+    expect(filterItems(items, metadata, "", "all", ["business"], []).map((item) => item.id)).toEqual([
+      "campaign-writer",
+    ])
+    expect(filterItems(items, metadata, "", "installed", [], []).map((item) => item.id)).toEqual(["warehouse"])
+    expect(filterItems(items, metadata, "", "all", [], ["mcp"]).map((item) => item.id)).toEqual(["warehouse"])
   })
 })
 

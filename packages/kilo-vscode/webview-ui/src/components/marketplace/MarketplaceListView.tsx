@@ -33,6 +33,7 @@ export const MarketplaceListView = (props: Props) => {
   const { t } = useLanguage()
   const [search, setSearch] = createSignal("")
   const [status, setStatus] = createSignal<StatusOption>({ value: "all", label: t("marketplace.filter.all") })
+  const [types, setTypes] = createSignal<MarketplaceItem["type"][]>([])
   const [categories, setCategories] = createSignal<string[]>([])
 
   const options = (): StatusOption[] => [
@@ -47,7 +48,17 @@ export const MarketplaceListView = (props: Props) => {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ")
 
+  const allTypes = createMemo(() => {
+    const available = new Set(props.items.map((item) => item.type))
+    return (["agent", "mcp", "skill"] as const).filter((type) => available.has(type))
+  })
   const allCategories = createMemo(() => Array.from(new Set(props.items.map((item) => item.category))).sort())
+
+  const typeLabel = (type: MarketplaceItem["type"]) => {
+    if (type === "mcp") return t("marketplace.badge.mcpServer")
+    if (type === "agent") return t("marketplace.remove.type.agent")
+    return t("marketplace.remove.type.skill")
+  }
 
   createEffect(() => {
     const available = new Set(allCategories())
@@ -56,6 +67,15 @@ export const MarketplaceListView = (props: Props) => {
       return next.length === current.length ? current : next
     })
   })
+
+  const toggleType = (type: MarketplaceItem["type"]) => {
+    const current = types()
+    if (current.includes(type)) {
+      setTypes(current.filter((value) => value !== type))
+      return
+    }
+    setTypes([...current, type])
+  }
 
   const toggleCategory = (category: string) => {
     const current = categories()
@@ -66,7 +86,9 @@ export const MarketplaceListView = (props: Props) => {
     setCategories([...current, category])
   }
 
-  const filtered = createMemo(() => filterItems(props.items, props.metadata, search(), status().value, categories()))
+  const filtered = createMemo(() =>
+    filterItems(props.items, props.metadata, search(), status().value, categories(), types()),
+  )
 
   return (
     <div class="marketplace-list">
@@ -82,6 +104,22 @@ export const MarketplaceListView = (props: Props) => {
           onSelect={(v: StatusOption | undefined) => v && setStatus(v)}
         />
       </div>
+      <Show when={allTypes().length > 1}>
+        <div class="marketplace-types">
+          <For each={allTypes()}>
+            {(type) => (
+              <button
+                class={`marketplace-type-filter marketplace-type-${type}`}
+                classList={{ active: types().includes(type) }}
+                aria-pressed={types().includes(type)}
+                onClick={() => toggleType(type)}
+              >
+                <Tag>{typeLabel(type)}</Tag>
+              </button>
+            )}
+          </For>
+        </div>
+      </Show>
       <Show when={allCategories().length > 0}>
         <div class="marketplace-categories">
           <For each={allCategories()}>
