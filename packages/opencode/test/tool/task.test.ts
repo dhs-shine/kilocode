@@ -1,5 +1,5 @@
 import { afterEach, describe, expect } from "bun:test"
-import { Cause, Effect, Exit, Fiber, Layer } from "effect" // kilocode_change - Cause for squashing the failure exit
+import { Cause, Deferred, Effect, Exit, Fiber, Layer } from "effect" // kilocode_change - Cause/Deferred for resume-hint coverage
 import { Agent } from "../../src/agent/agent"
 import { BackgroundJob } from "@/background/job"
 import { Bus } from "@/bus"
@@ -574,6 +574,7 @@ describe("tool.task", () => {
       const tool = yield* TaskTool
       const def = yield* tool.init()
       const injected: SessionPrompt.PromptInput[] = []
+      const parentInjected = yield* Deferred.make<void>()
 
       const result = yield* def.execute(
         {
@@ -594,7 +595,7 @@ describe("tool.task", () => {
                 // The parent-session prompt is the injected background result; capture it.
                 if (input.sessionID === chat.id) {
                   injected.push(input)
-                  return Effect.succeed(reply(input, "ack"))
+                  return Effect.as(Deferred.succeed(parentInjected, undefined), reply(input, "ack"))
                 }
                 return Effect.die(new Error("child prompt failed"))
               },
@@ -608,6 +609,8 @@ describe("tool.task", () => {
 
       const childId = result.metadata.sessionId
       yield* jobs.wait({ id: childId, timeout: 1_000 })
+      // The parent-session injection is forked asynchronously; wait for it before asserting.
+      yield* Deferred.await(parentInjected).pipe(Effect.timeout("1 second"))
 
       const text = injected
         .flatMap((input) => input.parts ?? [])
