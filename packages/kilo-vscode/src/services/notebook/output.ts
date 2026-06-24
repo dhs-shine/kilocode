@@ -14,9 +14,13 @@ const TEXT_MIMES = new Set([
 
 function slice(data: Uint8Array, limit: number): NotebookText {
   const bytes = data.byteLength
-  const body = bytes > limit ? data.subarray(0, limit) : data
-  const text = decoder.decode(body)
-  return bytes > limit ? { text, bytes, truncated: true } : { text, bytes }
+  if (bytes <= limit) return { text: decoder.decode(data), bytes }
+  const end = (() => {
+    let index = limit
+    while (index > 0 && (data[index] & 0xc0) === 0x80) index--
+    return index
+  })()
+  return { text: decoder.decode(data.subarray(0, end)), bytes, truncated: true }
 }
 
 export function normalizeSource(source: string, limit = NOTEBOOK_LIMITS.source): NotebookText {

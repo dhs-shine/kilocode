@@ -231,7 +231,10 @@ export class NotebookBridge {
   private context(directory: string): Promise<NotebookBridgeContext> {
     const existing = this.contexts.get(directory)
     if (existing) return existing
-    const context = this.create(directory)
+    const context = this.create(directory).catch((error: unknown) => {
+      this.contexts.delete(directory)
+      throw error
+    })
     this.contexts.set(directory, context)
     return context
   }

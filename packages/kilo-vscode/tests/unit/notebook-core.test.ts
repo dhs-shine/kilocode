@@ -102,6 +102,7 @@ describe("notebook path security", () => {
 describe("notebook normalization", () => {
   it("bounds UTF-8 source and text outputs and omits rich bodies", () => {
     expect(normalizeSource("abcdef", 3)).toEqual({ text: "abc", bytes: 6, truncated: true })
+    expect(normalizeSource("a€b", 3)).toEqual({ text: "a", bytes: 5, truncated: true })
     const normalized = normalizeOutputs(
       [
         {

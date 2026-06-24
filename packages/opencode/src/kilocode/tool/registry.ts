@@ -7,6 +7,7 @@ import { NotebookEditTool, NotebookExecuteTool, NotebookReadTool } from "./noteb
 import * as Tool from "../../tool/tool"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { Effect } from "effect"
+import { Notebook } from "@/kilocode/notebook/service"
 import * as Log from "@opencode-ai/core/util/log"
 import { Agent } from "@/agent/agent"
 import * as Truncate from "@/tool/truncate"
@@ -32,16 +33,19 @@ export namespace KiloToolRegistry {
 
   /** Resolve Kilo-specific tool Infos outside any InstanceState, so their Truncate/Agent deps are
    * satisfied at the outer registry scope instead of leaking into InstanceState's Effect. */
-  export function infos() {
+  export function infos(notebook?: Notebook.Interface) {
     return Effect.gen(function* () {
       const codebase = yield* CodebaseSearchTool
       const recall = yield* RecallTool
       const manager = yield* AgentManagerTool
       const process = yield* BackgroundProcessTool
-      const notebookRead = yield* NotebookReadTool
-      const notebookEdit = yield* NotebookEditTool
-      const notebookExecute = yield* NotebookExecuteTool
-      return { codebase, recall, manager, process, notebookRead, notebookEdit, notebookExecute }
+      if (!notebook) return { codebase, recall, manager, process }
+      const tools = yield* Effect.all({
+        notebookRead: NotebookReadTool,
+        notebookEdit: NotebookEditTool,
+        notebookExecute: NotebookExecuteTool,
+      }).pipe(Effect.provideService(Notebook.Service, notebook))
+      return { codebase, recall, manager, process, ...tools }
     })
   }
 
@@ -53,9 +57,9 @@ export namespace KiloToolRegistry {
       recall: Tool.Info
       manager: Tool.Info
       process: Tool.Info
-      notebookRead: Tool.Info
-      notebookEdit: Tool.Info
-      notebookExecute: Tool.Info
+      notebookRead?: Tool.Info
+      notebookEdit?: Tool.Info
+      notebookExecute?: Tool.Info
     },
     deps: Deps,
     loaders: Loaders = {},
@@ -66,12 +70,17 @@ export namespace KiloToolRegistry {
         recall: Tool.init(tools.recall),
         manager: Tool.init(tools.manager),
         process: Tool.init(tools.process),
-        notebookRead: Tool.init(tools.notebookRead),
-        notebookEdit: Tool.init(tools.notebookEdit),
-        notebookExecute: Tool.init(tools.notebookExecute),
       })
+      const notebooks =
+        tools.notebookRead && tools.notebookEdit && tools.notebookExecute
+          ? yield* Effect.all({
+              notebookRead: Tool.init(tools.notebookRead),
+              notebookEdit: Tool.init(tools.notebookEdit),
+              notebookExecute: Tool.init(tools.notebookExecute),
+            })
+          : {}
       const semantic = yield* semanticTool(deps, loaders)
-      return { ...base, semantic }
+      return { ...base, ...notebooks, semantic }
     })
   }
 
@@ -120,9 +129,9 @@ export namespace KiloToolRegistry {
       recall: Tool.Def
       manager: Tool.Def
       process: Tool.Def
-      notebookRead: Tool.Def
-      notebookEdit: Tool.Def
-      notebookExecute: Tool.Def
+      notebookRead?: Tool.Def
+      notebookEdit?: Tool.Def
+      notebookExecute?: Tool.Def
     },
     cfg: { experimental?: { codebase_search?: boolean } },
   ): Tool.Def[] {
@@ -132,8 +141,9 @@ export namespace KiloToolRegistry {
       tools.recall,
       ...(Flag.KILO_CLIENT === "cli" || Flag.KILO_CLIENT === "vscode" ? [tools.process] : []),
       // The extension is the only client that can consume the Agent Manager start event.
-      ...(Flag.KILO_CLIENT === "vscode"
-        ? [tools.manager, tools.notebookRead, tools.notebookEdit, tools.notebookExecute]
+      ...(Flag.KILO_CLIENT === "vscode" ? [tools.manager] : []),
+      ...(Flag.KILO_CLIENT === "vscode" && tools.notebookRead && tools.notebookEdit && tools.notebookExecute
+        ? [tools.notebookRead, tools.notebookEdit, tools.notebookExecute]
         : []),
     ]
   }

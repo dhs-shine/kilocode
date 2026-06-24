@@ -139,6 +139,25 @@ describe("NotebookBridge", () => {
     expect(test.handlers.state).toBeUndefined()
   })
 
+  it("retries context initialization after a transient failure", async () => {
+    const ctx = context()
+    const test = harness(ctx.value)
+    test.create.mockImplementationOnce(async () => {
+      throw new Error("unreadable ignore file")
+    })
+
+    test.request()
+    await flush()
+    expect(test.rejections).toHaveLength(1)
+
+    test.request({ ...read, id: "notebook-2" })
+    await flush()
+    expect(test.create).toHaveBeenCalledTimes(2)
+    expect(ctx.adapter.read).toHaveBeenCalledTimes(1)
+    expect(test.replies).toHaveLength(1)
+    test.bridge.dispose()
+  })
+
   it("retries a failed reply without repeating the adapter operation", async () => {
     const ctx = context()
     const test = harness(ctx.value)
