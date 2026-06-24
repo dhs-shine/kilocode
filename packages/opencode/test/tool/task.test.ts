@@ -1,5 +1,5 @@
 import { afterEach, describe, expect } from "bun:test"
-import { Cause, Effect, Exit, Fiber, Layer } from "effect"
+import { Cause, Effect, Exit, Fiber, Layer } from "effect" // kilocode_change - Cause for squashing the failure exit
 import { Agent } from "../../src/agent/agent"
 import { BackgroundJob } from "@/background/job"
 import { Bus } from "@/bus"
@@ -553,7 +553,7 @@ describe("tool.task", () => {
 
       expect(Exit.isFailure(exit)).toBe(true)
 
-      // kilocode_change start - the failure surfaces the resumable task_id so the parent can continue the subagent (#11620)
+      // the failure surfaces the resumable task_id so the parent can continue the subagent (#11620)
       const kids = yield* sessions.children(chat.id)
       const childId = kids[0]?.id
       expect(childId).toBeDefined()
@@ -562,7 +562,6 @@ describe("tool.task", () => {
       expect(message).toContain("child prompt failed")
       expect(message).toContain(`task_id="${childId}"`)
       expect(message).toContain("can be resumed")
-      // kilocode_change end
     }),
   )
   // kilocode_change end
