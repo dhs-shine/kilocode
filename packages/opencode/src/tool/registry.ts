@@ -39,7 +39,7 @@ import { ApplyPatchTool } from "./apply_patch"
 import { Glob } from "@opencode-ai/core/util/glob"
 import path from "path"
 import { pathToFileURL } from "url"
-import { Effect, Layer, Context, Option } from "effect"
+import { Effect, Layer, Context, Option } from "effect" // kilocode_change
 import { HttpClient } from "effect/unstable/http" // kilocode_change
 import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
