@@ -17,6 +17,9 @@ interface ScopeOption {
   label: string
 }
 
+const MARKETPLACE_DOCS = "https://kilo.ai/docs/customize/marketplace"
+const MCP_DOCS = "https://kilo.ai/docs/automate/mcp/what-is-mcp"
+
 interface Props {
   item: MarketplaceItem
   onClose: () => void
@@ -46,6 +49,17 @@ export const InstallModal = (props: Props) => {
   const [installing, setInstalling] = createSignal(false)
   const [result, setResult] = createSignal<{ success: boolean; error?: string } | null>(null)
   const [params, setParams] = createSignal<Record<string, string>>({})
+
+  const destination = () => {
+    const base = scope().value === "project" ? ".kilo" : "~/.config/kilo"
+    if (props.item.type === "mcp") return `${base}/kilo.json`
+    if (props.item.type === "agent") return `${base}/agents/${props.item.id}.md`
+    if (scope().value === "project") return `.kilo/skills/${props.item.id}/`
+    return `~/.kilo/skills/${props.item.id}/`
+  }
+  const about = () => t(`marketplace.install.about.${props.item.type}`)
+  const scopeDescription = () => t(`marketplace.install.scope.${scope().value}.description`)
+  const openDocs = (url: string) => vscode.postMessage({ type: "openExternal", url })
 
   // MCP installation methods
   const methods = (): McpInstallationMethod[] => {
@@ -131,6 +145,20 @@ export const InstallModal = (props: Props) => {
     <Dialog title={t("marketplace.install.title", { name: props.item.name })} fit>
       <Show when={!result()}>
         <div class="install-modal-body">
+          <div class="install-modal-about">
+            <p>{about()}</p>
+            <div class="install-modal-links">
+              <button type="button" class="link" onClick={() => openDocs(MARKETPLACE_DOCS)}>
+                {t("marketplace.install.learnMore")}
+              </button>
+              <Show when={props.item.type === "mcp"}>
+                <button type="button" class="link" onClick={() => openDocs(MCP_DOCS)}>
+                  {t("marketplace.install.learnMcp")}
+                </button>
+              </Show>
+            </div>
+          </div>
+
           <div class="install-modal-section">
             <span class="install-modal-label">{t("marketplace.install.scope")}</span>
             <RadioGroup
@@ -140,7 +168,23 @@ export const InstallModal = (props: Props) => {
               label={(x: ScopeOption) => x.label}
               onSelect={(v: ScopeOption | undefined) => v && setScope(v)}
             />
+            <p class="install-modal-help">{scopeDescription()}</p>
+            <div class="install-modal-destination">
+              <span>{t("marketplace.install.destination")}</span>
+              <code>{destination()}</code>
+            </div>
           </div>
+
+          <Show when={props.item.type === "mcp" || scope().value === "project"}>
+            <div class="install-modal-warning">
+              <Show when={props.item.type === "mcp"}>
+                <p>{t("marketplace.install.mcp.warning")}</p>
+              </Show>
+              <Show when={scope().value === "project"}>
+                <p>{t("marketplace.install.project.warning")}</p>
+              </Show>
+            </div>
+          </Show>
 
           <Show when={methods().length > 1}>
             <div class="install-modal-section">
@@ -215,6 +259,7 @@ export const InstallModal = (props: Props) => {
               }
             >
               <p class="install-modal-success">{t("marketplace.install.success")}</p>
+              <p class="install-modal-result-path">{t("marketplace.install.installedAt", { path: destination() })}</p>
               <div class="install-modal-footer">
                 <Button onClick={props.onClose}>{t("marketplace.install.done")}</Button>
               </div>
