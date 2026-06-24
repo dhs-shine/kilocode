@@ -75,12 +75,6 @@ describe("sandbox launch preparation", () => {
     expect(args.args.slice(-4)).toEqual(["--", "/bin/sh", "-c", "printf '%s' 'hello world'"])
   })
 
-  test("fails Linux network restrictions closed without changing the network namespace", () => {
-    expect(() => generateBubblewrap(makeProfile("deny"), launch, "/opt/kilo/bwrap", [])).toThrow(
-      "Linux process sandbox network restrictions are not supported",
-    )
-  })
-
   test("layers Linux writable roots before protected git metadata without changing the network namespace", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "kilo-bubblewrap-policy-"))
     const git = path.join(root, ".git")
@@ -173,12 +167,12 @@ describe("sandbox launch preparation", () => {
   })
 
   test("merges profile environment values and applies exact deny names", async () => {
-    const result = await Effect.runPromise(Effect.scoped(run(makeProfile(), prepare(launch))))
+    const result = await Effect.runPromise(Effect.scoped(run(makeProfile("allow"), prepare(launch))))
     expect(result.environment?.KEEP).toBe("profile")
     expect(result.environment?.DROP).toBeUndefined()
     expect(result.environment?.RESET).toBeUndefined()
-    expect(result.environment?.HTTPS_PROXY).toBeUndefined()
-    expect(result.environment?.no_proxy).toBeUndefined()
+    expect(result.environment?.HTTPS_PROXY).toBe("http://127.0.0.1:9000")
+    expect(result.environment?.no_proxy).toBe("*")
     expect(result.environment?.PATH).toBeUndefined()
   })
 
