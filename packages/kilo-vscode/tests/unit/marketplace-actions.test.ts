@@ -127,6 +127,17 @@ describe("Marketplace installation metadata", () => {
     ])
     expect(filterItems(items, metadata, "", "installed", [], []).map((item) => item.id)).toEqual(["warehouse"])
     expect(filterItems(items, metadata, "", "all", [], ["mcp"]).map((item) => item.id)).toEqual(["warehouse"])
+    expect(
+      filterItems(items, metadata, "", "all", [], [], {}, true, {
+        "agent:reviewer": { filename: ["*.review.ts"] },
+        "mcp:warehouse": { vscodeExtension: ["data.warehouse"] },
+      }).map((item) => item.id),
+    ).toEqual(["reviewer", "warehouse"])
+    expect(
+      filterItems(items, metadata, "warehouse", "all", [], [], {}, true, {
+        "agent:reviewer": { filename: ["*.review.ts"] },
+      }),
+    ).toEqual([])
   })
 })
 

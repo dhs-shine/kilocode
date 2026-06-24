@@ -33,6 +33,7 @@ export class MarketplacePanelProvider implements vscode.Disposable {
   private panel: vscode.WebviewPanel | undefined
   private project: string | null = null
   private ready = false
+  private generation = 0
   private statuses = new Map<string, SessionStatus["type"]>()
   private disposables: vscode.Disposable[] = []
   private subscriptions: Array<() => void> = []
@@ -129,6 +130,7 @@ export class MarketplacePanelProvider implements vscode.Disposable {
     this.subscriptions = []
     this.panel = undefined
     this.ready = false
+    this.generation++
     this.statuses.clear()
   }
 
@@ -199,18 +201,22 @@ export class MarketplacePanelProvider implements vscode.Disposable {
   }
 
   private async fetchData(): Promise<void> {
+    const generation = ++this.generation
     try {
       const project = this.project ?? undefined
       const data = await fetchMarketplaceData(this.marketplaceCtx, project, this.directory())
+      if (generation !== this.generation) return
       const dismissed = this.context.globalState.get<boolean>("kilo.agentMigrationBannerDismissed") ?? false
       this.post({ type: "marketplaceData", ...data, showAgentMigrationBanner: !dismissed })
     } catch (err) {
+      if (generation !== this.generation) return
       const error = err instanceof Error ? err.message : String(err)
       console.warn("[Kilo New] Marketplace data fetch failed:", err)
       this.post({
         type: "marketplaceData",
         marketplaceItems: [],
         marketplaceInstalledMetadata: { project: {}, global: {} },
+        marketplaceRelevance: {},
         errors: [error],
       })
     }
@@ -247,6 +253,7 @@ export class MarketplacePanelProvider implements vscode.Disposable {
 
   private setProjectDirectory(project: string | null): void {
     if (this.project === project) return
+    this.generation++
     this.project = project
     this.post({ type: "workspaceDirectoryChanged", directory: project ?? "" })
   }
