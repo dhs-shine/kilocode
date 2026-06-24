@@ -582,6 +582,12 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
     suffix: string,
     languageId: string,
   ): Promise<void> {
+    // Defense-in-depth: credentials may become invalid between the provider gate and the actual
+    // debounced execution. In that case, do not attempt an LLM call at all.
+    if (!hasValidCredentials(this.connectionService)) {
+      return
+    }
+
     // Abort only the request superseded within this file/notebook scope.
     this.fimAbortControllers.get(scope)?.abort()
     const controller = new AbortController()
@@ -594,12 +600,6 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
       languageId,
       modelId: this.contextProvider.modelId,
       provider: getAutocompleteModelById(this.contextProvider.modelId).provider,
-    }
-
-    // Defense-in-depth: credentials may become invalid between the provider gate and the actual
-    // debounced execution. In that case, do not attempt an LLM call at all.
-    if (!hasValidCredentials(this.connectionService)) {
-      return
     }
 
     try {

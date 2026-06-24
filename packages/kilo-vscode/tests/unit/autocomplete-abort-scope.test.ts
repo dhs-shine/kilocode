@@ -2,13 +2,13 @@ import { describe, expect, it } from "bun:test"
 import * as vscode from "vscode"
 import { AutocompleteInlineCompletionProvider } from "../../src/services/autocomplete/classic-auto-complete/AutocompleteInlineCompletionProvider"
 
-function createProvider() {
+function createProvider(state = "connected") {
   ;(vscode.window as any).onDidChangeActiveTextEditor = () => ({ dispose: () => {} })
   ;(vscode.window as any).onDidChangeTextEditorSelection = () => ({ dispose: () => {} })
   return new AutocompleteInlineCompletionProvider(
     {} as any,
     "kilo/mistralai/codestral-2508",
-    { getConnectionState: () => "connected" } as any,
+    { getConnectionState: () => state } as any,
     () => {},
     () => ({ enableAutoTrigger: true }),
     "/repo",
@@ -107,6 +107,20 @@ describe("autocomplete FIM abort scope", () => {
 
     resolvers.forEach((resolve) => resolve())
     await Promise.all([first, second])
+    provider.dispose()
+  })
+
+  it("does not retain controllers when credentials are invalid", async () => {
+    const provider = createProvider("disconnected")
+    ;(provider as any).fimPromptBuilder = {
+      getFromFIM: () => {
+        throw new Error("should not fetch")
+      },
+    }
+
+    await provider.fetchAndCacheSuggestion("scope-a", prompt(), "", "", "python")
+
+    expect((provider as any).fimAbortControllers.size).toBe(0)
     provider.dispose()
   })
 })
