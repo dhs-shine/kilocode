@@ -10,7 +10,7 @@ import type {
   MarketplaceInstalledMetadata,
 } from "../../types/marketplace"
 import { useLanguage } from "../../context/language"
-import { filterItems } from "./utils"
+import { filterItems, retain } from "./utils"
 import { ItemCard } from "./ItemCard"
 import { MarketplaceContribute } from "./MarketplaceContribute"
 
@@ -61,11 +61,8 @@ export const MarketplaceListView = (props: Props) => {
   }
 
   createEffect(() => {
-    const available = new Set(allCategories())
-    setCategories((current) => {
-      const next = current.filter((category) => available.has(category))
-      return next.length === current.length ? current : next
-    })
+    setTypes((current) => retain(current, allTypes()))
+    setCategories((current) => retain(current, allCategories()))
   })
 
   const toggleType = (type: MarketplaceItem["type"]) => {

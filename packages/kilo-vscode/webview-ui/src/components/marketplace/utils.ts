@@ -1,5 +1,11 @@
 import type { MarketplaceInstalledMetadata, MarketplaceItem } from "../../types/marketplace"
 
+export function retain<T>(selected: T[], available: T[]): T[] {
+  const values = new Set(available)
+  const next = selected.filter((value) => values.has(value))
+  return next.length === selected.length ? selected : next
+}
+
 export function isInstalled(
   id: string,
   type: string,

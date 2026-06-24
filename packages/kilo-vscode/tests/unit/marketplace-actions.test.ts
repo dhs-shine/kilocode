@@ -7,7 +7,7 @@ import {
   type MarketplaceRemoveContext,
 } from "../../src/services/marketplace/actions"
 import type { McpMarketplaceItem } from "../../src/services/marketplace/types"
-import { filterItems, installedScopes } from "../../webview-ui/src/components/marketplace/utils"
+import { filterItems, installedScopes, retain } from "../../webview-ui/src/components/marketplace/utils"
 import type { MarketplaceItem } from "../../webview-ui/src/types/marketplace"
 
 const project = "/repo"
@@ -78,6 +78,10 @@ describe("Marketplace installation metadata", () => {
     expect(installedScopes("dbt", "mcp", metadata)).toEqual(["project"])
     expect(installedScopes("dbt", "skill", metadata)).toEqual(["project"])
     expect(installedScopes("dbt", "agent", metadata)).toEqual([])
+  })
+
+  it("removes filters that are no longer available", () => {
+    expect(retain(["agent", "mcp"], ["mcp", "skill"])).toEqual(["mcp"])
   })
 
   it("filters the mixed list by search, category, and status", () => {
