@@ -112,9 +112,9 @@ describe("config source routes", () => {
     const inline = body.sources.find((source) => source.source === "KILO_CONFIG_CONTENT")
 
     expect(order(body, envFile)).toBeLessThan(order(body, projectFile))
-    expect(order(body, projectFile)).toBeLessThan(order(body, opencodeFile))
-    expect(order(body, opencodeFile)).toBeLessThan(order(body, kilocodeFile))
+    expect(order(body, projectFile)).toBeLessThan(order(body, kilocodeFile))
     expect(order(body, kilocodeFile)).toBeLessThan(order(body, configFile))
+    expect(body.sources.some((source) => source.path === opencodeFile)).toBe(false)
     expect(order(body, configFile)).toBeLessThan(order(body, extraFile))
     expect(inline?.order).toBeGreaterThan(order(body, extraFile))
     expect(inline?.order).toBeLessThan(order(body, managedFile))

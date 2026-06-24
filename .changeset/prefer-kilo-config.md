@@ -2,4 +2,4 @@
 "@kilocode/cli": patch
 ---
 
-Prefer project `.kilo` configuration over legacy `.kilocode` and `.opencode` directories when entries conflict.
+Stop loading `.opencode` config directories and use `.kilo` instead, while retaining `.kilocode` as a legacy fallback.

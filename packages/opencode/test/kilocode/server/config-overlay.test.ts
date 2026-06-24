@@ -92,7 +92,7 @@ describe("config overlay routes", () => {
     expect(Object.hasOwn(patched, "prototype")).toBe(false)
   })
 
-  test("prefers .kilo, then .kilocode, then .opencode in project overlays", async () => {
+  test("prefers .kilo over legacy .kilocode and ignores .opencode in project overlays", async () => {
     await using project = await tmpdir()
     const entries = [
       {
@@ -120,6 +120,10 @@ describe("config overlay routes", () => {
         `---\ndescription: ${item.source} agent\nmode: subagent\n---\n${item.source} agent prompt`,
       )
     }
+    await Filesystem.write(
+      path.join(project.path, ".opencode", "agent", "opencode-only.md"),
+      "---\ndescription: opencode-only agent\nmode: subagent\n---\nopencode-only agent prompt",
+    )
 
     const body = await KilocodeConfigOverlay.resolve({
       directory: project.path,
@@ -131,11 +135,12 @@ describe("config overlay routes", () => {
 
     expect(body.project.username).toBe("kilo")
     expect(body.project.model).toBe("test/kilocode")
-    expect(body.project.small_model).toBe("test/opencode")
+    expect(body.project.small_model).toBeUndefined()
     expect(body.project.agent?.shared).toMatchObject({
       description: "kilo agent",
       prompt: "kilo agent prompt",
     })
+    expect(body.project.agent?.["opencode-only"]).toBeUndefined()
     expect(body.targets.project).toBe(path.join(project.path, ".kilo", "kilo.json"))
   })
 

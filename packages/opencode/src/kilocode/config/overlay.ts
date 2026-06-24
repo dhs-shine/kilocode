@@ -71,7 +71,7 @@ export namespace KilocodeConfigOverlay {
   }
 
   const files = ["kilo.jsonc", "kilo.json", "opencode.jsonc", "opencode.json"] as const
-  const dirs = [".opencode", ".kilocode", ".kilo"] as const
+  const dirs = [".kilocode", ".kilo"] as const
 
   const fieldPaths = [
     ["model"],
@@ -182,12 +182,7 @@ export namespace KilocodeConfigOverlay {
   }
 
   function globalDirs() {
-    return [
-      Global.Path.config,
-      path.join(Global.Path.home, ".opencode"),
-      path.join(Global.Path.home, ".kilocode"),
-      path.join(Global.Path.home, ".kilo"),
-    ]
+    return [Global.Path.config, path.join(Global.Path.home, ".kilocode"), path.join(Global.Path.home, ".kilo")]
   }
 
   async function withAgents(input: Config.Info, dirs: string[]): Promise<Config.Info> {
