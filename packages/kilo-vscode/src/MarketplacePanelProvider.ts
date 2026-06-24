@@ -34,6 +34,7 @@ export class MarketplacePanelProvider implements vscode.Disposable {
   private project: string | null = null
   private ready = false
   private generation = 0
+  private refresh: ReturnType<typeof setTimeout> | undefined
   private statuses = new Map<string, SessionStatus["type"]>()
   private disposables: vscode.Disposable[] = []
   private subscriptions: Array<() => void> = []
@@ -61,6 +62,7 @@ export class MarketplacePanelProvider implements vscode.Disposable {
     if (this.panel) {
       this.setProjectDirectory(project)
       this.panel.reveal(vscode.ViewColumn.One)
+      this.scheduleRefresh()
       return
     }
 
@@ -106,6 +108,10 @@ export class MarketplacePanelProvider implements vscode.Disposable {
       panel.webview.onDidReceiveMessage((msg) => void this.handle(msg as MarketplaceMessage)),
       panel.onDidDispose(() => this.cleanup()),
       watchFontSizeConfig((msg) => this.post(msg)),
+      vscode.extensions.onDidChange(() => this.scheduleRefresh()),
+      vscode.workspace.onDidCreateFiles(() => this.scheduleRefresh()),
+      vscode.workspace.onDidDeleteFiles(() => this.scheduleRefresh()),
+      vscode.workspace.onDidRenameFiles(() => this.scheduleRefresh()),
     )
     this.subscriptions.push(
       this.connection.onStateChange((state, err) => {
@@ -124,6 +130,8 @@ export class MarketplacePanelProvider implements vscode.Disposable {
   }
 
   private cleanup(): void {
+    if (this.refresh) clearTimeout(this.refresh)
+    this.refresh = undefined
     for (const disposable of this.disposables) disposable.dispose()
     for (const unsubscribe of this.subscriptions) unsubscribe()
     this.disposables = []
@@ -198,6 +206,15 @@ export class MarketplacePanelProvider implements vscode.Disposable {
         if (msg.event) TelemetryProxy.capture(msg.event as TelemetryEventName, msg.properties)
         return
     }
+  }
+
+  private scheduleRefresh(): void {
+    if (!this.ready) return
+    if (this.refresh) clearTimeout(this.refresh)
+    this.refresh = setTimeout(() => {
+      this.refresh = undefined
+      void this.fetchData()
+    }, 250)
   }
 
   private async fetchData(): Promise<void> {
