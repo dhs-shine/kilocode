@@ -101,7 +101,7 @@ export const MarketplaceListView = (props: Props) => {
           type="button"
           class="link"
           onClick={() =>
-            vscode.postMessage({ type: "openExternal", url: "https://kilo.ai/docs/customize/marketplace" })
+            vscode.postMessage({ type: "openExternal", url: "https://kilo.ai/docs/getting-started/settings" })
           }
         >
           {t("marketplace.intro.learnMore")}
