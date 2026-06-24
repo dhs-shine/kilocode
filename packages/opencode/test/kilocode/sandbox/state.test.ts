@@ -23,7 +23,6 @@ function execute<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) 
 
 linux("reports configured network namespace availability", async () => {
   const root = await fs.mkdtemp(path.join(process.env.TMPDIR ?? "/tmp", "kilo-sandbox-status-"))
-  const source = process.env.KILO_BWRAP_PATH ?? "/usr/bin/bwrap"
   const helper = path.join(root, "bwrap-no-network")
   await fs.writeFile(
     helper,
@@ -32,7 +31,7 @@ linux("reports configured network namespace availability", async () => {
       'for arg in "$@"; do',
       '  if [ "$arg" = "--unshare-net" ]; then echo "network namespaces blocked" >&2; exit 42; fi',
       "done",
-      `exec ${JSON.stringify(source)} "$@"`,
+      "exit 0",
       "",
     ].join("\n"),
   )
