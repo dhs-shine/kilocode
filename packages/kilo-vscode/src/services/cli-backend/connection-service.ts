@@ -139,10 +139,11 @@ export class KiloConnectionService {
    * or if the connection fails.
    */
   async getClientAsync(dir?: string): Promise<KiloClient> {
+    if (dir) this.trackDirectory(dir)
+    if (this.client && this.state === "connected") return this.client
     const root = dir ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
     if (!root) throw new Error("No workspace folder open")
     this.trackDirectory(root)
-    if (this.client && this.state === "connected") return this.client
     await this.connect(root)
     return this.getClient()
   }
