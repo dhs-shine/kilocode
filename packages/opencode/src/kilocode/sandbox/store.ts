@@ -7,6 +7,7 @@ import type { Profile } from "@kilocode/sandbox"
 import type { SessionID } from "@/session/schema"
 
 export namespace SandboxStore {
+  /** Session confinement authority captured independently from later configuration reloads. */
   export type Snapshot = {
     enabled: boolean
     mode: Extract<Profile["network"]["mode"], "allow" | "deny">
