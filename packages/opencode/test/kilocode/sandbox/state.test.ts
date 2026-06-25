@@ -147,45 +147,47 @@ linux("reports configured network namespace availability", async () => {
   }
 })
 
-it.instance(
-  "uses config only to initialize session state",
-  () =>
-    Effect.acquireUseRelease(
-      Effect.sync(() => {
-        const password = Flag.KILO_SERVER_PASSWORD
-        Flag.KILO_SERVER_PASSWORD = "sandbox-test"
-        return password
+it.instance("snapshots the primary kilo config for the session lifetime", () =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const password = Flag.KILO_SERVER_PASSWORD
+      Flag.KILO_SERVER_PASSWORD = "sandbox-test"
+      return password
+    }),
+    () =>
+      Effect.gen(function* () {
+        const test = yield* TestInstance
+        const file = path.join(test.directory, "kilo.json")
+        const legacy = path.join(test.directory, "opencode.json")
+        const config = yield* Config.Service
+        yield* Effect.promise(() =>
+          Bun.write(file, JSON.stringify({ experimental: { sandbox: true, sandbox_restrict_network: true } })),
+        )
+        yield* config.update({ experimental: { sandbox: true, sandbox_restrict_network: true } })
+
+        const id = SessionID.make("ses_sandbox_config")
+        const initial = yield* SandboxPolicy.status(id)
+        expect(initial.enabled).toBe(initial.available)
+        expect(initial.version).toBe(0)
+        if (!initial.available) return
+
+        yield* Effect.promise(() =>
+          Bun.write(file, JSON.stringify({ experimental: { sandbox: false, sandbox_restrict_network: false } })),
+        )
+        yield* config.update({ experimental: { sandbox: false, sandbox_restrict_network: false } })
+
+        expect((yield* config.get()).experimental?.sandbox).toBe(false)
+        expect(yield* Effect.promise(() => Bun.file(legacy).exists())).toBe(false)
+        expect((yield* SandboxPolicy.status(id)).enabled).toBe(true)
+        expect(yield* execute(id, sandboxed)).toBe(true)
+        expect(Exit.isFailure(yield* execute(id, assertNetwork("https://example.com").pipe(Effect.exit)))).toBe(true)
+
+        const next = SessionID.make("ses_sandbox_config_next")
+        expect((yield* SandboxPolicy.status(next)).enabled).toBe(false)
+        expect(yield* execute(next, sandboxed)).toBe(false)
       }),
-      () =>
-        Effect.gen(function* () {
-          const test = yield* TestInstance
-          const id = SessionID.make("ses_sandbox_config")
-          const initial = yield* SandboxPolicy.status(id)
-          expect(initial.enabled).toBe(initial.available)
-          expect(initial.version).toBe(0)
-          if (!initial.available) return
-
-          const config = yield* Config.Service
-          yield* Effect.promise(() =>
-            Bun.write(
-              path.join(test.directory, "opencode.json"),
-              JSON.stringify({ experimental: { sandbox: false, sandbox_restrict_network: false } }),
-            ),
-          )
-          yield* config.update({ experimental: { sandbox: false, sandbox_restrict_network: false } })
-
-          expect((yield* config.get()).experimental?.sandbox).toBe(false)
-          expect((yield* SandboxPolicy.status(id)).enabled).toBe(true)
-          expect(yield* execute(id, sandboxed)).toBe(true)
-          expect(Exit.isFailure(yield* execute(id, assertNetwork("https://example.com").pipe(Effect.exit)))).toBe(true)
-
-          const next = SessionID.make("ses_sandbox_config_next")
-          expect((yield* SandboxPolicy.status(next)).enabled).toBe(false)
-          expect(yield* execute(next, sandboxed)).toBe(false)
-        }),
-      (password) => Effect.sync(() => (Flag.KILO_SERVER_PASSWORD = password)),
-    ),
-  { config: { experimental: { sandbox: true } } },
+    (password) => Effect.sync(() => (Flag.KILO_SERVER_PASSWORD = password)),
+  ),
 )
 
 it.instance("keeps authless config-off sessions confined", () =>
