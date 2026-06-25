@@ -23,6 +23,7 @@ import { registerToggleAutoApprove } from "./commands/toggle-auto-approve"
 import { registerHeapSnapshot } from "./commands/heap-snapshot"
 import { RemoteStatusService } from "./services/RemoteStatusService"
 import { markWorkspace } from "./util/spotlight"
+import { createNotebookBridge } from "./services/notebook"
 
 let agentManager: AgentManagerProvider | undefined
 let shuttingDown = false
@@ -49,7 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Create shared connection service (one server for all webviews)
   const connectionService = new KiloConnectionService(context)
-  const attention = new AttentionService(connectionService)
+  const notebookBridge = createNotebookBridge(connectionService)
   let restore = context.workspaceState.get<RestoreState>(RESTORE_KEY) ?? {}
   const remember = (patch: RestoreState) => {
     const next = { ...restore, ...patch }
@@ -102,9 +103,6 @@ export function activate(context: vscode.ExtensionContext) {
       telemetry.setEnabled(enabled)
     }),
   )
-
-  // Prewarm the CLI backend early so autocomplete is ready before first editor use.
-  ensureBackendForAutocomplete(connectionService)
 
   for (const folder of vscode.workspace.workspaceFolders ?? []) {
     void markWorkspace(folder.uri.fsPath, (msg) => console.warn(`[Kilo New] ${msg}`))
@@ -181,6 +179,13 @@ export function activate(context: vscode.ExtensionContext) {
       return [...dirs]
     },
   )
+  const attention = new AttentionService(connectionService, {
+    approve: (event, directory) => autoApprove.approve(event, directory),
+  })
+
+  // Prewarm only after all global event consumers are ready.
+  ensureBackendForAutocomplete(connectionService)
+
   provider.setAutoApproveController(autoApprove)
   agentManagerHost.setAutoApproveController(autoApprove)
 
@@ -538,6 +543,7 @@ export function activate(context: vscode.ExtensionContext) {
       attention.dispose()
       browserAutomationService.dispose()
       provider.dispose()
+      notebookBridge.dispose()
       connectionService.dispose()
     },
   })
