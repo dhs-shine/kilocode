@@ -243,7 +243,15 @@ const scenarios: Scenario[] = [
     .at((ctx) => ({
       path: route("/kilocode/notebook/{requestID}/reply", { requestID: "nbr_httpapi_reply" }),
       headers: ctx.headers(),
-      body: { result: { operation: "read", path: "notebook.ipynb", version: 1, cells: [] } },
+      body: {
+        result: {
+          operation: "read",
+          path: "notebook.ipynb",
+          requestPath: "notebook.ipynb",
+          revision: "content:1",
+          cells: [],
+        },
+      },
     }))
     .json(404, object, "status"),
   http.protected
