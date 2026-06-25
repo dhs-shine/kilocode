@@ -15,6 +15,7 @@ import type { Meta, StoryObj } from "storybook-solidjs-vite"
 import { type ParentComponent } from "solid-js"
 import { StoryProviders, mockSessionValue } from "./StoryProviders"
 import { SessionContext } from "../context/session"
+import { ServerContext } from "../context/server"
 import { PromptInput } from "../components/chat/PromptInput"
 
 const agents = [
@@ -25,10 +26,17 @@ const agents = [
 
 const noop = () => {}
 
-const PromptProviders: ParentComponent<{ variants?: boolean; modelOverride?: boolean }> = (props) => {
+const PromptProviders: ParentComponent<{
+  variants?: boolean
+  modelOverride?: boolean
+  sandboxNetwork?: boolean
+  sandbox?: boolean
+}> = (props) => {
   const base = mockSessionValue({ status: "idle" })
   const session = {
     ...base,
+    currentSessionID: () => (props.sandboxNetwork ? undefined : base.currentSessionID()),
+    currentSession: () => (props.sandboxNetwork ? undefined : base.currentSession()),
     agents: () => agents,
     selectedAgent: () => "code",
     variantList: () => (props.variants ? ["low", "medium", "high"] : []),
@@ -36,13 +44,44 @@ const PromptProviders: ParentComponent<{ variants?: boolean; modelOverride?: boo
     hasModelOverride: () => props.modelOverride ?? false,
     clearModelOverride: noop,
   }
+  const server = {
+    connectionState: () => "connected",
+    serverInfo: () => undefined,
+    extensionVersion: () => undefined,
+    errorMessage: () => undefined,
+    errorDetails: () => undefined,
+    isConnected: () => true,
+    profileData: () => null,
+    deviceAuth: () => ({ status: "idle" }),
+    startLogin: noop,
+    goToLogin: noop,
+    vscodeLanguage: () => undefined,
+    languageOverride: () => undefined,
+    workspaceDirectory: () => "/workspace",
+    gitInstalled: () => true,
+  }
+  const content = (
+    <div style={{ overflow: "hidden" }}>
+      <SessionContext.Provider value={session as any}>{props.children}</SessionContext.Provider>
+    </div>
+  )
 
   return (
-    <StoryProviders noPadding>
+    <StoryProviders
+      noPadding
+      config={
+        props.sandboxNetwork
+          ? { experimental: { sandbox: props.sandbox ?? true, sandbox_restrict_network: true } }
+          : undefined
+      }
+      features={props.sandboxNetwork ? { sandboxControls: true } : undefined}
+    >
       {/* overflow:hidden prevents margin-collapse so top/bottom borders are captured in screenshots */}
-      <div style={{ overflow: "hidden" }}>
-        <SessionContext.Provider value={session as any}>{props.children}</SessionContext.Provider>
-      </div>
+      {props.sandboxNetwork ? (
+        <ServerContext.Provider value={server as any}>{content}</ServerContext.Provider>
+      ) : (
+        content
+      )}
     </StoryProviders>
   )
 }
@@ -75,6 +114,24 @@ export const Default200: Story = {
   name: "Default — 200px",
   render: () => (
     <PromptProviders>
+      <PromptInput />
+    </PromptProviders>
+  ),
+}
+
+export const SandboxNetwork420: Story = {
+  name: "Sandbox with network restriction — 420px",
+  render: () => (
+    <PromptProviders sandboxNetwork>
+      <PromptInput />
+    </PromptProviders>
+  ),
+}
+
+export const SandboxNetworkDisabled420: Story = {
+  name: "Disabled sandbox with network restriction — 420px",
+  render: () => (
+    <PromptProviders sandboxNetwork sandbox={false}>
       <PromptInput />
     </PromptProviders>
   ),

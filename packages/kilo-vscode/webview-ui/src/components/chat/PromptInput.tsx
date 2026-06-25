@@ -169,6 +169,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return state?.sessionID === sandboxID() ? state : undefined
   }
   const sandboxEnabled = () => sandbox()?.enabled ?? (!sandboxID() && config().experimental?.sandbox === true)
+  const sandboxNetworkEnabled = () => config().experimental?.sandbox_restrict_network !== false
   const sandboxReady = () => !sandboxID() || sandbox() !== undefined
   const requestSandbox = () => {
     const sessionID = sandboxID()
@@ -1243,7 +1244,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 aria-pressed={sandboxEnabled()}
                 class={`prompt-status-button ${sandboxEnabled() ? "prompt-status-button--active" : ""}`}
               >
-                <Icon name="lock" size="small" />
+                <span class="prompt-sandbox-icon">
+                  <Icon name="lock" size="small" />
+                  <Show when={sandboxNetworkEnabled()}>
+                    <span class="prompt-sandbox-network" aria-hidden="true">
+                      <Icon name="globe" size="small" />
+                    </span>
+                  </Show>
+                </span>
               </Button>
             </Tooltip>
           </Show>
