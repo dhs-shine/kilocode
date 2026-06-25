@@ -89,28 +89,37 @@ export const NotebookReadTool = Tool.define<
   }),
 )
 
-const Cell = {
-  kind: Schema.Literals(["code", "markdown"]),
+const EditParams = Schema.Struct({
+  path: Path,
+  expected_revision: Revision,
+  index: Index,
+  action: Schema.Literals(["insert", "replace", "delete"]).annotate({
+    description: "insert and replace require kind and source; delete ignores cell fields",
+  }),
+  kind: Schema.optional(Schema.Literals(["code", "markdown"])).annotate({
+    description: "Cell kind. Required for insert and replace.",
+  }),
   language: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
-  source: Source,
+  source: Schema.optional(Source).annotate({ description: "Cell source. Required for insert and replace." }),
+})
+type EditInput = Schema.Schema.Type<typeof EditParams>
+
+function cellEdit(params: EditInput) {
+  if (params.action === "delete") return Effect.succeed({ action: params.action } as const)
+  if (params.kind === undefined || params.source === undefined)
+    return Effect.die(
+      new Tool.InvalidArgumentsError({
+        tool: "notebook_edit",
+        detail: `the "${params.action}" action requires both "kind" and "source"`,
+      }),
+    )
+  return Effect.succeed({
+    action: params.action,
+    kind: params.kind,
+    language: params.language,
+    source: params.source,
+  })
 }
-const EditParams = Schema.Union([
-  Schema.Struct({
-    path: Path,
-    expected_revision: Revision,
-    index: Index,
-    action: Schema.Literal("insert"),
-    ...Cell,
-  }),
-  Schema.Struct({
-    path: Path,
-    expected_revision: Revision,
-    index: Index,
-    action: Schema.Literal("replace"),
-    ...Cell,
-  }),
-  Schema.Struct({ path: Path, expected_revision: Revision, index: Index, action: Schema.Literal("delete") }),
-])
 
 export const NotebookEditTool = Tool.define<
   typeof EditParams,
@@ -138,10 +147,7 @@ export const NotebookEditTool = Tool.define<
               expectedRevision: params.expected_revision,
             },
           })
-          const edit =
-            params.action === "delete"
-              ? ({ action: params.action } as const)
-              : { action: params.action, kind: params.kind, language: params.language, source: params.source }
+          const edit = yield* cellEdit(params)
           const result = yield* run(
             notebook.request({
               operation: "edit",

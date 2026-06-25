@@ -5,6 +5,7 @@ import * as KiloAgent from "@/kilocode/agent"
 import { NotebookEditTool, NotebookExecuteTool, NotebookReadTool } from "@/kilocode/tool/notebook-host"
 import { MessageID, SessionID } from "@/session/schema"
 import * as Tool from "@/tool/tool"
+import { ToolJsonSchema } from "@/tool/json-schema"
 import { Truncate } from "@/tool/truncate"
 import { Effect, Layer } from "effect"
 import { testEffect } from "../lib/effect"
@@ -104,6 +105,34 @@ describe("native notebook tools", () => {
       }),
     { git: true },
   )
+
+  it.instance(
+    "exposes notebook_edit without a top-level schema union",
+    () =>
+      Effect.gen(function* () {
+        const edit = yield* NotebookEditTool.pipe(Effect.flatMap(Tool.init))
+        const schema = ToolJsonSchema.fromTool(edit)
+        expect(schema.type).toBe("object")
+        expect(schema.anyOf).toBeUndefined()
+        expect(schema.oneOf).toBeUndefined()
+        expect(schema.allOf).toBeUndefined()
+      }),
+    { git: true },
+  )
+
+  it.instance(
+    "rejects insert without kind and source",
+    () =>
+      Effect.gen(function* () {
+        const edit = yield* NotebookEditTool.pipe(Effect.flatMap(Tool.init))
+        const ctx = context([])
+        const exit = yield* edit
+          .execute({ path: "analysis.ipynb", expected_revision: "content:read", index: 0, action: "insert" }, ctx)
+          .pipe(Effect.exit)
+        expect(exit._tag).toBe("Failure")
+      }),
+    { git: true },
+  )
 })
 
 test("uses dedicated VS Code notebook permission defaults only when enabled", () => {
@@ -114,7 +143,7 @@ test("uses dedicated VS Code notebook permission defaults only when enabled", ()
     expect(disabled.some((rule) => rule.permission.startsWith("notebook_"))).toBe(false)
 
     const rules = KiloAgent.prepare({ experimental: { native_notebook_tools: true } }).defaultsPatch
-    expect(rules.findLast((rule) => rule.permission === "notebook_read")?.action).toBe("allow")
+    expect(rules.findLast((rule) => rule.permission === "notebook_read")?.action).toBe("ask")
     expect(rules.findLast((rule) => rule.permission === "notebook_edit")?.action).toBe("ask")
     expect(rules.findLast((rule) => rule.permission === "notebook_execute")?.action).toBe("ask")
   } finally {
