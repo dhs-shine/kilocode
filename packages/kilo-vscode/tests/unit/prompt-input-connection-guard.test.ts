@@ -52,8 +52,10 @@ describe("PromptInput sandbox toggle", () => {
     expect(move).toBeGreaterThan(save)
   })
 
-  it("uses the internal flag for visibility and effective runtime state for the button", () => {
-    expect(src).toContain("features().sandboxControls")
+  it("requires the enabled experiment for visibility and uses effective runtime state for the button", () => {
+    expect(src).toContain(
+      'return features().sandboxControls && config().experimental?.sandbox === true && !id?.startsWith("cloud:")',
+    )
     expect(src).toContain("<Show when={sandboxVisible()}>")
     expect(src).toContain('message.type === "sandboxStatus"')
     expect(src).toContain("message.sessionID !== sandboxID() && !matching")
