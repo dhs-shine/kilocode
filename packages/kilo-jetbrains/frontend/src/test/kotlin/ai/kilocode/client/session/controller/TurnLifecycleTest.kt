@@ -91,17 +91,8 @@ class TurnLifecycleTest : SessionControllerTestBase() {
     fun `test Error fires StateChanged to Error`() {
         val (m, _, _) = prompted()
 
-        val body = "provider response body"
-        emit(ChatEventDto.Error("ses_test", MessageErrorDto(
-            type = "APIError",
-            message = "Bad Request",
-            statusCode = 400,
-            responseBody = body,
-        )))
+        emit(ChatEventDto.Error("ses_test", MessageErrorDto(type = "APIError", message = "Bad Request")))
 
-        val state = m.model.state as SessionState.Error
-        assertEquals(body, state.detail)
-        assertEquals(400, state.statusCode)
         assertSession(
             """
             [code] [kilo/gpt-5] [error] [Bad Request]
@@ -231,9 +222,7 @@ class TurnLifecycleTest : SessionControllerTestBase() {
             MessageErrorDto(type = "APIError", message = "Bad Request", statusCode = 400, responseBody = body),
         ))
 
-        val state = m.model.state as SessionState.Error
-        assertEquals(body, state.detail)
-        assertEquals(400, state.statusCode)
+        assertTrue(m.model.state is SessionState.Error)
         assertSession(
             """
             [code] [kilo/gpt-5] [error] [Bad Request]

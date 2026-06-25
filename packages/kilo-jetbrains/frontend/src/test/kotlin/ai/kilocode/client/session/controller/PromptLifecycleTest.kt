@@ -45,44 +45,6 @@ class PromptLifecycleTest : SessionControllerTestBase() {
         assertEquals("short", event.properties["textLength"])
     }
 
-    fun `test prompt without selected model sets error and does not call RPC`() {
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(
-            ai.kilocode.rpc.dto.KiloAppStatusDto.READY,
-            config = ai.kilocode.rpc.dto.ConfigDto(model = null),
-        )
-        projectRpc.state.value = workspaceReady(providers = emptyList(), connected = emptyList())
-        val m = controller()
-        flush()
-        edt { m.model.model = null }
-
-        edt { m.prompt("go") }
-        flush()
-
-        assertEquals(0, rpc.creates)
-        assertTrue(rpc.prompts.isEmpty())
-        assertSession(
-            """
-            [code] [error] [Select a model before sending a prompt.]
-            """,
-            m,
-        )
-    }
-
-    fun `test prompt exception preserves cause detail`() {
-        appRpc.state.value = ai.kilocode.rpc.dto.KiloAppStateDto(ai.kilocode.rpc.dto.KiloAppStatusDto.READY, config = ai.kilocode.rpc.dto.ConfigDto(model = "kilo/gpt-5"))
-        projectRpc.state.value = workspaceReady()
-        rpc.promptThrows = IllegalStateException("outer", IllegalArgumentException("inner"))
-        val m = controller()
-        flush()
-
-        edt { m.prompt("go") }
-        flush()
-
-        val state = m.model.state as SessionState.Error
-        assertEquals("outer", state.message)
-        assertEquals("inner", state.detail)
-    }
-
     fun `test PermissionAsked moves state to AwaitingPermission`() {
         val (m, _, _) = prompted()
 

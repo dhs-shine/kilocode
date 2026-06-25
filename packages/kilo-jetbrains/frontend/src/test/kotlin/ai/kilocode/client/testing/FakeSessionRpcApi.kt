@@ -84,7 +84,6 @@ class FakeSessionRpcApi : KiloSessionRpcApi {
     var enhanced = "Enhanced prompt"
     var enhanceGate: CompletableDeferred<Unit>? = null
     var enhanceThrows: Exception? = null
-    var promptThrows: Exception? = null
     var commandThrows: Exception? = null
     val prompts = mutableListOf<Triple<String, String, PromptDto>>()
     val commands = mutableListOf<CommandCall>()
@@ -196,7 +195,6 @@ class FakeSessionRpcApi : KiloSessionRpcApi {
 
     override suspend fun prompt(id: String, directory: String, prompt: PromptDto) {
         assertNotEdt("prompt")
-        promptThrows?.let { throw it }
         prompts.add(Triple(id, directory, prompt))
     }
 
