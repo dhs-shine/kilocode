@@ -292,6 +292,18 @@ export const dict = {
     "샌드박스가 활성화되어 있습니다. 에이전트 셸 명령은 프로젝트 및 Kilo 디렉터리로 제한됩니다.",
   "prompt.action.sandbox.disabled":
     "샌드박스가 비활성화되어 있습니다. 클릭하여 에이전트 셸 명령 쓰기를 프로젝트 및 Kilo 디렉터리로 제한합니다.",
+  "prompt.action.sandbox.status.enabled": "샌드박스 활성화됨",
+  "prompt.action.sandbox.status.disabled": "샌드박스 비활성화됨",
+  "prompt.action.sandbox.filesystem": "파일 시스템",
+  "prompt.action.sandbox.network": "네트워크",
+  "prompt.action.sandbox.filesystem.restricted": "제한됨",
+  "prompt.action.sandbox.network.blocked": "차단됨",
+  "prompt.action.sandbox.network.allowed": "허용됨",
+  "prompt.action.sandbox.unrestricted": "제한 없음",
+  "prompt.action.sandbox.description.enabled": "쓰기는 프로젝트 및 Kilo 디렉터리로 제한됩니다.",
+  "prompt.action.sandbox.description.disabled": "클릭하면 파일 시스템 쓰기와 네트워크 액세스를 제한합니다.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "클릭하면 파일 시스템 쓰기를 제한합니다. 샌드박스 설정에 따라 네트워크 액세스는 계속 허용됩니다.",
 
   "speechToText.tooltip.start": "Kilo Gateway로 음성 입력 시작",
   "speechToText.tooltip.stop": "음성 캡처 중지",
@@ -1316,6 +1328,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "음성 입력에 사용할 Kilo Gateway 변환 모델을 선택하세요.",
   "settings.experimental.continueOnDeny.title": "거부 시 계속",
   "settings.experimental.continueOnDeny.description": "권한이 거부되면 에이전트 루프 계속",
+  "settings.sandboxing.title": "샌드박스",
+  "settings.sandboxing.network.title": "네트워크 액세스 제한",
+  "settings.sandboxing.network.description":
+    "모델이 실행한 명령과 HTTP 도구의 아웃바운드 네트워크 액세스를 차단합니다. 로컬 MCP 서버와 플러그인 훅에는 이 제한이 적용되지 않습니다. 공급자 및 모델 추론 트래픽은 계속 사용할 수 있습니다.",
   "settings.experimental.mcpTimeout.title": "MCP 타임아웃 (ms)",
   "settings.experimental.mcpTimeout.description": "MCP 서버 요청의 타임아웃 시간 (밀리초)",
   "settings.experimental.remote.title": "Remote 제어",

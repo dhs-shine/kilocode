@@ -294,6 +294,19 @@ export const dict = {
     "Sandbox is ingeschakeld. Shell-opdrachten van de agent zijn beperkt tot de project- en Kilo-mappen.",
   "prompt.action.sandbox.disabled":
     "Sandbox is uitgeschakeld. Klik om schrijfbewerkingen van shell-opdrachten van de agent te beperken tot de project- en Kilo-mappen.",
+  "prompt.action.sandbox.status.enabled": "Sandbox ingeschakeld",
+  "prompt.action.sandbox.status.disabled": "Sandbox uitgeschakeld",
+  "prompt.action.sandbox.filesystem": "Bestandssysteem",
+  "prompt.action.sandbox.network": "Netwerk",
+  "prompt.action.sandbox.filesystem.restricted": "Beperkt",
+  "prompt.action.sandbox.network.blocked": "Geblokkeerd",
+  "prompt.action.sandbox.network.allowed": "Toegestaan",
+  "prompt.action.sandbox.unrestricted": "Onbeperkt",
+  "prompt.action.sandbox.description.enabled": "Schrijfbewerkingen zijn beperkt tot de project- en Kilo-mappen.",
+  "prompt.action.sandbox.description.disabled":
+    "Klik om schrijfbewerkingen in het bestandssysteem en netwerktoegang te beperken.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "Klik om schrijfbewerkingen in het bestandssysteem te beperken. Netwerktoegang blijft toegestaan volgens je sandboxinstellingen.",
 
   "speechToText.tooltip.start": "Spraakinvoer starten met Kilo Gateway",
   "speechToText.tooltip.stop": "Audio vastleggen stoppen",
@@ -1330,6 +1343,10 @@ export const dict = {
   "settings.experimental.continueOnDeny.title": "Doorgaan bij weigering",
   "settings.experimental.continueOnDeny.description":
     "Ga door met de agent loop wanneer een toestemming wordt geweigerd",
+  "settings.sandboxing.title": "Sandbox",
+  "settings.sandboxing.network.title": "Netwerktoegang beperken",
+  "settings.sandboxing.network.description":
+    "Blokkeer uitgaande netwerktoegang voor door het model geïnitieerde opdrachten en HTTP-tools. Lokale MCP-servers en plugin-hooks vallen buiten deze beperking. Netwerkverkeer voor providers en modelinferentie blijft beschikbaar.",
   "settings.experimental.mcpTimeout.title": "MCP Timeout (ms)",
   "settings.experimental.mcpTimeout.description": "Timeout voor MCP-serververzoeken in milliseconden",
   "settings.experimental.remote.title": "Remote-bediening",

@@ -1161,6 +1161,10 @@ export const dict = {
   "settings.experimental.codebaseSearch.description": "Abilita ricerca in linguaggio naturale con AI nel codebase",
   "settings.experimental.continueOnDeny.title": "Continua dopo rifiuto",
   "settings.experimental.continueOnDeny.description": "Continua il loop agente quando un'autorizzazione viene negata",
+  "settings.sandboxing.title": "Sandbox",
+  "settings.sandboxing.network.title": "Limita l'accesso alla rete",
+  "settings.sandboxing.network.description":
+    "Blocca l'accesso in uscita alla rete per i comandi avviati dal modello e gli strumenti HTTP. I server MCP locali e gli hook dei plugin operano al di fuori di questa restrizione. Il traffico verso i provider e per l'inferenza dei modelli rimane disponibile.",
   "settings.experimental.mcpTimeout.title": "Timeout MCP (ms)",
   "settings.experimental.mcpTimeout.description": "Timeout per richieste server MCP in millisecondi",
   "settings.experimental.remote.title": "Controllo remoto",
@@ -1206,6 +1210,19 @@ export const dict = {
     "Sandbox abilitata. I comandi shell dell'agente sono limitati alle directory del progetto e di Kilo.",
   "prompt.action.sandbox.disabled":
     "Sandbox disabilitata. Fai clic per limitare le scritture dei comandi shell dell'agente alle directory del progetto e di Kilo.",
+  "prompt.action.sandbox.status.enabled": "Sandbox abilitata",
+  "prompt.action.sandbox.status.disabled": "Sandbox disabilitata",
+  "prompt.action.sandbox.filesystem": "File system",
+  "prompt.action.sandbox.network": "Rete",
+  "prompt.action.sandbox.filesystem.restricted": "Limitato",
+  "prompt.action.sandbox.network.blocked": "Bloccata",
+  "prompt.action.sandbox.network.allowed": "Consentita",
+  "prompt.action.sandbox.unrestricted": "Senza restrizioni",
+  "prompt.action.sandbox.description.enabled": "Le scritture sono limitate alle directory del progetto e di Kilo.",
+  "prompt.action.sandbox.description.disabled":
+    "Fai clic per limitare le scritture nel file system e l'accesso alla rete.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "Fai clic per limitare le scritture nel file system. L'accesso alla rete resta consentito dalle impostazioni della sandbox.",
   "settings.experimental.sandbox.title": "Sandbox",
   "settings.experimental.sandbox.description":
     "Esegui i comandi shell dell'agente all'interno di un sandbox a livello di sistema operativo che limita le scritture alle directory di stato del progetto e di Kilo",

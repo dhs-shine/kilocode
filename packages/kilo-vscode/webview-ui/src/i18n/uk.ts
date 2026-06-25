@@ -292,6 +292,18 @@ export const dict = {
   "prompt.action.sandbox.enabled": "Пісочницю увімкнено. Команди оболонки агента обмежені каталогами проєкту та Kilo.",
   "prompt.action.sandbox.disabled":
     "Пісочницю вимкнено. Натисніть, щоб обмежити запис команд оболонки агента каталогами проєкту та Kilo.",
+  "prompt.action.sandbox.status.enabled": "Пісочницю увімкнено",
+  "prompt.action.sandbox.status.disabled": "Пісочницю вимкнено",
+  "prompt.action.sandbox.filesystem": "Файлова система",
+  "prompt.action.sandbox.network": "Мережа",
+  "prompt.action.sandbox.filesystem.restricted": "Обмежено",
+  "prompt.action.sandbox.network.blocked": "Заблоковано",
+  "prompt.action.sandbox.network.allowed": "Дозволено",
+  "prompt.action.sandbox.unrestricted": "Без обмежень",
+  "prompt.action.sandbox.description.enabled": "Запис дозволено лише в каталогах проєкту та Kilo.",
+  "prompt.action.sandbox.description.disabled": "Натисніть, щоб обмежити запис у файлову систему та доступ до мережі.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "Натисніть, щоб обмежити запис у файлову систему. Доступ до мережі залишиться дозволеним відповідно до налаштувань пісочниці.",
 
   "speechToText.tooltip.start": "Почати голосове введення з Kilo Gateway",
   "speechToText.tooltip.stop": "Зупинити захоплення звуку",
@@ -1320,6 +1332,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "Виберіть модель транскрипції Kilo Gateway для голосового введення.",
   "settings.experimental.continueOnDeny.title": "Продовжувати при відхиленні",
   "settings.experimental.continueOnDeny.description": "Продовжувати цикл агента, коли дозвіл відхилено",
+  "settings.sandboxing.title": "Пісочниця",
+  "settings.sandboxing.network.title": "Обмежити доступ до мережі",
+  "settings.sandboxing.network.description":
+    "Блокуйте вихідний доступ до мережі для команд, ініційованих моделлю, та HTTP-інструментів. Локальні MCP-сервери й хуки плагінів працюють поза цим обмеженням. Трафік провайдерів та інференсу моделей залишається доступним.",
   "settings.experimental.mcpTimeout.title": "Тайм-аут MCP (мс)",
   "settings.experimental.mcpTimeout.description": "Тайм-аут у мілісекундах для запитів до MCP-сервера",
   "settings.experimental.remote.title": "Керування Remote",

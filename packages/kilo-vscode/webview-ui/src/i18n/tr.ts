@@ -290,6 +290,19 @@ export const dict = {
   "prompt.action.sandbox.enabled": "Sandbox etkin. Agent shell komutları proje ve Kilo dizinleriyle sınırlıdır.",
   "prompt.action.sandbox.disabled":
     "Sandbox devre dışı. Agent shell komut yazma işlemlerini proje ve Kilo dizinleriyle sınırlamak için tıklayın.",
+  "prompt.action.sandbox.status.enabled": "Sandbox etkin",
+  "prompt.action.sandbox.status.disabled": "Sandbox devre dışı",
+  "prompt.action.sandbox.filesystem": "Dosya sistemi",
+  "prompt.action.sandbox.network": "Ağ",
+  "prompt.action.sandbox.filesystem.restricted": "Kısıtlı",
+  "prompt.action.sandbox.network.blocked": "Engellendi",
+  "prompt.action.sandbox.network.allowed": "İzin verildi",
+  "prompt.action.sandbox.unrestricted": "Kısıtlanmamış",
+  "prompt.action.sandbox.description.enabled": "Yazma işlemleri proje ve Kilo dizinleriyle sınırlıdır.",
+  "prompt.action.sandbox.description.disabled":
+    "Dosya sistemi yazma işlemlerini ve ağ erişimini kısıtlamak için tıklayın.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "Dosya sistemi yazma işlemlerini kısıtlamak için tıklayın. Sandbox ayarlarınız ağ erişimine izin vermeye devam ediyor.",
 
   "speechToText.tooltip.start": "Kilo Gateway ile sesli girişi başlatın",
   "speechToText.tooltip.stop": "Ses yakalamayı durdur",
@@ -1321,6 +1334,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "Sesli giriş için Kilo Gateway transkripsiyon modelini seçin.",
   "settings.experimental.continueOnDeny.title": "Reddetme Durumunda Devam Et",
   "settings.experimental.continueOnDeny.description": "Bir izin reddedildiğinde ajan döngüsüne devam et",
+  "settings.sandboxing.title": "Sandbox",
+  "settings.sandboxing.network.title": "Ağ Erişimini Kısıtla",
+  "settings.sandboxing.network.description":
+    "Model tarafından başlatılan komutların ve HTTP araçlarının giden ağ erişimini engelleyin. Yerel MCP sunucuları ve eklenti kancaları bu kısıtlamanın dışında çalışır. Sağlayıcı ve model çıkarım trafiği kullanılabilir durumda kalır.",
   "settings.experimental.mcpTimeout.title": "MCP Zaman Aşımı (ms)",
   "settings.experimental.mcpTimeout.description": "MCP sunucu istekleri için milisaniye cinsinden zaman aşımı",
   "settings.experimental.remote.title": "Remote Kontrolü",

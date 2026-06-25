@@ -288,6 +288,18 @@ export const dict = {
   "prompt.action.sandbox.enabled": "sandbox مُفعّل. أوامر shell الخاصة بالوكيل مقتصرة على مجلدات المشروع و Kilo.",
   "prompt.action.sandbox.disabled":
     "sandbox مُعطّل. انقر لتقييد كتابة أوامر shell الخاصة بالوكيل على مجلدات المشروع و Kilo.",
+  "prompt.action.sandbox.status.enabled": "العزل مُفعّل",
+  "prompt.action.sandbox.status.disabled": "العزل مُعطّل",
+  "prompt.action.sandbox.filesystem": "نظام الملفات",
+  "prompt.action.sandbox.network": "الشبكة",
+  "prompt.action.sandbox.filesystem.restricted": "مقيّد",
+  "prompt.action.sandbox.network.blocked": "محظورة",
+  "prompt.action.sandbox.network.allowed": "مسموح بها",
+  "prompt.action.sandbox.unrestricted": "غير مقيّد",
+  "prompt.action.sandbox.description.enabled": "تقتصر عمليات الكتابة على مجلدات المشروع و Kilo.",
+  "prompt.action.sandbox.description.disabled": "انقر لتقييد الكتابة في نظام الملفات والوصول إلى الشبكة.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "انقر لتقييد الكتابة في نظام الملفات. يظل الوصول إلى الشبكة مسموحًا وفق إعدادات sandbox.",
 
   "speechToText.tooltip.start": "بدء الإدخال الصوتي باستخدام Kilo Gateway",
   "speechToText.tooltip.stop": "إيقاف التقاط الصوت",
@@ -1303,6 +1315,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "اختر نموذج نسخ Kilo Gateway للإدخال الصوتي.",
   "settings.experimental.continueOnDeny.title": "المتابعة عند الرفض",
   "settings.experimental.continueOnDeny.description": "متابعة حلقة الوكيل عند رفض الإذن",
+  "settings.sandboxing.title": "العزل",
+  "settings.sandboxing.network.title": "تقييد الوصول إلى الشبكة",
+  "settings.sandboxing.network.description":
+    "احظر الوصول الصادر إلى الشبكة من الأوامر الصادرة عن النموذج وأدوات HTTP. تعمل خوادم MCP المحلية وخطافات المكونات الإضافية خارج هذا التقييد. تظل حركة مرور استدلال الموفّر والنموذج متاحة.",
   "settings.experimental.mcpTimeout.title": "مهلة MCP (مللي ثانية)",
   "settings.experimental.mcpTimeout.description": "مهلة طلبات خادم MCP بالمللي ثانية",
   "settings.experimental.remote.title": "التحكم Remote",

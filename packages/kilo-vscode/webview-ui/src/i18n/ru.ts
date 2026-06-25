@@ -290,6 +290,18 @@ export const dict = {
   "prompt.action.sandbox.enabled": "Песочница включена. Команды оболочки агента ограничены каталогами проекта и Kilo.",
   "prompt.action.sandbox.disabled":
     "Песочница отключена. Нажмите, чтобы ограничить запись команд оболочки агента каталогами проекта и Kilo.",
+  "prompt.action.sandbox.status.enabled": "Песочница включена",
+  "prompt.action.sandbox.status.disabled": "Песочница отключена",
+  "prompt.action.sandbox.filesystem": "Файловая система",
+  "prompt.action.sandbox.network": "Сеть",
+  "prompt.action.sandbox.filesystem.restricted": "Ограничена",
+  "prompt.action.sandbox.network.blocked": "Заблокирована",
+  "prompt.action.sandbox.network.allowed": "Разрешена",
+  "prompt.action.sandbox.unrestricted": "Без ограничений",
+  "prompt.action.sandbox.description.enabled": "Запись разрешена только в каталогах проекта и Kilo.",
+  "prompt.action.sandbox.description.disabled": "Нажмите, чтобы ограничить запись в файловую систему и доступ к сети.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "Нажмите, чтобы ограничить запись в файловую систему. Доступ к сети останется разрешённым согласно настройкам песочницы.",
 
   "speechToText.tooltip.start": "Начать голосовой ввод с Kilo Gateway",
   "speechToText.tooltip.stop": "Остановить захват звука",
@@ -1332,6 +1344,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "Выберите модель транскрипции Kilo Gateway для голосового ввода.",
   "settings.experimental.continueOnDeny.title": "Продолжить при отказе",
   "settings.experimental.continueOnDeny.description": "Продолжить цикл агента при отказе в разрешении",
+  "settings.sandboxing.title": "Изоляция в песочнице",
+  "settings.sandboxing.network.title": "Ограничить доступ к сети",
+  "settings.sandboxing.network.description":
+    "Блокировать исходящий доступ к сети для команд, инициированных моделью, и HTTP-инструментов. Локальные серверы MCP и хуки плагинов не подпадают под это ограничение. Трафик к провайдерам и моделям для инференса остаётся доступным.",
   "settings.experimental.mcpTimeout.title": "Таймаут MCP (мс)",
   "settings.experimental.mcpTimeout.description": "Таймаут запросов MCP-сервера в миллисекундах",
   "settings.experimental.remote.title": "Управление Remote",

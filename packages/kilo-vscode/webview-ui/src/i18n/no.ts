@@ -296,6 +296,19 @@ export const dict = {
     "Sandbox er aktivert. Shell-kommandoer for agenten er begrenset til prosjekt- og Kilo-mappene.",
   "prompt.action.sandbox.disabled":
     "Sandbox er deaktivert. Klikk for å begrense skriving av shell-kommandoer for agenten til prosjekt- og Kilo-mappene.",
+  "prompt.action.sandbox.status.enabled": "Sandbox aktivert",
+  "prompt.action.sandbox.status.disabled": "Sandbox deaktivert",
+  "prompt.action.sandbox.filesystem": "Filsystem",
+  "prompt.action.sandbox.network": "Nettverk",
+  "prompt.action.sandbox.filesystem.restricted": "Begrenset",
+  "prompt.action.sandbox.network.blocked": "Blokkert",
+  "prompt.action.sandbox.network.allowed": "Tillatt",
+  "prompt.action.sandbox.unrestricted": "Ubegrenset",
+  "prompt.action.sandbox.description.enabled": "Skrivetilgang er begrenset til prosjekt- og Kilo-mappene.",
+  "prompt.action.sandbox.description.disabled":
+    "Klikk for å begrense skrivetilgang til filsystemet og nettverkstilgang.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "Klikk for å begrense skrivetilgang til filsystemet. Nettverkstilgang er fortsatt tillatt av sandbox-innstillingene dine.",
 
   "speechToText.tooltip.start": "Start taleinndata med Kilo Gateway",
   "speechToText.tooltip.stop": "Stopp lydfangst",
@@ -1290,6 +1303,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "Velg Kilo Gateway-transkripsjonsmodellen for taleinndata.",
   "settings.experimental.continueOnDeny.title": "Fortsett ved avvisning",
   "settings.experimental.continueOnDeny.description": "Fortsett agentløkken når en tillatelse avvises",
+  "settings.sandboxing.title": "Kjøring i sandkasse",
+  "settings.sandboxing.network.title": "Begrens nettverkstilgang",
+  "settings.sandboxing.network.description":
+    "Blokker utgående nettverkstilgang fra kommandoer generert av modellen og HTTP-verktøy. Lokale MCP-servere og programtilleggskroker kjører utenfor denne begrensningen. Trafikk for leverandør- og modellinferens forblir tilgjengelig.",
   "settings.experimental.mcpTimeout.title": "MCP-tidsavbrudd (ms)",
   "settings.experimental.mcpTimeout.description": "Tidsavbrudd for MCP-serverforespørsler i millisekunder",
   "settings.experimental.remote.title": "Remote-kontroll",

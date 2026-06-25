@@ -293,6 +293,18 @@ export const dict = {
     "Sandbox jest włączony. Polecenia shell agenta są ograniczone do katalogów projektu i Kilo.",
   "prompt.action.sandbox.disabled":
     "Sandbox jest wyłączony. Kliknij, aby ograniczyć zapisy poleceń shell agenta do katalogów projektu i Kilo.",
+  "prompt.action.sandbox.status.enabled": "Sandbox włączony",
+  "prompt.action.sandbox.status.disabled": "Sandbox wyłączony",
+  "prompt.action.sandbox.filesystem": "System plików",
+  "prompt.action.sandbox.network": "Sieć",
+  "prompt.action.sandbox.filesystem.restricted": "Ograniczony",
+  "prompt.action.sandbox.network.blocked": "Zablokowana",
+  "prompt.action.sandbox.network.allowed": "Dozwolona",
+  "prompt.action.sandbox.unrestricted": "Nieograniczony",
+  "prompt.action.sandbox.description.enabled": "Zapisy są ograniczone do katalogów projektu i Kilo.",
+  "prompt.action.sandbox.description.disabled": "Kliknij, aby ograniczyć zapisy w systemie plików i dostęp do sieci.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "Kliknij, aby ograniczyć zapisy w systemie plików. Ustawienia sandboxa nadal zezwalają na dostęp do sieci.",
 
   "speechToText.tooltip.start": "Rozpocznij wprowadzanie głosowe z Kilo Gateway",
   "speechToText.tooltip.stop": "Zatrzymaj przechwytywanie dźwięku",
@@ -1291,6 +1303,10 @@ export const dict = {
     "Wybierz model transkrypcji Kilo Gateway dla wprowadzania głosowego.",
   "settings.experimental.continueOnDeny.title": "Kontynuuj przy odmowie",
   "settings.experimental.continueOnDeny.description": "Kontynuuj pętlę agenta po odmowie uprawnienia",
+  "settings.sandboxing.title": "Izolacja w piaskownicy",
+  "settings.sandboxing.network.title": "Ogranicz dostęp do sieci",
+  "settings.sandboxing.network.description":
+    "Blokuj wychodzący dostęp do sieci z poleceń pochodzących od modelu i narzędzi HTTP. Lokalne serwery MCP i hooki wtyczek nie podlegają temu ograniczeniu. Ruch do dostawców i modeli na potrzeby wnioskowania pozostaje dostępny.",
   "settings.experimental.mcpTimeout.title": "Limit czasu MCP (ms)",
   "settings.experimental.mcpTimeout.description": "Limit czasu żądań serwera MCP w milisekundach",
   "settings.experimental.remote.title": "Sterowanie Remote",

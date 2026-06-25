@@ -293,6 +293,18 @@ export const dict = {
     "Sandbox je omogućen. Shell komande agenta su ograničene na direktorije projekta i Kilo.",
   "prompt.action.sandbox.disabled":
     "Sandbox je onemogućen. Kliknite da ograničite pisanje shell komandi agenta na direktorije projekta i Kilo.",
+  "prompt.action.sandbox.status.enabled": "Sandbox omogućen",
+  "prompt.action.sandbox.status.disabled": "Sandbox onemogućen",
+  "prompt.action.sandbox.filesystem": "Datotečni sistem",
+  "prompt.action.sandbox.network": "Mreža",
+  "prompt.action.sandbox.filesystem.restricted": "Ograničen",
+  "prompt.action.sandbox.network.blocked": "Blokirana",
+  "prompt.action.sandbox.network.allowed": "Dozvoljena",
+  "prompt.action.sandbox.unrestricted": "Bez ograničenja",
+  "prompt.action.sandbox.description.enabled": "Pisanje je ograničeno na direktorije projekta i Kilo.",
+  "prompt.action.sandbox.description.disabled": "Kliknite da ograničite pisanje u datotečni sistem i pristup mreži.",
+  "prompt.action.sandbox.description.disabledNetworkAllowed":
+    "Kliknite da ograničite pisanje u datotečni sistem. Pristup mreži ostaje dozvoljen prema vašim sandbox postavkama.",
 
   "speechToText.tooltip.start": "Započni glasovni unos sa Kilo Gateway",
   "speechToText.tooltip.stop": "Zaustavi hvatanje zvuka",
@@ -1334,6 +1346,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "Odaberite Kilo Gateway model za transkripciju za glasovni unos.",
   "settings.experimental.continueOnDeny.title": "Nastavi pri odbijanju",
   "settings.experimental.continueOnDeny.description": "Nastavi petlju agenta kada je dozvola odbijena",
+  "settings.sandboxing.title": "Rad u izoliranom okruženju",
+  "settings.sandboxing.network.title": "Ograniči pristup mreži",
+  "settings.sandboxing.network.description":
+    "Blokiraj odlazni mrežni pristup za naredbe koje potiču od modela i HTTP alate. Lokalni MCP serveri i hookovi dodataka izvršavaju se izvan ovog ograničenja. Saobraćaj za inferenciju pružatelja i modela ostaje dostupan.",
   "settings.experimental.mcpTimeout.title": "MCP istek vremena (ms)",
   "settings.experimental.mcpTimeout.description": "Istek vremena za MCP server zahtjeve u milisekundama",
   "settings.experimental.remote.title": "Remote kontrola",
