@@ -235,9 +235,7 @@ Advanced options not exposed in the UI can be configured via the `experimental` 
     "batch_tool": false,
     "openTelemetry": true,
     "disable_paste_summary": false,
-    "mcp_timeout": 30000,
-    "sandbox": true,
-    "sandbox_restrict_network": true
+    "mcp_timeout": 30000
   }
 }
 ```
