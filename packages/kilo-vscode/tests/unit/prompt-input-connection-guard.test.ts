@@ -4,6 +4,8 @@ import { join } from "node:path"
 
 const path = join(__dirname, "..", "..", "webview-ui", "src", "components", "chat", "PromptInput.tsx")
 const src = readFileSync(path, "utf8")
+const iconPath = join(__dirname, "..", "..", "..", "kilo-ui", "src", "components", "icon.tsx")
+const icons = readFileSync(iconPath, "utf8")
 
 describe("PromptInput connection guard", () => {
   it("rechecks the connection after resolving async attachments and before clearing the draft", () => {
@@ -66,5 +68,19 @@ describe("PromptInput sandbox toggle", () => {
     expect(src).toContain("!sandboxReady()")
     expect(src).toContain("if (sandboxRequest() && target === null) return")
     expect(src).not.toContain("if (state === current) return true")
+  })
+
+  it("explains filesystem and network state without changing the lock icon", () => {
+    expect(src).toContain(
+      "const sandboxNetworkEnabled = () => config().experimental?.sandbox_restrict_network !== false",
+    )
+    expect(src).toContain('<Icon name="lock" size="small" />')
+    expect(src).toContain("<SandboxTooltipContent enabled={sandboxEnabled()} network={sandboxNetworkEnabled()} />")
+    expect(src).toContain('<Icon name="folder" size="small" />')
+    expect(src).toContain('<Icon name="globe" size="small" />')
+    expect(src).toContain("props.enabled && props.network")
+    expect(src).not.toContain('class="prompt-sandbox-network"')
+    expect(src).not.toContain('class="prompt-sandbox-icon"')
+    expect(icons).toContain("globe: {")
   })
 })
