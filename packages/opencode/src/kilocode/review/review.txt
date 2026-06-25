@@ -18,8 +18,8 @@ Choose exactly one review scope in this order:
 
 1. **Explicit uncommitted scope** - `/review uncommitted [guidance]` reviews staged, unstaged, and untracked changes. Phrases that clearly request working-tree, staged, unstaged, uncommitted, or untracked changes select the same scope.
 2. **Explicit branch scope** - `/review branch [base] [guidance]` reviews the current branch against the provided base, or against the default base when none is provided. After `branch`, treat a token as the base only when it resolves as a git ref or is identified with syntax such as `base=<ref>`, `base <ref>`, `against <ref>`, `compare to <ref>`, or `vs <ref>`; otherwise treat it as guidance. Phrases that clearly request branch, committed, or PR-ready changes select branch scope.
-3. **Pull request** - input that starts with a GitHub pull request URL or a positive PR number selects pull request review. Treat remaining text as guidance.
-4. **Commit** - a 7-40 character hexadecimal token that resolves as a commit selects commit review. Treat remaining text as guidance.
+3. **Commit** - a 7-40 character hexadecimal token that resolves as a commit selects commit review. Treat remaining text as guidance.
+4. **Pull request** - input that starts with a GitHub pull request URL or a positive PR number selects pull request review. Treat remaining text as guidance.
 5. **Branch or base ref** - a token that resolves as a local or remote git ref, or a clearly named base such as `base main`, `against origin/dev`, `compare to develop`, or `vs release/next`, selects branch review. Treat remaining text as guidance.
 6. **Empty or guidance-only input** - choose uncommitted review. Bare `/review` always defaults to uncommitted changes, even when the working tree is clean. Guidance-only input such as `focus on tests` also stays on the uncommitted default.
 

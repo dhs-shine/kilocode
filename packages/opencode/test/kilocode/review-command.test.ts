@@ -71,6 +71,9 @@ describe("review command", () => {
     expect(text).toContain("git rev-parse --verify <commit>^{commit}")
     expect(text).toContain("git show --format=fuller --find-renames <commit>")
     expect(text).toContain("Code Review for **commit**")
+    const commit = text.indexOf("**Commit**")
+    const pr = text.indexOf("**Pull request**")
+    expect(commit).toBeLessThan(pr)
   })
 
   test("documents pull request review", () => {
