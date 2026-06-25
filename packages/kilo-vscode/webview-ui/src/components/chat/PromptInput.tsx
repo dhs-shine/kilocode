@@ -13,6 +13,7 @@ import { showToast } from "@kilocode/kilo-ui/toast"
 import { useSession } from "../../context/session"
 import { useServer } from "../../context/server"
 import { useIndexing } from "../../context/indexing"
+import { indexingButtonVisible } from "../../context/indexing-utils"
 import { useLanguage } from "../../context/language"
 import { useVSCode } from "../../context/vscode"
 import { useConfig } from "../../context/config"
@@ -42,8 +43,10 @@ import {
   insertSpacedText,
   isPromptBusy,
   isPathMention,
+  applySandboxState,
+  type SandboxState,
 } from "./prompt-input-utils"
-import type { ReviewComment, SendMessageFailedMessage, TextPart } from "../../types/messages"
+import type { ExtensionMessage, ReviewComment, SendMessageFailedMessage, TextPart } from "../../types/messages"
 import { formatReviewCommentsMarkdown } from "../../utils/review-comment-markdown"
 import { pendingDraftKey, scopeDraftKey, sessionDraftKey } from "../../utils/prompt-drafts"
 import { ReviewComments } from "./ReviewComments"
@@ -78,7 +81,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const session = useSession()
   const server = useServer()
   const indexing = useIndexing()
-  const { config, features } = useConfig()
+  const { config, globalConfig, settings, features } = useConfig()
   const provider = useProvider()
   const language = useLanguage()
   const vscode = useVSCode()
@@ -142,8 +145,81 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const [reviewComments, setReviewComments] = createSignal<ReviewComment[]>([])
   const [enhancing, setEnhancing] = createSignal(false)
   const [autoApprove, setAutoApprove] = createSignal(false)
+  const [sandboxState, setSandboxState] = createSignal<SandboxState>()
+  const [sandboxRequest, setSandboxRequest] = createSignal<string>()
+  const [sandboxTarget, setSandboxTarget] = createSignal<string | null>()
+  let sandboxRetry: ReturnType<typeof setTimeout> | undefined
+  let sandboxAttempts = 0
+  const sandboxID = () => {
+    const id = session.currentSessionID()
+    return id?.startsWith("cloud:") ? undefined : id
+  }
+  const sandboxVisible = () => {
+    const id = session.currentSessionID()
+    return features().sandboxControls && !id?.startsWith("cloud:")
+  }
+  const sandbox = () => {
+    const state = sandboxState()
+    return state?.sessionID === sandboxID() ? state : undefined
+  }
+  const sandboxEnabled = () => sandbox()?.enabled ?? (!sandboxID() && config().experimental?.sandbox === true)
+  const sandboxReady = () => !sandboxID() || sandbox() !== undefined
+  const requestSandbox = () => {
+    const sessionID = sandboxID()
+    if (!sessionID || server.connectionState() !== "connected") return
+    vscode.postMessage({ type: "requestSandboxStatus", sessionID })
+  }
+  const toggleSandbox = () => {
+    const sessionID = sandboxID()
+    const state = sandbox()
+    if ((sessionID && !state) || state?.available === false || sandboxRequest() || !server.isConnected()) return
+    const requestID = crypto.randomUUID()
+    setSandboxRequest(requestID)
+    setSandboxTarget(sessionID ?? null)
+    vscode.postMessage({
+      type: "toggleSandbox",
+      sessionID,
+      draftID: props.pendingSessionID ?? session.draftSessionID(),
+      requestID,
+      agentManagerContext: ctx(),
+    })
+  }
+  const clearSandboxRequest = () => {
+    setSandboxRequest(undefined)
+    setSandboxTarget(undefined)
+  }
+  const retrySandbox = (sessionID: string) => {
+    if (sandboxAttempts >= 2) return
+    sandboxAttempts++
+    if (sandboxRetry) clearTimeout(sandboxRetry)
+    sandboxRetry = setTimeout(() => {
+      sandboxRetry = undefined
+      if (sandboxID() === sessionID) requestSandbox()
+    }, 1000)
+  }
   let enhanceCounter = 0
   let preEnhanceText: string | null = null
+
+  createEffect(() => {
+    const sessionID = sandboxID()
+    const connected = server.connectionState() === "connected"
+    const target = untrack(sandboxTarget)
+    if (sandboxRetry) clearTimeout(sandboxRetry)
+    sandboxRetry = undefined
+    sandboxAttempts = 0
+    if (!connected) {
+      clearSandboxRequest()
+      setSandboxState(undefined)
+      return
+    }
+    if (target && target !== sessionID) clearSandboxRequest()
+    if (!sessionID) {
+      setSandboxState(undefined)
+      return
+    }
+    if (sandboxRequest() && target === null) return
+    requestSandbox()
+  })
 
   const ghost = useGhostText(vscode, text, () => server.isConnected())
   const speech = useSpeechToText(vscode, server, language)
@@ -295,6 +371,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const isBusy = () =>
     isPromptBusy(session.status(), !!props.suggesting?.(), !!props.questioning?.(), session.submitting())
+  const showIndexing = () =>
+    indexingButtonVisible(
+      features().indexing,
+      Boolean(settings()["indexing.showButtonWhenDisabled"] ?? true),
+      config(),
+      globalConfig(),
+    )
   const isDisabled = () => !server.isConnected()
   const canUseSpeech = () => canUseSpeechToText(config(), provider.authStates())
   const speechModel = () => selectedSpeechToTextModel(config())
@@ -369,7 +452,66 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     imageDrafts.set(target, images)
   }
 
+  const handleSandboxMessage = (message: ExtensionMessage) => {
+    if (message.type === "sandboxStatus") {
+      const matching = message.requestID !== undefined && message.requestID === sandboxRequest()
+      if (message.sessionID !== sandboxID() && !matching) return false
+      if (!server.isConnected()) return true
+      const current = sandboxState()
+      if (matching) clearSandboxRequest()
+      const state = applySandboxState(current, message)
+      if (state !== current) setSandboxState(state)
+      sandboxAttempts = 0
+      if (sandboxRetry) clearTimeout(sandboxRetry)
+      sandboxRetry = undefined
+      if (matching && !state.available) {
+        showToast({
+          variant: "error",
+          title: language.t("common.requestFailed"),
+          description: state.reason,
+        })
+      }
+      return true
+    }
+
+    if (message.type === "sandboxStatusError") {
+      const matching = message.requestID !== undefined && message.requestID === sandboxRequest()
+      if (message.sessionID !== sandboxID() && !matching) return false
+      if (!server.isConnected()) return true
+      const current = sandboxState()
+      if (matching) clearSandboxRequest()
+      if ((current?.revision ?? -1) > message.revision) return true
+      if (!message.requestID) {
+        const same = current?.sessionID === message.sessionID && current.directory === message.directory
+        setSandboxState({
+          sessionID: message.sessionID,
+          directory: message.directory,
+          enabled: same ? current.enabled : false,
+          available: false,
+          reason: message.message,
+          version: same ? current.version : 0,
+          revision: message.revision,
+        })
+        retrySandbox(message.sessionID)
+      }
+      if (matching) {
+        showToast({
+          variant: "error",
+          title: language.t("common.requestFailed"),
+          description: message.message,
+        })
+      }
+      return true
+    }
+
+    if (message.type !== "configUpdated") return false
+    requestSandbox()
+    return true
+  }
+
   const unsubscribe = vscode.onMessage((message) => {
+    if (handleSandboxMessage(message)) return
+
     if (message.type === "setChatBoxMessage") {
       setText(message.text)
       mention.seedFromText(message.text)
@@ -461,6 +603,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   onCleanup(() => {
     // Persist current draft before unmounting
     saveDraft(draftKey(), text(), reviewComments(), imageAttach.images())
+    if (sandboxRetry) clearTimeout(sandboxRetry)
     unsubAutoApprove()
     unsubscribe()
   })
@@ -1015,7 +1158,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           </Show>
         </div>
         <div class="prompt-input-hint-actions">
-          <Show when={features().indexing}>
+          <Show when={showIndexing()}>
             <Tooltip value={indexing.status().message || indexing.label()} placement="top">
               <Button
                 variant="ghost"
@@ -1059,11 +1202,44 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   : language.t("prompt.action.autoApprove.enable")
               }
               aria-pressed={autoApprove()}
-              class={`prompt-auto-approve-button ${autoApprove() ? "prompt-auto-approve-button--active" : ""}`}
+              class={`prompt-status-button ${autoApprove() ? "prompt-status-button--active" : ""}`}
             >
               <Icon name="shield" size="small" />
             </Button>
           </Tooltip>
+          <Show when={sandboxVisible()}>
+            <Tooltip
+              value={
+                sandbox()?.available === false
+                  ? (sandbox()?.reason ?? language.t("common.requestFailed"))
+                  : sandboxEnabled()
+                    ? language.t("prompt.action.sandbox.enabled")
+                    : language.t("prompt.action.sandbox.disabled")
+              }
+              placement="top"
+            >
+              <Button
+                variant="ghost"
+                size="small"
+                onClick={toggleSandbox}
+                disabled={
+                  !server.isConnected() ||
+                  !sandboxReady() ||
+                  sandbox()?.available === false ||
+                  sandboxRequest() !== undefined
+                }
+                aria-label={
+                  sandboxEnabled()
+                    ? language.t("prompt.action.sandbox.disable")
+                    : language.t("prompt.action.sandbox.enable")
+                }
+                aria-pressed={sandboxEnabled()}
+                class={`prompt-status-button ${sandboxEnabled() ? "prompt-status-button--active" : ""}`}
+              >
+                <Icon name="lock" size="small" />
+              </Button>
+            </Tooltip>
+          </Show>
           <Tooltip value={language.t("prompt.action.enhance")} placement="top">
             <Button
               variant="ghost"

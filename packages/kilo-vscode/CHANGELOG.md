@@ -1,5 +1,7 @@
 # kilo-code
 
+## 7.3.54
+
 ## 7.3.53
 
 ### Patch Changes
