@@ -221,24 +221,26 @@ describe("kilocode tool registry indexing", () => {
 
       process.env["KILO_CLIENT"] = "vscode"
       expect(KiloToolRegistry.extra(tools, { experimental: { codebase_search: true } }).map((tool) => tool.id)).toEqual(
-        [
-          "codebase_search",
-          "semantic_search",
-          "recall",
-          "background_process",
-          "agent_manager",
-          "notebook_read",
-          "notebook_edit",
-          "notebook_execute",
-        ],
+        ["codebase_search", "semantic_search", "recall", "background_process", "agent_manager"],
       )
-      expect(KiloToolRegistry.extra({ ...tools, semantic: undefined }, {}).map((tool) => tool.id)).toEqual([
+      expect(
+        KiloToolRegistry.extra(tools, {
+          experimental: { codebase_search: true, native_notebook_tools: true },
+        }).map((tool) => tool.id),
+      ).toEqual([
+        "codebase_search",
+        "semantic_search",
         "recall",
         "background_process",
         "agent_manager",
         "notebook_read",
         "notebook_edit",
         "notebook_execute",
+      ])
+      expect(KiloToolRegistry.extra({ ...tools, semantic: undefined }, {}).map((tool) => tool.id)).toEqual([
+        "recall",
+        "background_process",
+        "agent_manager",
       ])
 
       process.env["KILO_CLIENT"] = "desktop"

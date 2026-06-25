@@ -106,11 +106,14 @@ describe("native notebook tools", () => {
   )
 })
 
-test("uses dedicated VS Code notebook permission defaults", () => {
+test("uses dedicated VS Code notebook permission defaults only when enabled", () => {
   const prev = process.env.KILO_CLIENT
   try {
     process.env.KILO_CLIENT = "vscode"
-    const rules = KiloAgent.prepare({}).defaultsPatch
+    const disabled = KiloAgent.prepare({}).defaultsPatch
+    expect(disabled.some((rule) => rule.permission.startsWith("notebook_"))).toBe(false)
+
+    const rules = KiloAgent.prepare({ experimental: { native_notebook_tools: true } }).defaultsPatch
     expect(rules.findLast((rule) => rule.permission === "notebook_read")?.action).toBe("allow")
     expect(rules.findLast((rule) => rule.permission === "notebook_edit")?.action).toBe("ask")
     expect(rules.findLast((rule) => rule.permission === "notebook_execute")?.action).toBe("ask")

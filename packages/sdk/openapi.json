@@ -21681,6 +21681,9 @@
               "codebase_search": {
                 "type": "boolean"
               },
+              "native_notebook_tools": {
+                "type": "boolean"
+              },
               "speech_to_text_model": {
                 "type": "string"
               },
