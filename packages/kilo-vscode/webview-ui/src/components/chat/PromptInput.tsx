@@ -568,15 +568,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       if (raw) {
         const source = scopeDraftKey(boxKey(), raw)
         const target = scopeDraftKey(boxKey(), sessionDraftKey(message.session.id))
-        const draft = movePromptDraft({ text: drafts, comments: reviewDrafts, images: imageDrafts }, source, target)
-        if (
-          draft.text === undefined &&
-          draft.comments === undefined &&
-          draft.images === undefined &&
-          source === draftKey()
-        ) {
-          saveDraft(target, text(), reviewComments(), imageAttach.images())
-        }
+        if (source === draftKey()) saveDraft(source, text(), reviewComments(), imageAttach.images())
+        movePromptDraft({ text: drafts, comments: reviewDrafts, images: imageDrafts }, source, target)
       }
       if (
         message.draftID &&
