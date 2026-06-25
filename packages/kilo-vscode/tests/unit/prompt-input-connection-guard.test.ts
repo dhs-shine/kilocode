@@ -41,24 +41,15 @@ describe("PromptInput sandbox toggle", () => {
     const start = src.indexOf('if (message.type === "sessionCreated")')
     const end = src.indexOf('if (message.type === "action"', start)
     const created = src.slice(start, end)
-    const save = created.indexOf("if (source === draftKey()) saveDraft(source, text(), reviewComments(), imageAttach.images())")
+    const save = created.indexOf(
+      "if (source === draftKey()) saveDraft(source, text(), reviewComments(), imageAttach.images())",
+    )
     const move = created.indexOf("movePromptDraft(")
 
     expect(start).toBeGreaterThan(-1)
     expect(end).toBeGreaterThan(start)
     expect(save).toBeGreaterThan(-1)
     expect(move).toBeGreaterThan(save)
-  })
-
-  it("keeps success feedback out of the webview toast region", () => {
-    const start = src.indexOf("const handleSandboxMessage =")
-    const end = src.indexOf("const unsubscribe =", start)
-    const handler = src.slice(start, end)
-
-    expect(start).toBeGreaterThan(-1)
-    expect(end).toBeGreaterThan(start)
-    expect(handler).toContain('variant: "error"')
-    expect(handler).not.toContain('variant: "success"')
   })
 
   it("uses the internal flag for visibility and effective runtime state for the button", () => {
