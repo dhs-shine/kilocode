@@ -91,7 +91,7 @@ export class NotebookAdapter {
     private readonly options: NotebookAdapterOptions = {},
   ) {
     this.deps = options.deps ?? defaults()
-    this.timeout = options.timeout ?? 120_000
+    this.timeout = options.timeout ?? 9 * 60_000
   }
 
   private async document(
@@ -386,7 +386,7 @@ export class NotebookAdapter {
           ),
         )
       },
-      Math.min(timeout, 10_000),
+      Math.min(timeout, 60_000),
     )
     state.timer = setTimeout(() => {
       stop()
