@@ -30,6 +30,7 @@ describe("PromptInput sandbox toggle", () => {
     expect(start).toBeGreaterThan(-1)
     expect(end).toBeGreaterThan(start)
     expect(toggle).toContain("const sessionID = sandboxID()")
+    expect(toggle).toContain("!sandboxVisible()")
     expect(toggle).toContain("if (!sessionID) saveDraft(draftKey(), text(), reviewComments(), imageAttach.images())")
     expect(toggle).toContain('type: "toggleSandbox"')
     expect(toggle).toContain("sessionID,")
@@ -54,9 +55,14 @@ describe("PromptInput sandbox toggle", () => {
     expect(move).toBeGreaterThan(save)
   })
 
-  it("uses the internal flag for visibility and effective runtime state for the button", () => {
-    expect(src).toContain("features().sandboxControls")
+  it("requires the enabled experiment for visibility and uses effective runtime state for the button", () => {
+    expect(src).toContain(
+      'return features().sandboxControls && config().experimental?.sandbox === true && !id?.startsWith("cloud:")',
+    )
     expect(src).toContain("<Show when={sandboxVisible()}>")
+    expect(src).toContain("{ action: toggleSandbox, enabled: () => sandboxVisible() && !sandboxDisabled() }")
+    expect(src).toContain('if (!sandboxVisible()) hidden.add("sandbox")')
+    expect(src).toContain("onClick={toggleSandbox}")
     expect(src).toContain('message.type === "sandboxStatus"')
     expect(src).toContain("message.sessionID !== sandboxID() && !matching")
     expect(src).toContain("setSandboxState(state)")
@@ -68,6 +74,17 @@ describe("PromptInput sandbox toggle", () => {
     expect(src).toContain("!sandboxReady()")
     expect(src).toContain("if (sandboxRequest() && target === null) return")
     expect(src).not.toContain("if (state === current) return true")
+  })
+
+  it("preserves the draft when the sandbox control is disabled", () => {
+    const start = src.indexOf("if (matched?.action)")
+    const guard = src.indexOf("if (matched.enabled && !matched.enabled()) return", start)
+    const clear = src.indexOf('setText("")', start)
+
+    expect(start).toBeGreaterThan(-1)
+    expect(guard).toBeGreaterThan(start)
+    expect(clear).toBeGreaterThan(guard)
+    expect(src).toContain("disabled={sandboxDisabled()}")
   })
 
   it("explains filesystem and network state without changing the lock icon", () => {
