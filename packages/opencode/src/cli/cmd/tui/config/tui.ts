@@ -15,13 +15,13 @@ import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { CurrentWorkingDirectory } from "./cwd"
 import { ConfigPlugin } from "@/config/plugin"
 import { TuiKeybind } from "./keybind"
-import { InstallationLocal, InstallationVersion } from "@opencode-ai/core/installation/version"
 import { makeRuntime } from "@opencode-ai/core/effect/runtime"
 import { Filesystem } from "@/util/filesystem"
 import * as Log from "@opencode-ai/core/util/log"
 import { ConfigVariable } from "@/config/variable"
 import { Npm } from "@opencode-ai/core/npm"
 import { KilocodeDefaultPlugins } from "@/kilocode/config/default-plugins" // kilocode_change
+import { KilocodePluginDependency } from "@/kilocode/config/plugin-dependency" // kilocode_change
 import type { DeepMutable } from "@opencode-ai/core/schema"
 import type { TuiAttentionSoundName } from "@kilocode/plugin/tui"
 import { FormatError, FormatUnknownError } from "@/cli/error"
@@ -290,7 +290,7 @@ export const layer = Layer.effect(
             add: [
               {
                 name: "@kilocode/plugin",
-                version: InstallationLocal ? undefined : InstallationVersion,
+                version: KilocodePluginDependency.version(), // kilocode_change
               },
             ],
           })
