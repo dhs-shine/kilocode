@@ -3,7 +3,13 @@
 /** @jsxImportSource solid-js */
 
 import { type Component, For, Show, createSignal, createEffect, createMemo, onMount, onCleanup } from "solid-js"
-import type { AgentManagerBranchesMessage, AgentManagerImportResultMessage, BranchInfo } from "../src/types/messages"
+import type {
+  AgentManagerBranchesMessage,
+  AgentManagerImportResultMessage,
+  BranchInfo,
+  EnhancePromptResultMessage,
+  EnhancePromptErrorMessage,
+} from "../src/types/messages"
 import { Dialog } from "@kilocode/kilo-ui/dialog"
 import { showToast } from "@kilocode/kilo-ui/toast"
 import { Icon } from "@kilocode/kilo-ui/icon"
@@ -33,6 +39,7 @@ import { useImageAttachments, type ImageAttachment } from "../src/hooks/useImage
 import { useSpeechToText } from "../src/components/speech-to-text/useSpeechToText"
 import { convertToMentionPath } from "../src/utils/path-mentions"
 import { insertSpacedText } from "../src/components/chat/prompt-input-utils"
+import { WandSparkles } from "@kilocode/kilo-ui/lucide"
 import { BranchSelect, BranchSelectPopover } from "../src/components/shared/BranchSelect"
 import { tracker } from "./telemetry"
 
@@ -42,6 +49,9 @@ const VERSION_OPTIONS: VersionCount[] = [1, 2, 3, 4]
 type DialogTab = "new" | "import"
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent)
+
+let enhanceCounter = 0
+let preEnhanceText: string | null = null
 
 function sanitizeSegment(text: string, maxLength = 50): string {
   return text
@@ -95,6 +105,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   const [modelAllocations, setModelAllocations] = createSignal<ModelAllocations>(new Map())
   const [agent, setAgent] = createSignal(session.selectedAgent())
   const [starting, setStarting] = createSignal(false)
+  const [enhancing, setEnhancing] = createSignal(false)
   const [showAdvanced, setShowAdvanced] = createSignal(false)
   const [branchName, setBranchName] = createSignal("")
   const [baseBranch, setBaseBranch] = createSignal<string | null>(null)
@@ -183,6 +194,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   let textareaRef: HTMLTextAreaElement | undefined
 
   onMount(() => {
+    preEnhanceText = null
     setBranchesLoading(true)
     vscode.postMessage({ type: "agentManager.requestBranches" })
     // Resize textarea if restoring a cached prompt
@@ -255,6 +267,19 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "z" && (e.metaKey || e.ctrlKey) && !e.shiftKey && preEnhanceText !== null) {
+      e.preventDefault()
+      const restored = preEnhanceText
+      preEnhanceText = null
+      setPrompt(restored)
+      persistPrompt(restored)
+      if (textareaRef) {
+        textareaRef.value = restored
+        adjustHeight()
+        textareaRef.focus()
+      }
+      return
+    }
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       handleSubmit()
@@ -287,6 +312,28 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
     speech.start({ model: speechModel(), insert: insertSpeechText })
   }
 
+  const canEnhance = () => !starting() && !enhancing() && !speech.active() && server.isConnected()
+
+  const handleEnhance = () => {
+    if (!canEnhance()) return
+    const draft = prompt().trim()
+    if (!draft) {
+      const description = t("prompt.action.enhanceDescription")
+      setPrompt(description)
+      persistPrompt(description)
+      if (textareaRef) {
+        textareaRef.value = description
+        adjustHeight()
+        textareaRef.focus()
+      }
+      return
+    }
+    preEnhanceText = prompt()
+    enhanceCounter++
+    setEnhancing(true)
+    vscode.postMessage({ type: "enhancePrompt", text: draft, requestId: `enhance-newworktree-${enhanceCounter}` })
+  }
+
   // --- Import tab state ---
   const [prUrl, setPrUrl] = createSignal("")
   const [prPending, setPrPending] = createSignal(false)
@@ -312,6 +359,25 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
       } else {
         const description = ev.errorCode ? t(`agentManager.setup.error.${ev.errorCode}`) : ev.message
         showToast({ variant: "error", title: t("agentManager.import.failed"), description })
+      }
+    }
+    if (msg.type === "enhancePromptResult") {
+      const ev = msg as EnhancePromptResultMessage
+      if (ev.requestId === `enhance-newworktree-${enhanceCounter}`) {
+        setPrompt(ev.text)
+        persistPrompt(ev.text)
+        setEnhancing(false)
+        if (textareaRef) {
+          textareaRef.value = ev.text
+          adjustHeight()
+          textareaRef.focus()
+        }
+      }
+    }
+    if (msg.type === "enhancePromptError") {
+      const ev = msg as EnhancePromptErrorMessage
+      if (ev.requestId === `enhance-newworktree-${enhanceCounter}`) {
+        setEnhancing(false)
       }
     }
   })
@@ -415,6 +481,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                       const val = e.currentTarget.value
                       setPrompt(val)
                       persistPrompt(val)
+                      preEnhanceText = null
                       adjustHeight()
                     }}
                     onPaste={(e) => imageAttach.handlePaste(e)}
@@ -460,6 +527,17 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                   </Show>
                 </div>
                 <div class="prompt-input-hint-actions">
+                  <Tooltip value={t("prompt.action.enhance")} placement="top">
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      onClick={handleEnhance}
+                      disabled={!canEnhance()}
+                      aria-label={t("prompt.action.enhance")}
+                    >
+                      <WandSparkles size={16} class={enhancing() ? "enhance-spinner" : ""} />
+                    </Button>
+                  </Tooltip>
                   <Show when={canUseSpeech()}>
                     <SpeechToTextButton speech={speech} disabled={starting()} start={startSpeech} label={t} />
                   </Show>
