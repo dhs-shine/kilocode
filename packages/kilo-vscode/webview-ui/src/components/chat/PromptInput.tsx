@@ -145,9 +145,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const mention = useFileMention(vscode, sid, hasGit)
   const terminal = useTerminalContext(vscode)
   const git = useGitChangesContext(vscode, ctx, hasGit)
-  const slash = useSlashCommand(vscode, () =>
-    session.variantList(sid()).length > 0 ? new Set() : new Set(["variant"]),
-  )
   const imageAttach = useImageAttachments()
   imageAttach.setFilePathDropHandler((paths) => {
     const cwd = server.workspaceDirectory()
@@ -214,6 +211,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const sandboxEnabled = () => sandbox()?.enabled ?? (!sandboxID() && config().experimental?.sandbox === true)
   const sandboxNetworkEnabled = () => config().experimental?.sandbox_restrict_network !== false
   const sandboxReady = () => !sandboxID() || sandbox() !== undefined
+  const sandboxDisabled = () =>
+    !server.isConnected() || !sandboxReady() || sandbox()?.available === false || sandboxRequest() !== undefined
   const requestSandbox = () => {
     const sessionID = sandboxID()
     if (!sessionID || server.connectionState() !== "connected") return
@@ -221,8 +220,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
   const toggleSandbox = () => {
     const sessionID = sandboxID()
-    const state = sandbox()
-    if ((sessionID && !state) || state?.available === false || sandboxRequest() || !server.isConnected()) return
+    if (!sandboxVisible() || sandboxDisabled()) return
     const requestID = crypto.randomUUID()
     if (!sessionID) saveDraft(draftKey(), text(), reviewComments(), imageAttach.images())
     setSandboxRequest(requestID)
@@ -235,6 +233,16 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       agentManagerContext: ctx(),
     })
   }
+  const slash = useSlashCommand(
+    vscode,
+    { action: toggleSandbox, enabled: () => sandboxVisible() && !sandboxDisabled() },
+    () => {
+      const hidden = new Set<string>()
+      if (session.variantList(sid()).length === 0) hidden.add("variant")
+      if (!sandboxVisible()) hidden.add("sandbox")
+      return hidden
+    },
+  )
   const clearSandboxRequest = () => {
     setSandboxRequest(undefined)
     setSandboxTarget(undefined)
@@ -903,6 +911,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
     // Client-side slash command — runs locally without a backend round-trip
     if (matched?.action) {
+      if (matched.enabled && !matched.enabled()) return
       setText("")
       clearReviewComments()
       imageAttach.clear()
@@ -1274,12 +1283,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 variant="ghost"
                 size="small"
                 onClick={toggleSandbox}
-                disabled={
-                  !server.isConnected() ||
-                  !sandboxReady() ||
-                  sandbox()?.available === false ||
-                  sandboxRequest() !== undefined
-                }
+                disabled={sandboxDisabled()}
                 aria-label={
                   sandboxEnabled()
                     ? language.t("prompt.action.sandbox.disable")
