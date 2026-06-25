@@ -117,12 +117,12 @@ export class NotebookAdapter {
     const budget = { sources: 0, outputs: 0 }
     const flags = { sources: false, outputs: false }
 
-    const source = loaded.document.getCells()
+    const items = loaded.document.getCells()
     const state = this.remember(loaded.document, loaded.target)
-    if (source.length > 2_000) {
+    if (items.length > 2_000) {
       flags.sources = true
     }
-    for (const [index, cell] of source.slice(0, 2_000).entries()) {
+    for (const [index, cell] of items.slice(0, 2_000).entries()) {
       const source = normalizeSource(
         cell.document.getText(),
         Math.max(0, Math.min(NOTEBOOK_LIMITS.source, NOTEBOOK_LIMITS.sources - budget.sources)),
