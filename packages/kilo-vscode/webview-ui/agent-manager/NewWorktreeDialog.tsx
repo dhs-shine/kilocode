@@ -463,6 +463,8 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                       </Tooltip>
                     </Show>
                   </Show>
+                </div>
+                <div class="prompt-input-hint-actions">
                   <Show when={sandboxVisible()}>
                     <SandboxButtonBase
                       enabled={sandbox()}
@@ -481,8 +483,6 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                       )}
                     />
                   </Show>
-                </div>
-                <div class="prompt-input-hint-actions">
                   <Show when={canUseSpeech()}>
                     <SpeechToTextButton speech={speech} disabled={starting()} start={startSpeech} label={t} />
                   </Show>

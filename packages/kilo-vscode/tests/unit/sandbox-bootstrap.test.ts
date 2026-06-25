@@ -128,4 +128,17 @@ describe("Agent Manager sandbox startup", () => {
     expect(dialog).toContain("sandbox: sandboxVisible() ? sandbox() : undefined")
     expect(dialog).toContain("<Show when={sandboxVisible()}>")
   })
+
+  test("places the sandbox toggle with prompt actions instead of model selectors", () => {
+    const selectors = dialog.indexOf('<div class="prompt-input-hint-selectors">')
+    const actions = dialog.indexOf('<div class="prompt-input-hint-actions">', selectors)
+    const sandbox = dialog.indexOf("<SandboxButtonBase", actions)
+    const speech = dialog.indexOf("<SpeechToTextButton", actions)
+
+    expect(selectors).toBeGreaterThan(-1)
+    expect(actions).toBeGreaterThan(selectors)
+    expect(dialog.slice(selectors, actions)).not.toContain("<SandboxButtonBase")
+    expect(sandbox).toBeGreaterThan(actions)
+    expect(speech).toBeGreaterThan(sandbox)
+  })
 })
