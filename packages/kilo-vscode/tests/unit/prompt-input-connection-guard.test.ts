@@ -22,7 +22,7 @@ describe("PromptInput connection guard", () => {
 })
 
 describe("PromptInput sandbox toggle", () => {
-  it("toggles or creates the runtime session instead of writing config", () => {
+  it("updates the default for drafts and toggles only existing sessions", () => {
     const start = src.indexOf("const toggleSandbox = () =>")
     const end = src.indexOf("let enhanceCounter", start)
     const toggle = src.slice(start, end)
@@ -33,9 +33,11 @@ describe("PromptInput sandbox toggle", () => {
     expect(toggle).toContain("!sandboxVisible()")
     expect(toggle).toContain("if (!sessionID) saveDraft(draftKey(), text(), reviewComments(), imageAttach.images())")
     expect(toggle).toContain('type: "toggleSandbox"')
+    expect(toggle).toContain('type: "setSandboxDefault"')
+    expect(toggle).toContain("enabled: !sandboxDefault()!.desired")
     expect(toggle).toContain("sessionID,")
-    expect(toggle).toContain("draftID: props.pendingSessionID ?? session.draftSessionID()")
     expect(toggle).toContain("requestID,")
+    expect(toggle).not.toContain("draftID:")
     expect(toggle).toContain("setSandboxTarget(sessionID ?? null)")
     expect(toggle).not.toContain('type: "updateConfig"')
   })
@@ -68,8 +70,9 @@ describe("PromptInput sandbox toggle", () => {
     expect(src).toContain("setSandboxState(state)")
     expect(src).toContain("message.requestID === sandboxRequest()")
     expect(src).toContain("const target = untrack(sandboxTarget)")
-    expect(src).toContain("if (target && target !== sessionID) clearSandboxRequest()")
-    expect(src).toContain("sandbox()?.enabled ?? (!sandboxID() && config().experimental?.sandbox === true)")
+    expect(src).toContain("if (target !== undefined && target !== sessionID) clearSandboxRequest()")
+    expect(src).toContain("sandboxID() ? sandbox()?.enabled : sandboxDefault()?.enabled")
+    expect(src).toContain('type: "requestSandboxDefault"')
     expect(src).toContain("aria-pressed={sandboxEnabled()}")
     expect(src).toContain("!sandboxReady()")
     expect(src).toContain("if (sandboxRequest() && target === null) return")

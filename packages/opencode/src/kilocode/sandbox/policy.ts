@@ -10,13 +10,9 @@ import type { InstanceContext } from "@/project/instance-context"
 import type { SessionID } from "@/session/schema"
 import { Changed } from "./event"
 import * as Network from "./network"
+import * as State from "./state"
 
-const overrides = new Map<string, { enabled: boolean; version: number }>()
 const locks = new Map<SessionID, { semaphore: Semaphore.Semaphore; refs: number }>()
-
-function key(directory: string, sessionID: SessionID) {
-  return directory + "\0" + sessionID
-}
 
 function locked<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
   return Effect.acquireUseRelease(
@@ -108,77 +104,78 @@ export function profile(ctx: InstanceContext, mode: Profile["network"]["mode"] =
   }
 }
 
+export function support(mode: Profile["network"]["mode"] = "deny") {
+  return backendSupport({ mode, allowedHosts: [] })
+}
+
+export const configuredSupport = Effect.fn("SandboxPolicy.configuredSupport")(function* () {
+  const config = yield* Config.Service
+  const cfg = yield* config.get()
+  const mode = cfg.experimental?.sandbox_restrict_network === false ? "allow" : "deny"
+  return support(mode)
+})
+
 export const status = Effect.fn("SandboxPolicy.status")(function* (sessionID: SessionID) {
   const config = yield* Config.Service
   const cfg = yield* config.get()
   const directory = yield* InstanceState.directory
-  const override = overrides.get(key(directory, sessionID))
-  const enabled = override?.enabled ?? cfg.experimental?.sandbox ?? false
+  const stored = yield* State.read(sessionID)
+  const desired = stored?.enabled ?? cfg.experimental?.sandbox ?? false
   const mode = cfg.experimental?.sandbox_restrict_network === false ? "allow" : "deny"
-  const support = backendSupport({ mode, allowedHosts: [] })
+  const backend = support(mode)
   return {
     directory,
-    enabled: enabled && support.available,
-    available: support.available,
-    reason: support.reason,
-    version: override?.version ?? 0,
+    enabled: desired && backend.available,
+    available: backend.available,
+    reason: backend.reason,
+    version: stored?.version ?? 0,
   }
 })
 
-function change<E, R>(sessionID: SessionID, guard: Effect.Effect<unknown, E, R>) {
-  return Effect.gen(function* () {
-    const directory = yield* InstanceState.directory
-    const id = key(directory, sessionID)
-    return yield* locked(
-      sessionID,
-      Effect.gen(function* () {
-        yield* guard
-        const current = yield* status(sessionID)
-        if (!current.enabled && !current.available) return current
-        const value = { ...current, enabled: !current.enabled, version: current.version + 1 }
-        overrides.set(id, { enabled: value.enabled, version: value.version })
-        yield* (yield* Bus.Service).publish(Changed, { sessionID, ...value })
-        return value
-      }),
-    )
-  })
+type Store<E, R> = (value: State.Value) => Effect.Effect<unknown, E, R>
+
+function change<GE, GR, SE, SR>(sessionID: SessionID, guard: Effect.Effect<unknown, GE, GR>, store: Store<SE, SR>) {
+  return locked(
+    sessionID,
+    Effect.gen(function* () {
+      yield* guard
+      const current = yield* status(sessionID)
+      if (!current.enabled && !current.available) return current
+      const saved = { enabled: !current.enabled, version: current.version + 1 }
+      yield* store(saved)
+      const value = { ...current, ...saved }
+      yield* (yield* Bus.Service).publish(Changed, { sessionID, ...value })
+      return value
+    }),
+  )
 }
 
-export const toggle = Effect.fn("SandboxPolicy.toggle")((sessionID: SessionID) => change(sessionID, Effect.void))
+export const toggle = Effect.fn("SandboxPolicy.toggle")((sessionID: SessionID) =>
+  change(sessionID, Effect.void, (value) => State.write(sessionID, value)),
+)
 
-export function toggleGuarded<E, R>(sessionID: SessionID, guard: Effect.Effect<unknown, E, R>) {
-  return change(sessionID, guard)
+export function toggleGuarded<GE, GR, SE, SR>(
+  sessionID: SessionID,
+  guard: Effect.Effect<unknown, GE, GR>,
+  store: Store<SE, SR>,
+) {
+  return change(sessionID, guard, store)
 }
 
-export const clear = Effect.fn("SandboxPolicy.clear")(function* (sessionID: SessionID) {
-  yield* retire(sessionID, yield* InstanceState.directory, Effect.void)
-})
+export const clear = Effect.fn("SandboxPolicy.clear")((sessionID: SessionID) =>
+  locked(sessionID, State.clear(sessionID)),
+)
 
 export function retire<A, E, R>(
   sessionID: SessionID,
-  directory: string,
+  _directory: string,
   effect: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> {
-  return locked(
-    sessionID,
-    Effect.gen(function* () {
-      overrides.delete(key(directory, sessionID))
-      return yield* effect
-    }),
-  )
+  return locked(sessionID, effect)
 }
 
 export function dispose<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {
-  return locked(
-    sessionID,
-    Effect.gen(function* () {
-      const suffix = "\0" + sessionID
-      for (const id of overrides.keys()) {
-        if (id.endsWith(suffix)) overrides.delete(id)
-      }
-      return yield* effect
-    }),
-  )
+  return locked(sessionID, effect)
 }
 
 function execute<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {

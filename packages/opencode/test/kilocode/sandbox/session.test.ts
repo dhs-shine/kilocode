@@ -27,8 +27,8 @@ const it = testEffect(
   ),
 )
 
-describe("sandbox session cleanup", () => {
-  it.live("clears every directory override when removing outside instance context", () =>
+describe("sandbox session persistence", () => {
+  it.live("uses one persisted state across request directories", () =>
     Effect.gen(function* () {
       const session = yield* Session.Service
       const dir = yield* tmpdirScoped({ git: true })
@@ -41,9 +41,10 @@ describe("sandbox session cleanup", () => {
       }
 
       yield* provideInstance(dir)(SandboxPolicy.toggle(info.id))
-      yield* provideInstance(worktree)(SandboxPolicy.toggle(info.id))
-      expect((yield* provideInstance(dir)(SandboxPolicy.status(info.id))).enabled).toBe(true)
       expect((yield* provideInstance(worktree)(SandboxPolicy.status(info.id))).enabled).toBe(true)
+      yield* provideInstance(worktree)(SandboxPolicy.toggle(info.id))
+      expect((yield* provideInstance(dir)(SandboxPolicy.status(info.id))).enabled).toBe(false)
+      expect((yield* provideInstance(worktree)(SandboxPolicy.status(info.id))).enabled).toBe(false)
       yield* session.remove(info.id)
       expect((yield* provideInstance(dir)(SandboxPolicy.status(info.id))).enabled).toBe(false)
       expect((yield* provideInstance(worktree)(SandboxPolicy.status(info.id))).enabled).toBe(false)

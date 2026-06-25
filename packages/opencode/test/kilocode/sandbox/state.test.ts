@@ -5,17 +5,40 @@ import { Deferred, Effect, Exit, Fiber, Layer } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { enabled as sandboxed } from "@kilocode/sandbox"
+import { BackgroundJob } from "@/background/job"
 import { Bus } from "@/bus"
 import { Config } from "@/config/config"
+import { RuntimeFlags } from "@/effect/runtime-flags"
 import * as Network from "@/kilocode/sandbox/network"
 import * as SandboxPolicy from "@/kilocode/sandbox/policy"
+import * as SandboxState from "@/kilocode/sandbox/state"
+import { Session } from "@/session/session"
 import { SessionID } from "@/session/schema"
+import { Storage } from "@/storage/storage"
+import { SyncEvent } from "@/sync"
 import { TestInstance } from "../../fixture/fixture"
 import { testEffect } from "../../lib/effect"
 
-const it = testEffect(Layer.mergeAll(Bus.layer, Config.defaultLayer, CrossSpawnSpawner.defaultLayer))
+const it = testEffect(
+  Layer.mergeAll(
+    Session.layer.pipe(
+      Layer.provide(Bus.layer),
+      Layer.provide(Storage.defaultLayer),
+      Layer.provide(SyncEvent.defaultLayer),
+      Layer.provide(RuntimeFlags.layer({ experimentalWorkspaces: false })),
+      Layer.provide(BackgroundJob.defaultLayer),
+    ),
+    Bus.layer,
+    Config.defaultLayer,
+    CrossSpawnSpawner.defaultLayer,
+  ),
+)
 const linux = process.platform === "linux" ? test : test.skip
 const tool = Network.builtin({ id: "read" })
+
+const create = Effect.fn("SandboxTest.create")(function* (metadata?: Record<string, unknown>) {
+  return (yield* (yield* Session.Service).create({ title: "sandbox-test", metadata })).id
+})
 
 function execute<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
   return SandboxPolicy.executeTool(sessionID, tool, effect)
@@ -65,10 +88,10 @@ linux("reports configured network namespace availability", async () => {
 })
 
 it.instance(
-  "uses config as the default without persisting session toggles",
+  "persists session toggles without changing config",
   () =>
     Effect.gen(function* () {
-      const id = SessionID.make("ses_sandbox_config")
+      const id = yield* create()
       const initial = yield* SandboxPolicy.status(id)
       expect(initial.enabled).toBe(initial.available)
       expect(initial.version).toBe(0)
@@ -77,6 +100,10 @@ it.instance(
       const disabled = yield* SandboxPolicy.toggle(id)
       expect(disabled.enabled).toBe(false)
       expect(disabled.version).toBe(1)
+      expect(SandboxState.parse((yield* (yield* Session.Service).get(id)).metadata)).toEqual({
+        enabled: false,
+        version: 1,
+      })
       expect((yield* (yield* Config.Service).get()).experimental?.sandbox).toBe(true)
 
       yield* SandboxPolicy.clear(id)
@@ -85,9 +112,29 @@ it.instance(
   { config: { experimental: { sandbox: true } } },
 )
 
+it.instance("preserves unrelated metadata through the production persistence callback", () =>
+  Effect.gen(function* () {
+    const sessions = yield* Session.Service
+    const id = yield* create({ source: "test", nested: { value: 1 } })
+    if (!(yield* SandboxPolicy.status(id)).available) return
+
+    yield* SandboxPolicy.toggleGuarded(id, sessions.get(id), (value) =>
+      Effect.gen(function* () {
+        const info = yield* sessions.get(id)
+        yield* sessions.setMetadata({ sessionID: id, metadata: SandboxState.merge(info.metadata, value) })
+      }),
+    )
+
+    const info = yield* sessions.get(id)
+    expect(info.metadata?.source).toBe("test")
+    expect(info.metadata?.nested).toEqual({ value: 1 })
+    expect(SandboxState.parse(info.metadata)).toEqual({ enabled: true, version: 1 })
+  }),
+)
+
 it.instance("runs unrestricted when config is off and no override exists", () =>
   Effect.gen(function* () {
-    const id = SessionID.make("ses_sandbox_default_off")
+    const id = yield* create()
     expect((yield* SandboxPolicy.status(id)).enabled).toBe(false)
     expect(yield* execute(id, sandboxed)).toBe(false)
   }),
@@ -97,7 +144,7 @@ it.instance(
   "runs sandboxed when config is on and no override exists",
   () =>
     Effect.gen(function* () {
-      const id = SessionID.make("ses_sandbox_default_on")
+      const id = yield* create()
       const status = yield* SandboxPolicy.status(id)
       expect(status.enabled).toBe(status.available)
       expect(yield* execute(id, sandboxed)).toBe(status.available)
@@ -109,8 +156,8 @@ it.instance(
   "overrides config off for only one session",
   () =>
     Effect.gen(function* () {
-      const first = SessionID.make("ses_sandbox_override_off")
-      const second = SessionID.make("ses_sandbox_config_stays_on")
+      const first = yield* create()
+      const second = yield* create()
       if (!(yield* SandboxPolicy.status(first)).available) return
 
       expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(false)
@@ -122,8 +169,8 @@ it.instance(
 
 it.instance("overrides config off to sandbox only one session", () =>
   Effect.gen(function* () {
-    const first = SessionID.make("ses_sandbox_override_on")
-    const second = SessionID.make("ses_sandbox_default_remains_off")
+    const first = yield* create()
+    const second = yield* create()
     if (!(yield* SandboxPolicy.status(first)).available) return
 
     expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(true)
@@ -134,8 +181,8 @@ it.instance("overrides config off to sandbox only one session", () =>
 
 it.instance("isolates concurrent session overrides and clears them", () =>
   Effect.gen(function* () {
-    const first = SessionID.make("ses_sandbox_first")
-    const second = SessionID.make("ses_sandbox_second")
+    const first = yield* create()
+    const second = yield* create()
     const support = yield* SandboxPolicy.status(first)
     if (!support.available) {
       expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(false)
@@ -153,9 +200,26 @@ it.instance("isolates concurrent session overrides and clears them", () =>
   }),
 )
 
+it.instance("inherits persisted state when forking and isolates later toggles", () =>
+  Effect.gen(function* () {
+    const sessions = yield* Session.Service
+    const parent = yield* create()
+    if (!(yield* SandboxPolicy.status(parent)).available) return
+
+    expect((yield* SandboxPolicy.toggle(parent)).enabled).toBe(true)
+    const child = yield* sessions.fork({ sessionID: parent })
+    expect((yield* SandboxPolicy.status(child.id)).enabled).toBe(true)
+    expect(SandboxState.parse((yield* sessions.get(child.id)).metadata)).toEqual({ enabled: true, version: 1 })
+
+    expect((yield* SandboxPolicy.toggle(child.id)).enabled).toBe(false)
+    expect((yield* SandboxPolicy.status(parent)).enabled).toBe(true)
+    expect((yield* SandboxPolicy.status(child.id)).enabled).toBe(false)
+  }),
+)
+
 it.instance("does not activate an unavailable backend", () =>
   Effect.gen(function* () {
-    const id = SessionID.make("ses_sandbox_support")
+    const id = yield* create()
     const result = yield* SandboxPolicy.toggle(id)
     if (result.available) return
     expect(result.enabled).toBe(false)
@@ -165,7 +229,7 @@ it.instance("does not activate an unavailable backend", () =>
 
 it.instance("serializes concurrent toggles for a session", () =>
   Effect.gen(function* () {
-    const id = SessionID.make("ses_sandbox_concurrent")
+    const id = yield* create()
     if (!(yield* SandboxPolicy.status(id)).available) return
     yield* Effect.all([SandboxPolicy.toggle(id), SandboxPolicy.toggle(id)], { concurrency: "unbounded" })
     expect((yield* SandboxPolicy.status(id)).enabled).toBe(false)
@@ -175,7 +239,7 @@ it.instance("serializes concurrent toggles for a session", () =>
 it.instance("prevents a queued toggle from restoring a retired override", () =>
   Effect.gen(function* () {
     const test = yield* TestInstance
-    const id = SessionID.make("ses_sandbox_retire_race")
+    const id = yield* create()
     const entered = yield* Deferred.make<void>()
     const release = yield* Deferred.make<void>()
     const removal = yield* SandboxPolicy.retire(
@@ -187,7 +251,9 @@ it.instance("prevents a queued toggle from restoring a retired override", () =>
       }),
     ).pipe(Effect.forkChild)
     yield* Deferred.await(entered)
-    const pending = yield* SandboxPolicy.toggleGuarded(id, Effect.fail("deleted")).pipe(Effect.exit, Effect.forkChild)
+    const pending = yield* SandboxPolicy.toggleGuarded(id, Effect.fail("deleted"), (value) =>
+      SandboxState.write(id, value),
+    ).pipe(Effect.exit, Effect.forkChild)
     yield* Deferred.succeed(release, undefined)
     yield* Fiber.join(removal)
     expect(Exit.isFailure(yield* Fiber.join(pending))).toBe(true)
@@ -197,8 +263,8 @@ it.instance("prevents a queued toggle from restoring a retired override", () =>
 
 it.instance("uses nested session state instead of inheriting a parent profile", () =>
   Effect.gen(function* () {
-    const parent = SessionID.make("ses_sandbox_parent")
-    const child = SessionID.make("ses_sandbox_child")
+    const parent = yield* create()
+    const child = yield* create()
     if (!(yield* SandboxPolicy.status(parent)).available) return
     yield* SandboxPolicy.toggle(parent)
     expect(yield* execute(parent, execute(child, sandboxed))).toBe(false)
@@ -210,7 +276,7 @@ it.instance("enforces writes only while the macOS session override is active", (
   Effect.gen(function* () {
     if (process.platform !== "darwin") return
     const test = yield* TestInstance
-    const id = SessionID.make("ses_sandbox_process")
+    const id = yield* create()
     if (!(yield* SandboxPolicy.status(id)).available) return
     const outside = path.join(path.dirname(test.directory), `outside-${path.basename(test.directory)}`)
     const inside = path.join(test.directory, "allowed.txt")

@@ -34,6 +34,7 @@ import { restoreWorktrees } from "./state-recovery"
 import { createLocalDiff, diffSummary as localDiffSummary } from "./local-diff"
 import { parseToolRequest, startFromTool, type ToolRequest } from "./tool-start"
 import { stopSessionProcesses } from "../kilo-provider/background-process"
+import { sandboxSessionMetadata } from "../shared/sandbox-session"
 
 import { startSession } from "./mcp-warmup"
 import { readTerminalFont, watchTerminalFont } from "./terminal-font"
@@ -826,10 +827,11 @@ export class AgentManagerProvider implements Disposable {
     })
 
     try {
+      const metadata = await sandboxSessionMetadata(this.connectionService.sandboxPreference, client, worktreePath)
       const { data: session } = await startSession(
         client,
         worktreePath,
-        () => client.session.create({ directory: worktreePath, platform: PLATFORM }, { throwOnError: true }),
+        () => client.session.create({ directory: worktreePath, platform: PLATFORM, metadata }, { throwOnError: true }),
         (...args) => this.log(...args),
       )
       return session
@@ -942,6 +944,7 @@ export class AgentManagerProvider implements Disposable {
         },
         setup: (dir, branch, id) => this.runSetupScriptForWorktree(dir, branch, id),
         createSessionInWorktree: (dir, branch, id) => this.createSessionInWorktree(dir, branch, id),
+        sessionMetadata: (client, dir) => sandboxSessionMetadata(this.connectionService.sandboxPreference, client, dir),
         registerWorktreeSession: (sid, dir) => this.registerWorktreeSession(sid, dir),
         notifyReady: (sid, result, wid) => this.notifyWorktreeReady(sid, result, wid),
         push: () => this.pushState(),
@@ -1133,8 +1136,9 @@ export class AgentManagerProvider implements Disposable {
 
     let session: Session
     try {
+      const metadata = await sandboxSessionMetadata(this.connectionService.sandboxPreference, client, worktree.path)
       const { data } = await client.session.create(
-        { directory: worktree.path, platform: PLATFORM },
+        { directory: worktree.path, platform: PLATFORM, metadata },
         { throwOnError: true },
       )
       session = data
