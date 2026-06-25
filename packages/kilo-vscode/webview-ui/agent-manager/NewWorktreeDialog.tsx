@@ -21,6 +21,7 @@ import { ModeSwitcherBase } from "../src/components/shared/ModeSwitcher"
 import { SpeechToTextButton } from "../src/components/speech-to-text/SpeechToTextButton"
 import { canUseSpeechToText, selectedSpeechToTextModel } from "../src/components/speech-to-text/availability"
 import { ThinkingSelectorBase } from "../src/components/shared/ThinkingSelector"
+import { SandboxButtonBase } from "../src/components/shared/SandboxButton"
 import {
   MultiModelSelector,
   type ModelAllocations,
@@ -461,26 +462,15 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                     </Show>
                   </Show>
                   <Show when={features().sandboxControls}>
-                    <Tooltip
-                      value={sandbox() ? t("prompt.action.sandbox.enabled") : t("prompt.action.sandbox.disabled")}
-                      placement="top"
-                    >
-                      <Button
-                        variant="ghost"
-                        size="small"
-                        onClick={click(
-                          "sandbox_toggle",
-                          "configure_worktree_dialog",
-                          () => setSandbox(!sandbox()),
-                          () => ({ enabled: !sandbox() }),
-                        )}
-                        aria-label={sandbox() ? t("prompt.action.sandbox.disable") : t("prompt.action.sandbox.enable")}
-                        aria-pressed={sandbox()}
-                        class={`prompt-status-button ${sandbox() ? "prompt-status-button--active" : ""}`}
-                      >
-                        <Icon name="lock" size="small" />
-                      </Button>
-                    </Tooltip>
+                    <SandboxButtonBase
+                      enabled={sandbox()}
+                      onToggle={click(
+                        "sandbox_toggle",
+                        "configure_worktree_dialog",
+                        () => setSandbox(!sandbox()),
+                        () => ({ enabled: !sandbox() }),
+                      )}
+                    />
                   </Show>
                 </div>
                 <div class="prompt-input-hint-actions">

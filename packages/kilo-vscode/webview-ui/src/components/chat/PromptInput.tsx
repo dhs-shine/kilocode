@@ -20,6 +20,7 @@ import { useConfig } from "../../context/config"
 import { useProvider } from "../../context/provider"
 import { ModelSelector } from "../shared/ModelSelector"
 import { ModeSwitcher } from "../shared/ModeSwitcher"
+import { SandboxButtonBase } from "../shared/SandboxButton"
 import { SpeechToTextButton } from "../speech-to-text/SpeechToTextButton"
 import { canUseSpeechToText, selectedSpeechToTextModel } from "../speech-to-text/availability"
 import { ThinkingSelector } from "../shared/ThinkingSelector"
@@ -1215,37 +1216,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
             </Button>
           </Tooltip>
           <Show when={sandboxVisible()}>
-            <Tooltip
-              value={
-                sandbox()?.available === false
-                  ? (sandbox()?.reason ?? language.t("common.requestFailed"))
-                  : sandboxEnabled()
-                    ? language.t("prompt.action.sandbox.enabled")
-                    : language.t("prompt.action.sandbox.disabled")
-              }
-              placement="top"
-            >
-              <Button
-                variant="ghost"
-                size="small"
-                onClick={toggleSandbox}
-                disabled={
-                  !server.isConnected() ||
-                  !sandboxReady() ||
-                  sandbox()?.available === false ||
-                  sandboxRequest() !== undefined
-                }
-                aria-label={
-                  sandboxEnabled()
-                    ? language.t("prompt.action.sandbox.disable")
-                    : language.t("prompt.action.sandbox.enable")
-                }
-                aria-pressed={sandboxEnabled()}
-                class={`prompt-status-button ${sandboxEnabled() ? "prompt-status-button--active" : ""}`}
-              >
-                <Icon name="lock" size="small" />
-              </Button>
-            </Tooltip>
+            <SandboxButtonBase
+              enabled={sandboxEnabled()}
+              available={sandbox()?.available}
+              reason={sandbox()?.reason}
+              disabled={!server.isConnected() || !sandboxReady() || sandboxRequest() !== undefined}
+              onToggle={toggleSandbox}
+            />
           </Show>
           <Tooltip value={language.t("prompt.action.enhance")} placement="top">
             <Button
