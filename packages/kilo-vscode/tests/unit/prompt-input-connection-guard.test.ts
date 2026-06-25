@@ -4,8 +4,10 @@ import { join } from "node:path"
 
 const path = join(__dirname, "..", "..", "webview-ui", "src", "components", "chat", "PromptInput.tsx")
 const buttonPath = join(__dirname, "..", "..", "webview-ui", "src", "components", "shared", "SandboxButton.tsx")
+const iconPath = join(__dirname, "..", "..", "..", "kilo-ui", "src", "components", "icon.tsx")
 const src = readFileSync(path, "utf8")
 const button = readFileSync(buttonPath, "utf8")
+const icons = readFileSync(iconPath, "utf8")
 
 describe("PromptInput connection guard", () => {
   it("rechecks the connection after resolving async attachments and before clearing the draft", () => {
@@ -54,8 +56,10 @@ describe("PromptInput sandbox toggle", () => {
     expect(move).toBeGreaterThan(save)
   })
 
-  it("uses the internal flag for visibility and effective runtime state for the button", () => {
-    expect(src).toContain("features().sandboxControls")
+  it("requires the enabled experiment for visibility and uses effective runtime state for the button", () => {
+    expect(src).toContain(
+      'return features().sandboxControls && config().experimental?.sandbox === true && !id?.startsWith("cloud:")',
+    )
     expect(src).toContain("<Show when={sandboxVisible()}>")
     expect(src).toContain('message.type === "sandboxStatus"')
     expect(src).toContain("message.sessionID !== sandboxID() && !matching")
@@ -71,5 +75,20 @@ describe("PromptInput sandbox toggle", () => {
     expect(button).toContain('class={`prompt-status-button ${props.enabled ? "prompt-status-button--active" : ""}`}')
     expect(src).toContain("if (sandboxRequest() && target === null) return")
     expect(src).not.toContain("if (state === current) return true")
+  })
+
+  it("explains filesystem and network state without changing the lock icon", () => {
+    expect(src).toContain(
+      "const sandboxNetworkEnabled = () => config().experimental?.sandbox_restrict_network !== false",
+    )
+    expect(src).toContain("<SandboxTooltipContent enabled={sandboxEnabled()} network={sandboxNetworkEnabled()} />")
+    expect(src).toContain('tooltipClass="prompt-sandbox-tooltip-content"')
+    expect(button).toContain('<Icon name="lock" size="small" />')
+    expect(button).toContain('<Icon name="folder" size="small" />')
+    expect(button).toContain('<Icon name="globe" size="small" />')
+    expect(button).toContain("props.enabled && props.network")
+    expect(button).not.toContain('class="prompt-sandbox-network"')
+    expect(button).not.toContain('class="prompt-sandbox-icon"')
+    expect(icons).toContain("globe: {")
   })
 })

@@ -852,7 +852,7 @@ export class AgentManagerProvider implements Disposable {
   }
 
   /** Remove a worktree whose session could not be safely initialized. */
-  private async discardWorktree(id: string, dir: string, sessionId?: string): Promise<void> {
+  private async discardWorktree(id: string, dir: string, branch: string, sessionId?: string): Promise<void> {
     this.getStateManager()?.removeWorktree(id)
     this.pushState()
 
@@ -867,7 +867,7 @@ export class AgentManagerProvider implements Disposable {
     }
 
     try {
-      await this.getWorktreeManager()?.removeWorktree(dir)
+      await this.getWorktreeManager()?.removeWorktree(dir, branch)
     } catch (err) {
       this.log(`Failed to remove worktree ${id} after setup failed:`, err)
     }
@@ -1330,7 +1330,7 @@ export class AgentManagerProvider implements Disposable {
             error: err,
             context: "configureSandbox",
           })
-          await this.discardWorktree(wt.worktree.id, wt.result.path, session.id)
+          await this.discardWorktree(wt.worktree.id, wt.result.path, wt.result.branch, session.id)
           continue
         }
       }

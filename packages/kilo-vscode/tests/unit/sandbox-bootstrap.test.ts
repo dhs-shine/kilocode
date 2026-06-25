@@ -117,6 +117,12 @@ describe("Agent Manager sandbox startup", () => {
     expect(prompt).toBeGreaterThan(created)
   })
 
+  test("deletes the fresh branch when sandbox setup rolls back", () => {
+    expect(provider).toContain("private async discardWorktree(id: string, dir: string, branch: string")
+    expect(provider).toContain("removeWorktree(dir, branch)")
+    expect(provider).toContain("wt.result.path, wt.result.branch, session.id")
+  })
+
   test("uses the experiment-aware visibility condition for UI and payload", () => {
     expect(dialog).toContain("const sandboxVisible = () => isSandboxVisible(features(), config())")
     expect(dialog).toContain("sandbox: sandboxVisible() ? sandbox() : undefined")

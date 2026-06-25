@@ -22,7 +22,7 @@ import { SpeechToTextButton } from "../src/components/speech-to-text/SpeechToTex
 import { canUseSpeechToText, selectedSpeechToTextModel } from "../src/components/speech-to-text/availability"
 import { visible as isSandboxVisible } from "../src/components/settings/sandboxing"
 import { ThinkingSelectorBase } from "../src/components/shared/ThinkingSelector"
-import { SandboxButtonBase } from "../src/components/shared/SandboxButton"
+import { SandboxButtonBase, SandboxTooltipContent } from "../src/components/shared/SandboxButton"
 import {
   MultiModelSelector,
   type ModelAllocations,
@@ -466,6 +466,13 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                   <Show when={sandboxVisible()}>
                     <SandboxButtonBase
                       enabled={sandbox()}
+                      tooltip={
+                        <SandboxTooltipContent
+                          enabled={sandbox()}
+                          network={config().experimental?.sandbox_restrict_network !== false}
+                        />
+                      }
+                      tooltipClass="prompt-sandbox-tooltip-content"
                       onToggle={click(
                         "sandbox_toggle",
                         "configure_worktree_dialog",

@@ -20,7 +20,7 @@ import { useConfig } from "../../context/config"
 import { useProvider } from "../../context/provider"
 import { ModelSelector } from "../shared/ModelSelector"
 import { ModeSwitcher } from "../shared/ModeSwitcher"
-import { SandboxButtonBase } from "../shared/SandboxButton"
+import { SandboxButtonBase, SandboxTooltipContent } from "../shared/SandboxButton"
 import { SpeechToTextButton } from "../speech-to-text/SpeechToTextButton"
 import { canUseSpeechToText, selectedSpeechToTextModel } from "../speech-to-text/availability"
 import { ThinkingSelector } from "../shared/ThinkingSelector"
@@ -163,13 +163,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
   const sandboxVisible = () => {
     const id = session.currentSessionID()
-    return features().sandboxControls && !id?.startsWith("cloud:")
+    return features().sandboxControls && config().experimental?.sandbox === true && !id?.startsWith("cloud:")
   }
   const sandbox = () => {
     const state = sandboxState()
     return state?.sessionID === sandboxID() ? state : undefined
   }
   const sandboxEnabled = () => sandbox()?.enabled ?? (!sandboxID() && config().experimental?.sandbox === true)
+  const sandboxNetworkEnabled = () => config().experimental?.sandbox_restrict_network !== false
   const sandboxReady = () => !sandboxID() || sandbox() !== undefined
   const requestSandbox = () => {
     const sessionID = sandboxID()
@@ -1221,6 +1222,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               available={sandbox()?.available}
               reason={sandbox()?.reason}
               disabled={!server.isConnected() || !sandboxReady() || sandboxRequest() !== undefined}
+              tooltip={<SandboxTooltipContent enabled={sandboxEnabled()} network={sandboxNetworkEnabled()} />}
+              tooltipClass="prompt-sandbox-tooltip-content"
               onToggle={toggleSandbox}
             />
           </Show>
