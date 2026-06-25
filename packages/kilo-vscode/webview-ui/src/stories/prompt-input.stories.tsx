@@ -60,12 +60,6 @@ const PromptProviders: ParentComponent<{
     workspaceDirectory: () => "/workspace",
     gitInstalled: () => true,
   }
-  const content = (
-    <div style={{ overflow: "hidden" }}>
-      <SessionContext.Provider value={session as any}>{props.children}</SessionContext.Provider>
-    </div>
-  )
-
   return (
     <StoryProviders
       noPadding
@@ -77,11 +71,15 @@ const PromptProviders: ParentComponent<{
       features={props.sandboxNetwork ? { sandboxControls: true } : undefined}
     >
       {/* overflow:hidden prevents margin-collapse so top/bottom borders are captured in screenshots */}
-      {props.sandboxNetwork ? (
-        <ServerContext.Provider value={server as any}>{content}</ServerContext.Provider>
-      ) : (
-        content
-      )}
+      <div style={{ overflow: "hidden" }}>
+        <SessionContext.Provider value={session as any}>
+          {props.sandboxNetwork ? (
+            <ServerContext.Provider value={server as any}>{props.children}</ServerContext.Provider>
+          ) : (
+            props.children
+          )}
+        </SessionContext.Provider>
+      </div>
     </StoryProviders>
   )
 }
