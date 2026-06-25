@@ -230,7 +230,10 @@ export class NotebookAdapter {
       })
     }
     const expected = revisions.get(revisionKey(loaded.target, request.expectedRevision))
-    if (state.revision !== request.expectedRevision && !sameCell(expected?.cells[request.index], state.cells[request.index])) {
+    if (
+      state.revision !== request.expectedRevision &&
+      !sameCell(expected?.cells[request.index], state.cells[request.index])
+    ) {
       throw this.stale(loaded.path, request.index, state.revision, "The targeted notebook cell changed")
     }
     const cell = loaded.document.cellAt(request.index)
@@ -347,7 +350,9 @@ export class NotebookAdapter {
           document.cellAt(request.index) !== cell ||
           !sameCell(fingerprint, current.cells[request.index])
         ) {
-          reject(this.stale(path, request.index, current.revision, "The targeted notebook cell changed during execution"))
+          reject(
+            this.stale(path, request.index, current.revision, "The targeted notebook cell changed during execution"),
+          )
           stop()
           return
         }

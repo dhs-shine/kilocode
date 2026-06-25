@@ -90,7 +90,13 @@ function harness(context: NotebookBridgeContext, dirs = ["/repo"]) {
 function context(overrides: Partial<NotebookBridgeContext["adapter"]> = {}) {
   const dispose = mock(() => undefined)
   const adapter = {
-    read: mock(async () => ({ operation: "read" as const, path: "book.ipynb", requestPath: "book.ipynb", revision: "content:2", cells: [] })),
+    read: mock(async () => ({
+      operation: "read" as const,
+      path: "book.ipynb",
+      requestPath: "book.ipynb",
+      revision: "content:2",
+      cells: [],
+    })),
     edit: mock(async () => ({
       operation: "edit" as const,
       path: "book.ipynb",

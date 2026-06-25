@@ -69,8 +69,9 @@ function harness(document: vscode.NotebookDocument, cells: vscode.NotebookCell[]
     },
     apply: async (edit) => {
       calls.apply++
-      const item = (edit as unknown as { edits: Array<{ type: string; index: number; cells?: vscode.NotebookCellData[] }> })
-        .edits[0]!
+      const item = (
+        edit as unknown as { edits: Array<{ type: string; index: number; cells?: vscode.NotebookCellData[] }> }
+      ).edits[0]!
       if (item.type === "delete") cells.splice(item.index, 1)
       if (item.type !== "delete") {
         const input = (item.cells?.[0] as unknown as { input: NotebookCellInput }).input
@@ -148,9 +149,9 @@ describe("notebook path security", () => {
       relative: "nested/book.ipynb",
     })
     const ctx = adapter([cell()], "/repo/nested/book.ipynb")
-    expect((await ctx.adapter.read({ directory: "/repo", path: "/repo/nested/book.ipynb", includeOutputs: false })).path).toBe(
-      "nested/book.ipynb",
-    )
+    expect(
+      (await ctx.adapter.read({ directory: "/repo", path: "/repo/nested/book.ipynb", includeOutputs: false })).path,
+    ).toBe("nested/book.ipynb")
   })
 
   it("rejects outside absolute paths and relative or absolute symlink escapes", async () => {
@@ -352,7 +353,8 @@ describe("notebook adapter", () => {
         { items: [{ mime: "text/plain", data: new TextEncoder().encode("done") }] } as vscode.NotebookCellOutput,
       ]
       target.state.execution = { success: true, executionOrder: 2, timing: { startTime: 10, endTime: 20 } }
-      for (const listener of ctx.changes) listener(event(ctx.document, target.value, { executionSummary: target.state.execution }))
+      for (const listener of ctx.changes)
+        listener(event(ctx.document, target.value, { executionSummary: target.state.execution }))
     }
     const result = await ctx.adapter.execute({
       directory: "/repo",
@@ -430,7 +432,8 @@ describe("notebook adapter", () => {
       ctx.calls.commandArgs = args
       if (args[0] !== "notebook.cell.execute") return
       target.state.source = "after"
-      for (const listener of ctx.changes) listener(event(ctx.document, target.value, { document: target.value.document }))
+      for (const listener of ctx.changes)
+        listener(event(ctx.document, target.value, { document: target.value.document }))
     }
     await expect(
       ctx.adapter.execute({ directory: "/repo", path: "book.ipynb", index: 0, expectedRevision }),
