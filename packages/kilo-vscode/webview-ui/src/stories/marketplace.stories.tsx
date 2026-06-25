@@ -116,6 +116,7 @@ const MOCK_MCPS: McpMarketplaceItem[] = [
     content:
       '{ "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"], "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" } }',
     parameters: [{ name: "GitHub Token", key: "GITHUB_TOKEN", placeholder: "ghp_xxxxxxxxxxxx" }],
+    suggest_for: { vscode_extension: ["github.vscode-pull-request-github"] },
     author: "Anthropic",
     category: "development",
   },
@@ -199,6 +200,7 @@ const MOCK_AGENTS: AgentMarketplaceItem[] = [
     name: "Architect",
     description:
       "High-level system design and planning. Focuses on architecture decisions, component boundaries, and technical specifications without writing implementation code.",
+    suggest_for: { filename: ["*.architecture.md"] },
     content: {
       mode: "primary",
       description: "Stress-test technical designs and produce implementation-ready plans",
@@ -272,6 +274,10 @@ const MOCK_AGENTS: AgentMarketplaceItem[] = [
 ]
 
 const EMPTY_METADATA: MarketplaceInstalledMetadata = { project: {}, global: {} }
+const RELEVANCE = {
+  "agent:architect": { filename: ["*.architecture.md"] },
+  "mcp:github-mcp": { vscodeExtension: ["github.vscode-pull-request-github"] },
+}
 
 const PARTIAL_INSTALLED_SKILLS: MarketplaceInstalledMetadata = {
   project: { "skill:nextjs-developer": { type: "skill" } },
@@ -310,9 +316,33 @@ export const MixedListWithItems: Story = {
         <MarketplaceListView
           items={[...MOCK_AGENTS, ...MOCK_MCPS, ...MOCK_SKILLS]}
           metadata={PARTIAL_INSTALLED_MIXED}
+          relevance={RELEVANCE}
           fetching={false}
           searchPlaceholder="Search marketplace..."
           emptyMessage="No items found"
+          relevantEmptyMessage="No relevant marketplace items found for this workspace."
+          onInstall={noop}
+          onRemove={noop}
+        />
+      </div>
+    </StoryProviders>
+  ),
+}
+
+export const RelevantItems: Story = {
+  name: "Mixed list — relevant to workspace",
+  render: () => (
+    <StoryProviders>
+      <div style={{ "max-height": "700px", overflow: "auto", padding: "12px" }}>
+        <MarketplaceListView
+          items={[...MOCK_AGENTS, ...MOCK_MCPS, ...MOCK_SKILLS]}
+          metadata={PARTIAL_INSTALLED_MIXED}
+          relevance={RELEVANCE}
+          fetching={false}
+          searchPlaceholder="Search marketplace..."
+          emptyMessage="No items found"
+          relevantEmptyMessage="No relevant marketplace items found for this workspace."
+          initialRelevant
           onInstall={noop}
           onRemove={noop}
         />
@@ -329,9 +359,11 @@ export const EmptyList: Story = {
         <MarketplaceListView
           items={[]}
           metadata={EMPTY_METADATA}
+          relevance={{}}
           fetching={false}
           searchPlaceholder="Search marketplace..."
           emptyMessage="No items found"
+          relevantEmptyMessage="No relevant marketplace items found for this workspace."
           onInstall={noop}
           onRemove={noop}
         />

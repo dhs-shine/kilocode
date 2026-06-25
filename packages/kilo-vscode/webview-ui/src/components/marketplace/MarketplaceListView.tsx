@@ -3,15 +3,17 @@ import { TextField } from "@kilocode/kilo-ui/text-field"
 import { Select } from "@kilocode/kilo-ui/select"
 import { Tag } from "@kilocode/kilo-ui/tag"
 import { Spinner } from "@kilocode/kilo-ui/spinner"
+import { Checkbox } from "@kilocode/kilo-ui/checkbox"
 import type {
   MarketplaceItem,
   McpMarketplaceItem,
   SkillMarketplaceItem,
   MarketplaceInstalledMetadata,
+  MarketplaceRelevanceMetadata,
 } from "../../types/marketplace"
 import { useLanguage } from "../../context/language"
 import { useVSCode } from "../../context/vscode"
-import { filterItems, retain } from "./utils"
+import { filterItems, hasRelevantItems, retain } from "./utils"
 import { ItemCard } from "./ItemCard"
 import { MarketplaceContribute } from "./MarketplaceContribute"
 
@@ -23,9 +25,12 @@ interface StatusOption {
 interface Props {
   items: MarketplaceItem[]
   metadata: MarketplaceInstalledMetadata
+  relevance: MarketplaceRelevanceMetadata
   fetching: boolean
   searchPlaceholder: string
   emptyMessage: string
+  relevantEmptyMessage: string
+  initialRelevant?: boolean
   onInstall: (item: MarketplaceItem) => void
   onRemove: (item: MarketplaceItem, scope: "project" | "global") => void
 }
@@ -37,6 +42,7 @@ export const MarketplaceListView = (props: Props) => {
   const [status, setStatus] = createSignal<StatusOption>({ value: "all", label: t("marketplace.filter.all") })
   const [types, setTypes] = createSignal<MarketplaceItem["type"][]>([])
   const [categories, setCategories] = createSignal<string[]>([])
+  const [relevant, setRelevant] = createSignal(props.initialRelevant ?? false)
 
   const options = (): StatusOption[] => [
     { value: "all", label: t("marketplace.filter.all") },
@@ -86,11 +92,21 @@ export const MarketplaceListView = (props: Props) => {
   }
 
   const filtered = createMemo(() =>
-    filterItems(props.items, props.metadata, search(), status().value, categories(), types(), {
-      agent: typeLabel("agent"),
-      mcp: typeLabel("mcp"),
-      skill: typeLabel("skill"),
-    }),
+    filterItems(
+      props.items,
+      props.metadata,
+      search(),
+      status().value,
+      categories(),
+      types(),
+      {
+        agent: typeLabel("agent"),
+        mcp: typeLabel("mcp"),
+        skill: typeLabel("skill"),
+      },
+      relevant(),
+      props.relevance,
+    ),
   )
 
   return (
@@ -118,6 +134,11 @@ export const MarketplaceListView = (props: Props) => {
           label={(o: StatusOption) => o.label}
           onSelect={(v: StatusOption | undefined) => v && setStatus(v)}
         />
+      </div>
+      <div class="marketplace-relevance-filter">
+        <Checkbox checked={relevant()} onChange={setRelevant}>
+          {t("marketplace.filter.relevant")}
+        </Checkbox>
       </div>
       <Show when={allTypes().length > 1}>
         <div class="marketplace-types">
@@ -163,7 +184,11 @@ export const MarketplaceListView = (props: Props) => {
           when={filtered().length > 0}
           fallback={
             <div class="marketplace-empty">
-              <span class="marketplace-empty-message">{props.emptyMessage}</span>
+              <span class="marketplace-empty-message">
+                {relevant() && !hasRelevantItems(props.items, props.relevance)
+                  ? props.relevantEmptyMessage
+                  : props.emptyMessage}
+              </span>
               <MarketplaceContribute />
             </div>
           }
