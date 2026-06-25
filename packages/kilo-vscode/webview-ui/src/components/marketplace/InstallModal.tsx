@@ -47,13 +47,21 @@ export const InstallModal = (props: Props) => {
   const initial = workspace() ? options()[0] : options()[0]
   const [scope, setScope] = createSignal<ScopeOption>(initial)
   const [installing, setInstalling] = createSignal(false)
-  const [result, setResult] = createSignal<
-    { success: boolean; error?: string; scope: "project" | "global"; path: string; hasParameters: boolean; method?: string } | null
-  >(null)
+  const [result, setResult] = createSignal<{
+    success: boolean
+    error?: string
+    scope: "project" | "global"
+    path: string
+    hasParameters: boolean
+    method?: string
+  } | null>(null)
   const [params, setParams] = createSignal<Record<string, string>>({})
-  const [pending, setPending] = createSignal<
-    { scope: "project" | "global"; path: string; hasParameters: boolean; method?: string } | null
-  >(null)
+  const [pending, setPending] = createSignal<{
+    scope: "project" | "global"
+    path: string
+    hasParameters: boolean
+    method?: string
+  } | null>(null)
 
   const destination = (target = scope().value) => {
     const base = target === "project" ? ".kilo" : "~/.config/kilo"
