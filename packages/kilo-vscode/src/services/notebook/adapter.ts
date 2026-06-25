@@ -2,7 +2,7 @@ import path from "node:path"
 import * as vscode from "vscode"
 import { normalizeOutputs, normalizeSource } from "./output"
 import { NotebookError, resolveNotebookPath, type NotebookPathDeps } from "./path"
-import { fingerprint, notebookState, sameCell, type NotebookState } from "./revision"
+import { cellFingerprint, fingerprint, notebookState, sameCell, type NotebookState } from "./revision"
 import {
   NOTEBOOK_LIMITS,
   type NotebookAccess,
@@ -349,13 +349,14 @@ export class NotebookAdapter {
         if (event.notebook !== document) {
           return
         }
-        const current = this.remember(document, target)
+        const live = document.cellCount > request.index ? cellFingerprint(document.cellAt(request.index)) : undefined
         if (
           document.isClosed ||
           document.cellCount <= request.index ||
           document.cellAt(request.index) !== cell ||
-          !sameCell(fingerprint, current.cells[request.index])
+          !sameCell(fingerprint, live)
         ) {
+          const current = this.remember(document, target)
           reject(
             this.stale(path, request.index, current.revision, "The targeted notebook cell changed during execution"),
           )

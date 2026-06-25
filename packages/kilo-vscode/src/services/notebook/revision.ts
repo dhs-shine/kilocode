@@ -20,7 +20,7 @@ export function fingerprint(kind: "code" | "markdown", language: string, source:
   return hash([kind, language, source])
 }
 
-function cell(cell: vscode.NotebookCell): string {
+export function cellFingerprint(cell: vscode.NotebookCell): string {
   return fingerprint(
     cell.kind === vscode.NotebookCellKind.Code ? "code" : "markdown",
     cell.document.languageId,
@@ -29,7 +29,7 @@ function cell(cell: vscode.NotebookCell): string {
 }
 
 export function notebookState(document: vscode.NotebookDocument): NotebookState {
-  const cells = document.getCells().map(cell)
+  const cells = document.getCells().map(cellFingerprint)
   return { revision: `content:${hash(cells)}`, cells }
 }
 
