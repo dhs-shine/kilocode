@@ -49,7 +49,7 @@ jobs:
       - name: Configure unit matrix
         id: matrix
         env:
-          GENERAL: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.general == 'true' }}
+          GENERAL: ${{ github.event_name != 'pull_request' || steps.filter.outputs.general == 'true' }}
         run: |
           if [ "$GENERAL" = "true" ]; then
             echo 'settings=[{"name":"linux","host":"blacksmith-4vcpu-ubuntu-2404","run":true},{"name":"macos","host":"macos-15","run":true},{"name":"windows","host":"blacksmith-4vcpu-windows-2025","run":true}]' >> "$GITHUB_OUTPUT"
