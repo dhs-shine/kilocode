@@ -139,6 +139,9 @@ describe("NotebookBridge", () => {
         result: { operation: "read", path: "book.ipynb", requestPath: "book.ipynb", revision: "content:2", cells: [] },
       },
     ])
+    const bridge = test.bridge as unknown as { outcomes: Map<string, unknown>; settled: Set<string> }
+    expect(bridge.outcomes.size).toBe(0)
+    expect(bridge.settled.has("notebook-1")).toBe(true)
 
     test.bridge.dispose()
     await flush()

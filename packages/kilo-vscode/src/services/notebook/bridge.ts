@@ -184,7 +184,10 @@ export class NotebookBridge {
         "result" in outcome
           ? await this.reply(request.id, directory, outcome.result)
           : await this.reject(request.id, directory, outcome.error)
-      if (accepted) this.remember(this.settled, request.id)
+      if (accepted) {
+        this.outcomes.delete(request.id)
+        this.remember(this.settled, request.id)
+      }
     } finally {
       if (this.active.get(request.id) === active) this.active.delete(request.id)
     }
