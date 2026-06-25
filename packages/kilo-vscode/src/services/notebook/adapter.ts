@@ -2,6 +2,7 @@ import path from "node:path"
 import * as vscode from "vscode"
 import { normalizeOutputs, normalizeSource } from "./output"
 import { NotebookError, resolveNotebookPath, type NotebookPathDeps } from "./path"
+import { fingerprint, notebookState, sameCell, type NotebookState } from "./revision"
 import {
   NOTEBOOK_LIMITS,
   type NotebookAccess,
@@ -15,6 +16,14 @@ import {
   type NotebookReadRequest,
   type NotebookReadResult,
 } from "./types"
+
+const RETAINED_REVISIONS = 1_000
+const revisions = new Map<string, NotebookState>()
+const locks = new Map<string, Promise<void>>()
+
+function revisionKey(target: string, revision: string): string {
+  return `${target}\0${revision}`
+}
 
 export interface NotebookAdapterOptions {
   deps?: NotebookAdapterDeps
@@ -87,15 +96,19 @@ export class NotebookAdapter {
 
   private async document(
     directory: string,
-    relative: string,
-  ): Promise<{ document: vscode.NotebookDocument; path: string }> {
-    const target = await resolveNotebookPath(directory, relative, this.access, this.options.paths)
-    const open = this.deps.documents().find((document) => path.resolve(document.uri.fsPath) === path.resolve(target))
-    const document = open ?? (await this.deps.open(this.deps.uri(target)))
+    input: string,
+  ): Promise<{ document: vscode.NotebookDocument; path: string; target: string }> {
+    const resolved = await resolveNotebookPath(directory, input, this.access, this.options.paths)
+    const open = this.deps
+      .documents()
+      .find((document) => path.resolve(document.uri.fsPath) === path.resolve(resolved.target))
+    const document = open ?? (await this.deps.open(this.deps.uri(resolved.target)))
     if (document.isClosed) {
-      throw new NotebookError("closed", "Notebook document is closed")
+      throw new NotebookError("closed", `Notebook ${JSON.stringify(resolved.relative)} is closed`, {
+        path: resolved.relative,
+      })
     }
-    return { document, path: target }
+    return { document, path: resolved.relative, target: resolved.target }
   }
 
   async read(request: NotebookReadRequest): Promise<NotebookReadResult> {
@@ -105,6 +118,7 @@ export class NotebookAdapter {
     const flags = { sources: false, outputs: false }
 
     const source = loaded.document.getCells()
+    const state = this.remember(loaded.document, loaded.target)
     if (source.length > 2_000) {
       flags.sources = true
     }
@@ -138,8 +152,9 @@ export class NotebookAdapter {
 
     return {
       operation: "read",
-      path: request.path,
-      version: loaded.document.version,
+      path: loaded.path,
+      requestPath: request.path,
+      revision: state.revision,
       cells,
       ...(flags.sources || flags.outputs ? { truncated: true } : {}),
     }
@@ -147,52 +162,86 @@ export class NotebookAdapter {
 
   async edit(request: NotebookEditRequest): Promise<NotebookEditResult> {
     const loaded = await this.document(request.directory, request.path)
-    this.version(loaded.document, request.version)
-    const count = loaded.document.cellCount
-    const max = request.edit.action === "insert" ? count : count - 1
-    if (!Number.isInteger(request.index) || request.index < 0 || request.index > max) {
-      throw new NotebookError("invalid_cell", `Cell index ${request.index} is out of range`)
-    }
+    return this.lock(loaded.target, async () => {
+      const before = this.remember(loaded.document, loaded.target)
+      this.revision(before, request.expectedRevision, loaded.path, request.index)
+      const count = loaded.document.cellCount
+      const max = request.edit.action === "insert" ? count : count - 1
+      if (!Number.isInteger(request.index) || request.index < 0 || request.index > max) {
+        throw new NotebookError("invalid_cell", `Cell index ${request.index} is out of range`, {
+          path: loaded.path,
+          index: request.index,
+        })
+      }
 
-    const edits = (() => {
-      if (request.edit.action === "delete") {
-        return [this.deps.delete(request.index)]
+      const expected = [...before.cells]
+      const edits = (() => {
+        if (request.edit.action === "delete") {
+          expected.splice(request.index, 1)
+          return [this.deps.delete(request.index)]
+        }
+        const language = request.edit.language ?? (request.edit.kind === "code" ? "plaintext" : "markdown")
+        const cell = this.deps.cell({
+          kind: request.edit.kind,
+          language: request.edit.language,
+          source: request.edit.source,
+        })
+        const value = fingerprint(request.edit.kind, language, request.edit.source)
+        if (request.edit.action === "insert") {
+          expected.splice(request.index, 0, value)
+          return [this.deps.insert(request.index, [cell])]
+        }
+        expected.splice(request.index, 1, value)
+        return [this.deps.replace(request.index, [cell])]
+      })()
+      this.revision(this.remember(loaded.document, loaded.target), request.expectedRevision, loaded.path, request.index)
+      if (!(await this.deps.apply(this.deps.edit(loaded.document.uri, edits)))) {
+        throw new NotebookError("unsupported", "VS Code rejected the notebook edit", {
+          path: loaded.path,
+          index: request.index,
+        })
       }
-      const cell = this.deps.cell({
-        kind: request.edit.kind,
-        language: request.edit.language,
-        source: request.edit.source,
-      })
-      if (request.edit.action === "insert") {
-        return [this.deps.insert(request.index, [cell])]
+      const after = this.remember(loaded.document, loaded.target)
+      if (after.cells.length !== expected.length || after.cells.some((value, index) => value !== expected[index])) {
+        throw this.stale(loaded.path, request.index, after.revision, "Notebook content changed while applying the edit")
       }
-      return [this.deps.replace(request.index, [cell])]
-    })()
-    this.version(loaded.document, request.version)
-    if (!(await this.deps.apply(this.deps.edit(loaded.document.uri, edits)))) {
-      throw new NotebookError("unsupported", "VS Code rejected the notebook edit")
-    }
-    return {
-      operation: "edit",
-      path: request.path,
-      version: loaded.document.version,
-      index: request.index,
-      action: request.edit.action,
-    }
+      const result: NotebookEditResult = {
+        operation: "edit",
+        path: loaded.path,
+        requestPath: request.path,
+        revision: after.revision,
+        index: request.index,
+        action: request.edit.action,
+      }
+      if (request.edit.action !== "delete" && request.index < loaded.document.cellCount) {
+        result.cell = this.cell(loaded.document.cellAt(request.index), request.index)
+      }
+      return result
+    })
   }
 
   async execute(request: NotebookExecuteRequest): Promise<NotebookExecuteResult> {
     const loaded = await this.document(request.directory, request.path)
-    this.version(loaded.document, request.version)
+    const state = this.remember(loaded.document, loaded.target)
     if (!Number.isInteger(request.index) || request.index < 0 || request.index >= loaded.document.cellCount) {
-      throw new NotebookError("invalid_cell", `Cell index ${request.index} is out of range`)
+      throw new NotebookError("invalid_cell", `Cell index ${request.index} is out of range`, {
+        path: loaded.path,
+        index: request.index,
+      })
+    }
+    const expected = revisions.get(revisionKey(loaded.target, request.expectedRevision))
+    if (state.revision !== request.expectedRevision && !sameCell(expected?.cells[request.index], state.cells[request.index])) {
+      throw this.stale(loaded.path, request.index, state.revision, "The targeted notebook cell changed")
     }
     const cell = loaded.document.cellAt(request.index)
     if (cell.kind !== vscode.NotebookCellKind.Code) {
-      throw new NotebookError("invalid_cell", `Cell ${request.index} is not a code cell`)
+      throw new NotebookError("invalid_cell", `Cell ${request.index} is not a code cell`, {
+        path: loaded.path,
+        index: request.index,
+      })
     }
 
-    const result = this.wait(loaded.document, cell, request)
+    const result = this.wait(loaded.document, cell, loaded.target, loaded.path, state.cells[request.index]!, request)
     void this.deps
       .execute("notebook.cell.execute", {
         ranges: [{ start: request.index, end: request.index + 1 }],
@@ -200,12 +249,24 @@ export class NotebookAdapter {
       })
       .catch((error: unknown) => {
         const detail = error instanceof Error ? error.message : String(error)
-        result.reject(new NotebookError("execution_failed", `Notebook execution could not start: ${detail}`))
+        result.reject(
+          new NotebookError("execution_failed", `Notebook execution could not start: ${detail}`, {
+            path: loaded.path,
+            index: request.index,
+          }),
+        )
       })
     return result.promise
   }
 
-  private wait(document: vscode.NotebookDocument, cell: vscode.NotebookCell, request: NotebookExecuteRequest) {
+  private wait(
+    document: vscode.NotebookDocument,
+    cell: vscode.NotebookCell,
+    target: string,
+    path: string,
+    fingerprint: NotebookState["cells"][number],
+    request: NotebookExecuteRequest,
+  ) {
     const state: {
       done: boolean
       timer?: ReturnType<typeof setTimeout>
@@ -250,8 +311,9 @@ export class NotebookAdapter {
       const normalized = normalizeOutputs(cell.outputs)
       holder.resolve?.({
         operation: "execute",
-        path: request.path,
-        version: document.version,
+        path,
+        requestPath: request.path,
+        revision: this.remember(document, target).revision,
         index: request.index,
         status: cell.executionSummary?.success === false ? "error" : "success",
         outputs: normalized.outputs,
@@ -265,7 +327,12 @@ export class NotebookAdapter {
       })
     const abort = () => {
       stop()
-      reject(new NotebookError("cancelled", "Notebook execution cancellation was requested"))
+      reject(
+        new NotebookError("cancelled", "Notebook execution cancellation was requested", {
+          path,
+          index: request.index,
+        }),
+      )
     }
 
     disposables.push(
@@ -273,22 +340,32 @@ export class NotebookAdapter {
         if (event.notebook !== document) {
           return
         }
-        if (document.isClosed || document.cellCount <= request.index || document.cellAt(request.index) !== cell) {
-          reject(new NotebookError("stale_version", "Notebook cell changed during execution"))
+        const current = this.remember(document, target)
+        if (
+          document.isClosed ||
+          document.cellCount <= request.index ||
+          document.cellAt(request.index) !== cell ||
+          !sameCell(fingerprint, current.cells[request.index])
+        ) {
+          reject(this.stale(path, request.index, current.revision, "The targeted notebook cell changed during execution"))
+          stop()
           return
         }
         const change = event.cellChanges.find((item) => item.cell === cell)
         if (!change) {
           return
         }
+        if (state.startup && (change.outputs !== undefined || change.executionSummary !== undefined)) {
+          clearTimeout(state.startup)
+          state.startup = undefined
+        }
         const summary = change.executionSummary
         if (!summary || !changed(base, summary)) return
-        if (state.startup) clearTimeout(state.startup)
         if (summary.success !== undefined || summary.timing?.endTime !== undefined) resolve()
       }),
       this.deps.close((closed) => {
         if (closed === document) {
-          reject(new NotebookError("closed", "Notebook closed during execution"))
+          reject(new NotebookError("closed", "Notebook closed during execution", { path, index: request.index }))
         }
       }),
     )
@@ -298,8 +375,9 @@ export class NotebookAdapter {
         stop()
         reject(
           new NotebookError(
-            "no_kernel",
-            "Notebook execution did not start; open the notebook in VS Code and select a kernel",
+            "execution_failed",
+            "The execution command was dispatched, but VS Code reported no execution activity before the startup timeout. Ensure a kernel is selected and try again",
+            { path, index: request.index },
           ),
         )
       },
@@ -307,7 +385,7 @@ export class NotebookAdapter {
     )
     state.timer = setTimeout(() => {
       stop()
-      reject(new NotebookError("timeout", "Notebook execution timed out"))
+      reject(new NotebookError("timeout", "Notebook execution timed out", { path, index: request.index }))
     }, timeout)
     if (request.signal?.aborted) {
       abort()
@@ -317,12 +395,54 @@ export class NotebookAdapter {
     return { promise, reject }
   }
 
-  private version(document: vscode.NotebookDocument, expected: number): void {
-    if (document.version !== expected) {
-      throw new NotebookError(
-        "stale_version",
-        `Notebook version changed (expected ${expected}, current ${document.version})`,
-      )
+  private cell(cell: vscode.NotebookCell, index: number): NotebookCell {
+    return {
+      index,
+      kind: cell.kind === vscode.NotebookCellKind.Code ? "code" : "markdown",
+      language: cell.document.languageId.slice(0, 200),
+      source: cell.document.getText().slice(0, 200_000),
+      execution: execution(cell.executionSummary),
+    }
+  }
+
+  private remember(document: vscode.NotebookDocument, target: string): NotebookState {
+    const state = notebookState(document)
+    const key = revisionKey(target, state.revision)
+    revisions.delete(key)
+    revisions.set(key, state)
+    if (revisions.size > RETAINED_REVISIONS) {
+      const oldest = revisions.keys().next().value
+      if (oldest !== undefined) revisions.delete(oldest)
+    }
+    return state
+  }
+
+  private revision(state: NotebookState, expected: string, path: string, index: number): void {
+    if (state.revision !== expected) {
+      throw this.stale(path, index, state.revision, "Notebook content changed")
+    }
+  }
+
+  private stale(path: string, index: number, revision: string, detail: string): NotebookError {
+    return new NotebookError(
+      "stale_revision",
+      `${detail}. Re-read ${JSON.stringify(path)} before retrying; do not blindly replay an index-based edit`,
+      { path, index, currentRevision: revision },
+    )
+  }
+
+  private async lock<T>(key: string, task: () => Promise<T>): Promise<T> {
+    const prior = locks.get(key) ?? Promise.resolve()
+    const gate: { release?: () => void } = {}
+    const current = new Promise<void>((resolve) => (gate.release = resolve))
+    const next = prior.then(() => current)
+    locks.set(key, next)
+    await prior
+    try {
+      return await task()
+    } finally {
+      gate.release?.()
+      if (locks.get(key) === next) locks.delete(key)
     }
   }
 }

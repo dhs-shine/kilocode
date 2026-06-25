@@ -5,31 +5,59 @@ import { normalizeOutputs, normalizeSource } from "../../src/services/notebook/o
 import { NotebookError, resolveNotebookPath } from "../../src/services/notebook/path"
 import type { NotebookAdapterDeps, NotebookCellInput } from "../../src/services/notebook/types"
 
+interface CellState {
+  source: string
+  kind: vscode.NotebookCellKind
+  language: string
+  outputs: vscode.NotebookCellOutput[]
+  execution?: vscode.NotebookCellExecutionSummary
+}
+
 function uri(path: string): vscode.Uri {
   return { scheme: "file", fsPath: path, path, toString: () => `file://${path}` } as vscode.Uri
 }
 
-function cell(source = "print('hi')", kind = vscode.NotebookCellKind.Code): vscode.NotebookCell {
-  return {
+function cell(source = "print('hi')", kind = vscode.NotebookCellKind.Code, language?: string) {
+  const state: CellState = {
+    source,
     kind,
-    document: { getText: () => source, languageId: kind === vscode.NotebookCellKind.Code ? "python" : "markdown" },
+    language: language ?? (kind === vscode.NotebookCellKind.Code ? "python" : "markdown"),
     outputs: [],
-    executionSummary: undefined,
+  }
+  const value = {
+    get kind() {
+      return state.kind
+    },
+    document: {
+      getText: () => state.source,
+      get languageId() {
+        return state.language
+      },
+    },
+    get outputs() {
+      return state.outputs
+    },
+    get executionSummary() {
+      return state.execution
+    },
   } as unknown as vscode.NotebookCell
+  return { value, state }
 }
 
-function notebook(cells: vscode.NotebookCell[], version = 1): vscode.NotebookDocument {
+function notebook(cells: vscode.NotebookCell[], file = "/repo/book.ipynb"): vscode.NotebookDocument {
   return {
-    uri: uri("/repo/book.ipynb"),
-    version,
+    uri: uri(file),
+    version: 1,
     isClosed: false,
-    cellCount: cells.length,
+    get cellCount() {
+      return cells.length
+    },
     getCells: () => cells,
     cellAt: (index: number) => cells[index]!,
   } as unknown as vscode.NotebookDocument
 }
 
-function harness(document: vscode.NotebookDocument) {
+function harness(document: vscode.NotebookDocument, cells: vscode.NotebookCell[]) {
   const changes = new Set<(event: vscode.NotebookDocumentChangeEvent) => void>()
   const closes = new Set<(document: vscode.NotebookDocument) => void>()
   const calls = { open: 0, apply: 0, command: 0, commandArgs: [] as unknown[], edit: undefined as unknown }
@@ -39,8 +67,21 @@ function harness(document: vscode.NotebookDocument) {
       calls.open++
       return document
     },
-    apply: async () => {
+    apply: async (edit) => {
       calls.apply++
+      const item = (edit as unknown as { edits: Array<{ type: string; index: number; cells?: vscode.NotebookCellData[] }> })
+        .edits[0]!
+      if (item.type === "delete") cells.splice(item.index, 1)
+      if (item.type !== "delete") {
+        const input = (item.cells?.[0] as unknown as { input: NotebookCellInput }).input
+        const next = cell(
+          input.source,
+          input.kind === "code" ? vscode.NotebookCellKind.Code : vscode.NotebookCellKind.Markup,
+          input.language ?? (input.kind === "code" ? "plaintext" : "markdown"),
+        ).value
+        if (item.type === "insert") cells.splice(item.index, 0, next)
+        if (item.type === "replace") cells.splice(item.index, 1, next)
+      }
       Object.assign(document, { version: document.version + 1 })
       return true
     },
@@ -61,8 +102,8 @@ function harness(document: vscode.NotebookDocument) {
       calls.edit = edits
       return { edits } as unknown as vscode.WorkspaceEdit
     },
-    insert: (index, cells) => ({ type: "insert", index, cells }) as unknown as vscode.NotebookEdit,
-    replace: (index, cells) => ({ type: "replace", index, cells }) as unknown as vscode.NotebookEdit,
+    insert: (index, items) => ({ type: "insert", index, cells: items }) as unknown as vscode.NotebookEdit,
+    replace: (index, items) => ({ type: "replace", index, cells: items }) as unknown as vscode.NotebookEdit,
     delete: (index) => ({ type: "delete", index }) as unknown as vscode.NotebookEdit,
     cell: (input: NotebookCellInput) => ({ input }) as unknown as vscode.NotebookCellData,
   }
@@ -72,21 +113,59 @@ function harness(document: vscode.NotebookDocument) {
 const paths = { realpath: async (value: string) => value }
 const access = { validateAccess: mock(() => true) }
 
-function adapter(document: vscode.NotebookDocument, deps = harness(document)) {
-  return { adapter: new NotebookAdapter(access, { deps: deps.deps, paths, timeout: 50 }), ...deps }
+function adapter(items: ReturnType<typeof cell>[], file = "/repo/book.ipynb") {
+  const cells = items.map((item) => item.value)
+  const document = notebook(cells, file)
+  const ctx = harness(document, cells)
+  return {
+    adapter: new NotebookAdapter(access, { deps: ctx.deps, paths, timeout: 50 }),
+    document,
+    cells,
+    ...ctx,
+  }
+}
+
+async function revision(core: NotebookAdapter, path = "book.ipynb") {
+  return (await core.read({ directory: "/repo", path, includeOutputs: false })).revision
+}
+
+function event(document: vscode.NotebookDocument, cell: vscode.NotebookCell, change: object) {
+  return {
+    notebook: document,
+    contentChanges: [],
+    cellChanges: [{ cell, ...change }],
+  } as unknown as vscode.NotebookDocumentChangeEvent
 }
 
 describe("notebook path security", () => {
-  it("rejects traversal and symlink escapes before access checks", async () => {
-    const guard = { validateAccess: mock(() => true) }
-    await expect(resolveNotebookPath("/repo", "../secret.ipynb", guard, paths)).rejects.toMatchObject({
-      code: "invalid_path",
+  it("accepts relative and contained absolute paths and normalizes results", async () => {
+    await expect(resolveNotebookPath("/repo", "nested/book.ipynb", access, paths)).resolves.toEqual({
+      target: "/repo/nested/book.ipynb",
+      relative: "nested/book.ipynb",
     })
-    await expect(
-      resolveNotebookPath("/repo", "linked.ipynb", guard, {
-        realpath: async (value) => (value.endsWith("linked.ipynb") ? "/outside/secret.ipynb" : value),
-      }),
-    ).rejects.toMatchObject({ code: "invalid_path" })
+    await expect(resolveNotebookPath("/repo", "/repo/nested/book.ipynb", access, paths)).resolves.toEqual({
+      target: "/repo/nested/book.ipynb",
+      relative: "nested/book.ipynb",
+    })
+    const ctx = adapter([cell()], "/repo/nested/book.ipynb")
+    expect((await ctx.adapter.read({ directory: "/repo", path: "/repo/nested/book.ipynb", includeOutputs: false })).path).toBe(
+      "nested/book.ipynb",
+    )
+  })
+
+  it("rejects outside absolute paths and relative or absolute symlink escapes", async () => {
+    const guard = { validateAccess: mock(() => true) }
+    await expect(resolveNotebookPath("/repo", "/outside/secret.ipynb", guard, paths)).rejects.toMatchObject({
+      code: "invalid_path",
+      message: expect.stringContaining("/outside/secret.ipynb"),
+    })
+    for (const input of ["linked.ipynb", "/repo/linked.ipynb"]) {
+      await expect(
+        resolveNotebookPath("/repo", input, guard, {
+          realpath: async (value) => (value.endsWith("linked.ipynb") ? "/outside/secret.ipynb" : value),
+        }),
+      ).rejects.toMatchObject({ code: "invalid_path", message: expect.stringContaining(input) })
+    }
     expect(guard.validateAccess).not.toHaveBeenCalled()
   })
 
@@ -137,125 +216,228 @@ describe("notebook normalization", () => {
   })
 })
 
+describe("notebook content revisions", () => {
+  it("ignores outputs and execution summaries", async () => {
+    const item = cell("one")
+    const ctx = adapter([item])
+    const before = await revision(ctx.adapter)
+    item.state.outputs = [{ items: [{ mime: "text/plain", data: new TextEncoder().encode("result") }] } as never]
+    item.state.execution = { success: true, executionOrder: 1 }
+    expect(await revision(ctx.adapter)).toBe(before)
+  })
+
+  it("changes for source, language, kind, insertion, deletion, replacement, and reordering", async () => {
+    const first = cell("one")
+    const second = cell("two")
+    const ctx = adapter([first, second])
+    const revisions = [await revision(ctx.adapter)]
+    first.state.source = "changed"
+    revisions.push(await revision(ctx.adapter))
+    first.state.language = "javascript"
+    revisions.push(await revision(ctx.adapter))
+    first.state.kind = vscode.NotebookCellKind.Markup
+    revisions.push(await revision(ctx.adapter))
+    const added = cell("added")
+    ctx.cells.splice(1, 0, added.value)
+    revisions.push(await revision(ctx.adapter))
+    ctx.cells.splice(1, 1)
+    revisions.push(await revision(ctx.adapter))
+    ctx.cells.splice(0, 1, cell("replacement").value)
+    revisions.push(await revision(ctx.adapter))
+    ctx.cells.reverse()
+    revisions.push(await revision(ctx.adapter))
+    for (const [index, value] of revisions.entries()) {
+      if (index > 0) expect(value).not.toBe(revisions[index - 1])
+    }
+  })
+})
+
 describe("notebook adapter", () => {
-  it("prefers a dirty open document and reads normalized cells", async () => {
-    const document = notebook([cell("unsaved"), cell("# title", vscode.NotebookCellKind.Markup)], 7)
-    const ctx = adapter(document)
-    const result = await ctx.adapter.read({ directory: "/repo", path: "book.ipynb" })
+  it("prefers an open document and opens missing notebooks in the background", async () => {
+    const ctx = adapter([cell("unsaved"), cell("# title", vscode.NotebookCellKind.Markup)])
+    const result = await ctx.adapter.read({ directory: "/repo", path: "book.ipynb", includeOutputs: false })
     expect(ctx.calls.open).toBe(0)
     expect(result).toMatchObject({
       path: "book.ipynb",
-      version: 7,
       cells: [
         { index: 0, kind: "code", language: "python", source: "unsaved" },
         { index: 1, kind: "markdown", language: "markdown", source: "# title" },
       ],
     })
-  })
-
-  it("opens notebooks in the background when not already open", async () => {
-    const document = notebook([cell()])
-    const ctx = harness(document)
     ctx.deps.documents = () => []
-    const core = new NotebookAdapter(access, { deps: ctx.deps, paths })
-    await core.read({ directory: "/repo", path: "book.ipynb" })
+    await ctx.adapter.read({ directory: "/repo", path: "book.ipynb", includeOutputs: false })
     expect(ctx.calls.open).toBe(1)
   })
 
-  it("constructs insert, replace, and delete edits and rejects stale versions", async () => {
-    const document = notebook([cell()], 3)
-    const ctx = adapter(document)
+  it("chains sequential edits with returned revisions and affected cells", async () => {
+    const ctx = adapter([cell("one")])
+    const initial = await revision(ctx.adapter)
+    const first = await ctx.adapter.edit({
+      directory: "/repo",
+      path: "book.ipynb",
+      index: 0,
+      expectedRevision: initial,
+      edit: { action: "replace", kind: "code", language: "python", source: "two" },
+    })
+    expect(first.cell).toMatchObject({ index: 0, source: "two" })
+    const second = await ctx.adapter.edit({
+      directory: "/repo",
+      path: "book.ipynb",
+      index: 1,
+      expectedRevision: first.revision,
+      edit: { action: "insert", kind: "markdown", language: "markdown", source: "three" },
+    })
+    expect(second.revision).not.toBe(first.revision)
+    expect(second.cell).toMatchObject({ index: 1, kind: "markdown", source: "three" })
+  })
+
+  it("returns a structured stale-revision error for genuine content conflicts", async () => {
+    const item = cell("one")
+    const ctx = adapter([item])
+    const expectedRevision = await revision(ctx.adapter)
+    item.state.source = "user edit"
     await expect(
       ctx.adapter.edit({
         directory: "/repo",
         path: "book.ipynb",
         index: 0,
-        version: 2,
-        edit: { action: "replace", kind: "code", language: "python", source: "next" },
+        expectedRevision,
+        edit: { action: "delete" },
       }),
-    ).rejects.toMatchObject({ code: "stale_version" })
-    await ctx.adapter.edit({
+    ).rejects.toMatchObject({
+      code: "stale_revision",
+      path: "book.ipynb",
+      index: 0,
+      currentRevision: expect.stringContaining("content:"),
+      message: expect.stringContaining("Re-read"),
+    })
+    expect(ctx.calls.apply).toBe(0)
+  })
+
+  it("serializes concurrent edits and rejects a stale queued mutation", async () => {
+    const ctx = adapter([cell("one")])
+    const expectedRevision = await revision(ctx.adapter)
+    const first = ctx.adapter.edit({
       directory: "/repo",
       path: "book.ipynb",
       index: 0,
-      version: 3,
-      edit: { action: "replace", kind: "code", language: "python", source: "next" },
+      expectedRevision,
+      edit: { action: "replace", kind: "code", source: "first" },
     })
-    expect(ctx.calls.edit).toEqual([
-      { type: "replace", index: 0, cells: [{ input: { kind: "code", language: "python", source: "next" } }] },
-    ])
+    const other = new NotebookAdapter(access, { deps: ctx.deps, paths, timeout: 50 })
+    const second = other.edit({
+      directory: "/repo",
+      path: "book.ipynb",
+      index: 0,
+      expectedRevision,
+      edit: { action: "replace", kind: "code", source: "second" },
+    })
+    const results = await Promise.allSettled([first, second])
+    expect(results[0]).toMatchObject({ status: "fulfilled", value: { action: "replace" } })
+    expect(results[1]).toMatchObject({ status: "rejected", reason: { code: "stale_revision" } })
+    expect(ctx.cells[0]?.document.getText()).toBe("first")
   })
 
-  it("correlates a newly completed execution and cleans up listeners", async () => {
-    const target = cell()
-    const document = notebook([target], 4)
-    const ctx = adapter(document)
+  it("executes the same target when unrelated cell content or outputs change", async () => {
+    const target = cell("target")
+    const other = cell("other")
+    const ctx = adapter([target, other])
+    const expectedRevision = await revision(ctx.adapter)
+    other.state.source = "changed elsewhere"
+    other.state.outputs = [{ items: [{ mime: "text/plain", data: new TextEncoder().encode("noise") }] } as never]
     ctx.deps.execute = async (...args) => {
       ctx.calls.command++
       ctx.calls.commandArgs = args
-      Object.assign(target, {
-        outputs: [{ items: [{ mime: "text/plain", data: new TextEncoder().encode("done") }] }],
-        executionSummary: { success: true, executionOrder: 2, timing: { startTime: 10, endTime: 20 } },
-      })
-      for (const listener of ctx.changes) {
-        listener({
-          notebook: document,
-          contentChanges: [],
-          cellChanges: [{ cell: target, executionSummary: target.executionSummary }],
-        } as unknown as vscode.NotebookDocumentChangeEvent)
-      }
+      target.state.outputs = [
+        { items: [{ mime: "text/plain", data: new TextEncoder().encode("done") }] } as vscode.NotebookCellOutput,
+      ]
+      target.state.execution = { success: true, executionOrder: 2, timing: { startTime: 10, endTime: 20 } }
+      for (const listener of ctx.changes) listener(event(ctx.document, target.value, { executionSummary: target.state.execution }))
     }
     const result = await ctx.adapter.execute({
       directory: "/repo",
       path: "book.ipynb",
       index: 0,
-      version: 4,
+      expectedRevision,
     })
     expect(result).toMatchObject({ operation: "execute", index: 0, status: "success", outputs: [{ text: "done" }] })
-    expect(ctx.calls.commandArgs).toEqual([
-      "notebook.cell.execute",
-      { ranges: [{ start: 0, end: 1 }], document: document.uri },
-    ])
+    expect(result.revision).not.toBe(expectedRevision)
     expect(ctx.changes.size).toBe(0)
     expect(ctx.closes.size).toBe(0)
   })
 
-  it("fails closed when execution never starts", async () => {
-    const document = notebook([cell()])
-    const ctx = adapter(document)
+  it("does not authorize another notebook with a cached revision", async () => {
+    const first = adapter([cell("target"), cell("first")], "/repo/first.ipynb")
+    const expectedRevision = await revision(first.adapter, "first.ipynb")
+    const second = adapter([cell("target"), cell("second")], "/repo/second.ipynb")
+    await expect(
+      second.adapter.execute({
+        directory: "/repo",
+        path: "second.ipynb",
+        index: 0,
+        expectedRevision,
+      }),
+    ).rejects.toMatchObject({ code: "stale_revision", path: "second.ipynb" })
+    expect(second.calls.command).toBe(0)
+  })
+
+  it("reports an unobserved startup as execution_failed rather than no_kernel", async () => {
+    const ctx = adapter([cell()])
+    const expectedRevision = await revision(ctx.adapter)
     await expect(
       ctx.adapter.execute({
         directory: "/repo",
         path: "book.ipynb",
         index: 0,
-        version: 1,
+        expectedRevision,
         timeout: 5,
       }),
-    ).rejects.toMatchObject({ code: "no_kernel" })
+    ).rejects.toMatchObject({
+      code: "execution_failed",
+      path: "book.ipynb",
+      index: 0,
+      message: expect.stringContaining("command was dispatched"),
+    })
     expect(ctx.calls.commandArgs).toEqual([
       "notebook.cell.cancelExecution",
-      { ranges: [{ start: 0, end: 1 }], document: document.uri },
+      { ranges: [{ start: 0, end: 1 }], document: ctx.document.uri },
     ])
-    expect(ctx.changes.size).toBe(0)
-    expect(ctx.closes.size).toBe(0)
   })
 
   it("cancels execution and disposes listeners", async () => {
-    const document = notebook([cell()])
-    const ctx = adapter(document)
+    const ctx = adapter([cell()])
+    const expectedRevision = await revision(ctx.adapter)
     const controller = new AbortController()
     const pending = ctx.adapter.execute({
       directory: "/repo",
       path: "book.ipynb",
       index: 0,
-      version: 1,
+      expectedRevision,
       signal: controller.signal,
     })
     controller.abort()
-    await expect(pending).rejects.toEqual(
-      new NotebookError("cancelled", "Notebook execution cancellation was requested"),
-    )
+    await expect(pending).rejects.toMatchObject({ code: "cancelled", path: "book.ipynb", index: 0 })
     expect(ctx.changes.size).toBe(0)
     expect(ctx.closes.size).toBe(0)
+  })
+
+  it("rejects execution if the targeted cell changes", async () => {
+    const target = cell("before")
+    const ctx = adapter([target])
+    const expectedRevision = await revision(ctx.adapter)
+    ctx.deps.execute = async (...args) => {
+      ctx.calls.command++
+      ctx.calls.commandArgs = args
+      if (args[0] !== "notebook.cell.execute") return
+      target.state.source = "after"
+      for (const listener of ctx.changes) listener(event(ctx.document, target.value, { document: target.value.document }))
+    }
+    await expect(
+      ctx.adapter.execute({ directory: "/repo", path: "book.ipynb", index: 0, expectedRevision }),
+    ).rejects.toMatchObject({ code: "stale_revision" })
+    expect(ctx.calls.commandArgs).toEqual([
+      "notebook.cell.cancelExecution",
+      { ranges: [{ start: 0, end: 1 }], document: ctx.document.uri },
+    ])
   })
 })

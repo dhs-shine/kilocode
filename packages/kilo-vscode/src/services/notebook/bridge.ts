@@ -22,7 +22,7 @@ const CODES = new Set<NotebookFailure["code"]>([
   "invalid_path",
   "no_kernel",
   "not_found",
-  "stale_version",
+  "stale_revision",
   "timeout",
   "unsupported",
 ])
@@ -64,9 +64,16 @@ async function createContext(directory: string): Promise<NotebookBridgeContext> 
 }
 
 function failure(error: unknown): NotebookFailure {
-  const message = error instanceof Error ? error.message : String(error)
+  const detail = error instanceof Error ? error.message : String(error)
+  const message = (detail || "Notebook operation failed without an error message").slice(0, 10_000)
   if (error instanceof NotebookError && CODES.has(error.code as NotebookFailure["code"])) {
-    return { code: error.code as NotebookFailure["code"], message }
+    return {
+      code: error.code as NotebookFailure["code"],
+      message,
+      ...(error.path !== undefined ? { path: error.path } : {}),
+      ...(error.index !== undefined ? { index: error.index } : {}),
+      ...(error.currentRevision !== undefined ? { currentRevision: error.currentRevision } : {}),
+    }
   }
   return { code: "execution_failed", message }
 }
@@ -214,7 +221,7 @@ export class NotebookBridge {
       return adapter.edit({
         path: request.path,
         directory,
-        version: request.version,
+        expectedRevision: request.expectedRevision,
         index: request.index,
         edit: request.edit,
       })
@@ -222,7 +229,7 @@ export class NotebookBridge {
     return adapter.execute({
       path: request.path,
       directory,
-      version: request.version,
+      expectedRevision: request.expectedRevision,
       index: request.index,
       signal,
     })

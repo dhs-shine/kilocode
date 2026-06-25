@@ -45,7 +45,8 @@ export interface NotebookCell {
 export interface NotebookReadResult {
   operation: "read"
   path: string
-  version: number
+  requestPath: string
+  revision: string
   cells: NotebookCell[]
   truncated?: boolean
 }
@@ -53,15 +54,18 @@ export interface NotebookReadResult {
 export interface NotebookEditResult {
   operation: "edit"
   path: string
-  version: number
+  requestPath: string
+  revision: string
   index: number
   action: "insert" | "replace" | "delete"
+  cell?: NotebookCell
 }
 
 export interface NotebookExecuteResult {
   operation: "execute"
   path: string
-  version: number
+  requestPath: string
+  revision: string
   index: number
   status: "success" | "error" | "cancelled"
   outputs: NotebookOutput[]
@@ -88,7 +92,7 @@ export interface NotebookReadRequest {
 export interface NotebookEditRequest {
   path: string
   directory: string
-  version: number
+  expectedRevision: string
   index: number
   edit: NotebookEdit
 }
@@ -96,7 +100,7 @@ export interface NotebookEditRequest {
 export interface NotebookExecuteRequest {
   path: string
   directory: string
-  version: number
+  expectedRevision: string
   index: number
   signal?: AbortSignal
   timeout?: number

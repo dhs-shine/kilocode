@@ -90,18 +90,20 @@ function harness(context: NotebookBridgeContext, dirs = ["/repo"]) {
 function context(overrides: Partial<NotebookBridgeContext["adapter"]> = {}) {
   const dispose = mock(() => undefined)
   const adapter = {
-    read: mock(async () => ({ operation: "read" as const, path: "book.ipynb", version: 2, cells: [] })),
+    read: mock(async () => ({ operation: "read" as const, path: "book.ipynb", requestPath: "book.ipynb", revision: "content:2", cells: [] })),
     edit: mock(async () => ({
       operation: "edit" as const,
       path: "book.ipynb",
-      version: 2,
+      requestPath: "book.ipynb",
+      revision: "content:2",
       index: 0,
       action: "replace" as const,
     })),
     execute: mock(async () => ({
       operation: "execute" as const,
       path: "book.ipynb",
-      version: 2,
+      requestPath: "book.ipynb",
+      revision: "content:2",
       index: 0,
       status: "success" as const,
       outputs: [],
@@ -128,7 +130,7 @@ describe("NotebookBridge", () => {
       {
         requestID: "notebook-1",
         directory: "/repo",
-        result: { operation: "read", path: "book.ipynb", version: 2, cells: [] },
+        result: { operation: "read", path: "book.ipynb", requestPath: "book.ipynb", revision: "content:2", cells: [] },
       },
     ])
 
@@ -191,7 +193,7 @@ describe("NotebookBridge", () => {
       sessionID: "session-1",
       operation: "execute",
       path: "book.ipynb",
-      version: 1,
+      expectedRevision: "content:1",
       index: 0,
     })
     await flush()
@@ -205,10 +207,43 @@ describe("NotebookBridge", () => {
     test.bridge.dispose()
   })
 
+  it("bounds unexpected adapter failures for the protocol", async () => {
+    const ctx = context({
+      read: mock(async () => {
+        throw new Error("x".repeat(20_000))
+      }),
+    })
+    const test = harness(ctx.value)
+    test.request()
+    await flush()
+    expect((test.rejections[0] as { error: { code: string; message: string } }).error).toMatchObject({
+      code: "execution_failed",
+      message: "x".repeat(10_000),
+    })
+    test.bridge.dispose()
+
+    const empty = context({
+      read: mock(async () => {
+        throw new Error("")
+      }),
+    })
+    const fallback = harness(empty.value)
+    fallback.request()
+    await flush()
+    expect((fallback.rejections[0] as { error: { message: string } }).error.message).toBe(
+      "Notebook operation failed without an error message",
+    )
+    fallback.bridge.dispose()
+  })
+
   it("recovers pending requests for known directories and maps adapter failures", async () => {
     const ctx = context({
       read: mock(async () => {
-        throw new NotebookError("stale_version", "Notebook changed")
+        throw new NotebookError("stale_revision", "Notebook changed", {
+          path: "book.ipynb",
+          index: 0,
+          currentRevision: "content:current",
+        })
       }),
     })
     const test = harness(ctx.value, ["/root", "/worktree"])
@@ -221,7 +256,13 @@ describe("NotebookBridge", () => {
       {
         requestID: "notebook-1",
         directory: "/worktree",
-        error: { code: "stale_version", message: "Notebook changed" },
+        error: {
+          code: "stale_revision",
+          message: "Notebook changed",
+          path: "book.ipynb",
+          index: 0,
+          currentRevision: "content:current",
+        },
       },
     ])
     test.bridge.dispose()

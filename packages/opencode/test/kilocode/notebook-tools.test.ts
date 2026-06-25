@@ -17,21 +17,24 @@ const notebook = Layer.mock(Notebook.Service, {
       return Effect.succeed({
         operation: "read" as const,
         path: input.path,
-        version: 7,
+        requestPath: input.path,
+        revision: "content:read",
         cells: [{ index: 0, kind: "code" as const, language: "python", source: "x".repeat(200_000) }],
       })
     if (input.operation === "edit")
       return Effect.succeed({
         operation: "edit" as const,
         path: input.path,
-        version: input.version + 1,
+        requestPath: input.path,
+        revision: "content:edit",
         index: input.index,
         action: input.edit.action,
       })
     return Effect.succeed({
       operation: "execute" as const,
       path: input.path,
-      version: input.version,
+      requestPath: input.path,
+      revision: "content:execute",
       index: input.index,
       status: "success" as const,
       outputs: [],
@@ -68,7 +71,7 @@ describe("native notebook tools", () => {
         const editResult = yield* edit.execute(
           {
             path: "analysis.ipynb",
-            expected_version: 7,
+            expected_revision: "content:read",
             index: 0,
             action: "replace",
             kind: "code",
@@ -77,14 +80,25 @@ describe("native notebook tools", () => {
           },
           ctx,
         )
-        const executeResult = yield* execute.execute({ path: "analysis.ipynb", expected_version: 8, index: 0 }, ctx)
+        const executeResult = yield* execute.execute(
+          { path: "/workspace/analysis.ipynb", expected_revision: "content:edit", index: 0 },
+          ctx,
+        )
 
         expect(asks.map((item) => item.permission)).toEqual(["notebook_read", "notebook_edit", "notebook_execute"])
-        expect(asks.every((item) => item.patterns[0] === "analysis.ipynb")).toBe(true)
+        expect(asks.map((item) => item.patterns[0])).toEqual([
+          "analysis.ipynb",
+          "analysis.ipynb",
+          "/workspace/analysis.ipynb",
+        ])
         expect(calls.map((item) => item.operation)).toEqual(["read", "edit", "execute"])
+        expect(calls[1]).toMatchObject({ expectedRevision: "content:read" })
+        expect(calls[2]).toMatchObject({ expectedRevision: "content:edit" })
         expect(readResult.output.length).toBeLessThanOrEqual(20_100)
         expect(readResult.output).toContain("notebook result truncated")
-        expect(editResult.metadata.version).toBe(8)
+        expect(readResult.output).toContain('"revision"')
+        expect(readResult.output).not.toContain("requestPath")
+        expect(editResult.metadata.revision).toBe("content:edit")
         expect(executeResult.metadata.index).toBe(0)
       }),
     { git: true },

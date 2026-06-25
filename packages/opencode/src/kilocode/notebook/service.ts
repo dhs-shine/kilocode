@@ -12,6 +12,9 @@ export type Input = WithoutID<Request>
 export class HostError extends Schema.TaggedErrorClass<HostError>()("NotebookHostError", {
   code: ErrorCode,
   detail: Schema.String,
+  path: Schema.optional(Schema.String),
+  index: Schema.optional(Schema.Number),
+  currentRevision: Schema.optional(Schema.String),
 }) {
   override get message() {
     return this.detail
@@ -35,7 +38,7 @@ interface State {
 }
 
 function matches(request: Request, result: Result) {
-  if (request.path !== result.path) return false
+  if (request.path !== result.requestPath) return false
   if (request.operation === "read") return result.operation === "read"
   if (request.operation === "execute") return result.operation === "execute" && request.index === result.index
   return result.operation === "edit" && request.index === result.index && request.edit.action === result.action
@@ -138,7 +141,16 @@ export function layer(timeout: Duration.Input = "10 minutes") {
           return yield* new NotFoundError({ requestID: input.requestID })
         }
         pending.delete(input.requestID)
-        yield* Deferred.fail(entry.deferred, new HostError({ code: input.error.code, detail: input.error.message }))
+        yield* Deferred.fail(
+          entry.deferred,
+          new HostError({
+            code: input.error.code,
+            detail: input.error.message,
+            path: input.error.path,
+            index: input.error.index,
+            currentRevision: input.error.currentRevision,
+          }),
+        )
       })
 
       return Service.of({ request, list, reply, reject })

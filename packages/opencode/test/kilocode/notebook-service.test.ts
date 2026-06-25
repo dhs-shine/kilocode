@@ -2,7 +2,7 @@ import { expect } from "bun:test"
 import { Bus } from "@/bus"
 import { GlobalBus, type GlobalEvent } from "@/bus/global"
 import { Notebook, HostError } from "@/kilocode/notebook/service"
-import { Event, ReadRequest, ReadResult, type Request } from "@/kilocode/notebook/protocol"
+import { EditRequest, Event, ReadRequest, ReadResult, type Request } from "@/kilocode/notebook/protocol"
 import { SessionID } from "@/session/schema"
 import { Effect, Fiber, Layer, Queue, Schema } from "effect"
 import { TestInstance } from "../fixture/fixture"
@@ -46,15 +46,21 @@ it.instance(
 
       yield* notebook.reply({
         requestID: event.properties.id,
-        result: { operation: "read", path: "analysis.ipynb", version: 3, cells: [] },
+        result: { operation: "read", path: "analysis.ipynb", requestPath: "analysis.ipynb", revision: "content:3", cells: [] },
       })
-      expect(yield* Fiber.join(fiber)).toEqual({ operation: "read", path: "analysis.ipynb", version: 3, cells: [] })
+      expect(yield* Fiber.join(fiber)).toEqual({
+        operation: "read",
+        path: "analysis.ipynb",
+        requestPath: "analysis.ipynb",
+        revision: "content:3",
+        cells: [],
+      })
       expect(yield* notebook.list()).toEqual([])
 
       const late = yield* notebook
         .reply({
           requestID: event.properties.id,
-          result: { operation: "read", path: "analysis.ipynb", version: 3, cells: [] },
+          result: { operation: "read", path: "analysis.ipynb", requestPath: "analysis.ipynb", revision: "content:3", cells: [] },
         })
         .pipe(Effect.flip)
       expect(late._tag).toBe("Notebook.NotFoundError")
@@ -71,12 +77,18 @@ it.instance(
       const pending = yield* notebook.list().pipe(Effect.repeat({ until: (items) => items.length === 1 }))
       yield* notebook.reject({
         requestID: pending[0].id,
-        error: { code: "stale_version", message: "Expected version 4 but found 5" },
+        error: {
+          code: "stale_revision",
+          message: "Notebook content changed; re-read before retrying",
+          path: "analysis.ipynb",
+          index: 0,
+          currentRevision: "content:current",
+        },
       })
       const err = yield* Fiber.join(fiber).pipe(Effect.flip)
       expect(err).toBeInstanceOf(HostError)
-      expect(err.code).toBe("stale_version")
-      expect(err.message).toContain("version 4")
+      expect(err.code).toBe("stale_revision")
+      expect(err.message).toContain("re-read")
       expect(yield* notebook.list()).toEqual([])
     }),
   { git: true },
@@ -99,18 +111,23 @@ it.instance(
       const mismatch = yield* notebook
         .reply({
           requestID: pending[0].id,
-          result: { operation: "edit", path: "analysis.ipynb", version: 2, index: 0, action: "delete" },
+          result: { operation: "edit", path: "analysis.ipynb", requestPath: "analysis.ipynb", revision: "content:2", index: 0, action: "delete" },
         })
         .pipe(Effect.flip)
       expect(mismatch._tag).toBe("Notebook.InvalidReplyError")
       const wrongPath = yield* notebook
         .reply({
           requestID: pending[0].id,
-          result: { operation: "read", path: "other.ipynb", version: 2, cells: [] },
+          result: {
+            operation: "read",
+            path: "other.ipynb",
+            requestPath: "other.ipynb",
+            revision: "content:2",
+            cells: [],
+          },
         })
         .pipe(Effect.flip)
       expect(wrongPath._tag).toBe("Notebook.InvalidReplyError")
-
       yield* Fiber.interrupt(fiber)
       expect(yield* Queue.take(cancelled).pipe(Effect.timeout("2 seconds"))).toBe("cancelled")
       expect(yield* notebook.list()).toEqual([])
@@ -131,17 +148,32 @@ it.instance(
 )
 
 it.instance(
-  "rejects escaping paths and oversized aggregate results",
+  "accepts both path forms, requires opaque revisions, and bounds aggregate results",
   () =>
     Effect.gen(function* () {
-      const path = yield* Schema.decodeUnknownEffect(ReadRequest)({
+      const absolute = yield* Schema.decodeUnknownEffect(ReadRequest)({
         id: "nbr_test",
         sessionID,
         operation: "read",
-        path: "../outside.ipynb",
+        path: "/workspace/analysis.ipynb",
         includeOutputs: false,
+      })
+      expect(absolute.path).toBe("/workspace/analysis.ipynb")
+      const relative = yield* Schema.decodeUnknownEffect(ReadRequest)({
+        ...absolute,
+        path: "nested/analysis.ipynb",
+      })
+      expect(relative.path).toBe("nested/analysis.ipynb")
+      const invalid = yield* Schema.decodeUnknownEffect(EditRequest)({
+        id: "nbr_edit",
+        sessionID,
+        operation: "edit",
+        path: "analysis.ipynb",
+        expectedRevision: 4,
+        index: 0,
+        edit: { action: "delete" },
       }).pipe(Effect.flip)
-      expect(String(path)).toContain("workspace-relative")
+      expect(String(invalid)).toContain("string")
 
       const cells = Array.from({ length: 11 }, (_, index) => ({
         index,
@@ -152,7 +184,8 @@ it.instance(
       const output = yield* Schema.decodeUnknownEffect(ReadResult)({
         operation: "read",
         path: "analysis.ipynb",
-        version: 1,
+        requestPath: "analysis.ipynb",
+        revision: "content:1",
         cells,
       }).pipe(Effect.flip)
       expect(String(output)).toContain("aggregate output limit")

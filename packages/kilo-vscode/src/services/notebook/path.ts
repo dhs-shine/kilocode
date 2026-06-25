@@ -4,18 +4,37 @@ import type { NotebookAccess } from "./types"
 
 const WINDOWS_ABSOLUTE = /^[a-zA-Z]:[/\\]/
 
+export interface NotebookErrorDetails {
+  path?: string
+  index?: number
+  currentRevision?: string
+}
+
 export class NotebookError extends Error {
+  readonly path?: string
+  readonly index?: number
+  readonly currentRevision?: string
+
   constructor(
     public readonly code: string,
     message: string,
+    details: NotebookErrorDetails = {},
   ) {
     super(message)
     this.name = "NotebookError"
+    this.path = details.path
+    this.index = details.index
+    this.currentRevision = details.currentRevision
   }
 }
 
 export interface NotebookPathDeps {
   realpath(path: string): Promise<string>
+}
+
+export interface NotebookPath {
+  target: string
+  relative: string
 }
 
 const defaults: NotebookPathDeps = { realpath: fs.realpath }
@@ -25,31 +44,43 @@ function contained(root: string, target: string): boolean {
   return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative))
 }
 
+function invalid(input: string, reason: string): NotebookError {
+  return new NotebookError(
+    "invalid_path",
+    `Invalid notebook path ${JSON.stringify(input)}: ${reason}. Use a path relative to the request directory or an absolute path inside it`,
+    { path: input },
+  )
+}
+
 export async function resolveNotebookPath(
   directory: string,
-  relative: string,
+  input: string,
   access: NotebookAccess,
   deps: NotebookPathDeps = defaults,
-): Promise<string> {
-  if (!relative || relative.length > 4_096 || path.isAbsolute(relative) || WINDOWS_ABSOLUTE.test(relative)) {
-    throw new NotebookError("invalid_path", "Notebook path must be workspace-relative")
+): Promise<NotebookPath> {
+  if (!input || input.length > 4_096 || input.includes("\0")) {
+    throw invalid(input, "the path is empty, too long, or malformed")
+  }
+  if (WINDOWS_ABSOLUTE.test(input) && !path.win32.isAbsolute(directory)) {
+    throw invalid(input, "the absolute path uses a different platform format")
   }
 
-  const root = await deps.realpath(path.resolve(directory))
-  const candidate = path.resolve(root, relative)
-  if (!contained(root, candidate)) {
-    throw new NotebookError("invalid_path", "Notebook path is outside the request directory")
+  const base = path.resolve(directory)
+  const root = await deps.realpath(base)
+  const candidate = path.resolve(base, input)
+  if (!path.isAbsolute(input) && !contained(base, candidate)) {
+    throw invalid(input, "it is outside the request directory")
   }
 
   const target = await deps.realpath(candidate).catch((error: unknown) => {
     const detail = error instanceof Error ? error.message : String(error)
-    throw new NotebookError("not_found", `Cannot resolve notebook: ${detail}`)
+    throw new NotebookError("not_found", `Cannot resolve notebook ${JSON.stringify(input)}: ${detail}`, { path: input })
   })
   if (!contained(root, target)) {
-    throw new NotebookError("invalid_path", "Notebook resolves outside the request directory")
+    throw invalid(input, "it resolves through a symlink outside the request directory")
   }
   if (!(await access.validateAccess(target))) {
-    throw new NotebookError("invalid_path", "Notebook is excluded by workspace access rules")
+    throw invalid(input, "it is excluded by workspace access or ignore rules")
   }
-  return target
+  return { target, relative: path.relative(root, target).split(path.sep).join("/") }
 }

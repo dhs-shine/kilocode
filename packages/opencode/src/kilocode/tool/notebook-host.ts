@@ -5,12 +5,14 @@ import * as Tool from "@/tool/tool"
 import { Effect, Schema } from "effect"
 
 const Source = Schema.String.check(Schema.isMaxLength(200_000))
-const Version = NonNegativeInt.annotate({ description: "Notebook version returned by notebook_read" })
+const Revision = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)).annotate({
+  description: "Opaque content revision returned by notebook_read or the previous successful notebook_edit",
+})
 const Index = NonNegativeInt.annotate({ description: "Zero-based cell index" })
 const LIMIT = 20_000
 
 function render(value: unknown) {
-  const text = JSON.stringify(value, null, 2)
+  const text = JSON.stringify(value, (key, item) => (key === "requestPath" ? undefined : item), 2)
   if (text.length <= LIMIT) return text
   return `${text.slice(0, LIMIT)}
 ... notebook result truncated by CLI (${text.length - LIMIT} characters omitted)`
@@ -39,7 +41,7 @@ const ReadParams = Schema.Struct({
 
 export const NotebookReadTool = Tool.define<
   typeof ReadParams,
-  { path: string; version: number },
+  { path: string; revision: string },
   Notebook.Service,
   "notebook_read"
 >(
@@ -48,7 +50,7 @@ export const NotebookReadTool = Tool.define<
     const notebook = yield* Notebook.Service
     return {
       description:
-        "Read the live, possibly unsaved structure and source of one VS Code notebook. Outputs are omitted unless include_outputs is true.",
+        "Read a live, possibly unsaved VS Code notebook using a request-directory-relative path or a safe absolute path inside that directory. Returns an opaque content revision for edits; outputs are omitted unless include_outputs is true.",
       parameters: ReadParams,
       execute: (params, ctx) =>
         Effect.gen(function* () {
@@ -72,7 +74,7 @@ export const NotebookReadTool = Tool.define<
           return {
             title: `Notebook: ${params.path}`,
             output: render(result),
-            metadata: { path: result.path, version: result.version },
+            metadata: { path: result.path, revision: result.revision },
           }
         }),
     }
@@ -85,14 +87,26 @@ const Cell = {
   source: Source,
 }
 const EditParams = Schema.Union([
-  Schema.Struct({ path: Path, expected_version: Version, index: Index, action: Schema.Literal("insert"), ...Cell }),
-  Schema.Struct({ path: Path, expected_version: Version, index: Index, action: Schema.Literal("replace"), ...Cell }),
-  Schema.Struct({ path: Path, expected_version: Version, index: Index, action: Schema.Literal("delete") }),
+  Schema.Struct({
+    path: Path,
+    expected_revision: Revision,
+    index: Index,
+    action: Schema.Literal("insert"),
+    ...Cell,
+  }),
+  Schema.Struct({
+    path: Path,
+    expected_revision: Revision,
+    index: Index,
+    action: Schema.Literal("replace"),
+    ...Cell,
+  }),
+  Schema.Struct({ path: Path, expected_revision: Revision, index: Index, action: Schema.Literal("delete") }),
 ])
 
 export const NotebookEditTool = Tool.define<
   typeof EditParams,
-  { path: string; version: number; index: number },
+  { path: string; revision: string; index: number },
   Notebook.Service,
   "notebook_edit"
 >(
@@ -101,7 +115,7 @@ export const NotebookEditTool = Tool.define<
     const notebook = yield* Notebook.Service
     return {
       description:
-        "Insert, replace, or delete one cell in a live VS Code notebook. Requires the exact notebook version from notebook_read and leaves the document dirty.",
+        "Insert, replace, or delete one cell in a live VS Code notebook. Paths may be request-directory-relative or safe absolute paths. Pass the latest opaque revision from notebook_read or the previous successful edit unchanged. A stale_revision error requires a fresh read; never blindly retry an index-based edit. Leaves the document dirty.",
       parameters: EditParams,
       execute: (params, ctx) =>
         Effect.gen(function* () {
@@ -113,7 +127,7 @@ export const NotebookEditTool = Tool.define<
               path: params.path,
               action: params.action,
               index: params.index,
-              version: params.expected_version,
+              expectedRevision: params.expected_revision,
             },
           })
           const edit =
@@ -125,7 +139,7 @@ export const NotebookEditTool = Tool.define<
               operation: "edit",
               sessionID: ctx.sessionID,
               path: params.path,
-              version: params.expected_version,
+              expectedRevision: params.expected_revision,
               index: params.index,
               edit,
             }),
@@ -136,18 +150,18 @@ export const NotebookEditTool = Tool.define<
           return {
             title: `${result.action} notebook cell ${result.index}`,
             output: render(result),
-            metadata: { path: result.path, version: result.version, index: result.index },
+            metadata: { path: result.path, revision: result.revision, index: result.index },
           }
         }),
     }
   }),
 )
 
-const ExecuteParams = Schema.Struct({ path: Path, expected_version: Version, index: Index })
+const ExecuteParams = Schema.Struct({ path: Path, expected_revision: Revision, index: Index })
 
 export const NotebookExecuteTool = Tool.define<
   typeof ExecuteParams,
-  { path: string; version: number; index: number },
+  { path: string; revision: string; index: number },
   Notebook.Service,
   "notebook_execute"
 >(
@@ -156,7 +170,7 @@ export const NotebookExecuteTool = Tool.define<
     const notebook = yield* Notebook.Service
     return {
       description:
-        "Execute one explicit code cell in a live VS Code notebook without revealing the notebook or opening a kernel picker. Requires the exact notebook version from notebook_read.",
+        "Execute one explicit code cell in a live VS Code notebook using a request-directory-relative or safe absolute path. Pass the latest opaque content revision unchanged. Execution requires a kernel already selected by the user; the tool never reveals the notebook or opens a kernel picker.",
       parameters: ExecuteParams,
       execute: (params, ctx) =>
         Effect.gen(function* () {
@@ -164,14 +178,14 @@ export const NotebookExecuteTool = Tool.define<
             permission: "notebook_execute",
             patterns: [params.path],
             always: [params.path],
-            metadata: { path: params.path, index: params.index, version: params.expected_version },
+            metadata: { path: params.path, index: params.index, expectedRevision: params.expected_revision },
           })
           const result = yield* run(
             notebook.request({
               operation: "execute",
               sessionID: ctx.sessionID,
               path: params.path,
-              version: params.expected_version,
+              expectedRevision: params.expected_revision,
               index: params.index,
             }),
             ctx.abort,
@@ -181,7 +195,7 @@ export const NotebookExecuteTool = Tool.define<
           return {
             title: `Executed notebook cell ${result.index}`,
             output: render(result),
-            metadata: { path: result.path, version: result.version, index: result.index },
+            metadata: { path: result.path, revision: result.revision, index: result.index },
           }
         }),
     }

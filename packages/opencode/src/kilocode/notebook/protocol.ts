@@ -11,16 +11,20 @@ export type RequestID = Schema.Schema.Type<typeof RequestID>
 export const Path = Schema.String.check(
   Schema.isMinLength(1),
   Schema.isMaxLength(4096),
-  Schema.makeFilter((value: string) => {
-    const parts = value.replaceAll("\\", "/").split("/")
-    return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value) || parts.includes("..")
-      ? "Notebook path must be workspace-relative and contained in the workspace"
-      : undefined
-  }),
-).annotate({ description: "Workspace-relative notebook path" })
+  Schema.makeFilter((value: string) =>
+    value.includes("\0")
+      ? "Notebook path must be a request-directory-relative path or an absolute path inside the request directory"
+      : undefined,
+  ),
+).annotate({
+  description:
+    "Notebook path relative to the request directory, or an absolute path that resolves inside the request directory",
+})
 const Source = Schema.String.check(Schema.isMaxLength(200_000))
 const Text = Schema.String.check(Schema.isMaxLength(100_000))
-const Version = NonNegativeInt.annotate({ description: "Expected VS Code notebook document version" })
+const Revision = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)).annotate({
+  description: "Opaque notebook content revision; pass it back unchanged and do not parse or increment it",
+})
 const Index = NonNegativeInt.annotate({ description: "Zero-based cell index" })
 
 export const Output = Schema.Struct({
@@ -68,7 +72,7 @@ const CellEdit = {
 export const EditRequest = Schema.Struct({
   ...Base,
   operation: Schema.Literal("edit"),
-  version: Version,
+  expectedRevision: Revision,
   index: Index,
   edit: Schema.Union([
     Schema.Struct({ action: Schema.Literal("insert"), ...CellEdit }),
@@ -80,7 +84,7 @@ export const EditRequest = Schema.Struct({
 export const ExecuteRequest = Schema.Struct({
   ...Base,
   operation: Schema.Literal("execute"),
-  version: Version,
+  expectedRevision: Revision,
   index: Index,
 }).annotate({ identifier: "NotebookExecuteRequest" })
 
@@ -92,7 +96,8 @@ export type Request = Schema.Schema.Type<typeof Request>
 export const ReadResult = Schema.Struct({
   operation: Schema.Literal("read"),
   path: Path,
-  version: Version,
+  requestPath: Path,
+  revision: Revision,
   cells: Schema.Array(Cell).check(Schema.isMaxLength(2_000)),
   truncated: Schema.optional(Schema.Boolean),
 })
@@ -106,15 +111,18 @@ export const ReadResult = Schema.Struct({
 export const EditResult = Schema.Struct({
   operation: Schema.Literal("edit"),
   path: Path,
-  version: Version,
+  requestPath: Path,
+  revision: Revision,
   index: Index,
   action: Schema.Literals(["insert", "replace", "delete"]),
+  cell: Schema.optional(Cell),
 }).annotate({ identifier: "NotebookEditResult" })
 
 export const ExecuteResult = Schema.Struct({
   operation: Schema.Literal("execute"),
   path: Path,
-  version: Version,
+  requestPath: Path,
+  revision: Revision,
   index: Index,
   status: Schema.Literals(["success", "error", "cancelled"]),
   outputs: Schema.Array(Output).check(Schema.isMaxLength(100)),
@@ -141,7 +149,7 @@ export const ErrorCode = Schema.Literals([
   "invalid_path",
   "no_kernel",
   "not_found",
-  "stale_version",
+  "stale_revision",
   "timeout",
   "unsupported",
 ])
@@ -150,6 +158,9 @@ export type ErrorCode = Schema.Schema.Type<typeof ErrorCode>
 export const Failure = Schema.Struct({
   code: ErrorCode,
   message: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(10_000)),
+  path: Schema.optional(Path),
+  index: Schema.optional(Index),
+  currentRevision: Schema.optional(Revision),
 }).annotate({ identifier: "NotebookFailure" })
 export type Failure = Schema.Schema.Type<typeof Failure>
 
