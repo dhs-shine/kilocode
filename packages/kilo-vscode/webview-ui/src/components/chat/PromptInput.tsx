@@ -205,7 +205,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
   const sandboxVisible = () => {
     const id = session.currentSessionID()
-    return features().sandboxControls && !id?.startsWith("cloud:")
+    return features().sandboxControls && config().experimental?.sandbox === true && !id?.startsWith("cloud:")
   }
   const sandbox = () => {
     const state = sandboxState()
