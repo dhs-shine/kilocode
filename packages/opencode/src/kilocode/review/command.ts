@@ -2,9 +2,15 @@ import type { Command } from "@/command"
 import type { ReviewCommand } from "@kilocode/kilo-telemetry"
 import REVIEW from "./review.txt"
 
-function legacy(command: string | undefined) {
-  if (command === "local-review") return "branch"
-  if (command === "local-review-uncommitted") return "uncommitted"
+const legacy = {
+  "local-review": {
+    description: "deprecated; use /review branch",
+    message: "/local-review is deprecated and no longer runs a review. Use /review branch instead.",
+  },
+  "local-review-uncommitted": {
+    description: "deprecated; use /review uncommitted",
+    message: "/local-review-uncommitted is deprecated and no longer runs a review. Use /review uncommitted instead.",
+  },
 }
 
 export function isReviewCommand(command: string | undefined): command is ReviewCommand {
@@ -13,7 +19,6 @@ export function isReviewCommand(command: string | undefined): command is ReviewC
 
 export function reviewCommandName(command: string | undefined): ReviewCommand | undefined {
   if (isReviewCommand(command)) return command
-  if (legacy(command)) return "review"
 }
 
 export function parseReviewCommand(prompt: string | undefined): ReviewCommand | undefined {
@@ -31,13 +36,17 @@ export function reviewCommand(): Command.Info {
   }
 }
 
+export function legacyReviewMessage(name: string) {
+  return legacy[name as keyof typeof legacy]?.message
+}
+
 export function legacyReviewCommand(name: string): Command.Info | undefined {
-  const scope = legacy(name)
-  if (!scope) return
+  const item = legacy[name as keyof typeof legacy]
+  if (!item) return
   return {
     name,
-    description: "legacy review alias",
-    template: REVIEW.replace("$ARGUMENTS", `${scope} $ARGUMENTS`),
-    hints: ["$ARGUMENTS"],
+    description: item.description,
+    template: item.message,
+    hints: [],
   }
 }
