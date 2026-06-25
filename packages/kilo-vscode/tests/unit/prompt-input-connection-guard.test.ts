@@ -4,6 +4,8 @@ import { join } from "node:path"
 
 const path = join(__dirname, "..", "..", "webview-ui", "src", "components", "chat", "PromptInput.tsx")
 const src = readFileSync(path, "utf8")
+const iconPath = join(__dirname, "..", "..", "..", "kilo-ui", "src", "components", "icon.tsx")
+const icons = readFileSync(iconPath, "utf8")
 
 describe("PromptInput connection guard", () => {
   it("rechecks the connection after resolving async attachments and before clearing the draft", () => {
@@ -53,8 +55,10 @@ describe("PromptInput sandbox toggle", () => {
     expect(move).toBeGreaterThan(save)
   })
 
-  it("uses the internal flag for visibility and effective runtime state for the button", () => {
-    expect(src).toContain("features().sandboxControls")
+  it("requires the enabled experiment for visibility and uses effective runtime state for the button", () => {
+    expect(src).toContain(
+      'return features().sandboxControls && config().experimental?.sandbox === true && !id?.startsWith("cloud:")',
+    )
     expect(src).toContain("<Show when={sandboxVisible()}>")
     expect(src).toContain("{ action: toggleSandbox, enabled: () => sandboxVisible() && !sandboxDisabled() }")
     expect(src).toContain('if (!sandboxVisible()) hidden.add("sandbox")')
@@ -81,5 +85,19 @@ describe("PromptInput sandbox toggle", () => {
     expect(guard).toBeGreaterThan(start)
     expect(clear).toBeGreaterThan(guard)
     expect(src).toContain("disabled={sandboxDisabled()}")
+  })
+
+  it("explains filesystem and network state without changing the lock icon", () => {
+    expect(src).toContain(
+      "const sandboxNetworkEnabled = () => config().experimental?.sandbox_restrict_network !== false",
+    )
+    expect(src).toContain('<Icon name="lock" size="small" />')
+    expect(src).toContain("<SandboxTooltipContent enabled={sandboxEnabled()} network={sandboxNetworkEnabled()} />")
+    expect(src).toContain('<Icon name="folder" size="small" />')
+    expect(src).toContain('<Icon name="globe" size="small" />')
+    expect(src).toContain("props.enabled && props.network")
+    expect(src).not.toContain('class="prompt-sandbox-network"')
+    expect(src).not.toContain('class="prompt-sandbox-icon"')
+    expect(icons).toContain("globe: {")
   })
 })

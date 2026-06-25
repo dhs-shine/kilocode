@@ -83,6 +83,49 @@ interface PromptInputProps {
   pendingSessionID?: string
 }
 
+export const SandboxTooltipContent: Component<{ enabled: boolean; network: boolean }> = (props) => {
+  const language = useLanguage()
+
+  return (
+    <div class="prompt-sandbox-tooltip">
+      <div class="prompt-sandbox-tooltip-title">
+        {language.t(props.enabled ? "prompt.action.sandbox.status.enabled" : "prompt.action.sandbox.status.disabled")}
+      </div>
+      <div class="prompt-sandbox-tooltip-row">
+        <Icon name="folder" size="small" />
+        <span>{language.t("prompt.action.sandbox.filesystem")}</span>
+        <span class="prompt-sandbox-tooltip-state">
+          {language.t(
+            props.enabled ? "prompt.action.sandbox.filesystem.restricted" : "prompt.action.sandbox.unrestricted",
+          )}
+        </span>
+      </div>
+      <div class="prompt-sandbox-tooltip-row">
+        <Icon name="globe" size="small" />
+        <span>{language.t("prompt.action.sandbox.network")}</span>
+        <span class="prompt-sandbox-tooltip-state">
+          {language.t(
+            props.enabled && props.network
+              ? "prompt.action.sandbox.network.blocked"
+              : props.enabled
+                ? "prompt.action.sandbox.network.allowed"
+                : "prompt.action.sandbox.unrestricted",
+          )}
+        </span>
+      </div>
+      <div class="prompt-sandbox-tooltip-description">
+        {language.t(
+          props.enabled
+            ? "prompt.action.sandbox.description.enabled"
+            : props.network
+              ? "prompt.action.sandbox.description.disabled"
+              : "prompt.action.sandbox.description.disabledNetworkAllowed",
+        )}
+      </div>
+    </div>
+  )
+}
+
 export const PromptInput: Component<PromptInputProps> = (props) => {
   const session = useSession()
   const server = useServer()
@@ -159,13 +202,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
   const sandboxVisible = () => {
     const id = session.currentSessionID()
-    return features().sandboxControls && !id?.startsWith("cloud:")
+    return features().sandboxControls && config().experimental?.sandbox === true && !id?.startsWith("cloud:")
   }
   const sandbox = () => {
     const state = sandboxState()
     return state?.sessionID === sandboxID() ? state : undefined
   }
   const sandboxEnabled = () => sandbox()?.enabled ?? (!sandboxID() && config().experimental?.sandbox === true)
+  const sandboxNetworkEnabled = () => config().experimental?.sandbox_restrict_network !== false
   const sandboxReady = () => !sandboxID() || sandbox() !== undefined
   const sandboxDisabled = () =>
     !server.isConnected() || !sandboxReady() || sandbox()?.available === false || sandboxRequest() !== undefined
@@ -1226,12 +1270,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           <Show when={sandboxVisible()}>
             <Tooltip
               value={
-                sandbox()?.available === false
-                  ? (sandbox()?.reason ?? language.t("common.requestFailed"))
-                  : sandboxEnabled()
-                    ? language.t("prompt.action.sandbox.enabled")
-                    : language.t("prompt.action.sandbox.disabled")
+                sandbox()?.available === false ? (
+                  (sandbox()?.reason ?? language.t("common.requestFailed"))
+                ) : (
+                  <SandboxTooltipContent enabled={sandboxEnabled()} network={sandboxNetworkEnabled()} />
+                )
               }
+              contentClass="prompt-sandbox-tooltip-content"
               placement="top"
             >
               <Button
