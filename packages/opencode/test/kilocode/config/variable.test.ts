@@ -3,16 +3,38 @@ import os from "node:os"
 import path from "node:path"
 import { expect, test } from "bun:test"
 import { ConfigVariable } from "@/config/variable"
+import { InvalidError } from "@/config/error"
 
 const source = { type: "virtual" as const, source: "test", dir: process.cwd() }
 
-test("does not substitute server credentials from the environment", async () => {
+test("rejects server credential environment substitutions", async () => {
+  await expect(
+    ConfigVariable.substitute({
+      ...source,
+      text: "password={env:KILO_SERVER_PASSWORD}",
+      env: { KILO_SERVER_PASSWORD: "secret" },
+    }),
+  ).rejects.toBeInstanceOf(InvalidError)
+})
+
+test("continues to substitute ordinary environment variables", async () => {
   const result = await ConfigVariable.substitute({
     ...source,
-    text: "password={env:KILO_SERVER_PASSWORD};value={env:SAFE_VALUE}",
-    env: { KILO_SERVER_PASSWORD: "secret", SAFE_VALUE: "allowed" },
+    text: "value={env:SAFE_VALUE}",
+    env: { SAFE_VALUE: "allowed" },
   })
-  expect(result).toBe("password=;value=allowed")
+  expect(result).toBe("value=allowed")
+})
+
+test("reads ordinary file substitutions on every platform", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-config-variable-file-"))
+  const file = path.join(dir, "value")
+  await fs.writeFile(file, "allowed")
+  try {
+    expect(await ConfigVariable.substitute({ ...source, text: `{file:${file}}` })).toBe("allowed")
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+  }
 })
 
 test.skipIf(process.platform !== "linux")("does not substitute process environment files", async () => {
@@ -21,7 +43,7 @@ test.skipIf(process.platform !== "linux")("does not substitute process environme
       ...source,
       text: "{file:/proc/self/environ}",
     }),
-  ).rejects.toThrow('bad file reference: "{file:/proc/self/environ}"')
+  ).rejects.toBeInstanceOf(InvalidError)
 })
 
 test.skipIf(process.platform !== "linux")("does not substitute an environment file through a symlink", async () => {
@@ -29,7 +51,7 @@ test.skipIf(process.platform !== "linux")("does not substitute an environment fi
   const link = path.join(dir, "value")
   await fs.symlink("/proc/self/environ", link)
   try {
-    await expect(ConfigVariable.substitute({ ...source, text: `{file:${link}}` })).rejects.toThrow("bad file reference")
+    await expect(ConfigVariable.substitute({ ...source, text: `{file:${link}}` })).rejects.toBeInstanceOf(InvalidError)
   } finally {
     await fs.rm(dir, { recursive: true, force: true })
   }

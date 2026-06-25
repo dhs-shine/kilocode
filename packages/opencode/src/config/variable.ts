@@ -37,7 +37,11 @@ export async function substitute(input: SubstituteInput) {
   const missing = input.missing ?? "error"
   const escape = input.escapeJson ?? true // kilocode_change
   let text = input.text.replace(/\{env:([^}]+)\}/g, (_, varName) => {
-    if (!ConfigVariableGuard.env(varName)) return "" // kilocode_change
+    // kilocode_change start - reject server credentials instead of silently changing config semantics
+    if (!ConfigVariableGuard.env(varName)) {
+      throw new InvalidError({ path: source(input), message: `blocked environment reference: "{env:${varName}}"` })
+    }
+    // kilocode_change end
     return (input.env?.[varName] ?? process.env[varName]) || ""
   })
 

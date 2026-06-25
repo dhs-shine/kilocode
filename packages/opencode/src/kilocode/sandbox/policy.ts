@@ -126,7 +126,7 @@ const read = Effect.fn("SandboxPolicy.read")(function* (directory: string, sessi
   return stored
 })
 
-const state = Effect.fn("SandboxPolicy.state")(function* (sessionID: SessionID) {
+const snapshot = Effect.fn("SandboxPolicy.snapshot")(function* (sessionID: SessionID) {
   const directory = yield* InstanceState.directory
   const current = yield* read(directory, sessionID)
   if (current) return { directory, state: current }
@@ -150,7 +150,7 @@ const state = Effect.fn("SandboxPolicy.state")(function* (sessionID: SessionID) 
 })
 
 export const status = Effect.fn("SandboxPolicy.status")(function* (sessionID: SessionID) {
-  const current = yield* state(sessionID)
+  const current = yield* snapshot(sessionID)
   const support = backendSupport({ mode: current.state.mode, allowedHosts: [] })
   return {
     directory: current.directory,
@@ -272,7 +272,7 @@ export function dispose<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, 
 
 function execute<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
   return Effect.gen(function* () {
-    const current = yield* state(sessionID)
+    const current = yield* snapshot(sessionID)
     const support = backendSupport({ mode: current.state.mode, allowedHosts: [] })
     if (!current.state.enabled || !support.available) return yield* unrestricted(effect)
     return yield* runSandbox(profile(yield* InstanceState.context, current.state.mode), effect)

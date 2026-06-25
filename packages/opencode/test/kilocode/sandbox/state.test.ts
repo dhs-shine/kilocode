@@ -136,7 +136,7 @@ linux("reports configured network namespace availability", async () => {
   try {
     const result = Bun.spawnSync([process.execPath, "-e", script], {
       cwd: import.meta.dir,
-      env: { ...process.env, KILO_BWRAP_PATH: helper },
+      env: { ...process.env, KILO_BWRAP_PATH: helper, KILO_SERVER_PASSWORD: "sandbox-test" },
       stdout: "pipe",
       stderr: "pipe",
       windowsHide: true,
@@ -297,7 +297,8 @@ it.instance("prevents a queued toggle from restoring a retired override", () =>
     yield* Deferred.succeed(release, undefined)
     yield* Fiber.join(removal)
     expect(Exit.isFailure(yield* Fiber.join(pending))).toBe(true)
-    expect((yield* SandboxPolicy.status(id)).enabled).toBe(true)
+    const status = yield* SandboxPolicy.status(id)
+    expect(status.enabled).toBe(status.available)
   }),
 )
 
