@@ -66,4 +66,24 @@ class CommandLifecycleTest : SessionControllerTestBase() {
         val event = appRpc.telemetry.single { it.event == "Session Error" }
         assertEquals("command", event.properties["context"])
     }
+
+    fun `test command without selected model sets error and does not call RPC`() {
+        appRpc.state.value = KiloAppStateDto(KiloAppStatusDto.READY, config = ConfigDto(model = null))
+        projectRpc.state.value = workspaceReady(providers = emptyList(), connected = emptyList()).copy(commands = listOf(CommandDto("deploy")))
+        val m = controller()
+
+        flush()
+        edt { m.model.model = null }
+        edt { m.command("deploy", "prod") }
+        flush()
+
+        assertEquals(0, rpc.creates)
+        assertTrue(rpc.commands.isEmpty())
+        assertSession(
+            """
+            [code] [error] [Select a model before sending a prompt.]
+            """,
+            m,
+        )
+    }
 }

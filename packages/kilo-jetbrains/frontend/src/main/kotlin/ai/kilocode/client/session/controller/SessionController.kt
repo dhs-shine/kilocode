@@ -244,6 +244,7 @@ class SessionController(
 
     fun prompt(text: String, files: List<PromptPartDto> = emptyList()) {
         assertEdt()
+        if (!ensureModel()) return
         val start = sid ?: ref?.key ?: "pending"
         val exists = sid != null
         val dto = promptDto(text, files)
@@ -256,6 +257,7 @@ class SessionController(
 
     fun command(command: String, args: String, files: List<PromptPartDto> = emptyList()) {
         assertEdt()
+        if (!ensureModel()) return
         val start = sid ?: ref?.key ?: "pending"
         val exists = sid != null
         val dto = promptDto("", files)
@@ -287,12 +289,30 @@ class SessionController(
                 edt {
                     if (disposed) return@edt
                     val msg = e.message ?: KiloBundle.message("session.error.prompt")
+                    val detail = causeDetail(e, msg)
                     updateModel {
-                        model.setState(SessionState.Error(msg))
+                        model.setState(SessionState.Error(msg, detail = detail))
                     }
                 }
             }
         }
+    }
+
+    private fun ensureModel(): Boolean {
+        assertEdt()
+        if (model.model?.let(::parseModel) != null) return true
+        capture("Session Error", sessionProps(sid ?: ref?.key) + mapOf("context" to "model", "errorClass" to "missing_model"))
+        showSession()
+        updateModel {
+            model.setState(SessionState.Error(KiloBundle.message("session.error.model.required"), "missing_model"))
+        }
+        return false
+    }
+
+    private fun causeDetail(e: Exception, msg: String): String? {
+        val cause = e.cause?.message?.takeIf { it.isNotBlank() }
+        if (cause == null || cause == msg) return null
+        return cause
     }
 
     private fun session(): CompletableDeferred<String?> {
@@ -1176,7 +1196,12 @@ class SessionController(
             return
         }
         val msg = event.error?.message ?: event.error?.type ?: KiloBundle.message("session.error.unknown")
-        model.setState(SessionState.Error(msg, event.error?.type))
+        model.setState(SessionState.Error(
+            message = msg,
+            kind = event.error?.type,
+            detail = event.error?.responseBody,
+            statusCode = event.error?.statusCode,
+        ))
     }
 
     private fun asked(event: ChatEventDto.PermissionAsked) {

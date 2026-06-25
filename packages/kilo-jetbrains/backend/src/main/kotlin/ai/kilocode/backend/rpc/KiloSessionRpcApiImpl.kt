@@ -26,6 +26,8 @@ import ai.kilocode.rpc.dto.SessionStatusDto
 import com.intellij.openapi.components.service
 import ai.kilocode.log.KiloLog
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.filter
 
 /**
@@ -129,40 +131,46 @@ class KiloSessionRpcApiImpl : KiloSessionRpcApi {
         ready { chat.attachmentPart(id, directory, messageId, partId, attachmentKey) }
 
     override suspend fun events(id: String, directory: String): Flow<ChatEventDto> =
-        chat.events.filter { event ->
-            val sid = when (event) {
-                is ChatEventDto.MessageUpdated -> event.sessionID
-                is ChatEventDto.PartUpdated -> event.sessionID
-                is ChatEventDto.PartDelta -> event.sessionID
-                is ChatEventDto.PartRemoved -> event.sessionID
-                is ChatEventDto.TurnOpen -> event.sessionID
-                is ChatEventDto.TurnClose -> event.sessionID
-                is ChatEventDto.SessionCreated -> event.sessionID
-                is ChatEventDto.Error -> event.sessionID
-                is ChatEventDto.MessageRemoved -> event.sessionID
-                is ChatEventDto.PermissionAsked -> event.sessionID
-                is ChatEventDto.PermissionReplied -> event.sessionID
-                is ChatEventDto.QuestionAsked -> event.sessionID
-                is ChatEventDto.QuestionReplied -> event.sessionID
-                is ChatEventDto.QuestionRejected -> event.sessionID
-                is ChatEventDto.SessionStatusChanged -> event.sessionID
-                is ChatEventDto.SessionUpdated -> event.sessionID
-                is ChatEventDto.SessionIdle -> event.sessionID
-                is ChatEventDto.SessionCompacted -> event.sessionID
-                is ChatEventDto.SessionDiffChanged -> event.sessionID
-                is ChatEventDto.TodoUpdated -> event.sessionID
+        chat.events
+            .onStart { LOG.info("${ChatLogSummary.sid(id)} kind=subscription route=rpc-events start=true dir=${ChatLogSummary.dir(directory)}") }
+            .onCompletion { LOG.info("${ChatLogSummary.sid(id)} kind=subscription route=rpc-events stop=true") }
+            .filter { event ->
+                val sid = when (event) {
+                    is ChatEventDto.MessageUpdated -> event.sessionID
+                    is ChatEventDto.PartUpdated -> event.sessionID
+                    is ChatEventDto.PartDelta -> event.sessionID
+                    is ChatEventDto.PartRemoved -> event.sessionID
+                    is ChatEventDto.TurnOpen -> event.sessionID
+                    is ChatEventDto.TurnClose -> event.sessionID
+                    is ChatEventDto.SessionCreated -> event.sessionID
+                    is ChatEventDto.Error -> event.sessionID
+                    is ChatEventDto.MessageRemoved -> event.sessionID
+                    is ChatEventDto.PermissionAsked -> event.sessionID
+                    is ChatEventDto.PermissionReplied -> event.sessionID
+                    is ChatEventDto.QuestionAsked -> event.sessionID
+                    is ChatEventDto.QuestionReplied -> event.sessionID
+                    is ChatEventDto.QuestionRejected -> event.sessionID
+                    is ChatEventDto.SessionStatusChanged -> event.sessionID
+                    is ChatEventDto.SessionUpdated -> event.sessionID
+                    is ChatEventDto.SessionIdle -> event.sessionID
+                    is ChatEventDto.SessionCompacted -> event.sessionID
+                    is ChatEventDto.SessionDiffChanged -> event.sessionID
+                    is ChatEventDto.TodoUpdated -> event.sessionID
+                }
+                val passes = event is ChatEventDto.SessionCreated || sid == null || sid == id
+                if (passes) LOG.debug { "${ChatLogSummary.sid(id)} pass=true ${ChatLogSummary.eventBody(event)}" }
+                else LOG.debug { "${ChatLogSummary.sid(id)} pass=false srcSid=$sid ${ChatLogSummary.eventBody(event)}" }
+                if (passes && event is ChatEventDto.Error) {
+                    LOG.warn("${ChatLogSummary.sid(id)} route=rpc-events pass=true ${ChatLogSummary.eventBody(event)}")
+                }
+                if (passes && event is ChatEventDto.SessionStatusChanged && event.status.type != "busy") {
+                    LOG.info(
+                        "${ChatLogSummary.sid(id)} kind=status route=rpc-events pass=true " +
+                            ChatLogSummary.status(event.status),
+                    )
+                }
+                passes
             }
-            val passes = event is ChatEventDto.SessionCreated || sid == null || sid == id
-            if (passes) LOG.debug { "${ChatLogSummary.sid(id)} pass=true ${ChatLogSummary.eventBody(event)}" }
-            else LOG.debug { "${ChatLogSummary.sid(id)} pass=false srcSid=$sid ${ChatLogSummary.eventBody(event)}" }
-            if (passes && event is ChatEventDto.SessionStatusChanged && event.status.type != "busy") {
-                LOG.info(
-                    "${ChatLogSummary.sid(id)} kind=status route=rpc-events pass=true " +
-                        ChatLogSummary.status(event.status),
-                )
-            }
-            passes
-        }
 
     override suspend fun updateConfig(directory: String, config: ConfigUpdateDto) =
         ready { chat.updateConfig(directory, config) }

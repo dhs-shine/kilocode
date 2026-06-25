@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -198,19 +200,24 @@ class KiloSessionService internal constructor(
     /** Subscribe to streaming chat events for a session. */
     fun events(id: String, dir: String): Flow<ChatEventDto> {
         val api = rpc
-        return if (api != null) flow {
+        val events = if (api != null) flow {
             api.events(id, dir).collect {
                 LOG.debug { ChatLogSummary.event(it) }
+                if (it is ChatEventDto.Error) LOG.warn("${ChatLogSummary.sid(id)} route=client-events ${ChatLogSummary.eventBody(it)}")
                 emit(it)
             }
         } else flow {
             durable {
                 KiloSessionRpcApi.getInstance().events(id, dir).collect {
                     LOG.debug { ChatLogSummary.event(it) }
+                    if (it is ChatEventDto.Error) LOG.warn("${ChatLogSummary.sid(id)} route=client-events ${ChatLogSummary.eventBody(it)}")
                     emit(it)
                 }
             }
         }
+        return events
+            .onStart { LOG.info("${ChatLogSummary.sid(id)} kind=subscription route=client-events start=true dir=${ChatLogSummary.dir(dir)}") }
+            .onCompletion { LOG.info("${ChatLogSummary.sid(id)} kind=subscription route=client-events stop=true") }
     }
 
     /** Update config (model, agent/mode, temperature). */

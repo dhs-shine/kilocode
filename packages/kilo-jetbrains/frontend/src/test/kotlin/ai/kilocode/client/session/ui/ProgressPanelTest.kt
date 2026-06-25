@@ -46,6 +46,7 @@ class ProgressPanelTest : BasePlatformTestCase() {
 
         assertTrue(panel.isVisible)
         assertEquals("Thinking\u2026", panel.labelText())
+        assertTrue(panel.spinnerVisible())
     }
 
     fun `test panel uses transcript row padding`() {
@@ -84,11 +85,41 @@ class ProgressPanelTest : BasePlatformTestCase() {
         assertFalse(panel.isVisible)
     }
 
-    fun `test panel hides on Error state`() {
+    fun `test panel shows on Error state`() {
         model.setState(SessionState.Busy("Thinking\u2026"))
         model.setState(SessionState.Error("something went wrong"))
 
+        assertTrue(panel.isVisible)
+        assertEquals("something went wrong", panel.labelText())
+        assertEquals(UiStyle.Colors.errorLabelForeground(), panel.summaryColor())
+        assertFalse(panel.spinnerVisible())
+    }
+
+    fun `test panel hides error on Idle`() {
+        model.setState(SessionState.Error("something went wrong"))
+        model.setState(SessionState.Idle)
+
         assertFalse(panel.isVisible)
+    }
+
+    fun `test panel toggles error details`() {
+        model.setState(SessionState.Error("Bad Request", "APIError", "provider details", 400))
+
+        assertTrue(panel.isVisible)
+        assertTrue(panel.toggleVisible())
+        assertFalse(panel.detailsVisible())
+        assertFalse(panel.toggleExpanded())
+
+        panel.clickToggle()
+
+        assertTrue(panel.toggleExpanded())
+        assertTrue(panel.detailsVisible())
+        assertEquals("Status: 400\n\nAPIError\n\nprovider details", panel.detailsText())
+
+        panel.clickToggle()
+
+        assertFalse(panel.toggleExpanded())
+        assertFalse(panel.detailsVisible())
     }
 
     fun `test panel hides on AwaitingPermission`() {

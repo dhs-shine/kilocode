@@ -93,6 +93,9 @@ class KiloBackendChatManager(
                     if (events != null) {
                         for (parsed in events) {
                             log.debug { ChatLogSummary.event(parsed) }
+                            if (parsed is ChatEventDto.Error) {
+                                log.warn("${ChatLogSummary.sid(parsed.sessionID)} route=chat-events emit=true ${ChatLogSummary.eventBody(parsed)}")
+                            }
                             if (parsed is ChatEventDto.SessionStatusChanged && parsed.status.type != "busy") {
                                 log.info(
                                     "${ChatLogSummary.sid(parsed.sessionID)} kind=status route=chat-events emit=true " +
@@ -171,6 +174,7 @@ class KiloBackendChatManager(
                     val detail = raw?.takeIf { it.isNotBlank() }?.let { ": ${ChatLogSummary.body(it)}" }.orEmpty()
                     throw RuntimeException("prompt_async failed: HTTP $code$detail")
                 }
+                log.info("${ChatLogSummary.sid(id)} kind=prompt op=prompt_async accepted=true code=$code ${ChatLogSummary.prompt(prompt)}")
                 log.debug { "${ChatLogSummary.sid(id)} kind=prompt op=prompt_async ok=true code=$code" }
             }
         } catch (e: RuntimeException) {

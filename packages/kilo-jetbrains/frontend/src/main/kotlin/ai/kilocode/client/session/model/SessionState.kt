@@ -16,7 +16,12 @@ sealed class SessionState {
 
     data class Offline(val message: String, val requestId: String) : SessionState()
 
-    data class Error(val message: String, val kind: String? = null) : SessionState()
+    data class Error(
+        val message: String,
+        val kind: String? = null,
+        val detail: String? = null,
+        val statusCode: Int? = null,
+    ) : SessionState()
 
     data class LoginRequired(val message: String) : SessionState()
 
