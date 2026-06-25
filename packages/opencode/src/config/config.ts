@@ -11,11 +11,11 @@ import { Flag } from "@opencode-ai/core/flag/flag"
 import { Auth } from "../auth"
 import { Env } from "../env"
 import { applyEdits, findNodeAtLocation, modify, parseTree } from "jsonc-parser" // kilocode_change - parseTree/findNodeAtLocation used in patchJsonc
+import { InstallationLocal, InstallationVersion } from "@opencode-ai/core/installation/version"
 import { existsSync } from "fs"
 // kilocode_change start
 import { GlobalBus } from "@/bus/global"
 import { Event } from "../server/event"
-import { KilocodePluginDependency } from "@/kilocode/config/plugin-dependency"
 // kilocode_change end
 import { Account } from "@/account/account"
 import { isRecord } from "@/util/record"
@@ -908,7 +908,7 @@ export const layer = Layer.effect(
               add: [
                 {
                   name: "@kilocode/plugin",
-                  version: KilocodePluginDependency.version(), // kilocode_change
+                  version: InstallationLocal ? undefined : InstallationVersion,
                 },
               ],
             })
