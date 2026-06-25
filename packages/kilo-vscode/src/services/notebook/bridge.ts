@@ -1,3 +1,4 @@
+import { realpath } from "node:fs/promises"
 import type {
   EventKilocodeNotebookCancelled,
   EventKilocodeNotebookRequested,
@@ -37,6 +38,7 @@ export interface NotebookBridgeContext {
 
 export interface NotebookBridgeOptions {
   create?: (directory: string) => Promise<NotebookBridgeContext>
+  canonical?: (directory: string) => Promise<string>
 }
 
 interface NotebookConnection {
@@ -49,6 +51,12 @@ interface NotebookConnection {
 interface ActiveRequest {
   controller: AbortController
   cancelled: boolean
+}
+
+interface RequestOrigin {
+  directory: string
+  root: string
+  sessionID: string
 }
 
 type NotebookOutcome = { result: NotebookResult } | { error: NotebookFailure }
@@ -81,12 +89,14 @@ function failure(error: unknown): NotebookFailure {
 export class NotebookBridge {
   private readonly contexts = new Map<string, Promise<NotebookBridgeContext>>()
   private readonly active = new Map<string, ActiveRequest>()
-  private readonly origins = new Map<string, string>()
+  private readonly admitting = new Set<string>()
+  private readonly origins = new Map<string, RequestOrigin>()
   private readonly outcomes = new Map<string, NotebookOutcome>()
   private readonly settled = new Set<string>()
   private readonly unsubscribeEvent: () => void
   private readonly unsubscribeState: () => void
   private readonly create: (directory: string) => Promise<NotebookBridgeContext>
+  private readonly canonical: (directory: string) => Promise<string>
   private disposed = false
   private revision = 0
   private backend: KiloClient | undefined
@@ -96,6 +106,7 @@ export class NotebookBridge {
     options: NotebookBridgeOptions = {},
   ) {
     this.create = options.create ?? createContext
+    this.canonical = options.canonical ?? realpath
     this.unsubscribeEvent = connection.onEvent((event, directory) => this.event(event, directory))
     this.unsubscribeState = connection.onStateChange((state) => {
       if (state !== "connected") return
@@ -120,6 +131,7 @@ export class NotebookBridge {
       request.controller.abort()
     }
     this.active.clear()
+    this.admitting.clear()
     for (const context of this.contexts.values()) {
       void context
         .then((value) => value.dispose())
@@ -137,6 +149,7 @@ export class NotebookBridge {
       request.controller.abort()
     }
     this.active.clear()
+    this.admitting.clear()
     this.origins.clear()
     this.outcomes.clear()
     this.settled.clear()
@@ -154,20 +167,47 @@ export class NotebookBridge {
 
   private request(event: EventKilocodeNotebookRequested, directory?: string): void {
     const request = event.properties
-    const dir = this.origins.get(request.id) ?? directory
-    if (!dir || this.disposed || this.active.has(request.id) || this.settled.has(request.id)) return
-    this.remember(this.origins, request.id, dir)
+    const origin = this.origins.get(request.id)
+    if (origin) {
+      if (origin.sessionID !== request.sessionID || (directory && origin.directory !== directory)) return
+      this.start(request, origin)
+      return
+    }
+    if (!directory || this.disposed || this.admitting.has(request.id) || this.settled.has(request.id)) return
+    this.admitting.add(request.id)
+    void this.admit(request, directory).finally(() => this.admitting.delete(request.id))
+  }
+
+  private async admit(request: NotebookRequest, directory: string): Promise<void> {
+    const root = await this.allowed(directory)
+    if (this.disposed || this.settled.has(request.id)) return
+    if (!root) {
+      const accepted = await this.reject(request.id, directory, {
+        code: "invalid_path",
+        message: "Notebook request directory is not an active VS Code workspace",
+      })
+      if (accepted) this.remember(this.settled, request.id)
+      return
+    }
+    const origin = { directory, root, sessionID: request.sessionID }
+    this.rememberOrigin(request.id, origin)
+    this.start(request, origin)
+  }
+
+  private start(request: NotebookRequest, origin: RequestOrigin): void {
+    if (this.disposed || this.active.has(request.id) || this.settled.has(request.id)) return
     const active = { controller: new AbortController(), cancelled: false }
     this.active.set(request.id, active)
-    void this.run(request, dir, active).catch((error: unknown) => {
+    void this.run(request, origin, active).catch((error: unknown) => {
       console.error(`[Kilo New] NotebookBridge: request ${request.id} failed:`, error)
     })
   }
 
   private cancel(event: EventKilocodeNotebookCancelled, directory?: string): void {
     const id = event.properties.requestID
-    const dir = this.origins.get(id) ?? directory
-    if (dir) this.remember(this.origins, id, dir)
+    const origin = this.origins.get(id)
+    if (origin && (origin.sessionID !== event.properties.sessionID || (directory && origin.directory !== directory)))
+      return
     this.remember(this.settled, id)
     const active = this.active.get(id)
     if (!active) return
@@ -175,15 +215,15 @@ export class NotebookBridge {
     active.controller.abort()
   }
 
-  private async run(request: NotebookRequest, directory: string, active: ActiveRequest): Promise<void> {
+  private async run(request: NotebookRequest, origin: RequestOrigin, active: ActiveRequest): Promise<void> {
     try {
-      const outcome = this.outcomes.get(request.id) ?? (await this.execute(request, directory, active))
+      const outcome = this.outcomes.get(request.id) ?? (await this.execute(request, origin.root, active))
       if (!outcome || this.disposed || active.cancelled) return
       this.rememberOutcome(request.id, outcome)
       const accepted =
         "result" in outcome
-          ? await this.reply(request.id, directory, outcome.result)
-          : await this.reject(request.id, directory, outcome.error)
+          ? await this.reply(request.id, origin.directory, outcome.result)
+          : await this.reject(request.id, origin.directory, outcome.error)
       if (accepted) {
         this.outcomes.delete(request.id)
         this.remember(this.settled, request.id)
@@ -236,6 +276,15 @@ export class NotebookBridge {
       index: request.index,
       signal,
     })
+  }
+
+  private async allowed(directory: string): Promise<string | undefined> {
+    const root = await this.canonical(directory).catch(() => undefined)
+    if (!root) return undefined
+    const known = await Promise.all(
+      this.connection.getKnownDirectories().map((dir) => this.canonical(dir).catch(() => undefined)),
+    )
+    return known.includes(root) ? root : undefined
   }
 
   private context(directory: string): Promise<NotebookBridgeContext> {
@@ -299,14 +348,18 @@ export class NotebookBridge {
     if (oldest !== undefined) this.outcomes.delete(oldest)
   }
 
-  private remember(map: Map<string, string>, id: string, value: string): void
-  private remember(set: Set<string>, id: string): void
-  private remember(target: Map<string, string> | Set<string>, id: string, value?: string): void {
-    if (target instanceof Map && value !== undefined) target.set(id, value)
-    if (target instanceof Set) target.add(id)
-    if (target.size <= RETAINED_REQUESTS) return
-    const oldest = target.keys().next().value
-    if (oldest !== undefined) target.delete(oldest)
+  private rememberOrigin(id: string, origin: RequestOrigin): void {
+    this.origins.set(id, origin)
+    if (this.origins.size <= RETAINED_REQUESTS) return
+    const oldest = this.origins.keys().next().value
+    if (oldest !== undefined) this.origins.delete(oldest)
+  }
+
+  private remember(set: Set<string>, id: string): void {
+    set.add(id)
+    if (set.size <= RETAINED_REQUESTS) return
+    const oldest = set.keys().next().value
+    if (oldest !== undefined) set.delete(oldest)
   }
 }
 

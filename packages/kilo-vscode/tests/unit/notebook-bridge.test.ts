@@ -69,7 +69,7 @@ function harness(context: NotebookBridgeContext, dirs = ["/repo"]) {
     getKnownDirectories: () => dirs,
   }
   const create = mock(async () => context)
-  const bridge = new NotebookBridge(connection as never, { create })
+  const bridge = new NotebookBridge(connection as never, { create, canonical: async (directory) => directory })
   const request = (value: NotebookRequest = read, directory = "/repo") =>
     handlers.event?.(
       { id: `event-${value.id}`, type: "kilocode.notebook.requested", properties: value } as SSEPayload,
@@ -148,6 +148,28 @@ describe("NotebookBridge", () => {
     expect(ctx.dispose).toHaveBeenCalledTimes(1)
     expect(test.handlers.event).toBeUndefined()
     expect(test.handlers.state).toBeUndefined()
+  })
+
+  it("rejects live requests outside known VS Code directories", async () => {
+    const ctx = context()
+    const test = harness(ctx.value, ["/repo"])
+
+    test.request(read, "/outside")
+    await flush()
+
+    expect(test.create).not.toHaveBeenCalled()
+    expect(ctx.adapter.read).not.toHaveBeenCalled()
+    expect(test.rejections).toEqual([
+      {
+        requestID: "notebook-1",
+        directory: "/outside",
+        error: {
+          code: "invalid_path",
+          message: "Notebook request directory is not an active VS Code workspace",
+        },
+      },
+    ])
+    test.bridge.dispose()
   })
 
   it("retries context initialization after a transient failure", async () => {
