@@ -68,8 +68,8 @@ export async function substitute(input: SubstituteInput) {
     }
 
     const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(configDir, filePath)
-    const fileContent = // kilocode_change - validate and read one opened file to prevent credential substitution races
-    (
+    // kilocode_change start - validate and read one opened file to prevent credential substitution races
+    const fileContent = (
       await ConfigVariableGuard.read(resolvedPath, Filesystem.readText).catch((error: NodeJS.ErrnoException) => {
         if (missing === "empty") return ""
 
@@ -86,6 +86,7 @@ export async function substitute(input: SubstituteInput) {
         throw new InvalidError({ path: configSource, message: errMsg }, { cause: error })
       })
     ).trim()
+    // kilocode_change end
 
     out += escape ? JSON.stringify(fileContent).slice(1, -1) : fileContent // kilocode_change
     cursor = index + token.length
