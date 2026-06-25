@@ -20,6 +20,7 @@ import { ModelSelectorBase } from "../src/components/shared/ModelSelector"
 import { ModeSwitcherBase } from "../src/components/shared/ModeSwitcher"
 import { SpeechToTextButton } from "../src/components/speech-to-text/SpeechToTextButton"
 import { canUseSpeechToText, selectedSpeechToTextModel } from "../src/components/speech-to-text/availability"
+import { visible as isSandboxVisible } from "../src/components/settings/sandboxing"
 import { ThinkingSelectorBase } from "../src/components/shared/ThinkingSelector"
 import { SandboxButtonBase } from "../src/components/shared/SandboxButton"
 import {
@@ -104,6 +105,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   const [highlightedIndex, setHighlightedIndex] = createSignal(0)
   const [variant, setVariant] = createSignal<string | undefined>(session.currentVariant())
   const [sandbox, setSandbox] = createSignal(config().experimental?.sandbox === true)
+  const sandboxVisible = () => isSandboxVisible(features(), config())
   const speech = useSpeechToText(vscode, server, { t })
   const canUseSpeech = () => canUseSpeechToText(config(), provider.authStates())
   const speechModel = () => selectedSpeechToTextModel(config())
@@ -248,7 +250,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
       baseBranch: advanced ? (baseBranch() ?? undefined) : undefined,
       branchName: customBranch,
       modelAllocations: allocations,
-      sandbox: features().sandboxControls ? sandbox() : undefined,
+      sandbox: sandboxVisible() ? sandbox() : undefined,
       files: imgFiles,
     })
 
@@ -461,7 +463,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                       </Tooltip>
                     </Show>
                   </Show>
-                  <Show when={features().sandboxControls}>
+                  <Show when={sandboxVisible()}>
                     <SandboxButtonBase
                       enabled={sandbox()}
                       onToggle={click(

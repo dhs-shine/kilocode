@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 const path = join(__dirname, "..", "..", "webview-ui", "src", "components", "chat", "PromptInput.tsx")
+const buttonPath = join(__dirname, "..", "..", "webview-ui", "src", "components", "shared", "SandboxButton.tsx")
 const src = readFileSync(path, "utf8")
+const button = readFileSync(buttonPath, "utf8")
 
 describe("PromptInput connection guard", () => {
   it("rechecks the connection after resolving async attachments and before clearing the draft", () => {
@@ -62,8 +64,11 @@ describe("PromptInput sandbox toggle", () => {
     expect(src).toContain("const target = untrack(sandboxTarget)")
     expect(src).toContain("if (target && target !== sessionID) clearSandboxRequest()")
     expect(src).toContain("sandbox()?.enabled ?? (!sandboxID() && config().experimental?.sandbox === true)")
-    expect(src).toContain("aria-pressed={sandboxEnabled()}")
+    expect(src).toContain("<SandboxButtonBase")
+    expect(src).toContain("enabled={sandboxEnabled()}")
     expect(src).toContain("!sandboxReady()")
+    expect(button).toContain("aria-pressed={props.enabled}")
+    expect(button).toContain('class={`prompt-status-button ${props.enabled ? "prompt-status-button--active" : ""}`}')
     expect(src).toContain("if (sandboxRequest() && target === null) return")
     expect(src).not.toContain("if (state === current) return true")
   })

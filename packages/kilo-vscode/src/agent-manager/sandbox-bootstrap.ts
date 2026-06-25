@@ -1,46 +1,39 @@
-// Ensure a CLI session's sandbox override matches the desired state.
-//
-// `session.create` exposes no sandbox parameter, so sandbox state is reconciled
-// after the session exists via `sandbox.toggle` (which flips state). This checks
-// the current status first and toggles only when the state differs, so it is
-// safe regardless of the global `experimental.sandbox` default.
-//
-// Pure runtime helper — no vscode imports; takes the SDK client directly so it
-// can be unit-tested in isolation. Failures are logged and swallowed: sandbox is
-// a best-effort safety enhancement, and a worktree stays usable if the sandbox
-// backend is unavailable (the user can toggle it manually from the prompt).
-
 import type { KiloClient } from "@kilocode/sdk/v2/client"
+import { sameDirectory } from "../kilo-provider-utils"
 
-export async function ensureSandbox(
-  client: KiloClient,
-  sessionId: string,
-  directory: string,
-  desired: boolean,
-  log: (msg: string) => void,
-): Promise<void> {
+type State = {
+  directory: string
+  enabled: boolean
+  available: boolean
+  reason?: string
+  version: number
+}
+
+function unavailable(state: State) {
+  return new Error(state.reason ?? "Sandbox backend is unavailable")
+}
+
+function routed(state: State, dir: string) {
+  if (!sameDirectory(state.directory, dir)) throw new Error("Sandbox status resolved a different directory")
+}
+
+function confirm(state: State, dir: string, desired: boolean) {
+  routed(state, dir)
+  if (desired && !state.available) throw unavailable(state)
+  if (state.enabled !== desired) {
+    throw new Error(`Sandbox remained ${state.enabled ? "enabled" : "disabled"} after reconciliation`)
+  }
+  return state
+}
+
+/** Ensure a new session uses the selected sandbox state before its first prompt. */
+export async function ensureSandbox(client: KiloClient, sid: string, dir: string, desired: boolean): Promise<State> {
   const sandbox = client.sandbox
-  let current: boolean
-  try {
-    const { data } = await sandbox.status({ sessionID: sessionId, directory }, { throwOnError: true })
-    if (!data.available) {
-      log(`Sandbox unavailable for ${sessionId}: ${data.reason ?? "unknown"}`)
-      return
-    }
-    current = data.enabled
-  } catch (err) {
-    log(`Sandbox status check failed for ${sessionId}: ${err instanceof Error ? err.message : String(err)}`)
-    return
-  }
-  if (current === desired) return
-  try {
-    const { data } = await sandbox.toggle({ sessionID: sessionId, directory }, { throwOnError: true })
-    if (!data.available) {
-      log(`Sandbox toggle unavailable for ${sessionId}: ${data.reason ?? "unknown"}`)
-      return
-    }
-    log(`Sandbox ${data.enabled ? "enabled" : "disabled"} for ${sessionId}`)
-  } catch (err) {
-    log(`Sandbox toggle failed for ${sessionId}: ${err instanceof Error ? err.message : String(err)}`)
-  }
+  const { data: current } = await sandbox.status({ sessionID: sid, directory: dir }, { throwOnError: true })
+  routed(current, dir)
+  if (current.enabled === desired) return confirm(current, dir, desired)
+  if (!current.available) throw unavailable(current)
+
+  const { data: next } = await sandbox.toggle({ sessionID: sid, directory: dir }, { throwOnError: true })
+  return confirm(next, dir, desired)
 }

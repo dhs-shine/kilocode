@@ -851,6 +851,28 @@ export class AgentManagerProvider implements Disposable {
     }
   }
 
+  /** Remove a worktree whose session could not be safely initialized. */
+  private async discardWorktree(id: string, dir: string, sessionId?: string): Promise<void> {
+    this.getStateManager()?.removeWorktree(id)
+    this.pushState()
+
+    if (sessionId) {
+      try {
+        await this.connectionService
+          .getClient()
+          .session.delete({ sessionID: sessionId, directory: dir }, { throwOnError: true })
+      } catch (err) {
+        this.log(`Failed to delete session ${sessionId} after worktree setup failed:`, err)
+      }
+    }
+
+    try {
+      await this.getWorktreeManager()?.removeWorktree(dir)
+    } catch (err) {
+      this.log(`Failed to remove worktree ${id} after setup failed:`, err)
+    }
+  }
+
   /** Send worktreeSetup.ready + sessionMeta + pushState after worktree creation. */
   private notifyWorktreeReady(sessionId: string, result: CreateWorktreeResult, worktreeId?: string): void {
     this.pushState()
@@ -1288,24 +1310,33 @@ export class AgentManagerProvider implements Disposable {
 
       const state = this.getStateManager()!
       state.addSession(session.id, wt.worktree.id)
-      this.registerWorktreeSession(session.id, wt.result.path)
-      this.notifyWorktreeReady(session.id, wt.result, wt.worktree.id)
 
-      // Reconcile the session sandbox to the user's choice before the initial
-      // prompt runs, so tool execution is confined when sandbox is requested.
+      // Sandbox must match the user's choice before this session is exposed or
+      // receives its initial prompt. A failed reconciliation aborts this version.
       if (msg.sandbox !== undefined) {
         try {
-          await ensureSandbox(
-            this.connectionService.getClient(),
-            session.id,
-            wt.result.path,
-            msg.sandbox,
-            (m) => this.log(m),
-          )
-        } catch (err) {
-          this.log(`Sandbox setup skipped for ${session.id}:`, err)
+          await ensureSandbox(this.connectionService.getClient(), session.id, wt.result.path, msg.sandbox)
+        } catch (error) {
+          const err = getErrorMessage(error)
+          this.log(`Failed to configure sandbox for ${session.id}: ${err}`)
+          this.postToWebview({
+            type: "agentManager.worktreeSetup",
+            status: "error",
+            message: `Failed to configure sandbox: ${err}`,
+            worktreeId: wt.worktree.id,
+          })
+          this.host.capture("Agent Manager Session Error", {
+            source: PLATFORM,
+            error: err,
+            context: "configureSandbox",
+          })
+          await this.discardWorktree(wt.worktree.id, wt.result.path, session.id)
+          continue
         }
       }
+
+      this.registerWorktreeSession(session.id, wt.result.path)
+      this.notifyWorktreeReady(session.id, wt.result, wt.worktree.id)
 
       // Set the per-version model immediately so the UI selector reflects
       // the correct model as soon as the worktree appears, before Phase 2.

@@ -2,11 +2,8 @@
  * SandboxButton component
  * The lock toggle used to enable/disable a session's sandbox override.
  *
- * SandboxButtonBase — reusable core that accepts enabled/availability/onToggle
- *   props. Consumed by both the chat prompt and the Agent Manager New Worktree
- *   modal so both surfaces render the exact same control.
- * SandboxButton — thin wrapper wired to live session sandbox state for chat
- *   usage. Not used yet; kept for parity with the other shared selectors.
+ * SandboxButtonBase accepts enabled/availability/onToggle props and is consumed
+ * by both the chat prompt and Agent Manager so both surfaces render one control.
  */
 
 import { type Component } from "solid-js"
@@ -45,7 +42,9 @@ export const SandboxButtonBase: Component<SandboxButtonBaseProps> = (props) => {
         size="small"
         onClick={props.onToggle}
         disabled={props.disabled || unavailable()}
-        aria-label={props.enabled ? language.t("prompt.action.sandbox.disable") : language.t("prompt.action.sandbox.enable")}
+        aria-label={
+          props.enabled ? language.t("prompt.action.sandbox.disable") : language.t("prompt.action.sandbox.enable")
+        }
         aria-pressed={props.enabled}
         class={`prompt-status-button ${props.enabled ? "prompt-status-button--active" : ""}`}
       >
