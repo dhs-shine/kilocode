@@ -564,33 +564,46 @@
   position: relative;
 }
 
-.prompt-sandbox-icon {
-  position: relative;
-  display: inline-flex;
-  width: 16px;
-  height: 16px;
+.prompt-sandbox-tooltip-content {
+  width: 260px;
+  padding: 10px 12px;
+  white-space: normal;
 }
 
-.prompt-sandbox-network {
-  position: absolute;
-  left: -2px;
-  bottom: -2px;
-  display: inline-flex;
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  color: var(--icon-base);
-  background: var(--surface-base, var(--vscode-editor-background));
-  pointer-events: none;
+.prompt-sandbox-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prompt-sandbox-tooltip-title {
+  color: var(--text-invert-strong);
+  font-weight: var(--font-weight-medium);
+}
+
+.prompt-sandbox-tooltip-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-invert-base);
 
   [data-component="icon"] {
-    width: 100%;
-    height: 100%;
+    width: 16px;
+    height: 16px;
   }
+}
 
-  [data-component="icon"] [data-slot="icon-svg"] {
-    color: var(--icon-base) !important;
-  }
+.prompt-sandbox-tooltip-state {
+  color: var(--text-invert-strong);
+  font-weight: var(--font-weight-medium);
+}
+
+.prompt-sandbox-tooltip-description {
+  padding-top: 8px;
+  border-top: 1px solid var(--border-weak-base);
+  color: var(--text-invert-base);
+  font-weight: var(--font-weight-normal);
 }
 
 .prompt-status-button--active {

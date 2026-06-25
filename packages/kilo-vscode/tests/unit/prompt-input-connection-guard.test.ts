@@ -70,15 +70,17 @@ describe("PromptInput sandbox toggle", () => {
     expect(src).not.toContain("if (state === current) return true")
   })
 
-  it("adds a neutral network badge whenever network restriction is configured", () => {
+  it("explains filesystem and network state without changing the lock icon", () => {
     expect(src).toContain(
       "const sandboxNetworkEnabled = () => config().experimental?.sandbox_restrict_network !== false",
     )
     expect(src).toContain('<Icon name="lock" size="small" />')
-    expect(src).toContain("<Show when={sandboxNetworkEnabled()}>")
-    expect(src).toContain('class="prompt-sandbox-network"')
+    expect(src).toContain("<SandboxTooltipContent enabled={sandboxEnabled()} network={sandboxNetworkEnabled()} />")
+    expect(src).toContain('<Icon name="folder" size="small" />')
     expect(src).toContain('<Icon name="globe" size="small" />')
-    expect(src).not.toContain('<path d="M1.3 4h5.4')
+    expect(src).toContain("props.enabled && props.network")
+    expect(src).not.toContain('class="prompt-sandbox-network"')
+    expect(src).not.toContain('class="prompt-sandbox-icon"')
     expect(icons).toContain("globe: {")
   })
 })

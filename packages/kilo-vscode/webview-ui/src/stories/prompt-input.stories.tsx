@@ -16,7 +16,10 @@ import { type ParentComponent } from "solid-js"
 import { StoryProviders, mockSessionValue } from "./StoryProviders"
 import { SessionContext } from "../context/session"
 import { ServerContext } from "../context/server"
-import { PromptInput } from "../components/chat/PromptInput"
+import { PromptInput, SandboxTooltipContent } from "../components/chat/PromptInput"
+import { Button } from "@kilocode/kilo-ui/button"
+import { Icon } from "@kilocode/kilo-ui/icon"
+import { Tooltip } from "@kilocode/kilo-ui/tooltip"
 
 const agents = [
   { name: "code", description: "Write, edit and review code", mode: "primary" as const },
@@ -132,6 +135,46 @@ export const SandboxNetworkDisabled420: Story = {
     <PromptProviders sandboxNetwork sandbox={false}>
       <PromptInput />
     </PromptProviders>
+  ),
+}
+
+export const SandboxTooltipEnabled: Story = {
+  name: "Sandbox tooltip — enabled",
+  render: () => (
+    <StoryProviders>
+      <div style={{ padding: "120px 0 0 180px" }}>
+        <Tooltip
+          forceOpen
+          value={<SandboxTooltipContent enabled network />}
+          contentClass="prompt-sandbox-tooltip-content"
+          placement="top"
+        >
+          <Button variant="ghost" size="small" class="prompt-status-button prompt-status-button--active">
+            <Icon name="lock" size="small" />
+          </Button>
+        </Tooltip>
+      </div>
+    </StoryProviders>
+  ),
+}
+
+export const SandboxTooltipDisabled: Story = {
+  name: "Sandbox tooltip — disabled",
+  render: () => (
+    <StoryProviders>
+      <div style={{ padding: "120px 0 0 180px" }}>
+        <Tooltip
+          forceOpen
+          value={<SandboxTooltipContent enabled={false} network />}
+          contentClass="prompt-sandbox-tooltip-content"
+          placement="top"
+        >
+          <Button variant="ghost" size="small" class="prompt-status-button">
+            <Icon name="lock" size="small" />
+          </Button>
+        </Tooltip>
+      </div>
+    </StoryProviders>
   ),
 }
 

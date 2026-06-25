@@ -2,4 +2,4 @@
 "kilo-code": patch
 ---
 
-Show when network restrictions are configured on the sandbox toggle.
+Show filesystem and network restriction states in the sandbox tooltip.
