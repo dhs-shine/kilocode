@@ -123,11 +123,17 @@ export class NotebookAdapter {
       flags.sources = true
     }
     for (const [index, cell] of items.slice(0, 2_000).entries()) {
-      const source = normalizeSource(
-        cell.document.getText(),
-        Math.max(0, Math.min(NOTEBOOK_LIMITS.source, NOTEBOOK_LIMITS.sources - budget.sources)),
-      )
-      budget.sources += Math.min(source.bytes, NOTEBOOK_LIMITS.source, NOTEBOOK_LIMITS.sources - budget.sources)
+      const limit = Math.max(0, Math.min(NOTEBOOK_LIMITS.source, NOTEBOOK_LIMITS.sources - budget.sources))
+      const source = (() => {
+        if (limit === 0) {
+          flags.sources = true
+          return { text: "", bytes: 0 }
+        }
+        const end = cell.document.positionAt(limit + 2)
+        const range = new vscode.Range(new vscode.Position(0, 0), end)
+        return normalizeSource(cell.document.getText(range), limit)
+      })()
+      budget.sources += source.bytes
       flags.sources ||= source.truncated === true
       const value: NotebookCell = {
         index,

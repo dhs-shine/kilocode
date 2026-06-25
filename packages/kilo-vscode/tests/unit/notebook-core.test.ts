@@ -24,12 +24,17 @@ function cell(source = "print('hi')", kind = vscode.NotebookCellKind.Code, langu
     language: language ?? (kind === vscode.NotebookCellKind.Code ? "python" : "markdown"),
     outputs: [],
   }
+  const getText = mock((range?: vscode.Range) => {
+    const offset = (range?.end as (vscode.Position & { offset?: number }) | undefined)?.offset
+    return state.source.slice(0, offset ?? state.source.length)
+  })
   const value = {
     get kind() {
       return state.kind
     },
     document: {
-      getText: () => state.source,
+      getText,
+      positionAt: (offset: number) => ({ line: 0, character: offset, offset }) as vscode.Position,
       get languageId() {
         return state.language
       },
@@ -41,7 +46,7 @@ function cell(source = "print('hi')", kind = vscode.NotebookCellKind.Code, langu
       return state.execution
     },
   } as unknown as vscode.NotebookCell
-  return { value, state }
+  return { value, state, getText }
 }
 
 function notebook(cells: vscode.NotebookCell[], file = "/repo/book.ipynb"): vscode.NotebookDocument {
@@ -268,6 +273,24 @@ describe("notebook adapter", () => {
     ctx.deps.documents = () => []
     await ctx.adapter.read({ directory: "/repo", path: "book.ipynb", includeOutputs: false })
     expect(ctx.calls.open).toBe(1)
+  })
+
+  it("bounds source reads and skips extraction after the aggregate budget", async () => {
+    const items = [
+      cell("a".repeat(64 * 1024)),
+      cell("b".repeat(64 * 1024)),
+      cell("c".repeat(64 * 1024)),
+      cell("d".repeat(64 * 1024)),
+      cell("ignored"),
+    ]
+    const ctx = adapter(items)
+    const result = await ctx.adapter.read({ directory: "/repo", path: "book.ipynb", includeOutputs: false })
+
+    expect(items[0]!.getText).toHaveBeenCalledTimes(2)
+    expect(items[0]!.getText.mock.calls[1]?.[0]).toBeInstanceOf(vscode.Range)
+    expect(items[4]!.getText).toHaveBeenCalledTimes(1)
+    expect(result.cells[4]?.source).toBe("")
+    expect(result.truncated).toBe(true)
   })
 
   it("chains sequential edits with returned revisions and affected cells", async () => {
