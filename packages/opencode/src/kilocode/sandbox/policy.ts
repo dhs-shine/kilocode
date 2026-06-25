@@ -13,18 +13,18 @@ import { Changed } from "./event"
 import * as Network from "./network"
 import { SandboxStore } from "./store"
 
-type State = SandboxStore.State
+type Snapshot = SandboxStore.Snapshot
 
-const states = new Map<string, State>()
+const snapshots = new Map<string, Snapshot>()
 const locks = new Map<SessionID, { semaphore: Semaphore.Semaphore; refs: number }>()
 
 function key(directory: string, sessionID: SessionID) {
   return directory + "\0" + sessionID
 }
 
-function secure(state: State): State {
-  if (Flag.KILO_SERVER_PASSWORD) return state
-  return { ...state, enabled: true, mode: "deny" }
+function secure(snapshot: Snapshot): Snapshot {
+  if (Flag.KILO_SERVER_PASSWORD) return snapshot
+  return { ...snapshot, enabled: true, mode: "deny" }
 }
 
 function locked<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
@@ -119,10 +119,10 @@ export function profile(ctx: InstanceContext, mode: Profile["network"]["mode"] =
 
 const read = Effect.fn("SandboxPolicy.read")(function* (directory: string, sessionID: SessionID) {
   const id = key(directory, sessionID)
-  const current = states.get(id)
+  const current = snapshots.get(id)
   if (current) return current
   const stored = yield* Effect.promise(() => SandboxStore.read(directory, sessionID))
-  if (stored) states.set(id, stored)
+  if (stored) snapshots.set(id, stored)
   return stored
 })
 
@@ -143,7 +143,7 @@ const snapshot = Effect.fn("SandboxPolicy.snapshot")(function* (sessionID: Sessi
         version: 0,
       })
       yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
-      states.set(key(directory, sessionID), next)
+      snapshots.set(key(directory, sessionID), next)
       return { directory, state: next }
     }),
   )
@@ -186,9 +186,9 @@ function change<E, R>(sessionID: SessionID, guard: Effect.Effect<unknown, E, R>)
           version: current.version,
         }
         if (!status.enabled && !status.available) return status
-        const next: State = { ...current, enabled: !status.enabled, version: status.version + 1 }
+        const next: Snapshot = { ...current, enabled: !status.enabled, version: status.version + 1 }
         yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
-        states.set(key(directory, sessionID), next)
+        snapshots.set(key(directory, sessionID), next)
         const value = { ...status, enabled: next.enabled, version: next.version }
         yield* (yield* Bus.Service).publish(Changed, { sessionID, ...value })
         return value
@@ -202,7 +202,7 @@ export const toggle = Effect.fn("SandboxPolicy.toggle")((sessionID: SessionID) =
 export const inherit = Effect.fn("SandboxPolicy.inherit")(function* (
   parentID: SessionID,
   sessionID: SessionID,
-  fallback?: Omit<State, "version">,
+  fallback?: Omit<Snapshot, "version">,
 ) {
   const directory = yield* InstanceState.directory
   yield* locked(
@@ -213,13 +213,13 @@ export const inherit = Effect.fn("SandboxPolicy.inherit")(function* (
       if (!parent) return
       if (!stored) {
         yield* Effect.promise(() => SandboxStore.write(directory, parentID, parent))
-        states.set(key(directory, parentID), parent)
+        snapshots.set(key(directory, parentID), parent)
       }
       yield* locked(
         sessionID,
         Effect.gen(function* () {
           const child = yield* read(directory, sessionID)
-          const next: State = child
+          const next: Snapshot = child
             ? {
                 enabled: parent.enabled || child.enabled,
                 mode: parent.mode === "deny" || child.mode === "deny" ? "deny" : "allow",
@@ -228,7 +228,7 @@ export const inherit = Effect.fn("SandboxPolicy.inherit")(function* (
             : { ...parent, version: 0 }
           if (child && child.enabled === next.enabled && child.mode === next.mode) return
           yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
-          states.set(key(directory, sessionID), next)
+          snapshots.set(key(directory, sessionID), next)
         }),
       )
     }),
@@ -249,7 +249,7 @@ export function retire<A, E, R>(
     Effect.gen(function* () {
       const result = yield* effect
       yield* Effect.promise(() => SandboxStore.remove(directory, sessionID))
-      states.delete(key(directory, sessionID))
+      snapshots.delete(key(directory, sessionID))
       return result
     }),
   )
@@ -262,8 +262,8 @@ export function dispose<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, 
       const result = yield* effect
       yield* Effect.promise(() => SandboxStore.dispose(sessionID))
       const suffix = "\0" + sessionID
-      for (const id of states.keys()) {
-        if (id.endsWith(suffix)) states.delete(id)
+      for (const id of snapshots.keys()) {
+        if (id.endsWith(suffix)) snapshots.delete(id)
       }
       return result
     }),

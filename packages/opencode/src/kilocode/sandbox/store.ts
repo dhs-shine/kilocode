@@ -7,7 +7,7 @@ import type { Profile } from "@kilocode/sandbox"
 import type { SessionID } from "@/session/schema"
 
 export namespace SandboxStore {
-  export type State = {
+  export type Snapshot = {
     enabled: boolean
     mode: Extract<Profile["network"]["mode"], "allow" | "deny">
     version: number
@@ -27,7 +27,7 @@ export namespace SandboxStore {
     return path.join(dir(sessionID), hash(directory) + ".json")
   }
 
-  function valid(value: unknown): value is State {
+  function valid(value: unknown): value is Snapshot {
     if (!value || typeof value !== "object") return false
     const state = value as Record<string, unknown>
     return (
@@ -50,12 +50,12 @@ export namespace SandboxStore {
     return value
   }
 
-  export async function write(directory: string, sessionID: SessionID, state: State) {
+  export async function write(directory: string, sessionID: SessionID, snapshot: Snapshot) {
     const folder = dir(sessionID)
     const target = file(directory, sessionID)
     const temp = path.join(folder, `.${randomUUID()}.tmp`)
     await fs.mkdir(folder, { recursive: true, mode: 0o700 })
-    await fs.writeFile(temp, JSON.stringify(state), { encoding: "utf8", flag: "wx", mode: 0o600 })
+    await fs.writeFile(temp, JSON.stringify(snapshot), { encoding: "utf8", flag: "wx", mode: 0o600 })
     await fs.rename(temp, target).catch(async (err) => {
       await fs.rm(temp, { force: true })
       throw err
