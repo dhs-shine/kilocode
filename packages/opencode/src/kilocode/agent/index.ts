@@ -233,7 +233,7 @@ export function prepare(cfg: Config.Info): KiloData {
     bash,
     recall: "ask",
     ...(Flag.KILO_CLIENT === "vscode" && cfg.experimental?.native_notebook_tools === true
-      ? { notebook_read: "allow" as const, notebook_edit: "ask" as const, notebook_execute: "ask" as const }
+      ? { notebook_read: "ask" as const, notebook_edit: "ask" as const, notebook_execute: "ask" as const }
       : {}),
   })
   return { mcpRules, defaultsPatch }
