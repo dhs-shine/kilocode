@@ -124,7 +124,7 @@ export const ExecuteResult = Schema.Struct({
   requestPath: Path,
   revision: Revision,
   index: Index,
-  status: Schema.Literals(["success", "error", "cancelled"]),
+  status: Schema.Literals(["success", "error"]),
   outputs: Schema.Array(Output).check(Schema.isMaxLength(100)),
   truncated: Schema.optional(Schema.Boolean),
 })

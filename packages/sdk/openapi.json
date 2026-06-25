@@ -24554,7 +24554,7 @@
           },
           "status": {
             "type": "string",
-            "enum": ["success", "error", "cancelled"]
+            "enum": ["success", "error"]
           },
           "outputs": {
             "type": "array",

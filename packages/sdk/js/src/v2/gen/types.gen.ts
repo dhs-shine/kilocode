@@ -2554,7 +2554,7 @@ export type NotebookExecuteResult = {
    * Zero-based cell index
    */
   index: number
-  status: "success" | "error" | "cancelled"
+  status: "success" | "error"
   outputs: Array<NotebookOutput>
   truncated?: boolean
 }

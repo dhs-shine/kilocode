@@ -67,7 +67,7 @@ export interface NotebookExecuteResult {
   requestPath: string
   revision: string
   index: number
-  status: "success" | "error" | "cancelled"
+  status: "success" | "error"
   outputs: NotebookOutput[]
   truncated?: boolean
 }
