@@ -226,6 +226,40 @@ describe.skipIf(process.platform !== "darwin").serial("real macOS sandbox confin
     ),
   )
 
+  it.live("protects denied state from ancestor rename without blocking sibling writes", () =>
+    provideTmpdirInstance((dir) =>
+      Effect.gen(function* () {
+        const proc = yield* AppProcess.Service
+        const parent = path.join(dir, "state")
+        const store = path.join(parent, "policy")
+        const moved = path.join(dir, "moved")
+        const sibling = path.join(parent, "sibling.txt")
+        yield* Effect.promise(() => fs.mkdir(store, { recursive: true }))
+        const policy: Profile = {
+          ...profile(dir),
+          filesystem: {
+            ...profile(dir).filesystem,
+            denyWrite: [
+              { path: store, kind: "subtree" },
+              { path: parent, kind: "literal" },
+              { path: dir, kind: "literal" },
+            ],
+          },
+        }
+        const write = yield* sandbox(
+          policy,
+          proc.run(ChildProcess.make("/bin/sh", ["-c", `printf allowed > ${JSON.stringify(sibling)}`])),
+        )
+        const rename = yield* sandbox(policy, proc.run(ChildProcess.make("/bin/mv", [parent, moved])))
+
+        expect(write.exitCode).toBe(0)
+        expect(rename.exitCode).not.toBe(0)
+        expect(yield* Effect.promise(() => fs.readFile(sibling, "utf8"))).toBe("allowed")
+        expect(yield* Effect.promise(() => fs.stat(store).then((entry) => entry.isDirectory()))).toBe(true)
+      }),
+    ),
+  )
+
   it.live("keeps permission approval and denial independent from confinement", () =>
     provideTmpdirInstance((dir) =>
       Effect.acquireUseRelease(

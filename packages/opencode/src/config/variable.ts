@@ -4,6 +4,7 @@ import path from "path"
 import os from "os"
 import { Filesystem } from "@/util/filesystem"
 import { InvalidError } from "./error"
+import { ConfigVariableGuard } from "@/kilocode/config/variable" // kilocode_change
 
 type ParseSource =
   | {
@@ -36,6 +37,7 @@ export async function substitute(input: SubstituteInput) {
   const missing = input.missing ?? "error"
   const escape = input.escapeJson ?? true // kilocode_change
   let text = input.text.replace(/\{env:([^}]+)\}/g, (_, varName) => {
+    if (!ConfigVariableGuard.env(varName)) return "" // kilocode_change
     return (input.env?.[varName] ?? process.env[varName]) || ""
   })
 
@@ -66,8 +68,9 @@ export async function substitute(input: SubstituteInput) {
     }
 
     const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(configDir, filePath)
-    const fileContent = (
-      await Filesystem.readText(resolvedPath).catch((error: NodeJS.ErrnoException) => {
+    const fileContent = // kilocode_change - validate and read one opened file to prevent credential substitution races
+    (
+      await ConfigVariableGuard.read(resolvedPath, Filesystem.readText).catch((error: NodeJS.ErrnoException) => {
         if (missing === "empty") return ""
 
         const errMsg = `bad file reference: "${token}"`

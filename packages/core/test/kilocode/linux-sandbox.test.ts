@@ -441,6 +441,33 @@ linux("applies explicit file and subtree denies after a writable parent", async 
   }
 })
 
+linux("prevents renaming an ancestor of a denied state subtree", async () => {
+  const root = await fixture()
+  const parent = path.join(root.project, "state")
+  const store = path.join(parent, "policy")
+  const sibling = path.join(parent, "sibling.txt")
+  const moved = path.join(root.project, "moved")
+  await fs.mkdir(store, { recursive: true })
+  const policy = denied(profile([root.project]), [
+    { path: store, kind: "subtree" },
+    { path: parent, kind: "literal" },
+    { path: root.project, kind: "literal" },
+  ])
+  const script = [
+    'const fs = require("node:fs")',
+    `fs.writeFileSync(${JSON.stringify(sibling)}, "allowed")`,
+    `try { fs.renameSync(${JSON.stringify(parent)}, ${JSON.stringify(moved)}); process.exit(2) } catch {}`,
+  ].join("\n")
+
+  try {
+    expect(Number(await Effect.runPromise(spawn(script, root.project, policy)))).toBe(0)
+    expect(await fs.readFile(sibling, "utf8")).toBe("allowed")
+    expect((await fs.stat(store)).isDirectory()).toBe(true)
+  } finally {
+    await fs.rm(root.root, { recursive: true, force: true })
+  }
+})
+
 linux("supports writable literal files without opening writable siblings", async () => {
   const root = await fixture()
   const allowed = path.join(root.project, "allowed.txt")

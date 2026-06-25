@@ -104,6 +104,33 @@ describe("sandbox launch preparation", () => {
     }
   })
 
+  test("does not make literal deny ancestors recursively read-only on Linux", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "kilo-bubblewrap-literal-"))
+    const parent = path.join(root, "state")
+    const store = path.join(parent, "policy")
+    mkdirSync(store, { recursive: true })
+    const profile: Profile = {
+      ...makeProfile("allow"),
+      filesystem: {
+        allowWrite: [{ path: root, kind: "subtree" }],
+        denyWrite: [
+          { path: parent, kind: "literal" },
+          { path: store, kind: "subtree" },
+        ],
+        denyNames: [],
+      },
+    }
+
+    try {
+      const result = generateBubblewrap(profile, { ...launch, cwd: root }, "/opt/kilo/bwrap")
+      const protectedPaths = result.args.flatMap((arg, index) => (arg === "--ro-bind" ? [result.args[index + 1]] : []))
+      expect(protectedPaths).toContain(store)
+      expect(protectedPaths).not.toContain(parent)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test("isolates the Linux network namespace in deny mode", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "kilo-bubblewrap-network-"))
     const input = makeProfile("deny")

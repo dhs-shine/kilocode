@@ -98,7 +98,11 @@ function scan(root: string, names: ReadonlySet<string>, found: Set<string>) {
 }
 
 function protectedPaths(profile: Profile, allow: ReadonlyArray<PathRule>) {
-  const found = new Set(profile.filesystem.denyWrite.filter((rule) => existsSync(rule.path)).map((rule) => rule.path))
+  const found = new Set(
+    profile.filesystem.denyWrite
+      .filter((rule) => existsSync(rule.path) && (rule.kind === "subtree" || !statSync(rule.path).isDirectory()))
+      .map((rule) => rule.path),
+  )
   if (profile.filesystem.denyNames.length === 0) return [...found]
 
   const names = new Set(profile.filesystem.denyNames)

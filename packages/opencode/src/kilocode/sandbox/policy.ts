@@ -2,6 +2,7 @@ import { readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import { Effect, Semaphore } from "effect"
 import { Global } from "@opencode-ai/core/global"
+import { Flag } from "@opencode-ai/core/flag/flag"
 import { backendSupport, run as runSandbox, unrestricted, type Profile } from "@kilocode/sandbox"
 import { Bus } from "@/bus"
 import { Config } from "@/config/config"
@@ -10,12 +11,20 @@ import type { InstanceContext } from "@/project/instance-context"
 import type { SessionID } from "@/session/schema"
 import { Changed } from "./event"
 import * as Network from "./network"
+import { SandboxStore } from "./store"
 
-const overrides = new Map<string, { enabled: boolean; version: number }>()
+type State = SandboxStore.State
+
+const states = new Map<string, State>()
 const locks = new Map<SessionID, { semaphore: Semaphore.Semaphore; refs: number }>()
 
 function key(directory: string, sessionID: SessionID) {
   return directory + "\0" + sessionID
+}
+
+function secure(state: State): State {
+  if (Flag.KILO_SERVER_PASSWORD) return state
+  return { ...state, enabled: true, mode: "deny" }
 }
 
 function locked<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
@@ -37,6 +46,16 @@ function locked<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
 
 function root(path: string) {
   return { path, kind: "subtree" as const }
+}
+
+function literal(path: string) {
+  return { path, kind: "literal" as const }
+}
+
+function parents(dir: string): ReturnType<typeof literal>[] {
+  const parent = path.dirname(dir)
+  if (parent === dir) return [literal(dir)]
+  return [...parents(parent), literal(dir)]
 }
 
 function marker(dir: string) {
@@ -89,7 +108,7 @@ export function profile(ctx: InstanceContext, mode: Profile["network"]["mode"] =
   return {
     filesystem: {
       allowWrite: writable,
-      denyWrite: [],
+      denyWrite: [root(SandboxStore.root), ...parents(path.dirname(SandboxStore.root))],
       denyNames: [".git"],
       temporaryDirectory: Global.Path.tmp,
     },
@@ -98,7 +117,7 @@ export function profile(ctx: InstanceContext, mode: Profile["network"]["mode"] =
       allowedHosts: [],
     },
     environment: {
-      deny: [],
+      deny: ["KILO_SERVER_PASSWORD", "KILO_SERVER_USERNAME"],
       set: {
         TMPDIR: Global.Path.tmp,
         TMP: Global.Path.tmp,
@@ -108,35 +127,79 @@ export function profile(ctx: InstanceContext, mode: Profile["network"]["mode"] =
   }
 }
 
-export const status = Effect.fn("SandboxPolicy.status")(function* (sessionID: SessionID) {
-  const config = yield* Config.Service
-  const cfg = yield* config.get()
+const read = Effect.fn("SandboxPolicy.read")(function* (directory: string, sessionID: SessionID) {
+  const id = key(directory, sessionID)
+  const current = states.get(id)
+  if (current) return current
+  const stored = yield* Effect.promise(() => SandboxStore.read(directory, sessionID))
+  if (stored) states.set(id, stored)
+  return stored
+})
+
+const state = Effect.fn("SandboxPolicy.state")(function* (sessionID: SessionID) {
   const directory = yield* InstanceState.directory
-  const override = overrides.get(key(directory, sessionID))
-  const enabled = override?.enabled ?? cfg.experimental?.sandbox ?? false
-  const mode = cfg.experimental?.sandbox_restrict_network === false ? "allow" : "deny"
-  const support = backendSupport({ mode, allowedHosts: [] })
+  const current = yield* read(directory, sessionID)
+  if (current) return { directory, state: current }
+
+  return yield* locked(
+    sessionID,
+    Effect.gen(function* () {
+      const existing = yield* read(directory, sessionID)
+      if (existing) return { directory, state: existing }
+      const cfg = yield* (yield* Config.Service).get()
+      const next = secure({
+        enabled: cfg.experimental?.sandbox ?? false,
+        mode: cfg.experimental?.sandbox_restrict_network === false ? "allow" : "deny",
+        version: 0,
+      })
+      yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
+      states.set(key(directory, sessionID), next)
+      return { directory, state: next }
+    }),
+  )
+})
+
+export const status = Effect.fn("SandboxPolicy.status")(function* (sessionID: SessionID) {
+  const current = yield* state(sessionID)
+  const support = backendSupport({ mode: current.state.mode, allowedHosts: [] })
   return {
-    directory,
-    enabled: enabled && support.available,
+    directory: current.directory,
+    enabled: current.state.enabled && support.available,
     available: support.available,
     reason: support.reason,
-    version: override?.version ?? 0,
+    version: current.state.version,
   }
 })
 
 function change<E, R>(sessionID: SessionID, guard: Effect.Effect<unknown, E, R>) {
   return Effect.gen(function* () {
     const directory = yield* InstanceState.directory
-    const id = key(directory, sessionID)
     return yield* locked(
       sessionID,
       Effect.gen(function* () {
         yield* guard
-        const current = yield* status(sessionID)
-        if (!current.enabled && !current.available) return current
-        const value = { ...current, enabled: !current.enabled, version: current.version + 1 }
-        overrides.set(id, { enabled: value.enabled, version: value.version })
+        const stored = yield* read(directory, sessionID)
+        const cfg = stored ? undefined : yield* (yield* Config.Service).get()
+        const current =
+          stored ??
+          secure({
+            enabled: cfg?.experimental?.sandbox ?? false,
+            mode: cfg?.experimental?.sandbox_restrict_network === false ? "allow" : "deny",
+            version: 0,
+          })
+        const support = backendSupport({ mode: current.mode, allowedHosts: [] })
+        const status = {
+          directory,
+          enabled: current.enabled && support.available,
+          available: support.available,
+          reason: support.reason,
+          version: current.version,
+        }
+        if (!status.enabled && !status.available) return status
+        const next: State = { ...current, enabled: !status.enabled, version: status.version + 1 }
+        yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
+        states.set(key(directory, sessionID), next)
+        const value = { ...status, enabled: next.enabled, version: next.version }
         yield* (yield* Bus.Service).publish(Changed, { sessionID, ...value })
         return value
       }),
@@ -146,13 +209,45 @@ function change<E, R>(sessionID: SessionID, guard: Effect.Effect<unknown, E, R>)
 
 export const toggle = Effect.fn("SandboxPolicy.toggle")((sessionID: SessionID) => change(sessionID, Effect.void))
 
+export const inherit = Effect.fn("SandboxPolicy.inherit")(function* (
+  parentID: SessionID,
+  sessionID: SessionID,
+  fallback?: Omit<State, "version">,
+) {
+  const directory = yield* InstanceState.directory
+  yield* locked(
+    parentID,
+    Effect.gen(function* () {
+      const stored = yield* read(directory, parentID)
+      const parent = stored ?? (fallback && secure({ ...fallback, version: 0 }))
+      if (!parent) return
+      if (!stored) {
+        yield* Effect.promise(() => SandboxStore.write(directory, parentID, parent))
+        states.set(key(directory, parentID), parent)
+      }
+      yield* locked(
+        sessionID,
+        Effect.gen(function* () {
+          const child = yield* read(directory, sessionID)
+          const next: State = child
+            ? {
+                enabled: parent.enabled || child.enabled,
+                mode: parent.mode === "deny" || child.mode === "deny" ? "deny" : "allow",
+                version: child.version + 1,
+              }
+            : { ...parent, version: 0 }
+          if (child && child.enabled === next.enabled && child.mode === next.mode) return
+          yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
+          states.set(key(directory, sessionID), next)
+        }),
+      )
+    }),
+  )
+})
+
 export function toggleGuarded<E, R>(sessionID: SessionID, guard: Effect.Effect<unknown, E, R>) {
   return change(sessionID, guard)
 }
-
-export const clear = Effect.fn("SandboxPolicy.clear")(function* (sessionID: SessionID) {
-  yield* retire(sessionID, yield* InstanceState.directory, Effect.void)
-})
 
 export function retire<A, E, R>(
   sessionID: SessionID,
@@ -162,8 +257,10 @@ export function retire<A, E, R>(
   return locked(
     sessionID,
     Effect.gen(function* () {
-      overrides.delete(key(directory, sessionID))
-      return yield* effect
+      const result = yield* effect
+      yield* Effect.promise(() => SandboxStore.remove(directory, sessionID))
+      states.delete(key(directory, sessionID))
+      return result
     }),
   )
 }
@@ -172,22 +269,23 @@ export function dispose<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, 
   return locked(
     sessionID,
     Effect.gen(function* () {
+      const result = yield* effect
+      yield* Effect.promise(() => SandboxStore.dispose(sessionID))
       const suffix = "\0" + sessionID
-      for (const id of overrides.keys()) {
-        if (id.endsWith(suffix)) overrides.delete(id)
+      for (const id of states.keys()) {
+        if (id.endsWith(suffix)) states.delete(id)
       }
-      return yield* effect
+      return result
     }),
   )
 }
 
 function execute<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
   return Effect.gen(function* () {
-    if (!(yield* status(sessionID)).enabled) return yield* unrestricted(effect)
-    const config = yield* Config.Service
-    const cfg = yield* config.get()
-    const mode = cfg.experimental?.sandbox_restrict_network === false ? "allow" : "deny"
-    return yield* runSandbox(profile(yield* InstanceState.context, mode), effect)
+    const current = yield* state(sessionID)
+    const support = backendSupport({ mode: current.state.mode, allowedHosts: [] })
+    if (!current.state.enabled || !support.available) return yield* unrestricted(effect)
+    return yield* runSandbox(profile(yield* InstanceState.context, current.state.mode), effect)
   })
 }
 
