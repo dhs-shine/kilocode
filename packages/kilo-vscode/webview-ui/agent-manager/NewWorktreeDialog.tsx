@@ -115,6 +115,11 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   const speechModel = () => selectedSpeechToTextModel(config())
   let prior: string | null = null
   let request: string | undefined
+  const cancel = () => {
+    prior = null
+    request = undefined
+    setEnhancing(false)
+  }
 
   // Variant list for the currently selected model
   const variants = createMemo(() => {
@@ -165,6 +170,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
     const inserted = resolved.map((p) => `@${p}`).join(" ")
     const result = before + inserted + " " + after
     ref.value = result
+    cancel()
     setPrompt(result)
     persistPrompt(result)
     const pos = cursor + inserted.length + 1
@@ -275,7 +281,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
     if (e.key !== "z" || (!e.metaKey && !e.ctrlKey) || e.shiftKey || prior === null) return
     e.preventDefault()
     const restored = prior
-    prior = null
+    cancel()
     setPrompt(restored)
     persistPrompt(restored)
     if (!textareaRef) return
@@ -297,6 +303,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
     const end = ref?.selectionEnd ?? start
     const result = insertSpacedText(current, value, start, end)
 
+    cancel()
     setPrompt(result.text)
     persistPrompt(result.text)
     if (!ref) return
@@ -376,10 +383,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
     }
     if (msg.type === "enhancePromptError") {
       const ev = msg as EnhancePromptErrorMessage
-      if (ev.requestId === request) {
-        request = undefined
-        setEnhancing(false)
-      }
+      if (ev.requestId === request) cancel()
     }
   })
 
@@ -483,9 +487,9 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                     value={prompt()}
                     onInput={(e) => {
                       const val = e.currentTarget.value
+                      cancel()
                       setPrompt(val)
                       persistPrompt(val)
-                      prior = null
                       adjustHeight()
                     }}
                     onKeyDown={undo}
