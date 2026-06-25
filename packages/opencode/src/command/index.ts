@@ -7,7 +7,7 @@ import { Effect, Layer, Context, Schema } from "effect"
 import { Config } from "@/config/config"
 import { MCP } from "../mcp"
 import { Skill } from "../skill"
-import { legacyReviewCommand, reviewCommand } from "@/kilocode/review/command" // kilocode_change
+import { reviewCommand } from "@/kilocode/review/command" // kilocode_change
 import PROMPT_INITIALIZE from "./template/initialize.txt"
 
 type State = {
@@ -165,12 +165,8 @@ export const layer = Layer.effect(
 
     const get = Effect.fn("Command.get")(function* (name: string) {
       const s = yield* InstanceState.get(state)
-      // kilocode_change start
-      const exact = s.commands[name]
-      if (exact) return exact
-      const alias = legacyReviewCommand(name)
-      if (alias) return alias
-      // kilocode_change end
+      const exact = s.commands[name] // kilocode_change
+      if (exact) return exact // kilocode_change
 
       // kilocode_change start
       const target = skillName(name)

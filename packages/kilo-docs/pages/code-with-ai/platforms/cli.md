@@ -143,7 +143,11 @@ Review your code locally before pushing — catch issues early without waiting f
 
 | Command | Description |
 |---|---|
-| `/review` | Review current branch changes or uncommitted changes |
+| `/review` | Review staged, unstaged, and untracked changes (the default with no arguments) |
+| `/review uncommitted [guidance]` | Review uncommitted changes with optional guidance |
+| `/review branch [base] [guidance]` | Review the current branch against its detected or specified base, with optional guidance |
+| `/review <commit-hash>` | Review a specific commit |
+| `/review <PR URL or number>` | Review a pull request |
 
 ## Config Reference
 

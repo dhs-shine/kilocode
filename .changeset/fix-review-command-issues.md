@@ -2,4 +2,4 @@
 "@kilocode/cli": patch
 ---
 
-Replace `/local-review` and `/local-review-uncommitted` with `/review`, which now chooses between uncommitted and branch review scopes.
+Use `/review` as the single local review command, defaulting to staged, unstaged, and untracked changes while supporting guided uncommitted reviews, branch/base reviews, commits, and pull requests.

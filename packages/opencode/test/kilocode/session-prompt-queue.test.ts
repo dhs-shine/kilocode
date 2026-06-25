@@ -737,8 +737,8 @@ describe("session prompt queue", () => {
           try {
             const base = Suggestion.show({
               sessionID: session.id,
-              text: "Run review?",
-              actions: [{ label: "Review", prompt: "/review uncommitted" }],
+              text: "Continue with the task?",
+              actions: [{ label: "Continue", prompt: "Continue with the task" }],
             }).catch((err) => {
               if (err instanceof Suggestion.DismissedError) return "dismissed"
               throw err
@@ -813,8 +813,8 @@ describe("session prompt queue", () => {
           await expect(
             Suggestion.show({
               sessionID,
-              text: "Run review?",
-              actions: [{ label: "Review", prompt: "/review uncommitted" }],
+              text: "Continue with the task?",
+              actions: [{ label: "Continue", prompt: "Continue with the task" }],
             }),
           ).rejects.toBeInstanceOf(Suggestion.DismissedError)
         } finally {

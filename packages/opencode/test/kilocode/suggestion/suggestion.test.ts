@@ -32,15 +32,15 @@ describe("suggestion", () => {
       fn: async () => {
         const pending = Suggestion.show({
           sessionID: "ses_test",
-          text: "Run review?",
+          text: "Run tests?",
           blocking: false,
-          actions: [{ label: "Start", description: "Run it", prompt: "/review uncommitted" }],
+          actions: [{ label: "Start", description: "Run them", prompt: "/test" }],
         })
 
         const list = await Suggestion.list()
         expect(list).toHaveLength(1)
         expect(list[0]?.blocking).toBe(false)
-        expect(list[0]?.text).toBe("Run review?")
+        expect(list[0]?.text).toBe("Run tests?")
 
         await Suggestion.dismiss(list[0]!.id)
         await expect(pending).rejects.toBeInstanceOf(Suggestion.DismissedError)
@@ -57,7 +57,7 @@ describe("suggestion", () => {
           sessionID: "ses_test",
           text: "Next step?",
           actions: [
-            { label: "Review", description: "Start review", prompt: "/review uncommitted" },
+            { label: "Format", description: "Format files", prompt: "/format" },
             { label: "Test", description: "Run tests", prompt: "Run the relevant tests now." },
           ],
         })
@@ -145,7 +145,7 @@ describe("suggestion", () => {
           sessionID: "ses_test",
           text: "Review release?",
           actions: [
-            { label: "Review", prompt: "/review release -- focus on tests" },
+            { label: "Review", prompt: "/review branch release focus on tests" },
             { label: "Skip", prompt: "Skip this review." },
           ],
         })
@@ -173,7 +173,7 @@ describe("suggestion", () => {
           command: "review",
           actionCount: 2,
         })
-        await expect(ask).resolves.toEqual({ label: "Review", prompt: "/review release -- focus on tests" })
+        await expect(ask).resolves.toEqual({ label: "Review", prompt: "/review branch release focus on tests" })
       },
     })
   })
@@ -211,7 +211,7 @@ describe("suggestion", () => {
         const ask = Suggestion.show({
           sessionID: "ses_test",
           text: "Review changes?",
-          actions: [{ label: "Review", prompt: "/review" }],
+          actions: [{ label: "Review", prompt: "/review uncommitted" }],
         })
 
         const list = await Suggestion.list()
@@ -234,7 +234,7 @@ describe("suggestion", () => {
         const ask = Suggestion.show({
           sessionID: "ses_test",
           text: "Review changes?",
-          actions: [{ label: "Review", prompt: "/review" }],
+          actions: [{ label: "Review", prompt: "/review uncommitted" }],
         })
 
         const list = await Suggestion.list()
@@ -254,8 +254,8 @@ describe("suggestion", () => {
       fn: async () => {
         const ask = Suggestion.show({
           sessionID: "ses_test",
-          text: "Review changes?",
-          actions: [{ label: "Start", prompt: "/review uncommitted" }],
+          text: "Run tests?",
+          actions: [{ label: "Start", prompt: "/test" }],
         })
 
         const list = await Suggestion.list()
@@ -275,8 +275,8 @@ describe("suggestion", () => {
         // Two suggestions for session A
         const a1 = Suggestion.show({
           sessionID: "ses_a",
-          text: "Review?",
-          actions: [{ label: "Go", prompt: "/review" }],
+          text: "Format?",
+          actions: [{ label: "Go", prompt: "/format" }],
         })
         const a2 = Suggestion.show({
           sessionID: "ses_a",
