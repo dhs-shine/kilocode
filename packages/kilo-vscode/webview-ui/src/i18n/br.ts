@@ -287,6 +287,12 @@ export const dict = {
   "prompt.action.enhanceDescription":
     "O botão 'Aprimorar prompt' ajuda a melhorar seu pedido fornecendo contexto adicional, esclarecimentos ou reformulações. Tente digitar um pedido aqui e clique no botão novamente para ver como funciona.",
   "prompt.action.indexing": "Configurações de indexação",
+  "prompt.action.sandbox.enable": "Ativar sandbox",
+  "prompt.action.sandbox.disable": "Desativar sandbox",
+  "prompt.action.sandbox.enabled":
+    "Sandbox ativado. Os comandos shell do agente estão limitados aos diretórios do projeto e do Kilo.",
+  "prompt.action.sandbox.disabled":
+    "Sandbox desativado. Clique para limitar as escritas dos comandos shell do agente aos diretórios do projeto e do Kilo.",
 
   "speechToText.tooltip.start": "Iniciar entrada de voz com o Kilo Gateway",
   "speechToText.tooltip.stop": "Parar captura",
@@ -823,7 +829,7 @@ export const dict = {
   "settings.providers.tag.customProvider": "Provedor personalizado",
   "settings.providers.connected.environmentDescription": "Conectado a partir das suas variáveis de ambiente",
   "settings.providers.action.signInChatGPT": "Entrar com ChatGPT",
-  "settings.providers.custom.description": "Adicione um provedor compatível com OpenAI pela URL base.",
+  "settings.providers.custom.description": "Adicione um provedor personalizado pela URL base.",
   "settings.providers.subagentModel.title": "Modelo de Subagente",
   "settings.providers.subagentModel.description":
     "Modelo padrão e esforço de raciocínio para subagentes do task-tool. Deixe em branco para herdar o modelo do agente chamador.",
@@ -831,11 +837,11 @@ export const dict = {
   "settings.models.hidePromptTraining.description":
     "Oculte os modelos do Kilo Gateway cujos provedores podem usar seus prompts para treinamento.",
   "settings.providers.modeModels": "Modelo por Modo",
-  "settings.providers.custom.note": "Adicione um provedor compatível com OpenAI por URL base.",
+  "settings.providers.custom.note": "Adicione um provedor personalizado por URL base.",
   "settings.providers.modeModels.description":
     "Substitua o modelo padrão para modos específicos. Se não definido, o modelo padrão global é usado.",
   "provider.custom.title": "Provedor personalizado",
-  "provider.custom.description.prefix": "Configure um provedor compatível com OpenAI. Veja a ",
+  "provider.custom.description.prefix": "Configure um provedor personalizado. Veja a ",
   "provider.custom.description.link": "documentação de configuração de provedores",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "ID do provedor",
@@ -1130,6 +1136,9 @@ export const dict = {
   "settings.indexing.title": "Indexação",
   "settings.indexing.enable.title": "Ativar indexação",
   "settings.indexing.enable.description": "Ativar ou desativar a indexação semântica da base de código.",
+  "settings.indexing.showButton.title": "Exibir o botão quando a indexação estiver desativada",
+  "settings.indexing.showButton.description":
+    "Exiba o botão de indexação abaixo do campo de entrada enquanto a indexação estiver desativada. Se o botão estiver oculto, abra Configurações > Indexação para ativar a indexação.",
   "settings.indexing.globalEnable.title": "Habilitar globalmente",
   "settings.indexing.globalEnable.description": "Habilitar indexação para todos os workspaces.",
   "settings.indexing.projectEnable.title": "Habilitar para este projeto",
@@ -1327,6 +1336,10 @@ export const dict = {
     "Escolha o modelo de transcrição do Kilo Gateway para entrada de voz.",
   "settings.experimental.continueOnDeny.title": "Continuar ao negar",
   "settings.experimental.continueOnDeny.description": "Continuar o loop do agente quando uma permissão é negada",
+  "settings.sandboxing.title": "Isolamento em sandbox",
+  "settings.sandboxing.network.title": "Restringir acesso à rede",
+  "settings.sandboxing.network.description":
+    "Bloqueie o acesso de saída à rede para comandos originados pelo modelo e ferramentas HTTP. Servidores MCP locais e hooks de plugins são executados fora dessa restrição. O tráfego de inferência de provedores e modelos permanece disponível.",
   "settings.experimental.mcpTimeout.title": "Tempo limite MCP (ms)",
   "settings.experimental.mcpTimeout.description": "Tempo limite para solicitações do servidor MCP em milissegundos",
   "settings.experimental.remote.title": "Controle Remote",
@@ -1463,6 +1476,9 @@ export const dict = {
     "Nenhum comando personalizado configurado. Adicione comandos ao opencode.json para vê-los aqui.",
   "settings.agentBehaviour.workflows.detail.description": "Descrição",
   "settings.agentBehaviour.workflows.detail.template": "Modelo",
+  "settings.experimental.sandbox.title": "Sandbox",
+  "settings.experimental.sandbox.description":
+    "Executar os comandos shell do agente dentro de um sandbox a nível de sistema operacional que restringe escritas aos diretórios de estado do projeto e do Kilo",
 
   "settings.autoApprove.description":
     "Defina como as ferramentas têm permissão para serem executadas. A maioria das ferramentas tem o padrão Permitir. doom_loop e external_directory têm o padrão Perguntar.",
@@ -1565,6 +1581,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Migração Legada",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migre as configurações de uma instalação anterior do Kilo Code, incluindo chaves de API de provedor e modelo padrão.",
+  "settings.aboutKiloCode.rooImport.description": "Importe o histórico de conversas de uma instalação do Roo Code.",
+  "settings.aboutKiloCode.rooImport.button": "Importar sessões do Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "O Que Há de Novo no Kilo Code",

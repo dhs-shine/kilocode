@@ -289,6 +289,12 @@ export const dict = {
   "prompt.action.enhanceDescription":
     "Le bouton 'Améliorer la requête' aide à améliorer votre demande en fournissant un contexte supplémentaire, des clarifications ou des reformulations. Essayez de taper une demande ici et cliquez à nouveau sur le bouton pour voir comment cela fonctionne.",
   "prompt.action.indexing": "Paramètres d'indexation",
+  "prompt.action.sandbox.enable": "Activer le sandbox",
+  "prompt.action.sandbox.disable": "Désactiver le sandbox",
+  "prompt.action.sandbox.enabled":
+    "Le sandbox est activé. Les commandes shell de l'agent sont limitées aux répertoires du projet et de Kilo.",
+  "prompt.action.sandbox.disabled":
+    "Le sandbox est désactivé. Cliquez pour limiter les écritures des commandes shell de l'agent aux répertoires du projet et de Kilo.",
 
   "speechToText.tooltip.start": "Démarrer la saisie vocale avec Kilo Gateway",
   "speechToText.tooltip.stop": "Arrêter la capture audio",
@@ -722,6 +728,9 @@ export const dict = {
   "settings.indexing.dimension.placeholder": "Auto",
   "settings.indexing.dimension.title": "Dimension vectorielle",
   "settings.indexing.enable.description": "Activer ou désactiver l'indexation sémantique de la base de code.",
+  "settings.indexing.showButton.title": "Afficher le bouton lorsque l’indexation est désactivée",
+  "settings.indexing.showButton.description":
+    "Affichez le bouton d’indexation sous le champ de saisie lorsque l’indexation est désactivée. S’il est masqué, ouvrez Paramètres > Indexation pour activer l’indexation.",
   "settings.indexing.enable.title": "Activer l'indexation",
   "settings.indexing.globalEnable.title": "Activer globalement",
   "settings.indexing.globalEnable.description": "Activer l'indexation pour chaque espace de travail.",
@@ -872,7 +881,7 @@ export const dict = {
   "settings.providers.tag.customProvider": "Fournisseur personnalisé",
   "settings.providers.connected.environmentDescription": "Connecté depuis vos variables d'environnement",
   "settings.providers.action.signInChatGPT": "Se connecter avec ChatGPT",
-  "settings.providers.custom.description": "Ajoutez un fournisseur compatible OpenAI par URL de base.",
+  "settings.providers.custom.description": "Ajoutez un fournisseur personnalisé par URL de base.",
   "settings.providers.subagentModel.title": "Modèle de sous-agent",
   "settings.providers.subagentModel.description":
     "Modèle par défaut et effort de raisonnement pour les sous-agents du task-tool. Laissez vide pour hériter du modèle de l'agent appelant.",
@@ -880,11 +889,11 @@ export const dict = {
   "settings.models.hidePromptTraining.description":
     "Masquez les modèles Kilo Gateway dont les fournisseurs peuvent utiliser vos prompts à des fins d'entraînement.",
   "settings.providers.modeModels": "Modèle par mode",
-  "settings.providers.custom.note": "Ajoutez un fournisseur compatible OpenAI par URL de base.",
+  "settings.providers.custom.note": "Ajoutez un fournisseur personnalisé par URL de base.",
   "settings.providers.modeModels.description":
     "Remplacez le modèle par défaut pour des modes spécifiques. Si non défini, le modèle par défaut global est utilisé.",
   "provider.custom.title": "Fournisseur personnalisé",
-  "provider.custom.description.prefix": "Configurez un fournisseur compatible OpenAI. Voir la ",
+  "provider.custom.description.prefix": "Configurez un fournisseur personnalisé. Voir la ",
   "provider.custom.description.link": "documentation de configuration des fournisseurs",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "ID du fournisseur",
@@ -1351,6 +1360,10 @@ export const dict = {
   "settings.experimental.continueOnDeny.title": "Continuer en cas de refus",
   "settings.experimental.continueOnDeny.description":
     "Continuer la boucle de l'agent lorsqu'une autorisation est refusée",
+  "settings.sandboxing.title": "Mise en bac à sable",
+  "settings.sandboxing.network.title": "Restreindre l'accès au réseau",
+  "settings.sandboxing.network.description":
+    "Bloquer l'accès réseau sortant des commandes provenant du modèle et des outils HTTP. Les serveurs MCP locaux et les hooks de plugin ne sont pas soumis à cette restriction. Le trafic d'inférence des fournisseurs et des modèles reste disponible.",
   "settings.experimental.mcpTimeout.title": "Délai MCP (ms)",
   "settings.experimental.mcpTimeout.description": "Délai des requêtes du serveur MCP en millisecondes",
   "settings.experimental.remote.title": "Contrôle Remote",
@@ -1488,6 +1501,9 @@ export const dict = {
     "Aucune commande personnalisée configurée. Ajoutez des commandes à opencode.json pour les voir ici.",
   "settings.agentBehaviour.workflows.detail.description": "Description",
   "settings.agentBehaviour.workflows.detail.template": "Modèle",
+  "settings.experimental.sandbox.title": "Sandbox",
+  "settings.experimental.sandbox.description":
+    "Exécuter les commandes shell de l'agent dans un sandbox au niveau du système d'exploitation qui restreint les écritures aux répertoires d'état du projet et de Kilo",
 
   "settings.autoApprove.description":
     "Définissez comment les outils sont autorisés à s'exécuter. La plupart des outils sont définis sur Autoriser par défaut. doom_loop et external_directory sont définis sur Demander par défaut.",
@@ -1592,6 +1608,9 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Migration de l'ancienne version",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migrer les paramètres d'une précédente installation de Kilo Code, y compris les clés d'API des fournisseurs et le modèle par défaut.",
+  "settings.aboutKiloCode.rooImport.description":
+    "Importer l'historique des conversations depuis une installation de Roo Code.",
+  "settings.aboutKiloCode.rooImport.button": "Importer les sessions depuis Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Nouveautés de Kilo Code",

@@ -770,7 +770,7 @@ export function UserMessageDisplay(props: {
     const providerID = props.message.model?.providerID
     const modelID = props.message.model?.modelID
     if (!providerID || !modelID) return ""
-    const match = data.store.provider?.all?.find((p) => p.id === providerID)
+    const match = data.store.provider?.all?.get(providerID)
     return match?.models?.[modelID]?.name ?? modelID
   })
 
@@ -1591,8 +1591,10 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props: MessagePartProp
             <Collapsible.Arrow />
           </Collapsible.Trigger>
           <Collapsible.Content>
-            <div data-slot="reasoning-content" ref={ref} onScroll={onScroll} onWheel={onWheel}>
-              <Markdown text={view().body} cacheKey={id} streaming={!done()} />
+            <div data-slot="reasoning-details">
+              <div data-slot="reasoning-content" ref={ref} onScroll={onScroll} onWheel={onWheel}>
+                <Markdown text={view().body} cacheKey={id} streaming={!done()} />
+              </div>
             </div>
           </Collapsible.Content>
         </Collapsible>
@@ -2235,7 +2237,6 @@ ToolRegistry.register({
         defaultOpen={props.defaultOpen ?? true}
         onOpenChange={setOpen}
         allowPendingToggle
-        animated
         trigger={
           <div data-slot="basic-tool-tool-info-structured">
             <div data-slot="basic-tool-tool-info-main">

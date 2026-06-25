@@ -115,24 +115,25 @@ describe("review command", () => {
 
   test("applies the high-signal review focus", () => {
     const text = cmd.template as string
-    expect(text).toContain("Review only these things")
+    expect(text).toContain("Permitted tracks")
     expect(text).toContain("deploy safety")
-    expect(text).toContain("duplicated code or duplicated logic")
-    expect(text).toContain("dead code caused by the reviewed changes")
-    expect(text).toContain("Do not review these things")
+    expect(text).toContain("duplication")
+    expect(text).toContain("dead code")
+    expect(text).toContain("Always out of scope")
     expect(text).toContain("code style")
     expect(text).toContain("generic refactors with no bug or product risk")
   })
 
-  test("requires six parallel review tracks for non-trivial changes", () => {
+  test("applies adaptive parallel review tracks", () => {
     const text = cmd.template as string
-    expect(text).toContain("spawn six sub-agents in parallel")
+    expect(text).toContain("spawn the appropriate sub-agents in parallel")
+    expect(text).toContain("spawn 1-2 sub-agents")
+    expect(text).toContain("spawn 3-4 sub-agents")
+    expect(text).toContain("spawn all six sub-agents")
     expect(text).toContain("security")
     expect(text).toContain("performance")
     expect(text).toContain("business logic")
-    expect(text).toContain("deploy safety")
-    expect(text).toContain("duplication")
-    expect(text).toContain("dead code")
+    expect(text).toContain("noticeably larger than comparable ones")
     expect(text).toContain("NO_FINDINGS")
   })
 

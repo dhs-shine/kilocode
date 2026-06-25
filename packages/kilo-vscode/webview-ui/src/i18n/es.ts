@@ -288,6 +288,12 @@ export const dict = {
   "prompt.action.enhanceDescription":
     "El botón 'Mejorar el mensaje' ayuda a mejorar tu petición proporcionando contexto adicional, aclaraciones o reformulaciones. Intenta escribir una petición aquí y haz clic en el botón nuevamente para ver cómo funciona.",
   "prompt.action.indexing": "Configuración de indexación",
+  "prompt.action.sandbox.enable": "Activar sandbox",
+  "prompt.action.sandbox.disable": "Desactivar sandbox",
+  "prompt.action.sandbox.enabled":
+    "Sandbox activado. Los comandos de shell del agente están limitados a los directorios del proyecto y de Kilo.",
+  "prompt.action.sandbox.disabled":
+    "Sandbox desactivado. Haz clic para limitar las escrituras de los comandos de shell del agente a los directorios del proyecto y de Kilo.",
 
   "speechToText.tooltip.start": "Iniciar entrada de voz con Kilo Gateway",
   "speechToText.tooltip.stop": "Detener captura",
@@ -794,6 +800,9 @@ export const dict = {
   "settings.indexing.title": "Indexación",
   "settings.indexing.enable.title": "Habilitar indexación",
   "settings.indexing.enable.description": "Activar o desactivar la indexación semántica de la base de código.",
+  "settings.indexing.showButton.title": "Mostrar el botón cuando la indexación está desactivada",
+  "settings.indexing.showButton.description":
+    "Muestra el botón de indexación debajo del campo de entrada mientras la indexación esté desactivada. Si el botón está oculto, abre Configuración > Indexación para activar la indexación.",
   "settings.indexing.globalEnable.title": "Habilitar globalmente",
   "settings.indexing.globalEnable.description": "Habilitar la indexación para cada área de trabajo.",
   "settings.indexing.projectEnable.title": "Habilitar para este proyecto",
@@ -866,7 +875,7 @@ export const dict = {
   "settings.providers.tag.customProvider": "Proveedor personalizado",
   "settings.providers.connected.environmentDescription": "Conectado desde tus variables de entorno",
   "settings.providers.action.signInChatGPT": "Iniciar sesión con ChatGPT",
-  "settings.providers.custom.description": "Añade un proveedor compatible con OpenAI por URL base.",
+  "settings.providers.custom.description": "Añade un proveedor personalizado por URL base.",
   "settings.providers.subagentModel.title": "Modelo de subagente",
   "settings.providers.subagentModel.description":
     "Modelo predeterminado y esfuerzo de razonamiento para los subagentes de task-tool. Déjelo sin configurar para heredar el modelo del agente invocador.",
@@ -874,11 +883,11 @@ export const dict = {
   "settings.models.hidePromptTraining.description":
     "Oculta los modelos de Kilo Gateway cuyos proveedores pueden usar tus prompts para entrenamiento.",
   "settings.providers.modeModels": "Modelo por modo",
-  "settings.providers.custom.note": "Agrega un proveedor compatible con OpenAI mediante URL base.",
+  "settings.providers.custom.note": "Agrega un proveedor personalizado mediante URL base.",
   "settings.providers.modeModels.description":
     "Anula el modelo predeterminado para modos específicos. Si no se establece, se usa el modelo predeterminado global.",
   "provider.custom.title": "Proveedor personalizado",
-  "provider.custom.description.prefix": "Configura un proveedor compatible con OpenAI. Consulta la ",
+  "provider.custom.description.prefix": "Configura un proveedor personalizado. Consulta la ",
   "provider.custom.description.link": "documentación de configuración de proveedores",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "ID del proveedor",
@@ -1335,6 +1344,10 @@ export const dict = {
     "Elige el modelo de transcripción de Kilo Gateway para la entrada de voz.",
   "settings.experimental.continueOnDeny.title": "Continuar al denegar",
   "settings.experimental.continueOnDeny.description": "Continuar el bucle del agente cuando se deniega un permiso",
+  "settings.sandboxing.title": "Sandbox",
+  "settings.sandboxing.network.title": "Restringir el acceso a la red",
+  "settings.sandboxing.network.description":
+    "Bloquea el acceso saliente a la red para los comandos iniciados por el modelo y las herramientas HTTP. Los servidores MCP locales y los hooks de plugins no están sujetos a esta restricción. El tráfico de proveedores y de inferencia de modelos sigue estando disponible.",
   "settings.experimental.mcpTimeout.title": "Tiempo de espera MCP (ms)",
   "settings.experimental.mcpTimeout.description": "Tiempo de espera para solicitudes del servidor MCP en milisegundos",
   "settings.experimental.remote.title": "Control Remote",
@@ -1471,6 +1484,9 @@ export const dict = {
     "No hay comandos personalizados configurados. Añada comandos a opencode.json para verlos aquí.",
   "settings.agentBehaviour.workflows.detail.description": "Descripción",
   "settings.agentBehaviour.workflows.detail.template": "Plantilla",
+  "settings.experimental.sandbox.title": "Sandbox",
+  "settings.experimental.sandbox.description":
+    "Ejecutar los comandos de shell del agente dentro de un sandbox a nivel de sistema operativo que restringe las escrituras a los directorios de estado del proyecto y de Kilo",
 
   "settings.autoApprove.description":
     "Defina cómo se permite la ejecución de las herramientas. La mayoría de las herramientas tienen como valor predeterminado Permitir. doom_loop y external_directory tienen como valor predeterminado Preguntar.",
@@ -1572,6 +1588,9 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Migración heredada",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migra la configuración de una instalación anterior de Kilo Code, incluyendo las claves API de proveedores y el modelo predeterminado.",
+  "settings.aboutKiloCode.rooImport.description":
+    "Importa el historial de conversaciones de una instalación de Roo Code.",
+  "settings.aboutKiloCode.rooImport.button": "Importar sesiones desde Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Novedades en Kilo Code",

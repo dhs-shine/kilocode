@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test"
+import { describe, it, expect, spyOn } from "bun:test"
+import * as vscode from "vscode"
 import type { PartUpdate } from "../../src/shared/stream-messages"
 
 // vscode mock is provided by the shared preload (tests/setup/vscode-mock.ts)
-const { KiloProvider } = await import("../../src/KiloProvider")
+const { KiloProvider, unwrapSyncEvent } = await import("../../src/KiloProvider")
 
 type State = "connecting" | "connected" | "disconnected" | "error"
 
@@ -34,6 +35,21 @@ function mkMessage(id: string, role: "user" | "assistant", time = 0) {
   }
 }
 
+function mkSession(revert?: { messageID: string }) {
+  return {
+    id: "s1",
+    slug: "session",
+    version: "1",
+    projectID: "project",
+    directory: "/repo",
+    title: "Session",
+    cost: 0,
+    tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+    time: { created: 1, updated: 1 },
+    revert,
+  }
+}
+
 function mkResult(items: unknown[]) {
   return { data: items, response: { headers: new Headers() } }
 }
@@ -42,21 +58,54 @@ function createClient(options?: {
   messagesDeferred?: Deferred<{ data: unknown[]; response: { headers: Headers } }>
   messagesData?: unknown[]
   deleteDeferred?: Deferred<unknown>
+  revertDeferred?: Deferred<{ data?: unknown; error?: unknown }>
   sessionData?: unknown
   sessionGet?: (params: { sessionID: string; directory?: string }) => Promise<{ data: unknown }>
+  abortFailures?: string[]
+  createDeferred?: Deferred<{ data: unknown }>
+  sandboxDeferred?: Deferred<{ data: unknown }>
+  sandboxStarted?: Deferred<void>
 }) {
   const calls: { before?: string; limit?: number }[] = []
   const stopped: { sessionID: string; directory?: string }[] = []
+  const aborted: { sessionID: string; directory?: string }[] = []
+  const prompted: Array<Record<string, unknown>> = []
+  const reverted: Array<Record<string, unknown>> = []
+  const created: Array<Record<string, unknown>> = []
+  const sandboxed: Array<Record<string, unknown>> = []
   return {
     calls,
     stopped,
+    aborted,
+    prompted,
+    reverted,
+    created,
+    sandboxed,
     session: {
       list: async () => ({ data: [] }),
+      create: async (params: Record<string, unknown>) => {
+        created.push(params)
+        return options?.createDeferred?.promise ?? { data: mkSession() }
+      },
       get: async (params: { sessionID: string; directory?: string }) => {
         if (options?.sessionGet) return options.sessionGet(params)
         return { data: options?.sessionData ?? null }
       },
       status: async () => ({ data: {} }),
+      revert: async (params: Record<string, unknown>) => {
+        reverted.push(params)
+        if (options?.revertDeferred) return options.revertDeferred.promise
+        return { data: mkSession({ messageID: String(params.messageID) }) }
+      },
+      promptAsync: async (params: Record<string, unknown>) => {
+        prompted.push(params)
+        return { data: undefined }
+      },
+      abort: async (params: { sessionID: string; directory?: string }) => {
+        aborted.push(params)
+        if (params.directory && options?.abortFailures?.includes(params.directory)) throw new Error("abort failed")
+        return { data: true }
+      },
       messages: async (params: { before?: string; limit?: number }) => {
         calls.push({ before: params.before, limit: params.limit })
         if (options?.messagesDeferred) return options.messagesDeferred.promise
@@ -65,6 +114,17 @@ function createClient(options?: {
       delete: async () => {
         if (options?.deleteDeferred) return options.deleteDeferred.promise
         return { data: {} }
+      },
+    },
+    sandbox: {
+      toggle: async (params: Record<string, unknown>) => {
+        sandboxed.push(params)
+        options?.sandboxStarted?.resolve(undefined)
+        return (
+          options?.sandboxDeferred?.promise ?? {
+            data: { directory: "/repo", enabled: true, available: true, version: 1 },
+          }
+        )
       },
     },
     backgroundProcess: {
@@ -112,13 +172,22 @@ function createConnection(client: ReturnType<typeof createClient>) {
 type ProviderInternals = {
   connectionState: State
   webview: { postMessage: (message: unknown) => Promise<unknown> } | null
-  currentSession: { id: string; directory?: string } | null
+  currentSession: { id: string; directory?: string; revert?: { messageID: string } } | null
   contextSessionID: string | undefined
   sessionDirectories: Map<string, string>
   trackedSessionIds: Set<string>
+  checkpoints: Map<string, Promise<void>>
+  revisions: Map<string, { id: string; seq: number }>
   streams: { push: (msg: PartUpdate) => void }
+  checkpoint: (sid: string, run: () => Promise<void>) => void
+  gatherEditorContext: () => Promise<Record<string, never>>
+  refreshSessionDetails: (sid: string, dir: string) => void
   stopCurrentSessionProcesses: (next?: string) => void
-  handleEvent: (event: unknown) => void
+  handleEvent: (event: unknown, directory?: string) => void
+  handleAbort: (sid?: string) => Promise<void>
+  handleRevertSession: (sid: string, messageID: string) => Promise<void>
+  handleSendMessage: (text: string, messageID?: string, sessionID?: string, draftID?: string) => Promise<void>
+  handleToggleSandbox: (input: { sessionID?: string; draftID?: string; requestID: string }) => Promise<void>
   handleLoadMessages: (sid: string, opts?: { mode?: string; before?: string; limit?: number }) => Promise<void>
   handleDeleteSession: (sid: string) => Promise<void>
 }
@@ -136,6 +205,465 @@ function makeProvider(client: ReturnType<typeof createClient>) {
   }
   return { provider, internal, sent }
 }
+
+describe("KiloProvider.handleAbort", () => {
+  it("aborts the original owner after a running session moves to a worktree", async () => {
+    const client = createClient()
+    const { provider, internal, sent } = makeProvider(client)
+    internal.handleEvent(
+      {
+        type: "session.status",
+        properties: { sessionID: "s1", status: { type: "busy" } },
+      },
+      "/repo",
+    )
+    provider.setSessionDirectory("s1", "/repo/worktree")
+
+    await internal.handleAbort("s1")
+
+    expect(client.aborted).toEqual([
+      { sessionID: "s1", directory: "/repo" },
+      { sessionID: "s1", directory: "/repo/worktree" },
+    ])
+    expect(sent.at(-1)).toMatchObject({ type: "sessionStatus", sessionID: "s1", status: "idle" })
+  })
+
+  it("preserves the original owner when the status event lacks a directory", async () => {
+    const client = createClient()
+    const { provider, internal } = makeProvider(client)
+    internal.handleEvent({
+      type: "session.status",
+      properties: { sessionID: "s1", status: { type: "busy" } },
+    })
+    provider.setSessionDirectory("s1", "/repo/worktree")
+
+    await internal.handleAbort("s1")
+
+    expect(client.aborted).toEqual([
+      { sessionID: "s1", directory: "/repo" },
+      { sessionID: "s1", directory: "/repo/worktree" },
+    ])
+  })
+
+  it("attempts every owner and stays busy when one abort fails", async () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    const client = createClient({ abortFailures: ["/repo"] })
+    const { provider, internal, sent } = makeProvider(client)
+    internal.handleEvent(
+      {
+        type: "session.status",
+        properties: { sessionID: "s1", status: { type: "busy" } },
+      },
+      "/repo",
+    )
+    provider.setSessionDirectory("s1", "/repo/worktree")
+
+    await internal.handleAbort("s1")
+
+    expect(client.aborted).toEqual([
+      { sessionID: "s1", directory: "/repo" },
+      { sessionID: "s1", directory: "/repo/worktree" },
+    ])
+    expect(sent.at(-1)).toMatchObject({ type: "sessionStatus", sessionID: "s1", status: "busy" })
+    expect(error).toHaveBeenCalledTimes(1)
+    error.mockRestore()
+  })
+})
+
+describe("KiloProvider sandbox status", () => {
+  it("ignores events from another directory for the same session", () => {
+    const client = createClient()
+    const { internal, sent } = makeProvider(client)
+    internal.sessionDirectories.set("s1", "/repo")
+    internal.trackedSessionIds.add("s1")
+
+    internal.handleEvent({
+      type: "sandbox.status.changed",
+      properties: { sessionID: "s1", directory: "/other", enabled: true, available: true, version: 1 },
+    })
+    expect(sent.some((message) => (message as { type?: string }).type === "sandboxStatus")).toBe(false)
+
+    internal.handleEvent({
+      type: "sandbox.status.changed",
+      properties: { sessionID: "s1", directory: "/repo", enabled: true, available: true, version: 1 },
+    })
+    expect(sent).toContainEqual(expect.objectContaining({ type: "sandboxStatus", sessionID: "s1", directory: "/repo" }))
+  })
+})
+
+describe("KiloProvider sandbox toggle", () => {
+  it("creates a session before toggling from the empty composer", async () => {
+    const notice = spyOn(vscode.window, "showInformationMessage").mockResolvedValue(undefined)
+    const client = createClient()
+    const { internal, sent } = makeProvider(client)
+
+    await internal.handleToggleSandbox({ draftID: "draft-1", requestID: "sandbox-1" })
+
+    expect(client.created).toEqual([expect.objectContaining({ directory: "/repo" })])
+    expect(client.sandboxed).toEqual([{ sessionID: "s1", directory: "/repo" }])
+    expect(sent.findIndex((message) => (message as { type?: string }).type === "sessionCreated")).toBeLessThan(
+      sent.findIndex((message) => (message as { type?: string }).type === "sandboxStatus"),
+    )
+    expect(sent).toContainEqual(
+      expect.objectContaining({
+        type: "sandboxStatus",
+        sessionID: "s1",
+        requestID: "sandbox-1",
+        enabled: true,
+      }),
+    )
+    expect(notice).toHaveBeenCalledTimes(1)
+    expect(notice).toHaveBeenCalledWith("Sandbox enabled")
+    notice.mockRestore()
+  })
+
+  it("reports the disabled state in a native notification", async () => {
+    const notice = spyOn(vscode.window, "showInformationMessage").mockResolvedValue(undefined)
+    const sandbox = defer<{ data: unknown }>()
+    const client = createClient({ sandboxDeferred: sandbox })
+    const { internal } = makeProvider(client)
+    internal.currentSession = mkSession()
+
+    const toggle = internal.handleToggleSandbox({ sessionID: "s1", requestID: "sandbox-1" })
+    sandbox.resolve({ data: { directory: "/repo", enabled: false, available: true, version: 2 } })
+    await toggle
+
+    expect(notice).toHaveBeenCalledTimes(1)
+    expect(notice).toHaveBeenCalledWith("Sandbox disabled")
+    notice.mockRestore()
+  })
+
+  it("shares session creation and finishes the toggle before a prompt", async () => {
+    const create = defer<{ data: unknown }>()
+    const sandbox = defer<{ data: unknown }>()
+    const started = defer<void>()
+    const client = createClient({ createDeferred: create, sandboxDeferred: sandbox, sandboxStarted: started })
+    const { internal } = makeProvider(client)
+    internal.gatherEditorContext = async () => ({})
+
+    const toggle = internal.handleToggleSandbox({ draftID: "draft-1", requestID: "sandbox-1" })
+    await Promise.resolve()
+    const send = internal.handleSendMessage("hello", "message-1", undefined, "draft-1")
+    await Promise.resolve()
+
+    expect(client.created).toHaveLength(1)
+    expect(client.prompted).toHaveLength(0)
+
+    create.resolve({ data: mkSession() })
+    await started.promise
+    expect(client.sandboxed).toHaveLength(1)
+    expect(client.prompted).toHaveLength(0)
+
+    sandbox.resolve({ data: { directory: "/repo", enabled: true, available: true, version: 1 } })
+    await Promise.all([toggle, send])
+    expect(client.created).toHaveLength(1)
+    expect(client.prompted).toHaveLength(1)
+  })
+
+  it("does not send a queued prompt when the sandbox toggle fails", async () => {
+    const log = spyOn(console, "error").mockImplementation(() => {})
+    const notice = spyOn(vscode.window, "showInformationMessage").mockResolvedValue(undefined)
+    const sandbox = defer<{ data: unknown }>()
+    const started = defer<void>()
+    const client = createClient({ sandboxDeferred: sandbox, sandboxStarted: started })
+    const { internal, sent } = makeProvider(client)
+    internal.gatherEditorContext = async () => ({})
+
+    const toggle = internal.handleToggleSandbox({ draftID: "draft-1", requestID: "sandbox-1" })
+    await started.promise
+    const send = internal.handleSendMessage("hello", "message-1", undefined, "draft-1")
+    sandbox.reject(new Error("toggle failed"))
+    await Promise.all([toggle, send])
+
+    expect(client.prompted).toHaveLength(0)
+    expect(sent).toContainEqual(expect.objectContaining({ type: "sandboxStatusError", requestID: "sandbox-1" }))
+    expect(sent).toContainEqual(
+      expect.objectContaining({ type: "sendMessageFailed", sessionID: "s1", messageID: "message-1" }),
+    )
+    expect(notice).not.toHaveBeenCalled()
+    notice.mockRestore()
+    log.mockRestore()
+  })
+
+  it("does not send a queued prompt when the sandbox backend is unavailable", async () => {
+    const log = spyOn(console, "error").mockImplementation(() => {})
+    const notice = spyOn(vscode.window, "showInformationMessage").mockResolvedValue(undefined)
+    const sandbox = defer<{ data: unknown }>()
+    const started = defer<void>()
+    const client = createClient({ sandboxDeferred: sandbox, sandboxStarted: started })
+    const { internal, sent } = makeProvider(client)
+    internal.gatherEditorContext = async () => ({})
+
+    const toggle = internal.handleToggleSandbox({ draftID: "draft-1", requestID: "sandbox-1" })
+    await started.promise
+    const send = internal.handleSendMessage("hello", "message-1", undefined, "draft-1")
+    sandbox.resolve({
+      data: { directory: "/repo", enabled: false, available: false, reason: "unsupported", version: 0 },
+    })
+    await Promise.all([toggle, send])
+
+    expect(client.prompted).toHaveLength(0)
+    expect(sent).toContainEqual(expect.objectContaining({ type: "sandboxStatusError", message: "unsupported" }))
+    expect(sent).toContainEqual(
+      expect.objectContaining({ type: "sendMessageFailed", sessionID: "s1", messageID: "message-1" }),
+    )
+    expect(notice).not.toHaveBeenCalled()
+    notice.mockRestore()
+    log.mockRestore()
+  })
+
+  it("keeps prompts queued after the draft is promoted", async () => {
+    const sandbox = defer<{ data: unknown }>()
+    const started = defer<void>()
+    const client = createClient({ sandboxDeferred: sandbox, sandboxStarted: started })
+    const { internal } = makeProvider(client)
+    internal.gatherEditorContext = async () => ({})
+
+    const toggle = internal.handleToggleSandbox({ draftID: "draft-1", requestID: "sandbox-1" })
+    await started.promise
+    const send = internal.handleSendMessage("hello", "message-1", "s1", "draft-1")
+    await Promise.resolve()
+    expect(client.prompted).toHaveLength(0)
+
+    sandbox.resolve({ data: { directory: "/repo", enabled: true, available: true, version: 1 } })
+    await Promise.all([toggle, send])
+    expect(client.prompted).toHaveLength(1)
+  })
+})
+
+describe("KiloProvider revert ordering", () => {
+  it("unwraps the nested sync payload emitted by the live SSE endpoint", () => {
+    const event = unwrapSyncEvent({
+      type: "sync",
+      syncEvent: {
+        type: "session.updated.1",
+        id: "evt_clear",
+        seq: 0,
+        aggregateID: "sessionID",
+        data: { sessionID: "s1", info: { revert: null } },
+      },
+    })
+
+    expect(event).toEqual({
+      source: "sync",
+      id: "evt_clear",
+      seq: 0,
+      type: "session.updated",
+      properties: { sessionID: "s1", info: { revert: null } },
+    })
+  })
+
+  it("waits for an in-flight revert before submitting the replacement prompt", async () => {
+    const revert = defer<{ data?: unknown; error?: unknown }>()
+    const client = createClient({ revertDeferred: revert })
+    const { internal } = makeProvider(client)
+    internal.currentSession = mkSession()
+    internal.gatherEditorContext = async () => ({})
+
+    internal.checkpoint("s1", () => internal.handleRevertSession("s1", "m1"))
+    const send = internal.handleSendMessage("replacement", "m2", "s1")
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(client.reverted).toHaveLength(1)
+    expect(client.prompted).toHaveLength(0)
+
+    revert.resolve({ data: mkSession({ messageID: "m1" }) })
+    await send
+
+    expect(client.prompted).toHaveLength(1)
+    expect(client.prompted[0]?.sessionID).toBe("s1")
+  })
+
+  it("waits for a revert queued while the replacement prompt gathers context", async () => {
+    const context = defer<Record<string, never>>()
+    const revert = defer<{ data?: unknown; error?: unknown }>()
+    const client = createClient({ revertDeferred: revert })
+    const { internal } = makeProvider(client)
+    internal.currentSession = mkSession()
+    internal.gatherEditorContext = () => context.promise
+
+    const send = internal.handleSendMessage("replacement", "m2", "s1")
+    await Promise.resolve()
+    internal.checkpoint("s1", () => internal.handleRevertSession("s1", "m1"))
+    context.resolve({})
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(client.prompted).toHaveLength(0)
+
+    revert.resolve({ data: mkSession({ messageID: "m1" }) })
+    await send
+
+    expect(client.prompted).toHaveLength(1)
+  })
+
+  it("does not submit the replacement prompt when the revert fails", async () => {
+    const error = spyOn(console, "error").mockImplementation(() => {})
+    const revert = defer<{ data?: unknown; error?: unknown }>()
+    const client = createClient({ revertDeferred: revert })
+    const { internal, sent } = makeProvider(client)
+    internal.currentSession = mkSession()
+    internal.gatherEditorContext = async () => ({})
+
+    internal.checkpoint("s1", () => internal.handleRevertSession("s1", "m1"))
+    const send = internal.handleSendMessage("replacement", "m2", "s1")
+    await Promise.resolve()
+    revert.resolve({ error: new Error("revert failed") })
+    await send
+
+    expect(client.prompted).toHaveLength(0)
+    expect(sent).toContainEqual(expect.objectContaining({ type: "sendMessageFailed", messageID: "m2" }))
+    error.mockRestore()
+  })
+
+  it("does not restore a stale revert boundary after a newer clear update", () => {
+    const client = createClient()
+    const { internal, sent } = makeProvider(client)
+    internal.currentSession = mkSession({ messageID: "m1" })
+    internal.trackedSessionIds.add("s1")
+
+    internal.handleEvent({
+      source: "sync",
+      id: "evt_000000000002",
+      seq: 0,
+      type: "session.updated",
+      properties: { sessionID: "s1", info: { revert: null } },
+    })
+    const count = sent.length
+
+    internal.handleEvent({
+      source: "sync",
+      id: "evt_000000000001",
+      seq: 0,
+      type: "session.updated",
+      properties: { sessionID: "s1", info: { revert: { messageID: "m1" } } },
+    })
+    internal.handleEvent({
+      id: "evt_000000000001",
+      type: "session.updated",
+      properties: { sessionID: "s1", info: mkSession({ messageID: "m1" }) },
+    })
+
+    expect(internal.currentSession?.revert).toBeUndefined()
+    expect(internal.revisions.get("s1")).toEqual({ id: "evt_000000000002", seq: 0 })
+    expect(sent).toHaveLength(count)
+    expect(sent.at(-1)).toMatchObject({ type: "sessionUpdated", session: { id: "s1", revert: null } })
+  })
+
+  it("uses sequence ordering for workspace-replayed session updates", () => {
+    const client = createClient()
+    const { internal } = makeProvider(client)
+    internal.currentSession = mkSession({ messageID: "m1" })
+    internal.trackedSessionIds.add("s1")
+
+    internal.handleEvent({
+      source: "sync",
+      id: "evt_ffffffffffff",
+      seq: 1,
+      type: "session.updated",
+      properties: { sessionID: "s1", info: { revert: { messageID: "m1" } } },
+    })
+    internal.handleEvent({
+      source: "sync",
+      id: "evt_000000000001",
+      seq: 2,
+      type: "session.updated",
+      properties: { sessionID: "s1", info: { revert: null } },
+    })
+
+    expect(internal.currentSession?.revert).toBeUndefined()
+    expect(internal.revisions.get("s1")).toEqual({ id: "evt_000000000001", seq: 2 })
+  })
+
+  it("publishes authoritative session state after a missed clear event", async () => {
+    const client = createClient({ sessionData: mkSession() })
+    const { internal, sent } = makeProvider(client)
+    internal.currentSession = mkSession({ messageID: "m1" })
+    internal.contextSessionID = "s1"
+
+    internal.refreshSessionDetails("s1", "/repo")
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(internal.currentSession?.revert).toBeUndefined()
+    expect(sent.at(-1)).toMatchObject({ type: "sessionUpdated", session: { id: "s1", revert: null } })
+  })
+
+  it("retries a focused session refresh after a concurrent session update", async () => {
+    const first = defer<{ data: unknown }>()
+    const second = defer<{ data: unknown }>()
+    let calls = 0
+    const client = createClient({
+      sessionGet: async () => {
+        calls += 1
+        return calls === 1 ? first.promise : second.promise
+      },
+    })
+    const { internal } = makeProvider(client)
+    internal.currentSession = mkSession({ messageID: "m1" })
+    internal.contextSessionID = "s1"
+    internal.trackedSessionIds.add("s1")
+
+    internal.refreshSessionDetails("s1", "/repo")
+    internal.handleEvent({
+      source: "sync",
+      id: "evt_000000000001",
+      seq: 0,
+      type: "session.updated",
+      properties: { sessionID: "s1", info: { title: "updated" } },
+    })
+    first.resolve({ data: mkSession() })
+    await Bun.sleep(0)
+    expect(calls).toBe(2)
+
+    second.resolve({ data: { ...mkSession(), title: "updated" } })
+    await Bun.sleep(0)
+
+    expect(internal.currentSession?.id).toBe("s1")
+    expect(internal.currentSession?.revert).toBeUndefined()
+  })
+
+  it("ignores an older session refresh that resolves last", async () => {
+    const first = defer<{ data: unknown }>()
+    const second = defer<{ data: unknown }>()
+    let calls = 0
+    const client = createClient({
+      sessionGet: async () => {
+        calls += 1
+        return calls === 1 ? first.promise : second.promise
+      },
+    })
+    const { internal, sent } = makeProvider(client)
+    internal.currentSession = mkSession({ messageID: "m1" })
+    internal.contextSessionID = "s1"
+
+    internal.refreshSessionDetails("s1", "/repo")
+    internal.refreshSessionDetails("s1", "/repo")
+    second.resolve({ data: mkSession() })
+    await Bun.sleep(0)
+    first.resolve({ data: mkSession({ messageID: "m1" }) })
+    await Bun.sleep(0)
+
+    expect(internal.currentSession?.revert).toBeUndefined()
+    expect(sent.filter((msg) => (msg as { type?: string }).type === "sessionUpdated")).toHaveLength(1)
+  })
+
+  it("ignores a session refresh superseded by a revert response", async () => {
+    const session = defer<{ data: unknown }>()
+    const client = createClient({ sessionGet: async () => session.promise })
+    const { internal } = makeProvider(client)
+    internal.currentSession = mkSession()
+    internal.contextSessionID = "s1"
+
+    internal.refreshSessionDetails("s1", "/repo")
+    await internal.handleRevertSession("s1", "m1")
+    session.resolve({ data: mkSession() })
+    await Bun.sleep(0)
+
+    expect(internal.currentSession?.revert).toEqual({ messageID: "m1" })
+  })
+})
 
 describe("KiloProvider.handleLoadMessages / focus mode freshness", () => {
   it("stops background processes for the previous session when switching sessions", async () => {

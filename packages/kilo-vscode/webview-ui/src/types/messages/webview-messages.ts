@@ -10,9 +10,9 @@ import type { WorkStyle, WorkStyleState } from "../../../../src/shared/work-styl
 import type {
   ClearLegacyDataMessage,
   FinalizeLegacyMigrationMessage,
-  RequestLegacyMigrationDataMessage,
+  RequestMigrationDataMessage,
   SkipLegacyMigrationMessage,
-  StartLegacyMigrationMessage,
+  StartMigrationMessage,
 } from "./migration"
 
 // ============================================
@@ -428,6 +428,10 @@ export interface RequestGlobalConfigMessage {
 
 export interface RequestIndexingStatusMessage {
   type: "requestIndexingStatus"
+}
+
+export interface RequestIndexingSettingsMessage {
+  type: "requestIndexingSettings"
 }
 
 export interface RequestKiloEmbeddingModelsMessage {
@@ -920,6 +924,20 @@ export interface ToggleAutoApproveMessage {
   type: "toggleAutoApprove"
 }
 
+export interface RequestSandboxStatusMessage {
+  type: "requestSandboxStatus"
+  sessionID: string
+}
+
+export interface ToggleSandboxMessage {
+  type: "toggleSandbox"
+  sessionID?: string
+  draftID?: string
+  requestID: string
+  agentManagerContext?: string
+  contextDirectory?: string
+}
+
 export interface ToggleRemoteMessage {
   type: "toggleRemote"
 }
@@ -1164,6 +1182,7 @@ export type WebviewMessage =
   | RequestConfigMessage
   | RequestGlobalConfigMessage
   | RequestIndexingStatusMessage
+  | RequestIndexingSettingsMessage
   | RequestKiloEmbeddingModelsMessage
   | UpdateConfigMessage
   | OpenSettingsTabRequest
@@ -1224,8 +1243,8 @@ export type WebviewMessage =
   | RefreshPRMessage
   | OpenPRMessage
   // legacy-migration start
-  | RequestLegacyMigrationDataMessage
-  | StartLegacyMigrationMessage
+  | RequestMigrationDataMessage
+  | StartMigrationMessage
   | SkipLegacyMigrationMessage
   | ClearLegacyDataMessage
   | FinalizeLegacyMigrationMessage
@@ -1252,6 +1271,8 @@ export type WebviewMessage =
   | AgentManagerOpenSessionsMessage
   | RequestAutoApproveStateMessage
   | ToggleAutoApproveMessage
+  | RequestSandboxStatusMessage
+  | ToggleSandboxMessage
   | FetchMarketplaceDataMessage
   | FilterMarketplaceItemsMessage
   | InstallMarketplaceItemMessage

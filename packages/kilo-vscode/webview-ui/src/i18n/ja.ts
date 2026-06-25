@@ -284,6 +284,12 @@ export const dict = {
   "prompt.action.enhanceDescription":
     "「プロンプトを強化」ボタンは、追加コンテキスト、説明、または言い換えを提供することで、リクエストを改善します。ここにリクエストを入力し、ボタンを再度クリックして動作を確認してください。",
   "prompt.action.indexing": "インデックス設定",
+  "prompt.action.sandbox.enable": "サンドボックスを有効化",
+  "prompt.action.sandbox.disable": "サンドボックスを無効化",
+  "prompt.action.sandbox.enabled":
+    "サンドボックスが有効です。エージェントのシェルコマンドは、プロジェクトおよびKiloディレクトリに制限されています。",
+  "prompt.action.sandbox.disabled":
+    "サンドボックスが無効です。クリックしてエージェントのシェルコマンドの書き込みをプロジェクトおよびKiloディレクトリに制限します。",
 
   "speechToText.tooltip.start": "Kilo Gatewayで音声入力を開始",
   "speechToText.tooltip.stop": "音声キャプチャを停止",
@@ -787,6 +793,9 @@ export const dict = {
   "settings.indexing.dimension.placeholder": "自動",
   "settings.indexing.dimension.title": "ベクトル次元",
   "settings.indexing.enable.description": "セマンティックコードベースインデックスをオンまたはオフにします。",
+  "settings.indexing.showButton.title": "インデックス作成がオフのときにボタンを表示",
+  "settings.indexing.showButton.description":
+    "インデックス作成がオフの間、プロンプトの下にインデックス作成ボタンを表示します。ボタンが非表示の場合は、設定 > インデックス作成を開いてインデックス作成を有効にしてください。",
   "settings.indexing.enable.title": "インデックスを有効にする",
   "settings.indexing.globalEnable.title": "グローバルで有効にする",
   "settings.indexing.globalEnable.description": "すべてのワークスペースでインデックス作成を有効にします。",
@@ -854,7 +863,7 @@ export const dict = {
   "settings.providers.tag.customProvider": "カスタムプロバイダー",
   "settings.providers.connected.environmentDescription": "環境変数から接続されています",
   "settings.providers.action.signInChatGPT": "ChatGPT でサインイン",
-  "settings.providers.custom.description": "ベースURLでOpenAI互換プロバイダーを追加します。",
+  "settings.providers.custom.description": "ベース URL でカスタムプロバイダーを追加します。",
   "settings.providers.subagentModel.title": "サブエージェントモデル",
   "settings.providers.subagentModel.description":
     "task-tool サブエージェントのデフォルトモデルと推論の労力。呼び出し元のエージェントのモデルを継承する場合は未設定のままにしてください。",
@@ -862,11 +871,11 @@ export const dict = {
   "settings.models.hidePromptTraining.description":
     "プロバイダーがプロンプトを学習に使用する可能性のある Kilo Gateway モデルを非表示にします。",
   "settings.providers.modeModels": "モードごとのモデル",
-  "settings.providers.custom.note": "Base URL で OpenAI 互換プロバイダーを追加します。",
+  "settings.providers.custom.note": "Base URL でカスタムプロバイダーを追加します。",
   "settings.providers.modeModels.description":
     "特定のモードのデフォルトモデルを上書きします。設定されていない場合、グローバルデフォルトモデルが使用されます。",
   "provider.custom.title": "カスタムプロバイダー",
-  "provider.custom.description.prefix": "OpenAI互換プロバイダーを設定します。",
+  "provider.custom.description.prefix": "カスタムプロバイダーを設定します。",
   "provider.custom.description.link": "プロバイダー設定ドキュメント",
   "provider.custom.description.suffix": "を参照してください。",
   "provider.custom.field.providerID.label": "プロバイダーID",
@@ -1313,6 +1322,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "音声入力に使用するKilo Gateway文字起こしモデルを選択します。",
   "settings.experimental.continueOnDeny.title": "拒否時に続行",
   "settings.experimental.continueOnDeny.description": "権限が拒否された場合にエージェントループを続行",
+  "settings.sandboxing.title": "サンドボックス化",
+  "settings.sandboxing.network.title": "ネットワークアクセスを制限",
+  "settings.sandboxing.network.description":
+    "モデルから発行されたコマンドと HTTP ツールによる外部ネットワークアクセスをブロックします。ローカル MCP サーバーとプラグインフックは、この制限の対象外です。プロバイダーおよびモデルへの推論通信は引き続き利用できます。",
   "settings.experimental.mcpTimeout.title": "MCPタイムアウト（ミリ秒）",
   "settings.experimental.mcpTimeout.description": "MCPサーバーリクエストのタイムアウト（ミリ秒）",
   "settings.experimental.remote.title": "Remote コントロール",
@@ -1446,6 +1459,9 @@ export const dict = {
     "カスタムコマンドが設定されていません。opencode.json にコマンドを追加するとここに表示されます。",
   "settings.agentBehaviour.workflows.detail.description": "説明",
   "settings.agentBehaviour.workflows.detail.template": "テンプレート",
+  "settings.experimental.sandbox.title": "サンドボックス",
+  "settings.experimental.sandbox.description":
+    "エージェントのシェルコマンドを、プロジェクトおよびKiloの状態ディレクトリへの書き込みを制限するOSレベルのサンドボックス内で実行",
 
   "settings.autoApprove.description":
     "ツールの実行許可を定義します。ほとんどのツールはデフォルトで「許可」されます。doom_loop と external_directory はデフォルトで「確認」になります。",
@@ -1543,6 +1559,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "レガシー移行",
   "settings.aboutKiloCode.legacyMigration.description":
     "プロバイダーのAPIキーやデフォルトモデルなど、以前にインストールしたKilo Codeから設定を移行します。",
+  "settings.aboutKiloCode.rooImport.description": "インストールしたRoo Codeから会話履歴を移行します。",
+  "settings.aboutKiloCode.rooImport.button": "Roo Codeからセッションをインポート",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Kilo Codeの新機能",

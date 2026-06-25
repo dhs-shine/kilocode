@@ -284,6 +284,10 @@ export const dict = {
   "prompt.action.resetModel": "重置模型为默认值",
   "prompt.action.enhanceDescription":
     "'增强提示'按钮通过提供额外上下文、澄清或重新表述来帮助改进您的请求。尝试在此处输入请求，然后再次点击按钮查看其工作原理。",
+  "prompt.action.sandbox.enable": "启用沙盒",
+  "prompt.action.sandbox.disable": "禁用沙盒",
+  "prompt.action.sandbox.enabled": "沙盒已启用。代理 shell 命令被限制在项目和 Kilo 目录内。",
+  "prompt.action.sandbox.disabled": "沙盒已禁用。点击以将代理 shell 命令的写入限制在项目和 Kilo 目录内。",
 
   "speechToText.tooltip.start": "使用 Kilo Gateway 开始语音输入",
   "speechToText.tooltip.stop": "停止捕获音频",
@@ -772,6 +776,9 @@ export const dict = {
   "settings.indexing.title": "索引",
   "settings.indexing.enable.title": "启用索引",
   "settings.indexing.enable.description": "打开或关闭语义代码库索引。",
+  "settings.indexing.showButton.title": "索引关闭时显示按钮",
+  "settings.indexing.showButton.description":
+    "索引关闭时，在提示词下方显示索引按钮。如果该按钮已隐藏，请打开“设置 > 索引”以启用索引。",
   "settings.indexing.globalEnable.title": "全局启用",
   "settings.indexing.globalEnable.description": "为每个工作区启用索引。",
   "settings.indexing.projectEnable.title": "为此项目启用",
@@ -838,16 +845,16 @@ export const dict = {
   "settings.providers.tag.customProvider": "自定义提供商",
   "settings.providers.connected.environmentDescription": "从您的环境变量连接",
   "settings.providers.action.signInChatGPT": "使用 ChatGPT 登录",
-  "settings.providers.custom.description": "通过基础 URL 添加 OpenAI 兼容的提供商。",
+  "settings.providers.custom.description": "通过基础 URL 添加自定义提供商。",
   "settings.providers.subagentModel.title": "子代理模型",
   "settings.providers.subagentModel.description": "task-tool 子代理的默认模型和推理工作量。留空以继承调用代理的模型。",
   "settings.models.hidePromptTraining.title": "隐藏使用提示词训练的模型",
   "settings.models.hidePromptTraining.description": "隐藏提供商可能会使用您的提示词进行训练的 Kilo Gateway 模型。",
   "settings.providers.modeModels": "按模式选择模型",
-  "settings.providers.custom.note": "通过 Base URL 添加 OpenAI 兼容提供商。",
+  "settings.providers.custom.note": "通过 Base URL 添加自定义提供商。",
   "settings.providers.modeModels.description": "为特定模式覆盖默认模型。如果未设置，将使用全局默认模型。",
   "provider.custom.title": "自定义提供商",
-  "provider.custom.description.prefix": "配置 OpenAI 兼容的提供商。请参阅",
+  "provider.custom.description.prefix": "配置自定义提供商。请参阅",
   "provider.custom.description.link": "提供商配置文档",
   "provider.custom.description.suffix": "。",
   "provider.custom.field.providerID.label": "提供商 ID",
@@ -1283,6 +1290,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "选择用于语音输入的 Kilo Gateway 转录模型。",
   "settings.experimental.continueOnDeny.title": "拒绝后继续",
   "settings.experimental.continueOnDeny.description": "权限被拒绝时继续智能体循环",
+  "settings.sandboxing.title": "沙盒",
+  "settings.sandboxing.network.title": "限制网络访问",
+  "settings.sandboxing.network.description":
+    "阻止模型发起的命令和 HTTP 工具进行出站网络访问。本地 MCP 服务器和插件钩子不受此限制。提供商和模型推理流量仍然可用。",
   "settings.experimental.mcpTimeout.title": "MCP 超时（毫秒）",
   "settings.experimental.mcpTimeout.description": "MCP 服务器请求的超时时间（毫秒）",
   "settings.experimental.remote.title": "Remote 控制",
@@ -1403,6 +1414,9 @@ export const dict = {
   "settings.agentBehaviour.workflows.empty": "未配置自定义命令。将命令添加到 opencode.json 即可在此处看到。",
   "settings.agentBehaviour.workflows.detail.description": "描述",
   "settings.agentBehaviour.workflows.detail.template": "模板",
+  "settings.experimental.sandbox.title": "沙盒",
+  "settings.experimental.sandbox.description":
+    "在操作系统级沙盒中运行代理 shell 命令，将写入限制在项目和 Kilo 状态目录内",
 
   "settings.autoApprove.description":
     "定义工具的运行权限。大多数工具默认为「允许」。doom_loop 和 external_directory 默认为「询问」。",
@@ -1489,6 +1503,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "旧版迁移",
   "settings.aboutKiloCode.legacyMigration.description":
     "从旧版 Kilo Code 安装迁移设置，包括提供商 API 密钥和默认模型。",
+  "settings.aboutKiloCode.rooImport.description": "从 Roo Code 安装导入对话历史记录。",
+  "settings.aboutKiloCode.rooImport.button": "从 Roo Code 导入会话",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Kilo Code 新功能",

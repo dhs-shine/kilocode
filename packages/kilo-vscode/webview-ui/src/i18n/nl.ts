@@ -288,6 +288,12 @@ export const dict = {
   "prompt.action.resetModel": "Model terugzetten naar standaard",
   "prompt.action.enhanceDescription":
     "De knop 'Prompt verbeteren' helpt je prompt te verbeteren door extra context, verduidelijking of herformulering te bieden. Typ hier een prompt en klik nogmaals op de knop om te zien hoe het werkt.",
+  "prompt.action.sandbox.enable": "Sandbox inschakelen",
+  "prompt.action.sandbox.disable": "Sandbox uitschakelen",
+  "prompt.action.sandbox.enabled":
+    "Sandbox is ingeschakeld. Shell-opdrachten van de agent zijn beperkt tot de project- en Kilo-mappen.",
+  "prompt.action.sandbox.disabled":
+    "Sandbox is uitgeschakeld. Klik om schrijfbewerkingen van shell-opdrachten van de agent te beperken tot de project- en Kilo-mappen.",
 
   "speechToText.tooltip.start": "Spraakinvoer starten met Kilo Gateway",
   "speechToText.tooltip.stop": "Audio vastleggen stoppen",
@@ -826,10 +832,10 @@ export const dict = {
   "settings.providers.tag.other": "Overige",
   "settings.providers.connected.environmentDescription": "Gekoppeld via je omgevingsvariabelen",
   "settings.providers.action.signInChatGPT": "Inloggen met ChatGPT",
-  "settings.providers.custom.description": "Voeg een OpenAI-compatibele provider toe via basis-URL.",
+  "settings.providers.custom.description": "Voeg een aangepaste provider toe via basis-URL.",
 
   "provider.custom.title": "Aangepaste provider",
-  "provider.custom.description.prefix": "Configureer een OpenAI-compatibele provider. Zie de ",
+  "provider.custom.description.prefix": "Configureer een aangepaste provider. Zie de ",
   "provider.custom.description.link": "provider configuratie documentatie",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "Provider-ID",
@@ -1122,6 +1128,9 @@ export const dict = {
   "settings.indexing.status.title": "Status",
   "settings.indexing.enable.title": "Indexering inschakelen",
   "settings.indexing.enable.description": "Schakel semantische codebase-indexering in of uit.",
+  "settings.indexing.showButton.title": "Knop weergeven wanneer indexering is uitgeschakeld",
+  "settings.indexing.showButton.description":
+    "Geef de indexeringsknop onder de prompt weer wanneer indexering is uitgeschakeld. Als de knop verborgen is, opent u Instellingen > Indexering om indexering in te schakelen.",
   "settings.indexing.globalEnable.title": "Globaal inschakelen",
   "settings.indexing.globalEnable.description": "Indexering inschakelen voor elke werkruimte.",
   "settings.indexing.projectEnable.title": "Inschakelen voor dit project",
@@ -1321,6 +1330,10 @@ export const dict = {
   "settings.experimental.continueOnDeny.title": "Doorgaan bij weigering",
   "settings.experimental.continueOnDeny.description":
     "Ga door met de agent loop wanneer een toestemming wordt geweigerd",
+  "settings.sandboxing.title": "Sandbox",
+  "settings.sandboxing.network.title": "Netwerktoegang beperken",
+  "settings.sandboxing.network.description":
+    "Blokkeer uitgaande netwerktoegang voor door het model geïnitieerde opdrachten en HTTP-tools. Lokale MCP-servers en plugin-hooks vallen buiten deze beperking. Netwerkverkeer voor providers en modelinferentie blijft beschikbaar.",
   "settings.experimental.mcpTimeout.title": "MCP Timeout (ms)",
   "settings.experimental.mcpTimeout.description": "Timeout voor MCP-serververzoeken in milliseconden",
   "settings.experimental.remote.title": "Remote-bediening",
@@ -1332,6 +1345,9 @@ export const dict = {
   "settings.experimental.remote.inactive": "Inactief",
   "settings.experimental.remote.hint": "Gebruik /remote in de chat om te schakelen",
   "settings.experimental.toolToggles": "Tool Schakelaars",
+  "settings.experimental.sandbox.title": "Sandbox",
+  "settings.experimental.sandbox.description":
+    "Shell-opdrachten van de agent uitvoeren in een sandbox op besturingssysteemniveau die schrijfbewerkingen beperkt tot de project- en Kilo-statusmappen",
 
   "settings.agentBehaviour.defaultAgent.title": "Standaard Agent",
   "settings.agentBehaviour.defaultAgent.description": "Agent om te gebruiken wanneer er geen is opgegeven",
@@ -1521,7 +1537,7 @@ export const dict = {
   "settings.providers.enabled.description":
     "Indien ingesteld, zijn alleen deze providers beschikbaar (exclusieve allowlist)",
   "settings.providers.notSet": "Niet ingesteld (gebruik server standaard)",
-  "settings.providers.custom.note": "Voeg een OpenAI-compatibele provider toe via base URL.",
+  "settings.providers.custom.note": "Voeg een aangepaste provider toe via base URL.",
   "settings.providers.search.placeholder": "Zoek providers",
   "settings.providers.select.placeholder": "Selecteer provider...",
 
@@ -1540,6 +1556,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Legacy Migratie",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migreer instellingen van een eerdere installatie van Kilo Code, inclusief provider API-sleutels en standaard model.",
+  "settings.aboutKiloCode.rooImport.description": "Importeer gespreksgeschiedenis van een Roo Code installatie.",
+  "settings.aboutKiloCode.rooImport.button": "Sessies importeren uit Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Wat is er Nieuw in Kilo Code",

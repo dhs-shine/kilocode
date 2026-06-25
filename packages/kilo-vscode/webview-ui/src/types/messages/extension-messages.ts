@@ -39,10 +39,10 @@ import type {
   WorktreeState,
 } from "./agent-manager"
 import type {
-  LegacyMigrationCompleteMessage,
-  LegacyMigrationDataMessage,
-  LegacyMigrationProgressMessage,
-  LegacyMigrationSessionProgressMessage,
+  MigrationCompleteMessage,
+  MigrationDataMessage,
+  MigrationProgressMessage,
+  MigrationSessionProgressMessage,
   MigrationStateMessage,
 } from "./migration"
 
@@ -312,6 +312,13 @@ export interface NavigateMessage {
 export interface IndexingStatusLoadedMessage {
   type: "indexingStatusLoaded"
   status: IndexingStatus
+}
+
+export interface IndexingSettingsLoadedMessage {
+  type: "indexingSettingsLoaded"
+  settings: {
+    showButtonWhenDisabled: boolean
+  }
 }
 
 export interface KiloEmbeddingModelsLoadedMessage {
@@ -635,6 +642,27 @@ export interface AgentManagerKeybindingsMessage {
 export interface AutoApproveStateMessage {
   type: "autoApproveState"
   active: boolean
+}
+
+export interface SandboxStatusMessage {
+  type: "sandboxStatus"
+  sessionID: string
+  enabled: boolean
+  available: boolean
+  reason?: string
+  version: number
+  directory: string
+  revision: number
+  requestID?: string
+}
+
+export interface SandboxStatusErrorMessage {
+  type: "sandboxStatusError"
+  sessionID: string
+  directory: string
+  message: string
+  revision: number
+  requestID?: string
 }
 
 // Multi-version creation progress (extension → webview)
@@ -994,6 +1022,7 @@ export type ExtensionMessage =
   | DeviceAuthCancelledMessage
   | NavigateMessage
   | IndexingStatusLoadedMessage
+  | IndexingSettingsLoadedMessage
   | KiloEmbeddingModelsLoadedMessage
   | ProvidersLoadedMessage
   | AgentsLoadedMessage
@@ -1037,6 +1066,8 @@ export type ExtensionMessage =
   | AgentManagerRunStatusMessage
   | AgentManagerKeybindingsMessage
   | AutoApproveStateMessage
+  | SandboxStatusMessage
+  | SandboxStatusErrorMessage
   | AgentManagerMultiVersionProgressMessage
   | AgentManagerSetSessionModelMessage
   | AgentManagerSendInitialMessage
@@ -1069,10 +1100,10 @@ export type ExtensionMessage =
   | AgentManagerTerminalErrorMessage
   // legacy-migration start
   | MigrationStateMessage
-  | LegacyMigrationDataMessage
-  | LegacyMigrationProgressMessage
-  | LegacyMigrationSessionProgressMessage
-  | LegacyMigrationCompleteMessage
+  | MigrationDataMessage
+  | MigrationProgressMessage
+  | MigrationSessionProgressMessage
+  | MigrationCompleteMessage
   // legacy-migration end
   | EnhancePromptResultMessage
   | EnhancePromptErrorMessage

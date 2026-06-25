@@ -290,6 +290,12 @@ export const dict = {
   "prompt.action.indexing": "Indekseringsinnstillinger",
   "prompt.action.enhanceDescription":
     "Knappen 'Forbedre prompt' hjelper med å forbedre forespørselen din ved å gi ekstra kontekst, avklaring eller omformulering. Prøv å skrive en forespørsel her og klikk på knappen igjen for å se hvordan det fungerer.",
+  "prompt.action.sandbox.enable": "Aktiver sandbox",
+  "prompt.action.sandbox.disable": "Deaktiver sandbox",
+  "prompt.action.sandbox.enabled":
+    "Sandbox er aktivert. Shell-kommandoer for agenten er begrenset til prosjekt- og Kilo-mappene.",
+  "prompt.action.sandbox.disabled":
+    "Sandbox er deaktivert. Klikk for å begrense skriving av shell-kommandoer for agenten til prosjekt- og Kilo-mappene.",
 
   "speechToText.tooltip.start": "Start taleinndata med Kilo Gateway",
   "speechToText.tooltip.stop": "Stopp lydfangst",
@@ -825,7 +831,7 @@ export const dict = {
   "settings.providers.tag.customProvider": "Egendefinert leverandør",
   "settings.providers.connected.environmentDescription": "Koblet til fra dine miljøvariabler",
   "settings.providers.action.signInChatGPT": "Logg inn med ChatGPT",
-  "settings.providers.custom.description": "Legg til en OpenAI-kompatibel leverandør via basis-URL.",
+  "settings.providers.custom.description": "Legg til en egendefinert leverandør via basis-URL.",
   "settings.providers.subagentModel.title": "Underagentmodell",
   "settings.providers.subagentModel.description":
     "Standardmodell og resonneringsinnsats for task-tool-underagenter. La stå tom for å arve den kallende agentens modell.",
@@ -833,11 +839,11 @@ export const dict = {
   "settings.models.hidePromptTraining.description":
     "Skjul Kilo Gateway-modeller der leverandørene kan bruke ledetekstene dine til trening.",
   "settings.providers.modeModels": "Modell per modus",
-  "settings.providers.custom.note": "Legg til en OpenAI-kompatibel leverandør via basis-URL.",
+  "settings.providers.custom.note": "Legg til en egendefinert leverandør via basis-URL.",
   "settings.providers.modeModels.description":
     "Overstyr standardmodellen for bestemte moduser. Hvis ikke angitt, brukes den globale standardmodellen.",
   "provider.custom.title": "Egendefinert leverandør",
-  "provider.custom.description.prefix": "Konfigurer en OpenAI-kompatibel leverandør. Se ",
+  "provider.custom.description.prefix": "Konfigurer en egendefinert leverandør. Se ",
   "provider.custom.description.link": "dokumentasjon for leverandørkonfigurasjon",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "Leverandør-ID",
@@ -1284,6 +1290,10 @@ export const dict = {
   "settings.models.speechToTextModel.description": "Velg Kilo Gateway-transkripsjonsmodellen for taleinndata.",
   "settings.experimental.continueOnDeny.title": "Fortsett ved avvisning",
   "settings.experimental.continueOnDeny.description": "Fortsett agentløkken når en tillatelse avvises",
+  "settings.sandboxing.title": "Kjøring i sandkasse",
+  "settings.sandboxing.network.title": "Begrens nettverkstilgang",
+  "settings.sandboxing.network.description":
+    "Blokker utgående nettverkstilgang fra kommandoer generert av modellen og HTTP-verktøy. Lokale MCP-servere og programtilleggskroker kjører utenfor denne begrensningen. Trafikk for leverandør- og modellinferens forblir tilgjengelig.",
   "settings.experimental.mcpTimeout.title": "MCP-tidsavbrudd (ms)",
   "settings.experimental.mcpTimeout.description": "Tidsavbrudd for MCP-serverforespørsler i millisekunder",
   "settings.experimental.remote.title": "Remote-kontroll",
@@ -1298,6 +1308,9 @@ export const dict = {
   "settings.indexing.title": "Indeksering",
   "settings.indexing.enable.title": "Aktiver indeksering",
   "settings.indexing.enable.description": "Slå semantisk kodebaseindeksering på eller av.",
+  "settings.indexing.showButton.title": "Vis knappen når indeksering er slått av",
+  "settings.indexing.showButton.description":
+    "Vis indekseringsknappen under ledeteksten mens indeksering er slått av. Hvis knappen er skjult, åpner du Innstillinger > Indeksering for å aktivere indeksering.",
   "settings.indexing.globalEnable.title": "Aktiver globalt",
   "settings.indexing.globalEnable.description": "Aktiver indeksering for hvert arbeidsområde.",
   "settings.indexing.projectEnable.title": "Aktiver for dette prosjektet",
@@ -1449,6 +1462,9 @@ export const dict = {
     "Ingen egendefinerte kommandoer konfigurert. Legg til kommandoer i opencode.json for å se dem her.",
   "settings.agentBehaviour.workflows.detail.description": "Beskrivelse",
   "settings.agentBehaviour.workflows.detail.template": "Mal",
+  "settings.experimental.sandbox.title": "Sandbox",
+  "settings.experimental.sandbox.description":
+    "Kjør shell-kommandoer for agenten i en sandbox på operativsystemnivå som begrenser skriving til prosjekt- og Kilo-tilstandsmapper",
 
   "settings.autoApprove.description":
     "Definer hvordan verktøy kan kjøre. De fleste verktøy har Tillat som standard. doom_loop og external_directory har Spør som standard.",
@@ -1546,6 +1562,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Migrering fra eldre versjon",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migrer innstillinger fra en tidligere installasjon av Kilo Code, inkludert API-nøkler for leverandører og standardmodell.",
+  "settings.aboutKiloCode.rooImport.description": "Importer samtalehistorikk fra en installasjon av Roo Code.",
+  "settings.aboutKiloCode.rooImport.button": "Importer økter fra Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "Hva er nytt i Kilo Code",

@@ -283,6 +283,12 @@ export const dict = {
   "prompt.action.autoApprove.disable": "Disable auto-approve",
   "prompt.action.autoApprove.enabled": "Auto-approve is enabled. Permission prompts will be approved automatically.",
   "prompt.action.autoApprove.disabled": "Auto-approve is disabled. Click to approve permission prompts automatically.",
+  "prompt.action.sandbox.enable": "Enable sandbox",
+  "prompt.action.sandbox.disable": "Disable sandbox",
+  "prompt.action.sandbox.enabled":
+    "Sandbox is enabled. Agent shell commands are confined to the project and Kilo directories.",
+  "prompt.action.sandbox.disabled":
+    "Sandbox is disabled. Click to confine agent shell command writes to the project and Kilo directories.",
   "prompt.action.resetModel": "Reset model to default",
   "prompt.action.enhanceDescription":
     "The 'Enhance Prompt' button helps improve your prompt by providing additional context, clarification, or rephrasing. Try typing a prompt in here and clicking the button again to see how it works.",
@@ -792,10 +798,10 @@ export const dict = {
   "settings.providers.tag.other": "Other",
   "settings.providers.connected.environmentDescription": "Connected from your environment variables",
   "settings.providers.action.signInChatGPT": "Sign in with ChatGPT",
-  "settings.providers.custom.description": "Add an OpenAI-compatible provider by base URL.",
+  "settings.providers.custom.description": "Add a custom provider by base URL.",
 
   "provider.custom.title": "Custom provider",
-  "provider.custom.description.prefix": "Configure an OpenAI-compatible provider. See the ",
+  "provider.custom.description.prefix": "Configure a custom provider. See the ",
   "provider.custom.description.link": "provider config docs",
   "provider.custom.description.suffix": ".",
   "provider.custom.field.providerID.label": "Provider ID",
@@ -1081,6 +1087,9 @@ export const dict = {
   "settings.indexing.status.title": "Status",
   "settings.indexing.enable.title": "Enable indexing",
   "settings.indexing.enable.description": "Turn semantic codebase indexing on or off.",
+  "settings.indexing.showButton.title": "Show button when indexing is off",
+  "settings.indexing.showButton.description":
+    "Show the indexing button below the prompt while indexing is off. If hidden, open Settings > Indexing to enable indexing.",
   "settings.indexing.globalEnable.title": "Enable globally",
   "settings.indexing.globalEnable.description": "Enable indexing for every workspace.",
   "settings.indexing.projectEnable.title": "Enable for this project",
@@ -1302,6 +1311,13 @@ export const dict = {
   "settings.models.speechToTextModel.description": "Choose the Kilo Gateway transcription model for voice input.",
   "settings.experimental.continueOnDeny.title": "Continue on Deny",
   "settings.experimental.continueOnDeny.description": "Continue the agent loop when a permission is denied",
+  "settings.experimental.sandbox.title": "Sandbox",
+  "settings.experimental.sandbox.description":
+    "Run agent shell commands inside an OS-level sandbox that restricts writes to the project and Kilo state directories",
+  "settings.sandboxing.title": "Sandboxing",
+  "settings.sandboxing.network.title": "Restrict Network Access",
+  "settings.sandboxing.network.description":
+    "Block outbound network access from model-originated commands and HTTP tools. Local MCP servers and plugin hooks run outside this restriction. Provider and model inference traffic remains available.",
   "settings.experimental.mcpTimeout.title": "MCP Timeout (ms)",
   "settings.experimental.mcpTimeout.description": "Timeout for MCP server requests in milliseconds",
   "settings.experimental.remote.title": "Remote Control",
@@ -1527,7 +1543,7 @@ export const dict = {
   "settings.providers.enabled": "Enabled Providers (Allowlist)",
   "settings.providers.enabled.description": "If set, only these providers will be available (exclusive allowlist)",
   "settings.providers.notSet": "Not set (use server default)",
-  "settings.providers.custom.note": "Add an OpenAI-compatible provider by base URL.",
+  "settings.providers.custom.note": "Add a custom provider by base URL.",
   "settings.providers.search.placeholder": "Search providers",
   "settings.providers.select.placeholder": "Select provider...",
 
@@ -1546,6 +1562,8 @@ export const dict = {
   "settings.aboutKiloCode.legacyMigration.title": "Legacy Migration",
   "settings.aboutKiloCode.legacyMigration.description":
     "Migrate settings from a previous installation of Kilo Code, including provider API keys and default model.",
+  "settings.aboutKiloCode.rooImport.description": "Import conversation history from a Roo Code installation.",
+  "settings.aboutKiloCode.rooImport.button": "Import Sessions from Roo Code",
 
   // Screen 1 — What's New
   "migration.whatsNew.title": "What's New in Kilo Code",
