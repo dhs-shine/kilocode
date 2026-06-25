@@ -28,6 +28,7 @@ describe("PromptInput sandbox toggle", () => {
     expect(start).toBeGreaterThan(-1)
     expect(end).toBeGreaterThan(start)
     expect(toggle).toContain("const sessionID = sandboxID()")
+    expect(toggle).toContain("!sandboxVisible()")
     expect(toggle).toContain('type: "toggleSandbox"')
     expect(toggle).toContain("sessionID,")
     expect(toggle).toContain("draftID: props.pendingSessionID ?? session.draftSessionID()")
@@ -50,6 +51,9 @@ describe("PromptInput sandbox toggle", () => {
   it("uses the internal flag for visibility and effective runtime state for the button", () => {
     expect(src).toContain("features().sandboxControls")
     expect(src).toContain("<Show when={sandboxVisible()}>")
+    expect(src).toContain("{ action: toggleSandbox, enabled: () => sandboxVisible() && !sandboxDisabled() }")
+    expect(src).toContain('if (!sandboxVisible()) hidden.add("sandbox")')
+    expect(src).toContain("onClick={toggleSandbox}")
     expect(src).toContain('message.type === "sandboxStatus"')
     expect(src).toContain("message.sessionID !== sandboxID() && !matching")
     expect(src).toContain("setSandboxState(state)")
@@ -61,5 +65,16 @@ describe("PromptInput sandbox toggle", () => {
     expect(src).toContain("!sandboxReady()")
     expect(src).toContain("if (sandboxRequest() && target === null) return")
     expect(src).not.toContain("if (state === current) return true")
+  })
+
+  it("preserves the draft when the sandbox control is disabled", () => {
+    const start = src.indexOf("if (matched?.action)")
+    const guard = src.indexOf("if (matched.enabled && !matched.enabled()) return", start)
+    const clear = src.indexOf('setText("")', start)
+
+    expect(start).toBeGreaterThan(-1)
+    expect(guard).toBeGreaterThan(start)
+    expect(clear).toBeGreaterThan(guard)
+    expect(src).toContain("disabled={sandboxDisabled()}")
   })
 })
