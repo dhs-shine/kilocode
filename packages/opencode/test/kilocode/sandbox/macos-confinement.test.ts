@@ -226,31 +226,29 @@ describe.skipIf(process.platform !== "darwin").serial("real macOS sandbox confin
     ),
   )
 
-  it.live("protects denied state from ancestor rename without blocking sibling writes", () =>
+  it.live("protects denied policy state while sibling state remains writable", () =>
     provideTmpdirInstance((dir) =>
       Effect.gen(function* () {
         const proc = yield* AppProcess.Service
-        const parent = path.join(dir, "state")
-        const store = path.join(parent, "policy")
-        const moved = path.join(dir, "moved")
-        const sibling = path.join(parent, "sibling.txt")
-        yield* Effect.promise(() => fs.mkdir(store, { recursive: true }))
+        const state = path.join(dir, "state")
+        const store = path.join(dir, "policy")
+        const moved = path.join(state, "moved")
+        const sibling = path.join(state, "sibling.txt")
+        yield* Effect.promise(() => Promise.all([fs.mkdir(state), fs.mkdir(store)]))
+        const base = profile(dir)
         const policy: Profile = {
-          ...profile(dir),
+          ...base,
           filesystem: {
-            ...profile(dir).filesystem,
-            denyWrite: [
-              { path: store, kind: "subtree" },
-              { path: parent, kind: "literal" },
-              { path: dir, kind: "literal" },
-            ],
+            ...base.filesystem,
+            allowWrite: [{ path: state, kind: "subtree" }],
+            denyWrite: [{ path: store, kind: "subtree" }],
           },
         }
         const write = yield* sandbox(
           policy,
           proc.run(ChildProcess.make("/bin/sh", ["-c", `printf allowed > ${JSON.stringify(sibling)}`])),
         )
-        const rename = yield* sandbox(policy, proc.run(ChildProcess.make("/bin/mv", [parent, moved])))
+        const rename = yield* sandbox(policy, proc.run(ChildProcess.make("/bin/mv", [store, moved])))
 
         expect(write.exitCode).toBe(0)
         expect(rename.exitCode).not.toBe(0)

@@ -178,20 +178,13 @@ describe("sandbox policy", () => {
     const dirs = tmp.extra
     const ctx = context(dirs.a, dirs.a, dirs)
     const policy = profile(ctx)
-    const parent = path.dirname(SandboxStore.root)
-    const writes = await Effect.runPromise(
-      runSandbox(
-        policy,
-        Effect.all([assertWrite(SandboxStore.root).pipe(Effect.exit), assertWrite(parent).pipe(Effect.exit)]),
-      ),
-    )
+    const write = await Effect.runPromise(runSandbox(policy, assertWrite(SandboxStore.root)).pipe(Effect.exit))
 
     expect(new Set(roots(ctx))).toEqual(expected(dirs.a))
     expect(policy.filesystem.temporaryDirectory).toBe(Global.Path.tmp)
-    expect(policy.filesystem.denyWrite).toContainEqual({ path: SandboxStore.root, kind: "subtree" })
-    expect(policy.filesystem.denyWrite).toContainEqual({ path: parent, kind: "literal" })
+    expect(policy.filesystem.denyWrite).toEqual([{ path: SandboxStore.root, kind: "subtree" }])
     expect(policy.environment.deny).toEqual(["KILO_SERVER_PASSWORD", "KILO_SERVER_USERNAME"])
-    expect(writes.every(Exit.isFailure)).toBe(true)
+    expect(Exit.isFailure(write)).toBe(true)
   })
 
   test("uses deny-by-default and configurable network profiles", async () => {

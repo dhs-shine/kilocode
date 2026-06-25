@@ -48,16 +48,6 @@ function root(path: string) {
   return { path, kind: "subtree" as const }
 }
 
-function literal(path: string) {
-  return { path, kind: "literal" as const }
-}
-
-function parents(dir: string): ReturnType<typeof literal>[] {
-  const parent = path.dirname(dir)
-  if (parent === dir) return [literal(dir)]
-  return [...parents(parent), literal(dir)]
-}
-
 function marker(dir: string) {
   try {
     const file = path.join(dir, ".git")
@@ -108,7 +98,7 @@ export function profile(ctx: InstanceContext, mode: Profile["network"]["mode"] =
   return {
     filesystem: {
       allowWrite: writable,
-      denyWrite: [root(SandboxStore.root), ...parents(path.dirname(SandboxStore.root))],
+      denyWrite: [root(SandboxStore.root)],
       denyNames: [".git"],
       temporaryDirectory: Global.Path.tmp,
     },

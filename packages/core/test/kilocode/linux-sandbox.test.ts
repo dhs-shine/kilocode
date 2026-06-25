@@ -441,22 +441,19 @@ linux("applies explicit file and subtree denies after a writable parent", async 
   }
 })
 
-linux("prevents renaming an ancestor of a denied state subtree", async () => {
+linux("prevents renaming denied policy state while sibling state remains writable", async () => {
   const root = await fixture()
-  const parent = path.join(root.project, "state")
-  const store = path.join(parent, "policy")
-  const sibling = path.join(parent, "sibling.txt")
-  const moved = path.join(root.project, "moved")
-  await fs.mkdir(store, { recursive: true })
-  const policy = denied(profile([root.project]), [
-    { path: store, kind: "subtree" },
-    { path: parent, kind: "literal" },
-    { path: root.project, kind: "literal" },
-  ])
+  const state = path.join(root.project, "state")
+  const store = path.join(root.project, "policy")
+  const sibling = path.join(state, "sibling.txt")
+  const moved = path.join(state, "moved")
+  await fs.mkdir(state)
+  await fs.mkdir(store)
+  const policy = denied(profile([state]), [{ path: store, kind: "subtree" }])
   const script = [
     'const fs = require("node:fs")',
     `fs.writeFileSync(${JSON.stringify(sibling)}, "allowed")`,
-    `try { fs.renameSync(${JSON.stringify(parent)}, ${JSON.stringify(moved)}); process.exit(2) } catch {}`,
+    `try { fs.renameSync(${JSON.stringify(store)}, ${JSON.stringify(moved)}); process.exit(2) } catch {}`,
   ].join("\n")
 
   try {
