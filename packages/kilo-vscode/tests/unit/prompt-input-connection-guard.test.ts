@@ -28,6 +28,7 @@ describe("PromptInput sandbox toggle", () => {
     expect(start).toBeGreaterThan(-1)
     expect(end).toBeGreaterThan(start)
     expect(toggle).toContain("const sessionID = sandboxID()")
+    expect(toggle).toContain("if (!sessionID) saveDraft(draftKey(), text(), reviewComments(), imageAttach.images())")
     expect(toggle).toContain('type: "toggleSandbox"')
     expect(toggle).toContain("sessionID,")
     expect(toggle).toContain("draftID: props.pendingSessionID ?? session.draftSessionID()")
