@@ -136,6 +136,7 @@ export const NotebookEditTool = Tool.define<
       parameters: EditParams,
       execute: (params, ctx) =>
         Effect.gen(function* () {
+          const edit = yield* cellEdit(params)
           yield* ctx.ask({
             permission: "notebook_edit",
             patterns: [params.path],
@@ -147,7 +148,6 @@ export const NotebookEditTool = Tool.define<
               expectedRevision: params.expected_revision,
             },
           })
-          const edit = yield* cellEdit(params)
           const result = yield* run(
             notebook.request({
               operation: "edit",

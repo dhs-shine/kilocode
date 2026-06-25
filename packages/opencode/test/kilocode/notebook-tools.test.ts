@@ -121,15 +121,17 @@ describe("native notebook tools", () => {
   )
 
   it.instance(
-    "rejects insert without kind and source",
+    "rejects insert without kind and source before asking for permission",
     () =>
       Effect.gen(function* () {
         const edit = yield* NotebookEditTool.pipe(Effect.flatMap(Tool.init))
-        const ctx = context([])
+        const asks: Parameters<Tool.Context["ask"]>[0][] = []
+        const ctx = context(asks)
         const exit = yield* edit
           .execute({ path: "analysis.ipynb", expected_revision: "content:read", index: 0, action: "insert" }, ctx)
           .pipe(Effect.exit)
         expect(exit._tag).toBe("Failure")
+        expect(asks).toEqual([])
       }),
     { git: true },
   )
