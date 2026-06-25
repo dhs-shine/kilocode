@@ -71,7 +71,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   const server = useServer()
   const session = useSession()
   const provider = useProvider()
-  const { config } = useConfig()
+  const { config, features } = useConfig()
   const metrics = tracker(vscode)
   const track = (button: string, properties?: Record<string, string | number | boolean | undefined>) =>
     metrics.track(button, "configure_worktree_dialog", properties)
@@ -102,6 +102,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   const [compareOpen, setCompareOpen] = createSignal(false)
   const [highlightedIndex, setHighlightedIndex] = createSignal(0)
   const [variant, setVariant] = createSignal<string | undefined>(session.currentVariant())
+  const [sandbox, setSandbox] = createSignal(config().experimental?.sandbox === true)
   const speech = useSpeechToText(vscode, server, { t })
   const canUseSpeech = () => canUseSpeechToText(config(), provider.authStates())
   const speechModel = () => selectedSpeechToTextModel(config())
@@ -246,6 +247,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
       baseBranch: advanced ? (baseBranch() ?? undefined) : undefined,
       branchName: customBranch,
       modelAllocations: allocations,
+      sandbox: features().sandboxControls ? sandbox() : undefined,
       files: imgFiles,
     })
 
@@ -457,6 +459,28 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                         </Button>
                       </Tooltip>
                     </Show>
+                  </Show>
+                  <Show when={features().sandboxControls}>
+                    <Tooltip
+                      value={sandbox() ? t("prompt.action.sandbox.enabled") : t("prompt.action.sandbox.disabled")}
+                      placement="top"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="small"
+                        onClick={click(
+                          "sandbox_toggle",
+                          "configure_worktree_dialog",
+                          () => setSandbox(!sandbox()),
+                          () => ({ enabled: !sandbox() }),
+                        )}
+                        aria-label={sandbox() ? t("prompt.action.sandbox.disable") : t("prompt.action.sandbox.enable")}
+                        aria-pressed={sandbox()}
+                        class={`prompt-status-button ${sandbox() ? "prompt-status-button--active" : ""}`}
+                      >
+                        <Icon name="lock" size="small" />
+                      </Button>
+                    </Tooltip>
                   </Show>
                 </div>
                 <div class="prompt-input-hint-actions">

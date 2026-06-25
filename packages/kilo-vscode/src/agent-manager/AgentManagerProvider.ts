@@ -39,6 +39,7 @@ import { startSession } from "./mcp-warmup"
 import { readTerminalFont, watchTerminalFont } from "./terminal-font"
 import { buildKeybindingMap } from "./format-keybinding"
 import { resolveVersionModels, buildInitialMessages, type CreatedVersion } from "./multi-version"
+import { ensureSandbox } from "./sandbox-bootstrap"
 import { Semaphore } from "./semaphore"
 import { PLATFORM } from "./constants"
 import type { AgentManagerOutMessage, AgentManagerInMessage } from "./types"
@@ -1289,6 +1290,22 @@ export class AgentManagerProvider implements Disposable {
       state.addSession(session.id, wt.worktree.id)
       this.registerWorktreeSession(session.id, wt.result.path)
       this.notifyWorktreeReady(session.id, wt.result, wt.worktree.id)
+
+      // Reconcile the session sandbox to the user's choice before the initial
+      // prompt runs, so tool execution is confined when sandbox is requested.
+      if (msg.sandbox !== undefined) {
+        try {
+          await ensureSandbox(
+            this.connectionService.getClient(),
+            session.id,
+            wt.result.path,
+            msg.sandbox,
+            (m) => this.log(m),
+          )
+        } catch (err) {
+          this.log(`Sandbox setup skipped for ${session.id}:`, err)
+        }
+      }
 
       // Set the per-version model immediately so the UI selector reflects
       // the correct model as soon as the worktree appears, before Phase 2.
