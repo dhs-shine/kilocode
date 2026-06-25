@@ -26,6 +26,7 @@ interface VSCodeContext {
 
 export interface SlashCommandEntry extends SlashCommandInfo {
   action?: () => void
+  enabled?: Accessor<boolean>
 }
 
 export interface SlashCommand {
@@ -50,7 +51,11 @@ export interface SlashCommand {
   close: () => void
 }
 
-export function useSlashCommand(vscode: VSCodeContext, exclude?: Set<string> | Accessor<Set<string>>): SlashCommand {
+export function useSlashCommand(
+  vscode: VSCodeContext,
+  sandbox: { action: () => void; enabled: Accessor<boolean> },
+  exclude?: Set<string> | Accessor<Set<string>>,
+): SlashCommand {
   const [server, setServer] = createSignal<SlashCommandInfo[]>([])
   const [query, setQuery] = createSignal<string | null>(null)
   const [index, setIndex] = createSignal(0)
@@ -138,6 +143,13 @@ export function useSlashCommand(vscode: VSCodeContext, exclude?: Set<string> | A
         vscode.postMessage({ type: "toggleRemote" })
       },
     },
+    {
+      name: "sandbox",
+      description: "Toggle sandbox",
+      hints: [],
+      action: sandbox.action,
+      enabled: sandbox.enabled,
+    },
   ]
 
   const excluded = () => {
@@ -214,6 +226,7 @@ export function useSlashCommand(vscode: VSCodeContext, exclude?: Set<string> | A
     onSelect?: () => void,
   ) => {
     if (cmd.action) {
+      if (cmd.enabled && !cmd.enabled()) return
       textarea.value = ""
       setText("")
       close()
