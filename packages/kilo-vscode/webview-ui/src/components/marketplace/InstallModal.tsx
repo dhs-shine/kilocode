@@ -47,14 +47,19 @@ export const InstallModal = (props: Props) => {
   const initial = workspace() ? options()[0] : options()[0]
   const [scope, setScope] = createSignal<ScopeOption>(initial)
   const [installing, setInstalling] = createSignal(false)
-  const [result, setResult] = createSignal<{ success: boolean; error?: string } | null>(null)
+  const [result, setResult] = createSignal<
+    { success: boolean; error?: string; scope: "project" | "global"; path: string; hasParameters: boolean; method?: string } | null
+  >(null)
   const [params, setParams] = createSignal<Record<string, string>>({})
+  const [pending, setPending] = createSignal<
+    { scope: "project" | "global"; path: string; hasParameters: boolean; method?: string } | null
+  >(null)
 
-  const destination = () => {
-    const base = scope().value === "project" ? ".kilo" : "~/.config/kilo"
+  const destination = (target = scope().value) => {
+    const base = target === "project" ? ".kilo" : "~/.config/kilo"
     if (props.item.type === "mcp") return `${base}/kilo.json`
     if (props.item.type === "agent") return `${base}/agents/${props.item.id}.md`
-    if (scope().value === "project") return `.kilo/skills/${props.item.id}/`
+    if (target === "project") return `.kilo/skills/${props.item.id}/`
     return `~/.kilo/skills/${props.item.id}/`
   }
   const about = () => t(`marketplace.install.about.${props.item.type}`)
@@ -96,12 +101,15 @@ export const InstallModal = (props: Props) => {
   createEffect(() => {
     const unsub = vscode.onMessage((msg) => {
       if (msg.type === "marketplaceInstallResult" && msg.slug === props.item.id) {
+        const request = pending()
         setInstalling(false)
-        setResult({ success: msg.success, error: msg.error })
-        props.onInstallResult(msg.success, scope().value, {
-          hasParameters: Object.keys(params()).length > 0,
-          installationMethodName: method()?.name,
+        if (!request) return
+        setResult({ success: msg.success, error: msg.error, ...request })
+        props.onInstallResult(msg.success, request.scope, {
+          hasParameters: request.hasParameters,
+          installationMethodName: request.method,
         })
+        setPending(null)
       }
     })
     onCleanup(unsub)
@@ -110,14 +118,22 @@ export const InstallModal = (props: Props) => {
   const doInstall = () => {
     setInstalling(true)
     const paramValues: Record<string, unknown> = { ...params() }
-    if (method()) {
-      paramValues.__method = method()!.name
+    const current = method()
+    if (current) {
+      paramValues.__method = current.name
     }
+    const target = scope().value
+    setPending({
+      scope: target,
+      path: destination(target),
+      hasParameters: Object.keys(params()).length > 0,
+      method: current?.name,
+    })
     vscode.postMessage({
       type: "installMarketplaceItem",
       mpItem: props.item,
       mpInstallOptions: {
-        target: scope().value,
+        target,
         parameters: Object.keys(paramValues).length > 0 ? paramValues : undefined,
       },
     })
@@ -259,7 +275,7 @@ export const InstallModal = (props: Props) => {
               }
             >
               <p class="install-modal-success">{t("marketplace.install.success")}</p>
-              <p class="install-modal-result-path">{t("marketplace.install.installedAt", { path: destination() })}</p>
+              <p class="install-modal-result-path">{t("marketplace.install.installedAt", { path: r().path })}</p>
               <div class="install-modal-footer">
                 <Button onClick={props.onClose}>{t("marketplace.install.done")}</Button>
               </div>
