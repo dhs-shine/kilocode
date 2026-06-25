@@ -50,9 +50,6 @@ type DialogTab = "new" | "import"
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent)
 
-let enhanceCounter = 0
-let preEnhanceText: string | null = null
-
 function sanitizeSegment(text: string, maxLength = 50): string {
   return text
     .toLowerCase()
@@ -116,6 +113,8 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   const speech = useSpeechToText(vscode, server, { t })
   const canUseSpeech = () => canUseSpeechToText(config(), provider.authStates())
   const speechModel = () => selectedSpeechToTextModel(config())
+  let prior: string | null = null
+  let request: string | undefined
 
   // Variant list for the currently selected model
   const variants = createMemo(() => {
@@ -194,7 +193,6 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   let textareaRef: HTMLTextAreaElement | undefined
 
   onMount(() => {
-    preEnhanceText = null
     setBranchesLoading(true)
     vscode.postMessage({ type: "agentManager.requestBranches" })
     // Resize textarea if restoring a cached prompt
@@ -267,23 +265,23 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "z" && (e.metaKey || e.ctrlKey) && !e.shiftKey && preEnhanceText !== null) {
-      e.preventDefault()
-      const restored = preEnhanceText
-      preEnhanceText = null
-      setPrompt(restored)
-      persistPrompt(restored)
-      if (textareaRef) {
-        textareaRef.value = restored
-        adjustHeight()
-        textareaRef.focus()
-      }
-      return
-    }
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       handleSubmit()
     }
+  }
+
+  const undo = (e: KeyboardEvent) => {
+    if (e.key !== "z" || (!e.metaKey && !e.ctrlKey) || e.shiftKey || prior === null) return
+    e.preventDefault()
+    const restored = prior
+    prior = null
+    setPrompt(restored)
+    persistPrompt(restored)
+    if (!textareaRef) return
+    textareaRef.value = restored
+    adjustHeight()
+    textareaRef.focus()
   }
 
   const adjustHeight = () => {
@@ -328,10 +326,11 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
       }
       return
     }
-    preEnhanceText = prompt()
-    enhanceCounter++
+    prior = prompt()
+    const id = `enhance-newworktree-${crypto.randomUUID()}`
+    request = id
     setEnhancing(true)
-    vscode.postMessage({ type: "enhancePrompt", text: draft, requestId: `enhance-newworktree-${enhanceCounter}` })
+    vscode.postMessage({ type: "enhancePrompt", text: draft, requestId: id })
   }
 
   // --- Import tab state ---
@@ -363,7 +362,8 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
     }
     if (msg.type === "enhancePromptResult") {
       const ev = msg as EnhancePromptResultMessage
-      if (ev.requestId === `enhance-newworktree-${enhanceCounter}`) {
+      if (ev.requestId === request) {
+        request = undefined
         setPrompt(ev.text)
         persistPrompt(ev.text)
         setEnhancing(false)
@@ -376,13 +376,17 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
     }
     if (msg.type === "enhancePromptError") {
       const ev = msg as EnhancePromptErrorMessage
-      if (ev.requestId === `enhance-newworktree-${enhanceCounter}`) {
+      if (ev.requestId === request) {
+        request = undefined
         setEnhancing(false)
       }
     }
   })
 
-  onCleanup(() => importUnsub())
+  onCleanup(() => {
+    request = undefined
+    importUnsub()
+  })
 
   const handlePRSubmit = () => {
     const url = prUrl().trim()
@@ -481,9 +485,10 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                       const val = e.currentTarget.value
                       setPrompt(val)
                       persistPrompt(val)
-                      preEnhanceText = null
+                      prior = null
                       adjustHeight()
                     }}
+                    onKeyDown={undo}
                     onPaste={(e) => imageAttach.handlePaste(e)}
                     rows={3}
                   />
