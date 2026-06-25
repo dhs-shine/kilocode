@@ -14,8 +14,16 @@ const LIMIT = 20_000
 function render(value: unknown) {
   const text = JSON.stringify(value, (key, item) => (key === "requestPath" ? undefined : item), 2)
   if (text.length <= LIMIT) return text
-  return `${text.slice(0, LIMIT)}
-... notebook result truncated by CLI (${text.length - LIMIT} characters omitted)`
+  const preview = text.slice(0, 3_000)
+  return JSON.stringify(
+    {
+      truncated: true,
+      omittedCharacters: text.length - preview.length,
+      preview,
+    },
+    null,
+    2,
+  )
 }
 
 function abort(signal: AbortSignal) {
