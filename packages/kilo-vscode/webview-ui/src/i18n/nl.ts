@@ -1327,9 +1327,9 @@ export const dict = {
     "Schakel de Kilo-provider in en meld u aan om Speech to Text te gebruiken. Speech to Text wordt momenteel alleen ondersteund met Kilo Gateway.",
   "settings.models.speechToTextModel.title": "Spraak-naar-tekst-model",
   "settings.models.speechToTextModel.description": "Kies het Kilo Gateway-transcriptiemodel voor spraakinvoer.",
-  "settings.experimental.nativeNotebookTools.title": "Native Notebook Tools",
+  "settings.experimental.nativeNotebookTools.title": "Native notebooktools",
   "settings.experimental.nativeNotebookTools.description":
-    "Enable experimental tools for reading, editing, and executing VS Code notebooks",
+    "Experimentele tools inschakelen voor het lezen, bewerken en uitvoeren van VS Code-notebooks",
   "settings.experimental.continueOnDeny.title": "Doorgaan bij weigering",
   "settings.experimental.continueOnDeny.description":
     "Ga door met de agent loop wanneer een toestemming wordt geweigerd",

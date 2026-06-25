@@ -1357,9 +1357,9 @@ export const dict = {
   "settings.models.speechToTextModel.title": "Modèle de transcription vocale",
   "settings.models.speechToTextModel.description":
     "Choisissez le modèle de transcription Kilo Gateway pour la saisie vocale.",
-  "settings.experimental.nativeNotebookTools.title": "Native Notebook Tools",
+  "settings.experimental.nativeNotebookTools.title": "Outils de notebook natifs",
   "settings.experimental.nativeNotebookTools.description":
-    "Enable experimental tools for reading, editing, and executing VS Code notebooks",
+    "Activer les outils expérimentaux pour lire, modifier et exécuter les notebooks VS Code",
   "settings.experimental.continueOnDeny.title": "Continuer en cas de refus",
   "settings.experimental.continueOnDeny.description":
     "Continuer la boucle de l'agent lorsqu'une autorisation est refusée",

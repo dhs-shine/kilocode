@@ -1320,9 +1320,9 @@ export const dict = {
     "Speech to Text を使用するには、Kilo プロバイダーを有効にしてサインインしてください。現在、Speech to Text は Kilo Gateway でのみサポートされています。",
   "settings.models.speechToTextModel.title": "音声認識モデル",
   "settings.models.speechToTextModel.description": "音声入力に使用するKilo Gateway文字起こしモデルを選択します。",
-  "settings.experimental.nativeNotebookTools.title": "Native Notebook Tools",
+  "settings.experimental.nativeNotebookTools.title": "ネイティブノートブックツール",
   "settings.experimental.nativeNotebookTools.description":
-    "Enable experimental tools for reading, editing, and executing VS Code notebooks",
+    "VS Codeノートブックの読み取り、編集、実行を行う実験的なツールを有効にします",
   "settings.experimental.continueOnDeny.title": "拒否時に続行",
   "settings.experimental.continueOnDeny.description": "権限が拒否された場合にエージェントループを続行",
   "settings.sandboxing.title": "サンドボックス化",
