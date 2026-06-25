@@ -24,6 +24,12 @@ export function merge(metadata: Record<string, unknown> | null | undefined, valu
   return { ...metadata, [key]: value }
 }
 
+export function inherit(metadata: Record<string, unknown> | null | undefined) {
+  const value = parse(metadata)
+  if (!value) return
+  return merge(undefined, { enabled: value.enabled, version: 0 })
+}
+
 export function remove(metadata: Record<string, unknown> | null | undefined) {
   if (!metadata || !(key in metadata)) return metadata
   const next = { ...metadata }

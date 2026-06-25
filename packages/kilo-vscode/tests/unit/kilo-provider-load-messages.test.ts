@@ -74,6 +74,8 @@ function createClient(options?: {
   const reverted: Array<Record<string, unknown>> = []
   const created: Array<Record<string, unknown>> = []
   const sandboxed: Array<Record<string, unknown>> = []
+  const sandboxSupport: Array<Record<string, unknown>> = []
+  const configReads: Array<Record<string, unknown>> = []
   return {
     calls,
     stopped,
@@ -82,6 +84,8 @@ function createClient(options?: {
     reverted,
     created,
     sandboxed,
+    sandboxSupport,
+    configReads,
     session: {
       list: async () => ({ data: [] }),
       create: async (params: Record<string, unknown>) => {
@@ -118,7 +122,10 @@ function createClient(options?: {
       },
     },
     sandbox: {
-      support: async () => options?.supportDeferred?.promise ?? { data: { available: true } },
+      support: async (params: Record<string, unknown>) => {
+        sandboxSupport.push(params)
+        return options?.supportDeferred?.promise ?? { data: { available: true } }
+      },
       toggle: async (params: Record<string, unknown>) => {
         sandboxed.push(params)
         options?.sandboxStarted?.resolve(undefined)
@@ -137,7 +144,12 @@ function createClient(options?: {
     },
     provider: { list: async () => ({ data: { all: [], connected: {}, default: {} } }) },
     app: { agents: async () => ({ data: [] }) },
-    config: { get: async () => ({ data: {} }) },
+    config: {
+      get: async (params: Record<string, unknown>) => {
+        configReads.push(params)
+        return { data: {} }
+      },
+    },
     kilo: {
       notifications: async () => ({ data: [] }),
       profile: async () => ({ data: {} }),
@@ -207,7 +219,8 @@ type ProviderInternals = {
   handleAbort: (sid?: string) => Promise<void>
   handleRevertSession: (sid: string, messageID: string) => Promise<void>
   handleSendMessage: (text: string, messageID?: string, sessionID?: string, draftID?: string) => Promise<void>
-  handleSetSandboxDefault: (enabled: boolean, requestID: string) => Promise<void>
+  fetchAndSendSandboxDefault: (directory?: string, requestID?: string) => Promise<void>
+  handleSetSandboxDefault: (enabled: boolean, requestID: string, directory?: string) => Promise<void>
   handleToggleSandbox: (input: { sessionID: string; requestID: string }) => Promise<void>
   handleLoadMessages: (sid: string, opts?: { mode?: string; before?: string; limit?: number }) => Promise<void>
   handleDeleteSession: (sid: string) => Promise<void>
@@ -332,6 +345,16 @@ describe("KiloProvider sandbox toggle", () => {
     )
     expect(notice).toHaveBeenCalledWith("Sandbox enabled for new sessions")
     notice.mockRestore()
+  })
+
+  it("resolves a blank worktree default against the routed directory", async () => {
+    const client = createClient()
+    const { internal } = makeProvider(client)
+
+    await internal.fetchAndSendSandboxDefault("/repo/.kilo/worktrees/wt-1")
+
+    expect(client.configReads).toEqual([{ directory: "/repo/.kilo/worktrees/wt-1" }])
+    expect(client.sandboxSupport).toEqual([{ directory: "/repo/.kilo/worktrees/wt-1" }])
   })
 
   it("waits for a blank toggle before creating the first prompt session", async () => {

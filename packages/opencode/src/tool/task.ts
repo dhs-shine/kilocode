@@ -14,6 +14,7 @@ import { KiloTask } from "../kilocode/tool/task" // kilocode_change
 import { KiloCostPropagation } from "../kilocode/session/cost-propagation" // kilocode_change
 import { KiloSessionProcessor } from "../kilocode/session/processor" // kilocode_change
 import { KiloSession } from "../kilocode/session" // kilocode_change
+import * as SandboxState from "../kilocode/sandbox/state" // kilocode_change
 import { errorMessage } from "@/util/error" // kilocode_change
 import { Cause, Effect, Exit, Schema, Scope } from "effect"
 import { EffectBridge } from "@/effect/bridge"
@@ -181,6 +182,7 @@ export const TaskTool = Tool.define(
           parentID: ctx.sessionID,
           title: params.description + ` (@${next.name} subagent)`,
           platform, // kilocode_change
+          metadata: SandboxState.inherit(parent.metadata), // kilocode_change - preserve explicit parent sandbox state
           // kilocode_change start - dedupe inherited restrictions before child prompt toggles persist
           permission: KiloTask.merge(
             deriveSubagentSessionPermission({

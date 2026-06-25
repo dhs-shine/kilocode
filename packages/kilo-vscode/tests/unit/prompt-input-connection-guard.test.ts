@@ -35,6 +35,7 @@ describe("PromptInput sandbox toggle", () => {
     expect(toggle).toContain('type: "toggleSandbox"')
     expect(toggle).toContain('type: "setSandboxDefault"')
     expect(toggle).toContain("enabled: !sandboxDefault()!.desired")
+    expect(toggle).toContain("agentManagerContext: ctx()")
     expect(toggle).toContain("sessionID,")
     expect(toggle).toContain("requestID,")
     expect(toggle).not.toContain("draftID:")
@@ -57,10 +58,11 @@ describe("PromptInput sandbox toggle", () => {
     expect(move).toBeGreaterThan(save)
   })
 
-  it("requires the enabled experiment for visibility and uses effective runtime state for the button", () => {
+  it("keeps persisted sandbox state visible independently of the configured default", () => {
     expect(src).toContain(
-      'return features().sandboxControls && config().experimental?.sandbox === true && !id?.startsWith("cloud:")',
+      'const sandboxVisible = () => features().sandboxControls && !session.currentSessionID()?.startsWith("cloud:")',
     )
+    expect(src).not.toContain("config().experimental?.sandbox === true")
     expect(src).toContain("<Show when={sandboxVisible()}>")
     expect(src).toContain("{ action: toggleSandbox, enabled: () => sandboxVisible() && !sandboxDisabled() }")
     expect(src).toContain('if (!sandboxVisible()) hidden.add("sandbox")')
@@ -72,7 +74,7 @@ describe("PromptInput sandbox toggle", () => {
     expect(src).toContain("const target = untrack(sandboxTarget)")
     expect(src).toContain("if (target !== undefined && target !== sessionID) clearSandboxRequest()")
     expect(src).toContain("sandboxID() ? sandbox()?.enabled : sandboxDefault()?.enabled")
-    expect(src).toContain('type: "requestSandboxDefault"')
+    expect(src).toContain('type: "requestSandboxDefault", agentManagerContext: ctx()')
     expect(src).toContain("aria-pressed={sandboxEnabled()}")
     expect(src).toContain("!sandboxReady()")
     expect(src).toContain("if (sandboxRequest() && target === null) return")

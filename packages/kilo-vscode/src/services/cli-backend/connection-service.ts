@@ -93,7 +93,7 @@ export class KiloConnectionService {
 
   constructor(context: vscode.ExtensionContext) {
     const state =
-      context.globalState ??
+      context.workspaceState ??
       ({
         get: <T>(_key: string, fallback?: T) => fallback,
         update: async () => undefined,

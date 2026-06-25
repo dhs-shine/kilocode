@@ -440,11 +440,15 @@ export class AgentManagerProvider implements Disposable {
       return null
     }
 
-    if ((m.type === "sendMessage" || m.type === "sendCommand" || m.type === "toggleSandbox") && !m.sessionID) {
+    if (
+      m.type === "requestSandboxDefault" ||
+      m.type === "setSandboxDefault" ||
+      ((m.type === "sendMessage" || m.type === "sendCommand" || m.type === "toggleSandbox") && !m.sessionID)
+    ) {
       const ctx = typeof m.agentManagerContext === "string" ? m.agentManagerContext : undefined
       const worktree = ctx && ctx !== "local" ? this.getStateManager()?.getWorktree(ctx) : undefined
       if (worktree) {
-        if (m.draftID) this.activeSessionId = m.draftID
+        if ("draftID" in m && m.draftID) this.activeSessionId = m.draftID
         return { ...msg, contextDirectory: worktree.path }
       }
     }

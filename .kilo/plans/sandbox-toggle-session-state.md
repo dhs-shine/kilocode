@@ -17,7 +17,7 @@ Auto Approve scope is intentionally excluded and tracked separately in https://g
 Use two durable values with different responsibilities:
 
 1. **Session state**: Store the desired sandbox state in the existing session metadata under a Kilo-owned key such as `kilocode.sandbox`.
-2. **New-session default**: Store the most recently selected state in a shared VS Code `globalState` preference. Fall back to `experimental.sandbox` until the user explicitly selects a state.
+2. **New-session default**: Store the most recently selected state in the VS Code workspace state. Fall back to `experimental.sandbox` until the user explicitly selects a state.
 
 The effective backend state is:
 
@@ -53,11 +53,12 @@ Fork B                           -> fork enabled
 | Session switch | Fetch the selected session's state and discard stale responses from the previously selected session. |
 | Existing session toggle | Persist the selected state in that session, then update the sticky default. Do not alter any other session. |
 | Session fork | Copy the source session metadata. Ignore the sticky default. Parent and child become independent after the fork. |
+| Task child | Copy the parent session's explicit sandbox state, then keep the child independent. |
 | Continue in Worktree | Preserve the source session state through the existing fork flow. |
 | Move or promote a session | Preserve state because the same session is being moved or associated, not created. |
 | Session deletion | Delete state with the session row and retain serialization against an in-flight toggle. |
 | Backend restart | Reload existing session state from metadata rather than reverting to config. |
-| VS Code reload | Reload the sticky default from `globalState` and existing state from backend metadata. |
+| VS Code reload | Reload the sticky default from workspace state and existing state from backend metadata. |
 | Sidebar and editor tabs | Use the same shared default service; session state remains backend-owned. |
 | Cloud preview | Keep the control hidden for synthetic `cloud:` sessions. |
 | Cloud continuation/import | Preserve imported session metadata. Do not overwrite it with the local new-session default. |
@@ -105,7 +106,7 @@ Regenerate OpenAPI and `packages/sdk/js/` after adding the endpoint.
 
 ### 3. Add a Shared Sticky Default Service
 
-Add a small extension service, for example `packages/kilo-vscode/src/services/sandbox-preference.ts`, backed by `ExtensionContext.globalState`.
+Add a small extension service, for example `packages/kilo-vscode/src/services/sandbox-preference.ts`, backed by `ExtensionContext.workspaceState`.
 
 The service should:
 

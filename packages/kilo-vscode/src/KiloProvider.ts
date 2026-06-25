@@ -1105,10 +1105,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           await this.fetchAndSendSandboxStatus(message.sessionID)
           break
         case "requestSandboxDefault":
-          await this.fetchAndSendSandboxDefault()
+          await this.fetchAndSendSandboxDefault(message.contextDirectory)
           break
         case "setSandboxDefault":
-          await this.handleSetSandboxDefault(message.enabled, message.requestID)
+          await this.handleSetSandboxDefault(message.enabled, message.requestID, message.contextDirectory)
           break
         case "toggleSandbox":
           await this.handleToggleSandbox(message)
@@ -2494,14 +2494,13 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.postMessage(getWorkStylePayload())
   }
 
-  private async fetchAndSendSandboxDefault(requestID?: string): Promise<void> {
+  private async fetchAndSendSandboxDefault(directory = this.getContextDirectory(), requestID?: string): Promise<void> {
     const revision = ++this.sandboxRevision
     const generation = this.connectionGeneration
     const client = this.client
     const sandbox = sandboxClient(client)
     if (!client || !sandbox || this.connectionState !== "connected") return
     try {
-      const directory = this.getContextDirectory()
       const [desired, result] = await Promise.all([
         sandboxDefault(this.connectionService.sandboxPreference, client, directory),
         sandbox.support({ directory }, { throwOnError: true }),
@@ -2532,20 +2531,23 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     }
   }
 
-  private async handleSetSandboxDefault(enabled: boolean, requestID: string): Promise<void> {
+  private async handleSetSandboxDefault(
+    enabled: boolean,
+    requestID: string,
+    directory = this.getContextDirectory(),
+  ): Promise<void> {
     const client = this.client
     const sandbox = sandboxClient(client)
     if (!client || !sandbox || this.connectionState !== "connected") {
-      await this.fetchAndSendSandboxDefault(requestID)
+      await this.fetchAndSendSandboxDefault(directory, requestID)
       return
     }
-    const directory = this.getContextDirectory()
     try {
       await this.connectionService.sandboxPreference.set(enabled, async () => {
         const { data } = await sandbox.support({ directory }, { throwOnError: true })
         if (!data.available) throw new Error(data.reason ?? "Sandbox backend is unavailable")
       })
-      await this.fetchAndSendSandboxDefault(requestID)
+      await this.fetchAndSendSandboxDefault(directory, requestID)
       vscode.window.showInformationMessage(
         enabled ? "Sandbox enabled for new sessions" : "Sandbox disabled for new sessions",
       )

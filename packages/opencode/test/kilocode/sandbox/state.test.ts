@@ -112,6 +112,21 @@ it.instance(
   { config: { experimental: { sandbox: true } } },
 )
 
+it.instance("persists metadata without requiring sandbox backend support", () =>
+  Effect.gen(function* () {
+    const sessions = yield* Session.Service
+    const id = yield* create({ source: "test" })
+
+    yield* SandboxState.write(id, { enabled: false, version: 7 })
+
+    expect(yield* SandboxState.read(id)).toEqual({ enabled: false, version: 7 })
+    expect((yield* sessions.get(id)).metadata).toEqual({
+      source: "test",
+      [SandboxState.key]: { enabled: false, version: 7 },
+    })
+  }),
+)
+
 it.instance("preserves unrelated metadata through the production persistence callback", () =>
   Effect.gen(function* () {
     const sessions = yield* Session.Service

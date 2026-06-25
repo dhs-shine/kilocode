@@ -639,6 +639,20 @@ interface SendCommandIn {
   contextDirectory?: string
 }
 
+interface RequestSandboxDefaultIn {
+  type: "requestSandboxDefault"
+  agentManagerContext?: string
+  contextDirectory?: string
+}
+
+interface SetSandboxDefaultIn {
+  type: "setSandboxDefault"
+  enabled: boolean
+  requestID: string
+  agentManagerContext?: string
+  contextDirectory?: string
+}
+
 interface ToggleSandboxIn {
   type: "toggleSandbox"
   sessionID?: string
@@ -792,6 +806,8 @@ export type AgentManagerInMessage =
   | LoadMessagesIn
   | SendMessageIn
   | SendCommandIn
+  | RequestSandboxDefaultIn
+  | SetSandboxDefaultIn
   | ToggleSandboxIn
   | RequestTerminalContextIn
   | ClearSessionIn

@@ -202,10 +202,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     const id = session.currentSessionID()
     return id?.startsWith("cloud:") ? undefined : id
   }
-  const sandboxVisible = () => {
-    const id = session.currentSessionID()
-    return features().sandboxControls && config().experimental?.sandbox === true && !id?.startsWith("cloud:")
-  }
+  const sandboxVisible = () => features().sandboxControls && !session.currentSessionID()?.startsWith("cloud:")
   const sandbox = () => {
     const state = sandboxState()
     return state?.sessionID === sandboxID() ? state : undefined
@@ -224,7 +221,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       vscode.postMessage({ type: "requestSandboxStatus", sessionID })
       return
     }
-    vscode.postMessage({ type: "requestSandboxDefault" })
+    vscode.postMessage({ type: "requestSandboxDefault", agentManagerContext: ctx() })
   }
   const toggleSandbox = () => {
     const sessionID = sandboxID()
@@ -234,7 +231,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     setSandboxRequest(requestID)
     setSandboxTarget(sessionID ?? null)
     if (!sessionID) {
-      vscode.postMessage({ type: "setSandboxDefault", enabled: !sandboxDefault()!.desired, requestID })
+      vscode.postMessage({
+        type: "setSandboxDefault",
+        enabled: !sandboxDefault()!.desired,
+        requestID,
+        agentManagerContext: ctx(),
+      })
       return
     }
     vscode.postMessage({

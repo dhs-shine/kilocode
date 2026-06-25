@@ -931,12 +931,16 @@ export interface RequestSandboxStatusMessage {
 
 export interface RequestSandboxDefaultMessage {
   type: "requestSandboxDefault"
+  agentManagerContext?: string
+  contextDirectory?: string
 }
 
 export interface SetSandboxDefaultMessage {
   type: "setSandboxDefault"
   enabled: boolean
   requestID: string
+  agentManagerContext?: string
+  contextDirectory?: string
 }
 
 export interface ToggleSandboxMessage {
