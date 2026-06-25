@@ -48,7 +48,13 @@ import {
 } from "./prompt-input-utils"
 import type { ExtensionMessage, ReviewComment, SendMessageFailedMessage, TextPart } from "../../types/messages"
 import { formatReviewCommentsMarkdown } from "../../utils/review-comment-markdown"
-import { pendingDraftKey, scopeDraftKey, sessionDraftKey } from "../../utils/prompt-drafts"
+import {
+  createdDraftKey,
+  movePromptDraft,
+  pendingDraftKey,
+  scopeDraftKey,
+  sessionDraftKey,
+} from "../../utils/prompt-drafts"
 import { ReviewComments } from "./ReviewComments"
 import { partReview, reviewBody } from "../../../../src/shared/review-comments"
 import { isEnterKeyCommitNotIme } from "../../utils/ime-enter"
@@ -172,6 +178,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     const sessionID = sandboxID()
     if (!sandboxVisible() || sandboxDisabled()) return
     const requestID = crypto.randomUUID()
+    if (!sessionID) saveDraft(draftKey(), text(), reviewComments(), imageAttach.images())
     setSandboxRequest(requestID)
     setSandboxTarget(sessionID ?? null)
     vscode.postMessage({
@@ -564,19 +571,19 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       restoreFailed(message as SendMessageFailedMessage)
     }
 
-    if (message.type === "sessionCreated" && message.draftID) {
-      const target = scopeDraftKey(boxKey(), pendingDraftKey(message.draftID) ?? "new")
-      const next = scopeDraftKey(boxKey(), sessionDraftKey(message.session.id) ?? "new")
-      const draft = drafts.get(target)
-      const pending = reviewDrafts.get(target)
-      const imgs = imageDrafts.get(target)
-      if (draft !== undefined) drafts.set(next, draft)
-      if (pending) reviewDrafts.set(next, pending)
-      if (imgs) imageDrafts.set(next, imgs)
-      drafts.delete(target)
-      reviewDrafts.delete(target)
-      imageDrafts.delete(target)
-      if (!session.currentSessionID() && (props.pendingSessionID ?? session.draftSessionID()) === message.draftID) {
+    if (message.type === "sessionCreated") {
+      const raw = createdDraftKey(message.draftID, sandboxRequest() !== undefined && sandboxTarget() === null)
+      if (raw) {
+        const source = scopeDraftKey(boxKey(), raw)
+        const target = scopeDraftKey(boxKey(), sessionDraftKey(message.session.id))
+        if (source === draftKey()) saveDraft(source, text(), reviewComments(), imageAttach.images())
+        movePromptDraft({ text: drafts, comments: reviewDrafts, images: imageDrafts }, source, target)
+      }
+      if (
+        message.draftID &&
+        !session.currentSessionID() &&
+        (props.pendingSessionID ?? session.draftSessionID()) === message.draftID
+      ) {
         session.setDraftSessionID(message.session.id)
       }
     }
