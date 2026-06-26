@@ -58,7 +58,7 @@ export const NotebookReadTool = Tool.define<
     const notebook = yield* Notebook.Service
     return {
       description:
-        "Read a live, possibly unsaved VS Code notebook using a request-directory-relative path or a safe absolute path inside that directory. Returns an opaque content revision for edits; outputs are omitted unless include_outputs is true.",
+        "Read a live, possibly unsaved VS Code notebook using a request-directory-relative path or a safe absolute path inside that directory. Returns an opaque content revision for edits; outputs are omitted unless include_outputs is true. Use notebook_edit to create a notebook or change its cells, and notebook_execute to run a cell and generate its outputs.",
       parameters: ReadParams,
       execute: (params, ctx) =>
         Effect.gen(function* () {
@@ -152,7 +152,7 @@ export const NotebookEditTool = Tool.define<
     const notebook = yield* Notebook.Service
     return {
       description:
-        "Insert, replace, delete, or create. insert/replace/delete operate on one cell in a live VS Code notebook and require expected_revision and index. create makes a new empty .ipynb at path (the parent directory must exist) and returns its initial revision so you can then insert cells. Paths may be request-directory-relative or safe absolute paths. Pass the latest opaque revision from notebook_read or the previous successful edit unchanged. A stale_revision error requires a fresh read; never blindly retry an index-based edit. Leaves the document dirty.",
+        "Insert, replace, delete, or create cells in a live VS Code notebook. To build a notebook from scratch, do not hand-write a .ipynb file: call this tool with action create, then insert cells one at a time, then run them with notebook_execute. Cell outputs are produced only by notebook_execute; never author outputs yourself. insert/replace/delete operate on one cell and require expected_revision and index. create makes a new empty .ipynb at path (the parent directory must exist) and returns its initial revision so you can then insert cells. Paths may be request-directory-relative or safe absolute paths. Pass the latest opaque revision from notebook_read or the previous successful edit unchanged. A stale_revision error requires a fresh read; never blindly retry an index-based edit. Leaves the document dirty.",
       parameters: EditParams,
       execute: (params, ctx) =>
         Effect.gen(function* () {
