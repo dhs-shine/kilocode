@@ -40,7 +40,8 @@ export function supported(info: Pick<Info, "platform" | "arch">) {
 }
 
 export function directory(info: Info) {
-  if (info.platform === "darwin") return path.join(info.home, "Library", "Application Support", "anaconda-desktop")
+  if (info.platform === "darwin")
+    return path.posix.join(info.home, "Library", "Application Support", "anaconda-desktop")
   if (info.platform === "win32") {
     const root =
       value(info, "APPDATA") ?? path.win32.join(value(info, "USERPROFILE") ?? info.home, "AppData", "Roaming")
@@ -54,7 +55,10 @@ export function directory(info: Info) {
 
 export function candidates(info: Info) {
   if (info.platform === "darwin") {
-    return ["/Applications/Anaconda Desktop.app", path.join(info.home, "Applications", "Anaconda Desktop.app")]
+    return [
+      "/Applications/Anaconda Desktop.app",
+      path.posix.join(info.home, "Applications", "Anaconda Desktop.app"),
+    ]
   }
 
   if (info.platform === "win32") {

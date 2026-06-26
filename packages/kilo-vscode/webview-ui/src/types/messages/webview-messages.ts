@@ -7,7 +7,7 @@ import type { Config } from "./config"
 import type { ModelAllocation, ReviewComment } from "./agent-manager"
 import type { ReviewMessageData } from "../../../../src/shared/review-comments"
 import type { WorkStyle, WorkStyleState } from "../../../../src/shared/work-style-presets"
-import type { AnacondaDesktopWebviewMessage } from "../../../../src/anaconda-desktop/messages"
+import type { AnacondaDesktopWebviewMessage } from "../../../../src/shared/anaconda-desktop-messages"
 import type {
   ClearLegacyDataMessage,
   FinalizeLegacyMigrationMessage,

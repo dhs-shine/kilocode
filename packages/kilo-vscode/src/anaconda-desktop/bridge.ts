@@ -1,5 +1,9 @@
 import type { KiloClient } from "@kilocode/sdk/v2"
-import type { AnacondaDesktopAction, AnacondaDesktopExtensionMessage, AnacondaDesktopWebviewMessage } from "./messages"
+import type {
+  AnacondaDesktopAction,
+  AnacondaDesktopExtensionMessage,
+  AnacondaDesktopWebviewMessage,
+} from "../shared/anaconda-desktop-messages"
 
 interface Context {
   client?: KiloClient | null

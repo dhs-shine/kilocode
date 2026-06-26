@@ -3,7 +3,7 @@ import type {
   AnacondaDesktopError,
   AnacondaDesktopRequest,
   AnacondaDesktopResult,
-} from "../../../src/anaconda-desktop/messages"
+} from "../../../src/shared/anaconda-desktop-messages"
 
 type Transport = {
   postMessage: (message: WebviewMessage) => void
