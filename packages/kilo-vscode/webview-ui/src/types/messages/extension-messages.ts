@@ -14,6 +14,7 @@ import type {
   SessionUpdate,
 } from "./sessions"
 import type { PermissionRequest } from "./permissions"
+import type { AnacondaDesktopExtensionMessage } from "../../../../src/anaconda-desktop/messages"
 import type { QuestionRequest, SuggestionRequest, TodoItem } from "./questions"
 import type { ModelSelection, Provider, ProviderAuthState } from "./providers"
 import type { AgentInfo, SkillInfo, SlashCommandInfo } from "./agents"
@@ -1125,6 +1126,7 @@ export type ExtensionMessage =
   | ProviderConnectedMessage
   | ProviderDisconnectedMessage
   | ProviderActionErrorMessage
+  | AnacondaDesktopExtensionMessage
   | CustomProviderModelsFetchedMessage
   | RecentsLoadedMessage
   | FavoritesLoadedMessage
