@@ -23,7 +23,7 @@ env:
 jobs:
   # kilocode_change start
   changes:
-    name: detect non-JetBrains changes
+    name: detect general unit test changes
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
@@ -35,7 +35,7 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         uses: actions/checkout@v6
 
-      - name: Detect non-JetBrains changes
+      - name: Detect general unit test changes
         if: github.event_name != 'workflow_dispatch'
         id: filter
         uses: Kilo-Org/paths-filter@668c092af3649c4b664c54e4b704aa46782f6f7c # v3
@@ -44,7 +44,31 @@ jobs:
           filters: |
             general:
               - '**'
+              - '!.changeset/**'
               - '!packages/kilo-jetbrains/**'
+              - '!packages/kilo-vscode/**'
+              - '!packages/kilo-docs/**'
+              - '!packages/extensions/zed/**'
+              - '!specs/**'
+              - '!perf/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/CODEOWNERS'
+              - '!.github/pull_request_template.md'
+              - '!.github/workflows/disabled/**'
+              - '!.idea/**'
+              - '!.vscode/**'
+              - '!.zed/**'
+              - '!kilocode-2.code-workspace'
+              - '!README*.md'
+              - '!AGENTS.md'
+              - '!CONTRIBUTING.md'
+              - '!PRIVACY.md'
+              - '!REVIEW.md'
+              - '!SECURITY.md'
+              - '!TESTING.md'
+              - '!LICENSE'
+              - '!logo.png'
+              - '!screenshot-uk.png'
 
       - name: Configure unit matrix
         id: matrix
@@ -72,7 +96,7 @@ jobs:
     steps:
       - name: Skip unchanged general unit tests
         if: ${{ !matrix.settings.run }}
-        run: echo "Only JetBrains files changed; general unit tests are unchanged."
+        run: echo "Only isolated product, documentation, or metadata files changed; general unit tests are unchanged."
 
       - name: Checkout repository
         if: matrix.settings.run
