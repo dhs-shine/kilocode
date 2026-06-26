@@ -466,6 +466,10 @@ export interface ResetAllSettingsRequest {
   type: "resetAllSettings"
 }
 
+export interface ResetReadNotificationsRequest {
+  type: "resetReadNotifications"
+}
+
 export interface SettingsTabChangedMessage {
   type: "settingsTabChanged"
   tab: string
@@ -1189,6 +1193,7 @@ export type WebviewMessage =
   | RequestNotificationSettingsMessage
   | TestNotificationMessage
   | ResetAllSettingsRequest
+  | ResetReadNotificationsRequest
   | SettingsTabChangedMessage
   | SyncSessionRequest
   | CreateWorktreeSessionRequest
