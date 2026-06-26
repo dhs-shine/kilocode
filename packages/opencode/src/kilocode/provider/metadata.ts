@@ -35,7 +35,7 @@ export function providerMetadata(id: string): ProviderMetadata {
   const note = notes[name]
   return {
     noteKey: note,
-    icon: name === "anaconda-desktop" ? "inference" : icons.has(name as IconName) ? name : "synthetic",
+    icon: icons.has(name as IconName) ? name : "synthetic",
     priority: priority.get(name),
   }
 }
