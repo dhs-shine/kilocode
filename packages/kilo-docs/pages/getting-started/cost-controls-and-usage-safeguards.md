@@ -287,7 +287,7 @@ Dashboard administrative actions (model restrictions, spending limits, billing m
 The snippet below is a ready-to-copy `kilo.jsonc` that turns on every available cost-control knob at its most restrictive setting. Drop it into your project root (or your global `~/.config/kilo/kilo.jsonc`) and adjust individual values upward as you get comfortable with how each one behaves.
 
 {% callout type="tip" %}
-This configuration uses only `kilo-auto/efficient` and `kilo-auto/free` — no paid frontier models, no enterprise-only settings.
+This configuration uses only `kilo-auto/efficient`.
 {% /callout %}
 
 ```jsonc
@@ -298,10 +298,7 @@ This configuration uses only `kilo-auto/efficient` and `kilo-auto/free` — no p
   // Route all requests through the two lowest-cost Kilo Auto tiers.
   // kilo-auto/efficient: lowest-cost paid tier (classifies each request by
   //   difficulty and routes to the cheapest benchmark-proven model).
-  // kilo-auto/free: no credits required (rotates through available free models,
-  //   subject to a 200 req/hr rate limit per IP).
   "model": "kilo-auto/efficient",
-  "small_model": "kilo-auto/free",    // used for background tasks like title generation
   "subagent_model": "kilo-auto/efficient", // default model for Task-tool subagents
 
   // ── Per-agent model and step limits ─────────────────────────────────────
@@ -322,7 +319,7 @@ This configuration uses only `kilo-auto/efficient` and `kilo-auto/free` — no p
       "steps": 20
     },
     "ask": {
-      "model": "kilo-auto/free",
+      "model": "kilo-auto/efficient",
       "steps": 5
     },
     "orchestrator": {
@@ -330,14 +327,14 @@ This configuration uses only `kilo-auto/efficient` and `kilo-auto/free` — no p
       "steps": 10
     },
     "explore": {
-      "model": "kilo-auto/free",  // exploratory/search subagent — free tier is fine
+      "model": "kilo-auto/free",  
       "steps": 15
     },
     "general": {
       "model": "kilo-auto/efficient",
       "steps": 15
     },
-    // Dedicated agents for background summarization — always use free tier.
+    // Dedicated agents for background summarization 
     "compaction": { "model": "kilo-auto/free" },
     "title":      { "model": "kilo-auto/free" },
     "summary":    { "model": "kilo-auto/free" }
@@ -374,11 +371,6 @@ This configuration uses only `kilo-auto/efficient` and `kilo-auto/free` — no p
     "websearch":  "ask",  // web search calls
     "doom_loop":  "ask"   // repeated-failure loop detection — always keep at "ask" or "deny"
   },
-
-  // ── Sharing ──────────────────────────────────────────────────────────────
-  // Disable automatic session sharing (no impact on cost, but avoids accidental
-  // exposure of session content to shared links).
-  "share": "disabled"
 }
 ```
 
