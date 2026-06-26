@@ -1232,6 +1232,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         case "resetAllSettings":
           await this.handleResetAllSettings()
           break
+        case "resetReadNotifications":
+          await this.handleResetReadNotifications()
+          break
         case "telemetry":
           TelemetryProxy.capture(message.event, message.properties)
           break
@@ -3239,6 +3242,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     await this.fetchAndSendNotifications()
 
     vscode.window.showInformationMessage("Kilo Code settings have been reset to defaults.")
+  }
+
+  private async handleResetReadNotifications(): Promise<void> {
+    await this.extensionContext?.globalState.update("kilo.dismissedNotificationIds", undefined)
+    await this.fetchAndSendNotifications()
+    vscode.window.showInformationMessage("Read notifications have been reset.")
   }
 
   /**
