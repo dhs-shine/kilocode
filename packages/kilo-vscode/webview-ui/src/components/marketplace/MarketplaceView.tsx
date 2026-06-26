@@ -104,7 +104,6 @@ export const MarketplaceView = () => {
               ...(extra?.hasParameters && { hasParameters: true }),
               ...(extra?.installationMethodName && { installationMethodName: extra.installationMethodName }),
             })
-            dialog.close()
             fetchData()
           }
         }}
