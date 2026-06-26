@@ -1227,6 +1227,7 @@ export const dict = {
   "settings.aboutKiloCode.resetSettings.description":
     "يؤدي هذا إلى إعادة تعيين الإعدادات الخاصة بامتداد VS Code فقط إلى قيمها الافتراضية. الإعدادات المشتركة مع CLI، مثل الأوضاع وقواعد الموافقة التلقائية، مخزّنة في تكوين CLI ولن تتأثر.",
   "settings.aboutKiloCode.resetSettings.button": "إعادة تعيين جميع الإعدادات",
+  "settings.aboutKiloCode.resetSettings.notificationsButton": "Reset Read Notifications",
   "settings.aboutKiloCode.settingsTransfer.title": "نقل الإعدادات",
   "settings.aboutKiloCode.settingsTransfer.description": "تصدير أو استيراد إعداداتك لنقلها بين نُسخ VS Code.",
   "settings.aboutKiloCode.exportSettings": "تصدير",
@@ -1313,6 +1314,9 @@ export const dict = {
     "قم بتمكين وتسجيل الدخول إلى مزود Kilo لاستخدام Speech to Text. ميزة Speech to Text مدعومة حاليًا فقط مع Kilo Gateway.",
   "settings.models.speechToTextModel.title": "نموذج تحويل الصوت إلى نص",
   "settings.models.speechToTextModel.description": "اختر نموذج نسخ Kilo Gateway للإدخال الصوتي.",
+  "settings.experimental.nativeNotebookTools.title": "أدوات الدفاتر الأصلية",
+  "settings.experimental.nativeNotebookTools.description":
+    "تمكين الأدوات التجريبية لقراءة دفاتر VS Code وتحريرها وتنفيذها",
   "settings.experimental.continueOnDeny.title": "المتابعة عند الرفض",
   "settings.experimental.continueOnDeny.description": "متابعة حلقة الوكيل عند رفض الإذن",
   "settings.sandboxing.title": "العزل",

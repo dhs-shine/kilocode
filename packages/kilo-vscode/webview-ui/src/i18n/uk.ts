@@ -1234,6 +1234,7 @@ export const dict = {
   "settings.aboutKiloCode.resetSettings.description":
     "Це скине лише налаштування, специфічні для розширення VS Code, до стандартних значень. Налаштування, що зберігаються в конфігурації CLI (такі як режими та правила автоматичного схвалення), не будуть скинуті.",
   "settings.aboutKiloCode.resetSettings.button": "Скинути всі налаштування",
+  "settings.aboutKiloCode.resetSettings.notificationsButton": "Reset Read Notifications",
   "settings.aboutKiloCode.settingsTransfer.title": "Перенесення налаштувань",
   "settings.aboutKiloCode.settingsTransfer.description":
     "Експортуйте або імпортуйте налаштування для перенесення між екземплярами VS Code.",
@@ -1330,6 +1331,9 @@ export const dict = {
     "Увімкніть провайдер Kilo та виконайте вхід, щоб використовувати Speech to Text. Наразі Speech to Text підтримується лише з Kilo Gateway.",
   "settings.models.speechToTextModel.title": "Модель мовлення в текст",
   "settings.models.speechToTextModel.description": "Виберіть модель транскрипції Kilo Gateway для голосового введення.",
+  "settings.experimental.nativeNotebookTools.title": "Власні інструменти для блокнотів",
+  "settings.experimental.nativeNotebookTools.description":
+    "Увімкнути експериментальні інструменти для читання, редагування та виконання блокнотів VS Code",
   "settings.experimental.continueOnDeny.title": "Продовжувати при відхиленні",
   "settings.experimental.continueOnDeny.description": "Продовжувати цикл агента, коли дозвіл відхилено",
   "settings.sandboxing.title": "Пісочниця",

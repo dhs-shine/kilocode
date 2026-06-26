@@ -1237,6 +1237,7 @@ export const dict = {
   "settings.aboutKiloCode.resetSettings.description":
     "이 기능은 VS Code 확장 프로그램 전용 설정만 기본값으로 초기화합니다. 모드 및 자동 승인 규칙과 같이 CLI와 공유되는 설정은 CLI 구성에 저장되며 초기화되지 않습니다.",
   "settings.aboutKiloCode.resetSettings.button": "모든 설정 초기화",
+  "settings.aboutKiloCode.resetSettings.notificationsButton": "Reset Read Notifications",
   "settings.aboutKiloCode.settingsTransfer.title": "설정 이전",
   "settings.aboutKiloCode.settingsTransfer.description":
     "VS Code 인스턴스 간에 설정을 전송하려면 내보내기 또는 가져오기하세요.",
@@ -1326,6 +1327,9 @@ export const dict = {
     "Speech to Text를 사용하려면 Kilo 제공자를 활성화하고 로그인하세요. 현재 Speech to Text는 Kilo Gateway에서만 지원됩니다.",
   "settings.models.speechToTextModel.title": "음성 텍스트 변환 모델",
   "settings.models.speechToTextModel.description": "음성 입력에 사용할 Kilo Gateway 변환 모델을 선택하세요.",
+  "settings.experimental.nativeNotebookTools.title": "네이티브 노트북 도구",
+  "settings.experimental.nativeNotebookTools.description":
+    "VS Code 노트북을 읽고, 편집하고, 실행하는 실험적 도구를 활성화합니다",
   "settings.experimental.continueOnDeny.title": "거부 시 계속",
   "settings.experimental.continueOnDeny.description": "권한이 거부되면 에이전트 루프 계속",
   "settings.sandboxing.title": "샌드박스",

@@ -1259,6 +1259,7 @@ export const dict = {
   "settings.aboutKiloCode.resetSettings.description":
     "Esto restablece únicamente las configuraciones específicas de la extensión VS Code a sus valores predeterminados. Las configuraciones compartidas con el CLI, como los modos y las reglas de aprobación automática, se almacenan en la configuración del CLI y no serán restablecidas.",
   "settings.aboutKiloCode.resetSettings.button": "Restablecer toda la configuración",
+  "settings.aboutKiloCode.resetSettings.notificationsButton": "Reset Read Notifications",
   "settings.aboutKiloCode.settingsTransfer.title": "Transferencia de ajustes",
   "settings.aboutKiloCode.settingsTransfer.description":
     "Exporta o importa tus ajustes para transferirlos entre instancias de VS Code.",
@@ -1355,6 +1356,9 @@ export const dict = {
   "settings.models.speechToTextModel.title": "Modelo de voz a texto",
   "settings.models.speechToTextModel.description":
     "Elige el modelo de transcripción de Kilo Gateway para la entrada de voz.",
+  "settings.experimental.nativeNotebookTools.title": "Herramientas nativas de notebook",
+  "settings.experimental.nativeNotebookTools.description":
+    "Habilitar herramientas experimentales para leer, editar y ejecutar notebooks de VS Code",
   "settings.experimental.continueOnDeny.title": "Continuar al denegar",
   "settings.experimental.continueOnDeny.description": "Continuar el bucle del agente cuando se deniega un permiso",
   "settings.sandboxing.title": "Sandbox",

@@ -70,6 +70,13 @@ import { interceptMessage } from "./kilo-provider/git-changes-request"
 import { matchFollowup, recordFollowup, type Followup } from "./kilo-provider/followup-session"
 import { clearCommandsCache, loadCommands } from "./kilo-provider/commands"
 import { fetchMessagePage, MESSAGE_PAGE_LIMIT } from "./kilo-provider/message-page"
+import {
+  dismissNotification,
+  fetchAndSendNotifications as fetchNotifications,
+  resetReadNotifications,
+  type NotificationsContext,
+  type NotificationsMessage,
+} from "./kilo-provider/notifications"
 import { childID } from "./kilo-provider/task-session"
 import { VisibleTaskStreams } from "./kilo-provider/visible-task-streams"
 import { handleNetworkEvent, clearNetworkWaits } from "./kilo-provider/network"
@@ -151,6 +158,7 @@ import { createAutoApproveBridge } from "./kilo-provider/auto-approve"
 import type { KiloProviderOptions } from "./kilo-provider/options"
 import { fetchKiloEmbeddingModelCatalog } from "@kilocode/kilo-gateway"
 import { stopSessionProcesses } from "./kilo-provider/background-process"
+import { sandboxDefault, sandboxSessionMetadata } from "./shared/sandbox-session"
 import {
   buildIndexingSettingsMessage,
   validIndexingSetting,
@@ -159,6 +167,18 @@ import {
 
 type MessageLoadMode = "replace" | "prepend" | "focus" | "reconcile"
 type ContextMessage = { contextDirectory?: unknown }
+type SandboxSupportClient = {
+  support: (
+    parameters: { directory?: string },
+    options: { throwOnError: true },
+  ) => Promise<{ data: { available: boolean; reason?: string } }>
+}
+
+function sandboxClient(client: KiloClient | null) {
+  const sandbox = client?.sandbox
+  return sandbox as (typeof sandbox & SandboxSupportClient) | undefined
+}
+
 // Helper to map agent data to the subset of fields sent to the webview
 const mapAgent = (a: Agent) => ({
   name: a.name,
@@ -330,7 +350,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private pending = 0
   private configWarningsShown = false
   /** Cached notificationsLoaded payload */
-  private cachedNotificationsMessage: unknown = null
+  private cachedNotificationsMessage: NotificationsMessage | null = null
   private pendingKiloModel: { modelID?: string; agent?: string } | null = null
   private pendingReviewComments: { comments: unknown[]; autoSend: boolean }[] = []
   private readyResolvers: (() => void)[] = []
@@ -366,6 +386,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private unsubscribeMigrationComplete: (() => void) | null = null // legacy-migration
   private unsubscribeClearPendingPrompts: (() => void) | null = null
   private unsubscribeDirectoryProvider: (() => void) | null = null
+  private unsubscribeSandboxPreference: (() => void) | null = null
   private initConnectionPromise: Promise<void> | null = null
   private webviewMessageDisposable: vscode.Disposable | null = null
   private autocompleteConfigDisposable: vscode.Disposable | null = null
@@ -409,6 +430,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   ) {
     this.projectDirectory = opts.projectDirectory
     this.slimEditMetadata = opts.slimEditMetadata ?? true
+    this.unsubscribeSandboxPreference = this.connectionService.sandboxPreference?.onChange(() => {
+      if (this.connectionState === "connected") void this.fetchAndSendSandboxDefault()
+    })
 
     TelemetryProxy.getInstance().setProvider(this)
   }
@@ -1087,6 +1111,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         case "requestSandboxStatus":
           await this.fetchAndSendSandboxStatus(message.sessionID)
           break
+        case "requestSandboxDefault":
+          await this.fetchAndSendSandboxDefault(message.contextDirectory)
+          break
+        case "setSandboxDefault":
+          await this.handleSetSandboxDefault(message.enabled, message.requestID, message.contextDirectory)
+          break
         case "toggleSandbox":
           await this.handleToggleSandbox(message)
           break
@@ -1231,6 +1261,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           break
         case "resetAllSettings":
           await this.handleResetAllSettings()
+          break
+        case "resetReadNotifications":
+          await resetReadNotifications(this.notificationsContext())
           break
         case "telemetry":
           TelemetryProxy.capture(message.event, message.properties)
@@ -1548,8 +1581,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     try {
       const workspaceDir = this.getContextDirectory()
+      const metadata = await sandboxSessionMetadata(this.connectionService.sandboxPreference, this.client, workspaceDir)
       const { data: session } = await this.client.session.create(
-        { directory: workspaceDir, platform: this.opts.platform },
+        { directory: workspaceDir, platform: this.opts.platform, metadata },
         { throwOnError: true },
       )
       this.stopCurrentSessionProcesses(session.id)
@@ -2371,79 +2405,27 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     }
   }
 
-  /**
-   * Fetch Kilo news/notifications and send to webview.
-   * Uses the cached message pattern so the webview gets data immediately on refresh.
-   */
-  private async fetchAndSendNotifications(): Promise<void> {
-    if (!this.client) {
-      if (this.cachedNotificationsMessage) {
-        // Merge the latest dismissed IDs from globalState into the cached
-        // message so that dismissals persisted while offline are honoured.
-        const persisted = this.extensionContext?.globalState.get<string[]>("kilo.dismissedNotificationIds", []) ?? []
-        if (persisted.length > 0) {
-          const cached = this.cachedNotificationsMessage as {
-            type: string
-            notifications: unknown[]
-            dismissedIds: string[]
-          }
-          const merged = Array.from(new Set([...cached.dismissedIds, ...persisted]))
-          this.cachedNotificationsMessage = { ...cached, dismissedIds: merged }
-        }
-        this.postMessage(this.cachedNotificationsMessage)
-      }
-      return
+  private notificationsContext(): NotificationsContext {
+    return {
+      context: this.extensionContext,
+      client: this.client,
+      cached: () => this.cachedNotificationsMessage,
+      set: (message) => {
+        this.cachedNotificationsMessage = message
+      },
+      post: (message) => this.postMessage(message),
+      notify: (id) => this.connectionService.notifyNotificationDismissed(id),
     }
+  }
 
-    try {
-      const { data: all } = await retry(() => this.client!.kilo.notifications(undefined, { throwOnError: true }))
-      const notifications = all.filter((n) => !n.showIn || n.showIn.includes("extension"))
-      const existing = this.extensionContext?.globalState.get<string[]>("kilo.dismissedNotificationIds", []) ?? []
-      const active = new Set(notifications.map((n) => n.id))
-      // Only prune stale dismissed IDs when we have a non-empty notification
-      // list. An empty list may mean the API returned nothing due to being
-      // unauthenticated (e.g. right after logout), not that all notifications
-      // are gone — pruning in that case would wipe the persisted dismissals.
-      const dismissedIds = notifications.length > 0 ? existing.filter((id) => active.has(id)) : existing
-      if (dismissedIds.length !== existing.length) {
-        await this.extensionContext?.globalState.update("kilo.dismissedNotificationIds", dismissedIds)
-      }
-      const message = { type: "notificationsLoaded", notifications, dismissedIds }
-      this.cachedNotificationsMessage = message
-      this.postMessage(message)
-    } catch (error) {
-      console.error("[Kilo New] KiloProvider: Failed to fetch notifications:", error)
-    }
+  private async fetchAndSendNotifications(): Promise<void> {
+    await fetchNotifications(this.notificationsContext())
   }
 
   // Cloud session methods extracted to kilo-provider/handlers/cloud-session.ts
 
-  /**
-   * Persist a dismissed notification ID in globalState and push updated lists to webview.
-   */
   private async handleDismissNotification(notificationId: string): Promise<void> {
-    if (!this.extensionContext) return
-    const existing = this.extensionContext.globalState.get<string[]>("kilo.dismissedNotificationIds", [])
-    if (!existing.includes(notificationId)) {
-      await this.extensionContext.globalState.update("kilo.dismissedNotificationIds", [...existing, notificationId])
-    }
-    // Update the cached message so the dismiss persists even if
-    // fetchAndSendNotifications() fails (e.g. no client / API error).
-    if (this.cachedNotificationsMessage) {
-      const cached = this.cachedNotificationsMessage as {
-        type: string
-        notifications: unknown[]
-        dismissedIds: string[]
-      }
-      if (!cached.dismissedIds.includes(notificationId)) {
-        this.cachedNotificationsMessage = {
-          ...cached,
-          dismissedIds: [...cached.dismissedIds, notificationId],
-        }
-      }
-    }
-    await this.fetchAndSendNotifications()
-    this.connectionService.notifyNotificationDismissed(notificationId)
+    await dismissNotification(this.notificationsContext(), notificationId)
   }
 
   /** Read attention settings from VS Code config and push to webview. */
@@ -2468,6 +2450,76 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
   private sendWorkStyle(): void {
     this.postMessage(getWorkStylePayload())
+  }
+
+  private async fetchAndSendSandboxDefault(directory = this.getContextDirectory(), requestID?: string): Promise<void> {
+    const revision = ++this.sandboxRevision
+    const generation = this.connectionGeneration
+    const client = this.client
+    const sandbox = sandboxClient(client)
+    if (!client || !sandbox || this.connectionState !== "connected") return
+    try {
+      const [desired, result] = await Promise.all([
+        sandboxDefault(this.connectionService.sandboxPreference, client, directory),
+        sandbox.support({ directory }, { throwOnError: true }),
+      ])
+      if (this.connectionState !== "connected" || this.connectionGeneration !== generation || this.client !== client)
+        return
+      this.postMessage({
+        type: "sandboxDefaultStatus",
+        desired,
+        enabled: desired && result.data.available,
+        available: result.data.available,
+        reason: result.data.reason,
+        revision,
+        requestID,
+      })
+    } catch (error) {
+      if (this.connectionState !== "connected" || this.connectionGeneration !== generation || this.client !== client)
+        return
+      this.postMessage({
+        type: "sandboxDefaultStatus",
+        desired: false,
+        enabled: false,
+        available: false,
+        reason: getErrorMessage(error) || "Failed to load sandbox default",
+        revision,
+        requestID,
+      })
+    }
+  }
+
+  private async handleSetSandboxDefault(
+    enabled: boolean,
+    requestID: string,
+    directory = this.getContextDirectory(),
+  ): Promise<void> {
+    const client = this.client
+    const sandbox = sandboxClient(client)
+    if (!client || !sandbox || this.connectionState !== "connected") {
+      await this.fetchAndSendSandboxDefault(directory, requestID)
+      return
+    }
+    try {
+      await this.connectionService.sandboxPreference.set(enabled, async () => {
+        const { data } = await sandbox.support({ directory }, { throwOnError: true })
+        if (!data.available) throw new Error(data.reason ?? "Sandbox backend is unavailable")
+      })
+      await this.fetchAndSendSandboxDefault(directory, requestID)
+      vscode.window.showInformationMessage(
+        enabled ? "Sandbox enabled for new sessions" : "Sandbox disabled for new sessions",
+      )
+    } catch (error) {
+      this.postMessage({
+        type: "sandboxDefaultStatus",
+        desired: this.connectionService.sandboxPreference.resolve(false),
+        enabled: false,
+        available: false,
+        reason: getErrorMessage(error) || "Failed to update sandbox default",
+        revision: ++this.sandboxRevision,
+        requestID,
+      })
+    }
   }
 
   private postSandboxError(sessionID: string, error: unknown, revision: number, requestID?: string): void {
@@ -2551,6 +2603,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     key: string,
   ): Promise<void> {
     const revision = ++this.sandboxRevision
+    if (!input.sessionID) {
+      const error = new Error("Sandbox session is required")
+      this.postSandboxError("", error, revision, input.requestID)
+      throw error
+    }
     const generation = this.connectionGeneration
     const client = this.client
     const sandbox = client?.sandbox
@@ -2590,6 +2647,13 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       if (!sameDirectory(data.directory, this.getWorkspaceDirectory(resolved.sid))) {
         throw new Error("Session directory changed during sandbox toggle")
       }
+      const remembered = await this.connectionService.sandboxPreference
+        .set(data.enabled)
+        .then(() => true)
+        .catch((error) => {
+          console.error("[Kilo New] Failed to persist sandbox default:", error)
+          return false
+        })
       this.postMessage({
         type: "sandboxStatus",
         sessionID: resolved.sid,
@@ -2597,6 +2661,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         ...data,
         requestID: input.requestID,
       })
+      if (!remembered) {
+        vscode.window.showWarningMessage(
+          `Sandbox ${data.enabled ? "enabled" : "disabled"} for this session, but the new-session default could not be saved`,
+        )
+        return
+      }
       vscode.window.showInformationMessage(data.enabled ? "Sandbox enabled" : "Sandbox disabled")
     } catch (error) {
       if (this.connectionState === "connected" && this.connectionGeneration === generation && this.client === client) {
@@ -2725,8 +2795,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       const pending = this.sessionCreations.get(key)
       if (pending) return pending
       const creation = (async () => {
+        const metadata = await sandboxSessionMetadata(this.connectionService.sandboxPreference, this.client!, dir)
         const { data: session } = await this.client!.session.create(
-          { directory: dir, platform: this.opts.platform },
+          { directory: dir, platform: this.opts.platform, metadata },
           { throwOnError: true },
         )
         this.stopCurrentSessionProcesses(session.id)
@@ -3221,6 +3292,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     await this.extensionContext?.globalState.update("recentModels", undefined)
     await this.extensionContext?.globalState.update("kilo.dismissedNotificationIds", undefined)
     await this.extensionContext?.globalState.update("kilo.agentMigrationBannerDismissed", undefined)
+    await this.extensionContext?.globalState.update("kilo.marketplace.dismissedSuggestions", undefined)
 
     // Re-send all settings to the webview so the UI reflects the reset
     this.postMessage(buildAutocompleteSettingsMessage())
@@ -3841,6 +3913,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.unsubscribeMigrationComplete?.()
     this.unsubscribeClearPendingPrompts?.()
     this.unsubscribeDirectoryProvider?.()
+    this.unsubscribeSandboxPreference?.()
     this.viewStateDisposable?.dispose()
     this.visibilityDisposable?.dispose()
     this.webviewMessageDisposable?.dispose()

@@ -1180,6 +1180,7 @@ export const dict = {
   "settings.aboutKiloCode.resetSettings.description":
     "此操作僅將 VS Code 擴充功能專屬設定重置為預設值。與 CLI 共享的設定（例如模式和自動核准規則）儲存在 CLI 設定中，不會被重置。",
   "settings.aboutKiloCode.resetSettings.button": "重置所有設定",
+  "settings.aboutKiloCode.resetSettings.notificationsButton": "Reset Read Notifications",
   "settings.aboutKiloCode.settingsTransfer.title": "設定轉移",
   "settings.aboutKiloCode.settingsTransfer.description": "匯出或匯入設定，以便在 VS Code 實例之間轉移。",
   "settings.aboutKiloCode.exportSettings": "匯出",
@@ -1264,6 +1265,8 @@ export const dict = {
     "啟用並登入 Kilo 供應商以使用 Speech to Text。Speech to Text 目前僅支援透過 Kilo Gateway 使用。",
   "settings.models.speechToTextModel.title": "語音轉文字模型",
   "settings.models.speechToTextModel.description": "選擇用於語音輸入的 Kilo Gateway 轉錄模型。",
+  "settings.experimental.nativeNotebookTools.title": "原生筆記本工具",
+  "settings.experimental.nativeNotebookTools.description": "啟用用於讀取、編輯和執行 VS Code 筆記本的實驗性工具",
   "settings.experimental.continueOnDeny.title": "拒絕後繼續",
   "settings.experimental.continueOnDeny.description": "權限被拒絕時繼續 Agent 迴圈",
   "settings.sandboxing.title": "沙盒",

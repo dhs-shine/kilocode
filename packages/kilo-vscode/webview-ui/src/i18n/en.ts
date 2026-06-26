@@ -1227,6 +1227,7 @@ export const dict = {
   "settings.aboutKiloCode.resetSettings.description":
     "This resets only VS Code extension-specific settings to their default values. Settings shared with the CLI, such as modes and auto-approve rules, are stored in the CLI configuration and will not be reset.",
   "settings.aboutKiloCode.resetSettings.button": "Reset All Settings",
+  "settings.aboutKiloCode.resetSettings.notificationsButton": "Reset Read Notifications",
   "settings.aboutKiloCode.settingsTransfer.title": "Settings Transfer",
   "settings.aboutKiloCode.settingsTransfer.description":
     "Export or import your settings to transfer them between VS Code instances.",
@@ -1321,6 +1322,9 @@ export const dict = {
     "Enable and sign in to the Kilo provider to use Speech to Text. Speech to Text is currently only supported through Kilo Gateway.",
   "settings.models.speechToTextModel.title": "Speech to Text Model",
   "settings.models.speechToTextModel.description": "Choose the Kilo Gateway transcription model for voice input.",
+  "settings.experimental.nativeNotebookTools.title": "Native Notebook Tools",
+  "settings.experimental.nativeNotebookTools.description":
+    "Enable experimental tools for reading, editing, and executing VS Code notebooks",
   "settings.experimental.continueOnDeny.title": "Continue on Deny",
   "settings.experimental.continueOnDeny.description": "Continue the agent loop when a permission is denied",
   "settings.experimental.sandbox.title": "Sandbox",

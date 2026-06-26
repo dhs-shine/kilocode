@@ -1252,6 +1252,7 @@ export const dict = {
   "settings.aboutKiloCode.resetSettings.description":
     "Это сбрасывает только настройки, специфичные для расширения VS Code, до значений по умолчанию. Настройки, общие с CLI, такие как режимы и правила автоматического утверждения, хранятся в конфигурации CLI и не будут сброшены.",
   "settings.aboutKiloCode.resetSettings.button": "Сбросить все настройки",
+  "settings.aboutKiloCode.resetSettings.notificationsButton": "Reset Read Notifications",
   "settings.aboutKiloCode.settingsTransfer.title": "Перенос настроек",
   "settings.aboutKiloCode.settingsTransfer.description":
     "Экспортируйте или импортируйте настройки для переноса между экземплярами VS Code.",
@@ -1342,6 +1343,9 @@ export const dict = {
     "Включите провайдер Kilo и выполните вход, чтобы использовать Speech to Text. В настоящее время Speech to Text поддерживается только с Kilo Gateway.",
   "settings.models.speechToTextModel.title": "Модель речи в текст",
   "settings.models.speechToTextModel.description": "Выберите модель транскрипции Kilo Gateway для голосового ввода.",
+  "settings.experimental.nativeNotebookTools.title": "Нативные инструменты блокнотов",
+  "settings.experimental.nativeNotebookTools.description":
+    "Включить экспериментальные инструменты для чтения, редактирования и выполнения блокнотов VS Code",
   "settings.experimental.continueOnDeny.title": "Продолжить при отказе",
   "settings.experimental.continueOnDeny.description": "Продолжить цикл агента при отказе в разрешении",
   "settings.sandboxing.title": "Изоляция в песочнице",

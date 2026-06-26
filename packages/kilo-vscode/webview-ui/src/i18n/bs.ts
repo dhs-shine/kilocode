@@ -1253,6 +1253,7 @@ export const dict = {
   "settings.aboutKiloCode.resetSettings.description":
     "Ovo resetuje samo postavke specifične za VS Code ekstenziju na njihove zadane vrijednosti. Postavke koje se dijele s CLI-jem, kao što su načini rada i pravila automatskog odobravanja, pohranjene su u CLI konfiguraciji i neće biti resetovane.",
   "settings.aboutKiloCode.resetSettings.button": "Resetuj sve postavke",
+  "settings.aboutKiloCode.resetSettings.notificationsButton": "Reset Read Notifications",
   "settings.aboutKiloCode.settingsTransfer.title": "Prijenos postavki",
   "settings.aboutKiloCode.settingsTransfer.description":
     "Izvezite ili uvezite postavke za prijenos između VS Code instanci.",
@@ -1344,6 +1345,9 @@ export const dict = {
     "Omogućite i prijavite se na Kilo provajder da biste koristili Speech to Text. Speech to Text je trenutno podržan samo uz Kilo Gateway.",
   "settings.models.speechToTextModel.title": "Model govora u tekst",
   "settings.models.speechToTextModel.description": "Odaberite Kilo Gateway model za transkripciju za glasovni unos.",
+  "settings.experimental.nativeNotebookTools.title": "Izvorni alati za bilježnice",
+  "settings.experimental.nativeNotebookTools.description":
+    "Omogući eksperimentalne alate za čitanje, uređivanje i izvršavanje VS Code bilježnica",
   "settings.experimental.continueOnDeny.title": "Nastavi pri odbijanju",
   "settings.experimental.continueOnDeny.description": "Nastavi petlju agenta kada je dozvola odbijena",
   "settings.sandboxing.title": "Rad u izoliranom okruženju",
