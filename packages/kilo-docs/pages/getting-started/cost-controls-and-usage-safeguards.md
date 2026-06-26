@@ -56,7 +56,7 @@ Organization accounts can additionally configure **per-user daily spending limit
 
 ### Free model rate limits
 
-Requests to free models (`kilo-auto/free` and other free-tier models) are rate-limited to **200 requests per hour per IP**. If you exceed this, requests return HTTP 429 and you must wait before continuing.
+Requests to free models (`kilo-auto/free` and other free-tier models) are rate-limited to **200 requests per hour**. If you exceed this, requests return HTTP 429 and you must wait before continuing.
 
 ### Practical recommendations
 
@@ -98,7 +98,7 @@ Kilo automatically skips a set of directories including `node_modules`, `dist`, 
 }
 ```
 
-**Where to configure:** `kilo.jsonc` (VS Code / CLI) or `.kilocodeignore` (legacy). See [.kilocodeignore](/docs/customize/context/kilocodeignore) for full details.
+**Where to configure:** `kilo.jsonc` (VS Code / CLI). See [.kilocodeignore](/docs/customize/context/kilocodeignore) for full details.
 
 ### Compact long conversations
 
@@ -147,6 +147,7 @@ Kilo automatically applies prompt caching on supported providers. Repeated conte
 ## Choosing Models for Specific Tasks
 
 Different tasks benefit from different model characteristics. Routing work to the right model reduces cost without sacrificing quality.
+Kilo has auto-models that can help you control costs; more information is available in [Auto Model](/docs/code-with-ai/agents/auto-model).
 
 ### Practical examples by task type
 
@@ -194,34 +195,6 @@ For full guidance on model selection, see the [Model Selection Guide](/docs/code
 
 ---
 
-## How Kilo Auto Models Work
-
-Auto Models are Kilo's smart routing system. Rather than selecting a specific provider model, you choose a tier and Kilo routes each request to an appropriate model automatically.
-
-### Available tiers
-
-| Tier | Name | Routing strategy | Cost |
-|---|---|---|---|
-| `kilo-auto/frontier` | Auto Frontier | Routes to the latest top-tier models; uses different models for reasoning-heavy tasks (planning, architecture, debugging) vs. implementation tasks | Paid (highest) |
-| `kilo-auto/balanced` | Auto Balanced | Routes every request to one fixed high-quality model; consistent and predictable | Paid |
-| `kilo-auto/efficient` | Auto Efficient | Classifies each request by difficulty and routes to the cheapest benchmark-proven model for that task; session-aware; falls back to Balanced if a routing decision cannot be made | Paid (lowest) |
-| `kilo-auto/free` | Auto Free | Routes to the best currently available free models; no credits required | Free |
-
-### What Auto does not guarantee
-
-- **Auto does not always mean the cheapest model.** Auto Frontier specifically routes to capable models and may generate higher per-request costs than Balanced or Efficient.
-- **Auto Efficient is cheaper on average, but individual requests may still route to stronger models** when the task is classified as complex.
-- **Cost still varies** depending on task complexity, context size, and the number of agent steps — regardless of which tier you choose.
-- **Underlying model assignments can change** server-side as better options become available or provider pricing changes. The tier you select stays the same; the model it routes to may change.
-
-{% callout type="warning" title="Data handling for Auto Free" %}
-Auto Free may route requests to providers that log prompts and use them to improve their services. Do not submit personal or confidential data when using Auto Free.
-{% /callout %}
-
-For full details on each tier's routing strategy, see [Auto Model](/docs/code-with-ai/agents/auto-model).
-
----
-
 ## Enterprise Cost Controls
 
 The following controls are available to organizations and, where noted, are exclusive to Enterprise plans.
@@ -242,12 +215,6 @@ Only **Owners** can modify model access controls. Individual members cannot over
 
 **How it helps:** Prevents accidental use of high-cost frontier models; enforces data residency or compliance requirements; limits cost surface by allowing only approved models.
 
-### Per-user daily spending limits
-
-Organization accounts can set a maximum daily spend per member. When a member reaches their limit, subsequent requests are blocked until midnight UTC. This prevents any single user from consuming a disproportionate share of the shared credit pool.
-
-**Where to configure:** Dashboard → organization settings (available to all organization plans). See [Usage & Billing](/docs/gateway/usage-and-billing).
-
 ### Shared credit pool and auto top-up
 
 All organization members draw from a single shared credit balance. Administrators can configure:
@@ -267,13 +234,7 @@ The **Usage** tab of the organization dashboard provides:
 
 This gives administrators visibility into which team members, models, and projects are driving the majority of spend.
 
-**Where to access:** [app.kilo.ai](https://app.kilo.ai) → Usage tab. Also available to individual users for their own usage. See [Analytics](/docs/collaborate/teams/analytics).
-
-### Audit logs (Enterprise only)
-
-Enterprise organizations have access to timestamped audit logs covering user activity across the organization, filterable by user, action, and date range.
-
-**Where to access:** Dashboard → Audit Logs (Enterprise only).
+**Where to access:** [app.kilo.ai](https://app.kilo.ai) → Usage tab. 
 
 ### Administrative permissions
 
@@ -321,14 +282,6 @@ Dashboard administrative actions (model restrictions, spending limits, billing m
 }
 ```
 
-### Enterprise administrator
-
-1. **Set per-user daily spending limits** in the organization dashboard to cap individual member spend
-2. **Configure model access controls** (Enterprise only) to block providers or models that are outside your approved list or data policy requirements
-3. **Enable auto top-up** with a threshold that keeps the shared credit pool from depleting unexpectedly
-4. **Review usage analytics weekly** — check the by-user and by-model breakdowns to identify high-spend areas early
-5. **Use Audit Logs** (Enterprise only) to track administrative and member activity
-
 ---
 
 ## Troubleshooting Unexpected Usage
@@ -350,5 +303,4 @@ For further reading: [4 Levers to Take Control of Your AI Spend](https://blog.ki
 - [Context Condensing](/docs/customize/context/context-condensing) — How compaction works and all configuration options
 - [Auto-Approving Actions](/docs/getting-started/settings/auto-approving-actions) — Permission system reference for VS Code and CLI
 - [Model Access Controls](/docs/collaborate/enterprise/model-access-controls) — Enterprise model and provider blocklist configuration
-- [Analytics](/docs/collaborate/teams/analytics) — Organization usage dashboard
 - [Usage & Billing](/docs/gateway/usage-and-billing) — Gateway billing mechanics and organization controls
