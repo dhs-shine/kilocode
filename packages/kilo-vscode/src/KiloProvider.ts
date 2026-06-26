@@ -70,6 +70,7 @@ import { interceptMessage } from "./kilo-provider/git-changes-request"
 import { matchFollowup, recordFollowup, type Followup } from "./kilo-provider/followup-session"
 import { clearCommandsCache, loadCommands } from "./kilo-provider/commands"
 import { fetchMessagePage, MESSAGE_PAGE_LIMIT } from "./kilo-provider/message-page"
+import { resetReadNotifications } from "./kilo-provider/notifications"
 import { childID } from "./kilo-provider/task-session"
 import { VisibleTaskStreams } from "./kilo-provider/visible-task-streams"
 import { handleNetworkEvent, clearNetworkWaits } from "./kilo-provider/network"
@@ -1233,7 +1234,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           await this.handleResetAllSettings()
           break
         case "resetReadNotifications":
-          await this.handleResetReadNotifications()
+          await resetReadNotifications(this.extensionContext, () => this.fetchAndSendNotifications())
           break
         case "telemetry":
           TelemetryProxy.capture(message.event, message.properties)
@@ -3242,12 +3243,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     await this.fetchAndSendNotifications()
 
     vscode.window.showInformationMessage("Kilo Code settings have been reset to defaults.")
-  }
-
-  private async handleResetReadNotifications(): Promise<void> {
-    await this.extensionContext?.globalState.update("kilo.dismissedNotificationIds", undefined)
-    await this.fetchAndSendNotifications()
-    vscode.window.showInformationMessage("Read notifications have been reset.")
   }
 
   /**
