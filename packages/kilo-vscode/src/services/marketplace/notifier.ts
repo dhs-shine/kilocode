@@ -22,6 +22,7 @@ export class MarketplaceNotifier implements vscode.Disposable {
   private disposables: vscode.Disposable[] = []
   private timer: ReturnType<typeof setTimeout> | undefined
   private generation = 0
+  private disposed = false
   /** Slugs already shown this session so a single scan burst doesn't re-toast. */
   private shown = new Set<string>()
 
@@ -43,6 +44,7 @@ export class MarketplaceNotifier implements vscode.Disposable {
   }
 
   dispose(): void {
+    this.disposed = true
     if (this.timer) clearTimeout(this.timer)
     this.timer = undefined
     this.generation++
@@ -111,8 +113,10 @@ export class MarketplaceNotifier implements vscode.Disposable {
     const slug = suggestionSlug(item)
     this.shown.add(slug)
 
+    // A later rescan must never void the user's explicit choice, so only a
+    // disposed notifier short-circuits here — not a bumped generation.
     const choice = await showSuggestionNotification(item)
-    if (generation !== this.generation) return
+    if (this.disposed) return
     if (choice?.action === "install") this.install(item)
     if (choice?.action === "dismiss") await this.dismiss(slug)
   }
