@@ -282,6 +282,108 @@ Dashboard administrative actions (model restrictions, spending limits, billing m
 }
 ```
 
+### Maximum-constraint starter configuration
+
+The snippet below is a ready-to-copy `kilo.jsonc` that turns on every available cost-control knob at its most restrictive setting. Drop it into your project root (or your global `~/.config/kilo/kilo.jsonc`) and adjust individual values upward as you get comfortable with how each one behaves.
+
+{% callout type="tip" %}
+This configuration uses only `kilo-auto/efficient` and `kilo-auto/free` — no paid frontier models, no enterprise-only settings.
+{% /callout %}
+
+```jsonc
+{
+  "$schema": "https://app.kilo.ai/config.json",
+
+  // ── Model selection ──────────────────────────────────────────────────────
+  // Route all requests through the two lowest-cost Kilo Auto tiers.
+  // kilo-auto/efficient: lowest-cost paid tier (classifies each request by
+  //   difficulty and routes to the cheapest benchmark-proven model).
+  // kilo-auto/free: no credits required (rotates through available free models,
+  //   subject to a 200 req/hr rate limit per IP).
+  "model": "kilo-auto/efficient",
+  "small_model": "kilo-auto/free",    // used for background tasks like title generation
+  "subagent_model": "kilo-auto/efficient", // default model for Task-tool subagents
+
+  // ── Per-agent model and step limits ─────────────────────────────────────
+  // Assign the cheapest suitable tier to each agent and cap how many
+  // agentic iterations it may take before it must produce a text-only reply.
+  // Raise `steps` for agents that need more room; lower it to tighten cost.
+  "agent": {
+    "code": {
+      "model": "kilo-auto/efficient",
+      "steps": 20 // hard cap on agentic iterations per turn
+    },
+    "plan": {
+      "model": "kilo-auto/efficient",
+      "steps": 10
+    },
+    "debug": {
+      "model": "kilo-auto/efficient",
+      "steps": 20
+    },
+    "ask": {
+      "model": "kilo-auto/free",
+      "steps": 5
+    },
+    "orchestrator": {
+      "model": "kilo-auto/efficient",
+      "steps": 10
+    },
+    "explore": {
+      "model": "kilo-auto/free",  // exploratory/search subagent — free tier is fine
+      "steps": 15
+    },
+    "general": {
+      "model": "kilo-auto/efficient",
+      "steps": 15
+    },
+    // Dedicated agents for background summarization — always use free tier.
+    "compaction": { "model": "kilo-auto/free" },
+    "title":      { "model": "kilo-auto/free" },
+    "summary":    { "model": "kilo-auto/free" }
+  },
+
+  // ── Compaction (context management) ─────────────────────────────────────
+  // Auto-compact aggressively to keep conversation history short and cheap.
+  "compaction": {
+    "auto": true,              // enable automatic compaction (default: true)
+    "threshold_percent": 50,   // compact when context reaches 50% full (default: ~80%)
+    "prune": true,             // prune old tool outputs to recover context space
+    "tail_turns": 1,           // keep only 1 recent user-turn verbatim after compaction
+    "preserve_recent_tokens": 2000, // cap on tokens preserved verbatim from recent turns
+    "reserved": 8000           // token buffer reserved so compaction itself doesn't overflow
+  },
+
+  // ── Tool output truncation ───────────────────────────────────────────────
+  // Clip large tool responses early so they don't bloat the context window.
+  // Increase these if the agent needs more output (e.g. long test logs).
+  "tool_output": {
+    "max_lines": 500,    // default: 2000 lines
+    "max_bytes": 10240   // default: 51200 bytes (~50 KB)
+  },
+
+  // ── Permission safeguards ────────────────────────────────────────────────
+  // "ask" means Kilo pauses and requires your approval before executing.
+  // This prevents runaway loops from autonomously consuming tokens or making
+  // irreversible changes. Flip individual entries to "allow" once you trust them.
+  "permission": {
+    "bash":       "ask",  // shell commands (highest risk of runaway cost)
+    "edit":       "ask",  // file writes and edits
+    "task":       "ask",  // launching sub-agents (each sub-agent = extra LLM requests)
+    "webfetch":   "ask",  // outbound HTTP fetches
+    "websearch":  "ask",  // web search calls
+    "doom_loop":  "ask"   // repeated-failure loop detection — always keep at "ask" or "deny"
+  },
+
+  // ── Sharing ──────────────────────────────────────────────────────────────
+  // Disable automatic session sharing (no impact on cost, but avoids accidental
+  // exposure of session content to shared links).
+  "share": "disabled"
+}
+```
+
+Every field in this block is documented in the sections above. Use it as a starting point, then relax individual settings (for example, setting `permission.edit` to `"allow"` for a trusted project, or raising `compaction.threshold_percent` to `70` if compaction feels too aggressive) as you build confidence in how the agent behaves.
+
 ---
 
 ## Troubleshooting Unexpected Usage
