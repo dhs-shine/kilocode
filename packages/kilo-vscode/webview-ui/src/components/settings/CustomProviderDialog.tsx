@@ -332,7 +332,14 @@ const CustomProviderDialog = (props: CustomProviderDialogProps) => {
     // picker is built from a fetch-time snapshot, so a model the user typed
     // manually after fetching hasn't been filtered out yet.
     const existing = new Set(form.models.map((m) => m.id.trim().toLowerCase()).filter(Boolean))
-    const toAdd = picked.filter((m) => !existing.has(m.id.trim().toLowerCase()))
+    const toAdd = picked.filter((m) => {
+      const key = m.id.trim().toLowerCase()
+      if (!key || existing.has(key)) {
+        return false
+      }
+      existing.add(key)
+      return true
+    })
 
     const defaults = (m: FetchedModel): ModelEntry => ({ ...m, reasoning: false, variants: [] })
     const merged = empty ? toAdd.map(defaults) : [...form.models, ...toAdd.map(defaults)]
