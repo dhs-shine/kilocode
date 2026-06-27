@@ -43,6 +43,41 @@ class SettingsListViewTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test rows use equal height from tallest rendered row`() {
+        edt {
+            val view = SettingsListView("Empty") { _, _ -> }
+            view.update(listOf(
+                item("with", "Alpha", "Description makes this row taller"),
+                item("without", "Beta", null),
+            ))
+            layout(view)
+
+            val first = view.list.getCellBounds(0, 0)
+            val second = view.list.getCellBounds(1, 1)
+
+            assertEquals(first.height, second.height)
+        }
+    }
+
+    fun `test filtering recalculates equal row height for visible rows`() {
+        edt {
+            val view = SettingsListView("Empty") { _, _ -> }
+            view.update(listOf(
+                item("shown-desc", "Shown described", "Description makes this row taller"),
+                item("hidden", "Hidden", "Filtered row has a description"),
+                item("shown-plain", "Shown plain", null),
+            ))
+            view.filter("Shown")
+            layout(view)
+
+            val first = view.list.getCellBounds(0, 0)
+            val second = view.list.getCellBounds(1, 1)
+
+            assertEquals(2, view.list.model.size)
+            assertEquals(first.height, second.height)
+        }
+    }
+
     fun `test action click invokes from full rendered area`() {
         edt {
             val calls = mutableListOf<String>()
@@ -111,6 +146,12 @@ class SettingsListViewTest : BasePlatformTestCase() {
         override val title = name
         override val description = note
         override val cells = cells.toList()
+    }
+
+    private fun layout(view: SettingsListView) {
+        view.list.size = Dimension(320, 160)
+        view.list.doLayout()
+        UIUtil.dispatchAllInvocationEvents()
     }
 
     private fun center(rect: java.awt.Rectangle) = Point(rect.x + rect.width / 2, rect.y + rect.height / 2)

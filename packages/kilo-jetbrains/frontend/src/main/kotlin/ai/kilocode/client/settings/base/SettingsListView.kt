@@ -138,11 +138,23 @@ internal class SettingsListView(
         val q = filter.trim()
         val rows = if (q.isBlank()) items else items.filter { ModelSearch.matches(q, it.title) }
         model.replaceAll(rows)
+        syncCellHeight(rows)
         val idx = at?.let { settingsListIndex(rows, it) }?.takeIf { it >= 0 }
             ?: settingsListIndex(rows, prefer).takeIf { it >= 0 }
             ?: rows.indices.firstOrNull()
             ?: -1
         if (idx >= 0) choose(idx) else list.clearSelection()
+    }
+
+    @RequiresEdt
+    private fun syncCellHeight(rows: List<SettingsListItem>) {
+        checkEdt()
+        val height = rows.indices.maxOfOrNull { idx ->
+            list.cellRenderer.getListCellRendererComponent(list, rows[idx], idx, true, list.hasFocus()).preferredSize.height
+        } ?: -1
+        if (list.fixedCellHeight == height) return
+        list.fixedCellHeight = height
+        list.revalidate()
     }
 
     @RequiresEdt

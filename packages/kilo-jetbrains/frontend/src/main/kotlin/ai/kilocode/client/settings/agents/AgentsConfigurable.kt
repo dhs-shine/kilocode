@@ -179,7 +179,7 @@ internal class AgentsSettingsUi(
                 SettingsListCell(EDIT_CELL, KiloBundle.message("settings.agentBehavior.edit")),
                 SettingsListCell(
                     DELETE_CELL,
-                    KiloBundle.message("settings.agentBehavior.delete"),
+                    KiloBundle.message("common.delete"),
                     icon = AllIcons.Actions.GC,
                     iconOnly = true,
                 ).takeIf { canDelete(item) },
@@ -192,7 +192,7 @@ internal class AgentsSettingsUi(
         val result = Messages.showYesNoDialog(
             KiloBundle.message("settings.agentBehavior.agents.delete.message", agent.displayName ?: agent.name),
             KiloBundle.message("settings.agentBehavior.agents.delete.title"),
-            KiloBundle.message("settings.agentBehavior.delete"),
+            KiloBundle.message("common.delete"),
             Messages.getCancelButton(),
             Messages.getQuestionIcon(),
         )
