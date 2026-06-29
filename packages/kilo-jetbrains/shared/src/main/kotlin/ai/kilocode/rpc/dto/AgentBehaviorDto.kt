@@ -10,6 +10,7 @@ data class AgentDetailDto(
     val description: String? = null,
     val mode: String,
     val native: Boolean? = null,
+    val removable: Boolean? = null,
     val hidden: Boolean? = null,
     val deprecated: Boolean? = null,
     val permission: List<PermissionRuleItemDto> = emptyList(),

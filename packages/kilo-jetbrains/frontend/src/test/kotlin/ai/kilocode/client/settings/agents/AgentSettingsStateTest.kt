@@ -49,6 +49,17 @@ class AgentSettingsStateTest {
     }
 
     @Test
+    fun `delete requires removable capability`() {
+        val draft = agentsDraft(null, listOf(
+            detail("generated", native = false, removable = false),
+            detail("custom", native = false, removable = true),
+        ))
+
+        assertFalse(canDelete(draft.agents.getValue("generated")))
+        assertTrue(canDelete(draft.agents.getValue("custom")))
+    }
+
+    @Test
     fun `patch emits changed fields only`() {
         val from = AgentsDraft(agents = mapOf("code" to AgentEditDraft(name = "code", description = "Old")))
         val to = updateAgent(from, from.agents.getValue("code").copy(
@@ -182,5 +193,6 @@ class AgentSettingsStateTest {
         description: String? = null,
         mode: String = KiloCliParser.MODE_PRIMARY,
         native: Boolean = false,
-    ) = AgentDetailDto(name = name, displayName = name, description = description, mode = mode, native = native)
+        removable: Boolean = true,
+    ) = AgentDetailDto(name = name, displayName = name, description = description, mode = mode, native = native, removable = removable)
 }

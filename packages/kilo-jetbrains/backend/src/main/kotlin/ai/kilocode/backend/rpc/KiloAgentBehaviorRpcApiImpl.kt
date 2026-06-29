@@ -44,6 +44,11 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
     override suspend fun agents(directory: String): List<AgentDetailDto> {
         app.requireReady()
         val api = app.api ?: throw IllegalStateException("Kilo API is unavailable")
+        val raw = get(directory, "/agent").array().mapNotNull { item ->
+            val obj = item as? JsonObject ?: return@mapNotNull null
+            val name = obj.string("name") ?: return@mapNotNull null
+            name to obj
+        }.toMap()
         return withContext(Dispatchers.IO) { api.appAgents(directory = directory) }.map { item ->
             AgentDetailDto(
                 name = item.name,
@@ -51,6 +56,7 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
                 description = item.description,
                 mode = item.mode.value,
                 native = item.native,
+                removable = removable(raw[item.name]),
                 hidden = item.hidden,
                 deprecated = item.deprecated,
                 permission = rules(item.permission),
@@ -174,6 +180,16 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
     }
 
     private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
+
+    private fun removable(obj: JsonObject?): Boolean {
+        if (obj == null) return false
+        if ((obj["native"] as? JsonPrimitive)?.contentOrNull == "true") return false
+        val source = obj.string("source")
+        val opts = obj["options"] as? JsonObject
+        if (source == "organization" || opts?.string("source") == "organization") return false
+        if (opts?.containsKey("reference") == true || opts?.containsKey("resolved") == true) return false
+        return true
+    }
 
     private fun prop(obj: Any, name: String): Any? {
         val suffix = name.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }

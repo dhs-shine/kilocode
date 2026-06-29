@@ -341,6 +341,10 @@ export const kiloScenarios: Scenario[] = [
       }),
     ),
   http.protected
+    .post("/kilocode/agent/remove", "kilocode.removeAgent")
+    .at((ctx) => ({ path: "/kilocode/agent/remove", headers: ctx.headers(), body: { name: "httpapi-missing" } }))
+    .status(400),
+  http.protected
     .post("/kilocode/session-import/project", "kilocode.sessionImport.project")
     .mutating()
     .at((ctx) => ({

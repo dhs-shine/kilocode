@@ -24,6 +24,7 @@ internal data class AgentEditDraft(
     val hidden: Boolean = false,
     val disable: Boolean = false,
     val native: Boolean = false,
+    val removable: Boolean = false,
     val deprecated: Boolean = false,
     val temperature: Double? = null,
     val topP: Double? = null,
@@ -31,7 +32,7 @@ internal data class AgentEditDraft(
     val permission: List<PermissionRuleItemDto> = emptyList(),
 )
 
-internal fun canDelete(agent: AgentEditDraft) = !agent.native
+internal fun canDelete(agent: AgentEditDraft) = agent.removable
 
 internal fun canEditMode(agent: AgentEditDraft) = !agent.native
 
@@ -54,6 +55,7 @@ internal fun agentsDraft(config: ConfigDto?, details: List<AgentDetailDto>): Age
             hidden = cfg?.hidden ?: (detail.hidden == true),
             disable = cfg?.disable == true,
             native = detail.native == true,
+            removable = detail.removable == true,
             deprecated = detail.deprecated == true,
             temperature = cfg?.temperature,
             topP = cfg?.top_p,

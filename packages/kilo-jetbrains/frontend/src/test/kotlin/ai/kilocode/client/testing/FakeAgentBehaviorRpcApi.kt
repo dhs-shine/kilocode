@@ -53,6 +53,7 @@ class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
             description = input.description,
             mode = input.mode,
             native = false,
+            removable = true,
         )
         afterCreate?.invoke(directory, input)
         return true
