@@ -64,4 +64,10 @@ describe("branch name generation helpers", () => {
     const history = [user("one"), user("two"), user("three"), user("four"), user("five")]
     expect(messages(history, "six")).toEqual(["three", "four", "five", "six"])
   })
+
+  test("truncates large messages before generation", () => {
+    const big = "x".repeat(2_000)
+
+    expect(messages([user(big)], big)).toEqual(["x".repeat(1_000)])
+  })
 })

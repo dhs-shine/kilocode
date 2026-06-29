@@ -10,10 +10,11 @@ import { described } from "@/server/routes/instance/httpapi/groups/metadata"
 import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 
-const root = "/branch-name"
+export const BranchNamePaths = {
+  generate: "/session/:sessionID/branch-name",
+} as const
 
 export const BranchNamePayload = Schema.Struct({
-  sessionID: SessionID,
   prompt: Schema.String,
   providerID: Schema.optional(ProviderID),
   modelID: Schema.optional(ModelID),
@@ -27,7 +28,8 @@ export const BranchNameApi = HttpApi.make("branch-name")
   .add(
     HttpApiGroup.make("branch-name")
       .add(
-        HttpApiEndpoint.post("generate", root, {
+        HttpApiEndpoint.post("generate", BranchNamePaths.generate, {
+          params: { sessionID: SessionID },
           query: WorkspaceRoutingQuery,
           payload: BranchNamePayload,
           success: described(BranchNameResponse, "Generated branch name or null when the task is not clear yet"),

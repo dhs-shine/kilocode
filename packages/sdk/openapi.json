@@ -11800,11 +11800,20 @@
         ]
       }
     },
-    "/branch-name": {
+    "/session/{sessionID}/branch-name": {
       "post": {
         "tags": ["branch-name"],
         "operationId": "branchName.generate",
         "parameters": [
+          {
+            "name": "sessionID",
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "pattern": "^ses.*"
+            },
+            "required": true
+          },
           {
             "name": "directory",
             "in": "query",
@@ -11831,7 +11840,14 @@
                   "type": "object",
                   "properties": {
                     "branch": {
-                      "type": "string"
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": ["branch"],
@@ -11860,10 +11876,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "sessionID": {
-                    "type": "string",
-                    "pattern": "^ses"
-                  },
                   "prompt": {
                     "type": "string"
                   },
@@ -11874,7 +11886,7 @@
                     "type": "string"
                   }
                 },
-                "required": ["sessionID", "prompt"],
+                "required": ["prompt"],
                 "additionalProperties": false
               }
             }
@@ -11883,7 +11895,7 @@
         "x-codeSamples": [
           {
             "lang": "js",
-            "source": "import { createKiloClient } from \"@kilocode/sdk\n\nconst client = createKiloClient()\nawait client.branchName.generate({\n  ...\n})"
+            "source": "import { createKiloClient } from \"@kilocode/sdk\"\n\nconst client = createKiloClient()\nawait client.branchName.generate({\n  ...\n})"
           }
         ]
       }

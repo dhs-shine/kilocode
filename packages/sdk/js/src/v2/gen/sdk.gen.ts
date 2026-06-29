@@ -6244,10 +6244,10 @@ export class BranchName extends HeyApiClient {
    * Generate a task-focused branch name from the current conversation.
    */
   public generate<ThrowOnError extends boolean = false>(
-    parameters?: {
+    parameters: {
+      sessionID: string
       directory?: string
       workspace?: string
-      sessionID?: string
       prompt?: string
       providerID?: string
       modelID?: string
@@ -6259,9 +6259,9 @@ export class BranchName extends HeyApiClient {
       [
         {
           args: [
+            { in: "path", key: "sessionID" },
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
-            { in: "body", key: "sessionID" },
             { in: "body", key: "prompt" },
             { in: "body", key: "providerID" },
             { in: "body", key: "modelID" },
@@ -6270,7 +6270,7 @@ export class BranchName extends HeyApiClient {
       ],
     )
     return (options?.client ?? this.client).post<BranchNameGenerateResponses, BranchNameGenerateErrors, ThrowOnError>({
-      url: "/branch-name",
+      url: "/session/{sessionID}/branch-name",
       ...options,
       ...params,
       headers: {

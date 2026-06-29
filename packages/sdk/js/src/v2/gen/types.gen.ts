@@ -9632,17 +9632,18 @@ export type BackgroundProcessStopSessionResponse =
 
 export type BranchNameGenerateData = {
   body?: {
-    sessionID: string
     prompt: string
     providerID?: string
     modelID?: string
   }
-  path?: never
+  path: {
+    sessionID: string
+  }
   query?: {
     directory?: string
     workspace?: string
   }
-  url: "/branch-name"
+  url: "/session/{sessionID}/branch-name"
 }
 
 export type BranchNameGenerateErrors = {
@@ -9659,7 +9660,7 @@ export type BranchNameGenerateResponses = {
    * Generated branch name or null when the task is not clear yet
    */
   200: {
-    branch: string
+    branch: string | null
   }
 }
 
