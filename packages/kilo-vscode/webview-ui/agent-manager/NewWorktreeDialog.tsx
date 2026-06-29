@@ -26,7 +26,9 @@ import { ModelSelectorBase } from "../src/components/shared/ModelSelector"
 import { ModeSwitcherBase } from "../src/components/shared/ModeSwitcher"
 import { SpeechToTextButton } from "../src/components/speech-to-text/SpeechToTextButton"
 import { canUseSpeechToText, selectedSpeechToTextModel } from "../src/components/speech-to-text/availability"
+import { visible as isSandboxVisible } from "../src/components/settings/sandboxing"
 import { ThinkingSelectorBase } from "../src/components/shared/ThinkingSelector"
+import { SandboxButtonBase, SandboxTooltipContent } from "../src/components/shared/SandboxButton"
 import {
   MultiModelSelector,
   type ModelAllocations,
@@ -78,7 +80,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   const server = useServer()
   const session = useSession()
   const provider = useProvider()
-  const { config } = useConfig()
+  const { config, features } = useConfig()
   const metrics = tracker(vscode)
   const track = (button: string, properties?: Record<string, string | number | boolean | undefined>) =>
     metrics.track(button, "configure_worktree_dialog", properties)
@@ -110,6 +112,8 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
   const [compareOpen, setCompareOpen] = createSignal(false)
   const [highlightedIndex, setHighlightedIndex] = createSignal(0)
   const [variant, setVariant] = createSignal<string | undefined>(session.currentVariant())
+  const [sandbox, setSandbox] = createSignal(config().experimental?.sandbox === true)
+  const sandboxVisible = () => isSandboxVisible(features(), config())
   const speech = useSpeechToText(vscode, server, { t })
   const canUseSpeech = () => canUseSpeechToText(config(), provider.authStates())
   const speechModel = () => selectedSpeechToTextModel(config())
@@ -262,6 +266,7 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
       baseBranch: advanced ? (baseBranch() ?? undefined) : undefined,
       branchName: customBranch,
       modelAllocations: allocations,
+      sandbox: sandboxVisible() ? sandbox() : undefined,
       files: imgFiles,
     })
 
@@ -547,6 +552,24 @@ export const NewWorktreeDialog: Component<{ onClose: () => void; defaultBaseBran
                       <WandSparkles size={16} class={enhancing() ? "enhance-spinner" : ""} />
                     </Button>
                   </Tooltip>
+                  <Show when={sandboxVisible()}>
+                    <SandboxButtonBase
+                      enabled={sandbox()}
+                      tooltip={
+                        <SandboxTooltipContent
+                          enabled={sandbox()}
+                          network={config().experimental?.sandbox_restrict_network !== false}
+                        />
+                      }
+                      tooltipClass="prompt-sandbox-tooltip-content"
+                      onToggle={click(
+                        "sandbox_toggle",
+                        "configure_worktree_dialog",
+                        () => setSandbox(!sandbox()),
+                        () => ({ enabled: !sandbox() }),
+                      )}
+                    />
+                  </Show>
                   <Show when={canUseSpeech()}>
                     <SpeechToTextButton speech={speech} disabled={starting()} start={startSpeech} label={t} />
                   </Show>
