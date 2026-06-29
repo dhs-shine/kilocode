@@ -18,15 +18,14 @@ export interface ToolRequest {
   requestID: string
   sessionID?: string
   directory?: string
-  sourceDirectory?: string
+  sandboxInheritanceToken?: string
   mode: "worktree" | "local"
   versions?: boolean
   tasks: ToolTask[]
 }
 
 export interface ToolSource {
-  sessionID?: string
-  directory?: string
+  sandboxInheritanceToken?: string
 }
 
 interface WorktreeCreated {
@@ -139,9 +138,7 @@ async function local(deps: ToolDeps, client: KiloClient, task: ToolTask, directo
       directory: target,
       platform: PLATFORM,
       metadata,
-      ...(source?.sessionID
-        ? { sourceID: source.sessionID, ...(source.directory ? { sourceDirectory: source.directory } : {}) }
-        : {}),
+      ...(source?.sandboxInheritanceToken ? { sandboxInheritanceToken: source.sandboxInheritanceToken } : {}),
     },
     { throwOnError: true },
   )
@@ -224,7 +221,7 @@ export async function startFromTool(deps: ToolDeps, req: ToolRequest): Promise<v
   const versions = req.mode === "worktree" && req.versions === true && total > 1
   const groupId = versions ? `grp-${Date.now()}` : undefined
   const state = { ok: 0 }
-  const source = { sessionID: req.sessionID, directory: req.sourceDirectory ?? req.directory }
+  const source = { sandboxInheritanceToken: req.sandboxInheritanceToken }
 
   deps.post({ type: "agentManager.multiVersionProgress", status: "creating", total, completed: 0, groupId })
   for (let i = 0; i < req.tasks.length; i++) {
@@ -277,7 +274,7 @@ export function parseToolRequest(value: unknown): ToolRequest | undefined {
     requestID: typeof value.requestID === "string" ? value.requestID : `am-${Date.now()}`,
     sessionID: typeof value.sessionID === "string" ? value.sessionID : undefined,
     directory: typeof value.directory === "string" ? value.directory : undefined,
-    sourceDirectory: typeof value.sourceDirectory === "string" ? value.sourceDirectory : undefined,
+    sandboxInheritanceToken: typeof value.sandboxInheritanceToken === "string" ? value.sandboxInheritanceToken : undefined,
     mode,
     versions: typeof value.versions === "boolean" ? value.versions : undefined,
     tasks: parsed,

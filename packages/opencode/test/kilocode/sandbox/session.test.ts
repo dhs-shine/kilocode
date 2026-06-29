@@ -5,6 +5,7 @@ import { BackgroundJob } from "@/background/job"
 import { Bus } from "@/bus"
 import { Config } from "@/config/config"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import * as SandboxInheritance from "@/kilocode/sandbox/inheritance"
 import * as SandboxPolicy from "@/kilocode/sandbox/policy"
 import { SandboxStore } from "@/kilocode/sandbox/store"
 import { Session } from "@/session/session"
@@ -54,10 +55,9 @@ describe("sandbox session cleanup", () => {
       const source = yield* provideInstance(dir)(sessions.create({ title: "sandbox-source" }))
       const status = yield* provideInstance(dir)(SandboxPolicy.status(source.id))
       if (!status.available) return
+      const token = SandboxInheritance.issue({ sessionID: source.id, directory: dir, count: 1 })
 
-      const child = yield* provideInstance(worktree)(
-        sessions.create({ title: "sandbox-child", sourceID: source.id, sourceDirectory: dir }),
-      )
+      const child = yield* provideInstance(worktree)(sessions.create({ title: "sandbox-child", sandboxInheritanceToken: token }))
       expect((yield* provideInstance(worktree)(SandboxPolicy.status(child.id))).enabled).toBe(true)
 
       yield* provideInstance(dir)(SandboxPolicy.toggle(source.id))

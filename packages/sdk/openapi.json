@@ -5722,16 +5722,12 @@
                   "platform": {
                     "type": "string"
                   },
-                  "sourceID": {
-                    "type": "string",
-                    "pattern": "^ses"
-                  },
-                  "sourceDirectory": {
-                    "type": "string"
-                  },
                   "workspaceID": {
                     "type": "string",
                     "pattern": "^wrk"
+                  },
+                  "sandboxInheritanceToken": {
+                    "type": "string"
                   }
                 },
                 "additionalProperties": false
@@ -27428,6 +27424,9 @@
               "sessionID": {
                 "type": "string",
                 "pattern": "^ses"
+              },
+              "sandboxInheritanceToken": {
+                "type": "string"
               },
               "mode": {
                 "type": "string",

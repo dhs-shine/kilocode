@@ -31,6 +31,7 @@ import { Permission } from "@/permission"
 import { Global } from "@opencode-ai/core/global"
 // kilocode_change start - Kilo session behavior extensions
 import { BackgroundProcess } from "@/kilocode/background-process"
+import * as SandboxInheritance from "@/kilocode/sandbox/inheritance"
 import { KiloSession, kiloSessionFork } from "@/kilocode/session"
 import { SessionExport } from "@/kilocode/session-export"
 import * as SandboxPolicy from "@/kilocode/sandbox/policy"
@@ -254,9 +255,10 @@ export const CreateInput = Schema.optional(
     metadata: Schema.optional(Metadata),
     permission: Schema.optional(Permission.Ruleset),
     platform: Schema.optional(Schema.String), // kilocode_change - per-session platform override for telemetry attribution
-    sourceID: Schema.optional(SessionID), // kilocode_change - inherited sandbox policy source
-    sourceDirectory: Schema.optional(Schema.String), // kilocode_change - inherited sandbox source directory
+    // kilocode_change start - server-issued sandbox inheritance grant
     workspaceID: Schema.optional(WorkspaceID),
+    sandboxInheritanceToken: Schema.optional(Schema.String),
+    // kilocode_change end
   }),
 )
 export type CreateInput = Types.DeepMutable<Schema.Schema.Type<typeof CreateInput>>
@@ -489,11 +491,12 @@ export interface Interface {
     agent?: string
     model?: Schema.Schema.Type<typeof Model>
     metadata?: typeof Metadata.Type
+    // kilocode_change start - session create metadata and sandbox inheritance extensions
     permission?: Permission.Ruleset
     platform?: string // kilocode_change - per-session platform override for telemetry attribution
-    sourceID?: SessionID // kilocode_change - inherited sandbox policy source
-    sourceDirectory?: string // kilocode_change - inherited sandbox source directory
     workspaceID?: WorkspaceID
+    sandboxInheritanceToken?: string
+    // kilocode_change end
   }) => Effect.Effect<Info>
   readonly fork: (input: { sessionID: SessionID; messageID?: MessageID }) => Effect.Effect<Info, NotFound>
   readonly touch: (sessionID: SessionID) => Effect.Effect<void>
@@ -568,10 +571,11 @@ export const layer: Layer.Layer<
       directory: string
       path?: string
       metadata?: typeof Metadata.Type
+      // kilocode_change start - inherited sandbox policy source
       permission?: Permission.Ruleset
       platform?: string // kilocode_change - per-session platform override for telemetry attribution
       sourceID?: SessionID // kilocode_change - inherited sandbox policy source
-      sourceDirectory?: string // kilocode_change - inherited sandbox source directory
+      sourceDirectory?: string
     }) {
       const ctx = yield* InstanceState.context
       const result: Info = {
@@ -596,6 +600,7 @@ export const layer: Layer.Layer<
         },
       }
       log.info("created", result)
+      // kilocode_change end
 
       // kilocode_change start - initialize inherited state before session.created subscribers run
       KiloSession.register({ id: result.id, parentID: result.parentID, platform: input.platform })
@@ -746,18 +751,22 @@ export const layer: Layer.Layer<
     const create = Effect.fn("Session.create")(function* (input?: {
       parentID?: SessionID
       title?: string
+      // kilocode_change start - session create metadata and sandbox inheritance extensions
       agent?: string
       model?: Schema.Schema.Type<typeof Model>
       metadata?: typeof Metadata.Type
       permission?: Permission.Ruleset
       platform?: string // kilocode_change - per-session platform override for telemetry attribution
-      sourceID?: SessionID // kilocode_change - inherited sandbox policy source
-      sourceDirectory?: string // kilocode_change - inherited sandbox source directory
       workspaceID?: WorkspaceID
+      sandboxInheritanceToken?: string
+      // kilocode_change end
     }) {
       const ctx = yield* InstanceState.context
       const workspace = yield* InstanceState.workspaceID
+      const grant = SandboxInheritance.consume(input?.sandboxInheritanceToken)
+      if (input?.sandboxInheritanceToken && !grant) yield* Effect.die(new Error("Invalid sandbox inheritance token"))
       const session = yield* createNext({
+        // kilocode_change start - propagate trusted sandbox inheritance grant
         parentID: input?.parentID,
         directory: ctx.directory,
         path: sessionPath(ctx.worktree, ctx.directory),
@@ -767,8 +776,9 @@ export const layer: Layer.Layer<
         metadata: input?.metadata,
         permission: input?.permission,
         platform: input?.platform, // kilocode_change
-        sourceID: input?.sourceID, // kilocode_change
-        sourceDirectory: input?.sourceDirectory, // kilocode_change
+        sourceID: grant?.sessionID, // kilocode_change
+        sourceDirectory: grant?.directory, // kilocode_change
+        // kilocode_change end
         workspaceID: input?.workspaceID ?? workspace,
       })
       return session

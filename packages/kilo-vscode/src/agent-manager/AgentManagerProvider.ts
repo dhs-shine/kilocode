@@ -803,7 +803,7 @@ export class AgentManagerProvider implements Disposable {
     worktreePath: string,
     branch: string,
     worktreeId?: string,
-    source?: { sessionID?: string; directory?: string },
+    source?: { sandboxInheritanceToken?: string },
   ): Promise<Session | null> {
     let client: KiloClient
     try {
@@ -843,8 +843,8 @@ export class AgentManagerProvider implements Disposable {
               directory: worktreePath,
               platform: PLATFORM,
               metadata,
-              ...(source?.sessionID
-                ? { sourceID: source.sessionID, ...(source.directory ? { sourceDirectory: source.directory } : {}) }
+              ...(source?.sandboxInheritanceToken
+                ? { sandboxInheritanceToken: source.sandboxInheritanceToken }
                 : {}),
             },
             { throwOnError: true },
@@ -957,7 +957,6 @@ export class AgentManagerProvider implements Disposable {
     if (!req) return
     if (directory) {
       req.directory = directory
-      req.sourceDirectory = directory
     }
     void this.startToolRequest(req)
   }

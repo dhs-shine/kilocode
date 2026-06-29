@@ -98,7 +98,7 @@ describe("agent manager tool start", () => {
     )
   })
 
-  it("passes sandbox inheritance source to local sessions", async () => {
+  it("passes sandbox inheritance token to local sessions", async () => {
     const client = {
       session: {
         create: mock(async () => ({ data: session("s-local") })),
@@ -110,13 +110,13 @@ describe("agent manager tool start", () => {
     await startFromTool(c, {
       requestID: "am-local-source",
       sessionID: "s-parent",
-      sourceDirectory: "/repo",
+      sandboxInheritanceToken: "si-token",
       mode: "local",
       tasks: [{ prompt: "Do work" }],
     })
 
     expect(client.session.create).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceID: "s-parent", sourceDirectory: "/repo" }),
+      expect.objectContaining({ sandboxInheritanceToken: "si-token" }),
       { throwOnError: true },
     )
   })
@@ -126,7 +126,7 @@ describe("agent manager tool start", () => {
     await startFromTool(c, {
       requestID: "am-2",
       sessionID: "s-parent",
-      sourceDirectory: "/repo",
+      sandboxInheritanceToken: "si-token",
       mode: "worktree",
       tasks: [{ prompt: "Fix", branchName: "fix/one" }],
     })
@@ -139,7 +139,7 @@ describe("agent manager tool start", () => {
       "/repo/.kilo/worktrees/wt-1",
       "kilo/test",
       "wt-1",
-      { sessionID: "s-parent", directory: "/repo" },
+      { sandboxInheritanceToken: "si-token" },
     )
     expect(c.registerWorktreeSession).toHaveBeenCalledWith("s-wt", "/repo/.kilo/worktrees/wt-1")
     expect(c.notifyReady).toHaveBeenCalled()
