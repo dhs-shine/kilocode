@@ -754,6 +754,19 @@ const AgentManagerContent: Component = () => {
     return []
   })
 
+  createEffect(() => {
+    const sel = selection()
+    if (!sel || sel === LOCAL || !sessionsLoaded() || reviewActive() || terms.activeId()) return
+    const tabs = activeWorktreeSessions()
+    if (tabs.length === 0) return
+    const current = session.currentSessionID()
+    if (current && tabs.some((item) => item.id === current)) return
+    const remembered = tabMemory()[sel]
+    const target = remembered ? tabs.find((item) => item.id === remembered) : undefined
+    const fallback = target ?? tabs[0]
+    if (fallback) session.selectSession(fallback.id)
+  })
+
   const contextEmpty = createMemo(() => {
     const sel = selection()
     if (terms.current().length > 0) return false
@@ -964,15 +977,11 @@ const AgentManagerContent: Component = () => {
     const remembered = tabMemory()[worktreeId]
     if (terms.hasRemembered(worktreeId, remembered)) return termHandlers.activate(remembered!)
     terms.setActiveId(undefined)
-    // Try rich session list first, fall back to managed session IDs when
-    // session.sessions() hasn't been populated yet for this worktree.
+    // Only focus sessions whose ancestry is known. Sparse managed IDs are
+    // resolved by the effect above once session.sessions() is populated.
     const rich = sessionsForWorktree(worktreeId)
-    const managed = managedSessions().filter((ms) => ms.worktreeId === worktreeId)
-    const unresolved = sessionsLoaded() ? [] : managed
-    const target = remembered
-      ? (rich.find((s) => s.id === remembered) ?? unresolved.find((ms) => ms.id === remembered))
-      : undefined
-    const fallback = target ?? rich[0] ?? unresolved[0]
+    const target = remembered ? rich.find((s) => s.id === remembered) : undefined
+    const fallback = target ?? rich[0]
     if (fallback) session.selectSession(fallback.id)
     else session.setCurrentSessionID(undefined)
     setReviewActive(remembered === REVIEW_TAB_ID && reviewOpenByContext()[worktreeId] === true)
