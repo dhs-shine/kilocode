@@ -440,6 +440,8 @@ interface CreateMultiVersionIn {
   baseBranch?: string
   branchName?: string
   modelAllocations?: Array<{ providerID: string; modelID: string; count: number }>
+  /** When set, reconcile each created session's sandbox override to this state. */
+  sandbox?: boolean
 }
 
 interface RenameWorktreeIn {
@@ -640,6 +642,29 @@ interface SendCommandIn {
   contextDirectory?: string
 }
 
+interface RequestSandboxDefaultIn {
+  type: "requestSandboxDefault"
+  agentManagerContext?: string
+  contextDirectory?: string
+}
+
+interface SetSandboxDefaultIn {
+  type: "setSandboxDefault"
+  enabled: boolean
+  requestID: string
+  agentManagerContext?: string
+  contextDirectory?: string
+}
+
+interface ToggleSandboxIn {
+  type: "toggleSandbox"
+  sessionID?: string
+  draftID?: string
+  requestID: string
+  agentManagerContext?: string
+  contextDirectory?: string
+}
+
 interface RequestTerminalContextIn {
   type: "requestTerminalContext"
   requestId: string
@@ -784,6 +809,9 @@ export type AgentManagerInMessage =
   | LoadMessagesIn
   | SendMessageIn
   | SendCommandIn
+  | RequestSandboxDefaultIn
+  | SetSandboxDefaultIn
+  | ToggleSandboxIn
   | RequestTerminalContextIn
   | ClearSessionIn
   | AbortIn
