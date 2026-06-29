@@ -185,7 +185,12 @@ async function worktree(
   if (!created) return false
 
   await deps.setup(created.result.path, created.result.branch, created.worktree.id)
-  const session = await deps.createSessionInWorktree(created.result.path, created.result.branch, created.worktree.id, source)
+  const session = await deps.createSessionInWorktree(
+    created.result.path,
+    created.result.branch,
+    created.worktree.id,
+    source,
+  )
   if (!session) {
     await deps.cleanupWorktree(created.worktree.id, created.result.path)
     return false
@@ -294,7 +299,8 @@ export function parseToolRequest(value: unknown): ToolRequest | undefined {
     requestID: typeof value.requestID === "string" ? value.requestID : `am-${Date.now()}`,
     sessionID: typeof value.sessionID === "string" ? value.sessionID : undefined,
     directory: typeof value.directory === "string" ? value.directory : undefined,
-    sandboxInheritanceToken: typeof value.sandboxInheritanceToken === "string" ? value.sandboxInheritanceToken : undefined,
+    sandboxInheritanceToken:
+      typeof value.sandboxInheritanceToken === "string" ? value.sandboxInheritanceToken : undefined,
     mode,
     versions: typeof value.versions === "boolean" ? value.versions : undefined,
     tasks: parsed,

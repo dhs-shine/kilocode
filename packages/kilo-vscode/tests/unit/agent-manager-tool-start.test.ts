@@ -184,12 +184,9 @@ describe("agent manager tool start", () => {
       expect.objectContaining({ branchName: "fix-one", name: "fix-one", label: "one" }),
     )
     expect(c.setup).toHaveBeenCalled()
-    expect(c.createSessionInWorktree).toHaveBeenCalledWith(
-      "/repo/.kilo/worktrees/wt-1",
-      "kilo/test",
-      "wt-1",
-      { sandboxInheritanceToken: "si-token" },
-    )
+    expect(c.createSessionInWorktree).toHaveBeenCalledWith("/repo/.kilo/worktrees/wt-1", "kilo/test", "wt-1", {
+      sandboxInheritanceToken: "si-token",
+    })
     expect(c.registerWorktreeSession).toHaveBeenCalledWith("s-wt", "/repo/.kilo/worktrees/wt-1")
     expect(c.notifyReady).toHaveBeenCalled()
     expect(client.session.promptAsync).toHaveBeenCalledWith(

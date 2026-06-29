@@ -843,9 +843,7 @@ export class AgentManagerProvider implements Disposable {
               directory: worktreePath,
               platform: PLATFORM,
               metadata,
-              ...(source?.sandboxInheritanceToken
-                ? { sandboxInheritanceToken: source.sandboxInheritanceToken }
-                : {}),
+              ...(source?.sandboxInheritanceToken ? { sandboxInheritanceToken: source.sandboxInheritanceToken } : {}),
             },
             { throwOnError: true },
           ),
