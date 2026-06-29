@@ -45,6 +45,9 @@ describe("branch name generation helpers", () => {
     expect(parse("<think>Choose a durable outcome</think>\nadd-health-check-endpoint")).toBe(
       "add-health-check-endpoint",
     )
+    expect(parse("<THINK>Choose a durable outcome</THINK>\nadd-health-check-endpoint")).toBe(
+      "add-health-check-endpoint",
+    )
   })
 
   test("uses recent real user messages and appends the pending prompt once", () => {

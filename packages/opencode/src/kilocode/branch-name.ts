@@ -47,7 +47,7 @@ function normalize(value: string) {
 
 export function parse(value: string) {
   const line = value
-    .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
+    .replace(/<think>[\s\S]*?<\/think>\s*/gi, "")
     .replace(/^```(?:json|text)?\s*/i, "")
     .replace(/```$/i, "")
     .trim()
