@@ -104,8 +104,8 @@ export const prepare = Effect.fn("LLMRequestPrep.prepare")(function* (input: Pre
   // kilocode_change start - drop Kilo-internal agent metadata (id/displayName/source)
   // so it never leaks into providerOptions and gets rejected by strict providers
   const agentOptions = stripInternalOptions(input.agent.options)
-  // kilocode_change end
   const options = mergeOptions(mergeOptions(mergeOptions(base, input.model.options), agentOptions), variant)
+  // kilocode_change end
   if (isOpenaiOauth) {
     // kilocode_change start - prepend soul to instructions
     options.instructions = SystemPrompt.soul() + "\n" + system.join("\n")
