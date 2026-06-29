@@ -52,6 +52,7 @@ class MentionNavigatorTest : BasePlatformTestCase() {
         val resolved = CountDownLatch(2)
         provider.validate(text, -1) { resolved.countDown() }
         assertTrue("mention validation did not complete", resolved.await(5, TimeUnit.SECONDS))
+        // LLM note: the callback can fire before cross-thread mention state is observable to mouse-event assertions.
         waitFor {
             provider.mentionAt(text, 6)?.resolved == true &&
                 provider.mentionAt(text, 20)?.resolved == false

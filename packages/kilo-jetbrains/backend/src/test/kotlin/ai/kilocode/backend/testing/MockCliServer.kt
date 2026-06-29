@@ -186,6 +186,7 @@ class MockCliServer : AutoCloseable {
         port = srv.localPort
         val ready = CountDownLatch(1)
         executor.submit { acceptLoop(srv, ready) }
+        // LLM note: tests connect immediately after start(), so publish accept-loop readiness instead of racing CI scheduling.
         check(ready.await(5, TimeUnit.SECONDS)) { "Mock CLI accept loop did not start" }
         return port
     }

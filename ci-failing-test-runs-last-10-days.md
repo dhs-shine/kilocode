@@ -2,6 +2,8 @@
 
 Scope: failed GitHub Actions jobs in test-oriented workflows (`test`, `test-vscode`, `Visual Regression Tests`, `smoke-test`) for `Kilo-Org/kilocode`. Forbidden string and annotation/check-only workflows are intentionally excluded.
 
+LLM note: this generated inventory was added so reviewers can trace which CI failures were considered and which were classified as unrelated, already fixed, or fixed by this PR.
+
 Total failed jobs listed: 679
 
 ## Failed Jobs
