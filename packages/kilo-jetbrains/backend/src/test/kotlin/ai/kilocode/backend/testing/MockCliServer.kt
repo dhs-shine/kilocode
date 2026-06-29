@@ -184,7 +184,9 @@ class MockCliServer : AutoCloseable {
         val srv = ServerSocket(0)
         server = srv
         port = srv.localPort
-        executor.submit { acceptLoop(srv) }
+        val ready = CountDownLatch(1)
+        executor.submit { acceptLoop(srv, ready) }
+        check(ready.await(5, TimeUnit.SECONDS)) { "Mock CLI accept loop did not start" }
         return port
     }
 
@@ -235,7 +237,8 @@ class MockCliServer : AutoCloseable {
         server = null
     }
 
-    private fun acceptLoop(srv: ServerSocket) {
+    private fun acceptLoop(srv: ServerSocket, ready: CountDownLatch) {
+        ready.countDown()
         while (!closed.get() && !srv.isClosed) {
             try {
                 val socket = srv.accept()
