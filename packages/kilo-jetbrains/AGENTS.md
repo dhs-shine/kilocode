@@ -547,6 +547,7 @@ Official references:
 - [User Interface Components](https://plugins.jetbrains.com/docs/intellij/user-interface-components.html)
 - [UI FAQ (colors, borders, icons)](https://plugins.jetbrains.com/docs/intellij/ui-faq.html)
 
+- For compact icon-only actions, use `ai.kilocode.client.ui.HoverIcon` so the control gets the standard 24×24 hover treatment. Do not create `JButton(icon)` or wrap a bare icon in a button just to make it clickable.
 - **Reuse platform icons**: browse at https://intellij-icons.jetbrains.design. Access via `AllIcons.*` constants.
 - Custom icons: SVG files in `resources/icons/`. Load via `IconLoader.getIcon("/icons/foo.svg", MyClass::class.java)`.
 - Organize in an `icons` package or a `*Icons` object with `@JvmField` on each constant.

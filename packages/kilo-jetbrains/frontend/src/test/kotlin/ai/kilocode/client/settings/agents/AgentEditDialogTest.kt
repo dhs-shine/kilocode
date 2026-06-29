@@ -8,6 +8,8 @@ import ai.kilocode.client.settings.base.SettingsRow
 import ai.kilocode.client.settings.base.SettingsStackedRow
 import ai.kilocode.client.settings.base.SettingsToggle
 import ai.kilocode.client.testing.FakeAppRpcApi
+import ai.kilocode.client.ui.HoverIcon
+import ai.kilocode.rpc.dto.PermissionRuleItemDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
@@ -123,6 +125,76 @@ class AgentEditDialogTest : BasePlatformTestCase() {
             assertFalse(result.disable)
             true
         }
+    }
+
+    fun `test custom agent shows export action`() {
+        val d = open(draft())
+
+        edt {
+            val root = d.contentForTest()
+            val button = descendants(rowByTitle(root, title("name"))).filterIsInstance<HoverIcon>().first()
+            val text = KiloBundle.message("settings.agentBehavior.agents.edit.export")
+            assertTrue(button.isEnabled)
+            assertEquals(text, button.toolTipText)
+            assertEquals(text, button.accessibleContext.accessibleName)
+            true
+        }
+    }
+
+    fun `test native agent hides export action`() {
+        val d = open(draft().copy(native = true))
+
+        edt {
+            val root = d.contentForTest()
+            assertTrue(descendants(rowByTitle(root, title("name"))).filterIsInstance<HoverIcon>().isEmpty())
+            true
+        }
+    }
+
+    fun `test builds deterministic agent export`() {
+        val agent = draft().copy(
+            description = "Description",
+            prompt = "Prompt",
+            model = "kilo/gpt-5",
+            mode = KiloCliParser.MODE_SUBAGENT,
+            temperature = 0.2,
+            topP = 0.8,
+            steps = 5,
+            permission = listOf(
+                PermissionRuleItemDto(tool = "bash", pattern = "uname", action = "allow"),
+                PermissionRuleItemDto(tool = "edit", action = "ask"),
+                PermissionRuleItemDto(tool = "bash", pattern = "*", action = "deny"),
+            ),
+        )
+
+        assertEquals("""
+            {
+                "name": "code",
+                "description": "Description",
+                "prompt": "Prompt",
+                "model": "kilo/gpt-5",
+                "mode": "subagent",
+                "temperature": 0.2,
+                "top_p": 0.8,
+                "steps": 5,
+                "permission": {
+                    "bash": {
+                        "*": "deny",
+                        "uname": "allow"
+                    },
+                    "edit": "ask"
+                }
+            }
+        """.trimIndent(), buildAgentExport(agent))
+    }
+
+    fun `test export omits null optional fields`() {
+        assertEquals("""
+            {
+                "name": "code",
+                "mode": "primary"
+            }
+        """.trimIndent(), buildAgentExport(draft()))
     }
 
     private fun draft() = AgentEditDraft(name = "code", mode = KiloCliParser.MODE_PRIMARY, native = false)

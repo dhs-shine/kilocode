@@ -70,6 +70,7 @@ class SettingsStackedRow(
     title: String,
     description: String? = null,
     value: JComponent,
+    action: JComponent? = null,
 ) : JPanel(BorderLayout()) {
     private val titleLabel = JBLabel(title).apply { font = UiStyle.Fonts.bold() }
     private val descriptionLabel = JBLabel(descriptionHtml(description)).apply {
@@ -81,9 +82,14 @@ class SettingsStackedRow(
 
     init {
         border = JBUI.Borders.empty(UiStyle.Gap.pad(), 0, UiStyle.Gap.pad(), 0)
+        val header = JPanel(BorderLayout()).apply {
+            add(Stack.vertical(UiStyle.Gap.sm())
+                .next(titleLabel)
+                .next(descriptionLabel), BorderLayout.CENTER)
+            action?.let { add(it.align(HAlign.RIGHT, VAlign.CENTER), BorderLayout.EAST) }
+        }
         add(Stack.vertical(UiStyle.Gap.sm())
-            .next(titleLabel)
-            .next(descriptionLabel)
+            .next(header)
             .next(value), BorderLayout.CENTER)
     }
 }

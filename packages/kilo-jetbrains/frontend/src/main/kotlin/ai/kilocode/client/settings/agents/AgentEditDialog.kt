@@ -12,14 +12,23 @@ import ai.kilocode.client.settings.base.SettingsToggle
 import ai.kilocode.client.settings.base.SettingsRows
 import ai.kilocode.client.settings.models.ModelSettingPicker
 import ai.kilocode.client.ui.FilledBadgeIcon
+import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
+import com.intellij.icons.AllIcons
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationGroupManager
+import com.intellij.notification.NotificationType
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.fileChooser.FileChooserFactory
+import com.intellij.openapi.fileChooser.FileSaverDescriptor
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.EditorTextField
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBLabel
@@ -108,6 +117,7 @@ internal class AgentEditDialog(
             row(SettingsStackedRow(
                 KiloBundle.message("settings.agentBehavior.agents.edit.name"),
                 value = identity(),
+                action = exportButton().takeIf { canDelete(agent) },
             ))
             row(SettingsRow(
                 KiloBundle.message("settings.agentBehavior.agents.edit.mode"),
@@ -298,6 +308,46 @@ internal class AgentEditDialog(
         return Stack.horizontal(UiStyle.Gap.xs())
             .next(JBLabel(agent.name))
             .also { row -> badges.forEach(row::next) }
+    }
+
+    private fun exportButton() = HoverIcon().apply {
+        icon = AllIcons.Actions.Download
+        val text = KiloBundle.message("settings.agentBehavior.agents.edit.export")
+        toolTipText = text
+        accessibleContext.accessibleName = text
+        addActionListener { export() }
+    }
+
+    private fun export() {
+        val file = "${agent.name}.agent.json"
+        val descriptor = FileSaverDescriptor(
+            KiloBundle.message("settings.agentBehavior.agents.edit.export.title"),
+            KiloBundle.message("settings.agentBehavior.agents.edit.export.description"),
+            "agent.json",
+        )
+        val wrapper = FileChooserFactory.getInstance()
+            .createSaveFileDialog(descriptor, contentForTest())
+            .save(null as VirtualFile?, file) ?: return
+        val json = buildAgentExport(result())
+        ApplicationManager.getApplication().executeOnPooledThread {
+            runCatching {
+                wrapper.file.writeText(json, Charsets.UTF_8)
+            }.onSuccess {
+                notify(NotificationType.INFORMATION, KiloBundle.message("settings.agentBehavior.agents.edit.export.success", wrapper.file.name))
+            }.onFailure { err ->
+                notify(NotificationType.ERROR, KiloBundle.message("settings.agentBehavior.agents.edit.export.failed"), err.message)
+            }
+        }
+    }
+
+    private fun notify(type: NotificationType, title: String, content: String? = null) {
+        ApplicationManager.getApplication().invokeLater {
+            val notification = NotificationGroupManager.getInstance()
+                .getNotificationGroup("Kilo Code")
+                ?.createNotification(title, content.orEmpty(), type)
+                ?: Notification("Kilo Code", title, content.orEmpty(), type)
+            notification.notify(ProjectManager.getInstance().openProjects.firstOrNull { !it.isDefault })
+        }
     }
 
     private fun badge(text: String, style: UiStyle.Badge.Style = UiStyle.Badge.Secondary) = JBLabel().apply {

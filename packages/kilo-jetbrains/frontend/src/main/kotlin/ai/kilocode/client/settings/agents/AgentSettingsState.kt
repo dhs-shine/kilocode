@@ -5,6 +5,7 @@ import ai.kilocode.rpc.dto.AgentConfigPatchDto
 import ai.kilocode.rpc.dto.AgentDetailDto
 import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.ConfigPatchDto
+import ai.kilocode.rpc.dto.PermissionRuleItemDto
 
 internal data class AgentsDraft(
     val defaultAgent: String? = null,
@@ -27,6 +28,7 @@ internal data class AgentEditDraft(
     val temperature: Double? = null,
     val topP: Double? = null,
     val steps: Long? = null,
+    val permission: List<PermissionRuleItemDto> = emptyList(),
 )
 
 internal fun canDelete(agent: AgentEditDraft) = !agent.native
@@ -56,6 +58,7 @@ internal fun agentsDraft(config: ConfigDto?, details: List<AgentDetailDto>): Age
             temperature = cfg?.temperature,
             topP = cfg?.top_p,
             steps = cfg?.steps,
+            permission = detail.permission,
         )
     }
     val agent = config?.defaultAgent?.takeIf { name ->
