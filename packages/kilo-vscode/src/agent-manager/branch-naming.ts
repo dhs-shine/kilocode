@@ -88,18 +88,8 @@ export class BranchNamingController {
       if (request.signal.aborted) return
       this.deps.log(`Skipped automatic branch naming: ${error}`)
     } finally {
-      if (this.requests.get(id) === request) {
-        this.requests.delete(id)
-        if (!request.signal.aborted) this.clear(id, input.sessionID)
-      }
+      if (this.requests.get(id) === request) this.requests.delete(id)
     }
-  }
-
-  private clear(id: string, sessionID: string): void {
-    const state = this.deps.state()
-    const worktree = state?.getWorktree(id)
-    if (worktree?.autoNameSessionId !== sessionID) return
-    state?.clearAutoName(id)
   }
 
   private async rename(id: string, sessionID: string, generated: string): Promise<void> {

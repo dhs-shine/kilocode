@@ -29,7 +29,7 @@ describe("BranchNamingController", () => {
     fs.rmSync(root, { recursive: true, force: true })
   })
 
-  it("clears automatic naming when the first attempt is not clear yet", async () => {
+  it("retries on a later message when the first attempt is not clear yet", async () => {
     const wt = state.addWorktree({
       branch: "quiet-river",
       path: "/tmp/quiet-river",
@@ -52,7 +52,7 @@ describe("BranchNamingController", () => {
         branchName: {
           generate: async () => {
             requests += 1
-            return { data: { branch: null } }
+            return { data: { branch: requests === 1 ? null : "fix-final-task" } }
           },
         },
       }),
@@ -63,11 +63,12 @@ describe("BranchNamingController", () => {
 
     naming.prompt({ sessionID: "session-1", text: "hi" })
     await settle()
+    expect(state.getWorktree(wt.id)?.autoNameSessionId).toBe("session-1")
     naming.prompt({ sessionID: "session-1", text: "Fix the task" })
     await settle()
 
-    expect(requests).toBe(1)
-    expect(renamed).toEqual([])
+    expect(requests).toBe(2)
+    expect(renamed).toEqual(["fix-final-task"])
     expect(state.getWorktree(wt.id)?.autoNameSessionId).toBeUndefined()
   })
 
