@@ -42,6 +42,31 @@ runs:
         restore-keys: |
           ${{ runner.os }}-bun-
 
+    # kilocode_change start
+    - name: Setup Node for native dependency builds
+      uses: actions/setup-node@v6
+      with:
+        node-version: "24"
+        package-manager-cache: false
+
+    - name: Configure node-gyp Node headers
+      run: |
+        node <<'NODE'
+        const fs = require("node:fs")
+        const path = require("node:path")
+
+        const exe = path.dirname(fs.realpathSync(process.execPath))
+        const dirs = [exe, path.dirname(exe)]
+        const root = dirs.find((dir) => fs.existsSync(path.join(dir, "include", "node", "node.h")))
+        if (!root) {
+          throw new Error(`Node headers not found under ${dirs.join(", ")}`)
+        }
+
+        fs.appendFileSync(process.env.GITHUB_ENV, `npm_config_nodedir=${root}\n`)
+        NODE
+      shell: bash
+    # kilocode_change end
+
     - name: Install setuptools for distutils compatibility
       run: python3 -m pip install setuptools || pip install setuptools || true
       shell: bash
