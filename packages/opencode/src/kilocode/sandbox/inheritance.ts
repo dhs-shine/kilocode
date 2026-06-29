@@ -8,7 +8,7 @@ interface Grant {
   remaining: number
 }
 
-const ttl = 5 * 60 * 1000
+const ttl = 24 * 60 * 60 * 1000
 const grants = new Map<string, Grant>()
 
 function cleanup(now = Date.now()) {

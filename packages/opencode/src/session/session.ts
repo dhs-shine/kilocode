@@ -763,8 +763,10 @@ export const layer: Layer.Layer<
     }) {
       const ctx = yield* InstanceState.context
       const workspace = yield* InstanceState.workspaceID
+      // kilocode_change start - validate trusted sandbox inheritance grant
       const grant = SandboxInheritance.consume(input?.sandboxInheritanceToken)
       if (input?.sandboxInheritanceToken && !grant) yield* Effect.die(new Error("Invalid sandbox inheritance token"))
+      // kilocode_change end
       const session = yield* createNext({
         // kilocode_change start - propagate trusted sandbox inheritance grant
         parentID: input?.parentID,

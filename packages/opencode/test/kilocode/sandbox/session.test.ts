@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { Effect, Layer } from "effect"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { BackgroundJob } from "@/background/job"
@@ -8,6 +8,7 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import * as SandboxInheritance from "@/kilocode/sandbox/inheritance"
 import * as SandboxPolicy from "@/kilocode/sandbox/policy"
 import { SandboxStore } from "@/kilocode/sandbox/store"
+import type { SessionID } from "@/session/schema"
 import { Session } from "@/session/session"
 import { Storage } from "@/storage/storage"
 import { SyncEvent } from "@/sync"
@@ -30,6 +31,19 @@ const it = testEffect(
 )
 
 describe("sandbox session cleanup", () => {
+  test("keeps inheritance grants valid across slow worktree setup", () => {
+    const now = Date.now
+    try {
+      Date.now = () => 1_700_000_000_000
+      const sid = "session" as SessionID
+      const token = SandboxInheritance.issue({ sessionID: sid, directory: "/repo", count: 1 })
+      Date.now = () => 1_700_000_000_000 + 6 * 60 * 1000
+      expect(SandboxInheritance.consume(token)).toEqual({ sessionID: sid, directory: "/repo" })
+    } finally {
+      Date.now = now
+    }
+  })
+
   it.live("forks inherit the source session snapshot", () =>
     Effect.gen(function* () {
       const sessions = yield* Session.Service
