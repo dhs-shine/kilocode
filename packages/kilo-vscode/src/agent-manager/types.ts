@@ -650,6 +650,7 @@ interface QuestionReplyIn {
 
 interface RequestSandboxDefaultIn {
   type: "requestSandboxDefault"
+  requestID?: string
   agentManagerContext?: string
   contextDirectory?: string
 }
