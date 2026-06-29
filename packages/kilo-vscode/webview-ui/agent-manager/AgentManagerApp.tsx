@@ -81,7 +81,6 @@ import { KiloEmbeddingModelsProvider } from "../src/context/kilo-embedding-model
 import { NotificationsProvider } from "../src/context/notifications"
 import { FeedbackProvider } from "../src/context/feedback"
 import { SessionProvider, useSession } from "../src/context/session"
-import { isRootSession } from "../src/context/session-utils"
 import { AgentRequirementsProvider } from "../src/context/agent-requirements"
 import { WorktreeModeProvider } from "../src/context/worktree-mode"
 import { ChatView } from "../src/components/chat"
@@ -98,6 +97,7 @@ import {
   reconcileLocalSessions,
   filterUnassignedSessions,
   admitCreatedSession,
+  isKnownRootSession,
   LOCAL,
 } from "./navigate"
 import { reorderTabs, applyTabOrder, firstOrderedTitle } from "./tab-order"
@@ -238,7 +238,7 @@ const AgentManagerContent: Component = () => {
     setLocalSessionIDs((prev) => (prev.includes(sid) ? prev.filter((id) => id !== sid) : prev))
   const canOpenSession = (sid: string) => {
     const info = session.sessions().find((item) => item.id === sid)
-    return !info || isRootSession(info)
+    return !info || isKnownRootSession(info)
   }
   const [sidebarWidth, setSidebarWidth] = createSignal(persisted?.sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH)
   const [sessionsCollapsed, setSessionsCollapsed] = createSignal(false)
@@ -660,7 +660,7 @@ const AgentManagerContent: Component = () => {
                 .filter((item) => item.worktreeId === sel && !forgotten.has(item.id))
                 .map((item) => item.id),
         )
-        const fallback = all.find((item) => candidates.has(item.id) && isRootSession(item))
+        const fallback = all.find((item) => candidates.has(item.id) && isKnownRootSession(item))
         if (fallback) session.selectSession(fallback.id)
         else session.clearCurrentSession()
       }
@@ -716,7 +716,7 @@ const AgentManagerContent: Component = () => {
     const now = new Date().toISOString()
     for (const id of ids) {
       const real = lookup.get(id)
-      if (real && isRootSession(real)) {
+      if (real && isKnownRootSession(real)) {
         result.push(real)
       } else if (isPending(id)) {
         result.push({ id, title: t("agentManager.session.newSession"), createdAt: now, updatedAt: now })
@@ -735,7 +735,7 @@ const AgentManagerContent: Component = () => {
     return applyTabOrder(
       session
         .sessions()
-        .filter((s) => isRootSession(s) && ids.has(s.id))
+        .filter((s) => isKnownRootSession(s) && ids.has(s.id))
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
       worktreeTabOrder()[worktreeId],
     )

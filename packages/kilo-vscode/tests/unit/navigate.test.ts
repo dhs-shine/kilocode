@@ -449,7 +449,8 @@ describe("remoteSessions", () => {
 
 describe("reconcileLocalSessions", () => {
   const isPending = (id: string) => id.startsWith("pending-")
-  const loaded = (...ids: string[]) => ids.map((id) => ({ id }))
+  const loaded = (...ids: string[]) => ids.map((id) => ({ id, parentID: null }))
+  const sparse = (...ids: string[]) => ids.map((id) => ({ id }))
 
   it("keeps restored local sessions through a partial restart refresh", () => {
     const managed = [
@@ -528,10 +529,33 @@ describe("reconcileLocalSessions", () => {
     expect(result).toEqual({ ids: ["local-1"], forget: [] })
   })
 
+  it("evicts sparse local sessions until ancestry is known", () => {
+    const result = reconcileLocalSessions(["child"], sparse("child"), [{ id: "child", worktreeId: null }], isPending)
+
+    expect(result).toEqual({ ids: [], forget: [] })
+  })
+
+  it("does not forget sparse managed sessions until ancestry is known", () => {
+    const result = reconcileLocalSessions(
+      ["root"],
+      sparse("child"),
+      [
+        { id: "root", worktreeId: null },
+        { id: "child", worktreeId: "wt-1" },
+      ],
+      isPending,
+    )
+
+    expect(result).toBeUndefined()
+  })
+
   it("evicts and forgets a subagent leaked into local tabs", () => {
     const result = reconcileLocalSessions(
       ["root", "child"],
-      [{ id: "root" }, { id: "child", parentID: "root" }],
+      [
+        { id: "root", parentID: null },
+        { id: "child", parentID: "root" },
+      ],
       [
         { id: "root", worktreeId: null },
         { id: "child", worktreeId: null },
@@ -545,7 +569,10 @@ describe("reconcileLocalSessions", () => {
   it("forgets a subagent leaked into a worktree", () => {
     const result = reconcileLocalSessions(
       ["root"],
-      [{ id: "root" }, { id: "child", parentID: "root" }],
+      [
+        { id: "root", parentID: null },
+        { id: "child", parentID: "root" },
+      ],
       [
         { id: "root", worktreeId: null },
         { id: "child", worktreeId: "wt-1" },

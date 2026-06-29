@@ -7,8 +7,6 @@
  * Returns the action to take: select a session by ID, go to local, or do nothing.
  */
 
-import { isRootSession } from "../src/context/session-utils"
-
 /** Sentinel value for the local repo selection. */
 export const LOCAL = "local" as const
 
@@ -16,13 +14,17 @@ type NavResult = { action: "select"; id: string } | { action: typeof LOCAL } | {
 
 type SessionLike = { id: string; parentID?: string | null; createdAt: string }
 
+export function isKnownRootSession(session: Pick<SessionLike, "parentID">): boolean {
+  return session.parentID === null
+}
+
 export function filterUnassignedSessions<T extends SessionLike>(
   sessions: T[],
   worktree: Set<string>,
   local: Set<string>,
 ): T[] {
   return [...sessions]
-    .filter((s) => s.parentID === null && !worktree.has(s.id) && !local.has(s.id))
+    .filter((s) => isKnownRootSession(s) && !worktree.has(s.id) && !local.has(s.id))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
 
@@ -32,7 +34,7 @@ export function admitCreatedSession(
   local: string[],
   worktree: Set<string>,
 ): { pending: string | undefined } | undefined {
-  if (session.parentID !== null) return
+  if (!isKnownRootSession(session)) return
   const pending = draft && local.includes(draft) ? draft : undefined
   if (!pending && local.includes(session.id)) return
   if (worktree.has(session.id)) return
@@ -175,8 +177,9 @@ export function reconcileLocalSessions(
   managed: { id: string; worktreeId: string | null }[],
   isPending: (id: string) => boolean,
 ): { ids: string[]; forget: string[] } | undefined {
-  const seen = new Set(loaded.filter(isRootSession).map((s) => s.id))
-  const children = new Set(loaded.filter((s) => !isRootSession(s)).map((s) => s.id))
+  const seen = new Set(loaded.filter(isKnownRootSession).map((s) => s.id))
+  const children = new Set(loaded.filter((s) => s.parentID !== undefined && !isKnownRootSession(s)).map((s) => s.id))
+  const unknown = new Set(loaded.filter((s) => s.parentID === undefined).map((s) => s.id))
   const local = new Set(managed.filter((s) => !s.worktreeId).map((s) => s.id))
   const worktree = new Set(managed.filter((s) => s.worktreeId).map((s) => s.id))
   const ids: string[] = []
@@ -187,7 +190,7 @@ export function reconcileLocalSessions(
       ids.push(id)
       continue
     }
-    if (children.has(id) || worktree.has(id)) continue
+    if (children.has(id) || unknown.has(id) || worktree.has(id)) continue
     if (seen.has(id) || local.has(id)) {
       ids.push(id)
       continue
