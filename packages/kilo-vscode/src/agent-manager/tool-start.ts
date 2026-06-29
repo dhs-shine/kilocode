@@ -18,9 +18,15 @@ export interface ToolRequest {
   requestID: string
   sessionID?: string
   directory?: string
+  sourceDirectory?: string
   mode: "worktree" | "local"
   versions?: boolean
   tasks: ToolTask[]
+}
+
+export interface ToolSource {
+  sessionID?: string
+  directory?: string
 }
 
 interface WorktreeCreated {
@@ -44,7 +50,7 @@ export interface ToolDeps {
   claimRequest?: (requestID: string) => boolean
   cleanupWorktree: (wid: string, dir: string) => Promise<void>
   setup: (dir: string, branch?: string, id?: string) => Promise<void>
-  createSessionInWorktree: (dir: string, branch: string, id?: string) => Promise<Session | null>
+  createSessionInWorktree: (dir: string, branch: string, id?: string, source?: ToolSource) => Promise<Session | null>
   sessionMetadata: (client: KiloClient, dir: string) => Promise<Record<string, unknown>>
   registerWorktreeSession: (sid: string, dir: string) => void
   notifyReady: (sid: string, result: CreateWorktreeResult, wid?: string) => void
@@ -111,7 +117,7 @@ async function prompt(client: KiloClient, sid: string, dir: string, task: ToolTa
   )
 }
 
-async function local(deps: ToolDeps, client: KiloClient, task: ToolTask, directory?: string) {
+async function local(deps: ToolDeps, client: KiloClient, task: ToolTask, directory?: string, source?: ToolSource) {
   const root = deps.getRoot()
   const state = deps.getState()
   if (!root || !state) return false
@@ -129,7 +135,14 @@ async function local(deps: ToolDeps, client: KiloClient, task: ToolTask, directo
   const target = wt?.path ?? root
   const metadata = await deps.sessionMetadata(client, target)
   const { data } = await client.session.create(
-    { directory: target, platform: PLATFORM, metadata },
+    {
+      directory: target,
+      platform: PLATFORM,
+      metadata,
+      ...(source?.sessionID
+        ? { sourceID: source.sessionID, ...(source.directory ? { sourceDirectory: source.directory } : {}) }
+        : {}),
+    },
     { throwOnError: true },
   )
   const session = data
@@ -157,6 +170,7 @@ async function worktree(
   total: number,
   groupId?: string,
   versions?: boolean,
+  source?: ToolSource,
 ) {
   const baseBranch = branch(task.branchName) ?? branch(task.name)
   const baseLabel = label(task.name) ?? label(task.branchName) ?? label(task.prompt)
@@ -170,7 +184,7 @@ async function worktree(
   if (!created) return false
 
   await deps.setup(created.result.path, created.result.branch, created.worktree.id)
-  const session = await deps.createSessionInWorktree(created.result.path, created.result.branch, created.worktree.id)
+  const session = await deps.createSessionInWorktree(created.result.path, created.result.branch, created.worktree.id, source)
   if (!session) {
     await deps.cleanupWorktree(created.worktree.id, created.result.path)
     return false
@@ -210,6 +224,7 @@ export async function startFromTool(deps: ToolDeps, req: ToolRequest): Promise<v
   const versions = req.mode === "worktree" && req.versions === true && total > 1
   const groupId = versions ? `grp-${Date.now()}` : undefined
   const state = { ok: 0 }
+  const source = { sessionID: req.sessionID, directory: req.sourceDirectory ?? req.directory }
 
   deps.post({ type: "agentManager.multiVersionProgress", status: "creating", total, completed: 0, groupId })
   for (let i = 0; i < req.tasks.length; i++) {
@@ -217,8 +232,8 @@ export async function startFromTool(deps: ToolDeps, req: ToolRequest): Promise<v
     try {
       const done =
         req.mode === "local"
-          ? await local(deps, client, task, req.directory)
-          : await worktree(deps, client, task, i, total, groupId, versions)
+          ? await local(deps, client, task, req.directory, source)
+          : await worktree(deps, client, task, i, total, groupId, versions, source)
       if (done) state.ok++
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -262,6 +277,7 @@ export function parseToolRequest(value: unknown): ToolRequest | undefined {
     requestID: typeof value.requestID === "string" ? value.requestID : `am-${Date.now()}`,
     sessionID: typeof value.sessionID === "string" ? value.sessionID : undefined,
     directory: typeof value.directory === "string" ? value.directory : undefined,
+    sourceDirectory: typeof value.sourceDirectory === "string" ? value.sourceDirectory : undefined,
     mode,
     versions: typeof value.versions === "boolean" ? value.versions : undefined,
     tasks: parsed,

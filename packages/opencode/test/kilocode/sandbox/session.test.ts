@@ -46,6 +46,26 @@ describe("sandbox session cleanup", () => {
     }),
   )
 
+  it.live("created sessions inherit the source snapshot across directories", () =>
+    Effect.gen(function* () {
+      const sessions = yield* Session.Service
+      const dir = yield* tmpdirScoped({ git: true, config: { experimental: { sandbox: true } } })
+      const worktree = yield* tmpdirScoped({ git: true })
+      const source = yield* provideInstance(dir)(sessions.create({ title: "sandbox-source" }))
+      const status = yield* provideInstance(dir)(SandboxPolicy.status(source.id))
+      if (!status.available) return
+
+      const child = yield* provideInstance(worktree)(
+        sessions.create({ title: "sandbox-child", sourceID: source.id, sourceDirectory: dir }),
+      )
+      expect((yield* provideInstance(worktree)(SandboxPolicy.status(child.id))).enabled).toBe(true)
+
+      yield* provideInstance(dir)(SandboxPolicy.toggle(source.id))
+      expect((yield* provideInstance(dir)(SandboxPolicy.status(source.id))).enabled).toBe(false)
+      expect((yield* provideInstance(worktree)(SandboxPolicy.status(child.id))).enabled).toBe(true)
+    }),
+  )
+
   it.live("clears every directory snapshot when removing outside instance context", () =>
     Effect.gen(function* () {
       const session = yield* Session.Service

@@ -254,6 +254,8 @@ export const CreateInput = Schema.optional(
     metadata: Schema.optional(Metadata),
     permission: Schema.optional(Permission.Ruleset),
     platform: Schema.optional(Schema.String), // kilocode_change - per-session platform override for telemetry attribution
+    sourceID: Schema.optional(SessionID), // kilocode_change - inherited sandbox policy source
+    sourceDirectory: Schema.optional(Schema.String), // kilocode_change - inherited sandbox source directory
     workspaceID: Schema.optional(WorkspaceID),
   }),
 )
@@ -489,6 +491,8 @@ export interface Interface {
     metadata?: typeof Metadata.Type
     permission?: Permission.Ruleset
     platform?: string // kilocode_change - per-session platform override for telemetry attribution
+    sourceID?: SessionID // kilocode_change - inherited sandbox policy source
+    sourceDirectory?: string // kilocode_change - inherited sandbox source directory
     workspaceID?: WorkspaceID
   }) => Effect.Effect<Info>
   readonly fork: (input: { sessionID: SessionID; messageID?: MessageID }) => Effect.Effect<Info, NotFound>
@@ -567,6 +571,7 @@ export const layer: Layer.Layer<
       permission?: Permission.Ruleset
       platform?: string // kilocode_change - per-session platform override for telemetry attribution
       sourceID?: SessionID // kilocode_change - inherited sandbox policy source
+      sourceDirectory?: string // kilocode_change - inherited sandbox source directory
     }) {
       const ctx = yield* InstanceState.context
       const result: Info = {
@@ -595,7 +600,7 @@ export const layer: Layer.Layer<
       // kilocode_change start - initialize inherited state before session.created subscribers run
       KiloSession.register({ id: result.id, parentID: result.parentID, platform: input.platform })
       const source = input.sourceID ?? result.parentID
-      if (source) yield* SandboxPolicy.inherit(source, result.id)
+      if (source) yield* SandboxPolicy.inherit(source, result.id, undefined, input.sourceDirectory)
       // kilocode_change end
 
       yield* sync.run(Event.Created, { sessionID: result.id, info: result })
@@ -746,6 +751,8 @@ export const layer: Layer.Layer<
       metadata?: typeof Metadata.Type
       permission?: Permission.Ruleset
       platform?: string // kilocode_change - per-session platform override for telemetry attribution
+      sourceID?: SessionID // kilocode_change - inherited sandbox policy source
+      sourceDirectory?: string // kilocode_change - inherited sandbox source directory
       workspaceID?: WorkspaceID
     }) {
       const ctx = yield* InstanceState.context
@@ -760,6 +767,8 @@ export const layer: Layer.Layer<
         metadata: input?.metadata,
         permission: input?.permission,
         platform: input?.platform, // kilocode_change
+        sourceID: input?.sourceID, // kilocode_change
+        sourceDirectory: input?.sourceDirectory, // kilocode_change
         workspaceID: input?.workspaceID ?? workspace,
       })
       return session

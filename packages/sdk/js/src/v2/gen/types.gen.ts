@@ -7166,6 +7166,8 @@ export type SessionCreateData = {
     }
     permission?: PermissionRuleset
     platform?: string
+    sourceID?: string
+    sourceDirectory?: string
     workspaceID?: string
   }
   path?: never

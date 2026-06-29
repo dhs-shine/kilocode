@@ -3762,6 +3762,8 @@ export class Session2 extends HeyApiClient {
       }
       permission?: PermissionRuleset
       platform?: string
+      sourceID?: string
+      sourceDirectory?: string
       workspaceID?: string
     },
     options?: Options<never, ThrowOnError>,
@@ -3780,6 +3782,8 @@ export class Session2 extends HeyApiClient {
             { in: "body", key: "metadata" },
             { in: "body", key: "permission" },
             { in: "body", key: "platform" },
+            { in: "body", key: "sourceID" },
+            { in: "body", key: "sourceDirectory" },
             { in: "body", key: "workspaceID" },
           ],
         },
