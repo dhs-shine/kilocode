@@ -760,7 +760,12 @@ const AgentManagerContent: Component = () => {
     const tabs = activeWorktreeSessions()
     if (tabs.length === 0) return
     const current = session.currentSessionID()
-    if (current && tabs.some((item) => item.id === current)) return
+    if (current) {
+      if (tabs.some((item) => item.id === current)) return
+      const info = session.sessions().find((item) => item.id === current)
+      const state = managedSessions().find((item) => item.id === current)
+      if (info && isKnownRootSession(info) && (!state || state.worktreeId === sel)) return
+    }
     const remembered = tabMemory()[sel]
     const target = remembered ? tabs.find((item) => item.id === remembered) : undefined
     const fallback = target ?? tabs[0]
