@@ -301,12 +301,8 @@ export class WorktreeManager {
     const available = (name: string) => !locals.has(name) && !remoteNames.has(name)
     const branch = available(base)
       ? base
-      : (() => {
-          for (let suffix = 2; ; suffix++) {
-            const name = `${base}-${suffix}`
-            if (available(name)) return name
-          }
-        })()
+      : Array.from({ length: 10_000 }, (_, index) => `${base}-${index + 2}`).find(available)
+    if (!branch) throw new Error("No available generated branch name")
 
     await git.raw(["branch", "-m", current, branch])
     this.log(`Renamed branch: ${current} -> ${branch}`)

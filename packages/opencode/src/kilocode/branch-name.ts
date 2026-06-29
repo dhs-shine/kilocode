@@ -1,5 +1,4 @@
 import { Agent } from "@/agent/agent"
-import { Identifier } from "@/id/id"
 import { KiloLLM } from "@/kilocode/session/llm"
 import { ModelID, ProviderID } from "@/provider/schema"
 import { Provider } from "@/provider/provider"
@@ -10,16 +9,18 @@ import { Effect } from "effect"
 
 const LIMIT = 4
 const CHARS = 1_000
+const BRANCH_CHARS = 50
 
 const PROMPT = `Generate a Git branch name for the coherent engineering workstream described by the user's messages.
 
 Return exactly one line:
-- a lowercase kebab-case branch slug with 2-6 words, or
+- a lowercase kebab-case branch slug, or
 - null when there is not yet a clear, stable workstream
 
 Return null for greetings, acknowledgements, capability questions, casual conversation, vague requests, unresolved brainstorming, or messages that only select an option without enough preceding context.
 A concrete implementation, investigation, planning, documentation, or research task is a valid workstream.
 Name the durable goal or outcome, not a tentative implementation detail. Prefer an action and object, such as fix-token-refresh-race or research-branch-naming.
+If the user asks for a specific branch name, prefer that name.
 Do not include a prefix, ticket number, explanation, quotes, markdown, or punctuation other than hyphens.`
 
 function text(message: MessageV2.WithParts) {
@@ -36,8 +37,12 @@ export function messages(history: MessageV2.WithParts[], latest: string) {
     .map(text)
     .filter(Boolean)
   const prompt = latest.trim()
-  const all = prior.at(-1) === prompt || !prompt ? prior : [...prior, prompt]
+  const all = normalize(prior.at(-1) ?? "") === normalize(prompt) || !prompt ? prior : [...prior, prompt]
   return all.slice(-LIMIT).map((message) => message.slice(0, CHARS))
+}
+
+function normalize(value: string) {
+  return value.trim().replace(/\s+/g, " ")
 }
 
 export function parse(value: string) {
@@ -51,8 +56,14 @@ export function parse(value: string) {
     .replace(/^['"`]|['"`]$/g, "")
     .toLowerCase()
   if (!line || line === "null") return null
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+){1,5}$/.test(line)) return null
-  return line.slice(0, 50).replace(/-+$/g, "") || null
+  return (
+    line
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .replace(/-+/g, "-")
+      .slice(0, BRANCH_CHARS)
+      .replace(/-+$/g, "") || null
+  )
 }
 
 export const generate = Effect.fn("BranchName.generate")(function* (input: {
@@ -71,7 +82,6 @@ export const generate = Effect.fn("BranchName.generate")(function* (input: {
       : yield* provider.defaultModel()
   const model =
     (yield* provider.getSmallModel(ref.providerID)) ?? (yield* provider.getModel(ref.providerID, ref.modelID))
-  const sid = SessionID.make(Identifier.ascending("session"))
   const agent: Agent.Info = {
     name: "branch-name",
     mode: "primary",
@@ -83,7 +93,7 @@ export const generate = Effect.fn("BranchName.generate")(function* (input: {
   }
   const user: MessageV2.User = {
     id: MessageID.ascending(),
-    sessionID: sid,
+    sessionID: input.sessionID,
     role: "user",
     time: { created: Date.now() },
     agent: agent.name,

@@ -33,11 +33,12 @@ function user(text: string, synthetic = false): MessageV2.WithParts {
 }
 
 describe("branch name generation helpers", () => {
-  test("accepts a concise kebab-case task and rejects ambiguous output", () => {
+  test("sanitizes model output into a safe branch segment", () => {
     expect(parse("fix-token-refresh-race")).toBe("fix-token-refresh-race")
+    expect(parse("Fix OAuth / Token Refresh!")).toBe("fix-oauth-token-refresh")
+    expect(parse("feature")).toBe("feature")
     expect(parse("null")).toBeNull()
-    expect(parse("greeting")).toBeNull()
-    expect(parse("Here is a branch: fix-auth")).toBeNull()
+    expect(parse("!!!")).toBeNull()
   })
 
   test("removes reasoning wrappers before parsing", () => {
@@ -57,6 +58,11 @@ describe("branch name generation helpers", () => {
       "hi",
       "Can you inspect auth?",
       "Fix the token refresh race",
+    ])
+    expect(messages([...history, user("Fix   the token refresh race")], "Fix the token refresh race")).toEqual([
+      "hi",
+      "Can you inspect auth?",
+      "Fix   the token refresh race",
     ])
   })
 

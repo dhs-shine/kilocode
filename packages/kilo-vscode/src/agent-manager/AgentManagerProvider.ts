@@ -378,12 +378,6 @@ export class AgentManagerProvider implements Disposable {
   }
 
   private onBranchPrompt(m: AgentManagerInMessage): void {
-    if (m.type === "questionReply") {
-      const sessionID = m.sessionID ?? this.activeSessionId
-      const text = m.answers.flat().join("\n").trim()
-      if (sessionID && text) this.naming.prompt({ sessionID, text })
-      return
-    }
     if (m.type !== "sendMessage" && m.type !== "sendCommand") return
     const sessionID = m.sessionID ?? m.draftID ?? this.activeSessionId
     if (!sessionID) return
@@ -1430,6 +1424,12 @@ export class AgentManagerProvider implements Disposable {
       const msg = messages[i]!
       if (text) {
         this.log(`Sending initial message to version ${i + 1} (session=${msg.sessionId})`)
+        this.naming.prompt({
+          sessionID: msg.sessionId,
+          text,
+          providerID: msg.providerID,
+          modelID: msg.modelID,
+        })
       }
       this.postToWebview({ type: "agentManager.sendInitialMessage", ...msg })
       if (text && i < messages.length - 1) {

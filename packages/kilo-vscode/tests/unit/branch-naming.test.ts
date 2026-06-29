@@ -29,7 +29,7 @@ describe("BranchNamingController", () => {
     fs.rmSync(root, { recursive: true, force: true })
   })
 
-  it("keeps the placeholder armed when the conversation is not clear yet", async () => {
+  it("clears automatic naming when the first attempt is not clear yet", async () => {
     const wt = state.addWorktree({
       branch: "quiet-river",
       path: "/tmp/quiet-river",
@@ -39,6 +39,7 @@ describe("BranchNamingController", () => {
     state.addSession("session-1", wt.id)
     state.armAutoName(wt.id, "session-1")
     const renamed: string[] = []
+    let requests = 0
     const naming = new BranchNamingController({
       state: () => state,
       manager: () => ({
@@ -47,7 +48,14 @@ describe("BranchNamingController", () => {
           return branch
         },
       }),
-      client: async () => ({ branchName: { generate: async () => ({ data: { branch: null } }) } }),
+      client: async () => ({
+        branchName: {
+          generate: async () => {
+            requests += 1
+            return { data: { branch: null } }
+          },
+        },
+      }),
       settings: () => ({ enabled: true, prefix: "" }),
       push: () => {},
       log: () => {},
@@ -55,12 +63,15 @@ describe("BranchNamingController", () => {
 
     naming.prompt({ sessionID: "session-1", text: "hi" })
     await settle()
+    naming.prompt({ sessionID: "session-1", text: "Fix the task" })
+    await settle()
 
+    expect(requests).toBe(1)
     expect(renamed).toEqual([])
-    expect(state.getWorktree(wt.id)?.autoNameSessionId).toBe("session-1")
+    expect(state.getWorktree(wt.id)?.autoNameSessionId).toBeUndefined()
   })
 
-  it("renames once when a later message establishes the task and applies the user prefix", async () => {
+  it("renames once and applies the user prefix", async () => {
     const wt = state.addWorktree({
       branch: "quiet-river",
       path: "/tmp/quiet-river",
@@ -77,7 +88,7 @@ describe("BranchNamingController", () => {
         branchName: {
           generate: async (input) => {
             prompts.push(input.prompt)
-            return { data: { branch: input.prompt === "hi" ? null : "fix-token-refresh-race" } }
+            return { data: { branch: "fix-token-refresh-race" } }
           },
         },
       }),
@@ -86,12 +97,10 @@ describe("BranchNamingController", () => {
       log: () => {},
     })
 
-    naming.prompt({ sessionID: "session-1", text: "hi" })
-    await settle()
     naming.prompt({ sessionID: "session-1", text: "Fix the token refresh race" })
     await settle()
 
-    expect(prompts).toEqual(["hi", "Fix the token refresh race"])
+    expect(prompts).toEqual(["Fix the token refresh race"])
     expect(state.getWorktree(wt.id)).toMatchObject({
       branch: "marius/features/fix-token-refresh-race",
       autoNameSessionId: undefined,
@@ -130,7 +139,7 @@ describe("BranchNamingController", () => {
     expect(state.getWorktree(wt.id)?.branch).toBe("my-custom-branch")
   })
 
-  it("ignores an older result after a newer user message", async () => {
+  it("does not start another request while naming is pending", async () => {
     const wt = state.addWorktree({
       branch: "quiet-river",
       path: "/tmp/quiet-river",
@@ -154,8 +163,7 @@ describe("BranchNamingController", () => {
         branchName: {
           generate: async () => {
             requests += 1
-            if (requests === 1) return first.promise
-            return { data: { branch: "fix-final-task" } }
+            return first.promise
           },
         },
       }),
@@ -168,9 +176,10 @@ describe("BranchNamingController", () => {
     await Promise.resolve()
     naming.prompt({ sessionID: "session-1", text: "Fix the final task" })
     await settle()
-    first.resolve({ data: { branch: "explore-old-options" } })
+    first.resolve({ data: { branch: "explore-options" } })
     await settle()
 
-    expect(renamed).toEqual(["fix-final-task"])
+    expect(requests).toBe(1)
+    expect(renamed).toEqual(["explore-options"])
   })
 })

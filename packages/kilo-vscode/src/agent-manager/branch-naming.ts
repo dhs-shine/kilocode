@@ -37,7 +37,6 @@ interface Deps {
 }
 
 export class BranchNamingController {
-  private readonly revisions = new Map<string, number>()
   private readonly requests = new Map<string, AbortController>()
 
   constructor(private readonly deps: Deps) {}
@@ -55,13 +54,11 @@ export class BranchNamingController {
       state.clearAutoName(worktree.id)
       return
     }
+    if (this.requests.has(worktree.id)) return
 
-    const revision = (this.revisions.get(worktree.id) ?? 0) + 1
-    this.revisions.set(worktree.id, revision)
-    this.requests.get(worktree.id)?.abort()
     const request = new AbortController()
     this.requests.set(worktree.id, request)
-    void this.generate(worktree.id, input, revision, request)
+    void this.generate(worktree.id, input, request)
   }
 
   dispose(): void {
@@ -69,7 +66,7 @@ export class BranchNamingController {
     this.requests.clear()
   }
 
-  private async generate(id: string, input: Prompt, revision: number, request: AbortController): Promise<void> {
+  private async generate(id: string, input: Prompt, request: AbortController): Promise<void> {
     const initial = this.deps.state()?.getWorktree(id)
     if (!initial) return
 
@@ -85,14 +82,24 @@ export class BranchNamingController {
         },
         { throwOnError: true, signal: request.signal },
       )
-      if (!data.branch || request.signal.aborted || this.revisions.get(id) !== revision) return
+      if (!data.branch || request.signal.aborted) return
       await this.rename(id, input.sessionID, data.branch)
     } catch (error) {
       if (request.signal.aborted) return
       this.deps.log(`Skipped automatic branch naming: ${error}`)
     } finally {
-      if (this.requests.get(id) === request) this.requests.delete(id)
+      if (this.requests.get(id) === request) {
+        this.requests.delete(id)
+        if (!request.signal.aborted) this.clear(id, input.sessionID)
+      }
     }
+  }
+
+  private clear(id: string, sessionID: string): void {
+    const state = this.deps.state()
+    const worktree = state?.getWorktree(id)
+    if (worktree?.autoNameSessionId !== sessionID) return
+    state?.clearAutoName(id)
   }
 
   private async rename(id: string, sessionID: string, generated: string): Promise<void> {
