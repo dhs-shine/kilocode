@@ -149,6 +149,29 @@ async function waitQuestion(sessionID: string) {
   }
 }
 
+function userMessage(input: { sessionID: SessionID; agent: string; text: string }) {
+  const id = MessageID.ascending()
+  return {
+    info: {
+      id,
+      role: "user",
+      sessionID: input.sessionID,
+      time: { created: Date.now() },
+      agent: input.agent,
+      model,
+    },
+    parts: [
+      {
+        id: PartID.ascending(),
+        messageID: id,
+        sessionID: input.sessionID,
+        type: "text",
+        text: input.text,
+      },
+    ],
+  } satisfies MessageV2.WithParts
+}
+
 function content(message: MessageV2.WithParts) {
   return message.parts
     .filter((part): part is MessageV2.TextPart => part.type === "text")
@@ -687,6 +710,42 @@ describe("plan_exit detection", () => {
       })
 
       await expect(fs.stat(dir).then((stat) => stat.isDirectory())).resolves.toBe(true)
+    }))
+
+  test("native plan reminder keeps in-chat approval for clients without follow-up support", () =>
+    withInstance(async () => {
+      const prev = process.env.KILO_CLIENT
+      try {
+        const session = await sessions.create({})
+
+        process.env.KILO_CLIENT = "vscode"
+        const supported = userMessage({ sessionID: session.id, agent: "plan", text: "Create a plan." })
+        await KiloSessionPrompt.insertPlanReminders({
+          agent: { name: "plan", options: {} },
+          session,
+          userMessage: supported,
+          messages: [supported],
+        })
+        const supportedText = content(supported)
+        expect(supportedText).toContain("client follow-up after plan_exit asks whether to implement")
+        expect(supportedText).not.toContain("Finalize and save the plan")
+
+        process.env.KILO_CLIENT = "acp"
+        const acp = userMessage({ sessionID: session.id, agent: "plan", text: "Create a plan." })
+        await KiloSessionPrompt.insertPlanReminders({
+          agent: { name: "plan", options: {} },
+          session,
+          userMessage: acp,
+          messages: [acp],
+        })
+        const text = content(acp)
+        expect(text).toContain("Finalize and save the plan")
+        expect(text).toContain("Continue refining")
+        expect(text).not.toContain("client follow-up after plan_exit asks")
+      } finally {
+        if (prev === undefined) delete process.env.KILO_CLIENT
+        else process.env.KILO_CLIENT = prev
+      }
     }))
 
   test("native plan reminder prefers project plan path instructions over fallback", () =>
