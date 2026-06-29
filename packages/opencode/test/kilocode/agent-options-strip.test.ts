@@ -39,7 +39,16 @@ describe("stripInternalOptions", () => {
     expect(result).toEqual({ reasoningEffort: "medium" })
   })
 
+  test("strips Scout/reference agent metadata while keeping provider options", () => {
+    const result = stripInternalOptions({
+      reference: { name: "docs" },
+      resolved: { name: "docs", path: "/tmp/docs" },
+      reasoningEffort: "high",
+    })
+    expect(result).toEqual({ reasoningEffort: "high" })
+  })
+
   test("denylist covers exactly the documented internal keys", () => {
-    expect([...INTERNAL_OPTION_KEYS]).toEqual(["id", "displayName", "source"])
+    expect([...INTERNAL_OPTION_KEYS]).toEqual(["id", "displayName", "source", "reference", "resolved"])
   })
 })

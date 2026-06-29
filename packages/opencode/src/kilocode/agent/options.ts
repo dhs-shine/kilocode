@@ -4,6 +4,8 @@
 //   - `id`:          mode identifier used to recognize built-in modes (see session/prompt.ts)
 //   - `displayName`: human-readable name for org/marketplace modes
 //   - `source`:      origin marker ("organization" | "global" | "project")
+//   - `reference`:   configured reference descriptor for Scout/reference agents (see agent/agent.ts)
+//   - `resolved`:    resolved reference data for Scout/reference agents
 //
 // These are NOT provider request parameters. The agent `options` record is
 // otherwise forwarded verbatim into providerOptions, so any of these keys that
@@ -12,7 +14,7 @@
 //
 // We strip only this known denylist rather than allowlisting provider options,
 // so genuine provider options an agent sets continue to pass through untouched.
-export const INTERNAL_OPTION_KEYS = ["id", "displayName", "source"] as const
+export const INTERNAL_OPTION_KEYS = ["id", "displayName", "source", "reference", "resolved"] as const
 
 const internal: ReadonlySet<string> = new Set(INTERNAL_OPTION_KEYS)
 
