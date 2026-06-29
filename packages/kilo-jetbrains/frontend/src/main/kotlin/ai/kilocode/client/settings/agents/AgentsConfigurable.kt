@@ -12,6 +12,7 @@ import ai.kilocode.client.settings.base.SettingsListCell
 import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.SettingsListPanel
 import ai.kilocode.client.settings.base.SettingsListSelection
+import ai.kilocode.client.settings.base.SettingsMessageException
 import ai.kilocode.client.settings.base.SettingsDraftPage
 import ai.kilocode.client.settings.base.SettingsDraftState
 import ai.kilocode.client.ui.UiStyle
@@ -200,7 +201,7 @@ internal class AgentsSettingsUi(
         val selection = selectionIndex()
         mutateAndReload(selection) {
             val removed = service<KiloAgentBehaviorService>().removeAgent(dir, agent.name)
-            if (!removed) return@mutateAndReload false
+            if (!removed) throw SettingsMessageException(KiloBundle.message("settings.agentBehavior.agents.delete.failed"))
             withContext(edt) {
                 prune(agent.name)
             }
