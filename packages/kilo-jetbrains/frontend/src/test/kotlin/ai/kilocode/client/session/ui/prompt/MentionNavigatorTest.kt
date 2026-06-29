@@ -52,8 +52,10 @@ class MentionNavigatorTest : BasePlatformTestCase() {
         val resolved = CountDownLatch(2)
         provider.validate(text, -1) { resolved.countDown() }
         assertTrue("mention validation did not complete", resolved.await(5, TimeUnit.SECONDS))
-        assertTrue(provider.mentionAt(text, 6)?.resolved == true)
-        assertTrue(provider.mentionAt(text, 20)?.resolved == false)
+        waitFor {
+            provider.mentionAt(text, 6)?.resolved == true &&
+                provider.mentionAt(text, 20)?.resolved == false
+        }
     }
 
     override fun tearDown() {
