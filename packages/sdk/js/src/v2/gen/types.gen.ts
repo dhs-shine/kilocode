@@ -11042,6 +11042,7 @@ export type KilocodeSessionModelUsageResponses = {
    * Model usage for a session tree
    */
   200: {
+    sessionIDs: Array<string>
     totals: {
       steps: number
       cost: number
