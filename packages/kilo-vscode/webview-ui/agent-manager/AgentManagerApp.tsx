@@ -82,6 +82,7 @@ import { NotificationsProvider } from "../src/context/notifications"
 import { FeedbackProvider } from "../src/context/feedback"
 import { SessionProvider, useSession } from "../src/context/session"
 import { isRootSession } from "../src/context/session-utils"
+import { AgentRequirementsProvider } from "../src/context/agent-requirements"
 import { WorktreeModeProvider } from "../src/context/worktree-mode"
 import { ChatView } from "../src/components/chat"
 import HistoryView from "../src/components/history/HistoryView"
@@ -3157,13 +3158,15 @@ export const AgentManagerApp: Component = () => {
                               <KiloEmbeddingModelsProvider>
                                 <NotificationsProvider>
                                   <SessionProvider>
-                                    <FeedbackProvider>
-                                      <WorktreeModeProvider>
-                                        <DataBridge>
-                                          <AgentManagerContent />
-                                        </DataBridge>
-                                      </WorktreeModeProvider>
-                                    </FeedbackProvider>
+                                    <AgentRequirementsProvider>
+                                      <FeedbackProvider>
+                                        <WorktreeModeProvider>
+                                          <DataBridge>
+                                            <AgentManagerContent />
+                                          </DataBridge>
+                                        </WorktreeModeProvider>
+                                      </FeedbackProvider>
+                                    </AgentRequirementsProvider>
                                   </SessionProvider>
                                 </NotificationsProvider>
                               </KiloEmbeddingModelsProvider>
