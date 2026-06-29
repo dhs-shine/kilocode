@@ -338,10 +338,14 @@ describe("plan_exit detection", () => {
         expect(question.questions[0].options.map((item) => item.label)).toEqual([
           PlanFollowup.ANSWER_NEW_SESSION,
           PlanFollowup.ANSWER_CONTINUE,
+          PlanFollowup.ANSWER_KEEP_REFINING,
         ])
         expect(question.questions[0].options.find((item) => item.label === PlanFollowup.ANSWER_CONTINUE)?.mode).toBe(
           "code",
         )
+        expect(
+          question.questions[0].options.find((item) => item.label === PlanFollowup.ANSWER_KEEP_REFINING)?.mode,
+        ).toBe("plan")
         await questions.reject(question.id)
         await expect(pending).resolves.toBe("break")
       } finally {
