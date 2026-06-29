@@ -7,6 +7,8 @@ import {
   reconcileLocalSessions,
   filterUnassignedSessions,
   admitCreatedSession,
+  keepWorktreeSession,
+  prunePendingWorktreeSessions,
   remoteSessions,
   LOCAL,
 } from "../../webview-ui/agent-manager/navigate"
@@ -312,6 +314,34 @@ describe("admitCreatedSession", () => {
   it("rejects existing local and worktree sessions", () => {
     expect(admitCreatedSession({ id: "local", parentID: null }, undefined, local, worktree)).toBeUndefined()
     expect(admitCreatedSession({ id: "worktree", parentID: null }, undefined, local, worktree)).toBeUndefined()
+  })
+})
+
+describe("keepWorktreeSession", () => {
+  const sessions = [{ id: "root", parentID: null }, { id: "child", parentID: "root" }, { id: "sparse" }]
+
+  it("keeps known roots already mapped to the selected worktree", () => {
+    expect(keepWorktreeSession("root", "wt-1", sessions, [{ id: "root", worktreeId: "wt-1" }], {})).toBe(true)
+  })
+
+  it("keeps pending worktree roots before managed state catches up", () => {
+    expect(keepWorktreeSession("root", "wt-1", sessions, [], { root: "wt-1" })).toBe(true)
+  })
+
+  it("does not keep local, sparse, or child sessions", () => {
+    expect(keepWorktreeSession("root", "wt-1", sessions, [{ id: "root", worktreeId: null }], {})).toBe(false)
+    expect(keepWorktreeSession("sparse", "wt-1", sessions, [], { sparse: "wt-1" })).toBe(false)
+    expect(keepWorktreeSession("child", "wt-1", sessions, [], { child: "wt-1" })).toBe(false)
+  })
+})
+
+describe("prunePendingWorktreeSessions", () => {
+  it("drops pending entries once managed state includes them", () => {
+    expect(prunePendingWorktreeSessions({ a: "wt-1", b: "wt-2" }, [{ id: "a" }])).toEqual({ b: "wt-2" })
+  })
+
+  it("returns undefined when pending entries are unchanged", () => {
+    expect(prunePendingWorktreeSessions({ a: "wt-1" }, [{ id: "b" }])).toBeUndefined()
   })
 })
 

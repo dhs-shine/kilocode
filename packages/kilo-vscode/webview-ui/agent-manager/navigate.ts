@@ -18,6 +18,30 @@ export function isKnownRootSession(session: Pick<SessionLike, "parentID">): bool
   return session.parentID === null
 }
 
+export function keepWorktreeSession(
+  current: string | undefined,
+  worktreeId: string,
+  sessions: Pick<SessionLike, "id" | "parentID">[],
+  managed: { id: string; worktreeId: string | null }[],
+  pending: Record<string, string>,
+): boolean {
+  if (!current) return false
+  const info = sessions.find((item) => item.id === current)
+  if (!info || !isKnownRootSession(info)) return false
+  const state = managed.find((item) => item.id === current)
+  return state?.worktreeId === worktreeId || pending[current] === worktreeId
+}
+
+export function prunePendingWorktreeSessions(
+  pending: Record<string, string>,
+  managed: { id: string }[],
+): Record<string, string> | undefined {
+  const ids = new Set(managed.map((item) => item.id))
+  const entries = Object.entries(pending).filter(([id]) => !ids.has(id))
+  if (entries.length === Object.keys(pending).length) return
+  return Object.fromEntries(entries)
+}
+
 export function filterUnassignedSessions<T extends SessionLike>(
   sessions: T[],
   worktree: Set<string>,
