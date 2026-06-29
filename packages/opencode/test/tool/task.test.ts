@@ -597,7 +597,7 @@ describe("tool.task", () => {
                   injected.push(input)
                   return Effect.as(Deferred.succeed(parentInjected, undefined), reply(input, "ack"))
                 }
-                return Effect.die(new Error("child prompt failed"))
+                return Effect.die(new Error("child prompt failed and can be resumed later"))
               },
             } satisfies TaskPromptOps,
           },

@@ -85,9 +85,10 @@ function backgroundMessage(input: {
       ? `Background task completed: ${input.description}`
       : `Background task failed: ${input.description}`
   // kilocode_change start - surface the resumable task_id when a background subagent fails (#11620)
+  const hint = resumeHint(input.sessionID)
   const body =
-    input.state === "error" && !input.text.includes("can be resumed")
-      ? `${input.text}\n${resumeHint(input.sessionID)}`
+    input.state === "error" && !input.text.includes(hint)
+      ? `${input.text}\n${hint}`
       : input.text
   // kilocode_change end
   return [
