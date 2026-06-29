@@ -67,11 +67,11 @@ jobs:
         uses: actions/checkout@v6 # kilocode_change
         with:
           lfs: true
-          # LLM note: use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
+          # kilocode_change - LLM note: use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
           token: ${{ secrets.BOT_PAT }} # kilocode_change
           ref: ${{ github.head_ref }}
 
-      - name: Checkout (read-only)
+      - name: Checkout (read-only) # kilocode_change
         if: needs.check-paths.outputs.can_autocommit != 'true' # kilocode_change
         uses: actions/checkout@v6 # kilocode_change
         with:
@@ -238,11 +238,11 @@ jobs:
         uses: actions/checkout@v6 # kilocode_change
         with:
           lfs: true
-          # LLM note: use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
+          # kilocode_change - LLM note: use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
           token: ${{ secrets.BOT_PAT }} # kilocode_change
           ref: ${{ github.head_ref }}
 
-      - name: Checkout (read-only)
+      - name: Checkout (read-only) # kilocode_change
         if: needs.check-paths.outputs.can_autocommit != 'true' # kilocode_change
         uses: actions/checkout@v6 # kilocode_change
         with:
