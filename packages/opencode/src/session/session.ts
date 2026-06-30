@@ -31,10 +31,12 @@ import { Permission } from "@/permission"
 import { Global } from "@opencode-ai/core/global"
 // kilocode_change start - Kilo session behavior extensions
 import { BackgroundProcess } from "@/kilocode/background-process"
+import { InteractiveTerminal } from "@/kilocode/interactive-terminal"
 import { KiloSession, kiloSessionFork } from "@/kilocode/session"
 import { SessionExport } from "@/kilocode/session-export"
 import * as SandboxPolicy from "@/kilocode/sandbox/policy"
 import { baseKey, cumulativeSessionDiff } from "@/kilocode/session-portability/cumulative-diff" // kilocode_change
+import { BlockedError as AgentRequirementError } from "@/kilocode/agent-requirements"
 // kilocode_change end
 import { Effect, Layer, Option, Context, Schema, Types } from "effect"
 import { NonNegativeInt, optionalOmitUndefined } from "@opencode-ai/core/schema"
@@ -375,7 +377,9 @@ export const Event = {
       sessionID: Schema.optional(SessionID),
       // Reuses MessageV2.Assistant.fields.error (already Schema.optional) so
       // the derived zod keeps the same discriminated-union shape on the bus.
-      error: MessageV2.Assistant.fields.error,
+      // kilocode_change start - carry pre-message requirement failures over session.error
+      error: Schema.optional(Schema.Union([MessageV2.Assistant.fields.error, AgentRequirementError.EffectSchema])),
+      // kilocode_change end
     }),
   ),
   // kilocode_change start
@@ -669,6 +673,7 @@ export const layer: Layer.Layer<
             KiloSession.clearPlatformOverride(sessionID)
             if (hasInstance) {
               yield* Effect.promise(() => BackgroundProcess.stopSession(sessionID)).pipe(Effect.ignore)
+              yield* Effect.promise(() => InteractiveTerminal.stopSession(sessionID)).pipe(Effect.ignore)
               void Promise.all([import("@/effect/app-runtime"), import("./run-state")]).then(([app, run]) =>
                 app.AppRuntime.runPromise(run.SessionRunState.Service.use((svc) => svc.cancel(sessionID))).catch(
                   () => {},
