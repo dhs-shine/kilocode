@@ -407,25 +407,29 @@ describe("Cloud import parts cleanup contract", () => {
     expect(after).toMatch(/delete messages\[failedKey\]/)
   })
 
-  it("handleCloudSessionImportFailed clears cloudPreviewId, currentSessionID, and draftSessionID only when they still equal the failed cloud key", () => {
+  it("handleCloudSessionImportFailed clears cloudPreviewId, currentSessionID, draftSessionID, and loading only when still on the failed cloud key", () => {
     // The failure arrives asynchronously. selectCloudSession sets the
-    // preview id and both session/draft ids to the synthetic
-    // "cloud:<id>" key, but the user can start previewing a different
-    // cloud session, switch sessions, or start a new task before the
-    // failure comes back. Unconditionally resetting any of the three
-    // scopes would clobber that newer scope: cloudPreviewId blanking
-    // drops a later preview response and disables import-mode sends;
-    // currentSessionID blanking blanks the active session;
-    // draftSessionID blanking leaves draftKey() at ":new". Clear only
-    // if the scope is still the dead preview's key. The guard is
-    // extracted into a clearIfOn helper to keep the switch-case
-    // complexity under the lint cap.
+    // preview id, both session/draft ids, and the loading spinner for
+    // the synthetic "cloud:<id>" key, but the user can start
+    // previewing a different cloud session, switch sessions, or start
+    // a new task before the failure comes back. Unconditionally
+    // resetting any of them would clobber that newer scope:
+    // cloudPreviewId blanking drops a later preview response and
+    // disables import-mode sends; currentSessionID blanking blanks
+    // the active session; draftSessionID blanking leaves draftKey()
+    // at ":new"; and unguarded setLoading(false) drops the spinner
+    // for a newer preview before its data arrives, leaving the UI
+    // looking idle while still loading. Clear only if still on the
+    // dead preview's key. The guard is extracted into a clearIfOn
+    // helper to keep the switch-case complexity under the lint cap.
     const idx = source.indexOf('case "cloudSessionImportFailed"')
     expect(idx).toBeGreaterThan(-1)
     const after = source.slice(idx, idx + 4000)
     expect(after).toMatch(/clearIfOn\(cloudPreviewId, \(\) => setCloudPreviewId\(null\), failedKey\)/)
     expect(after).toMatch(/clearIfOn\(currentSessionID, \(\) => setCurrentSessionID\(undefined\), failedKey\)/)
     expect(after).toMatch(/clearIfOn\(draftSessionID, \(\) => setDraftSessionID\(undefined\), failedKey\)/)
+    expect(after).toMatch(/clearIfOn\(cloudPreviewId, \(\) => setLoading\(false\), failedKey\)/)
+    expect(after).not.toMatch(/^\s*setLoading\(false\)\s*$/m)
   })
 
   it("declares a clearIfOn helper that guards an async clear against a still-equal scope", () => {
