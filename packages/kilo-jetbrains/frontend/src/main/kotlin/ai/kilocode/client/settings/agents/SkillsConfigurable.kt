@@ -6,6 +6,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.SettingsDraftPage
 import ai.kilocode.client.settings.base.SettingsDraftState
 import ai.kilocode.client.settings.base.SettingsBadge
+import ai.kilocode.client.settings.base.SettingsListConfig
 import ai.kilocode.client.settings.base.SettingsListCell
 import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.SettingsListPanel
@@ -34,7 +35,10 @@ class SkillsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.skills" }
 }
 
-internal class SkillsSettingsUi(private val cs: CoroutineScope, private var dir: String) : SettingsListPanel(cs), SettingsDraftPage {
+internal class SkillsSettingsUi(
+    private val cs: CoroutineScope,
+    private var dir: String,
+) : SettingsListPanel(cs, SettingsListConfig.Equal), SettingsDraftPage {
     private val state = SettingsDraftState(skillsDraft())
     private var draft: SkillsDraft
         get() = state.draft

@@ -23,6 +23,7 @@ import javax.swing.SwingConstants
 
 internal class SettingsListRenderer(
     private val model: CollectionListModel<SettingsListItem>,
+    private val cfg: SettingsListConfig = SettingsListConfig.Equal,
 ) : JPanel(BorderLayout()), ListCellRenderer<SettingsListItem> {
     private val sep = GroupHeaderSeparator(JBUI.CurrentTheme.Popup.separatorLabelInsets())
     private val top = JPanel(BorderLayout()).apply {
@@ -36,11 +37,12 @@ internal class SettingsListRenderer(
     private val head = Stack.horizontal(UiStyle.Gap.xs()).next(title).next(badges)
     private val desc = JBLabel()
     private val text = Stack.vertical().next(head).next(desc)
+    private val textPane = text.align(HAlign.TRACK, if (cfg.description) VAlign.FIT else VAlign.CENTER)
     private val cells = Stack.horizontal(settingsListCellGap())
     private val cellPane = cells.align(HAlign.RIGHT, VAlign.CENTER)
     private val row = JPanel(BorderLayout(UiStyle.Gap.md(), 0)).apply {
         add(mark, BorderLayout.WEST)
-        add(text, BorderLayout.CENTER)
+        add(textPane, BorderLayout.CENTER)
         add(cellPane, BorderLayout.EAST)
     }
     private val wrap = PickerRow()
@@ -48,10 +50,10 @@ internal class SettingsListRenderer(
     init {
         isOpaque = true
         top.isOpaque = true
-        UiStyle.Components.transparent(row, mark, icon, title, badges, head, text, desc, cells, cellPane)
+        UiStyle.Components.transparent(row, mark, icon, title, badges, head, text, textPane, desc, cells, cellPane)
         row.border = JBUI.Borders.empty(
             UiStyle.Gap.md(),
-            UiStyle.Gap.lg(),
+            0,
             UiStyle.Gap.md(),
             UiStyle.Gap.pad(),
         )
@@ -85,9 +87,14 @@ internal class SettingsListRenderer(
         syncBadges(value)
         icon.icon = value.icon
         mark.isVisible = value.icon != null
-        val note = value.description.orEmpty()
+        val note = if (cfg.description) value.description.orEmpty() else ""
         desc.text = note
         desc.isVisible = note.isNotBlank()
+        desc.border = if (cfg.descriptionIndent && desc.isVisible) {
+            JBUI.Borders.emptyLeft(UiStyle.Gap.sm())
+        } else {
+            JBUI.Borders.empty()
+        }
         desc.foreground = weak
 
         syncCells(value, selected && list.isEnabled, list.isEnabled)

@@ -115,6 +115,37 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test provider content uses preferred row heights`() {
+        val content = content()
+
+        edt {
+            content.update(
+                ProviderSettingsDto(
+                    providers = listOf(
+                        provider(
+                            "openai",
+                            "OpenAI",
+                            metadata = ProviderMetadataDto(noteKey = "settings.providers.note.openai"),
+                        ),
+                        provider("plain", "Plain"),
+                    ),
+                ),
+            )
+            val list = list(content)
+            list.size = Dimension(420, 240)
+            list.doLayout()
+            UIUtil.dispatchAllInvocationEvents()
+
+            val noted = rows(content).indexOfFirst { it.key == "openai" }
+            val plain = rows(content).indexOfFirst { it.key == "plain" }
+            val notedBounds = list.getCellBounds(noted, noted)
+            val plainBounds = list.getCellBounds(plain, plain)
+
+            assertEquals(-1, list.fixedCellHeight)
+            assertTrue(notedBounds.height > plainBounds.height)
+        }
+    }
+
     fun `test toolbar and search are outside scrollable provider content`() {
         installProvider(ProviderSettingsDto())
         val panel = edt { createUi() }

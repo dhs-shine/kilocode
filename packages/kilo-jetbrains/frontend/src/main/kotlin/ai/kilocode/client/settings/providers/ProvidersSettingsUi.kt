@@ -4,6 +4,7 @@ import ai.kilocode.client.app.KiloProviderService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.BaseContentPanel
 import ai.kilocode.client.settings.base.SettingsPanel
+import ai.kilocode.client.settings.base.SettingsListConfig
 import ai.kilocode.client.settings.base.SettingsListView
 import ai.kilocode.client.settings.auth.DeviceOAuthInfo
 import ai.kilocode.client.settings.auth.DeviceOAuthPanel
@@ -422,7 +423,9 @@ internal class ProvidersContent(
     private val disconnect: (ProviderSettingsProviderDto) -> Unit,
     private val enable: (ProviderSettingsProviderDto) -> Unit,
 ) : BaseContentPanel() {
-    private val view = SettingsListView(KiloBundle.message("settings.providers.noMatches")) { key, id -> activate(key, id) }
+    private val view = SettingsListView(KiloBundle.message("settings.providers.noMatches"), SettingsListConfig.Preferred) { key, id ->
+        activate(key, id)
+    }
     private var state = ProviderSettingsDto()
     private var busy = false
 

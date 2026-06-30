@@ -47,9 +47,12 @@ private val edt = Dispatchers.EDT + ModalityState.any().asContextElement()
 
 internal abstract class SettingsListPanel(
     private val cs: CoroutineScope,
+    cfg: SettingsListConfig = SettingsListConfig.Equal,
 ) : SettingsPanel(), Disposable {
     private val search = SearchTextField(false)
-    protected val view = SettingsListView(KiloBundle.message("settings.agentBehavior.empty")) { key, id -> onCell(key, id) }
+    protected val view = SettingsListView(KiloBundle.message("settings.agentBehavior.empty"), cfg) { key, id ->
+        onCell(key, id)
+    }
     private var job: Job? = null
     private var request = 0
     private var disposed = false

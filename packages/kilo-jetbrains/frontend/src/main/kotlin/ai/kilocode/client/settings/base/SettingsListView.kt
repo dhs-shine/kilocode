@@ -18,11 +18,13 @@ import javax.swing.event.ListSelectionEvent
 
 internal class SettingsListView(
     empty: String,
+    private val cfg: SettingsListConfig = SettingsListConfig.Equal,
     private val onCell: (String, String) -> Unit,
 ) : BaseContentPanel() {
     private val model = CollectionListModel<SettingsListItem>()
     internal val list = object : JBList<SettingsListItem>(model) {
         override fun getToolTipText(event: MouseEvent): String? {
+            if (!cfg.description) return null
             val idx = locationToIndex(event.point)
             if (idx < 0) return null
             val bounds = getCellBounds(idx, idx) ?: return null
@@ -46,7 +48,7 @@ internal class SettingsListView(
     }
 
     init {
-        list.cellRenderer = SettingsListRenderer(model)
+        list.cellRenderer = SettingsListRenderer(model, cfg)
         list.registerKeyboardAction(
             { primary() },
             KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
@@ -149,6 +151,12 @@ internal class SettingsListView(
     @RequiresEdt
     private fun syncCellHeight(rows: List<SettingsListItem>) {
         checkEdt()
+        if (cfg.height == SettingsListRowHeight.PREFERRED) {
+            if (list.fixedCellHeight == -1) return
+            list.fixedCellHeight = -1
+            list.revalidate()
+            return
+        }
         val height = rows.indices.maxOfOrNull { idx ->
             list.cellRenderer.getListCellRendererComponent(list, rows[idx], idx, true, list.hasFocus()).preferredSize.height
         } ?: -1

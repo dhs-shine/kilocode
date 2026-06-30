@@ -3,6 +3,7 @@ package ai.kilocode.client.settings.agents
 import ai.kilocode.client.app.KiloAgentBehaviorService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.SettingsBadge
+import ai.kilocode.client.settings.base.SettingsListConfig
 import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.SettingsListPanel
 import ai.kilocode.client.ui.UiStyle
@@ -22,7 +23,10 @@ class WorkflowsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.workflows" }
 }
 
-internal class WorkflowsSettingsUi(cs: CoroutineScope, private var dir: String) : SettingsListPanel(cs) {
+internal class WorkflowsSettingsUi(
+    cs: CoroutineScope,
+    private var dir: String,
+) : SettingsListPanel(cs, SettingsListConfig.Equal) {
     init {
         start()
     }

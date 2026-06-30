@@ -8,6 +8,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.model.ModelText
 import ai.kilocode.client.settings.base.SettingsBadge
+import ai.kilocode.client.settings.base.SettingsListConfig
 import ai.kilocode.client.settings.base.SettingsListCell
 import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.SettingsListPanel
@@ -53,7 +54,7 @@ internal class AgentsSettingsUi(
     private val cs: CoroutineScope,
     private val dir: String,
     private val create: (Collection<String>) -> AgentCreateDialogHandle = ::AgentCreateDialog,
-) : SettingsListPanel(cs), SettingsDraftPage {
+) : SettingsListPanel(cs, SettingsListConfig.Equal), SettingsDraftPage {
     private val app get() = service<KiloAppService>()
     private val state = SettingsDraftState(agentsDraft(app.state.value.config, emptyList()), ::savedMatches)
     private var draft: AgentsDraft

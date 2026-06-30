@@ -4,6 +4,7 @@ import ai.kilocode.client.app.KiloAgentBehaviorService
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.SettingsBadge
+import ai.kilocode.client.settings.base.SettingsListConfig
 import ai.kilocode.client.settings.base.SettingsListCell
 import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.SettingsListPanel
@@ -30,7 +31,10 @@ class McpConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.mcp" }
 }
 
-internal class McpSettingsUi(cs: CoroutineScope, dir: String) : SettingsListPanel(cs) {
+internal class McpSettingsUi(
+    cs: CoroutineScope,
+    dir: String,
+) : SettingsListPanel(cs, SettingsListConfig.Equal.copy(description = false)) {
     private var dir = dir
 
     init {

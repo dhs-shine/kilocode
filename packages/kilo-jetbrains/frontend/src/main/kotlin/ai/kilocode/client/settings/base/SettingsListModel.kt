@@ -12,6 +12,19 @@ private const val CELL_GAP = 8
 
 internal data class SettingsBadge(val text: String, val style: UiStyle.Badge.Style = UiStyle.Badge.Secondary)
 
+internal enum class SettingsListRowHeight { EQUAL, PREFERRED }
+
+internal data class SettingsListConfig(
+    val height: SettingsListRowHeight,
+    val description: Boolean = true,
+    val descriptionIndent: Boolean = true,
+) {
+    companion object {
+        val Equal = SettingsListConfig(SettingsListRowHeight.EQUAL)
+        val Preferred = SettingsListConfig(SettingsListRowHeight.PREFERRED)
+    }
+}
+
 internal data class SettingsListCell(
     val id: String,
     val label: String,

@@ -15,6 +15,7 @@ import ai.kilocode.rpc.dto.McpStatusDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.replaceService
+import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.util.ui.UIUtil
@@ -31,6 +32,7 @@ import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JTextField
+import javax.swing.SwingUtilities
 
 class McpSettingsUiTest : BasePlatformTestCase() {
     private var scope: CoroutineScope? = null
@@ -69,6 +71,44 @@ class McpSettingsUiTest : BasePlatformTestCase() {
             assertFalse(rows.single { it.key == "runtime" }.cells.any { it.id == "remove" })
             assertEquals(listOf(DIR), agentRpc.mcpCalls)
             true
+        }
+    }
+
+    fun `test mcp rows keep equal height`() {
+        val panel = panel()
+        flushUntil { rows(panel).size == 3 }
+
+        edt {
+            val list = list(panel)
+            list.size = Dimension(460, 260)
+            list.doLayout()
+            UIUtil.dispatchAllInvocationEvents()
+            val heights = rows(panel).indices.map { idx -> list.getCellBounds(idx, idx).height }.toSet()
+
+            assertEquals(1, heights.size)
+            assertTrue(list.fixedCellHeight > 0)
+        }
+    }
+
+    fun `test mcp renderer hides synthesized descriptions`() {
+        val panel = panel()
+        flushUntil { rows(panel).size == 3 }
+
+        edt {
+            val list = list(panel)
+            val rows = rows(panel)
+            val idx = rows.indexOfFirst { it.key == "filesystem" }
+            val row = rows[idx]
+            val comp = list.cellRenderer.getListCellRendererComponent(list, row, idx, true, true)
+            comp.setSize(460, list.fixedCellHeight)
+            layout(comp)
+            val labels = components(comp).filterIsInstance<JBLabel>().filter { it.isVisible }.map { it.text }
+            val title = components(comp).filterIsInstance<SimpleColoredComponent>().single()
+            val action = components(comp).filterIsInstance<JBLabel>().single { it.text == "Disconnect" }
+
+            assertEquals("bun mcp-files", row.description)
+            assertFalse(labels.contains("bun mcp-files"))
+            assertTrue(kotlin.math.abs(centerY(comp, title) - centerY(comp, action)) <= 1)
         }
     }
 
@@ -212,6 +252,17 @@ class McpSettingsUiTest : BasePlatformTestCase() {
         }
         visit(root)
         return out
+    }
+
+    private fun layout(root: java.awt.Component) {
+        root.doLayout()
+        if (root is Container) root.components.filterIsInstance<Container>().forEach { layout(it) }
+        UIUtil.dispatchAllInvocationEvents()
+    }
+
+    private fun centerY(root: java.awt.Component, child: java.awt.Component): Int {
+        val point = SwingUtilities.convertPoint(child.parent, child.location, root)
+        return point.y + child.height / 2
     }
 
     private fun text(root: Container): String {

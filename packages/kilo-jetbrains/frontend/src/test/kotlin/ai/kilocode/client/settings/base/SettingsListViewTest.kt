@@ -1,12 +1,19 @@
 package ai.kilocode.client.settings.base
 
+import ai.kilocode.client.ui.UiStyle
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.ui.CollectionListModel
+import com.intellij.ui.SimpleColoredComponent
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBList
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.UIUtil
+import java.awt.Container
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.event.InputEvent
 import java.awt.event.MouseEvent
+import javax.swing.SwingUtilities
 
 class SettingsListViewTest : BasePlatformTestCase() {
     fun `test list owns formatted description tooltip`() {
@@ -75,6 +82,86 @@ class SettingsListViewTest : BasePlatformTestCase() {
 
             assertEquals(2, view.list.model.size)
             assertEquals(first.height, second.height)
+        }
+    }
+
+    fun `test preferred row height uses each rendered row height`() {
+        edt {
+            val view = SettingsListView("Empty", SettingsListConfig.Preferred) { _, _ -> }
+            view.update(listOf(
+                item("with", "Alpha", "Description makes this row taller"),
+                item("without", "Beta", null),
+            ))
+            layout(view)
+
+            val first = view.list.getCellBounds(0, 0)
+            val second = view.list.getCellBounds(1, 1)
+
+            assertEquals(-1, view.list.fixedCellHeight)
+            assertTrue(first.height > second.height)
+        }
+    }
+
+    fun `test filtering keeps preferred row heights for visible rows`() {
+        edt {
+            val view = SettingsListView("Empty", SettingsListConfig.Preferred) { _, _ -> }
+            view.update(listOf(
+                item("shown-desc", "Shown described", "Description makes this row taller"),
+                item("hidden", "Hidden", "Filtered row has a description"),
+                item("shown-plain", "Shown plain", null),
+            ))
+            view.filter("Shown")
+            layout(view)
+
+            val first = view.list.getCellBounds(0, 0)
+            val second = view.list.getCellBounds(1, 1)
+
+            assertEquals(2, view.list.model.size)
+            assertEquals(-1, view.list.fixedCellHeight)
+            assertTrue(first.height > second.height)
+        }
+    }
+
+    fun `test renderer keeps title flush and indents description only`() {
+        edt {
+            val row = item("with", "Alpha", "Description")
+            val model = CollectionListModel<SettingsListItem>(listOf(row))
+            val list = JBList(model)
+            val renderer = SettingsListRenderer(model, SettingsListConfig.Equal)
+
+            renderer.getListCellRendererComponent(list, row, 0, true, true)
+            renderer.setSize(320, renderer.preferredSize.height)
+            layout(renderer)
+
+            val title = components(renderer).filterIsInstance<SimpleColoredComponent>().single()
+            val desc = components(renderer).filterIsInstance<JBLabel>().single { it.text == "Description" }
+
+            assertEquals(0, title.insets.left)
+            assertTrue(desc.insets.left > title.insets.left)
+        }
+    }
+
+    fun `test title only config suppresses descriptions and tooltips`() {
+        edt {
+            val cfg = SettingsListConfig.Equal.copy(description = false)
+            val row = item("with", "Alpha", "Description", SettingsListCell("edit", "Edit"))
+            val model = CollectionListModel<SettingsListItem>(listOf(row))
+            val list = JBList(model)
+            val renderer = SettingsListRenderer(model, cfg)
+            val view = SettingsListView("Empty", cfg) { _, _ -> }
+
+            renderer.getListCellRendererComponent(list, row, 0, true, true)
+            renderer.setSize(320, renderer.preferredSize.height + UiStyle.Gap.xl())
+            layout(renderer)
+            view.update(listOf(row))
+            layout(view)
+            val bounds = view.list.getCellBounds(0, 0)
+            val title = components(renderer).filterIsInstance<SimpleColoredComponent>().single()
+            val action = components(renderer).filterIsInstance<JBLabel>().single { it.text == "Edit" }
+
+            assertEquals("", renderer.descriptionText())
+            assertNull(view.list.getToolTipText(event(view.list, Point(bounds.x + 4, bounds.y + 4))))
+            assertTrue(kotlin.math.abs(centerY(renderer, title) - centerY(renderer, action)) <= 1)
         }
     }
 
@@ -152,6 +239,27 @@ class SettingsListViewTest : BasePlatformTestCase() {
         view.list.size = Dimension(320, 160)
         view.list.doLayout()
         UIUtil.dispatchAllInvocationEvents()
+    }
+
+    private fun layout(root: Container) {
+        root.doLayout()
+        root.components.filterIsInstance<Container>().forEach { layout(it) }
+        UIUtil.dispatchAllInvocationEvents()
+    }
+
+    private fun components(root: java.awt.Component): List<java.awt.Component> {
+        val out = mutableListOf<java.awt.Component>()
+        fun visit(item: java.awt.Component) {
+            out += item
+            if (item is Container) item.components.forEach { visit(it) }
+        }
+        visit(root)
+        return out
+    }
+
+    private fun centerY(root: java.awt.Component, child: java.awt.Component): Int {
+        val point = SwingUtilities.convertPoint(child.parent, child.location, root)
+        return point.y + child.height / 2
     }
 
     private fun center(rect: java.awt.Rectangle) = Point(rect.x + rect.width / 2, rect.y + rect.height / 2)
