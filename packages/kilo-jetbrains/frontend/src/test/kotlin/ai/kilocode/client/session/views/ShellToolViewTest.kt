@@ -76,6 +76,22 @@ class ShellToolViewTest : BasePlatformTestCase() {
         assertEquals(listOf("git status", "clean"), view.codeTexts())
     }
 
+    fun `test shell header subtitle is normalized to one html line`() {
+        val view = track(ShellToolView(tool().also {
+            it.input = mapOf("command" to "printf 'one\ntwo'", "description" to "Run first line\nthen second line")
+            it.output = "one\ntwo"
+        }))
+
+        assertTrue(view.labelText().contains("Run first line then second line"))
+        assertFalse(view.labelText().contains("\n"))
+        assertTrue(view.subtitleMarkup().contains("<nobr>Run first line then second line</nobr>"))
+        assertEquals("printf 'one\ntwo'\n\none\ntwo", view.bodyText())
+        view.toggle()
+
+        assertTrue(view.markdown().contains("```shell-command\nprintf 'one\ntwo'\n```"))
+        assertTrue(view.markdown().contains("```shell-output\none\ntwo\n```"))
+    }
+
     fun `test ansi escapes are preserved in markdown and decoded in output`() {
         val view = track(ShellToolView(tool().also { it.output = "\u001B[32mgreen\u001B[0m line" }))
 

@@ -51,7 +51,7 @@ class ReadToolViewTest : BasePlatformTestCase() {
         assertTrue(view.linkVisible())
         assertEquals("SessionUiLayoutTest.kt", view.linkText())
         assertEquals(path, view.linkHref())
-        assertTrue(view.linkMarkup().contains("<u>SessionUiLayoutTest.kt</u>"))
+        assertTrue(view.linkMarkup().contains("<nobr><u>SessionUiLayoutTest.kt</u></nobr>"))
         assertEquals(UiStyle.Colors.fg().rgb, view.linkForeground().rgb)
         assertEquals(view.linkFont(), view.bodyFont())
         assertTrue(view.labelText().contains("SessionUiLayoutTest.kt"))
@@ -97,6 +97,14 @@ class ReadToolViewTest : BasePlatformTestCase() {
 
         assertFalse(view.isExpanded())
         assertFalse(view.bodyVisible())
+    }
+
+    fun `test read directory subtitle is normalized to one line`() {
+        val t = tool().also { it.input = mapOf("filePath" to "dir\nchild") }
+        val view = ReadToolView(t)
+
+        assertTrue(view.labelText().contains("dir child"))
+        assertFalse(view.labelText().contains("\n"))
     }
 
     fun `test view factory routes read kind tools to read tool view`() {

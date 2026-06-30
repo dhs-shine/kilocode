@@ -337,9 +337,9 @@ internal fun toolParts(
 ): ToolParts {
     lateinit var parts: ToolParts
     val glyph = JBLabel()
-    val title = JBLabel()
-    val sub = JBLabel().apply { foreground = UiStyle.Colors.weak() }
-    val link = JBLabel().apply {
+    val title = clip(JBLabel())
+    val sub = clip(JBLabel()).apply { foreground = UiStyle.Colors.weak() }
+    val link = clip(JBLabel()).apply {
         isVisible = false
         isFocusable = false
         foreground = UiStyle.Colors.fg()
@@ -353,11 +353,15 @@ internal fun toolParts(
     }
     val slot = JPanel(CardLayout()).apply {
         isOpaque = false
+        minimumSize = JBUI.size(0, minimumSize.height)
         add(sub, SUB_CARD)
         add(link, LINK_CARD)
     }
-    val state = JBLabel().apply { foreground = UiStyle.Colors.weak() }
-    val center = JPanel(BorderLayout(UiStyle.Gap.md(), 0)).apply { isOpaque = false }
+    val state = clip(JBLabel()).apply { foreground = UiStyle.Colors.weak() }
+    val center = JPanel(BorderLayout(UiStyle.Gap.md(), 0)).apply {
+        isOpaque = false
+        minimumSize = JBUI.size(0, minimumSize.height)
+    }
     val controls = Stack.horizontal()
     val header = JPanel(BorderLayout(JBUI.scale(SessionUiStyle.View.Layout.GAP), 0)).apply {
         isOpaque = false
@@ -376,21 +380,21 @@ internal fun toolParts(
 @RequiresEdt
 internal fun searchParts(count: Int): ToolParts {
     val glyph = JBLabel()
-    val title = JBLabel()
-    val sub = JBLabel().apply { foreground = UiStyle.Colors.weak() }
+    val title = clip(JBLabel())
+    val sub = clip(JBLabel()).apply { foreground = UiStyle.Colors.weak() }
     val targets = List(count) {
-        JBLabel().apply {
+        clip(JBLabel()).apply {
             foreground = UiStyle.Colors.fg()
-            minimumSize = JBUI.size(0, minimumSize.height)
         }
     }
-    val link = JBLabel().apply { isVisible = false }
+    val link = clip(JBLabel()).apply { isVisible = false }
     val slot = JPanel(CardLayout()).apply {
         isOpaque = false
+        minimumSize = JBUI.size(0, minimumSize.height)
         add(sub, SUB_CARD)
         add(link, LINK_CARD)
     }
-    val state = JBLabel().apply { foreground = UiStyle.Colors.weak() }
+    val state = clip(JBLabel()).apply { foreground = UiStyle.Colors.weak() }
     val stack = Stack.fitHorizontal(UiStyle.Gap.md()).apply { targets.forEach { next(it) } }
     val target = stack.align(HAlign.TRACK, VAlign.CENTER)
     val center = JPanel(BorderLayout(UiStyle.Gap.md(), 0)).apply {
@@ -440,7 +444,7 @@ internal fun subtitle(tool: Tool) = when (tool.name) {
 
 @RequiresEdt
 internal fun setText(label: JBLabel, text: String): Boolean {
-    val value = if (text.isBlank()) "" else XmlStringUtil.wrapInHtml(XmlStringUtil.escapeString(text))
+    val value = html(text)
     if (label.text == value) return false
     label.text = value
     return true
@@ -448,19 +452,36 @@ internal fun setText(label: JBLabel, text: String): Boolean {
 
 @RequiresEdt
 internal fun setTargetText(label: JBLabel, text: String): Boolean {
-    if (label.text == text) return false
-    label.text = text
+    val value = single(text)
+    if (label.text == value) return false
+    label.text = value
     return true
 }
 
 @RequiresEdt
 internal fun setLinkText(parts: ToolParts, text: String): Boolean {
-    val value = if (text.isBlank()) "" else XmlStringUtil.wrapInHtml("<u>${XmlStringUtil.escapeString(text)}</u>")
-    if (parts.label == text && parts.link.text == value) return false
-    parts.label = text
+    val label = single(text)
+    val value = if (label.isBlank()) "" else XmlStringUtil.wrapInHtml("<nobr><u>${XmlStringUtil.escapeString(label)}</u></nobr>")
+    if (parts.label == label && parts.link.text == value) return false
+    parts.label = label
     parts.link.text = value
     return true
 }
+
+private fun clip(label: JBLabel): JBLabel = label.apply {
+    minimumSize = JBUI.size(0, minimumSize.height)
+}
+
+private fun html(text: String): String {
+    val value = single(text)
+    if (value.isBlank()) return ""
+    return XmlStringUtil.wrapInHtml("<nobr>${XmlStringUtil.escapeString(value)}</nobr>")
+}
+
+private fun single(text: String): String = text.lineSequence()
+    .map { it.trim() }
+    .filter { it.isNotEmpty() }
+    .joinToString(" ")
 
 @RequiresEdt
 internal fun show(parts: ToolParts, link: Boolean): Boolean {

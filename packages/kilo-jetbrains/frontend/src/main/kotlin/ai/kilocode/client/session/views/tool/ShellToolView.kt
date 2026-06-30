@@ -125,6 +125,9 @@ class ShellToolView(
     internal fun subtitleForeground() = parts.sub.foreground
 
     @RequiresEdt
+    internal fun subtitleMarkup() = parts.sub.text ?: ""
+
+    @RequiresEdt
     internal fun stateFont() = parts.state.font
 
     @RequiresEdt
