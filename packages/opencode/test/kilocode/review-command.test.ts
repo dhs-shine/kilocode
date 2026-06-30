@@ -125,22 +125,23 @@ describe("review command", () => {
     expect(text).toContain("Always out of scope")
     expect(text).toContain("code style")
     expect(text).toContain("generic refactors with no bug or product risk")
+    expect(text).not.toContain("noticeably larger than comparable ones")
   })
 
   test("applies adaptive parallel review tracks", () => {
     const text = cmd.template as string
     expect(text).toContain("spawn the appropriate sub-agents in parallel")
-    expect(text).toContain("spawn 1-2 sub-agents")
+    expect(text).toContain("do NOT spawn sub-agents")
+    expect(text).toContain("spawn a single security sub-agent")
     expect(text).toContain("spawn 3-4 sub-agents")
     expect(text).toContain("spawn all six sub-agents")
     expect(text).toContain("security")
     expect(text).toContain("performance")
     expect(text).toContain("business logic")
-    expect(text).toContain("noticeably larger than comparable ones")
     expect(text).toContain("NO_FINDINGS")
   })
 
-  it.live("lists and resolves only the unified review command", () =>
+  it.live("lists the unified review command and keeps legacy aliases resolvable but hidden", () =>
     provideTmpdirInstance(
       () =>
         Effect.gen(function* () {
@@ -154,7 +155,12 @@ describe("review command", () => {
           expect(names).not.toContain("local-review")
           expect(names).not.toContain("local-review-uncommitted")
           expect(review?.name).toBe("review")
-          expect(old).toEqual([undefined, undefined])
+          // Legacy aliases stay out of the command list but still resolve, so
+          // suggestions persisted before the rename keep running the review template.
+          expect(old[0]?.name).toBe("local-review")
+          expect(old[1]?.name).toBe("local-review-uncommitted")
+          expect(old[0]?.template).toContain("branch $ARGUMENTS")
+          expect(old[1]?.template).toContain("uncommitted $ARGUMENTS")
         }),
       { git: true },
     ),
