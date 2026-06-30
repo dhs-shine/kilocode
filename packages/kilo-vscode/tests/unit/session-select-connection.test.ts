@@ -45,9 +45,13 @@ describe("selectSession keeps the chat in sync with the selection while offline"
     expect(setCurrent).toBeLessThan(offlineDefer)
   })
 
-  it("defers (does not drop) the fetch when offline", () => {
-    const body = source.slice(start, source.indexOf("\n  function selectCloudSession("))
-    expect(body).toContain("deferredFetch")
+  it("defers the fetch for any session while offline, including cached ones", () => {
+    const body = source.slice(start, source.indexOf("\n  function loadFocusedMessages("))
+    // Queue a replay unconditionally. The earlier `deferredFetch = ready ? undefined : id`
+    // form skipped cached sessions, so a reconnect never re-sent the focus load that
+    // re-focuses the backend (focusSession/contextSessionID/SSE tracking/reconcile).
+    expect(body).toContain("deferredFetch = id")
+    expect(body).not.toMatch(/deferredFetch\s*=\s*ready\s*\?/)
   })
 })
 
@@ -56,6 +60,13 @@ describe("a deferred fetch is replayed on reconnect", () => {
     expect(source).toContain("on(server.isConnected")
     const effect = source.slice(source.indexOf("on(server.isConnected"))
     expect(effect).toContain("deferredFetch")
-    expect(effect).toMatch(/loadMessages.*mode: "replace"/s)
+    // Replays with the focus/replace choice so cached sessions still re-focus the backend.
+    expect(effect).toMatch(/loadFocusedMessages\(\s*id,\s*loaded\(\)\.has\(id\)\s*\)/)
+  })
+
+  it("the focused load helper sends focus for cached sessions and replace otherwise", () => {
+    const helper = source.slice(source.indexOf("function loadFocusedMessages("))
+    expect(helper).toMatch(/mode: "focus"/)
+    expect(helper).toMatch(/mode: "replace"/)
   })
 })

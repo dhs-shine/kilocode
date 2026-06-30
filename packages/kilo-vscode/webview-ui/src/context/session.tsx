@@ -2535,18 +2535,25 @@ export const SessionProvider: ParentComponent = (props) => {
     // the sidebar/tab selection. These are local signals and need no backend, so
     // they update even while disconnected. Bailing out here when not connected
     // froze the chat on the previous session while the side diff (resolved from
-    // the worktree selection) still moved — the reported "only the diff changes".
+    // the worktree selection) still moved (the reported "only the diff changes").
     setCurrentSessionID(id)
     setDraftSessionID(id)
     setLoading(!ready)
     if (!ready) patchPage(id, { loadingInitial: true, loadingOlder: false, before: undefined, hasMore: false })
     // Only the message fetch needs the backend. Defer it while offline and let
-    // the reconnect effect replay it; cached sessions already render from store.
+    // the reconnect effect replay it. We defer even for cached sessions: the
+    // load message is what re-focuses the backend (focusSession, contextSessionID,
+    // SSE tracking, active worktree) and runs the reconcile self-heal, so skipping
+    // it would leave the extension focused on the previously selected session.
     if (!server.isConnected()) {
-      deferredFetch = ready ? undefined : id
+      deferredFetch = id
       return
     }
     deferredFetch = undefined
+    loadFocusedMessages(id, ready)
+  }
+
+  function loadFocusedMessages(id: string, ready: boolean) {
     vscode.postMessage(
       ready
         ? { type: "loadMessages", sessionID: id, mode: "focus" }
@@ -2555,15 +2562,16 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   // Replay a fetch deferred while offline once the backend reconnects. Scoped to
-  // the still-current, still-unloaded session so the normal connected path never
-  // double-fetches.
+  // the still-current session so the normal connected path never double-fetches.
+  // Uses the same focus/replace choice as a live selection so a reconnect after
+  // a cached-session switch still re-focuses the backend and reconciles.
   createEffect(
     on(server.isConnected, (connected) => {
       if (!connected) return
       const id = deferredFetch
       deferredFetch = undefined
-      if (!id || id !== currentSessionID() || loaded().has(id)) return
-      vscode.postMessage({ type: "loadMessages", sessionID: id, mode: "replace", limit: MESSAGE_PAGE_LIMIT })
+      if (!id || id !== currentSessionID()) return
+      loadFocusedMessages(id, loaded().has(id))
     }),
   )
 
