@@ -7,9 +7,11 @@ import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
+import com.intellij.platform.project.ProjectId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Fake [KiloWorkspaceRpcApi] for testing.
@@ -39,17 +41,17 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     var globalConfigDisplayPath = globalConfigPath
     var localConfigExists = true
     var globalConfigExists = true
-    val fileCalls = mutableListOf<Pair<String, String>>()
-    val searchQueries = mutableListOf<String>()
-    val opened = mutableListOf<String>()
-    val localConfigs = mutableListOf<String>()
+    val fileCalls = CopyOnWriteArrayList<Pair<String, String>>()
+    val searchQueries = CopyOnWriteArrayList<String>()
+    val opened = CopyOnWriteArrayList<String>()
+    val localConfigs = CopyOnWriteArrayList<String>()
     var globalConfigs = 0
     var localConfigPathCalls = 0
         private set
     var globalConfigPathCalls = 0
         private set
 
-    override suspend fun resolveProjectDirectory(hint: String): String {
+    override suspend fun resolveProjectDirectory(projectId: ProjectId?, hint: String): String {
         assertNotEdt("resolveProjectDirectory")
         return directory
     }
