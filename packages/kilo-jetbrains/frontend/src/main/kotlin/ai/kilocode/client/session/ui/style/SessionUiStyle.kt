@@ -109,6 +109,14 @@ object SessionUiStyle {
             const val BODY_HORIZONTAL_PADDING = 8
         }
 
+        /** Markdown colors that mirror Kilo's VS Code webview tokens. */
+        object Markdown {
+            fun string(): Color = JBColor.namedColor(
+                "Kilo.Session.Markdown.String",
+                JBColor(0xA31515, 0xCE9178),
+            )
+        }
+
         /** Message container roles and user bubble geometry. */
         object Message {
             const val USER_ROLE = "user"

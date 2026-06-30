@@ -293,12 +293,13 @@ internal open class MdViewHybrid(
     override fun markdown(): String = source.toString()
 
     override fun html(): String {
-        if (!stale) return rendered
-        val out = project(source.toString())
-        rendered = out.html
-        openFence = out.open
-        stale = false
-        return rendered
+        if (stale) {
+            val out = project(source.toString())
+            rendered = out.html
+            openFence = out.open
+            stale = false
+        }
+        return MdCommon.inlineCode(rendered, opts())
     }
 
     override fun overrideSheet(): String = MdCommon.rules(opts())
@@ -412,7 +413,7 @@ internal open class MdViewHybrid(
         val opts = opts()
         return object : JBHtmlPane(
             JBHtmlPaneStyleConfiguration {
-                enableInlineCodeBackground = true
+                enableInlineCodeBackground = false
                 enableCodeBlocksBackground = true
             },
             JBHtmlPaneConfiguration {
@@ -426,7 +427,7 @@ internal open class MdViewHybrid(
             isEditable = false
             isOpaque = opts.opaque
             background = opts.background
-            text = "<html><body>$body</body></html>"
+            text = html(body, opts)
             selection?.register(this, disposable)
             addHyperlinkListener { e ->
                 if (e.eventType != HyperlinkEvent.EventType.ACTIVATED) return@addHyperlinkListener
@@ -761,6 +762,8 @@ internal open class MdViewHybrid(
         )
     }
 
+    private fun html(body: String, opts: MdStyle): String = "<html><body>${MdCommon.inlineCode(body, opts)}</body></html>"
+
     private fun collect(doc: Node): List<Desc> {
         val visitor = Visitor()
         doc.accept(visitor)
@@ -928,7 +931,7 @@ internal open class MdViewHybrid(
         override fun update(desc: Desc) {
             if (this.desc == desc) return
             this.desc = desc
-            pane.text = "<html><body>${(desc as Desc.Html).body}</body></html>"
+            pane.text = html((desc as Desc.Html).body, opts())
         }
 
         override fun style(opts: MdStyle) {
@@ -936,7 +939,7 @@ internal open class MdViewHybrid(
             pane.background = opts.background
             pane.reloadCssStylesheets()
             val item = desc as Desc.Html
-            pane.text = "<html><body>${item.body}</body></html>"
+            pane.text = html(item.body, opts)
         }
     }
 
