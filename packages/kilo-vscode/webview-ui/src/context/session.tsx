@@ -2046,6 +2046,15 @@ export const SessionProvider: ParentComponent = (props) => {
       setCloudPreviewId(null)
       setCurrentSessionID(session.id)
 
+      // Defense in depth: even if selectCloudSession's reset was missed
+      // (e.g. deleteSession set the flag against the synthetic cloud key
+      // between select and import), the user has now adopted a real local
+      // session, so the clear flag must be cleared. Without this, a later
+      // post-import failure whose draftID matches the in-progress cloud
+      // draft would be suppressed by restoreFailed's userClearedSession
+      // early-return.
+      setUserClearedSession(false)
+
       // Clean up synthetic cloud: entries from sessions/messages stores.
       //
       // Why we do NOT delete cloud parts here:
@@ -2530,6 +2539,11 @@ export const SessionProvider: ParentComponent = (props) => {
     setCloudPreviewId(cloudSessionId)
     setCurrentSessionID(key)
     setDraftSessionID(key)
+    // The user has moved on by selecting a cloud session — any
+    // userClearedSession from a prior clearCurrentSession / deleteSession
+    // is stale and must not suppress restoration if a post-import send
+    // fails. Mirrors selectSession's reset.
+    setUserClearedSession(false)
     setLoading(true)
     vscode.postMessage({ type: "requestCloudSessionData", sessionId: cloudSessionId })
   }

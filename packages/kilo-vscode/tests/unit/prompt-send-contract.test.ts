@@ -331,6 +331,24 @@ describe("SessionContext userClearedSession contract", () => {
     expect(block![1]).toMatch(/setUserClearedSession\(false\)/)
     expect(block![1]).toMatch(/setDraftSessionID\(scope\)/)
   })
+
+  it("selectCloudSession resets userClearedSession when picking a cloud session", () => {
+    // After clearCurrentSession set the flag, selecting a cloud session
+    // must clear it (mirrors selectSession's reset). Without this, any
+    // post-import failure exits restoration early and loses the cleared
+    // text, review comments, and images.
+    const body = extractFunctionBody(source, "selectCloudSession")
+    expect(body).toMatch(/setUserClearedSession\(false\)/)
+  })
+
+  it("handleCloudSessionImported resets userClearedSession after the import completes", () => {
+    // Defense in depth: even if selectCloudSession's reset was missed
+    // (e.g. deleteSession set the flag against the synthetic cloud key
+    // between select and import), the import confirmation must clear the
+    // flag so a later post-import send failure is not suppressed.
+    const body = extractFunctionBody(source, "handleCloudSessionImported")
+    expect(body).toMatch(/setUserClearedSession\(false\)/)
+  })
 })
 
 describe("KiloConnectionService pruneSession contract", () => {
