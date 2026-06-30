@@ -32,6 +32,7 @@ internal data class SettingsListCell(
     val alwaysVisible: Boolean = false,
     val icon: Icon? = null,
     val iconOnly: Boolean = false,
+    val primary: Boolean = false,
 )
 
 internal interface SettingsListItem {

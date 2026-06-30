@@ -5,9 +5,7 @@ import ai.kilocode.backend.app.KiloAppState
 import ai.kilocode.backend.app.LoadError
 import ai.kilocode.backend.app.LoadProgress
 import ai.kilocode.backend.app.ProfileResult
-import ai.kilocode.backend.rpc.appStateDto
-import ai.kilocode.jetbrains.api.model.Config
-import ai.kilocode.jetbrains.api.model.ConfigMcpValue
+import ai.kilocode.rpc.dto.ConfigDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -61,29 +59,12 @@ class KiloAppStateTest {
 
     @Test
     fun `AppData construction`() {
-        val cfg = Config(model = "test")
+        val cfg = ConfigDto(model = "test")
         val data =
           AppData(profile = null, config = cfg, notifications = emptyList())
         assertNull(data.profile)
         assertEquals(cfg, data.config)
         assertTrue(data.notifications.isEmpty())
-    }
-
-    @Test
-    fun `appStateDto maps typed mcp config`() {
-        val cfg = Config(mcp = mapOf(
-            "sample" to ConfigMcpValue(
-                type = ConfigMcpValue.Type.LOCAL,
-                command = listOf("node", ".kilo/mcp/sample-server.js"),
-                env = mapOf("TOKEN" to "x"),
-            ),
-        ))
-        val dto = appStateDto(KiloAppState.Ready(AppData(profile = null, config = cfg, notifications = emptyList())))
-        val mcp = dto.config?.mcp?.get("sample")
-
-        assertEquals("local", mcp?.type)
-        assertEquals(listOf("node", ".kilo/mcp/sample-server.js"), mcp?.command)
-        assertEquals(mapOf("TOKEN" to "x"), mcp?.environment)
     }
 
     @Test

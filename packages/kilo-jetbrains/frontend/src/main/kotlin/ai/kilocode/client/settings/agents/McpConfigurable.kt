@@ -1,7 +1,6 @@
 package ai.kilocode.client.settings.agents
 
 import ai.kilocode.client.app.KiloAgentBehaviorService
-import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.SettingsBadge
 import ai.kilocode.client.settings.base.SettingsListConfig
@@ -11,11 +10,16 @@ import ai.kilocode.client.settings.base.SettingsListPanel
 import ai.kilocode.client.settings.base.SettingsListSelection
 import ai.kilocode.client.settings.base.SettingsMessageException
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.log.KiloLog
-import ai.kilocode.rpc.dto.ConfigPatchDto
 import ai.kilocode.rpc.dto.McpConfigDto
+import ai.kilocode.rpc.dto.McpServerConfigDto
 import ai.kilocode.rpc.dto.McpStatusDto
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.components.service
+import com.intellij.openapi.ui.Messages
+import com.intellij.ui.components.JBLabel
+import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CoroutineScope
 import javax.swing.JComponent
 
@@ -34,8 +38,12 @@ class McpConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
 internal class McpSettingsUi(
     cs: CoroutineScope,
     dir: String,
+    private val create: (String, McpConfigDto) -> McpEditDialogHandle = ::McpEditDialog,
 ) : SettingsListPanel(cs, SettingsListConfig.Equal.copy(description = false)) {
     private var dir = dir
+
+    @Volatile
+    private var servers: Map<String, McpServerConfigDto> = emptyMap()
 
     init {
         start()
@@ -48,20 +56,21 @@ internal class McpSettingsUi(
     }
 
     override suspend fun fetch(): List<SettingsListItem> {
-        val state = service<KiloAppService>().state.value
-        val cfg = state.config?.mcp.orEmpty()
+        val behavior = service<KiloAgentBehaviorService>()
+        val cfg = behavior.mcpConfig(dir)
+        servers = cfg
         val statuses = if (dir.isBlank()) {
-            LOG.warn("mcp settings fetch skipped runtime status: missing project directory status=${state.status} config=${cfg.size}")
+            LOG.warn("mcp settings fetch skipped runtime status: missing project directory config=${cfg.size}")
             emptyMap()
         } else {
-            service<KiloAgentBehaviorService>().mcpStatus(dir).associateBy { it.name }
+            behavior.mcpStatus(dir).associateBy { it.name }
         }
         val names = (cfg.keys + statuses.keys).sorted()
-        LOG.info("mcp settings fetch dir=$dir status=${state.status} config=${cfg.size} runtime=${statuses.size} total=${names.size}")
+        LOG.info("mcp settings fetch dir=$dir config=${cfg.size} runtime=${statuses.size} total=${names.size}")
         if (names.isEmpty()) {
-            LOG.warn("mcp settings fetch returned no servers dir=$dir status=${state.status} configLoaded=${state.config != null}")
+            LOG.warn("mcp settings fetch returned no servers dir=$dir")
         }
-        return names.map { name -> item(name, cfg[name], statuses[name]) }
+        return names.map { name -> item(name, cfg[name]?.config, statuses[name]) }
     }
 
     override fun onCell(key: String, cellId: String) {
@@ -69,15 +78,17 @@ internal class McpSettingsUi(
             CONNECT_CELL -> mutate(key) { service<KiloAgentBehaviorService>().mcpConnect(dir, key) }
             DISCONNECT_CELL -> mutate(key) { service<KiloAgentBehaviorService>().mcpDisconnect(dir, key) }
             AUTH_CELL -> mutate(key) { service<KiloAgentBehaviorService>().mcpAuthenticate(dir, key) }
-            REMOVE_CELL -> mutateAndReload(selectionIndex()) {
-                service<KiloAppService>().updateConfig(ConfigPatchDto(mcp = mapOf(key to null)))
-                    ?: throw SettingsMessageException(KiloBundle.message("settings.agentBehavior.save.failed"))
-                true
-            }
+            EDIT_CELL -> edit(key)
+            REMOVE_CELL -> remove(key)
         }
     }
 
     override fun searchPlaceholder() = KiloBundle.message("settings.agentBehavior.mcp.search")
+
+    override fun toolbarRight(): JComponent = Stack.horizontal(UiStyle.Gap.sm())
+        .next(JBLabel(KiloBundle.message("settings.agentBehavior.mcp.addHint")).apply {
+            foreground = UIUtil.getContextHelpForeground()
+        })
 
     private fun item(name: String, cfg: McpConfigDto?, status: McpStatusDto?) = object : SettingsListItem {
         override val key = name
@@ -102,16 +113,59 @@ internal class McpSettingsUi(
     )
 
     private fun cells(cfg: McpConfigDto?, status: McpStatusDto?): List<SettingsListCell> = listOfNotNull(
+        connect(status?.status == CONNECTED),
         SettingsListCell(AUTH_CELL, KiloBundle.message("settings.agentBehavior.mcp.signIn")).takeIf {
             status?.status == NEEDS_AUTH
         },
         SettingsListCell(
-            if (status?.status == CONNECTED) DISCONNECT_CELL else CONNECT_CELL,
-            if (status?.status == CONNECTED) KiloBundle.message("settings.agentBehavior.mcp.disconnect")
-            else KiloBundle.message("settings.agentBehavior.mcp.connect"),
-        ),
-        SettingsListCell(REMOVE_CELL, KiloBundle.message("settings.agentBehavior.remove")).takeIf { cfg != null },
+            EDIT_CELL,
+            KiloBundle.message("settings.agentBehavior.edit"),
+            primary = true,
+        ).takeIf { cfg != null },
+        SettingsListCell(
+            REMOVE_CELL,
+            KiloBundle.message("common.delete"),
+            icon = AllIcons.Actions.GC,
+            iconOnly = true,
+        ).takeIf { cfg != null },
     )
+
+    private fun connect(connected: Boolean) = SettingsListCell(
+        if (connected) DISCONNECT_CELL else CONNECT_CELL,
+        if (connected) KiloBundle.message("settings.agentBehavior.mcp.disconnect")
+        else KiloBundle.message("settings.agentBehavior.mcp.connect"),
+    )
+
+    private fun edit(name: String) {
+        val server = servers[name] ?: return
+        val dialog = create(name, server.config)
+        if (!dialog.showAndGet()) return
+        val next = dialog.result()
+        mutateAndReload(selectionIndex()) {
+            if (!service<KiloAgentBehaviorService>().saveMcp(dir, name, server.scope, next)) {
+                throw SettingsMessageException(KiloBundle.message("settings.agentBehavior.save.failed"))
+            }
+            true
+        }
+    }
+
+    private fun remove(name: String) {
+        val result = Messages.showYesNoDialog(
+            KiloBundle.message("settings.agentBehavior.mcp.delete.message", name),
+            KiloBundle.message("settings.agentBehavior.mcp.delete.title"),
+            KiloBundle.message("common.delete"),
+            Messages.getCancelButton(),
+            Messages.getQuestionIcon(),
+        )
+        if (result != Messages.YES) return
+        val scope = servers[name]?.scope ?: return
+        mutateAndReload(selectionIndex()) {
+            if (!service<KiloAgentBehaviorService>().saveMcp(dir, name, scope, null)) {
+                throw SettingsMessageException(KiloBundle.message("settings.agentBehavior.save.failed"))
+            }
+            true
+        }
+    }
 
     private fun mutate(name: String, block: suspend () -> Boolean) {
         mutateAndReload(SettingsListSelection.Key(name)) {
@@ -129,6 +183,7 @@ internal class McpSettingsUi(
         const val CONNECT_CELL = "connect"
         const val DISCONNECT_CELL = "disconnect"
         const val AUTH_CELL = "auth"
+        const val EDIT_CELL = "edit"
         const val REMOVE_CELL = "remove"
         val LOG = KiloLog.create(McpSettingsUi::class.java)
 

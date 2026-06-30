@@ -38,3 +38,9 @@ data class McpStatusDto(
     val status: String,
     val error: String? = null,
 )
+
+@Serializable
+data class McpServerConfigDto(
+    val config: McpConfigDto,
+    val scope: String,
+)

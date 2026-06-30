@@ -4,12 +4,16 @@ package ai.kilocode.backend.rpc
 
 import ai.kilocode.backend.app.KiloBackendAppService
 import ai.kilocode.backend.cli.KiloClaudeCompatSettings
+import ai.kilocode.backend.cli.KiloCliDataParser
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.KiloAgentBehaviorRpcApi
 import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.AgentDetailDto
 import ai.kilocode.jetbrains.api.model.AgentBuilderSaveRequest
 import ai.kilocode.rpc.dto.CommandDto
+import ai.kilocode.rpc.dto.ConfigPatchDto
+import ai.kilocode.rpc.dto.McpConfigDto
+import ai.kilocode.rpc.dto.McpServerConfigDto
 import ai.kilocode.rpc.dto.McpStatusDto
 import ai.kilocode.rpc.dto.PermissionRuleItemDto
 import ai.kilocode.rpc.dto.SkillDto
@@ -114,6 +118,37 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
         items
     }
 
+    override suspend fun mcpConfig(directory: String): Map<String, McpServerConfigDto> {
+        app.requireReady()
+        val global = app.config?.mcp ?: emptyMap()
+        val workspace = if (directory.isBlank()) emptyMap() else try {
+            KiloCliDataParser.parseConfig(request(directory, "/config", null)).mcp
+        } catch (e: Exception) {
+            LOG.warn("MCP workspace config fetch failed dir=$directory: ${e.message}", e)
+            emptyMap()
+        }
+        return buildMap {
+            for (name in global.keys + workspace.keys) {
+                val ws = workspace[name]
+                val gl = global[name]
+                val cfg = ws ?: gl ?: continue
+                val scope = if (ws != null && (gl == null || ws != gl)) "workspace" else "global"
+                put(name, McpServerConfigDto(cfg, scope))
+            }
+        }
+    }
+
+    override suspend fun saveMcp(directory: String, name: String, scope: String, config: McpConfigDto?): Boolean {
+        app.requireReady()
+        val patch = ConfigPatchDto(mcp = mapOf(name to config))
+        if (scope == "workspace") {
+            patchConfig("/config?directory=${encode(directory)}", KiloCliDataParser.buildConfigPatch(patch))
+        } else {
+            app.updateConfig(patch)
+        }
+        return true
+    }
+
     override suspend fun mcpConnect(directory: String, name: String): Boolean = post(directory, "/mcp/${encodePath(name)}/connect")
 
     override suspend fun mcpDisconnect(directory: String, name: String): Boolean = post(directory, "/mcp/${encodePath(name)}/disconnect")
@@ -137,6 +172,19 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
     private suspend fun post(directory: String, path: String, body: JsonObject = JsonObject(emptyMap())): Boolean {
         request(directory, path, body)
         return true
+    }
+
+    private suspend fun patchConfig(path: String, body: String): Unit = withContext(Dispatchers.IO) {
+        val http = app.http ?: throw IllegalStateException("Kilo HTTP client is unavailable")
+        val url = "http://127.0.0.1:${app.port}$path"
+        val request = Request.Builder().url(url).patch(body.toRequestBody(JSON)).build()
+        http.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                LOG.warn("MCP config patch failed: $path HTTP ${response.code}: $text")
+                throw RuntimeException("HTTP ${response.code}: $text")
+            }
+        }
     }
 
     private suspend fun request(directory: String, path: String, body: JsonObject?): String = withContext(Dispatchers.IO) {

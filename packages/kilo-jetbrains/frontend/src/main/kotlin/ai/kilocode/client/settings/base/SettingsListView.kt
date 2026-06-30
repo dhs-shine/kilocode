@@ -189,7 +189,10 @@ internal class SettingsListView(
     }
 
     private fun primary(item: SettingsListItem) {
-        val cell = settingsListVisibleCells(item, true).firstOrNull { it.enabled } ?: return
+        val cells = settingsListVisibleCells(item, true)
+        val cell = cells.firstOrNull { it.enabled && it.primary }
+            ?: cells.firstOrNull { it.enabled }
+            ?: return
         onCell(item.key, cell.id)
     }
 

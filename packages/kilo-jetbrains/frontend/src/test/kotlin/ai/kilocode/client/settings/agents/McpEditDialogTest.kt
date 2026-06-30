@@ -1,0 +1,162 @@
+package ai.kilocode.client.settings.agents
+
+import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.settings.base.SettingsRow
+import ai.kilocode.client.settings.base.SettingsStackedRow
+import ai.kilocode.client.ui.HoverIcon
+import ai.kilocode.rpc.dto.McpConfigDto
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBTextArea
+import com.intellij.ui.components.JBTextField
+import java.awt.Component
+import java.awt.Container
+import javax.swing.JButton
+import javax.swing.JLabel
+
+class McpEditDialogTest : BasePlatformTestCase() {
+    private var dialog: McpEditDialog? = null
+
+    override fun tearDown() {
+        try {
+            dialog?.let { item -> edt { Disposer.dispose(item.disposable); true } }
+            dialog = null
+        } finally {
+            super.tearDown()
+        }
+    }
+
+    fun `test loads local server into form`() {
+        val d = open(local())
+
+        edt {
+            val root = d.contentForTest()
+            assertEquals("node", field<JBTextField>(root, title("command")).text)
+            assertEquals("server.js\n--flag", field<JBTextArea>(root, title("args")).text)
+            assertTrue(hasRow(root, "TOKEN=x"))
+            assertTrue(hasRow(root, "EMPTY="))
+            assertTrue(hasRow(root, title("command")))
+            assertFalse(hasRow(root, title("url")))
+            true
+        }
+    }
+
+    fun `test loads remote server into form`() {
+        val d = open(remote())
+
+        edt {
+            val root = d.contentForTest()
+            assertEquals("https://mcp.example.test", field<JBTextField>(root, title("url")).text)
+            assertTrue(hasRow(root, title("url")))
+            assertFalse(hasRow(root, title("command")))
+            assertFalse(hasRow(root, title("args")))
+            true
+        }
+    }
+
+    fun `test reads local edits back and preserves untouched fields`() {
+        val d = open(local())
+
+        val result = edt {
+            val root = d.contentForTest()
+            field<JBTextField>(root, title("command")).text = "bun"
+            field<JBTextArea>(root, title("args")).text = "mcp.ts\n\n--watch"
+            d.result()
+        }
+
+        assertEquals(listOf("bun", "mcp.ts", "--watch"), result.command)
+        assertEquals(mapOf("TOKEN" to "x", "EMPTY" to ""), result.environment)
+        assertEquals(mapOf("Authorization" to "Bearer test"), result.headers)
+        assertEquals(false, result.enabled)
+        assertEquals(12000L, result.timeout)
+    }
+
+    fun `test reads remote edits back and preserves untouched fields`() {
+        val d = open(remote())
+
+        val result = edt {
+            val root = d.contentForTest()
+            field<JBTextField>(root, title("url")).text = "https://new.example.test/mcp"
+            d.result()
+        }
+
+        assertEquals("https://new.example.test/mcp", result.url)
+        assertEquals(mapOf("X-Test" to "1"), result.headers)
+        assertEquals(true, result.enabled)
+        assertEquals(5000L, result.timeout)
+    }
+
+    fun `test environment can add and remove rows`() {
+        val d = open(local())
+
+        val result = edt {
+            val root = d.contentForTest()
+            val fields = descendants(root).filterIsInstance<JBTextField>()
+            fields[1].text = "NEXT"
+            fields[2].text = "value"
+            descendants(root).filterIsInstance<JButton>().single { it.text == KiloBundle.message("settings.agentBehavior.mcp.edit.env.add") }.doClick()
+            descendants(rowByTitle(root, "TOKEN=x")).filterIsInstance<HoverIcon>().single().doClick()
+            d.result()
+        }
+
+        assertEquals(mapOf("EMPTY" to "", "NEXT" to "value"), result.environment)
+    }
+
+    private fun local() = McpConfigDto(
+        type = "local",
+        command = listOf("node", "server.js", "--flag"),
+        environment = linkedMapOf("TOKEN" to "x", "EMPTY" to ""),
+        headers = mapOf("Authorization" to "Bearer test"),
+        enabled = false,
+        timeout = 12000L,
+    )
+
+    private fun remote() = McpConfigDto(
+        type = "remote",
+        url = "https://mcp.example.test",
+        headers = mapOf("X-Test" to "1"),
+        enabled = true,
+        timeout = 5000L,
+    )
+
+    private fun open(cfg: McpConfigDto): McpEditDialog {
+        val item = edt { McpEditDialog("server", cfg) }
+        dialog = item
+        return item
+    }
+
+    private fun title(field: String) = KiloBundle.message("settings.agentBehavior.mcp.edit.$field")
+
+    private inline fun <reified T : Component> field(root: Component, title: String): T =
+        descendants(rowByTitle(root, title)).filterIsInstance<T>().first()
+
+    private fun rowByTitle(root: Component, title: String): Container =
+        descendants(root).filterIsInstance<Container>().first { item ->
+            (item is SettingsRow || item is SettingsStackedRow) &&
+                descendants(item).any { it is JLabel && it.text == title }
+        }
+
+    private fun hasRow(root: Component, title: String): Boolean =
+        descendants(root).filterIsInstance<Container>().any { item ->
+            (item is SettingsRow || item is SettingsStackedRow) &&
+                descendants(item).any { it is JLabel && it.text == title }
+        }
+
+    private fun descendants(root: Component): List<Component> {
+        val out = mutableListOf<Component>()
+        fun visit(item: Component) {
+            out += item
+            if (item is Container) item.components.forEach(::visit)
+        }
+        visit(root)
+        return out
+    }
+
+    private fun <T> edt(block: () -> T): T {
+        var result: T? = null
+        ApplicationManager.getApplication().invokeAndWait { result = block() }
+        @Suppress("UNCHECKED_CAST")
+        return result as T
+    }
+}

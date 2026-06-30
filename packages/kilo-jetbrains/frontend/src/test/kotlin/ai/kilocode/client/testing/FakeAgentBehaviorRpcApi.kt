@@ -4,14 +4,19 @@ import ai.kilocode.rpc.KiloAgentBehaviorRpcApi
 import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.AgentDetailDto
 import ai.kilocode.rpc.dto.CommandDto
+import ai.kilocode.rpc.dto.McpConfigDto
+import ai.kilocode.rpc.dto.McpServerConfigDto
 import ai.kilocode.rpc.dto.McpStatusDto
 import ai.kilocode.rpc.dto.SkillDto
 
 class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
     var agents = emptyList<AgentDetailDto>()
     var mcps = emptyList<McpStatusDto>()
+    var mcpConfigs = emptyMap<String, McpServerConfigDto>()
     val agentCalls = mutableListOf<String>()
     val mcpCalls = mutableListOf<String>()
+    val mcpConfigCalls = mutableListOf<String>()
+    val mcpSaves = mutableListOf<Triple<String, String, McpConfigDto?>>()
     val removals = mutableListOf<String>()
     val mcpConnects = mutableListOf<String>()
     val mcpDisconnects = mutableListOf<String>()
@@ -81,6 +86,19 @@ class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
         mcpStatusError?.let { throw it }
         mcpCalls.add(directory)
         return mcps
+    }
+
+    override suspend fun mcpConfig(directory: String): Map<String, McpServerConfigDto> {
+        assertNotEdt("agentBehavior.mcpConfig")
+        mcpConfigCalls.add(directory)
+        return mcpConfigs
+    }
+
+    override suspend fun saveMcp(directory: String, name: String, scope: String, config: McpConfigDto?): Boolean {
+        assertNotEdt("agentBehavior.saveMcp")
+        mcpSaves.add(Triple(name, scope, config))
+        mcpConfigs = if (config == null) mcpConfigs - name else mcpConfigs + (name to McpServerConfigDto(config, scope))
+        return true
     }
 
     override suspend fun mcpConnect(directory: String, name: String): Boolean {

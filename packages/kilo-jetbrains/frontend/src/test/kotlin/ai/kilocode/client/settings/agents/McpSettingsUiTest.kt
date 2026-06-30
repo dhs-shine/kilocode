@@ -11,8 +11,13 @@ import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.McpConfigDto
+import ai.kilocode.rpc.dto.McpServerConfigDto
 import ai.kilocode.rpc.dto.McpStatusDto
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.TestDialog
+import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.SimpleColoredComponent
@@ -43,6 +48,7 @@ class McpSettingsUiTest : BasePlatformTestCase() {
 
     override fun tearDown() {
         try {
+            TestDialogManager.setTestDialog(TestDialog.DEFAULT)
             ui?.let { panel -> edt { panel.dispose(); true } }
             ui = null
             scope?.cancel()
@@ -66,8 +72,18 @@ class McpSettingsUiTest : BasePlatformTestCase() {
             assertEquals("https://mcp.github.test", rows.single { it.key == "github" }.description)
             assertEquals(listOf("failed"), rows.single { it.key == "runtime" }.badges.map { it.text })
             assertEquals("crashed", rows.single { it.key == "runtime" }.description)
-            assertTrue(rows.single { it.key == "github" }.cells.any { it.id == "auth" })
-            assertTrue(rows.single { it.key == "github" }.cells.any { it.id == "remove" })
+            val github = rows.single { it.key == "github" }
+            assertEquals(listOf("connect", "auth", "edit", "remove"), github.cells.map { it.id })
+            assertTrue(github.cells.single { it.id == "edit" }.primary)
+            assertEquals(KiloBundle.message("settings.agentBehavior.mcp.connect"), github.cells.single { it.id == "connect" }.label)
+            val remove = github.cells.single { it.id == "remove" }
+            assertEquals(AllIcons.Actions.GC, remove.icon)
+            assertTrue(remove.iconOnly)
+            val filesystem = rows.single { it.key == "filesystem" }
+            assertEquals(listOf("disconnect", "edit", "remove"), filesystem.cells.map { it.id })
+            assertTrue(filesystem.cells.single { it.id == "edit" }.primary)
+            assertEquals(KiloBundle.message("settings.agentBehavior.mcp.disconnect"), filesystem.cells.single { it.id == "disconnect" }.label)
+            assertFalse(rows.single { it.key == "runtime" }.cells.any { it.id == "edit" })
             assertFalse(rows.single { it.key == "runtime" }.cells.any { it.id == "remove" })
             assertEquals(listOf(DIR), agentRpc.mcpCalls)
             true
@@ -141,13 +157,93 @@ class McpSettingsUiTest : BasePlatformTestCase() {
         val panel = panel()
         flushUntil { rows(panel).size == 3 }
         agentRpc.mcps = agentRpc.mcps.filterNot { it.name == "filesystem" }
+        TestDialogManager.setTestDialog(TestDialog.YES)
 
         click(panel, "filesystem", "remove")
 
         flushUntil { rows(panel).none { it.key == "filesystem" } }
-        val patch = appRpc.configPatches.single().mcp.orEmpty()
-        assertTrue(patch.containsKey("filesystem"))
-        assertNull(patch["filesystem"])
+        val save = agentRpc.mcpSaves.single()
+        assertEquals("filesystem", save.first)
+        assertEquals("global", save.second)
+        assertNull(save.third)
+    }
+
+    fun `test remove action requires confirmation`() {
+        val panel = panel()
+        flushUntil { rows(panel).size == 3 }
+        TestDialogManager.setTestDialog { Messages.NO }
+
+        click(panel, "filesystem", "remove")
+
+        edt { UIUtil.dispatchAllInvocationEvents(); true }
+        assertTrue(agentRpc.mcpSaves.isEmpty())
+        assertTrue(edt { rows(panel).any { it.key == "filesystem" } })
+    }
+
+    fun `test edit action writes mcp config patch and reloads`() {
+        val next = McpConfigDto(
+            type = "local",
+            command = listOf("bun", "new-server"),
+            environment = mapOf("TOKEN" to "y"),
+            headers = mapOf("X-Keep" to "1"),
+            enabled = false,
+            timeout = 10000L,
+        )
+        val panel = panel { name, cfg -> FakeEditDialog(name, cfg, next) }
+        flushUntil { rows(panel).size == 3 }
+
+        click(panel, "filesystem", "edit")
+
+        flushUntil { rows(panel).single { it.key == "filesystem" }.description == "bun new-server" }
+        val save = agentRpc.mcpSaves.single()
+        assertEquals("filesystem", save.first)
+        assertEquals("global", save.second)
+        assertEquals(next, save.third)
+        assertEquals("filesystem", edt { list(panel).selectedValue?.key })
+    }
+
+    fun `test edit workspace scoped server saves to workspace scope`() {
+        val next = McpConfigDto(type = "local", command = listOf("node", "p.js"))
+        install()
+        agentRpc.mcpConfigs = agentRpc.mcpConfigs +
+            ("project" to McpServerConfigDto(McpConfigDto(type = "local", command = listOf("node", "s.js")), "workspace"))
+        agentRpc.mcps = agentRpc.mcps + McpStatusDto("project", "disabled")
+        val panel = edt { McpSettingsUi(scope!!, DIR) { name, cfg -> FakeEditDialog(name, cfg, next) } }
+        ui = panel
+        edt { panel.reload(); true }
+        flushUntil { rows(panel).any { it.key == "project" } }
+
+        click(panel, "project", "edit")
+
+        flushUntil { agentRpc.mcpSaves.isNotEmpty() }
+        val save = agentRpc.mcpSaves.single()
+        assertEquals("project", save.first)
+        assertEquals("workspace", save.second)
+        assertEquals(next, save.third)
+    }
+
+    fun `test double click configured server opens edit`() {
+        val next = McpConfigDto(type = "remote", url = "https://updated.example.test")
+        val panel = panel { name, cfg -> FakeEditDialog(name, cfg, next) }
+        flushUntil { rows(panel).size == 3 }
+
+        doubleClick(panel, "github")
+
+        flushUntil { rows(panel).single { it.key == "github" }.description == "https://updated.example.test" }
+        val save = agentRpc.mcpSaves.single()
+        assertEquals("github", save.first)
+        assertEquals("global", save.second)
+        assertEquals(next, save.third)
+    }
+
+    fun `test toolbar add hint is visible`() {
+        val panel = panel()
+        flushUntil { rows(panel).size == 3 }
+
+        edt {
+            assertTrue(text(panel).contains(KiloBundle.message("settings.agentBehavior.mcp.addHint")))
+            true
+        }
     }
 
     fun `test failed mcp action shows settings error`() {
@@ -189,9 +285,9 @@ class McpSettingsUiTest : BasePlatformTestCase() {
         edt { cfg.disposeUIResources(); true }
     }
 
-    private fun panel(): McpSettingsUi {
+    private fun panel(create: (String, McpConfigDto) -> McpEditDialogHandle = ::McpEditDialog): McpSettingsUi {
         install()
-        val panel = edt { McpSettingsUi(scope!!, DIR) }
+        val panel = edt { McpSettingsUi(scope!!, DIR, create) }
         ui = panel
         edt { panel.reload(); true }
         return panel
@@ -207,15 +303,16 @@ class McpSettingsUiTest : BasePlatformTestCase() {
                 McpStatusDto("github", "needs_auth"),
                 McpStatusDto("runtime", "failed", "crashed"),
             )
+            mcpConfigs = mapOf(
+                "filesystem" to McpServerConfigDto(McpConfigDto(type = "stdio", command = listOf("bun", "mcp-files")), "global"),
+                "github" to McpServerConfigDto(
+                    McpConfigDto(type = "remote", url = "https://mcp.github.test", headers = mapOf("Authorization" to "Bearer token"), enabled = true, timeout = 5000L),
+                    "global",
+                ),
+            )
         }
         app = KiloAppService(cs, appRpc)
-        val ready = KiloAppStateDto(
-            KiloAppStatusDto.READY,
-            config = ConfigDto(mcp = mapOf(
-                "filesystem" to McpConfigDto(type = "stdio", command = listOf("bun", "mcp-files")),
-                "github" to McpConfigDto(type = "remote", url = "https://mcp.github.test"),
-            )),
-        )
+        val ready = KiloAppStateDto(KiloAppStatusDto.READY, config = ConfigDto())
         app._state.value = ready
         appRpc.state.value = ready
         ApplicationManager.getApplication().replaceService(KiloAppService::class.java, app, testRootDisposable)
@@ -233,6 +330,20 @@ class McpSettingsUiTest : BasePlatformTestCase() {
             val bounds = list.getCellBounds(idx, idx)
             val area = settingsListCellBounds(list, bounds, row, selected = true).getValue(id)
             click(list, center(area))
+            true
+        }
+    }
+
+    private fun doubleClick(panel: McpSettingsUi, key: String) {
+        edt {
+            val list = list(panel)
+            list.size = Dimension(460, 260)
+            list.doLayout()
+            val idx = rows(panel).indexOfFirst { it.key == key }
+            list.selectedIndex = idx
+            val bounds = list.getCellBounds(idx, idx)
+            val point = Point(bounds.x + 10, bounds.y + bounds.height / 2)
+            list.dispatchEvent(mouse(list, MouseEvent.MOUSE_CLICKED, point, count = 2))
             true
         }
     }
@@ -285,14 +396,14 @@ class McpSettingsUiTest : BasePlatformTestCase() {
         list.dispatchEvent(mouse(list, MouseEvent.MOUSE_RELEASED, point))
     }
 
-    private fun mouse(list: JBList<SettingsListItem>, id: Int, point: Point) = MouseEvent(
+    private fun mouse(list: JBList<SettingsListItem>, id: Int, point: Point, count: Int = 1) = MouseEvent(
         list,
         id,
         System.currentTimeMillis(),
         if (id == MouseEvent.MOUSE_PRESSED) InputEvent.BUTTON1_DOWN_MASK else 0,
         point.x,
         point.y,
-        1,
+        count,
         false,
         MouseEvent.BUTTON1,
     )
@@ -323,4 +434,14 @@ class McpSettingsUiTest : BasePlatformTestCase() {
         override fun getDisplayName() = "test"
         override fun create(cs: CoroutineScope, dir: String): JComponent = McpSettingsUi(cs, DIR)
     }
+}
+
+private class FakeEditDialog(
+    val name: String,
+    val cfg: McpConfigDto,
+    private val next: McpConfigDto,
+) : McpEditDialogHandle {
+    override fun showAndGet() = true
+
+    override fun result() = next
 }

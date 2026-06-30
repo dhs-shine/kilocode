@@ -87,6 +87,9 @@ data class McpConfigDto(
     val command: List<String>? = null,
     val url: String? = null,
     val environment: Map<String, String>? = null,
+    val headers: Map<String, String>? = null,
+    val enabled: Boolean? = null,
+    val timeout: Long? = null,
 )
 
 typealias PermissionConfigDto = Map<String, PermissionRuleDto>

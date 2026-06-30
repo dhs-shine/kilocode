@@ -7,6 +7,8 @@ import ai.kilocode.rpc.KiloAgentBehaviorRpcApi
 import ai.kilocode.rpc.dto.AgentDetailDto
 import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.CommandDto
+import ai.kilocode.rpc.dto.McpConfigDto
+import ai.kilocode.rpc.dto.McpServerConfigDto
 import ai.kilocode.rpc.dto.McpStatusDto
 import ai.kilocode.rpc.dto.SkillDto
 import com.intellij.openapi.components.Service
@@ -42,6 +44,11 @@ class KiloAgentBehaviorService internal constructor(
         LOG.warn("mcp status failed dir=$directory", e)
         emptyList()
     }
+
+    suspend fun mcpConfig(directory: String): Map<String, McpServerConfigDto> = safe(emptyMap()) { call { mcpConfig(directory) } }
+
+    suspend fun saveMcp(directory: String, name: String, scope: String, config: McpConfigDto?): Boolean =
+        safe(false) { call { saveMcp(directory, name, scope, config) } }
 
     suspend fun removeSkill(directory: String, location: String): Boolean = safe(false) { call { removeSkill(directory, location) } }
 

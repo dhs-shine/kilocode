@@ -147,6 +147,60 @@ class KiloBackendAppServiceTest {
     }
 
     @Test
+    fun `mcp config is populated end to end`() = runBlocking {
+        mock.config = """{"mcp":{"sample":{"type":"local","command":["node","s.js"]},"remote":{"type":"remote","url":"https://mcp.example.test"}}}"""
+        val svc = create()
+        svc.connect()
+
+        ready(svc)
+
+        val dto = appStateDto(svc.appState.value)
+        assertEquals(listOf("node", "s.js"), dto.config?.mcp?.get("sample")?.command)
+        assertEquals("https://mcp.example.test", dto.config?.mcp?.get("remote")?.url)
+        assertEquals(listOf("node", "s.js"), svc.config?.mcp?.get("sample")?.command)
+    }
+
+    @Test
+    fun `agent config is populated end to end`() = runBlocking {
+        mock.config = """{"agent":{"build":{"model":"openai/gpt","mode":"subagent","permission":{"edit":"ask"}}}}"""
+        val svc = create()
+        svc.connect()
+
+        ready(svc)
+
+        val dto = appStateDto(svc.appState.value)
+        assertEquals("openai/gpt", dto.config?.agent?.get("build")?.model)
+        assertEquals("subagent", dto.config?.agent?.get("build")?.mode)
+        assertNotNull(dto.config?.agent?.get("build")?.permission?.get("edit"))
+    }
+
+    @Test
+    fun `disabled mcp config is populated end to end`() = runBlocking {
+        mock.config = """{"mcp":{"sample":{"enabled":false}}}"""
+        val svc = create()
+        svc.connect()
+
+        ready(svc)
+
+        val mcp = appStateDto(svc.appState.value).config?.mcp?.get("sample")
+        assertNotNull(mcp)
+        assertNull(mcp.type)
+        assertEquals(false, mcp.enabled)
+    }
+
+    @Test
+    fun `malformed config body still reaches Ready`() = runBlocking {
+        mock.config = "garbage"
+        val svc = create()
+        svc.connect()
+
+        ready(svc)
+
+        assertNull(svc.config?.model)
+        assertTrue(svc.config?.mcp?.isEmpty() == true)
+    }
+
+    @Test
     fun `config warnings are loaded without blocking Ready`() = runBlocking {
         mock.warnings = """[{"path":".kilo/kilo.json","message":"Invalid JSON","detail":"CloseBraceExpected"}]"""
         val svc = create()

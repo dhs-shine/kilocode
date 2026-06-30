@@ -5,9 +5,11 @@ import ai.kilocode.backend.workspace.ModelInfo
 import ai.kilocode.backend.workspace.ModelLimitInfo
 import ai.kilocode.backend.workspace.ProviderData
 import ai.kilocode.backend.workspace.ProviderInfo
+import ai.kilocode.rpc.dto.AgentConfigDto
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.CloudSessionDto
 import ai.kilocode.rpc.dto.CloudSessionListDto
+import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.ConfigPatchDto
 import ai.kilocode.rpc.dto.ConfigUpdateDto
 import ai.kilocode.rpc.dto.CustomModelDto
@@ -18,6 +20,7 @@ import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageErrorDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
+import ai.kilocode.rpc.dto.McpConfigDto
 import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ModelLimitDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
@@ -29,6 +32,7 @@ import ai.kilocode.rpc.dto.PermissionAlwaysRulesDto
 import ai.kilocode.rpc.dto.PermissionFileDiffDto
 import ai.kilocode.rpc.dto.PermissionReplyDto
 import ai.kilocode.rpc.dto.PermissionRequestDto
+import ai.kilocode.rpc.dto.PermissionConfigDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
 import ai.kilocode.rpc.dto.ProviderAuthOptionDto
 import ai.kilocode.rpc.dto.ProviderAuthPromptDto
@@ -46,6 +50,7 @@ import ai.kilocode.rpc.dto.SessionDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.SessionSummaryDto
 import ai.kilocode.rpc.dto.SessionTimeDto
+import ai.kilocode.rpc.dto.SkillsConfigDto
 import ai.kilocode.rpc.dto.TodoDto
 import ai.kilocode.rpc.dto.TodoViewDto
 import ai.kilocode.rpc.dto.TokensDto
@@ -486,6 +491,95 @@ object KiloCliDataParser {
     }
 
     /**
+     * Parse the `/global/config` response body into a [ConfigDto]. Tolerant of
+     * the discriminated MCP union and the `env`/`environment` alias. Never
+     * throws on malformed input so a bad config cannot block startup.
+     */
+    fun parseConfig(raw: String): ConfigDto = runCatching {
+        val obj = tryParseObject(raw) ?: return ConfigDto()
+        ConfigDto(
+            model = obj.str("model"),
+            smallModel = obj.str("small_model"),
+            subagentModel = obj.str("subagent_model"),
+            subagentVariant = obj.str("subagent_variant"),
+            defaultAgent = obj.str("default_agent"),
+            instructions = obj["instructions"].arr()
+                ?.mapNotNull { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+                ?: emptyList(),
+            skills = parseSkillsConfig(obj["skills"].obj()),
+            mcp = parseMcpConfig(obj["mcp"].obj()),
+            agent = parseAgentConfig(obj["agent"].obj()),
+        )
+    }.getOrDefault(ConfigDto())
+
+    private fun parseSkillsConfig(obj: JsonObject?): SkillsConfigDto? {
+        if (obj == null) return null
+        return SkillsConfigDto(
+            paths = obj["paths"].arr()
+                ?.mapNotNull { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+                ?: emptyList(),
+            urls = obj["urls"].arr()
+                ?.mapNotNull { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+                ?: emptyList(),
+        )
+    }
+
+    private fun parseMcpConfig(obj: JsonObject?): Map<String, McpConfigDto> {
+        if (obj == null) return emptyMap()
+        return obj.entries.mapNotNull { (name, elem) ->
+            val item = elem.obj() ?: return@mapNotNull null
+            name to McpConfigDto(
+                type = item.str("type"),
+                command = item["command"].arr()
+                    ?.mapNotNull { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
+                    ?.takeIf { it.isNotEmpty() },
+                url = item.str("url"),
+                environment = item.map("environment").takeIf { it.isNotEmpty() }
+                    ?: item.map("env").takeIf { it.isNotEmpty() },
+                headers = item.map("headers").takeIf { it.isNotEmpty() },
+                enabled = item.flagOrNull("enabled"),
+                timeout = item.long("timeout"),
+            )
+        }.toMap()
+    }
+
+    private fun parseAgentConfig(obj: JsonObject?): Map<String, AgentConfigDto> {
+        if (obj == null) return emptyMap()
+        return obj.entries.mapNotNull { (name, elem) ->
+            val item = elem.obj() ?: return@mapNotNull null
+            name to AgentConfigDto(
+                model = item.str("model"),
+                variant = item.str("variant"),
+                prompt = item.str("prompt"),
+                description = item.str("description"),
+                mode = item.str("mode"),
+                hidden = item.flagOrNull("hidden"),
+                disable = item.flagOrNull("disable"),
+                temperature = item.num("temperature"),
+                top_p = item.num("top_p"),
+                steps = item.long("steps"),
+                permission = parsePermissionConfig(item["permission"].obj()),
+            )
+        }.toMap()
+    }
+
+    private fun parsePermissionConfig(obj: JsonObject?): PermissionConfigDto? {
+        if (obj == null) return null
+        return obj.entries.mapNotNull { (tool, rule) ->
+            val value = when (rule) {
+                is JsonNull -> PermissionRuleDto.Level(null)
+                is JsonObject -> PermissionRuleDto.Patterns(
+                    rule.entries.mapNotNull { (pattern, level) ->
+                        pattern to level.scalar()
+                    }.toMap()
+                )
+                else -> PermissionRuleDto.Level(rule.scalar())
+            }
+            tool to value
+        }.toMap().takeIf { it.isNotEmpty() }
+    }
+
+    /**
      * Parse a command list response (`GET /command`) into a list of [CommandInfo].
      * The `template` field is intentionally ignored — CLI commands can return lazy
      * promise objects (`{}`) for that field, which must not crash JetBrains startup.
@@ -680,6 +774,13 @@ object KiloCliDataParser {
                                     for ((key, value) in it.environment) put(key, value)
                                 })
                             }
+                            if (it.headers != null) {
+                                put("headers", buildJsonObject {
+                                    for ((key, value) in it.headers) put(key, value)
+                                })
+                            }
+                            if (it.enabled != null) put("enabled", it.enabled)
+                            if (it.timeout != null) put("timeout", it.timeout)
                         }
                     } ?: JsonNull)
                 })

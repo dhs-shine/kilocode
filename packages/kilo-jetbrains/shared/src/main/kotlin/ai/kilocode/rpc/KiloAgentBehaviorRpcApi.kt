@@ -3,6 +3,8 @@ package ai.kilocode.rpc
 import ai.kilocode.rpc.dto.AgentDetailDto
 import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.CommandDto
+import ai.kilocode.rpc.dto.McpConfigDto
+import ai.kilocode.rpc.dto.McpServerConfigDto
 import ai.kilocode.rpc.dto.McpStatusDto
 import ai.kilocode.rpc.dto.SkillDto
 import com.intellij.platform.rpc.RemoteApiProviderService
@@ -31,6 +33,10 @@ interface KiloAgentBehaviorRpcApi : RemoteApi<Unit> {
     suspend fun commands(directory: String): List<CommandDto>
 
     suspend fun mcpStatus(directory: String): List<McpStatusDto>
+
+    suspend fun mcpConfig(directory: String): Map<String, McpServerConfigDto>
+
+    suspend fun saveMcp(directory: String, name: String, scope: String, config: McpConfigDto?): Boolean
 
     suspend fun mcpConnect(directory: String, name: String): Boolean
 

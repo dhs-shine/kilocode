@@ -185,6 +185,28 @@ class SettingsListViewTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test double click invokes primary cell instead of first visual cell`() {
+        edt {
+            val calls = mutableListOf<String>()
+            val view = SettingsListView("Empty") { key, id -> calls += "$key:$id" }
+            val row = item(
+                "with",
+                "Alpha",
+                null,
+                SettingsListCell("connect", "Connect"),
+                SettingsListCell("edit", "Edit", primary = true),
+            )
+            view.update(listOf(row))
+            layout(view)
+            val bounds = view.list.getCellBounds(0, 0)
+            val point = Point(bounds.x + 4, bounds.y + bounds.height / 2)
+
+            view.list.dispatchEvent(mouse(view, MouseEvent.MOUSE_CLICKED, point, count = 2))
+
+            assertEquals(listOf("with:edit"), calls)
+        }
+    }
+
     fun `test disabled action click does not invoke`() {
         edt {
             val calls = mutableListOf<String>()
@@ -269,14 +291,14 @@ class SettingsListViewTest : BasePlatformTestCase() {
         view.list.dispatchEvent(mouse(view, MouseEvent.MOUSE_RELEASED, point))
     }
 
-    private fun mouse(view: SettingsListView, id: Int, point: Point) = MouseEvent(
+    private fun mouse(view: SettingsListView, id: Int, point: Point, count: Int = 1) = MouseEvent(
         view.list,
         id,
         System.currentTimeMillis(),
         if (id == MouseEvent.MOUSE_PRESSED) InputEvent.BUTTON1_DOWN_MASK else 0,
         point.x,
         point.y,
-        1,
+        count,
         false,
         MouseEvent.BUTTON1,
     )
