@@ -159,7 +159,7 @@ Rules for the dead code track (apply only when this track is active):
 
    Count changed lines (additions + deletions) from the diff output and the number of distinct files changed. Use these thresholds:
 
-   **Small** (< 100 changed lines AND ≤ 3 files): spawn 1-2 sub-agents. Choose the 1-2 tracks most relevant to the nature of the change. Default priority order if unclear: security → business logic → deploy safety → performance → duplication → dead code.
+   **Small** (< 100 changed lines AND ≤ 3 files): do NOT spawn sub-agents. Review the relevant tracks yourself in the main agent. The only exception is security-sensitive changes (such as auth, secrets, crypto, input validation, or access control): spawn a single security sub-agent and review the other relevant tracks yourself.
 
    **Medium** (100–300 changed lines OR 4–10 files): spawn 3-4 sub-agents. Always include security and business logic, then add the next most relevant tracks for the change type.
 
