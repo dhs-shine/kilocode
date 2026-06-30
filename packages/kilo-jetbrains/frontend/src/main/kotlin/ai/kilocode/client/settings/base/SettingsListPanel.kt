@@ -53,6 +53,7 @@ internal abstract class SettingsListPanel(
     private var job: Job? = null
     private var request = 0
     private var disposed = false
+    private var pending = false
     protected var busy = false
         private set
 
@@ -63,19 +64,38 @@ internal abstract class SettingsListPanel(
         view.setEmptyText(emptyText())
         content.add(header(), BorderLayout.NORTH)
         setContent(view)
-        reload()
     }
 
     @RequiresEdt
-    fun reload() {
+    open fun reload() {
         checkEdt()
+        pending = false
         if (!reload(SettingsListSelection.Preserve)) return
         showProgress(loadingText())
     }
 
     @RequiresEdt
+    fun deferInitialReload() {
+        checkEdt()
+        pending = true
+    }
+
+    @RequiresEdt
+    fun hasPendingInitialReload(): Boolean {
+        checkEdt()
+        return pending
+    }
+
+    @RequiresEdt
     protected fun mutateAndReload(
         selection: SettingsListSelection = SettingsListSelection.Preserve,
+        text: String = loadingText(),
+        block: suspend () -> Boolean,
+    ) = mutateAndReload({ selection }, text, block)
+
+    @RequiresEdt
+    protected fun mutateAndReload(
+        selection: suspend () -> SettingsListSelection,
         text: String = loadingText(),
         block: suspend () -> Boolean,
     ) {
@@ -88,7 +108,7 @@ internal abstract class SettingsListPanel(
             }
             waitForReady()
             val items = fetch()
-            apply(id, items, selection)
+            apply(id, items, selection())
         }) return
         showProgress(text)
     }
@@ -191,6 +211,12 @@ internal abstract class SettingsListPanel(
                     setBusy(false)
                     clearProgress()
                 }
+            } catch (e: SettingsMessageException) {
+                withContext(edt) {
+                    if (!active(id)) return@withContext
+                    setBusy(false)
+                    showError(e.message.orEmpty())
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -279,6 +305,8 @@ internal abstract class SettingsListPanel(
         const val RELOAD_READY_TIMEOUT_MS = 10_000L
     }
 }
+
+internal class SettingsMessageException(message: String) : RuntimeException(message)
 
 internal class SettingsToolbarAction(
     text: String,

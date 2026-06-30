@@ -105,11 +105,13 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
     }
 
     override suspend fun mcpStatus(directory: String): List<McpStatusDto> = get(directory, "/mcp").let { root ->
-        when (root) {
+        val items = when (root) {
             is JsonArray -> root.mapNotNull(::mcp)
             is JsonObject -> root.mapNotNull { (name, item) -> mcp(item, name) }
             else -> emptyList()
         }
+        LOG.info("MCP status returned dir=$directory count=${items.size}")
+        items
     }
 
     override suspend fun mcpConnect(directory: String, name: String): Boolean = post(directory, "/mcp/${encodePath(name)}/connect")

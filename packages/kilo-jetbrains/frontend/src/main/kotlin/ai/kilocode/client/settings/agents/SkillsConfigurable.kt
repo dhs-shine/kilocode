@@ -26,12 +26,15 @@ class SkillsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     override fun getId(): String = ID
     override fun getDisplayName(): String = KiloBundle.message("settings.agentBehavior.skills.displayName")
     override fun create(cs: CoroutineScope, dir: String): JComponent = SkillsSettingsUi(cs, dir)
+    override fun update(ui: JComponent, dir: String) {
+        (ui as? SkillsSettingsUi)?.setDirectory(dir)
+    }
     override fun scrollReadyShell() = false
 
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.skills" }
 }
 
-internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir: String) : SettingsListPanel(cs), SettingsDraftPage {
+internal class SkillsSettingsUi(private val cs: CoroutineScope, private var dir: String) : SettingsListPanel(cs), SettingsDraftPage {
     private val state = SettingsDraftState(skillsDraft())
     private var draft: SkillsDraft
         get() = state.draft
@@ -41,6 +44,12 @@ internal class SkillsSettingsUi(private val cs: CoroutineScope, private val dir:
 
     init {
         start()
+    }
+
+    fun setDirectory(value: String) {
+        if (value == dir) return
+        dir = value
+        reload()
     }
 
     override suspend fun fetch(): List<SettingsListItem> {

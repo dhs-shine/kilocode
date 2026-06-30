@@ -168,6 +168,9 @@ class FakeAppRpcApi : KiloAppRpcApi {
                 permission = item.permission ?: cleared.permission,
             ))
         }
+        val mcp = patch.mcp?.entries?.fold(config.mcp) { acc, (name, item) ->
+            if (item == null) acc - name else acc + (name to item)
+        } ?: config.mcp
         return config.copy(
             defaultAgent = if (values.containsKey("default_agent")) values["default_agent"] else config.defaultAgent,
             model = if (values.containsKey("model")) values["model"] else config.model,
@@ -176,6 +179,7 @@ class FakeAppRpcApi : KiloAppRpcApi {
             subagentVariant = if (values.containsKey("subagent_variant")) values["subagent_variant"] else config.subagentVariant,
             instructions = patch.instructions ?: config.instructions,
             skills = patch.skills?.let { SkillsConfigDto(paths = it.paths.orEmpty(), urls = it.urls.orEmpty()) } ?: config.skills,
+            mcp = mcp,
             agent = agents,
         )
     }

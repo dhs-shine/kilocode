@@ -9,14 +9,26 @@ import ai.kilocode.rpc.dto.SkillDto
 
 class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
     var agents = emptyList<AgentDetailDto>()
+    var mcps = emptyList<McpStatusDto>()
     val agentCalls = mutableListOf<String>()
+    val mcpCalls = mutableListOf<String>()
     val removals = mutableListOf<String>()
+    val mcpConnects = mutableListOf<String>()
+    val mcpDisconnects = mutableListOf<String>()
+    val mcpAuthentications = mutableListOf<String>()
     val creations = mutableListOf<AgentCreateDto>()
     val createDirs = mutableListOf<String>()
     var afterCreate: (suspend (String, AgentCreateDto) -> Unit)? = null
     var afterRemove: (suspend (String, String) -> Unit)? = null
+    var afterMcpConnect: (suspend (String, String) -> Unit)? = null
     var createError: Exception? = null
     var removeError: Exception? = null
+    var mcpStatusError: Exception? = null
+    var mcpConnectError: Exception? = null
+    var removeResult = true
+    var mcpConnectResult = true
+    var mcpDisconnectResult = true
+    var mcpAuthenticateResult = true
 
     override suspend fun agents(directory: String): List<AgentDetailDto> {
         assertNotEdt("agentBehavior.agents")
@@ -40,7 +52,7 @@ class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
         removals.add(name)
         agents = agents.filterNot { it.name == name }
         afterRemove?.invoke(directory, name)
-        return true
+        return removeResult
     }
 
     override suspend fun createAgent(directory: String, input: AgentCreateDto): Boolean {
@@ -66,22 +78,29 @@ class FakeAgentBehaviorRpcApi : KiloAgentBehaviorRpcApi {
 
     override suspend fun mcpStatus(directory: String): List<McpStatusDto> {
         assertNotEdt("agentBehavior.mcpStatus")
-        return emptyList()
+        mcpStatusError?.let { throw it }
+        mcpCalls.add(directory)
+        return mcps
     }
 
     override suspend fun mcpConnect(directory: String, name: String): Boolean {
         assertNotEdt("agentBehavior.mcpConnect")
-        return false
+        mcpConnectError?.let { throw it }
+        mcpConnects.add(name)
+        afterMcpConnect?.invoke(directory, name)
+        return mcpConnectResult
     }
 
     override suspend fun mcpDisconnect(directory: String, name: String): Boolean {
         assertNotEdt("agentBehavior.mcpDisconnect")
-        return false
+        mcpDisconnects.add(name)
+        return mcpDisconnectResult
     }
 
     override suspend fun mcpAuthenticate(directory: String, name: String): Boolean {
         assertNotEdt("agentBehavior.mcpAuthenticate")
-        return false
+        mcpAuthentications.add(name)
+        return mcpAuthenticateResult
     }
 
     override suspend fun claudeCodeCompat(): Boolean {

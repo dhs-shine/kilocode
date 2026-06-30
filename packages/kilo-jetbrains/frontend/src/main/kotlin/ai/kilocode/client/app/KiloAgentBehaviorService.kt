@@ -35,7 +35,13 @@ class KiloAgentBehaviorService internal constructor(
 
     suspend fun commands(directory: String): List<CommandDto> = safe(emptyList()) { call { commands(directory) } }
 
-    suspend fun mcpStatus(directory: String): List<McpStatusDto> = safe(emptyList()) { call { mcpStatus(directory) } }
+    suspend fun mcpStatus(directory: String): List<McpStatusDto> = try {
+        LOG.info("mcp status: requesting dir=$directory")
+        call { mcpStatus(directory) }.also { LOG.info("mcp status: received dir=$directory count=${it.size}") }
+    } catch (e: Exception) {
+        LOG.warn("mcp status failed dir=$directory", e)
+        emptyList()
+    }
 
     suspend fun removeSkill(directory: String, location: String): Boolean = safe(false) { call { removeSkill(directory, location) } }
 

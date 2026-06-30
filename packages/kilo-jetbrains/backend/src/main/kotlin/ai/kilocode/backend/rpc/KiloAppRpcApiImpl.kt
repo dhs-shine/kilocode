@@ -243,10 +243,11 @@ private fun mcp(cfg: Any?): Map<String, McpConfigDto> {
     return map.mapNotNull { (name, item) ->
         if (name !is String || item == null) return@mapNotNull null
         name to McpConfigDto(
-            type = prop(item, "type") as? String,
+            type = stringValue(prop(item, "type")),
             command = stringList(prop(item, "command")).takeIf { it.isNotEmpty() },
             url = prop(item, "url") as? String,
-            environment = stringMap(prop(item, "environment")).takeIf { it.isNotEmpty() },
+            environment = stringMap(prop(item, "environment")).takeIf { it.isNotEmpty() }
+                ?: stringMap(prop(item, "env")).takeIf { it.isNotEmpty() },
         )
     }.toMap()
 }
@@ -281,3 +282,9 @@ private fun stringMap(value: Any?): Map<String, String> = (value as? Map<*, *>)
     ?.mapNotNull { (key, item) -> if (key is String && item is String) key to item else null }
     ?.toMap()
     .orEmpty()
+
+private fun stringValue(value: Any?): String? = when (value) {
+    is String -> value
+    null -> null
+    else -> prop(value, "value") as? String ?: value.toString().lowercase()
+}

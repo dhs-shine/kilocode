@@ -14,14 +14,23 @@ class WorkflowsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     override fun getId(): String = ID
     override fun getDisplayName(): String = KiloBundle.message("settings.agentBehavior.workflows.displayName")
     override fun create(cs: CoroutineScope, dir: String): JComponent = WorkflowsSettingsUi(cs, dir)
+    override fun update(ui: JComponent, dir: String) {
+        (ui as? WorkflowsSettingsUi)?.setDirectory(dir)
+    }
     override fun scrollReadyShell() = false
 
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.workflows" }
 }
 
-internal class WorkflowsSettingsUi(cs: CoroutineScope, private val dir: String) : SettingsListPanel(cs) {
+internal class WorkflowsSettingsUi(cs: CoroutineScope, private var dir: String) : SettingsListPanel(cs) {
     init {
         start()
+    }
+
+    fun setDirectory(value: String) {
+        if (value == dir) return
+        dir = value
+        reload()
     }
 
     override suspend fun fetch(): List<SettingsListItem> {
