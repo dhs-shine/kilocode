@@ -74,6 +74,8 @@ class SessionMessageListPanel(
     private var hiddenTool: ToolCallRef? = null
     private var hovered: PartView? = null
 
+    var onHover: ((PartView, Boolean) -> Unit)? = null
+
     /** Progress footer — always the last child inside the scroll. */
     val progress = ProgressPanel(model, parent)
 
@@ -365,15 +367,19 @@ class SessionMessageListPanel(
             if (prev === view) return
             hovered = view
             prev?.setHovered(false)
+            onHover?.invoke(view, true)
             return
         }
-        if (hovered === view) hovered = null
+        if (hovered !== view) return
+        hovered = null
+        onHover?.invoke(view, false)
     }
 
     private fun clearHover() {
         val view = hovered ?: return
         hovered = null
         view.setHovered(false)
+        onHover?.invoke(view, false)
     }
 
     override fun applyStyle(style: SessionEditorStyle) {
@@ -396,6 +402,7 @@ class SessionMessageListPanel(
         turnViews.clear()
         msgToTurn.clear()
         msgToView.clear()
+        onHover = null
         removeAll()
     }
 }

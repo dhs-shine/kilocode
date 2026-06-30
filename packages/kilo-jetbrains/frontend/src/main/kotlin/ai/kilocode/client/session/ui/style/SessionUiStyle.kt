@@ -140,6 +140,11 @@ object SessionUiStyle {
             fun topPadding(): Int = VIEWPORT_TOP_PADDING
         }
 
+        object Popup {
+            const val MAX_LINES = 15
+            const val MAX_WIDTH = 520
+        }
+
         /** Permission session-view command preview limits. */
         object Permission {
             const val COMMAND_LINES = 3

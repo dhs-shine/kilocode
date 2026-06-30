@@ -524,6 +524,7 @@ internal open class MdViewHybrid(
                 MdCodeBlockBorder.All -> JBUI.Borders.customLine(opts.codeBorder, width)
                 MdCodeBlockBorder.Horizontal -> JBUI.Borders.customLine(opts.codeBorder, width, 0, width, 0)
                 MdCodeBlockBorder.Bottom -> JBUI.Borders.customLine(opts.codeBorder, 0, 0, width, 0)
+                MdCodeBlockBorder.None -> JBUI.Borders.empty()
             }
             viewportBorder = JBUI.Borders.empty(
                 SessionUiStyle.View.Code.topPadding(),

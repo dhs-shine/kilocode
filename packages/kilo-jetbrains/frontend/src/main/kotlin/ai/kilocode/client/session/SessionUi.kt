@@ -25,6 +25,7 @@ import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.session.ui.prompt.SlashAction
 import ai.kilocode.client.session.ui.prompt.mentionParts as promptMentionParts
 import ai.kilocode.client.session.ui.account.SessionAccountOverlay
+import ai.kilocode.client.session.ui.popup.HeaderPopupController
 import ai.kilocode.client.session.ui.SessionDropOverlay
 import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.SessionMessageListPanel
@@ -182,6 +183,7 @@ class SessionUi(
     private var modalFocus: (() -> JComponent)? = null
     private var style = SessionEditorStyle.current()
     private val selection = SessionSelection()
+    private val popup = HeaderPopupController(timers)
     private val provider = object : TextCopyProvider() {
         override fun getActionUpdateThread() = ActionUpdateThread.EDT
 
@@ -195,6 +197,7 @@ class SessionUi(
     private var disposed = false
 
     init {
+        Disposer.register(this, popup)
         buildUi()
         Disposer.register(this, selection)
         scroll.show(body(controller.model.state))
@@ -337,11 +340,16 @@ class SessionUi(
             ::openAttachment,
             repo = workspace.directory,
             resize = { anchor, fn -> scroll.preserve(anchor, fn) },
-        )
+        ).also {
+            it.onHover = { view, on -> if (on) popup.show(view) else popup.notifyExit(view) }
+        }
         header = SessionHeaderPanel(controller, this)
 
         scroll = SessionScroll(root, sessionContent, messageBody, blankBody)
-        scroll.onScroll = overlay::clear
+        scroll.onScroll = {
+            overlay.clear()
+            popup.hideAll()
+        }
         connection = ConnectionPanel(this, controller)
 
         completion = KiloPromptCompletionProvider(
@@ -542,7 +550,10 @@ class SessionUi(
     private fun bindStyle() {
         addHierarchyListener { event ->
             if ((event.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong()) == 0L) return@addHierarchyListener
-            if (!isShowing) return@addHierarchyListener
+            if (!isShowing) {
+                popup.hideAll()
+                return@addHierarchyListener
+            }
             applyStyleIfThemeChanged()
         }
 
@@ -795,6 +806,7 @@ class SessionUi(
     override fun dispose() {
         disposed = true
         hide.stop()
+        popup.hideAll()
         modalFocus = null
         empty = null
         if (this::root.isInitialized) root.setModalContent(null)
