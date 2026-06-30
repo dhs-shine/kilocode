@@ -38,8 +38,14 @@ class OpenLocalConfigAction : ConfigAction(
 ) {
     override fun update(e: AnActionEvent) {
         val dir = directory(e)
+        val service = service<KiloWorkspaceService>()
+        val target = dir?.let { service.localConfig[it] }
         e.presentation.isEnabled = dir != null
-        e.presentation.text = text(dir?.let { service<KiloWorkspaceService>().localConfig[it] })
+        e.presentation.text = text(target)
+
+        if (dir != null && target == null) {
+            service.refreshLocalConfigTarget(dir)
+        }
     }
 
     override fun actionPerformed(e: AnActionEvent) {
@@ -62,7 +68,13 @@ class OpenGlobalConfigAction : ConfigAction(
     description = KiloBundle.message("action.Kilo.OpenGlobalConfig.description"),
 ) {
     override fun update(e: AnActionEvent) {
-        e.presentation.text = text(service<KiloWorkspaceService>().globalConfig)
+        val service = service<KiloWorkspaceService>()
+        val target = service.globalConfig
+        e.presentation.text = text(target)
+
+        if (target == null) {
+            service.refreshGlobalConfigTarget()
+        }
     }
 
     override fun actionPerformed(e: AnActionEvent) {
