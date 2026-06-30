@@ -76,18 +76,7 @@ jobs:
           fi
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Cache Bun modules
-        uses: actions/cache@v5 # kilocode_change
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ hashFiles('bun.lock') }}
-
-      - name: Install dependencies
-        run: bun install
+        uses: ./.github/actions/setup-bun # kilocode_change
 
       - name: Cache Playwright browsers
         id: playwright-cache
@@ -244,18 +233,7 @@ jobs:
           fi
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Cache Bun modules
-        uses: actions/cache@v5 # kilocode_change
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ hashFiles('bun.lock') }}
-
-      - name: Install dependencies
-        run: bun install
+        uses: ./.github/actions/setup-bun # kilocode_change
 
       - name: Cache Playwright browsers
         id: playwright-cache-vscode
