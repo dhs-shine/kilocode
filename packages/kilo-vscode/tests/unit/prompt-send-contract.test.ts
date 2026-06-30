@@ -422,14 +422,25 @@ describe("Cloud import parts cleanup contract", () => {
     // looking idle while still loading. Clear only if still on the
     // dead preview's key. The guard is extracted into a clearIfOn
     // helper to keep the switch-case complexity under the lint cap.
+    //
+    // The loading check MUST run before cloudPreviewId is nulled,
+    // otherwise `cloudPreviewId() === failedKey` would be false even
+    // on the failing preview and the spinner would stick until
+    // later navigation clears it.
     const idx = source.indexOf('case "cloudSessionImportFailed"')
     expect(idx).toBeGreaterThan(-1)
     const after = source.slice(idx, idx + 4000)
+    expect(after).toMatch(/clearIfOn\(cloudPreviewId, \(\) => setLoading\(false\), failedKey\)/)
     expect(after).toMatch(/clearIfOn\(cloudPreviewId, \(\) => setCloudPreviewId\(null\), failedKey\)/)
     expect(after).toMatch(/clearIfOn\(currentSessionID, \(\) => setCurrentSessionID\(undefined\), failedKey\)/)
     expect(after).toMatch(/clearIfOn\(draftSessionID, \(\) => setDraftSessionID\(undefined\), failedKey\)/)
-    expect(after).toMatch(/clearIfOn\(cloudPreviewId, \(\) => setLoading\(false\), failedKey\)/)
     expect(after).not.toMatch(/^\s*setLoading\(false\)\s*$/m)
+    // Loading check must come before cloudPreviewId null in the case body.
+    const loadIdx = after.indexOf("setLoading(false)")
+    const nullIdx = after.indexOf("setCloudPreviewId(null)")
+    expect(loadIdx).toBeGreaterThan(-1)
+    expect(nullIdx).toBeGreaterThan(-1)
+    expect(loadIdx).toBeLessThan(nullIdx)
   })
 
   it("declares a clearIfOn helper that guards an async clear against a still-equal scope", () => {

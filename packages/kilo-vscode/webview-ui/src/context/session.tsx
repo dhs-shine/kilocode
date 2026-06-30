@@ -1126,16 +1126,11 @@ export const SessionProvider: ParentComponent = (props) => {
             delete parts[failedKey]
           }),
         )
-        // Async failure: only clear the scopes if still on the dead
-        // preview. Unconditionally nulling cloudPreviewId drops a
-        // later preview response and disables import-mode sends;
-        // blanking the session/draft ids blanks the newer active
-        // session; and dropping the spinner leaves a newer preview
-        // looking idle before its data arrives.
+        // Async failure: only clear scopes if still on the dead preview. Unconditionally nulling cloudPreviewId drops a later preview response and disables import-mode sends; blanking the session/draft ids blanks the newer active session; dropping the spinner leaves a newer preview looking idle. Loading check must precede the cloudPreviewId clear, otherwise the failing preview's spinner sticks.
+        clearIfOn(cloudPreviewId, () => setLoading(false), failedKey)
         clearIfOn(cloudPreviewId, () => setCloudPreviewId(null), failedKey)
         clearIfOn(currentSessionID, () => setCurrentSessionID(undefined), failedKey)
         clearIfOn(draftSessionID, () => setDraftSessionID(undefined), failedKey)
-        clearIfOn(cloudPreviewId, () => setLoading(false), failedKey)
         showToast({
           variant: "error",
           title: language.t("session.cloud.import.failed") ?? "Failed to import cloud session",
