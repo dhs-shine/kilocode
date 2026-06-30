@@ -63,6 +63,8 @@ Before branch review, confirm the chosen base ref is reachable and shares histor
 
 Before commit review, verify the commit with `git rev-parse --verify <commit>^{commit}`. If it cannot be resolved, stop and explain that the commit was not found.
 
+Run `git log --format='%P' -n1 <commit>` and count parent hashes. If it has more than one parent, stop and explain that merge commits are not supported because they do not have a single review patch.
+
 Before pull request review, use `gh pr view <pr>` to verify that the pull request is accessible. If it cannot be loaded, stop and report the error rather than guessing at its contents.
 
 ---
