@@ -1126,11 +1126,15 @@ export const SessionProvider: ParentComponent = (props) => {
             delete parts[failedKey]
           }),
         )
-        setCloudPreviewId(null)
-        // Async failure: only clear the ids if the user has not
-        // navigated to a newer scope in the meantime.
-        clearIfOn(currentSessionID, setCurrentSessionID, failedKey)
-        clearIfOn(draftSessionID, setDraftSessionID, failedKey)
+        // Async failure: only clear the preview and session/draft ids
+        // if the user has not navigated to a newer scope in the
+        // meantime. Unconditionally nulling cloudPreviewId would drop
+        // a later preview response and disable import-mode sends if
+        // the user started previewing a different cloud session
+        // before the failure came back.
+        clearIfOn(cloudPreviewId, () => setCloudPreviewId(null), failedKey)
+        clearIfOn(currentSessionID, () => setCurrentSessionID(undefined), failedKey)
+        clearIfOn(draftSessionID, () => setDraftSessionID(undefined), failedKey)
         setLoading(false)
         showToast({
           variant: "error",
@@ -1359,11 +1363,13 @@ export const SessionProvider: ParentComponent = (props) => {
     pendingCloudPrune.delete(key)
   }
 
-  // Clear a session/draft scope only if it still points at the given
-  // key. Async failure paths must not clobber scopes the user has
-  // navigated to since the operation was started.
-  function clearIfOn<T>(get: () => T | undefined, set: (v: T | undefined) => void, key: T) {
-    if (get() === key) set(undefined)
+  // Clear a scope only if it still points at the given key. Async
+  // failure paths must not clobber scopes the user has navigated to
+  // since the operation was started. Takes a clear callback so it
+  // works for both undefined-cleared and null-cleared signals
+  // without changing their setter signatures.
+  function clearIfOn<T>(get: () => T, clear: () => void, key: T) {
+    if (get() === key) clear()
   }
 
   function messageParts(messages: Message[]): Record<string, Part[]> {
