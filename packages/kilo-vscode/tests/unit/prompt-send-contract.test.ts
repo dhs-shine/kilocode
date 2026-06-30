@@ -349,6 +349,63 @@ describe("SessionContext userClearedSession contract", () => {
     const body = extractFunctionBody(source, "handleCloudSessionImported")
     expect(body).toMatch(/setUserClearedSession\(false\)/)
   })
+
+  it("handleCloudSessionImported migrates draftSessionID from the cloud key to the real session id", () => {
+    // Without this, draftSessionID stays on the synthetic "cloud:<id>" key.
+    // After a later external delete of the imported session,
+    // handleSessionDeleted only clears draftSessionID when it equals the
+    // deleted id; the synthetic cloud key never matches, so draftKey()
+    // falls back to ":pending:cloud:<id>" and restoreFailed can no longer
+    // match :session:<id> or :new — silently losing the failed draft.
+    const body = extractFunctionBody(source, "handleCloudSessionImported")
+    expect(body).toMatch(/setDraftSessionID\(session\.id\)/)
+  })
+})
+
+describe("Cloud import parts cleanup contract", () => {
+  const source = readFile(SESSION_FILE)
+
+  it("declares a pendingCloudPrune tracker for cloud message IDs", () => {
+    // Without a tracker, repeated preview -> import cycles accumulate full
+    // cloud transcripts in store.parts because handleMessagesLoaded never
+    // knows which keys belong to the carried-over cloud messages.
+    expect(source).toMatch(/pendingCloudPrune/)
+  })
+
+  it("handleCloudSessionDataLoaded registers the cloud message IDs", () => {
+    const body = extractFunctionBody(source, "handleCloudSessionDataLoaded")
+    expect(body).toMatch(/pendingCloudPrune\.set\(/)
+  })
+
+  it("handleCloudSessionImported transfers the prune set to the new session id", () => {
+    const body = extractFunctionBody(source, "handleCloudSessionImported")
+    expect(body).toMatch(/pendingCloudPrune\.set\(session\.id,/)
+    expect(body).toMatch(/pendingCloudPrune\.delete\(cloudKey\)/)
+  })
+
+  it("handleMessagesLoaded prunes cloud-import orphans from store.parts and stash", () => {
+    // The carried-over cloud messages are gone from store.messages after
+    // this call, so any store.parts[<cloud-msg-id>] entry is unreachable.
+    const body = extractFunctionBody(source, "handleMessagesLoaded")
+    expect(body).toMatch(/pendingCloudPrune\.get\(sessionID\)/)
+    expect(body).toMatch(/pendingCloudPrune\.delete\(sessionID\)/)
+  })
+
+  it("handleSessionDeleted prunes cloud-import orphans if the imported session is deleted before loadMessages returns", () => {
+    const body = extractFunctionBody(source, "handleSessionDeleted")
+    expect(body).toMatch(/pruneCloudOrphans\(sessionID\)/)
+  })
+
+  it("handleCloudSessionImportFailed prunes cloud parts and the synthetic session entries", () => {
+    // Implemented as a switch case inside handleExtensionMessage, not a
+    // standalone function, so search the source for the case body directly.
+    const idx = source.indexOf('case "cloudSessionImportFailed"')
+    expect(idx).toBeGreaterThan(-1)
+    const after = source.slice(idx, idx + 4000)
+    expect(after).toMatch(/pruneCloudOrphans\(failedKey\)/)
+    expect(after).toMatch(/delete sessions\[failedKey\]/)
+    expect(after).toMatch(/delete messages\[failedKey\]/)
+  })
 })
 
 describe("KiloConnectionService pruneSession contract", () => {

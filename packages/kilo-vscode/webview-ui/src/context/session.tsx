@@ -79,6 +79,12 @@ import { createAbortState } from "./abort-state"
 const RECENT_LIMIT = 5
 const MESSAGE_PAGE_LIMIT = 80
 
+// Cloud-import message IDs awaiting parts cleanup. Registered by
+// handleCloudSessionDataLoaded, transferred to the new real session id by
+// handleCloudSessionImported, then drained by handleMessagesLoaded (success),
+// handleSessionDeleted (premature delete), or cloudSessionImportFailed.
+const pendingCloudPrune = new Map<string, Set<string>>()
+
 type MessageMutation = Exclude<MessageLoadMode, "focus"> | "append" | "update"
 
 interface MessagePageState {
@@ -1097,7 +1103,29 @@ export const SessionProvider: ParentComponent = (props) => {
         handleCloudSessionImported(message.cloudSessionId, message.session)
         break
 
-      case "cloudSessionImportFailed":
+      case "cloudSessionImportFailed": {
+        // Drop the carried-over cloud parts and synthetic session/messages
+        // entries — they were only meaningful while the preview was live.
+        const failedKey = `cloud:${message.cloudSessionId}`
+        pruneCloudOrphans(failedKey)
+        setStore(
+          "sessions",
+          produce((sessions) => {
+            delete sessions[failedKey]
+          }),
+        )
+        setStore(
+          "messages",
+          produce((messages) => {
+            delete messages[failedKey]
+          }),
+        )
+        setStore(
+          "toolParts",
+          produce((parts) => {
+            delete parts[failedKey]
+          }),
+        )
         setCloudPreviewId(null)
         setCurrentSessionID(undefined)
         setLoading(false)
@@ -1108,6 +1136,7 @@ export const SessionProvider: ParentComponent = (props) => {
         })
         console.error("[Kilo New] Cloud session import failed:", message.error)
         break
+      }
 
       case "worktreeStatsLoaded":
         setWorktreeStats({ files: message.files, additions: message.additions, deletions: message.deletions })
@@ -1312,6 +1341,21 @@ export const SessionProvider: ParentComponent = (props) => {
     setTools(sessionID, tools)
   }
 
+  // Drop carried-over cloud message parts for the given key. Called from
+  // handleMessagesLoaded, handleSessionDeleted, and cloudSessionImportFailed.
+  function pruneCloudOrphans(key: string) {
+    const cloudIDs = pendingCloudPrune.get(key)
+    if (!cloudIDs) return
+    setStore(
+      "parts",
+      produce((parts) => {
+        for (const id of cloudIDs) delete parts[id]
+      }),
+    )
+    for (const id of cloudIDs) stash.remove(id)
+    pendingCloudPrune.delete(key)
+  }
+
   function messageParts(messages: Message[]): Record<string, Part[]> {
     const parts: Record<string, Part[]> = {}
     for (const msg of messages) {
@@ -1425,6 +1469,26 @@ export const SessionProvider: ParentComponent = (props) => {
       const revert = store.sessions[sessionID]?.revert ?? undefined
       if (revert) resetTodos(sessionID, revert)
       recoverPrefs(sessionID, merged)
+
+      // The carried-over cloud messages keyed by their original cloud IDs are
+      // now gone from store.messages[sessionID], so any parts at
+      // store.parts[<cloud-msg-id>] are unreachable. Drop them so repeated
+      // preview -> import cycles don't accumulate full transcripts in the
+      // reactive store.
+      const cloudIDs = pendingCloudPrune.get(sessionID)
+      if (cloudIDs && cloudIDs.size > 0) {
+        const newIDs = new Set(messages.map((m) => m.id))
+        setStore(
+          "parts",
+          produce((parts) => {
+            for (const id of cloudIDs) {
+              if (!newIDs.has(id)) delete parts[id]
+            }
+          }),
+        )
+        for (const id of cloudIDs) stash.remove(id)
+        pendingCloudPrune.delete(sessionID)
+      }
     })
     if (reset) requestAnimationFrame(() => patchPage(sessionID, { lastMutation: undefined }))
   }
@@ -1974,6 +2038,11 @@ export const SessionProvider: ParentComponent = (props) => {
       }
     })
     deleteDraftsForSession(sessionID)
+    // If the deleted session was a cloud import still carrying carried-over
+    // cloud message IDs, drop the parts and the tracking entry. The
+    // carried-over messages were already removed from store.messages above,
+    // so their parts in store.parts are orphans now.
+    pruneCloudOrphans(sessionID)
   }
 
   // Splices the message from the store and deletes its parts.
@@ -1996,6 +2065,7 @@ export const SessionProvider: ParentComponent = (props) => {
   function handleCloudSessionDataLoaded(cloudSessionId: string, title: string, messages: Message[]) {
     if (cloudPreviewId() !== cloudSessionId) return
     const key = `cloud:${cloudSessionId}`
+    pendingCloudPrune.set(key, new Set(messages.map((m) => m.id)))
     batch(() => {
       setLoaded((prev) => {
         if (prev.has(key)) return prev
@@ -2045,6 +2115,14 @@ export const SessionProvider: ParentComponent = (props) => {
 
       setCloudPreviewId(null)
       setCurrentSessionID(session.id)
+      // Migrate the draft scope from the synthetic "cloud:<id>" key to
+      // the real session id so a later external delete of the imported
+      // session clears draftSessionID cleanly. Without this, draftSessionID
+      // stays on the synthetic key, rawKey() falls back to
+      // "pending:cloud:<id>" after the delete, and restoreFailed() no
+      // longer matches :session:<id> or :new — silently losing the failed
+      // draft on the next send.
+      setDraftSessionID(session.id)
 
       // Defense in depth: even if selectCloudSession's reset was missed
       // (e.g. deleteSession set the flag against the synthetic cloud key
@@ -2065,20 +2143,15 @@ export const SessionProvider: ParentComponent = (props) => {
       // renders immediately without a loading flash. Those carried-over message
       // objects still hold their original cloud IDs, so every SessionTurn
       // calls getParts("<cloud-msg-id>") — which means the parts must remain in
-      // the store for now.
+      // the store until handleMessagesLoaded replaces them with server-assigned
+      // IDs.
       //
-      // If we deleted them here, every message would temporarily render with no
-      // parts (parts().length === 0), showing only a loading shimmer until the
-      // real data arrives.
-      //
-      // Instead, right after this batch we dispatch a "loadMessages" request
-      // (below). When the extension responds with the "messagesLoaded" event,
-      // handleMessagesLoaded() replaces the messages array with server-assigned
-      // IDs and writes new parts keyed by those IDs. The old cloud-keyed part
-      // entries become orphans — no message in the store references them anymore.
-      // They remain in store.parts until the webview reloads or the store is
-      // reset, which is a bounded, one-session-worth amount of data that does
-      // not accumulate over time.
+      // After handleMessagesLoaded runs for session.id, the carried-over cloud
+      // messages are replaced and the cloud-keyed parts become orphans. We
+      // track them via pendingCloudPrune (registered in
+      // handleCloudSessionDataLoaded) so handleMessagesLoaded can drop them.
+      // Without that, every preview -> import cycle leaves another full
+      // transcript's worth of cloud parts in store.parts until reload.
       setStore(
         "sessions",
         produce((sessions) => {
@@ -2098,6 +2171,15 @@ export const SessionProvider: ParentComponent = (props) => {
         }),
       )
     })
+    // Transfer the pending prune set from the synthetic cloud key to the
+    // new real session id, then drop the synthetic-key entry. The set is
+    // keyed by session.id going forward so handleMessagesLoaded (success)
+    // or handleSessionDeleted (premature delete) can find it.
+    const cloudPruneIDs = pendingCloudPrune.get(cloudKey)
+    if (cloudPruneIDs) {
+      pendingCloudPrune.set(session.id, cloudPruneIDs)
+      pendingCloudPrune.delete(cloudKey)
+    }
     // Load real messages in the background (picks up server-assigned IDs
     // and the new user message once the send completes via SSE)
     patchPage(session.id, { loadingInitial: true, before: undefined, hasMore: false })
