@@ -160,6 +160,7 @@ const status = SessionStatus.layer.pipe(Layer.provideMerge(Bus.layer))
 const run = SessionRunState.layer.pipe(Layer.provide(status))
 const infra = Layer.mergeAll(NodeFileSystem.layer, CrossSpawnSpawner.defaultLayer)
 
+// kilocode_change start
 const agent: AgentSvc.Info = {
   name: "build",
   mode: "primary",
@@ -188,6 +189,7 @@ const blockingProcessor = Layer.succeed(
       }),
   }),
 )
+// kilocode_change end
 
 function makePrompt(input?: { processor?: "blocking" }) {
   const deps = Layer.mergeAll(
@@ -195,7 +197,7 @@ function makePrompt(input?: { processor?: "blocking" }) {
     Snapshot.defaultLayer,
     LLM.defaultLayer,
     Env.defaultLayer,
-    input?.processor === "blocking" ? fastAgents : AgentSvc.defaultLayer,
+    input?.processor === "blocking" ? fastAgents : AgentSvc.defaultLayer, // kilocode_change
     Command.defaultLayer,
     Permission.defaultLayer,
     Plugin.defaultLayer,
@@ -1162,10 +1164,12 @@ raceNoLLMServer.instance(
         parts: [{ type: "text", text: "first" }],
       })
 
+      // kilocode_change start
       const firstCreate = yield* Deferred.make<void>()
       processorCreateStarted.push(firstCreate)
       const first = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
       yield* awaitWithTimeout(Deferred.await(firstCreate), "processor.create did not start for first turn")
+      // kilocode_change end
 
       yield* prompt.cancel(chat.id)
       const firstExit = yield* Fiber.await(first)
@@ -1188,10 +1192,12 @@ raceNoLLMServer.instance(
         parts: [{ type: "text", text: "second" }],
       })
 
+      // kilocode_change start
       const secondCreate = yield* Deferred.make<void>()
       processorCreateStarted.push(secondCreate)
       const second = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkChild)
       yield* awaitWithTimeout(Deferred.await(secondCreate), "processor.create did not start for second turn")
+      // kilocode_change end
 
       yield* prompt.cancel(chat.id)
       const secondExit = yield* Fiber.await(second)
