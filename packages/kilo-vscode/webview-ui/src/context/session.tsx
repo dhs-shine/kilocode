@@ -1128,10 +1128,14 @@ export const SessionProvider: ParentComponent = (props) => {
         )
         setCloudPreviewId(null)
         setCurrentSessionID(undefined)
-        // Symmetric with handleSessionDeleted: clear draftSessionID too.
-        // Otherwise rawKey() falls back to ":pending:cloud:<id>" and the
-        // prompt stays bound to the dead preview's scope.
-        setDraftSessionID(undefined)
+        // Symmetric with handleSessionDeleted: clear draftSessionID, but
+        // only if the user has not navigated to a newer draft scope in
+        // the meantime. The failure arrives asynchronously and select
+        // sessions / start new task updates draftSessionID synchronously;
+        // unconditionally clearing it would clobber that newer scope
+        // and cause draft save/restore to fall back to ":new", losing
+        // the prompt the user actually kept open.
+        if (draftSessionID() === failedKey) setDraftSessionID(undefined)
         setLoading(false)
         showToast({
           variant: "error",
