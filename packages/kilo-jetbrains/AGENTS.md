@@ -584,6 +584,32 @@ Review generated UI code and remove:
 - Extra helpers that do not make the UI clearer or more reusable
 - Any Kotlin UI DSL (`com.intellij.ui.dsl.builder`) introduced by accident
 
+## Settings UI
+
+Settings UI has reusable primitives in `frontend/src/main/kotlin/ai/kilocode/client/settings/base/`. Check these before adding new settings components or custom Swing assemblies.
+
+### Base Pages And Messaging
+
+- Use `BaseSettingsUi` for app-backed draft settings that need app-state collection, workspace loading/refreshing, draft/baseline tracking, save progress, save failure handling, and login/banner integration.
+- Use `SettingsPanel` and `SettingsOverlayPanel` as the settings surface so progress and errors go through `showProgress`, `updateProgress`, `showError`, and `clearProgress`.
+- Use `SettingsTop` for settings banners and login prompts rather than ad hoc labels, notifications, or dialog prompts embedded in the form.
+- Use `SettingsDraftState` and `SettingsDraftPage` for modified/reset/apply behavior instead of maintaining unrelated local dirty-state mechanisms.
+- Use the base loading and refresh flow (`BaseSettingsUi` or `SettingsListPanel.reload` / `mutateAndReload`) so busy state, refresh selection, and app readiness are handled consistently.
+- Communicate load, refresh, validation, and save errors through the common settings messaging mechanisms: overlay `showError`, `SettingsMessageException` for user-facing list mutation errors, `failedText()` / `saveError` in `BaseSettingsUi`, and `SettingsTop` banners for persistent page-level problems.
+
+### Rows And Forms
+
+- Use `SettingsRow`, `SettingsStackedRow`, and `SettingsRows` for reusable setting rows, stacked text/editing rows, keyed dynamic rows, and setting sections.
+- Do not create a custom row panel for each setting unless the common row classes cannot represent the behavior.
+- Keep settings UI on the EDT and continue using existing platform Swing components, `Stack`, `Align`, `UiStyle`, and localized `KiloBundle` strings according to the UI guidance above.
+
+### Lists And Add/Remove Collections
+
+- For add/remove/edit collections, use the shared list infrastructure: `SettingsListPanel`, `SettingsListView`, `SettingsListItem`, `SettingsListCell`, `SettingsListSelection`, and `SettingsToolbarAction` where applicable.
+- When a setting is a list of values that can be added or removed inline, represent it with common list/editor primitives such as `SettingsListEditor`, toolbar actions, and in-place cells/buttons as needed.
+- Do not build a bespoke set of Swing components for each add/remove list situation.
+- Prefer list action cells (`SettingsListCell`) for row-local actions like edit/delete and toolbar actions for global add/import/refresh actions.
+
 ## Session Component
 
 The chat session feature uses a three-layer Model / Controller / View architecture. All files live under
