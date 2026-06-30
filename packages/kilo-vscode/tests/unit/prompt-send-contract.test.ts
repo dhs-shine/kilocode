@@ -407,18 +407,33 @@ describe("Cloud import parts cleanup contract", () => {
     expect(after).toMatch(/delete messages\[failedKey\]/)
   })
 
-  it("handleCloudSessionImportFailed clears draftSessionID but only when it still equals the failed cloud key", () => {
-    // The failure arrives asynchronously. selectCloudSession sets
-    // draftSessionID to the synthetic "cloud:<id>" key, but the user
-    // can switch sessions or start a new task before the failure comes
-    // back. Unconditionally resetting draftSessionID would clobber that
-    // newer scope and cause the prompt save/restore to fall back to
-    // ":new", losing the prompt the user actually kept open. Clear
-    // only if the scope is still the dead preview's key.
+  it("handleCloudSessionImportFailed clears currentSessionID and draftSessionID only when they still equal the failed cloud key", () => {
+    // The failure arrives asynchronously. selectCloudSession sets both
+    // ids to the synthetic "cloud:<id>" key, but the user can switch
+    // to another session or start a new task before the failure comes
+    // back. Unconditionally resetting either id would clobber that
+    // newer scope: currentSessionID blanking blanks the active
+    // session, and draftSessionID blanking leaves draftKey() at
+    // ":new". Clear only if the scope is still the dead preview's key.
+    // The guard is extracted into a clearIfOn helper to keep the
+    // switch-case complexity under the lint cap.
     const idx = source.indexOf('case "cloudSessionImportFailed"')
     expect(idx).toBeGreaterThan(-1)
     const after = source.slice(idx, idx + 4000)
-    expect(after).toMatch(/if \(draftSessionID\(\) === failedKey\) setDraftSessionID\(undefined\)/)
+    expect(after).toMatch(/clearIfOn\(currentSessionID, setCurrentSessionID, failedKey\)/)
+    expect(after).toMatch(/clearIfOn\(draftSessionID, setDraftSessionID, failedKey\)/)
+  })
+
+  it("declares a clearIfOn helper that guards an async clear against a still-equal scope", () => {
+    // Extracted from cloudSessionImportFailed so the switch case stays
+    // under the complexity cap. The helper must compare get() to the
+    // key before calling the setter, so a stale async failure cannot
+    // clobber a newer scope the user has navigated to.
+    const helperIdx = source.indexOf("function clearIfOn")
+    expect(helperIdx).toBeGreaterThan(-1)
+    const helperBody = source.slice(helperIdx, helperIdx + 400)
+    expect(helperBody).toMatch(/if \(get\(\) === key\)/)
+    expect(helperBody).toMatch(/set\(undefined\)/)
   })
 })
 

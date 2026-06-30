@@ -1127,15 +1127,10 @@ export const SessionProvider: ParentComponent = (props) => {
           }),
         )
         setCloudPreviewId(null)
-        setCurrentSessionID(undefined)
-        // Symmetric with handleSessionDeleted: clear draftSessionID, but
-        // only if the user has not navigated to a newer draft scope in
-        // the meantime. The failure arrives asynchronously and select
-        // sessions / start new task updates draftSessionID synchronously;
-        // unconditionally clearing it would clobber that newer scope
-        // and cause draft save/restore to fall back to ":new", losing
-        // the prompt the user actually kept open.
-        if (draftSessionID() === failedKey) setDraftSessionID(undefined)
+        // Async failure: only clear the ids if the user has not
+        // navigated to a newer scope in the meantime.
+        clearIfOn(currentSessionID, setCurrentSessionID, failedKey)
+        clearIfOn(draftSessionID, setDraftSessionID, failedKey)
         setLoading(false)
         showToast({
           variant: "error",
@@ -1362,6 +1357,13 @@ export const SessionProvider: ParentComponent = (props) => {
     )
     for (const id of cloudIDs) stash.remove(id)
     pendingCloudPrune.delete(key)
+  }
+
+  // Clear a session/draft scope only if it still points at the given
+  // key. Async failure paths must not clobber scopes the user has
+  // navigated to since the operation was started.
+  function clearIfOn<T>(get: () => T | undefined, set: (v: T | undefined) => void, key: T) {
+    if (get() === key) set(undefined)
   }
 
   function messageParts(messages: Message[]): Record<string, Part[]> {
