@@ -63,6 +63,24 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
         assertTrue("Reinstall should force-enable recovery action", event.presentation.isEnabled)
     }
 
+    fun `test restart action adds cli suffix in connection retry popup`() {
+        val action = RestartKiloAction()
+        val event = event(action, place = KiloActionPlaces.connectionRetryPopup())
+
+        update(action, event)
+
+        assertEquals("Restart CLI", event.presentation.text)
+    }
+
+    fun `test reinstall action adds cli suffix in connection retry popup`() {
+        val action = ReinstallKiloAction()
+        val event = event(action, place = KiloActionPlaces.connectionRetryPopup())
+
+        update(action, event)
+
+        assertEquals("Reinstall CLI", event.presentation.text)
+    }
+
     fun `test cli group has visible menu text`() {
         val xml = requireNotNull(javaClass.classLoader.getResourceAsStream("kilo.jetbrains.frontend.xml"))
             .bufferedReader()
@@ -145,10 +163,10 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
         assertEquals(0, rpc.localConfigPathCalls)
     }
 
-    private fun event(action: AnAction, workspace: Workspace? = null): AnActionEvent {
+    private fun event(action: AnAction, workspace: Workspace? = null, place: String = ""): AnActionEvent {
         val presentation = Presentation().apply { copyFrom(action.templatePresentation) }
         presentation.isEnabled = false
-        return AnActionEvent.createFromDataContext("", presentation, context(workspace))
+        return AnActionEvent.createFromDataContext(place, presentation, context(workspace))
     }
 
     private fun update(action: AnAction, event: AnActionEvent) {

@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.ui
 
+import ai.kilocode.client.actions.KiloActionPlaces
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.session.controller.SessionControllerEvent
@@ -8,8 +9,12 @@ import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
+import com.intellij.ide.DataManager
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
@@ -31,6 +36,7 @@ class ConnectionPanel(
 ) : BorderLayoutPanel(), SessionControllerListener, Disposable, SessionEditorStyleTarget {
 
     companion object {
+        internal const val RETRY_GROUP_ID = "Kilo.CliGroup"
         private const val DETAILS_LINES = 10
         private const val CHROME = 2
     }
@@ -61,7 +67,7 @@ class ConnectionPanel(
     }
 
     private val retry = ActionLink(KiloBundle.message("session.connection.retry")) {
-        controller.retryConnection()
+        showRecoveryPopup()
     }.apply {
         isVisible = false
         horizontalAlignment = JBLabel.RIGHT
@@ -202,6 +208,20 @@ class ConnectionPanel(
         repaint()
     }
 
+    private fun showRecoveryPopup() {
+        val group = ActionManager.getInstance().getAction(RETRY_GROUP_ID) as? ActionGroup ?: return
+        JBPopupFactory.getInstance()
+            .createActionGroupPopup(
+                null,
+                group,
+                DataManager.getInstance().getDataContext(retry),
+                JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
+                true,
+                KiloActionPlaces.connectionRetryPopup(),
+            )
+            .showUnderneathOf(retry)
+    }
+
     override fun dispose() {
         // no-op
     }
@@ -263,8 +283,6 @@ class ConnectionPanel(
     }
 
     internal fun retryFocusable() = retry.isFocusable
-
-    internal fun clickRetry() = retry.doClick()
 
     internal fun hasSeparator() = border != null
 
