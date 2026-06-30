@@ -1128,6 +1128,10 @@ export const SessionProvider: ParentComponent = (props) => {
         )
         setCloudPreviewId(null)
         setCurrentSessionID(undefined)
+        // Symmetric with handleSessionDeleted: clear draftSessionID too.
+        // Otherwise rawKey() falls back to ":pending:cloud:<id>" and the
+        // prompt stays bound to the dead preview's scope.
+        setDraftSessionID(undefined)
         setLoading(false)
         showToast({
           variant: "error",
@@ -2133,25 +2137,11 @@ export const SessionProvider: ParentComponent = (props) => {
       // early-return.
       setUserClearedSession(false)
 
-      // Clean up synthetic cloud: entries from sessions/messages stores.
-      //
-      // Why we do NOT delete cloud parts here:
-      //
-      // During preview, parts are stored keyed by the original cloud message IDs
-      // (e.g. store.parts["<cloud-msg-id>"] = [...]). When the import completes
-      // we carry cloudMessages into the new local session (above) so the UI
-      // renders immediately without a loading flash. Those carried-over message
-      // objects still hold their original cloud IDs, so every SessionTurn
-      // calls getParts("<cloud-msg-id>") — which means the parts must remain in
-      // the store until handleMessagesLoaded replaces them with server-assigned
-      // IDs.
-      //
-      // After handleMessagesLoaded runs for session.id, the carried-over cloud
-      // messages are replaced and the cloud-keyed parts become orphans. We
-      // track them via pendingCloudPrune (registered in
-      // handleCloudSessionDataLoaded) so handleMessagesLoaded can drop them.
-      // Without that, every preview -> import cycle leaves another full
-      // transcript's worth of cloud parts in store.parts until reload.
+      // Clean up synthetic cloud: entries from sessions/messages stores. Cloud
+      // parts stay in store.parts for now — they key on the carried-over
+      // cloud message IDs that every SessionTurn still queries via
+      // getParts(). handleMessagesLoaded drops them via pendingCloudPrune
+      // once the server-assigned IDs replace the carried-over messages.
       setStore(
         "sessions",
         produce((sessions) => {

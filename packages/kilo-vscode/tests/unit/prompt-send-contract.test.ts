@@ -406,6 +406,19 @@ describe("Cloud import parts cleanup contract", () => {
     expect(after).toMatch(/delete sessions\[failedKey\]/)
     expect(after).toMatch(/delete messages\[failedKey\]/)
   })
+
+  it("handleCloudSessionImportFailed clears draftSessionID so the prompt scope is symmetric with handleSessionDeleted", () => {
+    // Without this, draftSessionID stays on the synthetic "cloud:<id>"
+    // key and rawKey() falls back to ":pending:cloud:<id>" after the
+    // failure. That stale scope is read by messages(), pageState(),
+    // busySince(), and the PromptInput draft save/restore effect, so a
+    // failed import keeps the prompt bound to the dead preview until
+    // some unrelated navigation overwrites it.
+    const idx = source.indexOf('case "cloudSessionImportFailed"')
+    expect(idx).toBeGreaterThan(-1)
+    const after = source.slice(idx, idx + 4000)
+    expect(after).toMatch(/setDraftSessionID\(undefined\)/)
+  })
 })
 
 describe("KiloConnectionService pruneSession contract", () => {
