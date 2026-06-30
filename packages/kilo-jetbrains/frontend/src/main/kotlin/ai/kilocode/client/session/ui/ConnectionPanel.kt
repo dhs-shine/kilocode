@@ -1,10 +1,12 @@
 package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.plugin.KiloBundle
-import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.session.controller.SessionControllerEvent
 import ai.kilocode.client.session.controller.SessionControllerListener
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
+import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
@@ -26,7 +28,7 @@ import javax.swing.ScrollPaneConstants
 class ConnectionPanel(
     parent: Disposable,
     private val controller: SessionController,
-) : BorderLayoutPanel(), SessionControllerListener, Disposable {
+) : BorderLayoutPanel(), SessionControllerListener, Disposable, SessionEditorStyleTarget {
 
     companion object {
         private const val DETAILS_LINES = 10
@@ -40,7 +42,7 @@ class ConnectionPanel(
     }
 
     private val header = BorderLayoutPanel().apply {
-        border = JBUI.Borders.empty(UiStyle.Gap.sm(), UiStyle.Gap.lg(), 0, UiStyle.Gap.lg())
+        border = JBUI.Borders.empty(UiStyle.Gap.sm(), UiStyle.Gap.lg(), UiStyle.Gap.sm(), UiStyle.Gap.lg())
     }
 
     private val left = BorderLayoutPanel().apply {
@@ -77,7 +79,7 @@ class ConnectionPanel(
     }
 
     private val scroll = JBScrollPane(details).apply {
-        border = JBUI.Borders.empty(0, UiStyle.Gap.lg(), UiStyle.Gap.sm(), 0)
+        border = detailsBorder()
         // Match the banner background while retaining platform scroll behavior.
         isOpaque = false
         viewport.isOpaque = false
@@ -93,8 +95,7 @@ class ConnectionPanel(
         Disposer.register(parent, this)
         // Keep the banner solid so expanded details cover transcript content beneath it.
         isOpaque = true
-        background = UiStyle.Colors.bg()
-        border = JBUI.Borders.customLine(SessionUiStyle.View.Outline.color(), SessionUiStyle.View.Outline.width(), 0, 0, 0)
+        applyStyle(SessionEditorStyle.current())
         left.add(toggle, BorderLayout.WEST)
         left.add(label, BorderLayout.CENTER)
         header.add(left, BorderLayout.CENTER)
@@ -204,6 +205,18 @@ class ConnectionPanel(
     override fun dispose() {
         // no-op
     }
+
+    override fun applyStyle(style: SessionEditorStyle) {
+        background = style.editorScheme.defaultBackground
+        scroll.border = detailsBorder()
+        revalidate()
+        repaint()
+    }
+
+    private fun detailsBorder() = JBUI.Borders.compound(
+        JBUI.Borders.customLineTop(SessionUiStyle.View.Prompt.separator()),
+        JBUI.Borders.empty(UiStyle.Gap.sm(), UiStyle.Gap.lg(), UiStyle.Gap.sm(), 0),
+    )!!
 
     override fun getPreferredSize(): Dimension {
         val size = super.getPreferredSize()

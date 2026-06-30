@@ -3,11 +3,14 @@ package ai.kilocode.client.session.ui
 import ai.kilocode.client.session.controller.SessionController
 import ai.kilocode.client.session.controller.SessionControllerEvent
 import ai.kilocode.client.session.controller.SessionControllerTestBase
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.ConfigWarningDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
+import com.intellij.ui.components.JBScrollPane
 import java.awt.Dimension
+import javax.swing.border.CompoundBorder
 
 @Suppress("UnstableApiUsage")
 class ConnectionPanelTest : SessionControllerTestBase() {
@@ -58,6 +61,7 @@ class ConnectionPanelTest : SessionControllerTestBase() {
 
         assertTrue(panel.toggleExpanded())
         assertTrue(panel.detailsVisible())
+        assertTrue(panel.components.filterIsInstance<JBScrollPane>().single().border is CompoundBorder)
 
         edt { panel.clickToggle() }
 
@@ -157,8 +161,10 @@ class ConnectionPanelTest : SessionControllerTestBase() {
         assertFalse(panel.isVisible)
     }
 
-    fun `test panel has top separator`() {
-        assertTrue(panel.hasSeparator())
+    fun `test panel uses prompt background without separator`() {
+        assertTrue(panel.isOpaque)
+        assertEquals(SessionEditorStyle.current().editorScheme.defaultBackground.rgb, panel.background.rgb)
+        assertFalse(panel.hasSeparator())
     }
 
     private fun lines(count: Int) = (1..count).joinToString("\n") { "line $it" }
