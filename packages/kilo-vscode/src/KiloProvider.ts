@@ -3660,7 +3660,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       event.type !== "session.deleted" &&
       sessionID &&
       !this.trackedSessionIds.has(sessionID)
-    ) return
+    )
+      return
 
     if (event.type === "session.updated") {
       // Full bus snapshots duplicate sync patches with the same event ID but no sequence metadata.
