@@ -299,8 +299,6 @@ class ConnectionPanel(
 
     internal fun retryFocusable() = retry.isFocusable
 
-    internal fun recoveryActionTexts() = recoveryGroup().getChildren(null).mapNotNull { it.templatePresentation.text }
-
     internal fun hasSeparator() = border != null
 
     internal fun maxExpandedHeight() =
