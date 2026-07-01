@@ -117,6 +117,14 @@ object SessionUiStyle {
             )
         }
 
+        object Todo {
+            fun checkBg(): Color = JBColor.namedColor("Kilo.Session.Todo.Checkbox.Background", Color.WHITE)
+
+            fun checkFg(): Color = JBColor.namedColor("Kilo.Session.Todo.Checkbox.Foreground", Color(0x1F, 0x23, 0x28))
+
+            fun checkBorder(): Color = UiStyle.Colors.contentBorder()
+        }
+
         /** Message container roles and user bubble geometry. */
         object Message {
             const val USER_ROLE = "user"
