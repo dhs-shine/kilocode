@@ -11,11 +11,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@tui/*": ["./src/cli/cmd/tui/*"],
-      "@test/*": ["./test/*"],
-      "@opencode-ai/http-recorder": ["../http-recorder/src/index.ts"],
-      "@opencode-ai/llm": ["../llm/src/index.ts"],
-      "@opencode-ai/llm/route": ["../llm/src/route/index.ts"],
-      "@opencode-ai/llm/providers": ["../llm/src/providers/index.ts"]
+      "@test/*": ["./test/*"]
     }
   }
 }

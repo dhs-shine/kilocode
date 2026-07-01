@@ -606,9 +606,15 @@ Settings UI has reusable primitives in `frontend/src/main/kotlin/ai/kilocode/cli
 ### Lists And Add/Remove Collections
 
 - For add/remove/edit collections, use the shared list infrastructure: `SettingsListPanel`, `SettingsListView`, `SettingsListItem`, `SettingsListCell`, `SettingsListSelection`, and `SettingsToolbarAction` where applicable.
-- When a setting is a list of values that can be added or removed inline, represent it with common list/editor primitives such as `SettingsListEditor`, toolbar actions, and in-place cells/buttons as needed.
+- When a setting is a list of values that can be added or removed inline, represent it with common list/editor primitives, toolbar actions, and in-place cells/buttons as needed.
 - Do not build a bespoke set of Swing components for each add/remove list situation.
 - Prefer list action cells (`SettingsListCell`) for row-local actions like edit/delete and toolbar actions for global add/import/refresh actions.
+
+### Settings Test Coverage Pattern
+
+- Each settings page that writes state needs a fake-RPC frontend test that proves UI interactions call the expected client service/RPC method.
+- Each backend-backed settings write path needs a `*RpcApiImpl` or manager test against `MockCliServer` that asserts the exact CLI HTTP body and that a subsequent reload observes the persisted value.
+- Navigation-only settings pages should still have `BasePlatformTestCase` coverage for rendered child links, stable child IDs, and inert `isModified`/`apply` behavior.
 
 ## Session Component
 

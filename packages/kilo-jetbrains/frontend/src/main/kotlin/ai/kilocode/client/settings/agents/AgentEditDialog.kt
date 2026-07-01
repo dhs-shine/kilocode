@@ -89,7 +89,7 @@ internal class AgentEditDialog(
         initValidation()
     }
 
-    internal fun contentForTest(): JComponent = center ?: error("center panel not built")
+    internal fun centerComponent(): JComponent = center ?: error("center panel not built")
 
     fun result(): AgentEditDraft = agent.copy(
         description = text(description.text),
@@ -117,7 +117,7 @@ internal class AgentEditDialog(
             row(SettingsStackedRow(
                 KiloBundle.message("settings.agentBehavior.agents.edit.name"),
                 value = identity(),
-                action = exportButton().takeIf { canDelete(agent) },
+                action = exportButton().takeIf { !agent.native },
             ))
             row(SettingsRow(
                 KiloBundle.message("settings.agentBehavior.agents.edit.mode"),
@@ -326,7 +326,7 @@ internal class AgentEditDialog(
             "agent.json",
         )
         val wrapper = FileChooserFactory.getInstance()
-            .createSaveFileDialog(descriptor, contentForTest())
+            .createSaveFileDialog(descriptor, centerComponent())
             .save(null as VirtualFile?, file) ?: return
         val json = buildAgentExport(result())
         ApplicationManager.getApplication().executeOnPooledThread {

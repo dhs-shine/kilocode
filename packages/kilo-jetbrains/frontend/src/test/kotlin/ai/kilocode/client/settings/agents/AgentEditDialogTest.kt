@@ -61,7 +61,7 @@ class AgentEditDialogTest : BasePlatformTestCase() {
         val d = open(agent)
 
         edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             assertEquals("Review desc", field<JBTextArea>(root, title("description")).text)
             assertEquals("Prompt text", field<EditorTextField>(root, title("prompt")).text)
             assertEquals("0.4", field<JBTextField>(root, title("temperature")).text)
@@ -81,7 +81,7 @@ class AgentEditDialogTest : BasePlatformTestCase() {
         val d = open(draft())
 
         val result = edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             field<JBTextArea>(root, title("description")).text = "New desc"
             field<EditorTextField>(root, title("prompt")).text = "New prompt"
             field<JBTextField>(root, title("temperature")).text = "0.2"
@@ -113,7 +113,7 @@ class AgentEditDialogTest : BasePlatformTestCase() {
         val d = open(agent)
 
         edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             assertFalse(field<JBTextArea>(root, title("description")).isEditable)
             assertFalse(field<ComboBox<*>>(root, title("mode")).isEnabled)
             assertFalse(hasRow(root, title("hidden")))
@@ -131,7 +131,7 @@ class AgentEditDialogTest : BasePlatformTestCase() {
         val d = open(draft())
 
         edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             val button = descendants(rowByTitle(root, title("name"))).filterIsInstance<HoverIcon>().first()
             val text = KiloBundle.message("settings.agentBehavior.agents.edit.export")
             assertTrue(button.isEnabled)
@@ -145,7 +145,7 @@ class AgentEditDialogTest : BasePlatformTestCase() {
         val d = open(draft().copy(native = true))
 
         edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             assertTrue(descendants(rowByTitle(root, title("name"))).filterIsInstance<HoverIcon>().isEmpty())
             true
         }

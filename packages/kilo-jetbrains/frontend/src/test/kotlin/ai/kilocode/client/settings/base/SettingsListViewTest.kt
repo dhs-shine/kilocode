@@ -159,7 +159,7 @@ class SettingsListViewTest : BasePlatformTestCase() {
             val title = components(renderer).filterIsInstance<SimpleColoredComponent>().single()
             val action = components(renderer).filterIsInstance<JBLabel>().single { it.text == "Edit" }
 
-            assertEquals("", renderer.descriptionText())
+            assertTrue(components(renderer).filterIsInstance<JBLabel>().none { it.text == "Description" && it.isVisible })
             assertNull(view.list.getToolTipText(event(view.list, Point(bounds.x + 4, bounds.y + 4))))
             assertTrue(kotlin.math.abs(centerY(renderer, title) - centerY(renderer, action)) <= 1)
         }

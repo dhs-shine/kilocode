@@ -64,19 +64,13 @@ function run(query: string, signal?: AbortSignal) {
   })
 }
 
-function sessions() {
-  return Effect.runPromise(Effect.gen(function* () {
-    return yield* Session.Service
-  }).pipe(Effect.provide(Session.defaultLayer)))
-}
-
 describe("RecallSearch", () => {
   test("searches titles and terms distributed across transcript messages", async () => {
     await using tmp = await tmpdir({ git: true })
     await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
-        const service = await sessions()
+        const service = await Effect.runPromise(Session.Service.pipe(Effect.provide(Session.defaultLayer)))
         const session = await Effect.runPromise(service.create({ title: "Quartz migration" }))
         add(session.id, "user", { type: "text", text: "Investigate the zephyr request path" })
         add(session.id, "assistant", { type: "text", text: "The cobalt adapter needs a bounded scan" })
@@ -101,7 +95,7 @@ describe("RecallSearch", () => {
     await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
-        const service = await sessions()
+        const service = await Effect.runPromise(Session.Service.pipe(Effect.provide(Session.defaultLayer)))
         const historical = await Effect.runPromise(service.create({ title: "Historical" }))
         const active = await Effect.runPromise(service.create({ title: "exclusive-recall-needle" }))
         add(historical.id, "user", { type: "text", text: "exclusive-recall-needle" })
@@ -130,7 +124,7 @@ describe("RecallSearch", () => {
     await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
-        const service = await sessions()
+        const service = await Effect.runPromise(Session.Service.pipe(Effect.provide(Session.defaultLayer)))
         const session = await Effect.runPromise(service.create({ title: "Queued turn" }))
         const previous = add(session.id, "user", { type: "text", text: "previous request" })
         const active = add(session.id, "user", { type: "text", text: "queued prompt current-turn-needle" })
@@ -179,7 +173,7 @@ describe("RecallSearch", () => {
     await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
-        const service = await sessions()
+        const service = await Effect.runPromise(Session.Service.pipe(Effect.provide(Session.defaultLayer)))
         const session = await Effect.runPromise(service.create({ title: "Search policy" }))
         add(session.id, "user", {
           type: "file",
@@ -250,7 +244,7 @@ describe("RecallSearch", () => {
     await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
-        const service = await sessions()
+        const service = await Effect.runPromise(Session.Service.pipe(Effect.provide(Session.defaultLayer)))
         const parent = await Effect.runPromise(service.create({ title: "Parent" }))
         const child = await Effect.runPromise(service.create({ title: "Child", parentID: parent.id }))
         await Effect.runPromise(service.setArchived({ sessionID: child.id, time: Date.now() }))
@@ -287,7 +281,7 @@ describe("RecallSearch", () => {
     await provideTestInstance({
       directory: tmp.path,
       fn: async () => {
-        const service = await sessions()
+        const service = await Effect.runPromise(Session.Service.pipe(Effect.provide(Session.defaultLayer)))
         const session = await Effect.runPromise(service.create({ title: "Large session" }))
         add(session.id, "user", { type: "text", text: "job_id reached 100%" })
         add(session.id, "user", { type: "text", text: `${"x".repeat(1_000)} Compatibility ＦＯＯ marker` })

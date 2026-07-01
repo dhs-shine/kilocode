@@ -9,6 +9,7 @@ import ai.kilocode.rpc.dto.AgentConfigDto
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.CloudSessionDto
 import ai.kilocode.rpc.dto.CloudSessionListDto
+import ai.kilocode.rpc.dto.CommandDto
 import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.ConfigPatchDto
 import ai.kilocode.rpc.dto.ConfigUpdateDto
@@ -21,6 +22,7 @@ import ai.kilocode.rpc.dto.MessageErrorDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.McpConfigDto
+import ai.kilocode.rpc.dto.McpStatusDto
 import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ModelLimitDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
@@ -50,6 +52,7 @@ import ai.kilocode.rpc.dto.SessionDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.SessionSummaryDto
 import ai.kilocode.rpc.dto.SessionTimeDto
+import ai.kilocode.rpc.dto.SkillDto
 import ai.kilocode.rpc.dto.SkillsConfigDto
 import ai.kilocode.rpc.dto.TodoDto
 import ai.kilocode.rpc.dto.TodoViewDto
@@ -594,6 +597,70 @@ object KiloCliDataParser {
                 hints = obj["hints"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList(),
             )
         }
+
+    fun parseAgentRemovable(raw: String): Map<String, Boolean> =
+        raw.array().mapNotNull { item ->
+            val obj = item.obj() ?: return@mapNotNull null
+            val name = obj.str("name") ?: return@mapNotNull null
+            name to removable(obj)
+        }.toMap()
+
+    fun parseAgentBehaviorSkills(raw: String): List<SkillDto> =
+        raw.array().mapNotNull { item ->
+            val obj = item.obj() ?: return@mapNotNull null
+            val name = obj.str("name") ?: return@mapNotNull null
+            val location = obj.str("location") ?: return@mapNotNull null
+            SkillDto(name = name, description = obj.str("description"), location = location)
+        }
+
+    fun parseAgentBehaviorCommands(raw: String): List<CommandDto> =
+        raw.array().mapNotNull { item ->
+            val obj = item.obj() ?: return@mapNotNull null
+            val name = obj.str("name") ?: return@mapNotNull null
+            CommandDto(
+                name = name,
+                description = obj.str("description"),
+                source = obj.str("source"),
+                hints = obj["hints"].arr()?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList(),
+                template = obj.str("template"),
+            )
+        }
+
+    fun parseMcpStatus(raw: String): List<McpStatusDto> {
+        val root = runCatching { json.parseToJsonElement(raw) }.getOrNull() ?: return emptyList()
+        return when (root) {
+            is JsonArray -> root.mapNotNull { mcpStatus(it) }
+            is JsonObject -> root.mapNotNull { (name, item) -> mcpStatus(item, name) }
+            else -> emptyList()
+        }
+    }
+
+    private fun String.array(): JsonArray {
+        val root = runCatching { json.parseToJsonElement(this) }.getOrNull()
+        return when (root) {
+            is JsonArray -> root
+            is JsonObject -> root["data"] as? JsonArray ?: JsonArray(emptyList())
+            else -> JsonArray(emptyList())
+        }
+    }
+
+    private fun mcpStatus(item: JsonElement, fallback: String? = null): McpStatusDto? {
+        val obj = item.obj() ?: return null
+        val name = obj.str("name") ?: fallback ?: return null
+        return McpStatusDto(
+            name = name,
+            status = obj.str("status") ?: obj.str("state") ?: "unknown",
+            error = obj.str("error"),
+        )
+    }
+
+    private fun removable(obj: JsonObject): Boolean {
+        if (obj.str("native") == "true") return false
+        val opts = obj["options"].obj()
+        if (obj.str("source") == "organization" || opts?.str("source") == "organization") return false
+        if (opts?.containsKey("reference") == true || opts?.containsKey("resolved") == true) return false
+        return true
+    }
 
     /**
      * Extract the `state` directory path from a `/path` response.

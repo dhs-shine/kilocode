@@ -7,6 +7,8 @@ import ai.kilocode.backend.rpc.appStateDto
 import ai.kilocode.backend.testing.FakeCliServer
 import ai.kilocode.backend.testing.MockCliServer
 import ai.kilocode.backend.testing.TestLog
+import ai.kilocode.rpc.dto.AgentConfigPatchDto
+import ai.kilocode.rpc.dto.ConfigPatchDto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -130,6 +132,35 @@ class KiloBackendAppServiceTest {
 
         assertNotNull(svc.config)
         assertEquals("claude-4", svc.config!!.model)
+    }
+
+    @Test
+    fun `update config patches model selections and reloads`() = runBlocking {
+        val svc = create()
+        svc.connect()
+        ready(svc)
+
+        val state = svc.updateConfig(ConfigPatchDto(
+            values = linkedMapOf(
+                "model" to "openai/gpt-5",
+                "small_model" to "openai/gpt-5-mini",
+                "subagent_model" to "anthropic/claude",
+                "subagent_variant" to "high",
+            ),
+            agents = linkedMapOf("code" to AgentConfigPatchDto(model = "google/gemini", variant = "fast")),
+        ))
+
+        assertEquals(
+            "{\"model\":\"openai/gpt-5\",\"small_model\":\"openai/gpt-5-mini\",\"subagent_model\":\"anthropic/claude\",\"subagent_variant\":\"high\",\"agent\":{\"code\":{\"model\":\"google/gemini\",\"variant\":\"fast\"}}}",
+            mock.lastConfigPatchBody,
+        )
+        val cfg = appStateDto(state).config
+        assertEquals("openai/gpt-5", cfg?.model)
+        assertEquals("openai/gpt-5-mini", cfg?.smallModel)
+        assertEquals("anthropic/claude", cfg?.subagentModel)
+        assertEquals("high", cfg?.subagentVariant)
+        assertEquals("google/gemini", cfg?.agent?.get("code")?.model)
+        assertEquals("fast", svc.config?.agent?.get("code")?.variant)
     }
 
     @Test

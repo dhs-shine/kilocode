@@ -5,6 +5,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.BaseContentPanel
 import ai.kilocode.client.settings.base.SettingsPanel
 import ai.kilocode.client.settings.base.SettingsListConfig
+import ai.kilocode.client.settings.base.SettingsToolbarAction
 import ai.kilocode.client.settings.base.SettingsListView
 import ai.kilocode.client.settings.auth.DeviceOAuthInfo
 import ai.kilocode.client.settings.auth.DeviceOAuthPanel
@@ -27,8 +28,6 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
-import com.intellij.openapi.actionSystem.ActionUpdateThread
-import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonShortcuts
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.ApplicationManager
@@ -37,7 +36,7 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.service
-import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.ValidationInfo
@@ -62,14 +61,12 @@ import java.awt.BorderLayout
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
-import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.DefaultListCellRenderer
 import javax.swing.JList
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
 import javax.swing.event.DocumentEvent
-import javax.swing.Icon
 import javax.swing.Timer
 
 private val edt = Dispatchers.EDT + ModalityState.any().asContextElement()
@@ -86,13 +83,13 @@ internal class ProvidersSettingsUi(
         val LOG = KiloLog.create(ProvidersSettingsUi::class.java)
     }
 
-    private val add = ProviderToolbarAction(
+    private val add = SettingsToolbarAction(
         KiloBundle.message("settings.providers.addCustom"),
         KiloBundle.message("settings.providers.addCustom.description"),
         AllIcons.General.Add,
         { !busy },
     ) { custom() }
-    private val refresh = ProviderToolbarAction(
+    private val refresh = SettingsToolbarAction(
         KiloBundle.message("settings.providers.refresh"),
         KiloBundle.message("settings.providers.refresh.description"),
         AllIcons.Actions.Refresh,
@@ -490,25 +487,6 @@ internal class ProvidersContent(
     }
 }
 
-private class ProviderToolbarAction(
-    text: String,
-    description: String,
-    icon: Icon,
-    private val enabled: () -> Boolean,
-    private val action: () -> Unit,
-) : DumbAwareAction(text, description, icon) {
-    override fun getActionUpdateThread() = ActionUpdateThread.EDT
-
-    override fun actionPerformed(e: AnActionEvent) {
-        if (!enabled()) return
-        action()
-    }
-
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabled = enabled()
-    }
-}
-
 private class ApiKeyDialog(title: String, method: ProviderAuthMethodDto?) : DialogWrapper(true) {
     private val key = JBPasswordField().apply { columns = 50 }
     private val fields = method?.prompts.orEmpty().associateWith { prompt ->
@@ -527,7 +505,7 @@ private class ApiKeyDialog(title: String, method: ProviderAuthMethodDto?) : Dial
     @RequiresEdt
     fun metadata(): Map<String, String> = fields.mapValues { (_, field) ->
         when (field) {
-            is JComboBox<*> -> (field.selectedItem as? ProviderAuthOptionDto)?.value ?: field.selectedItem?.toString().orEmpty()
+            is ComboBox<*> -> (field.selectedItem as? ProviderAuthOptionDto)?.value ?: field.selectedItem?.toString().orEmpty()
             is JBTextField -> field.text
             else -> ""
         }
@@ -549,8 +527,8 @@ private class ApiKeyDialog(title: String, method: ProviderAuthMethodDto?) : Dial
         return null
     }
 
-    private fun optionBox(options: List<ProviderAuthOptionDto>): JComboBox<ProviderAuthOptionDto> {
-        val box = JComboBox(options.toTypedArray())
+    private fun optionBox(options: List<ProviderAuthOptionDto>): ComboBox<ProviderAuthOptionDto> {
+        val box = ComboBox(options.toTypedArray())
         box.renderer = object : DefaultListCellRenderer() {
             override fun getListCellRendererComponent(list: JList<*>?, value: Any?, index: Int, selected: Boolean, focus: Boolean): java.awt.Component {
                 val item = value as? ProviderAuthOptionDto

@@ -3,8 +3,10 @@ package ai.kilocode.client.settings.providers
 import ai.kilocode.client.app.KiloProviderService
 import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.SettingsListRenderer
+import ai.kilocode.client.settings.base.SettingsListActionCell
 import ai.kilocode.client.settings.base.settingsListCellAt
 import ai.kilocode.client.settings.base.settingsListCellBounds
+import ai.kilocode.client.settings.base.settingsListSectionTitle
 import ai.kilocode.client.settings.base.settingsListVisibleCells
 import ai.kilocode.client.testing.FakeProviderRpcApi
 import ai.kilocode.client.ui.UiStyle
@@ -218,7 +220,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         )
 
         assertEquals(listOf("kilo", "anthropic", "deepseek", "openai", "google", "openrouter", "vercel"), rows.map { it.key })
-        assertEquals("Popular providers", providerListSectionTitle(rows, 0))
+        assertEquals("Popular providers", settingsListSectionTitle(rows, 0))
     }
 
     fun `test popular rows use fallback order without metadata`() {
@@ -234,8 +236,8 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         )
 
         assertEquals(listOf("anthropic", "openai", "unknown"), rows.map { it.key })
-        assertEquals("Popular providers", providerListSectionTitle(rows, 0))
-        assertEquals("All providers", providerListSectionTitle(rows, 2))
+        assertEquals("Popular providers", settingsListSectionTitle(rows, 0))
+        assertEquals("All providers", settingsListSectionTitle(rows, 2))
     }
 
     fun `test connected providers appear first and are not duplicated in popular section`() {
@@ -248,8 +250,8 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         )
 
         assertEquals(listOf("anthropic", "openai"), rows.map { it.key })
-        assertEquals("Connected providers", providerListSectionTitle(rows, 0))
-        assertEquals("Popular providers", providerListSectionTitle(rows, 1))
+        assertEquals("Connected providers", settingsListSectionTitle(rows, 0))
+        assertEquals("Popular providers", settingsListSectionTitle(rows, 1))
         assertEquals(listOf(ProviderListAction.DISCONNECT), rows[0].actions)
         assertTrue(rows[0].connected)
     }
@@ -268,9 +270,9 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         )
 
         assertEquals(listOf("local-openai", "anthropic", "available-custom"), rows.map { it.key })
-        assertEquals("Connected providers", providerListSectionTitle(rows, 0))
-        assertEquals("Popular providers", providerListSectionTitle(rows, 1))
-        assertEquals("All providers", providerListSectionTitle(rows, 2))
+        assertEquals("Connected providers", settingsListSectionTitle(rows, 0))
+        assertEquals("Popular providers", settingsListSectionTitle(rows, 1))
+        assertEquals("All providers", settingsListSectionTitle(rows, 2))
         assertEquals(listOf(ProviderListAction.DISCONNECT), rows[0].actions)
     }
 
@@ -295,7 +297,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         )
 
         assertEquals(listOf("kilo"), rows.map { it.key })
-        assertEquals("Connected providers", providerListSectionTitle(rows, 0))
+        assertEquals("Connected providers", settingsListSectionTitle(rows, 0))
         assertTrue(rows.single().actions.isEmpty())
     }
 
@@ -309,7 +311,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         )
 
         assertEquals(listOf("openai", "anthropic"), rows.map { it.key })
-        assertEquals("All providers", providerListSectionTitle(rows, 1))
+        assertEquals("All providers", settingsListSectionTitle(rows, 1))
         assertEquals(listOf(ProviderListAction.ENABLE), rows[1].actions)
     }
 
@@ -326,7 +328,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         )
 
         assertEquals(listOf("openai", "alpha", "zeta"), rows.map { it.key })
-        assertEquals("All providers", providerListSectionTitle(rows, 1))
+        assertEquals("All providers", settingsListSectionTitle(rows, 1))
     }
 
     fun `test filtering by provider name updates rows and sections`() {
@@ -346,7 +348,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
             val rows = rows(content)
             assertEquals(listOf("openai"), rows.map { it.key })
-            assertEquals("Popular providers", providerListSectionTitle(rows, 0))
+            assertEquals("Popular providers", settingsListSectionTitle(rows, 0))
         }
     }
 
@@ -405,7 +407,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
             render(renderer, list, row, selected = true)
 
-            assertEquals(listOf("OAuth", "Connect"), renderer.cellTexts())
+            assertEquals(listOf("OAuth", "Connect"), actionTexts(renderer))
         }
     }
 
@@ -435,7 +437,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
             render(renderer, list, row, selected = false)
 
-            assertTrue(renderer.cellTexts().isEmpty())
+            assertTrue(actionTexts(renderer).isEmpty())
         }
     }
 
@@ -451,7 +453,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             assertTrue(visibleActions(row, selected = true).isEmpty())
             assertTrue(actionBounds(list, bounds, row, selected = true).isEmpty())
             assertNull(actionAt(list, bounds, Point(300, 24), row, selected = true))
-            assertTrue(renderer.cellTexts().isEmpty())
+            assertTrue(actionTexts(renderer).isEmpty())
         }
     }
 
@@ -488,9 +490,8 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
             render(renderer, list, row, selected = true)
 
-            assertTrue(renderer.iconVisible())
-            assertEquals(Dimension(JBUI.scale(20), JBUI.scale(20)), renderer.iconSize())
-            assertEquals("GPT and Codex models with API key or ChatGPT login", renderer.descriptionText())
+            assertEquals(Dimension(JBUI.scale(20), JBUI.scale(20)), iconSizes(renderer).single())
+            assertEquals("GPT and Codex models with API key or ChatGPT login", descriptions(renderer).single())
             assertTrue(renderer.preferredSize.height > JBUI.scale(44))
         }
     }
@@ -512,7 +513,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
             render(renderer, list, row, selected = true)
 
-            assertEquals("Build with OpenAI models", renderer.descriptionText())
+            assertEquals("Build with OpenAI models", descriptions(renderer).single())
         }
     }
 
@@ -524,7 +525,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
             render(renderer, list, row, selected = true)
 
-            assertEquals("", renderer.descriptionText())
+            assertTrue(descriptions(renderer).isEmpty())
         }
     }
 
@@ -882,6 +883,22 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         @Suppress("UNCHECKED_CAST")
         renderer.getListCellRendererComponent(list as JList<out SettingsListItem>, row, 0, selected, false)
     }
+
+    private fun actionTexts(renderer: SettingsListRenderer): List<String> = components(renderer)
+        .filterIsInstance<SettingsListActionCell>()
+        .filter { it.isVisible }
+        .mapNotNull { it.text.takeIf(String::isNotBlank) }
+
+    private fun descriptions(renderer: SettingsListRenderer): List<String> = components(renderer)
+        .filterIsInstance<JBLabel>()
+        .filter { it.isVisible && it !is SettingsListActionCell }
+        .mapNotNull { it.text.takeIf(String::isNotBlank) }
+
+    private fun iconSizes(renderer: SettingsListRenderer): List<Dimension> = components(renderer)
+        .filterIsInstance<JBLabel>()
+        .mapNotNull { it.icon }
+        .filter { it.iconWidth == JBUI.scale(20) && it.iconHeight == JBUI.scale(20) }
+        .map { Dimension(it.iconWidth, it.iconHeight) }
 
     private fun actionAt(list: JBList<ProviderListRow>, bounds: Rectangle, point: Point, row: ProviderListRow, selected: Boolean): ProviderListAction? {
         val id = settingsListCellAt(list, bounds, point, row, selected) ?: return null

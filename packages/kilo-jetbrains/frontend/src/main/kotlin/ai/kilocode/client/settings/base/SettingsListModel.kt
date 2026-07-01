@@ -92,7 +92,8 @@ internal fun settingsListCellBounds(
 }
 
 internal fun settingsListCellSize(list: JList<*>, cell: SettingsListCell): Dimension {
-    val label = SettingsListActionCell(cell).apply {
+    val label = SettingsListActionCell().apply {
+        update(cell)
         font = list.font
         isEnabled = cell.enabled
     }

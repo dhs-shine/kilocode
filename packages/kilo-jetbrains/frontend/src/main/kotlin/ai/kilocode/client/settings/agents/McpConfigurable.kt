@@ -16,12 +16,19 @@ import ai.kilocode.rpc.dto.McpConfigDto
 import ai.kilocode.rpc.dto.McpServerConfigDto
 import ai.kilocode.rpc.dto.McpStatusDto
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.Messages
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.swing.JComponent
+
+private val edt = Dispatchers.EDT + ModalityState.any().asContextElement()
 
 class McpConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     override fun getId(): String = ID
@@ -42,7 +49,6 @@ internal class McpSettingsUi(
 ) : SettingsListPanel(cs, SettingsListConfig.Equal.copy(description = false)) {
     private var dir = dir
 
-    @Volatile
     private var servers: Map<String, McpServerConfigDto> = emptyMap()
 
     init {
@@ -58,7 +64,7 @@ internal class McpSettingsUi(
     override suspend fun fetch(): List<SettingsListItem> {
         val behavior = service<KiloAgentBehaviorService>()
         val cfg = behavior.mcpConfig(dir)
-        servers = cfg
+        withContext(edt) { servers = cfg }
         val statuses = if (dir.isBlank()) {
             LOG.warn("mcp settings fetch skipped runtime status: missing project directory config=${cfg.size}")
             emptyMap()

@@ -33,6 +33,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +42,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.nio.charset.StandardCharsets
 import javax.swing.JComponent
-import javax.swing.JComboBox
 
 private val edt = Dispatchers.EDT + ModalityState.any().asContextElement()
 
@@ -74,7 +74,7 @@ internal class AgentsSettingsUi(
     private var details = emptyList<AgentDetailDto>()
     private var models = emptyList<ModelPicker.Item>()
     private var names = emptyList<String>()
-    private lateinit var picker: JComboBox<String>
+    private lateinit var picker: ComboBox<String>
     private var syncing = false
 
     init {
@@ -110,9 +110,9 @@ internal class AgentsSettingsUi(
         syncPicker()
     }
 
-    private fun makePicker(): JComboBox<String> {
+    private fun makePicker(): ComboBox<String> {
         if (::picker.isInitialized) return picker
-        picker = JComboBox(names.toTypedArray()).apply {
+        picker = ComboBox(names.toTypedArray()).apply {
             selectedItem = draft.defaultAgent.orEmpty()
             addActionListener {
                 if (syncing) return@addActionListener

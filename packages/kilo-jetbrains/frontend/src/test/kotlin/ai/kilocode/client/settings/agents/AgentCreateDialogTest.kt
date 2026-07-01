@@ -37,14 +37,14 @@ class AgentCreateDialogTest : BasePlatformTestCase() {
     fun `test agent id field defaults to fifty columns`() {
         val d = open(emptyList())
 
-        assertEquals(50, edt { field<JBTextField>(d.contentForTest(), title("name")).columns })
+        assertEquals(50, edt { field<JBTextField>(d.centerComponent(), title("name")).columns })
     }
 
     fun `test reads form values into dto`() {
         val d = open(emptyList())
 
         val result = edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             field<JBTextField>(root, title("name")).text = "reviewer"
             field<EditorTextField>(root, title("prompt")).text = "Review carefully"
             field<JBTextArea>(root, title("description")).text = "Reviews code"
@@ -61,7 +61,7 @@ class AgentCreateDialogTest : BasePlatformTestCase() {
         val d = open(emptyList())
 
         val result = edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             field<JBTextField>(root, title("name")).text = "  spacer  "
             field<EditorTextField>(root, title("prompt")).text = "  Prompt  "
             field<JBTextArea>(root, title("description")).text = "   "

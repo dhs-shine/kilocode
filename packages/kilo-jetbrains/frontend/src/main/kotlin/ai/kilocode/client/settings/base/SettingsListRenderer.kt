@@ -15,7 +15,6 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
-import java.awt.Dimension
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.ListCellRenderer
@@ -103,50 +102,43 @@ internal class SettingsListRenderer(
     }
 
     private fun syncBadges(item: SettingsListItem) {
-        badges.removeAll()
-        badges.isVisible = item.badges.isNotEmpty()
-        for (badge in item.badges) {
+        val items = item.badges
+        while (badges.componentCount > items.size) badges.remove(badges.componentCount - 1)
+        while (badges.componentCount < items.size) {
             badges.add(JBLabel().apply {
                 border = JBUI.Borders.emptyLeft(JBUI.CurrentTheme.ActionsList.elementIconGap())
-                icon = FilledBadgeIcon(badge.text, badge.style)
             })
+        }
+        badges.isVisible = items.isNotEmpty()
+        for (i in items.indices) {
+            val badge = items[i]
+            val label = badges.getComponent(i) as JBLabel
+            val current = label.icon as? FilledBadgeIcon
+            if (current?.text != badge.text || current.style != badge.style) {
+                label.icon = FilledBadgeIcon(badge.text, badge.style)
+            }
         }
     }
 
     private fun syncCells(item: SettingsListItem, selected: Boolean, enabled: Boolean) {
-        cells.removeAll()
         val visible = if (enabled) settingsListVisibleCells(item, selected) else emptyList()
+        while (cells.componentCount > visible.size) cells.remove(cells.componentCount - 1)
+        while (cells.componentCount < visible.size) cells.add(SettingsListActionCell())
         cells.isVisible = visible.isNotEmpty()
         cellPane.isVisible = visible.isNotEmpty()
-        for (cell in visible) {
-            cells.add(SettingsListActionCell(cell).apply {
-                isEnabled = cell.enabled
-            })
+        for (i in visible.indices) {
+            (cells.getComponent(i) as SettingsListActionCell).update(visible[i])
         }
     }
-
-    internal fun cellTexts() = cells.components.filterIsInstance<JBLabel>().map { it.text }
-
-    internal fun cellIcons() = cells.components.filterIsInstance<JBLabel>().map { it.icon }
-
-    internal fun cellLabels() = cells.components.filterIsInstance<JBLabel>()
-
-    internal fun badgeTexts() = badges.components.filterIsInstance<JBLabel>().mapNotNull { (it.icon as? FilledBadgeIcon)?.text }
-
-    internal fun descriptionText() = desc.text
-
-    internal fun iconVisible() = icon.icon != null
-
-    internal fun iconSize() = icon.icon?.let { Dimension(it.iconWidth, it.iconHeight) }
-
 }
 
-internal class SettingsListActionCell(cell: SettingsListCell) : JBLabel(cell.label) {
-    init {
-        if (cell.iconOnly) text = ""
+internal class SettingsListActionCell : JBLabel() {
+    fun update(cell: SettingsListCell) {
+        text = if (cell.iconOnly) "" else cell.label
         icon = cell.icon
         toolTipText = cell.label.takeIf { it.isNotBlank() }
         horizontalAlignment = SwingConstants.CENTER
+        isEnabled = cell.enabled
         if (!cell.iconOnly) UiStyle.Components.actionLabel(this, isEnabled)
     }
 

@@ -35,7 +35,7 @@ class McpEditDialogTest : BasePlatformTestCase() {
         val d = open(local())
 
         edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             assertEquals("node", field<JBTextField>(root, title("command")).text)
             assertEquals("server.js\n--flag", field<JBTextArea>(root, title("args")).text)
             assertTrue(hasRow(root, "TOKEN=x"))
@@ -50,7 +50,7 @@ class McpEditDialogTest : BasePlatformTestCase() {
         val d = open(remote())
 
         edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             assertEquals("https://mcp.example.test", field<JBTextField>(root, title("url")).text)
             assertTrue(hasRow(root, title("url")))
             assertFalse(hasRow(root, title("command")))
@@ -63,7 +63,7 @@ class McpEditDialogTest : BasePlatformTestCase() {
         val d = open(local())
 
         val result = edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             field<JBTextField>(root, title("command")).text = "bun"
             field<JBTextArea>(root, title("args")).text = "mcp.ts\n\n--watch"
             d.result()
@@ -80,7 +80,7 @@ class McpEditDialogTest : BasePlatformTestCase() {
         val d = open(remote())
 
         val result = edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             field<JBTextField>(root, title("url")).text = "https://new.example.test/mcp"
             d.result()
         }
@@ -95,7 +95,7 @@ class McpEditDialogTest : BasePlatformTestCase() {
         val d = open(local())
 
         val result = edt {
-            val root = d.contentForTest()
+            val root = d.centerComponent()
             val fields = descendants(root).filterIsInstance<JBTextField>()
             fields[1].text = "NEXT"
             fields[2].text = "value"

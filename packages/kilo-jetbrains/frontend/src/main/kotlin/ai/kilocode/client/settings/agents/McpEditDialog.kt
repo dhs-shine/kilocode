@@ -80,7 +80,7 @@ internal class McpEditDialog(
         init()
     }
 
-    internal fun contentForTest(): JComponent = center ?: error("center panel not built")
+    internal fun centerComponent(): JComponent = center ?: error("center panel not built")
 
     override fun result(): McpConfigDto {
         if (type == REMOTE) return cfg.copy(url = text(url.text))
@@ -287,12 +287,14 @@ internal class McpEditDialog(
         companion object {
             fun actionSize(): Dimension = action().preferredSize
 
-            private fun action() = SettingsListActionCell(SettingsListCell(
-                "delete",
-                KiloBundle.message("common.delete"),
-                icon = AllIcons.Actions.GC,
-                iconOnly = true,
-            ))
+            private fun action() = SettingsListActionCell().apply {
+                update(SettingsListCell(
+                    "delete",
+                    KiloBundle.message("common.delete"),
+                    icon = AllIcons.Actions.GC,
+                    iconOnly = true,
+                ))
+            }
         }
     }
 

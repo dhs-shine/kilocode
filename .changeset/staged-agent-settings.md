@@ -1,5 +1,6 @@
 ---
+"@kilocode/cli": patch
 "@kilocode/kilo-jetbrains": patch
 ---
 
-Stage agent create, import, and delete changes in JetBrains settings until Apply or OK.
+Improve JetBrains agent, MCP, provider, and model settings so changes are staged until Apply, persist through the CLI, reload accurately, and hide unsupported removal actions.

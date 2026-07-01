@@ -12,7 +12,7 @@ import javax.swing.Icon
 
 internal class FilledBadgeIcon(
     internal val text: String,
-    private val style: UiStyle.Badge.Style,
+    internal val style: UiStyle.Badge.Style,
     private val font: Font = JBFont.small(),
 ) : Icon {
     override fun getIconWidth(): Int {

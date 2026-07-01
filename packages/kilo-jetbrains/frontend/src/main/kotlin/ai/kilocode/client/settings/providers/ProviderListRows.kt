@@ -80,22 +80,6 @@ internal fun providerListRows(state: ProviderSettingsDto, query: String, disable
     return rows
 }
 
-internal fun providerListIndex(rows: List<ProviderListRow>, key: String?): Int {
-    if (key == null) return if (rows.isEmpty()) -1 else 0
-    return rows.indexOfFirst { it.key == key }
-}
-
-internal fun providerListIndex(rows: List<ProviderListRow>, index: Int): Int {
-    if (rows.isEmpty()) return -1
-    return index.coerceIn(0, rows.lastIndex)
-}
-
-internal fun providerListSectionTitle(rows: List<ProviderListRow>, index: Int): String? {
-    val row = rows.getOrNull(index) ?: return null
-    val prev = rows.getOrNull(index - 1)
-    return if (prev?.section != row.section) row.section else null
-}
-
 internal fun providerActions(
     provider: ProviderSettingsProviderDto,
     state: ProviderSettingsDto,

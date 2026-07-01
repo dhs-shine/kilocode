@@ -59,7 +59,7 @@ internal class AgentCreateDialog(private val names: Collection<String>) : Dialog
         initValidation()
     }
 
-    internal fun contentForTest(): JComponent = center ?: error("center panel not built")
+    internal fun centerComponent(): JComponent = center ?: error("center panel not built")
 
     override fun result(): AgentCreateDto = AgentCreateDto(
         name = id.text.trim(),
