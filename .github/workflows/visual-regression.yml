@@ -1,3 +1,4 @@
+# kilocode_change - new file
 name: Visual Regression Tests
 
 on:
@@ -11,10 +12,9 @@ jobs:
     outputs:
       matched: ${{ steps.filter.outputs.matched }}
       is_fork: ${{ steps.fork-check.outputs.is_fork }}
-      can_autocommit: ${{ steps.autocommit-check.outputs.can_autocommit }} # kilocode_change
+      can_autocommit: ${{ steps.autocommit-check.outputs.can_autocommit }}
     steps:
-      - uses: actions/checkout@v6 # kilocode_change
-      # kilocode_change start
+      - uses: actions/checkout@v6
       - name: Check changed files
         id: filter
         env:
@@ -32,7 +32,6 @@ jobs:
           done < <(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename')
           echo "matched=$matched" >> "$GITHUB_OUTPUT"
           echo "matched=$matched"
-      # kilocode_change end
       - name: Check if PR is from a fork
         id: fork-check
         run: |
@@ -41,7 +40,6 @@ jobs:
           else
             echo "is_fork=false" >> "$GITHUB_OUTPUT"
           fi
-      # kilocode_change start
       - name: Check baseline auto-commit permissions
         id: autocommit-check
         env:
@@ -52,8 +50,7 @@ jobs:
           else
             echo "can_autocommit=false" >> "$GITHUB_OUTPUT"
           fi
-      # kilocode_change end
-  # kilocode_change start
+
   visual-regression:
     needs: check-paths
     if: needs.check-paths.outputs.matched == 'true'
@@ -63,22 +60,22 @@ jobs:
 
     steps:
       - name: Checkout (internal)
-        if: needs.check-paths.outputs.can_autocommit == 'true' # kilocode_change
-        uses: actions/checkout@v6 # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true'
+        uses: actions/checkout@v6
         with:
           lfs: true
-          # kilocode_change - LLM note: use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
-          token: ${{ secrets.BOT_PAT }} # kilocode_change
+          # use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
+          token: ${{ secrets.BOT_PAT }}
           ref: ${{ github.head_ref }}
 
-      - name: Checkout (read-only) # kilocode_change
-        if: needs.check-paths.outputs.can_autocommit != 'true' # kilocode_change
-        uses: actions/checkout@v6 # kilocode_change
+      - name: Checkout (read-only)
+        if: needs.check-paths.outputs.can_autocommit != 'true'
+        uses: actions/checkout@v6
         with:
           lfs: true
 
       - name: Check if HEAD is a baseline update commit
-        if: needs.check-paths.outputs.can_autocommit == 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true'
         id: check-baseline-commit
         run: |
           COMMIT_MSG=$(git log -1 --format=%s)
@@ -88,7 +85,6 @@ jobs:
           else
             echo "is_baseline_update=false" >> "$GITHUB_OUTPUT"
           fi
-  # kilocode_change end
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -96,7 +92,7 @@ jobs:
           bun-version: latest
 
       - name: Cache Bun modules
-        uses: actions/cache@v5 # kilocode_change
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: bun-${{ hashFiles('bun.lock') }}
@@ -106,7 +102,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@v5 # kilocode_change
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ hashFiles('packages/kilo-ui/package.json') }}
@@ -122,7 +118,7 @@ jobs:
 
       - name: Cache Storybook build
         id: storybook-cache
-        uses: actions/cache@v5 # kilocode_change
+        uses: actions/cache@v5
         with:
           path: packages/kilo-ui/storybook-static
           key: storybook-${{ hashFiles('packages/kilo-ui/src/**', 'packages/kilo-ui/.storybook/**', 'packages/ui/src/**', 'packages/kilo-ui/package.json') }}
@@ -158,9 +154,9 @@ jobs:
             }
           "
         working-directory: packages/kilo-ui
-      # kilocode_change start
+
       - name: Check for baseline changes (read-only PRs)
-        if: needs.check-paths.outputs.can_autocommit != 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit != 'true'
         run: |
           git add packages/kilo-docs/public/img/screenshot-tests/kilo-ui/
           if git diff --cached --quiet; then
@@ -174,7 +170,7 @@ jobs:
           fi
 
       - name: Fail if baselines still changing after auto-update
-        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit.outputs.is_baseline_update == 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit.outputs.is_baseline_update == 'true'
         run: |
           git add packages/kilo-docs/public/img/screenshot-tests/kilo-ui/
           if git diff --cached --quiet; then
@@ -188,10 +184,10 @@ jobs:
           fi
 
       - name: Commit and push new baselines (if any)
-        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit.outputs.is_baseline_update != 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit.outputs.is_baseline_update != 'true'
         id: commit-baselines
         env:
-          GH_TOKEN: ${{ secrets.BOT_PAT }} # kilocode_change
+          GH_TOKEN: ${{ secrets.BOT_PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -207,49 +203,46 @@ jobs:
           fi
 
       - name: Fail if baselines changed
-        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.commit-baselines.outputs.changed == 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.commit-baselines.outputs.changed == 'true'
         run: |
           echo "::error::Visual regression baselines changed. New baselines have been committed to the branch. Please pull and review."
           exit 1
-      # kilocode_change end
 
       - name: Upload test results on failure
         if: failure()
-        uses: actions/upload-artifact@v7 # kilocode_change
+        uses: actions/upload-artifact@v7
         with:
           name: visual-regression-results
           path: packages/kilo-ui/test-results/
           retention-days: 7
-  # kilocode_change start
+
   visual-regression-vscode:
     needs: check-paths
     if: needs.check-paths.outputs.matched == 'true'
     name: Visual Regression (kilo-vscode webview)
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
-    # kilocode_change start
     env:
       NODE_OPTIONS: --max-old-space-size=4096
-    # kilocode_change end
 
     steps:
       - name: Checkout (internal)
-        if: needs.check-paths.outputs.can_autocommit == 'true' # kilocode_change
-        uses: actions/checkout@v6 # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true'
+        uses: actions/checkout@v6
         with:
           lfs: true
-          # kilocode_change - LLM note: use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
-          token: ${{ secrets.BOT_PAT }} # kilocode_change
+          # use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
+          token: ${{ secrets.BOT_PAT }}
           ref: ${{ github.head_ref }}
 
-      - name: Checkout (read-only) # kilocode_change
-        if: needs.check-paths.outputs.can_autocommit != 'true' # kilocode_change
-        uses: actions/checkout@v6 # kilocode_change
+      - name: Checkout (read-only)
+        if: needs.check-paths.outputs.can_autocommit != 'true'
+        uses: actions/checkout@v6
         with:
           lfs: true
 
       - name: Check if HEAD is a baseline update commit
-        if: needs.check-paths.outputs.can_autocommit == 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true'
         id: check-baseline-commit-vscode
         run: |
           COMMIT_MSG=$(git log -1 --format=%s)
@@ -259,7 +252,6 @@ jobs:
           else
             echo "is_baseline_update=false" >> "$GITHUB_OUTPUT"
           fi
-  # kilocode_change end
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -267,7 +259,7 @@ jobs:
           bun-version: latest
 
       - name: Cache Bun modules
-        uses: actions/cache@v5 # kilocode_change
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: bun-${{ hashFiles('bun.lock') }}
@@ -277,7 +269,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: playwright-cache-vscode
-        uses: actions/cache@v5 # kilocode_change
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-vscode-${{ hashFiles('packages/kilo-vscode/package.json') }}
@@ -293,7 +285,7 @@ jobs:
 
       - name: Cache Storybook build
         id: storybook-cache-vscode
-        uses: actions/cache@v5 # kilocode_change
+        uses: actions/cache@v5
         with:
           path: packages/kilo-vscode/storybook-static
           key: storybook-vscode-${{ hashFiles('packages/kilo-vscode/webview-ui/src/**', 'packages/kilo-vscode/.storybook/**', 'packages/kilo-ui/src/**', 'packages/ui/src/**', 'packages/kilo-vscode/package.json') }}
@@ -302,18 +294,16 @@ jobs:
         if: steps.storybook-cache-vscode.outputs.cache-hit != 'true'
         run: bun run build-storybook
         working-directory: packages/kilo-vscode
-        # kilocode_change start
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-        # kilocode_change end
 
-      - name: Generate baselines and enforce webview accessibility checks # kilocode_change
+      - name: Generate baselines and enforce webview accessibility checks
         run: bun run test:visual:update
         working-directory: packages/kilo-vscode
         env:
           CI: true
           PLAYWRIGHT_WORKERS: "4"
-          NODE_OPTIONS: --max-old-space-size=4096 # kilocode_change
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Remove stale baselines for deleted stories
         run: |
@@ -361,9 +351,9 @@ jobs:
             }
           "
         working-directory: packages/kilo-vscode
-      # kilocode_change start
+
       - name: Check for baseline changes (read-only PRs)
-        if: needs.check-paths.outputs.can_autocommit != 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit != 'true'
         run: |
           git add packages/kilo-docs/public/img/screenshot-tests/kilo-vscode/
           if git diff --cached --quiet; then
@@ -377,7 +367,7 @@ jobs:
           fi
 
       - name: Fail if baselines still changing after auto-update
-        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit-vscode.outputs.is_baseline_update == 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit-vscode.outputs.is_baseline_update == 'true'
         run: |
           git add packages/kilo-docs/public/img/screenshot-tests/kilo-vscode/
           if git diff --cached --quiet; then
@@ -391,10 +381,10 @@ jobs:
           fi
 
       - name: Commit and push new baselines (if any)
-        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit-vscode.outputs.is_baseline_update != 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit-vscode.outputs.is_baseline_update != 'true'
         id: commit-baselines-vscode
         env:
-          GH_TOKEN: ${{ secrets.BOT_PAT }} # kilocode_change
+          GH_TOKEN: ${{ secrets.BOT_PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -410,15 +400,14 @@ jobs:
           fi
 
       - name: Fail if baselines changed
-        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.commit-baselines-vscode.outputs.changed == 'true' # kilocode_change
+        if: needs.check-paths.outputs.can_autocommit == 'true' && steps.commit-baselines-vscode.outputs.changed == 'true'
         run: |
           echo "::error::Visual regression baselines changed. New baselines have been committed to the branch. Please pull and review."
           exit 1
-      # kilocode_change end
 
       - name: Upload test results on failure
         if: failure()
-        uses: actions/upload-artifact@v7 # kilocode_change
+        uses: actions/upload-artifact@v7
         with:
           name: visual-regression-vscode-results
           path: packages/kilo-vscode/test-results/
