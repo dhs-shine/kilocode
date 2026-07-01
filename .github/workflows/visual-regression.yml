@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matched: ${{ steps.filter.outputs.matched }}
-      is_fork: ${{ steps.fork-check.outputs.is_fork }}
       can_autocommit: ${{ steps.autocommit-check.outputs.can_autocommit }}
     steps:
       - uses: actions/checkout@v6
