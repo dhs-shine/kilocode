@@ -150,6 +150,7 @@ class SessionUi(
 
 
     private lateinit var root: SessionRootPanel
+    private lateinit var fileLinks: SessionFileLinks
     private lateinit var account: SessionAccountOverlay
     private lateinit var drop: SessionDropOverlay
     private lateinit var overlay: SessionHoverCopyOverlay
@@ -267,6 +268,7 @@ class SessionUi(
 
     private fun buildUi() {
         root = SessionRootPanel()
+        fileLinks = SessionFileLinks(workspace.directory, workspaces, cs, root, ::openUrl)
         SessionContextMenu.install(root, this)
 
         migrationOverlay = MigrationOverlayPanel().apply {
@@ -334,7 +336,7 @@ class SessionUi(
             question,
             permission,
             login,
-            ::openFile,
+            fileLinks::open,
             ::openUrl,
             selection,
             ::openAttachment,
@@ -679,12 +681,6 @@ class SessionUi(
         )
     }
 
-    private fun openFile(path: String) {
-        cs.launch {
-            workspaces.openPath(workspace.directory, path)
-        }
-    }
-
     private fun openUrl(url: String) {
         BrowserUtil.browse(url)
     }
@@ -721,7 +717,7 @@ class SessionUi(
                 return
             }
             LOG.info("kind=attachment-open route=file session=${controller.id ?: "none"} message=$messageId part=${item.id} path=$path")
-            openFile(path)
+            fileLinks.open(path, null)
             return
         }
         LOG.info("kind=attachment-open route=browser session=${controller.id ?: "none"} message=$messageId part=${item.id} url=${attachmentUrl(url)}")

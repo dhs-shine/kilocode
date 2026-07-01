@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.ui
 
+import ai.kilocode.client.session.SessionFileOpener
 import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
@@ -51,7 +52,7 @@ class SessionMessageListPanel(
     private val question: QuestionView? = null,
     private val permission: PermissionView? = null,
     private val login: LoginRequiredView? = null,
-    private val openFile: (String) -> Unit,
+    private val openFile: SessionFileOpener,
     private val openUrl: (String) -> Unit = {},
     private val selection: SessionSelection? = null,
     private val openAttachment: (String, FileAttachment) -> Unit = { _, item -> ai.kilocode.client.session.views.AttachmentView.openDefault(item, openFile, openUrl) },

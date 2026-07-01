@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.views
 
+import ai.kilocode.client.session.SessionFileOpener
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.FileAttachment
 import ai.kilocode.client.session.model.Message
@@ -43,7 +44,7 @@ import javax.swing.SwingUtilities
  */
 class MessageView(
     val msg: Message,
-    private val openFile: (String) -> Unit,
+    private val openFile: SessionFileOpener,
     private var style: SessionEditorStyle = SessionEditorStyle.current(),
     private val openUrl: (String) -> Unit = {},
     private val selection: SessionSelection? = null,
@@ -55,7 +56,7 @@ class MessageView(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
 ), Disposable, SessionEditorStyleTarget, SessionView {
 
-    constructor(msg: Message, openFile: (String) -> Unit) : this(msg, openFile, SessionEditorStyle.current())
+    constructor(msg: Message, openFile: (String) -> Unit) : this(msg, { href, _ -> openFile(href) }, SessionEditorStyle.current())
 
     val role: String get() = msg.info.role
 

@@ -3,6 +3,7 @@
 package ai.kilocode.client.session.views.tool
 
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.session.SessionFileOpener
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.selection.SessionSelection
@@ -27,6 +28,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.io.OSAgnosticPathUtil
 import com.intellij.ui.EditorTextField
+import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
@@ -39,6 +41,7 @@ import java.awt.CardLayout
 import java.awt.Color
 import java.awt.Cursor
 import java.awt.Font
+import java.awt.Point
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.Icon
@@ -60,7 +63,7 @@ class ToolParts(
     val state: JBLabel,
     val center: JPanel,
     val controls: JComponent,
-    private val open: ((String) -> Unit)? = null,
+    private val open: SessionFileOpener? = null,
     val extra: JBLabel? = null,
     val targets: List<JBLabel> = emptyList(),
     private val mode: ToolBodyMode = ToolBodyMode.EDITOR,
@@ -88,9 +91,9 @@ class ToolParts(
     fun bodyCreated() = body != null
 
     @RequiresEdt
-    fun openLink() {
+    fun openLink(anchor: RelativePoint? = null) {
         val value = href ?: return
-        open?.invoke(value)
+        open?.invoke(value, anchor)
     }
 
     @RequiresEdt
@@ -332,7 +335,7 @@ private const val LINK_CARD = "link"
 @RequiresEdt
 internal fun toolParts(
     tool: Tool,
-    openFile: ((String) -> Unit)? = null,
+    openFile: SessionFileOpener? = null,
     mode: ToolBodyMode = ToolBodyMode.TEXT,
 ): ToolParts {
     lateinit var parts: ToolParts
@@ -347,7 +350,7 @@ internal fun toolParts(
         setRequestFocusEnabled(false)
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
-                parts.openLink()
+                parts.openLink(RelativePoint(this@apply, Point(width / 2, 0)))
             }
         })
     }

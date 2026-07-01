@@ -42,6 +42,7 @@ import org.commonmark.renderer.html.HtmlRenderer
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.Font
+import java.awt.Point
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JComponent
@@ -432,10 +433,20 @@ internal open class MdViewHybrid(
             addHyperlinkListener { e ->
                 if (e.eventType != HyperlinkEvent.EventType.ACTIVATED) return@addHyperlinkListener
                 val href = e.description ?: return@addHyperlinkListener
-                val pt = (e.inputEvent as? java.awt.event.MouseEvent)?.point
-                dispatch(MdView.LinkEvent(href, pt))
+                val pt = linkPoint(e) ?: (e.inputEvent as? java.awt.event.MouseEvent)?.point
+                dispatch(MdView.LinkEvent(href, pt, this))
             }
         }
+    }
+
+    private fun JBHtmlPane.linkPoint(event: HyperlinkEvent): Point? {
+        val elem = event.sourceElement ?: return null
+        return runCatching {
+            val start = modelToView2D(elem.startOffset)?.bounds ?: return@runCatching null
+            val end = modelToView2D((elem.endOffset - 1).coerceAtLeast(elem.startOffset))?.bounds ?: start
+            val bounds = start.union(end)
+            Point(bounds.x + bounds.width / 2, bounds.y)
+        }.getOrNull()
     }
 
     private fun codeBlock(text: String, file: FileType, disposable: Disposable): JBScrollPane {

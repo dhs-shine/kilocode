@@ -43,6 +43,7 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
     val fileCalls = CopyOnWriteArrayList<Pair<String, String>>()
     val searchQueries = CopyOnWriteArrayList<String>()
     val opened = CopyOnWriteArrayList<String>()
+    val openedFiles = CopyOnWriteArrayList<Opened>()
     val localConfigs = CopyOnWriteArrayList<String>()
     var globalConfigs = 0
     var localConfigPathCalls = 0
@@ -88,9 +89,10 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
         return gitChanges
     }
 
-    override suspend fun openFile(path: String): Boolean {
+    override suspend fun openFile(path: String, line: Int?, column: Int?): Boolean {
         assertNotEdt("openFile")
         opened.add(path)
+        openedFiles.add(Opened(path, line, column))
         return openResult
     }
 
@@ -117,4 +119,6 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
         globalConfigs += 1
         return openResult
     }
+
+    data class Opened(val path: String, val line: Int?, val column: Int?)
 }

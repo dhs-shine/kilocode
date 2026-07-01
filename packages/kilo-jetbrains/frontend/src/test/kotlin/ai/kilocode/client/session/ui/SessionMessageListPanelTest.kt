@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.ui
 
+import ai.kilocode.client.session.SessionFileOpener
 import ai.kilocode.client.session.model.Permission
 import ai.kilocode.client.session.model.PermissionMeta
 import ai.kilocode.client.session.model.Question
@@ -53,7 +54,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
     private lateinit var model: SessionModel
     private lateinit var parent: Disposable
     private lateinit var panel: SessionMessageListPanel
-    private val openFile: (String) -> Unit = {}
+    private val openFile: SessionFileOpener = { _, _ -> }
 
     override fun setUp() {
         super.setUp()
@@ -670,7 +671,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
 
     fun `test completed plan update replaces tool view and keeps open file action`() {
         val opened = mutableListOf<String>()
-        val item = SessionMessageListPanel(model, parent, openFile = { opened.add(it) })
+        val item = SessionMessageListPanel(model, parent, openFile = { href, _ -> opened.add(href) })
         model.upsertMessage(msg("a1", "assistant"))
         model.updateContent("a1", toolPart("tp1", "a1", "plan_exit", "call1", state = "running"))
 

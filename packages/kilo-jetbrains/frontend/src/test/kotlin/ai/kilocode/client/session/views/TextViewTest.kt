@@ -255,6 +255,15 @@ class TextViewTest : BasePlatformTestCase() {
         assertEquals(listOf("https://kilocode.ai/docs"), urls)
     }
 
+    fun `test file link opens file callback`() {
+        val files = mutableListOf<String>()
+        val view = TextView(Text("p1"), openFile = { href, _ -> files.add(href) })
+
+        view.simulateLink("src/Foo.kt:12")
+
+        assertEquals(listOf("src/Foo.kt:12"), files)
+    }
+
     fun `test linkifyMentions rewrites tracked token`() {
         val out = linkifyMentions(
             "read @src/a.kt",
