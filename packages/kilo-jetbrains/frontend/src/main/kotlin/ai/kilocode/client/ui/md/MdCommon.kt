@@ -18,7 +18,8 @@ internal object MdCommon {
     private val protect = Regex("<pre\\b[^>]*>.*?</pre>|<a\\b[^>]*>.*?</a>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
     private val code = Regex("<code(\\s[^>]*)?>(.*?)</code>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
     private val tag = Regex("<[^>]+>")
-    private val ref = Regex("(?<![\\w@:/.-])((?:\\.?[A-Za-z0-9_-]+/)+[A-Za-z0-9_.-]+\\.[A-Za-z0-9_-]+(?::\\d+(?:-\\d+)?)?|[A-Za-z0-9_.-]+\\.(?:ts|tsx|js|jsx|mjs|cjs|kt|kts|java|md|mdx|txt|json|jsonc|yaml|yml|toml|xml|html|css|scss|rs|go|py|rb|php|swift|c|h|cpp|hpp|cs|sh|zsh|bash|sql|gradle)(?::\\d+(?:-\\d+)?)?)")
+    private val ref = Regex("(?<![\\w@:/.-])((?:\\.?[A-Za-z0-9_-]{1,80}/){1,20}[A-Za-z0-9_.-]{1,120}\\.[A-Za-z0-9_-]{1,20}(?::\\d{1,7}(?:-\\d{1,7})?)?|[A-Za-z0-9_.-]{1,120}\\.(?:ts|tsx|js|jsx|mjs|cjs|kt|kts|java|md|mdx|txt|json|jsonc|yaml|yml|toml|xml|html|css|scss|rs|go|py|rb|php|swift|c|h|cpp|hpp|cs|sh|zsh|bash|sql|gradle)(?::\\d{1,7}(?:-\\d{1,7})?)?)")
+    private const val REF_SEGMENT_LIMIT = 16_384
 
     val tags = listOf(
         "body", "p", "div", "span", "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
@@ -34,16 +35,22 @@ internal object MdCommon {
         .replace("\r", " ")
 
     fun inlineCode(html: String, opts: MdStyle): String {
+        if (!html.contains('<') && !html.contains('.')) return html
         val color = hex(opts.inlineCodeFg)
-        val out = StringBuilder()
-        var at = 0
-        for (match in pre.findAll(html)) {
-            out.append(style(html.substring(at, match.range.first), color))
-            out.append(match.value)
-            at = match.range.last + 1
+        val styled = if (html.contains("<code", ignoreCase = true)) {
+            val out = StringBuilder()
+            var at = 0
+            for (match in pre.findAll(html)) {
+                out.append(style(html.substring(at, match.range.first), color))
+                out.append(match.value)
+                at = match.range.last + 1
+            }
+            out.append(style(html.substring(at), color))
+            out.toString()
+        } else {
+            html
         }
-        out.append(style(html.substring(at), color))
-        return refs(out.toString())
+        return refs(styled)
     }
 
     fun rules(opts: MdStyle): String {
@@ -129,6 +136,7 @@ internal object MdCommon {
     }
 
     private fun refs(html: String): String {
+        if (!html.contains('.')) return html
         val out = StringBuilder()
         var at = 0
         for (match in protect.findAll(html)) {
@@ -141,6 +149,7 @@ internal object MdCommon {
     }
 
     private fun tags(html: String): String {
+        if (!html.contains('.')) return html
         val out = StringBuilder()
         var at = 0
         for (match in tag.findAll(html)) {
@@ -152,13 +161,16 @@ internal object MdCommon {
         return out.toString()
     }
 
-    private fun paths(text: String): String = ref.replace(text) { match ->
-        val path = match.value
-        val href = path.replace("&amp;", "&")
-            .replace(" ", "%20")
-            .replace("(", "%28")
-            .replace(")", "%29")
-        "<a class=\"kilo-file-ref\" href=\"${attr(href)}\">$path</a>"
+    private fun paths(text: String): String {
+        if (text.length > REF_SEGMENT_LIMIT || !text.contains('.')) return text
+        return ref.replace(text) { match ->
+            val path = match.value
+            val href = path.replace("&amp;", "&")
+                .replace(" ", "%20")
+                .replace("(", "%28")
+                .replace(")", "%29")
+            "<a class=\"kilo-file-ref\" href=\"${attr(href)}\">$path</a>"
+        }
     }
 
     private fun attr(value: String): String = value

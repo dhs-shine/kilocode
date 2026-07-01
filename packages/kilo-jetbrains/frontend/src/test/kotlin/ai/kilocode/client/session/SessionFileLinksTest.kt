@@ -1,6 +1,7 @@
 package ai.kilocode.client.session
 
 import ai.kilocode.rpc.dto.WorkspaceFileDto
+import ai.kilocode.rpc.isManagedWorktreeStorage
 import junit.framework.TestCase
 
 class SessionFileLinksTest : TestCase() {
@@ -38,9 +39,9 @@ class SessionFileLinksTest : TestCase() {
     }
 
     fun `test managed worktree storage filter only rejects worktree subtree`() {
-        assertFalse(SessionFileLinks.isManagedWorktreeStorage("backend/src/Main.java"))
-        assertFalse(SessionFileLinks.isManagedWorktreeStorage(".kilo/plans/x.md"))
-        assertTrue(SessionFileLinks.isManagedWorktreeStorage(".kilo/worktrees"))
-        assertTrue(SessionFileLinks.isManagedWorktreeStorage(".kilo/worktrees/foo/backend/src/Main.java"))
+        assertFalse(isManagedWorktreeStorage("backend/src/Main.java"))
+        assertFalse(isManagedWorktreeStorage(".kilo/plans/x.md"))
+        assertTrue(isManagedWorktreeStorage(".kilo/worktrees"))
+        assertTrue(isManagedWorktreeStorage(".kilo/worktrees/foo/backend/src/Main.java"))
     }
 }

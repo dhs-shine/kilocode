@@ -46,7 +46,7 @@ class ReadToolViewTest : BasePlatformTestCase() {
             """.trimIndent()
         }
 
-        val view = ReadToolView(t, openFile = { opened.add(it) })
+        val view = ReadToolView(t, openFile = { href, _ -> opened.add(href) })
 
         assertTrue(view.linkVisible())
         assertEquals("SessionUiLayoutTest.kt", view.linkText())
@@ -108,9 +108,9 @@ class ReadToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test view factory routes read kind tools to read tool view`() {
-        assertTrue(ViewFactory.create(tool(), openFile = {}) is ReadToolView)
-        assertTrue(ViewFactory.create(Tool("p2", "grep", toolKind("grep")), openFile = {}) is SearchToolView)
-        assertTrue(ViewFactory.create(Tool("p3", "glob", toolKind("glob")), openFile = {}) is GlobToolView)
+        assertTrue(ViewFactory.create(tool(), openFile = { _, _ -> }) is ReadToolView)
+        assertTrue(ViewFactory.create(Tool("p2", "grep", toolKind("grep")), openFile = { _, _ -> }) is SearchToolView)
+        assertTrue(ViewFactory.create(Tool("p3", "glob", toolKind("glob")), openFile = { _, _ -> }) is GlobToolView)
     }
 
     fun `test canRender matches read kind tools only`() {

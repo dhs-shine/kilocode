@@ -21,12 +21,7 @@ class ReadToolView(
     openFile: SessionFileOpener = { _, _ -> },
     private val selection: SessionSelection? = null,
     private val parts: ToolParts = toolParts(tool, openFile),
-) : SecondarySessionPartView(parts.header, parts.scroll(tool), expandable = false) {
-    constructor(
-        tool: Tool,
-        openFile: (String) -> Unit,
-        selection: SessionSelection? = null,
-    ) : this(tool, { href, _ -> openFile(href) }, selection)
+    ) : SecondarySessionPartView(parts.header, parts.scroll(tool), expandable = false) {
 
     companion object {
         fun canRender(tool: Tool): Boolean = tool.kind == ToolKind.READ

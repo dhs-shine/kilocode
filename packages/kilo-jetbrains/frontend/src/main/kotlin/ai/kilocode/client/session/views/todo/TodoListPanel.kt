@@ -10,6 +10,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.xml.util.XmlStringUtil
 import java.awt.BasicStroke
 import java.awt.BorderLayout
+import java.awt.Color
 import java.awt.Component
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -132,14 +133,22 @@ class TodoListPanel(
 
         fun update(todo: TodoDto, style: SessionEditorStyle) {
             val done = todo.status == "completed"
-            icon = TodoCheckIcon(done)
-            check.icon = icon
+            syncIcon(done)
             text.text = label(todo.content, done)
             text.font = style.regularFont
             text.foreground = when {
                 !done -> style.editorForeground
                 else -> UiStyle.Colors.weak()
             }
+        }
+
+        private fun syncIcon(done: Boolean) {
+            val bg = SessionUiStyle.View.Todo.checkBg()
+            val fg = SessionUiStyle.View.Todo.checkFg()
+            val border = SessionUiStyle.View.Todo.checkBorder()
+            if (icon.done == done && icon.bg == bg && icon.fg == fg && icon.border == border) return
+            icon = TodoCheckIcon(done, bg, fg, border)
+            check.icon = icon
         }
 
         private fun label(value: String, done: Boolean): String {
@@ -151,9 +160,9 @@ class TodoListPanel(
 
     private class TodoCheckIcon(
         val done: Boolean,
-        val bg: java.awt.Color = SessionUiStyle.View.Todo.checkBg(),
-        val fg: java.awt.Color = SessionUiStyle.View.Todo.checkFg(),
-        val border: java.awt.Color = SessionUiStyle.View.Todo.checkBorder(),
+        val bg: Color = SessionUiStyle.View.Todo.checkBg(),
+        val fg: Color = SessionUiStyle.View.Todo.checkFg(),
+        val border: Color = SessionUiStyle.View.Todo.checkBorder(),
     ) : Icon {
         override fun getIconWidth() = JBUI.scale(16)
 

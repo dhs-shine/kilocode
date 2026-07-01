@@ -3,6 +3,7 @@ package ai.kilocode.client.session.views.tool
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Tool
+import ai.kilocode.client.telemetry.Telemetry
 import ai.kilocode.client.session.ui.popup.HeaderPopupBody
 import ai.kilocode.client.session.ui.popup.HeaderPopupRequest
 import ai.kilocode.client.session.ui.selection.SessionSelection
@@ -149,7 +150,9 @@ class ShellToolView(
     override fun headerPopup(): HeaderPopupRequest? {
         if (isExpanded()) return null
         val cmd = command(item).takeIf { it.isNotBlank() } ?: return null
-        return HeaderPopupRequest(row) { buildPopupBody(cmd) }
+        return HeaderPopupRequest(row, build = { buildPopupBody(cmd) }) {
+            Telemetry.send("Header Popup Shown", mapOf("surface" to "session", "tool" to "bash"))
+        }
     }
 
     @RequiresEdt

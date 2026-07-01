@@ -23,12 +23,6 @@ class AttachmentView(
         openUrl: (String) -> Unit,
     ) : this(item, { openDefault(it, openFile, openUrl) })
 
-    constructor(
-        item: FileAttachment,
-        openFile: (String) -> Unit,
-        openUrl: (String) -> Unit,
-    ) : this(item, { href, _ -> openFile(href) }, openUrl)
-
     override val contentId: String = item.id
     private var chip = chip(item)
 

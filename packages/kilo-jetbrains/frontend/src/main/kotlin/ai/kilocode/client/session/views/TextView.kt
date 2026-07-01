@@ -2,6 +2,7 @@ package ai.kilocode.client.session.views
 
 import ai.kilocode.client.session.SessionFileLinks
 import ai.kilocode.client.session.SessionFileOpener
+import ai.kilocode.client.session.openSessionLink
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Text
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
@@ -86,11 +87,7 @@ open class TextView(
     internal fun contentOpaque() = md.opaque
 
     protected open fun onLink(event: MdView.LinkEvent) {
-        if (SessionFileLinks.isFileHref(event.href)) {
-            openFile(event.href, SessionFileLinks.anchor(event))
-            return
-        }
-        openUrl(event.href)
+        openSessionLink(event, openFile, openUrl)
     }
 
     override fun applyStyle(style: SessionEditorStyle) {

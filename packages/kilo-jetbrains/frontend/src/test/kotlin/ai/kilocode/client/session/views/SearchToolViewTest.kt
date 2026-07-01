@@ -186,7 +186,7 @@ class SearchToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test view factory routes grep to search tool view`() {
-        assertTrue(ViewFactory.create(tool(), openFile = {}) is SearchToolView)
+        assertTrue(ViewFactory.create(tool(), openFile = { _, _ -> }) is SearchToolView)
     }
 
     fun `test should replace when search renderer changes`() {

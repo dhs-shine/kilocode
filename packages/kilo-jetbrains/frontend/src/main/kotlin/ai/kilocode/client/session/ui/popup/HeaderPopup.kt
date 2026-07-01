@@ -7,6 +7,7 @@ import javax.swing.JComponent
 class HeaderPopupRequest(
     val anchor: JComponent,
     val build: () -> HeaderPopupBody,
+    val shown: () -> Unit = {},
 )
 
 class HeaderPopupBody(

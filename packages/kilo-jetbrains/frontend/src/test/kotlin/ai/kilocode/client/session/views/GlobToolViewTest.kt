@@ -142,7 +142,7 @@ class GlobToolViewTest : BasePlatformTestCase() {
     }
 
     fun `test view factory routes glob to glob tool view`() {
-        assertTrue(ViewFactory.create(tool(), openFile = {}) is GlobToolView)
+        assertTrue(ViewFactory.create(tool(), openFile = { _, _ -> }) is GlobToolView)
     }
 
     fun `test should replace when glob renderer changes`() {

@@ -2,10 +2,14 @@ package ai.kilocode.client.session
 
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.telemetry.Telemetry
+import ai.kilocode.client.ui.md.MdView
+import ai.kilocode.rpc.isManagedWorktreeStorage
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.ui.MessageType
+import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.SimpleTextAttributes
@@ -16,10 +20,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.swing.Icon
-import javax.swing.JList
 import javax.swing.JComponent
+import javax.swing.JList
 
 typealias SessionFileOpener = (href: String, anchor: RelativePoint?) -> Unit
+
+fun MdView.LinkEvent.anchor(): RelativePoint? {
+    val component = component ?: return null
+    val point = point ?: return null
+    return RelativePoint(component, point)
+}
+
+fun openSessionLink(event: MdView.LinkEvent, openFile: SessionFileOpener, openUrl: (String) -> Unit) {
+    if (SessionFileLinks.isFileHref(event.href)) {
+        openFile(event.href, event.anchor())
+        return
+    }
+    openUrl(event.href)
+}
 
 class SessionFileLinks(
     private val dir: String,
@@ -27,6 +45,7 @@ class SessionFileLinks(
     private val scope: CoroutineScope,
     private val root: JComponent,
     private val openUrl: (String) -> Unit,
+    private val send: (String, Map<String, String>) -> Unit = Telemetry::send,
 ) {
     fun open(href: String, anchor: RelativePoint?) {
         if (!isFileHref(href)) {
@@ -36,7 +55,10 @@ class SessionFileLinks(
         val target = parse(href)
         scope.launch {
             val ok = service.openPath(dir, target.path, target.line, target.column)
-            if (ok) return@launch
+            if (ok) {
+                track(target, "direct")
+                return@launch
+            }
             val found = service.searchFiles(dir, name(target.path), FILE_SEARCH_LIMIT)
                 .files
                 .filterNot { it.directory }
@@ -44,12 +66,32 @@ class SessionFileLinks(
                 .ranked(target.path)
             when (val result = decide(false, found)) {
                 Resolution.Opened -> Unit
-                is Resolution.OpenDirect -> service.openPath(dir, result.file.path, target.line, target.column)
-                is Resolution.Choose -> withContext(Dispatchers.Main) { choose(result.files, target, anchor) }
-                Resolution.Missing -> withContext(Dispatchers.Main) { missing(target.path, anchor) }
+                is Resolution.OpenDirect -> {
+                    val opened = service.openPath(dir, result.file.path, target.line, target.column)
+                    track(target, if (opened) "search_direct" else "missing")
+                }
+                is Resolution.Choose -> {
+                    track(target, "chooser")
+                    withContext(Dispatchers.Main) { choose(result.files, target, anchor) }
+                }
+                Resolution.Missing -> {
+                    track(target, "missing")
+                    withContext(Dispatchers.Main) { missing(target.path, anchor) }
+                }
             }
         }
     }
+
+    private fun track(target: Target, result: String) = send(
+        "File Link Opened",
+        mapOf(
+            "surface" to "session",
+            "kind" to "file",
+            "hasLine" to (target.line != null).toString(),
+            "hasColumn" to (target.column != null).toString(),
+            "result" to result,
+        ),
+    )
 
     @RequiresEdt
     private fun choose(files: List<WorkspaceFileDto>, target: Target, anchor: RelativePoint?) {
@@ -70,7 +112,7 @@ class SessionFileLinks(
             .setAnimationCycle(0)
             .createBalloon()
             .also { it.setAnimationEnabled(false) }
-            .show(anchor ?: RelativePoint.getCenterOf(root), com.intellij.openapi.ui.popup.Balloon.Position.above)
+            .show(anchor ?: RelativePoint.getCenterOf(root), Balloon.Position.above)
     }
 
     private class FileRenderer : ColoredListCellRenderer<WorkspaceFileDto>() {
@@ -123,17 +165,6 @@ class SessionFileLinks(
             if (candidates.isEmpty()) return Resolution.Missing
             if (candidates.size == 1) return Resolution.OpenDirect(candidates.single())
             return Resolution.Choose(candidates)
-        }
-
-        fun isManagedWorktreeStorage(path: String): Boolean {
-            val rel = path.replace('\\', '/').trimStart('/')
-            return rel == ".kilo/worktrees" || rel.startsWith(".kilo/worktrees/")
-        }
-
-        fun anchor(event: ai.kilocode.client.ui.md.MdView.LinkEvent): RelativePoint? {
-            val component = event.component ?: return null
-            val point = event.point ?: return null
-            return RelativePoint(component, point)
         }
 
         private fun icon(file: WorkspaceFileDto): Icon = when {

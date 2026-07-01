@@ -13,6 +13,7 @@ import ai.kilocode.backend.workspace.KiloWorkspaceState
 import ai.kilocode.log.KiloLog
 import ai.kilocode.jetbrains.api.model.Agent
 import ai.kilocode.rpc.KiloWorkspaceRpcApi
+import ai.kilocode.rpc.isManagedWorktreeStorage
 import ai.kilocode.rpc.dto.ConfigTargetDto
 import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
@@ -497,9 +498,4 @@ internal fun relativeWithinWorkspace(base: Path, target: Path): String? {
     val rel = relativeWithinBase(base, target) ?: return null
     if (isManagedWorktreeStorage(rel)) return null
     return rel
-}
-
-internal fun isManagedWorktreeStorage(path: String): Boolean {
-    val rel = path.replace('\\', '/').trimStart('/')
-    return rel == ".kilo/worktrees" || rel.startsWith(".kilo/worktrees/")
 }

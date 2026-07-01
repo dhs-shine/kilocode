@@ -36,8 +36,6 @@ class TurnView(
     private val hover: ((PartView, Boolean) -> Unit)? = null,
 ) : SessionLayoutPanel(JBUI.scale(SessionUiStyle.SessionLayout.GAP)), Disposable, SessionEditorStyleTarget {
 
-    constructor(id: String, openFile: (String) -> Unit) : this(id, { href, _ -> openFile(href) }, SessionEditorStyle.current())
-
     private val messages = LinkedHashMap<String, MessageView>()
 
     init {

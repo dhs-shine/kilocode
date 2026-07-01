@@ -135,6 +135,7 @@ class HeaderPopupController(timers: UiTimerSource = UiTimers) : Disposable {
         body = built.disposable
         val point = RelativePoint(req.anchor, Point(req.anchor.width, req.anchor.height / 2))
         popup.show(point, Balloon.Position.atRight)
+        req.shown()
     }
 
     private companion object {

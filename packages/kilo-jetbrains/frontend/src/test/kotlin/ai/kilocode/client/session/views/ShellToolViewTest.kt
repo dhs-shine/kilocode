@@ -455,7 +455,7 @@ class ShellToolViewTest : BasePlatformTestCase() {
         val bash = tool()
         val other = Tool("p1", "mystery", toolKind("mystery")).also { it.state = ToolExecState.COMPLETED }
 
-        assertTrue(ViewFactory.create(bash, openFile = {}) is ShellToolView)
+        assertTrue(ViewFactory.create(bash, openFile = { _, _ -> }) is ShellToolView)
         assertTrue(ViewFactory.shouldReplace(ToolView(bash), bash))
         assertTrue(ViewFactory.shouldReplace(ShellToolView(bash), other))
         assertFalse(ViewFactory.shouldReplace(ShellToolView(bash), bash))

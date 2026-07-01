@@ -31,22 +31,8 @@ import ai.kilocode.client.session.views.todo.TodoWriteView
 object ViewFactory {
     fun create(
         content: Content,
-        openFile: (String) -> Unit,
-    ): PartView = create(content, { href, _ -> openFile(href) }, openUrl = {}, selection = null, repo = null)
-
-    fun create(
-        content: Content,
         openFile: SessionFileOpener,
     ): PartView = create(content, openFile, openUrl = {}, selection = null, repo = null)
-
-    fun create(
-        content: Content,
-        openFile: (String) -> Unit,
-        openUrl: (String) -> Unit = {},
-        selection: SessionSelection? = null,
-        repo: String? = null,
-        openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, { href, _ -> openFile(href) }, openUrl) },
-    ): PartView = create(content, { href, _ -> openFile(href) }, openUrl, selection, repo, openAttachment)
 
     fun create(
         content: Content,
@@ -76,23 +62,8 @@ object ViewFactory {
 
     fun createUser(
         content: Content,
-        openFile: (String) -> Unit,
-    ): PartView = createUser(content, { href, _ -> openFile(href) }, openUrl = {}, selection = null, repo = null)
-
-    fun createUser(
-        content: Content,
         openFile: SessionFileOpener,
     ): PartView = createUser(content, openFile, openUrl = {}, selection = null, repo = null)
-
-    fun createUser(
-        content: Content,
-        openFile: (String) -> Unit,
-        openUrl: (String) -> Unit = {},
-        selection: SessionSelection? = null,
-        repo: String? = null,
-        mentions: List<PromptMention> = emptyList(),
-        openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, { href, _ -> openFile(href) }, openUrl) },
-    ): PartView = createUser(content, { href, _ -> openFile(href) }, openUrl, selection, repo, mentions, openAttachment)
 
     fun createUser(
         content: Content,

@@ -3,8 +3,8 @@
 package ai.kilocode.client.session.views
 
 import ai.kilocode.client.plugin.KiloBundle
-import ai.kilocode.client.session.SessionFileLinks
 import ai.kilocode.client.session.SessionFileOpener
+import ai.kilocode.client.session.openSessionLink
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.Reasoning
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
@@ -289,13 +289,7 @@ class ReasoningParts(
         if (item != null) return item
         val md = MdViewFactory.create(SessionEditorStyle.current(), selection).apply {
             opaque = false
-            addLinkListener {
-                if (SessionFileLinks.isFileHref(it.href)) {
-                    openFile(it.href, SessionFileLinks.anchor(it))
-                    return@addLinkListener
-                }
-                openUrl(it.href)
-            }
+            addLinkListener { openSessionLink(it, openFile, openUrl) }
         }
         val panel = TrackPanel().apply {
             isOpaque = true

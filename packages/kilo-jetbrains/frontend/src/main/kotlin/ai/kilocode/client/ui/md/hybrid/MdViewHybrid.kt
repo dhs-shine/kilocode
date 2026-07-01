@@ -70,6 +70,7 @@ internal open class MdViewHybrid(
     private val source = StringBuilder()
     private var style = style
     private var rendered = ""
+    private var htmlCache: HtmlCache? = null
     private var disposed = false
     private val blocks = mutableListOf<View>()
     private var openFence: Fence? = null
@@ -280,6 +281,7 @@ internal open class MdViewHybrid(
         if (source.isEmpty() && rendered.isEmpty() && root.componentCount == 0) return
         source.clear()
         rendered = ""
+        htmlCache = null
         openFence = null
         stale = false
         clearBlocks()
@@ -305,7 +307,7 @@ internal open class MdViewHybrid(
             openFence = out.open
             stale = false
         }
-        return MdCommon.inlineCode(rendered, opts())
+        return process(rendered, opts())
     }
 
     override fun overrideSheet(): String = MdCommon.rules(opts())
@@ -320,6 +322,7 @@ internal open class MdViewHybrid(
         listeners.clear()
         source.clear()
         rendered = ""
+        htmlCache = null
         openFence = null
         stale = false
         clearBlocks()
@@ -822,7 +825,16 @@ internal open class MdViewHybrid(
         )
     }
 
-    private fun html(body: String, opts: MdStyle): String = "<html><body>${MdCommon.inlineCode(body, opts)}</body></html>"
+    private fun html(body: String, opts: MdStyle): String = "<html><body>${process(body, opts)}</body></html>"
+
+    private fun process(body: String, opts: MdStyle): String {
+        val color = opts.inlineCodeFg.rgb
+        val cached = htmlCache
+        if (cached != null && cached.body == body && cached.color == color) return cached.html
+        val html = MdCommon.inlineCode(body, opts)
+        htmlCache = HtmlCache(body, color, html)
+        return html
+    }
 
     private fun collect(doc: Node): List<Desc> {
         val visitor = Visitor()
@@ -968,6 +980,8 @@ internal open class MdViewHybrid(
     }
 
     private data class Projection(val html: String, val blocks: List<Desc>, val open: Fence?)
+
+    private data class HtmlCache(val body: String, val color: Int, val html: String)
 
     private data class Line(val text: String, val end: String)
 

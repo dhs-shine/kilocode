@@ -56,8 +56,6 @@ class MessageView(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
 ), Disposable, SessionEditorStyleTarget, SessionView {
 
-    constructor(msg: Message, openFile: (String) -> Unit) : this(msg, { href, _ -> openFile(href) }, SessionEditorStyle.current())
-
     val role: String get() = msg.info.role
 
     override val sessionViewKind: SessionView.Kind
