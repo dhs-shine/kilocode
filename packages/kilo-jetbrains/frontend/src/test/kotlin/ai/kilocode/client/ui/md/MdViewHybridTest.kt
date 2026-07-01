@@ -30,9 +30,14 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Font
+import java.awt.Point
+import java.awt.event.MouseEvent
 import javax.swing.Box
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
+import javax.swing.event.HyperlinkEvent
+import javax.swing.text.html.HTML
+import javax.swing.text.html.HTMLDocument
 import java.awt.datatransfer.DataFlavor
 
 @Suppress("UnstableApiUsage")
@@ -243,6 +248,37 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertTrue(html.contains("<a class=\"kilo-file-ref\" href=\"packages/opencode/src/session/prompt.ts\">packages/opencode/src/session/prompt.ts</a>"))
         assertTrue(view.overrideSheet().contains("a.kilo-file-ref, code a.kilo-file-ref"))
         assertTrue(view.overrideSheet().contains("text-decoration: underline"))
+    }
+
+    fun `test prose links use platform hover underline listener`() {
+        view.set("See [docs](https://example.com)")
+
+        assertTrue(htmls().single().hyperlinkListeners.size > 1)
+    }
+
+    fun `test scrolling clears hovered prose link`() {
+        view.set("See [docs](https://example.com)\n\n" + (1..20).joinToString("\n") { "line $it" })
+        val pane = htmls().single()
+        val events = mutableListOf<HyperlinkEvent.EventType>()
+        pane.addHyperlinkListener {
+            if (it.description == "https://example.com") events.add(it.eventType)
+        }
+        val host = JBScrollPane(view.component)
+        host.setSize(420, 64)
+        view.component.setSize(420, view.component.preferredSize.height)
+        host.doLayout()
+        view.component.doLayout()
+        pane.doLayout()
+        val iter = (pane.document as HTMLDocument).getIterator(HTML.Tag.A)
+        assertTrue(iter.isValid)
+        val rect = pane.modelToView2D(iter.startOffset)!!.bounds
+
+        pane.dispatchEvent(MouseEvent(pane, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, rect.x + 1, rect.y + rect.height / 2, 0, false, MouseEvent.NOBUTTON))
+        host.viewport.viewPosition = Point(0, 32)
+        drainEdt()
+
+        assertTrue(events.contains(HyperlinkEvent.EventType.ENTERED))
+        assertTrue(events.contains(HyperlinkEvent.EventType.EXITED))
     }
 
     fun `test file ref links include line suffix and exclude punctuation`() {

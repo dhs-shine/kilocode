@@ -43,11 +43,16 @@ import java.awt.Color
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.Point
+import java.awt.event.HierarchyEvent
+import java.awt.event.MouseEvent
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.JViewport
 import javax.swing.ScrollPaneConstants
+import javax.swing.SwingUtilities
+import javax.swing.event.ChangeListener
 import javax.swing.event.HyperlinkEvent
 import javax.swing.text.html.StyleSheet
 
@@ -421,8 +426,51 @@ internal open class MdViewHybrid(
                 customStyleSheetProvider { sheet() }
             },
         ), UiDataProvider {
+            private var viewport: JViewport? = null
+            private val scroll = ChangeListener { hover() }
+            private val hierarchy = java.awt.event.HierarchyListener { event ->
+                if (event.changeFlags and HierarchyEvent.PARENT_CHANGED.toLong() != 0L) attach()
+            }
+
+            init {
+                addHierarchyListener(hierarchy)
+                Disposer.register(disposable) {
+                    viewport?.removeChangeListener(scroll)
+                    removeHierarchyListener(hierarchy)
+                }
+            }
+
+            override fun addNotify() {
+                super.addNotify()
+                attach()
+            }
+
+            override fun removeNotify() {
+                viewport?.removeChangeListener(scroll)
+                viewport = null
+                super.removeNotify()
+            }
+
             override fun uiDataSnapshot(sink: DataSink) {
                 selection?.provideCopy(sink) { document.getText(0, document.length).trim() }
+            }
+
+            private fun attach() {
+                val next = SwingUtilities.getAncestorOfClass(JViewport::class.java, this) as? JViewport
+                if (viewport === next) return
+                viewport?.removeChangeListener(scroll)
+                viewport = next
+                next?.addChangeListener(scroll)
+            }
+
+            private fun hover() {
+                val pt = runCatching { mousePosition }.getOrNull()
+                val event = if (pt == null) {
+                    MouseEvent(this, MouseEvent.MOUSE_EXITED, System.currentTimeMillis(), 0, -1, -1, 0, false, MouseEvent.NOBUTTON)
+                } else {
+                    MouseEvent(this, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, pt.x, pt.y, 0, false, MouseEvent.NOBUTTON)
+                }
+                dispatchEvent(event)
             }
         }.apply {
             isEditable = false
