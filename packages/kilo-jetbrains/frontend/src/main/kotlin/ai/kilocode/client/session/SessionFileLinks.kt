@@ -67,7 +67,9 @@ class SessionFileLinks(
     private fun missing(path: String, anchor: RelativePoint?) {
         JBPopupFactory.getInstance()
             .createHtmlTextBalloonBuilder(KiloBundle.message("session.file.missing", path), MessageType.WARNING, null)
+            .setAnimationCycle(0)
             .createBalloon()
+            .also { it.setAnimationEnabled(false) }
             .show(anchor ?: RelativePoint.getCenterOf(root), com.intellij.openapi.ui.popup.Balloon.Position.above)
     }
 

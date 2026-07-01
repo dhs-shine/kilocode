@@ -148,7 +148,6 @@ class ShellToolView(
     @RequiresEdt
     override fun headerPopup(): HeaderPopupRequest? {
         if (isExpanded()) return null
-        if (!cropped(parts.sub)) return null
         val cmd = command(item).takeIf { it.isNotBlank() } ?: return null
         return HeaderPopupRequest(row) { buildPopupBody(cmd) }
     }
@@ -364,9 +363,6 @@ private data class ShellContent(
 }
 
 private fun outputLang(text: String): String = if (MdTerminal.hasAnsi(text)) "ansi-stdout" else "shell-output"
-
-private fun cropped(label: com.intellij.ui.components.JBLabel): Boolean =
-    label.isVisible && label.width > 0 && label.preferredSize.width > label.width
 
 private fun popupMd(text: String): String = buildString {
     val fence = fence(text)

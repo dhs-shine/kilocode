@@ -368,13 +368,13 @@ class ShellToolViewTest : BasePlatformTestCase() {
         assertTrue(pane.preferredSize.height < editor.preferredSize.height + chrome)
     }
 
-    fun `test shell header popup is gated by cropped collapsed subtitle`() {
+    fun `test shell header popup is available for collapsed command`() {
         val view = track(ShellToolView(tool().also {
-            it.input = mapOf("command" to "pwd", "description" to "A very long command description that should be cropped")
+            it.input = mapOf("command" to "pwd", "description" to "Short")
         }))
 
         fitSubtitle(view)
-        assertNull(view.headerPopup())
+        assertNotNull(view.headerPopup())
 
         cropSubtitle(view)
         assertNotNull(view.headerPopup())
