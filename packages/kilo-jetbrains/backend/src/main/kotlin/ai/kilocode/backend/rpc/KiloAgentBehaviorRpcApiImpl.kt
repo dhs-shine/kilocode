@@ -35,12 +35,14 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
 
 class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
     companion object {
         private val LOG = KiloLog.create(KiloAgentBehaviorRpcApiImpl::class.java)
         private val JSON = "application/json".toMediaType()
         private val PARSER = Json { ignoreUnknownKeys = true }
+        private val saved = ConcurrentHashMap<String, SavedMcp>()
     }
 
     private val app: KiloBackendAppService get() = service()
@@ -127,7 +129,7 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
             LOG.warn("MCP workspace config fetch failed dir=$directory: ${e.message}", e)
             emptyMap()
         }
-        return buildMap {
+        val items = buildMap {
             for (name in global.keys + workspace.keys) {
                 val ws = workspace[name]
                 val gl = global[name]
@@ -136,6 +138,7 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
                 put(name, McpServerConfigDto(cfg, scope))
             }
         }
+        return withSavedMcp(directory, items)
     }
 
     override suspend fun saveMcp(directory: String, name: String, scope: String, config: McpConfigDto?): Boolean {
@@ -146,6 +149,7 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
         } else {
             app.updateConfig(patch)
         }
+        saveMcpOverride(directory, name, scope, config)
         return true
     }
 
@@ -231,6 +235,31 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
 
     private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
 
+    private fun withSavedMcp(directory: String, items: Map<String, McpServerConfigDto>): Map<String, McpServerConfigDto> = buildMap {
+        putAll(items)
+        for (item in saved.values) {
+            if (item.scope == "workspace" && item.directory != directory) continue
+            val cfg = item.config ?: continue
+            put(item.name, McpServerConfigDto(cfg, item.scope))
+        }
+    }
+
+    private fun saveMcpOverride(directory: String, name: String, scope: String, config: McpConfigDto?) {
+        val key = mcpKey(if (scope == "workspace") directory else "", name)
+        if (config == null) {
+            saved.remove(key)
+            return
+        }
+        saved[key] = SavedMcp(
+            directory = if (scope == "workspace") directory else "",
+            name = name,
+            scope = scope,
+            config = config,
+        )
+    }
+
+    private fun mcpKey(directory: String, name: String): String = "$directory\u0000$name"
+
     private fun removable(obj: JsonObject?): Boolean {
         if (obj == null) return false
         if ((obj["native"] as? JsonPrimitive)?.contentOrNull == "true") return false
@@ -262,4 +291,11 @@ class KiloAgentBehaviorRpcApiImpl : KiloAgentBehaviorRpcApi {
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
 
     private fun encodePath(value: String): String = encode(value).replace("+", "%20")
+
+    private data class SavedMcp(
+        val directory: String,
+        val name: String,
+        val scope: String,
+        val config: McpConfigDto?,
+    )
 }

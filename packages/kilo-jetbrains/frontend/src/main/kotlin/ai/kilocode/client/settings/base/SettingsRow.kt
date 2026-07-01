@@ -116,6 +116,8 @@ class SettingsRows : Stack(StackAxis.VERTICAL) {
         keyed.remove(key)?.let { remove(it) }
         keyed[key] = child
         next(child)
+        revalidate()
+        repaint()
         return child
     }
 

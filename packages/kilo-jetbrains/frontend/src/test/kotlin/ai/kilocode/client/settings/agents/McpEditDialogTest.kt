@@ -3,15 +3,19 @@ package ai.kilocode.client.settings.agents
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.SettingsRow
 import ai.kilocode.client.settings.base.SettingsStackedRow
-import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.rpc.dto.McpConfigDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import java.awt.Component
 import java.awt.Container
+import java.awt.Dimension
+import java.awt.Point
+import java.awt.event.InputEvent
+import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.JLabel
 
@@ -96,11 +100,22 @@ class McpEditDialogTest : BasePlatformTestCase() {
             fields[1].text = "NEXT"
             fields[2].text = "value"
             descendants(root).filterIsInstance<JButton>().single { it.text == KiloBundle.message("settings.agentBehavior.mcp.edit.env.add") }.doClick()
-            descendants(rowByTitle(root, "TOKEN=x")).filterIsInstance<HoverIcon>().single().doClick()
+            assertTrue(hasRow(root, "NEXT=value"))
+            removeEnv(root, "TOKEN=x")
+            assertFalse(hasRow(root, "TOKEN=x"))
             d.result()
         }
 
         assertEquals(mapOf("EMPTY" to "", "NEXT" to "value"), result.environment)
+    }
+
+    fun `test local result uses canonical local type`() {
+        val d = open(local().copy(type = "stdio"))
+
+        val result = edt { d.result() }
+
+        assertEquals("local", result.type)
+        assertEquals(mapOf("TOKEN" to "x", "EMPTY" to ""), result.environment)
     }
 
     private fun local() = McpConfigDto(
@@ -138,10 +153,38 @@ class McpEditDialogTest : BasePlatformTestCase() {
         }
 
     private fun hasRow(root: Component, title: String): Boolean =
-        descendants(root).filterIsInstance<Container>().any { item ->
+        envLabels(root).contains(title) || descendants(root).filterIsInstance<Container>().any { item ->
             (item is SettingsRow || item is SettingsStackedRow) &&
                 descendants(item).any { it is JLabel && it.text == title }
         }
+
+    private fun envLabels(root: Component): List<String> {
+        val list = descendants(root).filterIsInstance<JBList<*>>().singleOrNull() ?: return emptyList()
+        return (0 until list.model.size).map { list.model.getElementAt(it).toString() }
+    }
+
+    private fun removeEnv(root: Component, label: String) {
+        val list = descendants(root).filterIsInstance<JBList<*>>().single()
+        list.size = Dimension(320, 120)
+        list.doLayout()
+        val idx = envLabels(root).indexOf(label)
+        val bounds = list.getCellBounds(idx, idx)
+        val point = Point(bounds.x + bounds.width - 4, bounds.y + bounds.height / 2)
+        list.dispatchEvent(mouse(list, MouseEvent.MOUSE_PRESSED, point))
+        list.dispatchEvent(mouse(list, MouseEvent.MOUSE_RELEASED, point))
+    }
+
+    private fun mouse(list: JBList<*>, id: Int, point: Point) = MouseEvent(
+        list,
+        id,
+        System.currentTimeMillis(),
+        if (id == MouseEvent.MOUSE_PRESSED) InputEvent.BUTTON1_DOWN_MASK else 0,
+        point.x,
+        point.y,
+        1,
+        false,
+        MouseEvent.BUTTON1,
+    )
 
     private fun descendants(root: Component): List<Component> {
         val out = mutableListOf<Component>()

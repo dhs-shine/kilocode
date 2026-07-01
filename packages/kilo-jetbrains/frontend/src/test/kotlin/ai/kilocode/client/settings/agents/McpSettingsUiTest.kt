@@ -202,6 +202,29 @@ class McpSettingsUiTest : BasePlatformTestCase() {
         assertEquals("filesystem", edt { list(panel).selectedValue?.key })
     }
 
+    fun `test edit action preserves env vars after save reload and re edit`() {
+        val seen = mutableListOf<McpConfigDto>()
+        val next = McpConfigDto(
+            type = "local",
+            command = listOf("bun", "new-server"),
+            environment = mapOf("TOKEN" to "y", "NEXT" to "value"),
+        )
+        val panel = panel { name, cfg ->
+            seen += cfg
+            FakeEditDialog(name, cfg, next)
+        }
+        flushUntil { rows(panel).size == 3 }
+
+        click(panel, "filesystem", "edit")
+        flushUntil { rows(panel).single { it.key == "filesystem" }.description == "bun new-server" }
+        click(panel, "filesystem", "edit")
+        flushUntil { seen.size == 2 && agentRpc.mcpSaves.size == 2 }
+
+        assertEquals(mapOf("TOKEN" to "x"), seen[0].environment)
+        assertEquals(mapOf("TOKEN" to "y", "NEXT" to "value"), seen[1].environment)
+        assertEquals(next, agentRpc.mcpSaves.last().third)
+    }
+
     fun `test edit workspace scoped server saves to workspace scope`() {
         val next = McpConfigDto(type = "local", command = listOf("node", "p.js"))
         install()
@@ -304,7 +327,7 @@ class McpSettingsUiTest : BasePlatformTestCase() {
                 McpStatusDto("runtime", "failed", "crashed"),
             )
             mcpConfigs = mapOf(
-                "filesystem" to McpServerConfigDto(McpConfigDto(type = "stdio", command = listOf("bun", "mcp-files")), "global"),
+                "filesystem" to McpServerConfigDto(McpConfigDto(type = "stdio", command = listOf("bun", "mcp-files"), environment = mapOf("TOKEN" to "x")), "global"),
                 "github" to McpServerConfigDto(
                     McpConfigDto(type = "remote", url = "https://mcp.github.test", headers = mapOf("Authorization" to "Bearer token"), enabled = true, timeout = 5000L),
                     "global",
