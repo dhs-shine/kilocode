@@ -82,8 +82,6 @@ import { isSameSessionTree } from "./model-usage"
 const RECENT_LIMIT = 5
 const MESSAGE_PAGE_LIMIT = 80
 
-const { pendingCloudPrune, prune: pruneCloudOrphans } = createCloudPrune((m) => setStore("parts", produce(m)), stash)
-
 type MessageMutation = Exclude<MessageLoadMode, "focus"> | "append" | "update"
 
 interface MessagePageState {
@@ -548,6 +546,8 @@ export const SessionProvider: ParentComponent = (props) => {
   }
 
   const agentNames = createMemo(() => new Set(agents().map((agent) => agent.name)))
+
+  const { pendingCloudPrune, prune: pruneCloudOrphans } = createCloudPrune((m) => setStore("parts", produce(m)), stash)
 
   /** Per-mode model from config (e.g. config.agent.code.model). */
   function getModeModel(agentName: string): ModelSelection | null {
