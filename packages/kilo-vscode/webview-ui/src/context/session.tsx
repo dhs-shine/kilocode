@@ -76,16 +76,13 @@ import { reviewMetadata, type ReviewMessageData } from "../../../src/shared/revi
 import { visibleMessages as filterVisibleMessages } from "./session-queue"
 import { deleteDraftsForSession } from "../utils/draft-store"
 import { createAbortState } from "./abort-state"
+import { clearIfOn, createCloudPrune } from "./session-cloud-prune"
 import { isSameSessionTree } from "./model-usage"
 
 const RECENT_LIMIT = 5
 const MESSAGE_PAGE_LIMIT = 80
 
-// Cloud-import message IDs awaiting parts cleanup. Registered by
-// handleCloudSessionDataLoaded, transferred to the new real session id by
-// handleCloudSessionImported, then drained by handleMessagesLoaded (success),
-// handleSessionDeleted (premature delete), or cloudSessionImportFailed.
-const pendingCloudPrune = new Map<string, Set<string>>()
+const { pendingCloudPrune, prune: pruneCloudOrphans } = createCloudPrune((m) => setStore("parts", produce(m)), stash)
 
 type MessageMutation = Exclude<MessageLoadMode, "focus"> | "append" | "update"
 
@@ -298,11 +295,6 @@ interface SessionContextValue {
   selectCloudSession: (cloudSessionId: string) => void
   draftSessionID: Accessor<string | undefined>
   setDraftSessionID: (id: string | undefined) => void
-  // True when the user explicitly transitioned to the empty state via
-  // clearCurrentSession() or by deleting their current/draft session.
-  // restoreFailed uses this to suppress restore into :new when the user
-  // asked for a fresh task vs. an external session.deleted landing them
-  // back in :new with a stale failure pending.
   userClearedSession: Accessor<boolean>
 }
 
@@ -1166,29 +1158,26 @@ export const SessionProvider: ParentComponent = (props) => {
         break
 
       case "cloudSessionImportFailed": {
-        // Drop the carried-over cloud parts and synthetic session/messages
-        // entries — they were only meaningful while the preview was live.
         const failedKey = `cloud:${message.cloudSessionId}`
         pruneCloudOrphans(failedKey)
         setStore(
           "sessions",
-          produce((sessions) => {
-            delete sessions[failedKey]
+          produce((s) => {
+            delete s[failedKey]
           }),
         )
         setStore(
           "messages",
-          produce((messages) => {
-            delete messages[failedKey]
+          produce((m) => {
+            delete m[failedKey]
           }),
         )
         setStore(
           "toolParts",
-          produce((parts) => {
-            delete parts[failedKey]
+          produce((p) => {
+            delete p[failedKey]
           }),
         )
-        // Async failure: only clear scopes if still on the dead preview. Unconditionally nulling cloudPreviewId drops a later preview response and disables import-mode sends; blanking the session/draft ids blanks the newer active session; dropping the spinner leaves a newer preview looking idle. Loading check must precede the cloudPreviewId clear, otherwise the failing preview's spinner sticks.
         clearIfOn(cloudPreviewId, () => setLoading(false), failedKey)
         clearIfOn(cloudPreviewId, () => setCloudPreviewId(null), failedKey)
         clearIfOn(currentSessionID, () => setCurrentSessionID(undefined), failedKey)
@@ -1406,30 +1395,6 @@ export const SessionProvider: ParentComponent = (props) => {
     setTools(sessionID, tools)
   }
 
-  // Drop carried-over cloud message parts for the given key. Called from
-  // handleMessagesLoaded, handleSessionDeleted, and cloudSessionImportFailed.
-  function pruneCloudOrphans(key: string) {
-    const cloudIDs = pendingCloudPrune.get(key)
-    if (!cloudIDs) return
-    setStore(
-      "parts",
-      produce((parts) => {
-        for (const id of cloudIDs) delete parts[id]
-      }),
-    )
-    for (const id of cloudIDs) stash.remove(id)
-    pendingCloudPrune.delete(key)
-  }
-
-  // Clear a scope only if it still points at the given key. Async
-  // failure paths must not clobber scopes the user has navigated to
-  // since the operation was started. Takes a clear callback so it
-  // works for both undefined-cleared and null-cleared signals
-  // without changing their setter signatures.
-  function clearIfOn<T>(get: () => T, clear: () => void, key: T) {
-    if (get() === key) clear()
-  }
-
   function messageParts(messages: Message[]): Record<string, Part[]> {
     const parts: Record<string, Part[]> = {}
     for (const msg of messages) {
@@ -1544,20 +1509,13 @@ export const SessionProvider: ParentComponent = (props) => {
       if (revert) resetTodos(sessionID, revert)
       recoverPrefs(sessionID, merged)
 
-      // The carried-over cloud messages keyed by their original cloud IDs are
-      // now gone from store.messages[sessionID], so any parts at
-      // store.parts[<cloud-msg-id>] are unreachable. Drop them so repeated
-      // preview -> import cycles don't accumulate full transcripts in the
-      // reactive store.
       const cloudIDs = pendingCloudPrune.get(sessionID)
-      if (cloudIDs && cloudIDs.size > 0) {
-        const newIDs = new Set(messages.map((m) => m.id))
+      if (cloudIDs?.size) {
+        const live = new Set(messages.map((m) => m.id))
         setStore(
           "parts",
-          produce((parts) => {
-            for (const id of cloudIDs) {
-              if (!newIDs.has(id)) delete parts[id]
-            }
+          produce((p) => {
+            for (const id of cloudIDs) if (!live.has(id)) delete p[id]
           }),
         )
         for (const id of cloudIDs) stash.remove(id)
@@ -2090,19 +2048,19 @@ export const SessionProvider: ParentComponent = (props) => {
           .map((p) => p.id),
       )
       setPermissions((prev) => removeSessionPermissions(prev, sessionID))
-      setRespondingPermissions((prev) => {
-        if (staleResponding.size === 0) return prev
-        const next = new Set(prev)
-        for (const id of staleResponding) next.delete(id)
-        if (next.size === prev.size) return prev
-        return next
-      })
-      setLoaded((prev) => {
-        if (!prev.has(sessionID)) return prev
-        const next = new Set(prev)
-        next.delete(sessionID)
-        return next
-      })
+      if (staleResponding.size > 0) {
+        setRespondingPermissions((prev) => {
+          const next = new Set(prev)
+          for (const id of staleResponding) next.delete(id)
+          return next.size === prev.size ? prev : next
+        })
+      }
+      if (loaded().has(sessionID))
+        setLoaded((prev) => {
+          const next = new Set(prev)
+          next.delete(sessionID)
+          return next
+        })
       setStatusMap(
         produce((map) => {
           delete map[sessionID]
@@ -2116,8 +2074,8 @@ export const SessionProvider: ParentComponent = (props) => {
       )
       setStore(
         "sessionOverrides",
-        produce((map) => {
-          delete map[sessionID]
+        produce((m) => {
+          delete m[sessionID]
         }),
       )
       setStore(
@@ -2130,15 +2088,9 @@ export const SessionProvider: ParentComponent = (props) => {
         setCurrentSessionID(undefined)
         setLoading(false)
       }
-      if (draftSessionID() === sessionID) {
-        setDraftSessionID(undefined)
-      }
+      if (draftSessionID() === sessionID) setDraftSessionID(undefined)
     })
     deleteDraftsForSession(sessionID)
-    // If the deleted session was a cloud import still carrying carried-over
-    // cloud message IDs, drop the parts and the tracking entry. The
-    // carried-over messages were already removed from store.messages above,
-    // so their parts in store.parts are orphans now.
     pruneCloudOrphans(sessionID)
   }
 
@@ -2212,52 +2164,29 @@ export const SessionProvider: ParentComponent = (props) => {
 
       setCloudPreviewId(null)
       setCurrentSessionID(session.id)
-      // Migrate the draft scope from the synthetic "cloud:<id>" key to
-      // the real session id so a later external delete of the imported
-      // session clears draftSessionID cleanly. Without this, draftSessionID
-      // stays on the synthetic key, rawKey() falls back to
-      // "pending:cloud:<id>" after the delete, and restoreFailed() no
-      // longer matches :session:<id> or :new — silently losing the failed
-      // draft on the next send.
       setDraftSessionID(session.id)
 
-      // Defense in depth: even if selectCloudSession's reset was missed
-      // (e.g. deleteSession set the flag against the synthetic cloud key
-      // between select and import), the user has now adopted a real local
-      // session, so the clear flag must be cleared. Without this, a later
-      // post-import failure whose draftID matches the in-progress cloud
-      // draft would be suppressed by restoreFailed's userClearedSession
-      // early-return.
       setUserClearedSession(false)
 
-      // Clean up synthetic cloud: entries from sessions/messages stores. Cloud
-      // parts stay in store.parts for now — they key on the carried-over
-      // cloud message IDs that every SessionTurn still queries via
-      // getParts(). handleMessagesLoaded drops them via pendingCloudPrune
-      // once the server-assigned IDs replace the carried-over messages.
       setStore(
         "sessions",
-        produce((sessions) => {
-          delete sessions[cloudKey]
+        produce((s) => {
+          delete s[cloudKey]
         }),
       )
       setStore(
         "messages",
-        produce((messages) => {
-          delete messages[cloudKey]
+        produce((m) => {
+          delete m[cloudKey]
         }),
       )
       setStore(
         "toolParts",
-        produce((parts) => {
-          delete parts[cloudKey]
+        produce((p) => {
+          delete p[cloudKey]
         }),
       )
     })
-    // Transfer the pending prune set from the synthetic cloud key to the
-    // new real session id, then drop the synthetic-key entry. The set is
-    // keyed by session.id going forward so handleMessagesLoaded (success)
-    // or handleSessionDeleted (premature delete) can find it.
     const cloudPruneIDs = pendingCloudPrune.get(cloudKey)
     if (cloudPruneIDs) {
       pendingCloudPrune.set(session.id, cloudPruneIDs)
@@ -2389,12 +2318,6 @@ export const SessionProvider: ParentComponent = (props) => {
       rejectQuestion(q.id)
     }
 
-    // When there is no current session and the caller didn't supply a draftID
-    // (e.g. the active session was just deleted externally), mint a fresh
-    // draftID so the extension can echo it back in sessionCreated and the
-    // webview can migrate the in-flight draft from ":pending:<id>" into the
-    // newly created session. Without this, the round-trip has no key to tie
-    // the unsent text to the new session and the user's typed message is lost.
     const effectiveDraftID = !sid && !draftID ? crypto.randomUUID() : draftID
     const scope = effectiveDraftID ?? sid
     if (scope) {
@@ -2402,9 +2325,6 @@ export const SessionProvider: ParentComponent = (props) => {
       addOptimistic(scope, messageID, text, files, review)
       startSubmission(scope, messageID)
       if (!sid) {
-        // The user is starting a fresh draft from the empty prompt. Clear
-        // any lingering userClearedSession flag so a failure that races ahead
-        // of sessionCreated is not suppressed as a stale clear.
         setUserClearedSession(false)
         setDraftSessionID(scope)
       }
@@ -2470,8 +2390,6 @@ export const SessionProvider: ParentComponent = (props) => {
       rejectQuestion(q.id)
     }
 
-    // See sendMessage: mint a draftID when there's no current session so the
-    // extension can attach the round-trip sessionCreated migration to it.
     const effectiveDraftID = !sid && !draftID ? crypto.randomUUID() : draftID
     const scope = effectiveDraftID ?? sid
     if (scope) {
@@ -2479,9 +2397,6 @@ export const SessionProvider: ParentComponent = (props) => {
       addOptimistic(scope, messageID, `/${command} ${args}`.trim(), files)
       startSubmission(scope, messageID)
       if (!sid) {
-        // Same reasoning as sendMessage: starting a fresh draft from the
-        // empty prompt overrides any lingering userClearedSession flag so a
-        // failure that races ahead of sessionCreated is not suppressed.
         setUserClearedSession(false)
         setDraftSessionID(scope)
       }
@@ -2704,10 +2619,6 @@ export const SessionProvider: ParentComponent = (props) => {
     setCloudPreviewId(cloudSessionId)
     setCurrentSessionID(key)
     setDraftSessionID(key)
-    // The user has moved on by selecting a cloud session — any
-    // userClearedSession from a prior clearCurrentSession / deleteSession
-    // is stale and must not suppress restoration if a post-import send
-    // fails. Mirrors selectSession's reset.
     setUserClearedSession(false)
     setLoading(true)
     vscode.postMessage({ type: "requestCloudSessionData", sessionId: cloudSessionId })
