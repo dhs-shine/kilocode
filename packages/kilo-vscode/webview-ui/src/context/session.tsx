@@ -76,9 +76,7 @@ import { reviewMetadata, type ReviewMessageData } from "../../../src/shared/revi
 import { visibleMessages as filterVisibleMessages } from "./session-queue"
 import { deleteDraftsForSession } from "../utils/draft-store"
 import { createAbortState } from "./abort-state"
-import { createCloudPrune } from "./session-cloud-prune"
-// Clear only if scope still matches (guards async clears against later user navigation).
-function clearIfOn<T>(get: () => T, clear: () => void, key: T) { if (get() === key) clear() }
+import { clearIfOn, createCloudPrune } from "./session-cloud-prune"
 import { isSameSessionTree } from "./model-usage"
 
 const RECENT_LIMIT = 5
@@ -2057,6 +2055,7 @@ export const SessionProvider: ParentComponent = (props) => {
           return next.size === prev.size ? prev : next
         })
       }
+      // prettier-ignore
       setLoaded((prev) => { if (!prev.has(sessionID)) return prev; const next = new Set(prev); next.delete(sessionID); return next })
       setStatusMap(
         produce((map) => {
@@ -2085,6 +2084,7 @@ export const SessionProvider: ParentComponent = (props) => {
         setCurrentSessionID(undefined)
         setLoading(false)
       }
+      // prettier-ignore
       if (draftSessionID() === sessionID) { setDraftSessionID(undefined) }
     })
     deleteDraftsForSession(sessionID)

@@ -13,6 +13,7 @@
 import { describe, it, expect } from "bun:test"
 import fs from "node:fs"
 import path from "node:path"
+import { clearIfOn } from "../../webview-ui/src/context/session-cloud-prune"
 
 const ROOT = path.resolve(import.meta.dir, "../..")
 const SESSION_FILE = path.join(ROOT, "webview-ui/src/context/session.tsx")
@@ -443,20 +444,37 @@ describe("Cloud import parts cleanup contract", () => {
     expect(loadIdx).toBeLessThan(nullIdx)
   })
 
-  it("declares a clearIfOn helper that guards an async clear against a still-equal scope", () => {
-    // Extracted from cloudSessionImportFailed so the switch case stays
-    // under the complexity cap. The helper must compare get() to the
-    // key before calling the clear callback, so a stale async failure
-    // cannot clobber a newer scope the user has navigated to. Takes
-    // a clear callback rather than a setter so the same helper works
-    // for both undefined-cleared signals (currentSessionID /
-    // draftSessionID) and null-cleared signals (cloudPreviewId)
-    // without changing their setter signatures.
-    const helperIdx = source.indexOf("function clearIfOn")
-    expect(helperIdx).toBeGreaterThan(-1)
-    const helperBody = source.slice(helperIdx, helperIdx + 600)
-    expect(helperBody).toMatch(/if \(get\(\) === key\)/)
-    expect(helperBody).toMatch(/clear\(\)/)
+  it("clearIfOn runs the clear callback only while the scope still matches the key", () => {
+    // Used by cloudSessionImportFailed so the switch case stays under the
+    // complexity cap. The helper must compare get() to the key before
+    // calling the clear callback: a stale async failure must not clobber
+    // a newer scope the user has navigated to. Takes a clear callback
+    // rather than a setter so the same helper works for both
+    // undefined-cleared signals (currentSessionID / draftSessionID) and
+    // null-cleared signals (cloudPreviewId) without changing their setter
+    // signatures.
+    let cleared = 0
+    let value = "pending"
+    clearIfOn(
+      () => value,
+      () => {
+        cleared++
+      },
+      "pending",
+    )
+    expect(cleared).toBe(1)
+
+    // Scope has moved on (user navigated to a different preview / session)
+    // — the clear callback must NOT run.
+    value = "other"
+    clearIfOn(
+      () => value,
+      () => {
+        cleared++
+      },
+      "pending",
+    )
+    expect(cleared).toBe(1)
   })
 })
 
