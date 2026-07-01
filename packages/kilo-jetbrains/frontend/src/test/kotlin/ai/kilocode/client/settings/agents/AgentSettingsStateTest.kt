@@ -2,8 +2,11 @@ package ai.kilocode.client.settings.agents
 
 import ai.kilocode.cli.KiloCliParser
 import ai.kilocode.rpc.dto.AgentConfigDto
+import ai.kilocode.rpc.dto.AgentConfigPatchDto
+import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.AgentDetailDto
 import ai.kilocode.rpc.dto.ConfigDto
+import ai.kilocode.rpc.dto.ConfigPatchDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -186,6 +189,48 @@ class AgentSettingsStateTest {
 
         assertTrue(savedMatches(base, base))
         assertFalse(savedMatches(base, base.copy(agents = base.agents + ("code" to base.agents.getValue("code").copy(model = "openai/gpt")))))
+    }
+
+    @Test
+    fun `saved match includes staged intents`() {
+        val base = AgentsDraft(agents = mapOf("code" to AgentEditDraft(name = "code")))
+
+        assertFalse(savedMatches(base, base.copy(created = mapOf("new" to AgentCreateDto("new", "Prompt")))))
+        assertFalse(savedMatches(base, base.copy(imported = mapOf("new" to ConfigPatchDto()))))
+        assertFalse(savedMatches(base, base.copy(deleted = setOf("code"))))
+    }
+
+    @Test
+    fun `patch skips deleted agents`() {
+        val from = AgentsDraft(agents = mapOf("code" to AgentEditDraft(name = "code", description = "Old")))
+        val to = from.copy(
+            agents = mapOf("code" to AgentEditDraft(name = "code", description = "New")),
+            deleted = setOf("code"),
+        )
+
+        assertNull(patch(from, to))
+    }
+
+    @Test
+    fun `display rows expose staged intents`() {
+        val base = AgentsDraft(agents = mapOf(
+            "code" to AgentEditDraft(name = "code", description = "Old"),
+            "hidden" to AgentEditDraft(name = "hidden"),
+        ))
+        val draft = base.copy(
+            agents = base.agents + ("code" to AgentEditDraft(name = "code", description = "New")),
+            created = mapOf("created" to AgentCreateDto("created", "Prompt", description = "Created")),
+            imported = mapOf("imported" to ConfigPatchDto(agents = mapOf(
+                "imported" to AgentConfigPatchDto(description = "Imported", mode = KiloCliParser.MODE_SUBAGENT),
+            ))),
+            deleted = setOf("hidden"),
+        )
+
+        val rows = displayRows(base, draft).associate { it.agent.name to it.intent }
+        assertEquals(AgentIntent.Modified, rows["code"])
+        assertEquals(AgentIntent.PendingDelete, rows["hidden"])
+        assertEquals(AgentIntent.New, rows["created"])
+        assertEquals(AgentIntent.New, rows["imported"])
     }
 
     private fun detail(

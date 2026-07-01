@@ -41,6 +41,7 @@ class FakeAppRpcApi : KiloAppRpcApi {
     var configUpdateGate: CompletableDeferred<Unit>? = null
     var configUpdateError: Exception? = null
     var configUpdateReturnStale = false
+    var afterConfig: (suspend (ConfigPatchDto) -> Unit)? = null
 
     var connected = false
         private set
@@ -129,6 +130,7 @@ class FakeAppRpcApi : KiloAppRpcApi {
         configUpdateGate?.await()
         configUpdateError?.let { throw it }
         configPatches.add(patch)
+        afterConfig?.invoke(patch)
         val current = state.value
         val next = current.copy(config = applyPatch(current.config ?: ConfigDto(), patch))
         state.value = next

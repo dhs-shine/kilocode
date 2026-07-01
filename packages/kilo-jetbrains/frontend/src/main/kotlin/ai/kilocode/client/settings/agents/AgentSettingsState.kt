@@ -2,6 +2,7 @@ package ai.kilocode.client.settings.agents
 
 import ai.kilocode.cli.KiloCliParser
 import ai.kilocode.rpc.dto.AgentConfigPatchDto
+import ai.kilocode.rpc.dto.AgentCreateDto
 import ai.kilocode.rpc.dto.AgentDetailDto
 import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.ConfigPatchDto
@@ -10,7 +11,22 @@ import ai.kilocode.rpc.dto.PermissionRuleItemDto
 internal data class AgentsDraft(
     val defaultAgent: String? = null,
     val agents: Map<String, AgentEditDraft> = emptyMap(),
+    val created: Map<String, AgentCreateDto> = emptyMap(),
+    val imported: Map<String, ConfigPatchDto> = emptyMap(),
+    val deleted: Set<String> = emptySet(),
 )
+
+internal data class AgentDisplayRow(
+    val agent: AgentEditDraft,
+    val intent: AgentIntent,
+)
+
+internal enum class AgentIntent {
+    Unchanged,
+    Modified,
+    New,
+    PendingDelete,
+}
 
 internal data class AgentEditDraft(
     val name: String,
@@ -83,6 +99,7 @@ internal fun patch(from: AgentsDraft, to: AgentsDraft): ConfigPatchDto? {
 
     val agents = linkedMapOf<String, AgentConfigPatchDto>()
     for (name in (from.agents.keys + to.agents.keys).sorted()) {
+        if (name in to.deleted) continue
         val prev = from.agents[name] ?: continue
         val next = to.agents[name] ?: continue
         val item = patchAgent(prev, next)
@@ -94,12 +111,66 @@ internal fun patch(from: AgentsDraft, to: AgentsDraft): ConfigPatchDto? {
 }
 
 internal fun savedMatches(base: AgentsDraft, draft: AgentsDraft): Boolean {
+    if (base.created != draft.created) return false
+    if (base.imported != draft.imported) return false
+    if (base.deleted != draft.deleted) return false
     if (base.defaultAgent != draft.defaultAgent) return false
+    if (base.agents.keys != draft.agents.keys) return false
     for ((name, item) in draft.agents) {
         if (base.agents[name] != item) return false
     }
     return true
 }
+
+internal fun displayRows(base: AgentsDraft, draft: AgentsDraft): List<AgentDisplayRow> {
+    val rows = draft.agents.values.map { agent ->
+        val intent = when {
+            agent.name in draft.deleted -> AgentIntent.PendingDelete
+            base.agents[agent.name] != agent -> AgentIntent.Modified
+            else -> AgentIntent.Unchanged
+        }
+        AgentDisplayRow(agent, intent)
+    }
+    val created = draft.created.values.map { input ->
+        AgentDisplayRow(
+            AgentEditDraft(
+                name = input.name,
+                description = input.description,
+                prompt = input.prompt,
+                mode = input.mode,
+                defaultMode = input.mode,
+                removable = true,
+            ),
+            AgentIntent.New,
+        )
+    }
+    val imported = draft.imported.map { (name, patch) ->
+        val cfg = patch.agents[name]
+        AgentDisplayRow(
+            AgentEditDraft(
+                name = name,
+                description = cfg?.description,
+                prompt = cfg?.prompt,
+                model = cfg?.model,
+                variant = cfg?.variant,
+                mode = cfg?.mode ?: KiloCliParser.MODE_PRIMARY,
+                defaultMode = cfg?.mode ?: KiloCliParser.MODE_PRIMARY,
+                hidden = cfg?.hidden == true,
+                disable = cfg?.disable == true,
+                removable = true,
+                temperature = cfg?.temperature,
+                topP = cfg?.top_p,
+                steps = cfg?.steps,
+            ),
+            AgentIntent.New,
+        )
+    }
+    return rows + created + imported
+}
+
+internal fun rebaseAgents(base: AgentsDraft, edit: AgentsDraft): AgentsDraft = edit.copy(
+    agents = base.agents + edit.agents,
+)
 
 private fun patchAgent(from: AgentEditDraft, to: AgentEditDraft): AgentConfigPatchDto? {
     val clear = mutableListOf<String>()

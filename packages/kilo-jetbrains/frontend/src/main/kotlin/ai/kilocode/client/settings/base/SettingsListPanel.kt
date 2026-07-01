@@ -261,7 +261,7 @@ internal abstract class SettingsListPanel(
         }
     }
 
-    private suspend fun waitForReady() {
+    protected suspend fun waitForReady() {
         val flow = service<KiloAppService>().state
         val saw = withTimeoutOrNull(RELOAD_START_TIMEOUT_MS) {
             flow.first { it.status != KiloAppStatusDto.READY }

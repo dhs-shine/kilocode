@@ -1,6 +1,7 @@
 package ai.kilocode.client.settings.agents
 
 import ai.kilocode.cli.KiloCliParser
+import ai.kilocode.client.KiloNotifications
 import ai.kilocode.client.app.KiloAgentBehaviorService
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloWorkspaceService
@@ -29,13 +30,16 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.service
-import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.fileChooser.FileChooser
+import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBLabel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.nio.charset.StandardCharsets
 import javax.swing.JComponent
 import javax.swing.JComboBox
 
@@ -45,6 +49,9 @@ class AgentsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
     override fun getId(): String = ID
     override fun getDisplayName(): String = KiloBundle.message("settings.agentBehavior.agents.displayName")
     override fun create(cs: CoroutineScope, dir: String): JComponent = AgentsSettingsUi(cs, dir)
+    override fun update(ui: JComponent, dir: String) {
+        (ui as? AgentsSettingsUi)?.setDirectory(dir)
+    }
     override fun scrollReadyShell() = false
 
     companion object { const val ID = "ai.kilocode.jetbrains.settings.agentBehavior.agents" }
@@ -52,8 +59,9 @@ class AgentsConfigurable : AgentBehaviorConfigurableBase<JComponent>() {
 
 internal class AgentsSettingsUi(
     private val cs: CoroutineScope,
-    private val dir: String,
+    private var dir: String,
     private val create: (Collection<String>) -> AgentCreateDialogHandle = ::AgentCreateDialog,
+    private val choose: (JComponent) -> VirtualFile? = ::chooseImportFile,
 ) : SettingsListPanel(cs, SettingsListConfig.Equal), SettingsDraftPage {
     private val app get() = service<KiloAppService>()
     private val state = SettingsDraftState(agentsDraft(app.state.value.config, emptyList()), ::savedMatches)
@@ -73,6 +81,12 @@ internal class AgentsSettingsUi(
         start()
     }
 
+    fun setDirectory(value: String) {
+        if (value == dir) return
+        dir = value
+        reload()
+    }
+
     override suspend fun fetch(): List<SettingsListItem> {
         val agents = service<KiloAgentBehaviorService>().agents(dir)
         models = items(service<KiloWorkspaceService>().models(dir).providers)
@@ -80,7 +94,7 @@ internal class AgentsSettingsUi(
         val dirty = state.modified()
         val edit = draft
         state.accept(next)
-        if (dirty) draft = edit.copy(agents = next.agents + edit.agents)
+        if (dirty) draft = rebaseAgents(next, edit)
         details = agents
         syncNames()
         return rows()
@@ -109,6 +123,10 @@ internal class AgentsSettingsUi(
     }
 
     override fun onCell(key: String, cellId: String) {
+        if (cellId == UNDO_CELL) {
+            undo(key)
+            return
+        }
         val agent = draft.agents[key] ?: return
         if (cellId == DELETE_CELL) {
             remove(agent)
@@ -128,25 +146,81 @@ internal class AgentsSettingsUi(
     override fun modified(): Boolean = state.modified()
 
     override fun applyDraft() {
-        val change = patch(base, draft) ?: return
         val token = state.start() ?: return
         syncNames()
         syncPicker()
         view.update(rows())
-        cs.launch {
-            val state = service<KiloAppService>().updateConfig(change)
+        if (!launch("apply") { id ->
+            val target = token.target
+            var pending = target
+            var failed: String? = null
+            var changed = false
+            val behavior = service<KiloAgentBehaviorService>()
+            val app = service<KiloAppService>()
+            for (name in target.deleted) {
+                if (!behavior.removeAgent(dir, name)) {
+                    failed = KiloBundle.message("settings.agentBehavior.agents.delete.failed")
+                    break
+                }
+                pending = pending.copy(
+                    defaultAgent = pending.defaultAgent.takeUnless { it == name },
+                    agents = pending.agents - name,
+                    deleted = pending.deleted - name,
+                )
+                changed = true
+            }
+            if (failed == null) {
+                for ((name, input) in target.created) {
+                    if (!behavior.createAgent(dir, input)) {
+                        failed = KiloBundle.message("settings.agentBehavior.agents.create.failed")
+                        break
+                    }
+                    pending = pending.copy(created = pending.created - name)
+                    changed = true
+                }
+            }
+            if (failed == null) {
+                for ((name, item) in target.imported) {
+                    if (app.updateConfig(item) == null) {
+                        failed = KiloBundle.message("settings.agentBehavior.agents.import.failed")
+                        break
+                    }
+                    pending = pending.copy(imported = pending.imported - name)
+                    changed = true
+                }
+            }
+            if (failed == null) {
+                val change = patch(base, target)
+                if (change != null && app.updateConfig(change) == null) {
+                    failed = KiloBundle.message("settings.agentBehavior.save.failed")
+                }
+                if (failed == null && change != null) changed = true
+            }
+            if (changed) waitForReady()
+            val agents = behavior.agents(dir)
+            val next = agentsDraft(app.state.value.config, agents)
             withContext(edt) {
-                if (state == null) {
-                    this@AgentsSettingsUi.state.fail(token, KiloBundle.message("settings.agentBehavior.save.failed"))
+                if (!active(id)) {
+                    if (failed != null) KiloNotifications.error(failed)
+                    return@withContext
+                }
+                details = agents
+                if (failed != null) {
+                    draft = rebaseAgents(next, pending)
+                    this@AgentsSettingsUi.state.fail(token, failed)
+                    showError(failed)
                 } else {
-                    val next = agentsDraft(state.config, details)
-                    this@AgentsSettingsUi.state.complete(token, next)
+                    this@AgentsSettingsUi.state.complete(token, token.target)
+                    this@AgentsSettingsUi.state.accept(next)
+                    clearProgress()
                 }
                 syncNames()
                 syncPicker()
                 view.update(rows())
+                setBusy(false)
             }
-        }
+        }) return
+        showProgress(KiloBundle.message("settings.agentBehavior.saving"))
     }
 
     override fun resetDraft() {
@@ -156,12 +230,21 @@ internal class AgentsSettingsUi(
         view.update(rows())
     }
 
-    private fun rows(): List<SettingsListItem> = draft.agents.values.map { item ->
+    private fun rows(): List<SettingsListItem> = displayRows(base, draft).map { row ->
+        val item = row.agent
         object : SettingsListItem {
             override val key = item.name
             override val title = item.displayName ?: item.name
             override val description = item.description
             override val badges = listOfNotNull(
+                SettingsBadge(
+                    KiloBundle.message("settings.agentBehavior.badge.notApplied"),
+                    UiStyle.Badge.Secondary,
+                ).takeIf { row.intent == AgentIntent.Modified || row.intent == AgentIntent.New },
+                SettingsBadge(
+                    KiloBundle.message("settings.agentBehavior.badge.willRemove"),
+                    UiStyle.Badge.Alert,
+                ).takeIf { row.intent == AgentIntent.PendingDelete },
                 SettingsBadge(
                     KiloBundle.message("settings.agentBehavior.badge.subagent"),
                     UiStyle.Badge.Highlight,
@@ -177,55 +260,56 @@ internal class AgentsSettingsUi(
                     UiStyle.Badge.Alert,
                 ).takeIf { item.deprecated },
             )
-            override val cells = listOfNotNull(
-                SettingsListCell(EDIT_CELL, KiloBundle.message("settings.agentBehavior.edit")),
-                SettingsListCell(
+            override val cells = when (row.intent) {
+                AgentIntent.New,
+                AgentIntent.PendingDelete,
+                -> listOf(SettingsListCell(UNDO_CELL, KiloBundle.message("settings.agentBehavior.undo"), primary = true))
+                AgentIntent.Unchanged,
+                AgentIntent.Modified,
+                -> listOfNotNull(
+                    SettingsListCell(EDIT_CELL, KiloBundle.message("settings.agentBehavior.edit")),
+                    SettingsListCell(
                     DELETE_CELL,
                     KiloBundle.message("common.delete"),
                     icon = AllIcons.Actions.GC,
                     iconOnly = true,
-                ).takeIf { canDelete(item) },
-            )
+                    ).takeIf { canDelete(item) },
+                )
+            }
         }
     }
 
     private fun remove(agent: AgentEditDraft) {
         if (!canDelete(agent)) return
-        val result = Messages.showYesNoDialog(
-            KiloBundle.message("settings.agentBehavior.agents.delete.message", agent.displayName ?: agent.name),
-            KiloBundle.message("settings.agentBehavior.agents.delete.title"),
-            KiloBundle.message("common.delete"),
-            Messages.getCancelButton(),
-            Messages.getQuestionIcon(),
-        )
-        if (result != Messages.YES) return
-        val selection = selectionIndex()
-        mutateAndReload(selection) {
-            val removed = service<KiloAgentBehaviorService>().removeAgent(dir, agent.name)
-            if (!removed) throw SettingsMessageException(KiloBundle.message("settings.agentBehavior.agents.delete.failed"))
-            withContext(edt) {
-                prune(agent.name)
-            }
-            true
+        state.update {
+            copy(
+                defaultAgent = defaultAgent.takeUnless { it == agent.name },
+                deleted = deleted + agent.name,
+            )
         }
-    }
-
-    private fun prune(name: String) {
-        state.accept(base.copy(
-            defaultAgent = base.defaultAgent.takeUnless { it == name },
-            agents = base.agents - name,
-        ))
-        draft = draft.copy(
-            defaultAgent = draft.defaultAgent.takeUnless { it == name },
-            agents = draft.agents - name,
-        )
-        details = details.filter { it.name != name }
         syncNames()
         syncPicker()
+        view.update(rows(), SettingsListSelection.Key(agent.name))
+    }
+
+    private fun undo(name: String) {
+        state.update {
+            copy(
+                defaultAgent = if (defaultAgent == null && base.defaultAgent == name) name else defaultAgent.takeUnless { it == name && name !in agents },
+                created = created - name,
+                imported = imported - name,
+                deleted = deleted - name,
+            )
+        }
+        syncNames()
+        syncPicker()
+        view.update(rows(), SettingsListSelection.Key(name))
     }
 
     private fun syncNames() {
-        names = listOf("") + draft.agents.values
+        names = listOf("") + displayRows(base, draft)
+            .filter { it.intent != AgentIntent.PendingDelete }
+            .map { it.agent }
             .filter { KiloCliParser.defaultAgentCandidate(it.mode, it.hidden) && !it.disable }
             .map { it.name }
     }
@@ -248,7 +332,7 @@ internal class AgentsSettingsUi(
     ).apply {
         templatePresentation.icon = AllIcons.General.Add
         add(CreateAction())
-        add(PlaceholderAction(KiloBundle.message("settings.agentBehavior.agents.import")))
+        add(ImportAction())
     }
 
     internal inner class CreateAction : DumbAwareAction(KiloBundle.message("settings.agentBehavior.agents.create")) {
@@ -257,11 +341,50 @@ internal class AgentsSettingsUi(
         override fun actionPerformed(e: AnActionEvent) = perform()
 
         internal fun perform() {
-            val dialog = create(draft.agents.keys)
+            val dialog = create(taken())
             if (!dialog.showAndGet()) return
             val input = dialog.result()
-            mutateAndReload(SettingsListSelection.Key(input.name)) {
-                service<KiloAgentBehaviorService>().createAgent(dir, input)
+            state.update {
+                copy(created = created + (input.name to input))
+            }
+            syncNames()
+            syncPicker()
+            view.update(rows(), SettingsListSelection.Key(input.name))
+        }
+    }
+
+    internal inner class ImportAction : DumbAwareAction(KiloBundle.message("settings.agentBehavior.agents.import")) {
+        override fun getActionUpdateThread() = ActionUpdateThread.EDT
+
+        override fun actionPerformed(e: AnActionEvent) = perform()
+
+        internal fun perform(file: VirtualFile? = choose(this@AgentsSettingsUi)) {
+            val source = file ?: return
+            val names = taken()
+            if (!launch("import") { id ->
+                val input = withContext(Dispatchers.IO) { load(source, names) }
+                withContext(edt) {
+                    if (!active(id)) return@withContext
+                    this@AgentsSettingsUi.state.update { copy(imported = imported + (input.name to input.patch)) }
+                    syncNames()
+                    syncPicker()
+                    view.update(rows(), SettingsListSelection.Key(input.name))
+                    setBusy(false)
+                    clearProgress()
+                }
+            }) return
+            showProgress(KiloBundle.message("settings.agentBehavior.agents.import.progress"))
+        }
+
+        private fun load(file: VirtualFile, names: Collection<String>): AgentImport {
+            if (file.length > MAX_AGENT_IMPORT_SIZE) {
+                throw SettingsMessageException(KiloBundle.message(AgentImportError.TOO_LARGE.key))
+            }
+            val text = String(file.contentsToByteArray(), StandardCharsets.UTF_8)
+            return try {
+                parseAgentImport(text, names)
+            } catch (e: AgentImportException) {
+                throw SettingsMessageException(KiloBundle.message(e.error.key))
             }
         }
     }
@@ -269,8 +392,11 @@ internal class AgentsSettingsUi(
     private companion object {
         const val EDIT_CELL = "edit"
         const val DELETE_CELL = "delete"
+        const val UNDO_CELL = "undo"
         const val KILO_PROVIDER = "kilo"
     }
+
+    private fun taken(): Collection<String> = draft.agents.keys + draft.created.keys + draft.imported.keys
 
     private fun items(providers: ProvidersDto?): List<ModelPicker.Item> {
         val cfg = providers ?: return emptyList()
@@ -296,8 +422,11 @@ internal class AgentsSettingsUi(
     }
 }
 
-private class PlaceholderAction(text: String) : DumbAwareAction(text) {
-    override fun getActionUpdateThread() = ActionUpdateThread.EDT
-
-    override fun actionPerformed(e: AnActionEvent) = Unit
+private fun chooseImportFile(_parent: JComponent): VirtualFile? {
+    val descriptor = FileChooserDescriptor(true, false, false, false, false, false).apply {
+        title = KiloBundle.message("settings.agentBehavior.agents.import.title")
+        description = KiloBundle.message("settings.agentBehavior.agents.import.description")
+        withFileFilter { file -> !file.isDirectory && file.extension.equals("json", ignoreCase = true) }
+    }
+    return FileChooser.chooseFile(descriptor, null, null as VirtualFile?)
 }
