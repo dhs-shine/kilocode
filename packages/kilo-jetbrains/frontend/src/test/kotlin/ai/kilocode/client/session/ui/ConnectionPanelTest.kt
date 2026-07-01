@@ -89,7 +89,7 @@ class ConnectionPanelTest : SessionControllerTestBase() {
             .use { it.readText() }
 
         assertTrue(panel.retryVisible())
-        assertEquals("Kilo.CliGroup", ConnectionPanel.RETRY_GROUP_ID)
+        assertEquals("Kilo.CliGroup", ConnectionPanel.CLI_GROUP_ID)
         assertTrue(xml.contains("<group id=\"Kilo.CliGroup\" text=\"CLI\" popup=\"true\">"))
         assertTrue(xml.contains("<reference ref=\"Kilo.Restart\"/>"))
         assertTrue(xml.contains("<reference ref=\"Kilo.Reinstall\"/>"))

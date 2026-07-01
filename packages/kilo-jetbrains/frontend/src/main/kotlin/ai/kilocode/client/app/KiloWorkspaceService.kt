@@ -84,6 +84,7 @@ class KiloWorkspaceService internal constructor(
                 .stateIn(cs, SharingStarted.Eagerly, INIT)
             Workspace(directory, state) { reload(directory) }
         }
+        // Refresh on every workspace access so config actions reflect file system changes.
         refreshLocalConfigTarget(directory)
         refreshGlobalConfigTarget()
         return workspace

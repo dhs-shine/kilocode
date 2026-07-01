@@ -36,7 +36,7 @@ class ConnectionPanel(
 ) : BorderLayoutPanel(), SessionControllerListener, Disposable, SessionEditorStyleTarget {
 
     companion object {
-        internal const val RETRY_GROUP_ID = "Kilo.CliGroup"
+        internal const val CLI_GROUP_ID = "Kilo.CliGroup"
         private const val DETAILS_LINES = 10
         private const val CHROME = 2
     }
@@ -209,7 +209,7 @@ class ConnectionPanel(
     }
 
     private fun showRecoveryPopup() {
-        val group = ActionManager.getInstance().getAction(RETRY_GROUP_ID) as? ActionGroup ?: return
+        val group = ActionManager.getInstance().getAction(CLI_GROUP_ID) as? ActionGroup ?: return
         JBPopupFactory.getInstance()
             .createActionGroupPopup(
                 null,

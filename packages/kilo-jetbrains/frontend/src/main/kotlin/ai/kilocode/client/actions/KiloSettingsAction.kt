@@ -1,7 +1,6 @@
 package ai.kilocode.client.actions
 
 import ai.kilocode.client.app.KiloWorkspaceService
-import ai.kilocode.client.session.SessionManager
 import ai.kilocode.client.telemetry.Telemetry
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionGroupUtil
@@ -26,14 +25,18 @@ class KiloSettingsAction : AnAction() {
         internal fun popupGroup(group: ActionGroup): ActionGroup {
             return ActionGroupUtil.forceRecursiveUpdateInBackground(group)
         }
+
+        internal fun refreshConfigTargets(e: AnActionEvent, service: KiloWorkspaceService) {
+            e.workspaceDirectory()?.let { service.refreshLocalConfigTarget(it) }
+            service.refreshGlobalConfigTarget()
+        }
     }
 
     override fun actionPerformed(e: AnActionEvent) {
         val component = e.inputEvent?.component ?: return
         val group = ActionManager.getInstance().getAction(GROUP_ID) as? ActionGroup ?: return
         val service = service<KiloWorkspaceService>()
-        directory(e)?.let { service.refreshLocalConfigTarget(it) }
-        service.refreshGlobalConfigTarget()
+        refreshConfigTargets(e, service)
         Telemetry.send("Settings Opened", mapOf("surface" to "tool_window"))
 
         JBPopupFactory.getInstance()
@@ -47,7 +50,4 @@ class KiloSettingsAction : AnAction() {
             .showUnderneathOf(component)
     }
 
-    private fun directory(e: AnActionEvent): String? {
-        return e.getData(SessionManager.WORKSPACE_KEY)?.directory ?: e.project?.basePath
-    }
 }

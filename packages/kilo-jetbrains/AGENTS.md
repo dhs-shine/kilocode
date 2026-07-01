@@ -240,7 +240,6 @@ Before introducing any new reusable color, spacing value, border, size, font, or
 - `SessionUiStyle.View` — card sizing, card borders, surfaces, hover colors, and nested objects for `Prompt`, `Reasoning`, `Message`, and `Tool`.
 - `SessionUiStyle.RecentSessions` — recent sessions list limits.
 - `SessionUiStyle.Timeline` — activity-indicator colors for the session header timeline.
-- `Dock` — border presets for question, permission, and connection dock panels.
 
 Rules:
 - Generic layout constants (gaps, generic colors, reusable helpers) → `UiStyle`.

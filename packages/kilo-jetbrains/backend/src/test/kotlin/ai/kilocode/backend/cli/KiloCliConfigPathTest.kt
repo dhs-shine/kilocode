@@ -41,6 +41,35 @@ class KiloCliConfigPathTest {
     }
 
     @Test
+    fun `USERPROFILE backs up HOME for default config home`() {
+        val home = Files.createTempDirectory("kilo-userprofile").toFile()
+
+        val path = KiloCliConfigPath.resolve(
+            mapOf(
+                "HOME" to "",
+                "USERPROFILE" to home.absolutePath,
+            ),
+        )
+
+        assertEquals(File(File(home, ".config"), "kilo").absoluteFile, path.absoluteFile)
+    }
+
+    @Test
+    fun `blank config env values are ignored`() {
+        val home = Files.createTempDirectory("kilo-home").toFile()
+
+        val path = KiloCliConfigPath.resolve(
+            mapOf(
+                "KILO_CONFIG_DIR" to " ",
+                "XDG_CONFIG_HOME" to "",
+                "HOME" to home.absolutePath,
+            ),
+        )
+
+        assertEquals(File(File(home, ".config"), "kilo").absoluteFile, path.absoluteFile)
+    }
+
+    @Test
     fun `legacy settings file resolves under global config dir`() {
         val home = Files.createTempDirectory("kilo-home").toFile()
 

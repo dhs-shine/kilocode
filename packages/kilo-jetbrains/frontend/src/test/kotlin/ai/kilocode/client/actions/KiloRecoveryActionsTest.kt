@@ -246,6 +246,14 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
         assertEquals(ActionUpdateThread.BGT, wrapped.actionUpdateThread)
     }
 
+    fun `test settings action prewarms config targets`() {
+        val action = KiloSettingsAction()
+
+        KiloSettingsAction.refreshConfigTargets(event(action, workspace = workspace("/test")), service())
+
+        waitFor { rpc.localConfigPathCalls == 1 && rpc.globalConfigPathCalls == 1 }
+    }
+
     fun `test workspace creation prewarms config targets`() {
         service().workspace("/test")
 
