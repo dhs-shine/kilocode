@@ -18,12 +18,10 @@ import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -136,6 +134,12 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
         rpc.localConfigPath = "/test/.kilo/kilo.jsonc"
         rpc.localConfigDisplayPath = "/test/.kilo/kilo.jsonc"
         rpc.localConfigExists = true
+        val call = CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<Unit>()
+        rpc.beforeLocalConfigTarget = {
+            call.complete(Unit)
+            gate.await()
+        }
         val action = OpenLocalConfigAction()
         val event = event(action, workspace = workspace("/test"))
 
@@ -143,28 +147,34 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
 
         assertTrue(event.presentation.isEnabled)
         assertEquals("Open: local ...", event.presentation.text)
-        waitFor { rpc.localConfigPathCalls == 1 && service().localConfig["/test"] != null }
+        await(call)
+        assertEquals(1, rpc.localConfigPathCalls)
+
+        gate.complete(Unit)
+        service().localConfig["/test"] = ConfigTargetDto("/test/.kilo/kilo.jsonc", "/test/.kilo/kilo.jsonc", true)
 
         val next = event(action, workspace = workspace("/test"))
         update(action, next)
 
         assertEquals("Open: local /test/.kilo/kilo.jsonc", next.presentation.text)
-        assertEquals(1, rpc.localConfigPathCalls)
     }
 
     fun `test local config action dedupes in flight refresh`() {
         val gate = CompletableDeferred<Unit>()
-        rpc.beforeLocalConfigTarget = { gate.await() }
+        val call = CompletableDeferred<Unit>()
         val action = OpenLocalConfigAction()
+        rpc.beforeLocalConfigTarget = {
+            call.complete(Unit)
+            gate.await()
+        }
 
         update(action, event(action, workspace = workspace("/test")))
-        waitFor { rpc.localConfigPathCalls == 1 }
+        await(call)
         update(action, event(action, workspace = workspace("/test")))
 
         assertEquals(1, rpc.localConfigPathCalls)
 
         gate.complete(Unit)
-        waitFor { service().localConfig["/test"] != null }
     }
 
     fun `test global config action says open when target exists`() {
@@ -199,34 +209,46 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
         rpc.globalConfigPath = "/config/kilo.jsonc"
         rpc.globalConfigDisplayPath = "/config/kilo.jsonc"
         rpc.globalConfigExists = true
+        val call = CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<Unit>()
+        rpc.beforeGlobalConfigTarget = {
+            call.complete(Unit)
+            gate.await()
+        }
         val action = OpenGlobalConfigAction()
         val event = event(action)
 
         update(action, event)
 
         assertEquals("Open: global ...", event.presentation.text)
-        waitFor { rpc.globalConfigPathCalls == 1 && service().globalConfig != null }
+        await(call)
+        assertEquals(1, rpc.globalConfigPathCalls)
+
+        gate.complete(Unit)
+        cacheGlobal(ConfigTargetDto("/config/kilo.jsonc", "/config/kilo.jsonc", true))
 
         val next = event(action)
         update(action, next)
 
         assertEquals("Open: global /config/kilo.jsonc", next.presentation.text)
-        assertEquals(1, rpc.globalConfigPathCalls)
     }
 
     fun `test global config action dedupes in flight refresh`() {
         val gate = CompletableDeferred<Unit>()
-        rpc.beforeGlobalConfigTarget = { gate.await() }
+        val call = CompletableDeferred<Unit>()
+        rpc.beforeGlobalConfigTarget = {
+            call.complete(Unit)
+            gate.await()
+        }
         val action = OpenGlobalConfigAction()
 
         update(action, event(action))
-        waitFor { rpc.globalConfigPathCalls == 1 }
+        await(call)
         update(action, event(action))
 
         assertEquals(1, rpc.globalConfigPathCalls)
 
         gate.complete(Unit)
-        waitFor { service().globalConfig != null }
     }
 
     fun `test local config action disables without directory`() {
@@ -249,16 +271,24 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
     fun `test settings action prewarms config targets`() {
         val action = KiloSettingsAction()
 
-        KiloSettingsAction.refreshConfigTargets(event(action, workspace = workspace("/test")), service())
+        runBlocking {
+            KiloSettingsAction.refreshConfigTargets(event(action, workspace = workspace("/test")), service()).forEach { it.join() }
+        }
 
-        waitFor { rpc.localConfigPathCalls == 1 && rpc.globalConfigPathCalls == 1 }
+        assertEquals(1, rpc.localConfigPathCalls)
+        assertEquals(1, rpc.globalConfigPathCalls)
     }
 
     fun `test workspace creation prewarms config targets`() {
+        val local = CompletableDeferred<Unit>()
+        val global = CompletableDeferred<Unit>()
+        rpc.beforeLocalConfigTarget = { local.complete(Unit) }
+        rpc.beforeGlobalConfigTarget = { global.complete(Unit) }
+
         service().workspace("/test")
 
-        waitFor { rpc.localConfigPathCalls == 1 && rpc.globalConfigPathCalls == 1 }
-
+        await(local)
+        await(global)
         assertEquals(1, rpc.localConfigPathCalls)
         assertEquals(1, rpc.globalConfigPathCalls)
     }
@@ -275,14 +305,8 @@ class KiloRecoveryActionsTest : BasePlatformTestCase() {
         }.get()
     }
 
-    private fun waitFor(done: () -> Boolean) = runBlocking {
-        withTimeout(5_000) {
-            while (!done()) {
-                delay(25)
-                ApplicationManager.getApplication().invokeAndWait { UIUtil.dispatchAllInvocationEvents() }
-            }
-        }
-        ApplicationManager.getApplication().invokeAndWait { UIUtil.dispatchAllInvocationEvents() }
+    private fun await(signal: CompletableDeferred<Unit>) = runBlocking {
+        withTimeout(5_000) { signal.await() }
     }
 
     private fun service(): KiloWorkspaceService = ApplicationManager.getApplication().getService(KiloWorkspaceService::class.java)

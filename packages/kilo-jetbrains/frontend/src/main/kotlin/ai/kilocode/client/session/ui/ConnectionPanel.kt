@@ -13,7 +13,10 @@ import com.intellij.ide.DataManager
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.ActionLink
@@ -209,17 +212,29 @@ class ConnectionPanel(
     }
 
     private fun showRecoveryPopup() {
-        val group = ActionManager.getInstance().getAction(CLI_GROUP_ID) as? ActionGroup ?: return
         JBPopupFactory.getInstance()
             .createActionGroupPopup(
                 null,
-                group,
+                recoveryGroup(),
                 DataManager.getInstance().getDataContext(retry),
                 JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
                 true,
                 KiloActionPlaces.connectionRetryPopup(),
             )
             .showUnderneathOf(retry)
+    }
+
+    private fun recoveryGroup(): ActionGroup {
+        val group = DefaultActionGroup()
+        group.add(object : DumbAwareAction(KiloBundle.message("session.connection.retry")) {
+            override fun actionPerformed(e: AnActionEvent) {
+                controller.retryConnection()
+            }
+        })
+        group.addSeparator()
+        ActionManager.getInstance().getAction("Kilo.Restart")?.let { group.add(it) }
+        ActionManager.getInstance().getAction("Kilo.Reinstall")?.let { group.add(it) }
+        return group
     }
 
     override fun dispose() {
@@ -283,6 +298,8 @@ class ConnectionPanel(
     }
 
     internal fun retryFocusable() = retry.isFocusable
+
+    internal fun recoveryActionTexts() = recoveryGroup().getChildren(null).mapNotNull { it.templatePresentation.text }
 
     internal fun hasSeparator() = border != null
 

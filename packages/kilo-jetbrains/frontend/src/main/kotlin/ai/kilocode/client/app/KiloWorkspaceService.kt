@@ -17,6 +17,7 @@ import com.intellij.platform.project.ProjectId
 import fleet.rpc.client.durable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flow
@@ -189,10 +190,10 @@ class KiloWorkspaceService internal constructor(
         }
     }
 
-    fun refreshLocalConfigTarget(directory: String) {
-        if (!pendingLocal.add(directory)) return
+    fun refreshLocalConfigTarget(directory: String): Job? {
+        if (!pendingLocal.add(directory)) return null
 
-        cs.launch {
+        return cs.launch {
             try {
                 localConfigTarget(directory)
             } finally {
@@ -202,10 +203,10 @@ class KiloWorkspaceService internal constructor(
         }
     }
 
-    fun refreshGlobalConfigTarget() {
-        if (!pendingGlobal.compareAndSet(false, true)) return
+    fun refreshGlobalConfigTarget(): Job? {
+        if (!pendingGlobal.compareAndSet(false, true)) return null
 
-        cs.launch {
+        return cs.launch {
             try {
                 globalConfigTarget()
             } finally {

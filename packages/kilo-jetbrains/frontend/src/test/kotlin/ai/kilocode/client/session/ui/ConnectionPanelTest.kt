@@ -80,7 +80,7 @@ class ConnectionPanelTest : SessionControllerTestBase() {
         assertEquals("Try again", panel.retryText())
     }
 
-    fun `test retry popup group uses cli recovery actions`() {
+    fun `test retry popup group keeps lightweight retry and cli recovery actions`() {
         edt {
             panel.onEvent(SessionControllerEvent.ConnectionChanged.ShowError("CLI startup failed", null))
         }
@@ -89,6 +89,7 @@ class ConnectionPanelTest : SessionControllerTestBase() {
             .use { it.readText() }
 
         assertTrue(panel.retryVisible())
+        assertTrue(panel.recoveryActionTexts().contains("Try again"))
         assertEquals("Kilo.CliGroup", ConnectionPanel.CLI_GROUP_ID)
         assertTrue(xml.contains("<group id=\"Kilo.CliGroup\" text=\"CLI\" popup=\"true\">"))
         assertTrue(xml.contains("<reference ref=\"Kilo.Restart\"/>"))

@@ -9,6 +9,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import kotlinx.coroutines.Job
 
 /**
  * Gear icon action placed in the Kilo tool window title bar.
@@ -26,9 +27,11 @@ class KiloSettingsAction : AnAction() {
             return ActionGroupUtil.forceRecursiveUpdateInBackground(group)
         }
 
-        internal fun refreshConfigTargets(e: AnActionEvent, service: KiloWorkspaceService) {
-            e.workspaceDirectory()?.let { service.refreshLocalConfigTarget(it) }
-            service.refreshGlobalConfigTarget()
+        internal fun refreshConfigTargets(e: AnActionEvent, service: KiloWorkspaceService): List<Job> {
+            return listOfNotNull(
+                e.workspaceDirectory()?.let { service.refreshLocalConfigTarget(it) },
+                service.refreshGlobalConfigTarget(),
+            )
         }
     }
 
