@@ -63,6 +63,7 @@ class TodoWriteView(tool: Tool, private val parts: TodoParts = todoParts()) :
     internal fun rowCheckBackground(index: Int) = parts.list.rowCheckBackground(index)
     internal fun rowCheckForeground(index: Int) = parts.list.rowCheckForeground(index)
     internal fun rowCheckBorder(index: Int) = parts.list.rowCheckBorder(index)
+    internal fun rowCheckAccessibleName(index: Int) = parts.list.rowCheckAccessibleName(index)
     internal fun rowFont(index: Int) = parts.list.rowFont(index)
     internal fun rowForeground(index: Int) = parts.list.rowForeground(index)
     internal fun hiddenText() = parts.list.hiddenText()

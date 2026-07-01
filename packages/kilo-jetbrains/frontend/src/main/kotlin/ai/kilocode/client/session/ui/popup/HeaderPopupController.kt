@@ -45,6 +45,7 @@ class HeaderPopupController(timers: UiTimerSource = UiTimers) : Disposable {
         }
         hideAll()
         target = view
+        Disposer.register(view) { if (target === view) hideAll() }
         onHeader = true
         showTimer.restart()
     }

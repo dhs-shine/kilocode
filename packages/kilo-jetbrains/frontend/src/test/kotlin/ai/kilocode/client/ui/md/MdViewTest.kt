@@ -111,6 +111,13 @@ class MdViewTest : BasePlatformTestCase() {
         assertTrue(html.contains("href=\"native-plan-prompt.txt:37-38\">native-plan-prompt.txt:37-38</a>."))
     }
 
+    fun `test framework names are not file ref links`() {
+        view.set("Next.js, Node.js, Vue.js, and Chart.js are framework names, not paths.")
+        val html = view.html()
+
+        assertFalse(html.contains("kilo-file-ref"))
+    }
+
     fun `test existing markdown links are not file ref links`() {
         view.set("[prompt](packages/opencode/src/session/prompt.ts)")
         val html = view.html()

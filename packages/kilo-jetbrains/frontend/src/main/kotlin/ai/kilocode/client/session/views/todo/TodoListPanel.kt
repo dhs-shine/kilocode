@@ -75,6 +75,8 @@ class TodoListPanel(
 
     internal fun rowCheckBorder(index: Int) = rows[index].icon.border
 
+    internal fun rowCheckAccessibleName(index: Int) = rows[index].check.accessibleContext.accessibleName
+
     internal fun rowFont(index: Int) = rows[index].text.font
 
     internal fun rowForeground(index: Int) = rows[index].text.foreground
@@ -134,6 +136,8 @@ class TodoListPanel(
         fun update(todo: TodoDto, style: SessionEditorStyle) {
             val done = todo.status == "completed"
             syncIcon(done)
+            check.accessibleContext.accessibleName = KiloBundle.message(accessible(done), todo.content)
+            check.accessibleContext.accessibleDescription = check.accessibleContext.accessibleName
             text.text = label(todo.content, done)
             text.font = style.regularFont
             text.foreground = when {
@@ -155,6 +159,12 @@ class TodoListPanel(
             val text = XmlStringUtil.escapeString(value)
             if (!done) return "<html>$text</html>"
             return "<html><s>$text</s></html>"
+        }
+
+        private fun accessible(done: Boolean) = if (done) {
+            "session.part.todo.accessible.completed"
+        } else {
+            "session.part.todo.accessible.pending"
         }
     }
 

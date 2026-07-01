@@ -19,6 +19,7 @@ internal object MdCommon {
     private val code = Regex("<code(\\s[^>]*)?>(.*?)</code>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
     private val tag = Regex("<[^>]+>")
     private val ref = Regex("(?<![\\w@:/.-])((?:\\.?[A-Za-z0-9_-]{1,80}/){1,20}[A-Za-z0-9_.-]{1,120}\\.[A-Za-z0-9_-]{1,20}(?::\\d{1,7}(?:-\\d{1,7})?)?|[A-Za-z0-9_.-]{1,120}\\.(?:ts|tsx|js|jsx|mjs|cjs|kt|kts|java|md|mdx|txt|json|jsonc|yaml|yml|toml|xml|html|css|scss|rs|go|py|rb|php|swift|c|h|cpp|hpp|cs|sh|zsh|bash|sql|gradle)(?::\\d{1,7}(?:-\\d{1,7})?)?)")
+    private val single = setOf("readme.md", "package.json", "tsconfig.json", "jsconfig.json", "kilo.json", "kilo.jsonc")
     private const val REF_SEGMENT_LIMIT = 16_384
 
     val tags = listOf(
@@ -165,12 +166,20 @@ internal object MdCommon {
         if (text.length > REF_SEGMENT_LIMIT || !text.contains('.')) return text
         return ref.replace(text) { match ->
             val path = match.value
-            val href = path.replace("&amp;", "&")
-                .replace(" ", "%20")
+            if (!pathish(path)) return@replace path
+            val href = path.replace(" ", "%20")
                 .replace("(", "%28")
                 .replace(")", "%29")
             "<a class=\"kilo-file-ref\" href=\"${attr(href)}\">$path</a>"
         }
+    }
+
+    private fun pathish(path: String): Boolean {
+        if (path.contains('/')) return true
+        val name = path.substringBefore(':')
+        if (name.lowercase() in single) return true
+        val stem = name.substringBeforeLast('.', missingDelimiterValue = name)
+        return stem.startsWith('.') || stem.contains('-') || stem.contains('_')
     }
 
     private fun attr(value: String): String = value

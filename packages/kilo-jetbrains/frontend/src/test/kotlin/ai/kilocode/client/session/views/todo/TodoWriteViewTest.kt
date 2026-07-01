@@ -45,6 +45,8 @@ class TodoWriteViewTest : BasePlatformTestCase() {
         assertEquals(SessionUiStyle.View.Todo.checkBg(), view.rowCheckBackground(1))
         assertEquals(SessionUiStyle.View.Todo.checkFg(), view.rowCheckForeground(0))
         assertEquals(SessionUiStyle.View.Todo.checkBorder(), view.rowCheckBorder(0))
+        assertEquals("Completed to-do: Done", view.rowCheckAccessibleName(0))
+        assertEquals("Pending to-do: Next", view.rowCheckAccessibleName(1))
     }
 
     fun `test pending rows keep normal foreground`() {

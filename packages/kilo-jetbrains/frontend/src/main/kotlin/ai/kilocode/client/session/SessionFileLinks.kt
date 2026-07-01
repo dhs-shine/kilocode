@@ -15,10 +15,13 @@ import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.concurrency.annotations.RequiresEdt
+import com.intellij.xml.util.XmlStringUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JList
@@ -59,7 +62,7 @@ class SessionFileLinks(
                 track(target, "direct")
                 return@launch
             }
-            val found = service.searchFiles(dir, name(target.path), FILE_SEARCH_LIMIT)
+            val found = service.searchFiles(dir, decode(name(target.path)), FILE_SEARCH_LIMIT)
                 .files
                 .filterNot { it.directory }
                 .filterNot { isManagedWorktreeStorage(it.path) }
@@ -108,7 +111,7 @@ class SessionFileLinks(
     @RequiresEdt
     private fun missing(path: String, anchor: RelativePoint?) {
         JBPopupFactory.getInstance()
-            .createHtmlTextBalloonBuilder(KiloBundle.message("session.file.missing", path), MessageType.WARNING, null)
+            .createHtmlTextBalloonBuilder(KiloBundle.message("session.file.missing", XmlStringUtil.escapeString(path)), MessageType.WARNING, null)
             .setAnimationCycle(0)
             .createBalloon()
             .also { it.setAnimationEnabled(false) }
@@ -184,6 +187,10 @@ class SessionFileLinks(
             if (idx <= 0) return ""
             return path.substring(0, idx)
         }
+
+        private fun decode(value: String): String = runCatching {
+            URLDecoder.decode(value.replace("+", "%2B"), StandardCharsets.UTF_8)
+        }.getOrDefault(value)
 
         private fun List<WorkspaceFileDto>.ranked(path: String): List<WorkspaceFileDto> {
             val target = path.trimStart('/', '\\')

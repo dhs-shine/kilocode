@@ -9,6 +9,7 @@ import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.model.Content
+import ai.kilocode.client.ui.md.MdView
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.util.ui.JBUI
 
@@ -51,7 +52,7 @@ class PromptView(
         sync()
     }
 
-    override fun onLink(event: ai.kilocode.client.ui.md.MdView.LinkEvent) {
+    override fun onLink(event: MdView.LinkEvent) {
         val mention = mentions.firstOrNull { it.path == event.href || path(it.path) == event.href }
         if (mention != null) {
             mention.attachment?.let {
