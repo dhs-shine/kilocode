@@ -76,7 +76,9 @@ import { reviewMetadata, type ReviewMessageData } from "../../../src/shared/revi
 import { visibleMessages as filterVisibleMessages } from "./session-queue"
 import { deleteDraftsForSession } from "../utils/draft-store"
 import { createAbortState } from "./abort-state"
-import { clearIfOn, createCloudPrune } from "./session-cloud-prune"
+import { createCloudPrune } from "./session-cloud-prune"
+// Clear only if scope still matches (guards async clears against later user navigation).
+function clearIfOn<T>(get: () => T, clear: () => void, key: T) { if (get() === key) clear() }
 import { isSameSessionTree } from "./model-usage"
 
 const RECENT_LIMIT = 5
@@ -1162,20 +1164,20 @@ export const SessionProvider: ParentComponent = (props) => {
         pruneCloudOrphans(failedKey)
         setStore(
           "sessions",
-          produce((s) => {
-            delete s[failedKey]
+          produce((sessions) => {
+            delete sessions[failedKey]
           }),
         )
         setStore(
           "messages",
-          produce((m) => {
-            delete m[failedKey]
+          produce((messages) => {
+            delete messages[failedKey]
           }),
         )
         setStore(
           "toolParts",
-          produce((p) => {
-            delete p[failedKey]
+          produce((toolParts) => {
+            delete toolParts[failedKey]
           }),
         )
         clearIfOn(cloudPreviewId, () => setLoading(false), failedKey)
@@ -2055,12 +2057,7 @@ export const SessionProvider: ParentComponent = (props) => {
           return next.size === prev.size ? prev : next
         })
       }
-      if (loaded().has(sessionID))
-        setLoaded((prev) => {
-          const next = new Set(prev)
-          next.delete(sessionID)
-          return next
-        })
+      setLoaded((prev) => { if (!prev.has(sessionID)) return prev; const next = new Set(prev); next.delete(sessionID); return next })
       setStatusMap(
         produce((map) => {
           delete map[sessionID]
@@ -2088,7 +2085,7 @@ export const SessionProvider: ParentComponent = (props) => {
         setCurrentSessionID(undefined)
         setLoading(false)
       }
-      if (draftSessionID() === sessionID) setDraftSessionID(undefined)
+      if (draftSessionID() === sessionID) { setDraftSessionID(undefined) }
     })
     deleteDraftsForSession(sessionID)
     pruneCloudOrphans(sessionID)
