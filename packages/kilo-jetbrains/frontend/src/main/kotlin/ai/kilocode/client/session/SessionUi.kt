@@ -49,7 +49,6 @@ import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.client.settings.KiloSettingsConfigurable
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.telemetry.Telemetry
-import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.util.UiTimerSource
 import ai.kilocode.client.util.UiTimers
 import ai.kilocode.client.vfs.KiloVfsManager
@@ -89,6 +88,7 @@ import java.net.URI
 import java.nio.file.Path
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.SwingUtilities
 import javax.swing.UIManager
 
 /**
@@ -352,7 +352,6 @@ class SessionUi(
             overlay.clear()
             popup.hideAll()
         }
-        connection = ConnectionPanel(this, controller)
 
         completion = KiloPromptCompletionProvider(
             workspace = workspace,
@@ -370,6 +369,18 @@ class SessionUi(
             onMentions = ::mentionParts,
             completion = completion,
         )
+        connection = ConnectionPanel(this, controller)
+        root.addOverlay(connection) { pane, child ->
+            val size = child.preferredSize
+            val point = SwingUtilities.convertPoint(prompt.parent ?: root.content, prompt.x, prompt.y, pane)
+            val overlap = SessionUiStyle.View.Outline.width()
+            java.awt.Rectangle(
+                point.x,
+                point.y - size.height - overlap,
+                prompt.width,
+                size.height,
+            )
+        }
 
         drop = SessionDropOverlay()
         root.addOverlay(drop) { pane, _ ->
@@ -384,7 +395,7 @@ class SessionUi(
         sessionContent.add(header, BorderLayout.NORTH)
         sessionContent.add(scroll.component, BorderLayout.CENTER)
         root.content.add(sessionContent, BorderLayout.CENTER)
-        root.content.add(Stack.vertical().next(connection).next(prompt), BorderLayout.SOUTH)
+        root.content.add(prompt, BorderLayout.SOUTH)
         add(root, BorderLayout.CENTER)
     }
 
@@ -767,6 +778,7 @@ class SessionUi(
         load.applyStyle(style)
         header.applyStyle(style)
         prompt.applyStyle(style)
+        connection.applyStyle(style)
         scroll.applyStyle(style)
         refresh()
     }
