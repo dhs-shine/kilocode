@@ -489,7 +489,7 @@ class MessageView(
             }
 
             override fun mouseExited(e: MouseEvent) {
-                val point = root.mousePosition
+                val point = runCatching { root.mousePosition }.getOrNull()
                 if (point != null && root.contains(point)) return
                 if (inside(root, e)) return
                 setPromptHovered(false)
