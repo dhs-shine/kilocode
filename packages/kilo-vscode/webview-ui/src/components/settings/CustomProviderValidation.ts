@@ -120,12 +120,15 @@ function modalities(m: ModelEntry): Modalities | undefined {
   const existing = input.size > 0 || (m.modalities.output?.length ?? 0) > 0
   if (!existing && !m.supportsImages) return
 
-  input.add("text")
-  if (m.supportsImages) input.add("image")
-  else input.delete("image")
+  const image = input.has("image")
+  if (m.supportsImages && !image) {
+    input.add("text")
+    input.add("image")
+  }
+  if (!m.supportsImages) input.delete("image")
 
   return {
-    input: [...input],
+    ...(m.modalities.input !== undefined || m.supportsImages ? { input: [...input] } : {}),
     ...(m.modalities.output?.length ? { output: m.modalities.output } : {}),
   }
 }

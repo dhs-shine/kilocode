@@ -223,6 +223,25 @@ describe("validateCustomProvider – variant name validation", () => {
     expect(saved.modalities).toBeUndefined()
   })
 
+  it("preserves an existing image-only input when saving", () => {
+    const form = base()
+    form.models[0].modalities = { input: ["image"] }
+    form.models[0].supportsImages = true
+    const out = validateCustomProvider(args(form))
+    expect(out.result).toBeDefined()
+    const saved = out.result!.config.models["model-1"] as Record<string, unknown>
+    expect(saved.modalities).toEqual({ input: ["image"] })
+  })
+
+  it("preserves output-only modalities when saving", () => {
+    const form = base()
+    form.models[0].modalities = { output: ["audio"] }
+    const out = validateCustomProvider(args(form))
+    expect(out.result).toBeDefined()
+    const saved = out.result!.config.models["model-1"] as Record<string, unknown>
+    expect(saved.modalities).toEqual({ output: ["audio"] })
+  })
+
   it("preserves unsupported UI modalities when toggling image support", () => {
     const form = base()
     form.models[0].modalities = {
