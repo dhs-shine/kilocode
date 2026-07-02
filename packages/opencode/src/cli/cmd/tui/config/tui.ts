@@ -112,13 +112,18 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
       return config
     })
 
-  // kilocode_change start - trusted controls whether tui config may resolve {file:}/{env:} tokens
-  const load = (text: string, configFilepath: string, trusted: boolean): Effect.Effect<Info> =>
+  // kilocode_change start - trusted gates {env:}; fileScope confines untrusted {file:} reads
+  const load = (
+    text: string,
+    configFilepath: string,
+    trusted: boolean,
+    fileScope?: ConfigVariable.FileScope,
+  ): Effect.Effect<Info> =>
     // kilocode_change end
     Effect.gen(function* () {
-      // kilocode_change start - only trusted tui config resolves {file:}/{env:} tokens
+      // kilocode_change start - only trusted tui config resolves {env:}; untrusted {file:} confined to fileScope
       const expanded = yield* Effect.promise(() =>
-        ConfigVariable.substitute({ text, type: "path", path: configFilepath, missing: "empty", trusted }),
+        ConfigVariable.substitute({ text, type: "path", path: configFilepath, missing: "empty", trusted, fileScope }),
       )
       // kilocode_change end
       const data = ConfigParse.jsonc(expanded, configFilepath)
@@ -153,8 +158,8 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
       ),
     )
 
-  // kilocode_change start - trusted param threaded to load
-  const loadFile = (filepath: string, trusted: boolean): Effect.Effect<Info> =>
+  // kilocode_change start - trusted + fileScope threaded to load
+  const loadFile = (filepath: string, trusted: boolean, fileScope?: ConfigVariable.FileScope): Effect.Effect<Info> =>
     // kilocode_change end
     Effect.gen(function* () {
       // Silent-swallow non-NotFound read errors (perms, EISDIR, IO) → log + skip.
@@ -175,14 +180,14 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
       )
       if (!text) return {} as Info
       log.info("loading tui config", { path: filepath })
-      return yield* load(text, filepath, trusted) // kilocode_change
+      return yield* load(text, filepath, trusted, fileScope) // kilocode_change
     })
 
-  // kilocode_change start - trusted param threaded to loadFile
-  const mergeFile = (acc: Acc, file: string, trusted: boolean) =>
+  // kilocode_change start - trusted + fileScope threaded to loadFile
+  const mergeFile = (acc: Acc, file: string, trusted: boolean, fileScope?: ConfigVariable.FileScope) =>
     // kilocode_change end
     Effect.gen(function* () {
-      const data = yield* loadFile(file, trusted) // kilocode_change
+      const data = yield* loadFile(file, trusted, fileScope) // kilocode_change
       if (Object.keys(data).length) {
         appliedOrder += 1
         log.info("applying tui config", { path: file, order: appliedOrder })
@@ -227,7 +232,8 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
 
   // 3. Project tui files, applied root-first so the closest file wins.
   for (const file of projectFiles) {
-    yield* mergeFile(acc, file, false) // kilocode_change - project config is untrusted
+    // kilocode_change - project config is untrusted: {env:} rejected, {file:} confined to the project dir
+    yield* mergeFile(acc, file, false, { root: ctx.directory, source: file })
   }
 
   // kilocode_change start - load tui.json from supported Kilo config directories
@@ -242,8 +248,9 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
   for (const dir of dirs) {
     // kilocode_change start - trust global (home/KILO_CONFIG_DIR) dirs like config.ts; in-repo .kilo/.kilocode stay untrusted
     const trusted = pluginScope(dir, ctx) === "global"
+    const fileScope = trusted ? undefined : { root: ctx.directory, source: dir }
     for (const file of ConfigPaths.fileInDirectory(dir, "tui")) {
-      yield* mergeFile(acc, file, trusted)
+      yield* mergeFile(acc, file, trusted, fileScope)
     }
     // kilocode_change end
   }

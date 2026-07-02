@@ -17,12 +17,17 @@ type ParseSource =
       dir: string
     }
 
+// kilocode_change start
+export type FileScope = ConfigVariableGuard.FileScope
+// kilocode_change end
+
 type SubstituteInput = ParseSource & {
   text: string
   missing?: "error" | "empty"
   escapeJson?: boolean // kilocode_change
-  // kilocode_change start - only trusted (user-owned) sources may reference files/env; project config cannot
+  // kilocode_change start - trust gates {env:}; untrusted project config may only read files inside fileScope.root
   trusted?: boolean
+  fileScope?: ConfigVariableGuard.FileScope
   // kilocode_change end
   env?: Record<string, string>
 }
@@ -46,23 +51,33 @@ function commented(text: string, index: number) {
 export async function substitute(input: SubstituteInput) {
   const missing = input.missing ?? "error"
   const escape = input.escapeJson ?? true // kilocode_change
-  // kilocode_change start - only trusted (user-owned) config may read files or environment variables.
-  // Untrusted project config could otherwise exfiltrate arbitrary local files via a provider apiKey.
-  if (!(input.trusted ?? false)) {
-    const active = Array.from(input.text.matchAll(/\{(?:env|file):[^}]+\}/g)).find(
-      (m) => !commented(input.text, m.index),
-    )
+  // kilocode_change start - untrusted (project) config cannot read environment variables. {env:} has no safe
+  // scoped form, so it is rejected outright; {file:} is allowed but confined to fileScope.root below.
+  const trusted = input.trusted ?? false
+  if (!trusted) {
+    const active = Array.from(input.text.matchAll(/\{env:[^}]+\}/g)).find((m) => !commented(input.text, m.index))
     if (active) {
       throw new InvalidError({
         path: source(input),
-        message: `file and environment references are not allowed in project config: "${active[0]}"`,
+        message: `environment references are not allowed in project config: "${active[0]}"`,
       })
     }
-    return input.text
+    // Secure default: untrusted config must supply a fileScope to read files. Without one, {file:} is rejected
+    // rather than allowed unrestricted, so a caller that forgets the scope cannot reopen the exfiltration path.
+    if (!input.fileScope) {
+      const file = Array.from(input.text.matchAll(/\{file:[^}]+\}/g)).find((m) => !commented(input.text, m.index))
+      if (file) {
+        throw new InvalidError({
+          path: source(input),
+          message: `file references are not allowed in project config: "${file[0]}"`,
+        })
+      }
+    }
   }
   // kilocode_change end
-  let text = input.text.replace(/\{env:([^}]+)\}/g, (_, varName) => {
-    // kilocode_change start - reject server credentials instead of silently changing config semantics
+  let text = input.text.replace(/\{env:([^}]+)\}/g, (match, varName, offset: number) => {
+    // kilocode_change start - leave commented tokens literal; reject server credentials
+    if (commented(input.text, offset)) return match
     if (!ConfigVariableGuard.env(varName)) {
       throw new InvalidError({ path: source(input), message: `blocked environment reference: "{env:${varName}}"` })
     }
@@ -97,9 +112,14 @@ export async function substitute(input: SubstituteInput) {
     }
 
     const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(configDir, filePath)
-    // kilocode_change start - validate and read one opened file to prevent credential substitution races
+    // kilocode_change start - validate and read one opened file to prevent credential substitution races;
+    // untrusted config passes a fileScope so reads are confined to the project root.
     const fileContent = (
-      await ConfigVariableGuard.read(resolvedPath, Filesystem.readText).catch((error: NodeJS.ErrnoException) => {
+      await ConfigVariableGuard.read(
+        resolvedPath,
+        Filesystem.readText,
+        input.fileScope && { ...input.fileScope, token },
+      ).catch((error: NodeJS.ErrnoException) => {
         if (missing === "empty") return ""
 
         const errMsg = `bad file reference: "${token}"`

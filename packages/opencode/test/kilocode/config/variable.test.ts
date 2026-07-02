@@ -8,22 +8,42 @@ import { InvalidError } from "@/config/error"
 const source = { type: "virtual" as const, source: "test", dir: process.cwd() }
 const trusted = { ...source, trusted: true }
 
-test("rejects file references in untrusted (project) config", async () => {
-  await expect(
-    ConfigVariable.substitute({ ...source, text: "apiKey={file:/etc/passwd}" }),
-  ).rejects.toBeInstanceOf(InvalidError)
+test("rejects file references in untrusted config without a fileScope", async () => {
+  await expect(ConfigVariable.substitute({ ...source, text: "apiKey={file:/etc/passwd}" })).rejects.toBeInstanceOf(
+    InvalidError,
+  )
 })
 
-test("rejects file references when trusted is omitted (secure by default)", async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-config-variable-untrusted-"))
-  const file = path.join(dir, "secret")
+test("rejects untrusted file references that escape the scope root", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-config-variable-root-"))
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-config-variable-outside-"))
+  const file = path.join(outside, "secret")
   await fs.writeFile(file, "top-secret")
   try {
-    await expect(ConfigVariable.substitute({ ...source, text: `{file:${file}}` })).rejects.toBeInstanceOf(
-      InvalidError,
-    )
+    await expect(
+      ConfigVariable.substitute({ ...source, text: `{file:${file}}`, fileScope: { root, source: "test" } }),
+    ).rejects.toBeInstanceOf(InvalidError)
   } finally {
-    await fs.rm(dir, { recursive: true, force: true })
+    await fs.rm(root, { recursive: true, force: true })
+    await fs.rm(outside, { recursive: true, force: true })
+  }
+})
+
+test("allows untrusted file references that stay inside the scope root", async () => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "kilo-config-variable-inside-")))
+  const file = path.join(root, "value")
+  await fs.writeFile(file, "allowed")
+  try {
+    expect(
+      await ConfigVariable.substitute({
+        ...source,
+        dir: root,
+        text: "{file:value}",
+        fileScope: { root, source: path.join(root, "kilo.json") },
+      }),
+    ).toBe("allowed")
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
   }
 })
 
@@ -86,9 +106,7 @@ test.skipIf(process.platform !== "linux")("does not substitute an environment fi
   const link = path.join(dir, "value")
   await fs.symlink("/proc/self/environ", link)
   try {
-    await expect(ConfigVariable.substitute({ ...trusted, text: `{file:${link}}` })).rejects.toBeInstanceOf(
-      InvalidError,
-    )
+    await expect(ConfigVariable.substitute({ ...trusted, text: `{file:${link}}` })).rejects.toBeInstanceOf(InvalidError)
   } finally {
     await fs.rm(dir, { recursive: true, force: true })
   }

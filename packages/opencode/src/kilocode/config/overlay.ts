@@ -119,7 +119,9 @@ export namespace KilocodeConfigOverlay {
 
   export async function project(input: { directory: string; worktree?: string }): Promise<Config.Info> {
     const found = await projectFiles(input)
-    const configs = await Promise.all(found.map(load))
+    // kilocode_change - project config is untrusted; confine {file:} reads to the project root
+    const root = input.worktree && input.worktree !== "/" ? input.worktree : input.directory
+    const configs = await Promise.all(found.map((file) => load(file, { root, source: file })))
     return configs.reduce((result, cfg) => KilocodeConfig.mergeConfig(result, cfg), {} as Config.Info)
   }
 
@@ -138,8 +140,11 @@ export namespace KilocodeConfigOverlay {
   }
 
   export async function resolve(input: Input): Promise<Result> {
-    const local = await withAgents(await project(input), await projectDirs(input), false) // kilocode_change - project agents untrusted
-    const global = await withAgents(input.global, globalDirs(), true) // kilocode_change - global agents trusted
+    // kilocode_change start - project agents untrusted, {file:} confined to the project root; global agents trusted
+    const root = input.worktree && input.worktree !== "/" ? input.worktree : input.directory
+    const local = await withAgents(await project(input), await projectDirs(input), false, root)
+    const global = await withAgents(input.global, globalDirs(), true)
+    // kilocode_change end
     const targets = {
       global: globalTarget(),
       project: await projectTarget(input),
@@ -185,20 +190,23 @@ export namespace KilocodeConfigOverlay {
     return [Global.Path.config, path.join(Global.Path.home, ".kilocode"), path.join(Global.Path.home, ".kilo")]
   }
 
-  async function withAgents(input: Config.Info, dirs: string[], trusted: boolean): Promise<Config.Info> {
+  // kilocode_change start - root confines untrusted agent {file:} reads
+  async function withAgents(input: Config.Info, dirs: string[], trusted: boolean, root?: string): Promise<Config.Info> {
     const [dir, ...rest] = dirs
     if (!dir) return input
-    if (!existsSync(dir)) return withAgents(input, rest, trusted)
-    const agent = await ConfigAgent.load(dir, undefined, trusted) // kilocode_change
+    if (!existsSync(dir)) return withAgents(input, rest, trusted, root)
+    const fileScope = trusted || !root ? undefined : { root, source: dir }
+    const agent = await ConfigAgent.load(dir, undefined, trusted, fileScope)
     const mode = await ConfigAgent.loadMode(dir)
     const next = KilocodeConfig.mergeConfig(KilocodeConfig.mergeConfig(input, { agent }), { agent: mode })
-    return withAgents(next, rest, trusted)
+    return withAgents(next, rest, trusted, root)
   }
+  // kilocode_change end
 
-  async function load(file: string): Promise<Config.Info> {
+  async function load(file: string, fileScope?: ConfigVariable.FileScope): Promise<Config.Info> {
     const text = await Bun.file(file).text()
-    // kilocode_change - overlay reads project config files; {file:}/{env:} references are untrusted here
-    const expanded = await ConfigVariable.substitute({ text, type: "path", path: file, trusted: false })
+    // kilocode_change - overlay reads project config files: {env:} rejected, {file:} confined to fileScope.root
+    const expanded = await ConfigVariable.substitute({ text, type: "path", path: file, trusted: false, fileScope })
     const parsed = ConfigParse.jsonc(expanded, file)
     if (!isRecord(parsed)) return {}
     return ConfigParse.schema(Config.Info, parsed, file) as Config.Info

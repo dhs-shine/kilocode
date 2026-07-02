@@ -568,14 +568,17 @@ export const layer = Layer.effect(
       text: string,
       options: { path: string } | { dir: string; source: string },
       env?: Record<string, string>,
-      trusted?: boolean, // kilocode_change - only user-owned config may resolve {file:}/{env:} tokens
+      // kilocode_change start - trusted allows {env:}; fileScope confines untrusted {file:} reads to a root
+      trusted?: boolean,
+      fileScope?: ConfigVariable.FileScope,
+      // kilocode_change end
     ) {
       const source = "path" in options ? options.path : options.source
       const expanded = yield* Effect.promise(() =>
         ConfigVariable.substitute(
           "path" in options
-            ? { text, type: "path", path: options.path, env, trusted } // kilocode_change
-            : { text, type: "virtual", ...options, env, trusted }, // kilocode_change
+            ? { text, type: "path", path: options.path, env, trusted, fileScope } // kilocode_change
+            : { text, type: "virtual", ...options, env, trusted, fileScope }, // kilocode_change
         ),
       )
       const parsed = ConfigParse.jsonc(expanded, source)
@@ -597,11 +600,12 @@ export const layer = Layer.effect(
       filepath: string,
       env?: Record<string, string>,
       trusted?: boolean, // kilocode_change
+      fileScope?: ConfigVariable.FileScope, // kilocode_change
     ) {
       log.info("loading", { path: filepath })
       const text = yield* readConfigFile(filepath)
       if (!text) return {} as Info
-      return yield* loadConfig(text, { path: filepath }, env, trusted) // kilocode_change
+      return yield* loadConfig(text, { path: filepath }, env, trusted, fileScope) // kilocode_change
     })
 
     let globalStamp = "" // kilocode_change
@@ -709,6 +713,8 @@ export const layer = Layer.effect(
       function* (ctx: InstanceContext) {
         // kilocode_change start - warning accumulator and legacy Kilo config
         const warnings: Warning[] = []
+        // Untrusted project config may only read files inside this root (worktree, or directory for non-git projects).
+        const projectRoot = ctx.worktree === "/" ? ctx.directory : ctx.worktree
         const auth = yield* authSvc.all().pipe(Effect.orDie)
 
         let result: Info = {}
@@ -860,8 +866,8 @@ export const layer = Layer.effect(
             for (const file of yield* ConfigPaths.files(name, ctx.directory, ctx.worktree).pipe(Effect.orDie)) {
               yield* merge(
                 file,
-                // kilocode_change - project config is untrusted: {file:}/{env:} tokens are rejected
-                yield* loadFile(file, authEnv, false).pipe(
+                // kilocode_change - project config is untrusted: {env:} rejected, {file:} confined to projectRoot
+                yield* loadFile(file, authEnv, false, { root: projectRoot, source: file }).pipe(
                   Effect.catchDefect((err: unknown) => {
                     caughtWarning(warnings, file, err)
                     return Effect.succeed({} as Info)
@@ -900,13 +906,17 @@ export const layer = Layer.effect(
           // kilocode_change - trust {file:}/{env:} only for global-scoped config dirs, never project ones
           const dirScope = scope ?? (yield* pluginScopeForSource(dir))
           const dirTrusted = dirScope === "global"
+          // kilocode_change - untrusted config dirs confine {file:} reads to projectRoot
+          const dirFileScope = dirTrusted ? undefined : { root: projectRoot, source: dir }
           if (KilocodeConfig.isConfigDir(dir, Flag.KILO_CONFIG_DIR)) {
             for (const file of KilocodeConfig.ALL_CONFIG_FILES) {
               const source = path.join(dir, file)
               log.debug(`loading config from ${source}`)
+              // kilocode_change - untrusted config dirs confine {file:} reads to projectRoot
+              const fileScope = dirTrusted ? undefined : { root: projectRoot, source }
               yield* merge(
                 source,
-                yield* loadFile(source, authEnv, dirTrusted).pipe(
+                yield* loadFile(source, authEnv, dirTrusted, fileScope).pipe(
                   // kilocode_change
                   Effect.catchDefect((err: unknown) => {
                     caughtWarning(warnings, source, err)
@@ -954,7 +964,7 @@ export const layer = Layer.effect(
           )
           result.agent = mergeDeep(
             result.agent ?? {},
-            yield* Effect.promise(() => ConfigAgent.load(dir, warnings, dirTrusted)), // kilocode_change
+            yield* Effect.promise(() => ConfigAgent.load(dir, warnings, dirTrusted, dirFileScope)), // kilocode_change
           )
           result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.loadMode(dir, warnings)))
           // kilocode_change end

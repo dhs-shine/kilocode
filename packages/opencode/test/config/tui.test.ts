@@ -702,7 +702,7 @@ it.instance("applies env and file substitutions in global tui.json", () =>
   ),
 )
 
-it.instance("does not substitute env or file references in untrusted project tui.json", () =>
+it.instance("does not substitute env references in untrusted project tui.json", () =>
   withCleanState(
     withEnv(
       "TUI_THEME_TEST",
@@ -710,18 +710,49 @@ it.instance("does not substitute env or file references in untrusted project tui
       Effect.gen(function* () {
         const fs = yield* AppFileSystem.Service
         const test = yield* TestInstance
-        yield* fs.writeFileString(path.join(test.directory, "keybind.txt"), "ctrl+q")
         yield* fs.writeJson(path.join(test.directory, "tui.json"), {
           theme: "{env:TUI_THEME_TEST}",
-          keybinds: { app_exit: "{file:keybind.txt}" },
         })
 
-        // Project tui config with references is rejected and skipped, so nothing is substituted.
+        // {env:} in project config is rejected, so the file is skipped and the theme is not applied.
         const config = yield* getTuiConfig(test.directory)
         expect(config.theme).not.toBe("env-theme")
-        expect(config.keybinds.get("app.exit")?.[0]?.key).not.toBe("ctrl+q")
       }),
     ),
+  ),
+)
+
+it.instance("applies in-project file references in project tui.json", () =>
+  withCleanState(
+    Effect.gen(function* () {
+      const fs = yield* AppFileSystem.Service
+      const test = yield* TestInstance
+      // {file:} that stays inside the project root is allowed even in untrusted project config.
+      yield* fs.writeFileString(path.join(test.directory, "keybind.txt"), "ctrl+q")
+      yield* fs.writeJson(path.join(test.directory, "tui.json"), {
+        keybinds: { app_exit: "{file:keybind.txt}" },
+      })
+
+      const config = yield* getTuiConfig(test.directory)
+      expect(config.keybinds.get("app.exit")?.[0]?.key).toBe("ctrl+q")
+    }),
+  ),
+)
+
+it.instance("rejects project tui.json file references that escape the project root", () =>
+  withCleanState(
+    Effect.gen(function* () {
+      const fs = yield* AppFileSystem.Service
+      const test = yield* TestInstance
+      const outside = path.join(path.dirname(test.directory), "keybind.txt")
+      yield* fs.writeFileString(outside, "ctrl+q")
+      yield* fs.writeJson(path.join(test.directory, "tui.json"), {
+        keybinds: { app_exit: "{file:../keybind.txt}" },
+      })
+
+      const config = yield* getTuiConfig(test.directory)
+      expect(config.keybinds.get("app.exit")?.[0]?.key).not.toBe("ctrl+q")
+    }),
   ),
 )
 // kilocode_change end
