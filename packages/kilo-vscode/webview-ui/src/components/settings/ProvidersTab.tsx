@@ -425,105 +425,107 @@ const ProvidersTab: Component = () => {
       </Card>
 
       {/* Disabled providers — collapsed by default to keep the focus on active providers */}
-      <Collapsible variant="ghost" style={{ "margin-top": "24px" }}>
-        <Collapsible.Trigger>
-          <span
-            style={{
-              "font-size": "var(--kilo-font-size-12)",
-              "font-weight": "500",
-              color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
-            }}
-          >
-            {language.t("settings.providers.disabled")}
-          </span>
-          <Collapsible.Arrow />
-        </Collapsible.Trigger>
-        <Collapsible.Content>
-          <Card style={{ "margin-top": "8px" }}>
-            <div
+      <div style={{ "margin-top": "24px" }}>
+        <Collapsible variant="ghost">
+          <Collapsible.Trigger>
+            <span
               style={{
                 "font-size": "var(--kilo-font-size-12)",
+                "font-weight": "500",
                 color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
-                "padding-bottom": "8px",
-                "border-bottom": "1px solid var(--border-weak-base)",
               }}
             >
-              {language.t("settings.providers.disabled.description")}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: "8px",
-                "align-items": "center",
-                padding: "8px 0",
-                "border-bottom": disabledProviders().length > 0 ? "1px solid var(--border-weak-base)" : "none",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <Select
-                  options={disabledOptions()}
-                  current={disabled()}
-                  value={(item) => item.value}
-                  label={(item) => item.label}
-                  onSelect={(item) => setDisabled(item)}
-                  variant="secondary"
-                  triggerVariant="settings"
-                  placeholder={language.t("settings.providers.select.placeholder")}
-                />
-              </div>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  const item = disabled()
-                  if (!item) return
-                  disableProvider(item.value)
-                  setDisabled(undefined)
+              {language.t("settings.providers.disabled")}
+            </span>
+            <Collapsible.Arrow />
+          </Collapsible.Trigger>
+          <Collapsible.Content>
+            <Card style={{ "margin-top": "8px" }}>
+              <div
+                style={{
+                  "font-size": "var(--kilo-font-size-12)",
+                  color: "var(--text-weak-base, var(--vscode-descriptionForeground))",
+                  "padding-bottom": "8px",
+                  "border-bottom": "1px solid var(--border-weak-base)",
                 }}
-                disabled={!disabled()}
               >
-                {language.t("common.add")}
-              </Button>
-            </div>
-            <For each={disabledProviders()}>
-              {(id, index) => (
-                <div
-                  style={{
-                    display: "flex",
-                    "flex-wrap": "wrap",
-                    "align-items": "center",
-                    "justify-content": "space-between",
-                    gap: "16px",
-                    "min-height": "56px",
-                    padding: "12px 0",
-                    "border-bottom":
-                      index() < disabledProviders().length - 1 ? "1px solid var(--border-weak-base)" : "none",
-                  }}
-                >
-                  <div style={{ display: "flex", "align-items": "center", gap: "12px", "min-width": 0 }}>
-                    <ProviderIcon id={providerIcon(id)} width={20} height={20} />
-                    <span
-                      style={{
-                        "font-size": "var(--kilo-font-size-14)",
-                        "font-weight": "500",
-                        color: "var(--vscode-foreground)",
-                        overflow: "hidden",
-                        "text-overflow": "ellipsis",
-                        "white-space": "nowrap",
-                      }}
-                    >
-                      {disabledName(id)}
-                    </span>
-                    <Tag>{language.t("settings.providers.disabled")}</Tag>
-                  </div>
-                  <Button size="large" variant="ghost" onClick={() => enableProvider(index())}>
-                    {language.t("settings.providers.disabled.enable")}
-                  </Button>
+                {language.t("settings.providers.disabled.description")}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  "align-items": "center",
+                  padding: "8px 0",
+                  "border-bottom": disabledProviders().length > 0 ? "1px solid var(--border-weak-base)" : "none",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <Select
+                    options={disabledOptions()}
+                    current={disabled()}
+                    value={(item) => item.value}
+                    label={(item) => item.label}
+                    onSelect={(item) => setDisabled(item)}
+                    variant="secondary"
+                    triggerVariant="settings"
+                    placeholder={language.t("settings.providers.select.placeholder")}
+                  />
                 </div>
-              )}
-            </For>
-          </Card>
-        </Collapsible.Content>
-      </Collapsible>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const item = disabled()
+                    if (!item) return
+                    disableProvider(item.value)
+                    setDisabled(undefined)
+                  }}
+                  disabled={!disabled()}
+                >
+                  {language.t("common.add")}
+                </Button>
+              </div>
+              <For each={disabledProviders()}>
+                {(id, index) => (
+                  <div
+                    style={{
+                      display: "flex",
+                      "flex-wrap": "wrap",
+                      "align-items": "center",
+                      "justify-content": "space-between",
+                      gap: "16px",
+                      "min-height": "56px",
+                      padding: "12px 0",
+                      "border-bottom":
+                        index() < disabledProviders().length - 1 ? "1px solid var(--border-weak-base)" : "none",
+                    }}
+                  >
+                    <div style={{ display: "flex", "align-items": "center", gap: "12px", "min-width": 0 }}>
+                      <ProviderIcon id={providerIcon(id)} width={20} height={20} />
+                      <span
+                        style={{
+                          "font-size": "var(--kilo-font-size-14)",
+                          "font-weight": "500",
+                          color: "var(--vscode-foreground)",
+                          overflow: "hidden",
+                          "text-overflow": "ellipsis",
+                          "white-space": "nowrap",
+                        }}
+                      >
+                        {disabledName(id)}
+                      </span>
+                      <Tag>{language.t("settings.providers.disabled")}</Tag>
+                    </div>
+                    <Button size="large" variant="ghost" onClick={() => enableProvider(index())}>
+                      {language.t("settings.providers.disabled.enable")}
+                    </Button>
+                  </div>
+                )}
+              </For>
+            </Card>
+          </Collapsible.Content>
+        </Collapsible>
+      </div>
     </div>
   )
 }
