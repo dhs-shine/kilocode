@@ -37,7 +37,7 @@ internal fun parseAgentImport(json: String, names: Collection<String>): AgentImp
     } as? JsonObject ?: throw AgentImportException(AgentImportError.INVALID_JSON)
 
     val name = root.string("name")?.trim().orEmpty()
-    if (!NAME.matches(name)) throw AgentImportException(AgentImportError.INVALID_NAME)
+    if (!AGENT_ID.matches(name)) throw AgentImportException(AgentImportError.INVALID_NAME)
     if (names.any { it == name }) throw AgentImportException(AgentImportError.NAME_TAKEN)
 
     val cfg = AgentConfigPatchDto(
@@ -99,6 +99,5 @@ private fun JsonObject.long(key: String): Long? {
 }
 
 private val JSON = Json
-private val NAME = Regex("^[a-z][a-z0-9-]*$")
 private val MODES = setOf(KiloCliParser.MODE_PRIMARY, KiloCliParser.MODE_SUBAGENT, KiloCliParser.MODE_ALL)
 private val LEVELS = setOf("allow", "ask", "deny")

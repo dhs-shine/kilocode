@@ -3,6 +3,8 @@ package ai.kilocode.backend.testing
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import java.net.ServerSocket
@@ -439,8 +441,27 @@ class MockCliServer : AutoCloseable {
         val base = runCatching { JSON.parseToJsonElement(raw).jsonObject.toMutableMap() }.getOrNull()
             ?: mutableMapOf()
         val next = runCatching { JSON.parseToJsonElement(patch).jsonObject }.getOrNull() ?: return raw
-        for ((key, value) in next) base[key] = value
+        for ((key, value) in next) {
+            if (value is JsonNull) {
+                base.remove(key)
+                continue
+            }
+            base[key] = merge(base[key], value)
+        }
         return JsonObject(base).toString()
+    }
+
+    private fun merge(base: JsonElement?, patch: JsonElement): JsonElement {
+        if (base !is JsonObject || patch !is JsonObject) return patch
+        val out = base.toMutableMap()
+        for ((key, value) in patch) {
+            if (value is JsonNull) {
+                out.remove(key)
+                continue
+            }
+            out[key] = merge(out[key], value)
+        }
+        return JsonObject(out)
     }
 
     private fun handleSse(writer: BufferedWriter, latch: CountDownLatch) {

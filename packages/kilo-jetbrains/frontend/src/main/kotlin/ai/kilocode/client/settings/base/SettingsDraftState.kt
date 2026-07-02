@@ -39,9 +39,9 @@ internal class SettingsDraftState<D>(
         base = next
     }
 
-    fun start(): SettingsDraftSave<D>? {
+    fun start(force: Boolean = false): SettingsDraftSave<D>? {
         val next = draft
-        if (saved(base, next)) return null
+        if (!force && saved(base, next)) return null
         val token = SettingsDraftSave(base, next)
         pending = next
         save = true

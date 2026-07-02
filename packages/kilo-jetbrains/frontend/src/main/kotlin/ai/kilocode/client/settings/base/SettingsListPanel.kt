@@ -212,7 +212,7 @@ internal abstract class SettingsListPanel(
                 withContext(edt) {
                     if (!active(id)) return@withContext
                     setBusy(false)
-                    clearProgress()
+                    showError("${e::class.simpleName}: ${e.message}")
                 }
             } catch (e: SettingsMessageException) {
                 withContext(edt) {

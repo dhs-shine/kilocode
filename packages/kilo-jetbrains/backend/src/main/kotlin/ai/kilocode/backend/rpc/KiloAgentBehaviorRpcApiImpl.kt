@@ -144,10 +144,9 @@ class KiloAgentBehaviorRpcApiImpl(private val backend: KiloBackendAppService? = 
         val url = "http://127.0.0.1:${app.port}$path"
         val request = Request.Builder().url(url).patch(body.toRequestBody(JSON)).build()
         http.newCall(request).execute().use { response ->
-            val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                LOG.warn("MCP config patch failed: $path HTTP ${response.code}: $text")
-                throw RuntimeException("HTTP ${response.code}: $text")
+                LOG.warn("MCP config patch failed: $path HTTP ${response.code}")
+                throw RuntimeException("HTTP ${response.code}")
             }
         }
     }
@@ -161,8 +160,8 @@ class KiloAgentBehaviorRpcApiImpl(private val backend: KiloBackendAppService? = 
         http.newCall(request).execute().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                LOG.warn("Agent Behavior request failed: $path HTTP ${response.code}: $text")
-                throw RuntimeException("HTTP ${response.code}: $text")
+                LOG.warn("Agent Behavior request failed: $path HTTP ${response.code}")
+                throw RuntimeException("HTTP ${response.code}")
             }
             text.ifBlank { "{}" }
         }
@@ -191,6 +190,8 @@ class KiloAgentBehaviorRpcApiImpl(private val backend: KiloBackendAppService? = 
     private fun saveMcpOverride(directory: String, name: String, scope: String, config: McpConfigDto?) {
         syncSaved()
         val key = mcpKey(if (scope == "workspace") directory else "", name)
+        saved.remove(mcpKey(directory, name))
+        saved.remove(mcpKey("", name))
         if (config == null) {
             saved.remove(key)
             return

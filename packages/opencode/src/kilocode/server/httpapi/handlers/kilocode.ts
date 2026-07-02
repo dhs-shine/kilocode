@@ -54,11 +54,13 @@ export const kilocodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilocode"
       const dirs = yield* config.directories()
       yield* Effect.tryPromise({
         try: () => KiloAgent.remove({ name: ctx.payload.name, agent, dirs, directory: instance.directory }),
-        catch: (err) => {
-          if (KiloAgent.RemoveError.isInstance(err)) return new HttpApiError.BadRequest({})
-          throw err
-        },
-      })
+        catch: (err) => err,
+      }).pipe(
+        Effect.catch((err) => {
+          if (KiloAgent.RemoveError.isInstance(err)) return Effect.fail(new HttpApiError.BadRequest({}))
+          return Effect.die(err)
+        }),
+      )
       yield* store.dispose(instance)
       return true
     })

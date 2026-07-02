@@ -96,6 +96,7 @@ class KiloAgentBehaviorRpcApiImplTest {
         )))
         assertContains(mock.lastConfigPatchBody.orEmpty(), "\"global-added\"")
         assertContains(mock.lastConfigPatchBody.orEmpty(), "\"environment\":{\"TOKEN\":\"x\"}")
+        assertEquals("local", rpc.mcpConfig("/test dir")["global"]?.config?.type)
         assertEquals("local", rpc.mcpConfig("/test dir")["global-added"]?.config?.type)
 
         assertTrue(rpc.saveMcp("/test dir", "workspace-added", "workspace", McpConfigDto(
@@ -106,6 +107,11 @@ class KiloAgentBehaviorRpcApiImplTest {
         assertEquals("/config?directory=%2Ftest+dir", mock.lastWorkspaceConfigPatchPath)
         assertContains(mock.lastWorkspaceConfigPatchBody.orEmpty(), "\"workspace-added\"")
         assertEquals("workspace", rpc.mcpConfig("/test dir")["workspace-added"]?.scope)
+
+        assertTrue(rpc.saveMcp("/test dir", "shared", "workspace", McpConfigDto(type = "remote", url = "https://workspace.test")))
+        assertEquals("workspace", rpc.mcpConfig("/test dir")["shared"]?.scope)
+        assertTrue(rpc.saveMcp("/test dir", "shared", "global", McpConfigDto(type = "local", command = listOf("node", "shared.js"))))
+        assertEquals("global", rpc.mcpConfig("/test dir")["shared"]?.scope)
 
         assertTrue(rpc.saveMcp("/test dir", "workspace-added", "workspace", null))
         assertContains(mock.lastWorkspaceConfigPatchBody.orEmpty(), "\"workspace-added\":null")

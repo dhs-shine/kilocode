@@ -655,7 +655,7 @@ object KiloCliDataParser {
     }
 
     private fun removable(obj: JsonObject): Boolean {
-        if (obj.str("native") == "true") return false
+        if (obj.flagOrNull("native") == true) return false
         val opts = obj["options"].obj()
         if (obj.str("source") == "organization" || opts?.str("source") == "organization") return false
         if (opts?.containsKey("reference") == true || opts?.containsKey("resolved") == true) return false

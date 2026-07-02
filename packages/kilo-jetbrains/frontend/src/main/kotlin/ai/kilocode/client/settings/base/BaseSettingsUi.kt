@@ -148,7 +148,7 @@ internal abstract class BaseSettingsUi<C : BaseContentPanel, D, P, R, W>(
     override fun applyDraft() {
         checkEdt()
         val change = change(state.baseline, draft) ?: return
-        val token = state.start() ?: return
+        val token = state.start(force = true) ?: return
         logSaveStarted(change)
         showProgress(pendingText())
         syncContent()

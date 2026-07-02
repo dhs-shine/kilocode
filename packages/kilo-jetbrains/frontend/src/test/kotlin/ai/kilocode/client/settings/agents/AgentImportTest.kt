@@ -85,9 +85,16 @@ class AgentImportTest {
 
     @Test
     fun `rejects invalid name`() {
-        val err = assertFailsWith<AgentImportException> { parseAgentImport("""{"name":"Bad_Name"}""", emptyList()) }
+        val err = assertFailsWith<AgentImportException> { parseAgentImport("""{"name":"bad name!"}""", emptyList()) }
 
         assertEquals(AgentImportError.INVALID_NAME, err.error)
+    }
+
+    @Test
+    fun `accepts names valid for agent creation`() {
+        val result = parseAgentImport("""{"name":"Bad_Name.1"}""", emptyList())
+
+        assertEquals("Bad_Name.1", result.name)
     }
 
     @Test

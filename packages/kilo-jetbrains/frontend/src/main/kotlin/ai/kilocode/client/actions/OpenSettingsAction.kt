@@ -25,8 +25,8 @@ class OpenSettingsAction : DumbAwareAction(
         val util = ShowSettingsUtil.getInstance()
         try {
             util.showSettingsDialog(project, predicate(target), null)
-        } catch (e: IllegalStateException) {
-            if (target == KiloSettingsConfigurable.ID) throw e
+        } catch (err: IllegalStateException) {
+            if (target == KiloSettingsConfigurable.ID) throw err
             util.showSettingsDialog(project, predicate(KiloSettingsConfigurable.ID), null)
         }
     }

@@ -22,6 +22,6 @@ internal fun validateAgentCreate(input: AgentCreateDto, names: Collection<String
     return errors
 }
 
-private val AGENT_ID = Regex("^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$")
+internal val AGENT_ID = Regex("^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$")
 private val MODES = setOf(KiloCliParser.MODE_PRIMARY, KiloCliParser.MODE_SUBAGENT, KiloCliParser.MODE_ALL)
 private val SCOPES = setOf("project", "global")

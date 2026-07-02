@@ -64,7 +64,7 @@ class KiloAgentBehaviorService internal constructor(
 
     suspend fun claudeCodeCompat(): Boolean = safe(false) { call { claudeCodeCompat() } }
 
-    suspend fun setClaudeCodeCompat(value: Boolean): Boolean = safe(value) { call { setClaudeCodeCompat(value) } }
+    suspend fun setClaudeCodeCompat(value: Boolean): Boolean = safe(false) { call { setClaudeCodeCompat(value) } }
 
     private suspend fun <T> safe(fallback: T, block: suspend () -> T): T = try {
         block()

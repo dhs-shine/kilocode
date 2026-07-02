@@ -471,7 +471,7 @@ internal class ProvidersContent(
     @RequiresEdt
     private fun activate(key: String, id: String) {
         checkEdt()
-        val row = providerListRows(state, "").firstOrNull { it.key == key } ?: return
+        val row = providerListRows(state, "", disabledRows = busy).firstOrNull { it.key == key } ?: return
         val action = ProviderListAction.entries.firstOrNull { it.name == id } ?: return
         if (!row.enabled(action)) return
         when (action) {
