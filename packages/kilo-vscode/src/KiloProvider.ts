@@ -2287,17 +2287,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       const result = await this.client.kilocode.removeAgent({ name, directory: this.getWorkspaceDirectory() })
       if (result.error) {
         console.error("[Kilo New] removeAgent returned error:", result.error)
-        this.cachedAgentsMessage = null
-        await this.fetchAndSendAgents()
-        this.requirements.clear()
-        return
       }
     } catch (err) {
       console.error("[Kilo New] Failed to remove agent:", err)
-      this.cachedAgentsMessage = null
-      await this.fetchAndSendAgents()
-      this.requirements.clear()
-      return
     }
     this.cachedAgentsMessage = null
     await this.fetchAndSendAgents()
