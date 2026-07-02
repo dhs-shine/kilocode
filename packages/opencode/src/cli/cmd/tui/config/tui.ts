@@ -232,8 +232,7 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
 
   // 3. Project tui files, applied root-first so the closest file wins.
   for (const file of projectFiles) {
-    // kilocode_change - project config is untrusted: {env:} rejected, {file:} confined to the project dir
-    yield* mergeFile(acc, file, false, { root: ctx.directory, source: file })
+    yield* mergeFile(acc, file, false, { root: ctx.directory, source: file }) // kilocode_change - untrusted, {file:} confined to project
   }
 
   // kilocode_change start - load tui.json from supported Kilo config directories
