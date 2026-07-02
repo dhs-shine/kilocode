@@ -29,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -278,7 +279,7 @@ class KiloBackendAppService private constructor(
     private suspend fun reconnect() {
         mutex.withLock {
             val current = _appState.value
-            if (current is KiloAppState.Ready || current is KiloAppState.Connecting || current is KiloAppState.Loading || current is KiloAppState.MigrationRequired) {
+            if (current is KiloAppState.Ready || current is KiloAppState.Loading || current is KiloAppState.MigrationRequired) {
                 log.info("reconnect: already ${current::class.simpleName} — skipping")
                 return
             }
@@ -419,6 +420,10 @@ class KiloBackendAppService private constructor(
                             warnings = warns,
                         )
                     )
+                    log.info(
+                        "Application snapshot: profile=${if (prof != null) "loaded" else "not_logged_in"} " +
+                            "warnings=${warns.size} notifications=${notifs.size} ${configSummary(cfg)}",
+                    )
                     log.info("Application started — config, profile, notifications loaded")
                 } catch (e: TimeoutCancellationException) {
                     val err = LoadError(
@@ -438,6 +443,7 @@ class KiloBackendAppService private constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
+                    ensureActive()
                     log.warn("Application start failed: ${e.message}")
                     captureLoad("Backend Load Failed", start, mapOf(
                         "errorCount" to errors.size.toString(),
@@ -639,6 +645,11 @@ class KiloBackendAppService private constructor(
         return "${warn.path}: ${warn.message}$detail"
     }
 
+    private fun configSummary(cfg: Config): String {
+        val text = cfg.toString()
+        return "configChars=${text.length} configHash=${text.hashCode().toUInt().toString(16)}"
+    }
+
     private suspend fun restartConnection(reason: String) {
         clear()
         connection.restart()
@@ -730,11 +741,30 @@ class KiloBackendAppService private constructor(
         }
     }
 
-    private fun clear() {
+    private suspend fun clear() {
+        synchronized(loadLock) {
+            val jobs = listOfNotNull(loader, eventWatcher)
+            loader = null
+            eventWatcher = null
+            jobs
+        }.forEach { job ->
+            // LLM note: restart/reinstall must not open a new CLI while old app-load requests are still unwinding.
+            job.cancelAndJoin()
+        }
+        reset()
+    }
+
+    private fun clearNow() {
         synchronized(loadLock) {
             loader?.cancel()
             eventWatcher?.cancel()
+            loader = null
+            eventWatcher = null
         }
+        reset()
+    }
+
+    private fun reset() {
         stopRuntime()
         profile = null
         config = null
@@ -842,7 +872,7 @@ class KiloBackendAppService private constructor(
         closed = true
         watcher?.cancel()
         watcher = null
-        clear()
+        clearNow()
         connection.dispose()
         server.dispose()
     }

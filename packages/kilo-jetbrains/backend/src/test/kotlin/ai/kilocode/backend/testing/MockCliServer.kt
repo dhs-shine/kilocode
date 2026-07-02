@@ -157,9 +157,9 @@ class MockCliServer : AutoCloseable {
     /** Reset all request counters. */
     fun resetCounts() { counts.clear() }
 
-    private val executor = Executors.newCachedThreadPool { r ->
-        Thread(r, "mock-cli-${Thread.currentThread().id}").apply { isDaemon = true }
-    }
+    private val executor = Executors.newThreadPerTaskExecutor(
+        Thread.ofVirtual().name("mock-cli-", 0).factory(),
+    )
     private val closed = AtomicBoolean(false)
 
     private var server: ServerSocket? = null
@@ -184,7 +184,10 @@ class MockCliServer : AutoCloseable {
         val srv = ServerSocket(0)
         server = srv
         port = srv.localPort
-        executor.submit { acceptLoop(srv) }
+        val ready = CountDownLatch(1)
+        executor.submit { acceptLoop(srv, ready) }
+        // LLM note: tests connect immediately after start(), so publish accept-loop readiness instead of racing CI scheduling.
+        check(ready.await(5, TimeUnit.SECONDS)) { "Mock CLI accept loop did not start" }
         return port
     }
 
@@ -221,6 +224,7 @@ class MockCliServer : AutoCloseable {
         if (!closed.compareAndSet(false, true)) return
         shutdownServer()
         executor.shutdownNow()
+        check(executor.awaitTermination(5, TimeUnit.SECONDS)) { "Mock CLI executor did not terminate" }
     }
 
     private fun shutdownServer() {
@@ -234,7 +238,8 @@ class MockCliServer : AutoCloseable {
         server = null
     }
 
-    private fun acceptLoop(srv: ServerSocket) {
+    private fun acceptLoop(srv: ServerSocket, ready: CountDownLatch) {
+        ready.countDown()
         while (!closed.get() && !srv.isClosed) {
             try {
                 val socket = srv.accept()
