@@ -288,7 +288,7 @@ const live: Layer.Layer<
         messages: estimated,
         tools: sortedTools,
         configured: params.maxOutputTokens,
-        tokens: usage?.raw,
+        usage,
       })
       if (
         preflight &&

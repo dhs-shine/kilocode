@@ -134,6 +134,29 @@ describe("Kilo request estimation", () => {
     expect(KiloLLM.needsEstimate({ model: model({ context: 0, output: 32_000 }), configured: 32_000 })).toBe(false)
     expect(KiloLLM.needsEstimate({ model: mdl, configured: 32_000 })).toBe(true)
   })
+
+  test("does not reduce output for encoded media payload size", () => {
+    const mdl = model({ context: 200_000, output: 32_000 })
+    const messages = [
+      {
+        role: "user",
+        content: [{ type: "image", image: `data:image/png;base64,${"x".repeat(600_000)}` }],
+      },
+    ] satisfies ModelMessage[]
+    const usage = KiloSessionOverflow.measure({ messages, tools: {} })
+
+    expect(usage.raw).toBeGreaterThan(usage.normalized)
+    expect(KiloLLM.capOutputTokens({ model: mdl, messages, tools: {}, configured: 32_000, usage })).toBe(32_000)
+  })
+
+  test("still reduces output for oversized text", () => {
+    const mdl = model({ context: 200_000, output: 32_000 })
+    const messages = [{ role: "user" as const, content: "x".repeat(600_000) }]
+
+    const cap = KiloLLM.capOutputTokens({ model: mdl, messages, tools: {}, configured: 32_000 })
+    expect(cap).toBeGreaterThanOrEqual(1_024)
+    expect(cap).toBeLessThan(32_000)
+  })
 })
 
 describe("Kilo preflight compaction", () => {
