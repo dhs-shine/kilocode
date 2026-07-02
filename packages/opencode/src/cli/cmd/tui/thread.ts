@@ -2,6 +2,7 @@ import { cmd } from "@/cli/cmd/cmd"
 import { Rpc } from "@/util/rpc"
 import { type rpc } from "./worker"
 import path from "path"
+import { randomUUID } from "node:crypto" // kilocode_change
 import { text as streamText } from "node:stream/consumers"
 import { fileURLToPath } from "url"
 import { UI } from "@/cli/ui"
@@ -25,6 +26,8 @@ import {
   sanitizedProcessEnv,
 } from "@opencode-ai/core/util/opencode-process"
 import { validateSession } from "./validate-session"
+import { ServerAuth } from "@/server/auth" // kilocode_change
+import { Flag } from "@opencode-ai/core/flag/flag" // kilocode_change
 
 declare global {
   const KILO_WORKER_PATH: string
@@ -179,9 +182,18 @@ export const TuiThreadCommand = cmd({
       // kilocode_change start - default TUI sessions attach to the daemon unless explicitly disabled
       if (await KiloTuiThreadDaemon.attach({ args, cwd, input: () => input(args.prompt), start })) return
       // kilocode_change end
+      // kilocode_change start - protect TUI-owned HTTP routes from unauthenticated local callers
+      const password = Flag.KILO_SERVER_PASSWORD ?? randomUUID()
+      const username = Flag.KILO_SERVER_USERNAME ?? "kilo"
+      const headers = ServerAuth.headers({ password, username })
+      // kilocode_change end
       const env = sanitizedProcessEnv({
         [KILO_PROCESS_ROLE]: "worker",
         [KILO_RUN_ID]: ensureRunID(),
+        // kilocode_change start
+        KILO_SERVER_USERNAME: username,
+        KILO_SERVER_PASSWORD: password,
+        // kilocode_change end
         KILO_BACKGROUND_PROCESS_PORTS: "true", // kilocode_change - TUI surfaces inferred background process ports
       })
 
@@ -308,11 +320,13 @@ export const TuiThreadCommand = cmd({
         ? {
             url: (await client.call("server", network)).url,
             fetch: undefined,
+            headers, // kilocode_change
             events: undefined,
           }
         : {
             url: "http://kilo.internal",
             fetch: createWorkerFetch(client),
+            headers, // kilocode_change
             events: createEventSource(client),
           }
 
@@ -322,6 +336,7 @@ export const TuiThreadCommand = cmd({
           sessionID: localSessionID(args), // kilocode_change
           directory: cwd,
           fetch: transport.fetch,
+          headers: transport.headers, // kilocode_change
         })
       } catch (error) {
         UI.error(errorMessage(error))
@@ -340,6 +355,7 @@ export const TuiThreadCommand = cmd({
           const sdk = createKiloClient({
             baseUrl: transport.url,
             fetch: transport.fetch,
+            headers: transport.headers, // kilocode_change
             directory: cwd,
           })
           const id = await importCloudSession(sdk, args.session).catch(() => undefined)
@@ -365,6 +381,7 @@ export const TuiThreadCommand = cmd({
           config,
           directory: cwd,
           fetch: transport.fetch,
+          headers: transport.headers, // kilocode_change
           events: transport.events,
           args: {
             continue: args.continue,
