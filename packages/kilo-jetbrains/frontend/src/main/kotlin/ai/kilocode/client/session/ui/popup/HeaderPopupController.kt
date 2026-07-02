@@ -31,6 +31,7 @@ class HeaderPopupController(timers: UiTimerSource = UiTimers) : Disposable {
     private var target: PartView? = null
     private var balloon: Balloon? = null
     private var body: Disposable? = null
+    private var guard: Disposable? = null
     private var onHeader = false
     private var onPopup = false
     private val showTimer = timers.timer(SHOW_MS, repeats = false) { display() }
@@ -45,7 +46,12 @@ class HeaderPopupController(timers: UiTimerSource = UiTimers) : Disposable {
         }
         hideAll()
         target = view
-        Disposer.register(view) { if (target === view) hideAll() }
+        guard = object : Disposable {
+            override fun dispose() {
+                if (guard === this) guard = null
+                if (target === view) hideAll()
+            }
+        }.also { Disposer.register(view, it) }
         onHeader = true
         showTimer.restart()
     }
@@ -65,9 +71,12 @@ class HeaderPopupController(timers: UiTimerSource = UiTimers) : Disposable {
         onPopup = false
         val popup = balloon
         val item = body
+        val hook = guard
         target = null
         balloon = null
         body = null
+        guard = null
+        hook?.let(Disposer::dispose)
         popup?.hide()
         item?.let(Disposer::dispose)
     }
