@@ -129,25 +129,14 @@
 ## [7.0.1-rc.14] - 2026-07-02
 
 ### Added
-- Add Agent Behavior settings for managing agent rules, skills, workflows, and permissions from JetBrains.
+- Add Agent Behavior settings 
 - Show richer model picker details, including routed model information and clearer model badges.
 - Show Kilo Pass usage, bonus credits, renewal dates, and top-up actions in the JetBrains user profile.
-- Add Linux filesystem sandbox support, session sandbox controls, and clearer sandbox state preservation in the bundled CLI runtime.
-- Add interactive terminal and background process lifetime support in the bundled CLI runtime.
-- Surface resumable subagent task IDs when subagents stop on errors.
 
 ### Fixed
-- Recover JetBrains backend startup more reliably when event streams stall, reconnect, or are interrupted by stale failures.
-- Preserve nested CLI session error details so JetBrains shows more actionable failures.
-- Resolve JetBrains workspaces by project ID to avoid cross-project session confusion.
-- Improve JetBrains CLI recovery, config paths, and `.kilo` config directory handling.
-- Polish JetBrains session links, tool popups, MCP editing, and Agent Behavior settings interactions.
-- Keep CLI turns responsive when snapshots stall, release disconnected event streams, and retain sandbox state when sessions are forked or moved to worktrees.
-- Close read-only bash execution flag escapes, trim repaired tool names, and avoid full part-table scans when calculating model usage.
-
-### Changed
-- Move the JetBrains plugin build to the stable IntelliJ Gradle plugin.
-- Use the latest bundled CLI runtime improvements for routed model display, local review commands, cost nudges, and model usage reporting.
+- Recover backend startup more reliably when event streams stall, reconnect, or are interrupted by stale failures.
+- Resolve  workspaces by project ID to avoid cross-project session confusion.
+- Improve CLI recovery, config paths, and `.kilo` config directory handling.
 
 ## [7.0.1-rc.13] - 2026-06-23
 
