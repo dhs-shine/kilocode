@@ -10,6 +10,7 @@ import path from "path"
 import { Global } from "@opencode-ai/core/global"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser"
+import { KilocodeConfigOverlay } from "@/kilocode/config/overlay"
 
 import PROMPT_DEBUG from "../../agent/prompt/debug.txt"
 import PROMPT_ORCHESTRATOR from "../../agent/prompt/orchestrator.txt"
@@ -532,7 +533,7 @@ export async function remove(input: { name: string; agent?: AgentInfo; dirs: str
     }
   }
 
-  if (await removeConfigAgent(input.name, input.dirs)) found = true
+  if (await removeConfigAgent(input.name, input.directory)) found = true
 
   // 2. Remove from legacy .kilocodemodes YAML files (read by ModesMigrator)
   const { ModesMigrator } = await import("@/kilocode/modes-migrator")
@@ -566,13 +567,14 @@ export async function remove(input: { name: string; agent?: AgentInfo; dirs: str
   if (!found) throw new RemoveError({ name: input.name, message: "no agent file found on disk" })
 }
 
-async function removeConfigAgent(name: string, dirs: string[]) {
-  const files = dirs.flatMap((dir) =>
-    ["kilo.jsonc", "kilo.json", "opencode.jsonc", "opencode.json"].map((file) => path.join(dir, file)),
-  )
+async function removeConfigAgent(name: string, directory: string) {
+  const files = [
+    KilocodeConfigOverlay.globalTarget(),
+    await KilocodeConfigOverlay.projectTarget({ directory }),
+  ]
   let found = false
 
-  for (const file of files) {
+  for (const file of new Set(files)) {
     const cfg = Bun.file(file)
     if (!(await cfg.exists())) continue
 
