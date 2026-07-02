@@ -116,12 +116,11 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
   const load = (text: string, configFilepath: string, trusted: boolean): Effect.Effect<Info> =>
     // kilocode_change end
     Effect.gen(function* () {
-      const expanded = yield* Effect.promise(
-        () =>
-          // kilocode_change start - only trusted (global/explicit) tui config may resolve {file:}/{env:} tokens
-          ConfigVariable.substitute({ text, type: "path", path: configFilepath, missing: "empty", trusted }),
-        // kilocode_change end
+      // kilocode_change start - only trusted tui config resolves {file:}/{env:} tokens
+      const expanded = yield* Effect.promise(() =>
+        ConfigVariable.substitute({ text, type: "path", path: configFilepath, missing: "empty", trusted }),
       )
+      // kilocode_change end
       const data = ConfigParse.jsonc(expanded, configFilepath)
       if (!isRecord(data)) return {} as Info
       // Flatten a nested "tui" key so users who wrote `{ "tui": { ... } }` inside tui.json
