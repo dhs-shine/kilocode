@@ -1,9 +1,16 @@
 package ai.kilocode.client.session.ui.model
 
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.ui.FilledBadgeIcon
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.client.ui.md.MdView
+import ai.kilocode.client.ui.md.MdViewFactory
 import com.intellij.icons.AllIcons
+import com.intellij.ide.BrowserUtil
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
@@ -11,18 +18,21 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.xml.util.XmlStringUtil
 import java.awt.BorderLayout
 import java.awt.Cursor
+import java.awt.FlowLayout
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
 internal class ModelDetailsPanel(
     private val favorites: () -> Set<String>,
     private val toggle: (ModelPicker.Item) -> Unit,
-) : JPanel(BorderLayout()) {
+) : JPanel(BorderLayout()), Disposable {
+    private val empty = JBLabel(KiloBundle.message("model.picker.details.empty")).apply {
+        foreground = UIUtil.getContextHelpForeground()
+    }
     private val title = JBLabel().apply { font = UiStyle.Fonts.bold() }
     private val provider = JBLabel().apply { foreground = UIUtil.getContextHelpForeground() }
     private val star = JBLabel().apply {
@@ -30,9 +40,38 @@ internal class ModelDetailsPanel(
         horizontalAlignment = JBLabel.CENTER
         verticalAlignment = JBLabel.CENTER
     }
-    private val badges = Stack.horizontal(UiStyle.Gap.xs())
+    private val head = JPanel(BorderLayout()).apply {
+        add(Stack.vertical(UiStyle.Gap.xs()).next(title).next(provider), BorderLayout.CENTER)
+        add(star, BorderLayout.EAST)
+    }
+    private val free = badge(ModelText.freeLabel())
+    private val byok = badge("BYOK")
+    private val data = badge(KiloBundle.message("model.picker.dataCollected"))
+    private val latest = badge(KiloBundle.message("model.picker.details.latest"))
+    private val badges = Stack.horizontal(UiStyle.Gap.xs()).next(free).next(byok).next(data).next(latest)
+    private val props = RowsSection(KiloBundle.message("model.picker.details.properties"))
+    private val bench = RowsSection(KiloBundle.message("model.picker.details.terminalBench"))
+    private val caps = TagsSection(KiloBundle.message("model.picker.details.capabilities"))
+    private val desc = MarkdownSection(KiloBundle.message("model.picker.details.description"))
+    private val routeText = JBLabel().apply {
+        foreground = UIUtil.getLabelForeground()
+        setAllowAutoWrapping(true)
+    }
+    private val route = Stack.vertical(UiStyle.Gap.xs())
+        .next(heading(KiloBundle.message("model.picker.details.autoRouting")))
+        .next(routeText)
+    private val ids = RowsSection(KiloBundle.message("model.picker.details.ids"))
     private val body = Stack.vertical(UiStyle.Gap.sm()).apply {
-        border = JBUI.Borders.empty(UiStyle.Gap.md(), UiStyle.Gap.lg(), UiStyle.Gap.md(), UiStyle.Gap.lg())
+        border = JBUI.Borders.empty(UiStyle.Gap.md(), UiStyle.Gap.lg(), UiStyle.Gap.md(), UiStyle.Gap.xl())
+        next(empty)
+        next(head)
+        next(badges)
+        next(props.root)
+        next(bench.root)
+        next(caps.root)
+        next(desc.root)
+        next(route)
+        next(ids.root)
     }
     private val scroll = JBScrollPane(body).apply {
         horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
@@ -53,55 +92,68 @@ internal class ModelDetailsPanel(
                 }
             }
         })
+        showEmpty()
     }
 
     fun update(value: ModelPicker.Item?) {
         item = value
-        body.removeAll()
         if (value == null) {
-            body.next(JBLabel(KiloBundle.message("model.picker.details.empty")).apply {
-                foreground = UIUtil.getContextHelpForeground()
-            })
+            showEmpty()
             refresh()
             return
         }
 
-        title.text = ModelText.parts(value).model
-        provider.text = value.providerName
-        star.icon = if (value.key in favorites()) AllIcons.Nodes.Favorite else AllIcons.Nodes.NotFavoriteOnHover
-        star.toolTipText = if (value.key in favorites()) {
+        empty.isVisible = false
+        head.isVisible = true
+        title.sync(ModelText.parts(value).model)
+        provider.sync(value.providerName)
+        syncStar(value)
+        syncBadges(value)
+        props.update(properties(value))
+        bench.update(bench(value))
+        caps.update(capabilities(value))
+        desc.update(value.options?.description?.takeIf { it.isNotBlank() }?.let(::descriptionText))
+        syncRouting(value)
+        ids.update(listOf(
+            KiloBundle.message("model.picker.details.providerId") to value.provider,
+            KiloBundle.message("model.picker.details.modelId") to value.id,
+        ))
+        refresh()
+    }
+
+    private fun showEmpty() {
+        empty.isVisible = true
+        head.isVisible = false
+        badges.isVisible = false
+        props.update(emptyList())
+        bench.update(emptyList())
+        caps.update(emptyList())
+        desc.update(null)
+        route.isVisible = false
+        ids.update(emptyList())
+    }
+
+    private fun syncStar(value: ModelPicker.Item) {
+        val selected = value.key in favorites()
+        star.icon = if (selected) AllIcons.Nodes.Favorite else AllIcons.Nodes.NotFavoriteOnHover
+        star.toolTipText = if (selected) {
             KiloBundle.message("model.picker.favorite.remove")
         } else {
             KiloBundle.message("model.picker.favorite.add")
         }
-        badges.removeAll()
-        if (value.free && !value.byok) badges.next(badge(ModelText.freeLabel()))
-        if (value.byok) badges.next(badge("BYOK"))
-        if (ModelText.collectsData(value)) badges.next(badge(KiloBundle.message("model.picker.dataCollected")))
-        if (value.latest == true) badges.next(badge(KiloBundle.message("model.picker.details.latest")))
-
-        body.next(header())
-        if (badges.componentCount > 0) body.next(badges)
-        grid(value)?.let(body::next)
-        bench(value)?.let(body::next)
-        capabilities(value)?.let(body::next)
-        description(value)?.let(body::next)
-        routing(value)?.let(body::next)
-        body.next(section(KiloBundle.message("model.picker.details.ids"), listOf(
-            KiloBundle.message("model.picker.details.providerId") to value.provider,
-            KiloBundle.message("model.picker.details.modelId") to value.id,
-        )))
-        refresh()
     }
 
-    private fun header() = JPanel(BorderLayout()).apply {
-        add(Stack.vertical(UiStyle.Gap.xs()).next(title).next(provider), BorderLayout.CENTER)
-        add(star, BorderLayout.EAST)
+    private fun syncBadges(value: ModelPicker.Item) {
+        free.isVisible = value.free && !value.byok
+        byok.isVisible = value.byok
+        data.isVisible = ModelText.collectsData(value)
+        latest.isVisible = value.latest == true
+        badges.isVisible = free.isVisible || byok.isVisible || data.isVisible || latest.isVisible
     }
 
-    private fun grid(item: ModelPicker.Item): JComponent? {
+    private fun properties(item: ModelPicker.Item): List<Pair<String, String>> {
         val ctx = item.limit?.context?.takeIf { it > 0 } ?: item.contextLength?.takeIf { it > 0 }
-        val rows = buildList {
+        return buildList {
             item.releaseDate?.let { add(KiloBundle.message("model.picker.details.released") to date(it)) }
             if (!item.free) {
                 item.cost?.let { cost ->
@@ -116,21 +168,19 @@ internal class ModelDetailsPanel(
             }
             ctx?.let { add(KiloBundle.message("model.picker.details.context") to context(it)) }
         }
-        if (rows.isEmpty()) return null
-        return section(KiloBundle.message("model.picker.details.properties"), rows)
     }
 
-    private fun bench(item: ModelPicker.Item): JComponent? {
-        val bench = item.terminalBench ?: return null
-        return section(KiloBundle.message("model.picker.details.terminalBench"), listOf(
+    private fun bench(item: ModelPicker.Item): List<Pair<String, String>> {
+        val bench = item.terminalBench ?: return emptyList()
+        return listOf(
             KiloBundle.message("model.picker.details.completion") to percent(bench.overallScore),
             KiloBundle.message("model.picker.details.costAttempt") to attempt(bench.avgAttemptCostUsd),
-        ))
+        )
     }
 
-    private fun capabilities(item: ModelPicker.Item): JComponent? {
+    private fun capabilities(item: ModelPicker.Item): List<String> {
         val cap = item.capabilities
-        val values = buildList {
+        return buildList {
             if (cap?.reasoning == true || item.reasoning) add(KiloBundle.message("model.picker.details.reasoning"))
             val input = cap?.input
             if (input?.text == true) add(KiloBundle.message("model.picker.details.modality.text"))
@@ -140,51 +190,141 @@ internal class ModelDetailsPanel(
             if (input?.pdf == true) add(KiloBundle.message("model.picker.details.modality.pdf"))
             if (item.attachment) add(KiloBundle.message("model.picker.details.attachments"))
         }
-        if (values.isEmpty()) return null
-        return section(KiloBundle.message("model.picker.details.capabilities"), values.map { "" to it })
     }
 
-    private fun description(item: ModelPicker.Item): JComponent? {
-        val text = item.options?.description?.takeIf { it.isNotBlank() } ?: return null
-        return Stack.vertical(UiStyle.Gap.xs())
-            .next(heading(KiloBundle.message("model.picker.details.description")))
-            .next(JBLabel(XmlStringUtil.wrapInHtml(XmlStringUtil.escapeString(text))).apply {
-                foreground = UIUtil.getLabelForeground()
-                setAllowAutoWrapping(true)
-            })
-    }
-
-    private fun routing(item: ModelPicker.Item): JComponent? {
-        val models = item.autoRouting?.models?.takeIf { it.isNotEmpty() } ?: return null
-        return Stack.vertical(UiStyle.Gap.xs())
-            .next(heading(KiloBundle.message("model.picker.details.autoRouting")))
-            .next(JBLabel(XmlStringUtil.wrapInHtml(XmlStringUtil.escapeString(models.joinToString("\n")))).apply {
-                foreground = UIUtil.getLabelForeground()
-                setAllowAutoWrapping(true)
-            })
-    }
-
-    private fun section(title: String, rows: List<Pair<String, String>>) = Stack.vertical(UiStyle.Gap.xs()).apply {
-        next(heading(title))
-        rows.forEach { (label, value) -> next(row(label, value)) }
-    }
-
-    private fun row(label: String, value: String) = JPanel(BorderLayout()).apply {
-        if (label.isNotBlank()) add(JBLabel(label).apply { foreground = UIUtil.getContextHelpForeground() }, BorderLayout.WEST)
-        add(JBLabel(value).apply { foreground = UIUtil.getLabelForeground() }, BorderLayout.EAST)
-    }
-
-    private fun heading(value: String) = JBLabel(value).apply { font = UiStyle.Fonts.bold() }
-
-    private fun badge(value: String) = JBLabel(value).apply {
-        border = JBUI.Borders.empty(UiStyle.Gap.xs(), UiStyle.Gap.sm(), UiStyle.Gap.xs(), UiStyle.Gap.sm())
-        foreground = UIUtil.getLabelForeground()
+    private fun syncRouting(item: ModelPicker.Item) {
+        val models = item.autoRouting?.models?.takeIf { it.isNotEmpty() }
+        route.isVisible = models != null
+        if (models == null) return
+        routeText.sync(XmlStringUtil.wrapInHtml(XmlStringUtil.escapeString(models.joinToString("\n"))))
     }
 
     private fun refresh() {
         body.revalidate()
         body.repaint()
     }
+
+    override fun dispose() {
+        desc.dispose()
+    }
+}
+
+private class RowsSection(title: String) {
+    private val rows = Stack.vertical(UiStyle.Gap.xs())
+    private val pool = mutableListOf<DetailRow>()
+    val root = Stack.vertical(UiStyle.Gap.xs())
+        .next(heading(title))
+        .next(rows)
+
+    fun update(values: List<Pair<String, String>>) {
+        root.isVisible = values.isNotEmpty()
+        values.forEachIndexed { idx, value ->
+            val row = row(idx)
+            row.update(value.first, value.second)
+            row.isVisible = true
+        }
+        for (idx in values.size until pool.size) {
+            pool[idx].isVisible = false
+        }
+        rows.revalidate()
+        rows.repaint()
+    }
+
+    private fun row(idx: Int): DetailRow {
+        pool.getOrNull(idx)?.let { return it }
+        val row = DetailRow()
+        pool.add(row)
+        rows.next(row)
+        return row
+    }
+}
+
+private class DetailRow : JPanel(BorderLayout()) {
+    private val name = JBLabel().apply { foreground = UIUtil.getContextHelpForeground() }
+    private val value = JBLabel().apply { foreground = UIUtil.getLabelForeground() }
+
+    init {
+        add(name, BorderLayout.WEST)
+        add(value, BorderLayout.EAST)
+    }
+
+    fun update(label: String, text: String) {
+        name.isVisible = label.isNotBlank()
+        name.sync(label)
+        value.sync(text)
+    }
+}
+
+private class TagsSection(title: String) {
+    private val tags = TagPanel()
+    private val pool = mutableListOf<JBLabel>()
+    val root = Stack.vertical(UiStyle.Gap.xs())
+        .next(heading(title))
+        .next(tags)
+
+    fun update(values: List<String>) {
+        root.isVisible = values.isNotEmpty()
+        values.forEachIndexed { idx, value ->
+            val tag = tag(idx)
+            tag.icon = FilledBadgeIcon(value, tagBackground(idx), UiStyle.Colors.fg())
+            tag.toolTipText = value
+            tag.isVisible = true
+        }
+        for (idx in values.size until pool.size) {
+            pool[idx].isVisible = false
+        }
+        tags.revalidate()
+        tags.repaint()
+    }
+
+    private fun tag(idx: Int): JBLabel {
+        pool.getOrNull(idx)?.let { return it }
+        val tag = JBLabel()
+        pool.add(tag)
+        tags.add(tag)
+        return tag
+    }
+}
+
+private class MarkdownSection(title: String) : Disposable {
+    val root = Stack.vertical(UiStyle.Gap.xs()).next(heading(title))
+    private var view: MdView? = null
+
+    fun update(text: String?) {
+        root.isVisible = text != null
+        if (text == null) return
+        val md = view ?: MdViewFactory.create(SessionEditorStyle.current()).apply {
+            opaque = false
+            addLinkListener { BrowserUtil.browse(it.href) }
+        }.also {
+            view = it
+            root.next(it.component)
+        }
+        md.set(text)
+    }
+
+    override fun dispose() {
+        view?.let(Disposer::dispose)
+        view = null
+    }
+}
+
+private class TagPanel : JPanel(FlowLayout(FlowLayout.LEFT, UiStyle.Gap.sm(), UiStyle.Gap.xs())) {
+    init {
+        isOpaque = false
+    }
+}
+
+private fun heading(value: String) = JBLabel(value).apply { font = UiStyle.Fonts.bold() }
+
+private fun badge(value: String) = JBLabel(value).apply {
+    border = JBUI.Borders.empty(UiStyle.Gap.xs(), UiStyle.Gap.sm(), UiStyle.Gap.xs(), UiStyle.Gap.sm())
+    foreground = UIUtil.getLabelForeground()
+}
+
+private fun JBLabel.sync(value: String) {
+    if (text == value) return
+    text = value
 }
 
 private fun context(value: Long): String {
@@ -200,13 +340,13 @@ private fun price(value: Double): String {
 }
 
 private fun cached(input: Double, read: Double?): String {
-    if (read != null && read > 0.0) return price(read)
+    if (read != null) return price(read)
     if (input == 0.0) return price(0.0)
     return KiloBundle.message("model.picker.details.notSupported")
 }
 
 private fun average(input: Double, output: Double, read: Double?): Double {
-    if (read != null && read > 0.0) return read * 0.7 + input * 0.2 + output * 0.1
+    if (read != null) return read * 0.7 + input * 0.2 + output * 0.1
     return input * 0.9 + output * 0.1
 }
 
@@ -217,6 +357,20 @@ private fun attempt(value: Double) = "$${value.format(2)}"
 private fun date(value: String): String = runCatching {
     LocalDate.parse(value).format(DateTimeFormatter.ofPattern("MMM yyyy"))
 }.getOrDefault(value)
+
+private fun descriptionText(value: String): String = value
+    .replace(Regex("(?<![\\[<(])\\b(https?://[^\\s<>()`\"']+)([),.;!?])?")) { match ->
+        val url = match.groupValues[1]
+        val tail = match.groupValues.getOrNull(2).orEmpty()
+        "[$url]($url)$tail"
+    }
+
+private fun tagBackground(index: Int) = when (index % 4) {
+    0 -> UiStyle.Colors.badgeBg()
+    1 -> UiStyle.Colors.blend(UiStyle.Colors.contentBackground(), UiStyle.Colors.fg(), 0.12f)
+    2 -> UiStyle.Colors.blend(UiStyle.Colors.contentBackground(), JBUI.CurrentTheme.Link.Foreground.ENABLED, 0.18f)
+    else -> UiStyle.Colors.blend(UiStyle.Colors.contentBackground(), UiStyle.Colors.activityBadgeBg(), 0.18f)
+}
 
 private fun format(value: Double): String = NumberFormat.getNumberInstance(Locale.getDefault()).apply {
     maximumFractionDigits = if (value % 1.0 == 0.0) 0 else 1

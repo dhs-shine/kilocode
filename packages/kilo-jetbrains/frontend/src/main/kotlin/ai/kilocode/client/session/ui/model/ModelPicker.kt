@@ -9,8 +9,10 @@ import ai.kilocode.rpc.dto.ModelLimitDto
 import ai.kilocode.rpc.dto.ModelOptionsDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
 import ai.kilocode.rpc.dto.ModelTerminalBenchDto
-import com.intellij.icons.AllIcons
+import ai.kilocode.client.ui.HoverIcon
 import com.intellij.ide.util.PropertiesComponent
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.PopupShowOptions
@@ -33,7 +35,7 @@ import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Cursor
 import java.awt.Dimension
-import java.awt.FlowLayout
+import java.awt.GridBagLayout
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
@@ -48,6 +50,7 @@ import javax.swing.ScrollPaneConstants
 import javax.swing.SwingConstants
 import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
+import javax.swing.Icon
 
 private val popupBackground: Color
     get() = if (NewUI.isEnabled()) JBUI.CurrentTheme.Popup.BACKGROUND else UIUtil.getListBackground()
@@ -56,6 +59,8 @@ private const val MODEL_PICKER_MIN_WIDTH = 420
 private const val MODEL_PICKER_MAX_WIDTH = 760
 private const val MODEL_PICKER_MAX_VISIBLE_ROWS = 10
 private const val MODEL_PICKER_EMPTY_LIST_HEIGHT = 120
+private val EXPAND: Icon = IconLoader.getIcon("/icons/expand.svg", ModelPicker::class.java)
+private val COLLAPSE: Icon = IconLoader.getIcon("/icons/collapse.svg", ModelPicker::class.java)
 
 class ModelPicker : PickerButton() {
 
@@ -185,27 +190,28 @@ class ModelPicker : PickerButton() {
         val search = SearchTextField(false).apply {
             textEditor.emptyText.text = KiloBundle.message("model.picker.search")
         }
+        var refreshFavorite: (Item) -> Unit = {}
         val details = ModelDetailsPanel(
             favorites = { favoriteKeys() },
-            toggle = { item ->
-                onFavoriteToggle(item)
-            },
+            toggle = { refreshFavorite(it) },
         ).apply {
             background = popupBackground
         }
-        val expand = JBLabel().apply {
+        val expand = HoverIcon().apply {
             cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-            horizontalAlignment = SwingConstants.CENTER
-            verticalAlignment = SwingConstants.CENTER
-            border = JBUI.Borders.emptyLeft(JBUI.CurrentTheme.ActionsList.elementIconGap())
+        }
+        val ins = PopupUtil.getListInsets(false, false)
+        val side = JBUI.CurrentTheme.Popup.Selection.LEFT_RIGHT_INSET.get() + JBUI.CurrentTheme.Popup.Selection.innerInsets().right
+        val expandWrap = JPanel(GridBagLayout()).apply {
+            background = popupBackground
+            border = JBUI.Borders.empty(0, JBUI.CurrentTheme.ActionsList.elementIconGap(), 0, side)
+            add(expand)
         }
         val head = JPanel(BorderLayout()).apply {
             background = popupBackground
+            border = JBUI.Borders.empty(ins.top, ins.left, ins.bottom, 0)
             add(search, BorderLayout.CENTER)
-            add(JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
-                background = popupBackground
-                add(expand)
-            }, BorderLayout.EAST)
+            add(expandWrap, BorderLayout.EAST)
         }
 
         lateinit var popup: JBPopup
@@ -222,7 +228,7 @@ class ModelPicker : PickerButton() {
         }
 
         fun syncExpand() {
-            expand.icon = if (expanded) AllIcons.General.ArrowDown else AllIcons.General.ArrowRight
+            expand.icon = if (expanded) COLLAPSE else EXPAND
             expand.toolTipText = if (expanded) {
                 KiloBundle.message("model.picker.details.minimize")
             } else {
@@ -288,6 +294,12 @@ class ModelPicker : PickerButton() {
             sync(at = idx)
             list.selectedIndex.takeIf { it >= 0 }?.let { repaintRow(list, it) }
             syncDetails()
+        }
+
+        refreshFavorite = { item ->
+            onFavoriteToggle(item)
+            sync(prefer = item.key)
+            list.repaint()
         }
 
         fun resize() {
@@ -376,11 +388,7 @@ class ModelPicker : PickerButton() {
                 activate(value)
             }
         })
-        expand.addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                setExpanded(!expanded)
-            }
-        })
+        expand.addActionListener { setExpanded(!expanded) }
         list.addListSelectionListener {
             if (!it.valueIsAdjusting && expanded) syncDetails()
         }
@@ -424,6 +432,7 @@ class ModelPicker : PickerButton() {
             .setResizable(false)
             .setMovable(false)
             .createPopup()
+        Disposer.register(popup, details)
 
         when (placement) {
             Placement.ABOVE -> popup.show(PopupShowOptions.aboveComponent(this))

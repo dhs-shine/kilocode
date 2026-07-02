@@ -14,6 +14,7 @@ import com.intellij.ide.util.PropertiesComponent
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.NewUI
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBList
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.util.ui.EmptyIcon
@@ -309,7 +310,7 @@ class ModelPickerTest : BasePlatformTestCase() {
                 reasoning = true,
                 input = ModelInputCapabilitiesDto(text = true, image = true, pdf = true),
             ),
-            options = ModelOptionsDto("Fast routed model"),
+            options = ModelOptionsDto("Fast routed model https://kilocode.ai"),
             autoRouting = ModelAutoRoutingDto(listOf("openai/gpt", "anthropic/claude")),
             terminalBench = ModelTerminalBenchDto(0.73, 1.25),
         )
@@ -320,8 +321,53 @@ class ModelPickerTest : BasePlatformTestCase() {
         assertTrue(panel.labels().any { it.contains("BYOK") })
         assertTrue(panel.labels().any { it.contains("Terminal Bench") })
         assertTrue(panel.labels().any { it.contains("73.0%") })
-        assertTrue(panel.labels().any { it.contains("Fast routed model") })
+        assertTrue(panel.html().any { it.contains("Fast routed model") })
+        assertTrue(panel.html().any { it.contains("href=\"https://kilocode.ai\"") })
         assertTrue(panel.labels().any { it.contains("openai/gpt") })
+    }
+
+    fun `test details panel shows free cached reads`() {
+        val panel = ModelDetailsPanel(
+            favorites = { emptySet() },
+            toggle = {},
+        )
+
+        panel.update(ModelPicker.Item(
+            id = "paid",
+            display = "Paid",
+            provider = "kilo",
+            providerName = "Kilo",
+            cost = ModelCostDto(1.0, 2.0, ModelCacheCostDto(0.0, 0.5)),
+        ))
+
+        assertTrue(panel.labels().any { it == "Free" })
+        assertFalse(panel.labels().any { it == "Not supported" })
+    }
+
+    fun `test details panel updates retained description component`() {
+        val panel = ModelDetailsPanel(
+            favorites = { emptySet() },
+            toggle = {},
+        )
+        val item = ModelPicker.Item(
+            id = "first",
+            display = "First",
+            provider = "kilo",
+            providerName = "Kilo",
+            cost = ModelCostDto(1.0, 2.0, ModelCacheCostDto(0.1, 0.5)),
+            options = ModelOptionsDto("First https://kilocode.ai"),
+        )
+
+        panel.update(item)
+        val count = panel.treeSize()
+        val html = panel.htmlPanes().single()
+        panel.update(item.copy(id = "second", display = "Second", options = ModelOptionsDto("Second https://kilocode.ai/docs")))
+
+        assertEquals(count, panel.treeSize())
+        assertSame(html, panel.htmlPanes().single())
+        assertTrue(panel.labels().any { it.contains("Second") })
+        assertTrue(panel.html().any { it.contains("Second") })
+        assertFalse(panel.html().any { it.contains("First") })
     }
 
     fun `test selected paid model with training flag indicates data collection`() {
@@ -531,5 +577,22 @@ class ModelPickerTest : BasePlatformTestCase() {
         val own = if (this is JBLabel) listOf(text.orEmpty()) else emptyList()
         if (this !is Container) return own
         return own + components.flatMap { it.labels() }
+    }
+
+    private fun Component.html(): List<String> {
+        val own = if (this is JBHtmlPane) listOf(text.orEmpty()) else emptyList()
+        if (this !is Container) return own
+        return own + components.flatMap { it.html() }
+    }
+
+    private fun Component.htmlPanes(): List<JBHtmlPane> {
+        val own = if (this is JBHtmlPane) listOf(this) else emptyList()
+        if (this !is Container) return own
+        return own + components.flatMap { it.htmlPanes() }
+    }
+
+    private fun Component.treeSize(): Int {
+        if (this !is Container) return 1
+        return 1 + components.sumOf { it.treeSize() }
     }
 }

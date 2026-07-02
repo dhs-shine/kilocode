@@ -195,6 +195,7 @@ internal class ModelsSettingsUi(
                         autoRouting = model.autoRouting,
                         terminalBench = model.terminalBench,
                         reasoning = model.reasoning,
+                        attachment = model.attachment,
                         mayTrainOnYourPrompts = model.mayTrainOnYourPrompts,
                     )
                     if (!includeSmall && ModelText.small(item)) return@mapNotNull null

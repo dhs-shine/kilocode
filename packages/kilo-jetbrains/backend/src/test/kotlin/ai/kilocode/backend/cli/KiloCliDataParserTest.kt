@@ -1380,8 +1380,7 @@ class KiloCliDataParserTest {
                             "inputPrice": 0.25,
                             "outputPrice": 1.5,
                             "contextLength": 256000,
-                            "releaseDate": "2026-06-01",
-                            "latest": true,
+                            "release_date": "2026-06-01",
                             "capabilities": {
                                 "reasoning": true,
                                 "input": {"text": true, "image": true, "audio": false, "video": true, "pdf": true}
@@ -1402,7 +1401,7 @@ class KiloCliDataParserTest {
             assertEquals(1.5, model.outputPrice)
             assertEquals(256000L, model.contextLength)
             assertEquals("2026-06-01", model.releaseDate)
-            assertEquals(true, model.latest)
+            assertNull(model.latest)
             assertEquals(0.05, model.cost?.cache?.read)
             assertEquals(true, model.capabilities?.reasoning)
             assertEquals(true, model.capabilities?.input?.image)
