@@ -51,7 +51,7 @@ function validateCredential<A, E, R>(
   force = ServerAuth.required(config), // kilocode_change - allow endpoint-specific required auth
 ) {
   return Effect.gen(function* () {
-    if (!force) return yield* effect
+    if (!force) return yield* effect // kilocode_change
     if (!ServerAuth.authorized(credential, config)) {
       yield* HttpEffect.appendPreResponseHandler((_request, response) =>
         Effect.succeed(HttpServerResponse.setHeader(response, "www-authenticate", WWW_AUTHENTICATE)),
