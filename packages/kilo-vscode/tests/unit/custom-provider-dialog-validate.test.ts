@@ -233,6 +233,16 @@ describe("validateCustomProvider – variant name validation", () => {
     expect(saved.modalities).toEqual({ input: ["image"] })
   })
 
+  it("omits an empty input when image support is removed from an image-only model", () => {
+    const form = base()
+    form.models[0].modalities = { input: ["image"] }
+    form.models[0].supportsImages = false
+    const out = validateCustomProvider(args(form))
+    expect(out.result).toBeDefined()
+    const saved = out.result!.config.models["model-1"] as Record<string, unknown>
+    expect(saved.modalities).toBeUndefined()
+  })
+
   it("preserves output-only modalities when saving", () => {
     const form = base()
     form.models[0].modalities = { output: ["audio"] }
