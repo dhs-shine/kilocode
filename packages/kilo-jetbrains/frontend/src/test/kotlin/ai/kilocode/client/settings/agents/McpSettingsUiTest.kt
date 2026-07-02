@@ -7,6 +7,7 @@ import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.settingsListCellBounds
 import ai.kilocode.client.testing.FakeAgentBehaviorRpcApi
 import ai.kilocode.client.testing.FakeAppRpcApi
+import ai.kilocode.client.testing.fire
 import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
@@ -417,16 +418,6 @@ class McpSettingsUiTest : BasePlatformTestCase() {
     private fun click(list: JBList<SettingsListItem>, point: Point) {
         fire(list, mouse(list, MouseEvent.MOUSE_PRESSED, point))
         fire(list, mouse(list, MouseEvent.MOUSE_RELEASED, point))
-    }
-
-    private fun fire(list: JBList<*>, event: MouseEvent) {
-        val listener = list.mouseListeners.single { it.javaClass.name.startsWith("ai.kilocode.") }
-        when (event.id) {
-            MouseEvent.MOUSE_PRESSED -> listener.mousePressed(event)
-            MouseEvent.MOUSE_RELEASED -> listener.mouseReleased(event)
-            MouseEvent.MOUSE_CLICKED -> listener.mouseClicked(event)
-            else -> error("Unsupported mouse event ${event.id}")
-        }
     }
 
     private fun mouse(list: JBList<SettingsListItem>, id: Int, point: Point, count: Int = 1) = MouseEvent(

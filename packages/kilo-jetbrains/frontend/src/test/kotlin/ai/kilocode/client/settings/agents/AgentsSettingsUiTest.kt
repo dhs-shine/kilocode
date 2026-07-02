@@ -1,5 +1,6 @@
 package ai.kilocode.client.settings.agents
 
+import ai.kilocode.client.testing.fire
 import ai.kilocode.cli.KiloCliParser
 import ai.kilocode.client.app.KiloAgentBehaviorService
 import ai.kilocode.client.app.KiloAppService
@@ -476,16 +477,6 @@ class AgentsSettingsUiTest : BasePlatformTestCase() {
         fire(list, mouse(list, MouseEvent.MOUSE_RELEASED, point))
     }
 
-    private fun fire(list: JBList<*>, event: MouseEvent) {
-        val listener = list.mouseListeners.single { it.javaClass.name.startsWith("ai.kilocode.") }
-        when (event.id) {
-            MouseEvent.MOUSE_PRESSED -> listener.mousePressed(event)
-            MouseEvent.MOUSE_RELEASED -> listener.mouseReleased(event)
-            MouseEvent.MOUSE_CLICKED -> listener.mouseClicked(event)
-            else -> error("Unsupported mouse event ${event.id}")
-        }
-    }
-
     private fun clickCell(panel: AgentsSettingsUi, key: String, cell: String) {
         val list = list(panel)
         list.size = Dimension(420, 260)
@@ -499,7 +490,6 @@ class AgentsSettingsUiTest : BasePlatformTestCase() {
     }
 
     private fun file(name: String, text: String) = LightVirtualFile(name, text)
-
     private fun mouse(list: JBList<SettingsListItem>, id: Int, point: Point) = MouseEvent(
         list,
         id,

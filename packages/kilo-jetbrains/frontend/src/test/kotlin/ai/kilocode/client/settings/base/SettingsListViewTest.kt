@@ -1,6 +1,7 @@
 package ai.kilocode.client.settings.base
 
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.testing.fire
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.SimpleColoredComponent
@@ -289,16 +290,6 @@ class SettingsListViewTest : BasePlatformTestCase() {
     private fun click(view: SettingsListView, point: Point) {
         fire(view.list, mouse(view, MouseEvent.MOUSE_PRESSED, point))
         fire(view.list, mouse(view, MouseEvent.MOUSE_RELEASED, point))
-    }
-
-    private fun fire(list: JBList<*>, event: MouseEvent) {
-        val listener = list.mouseListeners.single { it.javaClass.name.startsWith("ai.kilocode.") }
-        when (event.id) {
-            MouseEvent.MOUSE_PRESSED -> listener.mousePressed(event)
-            MouseEvent.MOUSE_RELEASED -> listener.mouseReleased(event)
-            MouseEvent.MOUSE_CLICKED -> listener.mouseClicked(event)
-            else -> error("Unsupported mouse event ${event.id}")
-        }
     }
 
     private fun mouse(view: SettingsListView, id: Int, point: Point, count: Int = 1) = MouseEvent(

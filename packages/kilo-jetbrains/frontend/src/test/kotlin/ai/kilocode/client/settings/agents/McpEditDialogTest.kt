@@ -3,6 +3,7 @@ package ai.kilocode.client.settings.agents
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.SettingsRow
 import ai.kilocode.client.settings.base.SettingsStackedRow
+import ai.kilocode.client.testing.fire
 import ai.kilocode.rpc.dto.McpConfigDto
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
@@ -172,16 +173,6 @@ class McpEditDialogTest : BasePlatformTestCase() {
         val point = Point(bounds.x + bounds.width - 4, bounds.y + bounds.height / 2)
         fire(list, mouse(list, MouseEvent.MOUSE_PRESSED, point))
         fire(list, mouse(list, MouseEvent.MOUSE_RELEASED, point))
-    }
-
-    private fun fire(list: JBList<*>, event: MouseEvent) {
-        val listener = list.mouseListeners.single { it.javaClass.name.startsWith("ai.kilocode.") }
-        when (event.id) {
-            MouseEvent.MOUSE_PRESSED -> listener.mousePressed(event)
-            MouseEvent.MOUSE_RELEASED -> listener.mouseReleased(event)
-            MouseEvent.MOUSE_CLICKED -> listener.mouseClicked(event)
-            else -> error("Unsupported mouse event ${event.id}")
-        }
     }
 
     private fun mouse(list: JBList<*>, id: Int, point: Point) = MouseEvent(
