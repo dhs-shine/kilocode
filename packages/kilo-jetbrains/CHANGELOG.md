@@ -126,6 +126,141 @@
 
 ## [Unreleased]
 
+## [7.0.1-rc.14] - 2026-07-02
+
+### Added
+- feat(cli): show routed step models by @alex-alecu in https://github.com/Kilo-Org/kilocode/pull/11556
+- feat(vscode): unify marketplace browsing by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11582
+- feat(vscode): support Jupyter notebook autocomplete by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11597
+- feat(sandbox): add session sandbox controls by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11628
+- feat(cli): add Linux filesystem sandbox by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11596
+- feat(vscode): animate tool call previews by @Drixled in https://github.com/Kilo-Org/kilocode/pull/11487
+- feat: add CONFIG_REGRESSION sub-agent concern to upstream merge review by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11667
+- feat(sandbox): enforce Linux network isolation by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11659
+- feat(vscode): clarify sandbox restriction states by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11679
+- feat(vscode): show sandbox experimental flag for all users (except Windows) by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11683
+- feat(vscode): add sandbox slash command by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11681
+- feat(vscode): add Parakeet speech-to-text model by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11693
+- feat(vscode): add native notebook tools by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11644
+- feat(vscode): filter marketplace by workspace relevance by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11640
+- feat(jetbrains): track prompt slash and mention usage by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11616
+- feat(gateway): expose kilo pass profile contract by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11721
+- feat(vscode): notify on matching marketplace items by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11698
+- feat(agent-manager): add sandbox toggle to new worktree modal by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11689
+- feat(vscode): create empty notebooks via notebook_edit by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11726
+- feat: add Anaconda Desktop provider by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11714
+- feat(vscode): improve auto model picker details by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11724
+- feat(tui): show usage by routed model by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11608
+- feat(vscode): add filesystem validation protocol for file links by @sylwester-liljegren in https://github.com/Kilo-Org/kilocode/pull/11218
+- feat(agent-manager): model and reasoning variant selection for tool-started sessions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11786
+- feat(cli): show credits and Kilo Pass in sidebar footer by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11729
+- feat(vscode): show usage by routed model by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11746
+- feat(cli): add background process lifetimes by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11456
+- feat(jetbrains): show profile balance details by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11805
+- feat(cli): interactive terminal tool by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11394
+- feat(cli): surface resumable task_id when a subagent stops on error by @maoxin1234 in https://github.com/Kilo-Org/kilocode/pull/11621
+- feat(vscode): localize autocomplete strings by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11782
+- feat(vscode): send inline review draft comments directly from diff by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11822
+- feat(vscode): persist model selector expand/collapse state by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11824
+- feat(core): add soft max-cost nudge state by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11831
+- feat: add core project memory package by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11355
+- feat(vscode): show balance in account controls by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11803
+- feat(memory): add @kilocode/kilo-memory effect runtime layer by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11845
+- feat(cli): unify local review commands under /review by @maphew in https://github.com/Kilo-Org/kilocode/pull/11084
+- feat(cli): soft per-session max-cost nudge by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11833
+- feat(vscode): add soft max-cost nudge by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11832
+- feat(vscode): make Show more providers prominent and collapse disabled providers by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11881
+- feat(jetbrains): add model picker details by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11870
+- feat(jetbrains): add Agent Behavior settings by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11553
+
+### Fixed
+- fix(cli): close sandbox filesystem TOCTOU race by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11591
+- fix(cli): keep snapshot stalls from blocking turns by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11594
+- fix(vscode): bundle local bwrap helper by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11657
+- fix(vscode): exclude .cli-version marker from VSIX packaging by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11660
+- fix: correct settings anchor link in marketplace docs by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11669
+- fix(vscode): use native sandbox notifications by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11645
+- fix(vscode): preserve draft when toggling sandbox by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11672
+- fix: avoid repository-wide formatting during generation by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11676
+- fix(ci): scope JetBrains checks to relevant changes by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11686
+- fix(vscode): sort slash commands by relevance (exact > prefix > substring) by @rakshith1928 in https://github.com/Kilo-Org/kilocode/pull/11557
+- fix(jetbrains): preserve CLI session error details by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11705
+- fix(vscode): reset read notifications from settings by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11716
+- fix(sandbox): prevent config self-disable by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11703
+- fix: remember sandbox state per session by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11696
+- fix(cli): allow importing cloud-only sessions by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11744
+- fix(vscode): show full external permission paths by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11610
+- fix(vscode): translate Anaconda Desktop provider strings in all locales by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11776
+- fix(vscode): stabilize sandbox button across session switches by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11770
+- fix(vscode): improve autocomplete error messages to cover BYOK and credits scenarios by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11602
+- fix: allow upstream attribution in translated readmes by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11781
+- fix(agent-manager): color PR badge by state, show checks as icon by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11785
+- fix(cli): prefer .kilo config directory by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11638
+- fix(cli): release disconnected event streams by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11646
+- fix(jetbrains): recover stalled startup event streams by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11796
+- fix(agent-manager): persist sandbox default in worktree dialog by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11792
+- fix(kiloclaw): restore slash command access by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11798
+- fix(cli): restore executable bit on opencode build scripts by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11799
+- fix(cli): point curl upgrade at the install script by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11601
+- fix(agent-manager): collapse sessions by default by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11733
+- fix(ui): keep mention highlights after slash command expansion by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11777
+- fix(jetbrains): recover interrupted backend startup by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11802
+- fix(vscode): use models sparkle icon for auto model by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11788
+- fix(ci): stabilize Linux sandbox CLI release smoke test by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11821
+- fix(ci): use local node headers for native deps by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11791
+- fix(cli): strip internal agent metadata from provider request options by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11767
+- fix: dedupe custom provider discovered models by @debanjawn in https://github.com/Kilo-Org/kilocode/pull/11743
+- fix(cli): retain sandbox state when forking or moving a session to a worktree by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11838
+- fix(cli): show local IPv6 URL for wildcard binds by @catrielmuller in https://github.com/Kilo-Org/kilocode/pull/11496
+- fix(jetbrains): resolve workspace by project id by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11813
+- fix(cli): trim whitespace from tool names before repair by @danielgutknecht in https://github.com/Kilo-Org/kilocode/pull/10886
+- fix(agent-manager): keep chat in sync with session selection while offline by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11843
+- fix(cli): make plan follow-up refinement deterministic by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11808
+- fix(cli): deflake prompt and background process races by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11827
+- fix(jetbrains): improve CLI recovery and config paths by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11850
+- fix(vscode): improve subagent output and block matrix coverage by @Drixled in https://github.com/Kilo-Org/kilocode/pull/11522
+- fix: skip unrelated JetBrains pre-push checks by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11723
+- fix(vscode): prevent AWS Bedrock credential provider crash on minified builds by @ysheikh2 in https://github.com/Kilo-Org/kilocode/pull/11572
+- fix(cli): select apply_patch from model family by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11701
+- fix(jetbrains): polish session links and tool popups by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11871
+- fix(cli): avoid full part-table scan in session model usage by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11893
+- fix(cli): close read-only bash exec-flag escapes by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11890
+
+### Changed
+- release(jetbrains): v7.0.1-rc.13 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11617
+- docs: narrow merge minimizer skill trigger by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11627
+- test(cli): stabilize websocket idle timeout coverage by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11626
+- test(jetbrains): isolate workspace concurrency test by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11629
+- docs(kilo-docs): expand Security Agent guide by @jeanduplessis in https://github.com/Kilo-Org/kilocode/pull/11369
+- docs: add marketplace guide by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11648
+- test(cli): loosen flaky header-timeout no-abort case by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11685
+- docs: rewrite rate-limits-and-costs as Cost Efficiency & Model Selection guide by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11575
+- chore(jetbrains): use IPGP snapshot by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11699
+- docs: clarify marketplace installs by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11639
+- test(jetbrains): synchronize workspace open calls by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11691
+- docs: add Cost Controls and Usage Safeguards page by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/11715
+- docs: document the experimental sandbox feature by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11697
+- test(jetbrains): stabilize workspace startup wait by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11727
+- ci: skip general tests for isolated changes by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11692
+- docs: remove root translated readmes by @Drixled in https://github.com/Kilo-Org/kilocode/pull/11613
+- docs: add translated readmes in translations directory by @Drixled in https://github.com/Kilo-Org/kilocode/pull/11615
+- chore: show german translation diffs by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11719
+- test(jetbrains): stabilize workspace reload lifecycle by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11730
+- perf(vscode): open model, mode, and variant selectors instantly by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11774
+- Add Agent requirements by @imanolmzd-svg in https://github.com/Kilo-Org/kilocode/pull/11762
+- docs(kilo-docs): update DoltHub Wasteland auth docs by @jeanduplessis in https://github.com/Kilo-Org/kilocode/pull/11790
+- refactor(cli): carry agent displayName/source as typed fields instead of provider options by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11773
+- docs: clarify experimental flag settings by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11530
+- docs(kilo-docs): remove legacy IDE documentation by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/11225
+- chore(ci): reduce test log noise by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11804
+- docs: prefer one concise changeset per PR by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11823
+- docs(kilo-docs): clarify VS Code extension local launch by @singhvishalkr in https://github.com/Kilo-Org/kilocode/pull/11663
+- docs: clarify MCP config fallback by @singhvishalkr in https://github.com/Kilo-Org/kilocode/pull/11661
+- chore(jetbrains): migrate to stable IntelliJ Gradle plugin by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11869
+- test(ci): stabilize random test failures by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11789
+- chore: bump vite to 7.3.5 by @jeanduplessis in https://github.com/Kilo-Org/kilocode/pull/11880
+
+
 ## [7.0.1-rc.13] - 2026-06-23
 
 ### Added
