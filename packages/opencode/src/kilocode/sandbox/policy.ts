@@ -2,7 +2,6 @@ import { readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import { Effect, Semaphore } from "effect"
 import { Global } from "@opencode-ai/core/global"
-import { Flag } from "@opencode-ai/core/flag/flag"
 import { backendSupport, run as runSandbox, unrestricted, type Profile } from "@kilocode/sandbox"
 import { Bus } from "@/bus"
 import { Config } from "@/config/config"
@@ -21,11 +20,6 @@ const locks = new Map<SessionID, { semaphore: Semaphore.Semaphore; refs: number 
 
 function key(directory: string, sessionID: SessionID) {
   return directory + "\0" + sessionID
-}
-
-function secure(snapshot: Snapshot): Snapshot {
-  if (Flag.KILO_SERVER_PASSWORD) return snapshot
-  return { ...snapshot, enabled: true, mode: "deny" }
 }
 
 function locked<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
@@ -141,11 +135,11 @@ const snapshot = Effect.fn("SandboxPolicy.snapshot")(function* (sessionID: Sessi
       // A session's create-time kilocode.sandbox toggle takes precedence over the config default, so a
       // session moved or created with an explicit choice keeps that choice instead of resetting.
       const chosen = yield* SandboxState.read(sessionID)
-      const next = secure({
+      const next: Snapshot = {
         enabled: chosen?.enabled ?? cfg.experimental?.sandbox ?? false,
         mode: cfg.experimental?.sandbox_restrict_network === false ? "allow" : "deny",
         version: 0,
-      })
+      }
       yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
       snapshots.set(key(directory, sessionID), next)
       return { directory, state: next }
@@ -180,13 +174,13 @@ function change<E, R>(sessionID: SessionID, guard: Effect.Effect<unknown, E, R>)
         yield* guard
         const stored = yield* read(directory, sessionID)
         const cfg = stored ? undefined : yield* (yield* Config.Service).get()
-        const current =
+        const current: Snapshot =
           stored ??
-          secure({
+          {
             enabled: cfg?.experimental?.sandbox ?? false,
             mode: cfg?.experimental?.sandbox_restrict_network === false ? "allow" : "deny",
             version: 0,
-          })
+          }
         const support = backendSupport({ mode: current.mode, allowedHosts: [] })
         const status = {
           directory,
@@ -224,7 +218,7 @@ export const inherit = Effect.fn("SandboxPolicy.inherit")(function* (
     parentID,
     Effect.gen(function* () {
       const stored = yield* read(directory, parentID)
-      const parent = stored ?? (fallback && secure({ ...fallback, version: 0 }))
+      const parent: Snapshot | undefined = stored ?? (fallback && { ...fallback, version: 0 })
       if (!parent) return
       // Only persist the parent snapshot when it actually belongs to this directory. A fallback
       // carries confinement from another directory (e.g. forking into a worktree) and must not be

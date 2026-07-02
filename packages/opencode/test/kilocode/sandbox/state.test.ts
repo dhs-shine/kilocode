@@ -11,6 +11,7 @@ import { Bus } from "@/bus"
 import { Config } from "@/config/config"
 import * as Network from "@/kilocode/sandbox/network"
 import * as SandboxPolicy from "@/kilocode/sandbox/policy"
+import { SandboxStore } from "@/kilocode/sandbox/store"
 import { SessionID } from "@/session/schema"
 import { TestInstance } from "../../fixture/fixture"
 import { testEffect } from "../../lib/effect"
@@ -190,13 +191,28 @@ it.instance("snapshots the primary kilo config for the session lifetime", () =>
   ),
 )
 
-it.instance("keeps authless config-off sessions confined", () =>
-  Effect.gen(function* () {
-    const id = SessionID.make("ses_sandbox_default_off")
-    const status = yield* SandboxPolicy.status(id)
-    expect(status.enabled).toBe(status.available)
-    expect(yield* execute(id, sandboxed)).toBe(status.available)
-  }),
+it.instance("does not enable authless sessions without the experimental sandbox flag", () =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const password = Flag.KILO_SERVER_PASSWORD
+      Flag.KILO_SERVER_PASSWORD = undefined
+      return password
+    }),
+    () =>
+      Effect.gen(function* () {
+        const test = yield* TestInstance
+        const id = SessionID.make("ses_sandbox_default_off")
+        const status = yield* SandboxPolicy.status(id)
+        const state = yield* Effect.promise(() => SandboxStore.read(test.directory, id))
+
+        expect(state?.enabled).toBe(false)
+        expect(state?.mode).toBe("deny")
+        expect(state?.version).toBe(0)
+        expect(status.enabled).toBe(false)
+        expect(yield* execute(id, sandboxed)).toBe(false)
+      }),
+    (password) => Effect.sync(() => (Flag.KILO_SERVER_PASSWORD = password)),
+  ),
 )
 
 it.instance(
@@ -226,15 +242,15 @@ it.instance(
   { config: { experimental: { sandbox: true } } },
 )
 
-it.instance("trusted toggles disable only one authless session", () =>
+it.instance("trusted toggles enable only one authless config-off session", () =>
   Effect.gen(function* () {
     const first = SessionID.make("ses_sandbox_override_on")
     const second = SessionID.make("ses_sandbox_default_remains_off")
     if (!(yield* SandboxPolicy.status(first)).available) return
 
-    expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(false)
-    expect(yield* execute(first, sandboxed)).toBe(false)
-    expect(yield* execute(second, sandboxed)).toBe(true)
+    expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(true)
+    expect(yield* execute(first, sandboxed)).toBe(true)
+    expect(yield* execute(second, sandboxed)).toBe(false)
   }),
 )
 
@@ -248,14 +264,14 @@ it.instance("isolates concurrent session overrides and clears them", () =>
       return
     }
 
-    expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(false)
-    expect((yield* SandboxPolicy.status(second)).enabled).toBe(true)
-    expect((yield* SandboxPolicy.toggle(second)).enabled).toBe(false)
+    expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(true)
+    expect((yield* SandboxPolicy.status(second)).enabled).toBe(false)
     expect((yield* SandboxPolicy.toggle(second)).enabled).toBe(true)
-    expect((yield* SandboxPolicy.status(first)).enabled).toBe(false)
-    yield* SandboxPolicy.retire(first, (yield* TestInstance).directory, Effect.void)
+    expect((yield* SandboxPolicy.toggle(second)).enabled).toBe(false)
     expect((yield* SandboxPolicy.status(first)).enabled).toBe(true)
-    expect((yield* SandboxPolicy.status(second)).enabled).toBe(true)
+    yield* SandboxPolicy.retire(first, (yield* TestInstance).directory, Effect.void)
+    expect((yield* SandboxPolicy.status(first)).enabled).toBe(false)
+    expect((yield* SandboxPolicy.status(second)).enabled).toBe(false)
   }),
 )
 
@@ -274,7 +290,7 @@ it.instance("serializes concurrent toggles for a session", () =>
     const id = SessionID.make("ses_sandbox_concurrent")
     if (!(yield* SandboxPolicy.status(id)).available) return
     yield* Effect.all([SandboxPolicy.toggle(id), SandboxPolicy.toggle(id)], { concurrency: "unbounded" })
-    expect((yield* SandboxPolicy.status(id)).enabled).toBe(true)
+    expect((yield* SandboxPolicy.status(id)).enabled).toBe(false)
   }),
 )
 
@@ -298,7 +314,7 @@ it.instance("prevents a queued toggle from restoring a retired override", () =>
     yield* Fiber.join(removal)
     expect(Exit.isFailure(yield* Fiber.join(pending))).toBe(true)
     const status = yield* SandboxPolicy.status(id)
-    expect(status.enabled).toBe(status.available)
+    expect(status.enabled).toBe(false)
   }),
 )
 
@@ -344,6 +360,7 @@ it.instance("enforces writes only while the macOS session override is active", (
         svc.spawn(ChildProcess.make("/usr/bin/touch", [file])).pipe(Effect.flatMap((child) => child.exitCode)),
       )
 
+    expect((yield* SandboxPolicy.toggle(id)).enabled).toBe(true)
     expect(Number(yield* execute(id, run(inside)))).toBe(0)
     expect(Number(yield* execute(id, run(external)))).not.toBe(0)
     expect(Number(yield* execute(id, run(git)))).not.toBe(0)
