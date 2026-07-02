@@ -201,7 +201,7 @@ class SettingsListViewTest : BasePlatformTestCase() {
             val bounds = view.list.getCellBounds(0, 0)
             val point = Point(bounds.x + 4, bounds.y + bounds.height / 2)
 
-            view.list.dispatchEvent(mouse(view, MouseEvent.MOUSE_CLICKED, point, count = 2))
+            fire(view.list, mouse(view, MouseEvent.MOUSE_CLICKED, point, count = 2))
 
             assertEquals(listOf("with:edit"), calls)
         }
@@ -287,8 +287,18 @@ class SettingsListViewTest : BasePlatformTestCase() {
     private fun center(rect: java.awt.Rectangle) = Point(rect.x + rect.width / 2, rect.y + rect.height / 2)
 
     private fun click(view: SettingsListView, point: Point) {
-        view.list.dispatchEvent(mouse(view, MouseEvent.MOUSE_PRESSED, point))
-        view.list.dispatchEvent(mouse(view, MouseEvent.MOUSE_RELEASED, point))
+        fire(view.list, mouse(view, MouseEvent.MOUSE_PRESSED, point))
+        fire(view.list, mouse(view, MouseEvent.MOUSE_RELEASED, point))
+    }
+
+    private fun fire(list: JBList<*>, event: MouseEvent) {
+        val listener = list.mouseListeners.single { it.javaClass.name.startsWith("ai.kilocode.") }
+        when (event.id) {
+            MouseEvent.MOUSE_PRESSED -> listener.mousePressed(event)
+            MouseEvent.MOUSE_RELEASED -> listener.mouseReleased(event)
+            MouseEvent.MOUSE_CLICKED -> listener.mouseClicked(event)
+            else -> error("Unsupported mouse event ${event.id}")
+        }
     }
 
     private fun mouse(view: SettingsListView, id: Int, point: Point, count: Int = 1) = MouseEvent(

@@ -472,8 +472,18 @@ class AgentsSettingsUiTest : BasePlatformTestCase() {
     private fun center(rect: java.awt.Rectangle) = Point(rect.x + rect.width / 2, rect.y + rect.height / 2)
 
     private fun click(list: JBList<SettingsListItem>, point: Point) {
-        list.dispatchEvent(mouse(list, MouseEvent.MOUSE_PRESSED, point))
-        list.dispatchEvent(mouse(list, MouseEvent.MOUSE_RELEASED, point))
+        fire(list, mouse(list, MouseEvent.MOUSE_PRESSED, point))
+        fire(list, mouse(list, MouseEvent.MOUSE_RELEASED, point))
+    }
+
+    private fun fire(list: JBList<*>, event: MouseEvent) {
+        val listener = list.mouseListeners.single { it.javaClass.name.startsWith("ai.kilocode.") }
+        when (event.id) {
+            MouseEvent.MOUSE_PRESSED -> listener.mousePressed(event)
+            MouseEvent.MOUSE_RELEASED -> listener.mouseReleased(event)
+            MouseEvent.MOUSE_CLICKED -> listener.mouseClicked(event)
+            else -> error("Unsupported mouse event ${event.id}")
+        }
     }
 
     private fun clickCell(panel: AgentsSettingsUi, key: String, cell: String) {

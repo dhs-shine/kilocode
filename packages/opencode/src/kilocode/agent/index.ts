@@ -10,7 +10,6 @@ import path from "path"
 import { Global } from "@opencode-ai/core/global"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser"
-import { KilocodeConfigOverlay } from "@/kilocode/config/overlay"
 
 import PROMPT_DEBUG from "../../agent/prompt/debug.txt"
 import PROMPT_ORCHESTRATOR from "../../agent/prompt/orchestrator.txt"
@@ -568,6 +567,7 @@ export async function remove(input: { name: string; agent?: AgentInfo; dirs: str
 }
 
 async function removeConfigAgent(name: string, directory: string) {
+  const { KilocodeConfigOverlay } = await import("@/kilocode/config/overlay")
   const files = [
     KilocodeConfigOverlay.globalTarget(),
     await KilocodeConfigOverlay.projectTarget({ directory }),

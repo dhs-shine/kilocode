@@ -170,8 +170,18 @@ class McpEditDialogTest : BasePlatformTestCase() {
         val idx = envLabels(root).indexOf(label)
         val bounds = list.getCellBounds(idx, idx)
         val point = Point(bounds.x + bounds.width - 4, bounds.y + bounds.height / 2)
-        list.dispatchEvent(mouse(list, MouseEvent.MOUSE_PRESSED, point))
-        list.dispatchEvent(mouse(list, MouseEvent.MOUSE_RELEASED, point))
+        fire(list, mouse(list, MouseEvent.MOUSE_PRESSED, point))
+        fire(list, mouse(list, MouseEvent.MOUSE_RELEASED, point))
+    }
+
+    private fun fire(list: JBList<*>, event: MouseEvent) {
+        val listener = list.mouseListeners.single { it.javaClass.name.startsWith("ai.kilocode.") }
+        when (event.id) {
+            MouseEvent.MOUSE_PRESSED -> listener.mousePressed(event)
+            MouseEvent.MOUSE_RELEASED -> listener.mouseReleased(event)
+            MouseEvent.MOUSE_CLICKED -> listener.mouseClicked(event)
+            else -> error("Unsupported mouse event ${event.id}")
+        }
     }
 
     private fun mouse(list: JBList<*>, id: Int, point: Point) = MouseEvent(
