@@ -21,6 +21,9 @@ type SubstituteInput = ParseSource & {
   text: string
   missing?: "error" | "empty"
   escapeJson?: boolean // kilocode_change
+  // kilocode_change start - only trusted (user-owned) sources may reference files/env; project config cannot
+  trusted?: boolean
+  // kilocode_change end
   env?: Record<string, string>
 }
 
@@ -32,10 +35,32 @@ function dir(input: ParseSource) {
   return input.type === "path" ? path.dirname(input.path) : input.dir
 }
 
+// kilocode_change start - a token is inert when its line is commented out with //
+function commented(text: string, index: number) {
+  const lineStart = text.lastIndexOf("\n", index - 1) + 1
+  return text.slice(lineStart, index).trimStart().startsWith("//")
+}
+// kilocode_change end
+
 /** Apply {env:VAR} and {file:path} substitutions to config text. */
 export async function substitute(input: SubstituteInput) {
   const missing = input.missing ?? "error"
   const escape = input.escapeJson ?? true // kilocode_change
+  // kilocode_change start - only trusted (user-owned) config may read files or environment variables.
+  // Untrusted project config could otherwise exfiltrate arbitrary local files via a provider apiKey.
+  if (!(input.trusted ?? false)) {
+    const active = Array.from(input.text.matchAll(/\{(?:env|file):[^}]+\}/g)).find(
+      (m) => !commented(input.text, m.index),
+    )
+    if (active) {
+      throw new InvalidError({
+        path: source(input),
+        message: `file and environment references are not allowed in project config: "${active[0]}"`,
+      })
+    }
+    return input.text
+  }
+  // kilocode_change end
   let text = input.text.replace(/\{env:([^}]+)\}/g, (_, varName) => {
     // kilocode_change start - reject server credentials instead of silently changing config semantics
     if (!ConfigVariableGuard.env(varName)) {
@@ -58,9 +83,7 @@ export async function substitute(input: SubstituteInput) {
     const index = match.index
     out += text.slice(cursor, index)
 
-    const lineStart = text.lastIndexOf("\n", index - 1) + 1
-    const prefix = text.slice(lineStart, index).trimStart()
-    if (prefix.startsWith("//")) {
+    if (commented(text, index)) {
       out += token
       cursor = index + token.length
       continue

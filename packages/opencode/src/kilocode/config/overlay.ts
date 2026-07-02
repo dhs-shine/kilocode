@@ -138,8 +138,8 @@ export namespace KilocodeConfigOverlay {
   }
 
   export async function resolve(input: Input): Promise<Result> {
-    const local = await withAgents(await project(input), await projectDirs(input))
-    const global = await withAgents(input.global, globalDirs())
+    const local = await withAgents(await project(input), await projectDirs(input), false) // kilocode_change - project agents untrusted
+    const global = await withAgents(input.global, globalDirs(), true) // kilocode_change - global agents trusted
     const targets = {
       global: globalTarget(),
       project: await projectTarget(input),
@@ -185,19 +185,20 @@ export namespace KilocodeConfigOverlay {
     return [Global.Path.config, path.join(Global.Path.home, ".kilocode"), path.join(Global.Path.home, ".kilo")]
   }
 
-  async function withAgents(input: Config.Info, dirs: string[]): Promise<Config.Info> {
+  async function withAgents(input: Config.Info, dirs: string[], trusted: boolean): Promise<Config.Info> {
     const [dir, ...rest] = dirs
     if (!dir) return input
-    if (!existsSync(dir)) return withAgents(input, rest)
-    const agent = await ConfigAgent.load(dir)
+    if (!existsSync(dir)) return withAgents(input, rest, trusted)
+    const agent = await ConfigAgent.load(dir, undefined, trusted) // kilocode_change
     const mode = await ConfigAgent.loadMode(dir)
     const next = KilocodeConfig.mergeConfig(KilocodeConfig.mergeConfig(input, { agent }), { agent: mode })
-    return withAgents(next, rest)
+    return withAgents(next, rest, trusted)
   }
 
   async function load(file: string): Promise<Config.Info> {
     const text = await Bun.file(file).text()
-    const expanded = await ConfigVariable.substitute({ text, type: "path", path: file })
+    // kilocode_change - overlay reads project config files; {file:}/{env:} references are untrusted here
+    const expanded = await ConfigVariable.substitute({ text, type: "path", path: file, trusted: false })
     const parsed = ConfigParse.jsonc(expanded, file)
     if (!isRecord(parsed)) return {}
     return ConfigParse.schema(Config.Info, parsed, file) as Config.Info

@@ -134,8 +134,8 @@ export const Info = AgentSchema.pipe(
 ).annotate({ identifier: "AgentConfig" })
 export type Info = Schema.Schema.Type<typeof Info>
 
-// kilocode_change start
-export async function load(dir: string, warnings?: Warning[]) {
+// kilocode_change start - trusted controls whether agent prompts may resolve {file:}/{env:} tokens
+export async function load(dir: string, warnings?: Warning[], trusted?: boolean) {
   // kilocode_change end
   const result: Record<string, Info> = {}
   for (const item of await Glob.scan("{agent,agents}/**/*.md", {
@@ -176,6 +176,7 @@ export async function load(dir: string, warnings?: Warning[]) {
       source: item,
       missing: "empty",
       escapeJson: false,
+      trusted, // kilocode_change - project agents must not resolve file/env references
     })
     const config = {
       name,
