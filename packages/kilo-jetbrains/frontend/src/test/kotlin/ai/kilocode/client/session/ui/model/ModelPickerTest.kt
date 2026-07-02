@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.ui.model
 
+import ai.kilocode.client.ui.FilledBadgeIcon
 import ai.kilocode.rpc.dto.ModelSelectionDto
 import ai.kilocode.rpc.dto.ModelAutoRoutingDto
 import ai.kilocode.rpc.dto.ModelCacheCostDto
@@ -370,6 +371,32 @@ class ModelPickerTest : BasePlatformTestCase() {
         assertFalse(panel.html().any { it.contains("First") })
     }
 
+    fun `test details panel retains unchanged capability badge icons`() {
+        val panel = ModelDetailsPanel(
+            favorites = { emptySet() },
+            toggle = {},
+        )
+        val item = ModelPicker.Item(
+            id = "first",
+            display = "First",
+            provider = "kilo",
+            providerName = "Kilo",
+            attachment = true,
+            capabilities = ModelCapabilitiesDto(
+                reasoning = true,
+                input = ModelInputCapabilitiesDto(text = true, image = true),
+            ),
+        )
+
+        panel.update(item)
+        val first = panel.badgeIcons()
+        panel.update(item.copy(id = "second", display = "Second"))
+        val second = panel.badgeIcons()
+
+        assertEquals(first.map { it.text }, second.map { it.text })
+        first.zip(second).forEach { (before, after) -> assertSame(before, after) }
+    }
+
     fun `test selected paid model with training flag indicates data collection`() {
         val picker = ModelPicker()
 
@@ -589,6 +616,12 @@ class ModelPickerTest : BasePlatformTestCase() {
         val own = if (this is JBHtmlPane) listOf(this) else emptyList()
         if (this !is Container) return own
         return own + components.flatMap { it.htmlPanes() }
+    }
+
+    private fun Component.badgeIcons(): List<FilledBadgeIcon> {
+        val own = if (this is JBLabel) listOfNotNull(icon as? FilledBadgeIcon) else emptyList()
+        if (this !is Container) return own
+        return own + components.flatMap { it.badgeIcons() }
     }
 
     private fun Component.treeSize(): Int {

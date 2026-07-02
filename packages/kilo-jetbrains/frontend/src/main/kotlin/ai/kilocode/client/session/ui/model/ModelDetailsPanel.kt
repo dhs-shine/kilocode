@@ -266,8 +266,11 @@ private class TagsSection(title: String) {
         root.isVisible = values.isNotEmpty()
         values.forEachIndexed { idx, value ->
             val tag = tag(idx)
-            tag.icon = FilledBadgeIcon(value, tagBackground(idx), UiStyle.Colors.fg())
-            tag.toolTipText = value
+            val icon = tag.icon as? FilledBadgeIcon
+            if (icon?.text != value) {
+                tag.icon = FilledBadgeIcon(value, tagBackground(idx), UiStyle.Colors.fg())
+            }
+            if (tag.toolTipText != value) tag.toolTipText = value
             tag.isVisible = true
         }
         for (idx in values.size until pool.size) {
