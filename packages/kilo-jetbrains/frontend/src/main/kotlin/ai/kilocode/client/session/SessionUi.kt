@@ -479,7 +479,7 @@ class SessionUi(
 
                 is SessionControllerEvent.ViewChanged.ShowSession -> {
                     empty = null
-                    scroll.show(messageBody)
+                    scroll.show(body(controller.model.state))
                 }
 
                 is SessionControllerEvent.AppChanged -> {
@@ -613,6 +613,7 @@ class SessionUi(
     private fun resumeOpen() {
         if (!pending || !opening || !this::scroll.isInitialized) return
         if (width <= 0 || height <= 0) return
+        if (body(controller.model.state) !== messageBody) return
         pending = false
         scroll.openBottom {
             opening = false
