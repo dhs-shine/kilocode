@@ -112,11 +112,9 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
       return config
     })
 
-  const load = (
-    text: string,
-    configFilepath: string,
-    trusted: boolean,
-  ): Effect.Effect<Info> => // kilocode_change - trusted param
+  // kilocode_change start - trusted controls whether tui config may resolve {file:}/{env:} tokens
+  const load = (text: string, configFilepath: string, trusted: boolean): Effect.Effect<Info> =>
+    // kilocode_change end
     Effect.gen(function* () {
       const expanded = yield* Effect.promise(() =>
         // kilocode_change - only trusted (global/explicit) tui config may resolve {file:}/{env:} tokens
@@ -154,10 +152,9 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
       ),
     )
 
-  const loadFile = (
-    filepath: string,
-    trusted: boolean,
-  ): Effect.Effect<Info> => // kilocode_change - trusted param
+  // kilocode_change start - trusted param threaded to load
+  const loadFile = (filepath: string, trusted: boolean): Effect.Effect<Info> =>
+    // kilocode_change end
     Effect.gen(function* () {
       // Silent-swallow non-NotFound read errors (perms, EISDIR, IO) → log + skip.
       // Matches how parse/schema/plugin failures in load() are handled — every
@@ -177,16 +174,14 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
       )
       if (!text) return {} as Info
       log.info("loading tui config", { path: filepath })
-      return yield* load(text, filepath, trusted)
+      return yield* load(text, filepath, trusted) // kilocode_change
     })
 
-  const mergeFile = (
-    acc: Acc,
-    file: string,
-    trusted: boolean, // kilocode_change - trusted param
-  ) =>
+  // kilocode_change start - trusted param threaded to loadFile
+  const mergeFile = (acc: Acc, file: string, trusted: boolean) =>
+    // kilocode_change end
     Effect.gen(function* () {
-      const data = yield* loadFile(file, trusted)
+      const data = yield* loadFile(file, trusted) // kilocode_change
       if (Object.keys(data).length) {
         appliedOrder += 1
         log.info("applying tui config", { path: file, order: appliedOrder })
@@ -244,11 +239,12 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
   // kilocode_change end
 
   for (const dir of dirs) {
-    // kilocode_change - trust global (home/KILO_CONFIG_DIR) dirs like config.ts; in-repo .kilo/.kilocode stay untrusted
+    // kilocode_change start - trust global (home/KILO_CONFIG_DIR) dirs like config.ts; in-repo .kilo/.kilocode stay untrusted
     const trusted = pluginScope(dir, ctx) === "global"
     for (const file of ConfigPaths.fileInDirectory(dir, "tui")) {
       yield* mergeFile(acc, file, trusted)
     }
+    // kilocode_change end
   }
 
   const keybinds = { ...acc.result.keybinds }

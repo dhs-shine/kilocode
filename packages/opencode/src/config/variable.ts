@@ -83,11 +83,13 @@ export async function substitute(input: SubstituteInput) {
     const index = match.index
     out += text.slice(cursor, index)
 
+    // kilocode_change start - skip tokens on commented-out lines
     if (commented(text, index)) {
       out += token
       cursor = index + token.length
       continue
     }
+    // kilocode_change end
 
     let filePath = token.replace(/^\{file:/, "").replace(/\}$/, "")
     if (filePath.startsWith("~/")) {

@@ -678,6 +678,7 @@ it.instance("does not derive tui path from KILO_CONFIG", () =>
   ),
 )
 
+// kilocode_change start - trusted global config substitutes; untrusted project config does not
 it.instance("applies env and file substitutions in global tui.json", () =>
   withCleanState(
     withEnv(
@@ -723,16 +724,18 @@ it.instance("does not substitute env or file references in untrusted project tui
     ),
   ),
 )
+// kilocode_change end
 
 it.instance("applies file substitutions when first identical token is in a commented line", () =>
   withCleanState(
     Effect.gen(function* () {
       const fs = yield* AppFileSystem.Service
       const test = yield* TestInstance
-      // Global config is trusted, so the second (uncommented) reference resolves.
+      // kilocode_change start - global config is trusted, so the second (uncommented) reference resolves
       yield* fs.writeFileString(path.join(Global.Path.config, "theme.txt"), "resolved-theme")
       yield* fs.writeFileString(
         path.join(Global.Path.config, "tui.jsonc"),
+        // kilocode_change end
         `{
   // "theme": "{file:theme.txt}",
   "theme": "{file:theme.txt}"
