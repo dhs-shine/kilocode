@@ -109,24 +109,37 @@ export const readOnlyBash: Record<string, "allow" | "ask" | "deny"> = {
   "git branch -r *": "allow",
   "git remote -v *": "allow",
   "gh *": "ask",
+  // Everything below is a blocklist layered on the allowlist above: it catches ways
+  // an "allowed" read-only command can still write files, chain commands, or exec an
+  // arbitrary program. This is defense-in-depth, not a sandbox — the durable fix is
+  // OS-level sandboxing, not command-line string matching.
+  // `*` matches any run of characters (including spaces and empty), so each rule
+  // catches its operator anywhere. Broad forms subsume narrow ones: `*&*` covers
+  // `&&`, and `*>*` covers `>`, `>>`, `>|`, and `>(` in any spacing.
   "*\n*": "deny",
   "*<(*": "deny",
   "*|*": "deny",
   "*;*": "deny",
-  "*&&*": "deny",
   "*&*": "deny",
   "*$(*": "deny",
   "*`*": "deny",
   "*>*": "deny",
-  "* > *": "deny",
-  "*>>*": "deny",
-  "* >> *": "deny",
-  "*>|*": "deny",
-  "* >| *": "deny",
+  // Short -o is space-anchored (two forms) so it never matches filenames like
+  // `foo-o bar`; long flags use `*--flag*`, which is specific enough to bridge both
+  // "flag first" and "flag after args" positions in one rule.
   "sort -o *": "deny",
   "sort * -o *": "deny",
-  "sort --output*": "deny",
-  "sort * --output*": "deny",
+  "sort *--output*": "deny",
+  // Flags that make otherwise "read-only" commands exec an arbitrary program.
+  "sort *--compress-program*": "deny",
+  "sort *--files0-from*": "deny",
+  "rg *--pre *": "deny",
+  "rg *--pre=*": "deny",
+  "rg *--hostname-bin*": "deny",
+  "ag *--pager*": "deny",
+  "man *-P*": "deny",
+  "man *--pager*": "deny",
+  "man *-H*": "deny",
 }
 
 function askGuard(mcp: Record<string, "allow" | "ask" | "deny"> = {}) {
