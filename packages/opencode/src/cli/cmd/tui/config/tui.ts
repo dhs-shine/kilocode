@@ -116,9 +116,11 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
   const load = (text: string, configFilepath: string, trusted: boolean): Effect.Effect<Info> =>
     // kilocode_change end
     Effect.gen(function* () {
-      const expanded = yield* Effect.promise(() =>
-        // kilocode_change - only trusted (global/explicit) tui config may resolve {file:}/{env:} tokens
-        ConfigVariable.substitute({ text, type: "path", path: configFilepath, missing: "empty", trusted }),
+      const expanded = yield* Effect.promise(
+        () =>
+          // kilocode_change start - only trusted (global/explicit) tui config may resolve {file:}/{env:} tokens
+          ConfigVariable.substitute({ text, type: "path", path: configFilepath, missing: "empty", trusted }),
+        // kilocode_change end
       )
       const data = ConfigParse.jsonc(expanded, configFilepath)
       if (!isRecord(data)) return {} as Info
