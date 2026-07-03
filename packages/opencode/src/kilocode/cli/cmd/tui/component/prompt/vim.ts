@@ -1,4 +1,3 @@
-// kilocode_change start - vim modal editing for the prompt input
 /**
  * A small, self-contained vim emulation engine for the prompt textarea.
  *
@@ -883,4 +882,3 @@ export function enterInsert(state: VimState) {
   state.mode = "insert"
   resetPending(state)
 }
-// kilocode_change end
