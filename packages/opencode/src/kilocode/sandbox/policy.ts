@@ -11,6 +11,7 @@ import type { InstanceContext } from "@/project/instance-context"
 import type { SessionID } from "@/session/schema"
 import { Changed } from "./event"
 import * as Network from "./network"
+import { SandboxPreference } from "./preference"
 import * as SandboxState from "./state"
 import { SandboxStore } from "./store"
 
@@ -27,6 +28,25 @@ function secure(snapshot: Snapshot): Snapshot {
   if (Flag.KILO_SERVER_PASSWORD) return snapshot
   return { ...snapshot, enabled: true, mode: "deny" }
 }
+
+function initial(
+  chosen: boolean | undefined,
+  pref: boolean | undefined,
+  cfgDefault: boolean,
+  mode: Snapshot["mode"],
+): Snapshot {
+  if (chosen !== undefined) return { enabled: chosen, mode, version: 0 }
+  if (pref !== undefined) return { enabled: pref, mode, version: 0 }
+  return secure({ enabled: cfgDefault, mode, version: 0 })
+}
+
+const resolveInitial = Effect.fn("SandboxPolicy.resolveInitial")(function* (directory: string, sessionID: SessionID) {
+  const cfg = yield* (yield* Config.Service).get()
+  const chosen = yield* SandboxState.read(sessionID)
+  const pref = yield* Effect.promise(() => SandboxPreference.read(directory))
+  const mode = cfg.experimental?.sandbox_restrict_network === false ? "allow" : "deny"
+  return initial(chosen?.enabled, pref, cfg.experimental?.sandbox ?? false, mode)
+})
 
 function locked<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
   return Effect.acquireUseRelease(
@@ -99,7 +119,7 @@ export function profile(ctx: InstanceContext, mode: Profile["network"]["mode"] =
   return {
     filesystem: {
       allowWrite: writable,
-      denyWrite: [root(SandboxStore.root)],
+      denyWrite: [root(SandboxStore.root), root(SandboxPreference.root)],
       denyNames: [".git"],
       temporaryDirectory: Global.Path.tmp,
     },
@@ -137,15 +157,11 @@ const snapshot = Effect.fn("SandboxPolicy.snapshot")(function* (sessionID: Sessi
     Effect.gen(function* () {
       const existing = yield* read(directory, sessionID)
       if (existing) return { directory, state: existing }
-      const cfg = yield* (yield* Config.Service).get()
       // A session's create-time kilocode.sandbox toggle takes precedence over the config default, so a
-      // session moved or created with an explicit choice keeps that choice instead of resetting.
-      const chosen = yield* SandboxState.read(sessionID)
-      const next = secure({
-        enabled: chosen?.enabled ?? cfg.experimental?.sandbox ?? false,
-        mode: cfg.experimental?.sandbox_restrict_network === false ? "allow" : "deny",
-        version: 0,
-      })
+      // session moved or created with an explicit choice keeps that choice instead of resetting. The
+      // persisted per-directory preference (last toggled state) is the next precedence, so new sessions
+      // inherit the last /sandbox choice. secure-by-default only applies when neither is present.
+      const next = yield* resolveInitial(directory, sessionID)
       yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
       snapshots.set(key(directory, sessionID), next)
       return { directory, state: next }
@@ -179,14 +195,7 @@ function change<E, R>(sessionID: SessionID, guard: Effect.Effect<unknown, E, R>)
       Effect.gen(function* () {
         yield* guard
         const stored = yield* read(directory, sessionID)
-        const cfg = stored ? undefined : yield* (yield* Config.Service).get()
-        const current =
-          stored ??
-          secure({
-            enabled: cfg?.experimental?.sandbox ?? false,
-            mode: cfg?.experimental?.sandbox_restrict_network === false ? "allow" : "deny",
-            version: 0,
-          })
+        const current = stored ?? (yield* resolveInitial(directory, sessionID))
         const support = backendSupport({ mode: current.mode, allowedHosts: [] })
         const status = {
           directory,
@@ -199,6 +208,12 @@ function change<E, R>(sessionID: SessionID, guard: Effect.Effect<unknown, E, R>)
         const next: Snapshot = { ...current, enabled: !status.enabled, version: status.version + 1 }
         yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
         snapshots.set(key(directory, sessionID), next)
+        // The per-session SandboxStore is the authoritative state; the per-directory
+        // preference only seeds future sessions. A preference write failure must not
+        // fail the toggle or desync the in-memory cache from the persisted snapshot.
+        yield* Effect.promise(() => SandboxPreference.write(directory, next.enabled)).pipe(
+          Effect.catch(() => Effect.void),
+        )
         const value = { ...status, enabled: next.enabled, version: next.version }
         yield* (yield* Bus.Service).publish(Changed, { sessionID, ...value })
         return value
