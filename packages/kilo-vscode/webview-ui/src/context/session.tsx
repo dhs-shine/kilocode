@@ -84,6 +84,13 @@ import { isSameSessionTree } from "./model-usage"
 const RECENT_LIMIT = 5
 const MESSAGE_PAGE_LIMIT = 80
 
+/** Remove ids from a Set immutably, returning the original when nothing changed. */
+function dropSet(prev: Set<string>, ids: Iterable<string>): Set<string> {
+  const next = new Set(prev)
+  for (const id of ids) next.delete(id)
+  return next.size === prev.size ? prev : next
+}
+
 type MessageMutation = Exclude<MessageLoadMode, "focus"> | "append" | "update"
 
 interface MessagePageState {
@@ -1968,125 +1975,52 @@ export const SessionProvider: ParentComponent = (props) => {
       clearHiddenErrors(msgIds)
 
       setStore(
-        "sessions",
-        produce((sessions) => {
-          delete sessions[sessionID]
-        }),
-      )
-      setStore(
-        "messages",
-        produce((messages) => {
-          delete messages[sessionID]
-        }),
-      )
-      setStore(
-        "parts",
-        produce((parts) => {
-          for (const id of msgIds) {
-            delete parts[id]
+        produce((s) => {
+          delete s.sessions[sessionID]
+          delete s.messages[sessionID]
+          for (const id of msgIds) delete s.parts[id]
+          delete s.toolParts[sessionID]
+          delete s.todos[sessionID]
+          for (const [id, state] of Object.entries(s.modelUsage)) {
+            if (id === sessionID || state.data?.sessionIDs.includes(sessionID)) delete s.modelUsage[id]
           }
+          delete s.agentSelections[sessionID]
+          delete s.sessionOverrides[sessionID]
+          for (const key of sessionVariantKeys(s.variantSelections, sessionID)) delete s.variantSelections[key]
         }),
       )
-      setStore(
-        "toolParts",
-        produce((parts) => {
-          delete parts[sessionID]
-        }),
-      )
-      setStore(
-        "todos",
-        produce((todos) => {
-          delete todos[sessionID]
-        }),
-      )
-      setStore(
-        "modelUsage",
-        produce((usage) => {
-          for (const [id, state] of Object.entries(usage)) {
-            if (id === sessionID || state.data?.sessionIDs.includes(sessionID)) delete usage[id]
-          }
-        }),
-      )
-      setPages(
-        produce((map) => {
-          delete map[sessionID]
-        }),
-      )
-      setStore(
-        "agentSelections",
-        produce((selections) => {
-          delete selections[sessionID]
-        }),
-      )
+      // prettier-ignore
+      setPages(produce((map) => { delete map[sessionID] }))
       // Clean up pending questions/errors for the deleted session
       const deleted = questions()
         .filter((q) => q.sessionID === sessionID)
         .map((q) => q.id)
       if (deleted.length > 0) {
         setQuestions((prev) => prev.filter((q) => q.sessionID !== sessionID))
-        setQuestionErrors((prev) => {
-          const next = new Set(prev)
-          for (const id of deleted) next.delete(id)
-          if (next.size === prev.size) return prev
-          return next
-        })
+        setQuestionErrors((prev) => dropSet(prev, deleted))
       }
       const gone = suggestions()
         .filter((item) => item.sessionID === sessionID)
         .map((item) => item.id)
       if (gone.length > 0) {
         setSuggestions((prev) => prev.filter((item) => item.sessionID !== sessionID))
-        setSuggestionErrors((prev) => {
-          const next = new Set(prev)
-          for (const id of gone) next.delete(id)
-          if (next.size === prev.size) return prev
-          return next
-        })
-        setRespondingSuggestions((prev) => {
-          const next = new Set(prev)
-          for (const id of gone) next.delete(id)
-          if (next.size === prev.size) return prev
-          return next
-        })
+        setSuggestionErrors((prev) => dropSet(prev, gone))
+        setRespondingSuggestions((prev) => dropSet(prev, gone))
       }
-      const staleResponding = new Set(
-        permissions()
-          .filter((p) => p.sessionID === sessionID)
-          .map((p) => p.id),
-      )
+      const staleResponding = permissions()
+        .filter((p) => p.sessionID === sessionID)
+        .map((p) => p.id)
       setPermissions((prev) => removeSessionPermissions(prev, sessionID))
-      if (staleResponding.size > 0) {
-        setRespondingPermissions((prev) => {
-          const next = new Set(prev)
-          for (const id of staleResponding) next.delete(id)
-          return next.size === prev.size ? prev : next
-        })
+      if (staleResponding.length > 0) {
+        setRespondingPermissions((prev) => dropSet(prev, staleResponding))
       }
       // prettier-ignore
       setLoaded((prev) => { if (!prev.has(sessionID)) return prev; const next = new Set(prev); next.delete(sessionID); return next })
-      setStatusMap(
-        produce((map) => {
-          delete map[sessionID]
-        }),
-      )
+      // prettier-ignore
+      setStatusMap(produce((map) => { delete map[sessionID] }))
       clearClose(sessionID)
-      setBusySinceMap(
-        produce((map) => {
-          delete map[sessionID]
-        }),
-      )
-      setStore(
-        "sessionOverrides",
-        produce((m) => {
-          delete m[sessionID]
-        }),
-      )
-      setStore(
-        "variantSelections",
-        produce((variants) => {
-          for (const key of sessionVariantKeys(variants, sessionID)) delete variants[key]
-        }),
-      )
+      // prettier-ignore
+      setBusySinceMap(produce((map) => { delete map[sessionID] }))
       if (currentSessionID() === sessionID) {
         setCurrentSessionID(undefined)
         setLoading(false)
