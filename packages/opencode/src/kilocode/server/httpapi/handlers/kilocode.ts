@@ -4,14 +4,15 @@ import * as KiloAgent from "@/kilocode/agent"
 import * as KiloSkill from "@/kilocode/skill-remove"
 import { Agent } from "@/agent/agent"
 import { Config } from "@/config/config"
-import { EffectBridge } from "@/effect/bridge"
 import { InstanceState } from "@/effect/instance-state"
 import { HeapSnapshot } from "@/kilocode/cli/heap-snapshot"
-import { Notebook } from "@/kilocode/notebook/service"
 import type { RequestID as NotebookRequestID } from "@/kilocode/notebook/protocol"
+import { Notebook } from "@/kilocode/notebook/service"
+import { ModelUsage } from "@/kilocode/session/model-usage"
 import { InstanceStore } from "@/project/instance-store"
 import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 import { Skill } from "@/skill"
+import type { SessionID } from "@/session/schema"
 import { NotebookRejectPayload, NotebookReplyPayload, RemoveAgentPayload, RemoveSkillPayload } from "../groups/kilocode"
 
 export const kilocodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilocode", (handlers) =>
@@ -24,6 +25,12 @@ export const kilocodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilocode"
 
     const heapSnapshot = Effect.fn("KilocodeHttpApi.heapSnapshot")(function* () {
       return yield* Effect.sync(() => HeapSnapshot.write())
+    })
+
+    const agentRequirements = Effect.fn("KilocodeHttpApi.agentRequirements")(function* (ctx: {
+      query: { agent: string }
+    }) {
+      return yield* agents.requirementStatus(ctx.query.agent)
     })
 
     const removeSkill = Effect.fn("KilocodeHttpApi.removeSkill")(function* (ctx: {
@@ -45,8 +52,14 @@ export const kilocodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilocode"
       const instance = yield* InstanceState.context
       const agent = yield* agents.get(ctx.payload.name)
       const dirs = yield* config.directories()
-      yield* EffectBridge.fromPromise(() =>
-        KiloAgent.remove({ name: ctx.payload.name, agent, dirs, directory: instance.directory }),
+      yield* Effect.tryPromise({
+        try: () => KiloAgent.remove({ name: ctx.payload.name, agent, dirs, directory: instance.directory }),
+        catch: (err) => err,
+      }).pipe(
+        Effect.catch((err) => {
+          if (KiloAgent.RemoveError.isInstance(err)) return Effect.fail(new HttpApiError.BadRequest({}))
+          return Effect.die(err)
+        }),
       )
       yield* store.dispose(instance)
       return true
@@ -77,12 +90,22 @@ export const kilocodeHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilocode"
       return true
     })
 
+    const sessionModelUsage = Effect.fn("KilocodeHttpApi.sessionModelUsage")(function* (ctx: {
+      params: { sessionID: SessionID }
+    }) {
+      const usage = yield* ModelUsage.get(ctx.params.sessionID)
+      if (!usage) return yield* new HttpApiError.NotFound({})
+      return usage
+    })
+
     return handlers
       .handle("heapSnapshot", heapSnapshot)
+      .handle("agentRequirements", agentRequirements)
       .handle("removeSkill", removeSkill)
       .handle("removeAgent", removeAgent)
       .handle("notebookList", notebookList)
       .handle("notebookReply", notebookReply)
       .handle("notebookReject", notebookReject)
+      .handle("sessionModelUsage", sessionModelUsage)
   }),
 )
