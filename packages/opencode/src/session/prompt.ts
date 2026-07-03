@@ -1685,10 +1685,11 @@ export const layer = Layer.effect(
             tools,
             model,
             toolChoice: format.type === "json_schema" ? "required" : undefined,
-            // kilocode_change - feed the provider-reported context size from the last finished
+            // kilocode_change start - feed the provider-reported context size from the last finished
             // turn into the output-token cap, so image/vision input is measured by the provider
             // rather than by encoded payload bytes (see KiloLLM.capOutputTokens)
             reportedContextTokens: lastFinished ? KiloSessionOverflow.count(lastFinished.tokens) : undefined,
+            // kilocode_change end
           })
 
           if (structured !== undefined) {
