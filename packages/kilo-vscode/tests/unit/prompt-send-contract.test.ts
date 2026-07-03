@@ -57,7 +57,7 @@ describe("sendMessage dismisses pending tool requests", () => {
   })
 
   it("rejects questions before sending", () => {
-    expect(body).toContain("rejectQuestion")
+    expect(body).toContain("dismissQuestion")
   })
 })
 
@@ -74,7 +74,7 @@ describe("sendCommand dismisses pending tool requests", () => {
   })
 
   it("rejects questions before sending", () => {
-    expect(body).toContain("rejectQuestion")
+    expect(body).toContain("dismissQuestion")
   })
 })
 
