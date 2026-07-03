@@ -2,7 +2,6 @@ import { readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import { Effect, Semaphore } from "effect"
 import { Global } from "@opencode-ai/core/global"
-import { Flag } from "@opencode-ai/core/flag/flag"
 import { backendSupport, run as runSandbox, unrestricted, type Profile } from "@kilocode/sandbox"
 import { Bus } from "@/bus"
 import { Config } from "@/config/config"
@@ -24,11 +23,6 @@ function key(directory: string, sessionID: SessionID) {
   return directory + "\0" + sessionID
 }
 
-function secure(snapshot: Snapshot): Snapshot {
-  if (Flag.KILO_SERVER_PASSWORD) return snapshot
-  return { ...snapshot, enabled: true, mode: "deny" }
-}
-
 function initial(
   chosen: boolean | undefined,
   pref: boolean | undefined,
@@ -37,7 +31,7 @@ function initial(
 ): Snapshot {
   if (chosen !== undefined) return { enabled: chosen, mode, version: 0 }
   if (pref !== undefined) return { enabled: pref, mode, version: 0 }
-  return secure({ enabled: cfgDefault, mode, version: 0 })
+  return { enabled: cfgDefault, mode, version: 0 }
 }
 
 const resolveInitial = Effect.fn("SandboxPolicy.resolveInitial")(function* (directory: string, sessionID: SessionID) {
@@ -47,7 +41,6 @@ const resolveInitial = Effect.fn("SandboxPolicy.resolveInitial")(function* (dire
   const mode = cfg.experimental?.sandbox_restrict_network === false ? "allow" : "deny"
   return initial(chosen?.enabled, pref, cfg.experimental?.sandbox ?? false, mode)
 })
-
 function locked<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
   return Effect.acquireUseRelease(
     Effect.sync(() => {
@@ -160,7 +153,7 @@ const snapshot = Effect.fn("SandboxPolicy.snapshot")(function* (sessionID: Sessi
       // A session's create-time kilocode.sandbox toggle takes precedence over the config default, so a
       // session moved or created with an explicit choice keeps that choice instead of resetting. The
       // persisted per-directory preference (last toggled state) is the next precedence, so new sessions
-      // inherit the last /sandbox choice. secure-by-default only applies when neither is present.
+      // inherit the last /sandbox choice. The config default applies when neither is present.
       const next = yield* resolveInitial(directory, sessionID)
       yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
       snapshots.set(key(directory, sessionID), next)
@@ -239,7 +232,7 @@ export const inherit = Effect.fn("SandboxPolicy.inherit")(function* (
     parentID,
     Effect.gen(function* () {
       const stored = yield* read(directory, parentID)
-      const parent = stored ?? (fallback && secure({ ...fallback, version: 0 }))
+      const parent: Snapshot | undefined = stored ?? (fallback && { ...fallback, version: 0 })
       if (!parent) return
       // Only persist the parent snapshot when it actually belongs to this directory. A fallback
       // carries confinement from another directory (e.g. forking into a worktree) and must not be
