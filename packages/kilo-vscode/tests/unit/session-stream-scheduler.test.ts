@@ -255,15 +255,15 @@ describe("SessionStreamScheduler / focus and lifecycle", () => {
     expect(stats.active).toBe(0)
   })
 
-  it("exposes the active session id via the getter so pruneDeletedSession can match it", () => {
+  it("exposes the focused session id via the getter so pruneDeletedSession can match it", () => {
     const queue = new SessionStreamScheduler(() => {})
-    expect(queue.active).toBeUndefined()
+    expect(queue.focused).toBeUndefined()
     queue.focus("sess-1")
-    expect(queue.active).toBe("sess-1")
+    expect(queue.focused).toBe("sess-1")
     queue.focus("sess-2")
-    expect(queue.active).toBe("sess-2")
+    expect(queue.focused).toBe("sess-2")
     queue.focus(undefined)
-    expect(queue.active).toBeUndefined()
+    expect(queue.focused).toBeUndefined()
   })
 
   it("dispose() stops further emissions from queued work", async () => {

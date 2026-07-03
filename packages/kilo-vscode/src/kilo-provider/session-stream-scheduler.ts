@@ -112,7 +112,7 @@ function mergePartUpdate(prev: PartUpdate | undefined, msg: PartUpdate): PartUpd
 }
 
 export class SessionStreamScheduler {
-  private _active: string | undefined
+  private active: string | undefined
   private atimer: ReturnType<typeof setTimeout> | null = null
   private vtimer: ReturnType<typeof setTimeout> | null = null
   private btimer: ReturnType<typeof setTimeout> | null = null
@@ -146,20 +146,20 @@ export class SessionStreamScheduler {
   }
 
   focus(sessionID?: string): void {
-    if (this._active === sessionID) return
-    const prev = this._active
+    if (this.active === sessionID) return
+    const prev = this.active
     if (this.atimer) {
       clearTimeout(this.atimer)
       this.atimer = null
     }
-    this._active = sessionID
+    this.active = sessionID
     if (prev && this.queues.get(prev)?.size) this.schedule(prev)
     if (sessionID) this.flush(sessionID)
   }
 
   /** Currently focused (active-lane) session ID, if any. */
-  get active(): string | undefined {
-    return this._active
+  get focused(): string | undefined {
+    return this.active
   }
 
   setVisible(sessionID: string, visible: boolean): void {
@@ -207,7 +207,7 @@ export class SessionStreamScheduler {
       return
     }
 
-    if (this._active === sessionID && this.atimer) {
+    if (this.active === sessionID && this.atimer) {
       clearTimeout(this.atimer)
       this.atimer = null
     }
@@ -266,7 +266,7 @@ export class SessionStreamScheduler {
 
   private schedule(sessionID: string): void {
     if (!this.queues.get(sessionID)?.size) return
-    if (this._active === sessionID) {
+    if (this.active === sessionID) {
       if (this.atimer) return
       this.atimer = setTimeout(() => this.flushActive(), this.activeMs)
       return
@@ -305,7 +305,7 @@ export class SessionStreamScheduler {
 
   private flushActive(): void {
     this.atimer = null
-    if (this._active) this.emit(this.take(this._active))
+    if (this.active) this.emit(this.take(this.active))
   }
 
   private flushBackground(): void {
@@ -336,7 +336,7 @@ export class SessionStreamScheduler {
   private takeBackground(): PartUpdate[] {
     const updates: PartUpdate[] = []
     for (const [sid, queue] of this.queues) {
-      if (sid === this._active) continue
+      if (sid === this.active) continue
       if (this.visible.has(sid)) continue
       updates.push(...queue.values())
       this.queues.delete(sid)
@@ -347,7 +347,7 @@ export class SessionStreamScheduler {
   private takeVisible(): PartUpdate[] {
     const updates: PartUpdate[] = []
     for (const [sid, queue] of this.queues) {
-      if (sid === this._active || !this.visible.has(sid)) continue
+      if (sid === this.active || !this.visible.has(sid)) continue
       updates.push(...queue.values())
       this.queues.delete(sid)
     }
@@ -357,7 +357,7 @@ export class SessionStreamScheduler {
   private visibleCount(): number {
     let n = 0
     for (const [sid, queue] of this.queues) {
-      if (sid !== this._active && this.visible.has(sid) && queue.size > 0) n++
+      if (sid !== this.active && this.visible.has(sid) && queue.size > 0) n++
     }
     return n
   }
@@ -365,7 +365,7 @@ export class SessionStreamScheduler {
   private backgroundCount(): number {
     let n = 0
     for (const [sid, queue] of this.queues) {
-      if (sid !== this._active && !this.visible.has(sid) && queue.size > 0) n++
+      if (sid !== this.active && !this.visible.has(sid) && queue.size > 0) n++
     }
     return n
   }
@@ -398,7 +398,7 @@ export class SessionStreamScheduler {
   }
 
   private countLane(sessionID: string): void {
-    if (sessionID === this._active) this.counters.active++
+    if (sessionID === this.active) this.counters.active++
     else if (this.visible.has(sessionID)) this.counters.visible++
     else this.counters.background++
   }

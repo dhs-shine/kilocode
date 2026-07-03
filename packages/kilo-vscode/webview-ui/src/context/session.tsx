@@ -2108,20 +2108,20 @@ export const SessionProvider: ParentComponent = (props) => {
 
       setStore(
         "sessions",
-        produce((s) => {
-          delete s[cloudKey]
+        produce((sessions) => {
+          delete sessions[cloudKey]
         }),
       )
       setStore(
         "messages",
-        produce((m) => {
-          delete m[cloudKey]
+        produce((messages) => {
+          delete messages[cloudKey]
         }),
       )
       setStore(
         "toolParts",
-        produce((p) => {
-          delete p[cloudKey]
+        produce((parts) => {
+          delete parts[cloudKey]
         }),
       )
     })
@@ -2626,10 +2626,7 @@ export const SessionProvider: ParentComponent = (props) => {
       return next
     })
     if (id === currentSessionID() || id === draftSessionID()) setUserClearedSession(true)
-    vscode.postMessage({
-      type: "deleteSession",
-      sessionID: id,
-    })
+    vscode.postMessage({ type: "deleteSession", sessionID: id })
   }
 
   function renameSession(id: string, title: string) {

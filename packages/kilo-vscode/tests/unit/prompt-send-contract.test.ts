@@ -198,7 +198,7 @@ describe("KiloProvider pruneDeletedSession contract", () => {
     // unregisterFocused for this instance.
     const match = source.match(/pruneDeletedSession\(sessionID: string\): void \{([\s\S]*?)\n  \}/)
     expect(match).not.toBeNull()
-    expect(match![1]).toMatch(/if \(this\.streams\.active === sessionID\) this\.focusSession\(undefined\)/)
+    expect(match![1]).toMatch(/if \(this\.streams\.focused === sessionID\) this\.focusSession\(undefined\)/)
   })
 })
 

@@ -1993,7 +1993,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.contextSessionID = undefined
       this.setCurrentSession(null)
     }
-    if (this.streams.active === sessionID) this.focusSession(undefined)
+    if (this.streams.focused === sessionID) this.focusSession(undefined)
   }
 
   /**
