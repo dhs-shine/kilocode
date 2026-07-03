@@ -27,6 +27,7 @@ import { Provider } from "@/provider/provider"
 import { ProviderID, type ModelID } from "../provider/schema"
 import { WebSearchTool } from "./websearch"
 import { KiloToolRegistry } from "../kilocode/tool/registry" // kilocode_change
+import { Notebook } from "@/kilocode/notebook/service" // kilocode_change
 import { RepoCloneTool } from "./repo_clone"
 import { RepoOverviewTool } from "./repo_overview"
 import { Flag } from "@opencode-ai/core/flag/flag" // kilocode_change
@@ -38,8 +39,8 @@ import { ApplyPatchTool } from "./apply_patch"
 import { Glob } from "@opencode-ai/core/util/glob"
 import path from "path"
 import { pathToFileURL } from "url"
-import { Effect, Layer, Context } from "effect"
-import { FetchHttpClient, HttpClient } from "effect/unstable/http"
+import { Effect, Layer, Context, Option } from "effect" // kilocode_change
+import { HttpClient } from "effect/unstable/http" // kilocode_change
 import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { Ripgrep } from "../file/ripgrep"
@@ -60,6 +61,7 @@ import { SessionStatus } from "@/session/status" // kilocode_change
 import { Reference } from "@/reference/reference"
 import { BackgroundJob } from "@/background/job"
 import { RuntimeFlags } from "@/effect/runtime-flags"
+import * as ToolNetwork from "@/kilocode/sandbox/network" // kilocode_change
 
 const log = Log.create({ service: "tool.registry" })
 
@@ -84,7 +86,14 @@ export interface Interface {
   readonly ids: () => Effect.Effect<string[]>
   readonly all: () => Effect.Effect<Tool.Def[]>
   readonly named: () => Effect.Effect<{ task: TaskDef; read: ReadDef }>
-  readonly tools: (model: { providerID: ProviderID; modelID: ModelID; agent: Agent.Info }) => Effect.Effect<Tool.Def[]>
+  // kilocode_change start
+  readonly tools: (model: {
+    providerID: ProviderID
+    modelID: ModelID
+    family?: string
+    agent: Agent.Info
+  }) => Effect.Effect<Tool.Def[]>
+  // kilocode_change end
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/ToolRegistry") {}
@@ -149,7 +158,8 @@ export const layer: Layer.Layer<
     const agent = yield* Agent.Service
     // kilocode_change start
     const suggesttool = yield* SuggestTool
-    const kiloToolInfos = yield* KiloToolRegistry.infos()
+    const notebook = Option.getOrUndefined(yield* Effect.serviceOption(Notebook.Service))
+    const kiloToolInfos = yield* KiloToolRegistry.infos(notebook)
     // kilocode_change end
 
     const state = yield* InstanceState.make<State>(
@@ -310,7 +320,7 @@ export const layer: Layer.Layer<
 
     const all: Interface["all"] = Effect.fn("ToolRegistry.all")(function* () {
       const s = yield* InstanceState.get(state)
-      return [...s.builtin, ...s.custom] as Tool.Def[]
+      return [...s.builtin.map(ToolNetwork.builtin), ...s.custom] as Tool.Def[] // kilocode_change
     })
 
     const ids: Interface["ids"] = Effect.fn("ToolRegistry.ids")(function* () {
@@ -353,15 +363,12 @@ export const layer: Layer.Layer<
 
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
       const filtered = (yield* all()).filter((tool) => {
+        if (!KiloToolRegistry.available(tool, input.agent)) return false // kilocode_change
         if (tool.id === WebSearchTool.id) {
           return webSearchEnabled(input.providerID, { exa: flags.enableExa, parallel: flags.enableParallel })
         }
 
-        const usePatch =
-          // kilocode_change start
-          !!process.env["KILO_E2E_LLM_URL"] ||
-          (input.modelID.includes("gpt-") && !input.modelID.includes("oss") && !input.modelID.includes("gpt-4"))
-        // kilocode_change end
+        const usePatch = KiloToolRegistry.usePatch(input) // kilocode_change
         if (tool.id === ApplyPatchTool.id) return usePatch
         if (tool.id === EditTool.id) return !usePatch // kilocode_change
 
@@ -382,7 +389,8 @@ export const layer: Layer.Layer<
             output.parameters === tool.parameters || output.jsonSchema !== tool.jsonSchema
               ? output.jsonSchema
               : undefined
-          return {
+          // kilocode_change start
+          const result = {
             id: tool.id,
             description: [
               output.description,
@@ -396,6 +404,8 @@ export const layer: Layer.Layer<
             execute: tool.execute,
             formatValidationError: tool.formatValidationError,
           }
+          return ToolNetwork.isBuiltin(tool) ? ToolNetwork.builtin(result) : result
+          // kilocode_change end
         }),
         { concurrency: "unbounded" },
       )
@@ -429,15 +439,24 @@ export const defaultLayer = Layer.suspend(
         Layer.provide(Instruction.defaultLayer),
         Layer.provide(AppFileSystem.defaultLayer),
         Layer.provide(Bus.layer),
-        Layer.provide(FetchHttpClient.layer),
+        Layer.provide(ToolNetwork.httpLayer), // kilocode_change
         Layer.provide(Format.defaultLayer),
         Layer.provide(CrossSpawnSpawner.defaultLayer),
-        Layer.provide(Ripgrep.defaultLayer),
+        // kilocode_change start
+        Layer.provide(
+          Ripgrep.layer.pipe(
+            Layer.provide(ToolNetwork.httpLayer),
+            Layer.provide(AppFileSystem.defaultLayer),
+            Layer.provide(CrossSpawnSpawner.defaultLayer),
+          ),
+        ),
+        // kilocode_change end
         Layer.provide(Truncate.defaultLayer),
       )
       // kilocode_change start - provide Kilo-owned registry dependencies
       .pipe(
         Layer.provide(Command.defaultLayer),
+        Layer.provide(Notebook.defaultLayer),
         Layer.provide(RuntimeFlags.defaultLayer),
         Layer.provide(SessionStatus.defaultLayer),
       ),
