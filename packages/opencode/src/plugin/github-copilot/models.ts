@@ -126,8 +126,11 @@ function build(key: string, remote: Item, url: string, prev?: Model): Model {
         variants[effort] = {
           thinking: {
             type: "adaptive",
-            // kilocode_change start - treat opus-4.8 like opus-4.7
-            ...(model.api.id.includes("opus-4.7") || model.api.id.includes("opus-4.8")
+            // kilocode_change start - treat opus-4.8, fable, and sonnet-5 like opus-4.7
+            ...(model.api.id.includes("opus-4.7") ||
+            model.api.id.includes("opus-4.8") ||
+            model.api.id.toLowerCase().includes("fable") ||
+            /sonnet[.-]5/.test(model.api.id.toLowerCase())
               ? { display: "summarized" }
               : {}),
             // kilocode_change end
