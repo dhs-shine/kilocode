@@ -228,30 +228,50 @@ it.instance(
 )
 
 it.instance(
-  "overrides config off for only one session",
+  "persists a toggle so new sessions inherit the last choice",
   () =>
     Effect.gen(function* () {
-      const first = SessionID.make("ses_sandbox_override_off")
-      const second = SessionID.make("ses_sandbox_config_stays_on")
+      const first = SessionID.make("ses_sandbox_persist_off")
+      const second = SessionID.make("ses_sandbox_persist_inherit")
       if (!(yield* SandboxPolicy.status(first)).available) return
 
       expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(false)
       expect(yield* execute(first, sandboxed)).toBe(false)
-      expect(yield* execute(second, sandboxed)).toBe(true)
+      expect((yield* SandboxPolicy.status(second)).enabled).toBe(false)
+      expect(yield* execute(second, sandboxed)).toBe(false)
     }),
   { config: { experimental: { sandbox: true } } },
 )
 
-it.instance("trusted toggles enable only one authless config-off session", () =>
+it.instance("persists an authless toggle to later sessions", () =>
   Effect.gen(function* () {
-    const first = SessionID.make("ses_sandbox_override_on")
-    const second = SessionID.make("ses_sandbox_default_remains_off")
+    const first = SessionID.make("ses_sandbox_authless_persist")
+    const second = SessionID.make("ses_sandbox_authless_inherit")
     if (!(yield* SandboxPolicy.status(first)).available) return
 
     expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(true)
     expect(yield* execute(first, sandboxed)).toBe(true)
-    expect(yield* execute(second, sandboxed)).toBe(false)
+    expect((yield* SandboxPolicy.status(second)).enabled).toBe(true)
+    expect(yield* execute(second, sandboxed)).toBe(true)
   }),
+)
+
+it.instance(
+  "remembers a later toggle back on for new sessions",
+  () =>
+    Effect.gen(function* () {
+      const first = SessionID.make("ses_sandbox_roundtrip_a")
+      const second = SessionID.make("ses_sandbox_roundtrip_b")
+      const third = SessionID.make("ses_sandbox_roundtrip_c")
+      if (!(yield* SandboxPolicy.status(first)).available) return
+
+      yield* SandboxPolicy.toggle(first)
+      expect((yield* SandboxPolicy.status(second)).enabled).toBe(false)
+      yield* SandboxPolicy.toggle(second)
+      expect((yield* SandboxPolicy.status(third)).enabled).toBe(true)
+      expect(yield* execute(third, sandboxed)).toBe(true)
+    }),
+  { config: { experimental: { sandbox: true } } },
 )
 
 it.instance("isolates concurrent session overrides and clears them", () =>
@@ -263,6 +283,9 @@ it.instance("isolates concurrent session overrides and clears them", () =>
       expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(false)
       return
     }
+    // Seed second with its own stored snapshot before any toggle, so its state
+    // stays independent of the per-directory preference that toggles now persist.
+    expect((yield* SandboxPolicy.status(second)).enabled).toBe(false)
 
     expect((yield* SandboxPolicy.toggle(first)).enabled).toBe(true)
     expect((yield* SandboxPolicy.status(second)).enabled).toBe(false)
@@ -270,6 +293,8 @@ it.instance("isolates concurrent session overrides and clears them", () =>
     expect((yield* SandboxPolicy.toggle(second)).enabled).toBe(false)
     expect((yield* SandboxPolicy.status(first)).enabled).toBe(true)
     yield* SandboxPolicy.retire(first, (yield* TestInstance).directory, Effect.void)
+    // retire clears first's stored snapshot; it re-seeds from the persisted
+    // per-directory preference, which holds the last toggle (second -> false).
     expect((yield* SandboxPolicy.status(first)).enabled).toBe(false)
     expect((yield* SandboxPolicy.status(second)).enabled).toBe(false)
   }),
