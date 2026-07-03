@@ -1178,8 +1178,10 @@ export const SessionProvider: ParentComponent = (props) => {
             delete toolParts[failedKey]
           }),
         )
-        clearIfOn(cloudPreviewId, () => setLoading(false), failedKey)
-        clearIfOn(cloudPreviewId, () => setCloudPreviewId(null), failedKey)
+        // cloudPreviewId stores the raw cloud session id (see selectCloudSession),
+        // not the synthetic "cloud:<id>" key used for session/draft ids.
+        clearIfOn(cloudPreviewId, () => setLoading(false), message.cloudSessionId)
+        clearIfOn(cloudPreviewId, () => setCloudPreviewId(null), message.cloudSessionId)
         clearIfOn(currentSessionID, () => setCurrentSessionID(undefined), failedKey)
         clearIfOn(draftSessionID, () => setDraftSessionID(undefined), failedKey)
         showToast({
