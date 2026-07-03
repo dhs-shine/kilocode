@@ -750,8 +750,8 @@ export const RunCommand = effectCmd({
 
             if (event.type === "message.part.updated") {
               const part = event.properties.part
-              // kilocode_change start - track Task child sessions for --auto and --dangerously-skip-permissions replies
-              if (args.auto || args["dangerously-skip-permissions"]) KiloRunAuto.track(auto, part)
+              // kilocode_change start - track Task child sessions so permission replies can target them
+              KiloRunAuto.track(auto, part)
               // kilocode_change end
               if (part.sessionID !== sessionID) continue
 
@@ -855,11 +855,26 @@ export const RunCommand = effectCmd({
               }
               // kilocode_change end
 
-              // kilocode_change start - approve tracked Task child asks too, so subagents don't hang (#11903)
-              if (args["dangerously-skip-permissions"] && KiloRunAuto.allowed(auto, permission.sessionID)) {
+              // kilocode_change start - answer tracked Task child asks too, so subagents don't hang (#11903)
+              // Covers daemon/attach modes where the server evaluates permissions in another
+              // process and the in-process KiloHeadless deny cannot apply.
+              if (permission.sessionID !== sessionID) {
+                if (!KiloRunAuto.allowed(auto, permission.sessionID)) continue
+                if (args["dangerously-skip-permissions"]) {
+                  await client.permission.reply({
+                    requestID: permission.id,
+                    reply: "once",
+                  })
+                  continue
+                }
+                UI.println(
+                  UI.Style.TEXT_WARNING_BOLD + "!",
+                  UI.Style.TEXT_NORMAL +
+                    `subagent permission requested: ${permission.permission} (${permission.patterns.join(", ")}); auto-rejecting`,
+                )
                 await client.permission.reply({
                   requestID: permission.id,
-                  reply: "once",
+                  reply: "reject",
                 })
                 continue
               }
