@@ -10,6 +10,7 @@ import {
   createSignal,
   createMemo,
   createEffect,
+  on,
   onMount,
   onCleanup,
   batch,
@@ -22,9 +23,11 @@ import { useServer } from "./server"
 import { useProvider } from "./provider"
 import { useConfig } from "./config"
 import { useLanguage } from "./language"
+import { createCostAlertHandler } from "./cost-alert"
 import { showToast } from "@kilocode/kilo-ui/toast"
 import type {
   SessionInfo,
+  SessionModelUsage,
   SessionUpdate,
   Message,
   Part,
@@ -57,6 +60,7 @@ import {
   buildCostBreakdown,
   buildSessionToolParts,
   childID,
+  reconcileSessionToolParts,
   removeSessionToolPart,
   removeSessionToolPartsForMessage,
   upsertSessionToolPart,
@@ -73,6 +77,7 @@ import { KILO_AUTO, KILO_PROVIDER_ID, parseModelString } from "../../../src/shar
 import { reviewMetadata, type ReviewMessageData } from "../../../src/shared/review-comments"
 import { visibleMessages as filterVisibleMessages } from "./session-queue"
 import { createAbortState } from "./abort-state"
+import { isSameSessionTree } from "./model-usage"
 
 const RECENT_LIMIT = 5
 const MESSAGE_PAGE_LIMIT = 80
@@ -108,6 +113,7 @@ interface SessionStore {
   variantSelections: Record<string, string> // session/agent scoped variant key -> variant name
   recentModels: ModelSelection[]
   favoriteModels: ModelSelection[]
+  modelUsage: Record<string, { requestID: string; data?: SessionModelUsage }>
 }
 
 interface SessionContextValue {
@@ -193,6 +199,8 @@ interface SessionContextValue {
   // Cost and context usage for the current session
   costBreakdown: Accessor<Array<{ label: string; cost: number }>>
   contextUsage: Accessor<ContextUsage | undefined>
+  modelUsage: Accessor<SessionModelUsage | undefined>
+  refreshModelUsage: () => void
 
   // Skills loaded from the CLI backend
   skills: Accessor<SkillInfo[]>
@@ -268,6 +276,7 @@ interface SessionContextValue {
   ) => void
   replyToQuestion: (requestID: string, answers: string[][]) => void
   rejectQuestion: (requestID: string) => void
+  closeQuestion: (requestID: string) => void
   acceptSuggestion: (requestID: string, index: number) => void
   dismissSuggestion: (requestID: string) => void
   createSession: () => void
@@ -353,6 +362,7 @@ export const SessionProvider: ParentComponent = (props) => {
 
   // Pending questions
   const [questions, setQuestions] = createSignal<QuestionRequest[]>([])
+  const cah = createCostAlertHandler(vscode.postMessage, handleQuestionRequest, handleQuestionResolved, language.t)
 
   // Tracks question IDs that failed so the UI can reset sending state
   const [questionErrors, setQuestionErrors] = createSignal<Set<string>>(new Set())
@@ -499,7 +509,27 @@ export const SessionProvider: ParentComponent = (props) => {
     variantSelections: {},
     recentModels: [],
     favoriteModels: [],
+    modelUsage: {},
   })
+  const [modelUsageReady, setModelUsageReady] = createSignal(false)
+  let modelUsageQueued = false
+
+  function refreshModelUsage() {
+    const sessionID = currentSessionID()
+    if (!sessionID || sessionID.startsWith("cloud:")) return
+    const requestID = crypto.randomUUID()
+    setStore("modelUsage", sessionID, { requestID, data: store.modelUsage[sessionID]?.data })
+    vscode.postMessage({ type: "requestSessionModelUsage", sessionID, requestID })
+  }
+
+  function queueModelUsageRefresh() {
+    if (modelUsageQueued) return
+    modelUsageQueued = true
+    queueMicrotask(() => {
+      modelUsageQueued = false
+      refreshModelUsage()
+    })
+  }
 
   // Per-session agent selection
   const selectedAgentName = createMemo<string>(() => {
@@ -982,10 +1012,48 @@ export const SessionProvider: ParentComponent = (props) => {
     return false
   }
 
+  function handleModelUsageMessage(message: ExtensionMessage): boolean {
+    if (message.type !== "sessionModelUsageLoaded") return false
+    const state = store.modelUsage[message.sessionID]
+    if (state?.requestID === message.requestID) {
+      setStore("modelUsage", message.sessionID, { requestID: message.requestID, data: message.data })
+    }
+    return true
+  }
+
+  function refreshModelUsageForMessage(message: ExtensionMessage) {
+    if (message.type === "sessionModelUsageChanged") {
+      if (modelUsageRelated(message.sessionID)) queueModelUsageRefresh()
+      return
+    }
+    if (message.type === "partUpdated") {
+      if (message.part.type === "step-finish" && modelUsageRelated(message.sessionID)) queueModelUsageRefresh()
+      return
+    }
+    if (message.type === "partsUpdated") {
+      if (message.updates.some((item) => item.part.type === "step-finish" && modelUsageRelated(item.sessionID))) {
+        queueModelUsageRefresh()
+      }
+      return
+    }
+    if (message.type === "partRemoved" || message.type === "messageRemoved" || message.type === "sessionDeleted") {
+      if (modelUsageRelated(message.sessionID, store.sessions[message.sessionID]?.parentID)) queueModelUsageRefresh()
+      return
+    }
+    if (message.type === "sessionCreated" && modelUsageRelated(message.session.id, message.session.parentID)) {
+      queueModelUsageRefresh()
+      return
+    }
+    if (message.type === "extensionDataReady") queueModelUsageRefresh()
+  }
+
   function handleExtensionMessage(message: ExtensionMessage): void {
     // Route suggestion messages (extracted to stay within complexity limit)
     routeSuggestionMessage(message)
+    if (handleModelUsageMessage(message)) return
+    refreshModelUsageForMessage(message)
     if (handleStreamMessage(message)) return
+    cah.handleMessage(message)
     switch (message.type) {
       case "sessionCreated":
         handleSessionCreated(message.session, message.draftID)
@@ -1109,6 +1177,7 @@ export const SessionProvider: ParentComponent = (props) => {
   // Handle messages from extension
   onMount(() => {
     const unsubscribe = vscode.onMessage(handleExtensionMessage)
+    setModelUsageReady(true)
     onCleanup(unsubscribe)
   })
 
@@ -1290,12 +1359,16 @@ export const SessionProvider: ParentComponent = (props) => {
     return true
   }
 
+  function setTools(sessionID: string, tools: ToolPart[]) {
+    setStore("toolParts", sessionID, reconcileSessionToolParts(tools))
+  }
+
   function rebuildToolParts(sessionID: string, messages: Message[], parts?: Record<string, Part[]>) {
     const tools = buildSessionToolParts(
       messages,
       (msg) => parts?.[msg.id] ?? store.parts[msg.id] ?? stash.peek(msg.id) ?? msg.parts,
     )
-    setStore("toolParts", sessionID, tools)
+    setTools(sessionID, tools)
   }
 
   function messageParts(messages: Message[]): Record<string, Part[]> {
@@ -1310,16 +1383,17 @@ export const SessionProvider: ParentComponent = (props) => {
     const sid = sessionID ?? part.sessionID
     if (!sid) return
     if (part.type !== "tool") return
-    setStore("toolParts", sid, (tools = []) => upsertSessionToolPart(tools, part, { id: messageID, sessionID: sid }))
+    const tools = upsertSessionToolPart(store.toolParts[sid] ?? [], part, { id: messageID, sessionID: sid })
+    setTools(sid, tools)
   }
 
   function dropToolPart(sessionID: string | undefined, partID: string) {
     if (!sessionID) return
-    setStore("toolParts", sessionID, (tools = []) => removeSessionToolPart(tools, partID))
+    setTools(sessionID, removeSessionToolPart(store.toolParts[sessionID] ?? [], partID))
   }
 
   function dropMessageTools(sessionID: string, messageID: string) {
-    setStore("toolParts", sessionID, (tools = []) => removeSessionToolPartsForMessage(tools, messageID))
+    setTools(sessionID, removeSessionToolPartsForMessage(store.toolParts[sessionID] ?? [], messageID))
   }
 
   function handleMessagesLoaded(
@@ -1752,9 +1826,24 @@ export const SessionProvider: ParentComponent = (props) => {
     return sessionIDs(rootID, (sid) => store.messages[sid] ?? [])
   }
 
+  function modelUsageRelated(sessionID: string, parentID?: string | null): boolean {
+    const current = currentSessionID()
+    if (!current) return false
+    const ids = store.modelUsage[current]?.data?.sessionIDs
+    if (ids?.includes(sessionID) || (!!parentID && ids?.includes(parentID))) return true
+    const family = sessionFamily(current)
+    if (family.has(sessionID) || (!!parentID && family.has(parentID))) return true
+    return isSameSessionTree(current, sessionID, (id) => store.sessions[id], parentID)
+  }
+
   function visibleFamily(rootID: string): Set<string> {
     return sessionIDs(rootID, visible)
   }
+
+  createEffect(() => {
+    if (!modelUsageReady() || !server.isConnected() || !currentSessionID()) return
+    untrack(refreshModelUsage)
+  })
 
   /** Return permissions scoped to the given session's family (self + subagents). */
   function scopedPermissions(sessionID: string | undefined): PermissionRequest[] {
@@ -1864,6 +1953,14 @@ export const SessionProvider: ParentComponent = (props) => {
         "todos",
         produce((todos) => {
           delete todos[sessionID]
+        }),
+      )
+      setStore(
+        "modelUsage",
+        produce((usage) => {
+          for (const [id, state] of Object.entries(usage)) {
+            if (id === sessionID || state.data?.sessionIDs.includes(sessionID)) delete usage[id]
+          }
         }),
       )
       setPages(
@@ -2163,7 +2260,7 @@ export const SessionProvider: ParentComponent = (props) => {
     const suggestion = scopedSuggestions(sid)[0]
     if (suggestion) dismissSuggestion(suggestion.id)
     for (const q of scopedQuestions(sid)) {
-      rejectQuestion(q.id)
+      dismissQuestion(q.id)
     }
 
     const scope = draftID ?? sid
@@ -2231,7 +2328,7 @@ export const SessionProvider: ParentComponent = (props) => {
     const suggestion = scopedSuggestions(sid)[0]
     if (suggestion) dismissSuggestion(suggestion.id)
     for (const q of scopedQuestions(sid)) {
-      rejectQuestion(q.id)
+      dismissQuestion(q.id)
     }
 
     const scope = draftID ?? sid
@@ -2342,6 +2439,7 @@ export const SessionProvider: ParentComponent = (props) => {
     clearQuestionError(requestID)
     const question = questions().find((item) => item.id === requestID)
     const sessionID = question?.sessionID ?? currentSessionID() ?? ""
+    if (cah.reply(requestID, "continue")) return
     vscode.postMessage({
       type: "questionReply",
       requestID,
@@ -2350,10 +2448,20 @@ export const SessionProvider: ParentComponent = (props) => {
     })
   }
 
+  function dismissQuestion(requestID: string) {
+    questions().find((item) => item.id === requestID)?.dismissResponse === "continue"
+      ? replyToQuestion(requestID, [])
+      : rejectQuestion(requestID)
+  }
+
+  function closeQuestion(id: string) {
+    cah.close(id, dismissQuestion)
+  }
   function rejectQuestion(requestID: string) {
     clearQuestionError(requestID)
     const question = questions().find((item) => item.id === requestID)
     const sessionID = question?.sessionID ?? currentSessionID() ?? ""
+    if (cah.reply(requestID, "stop")) return
     vscode.postMessage({
       type: "questionReject",
       requestID,
@@ -2427,26 +2535,60 @@ export const SessionProvider: ParentComponent = (props) => {
     })
   }
 
+  // Session whose message fetch was deferred because the backend was offline at
+  // selection time. Replayed by the reconnect effect below.
+  let deferredFetch: string | undefined
+
   function selectSession(id: string) {
-    if (!server.isConnected()) {
-      console.warn("[Kilo New] Cannot select session: not connected")
-      return
-    }
+    // Cloud preview sessions use a separate keyed path (selectCloudSession).
     if (id.startsWith("cloud:")) {
       console.warn("[Kilo New] Cannot select cloud preview session via selectSession")
       return
     }
     const ready = loaded().has(id)
+    // Reflect the selection locally and synchronously so the chat always tracks
+    // the sidebar/tab selection. These are local signals and need no backend, so
+    // they update even while disconnected. Bailing out here when not connected
+    // froze the chat on the previous session while the side diff (resolved from
+    // the worktree selection) still moved (the reported "only the diff changes").
     setCurrentSessionID(id)
     setDraftSessionID(id)
     setLoading(!ready)
-    if (ready) {
-      vscode.postMessage({ type: "loadMessages", sessionID: id, mode: "focus" })
+    if (!ready) patchPage(id, { loadingInitial: true, loadingOlder: false, before: undefined, hasMore: false })
+    // Only the message fetch needs the backend. Defer it while offline and let
+    // the reconnect effect replay it. We defer even for cached sessions: the
+    // load message is what re-focuses the backend (focusSession, contextSessionID,
+    // SSE tracking, active worktree) and runs the reconcile self-heal, so skipping
+    // it would leave the extension focused on the previously selected session.
+    if (!server.isConnected()) {
+      deferredFetch = id
       return
     }
-    patchPage(id, { loadingInitial: true, loadingOlder: false, before: undefined, hasMore: false })
-    vscode.postMessage({ type: "loadMessages", sessionID: id, mode: "replace", limit: MESSAGE_PAGE_LIMIT })
+    deferredFetch = undefined
+    loadFocusedMessages(id, ready)
   }
+
+  function loadFocusedMessages(id: string, ready: boolean) {
+    vscode.postMessage(
+      ready
+        ? { type: "loadMessages", sessionID: id, mode: "focus" }
+        : { type: "loadMessages", sessionID: id, mode: "replace", limit: MESSAGE_PAGE_LIMIT },
+    )
+  }
+
+  // Replay a fetch deferred while offline once the backend reconnects. Scoped to
+  // the still-current session so the normal connected path never double-fetches.
+  // Uses the same focus/replace choice as a live selection so a reconnect after
+  // a cached-session switch still re-focuses the backend and reconciles.
+  createEffect(
+    on(server.isConnected, (connected) => {
+      if (!connected) return
+      const id = deferredFetch
+      deferredFetch = undefined
+      if (!id || id !== currentSessionID()) return
+      loadFocusedMessages(id, loaded().has(id))
+    }),
+  )
 
   function selectCloudSession(cloudSessionId: string) {
     if (!server.isConnected()) {
@@ -2550,8 +2692,10 @@ export const SessionProvider: ParentComponent = (props) => {
   const userMessages = createMemo(() => messages().filter((m) => m.role === "user"))
 
   function visible(sessionID: string) {
-    return filterVisibleMessages(store.messages[sessionID] ?? [], store.sessions[sessionID]?.revert?.messageID, (msg) =>
-      getParts(msg.id),
+    return filterVisibleMessages(
+      store.messages[sessionID] ?? [],
+      store.sessions[sessionID]?.revert ?? undefined,
+      (msg) => getParts(msg.id),
     )
   }
 
@@ -2676,6 +2820,11 @@ export const SessionProvider: ParentComponent = (props) => {
     return fallback
   })
 
+  const modelUsage = createMemo<SessionModelUsage | undefined>(() => {
+    const id = currentSessionID()
+    return id ? store.modelUsage[id]?.data : undefined
+  })
+
   const contextUsage = createMemo<ContextUsage | undefined>(() => {
     const msgs = visibleMessages()
     for (let i = msgs.length - 1; i >= 0; i--) {
@@ -2732,6 +2881,8 @@ export const SessionProvider: ParentComponent = (props) => {
     clearModelOverride,
     costBreakdown,
     contextUsage,
+    modelUsage,
+    refreshModelUsage,
     agents,
     allAgents,
     skills,
@@ -2793,6 +2944,7 @@ export const SessionProvider: ParentComponent = (props) => {
     respondToPermission,
     replyToQuestion,
     rejectQuestion,
+    closeQuestion,
     acceptSuggestion,
     dismissSuggestion,
     createSession,

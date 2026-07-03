@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "7.3.46",
+  "version": "7.3.63",
   "name": "@kilocode/cli",
   "type": "module",
   "license": "MIT",
@@ -10,6 +10,8 @@
     "test": "bun run script/test-runner.ts",
     "test:ci": "bun run script/test-runner.ts --ci",
     "test:httpapi": "bun run script/httpapi-exercise.ts --mode coverage --fail-on-missing --fail-on-skip && bun run script/httpapi-exercise.ts --mode auth --fail-on-missing --fail-on-skip && bun run script/httpapi-exercise.ts --mode effect --fail-on-missing --fail-on-skip",
+    "bench:test": "bun run script/bench-test-suite.ts",
+    "profile:test": "bun run script/profile-test-files.ts",
     "build": "bun run script/build.ts",
     "fix-node-pty": "bun run script/fix-node-pty.ts",
     "dev": "bun run --conditions=browser ./src/index.ts",
@@ -65,7 +67,8 @@
     "typescript": "catalog:",
     "vscode-languageserver-types": "3.17.5",
     "why-is-node-running": "3.2.2",
-    "@types/npmcli__arborist": "6.3.3"
+    "@types/npmcli__arborist": "6.3.3",
+    "@opencode-ai/http-recorder": "workspace:*"
   },
   "dependencies": {
     "@actions/core": "1.11.1",
@@ -102,6 +105,7 @@
     "@kilocode/kilo-telemetry": "workspace:*",
     "@kilocode/plugin": "workspace:*",
     "@kilocode/plugin-atomic-chat": "workspace:*",
+    "@kilocode/sandbox": "workspace:*",
     "@kilocode/sdk": "workspace:*",
     "@lydell/node-pty": "catalog:",
     "@modelcontextprotocol/sdk": "1.29.0",
@@ -109,6 +113,7 @@
     "@npmcli/arborist": "9.4.0",
     "@octokit/graphql": "9.0.2",
     "@octokit/rest": "catalog:",
+    "@opencode-ai/llm": "workspace:*",
     "@opencode-ai/script": "workspace:*",
     "@opencode-ai/ui": "workspace:*",
     "@openrouter/ai-sdk-provider": "2.9.0",
@@ -124,6 +129,7 @@
     "@silvia-odwyer/photon-node": "0.3.4",
     "@solid-primitives/event-bus": "1.1.2",
     "@solid-primitives/scheduled": "1.5.2",
+    "@types/ws": "8.18.1",
     "@zip.js/zip.js": "2.7.62",
     "ai": "catalog:",
     "ai-gateway-provider": "3.1.2",
@@ -138,7 +144,7 @@
     "drizzle-orm": "catalog:",
     "effect": "catalog:",
     "fuzzysort": "3.1.0",
-    "gitlab-ai-provider": "6.6.0",
+    "gitlab-ai-provider": "6.8.0",
     "google-auth-library": "10.5.0",
     "gray-matter": "4.0.3",
     "htmlparser2": "8.0.2",
@@ -168,6 +174,7 @@
     "vscode-jsonrpc": "8.2.1",
     "web-tree-sitter": "0.25.10",
     "which": "6.0.1",
+    "ws": "8.21.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "yargs": "18.0.0",
     "zod": "catalog:"
