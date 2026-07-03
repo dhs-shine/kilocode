@@ -2,7 +2,7 @@ import type { ProviderAuthAuthorization, ProviderAuthMethod } from "@kilocode/sd
 import type { DiffSourceCapabilities, DiffSourceDescriptor } from "../../../../src/diff/sources/types"
 import type { PartBatch, PartRemove, PartUpdate } from "../../../../src/shared/stream-messages"
 import type { SessionMode } from "../../context/worktree-mode"
-import type { MarketplaceItem, MarketplaceInstalledMetadata } from "../marketplace"
+import type { MarketplaceItem, MarketplaceInstalledMetadata, MarketplaceRelevanceMetadata } from "../marketplace"
 import type { ConnectionState, ServerInfo, SessionStatus } from "./connection"
 import type { FileAttachment, Part } from "./parts"
 import type {
@@ -11,12 +11,14 @@ import type {
   MessageLoadMode,
   SessionCloseReason,
   SessionInfo,
+  SessionModelUsage,
   SessionUpdate,
 } from "./sessions"
 import type { PermissionRequest } from "./permissions"
+import type { AnacondaDesktopExtensionMessage } from "../../../../src/shared/anaconda-desktop-messages"
 import type { QuestionRequest, SuggestionRequest, TodoItem } from "./questions"
 import type { ModelSelection, Provider, ProviderAuthState } from "./providers"
-import type { AgentInfo, SkillInfo, SlashCommandInfo } from "./agents"
+import type { AgentInfo, AgentRequirementResult, SkillInfo, SlashCommandInfo } from "./agents"
 import type { BrowserSettings, Config, FeatureFlags, IndexingStatus, KiloEmbeddingModelCatalog } from "./config"
 import type { WorkStyle, WorkStyleState } from "../../../../src/shared/work-style-presets"
 import type { KilocodeNotification, ProfileData } from "./profile"
@@ -39,10 +41,10 @@ import type {
   WorktreeState,
 } from "./agent-manager"
 import type {
-  LegacyMigrationCompleteMessage,
-  LegacyMigrationDataMessage,
-  LegacyMigrationProgressMessage,
-  LegacyMigrationSessionProgressMessage,
+  MigrationCompleteMessage,
+  MigrationDataMessage,
+  MigrationProgressMessage,
+  MigrationSessionProgressMessage,
   MigrationStateMessage,
 } from "./migration"
 
@@ -193,6 +195,18 @@ export interface MessagesLoadedMessage {
   since?: number
 }
 
+export interface SessionModelUsageLoadedMessage {
+  type: "sessionModelUsageLoaded"
+  sessionID: string
+  requestID: string
+  data?: SessionModelUsage
+}
+
+export interface SessionModelUsageChangedMessage {
+  type: "sessionModelUsageChanged"
+  sessionID: string
+}
+
 export interface MessageCreatedMessage {
   type: "messageCreated"
   message: Message
@@ -241,7 +255,8 @@ export interface OpenCloudSessionMessage {
 
 export interface SelectKiloModelMessage {
   type: "selectKiloModel"
-  modelID: string
+  modelID?: string
+  agent?: string
 }
 
 export interface ActionMessage {
@@ -313,6 +328,13 @@ export interface IndexingStatusLoadedMessage {
   status: IndexingStatus
 }
 
+export interface IndexingSettingsLoadedMessage {
+  type: "indexingSettingsLoaded"
+  settings: {
+    showButtonWhenDisabled: boolean
+  }
+}
+
 export interface KiloEmbeddingModelsLoadedMessage {
   type: "kiloEmbeddingModelsLoaded"
   catalog: KiloEmbeddingModelCatalog
@@ -338,6 +360,15 @@ export interface AgentsLoadedMessage {
 export interface SkillsLoadedMessage {
   type: "skillsLoaded"
   skills: SkillInfo[]
+}
+
+export interface AgentRequirementsLoadedMessage {
+  type: "agentRequirementsLoaded"
+  result: AgentRequirementResult
+}
+
+export interface AgentRequirementsInvalidatedMessage {
+  type: "agentRequirementsInvalidated"
 }
 
 export interface CommandsLoadedMessage {
@@ -441,6 +472,19 @@ export interface QuestionErrorMessage {
   requestID: string
 }
 
+export interface SessionCostAlertMessage {
+  type: "sessionCostAlert"
+  sessionID: string
+  limit: number
+  cost: string
+}
+
+export interface SessionCostAlertResolvedMessage {
+  type: "sessionCostAlertResolved"
+  sessionID: string
+  limit: number
+}
+
 export interface SuggestionRequestMessage {
   type: "suggestionRequest"
   suggestion: SuggestionRequest
@@ -466,11 +510,17 @@ export interface ClaudeCompatSettingLoadedMessage {
   enabled: boolean
 }
 
+export interface ExtensionSettings {
+  maxCost?: number
+  [key: string]: unknown
+}
+
 export interface ConfigLoadedMessage {
   type: "configLoaded"
   config: Config
   globalConfig?: Config
   projectConfig?: Config
+  settings?: ExtensionSettings
   features: FeatureFlags
 }
 
@@ -479,6 +529,7 @@ export interface ConfigUpdatedMessage {
   config: Config
   globalConfig?: Config
   projectConfig?: Config
+  settings?: ExtensionSettings
   features: FeatureFlags
 }
 
@@ -636,6 +687,37 @@ export interface AutoApproveStateMessage {
   active: boolean
 }
 
+export interface SandboxStatusMessage {
+  type: "sandboxStatus"
+  sessionID: string
+  enabled: boolean
+  available: boolean
+  reason?: string
+  version: number
+  directory: string
+  revision: number
+  requestID?: string
+}
+
+export interface SandboxDefaultStatusMessage {
+  type: "sandboxDefaultStatus"
+  desired: boolean
+  enabled: boolean
+  available: boolean
+  reason?: string
+  revision: number
+  requestID?: string
+}
+
+export interface SandboxStatusErrorMessage {
+  type: "sandboxStatusError"
+  sessionID: string
+  directory: string
+  message: string
+  revision: number
+  requestID?: string
+}
+
 // Multi-version creation progress (extension → webview)
 export interface AgentManagerMultiVersionProgressMessage {
   type: "agentManager.multiVersionProgress"
@@ -654,6 +736,12 @@ export interface VariantsLoadedMessage {
 export interface RecentsLoadedMessage {
   type: "recentsLoaded"
   recents: ModelSelection[]
+}
+
+// Persisted model-selector expand/collapse preference (extension → webview)
+export interface ModelSelectorExpandedLoadedMessage {
+  type: "modelSelectorExpandedLoaded"
+  value: boolean
 }
 
 export interface FavoritesLoadedMessage {
@@ -880,6 +968,7 @@ export interface MarketplaceDataMessage {
   type: "marketplaceData"
   marketplaceItems: MarketplaceItem[]
   marketplaceInstalledMetadata: MarketplaceInstalledMetadata
+  marketplaceRelevance: MarketplaceRelevanceMetadata
   errors?: string[]
   showAgentMigrationBanner?: boolean
 }
@@ -889,6 +978,11 @@ export interface MarketplaceInstallResultMessage {
   success: boolean
   slug: string
   error?: string
+}
+
+export interface OpenInstallModalMessage {
+  type: "openInstallModal"
+  mpItem: MarketplaceItem
 }
 
 export interface MarketplaceRemoveResultMessage {
@@ -958,6 +1052,12 @@ export interface RemoteStatusMessage {
   connected: boolean
 }
 
+export interface ValidateFilesResultMessage {
+  type: "validateFilesResult"
+  id: string
+  existing: string[]
+}
+
 export type ExtensionMessage =
   | ReadyMessage
   | FontSizeChangedMessage
@@ -981,6 +1081,8 @@ export type ExtensionMessage =
   | SessionDeletedMessage
   | MessageRemovedMessage
   | MessagesLoadedMessage
+  | SessionModelUsageLoadedMessage
+  | SessionModelUsageChangedMessage
   | MessageCreatedMessage
   | SessionsLoadedMessage
   | CloudSessionsLoadedMessage
@@ -993,10 +1095,13 @@ export type ExtensionMessage =
   | DeviceAuthCancelledMessage
   | NavigateMessage
   | IndexingStatusLoadedMessage
+  | IndexingSettingsLoadedMessage
   | KiloEmbeddingModelsLoadedMessage
   | ProvidersLoadedMessage
   | AgentsLoadedMessage
   | SkillsLoadedMessage
+  | AgentRequirementsLoadedMessage
+  | AgentRequirementsInvalidatedMessage
   | CommandsLoadedMessage
   | AutocompleteSettingsLoadedMessage
   | ChatCompletionResultMessage
@@ -1012,6 +1117,8 @@ export type ExtensionMessage =
   | QuestionRequestMessage
   | QuestionResolvedMessage
   | QuestionErrorMessage
+  | SessionCostAlertMessage
+  | SessionCostAlertResolvedMessage
   | SuggestionRequestMessage
   | SuggestionResolvedMessage
   | SuggestionErrorMessage
@@ -1036,6 +1143,9 @@ export type ExtensionMessage =
   | AgentManagerRunStatusMessage
   | AgentManagerKeybindingsMessage
   | AutoApproveStateMessage
+  | SandboxStatusMessage
+  | SandboxDefaultStatusMessage
+  | SandboxStatusErrorMessage
   | AgentManagerMultiVersionProgressMessage
   | AgentManagerSetSessionModelMessage
   | AgentManagerSendInitialMessage
@@ -1068,10 +1178,10 @@ export type ExtensionMessage =
   | AgentManagerTerminalErrorMessage
   // legacy-migration start
   | MigrationStateMessage
-  | LegacyMigrationDataMessage
-  | LegacyMigrationProgressMessage
-  | LegacyMigrationSessionProgressMessage
-  | LegacyMigrationCompleteMessage
+  | MigrationDataMessage
+  | MigrationProgressMessage
+  | MigrationSessionProgressMessage
+  | MigrationCompleteMessage
   // legacy-migration end
   | EnhancePromptResultMessage
   | EnhancePromptErrorMessage
@@ -1088,12 +1198,15 @@ export type ExtensionMessage =
   | MarketplaceDataMessage
   | MarketplaceInstallResultMessage
   | MarketplaceRemoveResultMessage
+  | OpenInstallModalMessage
   | ProviderOAuthReadyMessage
   | ProviderConnectedMessage
   | ProviderDisconnectedMessage
   | ProviderActionErrorMessage
+  | AnacondaDesktopExtensionMessage
   | CustomProviderModelsFetchedMessage
   | RecentsLoadedMessage
+  | ModelSelectorExpandedLoadedMessage
   | FavoritesLoadedMessage
   | ModelSelectionsLoadedMessage
   | LanguageChangedMessage
@@ -1104,3 +1217,4 @@ export type ExtensionMessage =
   | ExtensionDataReadyMessage
   | TelemetryStateMessage
   | RemoteStatusMessage
+  | ValidateFilesResultMessage

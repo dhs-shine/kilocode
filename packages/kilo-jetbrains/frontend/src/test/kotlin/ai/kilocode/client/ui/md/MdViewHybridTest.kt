@@ -1,9 +1,13 @@
 package ai.kilocode.client.ui.md
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.test.CopyProviderSink
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.CodeInsightColors
@@ -15,6 +19,7 @@ import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.fileTypes.UnknownFileType
 import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.EditorTextField
@@ -25,9 +30,15 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Font
+import java.awt.Point
+import java.awt.event.MouseEvent
 import javax.swing.Box
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
+import javax.swing.event.HyperlinkEvent
+import javax.swing.text.html.HTML
+import javax.swing.text.html.HTMLDocument
+import java.awt.datatransfer.DataFlavor
 
 @Suppress("UnstableApiUsage")
 class MdViewHybridTest : BasePlatformTestCase() {
@@ -213,6 +224,96 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertTrue(pane.text.contains("<p>"))
         assertTrue(pane.text.contains("<ul>"))
         assertTrue(pane.text.contains("<li>"))
+    }
+
+    fun `test prose inline code is styled without code chrome or editor`() {
+        view.applyStyle(customStyle())
+
+        view.set("Use `packages/opencode/src/session/prompt.ts` here")
+        val pane = htmls().single()
+        val color = MdCommon.hex(SessionUiStyle.View.Markdown.string())
+
+        assertTrue(view.html().contains("<code style=\"color: $color\"><a class=\"kilo-file-ref\" href=\"packages/opencode/src/session/prompt.ts\">packages/opencode/src/session/prompt.ts</a></code>"))
+        assertTrue(pane.text.contains("<code style=\"color: $color\">"))
+        assertFalse(pane.text.contains("#cc8866"))
+        assertFalse(pane.text.contains("background:"))
+        assertTrue(scrolls().isEmpty())
+        assertTrue(editors().isEmpty())
+    }
+
+    fun `test prose file refs are styled as file links`() {
+        view.set("See packages/opencode/src/session/prompt.ts before continuing")
+        val html = view.html()
+
+        assertTrue(html.contains("<a class=\"kilo-file-ref\" href=\"packages/opencode/src/session/prompt.ts\">packages/opencode/src/session/prompt.ts</a>"))
+        assertTrue(view.overrideSheet().contains("a.kilo-file-ref, code a.kilo-file-ref"))
+        assertTrue(view.overrideSheet().contains("text-decoration: underline"))
+    }
+
+    fun `test prose links use platform hover underline listener`() {
+        view.set("See [docs](https://example.com)")
+
+        assertTrue(htmls().single().hyperlinkListeners.size > 1)
+    }
+
+    fun `test scrolling clears hovered prose link`() {
+        view.set("See [docs](https://example.com)\n\n" + (1..20).joinToString("\n") { "line $it" })
+        val pane = htmls().single()
+        val events = mutableListOf<HyperlinkEvent.EventType>()
+        pane.addHyperlinkListener {
+            if (it.description == "https://example.com") events.add(it.eventType)
+        }
+        val host = JBScrollPane(view.component)
+        host.setSize(420, 64)
+        view.component.setSize(420, view.component.preferredSize.height)
+        host.doLayout()
+        view.component.doLayout()
+        pane.doLayout()
+        val iter = (pane.document as HTMLDocument).getIterator(HTML.Tag.A)
+        assertTrue(iter.isValid)
+        val rect = pane.modelToView2D(iter.startOffset)!!.bounds
+
+        pane.dispatchEvent(MouseEvent(pane, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, rect.x + 1, rect.y + rect.height / 2, 0, false, MouseEvent.NOBUTTON))
+        host.viewport.viewPosition = Point(0, 32)
+        drainEdt()
+
+        assertTrue(events.contains(HyperlinkEvent.EventType.ENTERED))
+        assertTrue(events.contains(HyperlinkEvent.EventType.EXITED))
+    }
+
+    fun `test file ref links include line suffix and exclude punctuation`() {
+        view.set("See kilocode/session/prompt.ts:302, native-plan-prompt.txt:37-38.")
+        val html = view.html()
+
+        assertTrue(html.contains("href=\"kilocode/session/prompt.ts:302\">kilocode/session/prompt.ts:302</a>,"))
+        assertTrue(html.contains("href=\"native-plan-prompt.txt:37-38\">native-plan-prompt.txt:37-38</a>."))
+    }
+
+    fun `test existing links are not nested as file refs`() {
+        view.set("[prompt](packages/opencode/src/session/prompt.ts)")
+        val html = view.html()
+
+        assertTrue(html.contains("prompt"))
+        assertFalse(html.contains("kilo-file-ref"))
+    }
+
+    fun `test fenced code file refs are not linkified`() {
+        view.set("```text\npackages/opencode/src/session/prompt.ts\n```\n\nSee packages/opencode/src/session/prompt.ts")
+
+        assertEquals("packages/opencode/src/session/prompt.ts", editors().single().text)
+        assertFalse(view.html().substringBefore("</pre>").contains("kilo-file-ref"))
+        assertTrue(htmls().single().text.contains("kilo-file-ref"))
+    }
+
+    fun `test inline code and fenced code keep separate render paths`() {
+        view.applyStyle(customStyle())
+
+        view.set("Use `foo()` here\n\n```kotlin\nval x = 1\n```")
+        val color = MdCommon.hex(SessionUiStyle.View.Markdown.string())
+
+        assertTrue(htmls().single().text.contains("<code style=\"color: $color\">foo()</code>"))
+        assertEquals(1, scrolls().size)
+        assertEquals("val x = 1", editors().single().text)
     }
 
     fun `test code block separates surrounding prose runs`() {
@@ -725,7 +826,7 @@ class MdViewHybridTest : BasePlatformTestCase() {
     }
 
     fun `test applyStyle updates retained html block`() {
-        view.set("hello")
+        view.set("hello `code`")
         val pane = htmls().single()
         val style = SessionEditorStyle.create(family = "Courier New", size = 21)
 
@@ -735,6 +836,18 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertTrue(view.overrideSheet().contains(style.transcriptFont.name))
         assertTrue(view.overrideSheet().contains("Courier New"))
         assertTrue(view.overrideSheet().contains("21pt"))
+        assertTrue(pane.text.contains("<code style=\"color:"))
+    }
+
+    fun `test applyStyle updates retained inline code foreground`() {
+        view.set("hello `code`")
+        val pane = htmls().single()
+
+        view.applyStyle(customStyle())
+        val color = MdCommon.hex(SessionUiStyle.View.Markdown.string())
+
+        assertSame(pane, htmls().single())
+        assertTrue(pane.text.contains("<code style=\"color: $color\">code</code>"))
     }
 
     fun `test applyStyle reapplies same style to retained html block`() {
@@ -793,6 +906,33 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertEquals("https://example.com", received.single().href)
     }
 
+    fun `test markdown root and code child expose selection copy provider`() {
+        Disposer.dispose(view)
+        disposed = true
+        val selection = SessionSelection()
+        val local = MdViewFactory.hybrid(selection = selection)
+        try {
+            local.set("```text\nalpha code\n```")
+            val field = (local.component as JPanel).components
+                .filterIsInstance<JBScrollPane>()
+                .mapNotNull { it.viewport.view as? EditorTextField }
+                .single()
+            field.getEditor(true)!!.selectionModel.setSelection(0, 5)
+
+            val root = CopyProviderSink()
+            (local.component as UiDataProvider).uiDataSnapshot(root)
+            val child = CopyProviderSink()
+            (field as UiDataProvider).uiDataSnapshot(child)
+            child.copy!!.performCopy(DataContext.EMPTY_CONTEXT)
+
+            assertNotNull(root.copy)
+            assertEquals("alpha", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+        } finally {
+            Disposer.dispose(local)
+            selection.dispose()
+        }
+    }
+
     private fun scrolls(): List<JBScrollPane> = (view.component as JPanel).components.filterIsInstance<JBScrollPane>()
 
     private fun htmls(): List<JBHtmlPane> = (view.component as JPanel).components.filterIsInstance<JBHtmlPane>()
@@ -827,8 +967,20 @@ class MdViewHybridTest : BasePlatformTestCase() {
             TextAttributes(Color(0x10, 0x20, 0x30), Color(0x01, 0x02, 0x03), null, null, Font.PLAIN),
         )
         scheme.setAttributes(
+            DefaultLanguageHighlighterColors.DOC_COMMENT,
+            TextAttributes(Color(0x33, 0x44, 0x55), null, null, null, Font.PLAIN),
+        )
+        scheme.setAttributes(
+            DefaultLanguageHighlighterColors.LINE_COMMENT,
+            TextAttributes(Color(0x44, 0x55, 0x66), null, null, null, Font.PLAIN),
+        )
+        scheme.setAttributes(
             DefaultLanguageHighlighterColors.DOC_CODE_INLINE,
             TextAttributes(Color(0xAA, 0xBB, 0xCC), Color(0x11, 0x22, 0x33), null, null, Font.PLAIN),
+        )
+        scheme.setAttributes(
+            DefaultLanguageHighlighterColors.STRING,
+            TextAttributes(Color(0xCC, 0x88, 0x66), null, null, null, Font.PLAIN),
         )
         scheme.setAttributes(
             DefaultLanguageHighlighterColors.DOC_CODE_BLOCK,
