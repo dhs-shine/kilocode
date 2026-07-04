@@ -894,7 +894,7 @@ class SessionController(
         val job = cs.launch {
             try {
                 sessions.events(child, directory).collect { event ->
-                    if (!isChildPermissionEvent(event, child)) return@collect
+                    if (!isChildEvent(event, child)) return@collect
                     LOG.debug { "${ChatLogSummary.sid(sid ?: "pending")} kind=child-event child=$child ${ChatLogSummary.eventBody(event)}" }
                     updates.enqueue(event)
                 }
@@ -914,6 +914,7 @@ class SessionController(
         assertEdt()
         if (!childIds.add(child)) return
         subscribeChild(child)
+        cs.launch { seedChild(child) }
         cs.launch { recoverChildPermissions(child) }
     }
 
@@ -945,6 +946,27 @@ class SessionController(
             }
         } catch (e: Exception) {
             LOG.warn("${ChatLogSummary.sid(sid ?: "pending")} kind=child-recovery child=$child dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
+        }
+    }
+
+    private suspend fun seedChild(child: String) {
+        try {
+            val items = sessions.messages(child, directory)
+            runEdt {
+                if (disposed) return@runEdt
+                updateModel {
+                    for (msg in items) {
+                        if (msg.info.role != "assistant") continue
+                        for (part in msg.parts) {
+                            if (part.type == "tool") model.upsertChildTool(child, part, replace = false)
+                        }
+                    }
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            LOG.warn("${ChatLogSummary.sid(sid ?: "pending")} kind=child-history child=$child dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
         }
     }
 
@@ -1026,6 +1048,10 @@ class SessionController(
             }
 
             is ChatEventDto.PartUpdated -> {
+                if (childIds.contains(event.sessionID)) {
+                    if (event.part.type == "tool") model.upsertChildTool(event.sessionID, event.part)
+                    return
+                }
                 partType = event.part.type
                 tool = event.part.tool
                 val key = PartKey(event.part.messageID, event.part.id)
@@ -1051,6 +1077,10 @@ class SessionController(
             }
 
             is ChatEventDto.PartRemoved -> {
+                if (childIds.contains(event.sessionID)) {
+                    model.removeChildTool(event.sessionID, event.partID)
+                    return
+                }
                 snapshots.remove(PartKey(event.messageID, event.partID))
                 model.removeContent(event.messageID, event.partID)
             }
@@ -1918,8 +1948,10 @@ private fun childID(part: PartDto): String? {
     return part.metadata["sessionId"]
 }
 
-/** Returns true when [event] is a permission event for [child] (used by child subscriptions). */
-private fun isChildPermissionEvent(event: ChatEventDto, child: String): Boolean = when (event) {
+/** Returns true when [event] should be routed from a child subscription. */
+private fun isChildEvent(event: ChatEventDto, child: String): Boolean = when (event) {
+    is ChatEventDto.PartUpdated -> event.sessionID == child
+    is ChatEventDto.PartRemoved -> event.sessionID == child
     is ChatEventDto.PermissionAsked -> event.sessionID == child
     is ChatEventDto.PermissionReplied -> event.sessionID == child
     else -> false
