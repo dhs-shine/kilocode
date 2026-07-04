@@ -316,12 +316,19 @@ private fun rowTitleColor(tool: Tool) = if (tool.state == ToolExecState.ERROR) {
     UiStyle.Colors.weak()
 }
 
-private fun taskBodyBorder(glyph: JBLabel) = JBUI.Borders.empty(
-    UiStyle.Gap.sm(),
-    glyph.preferredSize.width + JBUI.scale(SessionUiStyle.View.Layout.GAP) + UiStyle.Gap.md(),
-    UiStyle.Gap.sm(),
-    UiStyle.Gap.md(),
-)
+private fun taskBodyBorder(glyph: JBLabel) = run {
+    val width = maxOf(
+        glyph.preferredSize.width,
+        glyph.icon?.iconWidth ?: 0,
+        JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING),
+    )
+    JBUI.Borders.empty(
+        UiStyle.Gap.sm(),
+        width + JBUI.scale(SessionUiStyle.View.Layout.GAP) + UiStyle.Gap.md(),
+        UiStyle.Gap.sm(),
+        UiStyle.Gap.md(),
+    )
+}
 
 private fun agentTitle(tool: Tool): String {
     val type = tool.input["subagent_type"]?.takeIf { it.isNotBlank() } ?: tool.name
