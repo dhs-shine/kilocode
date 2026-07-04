@@ -210,6 +210,7 @@ class ShellToolView(
         md.codeFont = style.editorFamily
         md.component.border = JBUI.Borders.empty()
         md.set(popupMd(formatCommand(cmd)))
+        padPopup(md.component)
         return HeaderPopupBody(PopupPanel(md.component), md, style.editorBackground)
     }
 
@@ -217,6 +218,17 @@ class ShellToolView(
 
     companion object {
         fun canRender(tool: Tool) = tool.name == "bash"
+    }
+}
+
+private fun padPopup(root: JComponent) {
+    root.components.filterIsInstance<JBScrollPane>().forEach { pane ->
+        val field = pane.viewport.view as? EditorTextField ?: return@forEach
+        field.border = JBUI.Borders.empty(SessionUiStyle.View.Code.SCROLLBAR_HEIGHT, 0, 0, 0)
+        val pad = JBUI.scale(SessionUiStyle.View.Code.SCROLLBAR_HEIGHT)
+        pane.preferredSize = Dimension(pane.preferredSize.width, pane.preferredSize.height + pad)
+        pane.minimumSize = Dimension(pane.minimumSize.width, pane.minimumSize.height + pad)
+        pane.maximumSize = Dimension(pane.maximumSize.width, pane.maximumSize.height + pad)
     }
 }
 

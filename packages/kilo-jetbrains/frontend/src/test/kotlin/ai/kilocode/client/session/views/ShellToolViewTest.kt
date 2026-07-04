@@ -401,6 +401,17 @@ class ShellToolViewTest : BasePlatformTestCase() {
 
             assertEquals(1, editors.size)
             assertEquals("echo one;\n echo two;\n echo three", editors.single().text)
+            val pane = popupScrollPanes(body.component).single { it.viewport.view is com.intellij.ui.EditorTextField }
+            val pad = pane.viewportBorder.getBorderInsets(pane)
+            val field = editors.single()
+            val border = field.border.getBorderInsets(field)
+            assertEquals(
+                SessionUiStyle.View.Code.VIEWPORT_TOP_PADDING,
+                pad.top,
+            )
+            assertEquals(SessionUiStyle.View.Code.VIEWPORT_BOTTOM_PADDING, pad.bottom)
+            assertEquals(SessionUiStyle.View.Code.SCROLLBAR_HEIGHT, border.top)
+            assertEquals(0, border.bottom)
             assertTrue(body.component.preferredSize.width in 1..JBUI.scale(SessionUiStyle.View.Popup.MAX_WIDTH))
             assertTrue(body.component.preferredSize.height > 0)
         } finally {
@@ -522,6 +533,16 @@ class ShellToolViewTest : BasePlatformTestCase() {
         val found = mutableListOf<com.intellij.ui.EditorTextField>()
         fun visit(component: JComponent) {
             if (component is com.intellij.ui.EditorTextField) found.add(component)
+            component.components.filterIsInstance<JComponent>().forEach(::visit)
+        }
+        visit(root)
+        return found
+    }
+
+    private fun popupScrollPanes(root: JComponent): List<JBScrollPane> {
+        val found = mutableListOf<JBScrollPane>()
+        fun visit(component: JComponent) {
+            if (component is JBScrollPane) found.add(component)
             component.components.filterIsInstance<JComponent>().forEach(::visit)
         }
         visit(root)
