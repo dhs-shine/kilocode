@@ -20,6 +20,7 @@ import ai.kilocode.client.session.views.MessageToolbar
 import ai.kilocode.client.session.views.MessageView
 import ai.kilocode.client.session.views.TextView
 import ai.kilocode.client.session.views.base.PartView
+import ai.kilocode.client.session.views.tool.TaskToolView
 import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.session.views.todo.TodoWriteView
 import ai.kilocode.rpc.dto.MessageDto
@@ -374,6 +375,33 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
 
         val mv = panel.findMessage("a1")!!
         assertTrue(mv.partIds().isEmpty())
+    }
+
+    fun `test child tool update refreshes collapsed task view without replacing it`() {
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent(
+            "a1",
+            toolPart(
+                "part_task",
+                "a1",
+                "task",
+                "call_task",
+                input = mapOf("subagent_type" to "explore", "description" to "Find files"),
+                metadata = mapOf("sessionId" to "ses_child"),
+            ),
+        )
+        model.upsertChildTool("ses_child", childTool("child_read", "read"))
+        val view = panel.findMessage("a1")!!.part("part_task") as TaskToolView
+
+        assertTrue(view.bodyVisible())
+        view.collapse()
+        model.upsertChildTool("ses_child", childTool("child_read", "grep"))
+
+        val updated = panel.findMessage("a1")!!.part("part_task") as TaskToolView
+        assertSame(view, updated)
+        assertFalse(updated.bodyVisible())
+        assertTrue(updated.rowLabels().single().contains("Grep"))
+        assertTrue(updated.rowLabels().single().contains("pattern=query"))
     }
 
     // ------ HistoryLoaded ------
@@ -802,6 +830,16 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
     ) = PartDto(
         id = id, sessionID = "ses", messageID = mid, type = "tool", tool = tool, callID = callId, state = state,
         input = input, metadata = metadata, todos = todos,
+    )
+
+    private fun childTool(id: String, tool: String) = PartDto(
+        id = id,
+        sessionID = "ses_child",
+        messageID = "child_msg",
+        type = "tool",
+        tool = tool,
+        state = "completed",
+        input = mapOf("filePath" to "src/Main.kt", "pattern" to "query"),
     )
 
     private fun root(view: QuestionResultView) = view.components[0] as JPanel
