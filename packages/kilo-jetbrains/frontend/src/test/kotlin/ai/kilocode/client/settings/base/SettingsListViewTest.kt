@@ -176,8 +176,7 @@ class SettingsListViewTest : BasePlatformTestCase() {
             view.list.doLayout()
             UIUtil.dispatchAllInvocationEvents()
 
-            val bounds = view.list.getCellBounds(0, 0)
-            val area = settingsListCellBounds(view.list, bounds, row, selected = true).getValue("edit")
+            val area = settingsListCellBounds(view.list, 0, selected = true).getValue("edit")
             val point = Point(area.x + area.width - 1, area.y + area.height - 1)
 
             click(view, point)
@@ -218,8 +217,7 @@ class SettingsListViewTest : BasePlatformTestCase() {
             view.list.doLayout()
             UIUtil.dispatchAllInvocationEvents()
 
-            val bounds = view.list.getCellBounds(0, 0)
-            val area = settingsListCellBounds(view.list, bounds, row, selected = true).getValue("edit")
+            val area = settingsListCellBounds(view.list, 0, selected = true).getValue("edit")
 
             click(view, center(area))
 
