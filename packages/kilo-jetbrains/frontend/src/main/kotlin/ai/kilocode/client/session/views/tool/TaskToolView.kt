@@ -81,42 +81,15 @@ class TaskToolView(
     }
 
     @RequiresEdt
-    fun labelText(): String = listOf(parts.title.text, subtitleText(parts), parts.state.text)
+    private fun labelText(): String = listOf(parts.title.text, subtitleText(parts), parts.state.text)
         .filter { it.isNotBlank() }
         .joinToString(" ")
 
     @RequiresEdt
-    fun rowCount(): Int = rows.size
+    private fun bodyVisible(): Boolean = isExpanded()
 
     @RequiresEdt
-    fun rowLabels(): List<String> = rows.values.map { row -> row.text() }
-
-    @RequiresEdt
-    fun bodyCreated(): Boolean = hasBody()
-
-    @RequiresEdt
-    fun bodyVisible(): Boolean = isExpanded()
-
-    @RequiresEdt
-    fun controlCount(): Int = if (arrow.isVisible) 1 else 0
-    @RequiresEdt
-    internal fun bodyMaxRows() = SessionUiStyle.View.Tool.TASK_LINES
-    @RequiresEdt
-    internal fun bodyScrollValue() = taskBodyOrNull()?.verticalScrollBar?.value ?: 0
-    @RequiresEdt
-    internal fun bodyScrollBottom() = taskBodyOrNull()?.let(::bottom) ?: 0
-    @RequiresEdt
-    internal fun setBodyScrollValue(value: Int) {
-        taskBodyOrNull()?.verticalScrollBar?.value = value
-    }
-    @RequiresEdt
-    internal fun horizontalPolicy() = taskBodyOrNull()?.horizontalScrollBarPolicy ?: ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-    @RequiresEdt
-    internal fun verticalPolicy() = taskBodyOrNull()?.verticalScrollBarPolicy ?: ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
-    @RequiresEdt
-    internal fun bodyInsets() = taskBody().panel.border.getBorderInsets(taskBody().panel)
-    @RequiresEdt
-    internal fun rowTitleColor(id: String) = rows[id]?.title?.foreground
+    private fun bodyMaxRows() = SessionUiStyle.View.Tool.TASK_LINES
 
     @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
@@ -279,9 +252,6 @@ class TaskToolView(
             changed = setFont(sub, style.smallEditorFont) || changed
             return update(item) || changed
         }
-
-        @RequiresEdt
-        fun text(): String = listOf(title.text, sub.text).filter { it.isNotBlank() }.joinToString(" ")
     }
 
     override fun dumpLabel() = "TaskToolView#$contentId(${labelText()})"
@@ -293,15 +263,13 @@ class TaskToolView(
 
 private class TaskBody(glyph: JBLabel) {
     val rows = TaskRows()
-    val panel = JPanel(BorderLayout()).apply {
-        isOpaque = true
-        background = SessionUiStyle.View.Surface.bgColor()
-        border = JBUI.Borders.empty(
-            UiStyle.Gap.sm(),
-            glyph.preferredSize.width + JBUI.scale(SessionUiStyle.View.Layout.GAP) + UiStyle.Gap.md(),
-            UiStyle.Gap.sm(),
-            UiStyle.Gap.md(),
-        )
+    val panel = object : JPanel(BorderLayout()) {
+        override fun updateUI() {
+            super.updateUI()
+            background = SessionUiStyle.View.Surface.bgColor()
+            border = taskBodyBorder(glyph)
+        }
+    }.apply {
         add(rows, BorderLayout.CENTER)
     }
     val scroll = TaskBodyScroll(this)
@@ -312,12 +280,15 @@ private class TaskBodyScroll(val body: TaskBody) : JBScrollPane(body.panel) {
     val panel: JPanel get() = body.panel
 
     init {
-        border = JBUI.Borders.empty()
-        isOpaque = true
-        background = SessionUiStyle.View.Surface.bgColor()
-        viewport.background = SessionUiStyle.View.Surface.bgColor()
         horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
         verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+    }
+
+    override fun updateUI() {
+        super.updateUI()
+        border = JBUI.Borders.empty()
+        background = SessionUiStyle.View.Surface.bgColor()
+        viewport?.background = SessionUiStyle.View.Surface.bgColor()
     }
 }
 
@@ -344,6 +315,13 @@ private fun rowTitleColor(tool: Tool) = if (tool.state == ToolExecState.ERROR) {
 } else {
     UiStyle.Colors.weak()
 }
+
+private fun taskBodyBorder(glyph: JBLabel) = JBUI.Borders.empty(
+    UiStyle.Gap.sm(),
+    glyph.preferredSize.width + JBUI.scale(SessionUiStyle.View.Layout.GAP) + UiStyle.Gap.md(),
+    UiStyle.Gap.sm(),
+    UiStyle.Gap.md(),
+)
 
 private fun agentTitle(tool: Tool): String {
     val type = tool.input["subagent_type"]?.takeIf { it.isNotBlank() } ?: tool.name

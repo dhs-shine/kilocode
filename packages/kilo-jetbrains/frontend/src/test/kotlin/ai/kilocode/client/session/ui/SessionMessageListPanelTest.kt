@@ -23,6 +23,7 @@ import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.session.views.tool.TaskToolView
 import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.session.views.todo.TodoWriteView
+import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
@@ -31,6 +32,8 @@ import ai.kilocode.rpc.dto.TodoDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBScrollPane
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -393,15 +396,16 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         model.upsertChildTool("ses_child", childTool("child_read", "read"))
         val view = panel.findMessage("a1")!!.part("part_task") as TaskToolView
 
-        assertTrue(view.bodyVisible())
+        assertTrue(view.isExpanded())
         view.collapse()
         model.upsertChildTool("ses_child", childTool("child_read", "grep"))
 
         val updated = panel.findMessage("a1")!!.part("part_task") as TaskToolView
         assertSame(view, updated)
-        assertFalse(updated.bodyVisible())
-        assertTrue(updated.rowLabels().single().contains("Grep"))
-        assertTrue(updated.rowLabels().single().contains("pattern=query"))
+        assertFalse(updated.isExpanded())
+        updated.expand()
+        assertTrue(taskText(updated).single().contains("Grep"))
+        assertTrue(taskText(updated).single().contains("pattern=query"))
     }
 
     // ------ HistoryLoaded ------
@@ -894,5 +898,15 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         }
         visit(root)
         return out
+    }
+
+    private fun taskText(view: TaskToolView): List<String> {
+        val scroll = components(view).filterIsInstance<JBScrollPane>().single()
+        val stack = components(scroll.viewport.view).filterIsInstance<Stack>().single()
+        return stack.components.map { row ->
+            components(row).filterIsInstance<JBLabel>()
+                .mapNotNull { label -> label.text.takeIf { it.isNotBlank() } }
+                .joinToString(" ")
+        }
     }
 }
