@@ -158,12 +158,11 @@ class PromptPanel(
 
     private val editor = PromptEditorTextField(project, this, completion, selection).apply {
         border = JBUI.Borders.empty()
-        setFontInheritedFromLAF(false)
         setPlaceholder(placeholder())
         setShowPlaceholderWhenFocused(true)
         setOneLineMode(false)
         addSettingsProvider { ed ->
-            style.applyToEditor(ed)
+            style.applyTranscriptToEditor(ed)
             ed.setBorder(JBUI.Borders.empty())
             ed.scrollPane.border = JBUI.Borders.empty()
             ed.scrollPane.viewportBorder = JBUI.Borders.empty()
@@ -374,8 +373,8 @@ class PromptPanel(
         this.style = style
         background = style.editorScheme.defaultBackground
         shell.background = style.editorScheme.defaultBackground
-        editor.font = style.editorFont
-        editor.getEditor(false)?.let(style::applyToEditor)
+        editor.font = style.transcriptFont
+        editor.getEditor(false)?.let(style::applyTranscriptToEditor)
         editor.background = style.editorScheme.defaultBackground
         syncEditorHeight()
         syncAutoApprove()

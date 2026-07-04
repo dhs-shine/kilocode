@@ -49,6 +49,13 @@ data class SessionEditorStyle(
         }
     }
 
+    /** Apply editor colors while using standard transcript typography for the embedded editor text. */
+    fun applyTranscriptToEditor(editor: EditorEx) {
+        applyToEditor(editor)
+        editor.colorsScheme.setEditorFontName(transcriptFont.fontName)
+        editor.colorsScheme.setEditorFontSize(transcriptFont.size)
+    }
+
     companion object {
         /** Builds a style snapshot from the current global editor color scheme. */
         fun current(): SessionEditorStyle {

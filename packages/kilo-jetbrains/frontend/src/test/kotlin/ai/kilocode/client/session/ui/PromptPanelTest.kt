@@ -108,13 +108,13 @@ class PromptPanelTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test prompt input uses editor font settings`() {
+    fun `test prompt input uses transcript font settings`() {
         val style = SessionEditorStyle.current()
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val font = panel.inputFont()
 
-        assertEquals(style.editorFamily, font.name)
-        assertEquals(style.editorSize, font.size)
+        assertEquals(style.transcriptFont.name, font.name)
+        assertEquals(style.transcriptFont.size, font.size)
     }
 
     fun `test prompt input uses editor background`() {
@@ -130,8 +130,8 @@ class PromptPanelTest : BasePlatformTestCase() {
 
         panel.applyStyle(style)
 
-        assertEquals("Courier New", panel.inputFont().name)
-        assertEquals(26, panel.inputFont().size)
+        assertEquals(style.transcriptFont.name, panel.inputFont().name)
+        assertEquals(style.transcriptFont.size, panel.inputFont().size)
         assertTrue(panel.preferredSize.height >= 26)
     }
 
