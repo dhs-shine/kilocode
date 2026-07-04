@@ -29,6 +29,7 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import org.commonmark.ext.autolink.AutolinkExtension
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension
+import org.commonmark.ext.gfm.tables.TableBlock
 import org.commonmark.ext.gfm.tables.TablesExtension
 import org.commonmark.node.AbstractVisitor
 import org.commonmark.node.Block
@@ -411,6 +412,7 @@ internal open class MdViewHybrid(
         val disposable = Disposer.newDisposable("Markdown block")
         return when (desc) {
             is Desc.Html -> HtmlView(desc, htmlBlock(desc.body, disposable), disposable)
+            is Desc.Table -> TableView(desc, tableBlock(desc.body, disposable), disposable)
             is Desc.Code -> when (val kind = desc.kind) {
                 is Kind.Source -> CodeView(desc, codeBlock(desc.text, kind.file, disposable), disposable)
                 is Kind.Terminal -> TermView(desc, terminalBlock(desc.text, kind, disposable), disposable)
@@ -498,6 +500,28 @@ internal open class MdViewHybrid(
             val bounds = start.union(end)
             Point(bounds.x + bounds.width / 2, bounds.y)
         }.getOrNull()
+    }
+
+    private fun tableBlock(body: String, disposable: Disposable): JBScrollPane {
+        val opts = opts()
+        val inner = htmlBlock(body, disposable)
+        val pane = object : JBScrollPane(inner), SessionCopyTarget {
+            override val copyAnchor: JComponent get() = this
+
+            override fun copyText() = inner.document.getText(0, inner.document.length).trim()
+
+            // Width is pinned to 0 so BoxLayout shrinks the pane to the container while the wide
+            // table scrolls horizontally inside it. Height is derived from the inner pane's current
+            // preferred height on every pass so it is correct once the html view is realized
+            // (a static measurement taken before layout is too small and crops the table).
+            override fun getPreferredSize() = Dimension(0, tableHeight(this, inner))
+
+            override fun getMinimumSize() = Dimension(0, tableHeight(this, inner))
+
+            override fun getMaximumSize() = Dimension(Int.MAX_VALUE, tableHeight(this, inner))
+        }
+        styleTablePane(pane, opts)
+        return pane
     }
 
     private fun codeBlock(text: String, file: FileType, disposable: Disposable): JBScrollPane {
@@ -631,6 +655,30 @@ internal open class MdViewHybrid(
         pane.preferredSize = Dimension(0, height)
         pane.minimumSize = Dimension(0, height)
         pane.maximumSize = Dimension(Int.MAX_VALUE, height)
+    }
+
+    private fun styleTablePane(pane: JBScrollPane, opts: MdStyle) {
+        pane.apply {
+            border = JBUI.Borders.empty()
+            viewportBorder = JBUI.Borders.empty()
+            isOpaque = opts.opaque
+            background = opts.background
+            viewport.isOpaque = opts.opaque
+            viewport.background = opts.background
+            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+            isWheelScrollingEnabled = true
+            setOverlappingScrollBar(false)
+            horizontalScrollBar.preferredSize = Dimension(0, JBUI.scale(SessionUiStyle.View.Code.SCROLLBAR_HEIGHT))
+            horizontalScrollBar.isOpaque = opts.opaque
+            verticalScrollBar.preferredSize = JBUI.emptySize()
+        }
+    }
+
+    private fun tableHeight(pane: JBScrollPane, inner: JComponent): Int {
+        val pad = pane.viewportBorder?.getBorderInsets(pane) ?: JBUI.emptyInsets()
+        return inner.preferredSize.height + pane.insets.top + pane.insets.bottom +
+            pad.top + pad.bottom + pane.horizontalScrollBar.preferredSize.height
     }
 
     private fun codeWidth(component: JComponent, text: String): Int {
@@ -859,6 +907,7 @@ internal open class MdViewHybrid(
                 when (desc) {
                     is Desc.Html -> html.append(desc.body)
                     is Desc.Code -> html.append(codeHtml(desc.text))
+                    is Desc.Table -> html.append(desc.body)
                 }
             }
             md.clear()
@@ -977,6 +1026,7 @@ internal open class MdViewHybrid(
     private sealed class Desc {
         data class Html(val body: String) : Desc()
         data class Code(val text: String, val kind: Kind) : Desc()
+        data class Table(val body: String) : Desc()
     }
 
     private data class Projection(val html: String, val blocks: List<Desc>, val open: Fence?)
@@ -1014,6 +1064,29 @@ internal open class MdViewHybrid(
             pane.reloadCssStylesheets()
             val item = desc as Desc.Html
             pane.text = html(item.body, opts)
+        }
+    }
+
+    private inner class TableView(desc: Desc.Table, private val pane: JBScrollPane, disposable: Disposable) :
+        View(desc, pane, disposable) {
+        override fun compatible(desc: Desc) = desc is Desc.Table
+
+        override fun update(desc: Desc) {
+            if (this.desc == desc) return
+            this.desc = desc
+            val inner = pane.viewport.view as? JBHtmlPane ?: return
+            inner.text = html((desc as Desc.Table).body, opts())
+            pane.revalidate()
+        }
+
+        override fun style(opts: MdStyle) {
+            styleTablePane(pane, opts)
+            val inner = pane.viewport.view as? JBHtmlPane ?: return
+            inner.isOpaque = opts.opaque
+            inner.background = opts.background
+            inner.reloadCssStylesheets()
+            inner.text = html((desc as Desc.Table).body, opts)
+            pane.revalidate()
         }
     }
 
@@ -1170,12 +1243,15 @@ internal open class MdViewHybrid(
             var child = parent.firstChild
             while (child != null) {
                 val next = child.next
-                if (child is ThematicBreak) {
-                    child = next
-                    continue
+                when {
+                    child is ThematicBreak -> Unit
+                    child is FencedCodeBlock || child is IndentedCodeBlock -> child.accept(this)
+                    child is TableBlock -> {
+                        flush()
+                        blocks.add(Desc.Table(renderer.render(child)))
+                    }
+                    child is Block -> run.append(renderer.render(child))
                 }
-                if (child is FencedCodeBlock || child is IndentedCodeBlock) child.accept(this)
-                if (child is Block && child !is FencedCodeBlock && child !is IndentedCodeBlock) run.append(renderer.render(child))
                 child = next
             }
         }

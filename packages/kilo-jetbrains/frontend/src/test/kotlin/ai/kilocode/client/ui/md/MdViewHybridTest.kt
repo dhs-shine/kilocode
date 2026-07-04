@@ -771,6 +771,91 @@ class MdViewHybridTest : BasePlatformTestCase() {
         assertEquals(pane.background, pane.viewport.background)
     }
 
+    fun `test table renders in horizontal scroll pane without an editor`() {
+        view.set("| a | b |\n|---|---|\n| 1 | 2 |")
+        val pane = scrolls().single()
+        val inner = pane.viewport.view as JBHtmlPane
+
+        assertTrue(editors().isEmpty())
+        assertTrue(htmls().isEmpty())
+        assertTrue(inner.text.contains("<table>"))
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, pane.horizontalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, pane.verticalScrollBarPolicy)
+        assertTrue(pane.horizontalScrollBar.preferredSize.height > 0)
+        assertEquals(0, pane.verticalScrollBar.preferredSize.width)
+    }
+
+    fun `test wide table width is bounded and boxed`() {
+        val header = (1..10).joinToString("|", prefix = "|", postfix = "|") { " column$it " }
+        val sep = (1..10).joinToString("|", prefix = "|", postfix = "|") { "---" }
+        val row = (1..10).joinToString("|", prefix = "|", postfix = "|") { " ${"x".repeat(20)} " }
+        view.set("$header\n$sep\n$row")
+        val pane = scrolls().single()
+        val inner = pane.viewport.view as JBHtmlPane
+
+        assertEquals(0, pane.preferredSize.width)
+        assertTrue(inner.preferredSize.width > pane.preferredSize.width)
+        assertTrue(pane.maximumSize.width > 1000)
+    }
+
+    fun `test table pane reserves full table height and does not clip vertically`() {
+        val rows = (1..8).joinToString("\n") { "| r${it}c1 | r${it}c2 |" }
+        view.set("| a | b |\n|---|---|\n$rows")
+        val pane = scrolls().single()
+        val inner = pane.viewport.view as JBHtmlPane
+
+        layout(width = 420)
+
+        val bar = pane.horizontalScrollBar.preferredSize.height
+        assertTrue("pane preferred height should cover the rendered table", pane.preferredSize.height >= inner.preferredSize.height + bar)
+        assertTrue("table should not be clipped vertically", pane.height >= inner.preferredSize.height)
+    }
+
+    fun `test table separates surrounding prose runs`() {
+        view.set("intro\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\noutro")
+
+        val html = htmls()
+        assertEquals(2, html.size)
+        assertEquals(1, scrolls().size)
+        assertTrue(editors().isEmpty())
+        assertEquals(2, struts().size)
+        assertTrue(html[0].text.contains("intro"))
+        assertTrue(html[1].text.contains("outro"))
+        assertTrue((scrolls().single().viewport.view as JBHtmlPane).text.contains("<table>"))
+    }
+
+    fun `test rerendering table reuses retained scroll pane and html child`() {
+        view.set("| a | b |\n|---|---|\n| 1 | 2 |")
+        val pane = scrolls().single()
+        val inner = pane.viewport.view as JBHtmlPane
+
+        view.set("| a | b |\n|---|---|\n| 3 | 4 |")
+
+        assertSame(pane, scrolls().single())
+        assertSame(inner, scrolls().single().viewport.view)
+        assertEquals(1, scrolls().size)
+        assertTrue(inner.text.contains("4"))
+    }
+
+    fun `test replacing table with prose disposes the scroll pane`() {
+        view.set("| a | b |\n|---|---|\n| 1 | 2 |")
+        assertEquals(1, scrolls().size)
+
+        view.set("plain prose")
+        drainEdt()
+
+        assertTrue(scrolls().isEmpty())
+        assertTrue(htmls().single().text.contains("plain prose"))
+    }
+
+    fun `test clear disposes table scroll pane`() {
+        view.set("| a | b |\n|---|---|\n| 1 | 2 |")
+        view.clear()
+
+        assertEquals("", view.markdown())
+        assertTrue(scrolls().isEmpty())
+    }
+
     fun `test clear resets source and components`() {
         view.set("```\ncode\n```")
         view.clear()
