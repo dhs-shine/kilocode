@@ -66,6 +66,10 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
 import com.intellij.util.messages.MessageBusConnection
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import java.awt.Cursor
 import java.awt.Graphics
@@ -97,9 +101,10 @@ class PromptPanel(
     private val onSend: (String, List<PromptPartDto>) -> Unit,
     private val onAbort: () -> Unit,
     private val onEnhance: (String, (Result<String>) -> Unit) -> Unit,
-    private val onMentions: (String) -> List<PromptPartDto> = { emptyList() },
+    private val onMentions: suspend (String) -> List<PromptPartDto> = { emptyList() },
     private val completion: KiloPromptCompletionProvider? = null,
     private val selection: SessionSelection? = null,
+    private val cs: CoroutineScope = CoroutineScope(Dispatchers.Default),
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext, UiDataProvider {
 
     companion object {
@@ -517,21 +522,26 @@ class PromptPanel(
         val txt = text()
         val items = attachments.toList()
         submitting = true
-        ApplicationManager.getApplication().executeOnPooledThread {
+        cs.launch {
             try {
-                val files = items.map { it.part() }
+                val files = withContext(Dispatchers.IO) { items.map { it.part() } }
                 val mentioned = onMentions(txt)
-                ApplicationManager.getApplication().invokeLater {
+                withContext(Dispatchers.Main) {
                     submitting = false
-                    if (project.isDisposed) return@invokeLater
+                    if (project.isDisposed) return@withContext
                     val parts = files + mentioned
                     LOG.debug { "${ChatLogSummary.prompt(promptDto(txt, parts))} src=$src busy=$busy" }
                     onSend(txt, parts)
                 }
-            } catch (e: Exception) {
-                ApplicationManager.getApplication().invokeLater {
+            } catch (e: CancellationException) {
+                withContext(Dispatchers.Main) {
                     submitting = false
-                    if (project.isDisposed) return@invokeLater
+                }
+                throw e
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    submitting = false
+                    if (project.isDisposed) return@withContext
                     LOG.warn("kind=prompt-submit src=$src failed message=${e.message}", e)
                     notify(KiloBundle.message("prompt.attachment.send.failed", e.message ?: e.javaClass.simpleName))
                 }
