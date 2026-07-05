@@ -185,6 +185,17 @@ class SettingsListViewTest : BasePlatformTestCase() {
         }
     }
 
+    fun `test action hit test ignores stale indexes`() {
+        edt {
+            val view = SettingsListView("Empty") { _, _ -> }
+            view.update(listOf(item("with", "Alpha", null, SettingsListCell("edit", "Edit"))))
+            layout(view)
+
+            assertNull(settingsListCellAt(view.list, -1, Point(0, 0), selected = true))
+            assertNull(settingsListCellAt(view.list, view.list.model.size, Point(0, 0), selected = true))
+        }
+    }
+
     fun `test double click invokes primary cell instead of first visual cell`() {
         edt {
             val calls = mutableListOf<String>()

@@ -68,6 +68,7 @@ import com.intellij.util.messages.MessageBusConnection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
@@ -158,6 +159,7 @@ class PromptPanel(
 
     private val editor = PromptEditorTextField(project, this, completion, selection).apply {
         border = JBUI.Borders.empty()
+        setFontInheritedFromLAF(false)
         setPlaceholder(placeholder())
         setShowPlaceholderWhenFocused(true)
         setOneLineMode(false)
@@ -533,7 +535,7 @@ class PromptPanel(
                     onSend(txt, parts)
                 }
             } catch (e: CancellationException) {
-                withContext(Dispatchers.Main) {
+                withContext(NonCancellable + Dispatchers.Main) {
                     submitting = false
                 }
                 throw e

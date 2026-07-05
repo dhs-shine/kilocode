@@ -49,6 +49,7 @@ class SessionModel {
     private val hiddenText = mutableSetOf<Pair<String, String>>()
     private val childRefs = HashMap<String, ChildRef>()
     private val childTools = HashMap<String, LinkedHashMap<String, Tool>>()
+    private val childRemoved = HashMap<String, MutableSet<String>>()
 
     var app: KiloAppStateDto = KiloAppStateDto(KiloAppStatusDto.DISCONNECTED)
     var version: String? = null
@@ -203,6 +204,8 @@ class SessionModel {
         val parent = msg.parts[ref.partId] as? Tool ?: return
         val tool = fromDto(dto) as? Tool ?: return
         val tools = childTools.getOrPut(child) { LinkedHashMap() }
+        if (replace) childRemoved[child]?.remove(dto.id)
+        if (!replace && childRemoved[child]?.contains(dto.id) == true) return
         if (!replace && tools.containsKey(dto.id)) return
         tools[dto.id] = tool
         parent.childTools = tools.values.toList()
@@ -212,6 +215,7 @@ class SessionModel {
 
     @RequiresEdt
     fun removeChildTool(child: String, partId: String) {
+        childRemoved.getOrPut(child) { mutableSetOf() }.add(partId)
         val ref = childRefs[child] ?: return
         val tools = childTools[child] ?: return
         if (tools.remove(partId) == null) return
@@ -291,6 +295,7 @@ class SessionModel {
         entries.clear()
         childRefs.clear()
         childTools.clear()
+        childRemoved.clear()
         hiddenText.clear()
         session = null
         state = SessionState.Idle
@@ -323,6 +328,7 @@ class SessionModel {
         turnEntries.clear()
         childRefs.clear()
         childTools.clear()
+        childRemoved.clear()
         hiddenText.clear()
         session = null
         state = SessionState.Idle
@@ -458,6 +464,7 @@ class SessionModel {
                 if (old != null && old != existing.childSessionId) {
                     childRefs.remove(old)
                     childTools.remove(old)
+                    childRemoved.remove(old)
                 }
                 existing.output = dto.output
                 existing.error = dto.error
@@ -538,6 +545,7 @@ class SessionModel {
         val child = tool.childSessionId ?: return
         childRefs.remove(child)
         childTools.remove(child)
+        childRemoved.remove(child)
     }
 
     private fun updateHeader() {

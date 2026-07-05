@@ -62,6 +62,7 @@ import com.intellij.util.Producer
 import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -568,6 +569,33 @@ class PromptPanelTest : BasePlatformTestCase() {
 
         assertEquals("read @src/x.kt", text)
         assertEquals(listOf(part), sent)
+    }
+
+    fun `test cancelling submit mention resolution re-enables send`() {
+        val entered = CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<Unit>()
+        val panel = PromptPanel(
+            project = project,
+            onSend = { _, _ -> },
+            onAbort = {},
+            onEnhance = { _, _ -> },
+            onMentions = {
+                entered.complete(Unit)
+                gate.await()
+                emptyList()
+            },
+            cs = scope,
+        )
+        val editor = panel.defaultFocusedComponent as EditorTextField
+        panel.setReady(true)
+        editor.text = "send @file"
+
+        panel.send()
+        waitForSend { entered.isCompleted && !panel.isSendEnabled }
+        scope.cancel(CancellationException("test cancellation"))
+        waitForSend { panel.isSendEnabled }
+
+        assertTrue(panel.isSendEnabled)
     }
 
     fun `test clear removes attachments`() {

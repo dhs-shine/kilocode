@@ -405,6 +405,8 @@ class ShellToolViewTest : BasePlatformTestCase() {
             val pad = pane.viewportBorder.getBorderInsets(pane)
             val field = editors.single()
             val border = field.border.getBorderInsets(field)
+            val editor = field.getEditor(true)!!
+            val lines = field.text.lines().size
             assertEquals(
                 SessionUiStyle.View.Code.VIEWPORT_TOP_PADDING,
                 pad.top,
@@ -412,6 +414,9 @@ class ShellToolViewTest : BasePlatformTestCase() {
             assertEquals(SessionUiStyle.View.Code.VIEWPORT_BOTTOM_PADDING, pad.bottom)
             assertEquals(SessionUiStyle.View.Code.SCROLLBAR_HEIGHT, border.top)
             assertEquals(0, border.bottom)
+            assertTrue(field.preferredSize.height - border.top >= editor.lineHeight * lines)
+            assertTrue(field.minimumSize.height - border.top >= editor.lineHeight * lines)
+            assertTrue(pane.preferredSize.height >= field.preferredSize.height + pad.top + pad.bottom)
             assertTrue(body.component.preferredSize.width in 1..JBUI.scale(SessionUiStyle.View.Popup.MAX_WIDTH))
             assertTrue(body.component.preferredSize.height > 0)
         } finally {

@@ -97,7 +97,9 @@ internal fun settingsListCellAt(
     point: Point,
     selected: Boolean,
 ): String? {
-    val item = list.model.getElementAt(index) as? SettingsListItem ?: return null
+    val model = list.model
+    if (index < 0 || index >= model.size) return null
+    val item = model.getElementAt(index) as? SettingsListItem ?: return null
     val cells = settingsListCellBounds(list, index, selected)
     return settingsListVisibleCells(item, selected)
         .firstOrNull { cell -> cell.enabled && cells[cell.id]?.contains(point) == true }

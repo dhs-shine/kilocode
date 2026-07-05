@@ -374,6 +374,20 @@ class SessionModelTest : BasePlatformTestCase() {
         assertEquals("read_new", task("m1", "task").childTools.single().id)
     }
 
+    fun `test stale child history cannot resurrect removed child tool`() {
+        model.addMessage(msg("m1", "assistant"))
+        model.updateContent("m1", taskPart("task", "m1", "child"))
+
+        model.removeChildTool("child", "read_old")
+        model.upsertChildTool("child", childPart("read_old"), replace = false)
+
+        assertTrue(task("m1", "task").childTools.isEmpty())
+
+        model.upsertChildTool("child", childPart("read_old"))
+
+        assertEquals("read_old", task("m1", "task").childTools.single().id)
+    }
+
     fun `test removeContent untracks child tools`() {
         model.addMessage(msg("m1", "assistant"))
         model.updateContent("m1", taskPart("task", "m1", "child"))

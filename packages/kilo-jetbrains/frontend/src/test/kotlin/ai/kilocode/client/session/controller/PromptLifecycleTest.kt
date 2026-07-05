@@ -29,6 +29,7 @@ import ai.kilocode.rpc.dto.QuestionRequestDto
 import ai.kilocode.rpc.dto.ToolRefDto
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.onCompletion
 
 class PromptLifecycleTest : SessionControllerTestBase() {
 
@@ -704,6 +705,50 @@ class PromptLifecycleTest : SessionControllerTestBase() {
         assertEquals(listOf("read"), task.childTools.map { it.name })
     }
 
+    fun `test stale child history does not resurrect live removed child tool`() {
+        rpc.historyGate = CompletableDeferred()
+        rpc.histories["ses_child"] = mutableListOf(
+            MessageWithPartsDto(
+                msg("child_msg", "ses_child", "assistant"),
+                listOf(childTool("child_read", "read")),
+            ),
+        )
+        val (m, _, _) = prompted()
+        emit(ChatEventDto.MessageUpdated("ses_test", msg("msg1", "ses_test", "assistant")), flush = false)
+        emit(taskPart("ses_child"), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_child", childTool("child_read", "read")), flush = false)
+        emit(ChatEventDto.PartRemoved("ses_child", "child_msg", "child_read"))
+
+        var task = m.model.content("msg1", "part_task") as Tool
+        assertTrue(task.childTools.isEmpty())
+
+        rpc.historyGate!!.complete(Unit)
+        flush()
+
+        task = m.model.content("msg1", "part_task") as Tool
+        assertTrue(task.childTools.isEmpty())
+    }
+
+    fun `test task child rekey cancels old child subscription`() {
+        val closed = CopyOnWriteArrayList<String>()
+        rpc.eventFlow = { id, _ -> rpc.events.onCompletion { closed.add(id) } }
+        val (m, _, _) = prompted()
+        emit(ChatEventDto.MessageUpdated("ses_test", msg("msg1", "ses_test", "assistant")), flush = false)
+        emit(taskPart("ses_child"))
+        emit(taskPart("ses_new"))
+        settle()
+
+        assertTrue("closed=$closed", closed.contains("ses_child"))
+
+        emit(ChatEventDto.PermissionAsked("ses_child", childPermission("old_perm", "ses_child")), flush = false)
+        emit(ChatEventDto.PermissionAsked("ses_new", childPermission("new_perm", "ses_new")))
+
+        assertTrue(m.model.state is SessionState.AwaitingPermission)
+        val perm = (m.model.state as SessionState.AwaitingPermission).permission
+        assertEquals("new_perm", perm.id)
+        assertEquals("ses_new", perm.sessionId)
+    }
+
     fun `test root permission event is not processed as child permission`() {
         val (m, _, _) = prompted()
 
@@ -738,9 +783,9 @@ class PromptLifecycleTest : SessionControllerTestBase() {
         input = mapOf("filePath" to "src/Main.kt", "pattern" to "query"),
     )
 
-    private fun childPermission(id: String) = PermissionRequestDto(
+    private fun childPermission(id: String, sid: String = "ses_child") = PermissionRequestDto(
         id = id,
-        sessionID = "ses_child",
+        sessionID = sid,
         permission = "edit",
         patterns = listOf("*.kt"),
         always = emptyList(),

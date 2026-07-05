@@ -147,6 +147,7 @@ class SessionController(
     private var creating: CompletableDeferred<String?>? = null
     private val childJobs: MutableMap<String, Job> = mutableMapOf()
     private val childIds: MutableSet<String> = mutableSetOf()
+    private val childParts: MutableMap<PartKey, String> = mutableMapOf()
     private var sessionLoadState: SessionLoadState = SessionLoadState.Idle
     private var recentsState: RecentsState = RecentsState.Idle
     private var viewState: SessionControllerEvent.ViewChanged? = null
@@ -165,8 +166,6 @@ class SessionController(
     private var prefAgent: String? = null
     private var modelTime: Double? = null
     private val snapshots = mutableMapOf<PartKey, String>()
-
-    private data class PartKey(val messageId: String, val partId: String)
 
     val ready: Boolean get() = model.isReady()
     val autoApprove: Boolean get() = KiloPluginSettings.getAutoApprove()
@@ -763,12 +762,14 @@ class SessionController(
                 val session = target.session ?: runCatching { sessions.get(id, directory) }.getOrNull()
                 val items = sessions.messages(id, directory)
                 LOG.debug { "${ChatLogSummary.sid(id)} ${ChatLogSummary.history(items)}" }
-                val discovered = items.flatMap { it.parts }.mapNotNull { childID(it) }.toSet()
+                val discovered = children(items)
                 runEdt {
                     if (disposed) return@runEdt
                     if (sid != id) return@runEdt
                     updateModel {
                         snapshots.clear()
+                        childParts.clear()
+                        childParts.putAll(discovered)
                         this@SessionController.model.loadHistory(items)
                         syncHistoryAgent(items)
                         if (session != null) this@SessionController.model.setSession(session)
@@ -778,7 +779,7 @@ class SessionController(
                 runEdt {
                     if (disposed) return@runEdt
                     if (sid != id) return@runEdt
-                    for (child in discovered) trackChild(child)
+                    for (child in discovered.values.toSet()) trackChild(child)
                     showSession()
                     loaded(!model.isEmpty())
                 }
@@ -811,7 +812,7 @@ class SessionController(
                 val session = sessions.importCloudSession(id, directory)
                 val items = sessions.messages(session.id, directory)
                 LOG.debug { "${ChatLogSummary.sid(session.id)} ${ChatLogSummary.history(items)}" }
-                val discovered = items.flatMap { it.parts }.mapNotNull { childID(it) }.toSet()
+                val discovered = children(items)
                 runEdt {
                     if (disposed) return@runEdt
                     ref = SessionRef.Local(session)
@@ -826,8 +827,10 @@ class SessionController(
                 recoverPending(session.id)
                 runEdt {
                     if (disposed) return@runEdt
-                    for (child in discovered) trackChild(child)
                     subscribeEvents()
+                    childParts.clear()
+                    childParts.putAll(discovered)
+                    for (child in discovered.values.toSet()) trackChild(child)
                     showSession()
                     loaded(!model.isEmpty())
                 }
@@ -919,6 +922,28 @@ class SessionController(
     }
 
     @RequiresEdt
+    private fun trackChild(key: PartKey, child: String) {
+        assertEdt()
+        childParts[key] = child
+        trackChild(child)
+    }
+
+    @RequiresEdt
+    private fun untrackChild(key: PartKey) {
+        assertEdt()
+        val child = childParts.remove(key) ?: return
+        if (child in childParts.values) return
+        childIds.remove(child)
+        childJobs.remove(child)?.cancel()
+    }
+
+    @RequiresEdt
+    private fun untrackChildren(messageId: String) {
+        assertEdt()
+        childParts.keys.filter { it.messageId == messageId }.forEach(::untrackChild)
+    }
+
+    @RequiresEdt
     private fun cancelSubscriptions() {
         assertEdt()
         eventJob?.cancel()
@@ -926,6 +951,7 @@ class SessionController(
         childJobs.values.forEach { it.cancel() }
         childJobs.clear()
         childIds.clear()
+        childParts.clear()
     }
 
     private suspend fun recoverChildPermissions(child: String) {
@@ -940,6 +966,7 @@ class SessionController(
             val last = toPermission(permissions.last())
             runEdt {
                 if (disposed) return@runEdt
+                if (child !in childIds) return@runEdt
                 // Do not overwrite an existing root or other child AwaitingPermission state
                 if (model.state is SessionState.AwaitingPermission) return@runEdt
                 updateModel { model.setState(SessionState.AwaitingPermission(last)) }
@@ -954,6 +981,7 @@ class SessionController(
             val items = sessions.messages(child, directory)
             runEdt {
                 if (disposed) return@runEdt
+                if (child !in childIds) return@runEdt
                 updateModel {
                     for (msg in items) {
                         if (msg.info.role != "assistant") continue
@@ -1056,6 +1084,9 @@ class SessionController(
                 tool = event.part.tool
                 val key = PartKey(event.part.messageID, event.part.id)
                 val prev = content(event.part.messageID, event.part.id)
+                val child = childID(event.part)
+                val old = childParts[key]
+                if (old != null && old != child) untrackChild(key)
                 model.updateContent(event.part.messageID, event.part)
                 val next = content(event.part.messageID, event.part.id)
                 if (next != null && next != prev) {
@@ -1066,7 +1097,7 @@ class SessionController(
                 if (model.state is SessionState.Busy) {
                     model.setState(SessionState.Busy(status()))
                 }
-                childID(event.part)?.let { child -> trackChild(child) }
+                if (child != null) trackChild(key, child)
             }
 
             is ChatEventDto.PartDelta -> {
@@ -1081,7 +1112,9 @@ class SessionController(
                     model.removeChildTool(event.sessionID, event.partID)
                     return
                 }
-                snapshots.remove(PartKey(event.messageID, event.partID))
+                val key = PartKey(event.messageID, event.partID)
+                snapshots.remove(key)
+                untrackChild(key)
                 model.removeContent(event.messageID, event.partID)
             }
 
@@ -1116,6 +1149,7 @@ class SessionController(
 
             is ChatEventDto.MessageRemoved -> {
                 snapshots.keys.removeAll { it.messageId == event.messageID }
+                untrackChildren(event.messageID)
                 model.removeMessage(event.messageID)
             }
 
@@ -1946,6 +1980,16 @@ class SessionController(
 private fun childID(part: PartDto): String? {
     if (part.type != "tool" || part.tool != "task") return null
     return part.metadata["sessionId"]
+}
+
+private data class PartKey(val messageId: String, val partId: String)
+
+private fun children(items: List<MessageWithPartsDto>): Map<PartKey, String> = buildMap {
+    for (msg in items) {
+        for (part in msg.parts) {
+            childID(part)?.let { put(PartKey(msg.info.id, part.id), it) }
+        }
+    }
 }
 
 /** Returns true when [event] should be routed from a child subscription. */
