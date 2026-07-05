@@ -68,8 +68,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import java.awt.Container
 import java.awt.BorderLayout
+import java.awt.Component
+import java.awt.Container
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 import java.awt.datatransfer.Transferable
@@ -84,6 +85,8 @@ import javax.swing.JPanel
 import javax.swing.ImageIcon
 import javax.swing.ScrollPaneConstants
 import javax.swing.SwingUtilities
+
+private const val FLOATING = "com.intellij.openapi.editor.toolbar.floating.EditorFloatingToolbar"
 
 @Suppress("UnstableApiUsage")
 class PromptPanelTest : BasePlatformTestCase() {
@@ -123,6 +126,17 @@ class PromptPanelTest : BasePlatformTestCase() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
 
         assertEquals(style.editorScheme.defaultBackground, panel.defaultFocusedComponent.background)
+    }
+
+    fun `test prompt editor hides floating toolbar`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+
+        realize(panel, 260, 400)
+        UIUtil.dispatchAllInvocationEvents()
+        UIUtil.dispatchAllInvocationEvents()
+        val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
+
+        assertFalse(hasFloatingToolbar(editor.component))
     }
 
     fun `test applyStyle updates prompt input and height`() {
@@ -1180,6 +1194,12 @@ class PromptPanelTest : BasePlatformTestCase() {
         return editor.markupModel.allHighlighters.map {
             field.text.substring(it.startOffset, it.endOffset) to it.textAttributesKey
         }
+    }
+
+    private fun hasFloatingToolbar(component: Component): Boolean {
+        if (component.javaClass.name == FLOATING) return true
+        if (component !is Container) return false
+        return component.components.any(::hasFloatingToolbar)
     }
 
     private fun createEditor(): Editor {
