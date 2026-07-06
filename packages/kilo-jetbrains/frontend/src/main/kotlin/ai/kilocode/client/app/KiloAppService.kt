@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * App-level frontend service for Kilo CLI interaction.
+ * App-level frontend service for Kilo Core interaction.
  *
  * Communicates with the backend via [KiloAppRpcApi]. All operations
  * are app-scoped — no project context is needed.
@@ -47,10 +47,13 @@ class KiloAppService internal constructor(
 
     private val started = AtomicBoolean(false)
 
-    /** CLI version string from the last successful health check, or null if unknown. */
+    /** Core version and platform from the backend, or null if unknown. */
     @Volatile
-    var version: String? = null
-        private set
+    private var info: CoreInfo? = null
+
+    val core: CoreInfo? get() = info
+
+    val version: String? get() = info?.version
 
     internal val _state = MutableStateFlow(init)
     val state: StateFlow<KiloAppStateDto> = _state.asStateFlow()
@@ -80,6 +83,9 @@ class KiloAppService internal constructor(
 
     private fun onState(state: KiloAppStateDto) {
         _state.value = state
+        val version = state.downloadVersion
+        val platform = state.downloadPlatform
+        if (version != null && platform != null) info = CoreInfo(version, platform)
         if (state.status == KiloAppStatusDto.READY) refreshModelFavoritesAsync()
     }
 
@@ -96,20 +102,20 @@ class KiloAppService internal constructor(
         call { retry() }
     }
 
-    /** Kill the CLI process and restart it. */
+    /** Kill the Core process and restart it. */
     suspend fun restart() {
         LOG.info("restart: resetting state and sending RPC")
         started.set(false)
-        version = null
+        info = null
         call { restart() }
         LOG.info("restart: RPC returned — backend restart complete")
     }
 
-    /** Kill the CLI process, re-extract the binary, and restart. */
+    /** Kill the Core process, re-download the binary, and restart. */
     suspend fun reinstall() {
         LOG.info("reinstall: resetting state and sending RPC")
         started.set(false)
-        version = null
+        info = null
         call { reinstall() }
         LOG.info("reinstall: RPC returned — backend reinstall complete")
     }
@@ -131,30 +137,39 @@ class KiloAppService internal constructor(
         cs.launch { reinstall() }
     }
 
-    suspend fun cliVersion(): String? = try {
-        call { cliVersion() }
+    suspend fun coreInfo(): CoreInfo? = try {
+        val next = CoreInfo(
+            version = call { cliVersion() },
+            platform = call { cliPlatform() },
+        )
+        info = next
+        next
     } catch (e: Exception) {
-        LOG.warn("cliVersion failed", e)
+        LOG.warn("core info failed", e)
         null
     }
 
-    /** Fetch the pinned CLI version and cache it. */
-    fun fetchVersionAsync(done: (String?) -> Unit = {}) {
-        version?.let {
+    /** Fetch the pinned Core version and platform and cache it. */
+    fun fetchCoreInfoAsync(done: (CoreInfo?) -> Unit = {}) {
+        info?.let {
             done(it)
             return
         }
         cs.launch {
-            LOG.info("fetchVersion: requesting CLI version")
-            val text = cliVersion()
-            if (text == null) {
+            LOG.info("fetchCoreInfo: requesting Core version and platform")
+            val next = coreInfo()
+            if (next == null) {
                 done(null)
                 return@launch
             }
-            version = text
-            done(text)
-            LOG.info("fetchVersion: CLI version is $text")
+            done(next)
+            LOG.info("fetchCoreInfo: Core version is ${next.version} (${next.platform})")
         }
+    }
+
+    /** Fetch the pinned Core version and cache it. */
+    fun fetchVersionAsync(done: (String?) -> Unit = {}) {
+        fetchCoreInfoAsync { done(it?.version) }
     }
 
     fun refreshModelFavoritesAsync() {
@@ -310,7 +325,7 @@ class KiloAppService internal constructor(
     fun watch(fn: (KiloAppStateDto) -> Unit): Job {
         return cs.launch {
             state.collect { next ->
-                if (next.status == KiloAppStatusDto.READY) fetchVersionAsync()
+                if (next.status == KiloAppStatusDto.READY) fetchCoreInfoAsync()
                 fn(next)
             }
         }
@@ -324,6 +339,8 @@ class KiloAppService internal constructor(
         _state.value = current.copy(profile = profile, progress = progress)
     }
 }
+
+data class CoreInfo(val version: String, val platform: String)
 
 private fun summary(patch: ConfigPatchDto): String {
     val values = patch.values.keys.sorted().joinToString(",").ifEmpty { "none" }

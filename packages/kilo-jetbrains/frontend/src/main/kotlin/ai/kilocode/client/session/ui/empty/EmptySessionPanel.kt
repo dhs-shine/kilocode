@@ -55,7 +55,6 @@ class EmptySessionPanel(
     private val titles: () -> Map<String, String> = { emptyMap() },
     private val browse: (String) -> Unit = BrowserUtil::browse,
     private val timers: UiTimerSource = UiTimers,
-    cliVersion: String? = null,
 ) : BorderLayoutPanel(), Disposable, SessionEditorStyleTarget {
     val view: Align = align(HAlign.CENTER, VAlign.CENTER)
 
@@ -72,13 +71,6 @@ class EmptySessionPanel(
         foreground = UIUtil.getContextHelpForeground()
         horizontalAlignment = JBLabel.CENTER
         setAllowAutoWrapping(true)
-    }
-
-    private val versionLabel = JBLabel().apply {
-        foreground = UIUtil.getContextHelpForeground()
-        font = com.intellij.util.ui.JBFont.small()
-        horizontalAlignment = JBLabel.CENTER
-        isVisible = false
     }
 
     private val description = object : BorderLayoutPanel() {
@@ -120,15 +112,11 @@ class EmptySessionPanel(
         ).apply {
             horizontalAlignment = JBLabel.CENTER
         }
-        val logoBlock = Stack.vertical(gap = UiStyle.Gap.xs())
-            .next(logo)
-            .next(versionLabel)
         val header = BorderLayoutPanel(0, gap).apply {
             isOpaque = false
-            add(logoBlock, BorderLayout.NORTH)
+            add(logo, BorderLayout.NORTH)
             add(description.align(HAlign.CENTER, VAlign.CENTER), BorderLayout.CENTER)
         }
-        setCliVersion(cliVersion)
 
         val south = BorderLayoutPanel().apply {
             isOpaque = false
@@ -169,15 +157,6 @@ class EmptySessionPanel(
     internal fun feedbackBorderPainted() = feedback.button.isBorderPainted
 
     internal fun feedbackContent(open: (String) -> Unit = {}): JComponent = EmptySessionFeedback.content(open)
-
-    @RequiresEdt
-    fun setCliVersion(version: String?) {
-        val text = version?.takeIf { it.isNotBlank() }
-        versionLabel.text = text?.let { KiloBundle.message("session.empty.cliVersion", it) }.orEmpty()
-        versionLabel.isVisible = text != null
-        revalidate()
-        repaint()
-    }
 
     internal fun feedbackUrls() = EmptySessionFeedback.urls()
 

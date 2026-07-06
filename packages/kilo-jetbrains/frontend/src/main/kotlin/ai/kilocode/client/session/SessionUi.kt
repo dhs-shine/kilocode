@@ -485,14 +485,8 @@ class SessionUi(
                         activity = { manager?.activity() ?: sessions.activity() },
                         titles = { manager?.titles().orEmpty() },
                         timers = timers,
-                        cliVersion = app.version,
                     )
                     empty = panel
-                    app.fetchVersionAsync { version ->
-                        ApplicationManager.getApplication().invokeLater {
-                            if (!disposed && empty === panel) panel.setCliVersion(version)
-                        }
-                    }
                     scroll.show(panel.view)
                 }
 
@@ -503,7 +497,6 @@ class SessionUi(
 
                 is SessionControllerEvent.AppChanged -> {
                     prompt.setReady(controller.model.isReady())
-                    empty?.setCliVersion(app.version)
                 }
 
                 is SessionControllerEvent.WorkspaceChanged -> {

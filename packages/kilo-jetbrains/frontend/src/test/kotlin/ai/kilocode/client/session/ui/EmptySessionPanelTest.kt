@@ -138,23 +138,6 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
         )
     }
 
-    fun `test cli version line updates`() {
-        val panel = panel()
-        val text = KiloBundle.message("session.empty.cliVersion", "1.2.3")
-
-        panel.setCliVersion("1.2.3")
-        val label = UIUtil.uiTraverser(panel)
-            .filter(JBLabel::class.java)
-            .first { it.text == text }
-
-        assertTrue(label.isVisible)
-
-        panel.setCliVersion(null)
-
-        assertEquals("", label.text)
-        assertFalse(label.isVisible)
-    }
-
     fun `test selecting recent session does not open it`() {
         val panel = panel(listOf(session("ses_1"), session("ses_2")))
 

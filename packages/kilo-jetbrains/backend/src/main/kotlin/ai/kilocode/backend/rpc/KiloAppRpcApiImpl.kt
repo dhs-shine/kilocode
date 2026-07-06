@@ -9,6 +9,7 @@ import ai.kilocode.backend.app.ConfigWarning
 import ai.kilocode.backend.app.LoadError
 import ai.kilocode.backend.app.LoadProgress
 import ai.kilocode.backend.app.ProfileResult
+import ai.kilocode.backend.cli.KiloCliPlatform
 import ai.kilocode.backend.cli.KiloProps
 import ai.kilocode.jetbrains.api.model.KiloProfile200Response
 import ai.kilocode.rpc.dto.ConfigPatchDto
@@ -53,6 +54,8 @@ class KiloAppRpcApiImpl : KiloAppRpcApi {
     override suspend fun health(): HealthDto = app.health()
 
     override suspend fun cliVersion(): String = KiloProps.cliVersion()
+
+    override suspend fun cliPlatform(): String = KiloCliPlatform.current()
 
     override suspend fun retry() = app.retry()
 
