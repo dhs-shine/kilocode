@@ -316,6 +316,14 @@ export const kiloScenarios: Scenario[] = [
     .at((ctx) => ({ path: "/commit-message", headers: ctx.headers(), body: {} }))
     .status(400),
   http.protected
+    .post("/session/{sessionID}/branch-name", "branchName.generate")
+    .at((ctx) => ({
+      path: route("/session/{sessionID}/branch-name", { sessionID: "ses_httpapi_missing" }),
+      headers: ctx.headers(),
+      body: {},
+    }))
+    .status(400),
+  http.protected
     .post("/enhance-prompt", "enhancePrompt.enhance")
     .at((ctx) => ({ path: "/enhance-prompt", headers: ctx.headers(), body: { text: "" } }))
     .status(400),
@@ -507,7 +515,7 @@ export const kiloScenarios: Scenario[] = [
       headers: ctx.headers(),
       body: { enable: true, sessionID: ctx.state.id },
     }))
-    .json(200, (body) => check(body === true, "allow everything should return true")),
+    .status(401),
   http.protected
     .post("/session/viewed", "session.viewed")
     .at((ctx) => ({ path: "/session/viewed", headers: ctx.headers(), body: { focused: [], open: [] } }))
