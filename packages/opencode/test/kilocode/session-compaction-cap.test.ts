@@ -31,6 +31,7 @@ import { Provider as ProviderSvc } from "../../src/provider/provider"
 import { ModelID, ProviderID } from "../../src/provider/schema"
 import { Question } from "../../src/question"
 import { Reference } from "../../src/reference/reference"
+import { RepositoryCache } from "../../src/reference/repository-cache"
 import { Session } from "../../src/session/session"
 import { SessionCompaction } from "../../src/session/compaction"
 import { Instruction } from "../../src/session/instruction"
@@ -52,6 +53,7 @@ import { SyncEvent } from "../../src/sync"
 import { ToolRegistry } from "../../src/tool/registry"
 import { Truncate } from "../../src/tool/truncate"
 import * as Log from "@opencode-ai/core/util/log"
+import { MemoryService } from "@kilocode/kilo-memory/effect/service"
 import { provideTmpdirServer } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 import { TestLLMServer } from "../lib/llm-server"
@@ -150,6 +152,7 @@ function makeHttp() {
     EventV2Bridge.defaultLayer,
     Reference.defaultLayer,
     status,
+    MemoryService.layer,
   ).pipe(Layer.provideMerge(infra))
   const question = Question.layer.pipe(Layer.provideMerge(deps))
   const todo = Todo.layer.pipe(Layer.provideMerge(deps))
@@ -157,9 +160,11 @@ function makeHttp() {
     Layer.provide(Skill.defaultLayer),
     Layer.provide(FetchHttpClient.layer),
     Layer.provide(CrossSpawnSpawner.defaultLayer),
+    Layer.provide(RepositoryCache.defaultLayer),
     Layer.provide(Ripgrep.defaultLayer),
     Layer.provide(Format.defaultLayer),
     Layer.provide(Git.defaultLayer),
+    Layer.provide(Command.defaultLayer),
     Layer.provideMerge(todo),
     Layer.provideMerge(question),
     Layer.provideMerge(deps),
