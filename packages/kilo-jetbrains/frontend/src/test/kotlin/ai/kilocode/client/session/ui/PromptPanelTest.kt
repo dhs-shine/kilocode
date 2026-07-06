@@ -72,8 +72,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import java.awt.BorderLayout
+import java.awt.Color
 import java.awt.Component
 import java.awt.Container
+import java.awt.DefaultKeyboardFocusManager
+import java.awt.KeyboardFocusManager
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 import java.awt.datatransfer.Transferable
@@ -145,6 +148,27 @@ class PromptPanelTest : BasePlatformTestCase() {
         val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
 
         assertFalse(hasFloatingToolbar(editor.component))
+    }
+
+    fun `test prompt focus outline follows editor focus`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+        realize(panel, 260, 400)
+        panel.setBounds(0, 0, 260, panel.preferredSize.height)
+        panel.doLayout()
+
+        val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
+        val current = KeyboardFocusManager.getCurrentKeyboardFocusManager()
+        val focus = TestFocusManager()
+        KeyboardFocusManager.setCurrentKeyboardFocusManager(focus)
+        try {
+            assertTrue(JBUI.CurrentTheme.Focus.focusColor().rgb != paint(panel, panel.width / 2, 1).rgb)
+
+            focus.focus(editor.contentComponent)
+
+            assertEquals(JBUI.CurrentTheme.Focus.focusColor().rgb, paint(panel, panel.width / 2, 1).rgb)
+        } finally {
+            KeyboardFocusManager.setCurrentKeyboardFocusManager(current)
+        }
     }
 
     fun `test applyStyle updates prompt input and height`() {
@@ -1123,6 +1147,17 @@ class PromptPanelTest : BasePlatformTestCase() {
         return EditorTextField(doc, project, PlainTextFileType.INSTANCE, false, false)
     }
 
+    private fun paint(component: Component, x: Int, y: Int): Color {
+        val image = BufferedImage(component.width, component.height, BufferedImage.TYPE_INT_ARGB)
+        val g = image.createGraphics()
+        try {
+            component.paint(g)
+        } finally {
+            g.dispose()
+        }
+        return Color(image.getRGB(x, y), true)
+    }
+
     private fun completion() = KiloPromptCompletionProvider(
         workspace = workspaces.workspace("/test"),
         service = workspaces,
@@ -1280,6 +1315,12 @@ class PromptPanelTest : BasePlatformTestCase() {
             if (flavor == DataFlavor.javaFileListFlavor) return files
             if (flavor == DataFlavor.imageFlavor) return image
             throw java.awt.datatransfer.UnsupportedFlavorException(flavor)
+        }
+    }
+
+    private class TestFocusManager : DefaultKeyboardFocusManager() {
+        fun focus(component: Component) {
+            setGlobalFocusOwner(component)
         }
     }
 
