@@ -2,6 +2,7 @@ import path from "path"
 import { existsSync } from "fs"
 import { Schema } from "effect"
 import z from "zod"
+import * as Log from "@opencode-ai/core/util/log"
 import { Global } from "@opencode-ai/core/global"
 import { ConfigAgent } from "@/config/agent"
 import { Config } from "@/config/config"
@@ -13,6 +14,8 @@ import { KilocodeConfig } from "./config"
 import { KilocodeConfigSources } from "./sources"
 
 export namespace KilocodeConfigOverlay {
+  const log = Log.create({ service: "kilocode.config.overlay" })
+
   export const Scope = z.enum(["global", "project"])
   export type Scope = z.infer<typeof Scope>
 
@@ -204,6 +207,17 @@ export namespace KilocodeConfigOverlay {
   // kilocode_change end
 
   async function load(file: string, fileScope?: ConfigVariable.FileScope): Promise<Config.Info> {
+    // kilocode_change start - a single unsafe/invalid project config file must not break the settings overlay;
+    // untrusted {env:} and out-of-scope {file:} throw InvalidError here, so skip the offending file like the
+    // main config loader does rather than failing the whole overlay.
+    return await loadUnsafe(file, fileScope).catch((err) => {
+      log.warn("skipping unreadable project config in overlay", { file, err })
+      return {} as Config.Info
+    })
+  }
+
+  async function loadUnsafe(file: string, fileScope?: ConfigVariable.FileScope): Promise<Config.Info> {
+    // kilocode_change end
     const text = await Bun.file(file).text()
     // kilocode_change - overlay reads project config files: {env:} rejected, {file:} confined to fileScope.root
     const expanded = await ConfigVariable.substitute({ text, type: "path", path: file, trusted: false, fileScope })
