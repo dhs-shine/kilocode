@@ -47,6 +47,25 @@ test("allows untrusted file references that stay inside the scope root", async (
   }
 })
 
+test("allows untrusted absolute file references that resolve inside the scope root", async () => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "kilo-config-variable-abs-inside-")))
+  const file = path.join(root, "value")
+  await fs.writeFile(file, "allowed")
+  try {
+    // An absolute path is fine as long as it stays inside the root; only escapes are rejected.
+    expect(
+      await ConfigVariable.substitute({
+        ...source,
+        dir: root,
+        text: `{file:${file}}`,
+        fileScope: { root, source: path.join(root, "kilo.json") },
+      }),
+    ).toBe("allowed")
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+  }
+})
+
 test("rejects environment references in untrusted (project) config", async () => {
   await expect(
     ConfigVariable.substitute({ ...source, text: "value={env:SAFE_VALUE}", env: { SAFE_VALUE: "allowed" } }),
