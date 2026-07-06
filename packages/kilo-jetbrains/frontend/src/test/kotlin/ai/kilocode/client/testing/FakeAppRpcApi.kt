@@ -31,6 +31,7 @@ class FakeAppRpcApi : KiloAppRpcApi {
 
     val state = MutableStateFlow(KiloAppStateDto(KiloAppStatusDto.DISCONNECTED))
     var health = HealthDto(healthy = true, version = "1.0.0")
+    var cliVersion = "1.0.0"
     var models = ModelStateDto()
     val selections = mutableListOf<ModelSelectionUpdateDto>()
     val cleared = mutableListOf<String>()
@@ -65,6 +66,11 @@ class FakeAppRpcApi : KiloAppRpcApi {
     override suspend fun health(): HealthDto {
         assertNotEdt("health")
         return health
+    }
+
+    override suspend fun cliVersion(): String {
+        assertNotEdt("cliVersion")
+        return cliVersion
     }
 
     override suspend fun retry() {

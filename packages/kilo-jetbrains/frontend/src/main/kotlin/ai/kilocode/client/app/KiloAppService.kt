@@ -131,17 +131,29 @@ class KiloAppService internal constructor(
         cs.launch { reinstall() }
     }
 
-    /** Fetch the CLI version and cache it. Call once after connection is established. */
-    fun fetchVersionAsync() {
+    suspend fun cliVersion(): String? = try {
+        call { cliVersion() }
+    } catch (e: Exception) {
+        LOG.warn("cliVersion failed", e)
+        null
+    }
+
+    /** Fetch the pinned CLI version and cache it. */
+    fun fetchVersionAsync(done: (String?) -> Unit = {}) {
+        version?.let {
+            done(it)
+            return
+        }
         cs.launch {
-            LOG.info("fetchVersion: requesting health check")
-            val dto = health()
-            if (dto == null) {
-                LOG.warn("fetchVersion: health check returned null — version not available")
+            LOG.info("fetchVersion: requesting CLI version")
+            val text = cliVersion()
+            if (text == null) {
+                done(null)
                 return@launch
             }
-            version = dto.version
-            LOG.info("fetchVersion: CLI version is ${dto.version}")
+            version = text
+            done(text)
+            LOG.info("fetchVersion: CLI version is $text")
         }
     }
 

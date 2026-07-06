@@ -9,6 +9,7 @@ import ai.kilocode.backend.app.ConfigWarning
 import ai.kilocode.backend.app.LoadError
 import ai.kilocode.backend.app.LoadProgress
 import ai.kilocode.backend.app.ProfileResult
+import ai.kilocode.backend.cli.KiloProps
 import ai.kilocode.jetbrains.api.model.KiloProfile200Response
 import ai.kilocode.rpc.dto.ConfigPatchDto
 import ai.kilocode.rpc.KiloAppRpcApi
@@ -50,6 +51,8 @@ class KiloAppRpcApiImpl : KiloAppRpcApi {
         app.appState.map(::dto).distinctUntilChanged()
 
     override suspend fun health(): HealthDto = app.health()
+
+    override suspend fun cliVersion(): String = KiloProps.cliVersion()
 
     override suspend fun retry() = app.retry()
 
@@ -109,6 +112,12 @@ class KiloAppRpcApiImpl : KiloAppRpcApi {
 internal fun appStateDto(state: KiloAppState): KiloAppStateDto =
     when (state) {
         KiloAppState.Disconnected -> KiloAppStateDto(KiloAppStatusDto.DISCONNECTED)
+        is KiloAppState.Downloading -> KiloAppStateDto(
+            status = KiloAppStatusDto.DOWNLOADING,
+            downloadPercent = state.percent,
+            downloadVersion = state.version,
+            downloadPlatform = state.platform,
+        )
         KiloAppState.Connecting -> KiloAppStateDto(KiloAppStatusDto.CONNECTING)
         is KiloAppState.Loading -> KiloAppStateDto(
             status = KiloAppStatusDto.LOADING,
@@ -143,12 +152,12 @@ internal fun profileDto(p: KiloProfile200Response): ProfileDto = ProfileDto(
     organizations = p.profile.organizations.orEmpty().map { org ->
         ProfileOrganizationDto(id = org.id, name = org.name, role = org.role)
     },
-    balance = p.balance?.let { ProfileBalanceDto(balance = it.balance) },
+    balance = p.balance?.let { ProfileBalanceDto(balance = it.balance ?: 0.0) },
     kiloPass = p.kiloPass?.let {
         ProfileKiloPassDto(
-            currentPeriodBaseCreditsUsd = it.currentPeriodBaseCreditsUsd,
-            currentPeriodUsageUsd = it.currentPeriodUsageUsd,
-            currentPeriodBonusCreditsUsd = it.currentPeriodBonusCreditsUsd,
+            currentPeriodBaseCreditsUsd = it.currentPeriodBaseCreditsUsd ?: 0.0,
+            currentPeriodUsageUsd = it.currentPeriodUsageUsd ?: 0.0,
+            currentPeriodBonusCreditsUsd = it.currentPeriodBonusCreditsUsd ?: 0.0,
             nextBillingAt = it.nextBillingAt,
         )
     },

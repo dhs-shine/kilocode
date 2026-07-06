@@ -292,15 +292,15 @@ class KiloBackendSessionManager(
         title = s.title,
         version = s.version,
         time = SessionTimeDto(
-            created = s.time.created.toDouble(),
-            updated = s.time.updated.toDouble(),
+            created = s.time.created?.toDouble() ?: 0.0,
+            updated = s.time.updated?.toDouble() ?: 0.0,
             archived = s.time.archived,
         ),
         summary = s.summary?.let {
             SessionSummaryDto(
-                additions = it.additions.safeInt(),
-                deletions = it.deletions.safeInt(),
-                files = it.files.safeInt(),
+                additions = it.additions?.safeInt() ?: 0,
+                deletions = it.deletions?.safeInt() ?: 0,
+                files = it.files?.safeInt() ?: 0,
             )
         },
     )

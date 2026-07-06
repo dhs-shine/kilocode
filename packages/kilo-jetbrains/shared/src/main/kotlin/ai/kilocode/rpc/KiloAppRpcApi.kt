@@ -39,6 +39,9 @@ interface KiloAppRpcApi : RemoteApi<Unit> {
     /** One-shot health check against /global/health. */
     suspend fun health(): HealthDto
 
+    /** Pinned CLI version bundled in backend resources. */
+    suspend fun cliVersion(): String
+
     /** Retry app connection or loading after a failure. */
     suspend fun retry()
 
