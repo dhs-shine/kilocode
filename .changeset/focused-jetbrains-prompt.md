@@ -2,4 +2,4 @@
 "@kilocode/kilo-jetbrains": patch
 ---
 
-Show a focused accent line above the JetBrains prompt input.
+Show a focus outline around the JetBrains prompt input.
