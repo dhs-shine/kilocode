@@ -8,6 +8,16 @@ export namespace ConfigVariableGuard {
     source: string
   }
 
+  // A deliberate security block (out-of-scope, swapped, or /proc) — distinct from a plain missing/IO error so
+  // callers using missing:"empty" still surface the block instead of silently emptying it.
+  export class BlockedError extends Error {
+    readonly blocked = true as const
+  }
+
+  export function isBlocked(err: unknown): err is BlockedError {
+    return err instanceof BlockedError || (typeof err === "object" && err !== null && (err as any).blocked === true)
+  }
+
   const secret = new Set(["KILO_SERVER_PASSWORD", "KILO_SERVER_USERNAME"])
 
   export function env(name: string) {
@@ -23,7 +33,7 @@ export namespace ConfigVariableGuard {
     if (!scope) return
     const root = realpathSync.native(scope.root)
     if (inside(root, file)) return
-    throw new Error(`blocked file reference outside project config scope: "${token}"`)
+    throw new BlockedError(`blocked file reference outside project config scope: "${token}"`)
   }
 
   export async function read(filePath: string, scope?: FileScope & { token?: string }) {
@@ -43,11 +53,11 @@ export namespace ConfigVariableGuard {
         const opened = await file.stat()
         const seen = statSync(resolved)
         if (opened.dev !== seen.dev || opened.ino !== seen.ino) {
-          throw new Error(`blocked file reference changed during read: "${scope.token ?? "{file:...}"}"`)
+          throw new BlockedError(`blocked file reference changed during read: "${scope.token ?? "{file:...}"}"`)
         }
       }
       check(resolved, scope?.token ?? "{file:...}", scope)
-      if (/^\/proc\/.*\/environ$/.test(resolved)) throw new Error("blocked process environment reference")
+      if (/^\/proc\/.*\/environ$/.test(resolved)) throw new BlockedError("blocked process environment reference")
       return await file.readFile("utf-8")
     } finally {
       await file.close()

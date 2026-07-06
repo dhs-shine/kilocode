@@ -117,6 +117,11 @@ export async function substitute(input: SubstituteInput) {
     const fileContent = (
       await ConfigVariableGuard.read(resolvedPath, input.fileScope && { ...input.fileScope, token }).catch(
         (error: NodeJS.ErrnoException) => {
+          // kilocode_change - a deliberate scope block must always reject; only genuine missing/IO errors are
+          // emptied under missing:"empty", so an out-of-scope {file:} surfaces instead of being silently dropped.
+          if (ConfigVariableGuard.isBlocked(error)) {
+            throw new InvalidError({ path: configSource, message: error.message }, { cause: error })
+          }
           if (missing === "empty") return ""
 
           const errMsg = `bad file reference: "${token}"`

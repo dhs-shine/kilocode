@@ -3,6 +3,7 @@ import os from "node:os"
 import path from "node:path"
 import { expect, test } from "bun:test"
 import { ConfigVariable } from "@/config/variable"
+import { ConfigVariableGuard } from "@/kilocode/config/variable"
 import { InvalidError } from "@/config/error"
 
 const source = { type: "virtual" as const, source: "test", dir: process.cwd() }
@@ -128,5 +129,64 @@ test.skipIf(process.platform !== "linux")("does not substitute an environment fi
     await expect(ConfigVariable.substitute({ ...trusted, text: `{file:${link}}` })).rejects.toBeInstanceOf(InvalidError)
   } finally {
     await fs.rm(dir, { recursive: true, force: true })
+  }
+})
+
+// A deliberate scope block must surface even for callers that use missing:"empty" (e.g. agent prompts),
+// rather than being silently emptied like a genuine missing/IO error.
+test("scope-blocked file reference still rejects under missing:empty", async () => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "kilo-config-variable-empty-root-")))
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-config-variable-empty-out-"))
+  const file = path.join(outside, "secret")
+  await fs.writeFile(file, "top-secret")
+  try {
+    await expect(
+      ConfigVariable.substitute({
+        ...source,
+        dir: root,
+        missing: "empty",
+        text: `{file:${file}}`,
+        fileScope: { root, source: path.join(root, "kilo.json") },
+      }),
+    ).rejects.toBeInstanceOf(InvalidError)
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+    await fs.rm(outside, { recursive: true, force: true })
+  }
+})
+
+// A genuine missing file under missing:"empty" is still emptied, not rejected.
+test("missing (non-blocked) file reference is emptied under missing:empty", async () => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "kilo-config-variable-missing-")))
+  try {
+    const out = await ConfigVariable.substitute({
+      ...source,
+      dir: root,
+      missing: "empty",
+      text: "value={file:nope.txt}",
+      fileScope: { root, source: path.join(root, "kilo.json") },
+    })
+    expect(out).toBe("value=")
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+  }
+})
+
+// The guard's BlockedError is classified by isBlocked (used to bypass missing:"empty").
+test("guard read rejects an out-of-scope file with a BlockedError", async () => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "kilo-guard-root-")))
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-guard-out-"))
+  const file = path.join(outside, "secret")
+  await fs.writeFile(file, "top-secret")
+  try {
+    const err = await ConfigVariableGuard.read(file, { root, source: "kilo.json", token: "{file:...}" }).then(
+      () => undefined,
+      (e) => e,
+    )
+    expect(err).toBeDefined()
+    expect(ConfigVariableGuard.isBlocked(err)).toBe(true)
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+    await fs.rm(outside, { recursive: true, force: true })
   }
 })
