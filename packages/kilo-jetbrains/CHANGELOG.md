@@ -156,7 +156,7 @@
 
 ### Fixed
 
-- Improve  transcript rendering, prompt focus styling, settings clicks, and prompt picker interactions.
+- Improve transcript rendering, prompt focus styling, settings clicks, and prompt picker interactions.
 
 ## [7.0.1-rc.14] - 2026-07-02
 
