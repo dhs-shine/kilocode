@@ -109,7 +109,7 @@ class KiloBackendAppServiceTest {
     @Test
     fun `download progress maps to app state before ready`() = runBlocking {
         val resolved = CompletableDeferred<Unit>()
-        val ready = CompletableDeferred<Unit>()
+        val signal = CompletableDeferred<Unit>()
         val server = object : CliServer {
             override var forceExtract = false
             override fun process(): Process? = null
@@ -117,7 +117,7 @@ class KiloBackendAppServiceTest {
                 onProgress(CliDownload(37, "1.2.3", "darwin-arm64"))
                 resolved.await()
                 onResolved()
-                ready.await()
+                signal.await()
                 return CliServer.State.Ready(mock.start(), mock.password)
             }
             override fun exited(proc: Process) {}
@@ -141,7 +141,7 @@ class KiloBackendAppServiceTest {
             svc.appState.first { it == KiloAppState.Connecting }
         }
 
-        ready.complete(Unit)
+        signal.complete(Unit)
         ready(svc)
         job.join()
     }
@@ -850,6 +850,30 @@ class KiloBackendAppServiceTest {
         assertEquals("ADMIN", dto.profile?.organizations?.firstOrNull()?.role)
         assertEquals(42.5, dto.profile?.balance?.balance)
         assertEquals("org_1", dto.profile?.currentOrgId)
+    }
+
+    @Test
+    fun `ready dto hides unknown profile amounts`() = runBlocking {
+        mock.profile = """{
+            "profile":{"email":"alice@test.com","name":"Alice"},
+            "balance":{"balance":null},
+            "kiloPass":{
+                "currentPeriodBaseCreditsUsd":null,
+                "currentPeriodUsageUsd":null,
+                "currentPeriodBonusCreditsUsd":null,
+                "nextBillingAt":null
+            },
+            "currentOrgId":null
+        }""".trimIndent()
+        val svc = create()
+        svc.connect()
+
+        ready(svc)
+
+        val dto = appStateDto(svc.appState.value)
+        assertEquals("alice@test.com", dto.profile?.email)
+        assertNull(dto.profile?.balance)
+        assertNull(dto.profile?.kiloPass)
     }
 
     @Test

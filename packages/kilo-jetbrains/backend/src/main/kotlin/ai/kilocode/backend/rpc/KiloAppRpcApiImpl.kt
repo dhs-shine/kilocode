@@ -155,12 +155,15 @@ internal fun profileDto(p: KiloProfile200Response): ProfileDto = ProfileDto(
     organizations = p.profile.organizations.orEmpty().map { org ->
         ProfileOrganizationDto(id = org.id, name = org.name, role = org.role)
     },
-    balance = p.balance?.let { ProfileBalanceDto(balance = it.balance ?: 0.0) },
+    balance = p.balance?.balance?.let { ProfileBalanceDto(balance = it) },
     kiloPass = p.kiloPass?.let {
+        val base = it.currentPeriodBaseCreditsUsd ?: return@let null
+        val usage = it.currentPeriodUsageUsd ?: return@let null
+        val bonus = it.currentPeriodBonusCreditsUsd ?: return@let null
         ProfileKiloPassDto(
-            currentPeriodBaseCreditsUsd = it.currentPeriodBaseCreditsUsd ?: 0.0,
-            currentPeriodUsageUsd = it.currentPeriodUsageUsd ?: 0.0,
-            currentPeriodBonusCreditsUsd = it.currentPeriodBonusCreditsUsd ?: 0.0,
+            currentPeriodBaseCreditsUsd = base,
+            currentPeriodUsageUsd = usage,
+            currentPeriodBonusCreditsUsd = bonus,
             nextBillingAt = it.nextBillingAt,
         )
     },

@@ -18,8 +18,7 @@ val rawSpec = layout.buildDirectory.file("generated/openapi-spec/openapi.raw.jso
 val generatedSpec = layout.buildDirectory.file("generated/openapi-spec/openapi.json")
 val generatedProps = layout.buildDirectory.dir("generated/kilo-props")
 
-val pinnedCliVersion = providers.provider {
-    val text = rootProject.layout.projectDirectory.file("package.json").asFile.readText()
+val pinnedCliVersion = providers.fileContents(rootProject.layout.projectDirectory.file("package.json")).asText.map { text ->
     Regex("\"version\"\\s*:\\s*\"([^\"]+)\"").find(text)?.groupValues?.get(1)
         ?: error("Could not read version from package.json")
 }

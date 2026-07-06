@@ -82,10 +82,10 @@ class KiloAppService internal constructor(
     }
 
     private fun onState(state: KiloAppStateDto) {
-        _state.value = state
         val version = state.downloadVersion
         val platform = state.downloadPlatform
         if (version != null && platform != null) info = CoreInfo(version, platform)
+        _state.value = state
         if (state.status == KiloAppStatusDto.READY) refreshModelFavoritesAsync()
     }
 

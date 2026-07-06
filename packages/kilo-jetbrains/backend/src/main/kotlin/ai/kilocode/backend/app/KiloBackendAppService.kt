@@ -97,7 +97,7 @@ class KiloBackendAppService private constructor(
         private const val MAX_RETRIES = 3
         private const val RETRY_DELAY_MS = 1000L
         private const val APP_LOAD_TIMEOUT_MS = 30_000L
-        private const val READY_TIMEOUT_MS = 5_000L
+        private const val READY_TIMEOUT_MS = 120_000L
 
         /** Test factory — no IntelliJ deps needed. */
         internal fun create(

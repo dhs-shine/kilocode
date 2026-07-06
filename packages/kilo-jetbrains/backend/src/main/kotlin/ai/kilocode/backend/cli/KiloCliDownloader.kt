@@ -5,52 +5,103 @@ import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.util.SystemInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import java.io.File
+import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 import kotlin.math.roundToInt
 
 class KiloCliDownloader(
-    private val http: OkHttpClient = OkHttpClient(),
+    private val http: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .writeTimeout(120, TimeUnit.SECONDS)
+        .build(),
     private val log: KiloLog = KiloLog.create(KiloCliDownloader::class.java),
     private val root: File = File(PathManager.getSystemPath(), "kilo/cli"),
     private val baseUrl: String = "https://github.com/Kilo-Org/kilocode/releases/download",
+    private val api: String = "https://api.github.com/repos/Kilo-Org/kilocode/releases/tags",
 ) {
+    companion object {
+        private val DIGEST = Regex("^sha256:[a-f0-9]{64}$")
+        private val JSON = Json { ignoreUnknownKeys = true }
+    }
+
     suspend fun resolve(version: String, force: Boolean = false, onProgress: (CliDownload) -> Unit = {}): File =
         withContext(Dispatchers.IO) {
             val platform = KiloCliPlatform.current()
             val dir = File(File(root, version), platform)
             val exe = File(dir, "bin/${KiloCliPlatform.exe()}")
             val done = File(dir, ".complete")
+            val cached = done.takeIf { it.isFile }?.readText()?.trim()
+            val ext = KiloCliPlatform.archive(platform)
+            val archive = File(dir, "kilo-$platform.$ext")
 
-            if (force && dir.exists()) {
-                log.info("Deleting cached CLI $version under ${dir.absolutePath}")
-                dir.deleteRecursively()
-            }
-
-            if (exe.isFile && done.isFile) {
+            if (!force && exe.isFile && cached != null && cached.matches(DIGEST) && matches(archive, cached)) {
                 log.info("Using cached Kilo CLI $version for $platform at ${exe.absolutePath}")
                 if (!SystemInfo.isWindows) exe.setExecutable(true)
                 return@withContext exe
             }
 
+            val digest = asset(version, platform, ext)
+
+            if (dir.exists()) {
+                log.info("Deleting cached CLI $version under ${dir.absolutePath}")
+                if (!dir.deleteRecursively()) {
+                    throw IllegalStateException("Failed to delete cached Kilo CLI $version under ${dir.absolutePath}")
+                }
+            }
+
+            if (!dir.isDirectory && !dir.mkdirs()) {
+                throw IllegalStateException("Failed to create Kilo CLI cache directory ${dir.absolutePath}")
+            }
+
             log.info("Kilo CLI $version for $platform is not cached; downloading new release into ${dir.absolutePath}")
-            dir.mkdirs()
-            val ext = KiloCliPlatform.archive(platform)
-            val archive = File(dir, "kilo-$platform.$ext")
             onProgress(CliDownload(0, version, platform))
             download(version, platform, ext, archive, onProgress)
+            verify(archive, digest)
             log.info("Downloaded Kilo CLI $version for $platform to ${archive.absolutePath} (size=${archive.length()} bytes)")
             extract(archive, dir)
             if (!exe.isFile) throw IllegalStateException("Downloaded CLI archive did not contain bin/${KiloCliPlatform.exe()}")
             if (!SystemInfo.isWindows) exe.setExecutable(true)
-            done.writeText("ok\n")
+            done.writeText("$digest\n")
             onProgress(CliDownload(100, version, platform))
             exe
         }
+
+    private fun asset(version: String, platform: String, ext: String): String {
+        val name = "kilo-$platform.$ext"
+        val url = "${api.trimEnd('/')}/v$version"
+        log.info("Fetching Kilo CLI release metadata for $version from $url")
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "application/vnd.github+json")
+            .build()
+        http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IllegalStateException("Failed to fetch Kilo CLI release metadata for $version: HTTP ${response.code}")
+            }
+            val body = response.body?.string()
+                ?: throw IllegalStateException("Failed to fetch Kilo CLI release metadata for $version: empty response body")
+            val digest = JSON.parseToJsonElement(body).jsonObject["assets"]?.jsonArray
+                ?.firstOrNull { it.jsonObject["name"]?.jsonPrimitive?.contentOrNull == name }
+                ?.jsonObject?.get("digest")?.jsonPrimitive?.contentOrNull
+                ?: throw IllegalStateException("Kilo CLI release $version did not include $name")
+            if (!digest.matches(DIGEST)) {
+                throw IllegalStateException("Kilo CLI release $version asset $name has invalid digest")
+            }
+            return digest
+        }
+    }
 
     private fun download(version: String, platform: String, ext: String, file: File, onProgress: (CliDownload) -> Unit) {
         val url = url(version, platform, ext)
@@ -83,6 +134,30 @@ class KiloCliDownloader(
                 }
             }
         }
+    }
+
+    private fun verify(file: File, digest: String) {
+        val actual = sum(file)
+        if (actual == digest) return
+        if (file.exists() && !file.delete()) log.warn("Failed to delete invalid Kilo CLI archive ${file.absolutePath}")
+        throw IllegalStateException("Kilo CLI archive digest mismatch for ${file.name}: expected $digest, got $actual")
+    }
+
+    private fun matches(file: File, digest: String) = file.isFile && sum(file) == digest
+
+    private fun sum(file: File) = "sha256:${sha256(file)}"
+
+    private fun sha256(file: File): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        file.inputStream().buffered().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val n = input.read(buffer)
+                if (n < 0) break
+                md.update(buffer, 0, n)
+            }
+        }
+        return md.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
     }
 
     private fun extract(file: File, dir: File) {

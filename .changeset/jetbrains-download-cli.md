@@ -2,4 +2,4 @@
 "@kilocode/kilo-jetbrains": patch
 ---
 
-Download the pinned Kilo Core release at connect time instead of bundling Core binaries in the plugin.
+Reduce JetBrains plugin size by downloading the Kilo Core release on first connect.

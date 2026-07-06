@@ -271,8 +271,8 @@ class KiloBackendSessionManager(
         title = s.title,
         version = s.version,
         time = SessionTimeDto(
-            created = s.time.created.toDouble(),
-            updated = s.time.updated.toDouble(),
+            created = time(s.id, "created", s.time.created),
+            updated = time(s.id, "updated", s.time.updated),
             archived = s.time.archived,
         ),
         summary = s.summary?.let {
@@ -292,8 +292,8 @@ class KiloBackendSessionManager(
         title = s.title,
         version = s.version,
         time = SessionTimeDto(
-            created = s.time.created?.toDouble() ?: 0.0,
-            updated = s.time.updated?.toDouble() ?: 0.0,
+            created = time(s.id, "created", s.time.created),
+            updated = time(s.id, "updated", s.time.updated),
             archived = s.time.archived,
         ),
         summary = s.summary?.let {
@@ -314,6 +314,12 @@ class KiloBackendSessionManager(
     )
 
     private fun encode(value: String) = java.net.URLEncoder.encode(value, Charsets.UTF_8)
+
+    private fun time(id: String, field: String, value: Number?): Double {
+        if (value != null) return value.toDouble()
+        log.warn("Session $id missing $field timestamp; defaulting to 0.0")
+        return 0.0
+    }
 
     private fun escape(value: String) = buildString {
         for (c in value) {
