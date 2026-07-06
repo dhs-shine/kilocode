@@ -304,6 +304,19 @@ class PromptPanel(
         )
     }
 
+    override fun paintChildren(g: Graphics) {
+        super.paintChildren(g)
+        if (!editorFocused()) return
+        val h = JBUI.scale(SessionUiStyle.View.Prompt.FOCUS_WIDTH)
+        g.color = JBUI.CurrentTheme.Focus.focusColor()
+        g.fillRect(0, JBUI.scale(1), width, h)
+    }
+
+    private fun editorFocused(): Boolean {
+        val ed = editor.getEditor(false) ?: return editor.hasFocus()
+        return editor.hasFocus() || ed.contentComponent.hasFocus()
+    }
+
     @RequiresEdt
     fun setReady(value: Boolean) {
         ready = value
