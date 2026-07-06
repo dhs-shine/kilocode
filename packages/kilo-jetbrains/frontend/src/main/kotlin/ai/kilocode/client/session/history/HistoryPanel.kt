@@ -50,6 +50,7 @@ import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
+import javax.swing.ScrollPaneConstants
 import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
 import javax.swing.event.ListDataEvent
@@ -101,7 +102,7 @@ class HistoryPanel(
 
     init {
         Disposer.register(parent, this)
-        border = JBUI.Borders.empty(UiStyle.Gap.lg())
+        border = JBUI.Borders.empty(UiStyle.Gap.lg(), UiStyle.Gap.lg(), UiStyle.Gap.lg(), 0)
         more.addActionListener { controller.loadMoreCloud() }
         bind(localList, controller.local)
         bind(cloudList, controller.cloud)
@@ -207,11 +208,13 @@ class HistoryPanel(
                 if (list === cloudList) {
                     add(repoOnly, BorderLayout.SOUTH)
                 }
+                border = JBUI.Borders.emptyRight(UiStyle.Gap.lg())
             }
             add(north, BorderLayout.NORTH)
             add(JBScrollPane(list).apply {
                 border = JBUI.Borders.empty()
-                viewportBorder = JBUI.Borders.empty()
+                viewportBorder = JBUI.Borders.emptyRight(UiStyle.Gap.lg())
+                horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             }, BorderLayout.CENTER)
             footer?.let {
                 add(Centerizer(it, Centerizer.TYPE.HORIZONTAL).apply {
@@ -221,7 +224,7 @@ class HistoryPanel(
         }
     }
 
-    private fun localList() = JBList(controller.local).apply {
+    private fun localList() = HistoryList(controller.local).apply {
         selectionMode = ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         isFocusable = true
         cellRenderer = LocalHistoryRenderer(controller.local, { snapshot.activity }, { snapshot.titles })
@@ -249,7 +252,7 @@ class HistoryPanel(
         ScrollingUtil.installActions(this)
     }
 
-    private fun cloudList() = JBList(controller.cloud).apply {
+    private fun cloudList() = HistoryList(controller.cloud).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
         isFocusable = true
         cellRenderer = CloudHistoryRenderer(controller.cloud) { snapshot.activity }
@@ -546,6 +549,10 @@ class HistoryPanel(
             over = value
             repaint()
         }
+    }
+
+    private class HistoryList<T : HistoryItem>(model: HistoryModel<T>) : JBList<T>(model) {
+        override fun getScrollableTracksViewportWidth() = true
     }
 
     internal fun showingLoading() = !controller.local.loaded && !controller.cloud.loaded && (controller.local.loading || controller.cloud.loading)
