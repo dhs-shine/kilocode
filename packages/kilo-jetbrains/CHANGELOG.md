@@ -152,6 +152,11 @@
 
 ## [Unreleased]
 
+## [7.0.1] - 2026-07-06
+
+### Added
+- Launch the first public Kilo JetBrains release with native JetBrains sessions and remote development support.
+
 ## [7.0.1-rc.15] - 2026-07-06
 
 ### Fixed
