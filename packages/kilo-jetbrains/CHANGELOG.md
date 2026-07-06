@@ -154,41 +154,9 @@
 
 ## [7.0.1-rc.15] - 2026-07-06
 
-### Added
-- feat(agent-manager): generate task-focused branch names by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11741
-- feat(cli): persist /sandbox toggle across new sessions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11912
-- feat(vscode): support bidirectional prompt input by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/11918
-- feat(kilo-console): align fonts with Kilo Cloud by @IamCoder18 in https://github.com/Kilo-Org/kilocode/pull/11564
-- feat(gateway): send version headers on notification requests by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11966
-
 ### Fixed
-- fix(jetbrains): allow release publish recovery by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11899
-- fix(cli): preserve output capacity for encoded image requests by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11891
-- fix(vscode): clear unsent drafts on session deletion by @IamCoder18 in https://github.com/Kilo-Org/kilocode/pull/11442
-- fix(cli): resolve plan_exit to the plan file actually saved by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11896
-- fix(vscode): share model picker expand state across webviews by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11910
-- fix(test): make tool/shell.test.ts deterministic (fast commands lost output) by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11913
-- fix(cli): keep sandbox disabled by default by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11898
-- fix(vscode): remove balance chip from session header by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11915
-- fix(cli): require auth for allow everything endpoint by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11887
-- fix(agent-manager): apply reasoning-variant and mode picks in worktree dialog by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11924
-- fix(cli): fail headless subagent permission asks instead of hanging by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11923
-- fix(vscode): include kilo-sandbox-mutation-worker.js in extension bundle by @trim21 in https://github.com/Kilo-Org/kilocode/pull/11926
-- fix(console): show real Kilo logo in navbar by @IamCoder18 in https://github.com/Kilo-Org/kilocode/pull/11561
-- fix(console): show external link icon on profile sidebar shortcuts by @IamCoder18 in https://github.com/Kilo-Org/kilocode/pull/11559
-- fix(cli): show live session spend in TUI sidebar during active turn by @mvanhorn in https://github.com/Kilo-Org/kilocode/pull/11506
-- fix(cli): restore Amazon Bedrock output by pinning @smithy/util-buffer-from by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11968
-- fix(jetbrains): polish transcript and settings interactions by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11932
 
-### Changed
-- release(jetbrains): v7.0.1-rc.14 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11897
-- docs: fix broken OpenRouter provider routing link by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11908
-- Update Requesty setup instructions for VSCode by @chikaramike in https://github.com/Kilo-Org/kilocode/pull/11888
-- Add Fable and Sonnet 5 as adaptive reasoning models by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11906
-- chore: remove stray unreferenced files by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11917
-- docs: clarify local Ollama setup by @singhvishalkr in https://github.com/Kilo-Org/kilocode/pull/11652
-- CLI - Remote model catalog and WebSocket reconnection fixes by @eshurakov in https://github.com/Kilo-Org/kilocode/pull/11835
-
+- Improve  transcript rendering, prompt focus styling, settings clicks, and prompt picker interactions.
 
 ## [7.0.1-rc.14] - 2026-07-02
 
