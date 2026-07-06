@@ -155,7 +155,7 @@
 ## [7.0.1] - 2026-07-06
 
 ### Added
-- Support opt-in project memory so Kilo can remember durable project facts, corrections, environment notes, and session digests across later CLI and JetBrains sessions.
+- Launch the first public Kilo JetBrains release with native JetBrains sessions and remote development support.
 
 ## [7.0.1-rc.15] - 2026-07-06
 
