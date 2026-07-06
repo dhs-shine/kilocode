@@ -152,6 +152,15 @@
 
 ## [Unreleased]
 
+## [7.0.1] - 2026-07-06
+
+### Added
+- feat(cli): opt-in project memory by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11921
+
+### Changed
+- release(jetbrains): v7.0.1-rc.15 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11970
+
+
 ## [7.0.1-rc.15] - 2026-07-06
 
 ### Fixed
