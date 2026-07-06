@@ -61,14 +61,15 @@ export async function substitute(input: SubstituteInput) {
         message: `environment references are not allowed in project config: "${active[0]}"`,
       })
     }
-    // Secure default: untrusted config must supply a fileScope to read files. Without one, {file:} is rejected
-    // rather than allowed unrestricted, so a caller that forgets the scope cannot reopen the exfiltration path.
+    // Secure default: untrusted config needs a fileScope to bound {file:} reads to the project root. Without a
+    // scope we cannot enforce that bound, so we reject rather than read unrestricted. In-root file references are
+    // still allowed when a scope is supplied (the normal project path); this only guards a caller that omitted it.
     if (!input.fileScope) {
       const file = Array.from(input.text.matchAll(/\{file:[^}]+\}/g)).find((m) => !commented(input.text, m.index))
       if (file) {
         throw new InvalidError({
           path: source(input),
-          message: `file references are not allowed in project config: "${file[0]}"`,
+          message: `file references cannot be resolved without a project scope: "${file[0]}"`,
         })
       }
     }
