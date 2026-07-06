@@ -48,7 +48,7 @@ class KiloCliDownloader(
             val ext = KiloCliPlatform.archive(platform)
             val archive = File(dir, "kilo-$platform.$ext")
 
-            if (!force && exe.isFile && cached != null && cached.matches(DIGEST) && matches(archive, cached)) {
+            if (!force && exe.isFile && cached != null && cached.matches(DIGEST)) {
                 log.info("Using cached Kilo CLI $version for $platform at ${exe.absolutePath}")
                 if (!SystemInfo.isWindows) exe.setExecutable(true)
                 return@withContext exe
@@ -168,8 +168,6 @@ class KiloCliDownloader(
         if (file.exists() && !file.delete()) log.warn("Failed to delete invalid Kilo CLI archive ${file.absolutePath}")
         throw IllegalStateException("Kilo CLI archive digest mismatch for ${file.name}: expected $digest, got $actual")
     }
-
-    private fun matches(file: File, digest: String) = file.isFile && sum(file) == digest
 
     private fun sum(file: File) = "sha256:${sha256(file)}"
 
