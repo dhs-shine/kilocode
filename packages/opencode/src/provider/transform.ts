@@ -1487,9 +1487,15 @@ export function schema(model: Provider.Model, schema: JSONSchema7): JSONSchema7 
       }
 
       // Filter required array to only include fields that exist in properties
-      if (result.type === "object" && result.properties && Array.isArray(result.required)) {
-        result.required = result.required.filter((field: any) => field in result.properties)
+      // kilocode_change start - Gemini rejects required entries without matching properties
+      if (result.type === "object" && Array.isArray(result.required)) {
+        const properties = isPlainObject(result.properties) ? result.properties : undefined
+        result.required = properties ? result.required.filter((field: any) => field in properties) : []
+        if (result.required.length === 0) {
+          delete result.required
+        }
       }
+      // kilocode_change end
 
       if (result.type === "array" && !hasCombiner(result)) {
         if (result.items == null) {
