@@ -605,8 +605,8 @@ class SessionUi(
     }
 
     private fun body(state: SessionState): JPanel {
-        if (state is SessionState.Retry || state is SessionState.Offline) return progressBody
         if (controller.model.showSession) return messageBody
+        if (state is SessionState.Retry || state is SessionState.Offline) return progressBody
         if (state is SessionState.Loading) return progressBody
         return blankBody
     }

@@ -296,25 +296,27 @@ class SessionUiLayoutTest : SessionUiTestBase() {
         assertSame(find<SessionMessageListPanel>(ui), scrollView())
     }
 
-    fun `test retry status renders in loading panel instead of message body`() {
+    fun `test retry status keeps transcript and shows message in footer`() {
         rpc.history.addAll(history(1))
         ui = newUi(id = "ses_test")
         settle()
 
-        controller().model.setState(SessionState.Retry("Cannot connect to API", attempt = 2, next = 1_234L))
+        controller().model.setState(SessionState.Retry("The usage limit has been reached", attempt = 4, next = 0L))
         layout()
 
-        val panel = find<LoadingPanel>(ui)
+        val panel = find<SessionMessageListPanel>(ui)
         assertSame(panel, scrollView())
-        assertEquals("Cannot connect to API", panel.labelText())
+        assertTrue(panel.progress.isVisible)
+        assertEquals("The usage limit has been reached (attempt 4)", panel.progress.labelText())
 
         controller().model.setState(SessionState.Idle)
         layout()
 
-        assertSame(find<SessionMessageListPanel>(ui), scrollView())
+        assertSame(panel, scrollView())
+        assertFalse(panel.progress.isVisible)
     }
 
-    fun `test offline status renders in loading panel with fallback`() {
+    fun `test offline status keeps transcript and shows message in footer`() {
         rpc.history.addAll(history(1))
         ui = newUi(id = "ses_test")
         settle()
@@ -322,9 +324,52 @@ class SessionUiLayoutTest : SessionUiTestBase() {
         controller().model.setState(SessionState.Offline("", requestId = "req1"))
         layout()
 
-        val panel = find<LoadingPanel>(ui)
+        val panel = find<SessionMessageListPanel>(ui)
         assertSame(panel, scrollView())
-        assertEquals("Connection offline", panel.labelText())
+        assertTrue(panel.progress.isVisible)
+        assertEquals("Connection offline", panel.progress.labelText())
+    }
+
+    fun `test retry before transcript shows loading panel`() {
+        ui = newUi(displayMs = 1_000)
+
+        controller().model.setState(SessionState.Retry("The usage limit has been reached", attempt = 4, next = 0L))
+        layout()
+
+        assertSame(find<LoadingPanel>(ui), scrollView())
+    }
+
+    fun `test retry offline churn retains transcript panel and footer`() {
+        rpc.history.addAll(history(1))
+        ui = newUi(id = "ses_test")
+        settle()
+
+        val panel = find<SessionMessageListPanel>(ui)
+        val progress = panel.progress
+        val count = panel.componentCount
+
+        repeat(100) { i ->
+            controller().model.setState(SessionState.Retry("Rate limited", attempt = i + 1, next = 0L))
+            layout()
+            assertSame(panel, scrollView())
+            assertSame(progress, panel.progress)
+            assertEquals(count, panel.componentCount)
+            assertTrue(panel.progress.isVisible)
+
+            controller().model.setState(SessionState.Offline("Connection offline", requestId = "req$i"))
+            layout()
+            assertSame(panel, scrollView())
+            assertSame(progress, panel.progress)
+            assertEquals(count, panel.componentCount)
+            assertTrue(panel.progress.isVisible)
+
+            controller().model.setState(SessionState.Idle)
+            layout()
+            assertSame(panel, scrollView())
+            assertSame(progress, panel.progress)
+            assertEquals(count, panel.componentCount)
+            assertFalse(panel.progress.isVisible)
+        }
     }
 
     fun `test empty explicit session id shows message body`() {
