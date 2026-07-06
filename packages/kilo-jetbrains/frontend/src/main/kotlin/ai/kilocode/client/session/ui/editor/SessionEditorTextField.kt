@@ -25,10 +25,9 @@ import com.intellij.ui.EditorTextField
 import com.intellij.ui.LanguageTextField
 import com.intellij.util.textCompletion.TextCompletionProvider
 import com.intellij.util.textCompletion.TextCompletionUtil
+import com.intellij.util.ui.update.UiNotifyConnector
 import java.awt.Component
 import java.awt.Container
-import java.awt.event.HierarchyEvent
-import javax.swing.SwingUtilities
 
 // The toolbar class is internal; match by name to avoid linking against internal API.
 private const val TOOLBAR = "com.intellij.openapi.editor.toolbar.floating.EditorFloatingToolbar"
@@ -80,14 +79,9 @@ internal open class SessionEditorTextField(
 
     private fun install(editor: Editor) {
         (editor as? EditorEx)?.setEmbeddedIntoDialogWrapper(true)
-        hide(editor.component)
-        editor.component.addHierarchyListener { event ->
-            if ((event.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong()) == 0L) return@addHierarchyListener
-            if (!editor.component.isShowing) return@addHierarchyListener
-            SwingUtilities.invokeLater {
-                SwingUtilities.invokeLater { hide(editor.component) }
-            }
-        }
+        // EditorImpl lazily creates EditorFloatingToolbar with the same first-show hook.
+        // Settings providers run later, so this callback runs immediately after toolbar creation.
+        UiNotifyConnector.doWhenFirstShown(editor.component) { hide(editor.component) }
         editor.contentComponent.putClientProperty(UndoRedoAction.IGNORE_SWING_UNDO_MANAGER, true)
         // Workaround: global $Undo/$Redo can miss the synthetic FileEditor for this embedded
         // EditorTextField. Bind the shortcuts locally until the platform data context targets it reliably.
