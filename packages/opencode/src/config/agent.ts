@@ -168,7 +168,9 @@ export async function load(dir: string, warnings?: Warning[], trusted?: boolean,
 
     const name = configEntryNameFromPath(path.relative(dir, item), ["agent/", "agents/"])
 
-    // kilocode_change start - substitute agent prompt variables relative to the agent file
+    // kilocode_change start - substitute agent prompt variables relative to the agent file. Project agents are
+    // untrusted (no {env:}, {file:} confined to fileScope.root); a rejected substitution must skip only this
+    // agent with a warning, not fail the whole config load, mirroring the frontmatter-parse handling above.
     const prompt = await ConfigVariable.substitute({
       text: md.content.trim(),
       type: "virtual",
@@ -176,11 +178,17 @@ export async function load(dir: string, warnings?: Warning[], trusted?: boolean,
       source: item,
       missing: "empty",
       escapeJson: false,
-      // kilocode_change start - project agents: no env, files confined to fileScope.root
       trusted,
       fileScope,
-      // kilocode_change end
+    }).catch((err): string | undefined => {
+      const message =
+        (ConfigError.InvalidError.isInstance(err) ? err.data.message : undefined) ??
+        `Failed to substitute variables in agent ${item}`
+      if (warnings) warnings.push({ path: item, message })
+      log.error("failed to substitute agent prompt", { agent: item, err })
+      return undefined
     })
+    if (prompt === undefined) continue
     const config = {
       name,
       ...md.data,
