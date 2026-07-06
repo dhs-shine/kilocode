@@ -26,18 +26,17 @@ export namespace ConfigVariableGuard {
     throw new Error(`blocked file reference outside project config scope: "${token}"`)
   }
 
-  export async function read(
-    filePath: string,
-    load: (path: string) => Promise<string>,
-    scope?: FileScope & { token?: string },
-  ) {
+  export async function read(filePath: string, scope?: FileScope & { token?: string }) {
     const file = await fs.open(filePath, "r")
     try {
+      // Resolve and validate the file the fd actually points at. On Linux /proc/self/fd pins the fd; on other
+      // platforms we realpath the path. Either way the subsequent read is done through the same open fd
+      // (file.readFile), never by re-opening the path, so the validated inode is the one we read (no TOCTOU race).
       const target = process.platform === "linux" ? `/proc/self/fd/${file.fd}` : filePath
       const resolved = realpathSync.native(target)
       check(resolved, scope?.token ?? "{file:...}", scope)
       if (/^\/proc\/.*\/environ$/.test(resolved)) throw new Error("blocked process environment reference")
-      return await load(process.platform === "linux" ? target : resolved)
+      return await file.readFile("utf-8")
     } finally {
       await file.close()
     }
