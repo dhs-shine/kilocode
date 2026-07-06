@@ -155,11 +155,7 @@
 ## [7.0.1] - 2026-07-06
 
 ### Added
-- feat(cli): opt-in project memory by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11921
-
-### Changed
-- release(jetbrains): v7.0.1-rc.15 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11970
-
+- Support opt-in project memory so Kilo can remember durable project facts, corrections, environment notes, and session digests across later CLI and JetBrains sessions.
 
 ## [7.0.1-rc.15] - 2026-07-06
 
