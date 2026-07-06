@@ -1,5 +1,5 @@
 import fs from "node:fs/promises"
-import { realpathSync } from "node:fs"
+import { realpathSync, statSync } from "node:fs"
 import path from "node:path"
 
 export namespace ConfigVariableGuard {
@@ -29,11 +29,23 @@ export namespace ConfigVariableGuard {
   export async function read(filePath: string, scope?: FileScope & { token?: string }) {
     const file = await fs.open(filePath, "r")
     try {
-      // Resolve and validate the file the fd actually points at. On Linux /proc/self/fd pins the fd; on other
-      // platforms we realpath the path. Either way the subsequent read is done through the same open fd
-      // (file.readFile), never by re-opening the path, so the validated inode is the one we read (no TOCTOU race).
+      // Resolve the file the fd actually points at, then validate the scope and read through the same fd
+      // (file.readFile) so the validated inode is exactly the one we read.
+      //
+      // On Linux /proc/self/fd/<fd> is the kernel's canonical path for the open fd, so realpath + read both
+      // follow the fd — no path is re-resolved after open. On other platforms we cannot name the fd directly,
+      // so we realpath the caller's path and then confirm, via fstat vs. stat on that resolved path, that it
+      // still refers to the same inode as the open fd. If an attacker swapped the path between open and check,
+      // the inodes differ and we reject rather than validating one inode while reading another.
       const target = process.platform === "linux" ? `/proc/self/fd/${file.fd}` : filePath
       const resolved = realpathSync.native(target)
+      if (process.platform !== "linux" && scope) {
+        const opened = await file.stat()
+        const seen = statSync(resolved)
+        if (opened.dev !== seen.dev || opened.ino !== seen.ino) {
+          throw new Error(`blocked file reference changed during read: "${scope.token ?? "{file:...}"}"`)
+        }
+      }
       check(resolved, scope?.token ?? "{file:...}", scope)
       if (/^\/proc\/.*\/environ$/.test(resolved)) throw new Error("blocked process environment reference")
       return await file.readFile("utf-8")
