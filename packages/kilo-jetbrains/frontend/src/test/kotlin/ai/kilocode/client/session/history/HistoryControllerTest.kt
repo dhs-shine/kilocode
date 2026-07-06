@@ -10,6 +10,8 @@ import ai.kilocode.client.session.SessionRef
 import ai.kilocode.client.testing.FakeSessionRpcApi
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
 import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.HoverIcon
+import ai.kilocode.client.ui.layout.Align
 import ai.kilocode.rpc.dto.CloudSessionDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
@@ -341,6 +343,11 @@ class HistoryControllerTest : BasePlatformTestCase() {
         flush()
 
         assertEquals(KiloBundle.message("history.back"), panel.backText())
+        val backs = UIUtil.uiTraverser(panel.component).filter(HoverIcon::class.java)
+            .filter { it.toolTipText == KiloBundle.message("history.back") }
+            .toList()
+        assertTrue(backs.isNotEmpty())
+        assertTrue(backs.all { it.parent is Align })
 
         panel.clickCloud()
         flush()

@@ -6,7 +6,9 @@ import ai.kilocode.client.session.ui.LoadingPanel
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.HoverIcon
-import ai.kilocode.client.ui.iconButton
+import ai.kilocode.client.ui.layout.HAlign
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
 import ai.kilocode.client.util.UiTimerSource
 import ai.kilocode.client.util.UiTimers
 import com.intellij.icons.AllIcons
@@ -186,7 +188,7 @@ class HistoryPanel(
         )
     }
 
-    private fun back(): BorderLayoutPanel {
+    private fun back(): JComponent {
         val label = KiloBundle.message("history.back")
         val btn = HoverIcon().apply {
             icon = AllIcons.Actions.Back
@@ -195,8 +197,7 @@ class HistoryPanel(
             cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
             addActionListener { nav() }
         }
-        return BorderLayoutPanel().apply {
-            add(btn, BorderLayout.WEST)
+        return btn.align(HAlign.LEFT, VAlign.CENTER).apply {
             border = JBUI.Borders.emptyRight(UiStyle.Gap.lg())
         }
     }
