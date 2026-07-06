@@ -40,6 +40,10 @@ val writeKiloProperties by tasks.registering(WriteProperties::class) {
 val generateOpenApiSpec by tasks.registering(GenerateOpenApiSpecTask::class) {
     description = "Generate CLI OpenAPI spec into the build directory"
     cliVersion.set(pinnedCliVersion)
+    token.set(
+        providers.environmentVariable("GH_TOKEN")
+            .orElse(providers.environmentVariable("GITHUB_TOKEN"))
+    )
     cacheDir.set(layout.buildDirectory.dir("cli-cache"))
     spec.set(rawSpec)
 }

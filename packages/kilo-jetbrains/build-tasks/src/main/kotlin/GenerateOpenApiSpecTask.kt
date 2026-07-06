@@ -20,6 +20,7 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
 import java.security.MessageDigest
+import java.time.Instant
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
 
@@ -35,6 +36,9 @@ abstract class GenerateOpenApiSpecTask : DefaultTask() {
 
     @get:Input
     abstract val cliVersion: Property<String>
+
+    @get:Internal
+    abstract val token: Property<String>
 
     @get:Internal
     abstract val cacheDir: DirectoryProperty
@@ -112,9 +116,25 @@ abstract class GenerateOpenApiSpecTask : DefaultTask() {
         conn.readTimeout = 120_000
         conn.instanceFollowRedirects = true
         conn.setRequestProperty("Accept", "application/vnd.github+json")
+        token.getOrNull()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
         try {
             val code = conn.responseCode
-            if (code !in 200..299) throw GradleException("Failed to fetch pinned Kilo CLI release metadata: HTTP $code from $url")
+            if (code !in 200..299) {
+                val info = rate(conn)
+                val body = runCatching { conn.errorStream?.bufferedReader()?.use { it.readText() } }
+                    .getOrNull()
+                    ?.take(500)
+                val detail = if (body.isNullOrBlank()) "" else ": $body"
+                if (limited(conn, code)) {
+                    throw GradleException(
+                        "GitHub API rate limit exceeded while fetching pinned Kilo CLI release metadata ($info)$detail"
+                    )
+                }
+                throw GradleException("Failed to fetch pinned Kilo CLI release metadata: HTTP $code from $url ($info)$detail")
+            }
             val body = conn.inputStream.bufferedReader().use { it.readText() }
             val digest = JSON.parseToJsonElement(body).jsonObject["assets"]?.jsonArray
                 ?.firstOrNull { it.jsonObject["name"]?.jsonPrimitive?.contentOrNull == name }
@@ -126,6 +146,17 @@ abstract class GenerateOpenApiSpecTask : DefaultTask() {
             conn.disconnect()
         }
     }
+
+    private fun rate(conn: HttpURLConnection): String {
+        val reset = conn.getHeaderField("X-RateLimit-Reset")
+            ?.toLongOrNull()
+            ?.let { Instant.ofEpochSecond(it).toString() }
+        return "limit=${conn.getHeaderField("X-RateLimit-Limit")} remaining=${conn.getHeaderField("X-RateLimit-Remaining")} " +
+            "used=${conn.getHeaderField("X-RateLimit-Used")} reset=$reset retryAfter=${conn.getHeaderField("Retry-After")}"
+    }
+
+    private fun limited(conn: HttpURLConnection, code: Int) =
+        code == 429 || (code == 403 && conn.getHeaderField("X-RateLimit-Remaining") == "0")
 
     private fun download(url: String, file: File) {
         logger.lifecycle("Downloading pinned Kilo CLI from $url")

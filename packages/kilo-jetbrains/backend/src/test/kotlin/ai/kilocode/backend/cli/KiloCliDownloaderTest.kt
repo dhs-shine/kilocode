@@ -107,6 +107,39 @@ class KiloCliDownloaderTest {
         }
     }
 
+    @Test
+    fun `reports github api rate limits while resolving metadata`() = runBlocking {
+        MockWebServer().use { server ->
+            val reset = 1_800_000_000L
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(403)
+                    .setHeader("X-RateLimit-Limit", "60")
+                    .setHeader("X-RateLimit-Remaining", "0")
+                    .setHeader("X-RateLimit-Used", "60")
+                    .setHeader("X-RateLimit-Reset", reset.toString())
+                    .setBody("API rate limit exceeded")
+            )
+            val log = TestLog()
+
+            val ex = assertFailsWith<IllegalStateException> {
+                KiloCliDownloader(
+                    log = log,
+                    root = dir,
+                    baseUrl = server.url("/release").toString(),
+                    api = server.url("/api").toString(),
+                ).resolve("1.2.3")
+            }
+
+            assertContains(ex.message.orEmpty(), "GitHub API rate limit exceeded")
+            assertContains(ex.message.orEmpty(), "remaining=0")
+            assertContains(ex.message.orEmpty(), "reset=2027-01-15T08:00:00Z")
+            assertTrue(log.messages.any { it.contains("GitHub API rate limit hit") && it.contains("remaining=0") })
+            assertEquals("/api/v1.2.3", server.takeRequest().path)
+            assertEquals(1, server.requestCount)
+        }
+    }
+
     private fun archive(): ByteArray {
         val files = mapOf(
             "bin/${KiloCliPlatform.exe()}" to "#!/bin/sh\n".toByteArray(),

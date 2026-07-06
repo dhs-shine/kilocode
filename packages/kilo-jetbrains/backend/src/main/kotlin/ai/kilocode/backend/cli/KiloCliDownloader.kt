@@ -12,10 +12,12 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import java.io.File
 import java.security.MessageDigest
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 import kotlin.math.roundToInt
@@ -88,8 +90,21 @@ class KiloCliDownloader(
             .build()
         http.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw IllegalStateException("Failed to fetch Kilo CLI release metadata for $version: HTTP ${response.code}")
+                val info = rate(response)
+                val body = runCatching { response.body?.string() }.getOrNull()?.take(500)
+                val detail = if (body.isNullOrBlank()) "" else ": $body"
+                if (limited(response)) {
+                    log.warn("GitHub API rate limit hit fetching Kilo CLI $version metadata from $url ($info)$detail")
+                    throw IllegalStateException(
+                        "GitHub API rate limit exceeded while resolving Kilo CLI $version ($info)$detail"
+                    )
+                }
+                log.warn("Failed to fetch Kilo CLI $version metadata from $url: HTTP ${response.code} ($info)$detail")
+                throw IllegalStateException(
+                    "Failed to fetch Kilo CLI release metadata for $version: HTTP ${response.code} ($info)$detail"
+                )
             }
+            log.debug { "GitHub metadata OK for Kilo CLI $version (${rate(response)})" }
             val body = response.body?.string()
                 ?: throw IllegalStateException("Failed to fetch Kilo CLI release metadata for $version: empty response body")
             val digest = JSON.parseToJsonElement(body).jsonObject["assets"]?.jsonArray
@@ -102,6 +117,17 @@ class KiloCliDownloader(
             return digest
         }
     }
+
+    private fun rate(response: Response): String {
+        val reset = response.header("X-RateLimit-Reset")
+            ?.toLongOrNull()
+            ?.let { Instant.ofEpochSecond(it).toString() }
+        return "limit=${response.header("X-RateLimit-Limit")} remaining=${response.header("X-RateLimit-Remaining")} " +
+            "used=${response.header("X-RateLimit-Used")} reset=$reset retryAfter=${response.header("Retry-After")}"
+    }
+
+    private fun limited(response: Response) =
+        response.code == 429 || (response.code == 403 && response.header("X-RateLimit-Remaining") == "0")
 
     private fun download(version: String, platform: String, ext: String, file: File, onProgress: (CliDownload) -> Unit) {
         val url = url(version, platform, ext)
