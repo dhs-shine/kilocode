@@ -8,7 +8,7 @@ import { buildKiloHeaders } from "../headers.js"
 
 export type KiloAuth =
   | { type: "api"; key: string }
-  | { type: "oauth"; access: string; refresh: string; expires: number; accountId?: string }
+  | { type: "oauth"; access: string; refresh: string; expires: number; accountId?: string; accountSelection?: "cloud" | "manual" }
   | { type: "wellknown"; key: string; token: string }
 
 export interface KiloProfileResult {
@@ -76,14 +76,17 @@ export async function getProfile(auth: AuthStore): Promise<KiloProfileResult> {
   const selected = profile.selectedOrganizationId
   const orgs = profile.organizations ?? []
   const valid = selected && orgs.some((org) => org.id === selected) ? selected : undefined
-  const currentOrgId = info.accountId ?? valid ?? (profile.hasPersonalAccount === false ? orgs[0]?.id : undefined) ?? null
-  if (currentOrgId && !info.accountId) {
+  const cloud = valid ?? (profile.hasPersonalAccount === false ? orgs[0]?.id : undefined)
+  const local = info.accountSelection === "cloud" ? undefined : info.accountId
+  const currentOrgId = info.accountSelection === "manual" ? (info.accountId ?? null) : (local ?? cloud ?? info.accountId ?? null)
+  if (currentOrgId && !local && info.accountSelection !== "manual" && currentOrgId !== info.accountId) {
     await auth.set("kilo", {
       type: "oauth",
       refresh: info.refresh,
       access: info.access,
       expires: info.expires,
       accountId: currentOrgId,
+      accountSelection: "cloud",
     }).catch((err) => console.warn("Failed to persist cloud account selection:", err))
   }
 
@@ -112,6 +115,7 @@ export async function setOrganization(deps: OrganizationDeps, organizationId: st
     access: info.access,
     expires: info.expires,
     ...(organizationId && { accountId: organizationId }),
+    accountSelection: "manual",
   })
 
   await deps.clear()
