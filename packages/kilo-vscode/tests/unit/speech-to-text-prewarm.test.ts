@@ -92,7 +92,12 @@ describe("speech-to-text prewarm", () => {
       const logic = output.indexOf(FAIL)
       // A FAIL sentinel is a real assertion failure in the prewarm logic — surface it now.
       if (logic !== -1) {
-        expect.unreachable(output.slice(logic + FAIL.length).split("\n")[0]?.trim())
+        expect.unreachable(
+          output
+            .slice(logic + FAIL.length)
+            .split("\n")[0]
+            ?.trim(),
+        )
       }
 
       // Otherwise the child died before it could run (starved/transient spawn) — retry.
