@@ -33,8 +33,10 @@ class ProgressPanel(
     parent: Disposable,
 ) : Stack(StackAxis.HORIZONTAL, UiStyle.Gap.md()), SessionEditorStyleTarget {
 
+    private var style = SessionEditorStyle.current()
+    private var state: SessionState = SessionState.Idle
     private val label = JBLabel().apply {
-        foreground = UiStyle.Colors.weak()
+        foreground = style.editorForeground
     }
     private val spinner = JBLabel(AnimatedIcon.Default())
 
@@ -60,12 +62,16 @@ class ProgressPanel(
     /** Exposed for test assertions. */
     fun labelText(): String = label.text
 
+    /** Exposed for test assertions. */
+    fun labelForeground() = label.foreground
+
     private fun onState(state: SessionState) {
+        this.state = state
         when (state) {
             is SessionState.Busy -> {
                 spinner.isVisible = true
                 label.text = state.text
-                label.foreground = UiStyle.Colors.weak()
+                label.foreground = style.editorForeground
                 isVisible = true
             }
             is SessionState.Retry -> {
@@ -94,7 +100,9 @@ class ProgressPanel(
     }
 
     override fun applyStyle(style: SessionEditorStyle) {
+        this.style = style
         label.font = style.regularFont
+        if (state is SessionState.Busy) label.foreground = style.editorForeground
         revalidate()
         repaint()
     }

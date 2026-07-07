@@ -15,6 +15,7 @@ import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.SessionMessageListPanel
 import ai.kilocode.client.session.ui.SessionRootPanel
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.controller.SessionControllerEvent
@@ -43,6 +44,21 @@ class SessionUiLayoutTest : SessionUiTestBase() {
         assertEquals(JLayeredPane.PALETTE_LAYER, root.getLayer(root.overlay))
         assertEquals(JLayeredPane.MODAL_LAYER, root.getLayer(root.blocker))
         assertFalse(root.blocker.isVisible)
+    }
+
+    fun `test session surfaces use session background from initial render`() {
+        val bg = SessionEditorStyle.current().editorBackground
+        val root = find<SessionRootPanel>(ui)
+        val pane = scrollComponent() as JBScrollPane
+
+        assertEquals(bg, ui.background)
+        assertEquals(bg, root.content.background)
+        assertEquals(bg, pane.background)
+        assertEquals(bg, pane.viewport.background)
+
+        showMessages()
+
+        assertEquals(bg, find<SessionMessageListPanel>(ui).background)
     }
 
     fun `test prompt is docked and connection is overlaid`() {
@@ -328,6 +344,19 @@ class SessionUiLayoutTest : SessionUiTestBase() {
         assertSame(panel, scrollView())
         assertTrue(panel.progress.isVisible)
         assertEquals("Connection offline", panel.progress.labelText())
+    }
+
+    fun `test busy progress footer uses transcript foreground`() {
+        rpc.history.addAll(history(1))
+        ui = newUi(id = "ses_test")
+        settle()
+
+        controller().model.setState(SessionState.Busy("Considering next steps..."))
+        layout()
+
+        val panel = find<SessionMessageListPanel>(ui)
+        assertTrue(panel.progress.isVisible)
+        assertEquals(SessionEditorStyle.current().editorForeground, panel.progress.labelForeground())
     }
 
     fun `test retry before transcript shows loading panel`() {
