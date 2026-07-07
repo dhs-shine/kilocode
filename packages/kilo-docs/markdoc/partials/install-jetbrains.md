@@ -29,7 +29,3 @@ Remove the EAP repository URL from **Settings → Plugins → Manage Plugin Repo
 - CLion
 - RubyMine
 - DataGrip
-
-{% callout type="info" %}
-Both Community and Ultimate editions are supported. Some AI features may vary based on your JetBrains license.
-{% /callout %}
