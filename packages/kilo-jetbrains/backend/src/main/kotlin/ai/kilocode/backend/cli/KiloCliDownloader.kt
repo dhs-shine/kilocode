@@ -85,6 +85,11 @@ class KiloCliDownloader(
             exe
         }
 
+    private fun fail(message: String): Nothing {
+        log.warn(message)
+        throw IllegalStateException(message)
+    }
+
     private fun asset(version: String, platform: String, ext: String): String {
         val name = "kilo-$platform.$ext"
         val url = "${api.trimEnd('/')}/v$version"
@@ -112,12 +117,18 @@ class KiloCliDownloader(
             log.debug { "GitHub metadata OK for Kilo CLI $version (${rate(response)})" }
             val body = response.body?.string()
                 ?: throw IllegalStateException("Failed to fetch Kilo CLI release metadata for $version: empty response body")
-            val digest = JSON.parseToJsonElement(body).jsonObject["assets"]?.jsonArray
-                ?.firstOrNull { it.jsonObject["name"]?.jsonPrimitive?.contentOrNull == name }
-                ?.jsonObject?.get("digest")?.jsonPrimitive?.contentOrNull
-                ?: throw IllegalStateException("Kilo CLI release $version did not include $name")
+            val assets = JSON.parseToJsonElement(body).jsonObject["assets"]?.jsonArray
+            val entry = assets?.firstOrNull { it.jsonObject["name"]?.jsonPrimitive?.contentOrNull == name }
+            if (entry == null) {
+                val names = assets?.mapNotNull { it.jsonObject["name"]?.jsonPrimitive?.contentOrNull }?.joinToString(", ")
+                fail("Kilo CLI release $version has no asset named $name (available assets: ${names ?: "none"})")
+            }
+            val digest = entry.jsonObject["digest"]?.jsonPrimitive?.contentOrNull
+            if (digest == null) {
+                fail("Kilo CLI release $version asset $name has no digest yet; GitHub has not published a SHA-256 checksum for it")
+            }
             if (!digest.matches(DIGEST)) {
-                throw IllegalStateException("Kilo CLI release $version asset $name has invalid digest")
+                fail("Kilo CLI release $version asset $name has a malformed digest '$digest'; expected sha256:<64 hex chars>")
             }
             return digest
         }

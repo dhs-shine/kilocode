@@ -154,6 +154,52 @@ class KiloCliDownloaderTest {
     }
 
     @Test
+    fun `fails clearly and logs when the release has no matching asset`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"assets":[{"name":"other.zip","digest":"sha256:${"a".repeat(64)}"}]}"""
+                )
+            )
+            val log = TestLog()
+            val ex = assertFailsWith<IllegalStateException> {
+                KiloCliDownloader(
+                    log = log,
+                    root = dir,
+                    baseUrl = server.url("/release").toString(),
+                    api = server.url("/api").toString(),
+                ).resolve("1.2.3")
+            }
+            val name = "kilo-${KiloCliPlatform.current()}.${KiloCliPlatform.archive()}"
+            assertContains(ex.message.orEmpty(), "has no asset named $name")
+            assertContains(ex.message.orEmpty(), "other.zip")
+            assertTrue(log.messages.any { it.contains("has no asset named $name") })
+        }
+    }
+
+    @Test
+    fun `fails clearly and logs when the asset has no digest`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"assets":[{"name":"kilo-${KiloCliPlatform.current()}.${KiloCliPlatform.archive()}"}]}"""
+                )
+            )
+            val log = TestLog()
+            val ex = assertFailsWith<IllegalStateException> {
+                KiloCliDownloader(
+                    log = log,
+                    root = dir,
+                    baseUrl = server.url("/release").toString(),
+                    api = server.url("/api").toString(),
+                ).resolve("1.2.3")
+            }
+            assertContains(ex.message.orEmpty(), "has no digest yet")
+            assertTrue(log.messages.any { it.contains("has no digest yet") })
+        }
+    }
+
+    @Test
     fun `reports github api rate limits while resolving metadata`() = runBlocking {
         MockWebServer().use { server ->
             val reset = 1_800_000_000L
