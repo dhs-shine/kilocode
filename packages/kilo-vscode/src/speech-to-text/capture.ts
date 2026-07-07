@@ -235,10 +235,10 @@ function requireActive(requestId: string): Recording {
 }
 
 async function resolveFFmpeg(): Promise<string> {
-  if (ffmpeg) {
-    const bin = await ffmpeg
+  const cached = ffmpeg
+  if (cached) {
+    const bin = await cached
     if (!path.isAbsolute(bin) || existsSync(bin)) return bin
-    ffmpeg = undefined
   }
 
   const task = findFFmpeg()

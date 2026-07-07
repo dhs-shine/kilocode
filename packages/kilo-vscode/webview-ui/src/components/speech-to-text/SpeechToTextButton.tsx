@@ -13,6 +13,7 @@ type Props = {
 
 export const SpeechToTextButton: Component<Props> = (props) => {
   const unavailable = () => !!props.disabled && props.speech.state() === "idle"
+  const locked = () => unavailable() || props.speech.state() === "starting"
   const busy = () => props.speech.state() === "starting" || props.speech.state() === "transcribing"
   const label = () => {
     if (props.speech.state() === "starting") return props.label("speechToText.tooltip.starting")
@@ -50,9 +51,9 @@ export const SpeechToTextButton: Component<Props> = (props) => {
         variant="ghost"
         size="small"
         onClick={click}
-        disabled={unavailable()}
+        disabled={locked()}
         aria-label={label()}
-        aria-disabled={unavailable() || props.speech.state() === "starting"}
+        aria-disabled={locked()}
         aria-busy={busy()}
         aria-pressed={props.speech.state() === "recording"}
         class={`prompt-speech-button prompt-speech-button--${props.speech.state()}`}
