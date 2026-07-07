@@ -30,6 +30,7 @@ export interface ProfileData {
     email: string
     name?: string
     organizations?: Array<{ id: string; name: string; role: string }>
+    selectedOrganizationId?: string
   }
   balance: KilocodeBalance | null
   kiloPass: KiloPassState | null

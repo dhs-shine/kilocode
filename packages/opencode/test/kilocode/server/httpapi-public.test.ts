@@ -189,6 +189,7 @@ describe("Kilo PublicApi OpenAPI contract", () => {
     const profile = response(KiloGatewayPaths.profile)?.properties
     expect(profile?.balance).toEqual({ anyOf: [expect.objectContaining({ type: "object" }), { type: "null" }] })
     expect(profile?.kiloPass).toEqual({ anyOf: [expect.objectContaining({ type: "object" }), { type: "null" }] })
+    expect(profile?.profile?.properties?.selectedOrganizationId).toEqual({ type: "string" })
     const pass = profile?.kiloPass?.anyOf?.find((item) => item.type === "object")?.properties
     expect(pass?.nextBillingAt).toEqual({ anyOf: [{ type: "string" }, { type: "null" }] })
     expect(profile?.currentOrgId).toEqual({ anyOf: [{ type: "string" }, { type: "null" }] })

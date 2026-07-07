@@ -67,14 +67,35 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       const info = yield* auth.get("kilo").pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
       if (!info || info.type !== "oauth") return yield* Effect.fail(new HttpApiError.Unauthorized({}))
 
-      const currentOrgId = info.accountId ?? null
-      const [profile, balance, kiloPass] = yield* Effect.tryPromise({
+      const [profile, kiloPass] = yield* Effect.tryPromise({
         try: () =>
           Promise.all([
             fetchProfile(info.access),
-            fetchBalance(info.access, currentOrgId ?? undefined),
             fetchKiloPassState(info.access),
           ]),
+        catch: () => new HttpApiError.BadRequest({}),
+      })
+
+      const selected = profile.selectedOrganizationId
+      const valid = selected && profile.organizations?.some((org) => org.id === selected) ? selected : undefined
+      const currentOrgId = valid ?? info.accountId ?? null
+      if (valid && valid !== info.accountId) {
+        yield* auth
+          .set("kilo", {
+            type: "oauth",
+            refresh: info.refresh,
+            access: info.access,
+            expires: info.expires,
+            accountId: valid,
+          })
+          .pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
+        yield* cache.clear("kilo")
+        clearModesCache()
+        yield* store.disposeAll().pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
+      }
+
+      const balance = yield* Effect.tryPromise({
+        try: () => fetchBalance(info.access, currentOrgId ?? undefined),
         catch: () => new HttpApiError.BadRequest({}),
       })
       return { profile, balance, kiloPass, currentOrgId }

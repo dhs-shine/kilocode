@@ -10787,6 +10787,7 @@ export type KiloProfileResponses = {
         name: string
         role: string
       }>
+      selectedOrganizationId?: string
     }
     balance: {
       balance: number

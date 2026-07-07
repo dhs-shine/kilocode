@@ -68,12 +68,25 @@ export async function getProfile(auth: AuthStore): Promise<KiloProfileResult> {
   const info = await auth.get("kilo")
   if (!info || info.type !== "oauth") throw new UnauthorizedError("Not authenticated with Kilo Gateway")
 
-  const currentOrgId = info.accountId ?? null
-  const [profile, balance, kiloPass] = await Promise.all([
+  const [profile, kiloPass] = await Promise.all([
     fetchProfile(info.access),
-    fetchBalance(info.access, currentOrgId ?? undefined),
     fetchKiloPassState(info.access),
   ])
+
+  const selected = profile.selectedOrganizationId
+  const valid = selected && profile.organizations?.some((org) => org.id === selected) ? selected : undefined
+  const currentOrgId = valid ?? info.accountId ?? null
+  if (valid && valid !== info.accountId) {
+    await auth.set("kilo", {
+      type: "oauth",
+      refresh: info.refresh,
+      access: info.access,
+      expires: info.expires,
+      accountId: valid,
+    })
+  }
+
+  const balance = await fetchBalance(info.access, currentOrgId ?? undefined)
   return { profile, balance, kiloPass, currentOrgId }
 }
 
