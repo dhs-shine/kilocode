@@ -2,7 +2,7 @@ Kilo Code v7 for JetBrains is officially available. It uses a native JetBrains i
 
 The JetBrains plugin provides the best native JetBrains UX for working with an AI coding agent, and it improves with every release. Enable automatic plugin updates to get the latest fixes and improvements as soon as they are available.
 
-### Install the JetBrains plugin
+### Install the JetBrains plugin {% #jetbrains-early-access %}
 
 1. Open IntelliJ IDEA or another [JetBrains IDE](https://www.jetbrains.com/ides/)
 2. Go to **Settings → Plugins**
