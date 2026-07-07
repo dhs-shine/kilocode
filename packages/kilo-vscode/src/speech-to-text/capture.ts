@@ -239,7 +239,6 @@ async function resolveFFmpeg(): Promise<string> {
   if (cached) {
     const bin = await cached
     if (!path.isAbsolute(bin) || existsSync(bin)) return bin
-    if (ffmpeg === cached) ffmpeg = undefined
   }
 
   const task = findFFmpeg()
