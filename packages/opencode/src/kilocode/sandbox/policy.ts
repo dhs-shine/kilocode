@@ -1,4 +1,5 @@
 import { readFileSync, statSync } from "node:fs"
+import os from "node:os"
 import path from "node:path"
 import { Effect, Semaphore } from "effect"
 import { Global } from "@opencode-ai/core/global"
@@ -303,7 +304,8 @@ function execute<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) 
     const support = backendSupport({ mode: current.state.mode, allowedHosts: [] })
     if (!current.state.enabled || !support.available) return yield* unrestricted(effect)
     const cfg = yield* (yield* Config.Service).get()
-    const extraWritable = cfg.experimental?.sandbox_writable_paths
+    const raw = cfg.experimental?.sandbox_writable_paths
+    const extraWritable = raw?.map((p) => (p.startsWith("~") ? path.join(os.homedir(), p.slice(1)) : p))
     return yield* runSandbox(profile(yield* InstanceState.context, current.state.mode, extraWritable), effect)
   })
 }
