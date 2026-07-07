@@ -1238,6 +1238,7 @@ export const dict = {
 
   "common.retry": "Prøv igen",
   "common.refresh": "Opdatér",
+  "common.reload": "Genindlæs",
 
   "profile.title": "Profil",
   "profile.notLoggedIn": "Ikke logget ind",

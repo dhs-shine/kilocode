@@ -1202,6 +1202,7 @@ export const dict = {
 
   "common.retry": "Prøv igjen",
   "common.refresh": "Oppdater",
+  "common.reload": "Last inn på nytt",
 
   "profile.title": "Profil",
   "profile.notLoggedIn": "Ikke pålogget",

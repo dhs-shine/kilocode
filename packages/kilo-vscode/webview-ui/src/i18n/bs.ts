@@ -1245,6 +1245,7 @@ export const dict = {
 
   "common.retry": "Pokušaj ponovo",
   "common.refresh": "Osvježi",
+  "common.reload": "Učitaj ponovo",
 
   "profile.title": "Profil",
   "profile.notLoggedIn": "Niste prijavljeni",

@@ -1190,6 +1190,7 @@ export const dict = {
 
   "common.retry": "재시도",
   "common.refresh": "새로고침",
+  "common.reload": "새로고침",
 
   "profile.title": "프로필",
   "profile.notLoggedIn": "로그인하지 않음",

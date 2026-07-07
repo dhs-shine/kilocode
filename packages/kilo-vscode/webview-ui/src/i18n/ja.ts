@@ -1233,6 +1233,7 @@ export const dict = {
 
   "common.retry": "再試行",
   "common.refresh": "更新",
+  "common.reload": "再読み込み",
 
   "profile.title": "プロフィール",
   "profile.notLoggedIn": "ログインしていません",

@@ -1201,6 +1201,7 @@ export const dict = {
 
   "common.retry": "Ponów",
   "common.refresh": "Odśwież",
+  "common.reload": "Przeładuj",
 
   "profile.title": "Profil",
   "profile.notLoggedIn": "Nie zalogowano",

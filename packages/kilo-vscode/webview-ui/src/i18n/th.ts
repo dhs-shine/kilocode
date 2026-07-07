@@ -1226,6 +1226,7 @@ export const dict = {
 
   "common.retry": "ลองอีกครั้ง",
   "common.refresh": "รีเฟรช",
+  "common.reload": "โหลดใหม่",
 
   "profile.title": "โปรไฟล์",
   "profile.notLoggedIn": "ยังไม่ได้เข้าสู่ระบบ",

@@ -1193,6 +1193,7 @@ export const dict = {
 
   "common.retry": "Спробувати ще раз",
   "common.refresh": "Оновити",
+  "common.reload": "Перезавантажити",
 
   "profile.title": "Профіль",
   "profile.notLoggedIn": "Не увійшов",

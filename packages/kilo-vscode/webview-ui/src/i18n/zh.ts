@@ -1206,6 +1206,7 @@ export const dict = {
 
   "common.retry": "重试",
   "common.refresh": "刷新",
+  "common.reload": "重新加载",
 
   "profile.title": "个人资料",
   "profile.notLoggedIn": "未登录",

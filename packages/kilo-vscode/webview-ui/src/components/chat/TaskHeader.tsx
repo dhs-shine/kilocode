@@ -214,7 +214,7 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
             </Tooltip>
             <Tooltip value={language.t("common.reload")} placement="bottom">
               <IconButton
-                icon="reset"
+                icon="reload"
                 size="small"
                 variant="ghost"
                 onClick={() => vscode.postMessage({ type: "reload" })}

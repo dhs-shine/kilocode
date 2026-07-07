@@ -1198,6 +1198,7 @@ export const dict = {
 
   "common.retry": "Opnieuw proberen",
   "common.refresh": "Vernieuwen",
+  "common.reload": "Herladen",
 
   "profile.title": "Profiel",
   "profile.notLoggedIn": "Niet ingelogd",

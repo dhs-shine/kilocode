@@ -1183,6 +1183,7 @@ export const dict = {
 
   "common.retry": "إعادة المحاولة",
   "common.refresh": "تحديث",
+  "common.reload": "إعادة التحميل",
 
   "profile.title": "الملف الشخصي",
   "profile.notLoggedIn": "لم يتم تسجيل الدخول",

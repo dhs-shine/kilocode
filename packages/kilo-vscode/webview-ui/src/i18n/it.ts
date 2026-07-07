@@ -1006,6 +1006,7 @@ export const dict = {
   "deviceAuth.error.detailsTitle": "Dettagli errore accesso",
   "common.retry": "Riprova",
   "common.refresh": "Aggiorna",
+  "common.reload": "Ricarica",
   "profile.title": "Profilo",
   "profile.notLoggedIn": "Accesso non effettuato",
   "profile.action.login": "Accedi con Kilo Code",
