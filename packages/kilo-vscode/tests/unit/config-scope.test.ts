@@ -47,4 +47,19 @@ describe("splitConfigByScope", () => {
     })
     expect(split.project).toEqual({})
   })
+
+  it("writes sandbox writable paths to global config", () => {
+    const split = splitConfigByScope({
+      experimental: {
+        sandbox_writable_paths: ["/tmp/kilo"],
+      },
+    })
+
+    expect(split.global).toEqual({
+      experimental: {
+        sandbox_writable_paths: ["/tmp/kilo"],
+      },
+    })
+    expect(split.project).toEqual({})
+  })
 })

@@ -103,7 +103,7 @@ describe("session routed model", () => {
     expect(KiloRoutedModel.displayName("o3")).toBe("o3")
   })
 
-  test("shows compact labels only for Kilo auto selections", () => {
+  test("shows compact labels only for routed Kilo selections", () => {
     const model = { providerID: "openai", modelID: "gpt-5.5" }
     const parts = [reason, finish(model)]
 
@@ -114,6 +114,13 @@ describe("session routed model", () => {
     expect(routed.labels.get("reasoning")).toBe("gpt-5.5")
     expect(routed.footer).toBe("gpt-5.5")
     expect(routed.consumed.has("finish")).toBe(true)
+
+    const fable = RoutedModelMeta.info(undefined, parts, false, {
+      providerID: "kilo",
+      modelID: "anthropic/claude-fable-5",
+    })
+    expect(fable.labels.get("reasoning")).toBe("gpt-5.5")
+    expect(fable.footer).toBe("gpt-5.5")
 
     const explicit = RoutedModelMeta.info(undefined, parts, false, {
       providerID: "openai",
@@ -169,7 +176,7 @@ describe("session routed model", () => {
     expect(routed.consumed.has("last")).toBe(false)
   })
 
-  test("reads routed model only for selected Kilo auto models", () => {
+  test("reads routed model only for selected Kilo routed models", () => {
     const meta = { kilocode: { routedModelID: "openai/gpt-5.5-20260423" } }
 
     expect(
@@ -182,6 +189,22 @@ describe("session routed model", () => {
       modelID: ModelID.make("openai/gpt-5.5-20260423"),
     })
 
+    expect(
+      KiloRoutedModel.readAuto(meta, {
+        providerID: ProviderID.kilo,
+        modelID: "anthropic.claude-fable-5",
+      }),
+    ).toEqual({
+      providerID: ProviderID.kilo,
+      modelID: ModelID.make("openai/gpt-5.5-20260423"),
+    })
+
+    expect(
+      KiloRoutedModel.readAuto(meta, {
+        providerID: ProviderID.kilo,
+        modelID: "openai/affable-model",
+      }),
+    ).toBeUndefined()
     expect(
       KiloRoutedModel.readAuto(meta, {
         providerID: ProviderID.kilo,

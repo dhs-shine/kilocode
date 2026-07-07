@@ -174,9 +174,9 @@ class PromptPanel(
             ed.scrollPane.border = JBUI.Borders.empty()
             ed.scrollPane.viewportBorder = JBUI.Borders.empty(
                 0,
-                JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_HORIZONTAL_INSET),
                 0,
-                JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING),
+                JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_HORIZONTAL_INSET),
             )
             ed.backgroundColor = style.editorScheme.defaultBackground
             ed.scrollPane.background = style.editorScheme.defaultBackground

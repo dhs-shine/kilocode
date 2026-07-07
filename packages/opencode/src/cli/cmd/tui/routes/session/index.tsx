@@ -1738,11 +1738,8 @@ function StepFinishPart(props: { last: boolean; part: StepFinishPart; message: A
   const { theme } = useTheme()
   const info = useContext(RoutedModelMeta.Context)
   const routed = createMemo(() => {
-    if (props.message.providerID !== "kilo") return undefined
-    if (!props.message.modelID.startsWith("kilo-auto/")) return undefined
     const model = props.part.model
-    if (!model) return undefined
-    if (model.providerID === props.message.providerID && model.modelID === props.message.modelID) return undefined
+    if (!RoutedModelMeta.routed(model, props.message)) return undefined
     return RoutedModelMeta.label(ctx.providers(), model)
   })
   const consumed = createMemo(() => info().consumed.has(props.part.id))

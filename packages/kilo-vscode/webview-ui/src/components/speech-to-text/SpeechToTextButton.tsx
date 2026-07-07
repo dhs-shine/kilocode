@@ -3,6 +3,7 @@ import { Tooltip } from "@kilocode/kilo-ui/tooltip"
 import { Spinner } from "@kilocode/kilo-ui/spinner"
 import { onCleanup, type Component } from "solid-js"
 import type { SpeechToText } from "./useSpeechToText"
+import { cleanupSpeechCapture } from "./speech-cleanup"
 
 type Props = {
   speech: SpeechToText
@@ -41,9 +42,7 @@ export const SpeechToTextButton: Component<Props> = (props) => {
     props.start()
   }
 
-  onCleanup(() => {
-    if (props.speech.active()) props.speech.cancel()
-  })
+  onCleanup(() => cleanupSpeechCapture(props.speech))
 
   return (
     <Tooltip value={label()} placement="top">

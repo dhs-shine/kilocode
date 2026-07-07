@@ -175,13 +175,13 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertSame(editor, applied)
     }
 
-    fun `test prompt editor horizontal insets match top padding`() {
+    fun `test prompt editor horizontal insets use dedicated prompt inset`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
 
         realize(panel, 260, 400)
         val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
         val ins = editor.scrollPane.viewportBorder.getBorderInsets(editor.scrollPane)
-        val pad = JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING)
+        val pad = JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_HORIZONTAL_INSET)
 
         assertEquals(pad, ins.left)
         assertEquals(pad, ins.right)

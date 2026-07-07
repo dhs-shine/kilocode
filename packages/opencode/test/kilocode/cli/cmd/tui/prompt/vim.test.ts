@@ -199,6 +199,28 @@ describe("vim edits", () => {
     expect(doc.text).toBe("bar baz")
   })
 
+  test("d$ deletes line content without consuming the newline", () => {
+    const doc = new MockDoc("abc\ndef", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "d$")
+    expect(doc.text).toBe("\ndef")
+  })
+
+  test("c$ changes line content without consuming the newline", () => {
+    const doc = new MockDoc("abc\ndef", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "c$")
+    expect(doc.text).toBe("\ndef")
+    expect(state.mode).toBe("insert")
+  })
+
+  test("y$ yanks line content without the newline", () => {
+    const doc = new MockDoc("abc\ndef", 0)
+    const state = createVimState("normal")
+    feed(doc, state, "y$")
+    expect(state.register).toEqual({ text: "abc", linewise: false })
+  })
+
   test("dd deletes the current line", () => {
     const doc = new MockDoc("one\ntwo\nthree", 4)
     const state = createVimState("normal")

@@ -78,6 +78,8 @@ object SessionUiStyle {
             const val CONTROL_GAP = 4
             const val SHELL_VERTICAL_PADDING = 6
             const val SHELL_HORIZONTAL_PADDING = 8
+            // Horizontal editor inset intentionally matches vertical shell padding to balance text and chrome.
+            const val EDITOR_HORIZONTAL_INSET = SHELL_VERTICAL_PADDING
 
             fun separator(): Color = JBColor.namedColor(
                 "EditorTabs.underTabsBorderColor",
