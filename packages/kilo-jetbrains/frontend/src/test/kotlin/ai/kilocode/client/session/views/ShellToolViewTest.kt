@@ -417,8 +417,9 @@ class ShellToolViewTest : BasePlatformTestCase() {
             assertTrue(field.preferredSize.height - border.top >= editor.lineHeight * lines)
             assertTrue(field.minimumSize.height - border.top >= editor.lineHeight * lines)
             assertTrue(pane.preferredSize.height >= field.preferredSize.height + pad.top + pad.bottom)
-            assertTrue(body.component.preferredSize.width in 1..JBUI.scale(SessionUiStyle.View.Popup.MAX_WIDTH))
+            assertTrue(body.component.preferredSize.width in 1..JBUI.scale(350))
             assertTrue(body.component.preferredSize.height > 0)
+            assertTrue(body.component.preferredSize.height <= JBUI.scale(450))
         } finally {
             Disposer.dispose(body.disposable)
         }

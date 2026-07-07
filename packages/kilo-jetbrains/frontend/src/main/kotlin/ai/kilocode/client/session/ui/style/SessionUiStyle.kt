@@ -108,7 +108,6 @@ object SessionUiStyle {
         /** Reasoning block preview sizing. */
         object Reasoning {
             const val BODY_LINES = 5
-            const val POPUP_LINES = 10
             const val HEADER_VERTICAL_PADDING = 5
             const val BODY_VERTICAL_PADDING = 4
             const val BODY_HORIZONTAL_PADDING = 8
@@ -151,11 +150,6 @@ object SessionUiStyle {
             const val WIDTH_PADDING = 16
 
             fun topPadding(): Int = VIEWPORT_TOP_PADDING
-        }
-
-        object Popup {
-            const val MAX_LINES = 15
-            const val MAX_WIDTH = 520
         }
 
         /** Permission session-view command preview limits. */

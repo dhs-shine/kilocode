@@ -280,21 +280,18 @@ class ReasoningViewTest : BasePlatformTestCase() {
         assertNull(collapsed.headerPopup())
     }
 
-    fun `test reasoning header popup body is capped to reasoning preview rows`() {
-        val view = ReasoningView(reasoning("p1", done = true, text = (1..60).joinToString("\n") { "line $it" }))
+    fun `test reasoning header popup body is capped to popup size`() {
+        val text = (1..400).joinToString(" ") { "reasoning" }
+        val view = ReasoningView(reasoning("p1", done = true, text = text))
         val body = view.headerPopup()!!.build()
 
         try {
             val scroll = popupScrollPanes(body.component).first()
             val panel = scroll.viewport.view as JPanel
-            val md = panel.components.filterIsInstance<JComponent>().single()
-            val line = md.getFontMetrics(md.font).height
-            val max = line * SessionUiStyle.View.Reasoning.POPUP_LINES +
-                JBUI.scale(SessionUiStyle.View.Layout.BODY_EXTRA_HEIGHT)
 
-            assertTrue(body.component.preferredSize.width in 1..JBUI.scale(SessionUiStyle.View.Popup.MAX_WIDTH))
-            assertTrue(body.component.preferredSize.height > 0)
-            assertTrue(body.component.preferredSize.height <= max)
+            assertEquals(1, panel.components.filterIsInstance<JComponent>().size)
+            assertTrue(body.component.preferredSize.width in 1..JBUI.scale(350))
+            assertEquals(JBUI.scale(450), body.component.preferredSize.height)
         } finally {
             Disposer.dispose(body.disposable)
         }

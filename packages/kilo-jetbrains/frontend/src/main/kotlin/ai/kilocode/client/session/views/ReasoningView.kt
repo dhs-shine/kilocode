@@ -23,11 +23,9 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
-import java.awt.Container
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.Rectangle
-import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 import javax.swing.Scrollable
@@ -300,7 +298,7 @@ class ReasoningView(
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
         }
-        return HeaderPopupBody(ReasoningPopupPanel(scroll, md), md, style.editorBackground)
+        return HeaderPopupBody(scroll, md, style.editorBackground)
     }
 
     private fun bodyMaxHeight(): Int {
@@ -415,39 +413,4 @@ class TrackPanel : JPanel(BorderLayout()), Scrollable {
         orientation: Int,
         direction: Int,
     ) = visibleRect.height
-}
-
-private class ReasoningPopupPanel(
-    child: JComponent,
-    private val md: MdView,
-) : JPanel(BorderLayout()) {
-    init {
-        // Transparent so the balloon fill (editor background) shows uniformly behind the content.
-        isOpaque = false
-        add(child, BorderLayout.CENTER)
-    }
-
-    override fun getPreferredSize(): Dimension {
-        val size = super.getPreferredSize()
-        val cap = JBUI.scale(SessionUiStyle.View.Popup.MAX_WIDTH)
-        val width = maxOf(contentWidth(this), size.width).coerceAtMost(cap)
-        val height = md.component.getFontMetrics(md.font).height * SessionUiStyle.View.Reasoning.POPUP_LINES +
-            JBUI.scale(SessionUiStyle.View.Layout.BODY_EXTRA_HEIGHT)
-        return Dimension(width, minOf(size.height, height))
-    }
-}
-
-private fun contentWidth(root: Container): Int {
-    var max = 0
-    for (child in root.components) {
-        if (child is JBScrollPane) {
-            val view = child.viewport.view as? JComponent
-            val content = view?.preferredSize?.width ?: 0
-            val insets = child.insets
-            val viewport = child.viewportBorder?.getBorderInsets(child) ?: JBUI.emptyInsets()
-            max = maxOf(max, content + insets.left + insets.right + viewport.left + viewport.right)
-        }
-        if (child is Container) max = maxOf(max, contentWidth(child))
-    }
-    return max
 }

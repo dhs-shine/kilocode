@@ -44,8 +44,5 @@ class UiStyleTest : BasePlatformTestCase() {
         assertTrue(JBUI.scale(SessionUiStyle.View.Layout.HORIZONTAL_PADDING) > 0)
         assertTrue(SessionUiStyle.View.Tool.BODY_LINES > 0)
         assertEquals(5, SessionUiStyle.View.Reasoning.BODY_LINES)
-        assertEquals(10, SessionUiStyle.View.Reasoning.POPUP_LINES)
-        assertTrue(SessionUiStyle.View.Reasoning.POPUP_LINES != SessionUiStyle.View.Popup.MAX_LINES)
-        assertTrue(SessionUiStyle.View.Reasoning.POPUP_LINES != SessionUiStyle.View.Reasoning.BODY_LINES)
     }
 }
