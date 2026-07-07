@@ -10,6 +10,8 @@ import { FileTree } from "../../diff-viewer/FileTree"
 import { DiffPanel } from "../../agent-manager/DiffPanel"
 import { FullScreenDiffView } from "../../diff-viewer/FullScreenDiffView"
 import { WorktreeItem } from "../../agent-manager/WorktreeItem"
+import { NewWorktreeDialog } from "../../agent-manager/NewWorktreeDialog"
+import { useDialog } from "@kilocode/kilo-ui/context/dialog"
 import { ChatView } from "../components/chat/ChatView"
 import { registerVscodeToolOverrides } from "../components/chat/VscodeToolOverrides"
 import { SessionContext } from "../context/session"
@@ -927,6 +929,43 @@ export const TabBarSingleTab: Story = {
       </div>
     </StoryProviders>
   ),
+}
+
+// ---------------------------------------------------------------------------
+// NewWorktreeDialog — variant dropdown must escape the dialog scroll containers
+// (regression: inline popovers were clipped by .am-nv-dialog-content overflow)
+// ---------------------------------------------------------------------------
+
+const NewWorktreeVariantOpener = () => {
+  const dialog = useDialog()
+  const open = () => {
+    if (document.querySelector("[data-component='popover-content']")) return
+    window.dispatchEvent(new CustomEvent("openVariantPicker"))
+    requestAnimationFrame(open)
+  }
+  onMount(() => {
+    dialog.show(() => <NewWorktreeDialog onClose={() => {}} />)
+    requestAnimationFrame(open)
+  })
+  return null
+}
+
+export const NewWorktreeVariantDropdown1280: Story = {
+  name: "NewWorktreeDialog — variant dropdown open",
+  parameters: { layout: "fullscreen" },
+  render: () => {
+    const session = {
+      ...mockSessionValue(),
+      configModel: () => ({ providerID: "kilo", modelID: "anthropic/claude-sonnet-4-6" }),
+    }
+    return (
+      <StoryProviders noPadding>
+        <SessionContext.Provider value={session as any}>
+          <NewWorktreeVariantOpener />
+        </SessionContext.Provider>
+      </StoryProviders>
+    )
+  },
 }
 
 const searchSection = { id: "polish", name: "Polish", color: "Blue", order: 0, collapsed: false }
