@@ -155,19 +155,17 @@
 ## [7.0.2-rc.2] - 2026-07-07
 
 ### Added
-- feat(sandbox): widen writable-paths settings input and add coverage by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12008
-- feat(jetbrains): polish chat UI and bundled CLI runtime flow by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11978
+- Show compact previews for collapsed reasoning blocks so long assistant reasoning stays readable without taking over the transcript.
+- Add clearer Kilo Core runtime information and diagnostics for release download failures.
 
 ### Fixed
-- fix(vscode): show sandbox tooltip immediately on hover by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12012
-- fix(vscode): preserve mode on first send by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12009
-- fix(vscode): allow shrinking prompt mention selections by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/11936
-- fix(vscode): handle multiline bidi prompt input by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/12006
-- fix: honor Kilo cloud account preferences by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11999
+- Resolve the CLI executable using the user's shell environment so custom PATH setups work when sessions start from JetBrains.
+- Keep retry and offline status visible in the session footer while preserving transcript context.
+- Prevent oversized header popups by capping preview content.
 
 ### Changed
-- release(jetbrains): v7.0.2-rc.1 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12011
-
+- Download the required Kilo Core release at runtime and prune stale cached runtime binaries automatically.
+- Polish JetBrains chat spacing, prompt input behavior, question/todo layout, history scrolling, code block padding, and session background colors.
 
 ## [7.0.2-rc.1] - 2026-07-07
 
