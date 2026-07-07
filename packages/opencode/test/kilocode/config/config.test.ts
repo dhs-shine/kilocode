@@ -243,51 +243,6 @@ describe("kilocode indexing config", () => {
 })
 
 describe("kilocode sandbox writable paths config", () => {
-  test("honors sandbox_writable_paths from global config", async () => {
-    await using globalTmp = await tmpdir()
-    await using tmp = await tmpdir({ git: true })
-
-    const prev = Global.Path.config
-    ;(Global.Path as { config: string }).config = globalTmp.path
-    await clear()
-    await disposeAllInstances()
-
-    try {
-      await writeConfig(globalTmp.path, {
-        $schema: "https://app.kilo.ai/config.json",
-        experimental: { sandbox_writable_paths: ["/tmp/global"] },
-      })
-
-      await provideTestInstance({
-        directory: tmp.path,
-        fn: async () => {
-          const config = await load()
-          expect(config.experimental?.sandbox_writable_paths).toEqual(["/tmp/global"])
-        },
-      })
-    } finally {
-      ;(Global.Path as { config: string }).config = prev
-      await clear()
-      await disposeAllInstances()
-    }
-  })
-
-  test("drops sandbox_writable_paths from project config", async () => {
-    await using tmp = await tmpdir({ git: true })
-
-    await writeConfig(tmp.path, {
-      experimental: { sandbox_writable_paths: ["/tmp/project"] },
-    })
-
-    await provideTestInstance({
-      directory: tmp.path,
-      fn: async () => {
-        const config = await load()
-        expect(config.experimental?.sandbox_writable_paths).toBeUndefined()
-      },
-    })
-  })
-
   test("honors sandbox_writable_paths from global config only, ignoring project config", async () => {
     await using globalTmp = await tmpdir()
     await using tmp = await tmpdir({ git: true })

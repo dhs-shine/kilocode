@@ -39,10 +39,10 @@ export namespace RoutedModelMeta {
     return KiloRoutedModel.displayName(text)
   }
 
-  export function routed(model: StepFinishPart["model"], message: Message) {
+  function routed(model: StepFinishPart["model"], message: Message) {
     if (!model) return undefined
     if (message.providerID !== "kilo") return undefined
-    if (!KiloRoutedModel.routedSelection(message.modelID)) return undefined
+    if (!message.modelID.startsWith("kilo-auto/")) return undefined
     if (model.providerID === message.providerID && model.modelID === message.modelID) return undefined
     return model
   }

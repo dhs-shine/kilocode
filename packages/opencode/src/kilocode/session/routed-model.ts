@@ -47,15 +47,10 @@ export namespace KiloRoutedModel {
     input: { providerID: ProviderID; modelID: string; selected?: string },
   ) {
     if (input.providerID !== ProviderID.kilo) return undefined
-    if (!routedSelection(input.modelID)) return undefined
+    if (!input.modelID.startsWith("kilo-auto/") && !input.modelID.includes("fable")) return undefined
     const model = read(meta, input.providerID)
     if (!model) return undefined
     if (model.modelID === input.modelID || model.modelID === input.selected) return undefined
     return model
-  }
-
-  export function routedSelection(modelID: string) {
-    const id = modelID.trim()
-    return id.startsWith("kilo-auto/") || /(?:^|[/.])claude-fable(?:[-.:/]|$)/.test(id)
   }
 }

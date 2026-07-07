@@ -299,7 +299,7 @@ function resolveMotion(text: string, pos: number, key: string, count: number, aw
     case "$": {
       let t = pos
       for (let i = 0; i < reps; i++) t = lineEnd(text, lineEnd(text, t) + (i === 0 ? 0 : 1))
-      return { target: Math.max(lineStart(text, t), lineEnd(text, t) - 1), inclusive: true, linewise: false }
+      return { target: lineEnd(text, t), inclusive: true, linewise: false }
     }
     case "G": {
       let target = 0

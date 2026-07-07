@@ -1394,7 +1394,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               <WandSparkles size={16} class={enhancing() ? "enhance-spinner" : ""} />
             </Button>
           </Tooltip>
-          <Show when={canUseSpeech() || speech.active()}>
+          <Show when={canUseSpeech()}>
             <SpeechToTextButton speech={speech} disabled={isDisabled()} start={startSpeech} label={language.t} />
           </Show>
           <Show
