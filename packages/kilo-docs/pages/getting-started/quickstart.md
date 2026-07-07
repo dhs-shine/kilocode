@@ -61,7 +61,7 @@ Run the `kilo` command to start the interactive TUI (terminal user interface):
 kilo
 ```
 
-If this is your first time, run `kilo auth login` first to authenticate (see [Setup & Authentication](/docs/getting-started/setup-authentication)).
+If this is your first time, run `kilo auth login` first to authenticate (see [Authentication](/docs/getting-started/setup-authentication)).
 
 ### Step 3: Type Your Task
 

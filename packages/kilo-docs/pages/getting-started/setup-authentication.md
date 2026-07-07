@@ -1,9 +1,9 @@
 ---
-title: "Setup & Authentication"
+title: "Authentication"
 description: "Configure Kilo Code and connect to your AI providers"
 ---
 
-# Setup & Authentication
+# Authentication
 
 When you install Kilo Code, you'll be prompted to sign in or create a free account. This automatically configures everything you need to get started.
 
