@@ -1412,9 +1412,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "احظر الوصول الصادر إلى الشبكة من الأوامر الصادرة عن النموذج وأدوات HTTP. تعمل خوادم MCP المحلية وخطافات المكونات الإضافية خارج هذا التقييد. تظل حركة مرور استدلال الموفّر والنموذج متاحة.",
 
-  "settings.sandboxing.writablePaths.title": "Additional Writable Paths",
+  "settings.sandboxing.writablePaths.title": "مسارات قابلة للكتابة إضافية",
   "settings.sandboxing.writablePaths.description":
-    "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",
+    "مسارات نظام ملفات إضافية يسمح صندوق الرمل بالكتابة إليها (مثل /tmp، /var/log). يتم دمجها مع مسارات الكتابة الافتراضية عندما يكون صندوق الرمل نشطًا.",
   "settings.experimental.mcpTimeout.title": "مهلة MCP (مللي ثانية)",
   "settings.experimental.mcpTimeout.description": "مهلة طلبات خادم MCP بالمللي ثانية",
   "settings.experimental.remote.title": "التحكم Remote",

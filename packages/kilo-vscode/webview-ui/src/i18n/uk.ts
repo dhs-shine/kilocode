@@ -1430,9 +1430,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Блокуйте вихідний доступ до мережі для команд, ініційованих моделлю, та HTTP-інструментів. Локальні MCP-сервери й хуки плагінів працюють поза цим обмеженням. Трафік провайдерів та інференсу моделей залишається доступним.",
 
-  "settings.sandboxing.writablePaths.title": "Additional Writable Paths",
+  "settings.sandboxing.writablePaths.title": "Додаткові шляхи для запису",
   "settings.sandboxing.writablePaths.description":
-    "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",
+    "Додаткові шляхи файлової системи, у які дозволено запис у пісочниці (наприклад, /tmp, /var/log). Вони об'єднуються зі шляхами запису за замовчуванням, коли пісочниця активна.",
   "settings.experimental.mcpTimeout.title": "Тайм-аут MCP (мс)",
   "settings.experimental.mcpTimeout.description": "Тайм-аут у мілісекундах для запитів до MCP-сервера",
   "settings.experimental.remote.title": "Керування Remote",

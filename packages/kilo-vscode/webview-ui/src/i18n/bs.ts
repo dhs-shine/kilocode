@@ -1444,9 +1444,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Blokiraj odlazni mrežni pristup za naredbe koje potiču od modela i HTTP alate. Lokalni MCP serveri i hookovi dodataka izvršavaju se izvan ovog ograničenja. Saobraćaj za inferenciju pružatelja i modela ostaje dostupan.",
 
-  "settings.sandboxing.writablePaths.title": "Additional Writable Paths",
+  "settings.sandboxing.writablePaths.title": "Dodatne upisive putanje",
   "settings.sandboxing.writablePaths.description":
-    "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",
+    "Dodatne putanje sistema datoteka u koje sandbox dozvoljava upis (npr. /tmp, /var/log). Spajaju se sa zadanim upisivim putanjama kada je sandbox aktivan.",
   "settings.experimental.mcpTimeout.title": "MCP istek vremena (ms)",
   "settings.experimental.mcpTimeout.description": "Istek vremena za MCP server zahtjeve u milisekundama",
   "settings.experimental.remote.title": "Remote kontrola",

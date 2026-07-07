@@ -1433,9 +1433,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "モデルから発行されたコマンドと HTTP ツールによる外部ネットワークアクセスをブロックします。ローカル MCP サーバーとプラグインフックは、この制限の対象外です。プロバイダーおよびモデルへの推論通信は引き続き利用できます。",
 
-  "settings.sandboxing.writablePaths.title": "Additional Writable Paths",
+  "settings.sandboxing.writablePaths.title": "追加の書き込み可能パス",
   "settings.sandboxing.writablePaths.description":
-    "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",
+    "サンドボックスでの書き込みを許可する追加のファイルシステムパス（例: /tmp、/var/log）。サンドボックス有効時、デフォルトの書き込み可能パスと統合されます。",
   "settings.experimental.mcpTimeout.title": "MCPタイムアウト（ミリ秒）",
   "settings.experimental.mcpTimeout.description": "MCPサーバーリクエストのタイムアウト（ミリ秒）",
   "settings.experimental.remote.title": "Remote コントロール",

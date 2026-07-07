@@ -104,8 +104,7 @@ const SandboxingTab: Component = () => {
                   "align-items": "center",
                   "justify-content": "space-between",
                   padding: "6px 0",
-                  "border-bottom":
-                    index() < writablePaths().length - 1 ? "1px solid var(--border-weak-base)" : "none",
+                  "border-bottom": index() < writablePaths().length - 1 ? "1px solid var(--border-weak-base)" : "none",
                 }}
               >
                 <span

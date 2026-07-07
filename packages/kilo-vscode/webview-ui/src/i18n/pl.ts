@@ -1401,9 +1401,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Blokuj wychodzący dostęp do sieci z poleceń pochodzących od modelu i narzędzi HTTP. Lokalne serwery MCP i hooki wtyczek nie podlegają temu ograniczeniu. Ruch do dostawców i modeli na potrzeby wnioskowania pozostaje dostępny.",
 
-  "settings.sandboxing.writablePaths.title": "Additional Writable Paths",
+  "settings.sandboxing.writablePaths.title": "Dodatkowe ścieżki zapisu",
   "settings.sandboxing.writablePaths.description":
-    "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",
+    "Dodatkowe ścieżki systemu plików, do których sandbox zezwala na zapis (np. /tmp, /var/log). Są one łączone z domyślnymi ścieżkami zapisu, gdy sandbox jest aktywny.",
   "settings.experimental.mcpTimeout.title": "Limit czasu MCP (ms)",
   "settings.experimental.mcpTimeout.description": "Limit czasu żądań serwera MCP w milisekundach",
   "settings.experimental.remote.title": "Sterowanie Remote",

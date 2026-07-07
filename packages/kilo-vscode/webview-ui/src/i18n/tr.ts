@@ -1432,9 +1432,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Model tarafından başlatılan komutların ve HTTP araçlarının giden ağ erişimini engelleyin. Yerel MCP sunucuları ve eklenti kancaları bu kısıtlamanın dışında çalışır. Sağlayıcı ve model çıkarım trafiği kullanılabilir durumda kalır.",
 
-  "settings.sandboxing.writablePaths.title": "Additional Writable Paths",
+  "settings.sandboxing.writablePaths.title": "Ek Yazılabilir Yollar",
   "settings.sandboxing.writablePaths.description":
-    "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",
+    "Sandığın yazılmasına izin veren ek dosya sistemi yolları (ör. /tmp, /var/log). Sandık etkinken varsayılan yazılabilir yollarla birleştirilir.",
   "settings.experimental.mcpTimeout.title": "MCP Zaman Aşımı (ms)",
   "settings.experimental.mcpTimeout.description": "MCP sunucu istekleri için milisaniye cinsinden zaman aşımı",
   "settings.experimental.remote.title": "Remote Kontrolü",

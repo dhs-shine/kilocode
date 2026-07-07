@@ -1448,9 +1448,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Bloqueie o acesso de saída à rede para comandos originados pelo modelo e ferramentas HTTP. Servidores MCP locais e hooks de plugins são executados fora dessa restrição. O tráfego de inferência de provedores e modelos permanece disponível.",
 
-  "settings.sandboxing.writablePaths.title": "Additional Writable Paths",
+  "settings.sandboxing.writablePaths.title": "Caminhos graváveis adicionais",
   "settings.sandboxing.writablePaths.description":
-    "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",
+    "Caminhos adicionais do sistema de arquivos onde o sandbox permite gravação (por exemplo, /tmp, /var/log). Eles são mesclados com os caminhos graváveis padrão quando o sandbox está ativo.",
   "settings.experimental.mcpTimeout.title": "Tempo limite MCP (ms)",
   "settings.experimental.mcpTimeout.description": "Tempo limite para solicitações do servidor MCP em milissegundos",
   "settings.experimental.remote.title": "Controle Remote",
