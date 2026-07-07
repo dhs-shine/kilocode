@@ -418,6 +418,10 @@ export const Info = Schema.Struct({
         description:
           "Restrict outbound network access for model-originated commands and first-party HTTP tools; local MCP servers and plugin hooks are not covered (default: true)",
       }),
+      sandbox_writable_paths: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
+        description:
+          "Additional filesystem paths the sandbox allows writes to (e.g. ['/tmp', '/var/log']). These are merged with the default writable paths when the sandbox is active.",
+      }),
       // kilocode_change end
       mcp_timeout: Schema.optional(PositiveInt).annotate({
         description: "Timeout in milliseconds for model context protocol (MCP) requests",

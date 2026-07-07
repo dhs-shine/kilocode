@@ -92,7 +92,11 @@ function isolated(ctx: InstanceContext) {
   return linked(path.resolve(ctx.directory), path.resolve(ctx.worktree))
 }
 
-export function profile(ctx: InstanceContext, mode: Profile["network"]["mode"] = "deny"): Profile {
+export function profile(
+  ctx: InstanceContext,
+  mode: Profile["network"]["mode"] = "deny",
+  extraWritable?: readonly string[],
+): Profile {
   const project = isolated(ctx)
     ? [ctx.directory]
     : ctx.directory === ctx.worktree
@@ -108,6 +112,7 @@ export function profile(ctx: InstanceContext, mode: Profile["network"]["mode"] =
     Global.Path.bin,
     Global.Path.log,
     Global.Path.repos,
+    ...(extraWritable ?? []),
   ].map(root)
   return {
     filesystem: {
@@ -297,7 +302,9 @@ function execute<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) 
     const current = yield* snapshot(sessionID)
     const support = backendSupport({ mode: current.state.mode, allowedHosts: [] })
     if (!current.state.enabled || !support.available) return yield* unrestricted(effect)
-    return yield* runSandbox(profile(yield* InstanceState.context, current.state.mode), effect)
+    const cfg = yield* (yield* Config.Service).get()
+    const extraWritable = cfg.experimental?.sandbox_writable_paths
+    return yield* runSandbox(profile(yield* InstanceState.context, current.state.mode, extraWritable), effect)
   })
 }
 
