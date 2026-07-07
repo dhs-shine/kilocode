@@ -51,6 +51,7 @@ class KiloCliDownloader(
             if (!force && exe.isFile && cached != null && cached.matches(DIGEST)) {
                 log.info("Using cached Kilo CLI $version for $platform at ${exe.absolutePath}")
                 if (!SystemInfo.isWindows) exe.setExecutable(true)
+                prune(version)
                 return@withContext exe
             }
 
@@ -75,8 +76,12 @@ class KiloCliDownloader(
             extract(archive, dir)
             if (!exe.isFile) throw IllegalStateException("Downloaded CLI archive did not contain bin/${KiloCliPlatform.exe()}")
             if (!SystemInfo.isWindows) exe.setExecutable(true)
+            if (archive.exists() && !archive.delete()) {
+                log.warn("Failed to delete extracted Kilo CLI archive ${archive.absolutePath}")
+            }
             done.writeText("$digest\n")
             onProgress(CliDownload(100, version, platform))
+            prune(version)
             exe
         }
 
@@ -220,6 +225,23 @@ class KiloCliDownloader(
         target.outputStream().use(copy)
         if (!SystemInfo.isWindows && (target.name == "kilo" || target.name == "bwrap")) {
             target.setExecutable(true)
+        }
+    }
+
+    /**
+     * Delete every cached CLI version under [root] except [keep]. Each plugin update pins a new
+     * CLI version, so without this old versions would accumulate in the IDE system directory
+     * indefinitely. Runs only after the active version resolved successfully so a failed download
+     * never wipes the last working copy.
+     */
+    private fun prune(keep: String) {
+        val entries = root.listFiles() ?: return
+        for (entry in entries) {
+            if (!entry.isDirectory || entry.name == keep) continue
+            log.info("Removing stale Kilo CLI version ${entry.absolutePath}")
+            if (!entry.deleteRecursively()) {
+                log.warn("Failed to remove stale Kilo CLI version ${entry.absolutePath}")
+            }
         }
     }
 

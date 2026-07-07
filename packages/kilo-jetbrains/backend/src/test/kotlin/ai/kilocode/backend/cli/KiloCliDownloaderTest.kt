@@ -88,6 +88,52 @@ class KiloCliDownloaderTest {
     }
 
     @Test
+    fun `prunes stale versions and removes the extracted archive`() = runBlocking {
+        MockWebServer().use { server ->
+            val stale = File(File(dir, "0.0.1"), KiloCliPlatform.current())
+            assertTrue(stale.mkdirs())
+            File(stale, "leftover").writeText("old")
+
+            val bytes = archive()
+            server.enqueue(metadata(bytes))
+            server.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(bytes)))
+            val cli = KiloCliDownloader(
+                root = dir,
+                baseUrl = server.url("/release").toString(),
+                api = server.url("/api").toString(),
+            ).resolve("1.2.3")
+
+            assertTrue(cli.isFile)
+            assertFalse(File(dir, "0.0.1").exists())
+            val archived = File(cli.parentFile.parentFile, "kilo-${KiloCliPlatform.current()}.${KiloCliPlatform.archive()}")
+            assertFalse(archived.exists())
+        }
+    }
+
+    @Test
+    fun `forced resolve re-downloads and keeps only the active version`() = runBlocking {
+        MockWebServer().use { server ->
+            val bytes = archive()
+            repeat(2) {
+                server.enqueue(metadata(bytes))
+                server.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(bytes)))
+            }
+            val cli = KiloCliDownloader(
+                root = dir,
+                baseUrl = server.url("/release").toString(),
+                api = server.url("/api").toString(),
+            )
+            cli.resolve("1.2.3")
+            assertEquals(2, server.requestCount)
+
+            val forced = cli.resolve("1.2.3", force = true)
+            assertTrue(forced.isFile)
+            assertEquals(4, server.requestCount)
+            assertEquals(listOf("1.2.3"), dir.listFiles()?.filter { it.isDirectory }?.map { it.name })
+        }
+    }
+
+    @Test
     fun `rejects cli archive with mismatched digest`() = runBlocking {
         MockWebServer().use { server ->
             val bytes = archive()
