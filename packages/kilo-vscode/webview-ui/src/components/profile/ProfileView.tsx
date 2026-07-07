@@ -55,13 +55,6 @@ const ProfileView: Component<ProfileViewProps> = (props) => {
     setTarget(null)
   })
 
-  const switching = createMemo(() => {
-    const t = target()
-    if (t === null) return false
-    const current = props.profileData?.currentOrgId ?? PERSONAL
-    return current !== t
-  })
-
   const orgOptions = createMemo<OrgOption[]>(() => {
     const orgs = props.profileData?.profile.organizations ?? []
     if (orgs.length === 0) return []
@@ -72,17 +65,24 @@ const ProfileView: Component<ProfileViewProps> = (props) => {
     ]
   })
 
-  const currentOrg = createMemo(() => {
+  const currentId = createMemo(() => {
     const personal = props.profileData?.profile.hasPersonalAccount !== false
-    const id = props.profileData?.currentOrgId ?? (personal ? PERSONAL : orgOptions()[0]?.value)
-    return orgOptions().find((o) => o.value === id)
+    return props.profileData?.currentOrgId ?? (personal ? PERSONAL : orgOptions()[0]?.value)
+  })
+
+  const switching = createMemo(() => {
+    const t = target()
+    if (t === null) return false
+    return currentId() !== t
+  })
+
+  const currentOrg = createMemo(() => {
+    return orgOptions().find((o) => o.value === currentId())
   })
 
   const selectOrg = (option: OrgOption | undefined) => {
     if (!option) return
-    const personal = props.profileData?.profile.hasPersonalAccount !== false
-    const current = props.profileData?.currentOrgId ?? (personal ? PERSONAL : orgOptions()[0]?.value)
-    if (option.value === current) return
+    if (option.value === currentId()) return
     setTarget(option.value)
     vscode.postMessage({
       type: "setOrganization",

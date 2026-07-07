@@ -63,8 +63,9 @@ export function getOrganizationOptions(
   description?: string
   category: string
 }> {
+  const personal = hasPersonalAccount || organizations.length === 0
   return [
-    ...(hasPersonalAccount
+    ...(personal
       ? [
           {
             title: "Personal Account",
