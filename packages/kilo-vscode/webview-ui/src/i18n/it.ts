@@ -1007,6 +1007,7 @@ export const dict = {
   "common.retry": "Riprova",
   "common.refresh": "Aggiorna",
   "common.reload": "Ricarica",
+  "common.reloadDescription": "Ricarica configurazione, competenze, agenti e comandi dal disco",
   "profile.title": "Profilo",
   "profile.notLoggedIn": "Accesso non effettuato",
   "profile.action.login": "Accedi con Kilo Code",

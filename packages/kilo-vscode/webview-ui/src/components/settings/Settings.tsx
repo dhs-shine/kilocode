@@ -144,7 +144,7 @@ const Settings: Component<SettingsProps> = (props) => {
         <Button variant="secondary" size="small" icon="edit" onClick={() => open("global")}>
           {language.t("settings.openGlobalConfig")}
         </Button>
-        <Tooltip value={language.t("common.reload")} placement="bottom">
+        <Tooltip value={language.t("common.reloadDescription")} placement="bottom">
           <Button variant="secondary" size="small" onClick={() => vscode.postMessage({ type: "reload" })}>
             <Icon name="reload" size="small" />
             {language.t("common.reload")}
