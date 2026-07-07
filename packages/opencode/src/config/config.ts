@@ -759,12 +759,9 @@ export const layer = Layer.effect(
         // kilocode_change start
         const merge = Effect.fnUntraced(function* (source: string, next: Info, kind?: ConfigPlugin.Scope) {
           const scope = kind ?? (yield* pluginScopeForSource(source))
-          // sandbox_writable_paths is a security-sensitive sandbox setting that must only come from
-          // global config. A project kilo.json can otherwise widen the sandbox beyond the user's intent.
-          if (scope === "local" && next.experimental?.sandbox_writable_paths) {
-            const { sandbox_writable_paths: _, ...rest } = next.experimental
-            next = { ...next, experimental: { ...next.experimental, ...rest, sandbox_writable_paths: undefined } }
-          }
+          // sandbox_writable_paths is security-sensitive — only global config may set it.
+          // A project kilo.json must not widen the sandbox beyond the user's intent.
+          if (scope === "local") delete next.experimental?.sandbox_writable_paths
           const scoped = KilocodeConfig.scopeIndexing(next, scope)
           result = mergeConfigConcatArrays(result, scoped)
           return yield* mergePluginOrigins(source, scoped.plugin, scope)
