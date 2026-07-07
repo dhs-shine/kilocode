@@ -1,9 +1,9 @@
 ---
-title: "Quickstart"
+title: "Your First Task"
 description: "Get up and running with Kilo Code in minutes"
 ---
 
-# Quickstart
+# Your First Task
 
 After you [set up Kilo Code](/docs/getting-started/setup-authentication), follow the guide for your platform below.
 
