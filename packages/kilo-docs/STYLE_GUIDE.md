@@ -99,11 +99,11 @@ Bad: [Click here](/docs/getting-started/quickstart)
 - Show realistic, working examples
 - Use `kilo run` for CLI examples, not hypothetical commands
 
-```markdown
+````markdown
 ```bash
 kilo run "create a utils.py file with a function that adds two numbers"
 ```
-```
+````
 
 ### Code in prose
 
@@ -161,12 +161,12 @@ Content for CLI
 
 Use fenced `mermaid` blocks for architecture diagrams:
 
-```markdown
+````markdown
 ```mermaid
 flowchart LR
   A --> B
 ```
-```
+````
 
 ## LLM-Generated Docs
 
