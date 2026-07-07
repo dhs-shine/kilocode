@@ -175,6 +175,18 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertSame(editor, applied)
     }
 
+    fun `test prompt editor horizontal insets match top padding`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+
+        realize(panel, 260, 400)
+        val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
+        val ins = editor.scrollPane.viewportBorder.getBorderInsets(editor.scrollPane)
+        val pad = JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING)
+
+        assertEquals(pad, ins.left)
+        assertEquals(pad, ins.right)
+    }
+
     fun `test prompt focus outline follows editor focus`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         realize(panel, 260, 400)

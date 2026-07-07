@@ -305,7 +305,7 @@ class ShellBody(
     private fun styleShell() {
         val root = md.component as? JPanel ?: return
         root.components.filterIsInstance<JBHtmlPane>().forEach {
-            it.border = JBUI.Borders.emptyLeft(JBUI.scale(SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING))
+            it.border = JBUI.Borders.emptyLeft(SessionUiStyle.View.Code.VIEWPORT_HORIZONTAL_PADDING)
         }
     }
 

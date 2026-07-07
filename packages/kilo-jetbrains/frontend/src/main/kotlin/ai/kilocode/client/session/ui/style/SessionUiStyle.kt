@@ -16,8 +16,13 @@ object SessionUiStyle {
     /** Geometry for the transcript list and its scroll behavior. */
     object SessionLayout {
         const val GAP = 3
-        val InnerInsets = Insets(UiStyle.Gap.md(), UiStyle.Gap.md(), UiStyle.Gap.sm(), UiStyle.Gap.sm())
         const val TRANSCRIPT_SCROLLBAR_PADDING = 10
+        val InnerInsets = Insets(
+            UiStyle.Gap.md(),
+            UiStyle.Gap.sm() + TRANSCRIPT_SCROLLBAR_PADDING,
+            UiStyle.Gap.sm(),
+            UiStyle.Gap.sm(),
+        )
         const val USER_PROMPT_INDENT = 100
         const val SCROLL_INCREMENT = 48
     }
@@ -144,12 +149,12 @@ object SessionUiStyle {
             const val MIN_ROWS = 1
             const val BORDER_WIDTH = 1
             const val VIEWPORT_TOP_PADDING = 6
-            const val VIEWPORT_HORIZONTAL_PADDING = 8
+            const val VIEWPORT_HORIZONTAL_PADDING = Layout.HORIZONTAL_PADDING
             const val VIEWPORT_BOTTOM_PADDING = 6
             const val SCROLLBAR_HEIGHT = 12
             const val WIDTH_PADDING = 16
 
-            fun topPadding(): Int = VIEWPORT_TOP_PADDING
+            fun topPadding(): Int = VIEWPORT_TOP_PADDING + UiStyle.Gap.lg()
         }
 
         /** Permission session-view command preview limits. */
