@@ -8,7 +8,7 @@ export const CodeWithAiNav: NavSection[] = [
       {
         href: "/code-with-ai/platforms/vscode",
         children: "VS Code Extension",
-        subLinks: [{ href: "/code-with-ai/platforms/vscode/whats-new", children: "Whats New" }],
+        subLinks: [{ href: "/code-with-ai/platforms/vscode/whats-new", children: "What's New" }],
       },
       {
         href: "/code-with-ai/platforms/jetbrains",
