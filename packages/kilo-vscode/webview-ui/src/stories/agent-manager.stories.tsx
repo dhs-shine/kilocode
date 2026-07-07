@@ -10,8 +10,6 @@ import { FileTree } from "../../diff-viewer/FileTree"
 import { DiffPanel } from "../../agent-manager/DiffPanel"
 import { FullScreenDiffView } from "../../diff-viewer/FullScreenDiffView"
 import { WorktreeItem } from "../../agent-manager/WorktreeItem"
-import { NewWorktreeDialog } from "../../agent-manager/NewWorktreeDialog"
-import { useDialog } from "@kilocode/kilo-ui/context/dialog"
 import { ChatView } from "../components/chat/ChatView"
 import { registerVscodeToolOverrides } from "../components/chat/VscodeToolOverrides"
 import { SessionContext } from "../context/session"
@@ -25,6 +23,7 @@ import { IconButton } from "@kilocode/kilo-ui/icon-button"
 import { Icon } from "@kilocode/kilo-ui/icon"
 import { TooltipKeybind } from "@kilocode/kilo-ui/tooltip"
 import { ContextMenu } from "@kilocode/kilo-ui/context-menu"
+import { ThinkingSelectorBase } from "../components/shared/ThinkingSelector"
 import { createSignal, onCleanup, onMount, type JSX } from "solid-js"
 import type { WorktreeFileDiff, WorktreeState, WorktreeGitStats, PRStatus } from "../types/messages"
 import type { ReviewComment } from "../../diff-viewer/review-comments"
@@ -932,40 +931,67 @@ export const TabBarSingleTab: Story = {
 }
 
 // ---------------------------------------------------------------------------
-// NewWorktreeDialog — variant dropdown must escape the dialog scroll containers
-// (regression: inline popovers were clipped by .am-nv-dialog-content overflow)
+// NewWorktreeDialog — inline selector popovers must escape the dialog scroll
+// containers. Regression: the reasoning-variant and mode pickers were clipped
+// by .am-nv-dialog-content (overflow-y: auto) and .am-prompt-input-container
+// (overflow: hidden) because the overflow escape hatch only covered the model
+// picker. This fixture reproduces the real clipping chain (same CSS classes +
+// the real inline ThinkingSelectorBase with portal={false}) so a screenshot
+// baseline catches any future regression. Rendered inline (no dialog portal)
+// because the visual-regression harness screenshots #storybook-root.
 // ---------------------------------------------------------------------------
 
-const NewWorktreeVariantOpener = () => {
-  const dialog = useDialog()
+const VariantPickerOpener = () => {
+  let frame = 0
+  let attempts = 0
   const open = () => {
     if (document.querySelector("[data-component='popover-content']")) return
+    if (attempts++ >= 120) return
     window.dispatchEvent(new CustomEvent("openVariantPicker"))
-    requestAnimationFrame(open)
+    frame = requestAnimationFrame(open)
   }
   onMount(() => {
-    dialog.show(() => <NewWorktreeDialog onClose={() => {}} />)
-    requestAnimationFrame(open)
+    frame = requestAnimationFrame(open)
   })
+  onCleanup(() => cancelAnimationFrame(frame))
   return null
 }
 
 export const NewWorktreeVariantDropdown1280: Story = {
   name: "NewWorktreeDialog — variant dropdown open",
   parameters: { layout: "fullscreen" },
-  render: () => {
-    const session = {
-      ...mockSessionValue(),
-      configModel: () => ({ providerID: "kilo", modelID: "anthropic/claude-sonnet-4-6" }),
-    }
-    return (
-      <StoryProviders noPadding>
-        <SessionContext.Provider value={session as any}>
-          <NewWorktreeVariantOpener />
-        </SessionContext.Provider>
-      </StoryProviders>
-    )
-  },
+  render: () => (
+    <StoryProviders noPadding>
+      {/* Filler pushes the prompt container to the bottom of the dialog content.
+          The variant popover opens upward from the trigger, extending above the
+          container's top edge. Without the overflow escape fix, .am-prompt-input-container
+          (overflow: hidden + position: relative) clips the top of the popover. */}
+      <div style={{ height: "100vh", display: "flex", "flex-direction": "column" }}>
+        <div class="am-nv-dialog">
+          <div class="am-nv-dialog-content">
+            <div style={{ height: "500px", "flex-shrink": 0 }} />
+            <div
+              class="prompt-input-container am-prompt-input-container"
+              style={{ position: "relative", "flex-shrink": 0 }}
+            >
+              <div class="prompt-input-hint">
+                <div class="prompt-input-hint-selectors">
+                  <ThinkingSelectorBase
+                    variants={["low", "medium", "high"]}
+                    value="low"
+                    onSelect={() => {}}
+                    portal={false}
+                    deferDismiss
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <VariantPickerOpener />
+    </StoryProviders>
+  ),
 }
 
 const searchSection = { id: "polish", name: "Polish", color: "Blue", order: 0, collapsed: false }
