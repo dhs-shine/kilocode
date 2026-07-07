@@ -1437,6 +1437,10 @@ export const dict = {
   "settings.sandboxing.network.title": "Begræns netværksadgang",
   "settings.sandboxing.network.description":
     "Bloker udgående netværksadgang fra kommandoer, der stammer fra modellen, og HTTP-værktøjer. Lokale MCP-servere og plugin-hooks er ikke underlagt denne begrænsning. Inferenstrafik til udbydere og modeller er fortsat tilgængelig.",
+
+  "settings.sandboxing.writablePaths.title": "Additional Writable Paths",
+  "settings.sandboxing.writablePaths.description":
+    "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",
   "settings.experimental.mcpTimeout.title": "MCP-timeout (ms)",
   "settings.experimental.mcpTimeout.description": "Timeout for MCP-serveranmodninger i millisekunder",
   "settings.experimental.remote.title": "Remote-styring",
