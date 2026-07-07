@@ -13512,6 +13512,9 @@
                         },
                         "selectedOrganizationId": {
                           "type": "string"
+                        },
+                        "hasPersonalAccount": {
+                          "type": "boolean"
                         }
                       },
                       "required": ["email"],

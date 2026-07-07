@@ -26,6 +26,7 @@ export async function fetchProfile(token: string): Promise<KilocodeProfile> {
     name?: string
     organizations?: Organization[]
     selectedOrganizationId?: string | null
+    hasPersonalAccount?: boolean | null
   }
   // Backend returns { user: { email, name, ... }, organizations }
   // Transform to flat KilocodeProfile structure
@@ -34,6 +35,7 @@ export async function fetchProfile(token: string): Promise<KilocodeProfile> {
     name: data.user?.name ?? data.name,
     organizations: data.organizations,
     selectedOrganizationId: data.selectedOrganizationId ?? undefined,
+    hasPersonalAccount: data.hasPersonalAccount ?? undefined,
   }
 }
 

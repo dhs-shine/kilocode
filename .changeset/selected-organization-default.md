@@ -3,4 +3,4 @@
 "@kilocode/kilo-gateway": patch
 ---
 
-Use the cloud-selected organization as the active Kilo account when provided.
+Use cloud account preferences to select the active Kilo organization and hide unavailable personal accounts.

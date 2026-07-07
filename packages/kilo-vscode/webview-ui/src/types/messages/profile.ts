@@ -31,6 +31,7 @@ export interface ProfileData {
     name?: string
     organizations?: Array<{ id: string; name: string; role: string }>
     selectedOrganizationId?: string
+    hasPersonalAccount?: boolean
   }
   balance: KilocodeBalance | null
   kiloPass: KiloPassState | null

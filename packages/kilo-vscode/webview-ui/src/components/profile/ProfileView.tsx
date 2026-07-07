@@ -65,20 +65,23 @@ const ProfileView: Component<ProfileViewProps> = (props) => {
   const orgOptions = createMemo<OrgOption[]>(() => {
     const orgs = props.profileData?.profile.organizations ?? []
     if (orgs.length === 0) return []
+    const personal = props.profileData?.profile.hasPersonalAccount !== false
     return [
-      { value: PERSONAL, label: language.t("profile.personalAccount") },
+      ...(personal ? [{ value: PERSONAL, label: language.t("profile.personalAccount") }] : []),
       ...orgs.map((org) => ({ value: org.id, label: org.name, description: org.role })),
     ]
   })
 
   const currentOrg = createMemo(() => {
-    const id = props.profileData?.currentOrgId ?? PERSONAL
+    const personal = props.profileData?.profile.hasPersonalAccount !== false
+    const id = props.profileData?.currentOrgId ?? (personal ? PERSONAL : orgOptions()[0]?.value)
     return orgOptions().find((o) => o.value === id)
   })
 
   const selectOrg = (option: OrgOption | undefined) => {
     if (!option) return
-    const current = props.profileData?.currentOrgId ?? PERSONAL
+    const personal = props.profileData?.profile.hasPersonalAccount !== false
+    const current = props.profileData?.currentOrgId ?? (personal ? PERSONAL : orgOptions()[0]?.value)
     if (option.value === current) return
     setTarget(option.value)
     vscode.postMessage({
@@ -258,7 +261,13 @@ const ProfileView: Component<ProfileViewProps> = (props) => {
                     </div>
 
                     {/* Kilo Pass is part of personal credits, so only show it on the personal account */}
-                    <Show when={(data().currentOrgId ?? null) === null ? data().kiloPass : null}>
+                    <Show
+                      when={
+                        (data().currentOrgId ?? null) === null && data().profile.hasPersonalAccount !== false
+                          ? data().kiloPass
+                          : null
+                      }
+                    >
                       {(pass) => (
                         <div
                           style={{
@@ -331,7 +340,13 @@ const ProfileView: Component<ProfileViewProps> = (props) => {
                     </Show>
 
                     {/* No active Kilo Pass on the personal account — nudge to subscribe */}
-                    <Show when={(data().currentOrgId ?? null) === null && !data().kiloPass}>
+                    <Show
+                      when={
+                        (data().currentOrgId ?? null) === null &&
+                        data().profile.hasPersonalAccount !== false &&
+                        !data().kiloPass
+                      }
+                    >
                       <div
                         style={{
                           "border-top": "1px solid var(--border-weak-base)",

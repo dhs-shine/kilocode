@@ -143,6 +143,7 @@ internal fun profileDto(p: KiloProfile200Response): ProfileDto = ProfileDto(
     organizations = p.profile.organizations.orEmpty().map { org ->
         ProfileOrganizationDto(id = org.id, name = org.name, role = org.role)
     },
+    hasPersonalAccount = p.profile.hasPersonalAccount ?: true,
     balance = p.balance?.let { ProfileBalanceDto(balance = it.balance) },
     kiloPass = p.kiloPass?.let {
         ProfileKiloPassDto(
