@@ -48,8 +48,10 @@ import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.SpellCheckingEditorCustomizationProvider
 import com.intellij.openapi.editor.actions.PasteAction
 import com.intellij.openapi.editor.colors.CodeInsightColors
+import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.fileTypes.PlainTextFileType
@@ -57,8 +59,10 @@ import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.replaceService
 import com.intellij.ui.AnimatedIcon
 import com.intellij.ui.EditorTextField
+import com.intellij.ui.EditorCustomization
 import com.intellij.ui.LanguageTextField
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.Producer
@@ -149,6 +153,26 @@ class PromptPanelTest : BasePlatformTestCase() {
         val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
 
         assertFalse(hasFloatingToolbar(editor.component))
+    }
+
+    fun `test prompt editor disables spellchecking`() {
+        var applied: EditorEx? = null
+        val provider = object : SpellCheckingEditorCustomizationProvider() {
+            override fun getDisabledCustomization(): EditorCustomization {
+                return EditorCustomization { ed -> applied = ed }
+            }
+        }
+        ApplicationManager.getApplication().replaceService(
+            SpellCheckingEditorCustomizationProvider::class.java,
+            provider,
+            testRootDisposable,
+        )
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+
+        realize(panel, 260, 400)
+        val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
+
+        assertSame(editor, applied)
     }
 
     fun `test prompt focus outline follows editor focus`() {

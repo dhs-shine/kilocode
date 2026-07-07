@@ -42,6 +42,7 @@ import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.SpellCheckingEditorCustomizationProvider
 import com.intellij.openapi.editor.colors.CodeInsightColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.event.CaretEvent
@@ -178,6 +179,7 @@ class PromptPanel(
             ed.settings.isUseSoftWraps = true
             ed.settings.isPaintSoftWraps = false
             ed.settings.isAdditionalPageAtBottom = false
+            SpellCheckingEditorCustomizationProvider.getInstance().getDisabledCustomization()?.customize(ed)
             ed.putUserData(PROMPT_ATTACHMENT_PASTE_HANDLER_KEY, PromptAttachmentPasteHandler { processPaste(it) })
             ed.scrollPane.verticalScrollBarPolicy =
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
