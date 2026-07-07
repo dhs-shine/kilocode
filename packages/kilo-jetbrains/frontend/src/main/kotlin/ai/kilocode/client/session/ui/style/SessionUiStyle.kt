@@ -108,6 +108,7 @@ object SessionUiStyle {
         /** Reasoning block preview sizing. */
         object Reasoning {
             const val BODY_LINES = 5
+            const val POPUP_LINES = 10
             const val HEADER_VERTICAL_PADDING = 5
             const val BODY_VERTICAL_PADDING = 4
             const val BODY_HORIZONTAL_PADDING = 8
