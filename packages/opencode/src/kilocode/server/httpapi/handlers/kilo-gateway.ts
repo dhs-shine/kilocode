@@ -7,7 +7,6 @@ import {
   getToken,
   importSessionToDb,
   normalizeClawStatus,
-  resolveProfileOrganization,
 } from "@kilocode/kilo-gateway"
 import {
   HEADER_FEATURE,
@@ -68,32 +67,17 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
       const info = yield* auth.get("kilo").pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
       if (!info || info.type !== "oauth") return yield* Effect.fail(new HttpApiError.Unauthorized({}))
 
-      const [profile, kiloPass] = yield* Effect.tryPromise({
+      const currentOrgId = info.accountId ?? null
+      const [profile, balance, kiloPass] = yield* Effect.tryPromise({
         try: () =>
           Promise.all([
             fetchProfile(info.access),
+            fetchBalance(info.access, currentOrgId ?? undefined),
             fetchKiloPassState(info.access),
           ]),
         catch: () => new HttpApiError.BadRequest({}),
       })
-
-      const org = resolveProfileOrganization(profile, info)
-      if (org.persistOrgId) {
-        yield* auth.set("kilo", {
-          type: "oauth",
-          refresh: info.refresh,
-          access: info.access,
-          expires: info.expires,
-          accountId: org.persistOrgId,
-          accountSelection: "cloud",
-        }).pipe(Effect.catch((err) => Effect.sync(() => log.warn("failed to persist cloud account selection", { err }))))
-      }
-
-      const balance = yield* Effect.tryPromise({
-        try: () => fetchBalance(info.access, org.currentOrgId ?? undefined),
-        catch: () => new HttpApiError.BadRequest({}),
-      })
-      return { profile, balance, kiloPass, currentOrgId: org.currentOrgId }
+      return { profile, balance, kiloPass, currentOrgId }
     })
 
     const authStatus = Effect.fn("KiloGatewayHttpApi.authStatus")(function* () {
@@ -352,7 +336,6 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
           access: info.access,
           expires: info.expires,
           ...(ctx.payload.organizationId && { accountId: ctx.payload.organizationId }),
-          accountSelection: "manual",
         })
         .pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
 

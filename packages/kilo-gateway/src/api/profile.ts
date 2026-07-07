@@ -45,6 +45,21 @@ export async function fetchProfile(token: string): Promise<KilocodeProfile> {
 export const getKiloProfile = fetchProfile
 
 /**
+ * Resolve the organization a fresh login should default to.
+ *
+ * Applied once at login time (not on every profile fetch): prefer the cloud's
+ * validated `selectedOrganizationId`, and fall back to the first organization
+ * when the account has no personal account to sit on. Returns `undefined` to
+ * mean "personal account".
+ */
+export function defaultOrganizationId(profile: KilocodeProfile): string | undefined {
+  const orgs = profile.organizations ?? []
+  const selected = profile.selectedOrganizationId
+  const valid = selected && orgs.some((org) => org.id === selected) ? selected : undefined
+  return valid ?? (profile.hasPersonalAccount === false ? orgs[0]?.id : undefined)
+}
+
+/**
  * Fetch user balance from Kilo API
  * @param token - Authentication token
  * @param organizationId - Optional organization ID for team balance

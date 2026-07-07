@@ -17,7 +17,6 @@ export class Oauth extends Schema.Class<Oauth>("OAuth")({
   access: Schema.String,
   expires: NonNegativeInt,
   accountId: Schema.optional(Schema.String),
-  accountSelection: Schema.optional(Schema.Literals(["cloud", "manual"])), // kilocode_change
   enterpriseUrl: Schema.optional(Schema.String),
 }) {}
 
