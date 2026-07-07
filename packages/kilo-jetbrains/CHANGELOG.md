@@ -152,6 +152,43 @@
 
 ## [Unreleased]
 
+## [7.0.2] - 2026-07-07
+
+### Added
+- feat(cli): add vim modal editing to the prompt input by @drye in https://github.com/Kilo-Org/kilocode/pull/11428
+- feat(sandbox): add configurable writable paths option by @trim21 in https://github.com/Kilo-Org/kilocode/pull/11995
+- feat(vscode): prewarm microphone capture before showing voice input as recording by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12001
+- feat: add /reload action to reboot the instance from disk by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12004
+- feat(vscode): render read-tool images inline in chat view by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12010
+- feat(jetbrains): download pinned Kilo Core releases at runtime by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11975
+- feat(vscode): integrate project memory into the extension by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/11954
+- feat(sandbox): widen writable-paths settings input and add coverage by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12008
+- feat(jetbrains): polish chat UI and bundled CLI runtime flow by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11978
+
+### Fixed
+- fix(cli): import cloud sessions before validation by @maphew in https://github.com/Kilo-Org/kilocode/pull/11223
+- fix(vscode): show routed model name for auto-routed free sessions by @kilo-code-bot[bot] in https://github.com/Kilo-Org/kilocode/pull/12000
+- fix(cli): block file/env references in untrusted project config by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11886
+- fix(vscode): prevent selector popover clipping in new worktree dialog by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12007
+- fix(vscode): show sandbox tooltip immediately on hover by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12012
+- fix(vscode): preserve mode on first send by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12009
+- fix(vscode): allow shrinking prompt mention selections by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/11936
+- fix(vscode): handle multiline bidi prompt input by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/12006
+- fix: honor Kilo cloud account preferences by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11999
+- fix(vscode): support agent manager prompt bidi by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/12015
+
+### Changed
+- release(jetbrains): v7.0.1 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/11971
+- CLI - Show Remote Badge In TUI Prompt by @eshurakov in https://github.com/Kilo-Org/kilocode/pull/11976
+- docs: add deprecation notice to App Builder page by @eshurakov in https://github.com/Kilo-Org/kilocode/pull/11997
+- Show actually used models when using fable by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/11969
+- release(jetbrains): v7.0.2-rc.1 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12011
+- docs(kilo-docs): improve navigation structure by @emilieschario in https://github.com/Kilo-Org/kilocode/pull/11991
+- docs(kilo-docs): add documentation style guide by @emilieschario in https://github.com/Kilo-Org/kilocode/pull/11992
+- release(jetbrains): v7.0.2-rc.2 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12018
+- docs(kilo-docs): improve onboarding flow by @emilieschario in https://github.com/Kilo-Org/kilocode/pull/11988
+
+
 ## [7.0.2-rc.2] - 2026-07-07
 
 ### Added
