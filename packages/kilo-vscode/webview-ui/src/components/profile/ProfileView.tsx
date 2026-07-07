@@ -44,6 +44,8 @@ const ProfileView: Component<ProfileViewProps> = (props) => {
   const language = useLanguage()
   const [target, setTarget] = createSignal<string | null>(null)
 
+  const personal = createMemo(() => props.profileData?.profile.hasPersonalAccount !== false)
+
   // Always fetch fresh profile+balance when navigating to this view
   onMount(() => {
     vscode.postMessage({ type: "refreshProfile" })
@@ -58,16 +60,14 @@ const ProfileView: Component<ProfileViewProps> = (props) => {
   const orgOptions = createMemo<OrgOption[]>(() => {
     const orgs = props.profileData?.profile.organizations ?? []
     if (orgs.length === 0) return []
-    const personal = props.profileData?.profile.hasPersonalAccount !== false
     return [
-      ...(personal ? [{ value: PERSONAL, label: language.t("profile.personalAccount") }] : []),
+      ...(personal() ? [{ value: PERSONAL, label: language.t("profile.personalAccount") }] : []),
       ...orgs.map((org) => ({ value: org.id, label: org.name, description: org.role })),
     ]
   })
 
   const currentId = createMemo(() => {
-    const personal = props.profileData?.profile.hasPersonalAccount !== false
-    return props.profileData?.currentOrgId ?? (personal ? PERSONAL : orgOptions()[0]?.value)
+    return props.profileData?.currentOrgId ?? (personal() ? PERSONAL : orgOptions()[0]?.value)
   })
 
   const switching = createMemo(() => {

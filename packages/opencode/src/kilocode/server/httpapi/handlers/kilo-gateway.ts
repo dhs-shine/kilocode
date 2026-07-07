@@ -7,6 +7,7 @@ import {
   getToken,
   importSessionToDb,
   normalizeClawStatus,
+  resolveProfileOrganization,
 } from "@kilocode/kilo-gateway"
 import {
   HEADER_FEATURE,
@@ -76,28 +77,23 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
         catch: () => new HttpApiError.BadRequest({}),
       })
 
-      const selected = profile.selectedOrganizationId
-      const orgs = profile.organizations ?? []
-      const valid = selected && orgs.some((org) => org.id === selected) ? selected : undefined
-      const cloud = valid ?? (profile.hasPersonalAccount === false ? orgs[0]?.id : undefined)
-      const local = info.accountSelection === "cloud" ? undefined : info.accountId
-      const currentOrgId = info.accountSelection === "manual" ? (info.accountId ?? null) : (local ?? cloud ?? info.accountId ?? null)
-      if (currentOrgId && !local && info.accountSelection !== "manual" && currentOrgId !== info.accountId) {
+      const org = resolveProfileOrganization(profile, info)
+      if (org.persistOrgId) {
         yield* auth.set("kilo", {
           type: "oauth",
           refresh: info.refresh,
           access: info.access,
           expires: info.expires,
-          accountId: currentOrgId,
+          accountId: org.persistOrgId,
           accountSelection: "cloud",
         }).pipe(Effect.catch((err) => Effect.sync(() => log.warn("failed to persist cloud account selection", { err }))))
       }
 
       const balance = yield* Effect.tryPromise({
-        try: () => fetchBalance(info.access, currentOrgId ?? undefined),
+        try: () => fetchBalance(info.access, org.currentOrgId ?? undefined),
         catch: () => new HttpApiError.BadRequest({}),
       })
-      return { profile, balance, kiloPass, currentOrgId }
+      return { profile, balance, kiloPass, currentOrgId: org.currentOrgId }
     })
 
     const authStatus = Effect.fn("KiloGatewayHttpApi.authStatus")(function* () {

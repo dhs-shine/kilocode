@@ -83,12 +83,12 @@ export function KiloAutoMethod(props: KiloAutoMethodProps) {
         await sync.bootstrap()
 
         dialog.replace(() => (
-            <DialogKiloOrganization
-              organizations={profile.organizations!}
-              userEmail={profile.email}
-              providerID={props.providerID}
-              hasPersonalAccount={profile.hasPersonalAccount !== false}
-              useSDK={props.useSDK}
+          <DialogKiloOrganization
+            organizations={profile.organizations!}
+            userEmail={profile.email}
+            providerID={props.providerID}
+            hasPersonalAccount={profile.hasPersonalAccount !== false}
+            useSDK={props.useSDK}
             useTheme={props.useTheme}
             DialogModel={props.DialogModel}
           />

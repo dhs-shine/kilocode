@@ -36,6 +36,11 @@ export interface OrganizationDeps {
   dispose(): Promise<void>
 }
 
+export interface OrganizationResolution {
+  currentOrgId: string | null
+  persistOrgId: string | null
+}
+
 export interface CloudSessionsInput {
   cursor?: string
   limit?: number
@@ -64,6 +69,22 @@ export function getOrganizationId(auth: KiloAuth | undefined) {
   return undefined
 }
 
+export function resolveProfileOrganization(profile: KilocodeProfile, auth: Extract<KiloAuth, { type: "oauth" }>): OrganizationResolution {
+  const selected = profile.selectedOrganizationId
+  const orgs = profile.organizations ?? []
+  const valid = selected && orgs.some((org) => org.id === selected) ? selected : undefined
+  const cloud = valid ?? (profile.hasPersonalAccount === false ? orgs[0]?.id : undefined)
+  if (auth.accountSelection === "manual" && (auth.accountId || profile.hasPersonalAccount !== false)) {
+    return { currentOrgId: auth.accountId ?? null, persistOrgId: null }
+  }
+
+  const local = auth.accountSelection === "cloud" ? undefined : auth.accountId
+  const currentOrgId = local ?? cloud ?? auth.accountId ?? null
+  const invalid = auth.accountSelection === "manual" && !auth.accountId && profile.hasPersonalAccount === false
+  const persistOrgId = currentOrgId && !local && (auth.accountSelection !== "manual" || invalid) && currentOrgId !== auth.accountId ? currentOrgId : null
+  return { currentOrgId, persistOrgId }
+}
+
 export async function getProfile(auth: AuthStore): Promise<KiloProfileResult> {
   const info = await auth.get("kilo")
   if (!info || info.type !== "oauth") throw new UnauthorizedError("Not authenticated with Kilo Gateway")
@@ -73,25 +94,20 @@ export async function getProfile(auth: AuthStore): Promise<KiloProfileResult> {
     fetchKiloPassState(info.access),
   ])
 
-  const selected = profile.selectedOrganizationId
-  const orgs = profile.organizations ?? []
-  const valid = selected && orgs.some((org) => org.id === selected) ? selected : undefined
-  const cloud = valid ?? (profile.hasPersonalAccount === false ? orgs[0]?.id : undefined)
-  const local = info.accountSelection === "cloud" ? undefined : info.accountId
-  const currentOrgId = info.accountSelection === "manual" ? (info.accountId ?? null) : (local ?? cloud ?? info.accountId ?? null)
-  if (currentOrgId && !local && info.accountSelection !== "manual" && currentOrgId !== info.accountId) {
+  const org = resolveProfileOrganization(profile, info)
+  if (org.persistOrgId) {
     await auth.set("kilo", {
       type: "oauth",
       refresh: info.refresh,
       access: info.access,
       expires: info.expires,
-      accountId: currentOrgId,
+      accountId: org.persistOrgId,
       accountSelection: "cloud",
     }).catch((err) => console.warn("Failed to persist cloud account selection:", err))
   }
 
-  const balance = await fetchBalance(info.access, currentOrgId ?? undefined)
-  return { profile, balance, kiloPass, currentOrgId }
+  const balance = await fetchBalance(info.access, org.currentOrgId ?? undefined)
+  return { profile, balance, kiloPass, currentOrgId: org.currentOrgId }
 }
 
 export async function getNotifications(auth: AuthStore) {

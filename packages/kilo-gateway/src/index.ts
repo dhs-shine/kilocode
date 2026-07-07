@@ -75,6 +75,7 @@ export {
   getCloudSessions,
   getNotifications,
   getProfile,
+  resolveProfileOrganization,
   getToken,
   normalizeClawStatus,
   setOrganization,
