@@ -133,6 +133,7 @@ class PromptPanel(
     var onAutoApproveToggle: (Boolean) -> Unit = {}
     var onFileDrag: (Boolean) -> Unit = {}
     private var style = SessionEditorStyle.current()
+    private var focused = false
     private val shell = BorderLayoutPanel().apply {
         isOpaque = true
         border = JBUI.Borders.empty(
@@ -198,11 +199,11 @@ class PromptPanel(
             })
             ed.contentComponent.addFocusListener(object : FocusAdapter() {
                 override fun focusGained(e: FocusEvent) {
-                    repaint()
+                    syncFocus(true)
                 }
 
                 override fun focusLost(e: FocusEvent) {
-                    repaint()
+                    syncFocus(false)
                 }
             })
         }
@@ -301,8 +302,27 @@ class PromptPanel(
 
     override fun updateUI() {
         super.updateUI()
+        syncBorder()
+    }
+
+    private fun syncFocus(value: Boolean) {
+        if (focused == value) {
+            repaint()
+            return
+        }
+        focused = value
+        syncBorder()
+        revalidate()
+        repaint()
+    }
+
+    private fun syncBorder() {
         border = JBUI.Borders.compound(
-            JBUI.Borders.customLineTop(SessionUiStyle.View.Prompt.separator()),
+            if (focused) {
+                JBUI.Borders.emptyTop(JBUI.scale(1))
+            } else {
+                JBUI.Borders.customLineTop(SessionUiStyle.View.Prompt.separator())
+            },
             JBUI.Borders.empty(),
         )
     }
