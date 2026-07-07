@@ -834,7 +834,6 @@ class KiloBackendAppServiceTest {
             "profile":{
                 "email":"alice@test.com",
                 "name":"Alice",
-                "hasPersonalAccount":false,
                 "organizations":[{"id":"org_1","name":"Acme","role":"ADMIN"}]
             },
             "balance":{"balance":42.5},
@@ -849,7 +848,8 @@ class KiloBackendAppServiceTest {
         assertEquals("alice@test.com", dto.profile?.email)
         assertEquals("Alice", dto.profile?.name)
         assertEquals("ADMIN", dto.profile?.organizations?.firstOrNull()?.role)
-        assertFalse(dto.profile?.hasPersonalAccount ?: true)
+        // The pinned CLI does not expose hasPersonalAccount yet; the mapper defaults it to true.
+        assertTrue(dto.profile?.hasPersonalAccount ?: false)
         assertEquals(42.5, dto.profile?.balance?.balance)
         assertEquals("org_1", dto.profile?.currentOrgId)
     }
