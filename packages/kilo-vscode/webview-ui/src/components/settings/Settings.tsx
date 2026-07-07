@@ -143,6 +143,14 @@ const Settings: Component<SettingsProps> = (props) => {
         <Button variant="secondary" size="small" icon="edit" onClick={() => open("global")}>
           {language.t("settings.openGlobalConfig")}
         </Button>
+        <Button
+          variant="secondary"
+          size="small"
+          icon="reset"
+          onClick={() => vscode.postMessage({ type: "reload" })}
+        >
+          {language.t("common.reload")}
+        </Button>
       </div>
 
       {/* Settings tabs */}

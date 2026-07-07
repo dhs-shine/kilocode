@@ -212,6 +212,15 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
                 aria-label={language.t("command.session.compact")}
               />
             </Tooltip>
+            <Tooltip value={language.t("common.reload")} placement="bottom">
+              <IconButton
+                icon="reset"
+                size="small"
+                variant="ghost"
+                onClick={() => vscode.postMessage({ type: "reload" })}
+                aria-label={language.t("common.reload")}
+              />
+            </Tooltip>
           </Show>
           <Show when={hasMessages()}>
             <button

@@ -1075,6 +1075,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
             console.error("[Kilo New] KiloProvider: ❌ Retry connection failed:", e),
           )
           break
+        case "reload":
+          this.handleReload().catch((e) => console.error("[Kilo New] KiloProvider: Reload failed:", e))
+          break
         case "openSubAgentViewer":
           vscode.commands.executeCommand("kilo-code.new.openSubAgentViewer", message.sessionID, message.title)
           break
@@ -3606,6 +3609,36 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       this.fetchAndSendIndexingStatus(),
       this.fetchAndSendNotifications(),
     ])
+  }
+
+  /** Reload config, skills, agents, and commands from disk by rebooting the instance. */
+  private async handleReload(): Promise<void> {
+    if (!this.client) {
+      console.warn("[Kilo New] handleReload: no client connection")
+      return
+    }
+    const dir = this.getWorkspaceDirectory(this.currentSession?.id)
+    try {
+      await this.client.instance.reload({ directory: dir }, { throwOnError: true })
+    } catch (err: any) {
+      const status = err?.response?.status
+      if (status === 409) {
+        vscode.window.showWarningMessage(
+          "Cannot reload while a session is running. Wait for it to finish or abort it first.",
+        )
+      } else {
+        console.error("[Kilo New] handleReload: reload endpoint failed:", err)
+        vscode.window.showErrorMessage("Reload failed. See extension logs for details.")
+      }
+      return
+    }
+    this.clearCommandsCache()
+    await this.reloadAfterAuthChange()
+  }
+
+  /** Public reload entry point for VS Code commands. */
+  async reload(): Promise<void> {
+    return this.handleReload()
   }
 
   private mapSyncEventToWebviewMessage(event: LegacySyncEvent) {
