@@ -152,6 +152,23 @@
 
 ## [Unreleased]
 
+## [7.0.2-rc.2] - 2026-07-07
+
+### Added
+- feat(sandbox): widen writable-paths settings input and add coverage by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12008
+- feat(jetbrains): polish chat UI and bundled CLI runtime flow by @kirillk in https://github.com/Kilo-Org/kilocode/pull/11978
+
+### Fixed
+- fix(vscode): show sandbox tooltip immediately on hover by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12012
+- fix(vscode): preserve mode on first send by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12009
+- fix(vscode): allow shrinking prompt mention selections by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/11936
+- fix(vscode): handle multiline bidi prompt input by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/12006
+- fix: honor Kilo cloud account preferences by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11999
+
+### Changed
+- release(jetbrains): v7.0.2-rc.1 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12011
+
+
 ## [7.0.2-rc.1] - 2026-07-07
 
 ### Added
