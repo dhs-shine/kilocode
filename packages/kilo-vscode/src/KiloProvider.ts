@@ -3620,8 +3620,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     const dir = this.getWorkspaceDirectory(this.currentSession?.id)
     try {
       await this.client.instance.reload({ directory: dir }, { throwOnError: true })
-    } catch (err: any) {
-      const status = err?.response?.status
+    } catch (err) {
+      const status =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { status?: number } }).response?.status
+          : undefined
       if (status === 409) {
         vscode.window.showWarningMessage(
           "Cannot reload while a session is running. Wait for it to finish or abort it first.",
@@ -3633,7 +3636,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       return
     }
     this.clearCommandsCache()
-    await this.reloadAfterAuthChange()
+    if (!sameDirectory(dir, this.getWorkspaceDirectory())) {
+      await this.reloadAfterAuthChange()
+    }
   }
 
   /** Public reload entry point for VS Code commands. */
