@@ -442,17 +442,15 @@ export namespace KilocodeConfig {
   /** Docs page describing where Kilo reads configuration from. */
   export const CONFIG_DOCS_URL = "https://kilo.ai/docs/code-with-ai/platforms/cli"
 
+  /** Stable id for the synthetic "move your opencode config" notification (used for client-side dismissal). */
+  export const OPENCODE_NOTIFICATION_ID = "kilo.local.opencode-config-detected"
+
   /**
    * Detect leftover opencode config directories. Kilo used to fall back to
-   * opencode configuration but no longer reads `.opencode` directories, so
-   * surface a warning telling the user where to move it.
+   * opencode configuration but no longer reads `.opencode` directories.
+   * Returns the existing `.opencode` locations (global + project), highest first.
    */
-  export const detectOpencodeConfig = Effect.fn("KilocodeConfig.detectOpencodeConfig")(function* (input: {
-    fs: AppFileSystem.Interface
-    directory: string
-    worktree?: string
-    scanProject: boolean
-  }) {
+  export function detectOpencodeConfig(input: { directory: string; worktree?: string; scanProject: boolean }): string[] {
     const found: string[] = []
 
     // Global opencode config dir (sibling of the kilo global config dir, e.g. ~/.config/opencode).
@@ -460,27 +458,40 @@ export namespace KilocodeConfig {
     if (existsSync(globalDir)) found.push(globalDir)
 
     // Project `.opencode` directories, walked from the working directory up to the worktree root.
-    const project = input.scanProject
-      ? yield* input.fs
-          .up({ targets: [".opencode"], start: input.directory, stop: input.worktree })
-          .pipe(Effect.orElseSucceed(() => [] as string[]))
-      : []
-    for (const dir of project) {
-      if (existsSync(dir) && !found.includes(dir)) found.push(dir)
+    if (input.scanProject) {
+      let current = input.directory
+      while (true) {
+        const candidate = path.join(current, ".opencode")
+        if (existsSync(candidate) && !found.includes(candidate)) found.push(candidate)
+        if (input.worktree === current) break
+        const parent = path.dirname(current)
+        if (parent === current) break
+        current = parent
+      }
     }
 
-    if (found.length === 0) return []
+    return found
+  }
+
+  /**
+   * Build the synthetic notification shown when a leftover `.opencode` config
+   * directory is found. Returns undefined when nothing needs migrating.
+   * The shape matches the gateway `Notification` schema so it can be appended
+   * to the cloud notifications list and reuse each client's dismissal path.
+   */
+  export function opencodeConfigNotification(input: { directory: string; worktree?: string; scanProject: boolean }) {
+    const found = detectOpencodeConfig(input)
+    if (found.length === 0) return undefined
     const suffix = found.length > 1 ? ` (and ${found.length - 1} more)` : ""
-    return [
-      {
-        path: found[0],
-        message:
-          `Kilo no longer falls back to opencode configuration. ` +
-          `Found opencode config at ${found[0]}${suffix}. ` +
-          `To use it in Kilo, move it into a .kilo directory (project) or ${Global.Path.config} (global). ` +
-          `See ${CONFIG_DOCS_URL}`,
-        detail: found.length > 1 ? `Locations: ${found.join(", ")}` : undefined,
-      },
-    ]
-  })
+    return {
+      id: OPENCODE_NOTIFICATION_ID,
+      title: "Move your opencode configuration",
+      message:
+        `Kilo no longer falls back to opencode configuration. ` +
+        `Found opencode config at ${found[0]}${suffix}. ` +
+        `Move it into a .kilo directory (project) or ${Global.Path.config} (global).`,
+      action: { actionText: "Learn more", actionURL: CONFIG_DOCS_URL },
+      showIn: ["cli", "extension"],
+    }
+  }
 }

@@ -617,91 +617,73 @@ describe("linked worktree config", () => {
 })
 
 describe("opencode config migration notice", () => {
-  const warnings = () =>
-    Effect.runPromise(Config.Service.use((svc) => svc.warnings()).pipe(Effect.scoped, Effect.provide(layer)))
+  const withGlobalConfig = async <T>(dir: string, fn: () => Promise<T> | T): Promise<T> => {
+    const prev = Global.Path.config
+    ;(Global.Path as { config: string }).config = dir
+    try {
+      return await fn()
+    } finally {
+      ;(Global.Path as { config: string }).config = prev
+    }
+  }
 
-  test("warns when a project .opencode directory exists", async () => {
+  test("detects a project .opencode directory", async () => {
     await using globalTmp = await tmpdir()
-    await using tmp = await tmpdir({ git: true })
+    await using tmp = await tmpdir()
     await Filesystem.write(path.join(tmp.path, ".opencode", "opencode.json"), JSON.stringify({ model: "test/legacy" }))
 
     // Isolate the global config dir so a real ~/.config/opencode on the host cannot interfere.
-    const prev = Global.Path.config
-    ;(Global.Path as { config: string }).config = path.join(globalTmp.path, "kilo")
-    await clear()
-    await disposeAllInstances()
-
-    try {
-      await provideTestInstance({
-        directory: tmp.path,
-        fn: async () => {
-          await load()
-          const list = await warnings()
-          const hit = list.find((w) => w.message.includes("opencode configuration"))
-          expect(hit).toBeDefined()
-          expect(hit!.path).toContain(".opencode")
-          expect(hit!.message).toContain(KilocodeConfig.CONFIG_DOCS_URL)
-        },
-      })
-    } finally {
-      ;(Global.Path as { config: string }).config = prev
-      await clear()
-      await disposeAllInstances()
-    }
+    await withGlobalConfig(path.join(globalTmp.path, "kilo"), () => {
+      const found = KilocodeConfig.detectOpencodeConfig({ directory: tmp.path, scanProject: true })
+      expect(found).toEqual([path.join(tmp.path, ".opencode")])
+    })
   })
 
-  test("warns when a global opencode config directory exists", async () => {
+  test("detects a global opencode config directory", async () => {
     await using globalTmp = await tmpdir()
-    await using tmp = await tmpdir({ git: true })
+    await using tmp = await tmpdir()
     const opencodeDir = path.join(globalTmp.path, "opencode")
     await Filesystem.write(path.join(opencodeDir, "opencode.json"), JSON.stringify({ model: "test/legacy" }))
 
-    const prev = Global.Path.config
-    ;(Global.Path as { config: string }).config = path.join(globalTmp.path, "kilo")
-    await clear()
-    await disposeAllInstances()
-
-    try {
-      await provideTestInstance({
-        directory: tmp.path,
-        fn: async () => {
-          await load()
-          const list = await warnings()
-          const hit = list.find((w) => w.message.includes("opencode configuration"))
-          expect(hit).toBeDefined()
-          expect(hit!.path).toBe(opencodeDir)
-        },
-      })
-    } finally {
-      ;(Global.Path as { config: string }).config = prev
-      await clear()
-      await disposeAllInstances()
-    }
+    await withGlobalConfig(path.join(globalTmp.path, "kilo"), () => {
+      const found = KilocodeConfig.detectOpencodeConfig({ directory: tmp.path, scanProject: true })
+      expect(found).toEqual([opencodeDir])
+    })
   })
 
-  test("stays silent when no opencode config exists", async () => {
+  test("skips the project scan when disabled", async () => {
     await using globalTmp = await tmpdir()
-    await using tmp = await tmpdir({ git: true })
+    await using tmp = await tmpdir()
+    await Filesystem.write(path.join(tmp.path, ".opencode", "opencode.json"), JSON.stringify({ model: "test/legacy" }))
 
-    const prev = Global.Path.config
-    ;(Global.Path as { config: string }).config = path.join(globalTmp.path, "kilo")
-    await clear()
-    await disposeAllInstances()
+    await withGlobalConfig(path.join(globalTmp.path, "kilo"), () => {
+      const found = KilocodeConfig.detectOpencodeConfig({ directory: tmp.path, scanProject: false })
+      expect(found).toEqual([])
+    })
+  })
 
-    try {
-      await provideTestInstance({
-        directory: tmp.path,
-        fn: async () => {
-          await load()
-          const list = await warnings()
-          expect(list.find((w) => w.message.includes("opencode configuration"))).toBeUndefined()
-        },
-      })
-    } finally {
-      ;(Global.Path as { config: string }).config = prev
-      await clear()
-      await disposeAllInstances()
-    }
+  test("builds a dismissible notification when opencode config exists", async () => {
+    await using globalTmp = await tmpdir()
+    await using tmp = await tmpdir()
+    await Filesystem.write(path.join(tmp.path, ".opencode", "opencode.json"), JSON.stringify({ model: "test/legacy" }))
+
+    await withGlobalConfig(path.join(globalTmp.path, "kilo"), () => {
+      const notice = KilocodeConfig.opencodeConfigNotification({ directory: tmp.path, scanProject: true })
+      expect(notice?.id).toBe(KilocodeConfig.OPENCODE_NOTIFICATION_ID)
+      expect(notice?.message).toContain(path.join(tmp.path, ".opencode"))
+      expect(notice?.action?.actionURL).toBe(KilocodeConfig.CONFIG_DOCS_URL)
+      expect(notice?.showIn).toEqual(["cli", "extension"])
+    })
+  })
+
+  test("returns no notification when nothing needs migrating", async () => {
+    await using globalTmp = await tmpdir()
+    await using tmp = await tmpdir()
+
+    await withGlobalConfig(path.join(globalTmp.path, "kilo"), () => {
+      const notice = KilocodeConfig.opencodeConfigNotification({ directory: tmp.path, scanProject: true })
+      expect(notice).toBeUndefined()
+    })
   })
 })
 
