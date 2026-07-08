@@ -1,14 +1,14 @@
 package ai.kilocode.client.session.ui.selection
 
 import ai.kilocode.client.plugin.KiloBundle
-import ai.kilocode.client.ui.HoverIcon
+import ai.kilocode.client.ui.ToolbarButtonAction
+import ai.kilocode.client.ui.toolbarButton
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.concurrency.annotations.RequiresEdt
-import java.awt.Cursor
 import java.awt.Point
 import java.awt.datatransfer.StringSelection
 import java.awt.event.MouseAdapter
@@ -19,14 +19,15 @@ internal class SessionCopyButton(
     private val text: () -> String?,
 ) {
     private var balloon: Balloon? = null
-    val button = HoverIcon(fill = fill).apply {
-        icon = AllIcons.Actions.Copy
-        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        toolTipText = KiloBundle.message("session.copy.hover")
-    }
+    val button = toolbarButton(
+        ToolbarButtonAction(
+            AllIcons.Actions.Copy,
+            KiloBundle.message("session.copy.hover"),
+        ) { copy() },
+        fill,
+    )
 
     init {
-        button.addActionListener { copy() }
         button.addMouseListener(object : MouseAdapter() {
             override fun mouseExited(e: MouseEvent) {
                 dismiss()

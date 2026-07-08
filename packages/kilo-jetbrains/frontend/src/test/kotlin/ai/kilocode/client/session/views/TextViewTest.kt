@@ -5,6 +5,7 @@ import ai.kilocode.client.session.model.Message
 import ai.kilocode.client.session.model.Text
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.PartSourceDto
@@ -14,6 +15,8 @@ import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.util.ui.JBUI
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.awt.BorderLayout
+import java.awt.Component
+import java.awt.Container
 import java.awt.datatransfer.DataFlavor
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
@@ -118,8 +121,9 @@ class TextViewTest : BasePlatformTestCase() {
         val layout = view.layout as BorderLayout
         assertSame(view.md.component, layout.getLayoutComponent(BorderLayout.CENTER))
         val bar = layout.getLayoutComponent(BorderLayout.SOUTH) as MessageToolbar
-        val buttons = bar.layout as BorderLayout
-        assertSame(view.copyButton(), buttons.getLayoutComponent(BorderLayout.LINE_START))
+        assertEquals(BorderLayout.LINE_END, bar.alignment())
+        assertTrue(components(bar).contains(view.copyButton()))
+        assertEquals(UiStyle.Gap.xs(), bar.insets.top)
         assertTrue(view.hasCopyToolbar())
     }
 
@@ -441,4 +445,14 @@ class TextViewTest : BasePlatformTestCase() {
     private fun clipboard() = CopyPasteManager.getInstance()
         .contents
         ?.getTransferData(DataFlavor.stringFlavor) as String
+
+    private fun components(root: Component): List<Component> {
+        val out = mutableListOf<Component>()
+        fun visit(node: Component) {
+            out.add(node)
+            if (node is Container) node.components.forEach(::visit)
+        }
+        visit(root)
+        return out
+    }
 }

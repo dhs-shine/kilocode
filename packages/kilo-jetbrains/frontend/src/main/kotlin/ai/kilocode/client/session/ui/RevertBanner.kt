@@ -56,6 +56,7 @@ class RevertBanner(
         if (revert == null) return
         val total = model.revertedCount()
         card.setHeader(KiloBundle.message(if (total == 1) "revert.banner.count.one" else "revert.banner.count.other", total))
+        card.setActionVisible("all", total > 1)
         files.removeAll()
         for (file in model.diff) {
             val row = Stack.horizontal(UiStyle.Gap.sm())

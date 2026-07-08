@@ -32,7 +32,7 @@ open class TextView(
 
     val md: MdView = MdViewFactory.create(SessionEditorStyle.current(), selection)
     private var mode: CopyMode? = null
-    private val toolbar = MessageToolbar { copyText() }
+    private val toolbar = MessageToolbar(text = { copyText() })
 
     init {
         layout = BorderLayout()

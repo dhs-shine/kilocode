@@ -25,9 +25,6 @@ import java.awt.Point
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
-import java.awt.Container
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
@@ -81,23 +78,11 @@ class MessageView(
     private var prompt: PromptView? = null
     private var promptBox: JPanel? = null
     private var promptToolbar: MessageToolbar? = null
-    private var promptHover = false
 
     init {
         isOpaque = false
         if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) background = style.editorScheme.defaultBackground
         border = assistantBorder()
-        if (msg.info.role == SessionUiStyle.View.Message.USER_ROLE) {
-            addMouseListener(object : MouseAdapter() {
-                override fun mouseEntered(e: MouseEvent) {
-                    setPromptHovered(true)
-                }
-
-                override fun mouseExited(e: MouseEvent) {
-                    setPromptHovered(false)
-                }
-            })
-        }
 
         // Populate content that already exists (e.g. after loadHistory)
         for ((_, content) in msg.parts) {
@@ -308,7 +293,6 @@ class MessageView(
         prompt = null
         promptBox = null
         promptToolbar = null
-        promptHover = false
         for ((_, content) in msg.parts) {
             if (content is StepFinish) continue
             if (isHidden(content)) continue
@@ -381,18 +365,15 @@ class MessageView(
     fun dump(): String = parts.values.joinToString(", ") { it.dumpLabel() }
 
     @RequiresEdt
-    fun setPromptHovered(value: Boolean) {
-        if (role != SessionUiStyle.View.Message.USER_ROLE) return
-        if (promptHover == value) return
-        promptHover = value
-        syncPromptToolbar()
-    }
-
-    @RequiresEdt
-    fun paintsPromptToolbar() = promptToolbar?.paints() == true
+    fun promptToolbarActive() = promptToolbar?.active() == true
 
     @RequiresEdt
     fun promptToolbarAlignment() = promptToolbar?.alignment()
+
+    @RequiresEdt
+    private fun syncPromptToolbar() {
+        promptToolbar?.setActive(prompt?.copyMarkdown(trim = false)?.isNotEmpty() == true)
+    }
 
     @RequiresEdt
     override fun applyStyle(style: SessionEditorStyle) {
@@ -415,7 +396,6 @@ class MessageView(
         prompt = null
         promptBox = null
         promptToolbar = null
-        promptHover = false
         hidden = null
     }
 
@@ -466,11 +446,6 @@ class MessageView(
     }
 
     @RequiresEdt
-    private fun syncPromptToolbar() {
-        promptToolbar?.paint(promptHover)
-    }
-
-    @RequiresEdt
     private fun wrapPrompt(view: PartView): JComponent {
         if (role != SessionUiStyle.View.Message.USER_ROLE) return view
         if (view !is PromptView) return view
@@ -483,43 +458,11 @@ class MessageView(
             it.add(view, BorderLayout.CENTER)
             promptBox = it
         }
-        bar.paint(false)
+        bar.setActive(true)
         return JPanel(BorderLayout()).also {
             it.isOpaque = false
             it.add(box, BorderLayout.CENTER)
             it.add(bar, BorderLayout.SOUTH)
-            installPromptHover(it)
-        }
-    }
-
-    @RequiresEdt
-    private fun installPromptHover(root: JComponent) {
-        val mouse = object : MouseAdapter() {
-            override fun mouseEntered(e: MouseEvent) {
-                setPromptHovered(true)
-            }
-
-            override fun mouseExited(e: MouseEvent) {
-                val point = runCatching { root.mousePosition }.getOrNull()
-                if (point != null && root.contains(point)) return
-                if (inside(root, e)) return
-                setPromptHovered(false)
-            }
-        }
-        visit(root) { it.addMouseListener(mouse) }
-    }
-
-    @RequiresEdt
-    private fun inside(root: JComponent, e: MouseEvent): Boolean {
-        val point = SwingUtilities.convertPoint(e.component, e.point, root)
-        return root.contains(point)
-    }
-
-    @RequiresEdt
-    private fun visit(root: Container, fn: (JComponent) -> Unit) {
-        if (root is JComponent) fn(root)
-        for (child in root.components) {
-            if (child is Container) visit(child, fn)
         }
     }
 

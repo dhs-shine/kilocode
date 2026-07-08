@@ -44,6 +44,7 @@ import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
 import java.awt.Container
+import java.awt.Cursor
 import java.awt.Point
 import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
@@ -211,15 +212,12 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertNotNull(find<MessageToolbar>(message))
         assertFalse(view.hasCopyToolbar())
         assertEquals(BorderLayout.LINE_END, message.promptToolbarAlignment())
-        assertFalse(message.paintsPromptToolbar())
+        assertTrue(message.promptToolbarActive())
 
-        message.setPromptHovered(true)
-
-        assertTrue(message.paintsPromptToolbar())
-
-        message.setPromptHovered(false)
-
-        assertFalse(message.paintsPromptToolbar())
+        val rollback = components(message)
+            .filterIsInstance<JButton>()
+            .first { it.toolTipText == KiloBundle.message("revert.message.rollback") }
+        assertEquals(Cursor.HAND_CURSOR, rollback.cursor.type)
     }
 
     fun `test latest non blank assistant text part gets copy toolbar`() {
@@ -642,6 +640,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         val banner = RevertBanner(model, {}, {})
         model.upsertMessage(msg("u1", "user"))
         model.setRevert(SessionRevertDto("u1"))
+        banner.update()
 
         assertNotNull(find<BaseQuestionView>(banner))
 
@@ -650,12 +649,31 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
             listOf(KiloBundle.message("revert.banner.redo"), KiloBundle.message("revert.banner.redo.all")),
             buttons.map { it.text },
         )
+        assertEquals(listOf(KiloBundle.message("revert.banner.redo")), buttons.filter { it.isVisible }.map { it.text })
         assertTrue(buttons.all { it.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY) == null })
 
         val hint = components(banner)
             .filterIsInstance<JBLabel>()
             .first { it.text == KiloBundle.message("revert.banner.hint") }
         assertEquals(UIUtil.getLabelForeground().rgb, hint.foreground.rgb)
+    }
+
+    fun `test rollback banner shows redo all only for multiple reverted messages`() {
+        val banner = RevertBanner(model, {}, {})
+        model.upsertMessage(msg("u1", "user"))
+        model.upsertMessage(msg("a1", "assistant"))
+        model.upsertMessage(msg("u2", "user"))
+        model.upsertMessage(msg("a2", "assistant"))
+
+        model.setRevert(SessionRevertDto("u1"))
+        banner.update()
+
+        assertTrue(components(banner).filterIsInstance<JButton>().first { it.text == KiloBundle.message("revert.banner.redo.all") }.isVisible)
+
+        model.setRevert(SessionRevertDto("u2"))
+        banner.update()
+
+        assertFalse(components(banner).filterIsInstance<JButton>().first { it.text == KiloBundle.message("revert.banner.redo.all") }.isVisible)
     }
 
     // ------ question tool suppression ------

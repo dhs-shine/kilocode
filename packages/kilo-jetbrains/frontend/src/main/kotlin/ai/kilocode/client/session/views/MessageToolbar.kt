@@ -1,38 +1,42 @@
 package ai.kilocode.client.session.views
 
 import ai.kilocode.client.session.ui.selection.SessionCopyButton
-import ai.kilocode.client.ui.HoverIcon
+import ai.kilocode.client.ui.ToolbarButtonAction
+import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.client.ui.toolbarButton
 import com.intellij.icons.AllIcons
 import ai.kilocode.client.plugin.KiloBundle
 import com.intellij.util.concurrency.annotations.RequiresEdt
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
-import java.awt.Graphics
 import javax.swing.JPanel
 
 internal class MessageToolbar(
-    private val text: () -> String?,
-    private val align: String = BorderLayout.LINE_START,
-    private val revert: (() -> Unit)? = null,
+    text: () -> String?,
+    private val align: String = BorderLayout.LINE_END,
+    actions: List<ToolbarButtonAction> = emptyList(),
 ) : JPanel(BorderLayout()) {
-    constructor(text: () -> String?) : this(text, BorderLayout.LINE_START, null)
+    constructor(text: () -> String?, align: String, revert: (() -> Unit)?) : this(
+        text,
+        align,
+        revert?.let {
+            listOf(ToolbarButtonAction(AllIcons.Actions.Back, KiloBundle.message("revert.message.rollback"), it))
+        }.orEmpty(),
+    )
 
     private val copy = SessionCopyButton(text = text)
     private val button = copy.button
-    private val rollback = HoverIcon().apply {
-        icon = AllIcons.Actions.Back
-        toolTipText = KiloBundle.message("revert.message.rollback")
-        accessibleContext.accessibleName = KiloBundle.message("revert.message.rollback")
-        addActionListener { revert?.invoke() }
-    }
-    private val row = JPanel(BorderLayout()).apply {
-        isOpaque = false
-        if (revert != null) add(rollback, BorderLayout.LINE_START)
-        add(button, BorderLayout.LINE_END)
+    private val buttons = actions.map(::toolbarButton)
+    private val row = Stack.horizontal(UiStyle.Gap.xs()).apply {
+        buttons.forEach { next(it) }
+        next(button)
     }
 
     init {
         isOpaque = false
-        add(if (revert == null) button else row, align)
+        border = JBUI.Borders.emptyTop(UiStyle.Gap.xs())
+        add(row, align)
     }
 
     @RequiresEdt
@@ -40,23 +44,18 @@ internal class MessageToolbar(
         if (isVisible == value && button.isEnabled == value) return
         isVisible = value
         button.isEnabled = value
-        rollback.isEnabled = value
+        buttons.forEach { it.isEnabled = value }
         revalidate()
         repaint()
     }
 
     @RequiresEdt
-    fun paint(value: Boolean) {
-        // Prompt toolbars stay visible to reserve layout space while their button is visually hidden.
-        if (!isVisible) isVisible = true
-        if (button.isEnabled == value) return
-        button.isEnabled = value
-        rollback.isEnabled = value
-        repaint()
+    fun setActive(value: Boolean) {
+        sync(value)
     }
 
     @RequiresEdt
-    fun paints() = button.isEnabled
+    fun active() = isVisible && button.isEnabled
 
     @RequiresEdt
     fun alignment() = align
@@ -67,15 +66,5 @@ internal class MessageToolbar(
     override fun removeNotify() {
         copy.dismiss()
         super.removeNotify()
-    }
-
-    override fun paintComponent(g: Graphics) {
-        if (!button.isEnabled) return
-        super.paintComponent(g)
-    }
-
-    override fun paintChildren(g: Graphics) {
-        if (!button.isEnabled) return
-        super.paintChildren(g)
     }
 }

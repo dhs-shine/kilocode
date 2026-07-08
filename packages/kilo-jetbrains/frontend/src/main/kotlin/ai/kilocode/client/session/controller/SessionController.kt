@@ -48,7 +48,10 @@ import ai.kilocode.rpc.dto.QuestionRequestDto
 import ai.kilocode.rpc.dto.SessionDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.actionSystem.IdeActions
 import ai.kilocode.log.ChatLogSummary
 import ai.kilocode.log.KiloLog
 import com.intellij.openapi.util.Disposer
@@ -82,7 +85,7 @@ class SessionController(
   private val workspace: Workspace,
   private val app: KiloAppService,
   private val cs: CoroutineScope,
-  comp: Component? = null,
+  private val comp: Component? = null,
   private val flushMs: Long = EVENT_FLUSH_MS,
   private val condense: Boolean = true,
   private val displayMs: Long = DISPLAY_DELAY_MS,
@@ -421,6 +424,7 @@ class SessionController(
                     LOG.info("${ChatLogSummary.sid(id)} kind=revert abort=true ok=true")
                 }
                 sessions.revert(id, directory, message, part)
+                synchronizeFromDisk(id, "revert")
                 LOG.info("${ChatLogSummary.sid(id)} kind=revert ok=true")
             } catch (e: Exception) {
                 capture("Session Error", sessionProps(id) + mapOf("context" to "revert", "errorClass" to e::class.java.name))
@@ -435,6 +439,7 @@ class SessionController(
         cs.launch {
             try {
                 sessions.unrevert(id, directory)
+                synchronizeFromDisk(id, "unrevert")
             } catch (e: Exception) {
                 capture("Session Error", sessionProps(id) + mapOf("context" to "unrevert", "errorClass" to e::class.java.name))
                 LOG.warn("${ChatLogSummary.sid(id)} kind=unrevert dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
@@ -458,6 +463,22 @@ class SessionController(
     fun redoAll() {
         assertEdt()
         unrevert()
+    }
+
+    private fun synchronizeFromDisk(id: String, kind: String) {
+        ApplicationManager.getApplication().invokeLater {
+            runCatching {
+                val action = ActionManager.getInstance().getAction(IdeActions.ACTION_SYNCHRONIZE)
+                if (action == null) {
+                    LOG.info("${ChatLogSummary.sid(id)} kind=$kind sync=synchronize skipped=no-action")
+                    return@invokeLater
+                }
+                ActionManager.getInstance().tryToExecute(action, null, comp, ActionPlaces.UNKNOWN, true)
+                LOG.info("${ChatLogSummary.sid(id)} kind=$kind sync=synchronize ok=true")
+            }.onFailure { err ->
+                LOG.warn("${ChatLogSummary.sid(id)} kind=$kind sync=synchronize failed message=${err.message}", err)
+            }
+        }
     }
 
     fun retryConnection() {
