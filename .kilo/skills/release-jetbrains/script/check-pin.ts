@@ -3,16 +3,9 @@
 import { $ } from "bun"
 import semver from "semver"
 import { parseArgs } from "util"
+import { latest, missing } from "./pin-common"
 
 const repo = process.env.GH_REPO ?? process.env.GITHUB_REPOSITORY ?? "Kilo-Org/kilocode"
-const asset = [
-  "kilo-darwin-arm64.zip",
-  "kilo-darwin-x64.zip",
-  "kilo-linux-arm64.tar.gz",
-  "kilo-linux-x64.tar.gz",
-  "kilo-windows-arm64.zip",
-  "kilo-windows-x64.zip",
-]
 
 const { values } = parseArgs({
   args: Bun.argv.slice(2),
@@ -44,9 +37,9 @@ const propsMain = await $`git show origin/main:packages/kilo-jetbrains/gradle.pr
 const propsLocal = await Bun.file("packages/kilo-jetbrains/gradle.properties").text()
 const pinnedMain = pinned(propsMain)
 const pinnedLocal = pinned(propsLocal)
-const latestCli = await latest()
+const latestCli = await latest(repo)
 const prevJetbrainsCli = await previous()
-const missingAssets = await missing(pinMain)
+const missingAssets = await missing(repo, pinMain)
 const assetsOk = missingAssets.length === 0
 const drift = (() => {
   if (!pinnedMain) return "repo-mode-on-main"
@@ -71,18 +64,6 @@ console.log(JSON.stringify({
 
 if (drift !== "up-to-date") process.exit(2)
 
-async function latest() {
-  const list = (await $`gh release list --repo ${repo} --limit 100 --json tagName,isDraft,isPrerelease`.json()) as {
-    tagName: string
-    isDraft: boolean
-    isPrerelease: boolean
-  }[]
-  return list
-    .filter((item) => /^v\d+\.\d+\.\d+$/.test(item.tagName) && !item.isDraft && !item.isPrerelease)
-    .map((item) => item.tagName.slice(1))
-    .sort(semver.rcompare)[0] ?? null
-}
-
 async function previous() {
   const text = await $`git tag --list ${"jetbrains/v*"}`.text()
   const tag = text
@@ -98,15 +79,11 @@ async function previous() {
   return JSON.parse(res).version as string
 }
 
-async function missing(version: string) {
-  const res = await $`gh release view ${`v${version}`} --repo ${repo} --json assets --jq ${".assets[].name"}`.quiet().nothrow()
-  if (res.exitCode !== 0) return asset
-  const names = res.stdout.toString().split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
-  return asset.filter((item) => !names.includes(item))
-}
-
 function pinned(text: string) {
-  const line = text.split(/\r?\n/).find((item) => item.startsWith("kilo.cli.pinned="))
-  const value = line?.split("=", 2)[1]?.trim().toLowerCase()
+  const value = text.split(/\r?\n/).flatMap((line) => {
+    const [key, value] = line.split("=", 2)
+    if (key.trim() !== "kilo.cli.pinned") return []
+    return [value?.trim().toLowerCase()]
+  })[0]
   return value == null || value === "true"
 }

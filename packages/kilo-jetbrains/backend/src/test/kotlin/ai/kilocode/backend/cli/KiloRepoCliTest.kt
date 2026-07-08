@@ -1,5 +1,6 @@
 package ai.kilocode.backend.cli
 
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -18,7 +19,7 @@ class KiloRepoCliTest {
     lateinit var dir: File
 
     @Test
-    fun `extracts cached repo cli and force re-extracts`() {
+    fun `extracts cached repo cli and force re-extracts`() = runBlocking {
         val first = archive("#!/bin/old\n")
         val next = archive("#!/bin/new\n")
         val cli = KiloRepoCli.extract(false, dir) { ByteArrayInputStream(first) }
@@ -38,7 +39,7 @@ class KiloRepoCliTest {
     }
 
     @Test
-    fun `rejects archive entries that escape root`() {
+    fun `rejects archive entries that escape root`() = runBlocking {
         val ex = assertFailsWith<IllegalStateException> {
             KiloRepoCli.extract(false, dir) { ByteArrayInputStream(archive(entry = "../../../bad")) }
         }

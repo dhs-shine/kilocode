@@ -2,13 +2,15 @@ package ai.kilocode.backend.cli
 
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.util.SystemInfo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.zip.ZipInputStream
 
 object KiloRepoCli {
-    fun extract(force: Boolean): File = extract(
+    suspend fun extract(force: Boolean): File = extract(
         force = force,
         root = File(PathManager.getSystemPath(), "kilo/repo-cli"),
         source = {
@@ -17,12 +19,12 @@ object KiloRepoCli {
         },
     )
 
-    internal fun extract(force: Boolean, root: File, source: () -> InputStream): File {
+    internal suspend fun extract(force: Boolean, root: File, source: () -> InputStream): File = withContext(Dispatchers.IO) {
         val exe = File(root, "bin/${KiloCliPlatform.exe()}")
         val done = File(root, ".complete")
         if (!force && done.isFile && exe.isFile) {
             if (!SystemInfo.isWindows) exe.setExecutable(true)
-            return exe
+            return@withContext exe
         }
 
         if (root.exists() && !root.deleteRecursively()) {
@@ -45,7 +47,7 @@ object KiloRepoCli {
         if (!exe.isFile) throw IllegalStateException("Local repo CLI archive did not contain bin/${KiloCliPlatform.exe()}")
         if (!SystemInfo.isWindows) exe.setExecutable(true)
         done.writeText("ok\n")
-        return exe
+        return@withContext exe
     }
 
     private fun write(dir: File, name: String, directory: Boolean, copy: (OutputStream) -> Unit) {

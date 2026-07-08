@@ -3,18 +3,11 @@
 import { $ } from "bun"
 import semver from "semver"
 import { parseArgs } from "util"
+import { latest, missing } from "./pin-common"
 
 const repo = process.env.GH_REPO ?? process.env.GITHUB_REPOSITORY ?? "Kilo-Org/kilocode"
 const file = "packages/kilo-jetbrains/package.json"
 const label = "jetbrains-cli-pin-bump"
-const asset = [
-  "kilo-darwin-arm64.zip",
-  "kilo-darwin-x64.zip",
-  "kilo-linux-arm64.tar.gz",
-  "kilo-linux-x64.tar.gz",
-  "kilo-windows-arm64.zip",
-  "kilo-windows-x64.zip",
-]
 
 const { values } = parseArgs({
   args: Bun.argv.slice(2),
@@ -43,12 +36,12 @@ Examples:
 }
 
 if (values.latest && values.version) throw new Error("Pass either --latest or --version, not both")
-const version = values.latest ? await latest() : values.version?.replace(/^v/, "")
+const version = values.latest ? await latest(repo) : values.version?.replace(/^v/, "")
 if (!version || !semver.valid(version) || semver.prerelease(version)) {
   throw new Error("Pass a stable CLI version with --version x.y.z or use --latest")
 }
 
-const miss = await missing(version)
+const miss = await missing(repo, version)
 if (miss.length > 0) {
   throw new Error(`CLI release v${version} is missing required assets: ${miss.join(", ")}`)
 }
@@ -109,27 +102,6 @@ async function pr(version: string) {
   const url = await $`gh pr create --repo ${repo} --base main --head ${branch} --title ${title} --body ${desc}`.text()
   await tag(branch)
   console.log(url.trim())
-}
-
-async function latest() {
-  const list = (await $`gh release list --repo ${repo} --limit 100 --json tagName,isDraft,isPrerelease`.json()) as {
-    tagName: string
-    isDraft: boolean
-    isPrerelease: boolean
-  }[]
-  const version = list
-    .filter((item) => /^v\d+\.\d+\.\d+$/.test(item.tagName) && !item.isDraft && !item.isPrerelease)
-    .map((item) => item.tagName.slice(1))
-    .sort(semver.rcompare)[0]
-  if (!version) throw new Error(`No stable CLI release found in ${repo}`)
-  return version
-}
-
-async function missing(version: string) {
-  const res = await $`gh release view ${`v${version}`} --repo ${repo} --json assets --jq ${".assets[].name"}`.quiet().nothrow()
-  if (res.exitCode !== 0) return asset
-  const names = res.stdout.toString().split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
-  return asset.filter((item) => !names.includes(item))
 }
 
 async function ensure(branch: string, sha: string) {
