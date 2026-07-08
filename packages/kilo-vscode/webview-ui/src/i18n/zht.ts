@@ -928,6 +928,7 @@ export const dict = {
   "provider.custom.models.name.label": "名稱",
   "provider.custom.models.name.placeholder": "顯示名稱",
   "provider.custom.models.reasoning.label": "推理",
+  "provider.custom.models.modalities.image": "圖片",
   "provider.custom.models.variants.label": "變體",
   "provider.custom.models.variants.add": "新增變體",
   "provider.custom.models.variants.remove": "移除變體",
@@ -1347,6 +1348,12 @@ export const dict = {
   "settings.experimental.batch.description": "啟用多個工具呼叫的批次處理",
   "settings.experimental.codebaseSearch.title": "程式碼庫搜尋",
   "settings.experimental.codebaseSearch.description": "啟用 AI 驅動的自然語言程式碼庫搜尋",
+  "settings.experimental.imageGeneration.title": "圖像生成",
+  "settings.experimental.imageGeneration.description": "啟用 AI 圖像生成",
+  "settings.experimental.imageGenerationModel.title": "圖像模型",
+  "settings.experimental.imageGenerationModel.description": "圖像生成模型",
+  "settings.experimental.imageGenerationModel.placeholder": "預設 (Auto Router)",
+
   "settings.experimental.speechToText.title": "語音轉文字",
   "settings.experimental.speechToText.description": "透過 Kilo Gateway 使用您的 Kilo 帳戶在提示詞欄位中啟用語音輸入。",
   "settings.models.speechToText.disabledDescription":
