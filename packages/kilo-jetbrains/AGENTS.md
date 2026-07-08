@@ -16,6 +16,7 @@
 - Service classes ↔ `<applicationService>`/`<projectService>` entries in the corresponding module XML
 - `packages/kilo-jetbrains/package.json` version ↔ GitHub CLI release tag consumed by the backend downloader
 - `packages/kilo-jetbrains/gradle.properties` `kilo.cli.pinned` ↔ Gradle and release-script gates
+- `.kilo/skills/release-jetbrains/script/check-pin.ts` / `set-pin.ts` ↔ release skill and CLI pin documentation
 
 ## IntelliJ Platform Source Lookup
 
@@ -156,15 +157,38 @@ For blocking I/O in coroutines, move the dispatcher switch inside the callee usi
 
 - CLI process spawning, download, extraction, and lifecycle belong in `backend`.
 - By default, the plugin does not bundle CLI binaries. At connect time the backend downloads the GitHub Release asset for the version pinned in `packages/kilo-jetbrains/package.json`; `backend` resources include `kilo.properties` with `cli.version` and `cli.pinned` for split-mode RPC and runtime use.
-- `kilo.cli.pinned=false` in `gradle.properties` is dev-only repo CLI mode: OpenAPI generation runs `bun run --conditions=browser ./src/index.ts generate` from `packages/opencode/`, and runtime extracts a staged local CLI resource instead of downloading.
-- Repo CLI mode requires a local CLI build. Run `./gradlew :backend:buildRepoCli` from `packages/kilo-jetbrains/` or `bun run script/build.ts --single --skip-install` from `packages/opencode/`, then let `:backend:stageRepoCli` bundle the full `dist/@kilocode/cli-<os>-<arch>/bin/` directory.
-- Production builds must keep `kilo.cli.pinned=true`; Gradle release mode, release scripts, and `script/build-version.sh` reject repo CLI mode.
+- For release questions, use the `release-jetbrains` skill and reference `.kilo/skills/release-jetbrains/SKILL.md`; it verifies the CLI pin before creating immutable `jetbrains/v*` tags.
 - For OS and environment checks, prefer IntelliJ Platform classes over raw JVM APIs such as `System.getProperty(...)` or `System.getenv(...)`.
 - Detect architecture with `com.intellij.util.system.CpuArch.CURRENT`, not `System.getProperty("os.arch")`.
 - Detect OS with `com.intellij.openapi.util.SystemInfo.isMac` / `isLinux` / `isWindows`.
 - Read environment variables with `com.intellij.util.EnvironmentUtil.getValue(...)` or `getEnvironmentMap()` when platform-aware environment handling matters.
 - Resolve IDE paths with `com.intellij.openapi.application.PathManager` rather than inferring paths from process working directories.
 - For packaging/build plumbing, see `script/build.ts` and `backend/build.gradle.kts`.
+
+### CLI Pinning, Unpinning, and Bumping
+
+The JetBrains plugin has two independent CLI controls. Use the commands below directly when asked to change either one; do not hand-edit versions by guesswork.
+
+**Pin mode** (`kilo.cli.pinned` in `packages/kilo-jetbrains/gradle.properties`) controls release CLI vs local repo CLI.
+
+| Ask | Do |
+|---|---|
+| Unpin / use local repo CLI | Set `kilo.cli.pinned=false`, then run `./gradlew :backend:buildRepoCli` from `packages/kilo-jetbrains/`. `:backend:stageRepoCli` bundles `packages/opencode/dist/@kilocode/cli-<os>-<arch>/bin/`; runtime extracts it instead of downloading. |
+| Re-pin / use release CLI | Set `kilo.cli.pinned=true`. This is the default and the only releasable state. |
+
+`kilo.cli.pinned=false` is dev-only: OpenAPI generation runs from local `packages/opencode/` source and the local binary is bundled. Production Gradle builds, `script/build-version.sh`, and the release scripts hard-fail on `false`, so restore `true` before releasing.
+
+**Pinned CLI version** (`packages/kilo-jetbrains/package.json` `version`) controls which GitHub CLI release the plugin downloads and generates the client from. The JetBrains release locks the value already merged to `origin/main`.
+
+| Ask | Do |
+|---|---|
+| Check whether the CLI pin is current | `bun .kilo/skills/release-jetbrains/script/check-pin.ts` |
+| Bump the pin to `<version>` / latest and test locally | `bun .kilo/skills/release-jetbrains/script/set-pin.ts --version <x.y.z>` or `bun .kilo/skills/release-jetbrains/script/set-pin.ts --latest`, then run `./gradlew typecheck && ./gradlew test` from `packages/kilo-jetbrains/`. |
+| Land a tested pin bump for release | `bun .kilo/skills/release-jetbrains/script/set-pin.ts --version <x.y.z> --pr` or `bun .kilo/skills/release-jetbrains/script/set-pin.ts --latest --pr`; merge the PR to `main`, then re-run `check-pin.ts` before dispatching prepare. |
+
+`set-pin.ts` refuses versions whose CLI release or runtime assets do not exist, so it cannot create a pin that would 404 during runtime download.
+
+For the full release process (resolve version, pin verification, prepare, changelog, publish), load the `release-jetbrains` skill: `.kilo/skills/release-jetbrains/SKILL.md`.
 
 ### Server Protocol
 

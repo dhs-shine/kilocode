@@ -14,6 +14,40 @@ JetBrains plugin builds and runtime downloads use the Kilo Core version pinned i
 
 The skill lives at `.kilo/skills/release-jetbrains/SKILL.md`. It does not move or recreate release tags, and merge permission is only required if the user explicitly asks the skill to merge the release PR automatically.
 
+## CLI Pin Review
+
+The JetBrains plugin has two independent versions:
+
+| Field | Meaning |
+|---|---|
+| `packages/kilo-jetbrains/package.json` `version` | The pinned Kilo CLI release used for OpenAPI generation and runtime downloads. |
+| `packages/kilo-jetbrains/gradle.properties` `kilo.jetbrains.version` | The JetBrains Marketplace plugin version. |
+
+The prepare workflow tags `origin/main`, so the CLI pin that matters is the one already merged to `main`. Before creating a release tag, run:
+
+```bash
+bun .kilo/skills/release-jetbrains/script/check-pin.ts
+```
+
+The script reports the CLI that `origin/main` will lock, the latest published stable CLI release, the CLI shipped by the latest `jetbrains/v*` tag, whether `kilo.cli.pinned=true`, and whether all runtime assets exist. Stop before tagging if the pin is behind the latest CLI and you want to test the newer CLI first.
+
+To test a different CLI pin locally:
+
+```bash
+bun .kilo/skills/release-jetbrains/script/set-pin.ts --latest
+cd packages/kilo-jetbrains
+./gradlew typecheck
+./gradlew test
+```
+
+To land the tested pin on `main` before releasing:
+
+```bash
+bun .kilo/skills/release-jetbrains/script/set-pin.ts --latest --pr
+```
+
+Merge the generated pin PR first, then re-run `check-pin.ts` and dispatch prepare. Do not dispatch prepare from a local-only pin edit.
+
 ## Create Release Tag And PR
 
 1. Open the GitHub Actions workflow:
