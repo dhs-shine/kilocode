@@ -64,10 +64,10 @@ jobs:
             exit 0
           fi
           echo 'general=true' >> "$GITHUB_OUTPUT"
-          echo 'settings=[{"os":"linux","index":1,"total":2,"host":"blacksmith-4vcpu-ubuntu-2404","run":true,"packages":true},{"os":"linux","index":2,"total":2,"host":"blacksmith-4vcpu-ubuntu-2404","run":true,"packages":false},{"os":"macos","index":1,"total":3,"host":"macos-15","run":true,"packages":true},{"os":"macos","index":2,"total":3,"host":"macos-15","run":true,"packages":false},{"os":"macos","index":3,"total":3,"host":"macos-15","run":true,"packages":false},{"os":"windows","index":1,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":true},{"os":"windows","index":2,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":false},{"os":"windows","index":3,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":false},{"os":"windows","index":4,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":false}]' >> "$GITHUB_OUTPUT"
+          echo 'settings=[{"os":"linux","index":1,"total":2,"host":"blacksmith-4vcpu-ubuntu-2404","run":true,"packages":true},{"os":"linux","index":2,"total":2,"host":"blacksmith-4vcpu-ubuntu-2404","run":true,"packages":false},{"os":"macos","index":1,"total":1,"host":"macos-15","run":true,"packages":true},{"os":"windows","index":1,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":true},{"os":"windows","index":2,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":false},{"os":"windows","index":3,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":false},{"os":"windows","index":4,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":false}]' >> "$GITHUB_OUTPUT"
 
   unit:
-    name: unit (${{ matrix.settings.os }}, ${{ matrix.settings.index }}/${{ matrix.settings.total }})
+    name: ${{ matrix.settings.total > 1 && format('unit ({0}, {1}/{2})', matrix.settings.os, matrix.settings.index, matrix.settings.total) || format('unit ({0})', matrix.settings.os) }}
     needs: changes
     strategy:
       fail-fast: false
@@ -140,6 +140,7 @@ jobs:
         run: bun turbo test:ci --filter='@kilocode/cli'
         env:
           KILO_EXPERIMENTAL_DISABLE_FILEWATCHER: ${{ runner.os == 'Windows' && 'true' || 'false' }}
+          KILO_TEST_PROFILE: ${{ matrix.settings.os == 'macos' && 'darwin' || '' }}
           KILO_TEST_SHARD: ${{ format('{0}/{1}', matrix.settings.index, matrix.settings.total) }}
 
       - name: Publish unit reports # kilocode_change

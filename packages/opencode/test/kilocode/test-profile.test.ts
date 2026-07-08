@@ -15,8 +15,10 @@ describe("test profiles", () => {
     expect(result.files).toContain("pty/pty-session.test.ts")
     expect(result.files).toContain("kilocode/cli/install-artifact.test.ts")
     expect(result.files).toContain("kilocode/sandbox/macos-confinement.test.ts")
-    expect(result.files).toContain("kilocode/sessions/remote-ws.test.ts")
-    expect(result.files).toContain("kilocode/sessions/remote-sender.test.ts")
+    expect(result.files).toContain("file/watcher.test.ts")
+    expect(result.files).toContain("kilocode/interactive-terminal.test.ts")
+    expect(result.files).not.toContain("kilocode/sessions/remote-ws.test.ts")
+    expect(result.files).not.toContain("provider/header-timeout.test.ts")
   })
 
   test("normalizes Windows test paths", () => {
