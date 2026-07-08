@@ -5,6 +5,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: write
+  pull-requests: read
+
 jobs:
   check-paths:
     name: Check changed paths
@@ -63,8 +67,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           lfs: true
-          # use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
-          token: ${{ secrets.BOT_PAT }}
+          # Use github.token for LFS access. BOT_PAT is used only for the final ref push.
+          token: ${{ github.token }}
           ref: ${{ github.head_ref }}
 
       - name: Checkout (read-only)
@@ -175,7 +179,7 @@ jobs:
         if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit.outputs.is_baseline_update != 'true'
         id: commit-baselines
         env:
-          GH_TOKEN: ${{ secrets.BOT_PAT }}
+          BOT_PAT: ${{ secrets.BOT_PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -186,7 +190,9 @@ jobs:
           else
             git commit -m "chore: update visual regression baselines"
             git lfs push --all origin
-            git push --no-verify
+            git -c http.https://github.com/.extraheader= push --no-verify \
+              "https://x-access-token:${BOT_PAT}@github.com/${GITHUB_REPOSITORY}.git" \
+              "HEAD:${GITHUB_HEAD_REF}"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -219,8 +225,8 @@ jobs:
         uses: actions/checkout@v6
         with:
           lfs: true
-          # use BOT_PAT only when later baseline pushes are allowed; github.token is read-only on Dependabot PRs.
-          token: ${{ secrets.BOT_PAT }}
+          # Use github.token for LFS access. BOT_PAT is used only for the final ref push.
+          token: ${{ github.token }}
           ref: ${{ github.head_ref }}
 
       - name: Checkout (read-only)
@@ -361,7 +367,7 @@ jobs:
         if: needs.check-paths.outputs.can_autocommit == 'true' && steps.check-baseline-commit-vscode.outputs.is_baseline_update != 'true'
         id: commit-baselines-vscode
         env:
-          GH_TOKEN: ${{ secrets.BOT_PAT }}
+          BOT_PAT: ${{ secrets.BOT_PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -372,7 +378,9 @@ jobs:
           else
             git commit -m "chore: update kilo-vscode visual regression baselines"
             git lfs push --all origin
-            git push --no-verify
+            git -c http.https://github.com/.extraheader= push --no-verify \
+              "https://x-access-token:${BOT_PAT}@github.com/${GITHUB_REPOSITORY}.git" \
+              "HEAD:${GITHUB_HEAD_REF}"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
