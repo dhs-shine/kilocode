@@ -1388,6 +1388,12 @@ export const dict = {
   "settings.experimental.batch.description": "Aktiver batchbehandling av verktøykall",
   "settings.experimental.codebaseSearch.title": "Kodesøk",
   "settings.experimental.codebaseSearch.description": "Aktiver AI-drevet naturlig språksøk på tvers av kodebasen",
+  "settings.experimental.imageGeneration.title": "Bildegenerering",
+  "settings.experimental.imageGeneration.description": "Aktiver AI-bildegenerering",
+  "settings.experimental.imageGenerationModel.title": "Bildemodell",
+  "settings.experimental.imageGenerationModel.description": "Bildegenereringsmodell",
+  "settings.experimental.imageGenerationModel.placeholder": "Standard (Auto Router)",
+
   "settings.experimental.speechToText.title": "Tale til tekst",
   "settings.experimental.speechToText.description":
     "Aktiver taleinndata i prompt-felt ved å bruke din Kilo-konto gjennom Kilo Gateway.",

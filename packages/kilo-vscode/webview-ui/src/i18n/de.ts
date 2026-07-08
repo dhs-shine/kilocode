@@ -1453,6 +1453,12 @@ export const dict = {
   "settings.experimental.codebaseSearch.title": "Codebase-Suche",
   "settings.experimental.codebaseSearch.description":
     "KI-gestützte Suche in natürlicher Sprache über die gesamte Codebasis aktivieren",
+  "settings.experimental.imageGeneration.title": "Bildgenerierung",
+  "settings.experimental.imageGeneration.description": "KI-Bildgenerierung aktivieren",
+  "settings.experimental.imageGenerationModel.title": "Bildmodell",
+  "settings.experimental.imageGenerationModel.description": "Bildgenerierungsmodell",
+  "settings.experimental.imageGenerationModel.placeholder": "Standard (Auto Router)",
+
   "settings.experimental.speechToText.title": "Sprache zu Text",
   "settings.experimental.speechToText.description":
     "Aktivieren Sie die Spracheingabe in Prompt-Feldern mit Ihrem Kilo-Konto über Kilo Gateway.",

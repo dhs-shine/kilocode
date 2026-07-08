@@ -1434,6 +1434,12 @@ export const dict = {
   "settings.experimental.codebaseSearch.title": "Pesquisa de código",
   "settings.experimental.codebaseSearch.description":
     "Ativar pesquisa por linguagem natural com IA em toda a base de código",
+  "settings.experimental.imageGeneration.title": "Geração de imagens",
+  "settings.experimental.imageGeneration.description": "Ativar geração de imagens por IA",
+  "settings.experimental.imageGenerationModel.title": "Modelo de imagem",
+  "settings.experimental.imageGenerationModel.description": "Modelo de geração de imagens",
+  "settings.experimental.imageGenerationModel.placeholder": "Padrão (Auto Router)",
+
   "settings.experimental.speechToText.title": "Fala para texto",
   "settings.experimental.speechToText.description":
     "Ative a entrada de voz nos campos de prompt usando sua conta do Kilo por meio do Kilo Gateway.",
