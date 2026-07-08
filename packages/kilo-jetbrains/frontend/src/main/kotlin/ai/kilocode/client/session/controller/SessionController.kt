@@ -424,6 +424,7 @@ class SessionController(
                     LOG.info("${ChatLogSummary.sid(id)} kind=revert abort=true ok=true")
                 }
                 sessions.revert(id, directory, message, part)
+                capture("Session Rollback", sessionProps(id))
                 synchronizeFromDisk(id, "revert")
                 LOG.info("${ChatLogSummary.sid(id)} kind=revert ok=true")
             } catch (e: Exception) {
@@ -439,6 +440,7 @@ class SessionController(
         cs.launch {
             try {
                 sessions.unrevert(id, directory)
+                capture("Session Unrevert", sessionProps(id))
                 synchronizeFromDisk(id, "unrevert")
             } catch (e: Exception) {
                 capture("Session Error", sessionProps(id) + mapOf("context" to "unrevert", "errorClass" to e::class.java.name))
@@ -454,14 +456,17 @@ class SessionController(
         val pos = msgs.indexOfFirst { it.info.id == mark.messageID }
         val next = msgs.drop(pos + 1).firstOrNull { it.info.role == "user" }
         if (next == null) {
+            sid?.let { capture("Session Redo", sessionProps(it)) }
             unrevert()
             return
         }
+        sid?.let { capture("Session Redo", sessionProps(it)) }
         revert(next.info.id)
     }
 
     fun redoAll() {
         assertEdt()
+        sid?.let { capture("Session Redo All", sessionProps(it)) }
         unrevert()
     }
 

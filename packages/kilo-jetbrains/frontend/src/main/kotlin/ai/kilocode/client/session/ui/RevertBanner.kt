@@ -33,12 +33,14 @@ class RevertBanner(
         font = JBFont.small()
     }
 
+    private val notice = JBLabel(KiloBundle.message("revert.banner.filesNotRestored")).apply {
+        font = JBFont.small()
+    }
+
     init {
         isOpaque = false
-        body.isOpaque = false
-        files.isOpaque = false
         card.setHeaderIcon(AllIcons.Actions.Back, KiloBundle.message("revert.message.rollback"))
-        body.next(files).next(hint)
+        body.next(files).next(hint).next(notice)
         card.setContent(body)
         card.setActions(listOf(
             BaseQuestionView.Action("redo", KiloBundle.message("revert.banner.redo"), primary = false) { redoAction() },
@@ -57,6 +59,7 @@ class RevertBanner(
         val total = model.revertedCount()
         card.setHeader(KiloBundle.message(if (total == 1) "revert.banner.count.one" else "revert.banner.count.other", total))
         card.setActionVisible("all", total > 1)
+        notice.isVisible = revert.snapshot == null
         files.removeAll()
         for (file in model.diff) {
             val row = Stack.horizontal(UiStyle.Gap.sm())
@@ -71,5 +74,6 @@ class RevertBanner(
     override fun applyStyle(style: SessionEditorStyle) {
         card.applyStyle(style)
         hint.foreground = UIUtil.getLabelForeground()
+        notice.foreground = UIUtil.getContextHelpForeground()
     }
 }

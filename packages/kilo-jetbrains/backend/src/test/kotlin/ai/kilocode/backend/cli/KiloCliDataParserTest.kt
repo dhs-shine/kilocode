@@ -2030,6 +2030,26 @@ class KiloCliDataParserTest {
             assertEquals("""{"providerID":"anthropic","modelID":"claude-4"}""", result)
         }
 
+        // ---- buildRevertJson ----
+
+        @Test
+        fun `buildRevertJson - writes message only`() {
+            val result = KiloCliDataParser.buildRevertJson("m1", null)
+            assertEquals("""{"messageID":"m1"}""", result)
+        }
+
+        @Test
+        fun `buildRevertJson - writes message and part`() {
+            val result = KiloCliDataParser.buildRevertJson("m1", "p1")
+            assertEquals("""{"messageID":"m1","partID":"p1"}""", result)
+        }
+
+        @Test
+        fun `buildRevertJson - escapes ids`() {
+            val result = KiloCliDataParser.buildRevertJson("m\"\\1", "p\"\\1")
+            assertEquals("""{"messageID":"m\"\\1","partID":"p\"\\1"}""", result)
+        }
+
         // ---- buildConfigPartial ----
 
         @Test

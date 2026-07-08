@@ -26,6 +26,7 @@ import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.session.views.tool.TaskToolView
 import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.session.views.todo.TodoWriteView
+import ai.kilocode.client.ui.DiffStatBadge
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
@@ -674,6 +675,48 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         banner.update()
 
         assertFalse(components(banner).filterIsInstance<JButton>().first { it.text == KiloBundle.message("revert.banner.redo.all") }.isVisible)
+    }
+
+    fun `test rollback banner buttons invoke actions`() {
+        var redo = 0
+        var all = 0
+        val banner = RevertBanner(model, { redo++ }, { all++ })
+        model.upsertMessage(msg("u1", "user"))
+        model.upsertMessage(msg("a1", "assistant"))
+        model.upsertMessage(msg("u2", "user"))
+        model.setRevert(SessionRevertDto("u1"))
+        banner.update()
+
+        components(banner).filterIsInstance<JButton>().first { it.text == KiloBundle.message("revert.banner.redo") }.doClick()
+        components(banner).filterIsInstance<JButton>().first { it.text == KiloBundle.message("revert.banner.redo.all") }.doClick()
+
+        assertEquals(1, redo)
+        assertEquals(1, all)
+    }
+
+    fun `test rollback banner explains snapshotless history only revert`() {
+        val banner = RevertBanner(model, {}, {})
+        model.upsertMessage(msg("u1", "user"))
+        model.setRevert(SessionRevertDto("u1", snapshot = null))
+        banner.update()
+
+        val notice = components(banner).filterIsInstance<JBLabel>()
+            .first { it.text == KiloBundle.message("revert.banner.filesNotRestored") }
+
+        assertTrue(notice.isVisible)
+        assertTrue(components(banner).filterIsInstance<DiffStatBadge>().isEmpty())
+    }
+
+    fun `test rollback banner hides snapshotless notice when snapshot exists`() {
+        val banner = RevertBanner(model, {}, {})
+        model.upsertMessage(msg("u1", "user"))
+        model.setRevert(SessionRevertDto("u1", snapshot = "snap1"))
+        banner.update()
+
+        val notice = components(banner).filterIsInstance<JBLabel>()
+            .first { it.text == KiloBundle.message("revert.banner.filesNotRestored") }
+
+        assertFalse(notice.isVisible)
     }
 
     // ------ question tool suppression ------

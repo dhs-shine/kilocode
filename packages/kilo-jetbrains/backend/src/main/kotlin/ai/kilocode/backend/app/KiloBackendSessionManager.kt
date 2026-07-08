@@ -309,22 +309,20 @@ class KiloBackendSessionManager(
     )
 
     private fun revertDto(s: ai.kilocode.jetbrains.api.model.SessionRevert?) = s?.let {
-        SessionRevertDto(
-            messageID = it.messageID,
-            partID = it.partID,
-            snapshot = it.snapshot,
-            diff = it.diff,
-        )
+        revertDto(it.messageID, it.partID, it.snapshot, it.diff)
     }
 
     private fun revertDto(s: ai.kilocode.jetbrains.api.model.GlobalSessionRevert?) = s?.let {
-        SessionRevertDto(
-            messageID = it.messageID,
-            partID = it.partID,
-            snapshot = it.snapshot,
-            diff = it.diff,
-        )
+        revertDto(it.messageID, it.partID, it.snapshot, it.diff)
     }
+
+    private fun revertDto(message: String, part: String?, snapshot: String?, diff: String?) =
+        SessionRevertDto(
+            messageID = message,
+            partID = part,
+            snapshot = snapshot,
+            diff = diff,
+        )
 
     private fun statusDto(s: SessionStatus) = SessionStatusDto(
         type = s.type.value,
