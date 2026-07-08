@@ -43,6 +43,52 @@ You can also configure the default in the global `kilo.jsonc` file:
 | `experimental.sandbox_restrict_network` | `true` | Block outbound network access while filesystem confinement is active. Set this to `false` to allow network access without removing filesystem write restrictions. |
 | `experimental.sandbox_writable_paths` | `[]` | Add writable files or directories outside the built-in writable locations. For security, only the global config can set these paths. |
 
+## When to use sandboxing
+
+Use the sandbox when the agent may run unfamiliar commands, install dependencies, execute code from an untrusted repository, or process content that could contain prompt injection. It provides a second boundary if the model makes a mistake or follows malicious instructions embedded in source files, issue text, web pages, or tool output.
+
+The sandbox can reduce the impact of an unsafe tool call by:
+
+- Preventing writes outside the project and other explicitly writable locations
+- Keeping sandboxed commands from changing `.git` metadata
+- Blocking direct outbound connections from sandboxed commands and policy-aware tools when network restriction is on
+- Applying the same restrictions to child processes, such as package installation and build scripts launched by a shell command
+
+This can reduce the risk of auto-approving selected routine commands, such as builds and tests, by placing operating-system limits around many of their effects. It does **not** make **Allow Everything** safe. An allowed command can still modify or delete project files, alter other writable Kilo directories, consume data it can read, or write unsafe code that runs later outside the sandbox.
+
+The sandbox does not protect against every result of prompt injection. In particular, it does not prevent the agent from reading accessible files or including their contents in model context. It also cannot confine local MCP servers, plugin hooks, or any integration that runs outside the sandbox boundary.
+
+{% callout type="warning" %}
+The network sandbox is not a provider privacy control. Provider and model inference traffic remains available. If Kilo reads a secret and includes it in a prompt, tool result, or conversation context, that content may be sent to the configured model provider even while network restriction is on. Choose providers with data-handling policies appropriate for your work, consider a local model for sensitive projects, and use read permissions to block or prompt for sensitive files. See [Prompt-Training Model Visibility](/docs/getting-started/settings#prompt-training-model-visibility).
+{% /callout %}
+
+## Sandboxing and permissions
+
+Permissions and sandboxing solve different parts of the security problem and work best together.
+
+| Control | What it decides | Best used for |
+|---|---|---|
+| Permissions | Whether Kilo allows, asks about, or denies a matching tool invocation | Prompting for sensitive file reads, blocking specific commands or tools, reviewing consequential actions, and limiting MCP tool or subagent invocation |
+| Sandbox | What an allowed tool call can change or connect to while it runs | Limiting the impact of model mistakes, prompt injection, malicious dependencies, and unexpected child-process behavior |
+
+Permissions can ask or deny Kilo tool invocations that read or change data. For example, set `read` or `external_directory` rules to `ask` or `deny` for credentials, personal files, or directories the agent does not need. Kilo's `read` tool also prompts for `.env` and `.env.*` unless you explicitly create a matching sensitive-file rule. See [Agent Permissions](/docs/customize/agent-permissions) for path and command rules.
+
+Permission rules are tool-specific and do not create a complete file-confidentiality boundary. A `read` denial controls Kilo's file-reading tool, but an allowed `grep` call, shell command, build script, or other process may read the same file through a different path. A child process can also print sensitive content into tool output, which may then become model context. Configure `grep`, `bash`, and other data-accessing tools separately, and avoid running untrusted code when sensitive files remain readable by your operating-system account.
+
+For a given tool invocation, approving a shell command does not grant writes outside the sandbox, and a path being writable inside the sandbox does not bypass a matching permission rule. Some integration code runs outside this boundary: plugin hooks can run before a tool's internal permission check, and a local MCP server starts as a separate trusted process. MCP permissions control exposed tool invocations, not everything the server process can do during startup or in the background. Enable only local MCP servers and plugins you trust.
+
+A practical setup for work on unfamiliar or partially trusted code is:
+
+- Keep `read`, `grep`, and unnecessary external-directory access set to `ask` or `deny` when they may expose sensitive content.
+- Allow only routine tools and command patterns that you want to run without interruption.
+- Keep shell approval prompts for commands with important in-project effects or commands that can read sensitive data, because the sandbox still allows project writes and filesystem reads.
+- Enable the sandbox and keep network restriction on to reduce write and direct network-exfiltration impact if an approved action behaves unexpectedly.
+- Add extra writable paths only when a known workflow requires them.
+
+For a stronger confidentiality boundary, remove sensitive files from the environment or run Kilo under a separate operating-system account, container, or virtual machine that cannot read them. If file contents must not leave your machine, use local inference and disable other integrations that can send data over the network. If remote processing is acceptable, choose a provider with data-handling terms suitable for the data involved.
+
+Configure these rules in **Settings > Auto Approve** or `kilo.jsonc`. See [Auto-Approving Actions](/docs/getting-started/settings/auto-approving-actions) for the settings UI and default permission behavior.
+
 ## Filesystem restrictions
 
 When the sandbox is active, agent tools can read files normally. The sandbox restricts writes, including creating, changing, renaming, and deleting files.
@@ -109,5 +155,6 @@ Cloud sessions do not expose the local sandbox control because their tools do no
 - The sandbox supplements Kilo's permission system; it does not replace permission prompts or rules.
 - Local MCP servers and plugin hooks execute outside the operating-system sandbox.
 - Direct filesystem access inside trusted in-process integrations is covered only when the integration uses Kilo's sandbox-aware filesystem service.
+- Kilo's config directory is writable to sandboxed tools. A shell command can change configuration, permissions, plugins, or additional writable paths that affect future tool calls, so do not rely on the sandbox alone to protect policy integrity.
 - Starting or restarting a background process with the background-process tool is unavailable while sandboxing is active.
 - On Linux, an additional writable path must already exist before Bubblewrap starts.
