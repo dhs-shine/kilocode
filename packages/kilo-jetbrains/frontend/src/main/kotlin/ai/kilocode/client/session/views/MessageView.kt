@@ -450,7 +450,7 @@ class MessageView(
         if (role != SessionUiStyle.View.Message.USER_ROLE) return view
         if (view !is PromptView) return view
         prompt = view
-        val bar = promptToolbar ?: MessageToolbar({ prompt?.copyMarkdown(trim = false) }, BorderLayout.LINE_END) {
+        val bar = promptToolbar ?: MessageToolbar({ prompt?.copyMarkdown(trim = false) }, BorderLayout.LINE_START) {
             revert?.invoke(msg.info.id)
         }.also { promptToolbar = it }
         val box = JPanel(BorderLayout()).also {

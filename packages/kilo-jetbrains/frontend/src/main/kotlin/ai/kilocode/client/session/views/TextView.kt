@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.views
 
+import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.SessionFileLinks
 import ai.kilocode.client.session.SessionFileOpener
 import ai.kilocode.client.session.openSessionLink
@@ -32,7 +33,10 @@ open class TextView(
 
     val md: MdView = MdViewFactory.create(SessionEditorStyle.current(), selection)
     private var mode: CopyMode? = null
-    private val toolbar = MessageToolbar(text = { copyText() })
+    private val toolbar = MessageToolbar(
+        text = { copyText() },
+        tooltip = KiloBundle.message("session.copy.response"),
+    )
 
     init {
         layout = BorderLayout()

@@ -16,13 +16,14 @@ import java.awt.event.MouseEvent
 
 internal class SessionCopyButton(
     fill: Boolean = false,
+    tooltip: String = KiloBundle.message("session.copy.hover"),
     private val text: () -> String?,
 ) {
     private var balloon: Balloon? = null
     val button = toolbarButton(
         ToolbarButtonAction(
             AllIcons.Actions.Copy,
-            KiloBundle.message("session.copy.hover"),
+            tooltip,
         ) { copy() },
         fill,
     )

@@ -16,16 +16,18 @@ internal class MessageToolbar(
     text: () -> String?,
     private val align: String = BorderLayout.LINE_END,
     actions: List<ToolbarButtonAction> = emptyList(),
+    tooltip: String = KiloBundle.message("session.copy.hover"),
 ) : JPanel(BorderLayout()) {
     constructor(text: () -> String?, align: String, revert: (() -> Unit)?) : this(
         text,
         align,
         revert?.let {
-            listOf(ToolbarButtonAction(AllIcons.Actions.Back, KiloBundle.message("revert.message.rollback"), it))
+            listOf(ToolbarButtonAction(AllIcons.Actions.Rollback, KiloBundle.message("revert.message.rollback"), it))
         }.orEmpty(),
+        KiloBundle.message("session.copy.prompt"),
     )
 
-    private val copy = SessionCopyButton(text = text)
+    private val copy = SessionCopyButton(text = text, tooltip = tooltip)
     private val button = copy.button
     private val buttons = actions.map(::toolbarButton)
     private val row = Stack.horizontal(UiStyle.Gap.xs()).apply {

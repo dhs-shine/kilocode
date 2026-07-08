@@ -211,7 +211,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         val message = panel.findMessage("u1")!!
         assertNotNull(find<MessageToolbar>(message))
         assertFalse(view.hasCopyToolbar())
-        assertEquals(BorderLayout.LINE_END, message.promptToolbarAlignment())
+        assertEquals(BorderLayout.LINE_START, message.promptToolbarAlignment())
         assertTrue(message.promptToolbarActive())
 
         val rollback = components(message)
