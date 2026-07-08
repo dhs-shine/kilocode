@@ -6,6 +6,7 @@ import { parseArgs } from "util"
 
 const repo = process.env.GH_REPO ?? process.env.GITHUB_REPOSITORY ?? "Kilo-Org/kilocode"
 const file = "packages/kilo-jetbrains/package.json"
+const label = "jetbrains-cli-pin-bump"
 const asset = [
   "kilo-darwin-arm64.zip",
   "kilo-darwin-x64.zip",
@@ -101,10 +102,12 @@ async function pr(version: string) {
   const view = await $`gh pr view ${branch} --repo ${repo} --json url --jq .url`.quiet().nothrow()
   if (view.exitCode === 0 && view.stdout.toString().trim()) {
     await $`gh pr edit ${branch} --repo ${repo} --title ${title} --body ${desc}`
+    await tag(branch)
     console.log(view.stdout.toString().trim())
     return
   }
   const url = await $`gh pr create --repo ${repo} --base main --head ${branch} --title ${title} --body ${desc}`.text()
+  await tag(branch)
   console.log(url.trim())
 }
 
@@ -137,4 +140,12 @@ async function ensure(branch: string, sha: string) {
     return
   }
   await $`gh api --method POST ${`repos/${repo}/git/refs`} -f ref=${`refs/heads/${branch}`} -f sha=${sha}`.quiet()
+}
+
+async function tag(branch: string) {
+  await $`gh label create ${label} --repo ${repo} --color 1D76DB --description ${"JetBrains pinned CLI version bump"}`.quiet().nothrow()
+  const result = await $`gh pr edit ${branch} --repo ${repo} --add-label ${label}`.quiet().nothrow()
+  if (result.exitCode !== 0) {
+    console.warn(`Warning: failed to add ${label} label to ${branch}`)
+  }
 }
