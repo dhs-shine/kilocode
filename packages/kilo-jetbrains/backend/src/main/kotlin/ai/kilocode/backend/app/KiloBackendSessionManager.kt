@@ -9,6 +9,7 @@ import ai.kilocode.jetbrains.api.model.SessionStatus
 import ai.kilocode.rpc.dto.CloudSessionListDto
 import ai.kilocode.rpc.dto.SessionDto
 import ai.kilocode.rpc.dto.SessionListDto
+import ai.kilocode.rpc.dto.SessionRevertDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.SessionSummaryDto
 import ai.kilocode.rpc.dto.SessionTimeDto
@@ -282,6 +283,7 @@ class KiloBackendSessionManager(
                 files = it.files.safeInt(),
             )
         },
+        revert = revertDto(s.revert),
     )
 
     private fun dto(s: GlobalSession) = SessionDto(
@@ -303,7 +305,26 @@ class KiloBackendSessionManager(
                 files = it.files?.safeInt() ?: 0,
             )
         },
+        revert = revertDto(s.revert),
     )
+
+    private fun revertDto(s: ai.kilocode.jetbrains.api.model.SessionRevert?) = s?.let {
+        SessionRevertDto(
+            messageID = it.messageID,
+            partID = it.partID,
+            snapshot = it.snapshot,
+            diff = it.diff,
+        )
+    }
+
+    private fun revertDto(s: ai.kilocode.jetbrains.api.model.GlobalSessionRevert?) = s?.let {
+        SessionRevertDto(
+            messageID = it.messageID,
+            partID = it.partID,
+            snapshot = it.snapshot,
+            diff = it.diff,
+        )
+    }
 
     private fun statusDto(s: SessionStatus) = SessionStatusDto(
         type = s.type.value,

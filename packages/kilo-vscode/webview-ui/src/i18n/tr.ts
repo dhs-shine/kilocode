@@ -136,7 +136,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} mesaj geri alındı",
   "revert.banner.redo": "Yinele",
   "revert.banner.redo.all": "Tümünü Yinele",
-  "revert.banner.hint": "Bunu kalıcı yapmak için yeni bir mesaj gönderin",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Ajanın bitmesini bekleyin",
   "command.session.compact": "Oturumu sıkıştır",
   "command.session.compact.description": "Bağlam boyutunu azaltmak için oturumu özetle",

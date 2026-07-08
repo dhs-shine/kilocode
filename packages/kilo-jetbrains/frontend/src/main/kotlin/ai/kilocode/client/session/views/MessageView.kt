@@ -53,6 +53,7 @@ class MessageView(
     private val resize: ((JComponent, () -> Unit) -> Unit)? = null,
     private val repo: String? = null,
     private val hover: ((PartView, Boolean) -> Unit)? = null,
+    private val revert: ((String) -> Unit)? = null,
 ) : ai.kilocode.client.session.ui.SessionLayoutPanel(
     JBUI.scale(SessionUiStyle.SessionLayout.GAP),
 ), Disposable, SessionEditorStyleTarget, SessionView {
@@ -474,7 +475,9 @@ class MessageView(
         if (role != SessionUiStyle.View.Message.USER_ROLE) return view
         if (view !is PromptView) return view
         prompt = view
-        val bar = promptToolbar ?: MessageToolbar(BorderLayout.LINE_END) { prompt?.copyMarkdown(trim = false) }.also { promptToolbar = it }
+        val bar = promptToolbar ?: MessageToolbar({ prompt?.copyMarkdown(trim = false) }, BorderLayout.LINE_END) {
+            revert?.invoke(msg.info.id)
+        }.also { promptToolbar = it }
         val box = JPanel(BorderLayout()).also {
             it.isOpaque = false
             it.add(view, BorderLayout.CENTER)

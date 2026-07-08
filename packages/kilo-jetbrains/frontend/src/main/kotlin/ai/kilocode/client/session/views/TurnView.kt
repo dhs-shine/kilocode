@@ -34,6 +34,7 @@ class TurnView(
     private val resize: ((JComponent, () -> Unit) -> Unit)? = null,
     private val repo: String? = null,
     private val hover: ((PartView, Boolean) -> Unit)? = null,
+    private val revert: ((String) -> Unit)? = null,
 ) : SessionLayoutPanel(JBUI.scale(SessionUiStyle.SessionLayout.GAP)), Disposable, SessionEditorStyleTarget {
 
     private val messages = LinkedHashMap<String, MessageView>()
@@ -44,7 +45,7 @@ class TurnView(
 
     /** Add a new [MessageView] for [msg] at the end of this turn. */
     fun addMessage(msg: Message): MessageView {
-        val view = MessageView(msg, openFile, style, openUrl, selection, openAttachment, resize, repo, hover)
+        val view = MessageView(msg, openFile, style, openUrl, selection, openAttachment, resize, repo, hover, revert)
         messages[msg.info.id] = view
         add(view)
         syncCopyToolbars()

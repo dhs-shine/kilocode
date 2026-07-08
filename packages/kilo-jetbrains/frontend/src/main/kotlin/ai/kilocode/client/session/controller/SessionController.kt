@@ -398,6 +398,68 @@ class SessionController(
         }
     }
 
+    fun revert(message: String, part: String? = null) {
+        assertEdt()
+        val id = sid
+        if (id == null) {
+            LOG.info(
+                "${ChatLogSummary.sid(ref?.key ?: "pending")} kind=revert ignored=no-session " +
+                    "message=$message part=${part ?: "none"}",
+            )
+            return
+        }
+        val busy = model.state.isBusy()
+        LOG.info(
+            "${ChatLogSummary.sid(id)} kind=revert clicked=true message=$message " +
+                "part=${part ?: "none"} busy=$busy",
+        )
+        cs.launch {
+            try {
+                if (busy) {
+                    LOG.info("${ChatLogSummary.sid(id)} kind=revert abort=true reason=busy")
+                    sessions.abort(id, directory)
+                    LOG.info("${ChatLogSummary.sid(id)} kind=revert abort=true ok=true")
+                }
+                sessions.revert(id, directory, message, part)
+                LOG.info("${ChatLogSummary.sid(id)} kind=revert ok=true")
+            } catch (e: Exception) {
+                capture("Session Error", sessionProps(id) + mapOf("context" to "revert", "errorClass" to e::class.java.name))
+                LOG.warn("${ChatLogSummary.sid(id)} kind=revert dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
+            }
+        }
+    }
+
+    fun unrevert() {
+        assertEdt()
+        val id = sid ?: return
+        cs.launch {
+            try {
+                sessions.unrevert(id, directory)
+            } catch (e: Exception) {
+                capture("Session Error", sessionProps(id) + mapOf("context" to "unrevert", "errorClass" to e::class.java.name))
+                LOG.warn("${ChatLogSummary.sid(id)} kind=unrevert dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
+            }
+        }
+    }
+
+    fun redo() {
+        assertEdt()
+        val mark = model.revert() ?: return
+        val msgs = model.messages().toList()
+        val pos = msgs.indexOfFirst { it.info.id == mark.messageID }
+        val next = msgs.drop(pos + 1).firstOrNull { it.info.role == "user" }
+        if (next == null) {
+            unrevert()
+            return
+        }
+        revert(next.info.id)
+    }
+
+    fun redoAll() {
+        assertEdt()
+        unrevert()
+    }
+
     fun retryConnection() {
         assertEdt()
         LOG.debug {

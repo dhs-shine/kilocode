@@ -17,6 +17,7 @@ import ai.kilocode.client.session.ui.ConnectionPanel
 import ai.kilocode.client.session.ui.empty.EmptySessionPanel
 import ai.kilocode.client.session.ui.LoadingPanel
 import ai.kilocode.client.session.ui.ReasoningPicker
+import ai.kilocode.client.session.ui.RevertBanner
 import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.prompt.KiloPromptCompletionProvider
@@ -340,6 +341,8 @@ class SessionUi(
             ::openAttachment,
             repo = workspace.directory,
             resize = { anchor, fn -> scroll.preserve(anchor, fn) },
+            revert = { id -> controller.revert(id) },
+            banner = RevertBanner(controller.model, controller::redo, controller::redoAll),
         ).also {
             it.onHover = { view, on -> if (on) popup.show(view) else popup.notifyExit(view) }
         }
@@ -513,6 +516,8 @@ class SessionUi(
 
                 is SessionModelEvent.SessionUpdated -> onSessionUpdated()
 
+                is SessionModelEvent.RevertChanged -> syncPromptRevert()
+
                 is SessionModelEvent.TurnAdded,
                 is SessionModelEvent.TurnUpdated,
                 is SessionModelEvent.ContentAdded,
@@ -658,6 +663,18 @@ class SessionUi(
         }
         controller.prompt(text, files)
         scroll.followBottom(follow)
+    }
+
+    @RequiresEdt
+    private fun syncPromptRevert() {
+        val mark = controller.model.revert()
+        if (mark == null) {
+            prompt.clear()
+            return
+        }
+        val msg = controller.model.message(mark.messageID) ?: return
+        val text = msg.parts.values.filterIsInstance<ai.kilocode.client.session.model.Text>().firstOrNull()?.content?.toString() ?: return
+        prompt.setText(text)
     }
 
     private fun slashActions(): List<SlashAction> {

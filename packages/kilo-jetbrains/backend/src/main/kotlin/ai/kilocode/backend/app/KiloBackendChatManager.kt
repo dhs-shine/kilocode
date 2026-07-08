@@ -257,6 +257,17 @@ class KiloBackendChatManager(
         }
     }
 
+    fun revert(id: String, dir: String, message: String, part: String?) {
+        log.info("${ChatLogSummary.sid(id)} kind=revert ${ChatLogSummary.dir(dir)} message=$message part=${part ?: "none"}")
+        val body = KiloCliDataParser.buildRevertJson(message, part)
+        post("/session/$id/revert?directory=${encode(dir)}", body, "revert", "${ChatLogSummary.sid(id)} kind=revert")
+    }
+
+    fun unrevert(id: String, dir: String) {
+        log.info("${ChatLogSummary.sid(id)} kind=unrevert ${ChatLogSummary.dir(dir)}")
+        post("/session/$id/unrevert?directory=${encode(dir)}", "{}", "unrevert", "${ChatLogSummary.sid(id)} kind=unrevert")
+    }
+
     // ------ messages ------
 
     fun messages(id: String, dir: String): List<MessageWithPartsDto> {

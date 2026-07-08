@@ -136,7 +136,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} повідомлень скасовано",
   "revert.banner.redo": "Повторити",
   "revert.banner.redo.all": "Повторити все",
-  "revert.banner.hint": "Надішліть нове повідомлення, щоб зробити це постійним",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Зачекайте завершення агента",
   "command.session.compact": "Стиснути сесію",
   "command.session.compact.description": "Підсумувати сесію для зменшення розміру контексту",

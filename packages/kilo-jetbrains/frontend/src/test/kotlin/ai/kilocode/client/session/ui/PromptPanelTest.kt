@@ -187,7 +187,7 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(pad, ins.right)
     }
 
-    fun `test prompt focus outline follows editor focus`() {
+    fun `test prompt focus keeps separator without side bars`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         realize(panel, 260, 400)
         panel.setBounds(0, 0, 260, panel.preferredSize.height)
@@ -199,15 +199,15 @@ class PromptPanelTest : BasePlatformTestCase() {
         KeyboardFocusManager.setCurrentKeyboardFocusManager(focus)
         try {
             assertEquals(SessionUiStyle.View.Prompt.separator().rgb, paint(panel, panel.width / 2, 0).rgb)
-            assertTrue(JBUI.CurrentTheme.Focus.focusColor().rgb != paint(panel, panel.width / 2, 1).rgb)
 
             focus.focus(editor.contentComponent)
             editor.contentComponent.focusListeners.forEach {
                 it.focusGained(FocusEvent(editor.contentComponent, FocusEvent.FOCUS_GAINED))
             }
 
-            assertTrue(SessionUiStyle.View.Prompt.separator().rgb != paint(panel, panel.width / 2, 0).rgb)
-            assertEquals(JBUI.CurrentTheme.Focus.focusColor().rgb, paint(panel, panel.width / 2, 1).rgb)
+            assertEquals(SessionUiStyle.View.Prompt.separator().rgb, paint(panel, panel.width / 2, 0).rgb)
+            assertTrue(JBUI.CurrentTheme.Focus.focusColor().rgb != paint(panel, 1, panel.height / 2).rgb)
+            assertTrue(JBUI.CurrentTheme.Focus.focusColor().rgb != paint(panel, panel.width - 2, panel.height / 2).rgb)
         } finally {
             KeyboardFocusManager.setCurrentKeyboardFocusManager(current)
         }

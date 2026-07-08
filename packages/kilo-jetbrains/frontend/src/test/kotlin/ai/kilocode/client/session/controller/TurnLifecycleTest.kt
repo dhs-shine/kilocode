@@ -1,6 +1,7 @@
 package ai.kilocode.client.session.controller
 
 import ai.kilocode.client.session.model.SessionState
+import ai.kilocode.client.testing.FakeSessionRpcApi
 import ai.kilocode.rpc.dto.ChatEventDto
 import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
@@ -12,6 +13,7 @@ import ai.kilocode.rpc.dto.PartDto
 import ai.kilocode.rpc.dto.ProfileDto
 import ai.kilocode.rpc.dto.QuestionInfoDto
 import ai.kilocode.rpc.dto.QuestionRequestDto
+import ai.kilocode.rpc.dto.SessionRevertDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 
 class TurnLifecycleTest : SessionControllerTestBase() {
@@ -27,6 +29,26 @@ class TurnLifecycleTest : SessionControllerTestBase() {
             """,
             m,
         )
+    }
+
+    fun `test revert aborts busy session before rollback`() {
+        val (m, _, _) = prompted()
+        emit(ChatEventDto.TurnOpen("ses_test"))
+
+        edt { m.revert("msg1") }
+        flush()
+
+        assertEquals(listOf("ses_test" to "/test"), rpc.aborts)
+        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg1", null)), rpc.reverts)
+    }
+
+    fun `test session updated applies rollback marker`() {
+        val (m, _, modelEvents) = prompted()
+
+        emit(ChatEventDto.SessionUpdated("ses_test", session("ses_test").copy(revert = SessionRevertDto("msg1"))))
+
+        assertEquals("msg1", m.model.revert()?.messageID)
+        assertTrue(modelEvents.any { it.toString() == "RevertChanged msg1" })
     }
 
     fun `test TurnClose fires StateChanged to Idle`() {

@@ -136,7 +136,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} poruka poništeno",
   "revert.banner.redo": "Ponovi",
   "revert.banner.redo.all": "Ponovi Sve",
-  "revert.banner.hint": "Pošalji novu poruku da bi ovo postalo trajno",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Sačekajte da agent završi",
   "command.session.compact": "Sažmi sesiju",
   "command.session.compact.description": "Sažmi sesiju kako bi se smanjio kontekst",

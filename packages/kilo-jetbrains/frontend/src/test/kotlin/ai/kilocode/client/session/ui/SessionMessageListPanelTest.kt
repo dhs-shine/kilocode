@@ -9,10 +9,12 @@ import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.session.model.ToolCallRef
+import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.views.LoginRequiredView
 import ai.kilocode.client.session.views.PlanExitView
+import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionResultView
 import ai.kilocode.client.session.views.question.QuestionView
@@ -29,12 +31,15 @@ import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.PartDto
+import ai.kilocode.rpc.dto.SessionRevertDto
 import ai.kilocode.rpc.dto.TodoDto
+import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -42,6 +47,7 @@ import java.awt.Container
 import java.awt.Point
 import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
+import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.SwingUtilities
 import javax.swing.border.Border
@@ -613,6 +619,43 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         lv.openProfileButton().doClick()
 
         assertTrue(called)
+    }
+
+    fun `test rollback banner is anchored inside transcript before progress footer`() {
+        val banner = RevertBanner(model, {}, {})
+        val item = SessionMessageListPanel(model, parent, openFile = openFile, banner = banner)
+        model.upsertMessage(msg("u1", "user"))
+        model.upsertMessage(msg("a1", "assistant"))
+
+        model.setRevert(SessionRevertDto("u1"))
+
+        val comps = item.components.toList()
+        val turn = comps.first { it is TurnView }
+
+        assertTrue(banner.isVisible)
+        assertTrue(comps.indexOf(turn) < comps.indexOf(banner))
+        assertTrue(comps.indexOf(banner) < comps.indexOf(item.progress))
+        assertSame(item.progress, comps.last())
+    }
+
+    fun `test rollback banner uses session dialog card with standard actions`() {
+        val banner = RevertBanner(model, {}, {})
+        model.upsertMessage(msg("u1", "user"))
+        model.setRevert(SessionRevertDto("u1"))
+
+        assertNotNull(find<BaseQuestionView>(banner))
+
+        val buttons = components(banner).filterIsInstance<JButton>()
+        assertEquals(
+            listOf(KiloBundle.message("revert.banner.redo"), KiloBundle.message("revert.banner.redo.all")),
+            buttons.map { it.text },
+        )
+        assertTrue(buttons.all { it.getClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY) == null })
+
+        val hint = components(banner)
+            .filterIsInstance<JBLabel>()
+            .first { it.text == KiloBundle.message("revert.banner.hint") }
+        assertEquals(UIUtil.getLabelForeground().rgb, hint.foreground.rgb)
     }
 
     // ------ question tool suppression ------

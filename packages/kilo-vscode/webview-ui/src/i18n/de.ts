@@ -142,7 +142,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} Nachrichten zurückgesetzt",
   "revert.banner.redo": "Wiederholen",
   "revert.banner.redo.all": "Alle wiederholen",
-  "revert.banner.hint": "Sende eine neue Nachricht, um dies dauerhaft zu machen",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Warten bis der Agent fertig ist",
   "command.session.compact": "Sitzung komprimieren",
   "command.session.compact.description": "Sitzung zusammenfassen, um die Kontextgröße zu reduzieren",
