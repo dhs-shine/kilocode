@@ -1693,6 +1693,7 @@ export type Config = {
     continue_loop_on_deny?: boolean
     sandbox?: boolean
     sandbox_restrict_network?: boolean
+    sandbox_writable_paths?: Array<string>
     mcp_timeout?: number
     policies?: Array<ConfigV2ExperimentalPolicy>
   }
@@ -2412,6 +2413,10 @@ export type BackgroundProcessLogs = {
   output: string
 }
 
+export type CommitMessageNoChangesError = {
+  message: string
+}
+
 export type ConfigOverlayResponse = {
   scope: "global" | "project"
   effective: Config
@@ -2569,6 +2574,12 @@ export type KiloEmbeddingModelCatalog = {
   aliases: {
     [key: string]: string
   }
+}
+
+export type ConflictError = {
+  _tag: "ConflictError"
+  message: string
+  resource?: string
 }
 
 export type InteractiveTerminalSnapshot = {
@@ -10081,6 +10092,7 @@ export type CommitMessageGenerateData = {
     path: string
     selectedFiles?: Array<string>
     previousMessage?: string
+    language?: string
   }
   path?: never
   query?: {
@@ -10095,6 +10107,10 @@ export type CommitMessageGenerateErrors = {
    * BadRequest | InvalidRequestError
    */
   400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * CommitMessageNoChangesError
+   */
+  422: CommitMessageNoChangesError
 }
 
 export type CommitMessageGenerateError = CommitMessageGenerateErrors[keyof CommitMessageGenerateErrors]
@@ -10588,6 +10604,38 @@ export type IndexingModelsResponses = {
 
 export type IndexingModelsResponse = IndexingModelsResponses[keyof IndexingModelsResponses]
 
+export type InstanceReloadData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/instance/reload"
+}
+
+export type InstanceReloadErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+}
+
+export type InstanceReloadError = InstanceReloadErrors[keyof InstanceReloadErrors]
+
+export type InstanceReloadResponses = {
+  /**
+   * Instance reloaded
+   */
+  200: boolean
+}
+
+export type InstanceReloadResponse = InstanceReloadResponses[keyof InstanceReloadResponses]
+
 export type InteractiveTerminalListData = {
   body?: never
   path?: never
@@ -10787,6 +10835,8 @@ export type KiloProfileResponses = {
         name: string
         role: string
       }>
+      selectedOrganizationId?: string
+      hasPersonalAccount?: boolean
     }
     balance: {
       balance: number
