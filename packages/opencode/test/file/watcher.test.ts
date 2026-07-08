@@ -10,11 +10,13 @@ import { Config } from "@/config/config"
 import { FileWatcher } from "../../src/file/watcher"
 import { Git } from "../../src/git"
 
+// kilocode_change start
 // Native @parcel/watcher bindings aren't reliably available in CI (missing on Linux, flaky on Windows).
 const describeWatcher =
-  FileWatcher.hasNativeBinding() && (!process.env.CI || process.env.KILO_TEST_PROFILE === "darwin") // kilocode_change
+  FileWatcher.hasNativeBinding() && (!process.env.CI || process.env.KILO_TEST_PROFILE === "darwin")
     ? describe
     : describe.skip
+// kilocode_change end
 
 // ---------------------------------------------------------------------------
 // Helpers
