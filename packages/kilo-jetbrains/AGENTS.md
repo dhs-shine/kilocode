@@ -15,6 +15,7 @@
 - `plugin.xml` `<content>` entries ↔ module XML descriptors (`kilo.jetbrains.{shared,frontend,backend}.xml`)
 - Service classes ↔ `<applicationService>`/`<projectService>` entries in the corresponding module XML
 - `packages/kilo-jetbrains/package.json` version ↔ GitHub CLI release tag consumed by the backend downloader
+- `packages/kilo-jetbrains/gradle.properties` `kilo.cli.pinned` ↔ Gradle and release-script gates
 
 ## IntelliJ Platform Source Lookup
 
@@ -154,8 +155,10 @@ For blocking I/O in coroutines, move the dispatcher switch inside the callee usi
 ## CLI Integration
 
 - CLI process spawning, download, extraction, and lifecycle belong in `backend`.
-- The plugin does not bundle CLI binaries. At connect time the backend downloads the GitHub Release asset for the version pinned in `packages/kilo-jetbrains/package.json`; `backend` resources include `kilo.properties` with `cli.version` for split-mode RPC and runtime use.
-- The generated API client is produced from the pinned release binary by running `kilo generate` during the Gradle OpenAPI generation task.
+- By default, the plugin does not bundle CLI binaries. At connect time the backend downloads the GitHub Release asset for the version pinned in `packages/kilo-jetbrains/package.json`; `backend` resources include `kilo.properties` with `cli.version` and `cli.pinned` for split-mode RPC and runtime use.
+- `kilo.cli.pinned=false` in `gradle.properties` is dev-only repo CLI mode: OpenAPI generation runs `bun run --conditions=browser ./src/index.ts generate` from `packages/opencode/`, and runtime extracts a staged local CLI resource instead of downloading.
+- Repo CLI mode requires a local CLI build. Run `./gradlew :backend:buildRepoCli` from `packages/kilo-jetbrains/` or `bun run script/build.ts --single --skip-install` from `packages/opencode/`, then let `:backend:stageRepoCli` bundle the full `dist/@kilocode/cli-<os>-<arch>/bin/` directory.
+- Production builds must keep `kilo.cli.pinned=true`; Gradle release mode, release scripts, and `script/build-version.sh` reject repo CLI mode.
 - For OS and environment checks, prefer IntelliJ Platform classes over raw JVM APIs such as `System.getProperty(...)` or `System.getenv(...)`.
 - Detect architecture with `com.intellij.util.system.CpuArch.CURRENT`, not `System.getProperty("os.arch")`.
 - Detect OS with `com.intellij.openapi.util.SystemInfo.isMac` / `isLinux` / `isWindows`.
@@ -191,7 +194,8 @@ For blocking I/O in coroutines, move the dispatcher switch inside the callee usi
 
 - **Marketplace version build**: Use `script/build-version.sh <version>` from `packages/kilo-jetbrains/` to clean, build, sign, and verify the JetBrains Marketplace plugin ZIP. Pass `--skip-verification` only when explicitly needed.
 - **Test version build**: If the user asks for a JetBrains test build, still require a version and use `script/build-version.sh <version> --skip-signing --skip-verification` from `packages/kilo-jetbrains/` so no signing secrets are needed. Add `--skip-clean` only when the user wants a faster incremental test build.
-- **Typecheck**: `bun run typecheck` or `./gradlew typecheck` from `packages/kilo-jetbrains/` — compiles all Kotlin sources including the generated API client. A cold build downloads the pinned CLI release via `generateOpenApiSpec` and needs network access; Gradle-cached incremental runs skip the download. It does not bundle per-platform CLI binaries.
+- **Typecheck**: `bun run typecheck` or `./gradlew typecheck` from `packages/kilo-jetbrains/` — compiles all Kotlin sources including the generated API client. A cold pinned build downloads the pinned CLI release via `generateOpenApiSpec` and needs network access; Gradle-cached incremental runs skip the download. Repo CLI mode (`-Pkilo.cli.pinned=false`) generates the spec from local source and bundles the staged local CLI binary.
+- **Build local repo CLI for JetBrains dev**: `./gradlew :backend:buildRepoCli` from `packages/kilo-jetbrains/` builds `packages/opencode/dist/@kilocode/cli-<os>-<arch>/bin/`. `stageRepoCli` intentionally does not depend on this task; missing binaries fail with instructions instead of silently starting a slow CLI build.
 - **Full build**: `bun run build` from `packages/kilo-jetbrains/` (runs Gradle `buildPlugin`).
 - **Gradle only**: `./gradlew buildPlugin` from `packages/kilo-jetbrains/`.
 - **Java checks**: Do not run `java -version` as a routine preflight. Gradle commands already fail clearly when Java is missing or incompatible; check Java only when diagnosing that failure mode.
@@ -202,7 +206,7 @@ For blocking I/O in coroutines, move the dispatcher switch inside the callee usi
 
 ### CLI/SDK Change Awareness
 
-- JetBrains runtime behavior depends on the downloaded CLI release pinned by `packages/kilo-jetbrains/package.json`; local `packages/opencode/` changes are not used unless published and pinned.
+- JetBrains runtime behavior normally depends on the downloaded CLI release pinned by `packages/kilo-jetbrains/package.json`; local `packages/opencode/` changes are used only with `kilo.cli.pinned=false` repo CLI mode.
 - If there are relevant server/API changes outside `packages/kilo-jetbrains/`, warn the user that JetBrains may need a newly published/pinned CLI release and regenerated SDK artifacts.
 
 ## UI Guidelines

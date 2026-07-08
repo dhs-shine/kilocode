@@ -40,6 +40,14 @@ Show the resolved `version`, `kind`, and default `fromTagDefault` to the user.
 
 Before dispatching prepare, verify the JetBrains plugin is pinned to the intended Kilo Core release. The plugin downloads the CLI version from `packages/kilo-jetbrains/package.json`, not from the JetBrains plugin version.
 
+Verify repo CLI dev mode is disabled on `main` before creating the immutable tag:
+
+```bash
+git show origin/main:packages/kilo-jetbrains/gradle.properties | grep '^kilo.cli.pinned=' || true
+```
+
+If `kilo.cli.pinned` is present and is not `true`, stop and ask the user to reset it to `true` on `main` before dispatching prepare. `kilo.cli.pinned=false` generates from and bundles the local repo CLI, so it is dev-only and non-releasable.
+
 Read the pinned CLI version:
 
 ```bash
@@ -67,7 +75,7 @@ kilo-windows-x64.zip
 
 If the pin is stale or the release assets are missing, stop and ask the user to update `packages/kilo-jetbrains/package.json` on `main` before dispatching prepare. The prepare workflow tags `origin/main`, so the pin must already be reviewed and merged before the release tag is created.
 
-Show the resolved JetBrains plugin version, release kind, default `fromTagDefault`, pinned CLI version, and CLI release asset status to the user, then ask for confirmation before continuing.
+Show the resolved JetBrains plugin version, release kind, default `fromTagDefault`, `kilo.cli.pinned` status, pinned CLI version, and CLI release asset status to the user, then ask for confirmation before continuing.
 
 ## Prepare Workflow
 

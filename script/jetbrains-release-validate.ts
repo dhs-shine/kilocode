@@ -73,6 +73,9 @@ if (sha !== commit) throw new Error(`${tag} points at ${sha}, expected ${commit}
 const prop = await props()
 if (prop !== ver)
   throw new Error(`packages/kilo-jetbrains/gradle.properties kilo.jetbrains.version is ${prop}, expected ${ver}`)
+if (!(await pinned())) {
+  throw new Error("packages/kilo-jetbrains/gradle.properties has kilo.cli.pinned=false; JetBrains releases require kilo.cli.pinned=true")
+}
 
 const changelog = await Bun.file("packages/kilo-jetbrains/CHANGELOG.md").text()
 if (!changelog.includes(`## [${ver}]`)) throw new Error(`CHANGELOG.md is missing section for ${ver}`)
@@ -116,4 +119,11 @@ async function props() {
   const value = line?.split("=", 2)[1]?.trim()
   if (!value) throw new Error("packages/kilo-jetbrains/gradle.properties is missing kilo.jetbrains.version")
   return value
+}
+
+async function pinned() {
+  const text = await Bun.file("packages/kilo-jetbrains/gradle.properties").text()
+  const line = text.split(/\r?\n/).find((item) => item.startsWith("kilo.cli.pinned="))
+  const value = line?.split("=", 2)[1]?.trim().toLowerCase()
+  return value !== "false"
 }

@@ -42,6 +42,9 @@ if (kind === "stable" && !/^\d+\.\d+\.\d+$/.test(ver)) throw new Error("Stable v
 if (!semver.valid(ver)) throw new Error(`Invalid semver: ${ver}`)
 
 await $`git fetch origin main --tags`
+if (!(await pinned())) {
+  throw new Error("packages/kilo-jetbrains/gradle.properties has kilo.cli.pinned=false; JetBrains releases require kilo.cli.pinned=true")
+}
 
 const tag = `jetbrains/v${ver}`
 const branch = `jetbrains/release/v${ver}`
@@ -212,6 +215,13 @@ async function writeprops(ver: string) {
     ? current.replace(/^kilo\.jetbrains\.version=.*$/m, line)
     : `${current.trim()}\n${line}\n`
   await Bun.write(props, next.endsWith("\n") ? next : `${next}\n`)
+}
+
+async function pinned() {
+  const text = await Bun.file(props).text()
+  const line = text.split(/\r?\n/).find((item) => item.startsWith("kilo.cli.pinned="))
+  const value = line?.split("=", 2)[1]?.trim().toLowerCase()
+  return value !== "false"
 }
 
 async function writelog(ver: string, entry: string) {

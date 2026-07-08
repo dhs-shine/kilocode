@@ -87,6 +87,11 @@ class KiloBackendCliManager(
     private suspend fun resolveCli(onProgress: (CliDownload) -> Unit): File {
         val force = forceExtract
         forceExtract = false
+        if (!KiloProps.pinned()) {
+            if (force) log.info("Force re-extracting local repo CLI ${KiloProps.cliVersion()}")
+            onProgress(CliDownload(100, KiloProps.cliVersion(), KiloCliPlatform.current()))
+            return KiloRepoCli.extract(force)
+        }
         if (force) log.info("Force re-downloading CLI ${KiloProps.cliVersion()}")
         return KiloCliDownloader(log = log).resolve(KiloProps.cliVersion(), force, onProgress)
     }

@@ -10,6 +10,8 @@ Maintainers can use the Kilo `release-jetbrains` skill to drive this process fro
 
 JetBrains plugin builds and runtime downloads use the Kilo Core version pinned in `packages/kilo-jetbrains/package.json`, so verify that pin points at a published `v<version>` release before creating the release tag.
 
+`kilo.cli.pinned=false` in `packages/kilo-jetbrains/gradle.properties` is local development mode only. It generates the client from `packages/opencode/` and bundles a locally built CLI into the plugin; production Gradle builds and release scripts fail until the property is restored to `true`.
+
 The skill lives at `.kilo/skills/release-jetbrains/SKILL.md`. It does not move or recreate release tags, and merge permission is only required if the user explicitly asks the skill to merge the release PR automatically.
 
 ## Create Release Tag And PR
