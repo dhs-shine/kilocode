@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Surface a clear error when the Kilo backend fails to start instead of hanging on loading, and write the `kilo-dev.log` diagnostic log in release builds.
+
 ## 7.4.2
 
 ### Patch Changes
