@@ -700,7 +700,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     }
 
     if (message.type === "filePickerResult") {
-      mention.insertFilePickerResult(message.path)
+      mention.insertFilePickerResult(message.path, message.requestId)
     }
   })
   vscode.postMessage({ type: "requestAutoApproveState" })
@@ -1158,7 +1158,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       </>
                     )}
                   </div>
-                  <Show when={item.type === "file-picker" && mention.mentionResults().length > 1}>
+                  <Show when={item.type === "file-picker" && index() < mention.mentionResults().length - 1}>
                     <div class="file-mention-separator" />
                   </Show>
                 </>

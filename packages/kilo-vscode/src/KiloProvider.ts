@@ -1273,7 +1273,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           })
           break
         case "requestFilePicker":
-          await handleFilePicker({ post: (msg) => this.postMessage(msg) })
+          await handleFilePicker({ requestId: message.requestId, post: (msg) => this.postMessage(msg) })
           break
         case "requestTerminalContext":
           void this.handleTerminalContext(message.requestId)

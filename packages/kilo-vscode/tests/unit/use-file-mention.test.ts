@@ -470,15 +470,16 @@ describe("useFileMention", () => {
       restoreDocument()
     }
 
-    expect(posted).toEqual([{ type: "requestFilePicker" }])
+    expect(posted).toEqual([{ type: "requestFilePicker", requestId: expect.any(String) }])
     expect(execCalled).toBe(false)
 
     dispose.fn?.()
   })
 
   it("insertFilePickerResult inserts the path at the stored position", () => {
+    const posted: WebviewMessage[] = []
     const ctx = {
-      postMessage: () => {},
+      postMessage: (message: WebviewMessage) => posted.push(message),
       onMessage: () => () => {},
     }
 
@@ -522,7 +523,8 @@ describe("useFileMention", () => {
           state.textSet = text
         },
       )
-      mention.insertFilePickerResult("/outside/file.ts")
+      const requestId = (posted.at(-1) as { requestId: string }).requestId
+      mention.insertFilePickerResult("/outside/file.ts", requestId)
     } finally {
       restoreDocument()
     }
@@ -535,8 +537,9 @@ describe("useFileMention", () => {
   })
 
   it("insertFilePickerResult normalizes Windows backslashes to forward slashes", () => {
+    const posted: WebviewMessage[] = []
     const ctx = {
-      postMessage: () => {},
+      postMessage: (message: WebviewMessage) => posted.push(message),
       onMessage: () => () => {},
     }
 
@@ -580,7 +583,8 @@ describe("useFileMention", () => {
           state.textSet = text
         },
       )
-      mention.insertFilePickerResult("C:\\Users\\file.ts")
+      const requestId = (posted.at(-1) as { requestId: string }).requestId
+      mention.insertFilePickerResult("C:\\Users\\file.ts", requestId)
     } finally {
       restoreDocument()
     }
@@ -592,8 +596,9 @@ describe("useFileMention", () => {
   })
 
   it("insertFilePickerResult with empty path cleans up state", () => {
+    const posted: WebviewMessage[] = []
     const ctx = {
-      postMessage: () => {},
+      postMessage: (message: WebviewMessage) => posted.push(message),
       onMessage: () => () => {},
     }
 
@@ -617,9 +622,45 @@ describe("useFileMention", () => {
       input,
       () => {},
     )
-    mention.insertFilePickerResult("")
+    const requestId = (posted.at(-1) as { requestId: string }).requestId
+    mention.insertFilePickerResult("", requestId)
 
     expect(input.value).toBe("hello @b")
+
+    dispose.fn?.()
+  })
+
+  it("insertFilePickerResult ignores a result whose requestId doesn't match the pending request", () => {
+    const posted: WebviewMessage[] = []
+    const ctx = {
+      postMessage: (message: WebviewMessage) => posted.push(message),
+      onMessage: () => () => {},
+    }
+
+    const dispose: { fn?: () => void } = {}
+    const mention = createRoot((root) => {
+      dispose.fn = root
+      return useFileMention(ctx, undefined, () => false)
+    })
+
+    const input = {
+      value: "hello @b",
+      selectionStart: 8,
+      selectionEnd: 8,
+      isConnected: true,
+      setSelectionRange: () => {},
+      focus: () => {},
+    } as unknown as HTMLTextAreaElement
+
+    mention.selectMention(
+      { type: "file-picker", value: "file-picker", label: "Browse", description: "" },
+      input,
+      () => {},
+    )
+    mention.insertFilePickerResult("/outside/file.ts", "stale-request-id")
+
+    expect(input.value).toBe("hello @b")
+    expect(mention.mentionedPaths().has("/outside/file.ts")).toBe(false)
 
     dispose.fn?.()
   })

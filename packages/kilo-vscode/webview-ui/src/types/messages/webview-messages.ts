@@ -403,6 +403,7 @@ export interface RequestFileSearchMessage {
 
 export interface RequestFilePickerMessage {
   type: "requestFilePicker"
+  requestId: string
 }
 
 export interface RequestTerminalContextMessage {

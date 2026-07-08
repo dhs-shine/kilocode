@@ -10,6 +10,8 @@ import {
   isCursorAtMentionEnd,
   findMentionRange,
   FILE_PICKER_RESULT,
+  TERMINAL_RESULT,
+  GIT_CHANGES_RESULT,
 } from "../../webview-ui/src/hooks/file-mention-utils"
 
 describe("AT_PATTERN", () => {
@@ -82,9 +84,14 @@ describe("buildMentionResults", () => {
     expect(result).toEqual([FILE_PICKER_RESULT, { type: "opened-file", value: "src/index.ts" }])
   })
 
-  it("always includes file picker result", () => {
-    const result = buildMentionResults("", [])
-    expect(result[result.length - 1]).toEqual(FILE_PICKER_RESULT)
+  it("always includes file picker result, placed after terminal/git-changes and before file results", () => {
+    const result = buildMentionResults("", ["src/index.ts"])
+    expect(result).toEqual([
+      TERMINAL_RESULT,
+      GIT_CHANGES_RESULT,
+      FILE_PICKER_RESULT,
+      { type: "file", value: "src/index.ts" },
+    ])
   })
 })
 

@@ -59,7 +59,12 @@ export function buildMentionResults(query: string, items: Array<FileSearchItem |
     if (item.type === "opened-file") return { type: "opened-file", value: item.path }
     return { type: "file", value: item.path }
   })
-  return [...getTerminalMentionResult(query), ...(git ? getGitChangesMentionResult(query) : []), FILE_PICKER_RESULT, ...results]
+  return [
+    ...getTerminalMentionResult(query),
+    ...(git ? getGitChangesMentionResult(query) : []),
+    FILE_PICKER_RESULT,
+    ...results,
+  ]
 }
 
 export function filterMentionResults(query: string, items: MentionResult[]): MentionResult[] {

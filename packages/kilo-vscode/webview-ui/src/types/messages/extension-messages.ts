@@ -435,6 +435,7 @@ export interface FileSearchResultMessage {
 export interface FilePickerResultMessage {
   type: "filePickerResult"
   path: string
+  requestId: string
 }
 
 export interface TerminalContextResultMessage {
