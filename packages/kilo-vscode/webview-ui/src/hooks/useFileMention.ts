@@ -10,6 +10,7 @@ import {
   isCursorAtMentionEnd,
   getMentionRemovalRange,
   findMentionRange,
+  FILE_PICKER_RESULT,
   type MentionResult,
 } from "./file-mention-utils"
 
@@ -71,6 +72,8 @@ export interface FileMention {
   snapSelection: (textarea: HTMLTextAreaElement) => void
   /** Seed known paths from existing text (e.g. after undo restores a draft). */
   seedFromText: (text: string) => void
+  /** Insert a file-picker result at the stored cursor position. */
+  insertFilePickerResult: (path: string) => void
 }
 
 export function useFileMention(
@@ -89,6 +92,13 @@ export function useFileMention(
 
   let fileSearchTimer: ReturnType<typeof setTimeout> | undefined
   let fileSearchCounter = 0
+  let pickerState: {
+    textarea: HTMLTextAreaElement
+    atStart: number
+    atEnd: number
+    setText: (text: string) => void
+    onSelect?: () => void
+  } | null = null
 
   const showMention = () => mentionQuery() !== null
 
@@ -144,6 +154,16 @@ export function useFileMention(
     const cursor = textarea.selectionStart ?? val.length
     const before = val.substring(0, cursor)
     const after = val.substring(cursor)
+
+    if (result.type === "file-picker") {
+      const match = before.match(AT_PATTERN)!
+      const prefix = /^\s/.test(match[0]) ? 1 : 0
+      const atPos = match.index! + prefix
+      pickerState = { textarea, atStart: atPos, atEnd: cursor, setText: _setText, onSelect }
+      closeMention()
+      vscode.postMessage({ type: "requestFilePicker" })
+      return
+    }
 
     // Add to knownPaths BEFORE execCommand so syncMentionedPaths (triggered
     // by the input event) can discover the new path.
@@ -324,12 +344,39 @@ export function useFileMention(
   }
 
   const seedFromText = (text: string) => {
-    const re = /@([\w./-]+\.[\w]+|[\w.-]+\/[\w./-]+)/g
+    const re = /@([\w.:/-]+\.[\w]+|[\w.:-]+\/[\w.:/-]+)/g
     let m: RegExpExecArray | null
     while ((m = re.exec(text))) {
       knownPaths.add(m[1])
     }
     syncMentionedPaths(text)
+  }
+
+  const insertFilePickerResult = (path: string) => {
+    if (!path) {
+      pickerState = null
+      return
+    }
+    const norm = path.replaceAll("\\", "/")
+    const state = pickerState
+    if (!state) return
+    pickerState = null
+    const textarea = state.textarea
+    if (!textarea.isConnected) return
+    const after = textarea.value.substring(state.atEnd)
+    const suffix = /^\s/.test(after) ? "" : " "
+    suppress = true
+    try {
+      textarea.setSelectionRange(state.atStart, state.atEnd)
+      document.execCommand("insertText", false, `@${norm}${suffix}`)
+    } finally {
+      suppress = false
+    }
+    knownPaths.add(norm)
+    setMentionedPaths((prev) => new Set([...prev, norm]))
+    syncMentionedPaths(textarea.value)
+    state.setText(textarea.value)
+    state.onSelect?.()
   }
 
   return {
@@ -348,5 +395,6 @@ export function useFileMention(
     handleArrowKey,
     snapSelection,
     seedFromText,
+    insertFilePickerResult,
   }
 }

@@ -10,6 +10,7 @@ export type MentionResult =
   | { type: "file"; value: string }
   | { type: "opened-file"; value: string }
   | { type: "folder"; value: string }
+  | { type: "file-picker"; value: "file-picker"; label: string; description: string }
 
 export const TERMINAL_RESULT: MentionResult = {
   type: "terminal",
@@ -23,6 +24,13 @@ export const GIT_CHANGES_RESULT: MentionResult = {
   value: GIT_CHANGES_MENTION,
   label: "Git changes",
   description: "Current session/worktree changes",
+}
+
+export const FILE_PICKER_RESULT: MentionResult = {
+  type: "file-picker",
+  value: "file-picker",
+  label: "Browse files...",
+  description: "Select a file outside the workspace",
 }
 
 /**
@@ -51,7 +59,7 @@ export function buildMentionResults(query: string, items: Array<FileSearchItem |
     if (item.type === "opened-file") return { type: "opened-file", value: item.path }
     return { type: "file", value: item.path }
   })
-  return [...getTerminalMentionResult(query), ...(git ? getGitChangesMentionResult(query) : []), ...results]
+  return [...getTerminalMentionResult(query), ...(git ? getGitChangesMentionResult(query) : []), FILE_PICKER_RESULT, ...results]
 }
 
 export function filterMentionResults(query: string, items: MentionResult[]): MentionResult[] {
@@ -60,6 +68,7 @@ export function filterMentionResults(query: string, items: MentionResult[]): Men
   return items.filter((item) => {
     if (item.type === "terminal") return TERMINAL_MENTION.startsWith(value)
     if (item.type === "git-changes") return GIT_CHANGES_MENTION.startsWith(value) || "git".startsWith(value)
+    if (item.type === "file-picker") return true
     return item.value.toLowerCase().includes(value)
   })
 }
@@ -166,6 +175,10 @@ export function findMentionRange(
   return null
 }
 
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith("/") || /^[A-Za-z]:[\\\/]/.test(path)
+}
+
 /**
  * Build FileAttachment objects from currently mentioned paths in the text.
  */
@@ -178,7 +191,7 @@ export function buildFileAttachments(
   const dir = workspaceDir.replaceAll("\\", "/")
   for (const path of mentionedPaths) {
     if (text.includes(`@${path}`)) {
-      const abs = path.startsWith("/") ? path : `${dir}/${path}`
+      const abs = isAbsolutePath(path) ? path : `${dir}/${path}`
       const url = new URL("file://")
       url.pathname = abs.startsWith("/") ? abs : `/${abs}`
       result.push({ mime: "text/plain", url: url.href })

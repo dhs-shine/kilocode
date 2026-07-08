@@ -1258,6 +1258,19 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
             post: (msg) => this.postMessage(msg),
           })
           break
+        case "requestFilePicker": {
+          const uri = await vscode.window.showOpenDialog({
+            canSelectFiles: true,
+            canSelectFolders: false,
+            canSelectMany: false,
+            openLabel: "Select file",
+          })
+          this.postMessage({
+            type: "filePickerResult",
+            path: uri && uri[0] ? uri[0].fsPath : "",
+          })
+          break
+        }
         case "requestTerminalContext":
           void this.handleTerminalContext(message.requestId)
           break

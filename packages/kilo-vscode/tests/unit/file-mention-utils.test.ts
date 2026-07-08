@@ -9,6 +9,7 @@ import {
   getMentionRemovalRange,
   isCursorAtMentionEnd,
   findMentionRange,
+  FILE_PICKER_RESULT,
 } from "../../webview-ui/src/hooks/file-mention-utils"
 
 describe("AT_PATTERN", () => {
@@ -53,32 +54,37 @@ describe("buildMentionResults", () => {
 
   it("includes terminal for matching prefix", () => {
     const result = buildMentionResults("term", ["src/terminal.ts"])
-    expect(result.map((item) => item.type)).toEqual(["terminal", "file"])
+    expect(result.map((item) => item.type)).toEqual(["terminal", "file-picker", "file"])
   })
 
   it("includes git changes for matching prefix", () => {
     const result = buildMentionResults("git", ["src/git.ts"])
-    expect(result.map((item) => item.type)).toEqual(["git-changes", "file"])
+    expect(result.map((item) => item.type)).toEqual(["git-changes", "file-picker", "file"])
   })
 
   it("omits special mentions for unrelated query", () => {
     const result = buildMentionResults("src", ["src/index.ts"])
-    expect(result.map((item) => item.type)).toEqual(["file"])
+    expect(result.map((item) => item.type)).toEqual(["file-picker", "file"])
   })
 
   it("omits git changes when git is unavailable", () => {
     const result = buildMentionResults("git", ["src/git.ts"], false)
-    expect(result.map((item) => item.type)).toEqual(["file"])
+    expect(result.map((item) => item.type)).toEqual(["file-picker", "file"])
   })
 
   it("includes folder results", () => {
     const result = buildMentionResults("src", [{ path: "src", type: "folder" }])
-    expect(result).toEqual([{ type: "folder", value: "src" }])
+    expect(result).toEqual([FILE_PICKER_RESULT, { type: "folder", value: "src" }])
   })
 
   it("preserves opened file result type", () => {
     const result = buildMentionResults("src", [{ path: "src/index.ts", type: "opened-file" }])
-    expect(result).toEqual([{ type: "opened-file", value: "src/index.ts" }])
+    expect(result).toEqual([FILE_PICKER_RESULT, { type: "opened-file", value: "src/index.ts" }])
+  })
+
+  it("always includes file picker result", () => {
+    const result = buildMentionResults("", [])
+    expect(result[result.length - 1]).toEqual(FILE_PICKER_RESULT)
   })
 })
 
@@ -87,8 +93,14 @@ describe("filterMentionResults", () => {
     const result = filterMentionResults("gi", [
       { type: "file", value: "README.md" },
       { type: "file", value: "src/git.ts" },
+      FILE_PICKER_RESULT,
     ])
-    expect(result).toEqual([{ type: "file", value: "src/git.ts" }])
+    expect(result).toEqual([{ type: "file", value: "src/git.ts" }, FILE_PICKER_RESULT])
+  })
+
+  it("always preserves file picker result regardless of query", () => {
+    const result = filterMentionResults("zz", [FILE_PICKER_RESULT])
+    expect(result).toEqual([FILE_PICKER_RESULT])
   })
 })
 
@@ -241,6 +253,13 @@ describe("buildFileAttachments", () => {
     const paths = new Set(["foo.ts"])
     const result = buildFileAttachments("@foo.ts", paths, "C:\\Users\\workspace")
     expect(result[0]!.url).not.toContain("\\")
+  })
+
+  it("handles Windows absolute paths directly", () => {
+    const paths = new Set(["C:/Users/file.ts"])
+    const result = buildFileAttachments("@C:/Users/file.ts", paths, "/workspace")
+    expect(result).toHaveLength(1)
+    expect(result[0]!.url).toContain("C:/Users/file.ts")
   })
 })
 
