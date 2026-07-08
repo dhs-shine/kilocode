@@ -1,5 +1,7 @@
 ---
 "kilo-code": patch
+"@kilocode/cli": minor
+"@kilocode/sdk": minor
 ---
 
-Show sandbox controls in the dedicated Sandboxing settings page for all supported macOS and Linux users while keeping sandboxing disabled by default.
+Configure sandboxing through first-class sandbox settings, and show its controls in the dedicated Sandboxing page for all supported macOS and Linux users while keeping it disabled by default.

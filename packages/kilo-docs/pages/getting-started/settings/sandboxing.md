@@ -10,7 +10,7 @@ The sandbox adds an operating-system boundary around agent tools. It limits wher
 The sandbox is **disabled by default**. It does not restrict filesystem reads. An agent can still read any file that your user account can read, but it can write only to explicitly allowed locations.
 
 {% callout type="warning" %}
-Sandboxing is experimental and is not available on Windows. If the macOS or Linux sandbox backend is unavailable, Kilo reports the reason and runs tools without sandbox confinement. The sandbox does not fail closed.
+Sandboxing is not available on Windows. If the macOS or Linux sandbox backend is unavailable, Kilo reports the reason and runs tools without sandbox confinement. The sandbox does not fail closed.
 {% /callout %}
 
 ## Enable the sandbox
@@ -29,19 +29,21 @@ You can also configure the default in the global `kilo.jsonc` file:
 
 ```json
 {
-  "experimental": {
-    "sandbox": true,
-    "sandbox_restrict_network": true,
-    "sandbox_writable_paths": ["~/shared-output"]
+  "sandbox": {
+    "enabled": true,
+    "network": "deny",
+    "writable_paths": ["~/shared-output"]
   }
 }
 ```
 
 | Key | Default | Effect |
 |---|---|---|
-| `experimental.sandbox` | `false` | Use sandbox confinement by default for new sessions. |
-| `experimental.sandbox_restrict_network` | `true` | Block outbound network access while filesystem confinement is active. Set this to `false` to allow network access without removing filesystem write restrictions. |
-| `experimental.sandbox_writable_paths` | `[]` | Add writable files or directories outside the built-in writable locations. For security, only the global config can set these paths. |
+| `sandbox.enabled` | `false` | Use sandbox confinement by default for new sessions. |
+| `sandbox.network` | `"deny"` | Control outbound network access while filesystem confinement is active. Set this to `"allow"` to permit network access without removing filesystem write restrictions. |
+| `sandbox.writable_paths` | `[]` | Add writable files or directories outside the built-in writable locations. Only global config may set these paths. |
+
+Project config may tighten sandbox policy by setting `enabled` to `true` or `network` to `"deny"`. It cannot disable a globally enabled sandbox, allow network denied by global config, or add writable paths. This prevents repository-controlled configuration from weakening the user's security boundary.
 
 ## When to use sandboxing
 
@@ -97,7 +99,7 @@ Writes are allowed in:
 
 - The active project or worktree
 - Kilo's data, cache, config, state, temporary, binary, log, and repository directories
-- Paths listed in `experimental.sandbox_writable_paths`
+- Paths listed in `sandbox.writable_paths`
 
 Writes are denied everywhere else. The following rules still apply inside writable locations:
 

@@ -19,6 +19,12 @@ describe("Sandboxing settings visibility", () => {
     expect(visible({ ...features, sandboxControls: true })).toBe(true)
   })
 
+  test("edits global sandbox config without promoting project policy", async () => {
+    const src = await Bun.file("webview-ui/src/components/settings/SandboxingTab.tsx").text()
+    expect(src).toContain("const { globalConfig, updateGlobalConfig } = useConfig()")
+    expect(src).not.toContain("const { config, updateConfig } = useConfig()")
+  })
+
   test("shows sandbox controls outside Windows", () => {
     setPlatform("darwin")
     expect(configFeatures().sandboxControls).toBe(true)
