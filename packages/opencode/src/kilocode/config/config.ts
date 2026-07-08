@@ -439,8 +439,8 @@ export namespace KilocodeConfig {
 
   // ── Opencode config migration notice ─────────────────────────────────
 
-  /** Docs page describing where Kilo reads configuration from. */
-  export const CONFIG_DOCS_URL = "https://kilo.ai/docs/code-with-ai/platforms/cli"
+  /** Client-neutral docs page describing where Kilo reads configuration from. */
+  export const CONFIG_DOCS_URL = "https://kilo.ai/docs/getting-started/settings"
 
   /** Stable id for the synthetic "move your opencode config" notification (used for client-side dismissal). */
   export const OPENCODE_NOTIFICATION_ID = "kilo.local.opencode-config-detected"
