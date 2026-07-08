@@ -405,6 +405,10 @@ export function useFileMention(
     if (!textarea.isConnected) return
     const after = textarea.value.substring(state.atEnd)
     const suffix = /^\s/.test(after) ? "" : " "
+    // Restore focus to the textarea before execCommand: after the native file-picker
+    // dialog closes, the textarea is no longer the active element, and execCommand
+    // operates on the currently focused element, so it would otherwise silently no-op.
+    textarea.focus()
     suppress = true
     try {
       textarea.setSelectionRange(state.atStart, state.atEnd)
@@ -412,7 +416,6 @@ export function useFileMention(
     } finally {
       suppress = false
     }
-    textarea.focus()
     knownPaths.add(norm)
     setMentionedPaths((prev) => new Set([...prev, norm]))
     syncMentionedPaths(textarea.value)
