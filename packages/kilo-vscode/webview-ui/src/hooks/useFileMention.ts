@@ -405,9 +405,16 @@ export function useFileMention(
     if (!textarea.isConnected) return
     const after = textarea.value.substring(state.atEnd)
     const suffix = /^\s/.test(after) ? "" : " "
-    // Restore focus to the textarea before execCommand: after the native file-picker
-    // dialog closes, the textarea is no longer the active element, and execCommand
-    // operates on the currently focused element, so it would otherwise silently no-op.
+    // Insert as a styled @mention so it renders like any other file reference and
+    // is clickable to preview (openFile is a plain editor action on the user's own
+    // disk, unrelated to the AI permission system). The actual security boundary
+    // lives in buildFileAttachments: paths outside the workspace are never turned
+    // into an auto-read FileAttachment, regardless of how they were mentioned, so
+    // a prior "deny" decision can't be bypassed by picking/attaching this way. If
+    // the model wants the file's contents it must call the Read tool, which
+    // enforces the normal external-directory permission checks.
+    // Restore focus before execCommand: after the native dialog closes the textarea
+    // is no longer the active element, so execCommand would otherwise silently no-op.
     textarea.focus()
     suppress = true
     try {

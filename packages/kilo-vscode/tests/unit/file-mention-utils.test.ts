@@ -249,24 +249,35 @@ describe("buildFileAttachments", () => {
     expect(result[0]!.url).toContain("foo.ts")
   })
 
-  it("handles absolute paths directly", () => {
+  it("attaches an absolute path that lives inside the workspace", () => {
+    const paths = new Set(["/workspace/src/file.ts"])
+    const result = buildFileAttachments("@/workspace/src/file.ts", paths, "/workspace")
+    expect(result).toHaveLength(1)
+    expect(result[0]!.url).toContain("/workspace/src/file.ts")
+  })
+
+  it("does not attach an absolute Unix path outside the workspace", () => {
     const paths = new Set(["/abs/path/file.ts"])
     const result = buildFileAttachments("@/abs/path/file.ts", paths, "/workspace")
-    expect(result).toHaveLength(1)
-    expect(result[0]!.url).toContain("/abs/path/file.ts")
+    expect(result).toEqual([])
+  })
+
+  it("does not attach an absolute Windows path outside the workspace", () => {
+    const paths = new Set(["C:/Users/file.ts"])
+    const result = buildFileAttachments("@C:/Users/file.ts", paths, "/workspace")
+    expect(result).toEqual([])
+  })
+
+  it("does not attach a UNC path outside the workspace", () => {
+    const paths = new Set(["\\\\server\\share\\file.ts"])
+    const result = buildFileAttachments("@\\\\server\\share\\file.ts", paths, "/workspace")
+    expect(result).toEqual([])
   })
 
   it("normalizes Windows backslashes in workspaceDir", () => {
     const paths = new Set(["foo.ts"])
     const result = buildFileAttachments("@foo.ts", paths, "C:\\Users\\workspace")
     expect(result[0]!.url).not.toContain("\\")
-  })
-
-  it("handles Windows absolute paths directly", () => {
-    const paths = new Set(["C:/Users/file.ts"])
-    const result = buildFileAttachments("@C:/Users/file.ts", paths, "/workspace")
-    expect(result).toHaveLength(1)
-    expect(result[0]!.url).toContain("C:/Users/file.ts")
   })
 })
 

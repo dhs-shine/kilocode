@@ -181,11 +181,23 @@ export function findMentionRange(
 }
 
 function isAbsolutePath(path: string): boolean {
-  return path.startsWith("/") || /^[A-Za-z]:[\\\/]/.test(path)
+  return path.startsWith("/") || /^[A-Za-z]:[\\\/]/.test(path) || path.startsWith("\\\\")
+}
+
+/** Whether `abs` is the workspace root or lives under it (both normalized to forward slashes). */
+function isInsideWorkspace(abs: string, dir: string): boolean {
+  return abs === dir || abs.startsWith(`${dir}/`)
 }
 
 /**
  * Build FileAttachment objects from currently mentioned paths in the text.
+ *
+ * Paths outside the workspace (e.g. picked via the file picker) are deliberately
+ * excluded: attaching a file reads its content on the backend through a path that
+ * bypasses the permission system, including any prior "deny" decision for that
+ * file. Such paths remain visible and clickable as a styled mention in the UI, but
+ * are not auto-attached — if the model needs their contents it must call the Read
+ * tool, which enforces the normal external-directory permission checks.
  */
 export function buildFileAttachments(
   text: string,
@@ -193,10 +205,11 @@ export function buildFileAttachments(
   workspaceDir: string,
 ): FileAttachment[] {
   const result: FileAttachment[] = []
-  const dir = workspaceDir.replaceAll("\\", "/")
+  const dir = workspaceDir.replaceAll("\\", "/").replace(/\/+$/, "")
   for (const path of mentionedPaths) {
     if (text.includes(`@${path}`)) {
-      const abs = isAbsolutePath(path) ? path : `${dir}/${path}`
+      const abs = isAbsolutePath(path) ? path.replaceAll("\\", "/") : `${dir}/${path}`
+      if (isAbsolutePath(path) && !isInsideWorkspace(abs, dir)) continue
       const url = new URL("file://")
       url.pathname = abs.startsWith("/") ? abs : `/${abs}`
       result.push({ mime: "text/plain", url: url.href })
