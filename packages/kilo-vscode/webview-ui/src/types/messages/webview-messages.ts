@@ -15,6 +15,7 @@ import type {
   SkipLegacyMigrationMessage,
   StartMigrationMessage,
 } from "./migration"
+import type { MemoryShowMessage, MemoryOperationMessage, MemoryPromptMessage, RequestMemoryMessage } from "./memory"
 
 // ============================================
 // Messages FROM webview TO extension
@@ -370,6 +371,10 @@ export interface RequestChatCompletionMessage {
   type: "requestChatCompletion"
   text: string
   requestId: string
+}
+
+export interface SpeechToTextPrewarmMessage {
+  type: "speechToTextPrewarm"
 }
 
 export interface SpeechToTextStartMessage {
@@ -928,6 +933,10 @@ export interface RetryConnectionRequest {
   type: "retryConnection"
 }
 
+export interface ReloadRequest {
+  type: "reload"
+}
+
 // Open a sub-agent session in a read-only editor panel
 export interface OpenSubAgentViewerRequest {
   type: "openSubAgentViewer"
@@ -1236,6 +1245,7 @@ export type WebviewMessage =
   | ExportSessionTranscriptRequest
   | RequestAutocompleteSettingsMessage
   | RequestChatCompletionMessage
+  | SpeechToTextPrewarmMessage
   | SpeechToTextStartMessage
   | SpeechToTextStopMessage
   | SpeechToTextCancelMessage
@@ -1338,6 +1348,7 @@ export type WebviewMessage =
   | DiffViewerSetBaseBranchRequest
   | DiffVirtualSetMarkdownRenderRequest
   | RetryConnectionRequest
+  | ReloadRequest
   | OpenSubAgentViewerRequest
   | PreviewImageRequest
   | SaveImageRequest
@@ -1374,6 +1385,10 @@ export type WebviewMessage =
   | SetRemoteEnabledMessage
   | RequestRemoteStatusMessage
   | ContinueInWorktreeRequest
+  | RequestMemoryMessage
+  | MemoryShowMessage
+  | MemoryOperationMessage
+  | MemoryPromptMessage
   | CreateSectionRequest
   | RenameSectionRequest
   | DeleteSectionRequest
