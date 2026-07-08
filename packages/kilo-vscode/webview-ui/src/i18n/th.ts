@@ -1408,6 +1408,12 @@ export const dict = {
   "settings.experimental.batch.description": "เปิดใช้งานการประมวลผลแบทช์ของการเรียกเครื่องมือ",
   "settings.experimental.codebaseSearch.title": "ค้นหาโค้ดเบส",
   "settings.experimental.codebaseSearch.description": "เปิดใช้งานการค้นหาด้วยภาษาธรรมชาติโดย AI ทั่วทั้งโค้ดเบส",
+  "settings.experimental.imageGeneration.title": "การสร้างภาพ",
+  "settings.experimental.imageGeneration.description": "เปิดใช้งานการสร้างภาพด้วย AI",
+  "settings.experimental.imageGenerationModel.title": "โมเดลภาพ",
+  "settings.experimental.imageGenerationModel.description": "โมเดลการสร้างภาพ",
+  "settings.experimental.imageGenerationModel.placeholder": "ค่าเริ่มต้น (Auto Router)",
+
   "settings.experimental.speechToText.title": "แปลงเสียงเป็นข้อความ",
   "settings.experimental.speechToText.description":
     "เปิดใช้งานการป้อนข้อมูลด้วยเสียงในช่องพรอมต์โดยใช้บัญชี Kilo ของคุณผ่าน Kilo Gateway",

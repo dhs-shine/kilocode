@@ -1417,6 +1417,12 @@ export const dict = {
   "settings.experimental.codebaseSearch.title": "Пошук по кодовій базі",
   "settings.experimental.codebaseSearch.description":
     "Увімкнути пошук природною мовою на основі ШІ по всій кодовій базі",
+  "settings.experimental.imageGeneration.title": "Генерація зображень",
+  "settings.experimental.imageGeneration.description": "Увімкнути генерацію зображень за допомогою ШІ",
+  "settings.experimental.imageGenerationModel.title": "Модель зображень",
+  "settings.experimental.imageGenerationModel.description": "Модель генерації зображень",
+  "settings.experimental.imageGenerationModel.placeholder": "За замовчуванням (Auto Router)",
+
   "settings.experimental.speechToText.title": "Мовлення в текст",
   "settings.experimental.speechToText.description":
     "Увімкніть голосове введення в полях запитів, використовуючи ваш обліковий запис Kilo через Kilo Gateway.",
