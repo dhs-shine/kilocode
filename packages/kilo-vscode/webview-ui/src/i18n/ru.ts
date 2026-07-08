@@ -996,6 +996,7 @@ export const dict = {
   "provider.custom.models.name.label": "Название",
   "provider.custom.models.name.placeholder": "Отображаемое имя",
   "provider.custom.models.reasoning.label": "Рассуждение",
+  "provider.custom.models.modalities.image": "Изображение",
   "provider.custom.models.variants.label": "Варианты",
   "provider.custom.models.variants.add": "Добавить вариант",
   "provider.custom.models.variants.remove": "Удалить вариант",
@@ -1428,6 +1429,12 @@ export const dict = {
   "settings.experimental.batch.description": "Включить пакетную обработку вызовов инструментов",
   "settings.experimental.codebaseSearch.title": "Поиск по коду",
   "settings.experimental.codebaseSearch.description": "Включить поиск на естественном языке с ИИ по всей кодовой базе",
+  "settings.experimental.imageGeneration.title": "Генерация изображений",
+  "settings.experimental.imageGeneration.description": "Включить генерацию изображений с помощью ИИ",
+  "settings.experimental.imageGenerationModel.title": "Модель изображений",
+  "settings.experimental.imageGenerationModel.description": "Модель генерации изображений",
+  "settings.experimental.imageGenerationModel.placeholder": "По умолчанию (Auto Router)",
+
   "settings.experimental.speechToText.title": "Речь в текст",
   "settings.experimental.speechToText.description":
     "Включите голосовой ввод в полях запросов, используя вашу учетную запись Kilo через Kilo Gateway.",

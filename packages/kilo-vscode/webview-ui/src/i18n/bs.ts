@@ -999,6 +999,7 @@ export const dict = {
   "provider.custom.models.name.label": "Naziv",
   "provider.custom.models.name.placeholder": "Naziv za prikaz",
   "provider.custom.models.reasoning.label": "Zaključivanje",
+  "provider.custom.models.modalities.image": "Slika",
   "provider.custom.models.variants.label": "Varijante",
   "provider.custom.models.variants.add": "Dodaj varijantu",
   "provider.custom.models.variants.remove": "Ukloni varijantu",
@@ -1430,6 +1431,12 @@ export const dict = {
   "settings.experimental.batch.description": "Omogući batch obradu poziva alata",
   "settings.experimental.codebaseSearch.title": "Pretraga koda",
   "settings.experimental.codebaseSearch.description": "Omogući AI pretragu prirodnim jezikom kroz bazu koda",
+  "settings.experimental.imageGeneration.title": "Generisanje slika",
+  "settings.experimental.imageGeneration.description": "Omogući AI generisanje slika",
+  "settings.experimental.imageGenerationModel.title": "Model slike",
+  "settings.experimental.imageGenerationModel.description": "Model za generisanje slika",
+  "settings.experimental.imageGenerationModel.placeholder": "Zadano (Auto Router)",
+
   "settings.experimental.speechToText.title": "Govor u tekst",
   "settings.experimental.speechToText.description":
     "Omogućite glasovni unos u poljima za promptove koristeći vaš Kilo račun preko Kilo Gateway.",

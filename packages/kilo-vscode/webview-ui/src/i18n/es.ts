@@ -1002,6 +1002,7 @@ export const dict = {
   "provider.custom.models.name.label": "Nombre",
   "provider.custom.models.name.placeholder": "Nombre para mostrar",
   "provider.custom.models.reasoning.label": "Razonamiento",
+  "provider.custom.models.modalities.image": "Imagen",
   "provider.custom.models.variants.label": "Variantes",
   "provider.custom.models.variants.add": "Añadir variante",
   "provider.custom.models.variants.remove": "Eliminar variante",
@@ -1441,6 +1442,12 @@ export const dict = {
   "settings.experimental.codebaseSearch.title": "Búsqueda de código",
   "settings.experimental.codebaseSearch.description":
     "Habilitar búsqueda por lenguaje natural con IA en toda la base de código",
+  "settings.experimental.imageGeneration.title": "Generación de imágenes",
+  "settings.experimental.imageGeneration.description": "Habilitar generación de imágenes con IA",
+  "settings.experimental.imageGenerationModel.title": "Modelo de imagen",
+  "settings.experimental.imageGenerationModel.description": "Modelo de generación de imágenes",
+  "settings.experimental.imageGenerationModel.placeholder": "Predeterminado (Auto Router)",
+
   "settings.experimental.speechToText.title": "Voz a texto",
   "settings.experimental.speechToText.description":
     "Habilita la entrada de voz en los campos de prompt usando tu cuenta de Kilo a través de Kilo Gateway.",

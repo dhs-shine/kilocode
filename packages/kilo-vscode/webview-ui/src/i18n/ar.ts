@@ -940,6 +940,7 @@ export const dict = {
   "provider.custom.models.name.label": "الاسم",
   "provider.custom.models.name.placeholder": "الاسم المعروض",
   "provider.custom.models.reasoning.label": "الاستدلال",
+  "provider.custom.models.modalities.image": "صورة",
   "provider.custom.models.variants.label": "المتغيرات",
   "provider.custom.models.variants.add": "إضافة متغير",
   "provider.custom.models.variants.remove": "إزالة المتغير",
@@ -1398,6 +1399,12 @@ export const dict = {
   "settings.experimental.batch.description": "تمكين المعالجة الدفعية لاستدعاءات الأدوات",
   "settings.experimental.codebaseSearch.title": "بحث في قاعدة الكود",
   "settings.experimental.codebaseSearch.description": "تمكين البحث بالذكاء الاصطناعي باللغة الطبيعية عبر قاعدة الكود",
+  "settings.experimental.imageGeneration.title": "توليد الصور",
+  "settings.experimental.imageGeneration.description": "تمكين توليد الصور بالذكاء الاصطناعي",
+  "settings.experimental.imageGenerationModel.title": "نموذج الصور",
+  "settings.experimental.imageGenerationModel.description": "نموذج توليد الصور",
+  "settings.experimental.imageGenerationModel.placeholder": "افتراضي (Auto Router)",
+
   "settings.experimental.speechToText.title": "تحويل الصوت إلى نص",
   "settings.experimental.speechToText.description":
     "تمكين الإدخال الصوتي في حقول المطالبة باستخدام حساب Kilo الخاص بك من خلال Kilo Gateway.",

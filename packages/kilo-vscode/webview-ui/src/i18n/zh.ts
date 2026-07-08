@@ -964,6 +964,7 @@ export const dict = {
   "provider.custom.models.name.label": "名称",
   "provider.custom.models.name.placeholder": "显示名称",
   "provider.custom.models.reasoning.label": "推理",
+  "provider.custom.models.modalities.image": "图片",
   "provider.custom.models.variants.label": "变体",
   "provider.custom.models.variants.add": "添加变体",
   "provider.custom.models.variants.remove": "移除变体",
@@ -1383,6 +1384,12 @@ export const dict = {
   "settings.experimental.batch.description": "启用多个工具调用的批处理",
   "settings.experimental.codebaseSearch.title": "代码库搜索",
   "settings.experimental.codebaseSearch.description": "启用 AI 驱动的自然语言代码库搜索",
+  "settings.experimental.imageGeneration.title": "图像生成",
+  "settings.experimental.imageGeneration.description": "启用 AI 图像生成",
+  "settings.experimental.imageGenerationModel.title": "图像模型",
+  "settings.experimental.imageGenerationModel.description": "图像生成模型",
+  "settings.experimental.imageGenerationModel.placeholder": "默认 (Auto Router)",
+
   "settings.experimental.speechToText.title": "语音转文本",
   "settings.experimental.speechToText.description": "通过 Kilo Gateway 使用您的 Kilo 帐户在提示词字段中启用语音输入。",
   "settings.models.speechToText.disabledDescription":
