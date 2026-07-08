@@ -164,7 +164,7 @@ async function release(from: string, tag: string, sha: string) {
 }
 
 async function label(name: string, color: string, desc: string) {
-  const labels = (await $`gh label list --repo ${repo} --json name --limit 1000`.json()) as { name: string }[]
+  const labels: { name: string }[] = await $`gh label list --repo ${repo} --json name --limit 1000`.json()
   if (labels.some((item) => item.name === name)) return
   await $`gh label create ${name} --repo ${repo} --color ${color} --description ${desc}`
 }
@@ -219,9 +219,12 @@ async function writeprops(ver: string) {
 
 async function pinned() {
   const text = await Bun.file(props).text()
-  const line = text.split(/\r?\n/).find((item) => item.startsWith("kilo.cli.pinned="))
-  const value = line?.split("=", 2)[1]?.trim().toLowerCase()
-  return value !== "false"
+  const value = text.split(/\r?\n/).flatMap((line) => {
+    const [key, raw] = line.split("=", 2)
+    if (key.trim() !== "kilo.cli.pinned") return []
+    return [raw?.trim().toLowerCase()]
+  })[0]
+  return value == null || value === "true"
 }
 
 async function writelog(ver: string, entry: string) {

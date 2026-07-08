@@ -39,8 +39,8 @@ type Pull = {
   state: string
 }
 
-const data =
-  (await $`gh pr view ${pr} --repo ${repo} --json body,headRefName,isCrossRepository,labels,mergedAt,mergeCommit,state`.json()) as Pull
+const data: Pull =
+  await $`gh pr view ${pr} --repo ${repo} --json body,headRefName,isCrossRepository,labels,mergedAt,mergeCommit,state`.json()
 const labels = new Set(data.labels.map((item) => item.name))
 if (!labels.has("jetbrains-release")) throw new Error("PR is missing jetbrains-release label")
 if (data.isCrossRepository) throw new Error("JetBrains release PR must come from this repository")
@@ -123,7 +123,10 @@ async function props() {
 
 async function pinned() {
   const text = await Bun.file("packages/kilo-jetbrains/gradle.properties").text()
-  const line = text.split(/\r?\n/).find((item) => item.startsWith("kilo.cli.pinned="))
-  const value = line?.split("=", 2)[1]?.trim().toLowerCase()
-  return value !== "false"
+  const value = text.split(/\r?\n/).flatMap((line) => {
+    const [key, raw] = line.split("=", 2)
+    if (key.trim() !== "kilo.cli.pinned") return []
+    return [raw?.trim().toLowerCase()]
+  })[0]
+  return value == null || value === "true"
 }
