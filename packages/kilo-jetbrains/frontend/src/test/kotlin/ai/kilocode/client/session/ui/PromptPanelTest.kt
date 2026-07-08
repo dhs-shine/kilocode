@@ -48,10 +48,14 @@ import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.SpellCheckingEditorCustomizationProvider
 import com.intellij.openapi.editor.actions.PasteAction
 import com.intellij.openapi.editor.colors.CodeInsightColors
+import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.editor.colors.EditorColorsScheme
 import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.fileTypes.PlainTextFileType
@@ -80,6 +84,7 @@ import java.awt.Color
 import java.awt.Component
 import java.awt.Container
 import java.awt.DefaultKeyboardFocusManager
+import java.awt.Font
 import java.awt.KeyboardFocusManager
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
@@ -222,6 +227,31 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(style.transcriptFont.name, panel.inputFont().name)
         assertEquals(style.transcriptFont.size, panel.inputFont().size)
         assertTrue(panel.preferredSize.height >= 26)
+    }
+
+    fun `test applyStyle refreshes prompt editor chrome colors`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+        val bg = Color(0x21, 0x32, 0x43)
+        val scheme = EditorColorsManager.getInstance().globalScheme.clone() as EditorColorsScheme
+        scheme.setAttributes(
+            HighlighterColors.TEXT,
+            TextAttributes(Color(0xEA, 0xEA, 0xEA), bg, null, null, Font.PLAIN),
+        )
+        val style = SessionEditorStyle.create(scheme = scheme)
+
+        realize(panel, 260, 400)
+        val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
+        editor.scrollPane.background = Color.BLACK
+        editor.scrollPane.viewport.background = Color.BLACK
+        editor.contentComponent.background = Color.BLACK
+
+        panel.applyStyle(style)
+
+        assertEquals(bg, panel.defaultFocusedComponent.background)
+        assertEquals(bg, editor.backgroundColor)
+        assertEquals(bg, editor.scrollPane.background)
+        assertEquals(bg, editor.scrollPane.viewport.background)
+        assertEquals(bg, editor.contentComponent.background)
     }
 
     fun `test prompt editor grows when lines are added`() {
