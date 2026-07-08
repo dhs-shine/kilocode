@@ -14,15 +14,12 @@ afterEach(() => {
 })
 
 describe("Sandboxing settings visibility", () => {
-  test("requires both sandbox control availability and the sandbox experiment", () => {
-    expect(visible(features, {})).toBe(false)
-    expect(visible({ ...features, sandboxControls: true }, {})).toBe(false)
-    expect(visible(features, { experimental: { sandbox: true } })).toBe(false)
-    expect(visible({ ...features, sandboxControls: true }, { experimental: { sandbox: false } })).toBe(false)
-    expect(visible({ ...features, sandboxControls: true }, { experimental: { sandbox: true } })).toBe(true)
+  test("depends only on sandbox control availability", () => {
+    expect(visible(features)).toBe(false)
+    expect(visible({ ...features, sandboxControls: true })).toBe(true)
   })
 
-  test("enables sandbox controls by default outside Windows", () => {
+  test("shows sandbox controls outside Windows", () => {
     setPlatform("darwin")
     expect(configFeatures().sandboxControls).toBe(true)
 

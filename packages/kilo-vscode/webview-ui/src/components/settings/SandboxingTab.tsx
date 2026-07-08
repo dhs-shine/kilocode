@@ -8,7 +8,8 @@ import { useConfig } from "../../context/config"
 import { useLanguage } from "../../context/language"
 import SettingsRow from "./SettingsRow"
 
-const description = "sandbox-network-description"
+const enabledDescription = "sandbox-enabled-description"
+const networkDescription = "sandbox-network-description"
 const writablePathsDescription = "sandbox-writable-paths-description"
 
 const SandboxingTab: Component = () => {
@@ -43,13 +44,32 @@ const SandboxingTab: Component = () => {
   return (
     <Card>
       <SettingsRow
+        title={language.t("settings.experimental.sandbox.title")}
+        description={language.t("settings.experimental.sandbox.description")}
+        descriptionId={enabledDescription}
+      >
+        <Switch
+          checked={experimental().sandbox ?? false}
+          inputProps={{ "aria-describedby": enabledDescription }}
+          onChange={(checked) =>
+            updateConfig({
+              experimental: { ...experimental(), sandbox: checked },
+            })
+          }
+          hideLabel
+        >
+          {language.t("settings.experimental.sandbox.title")}
+        </Switch>
+      </SettingsRow>
+
+      <SettingsRow
         title={language.t("settings.sandboxing.network.title")}
         description={language.t("settings.sandboxing.network.description")}
-        descriptionId={description}
+        descriptionId={networkDescription}
       >
         <Switch
           checked={experimental().sandbox_restrict_network !== false}
-          inputProps={{ "aria-describedby": description }}
+          inputProps={{ "aria-describedby": networkDescription }}
           onChange={(checked) =>
             updateConfig({
               experimental: {
