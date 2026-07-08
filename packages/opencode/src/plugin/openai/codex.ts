@@ -15,9 +15,6 @@ const ISSUER = "https://auth.openai.com"
 const CODEX_API_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses"
 const OAUTH_PORT = 1455
 const OAUTH_POLLING_SAFETY_MARGIN_MS = 3000
-const DISALLOWED_MODELS = new Set([
-  "gpt-5.5-pro",
-])
 const ALLOWED_MODELS = new Set([
   "gpt-5.5",
   "gpt-5.2",
@@ -32,6 +29,11 @@ const ALLOWED_MODELS = new Set([
   "gpt-5.2-codex",
   // kilocode_change end
 ])
+// kilocode_change start
+const DISALLOWED_MODELS = new Set([
+  "gpt-5.5-pro",
+])
+// kilocode_change end
 
 interface PkceCodes {
   verifier: string
@@ -397,7 +399,7 @@ export async function CodexAuthPlugin(input: PluginInput, options: CodexAuthPlug
           Object.entries(provider.models)
             .filter(([, model]) => {
               if (ALLOWED_MODELS.has(model.api.id)) return true
-              if (DISALLOWED_MODELS.has(model.api.id)) return false
+              if (DISALLOWED_MODELS.has(model.api.id)) return false // kilocode_change
               const match = model.api.id.match(/^gpt-(\d+\.\d+)/)
               return match ? parseFloat(match[1]) > 5.4 : false
             })

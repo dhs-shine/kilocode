@@ -122,6 +122,7 @@ describe("plugin.codex", () => {
     })
   })
 
+  // kilocode_change start
   describe("models filter", () => {
     test("filters out disallowed models for oauth users", async () => {
       const hooks = await CodexAuthPlugin({} as never)
@@ -181,6 +182,7 @@ describe("plugin.codex", () => {
       expect(provider).toHaveProperty(["other-model"])
     })
   })
+  // kilocode_change end
 
   test("installs websocket transport only when experimental websockets are enabled", async () => {
     const disabled = await CodexAuthPlugin({} as never)
