@@ -11093,10 +11093,6 @@ export type KiloModelsImagesErrors = {
    * BadRequest | InvalidRequestError
    */
   400: EffectHttpApiErrorBadRequest | InvalidRequestError
-  /**
-   * Unauthorized
-   */
-  401: EffectHttpApiErrorUnauthorized
 }
 
 export type KiloModelsImagesError = KiloModelsImagesErrors[keyof KiloModelsImagesErrors]
