@@ -274,6 +274,27 @@ describe("buildFileAttachments", () => {
     expect(result).toEqual([])
   })
 
+  it("does not attach an absolute path that escapes the workspace via ../ segments", () => {
+    const paths = new Set(["/workspace/../../etc/passwd"])
+    const result = buildFileAttachments("@/workspace/../../etc/passwd", paths, "/workspace")
+    expect(result).toEqual([])
+  })
+
+  it("does not attach a relative-looking mention that escapes the workspace via ../ segments", () => {
+    // Simulates a path seeded from raw text (e.g. seedFromText) rather than the
+    // file picker or file search, which never produce a leading "../".
+    const paths = new Set(["../../etc/passwd"])
+    const result = buildFileAttachments("@../../etc/passwd", paths, "/workspace")
+    expect(result).toEqual([])
+  })
+
+  it("attaches a relative mention with ../ segments that still resolves inside the workspace", () => {
+    const paths = new Set(["sub/../foo.ts"])
+    const result = buildFileAttachments("@sub/../foo.ts", paths, "/workspace")
+    expect(result).toHaveLength(1)
+    expect(result[0]!.url).toContain("/workspace/foo.ts")
+  })
+
   it("normalizes Windows backslashes in workspaceDir", () => {
     const paths = new Set(["foo.ts"])
     const result = buildFileAttachments("@foo.ts", paths, "C:\\Users\\workspace")
