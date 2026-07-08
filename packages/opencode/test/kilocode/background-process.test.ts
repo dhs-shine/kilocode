@@ -8,6 +8,7 @@ import { Global } from "@opencode-ai/core/global"
 import { Hash } from "@opencode-ai/core/util/hash"
 import { Effect } from "effect"
 import { spawn } from "child_process"
+import { once } from "node:events"
 import fs from "fs/promises"
 import path from "path"
 import { provideTestInstance, TestInstance, tmpdir } from "../fixture/fixture"
@@ -594,10 +595,14 @@ setInterval(() => {}, 1_000)
         expect(alive(unrelated.pid)).toBe(true)
         expect(yield* Effect.promise(() => Bun.file(target.manifest).exists())).toBe(false)
       } finally {
-        if (unrelated.pid && alive(unrelated.pid)) {
-          if (process.platform === "win32") unrelated.kill("SIGKILL")
-          else process.kill(-unrelated.pid, "SIGKILL")
-        }
+        yield* Effect.promise(async () => {
+          const exited = unrelated.exitCode !== null || unrelated.signalCode !== null ? undefined : once(unrelated, "exit")
+          if (unrelated.pid && alive(unrelated.pid)) {
+            if (process.platform === "win32") unrelated.kill("SIGKILL")
+            else process.kill(-unrelated.pid, "SIGKILL")
+          }
+          await exited
+        })
         yield* Effect.promise(() => BackgroundProcess.stop(info.id))
       }
     }),

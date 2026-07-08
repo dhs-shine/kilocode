@@ -25,8 +25,14 @@
     },
     "@kilocode/cli#test:ci": {
       "dependsOn": ["^build"],
-      "env": ["KILO_TEST_PROFILE"],
+      "env": ["KILO_TEST_PROFILE", "KILO_TEST_SHARD"],
       "outputs": [".artifacts/unit/junit.xml"],
+      "passThroughEnv": ["*"]
+    },
+    "@kilocode/cli#test:httpapi": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": [],
       "passThroughEnv": ["*"]
     },
     "@kilocode/kilo-gateway#test:ci": {
