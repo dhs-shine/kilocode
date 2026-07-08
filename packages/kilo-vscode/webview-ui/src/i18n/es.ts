@@ -1462,6 +1462,12 @@ export const dict = {
   "settings.sandboxing.writablePaths.title": "Rutas de escritura adicionales",
   "settings.sandboxing.writablePaths.description":
     "Rutas del sistema de archivos adicionales donde el sandbox permite escritura (por ej., /tmp, /var/log). Se combinan con las rutas de escritura predeterminadas cuando el sandbox está activo.",
+  "settings.experimental.swePruner.title": "SWE-Pruner",
+  "settings.experimental.swePruner.description":
+    "Activar SWE-Pruner: poda de las salidas grandes de las herramientas de lectura y búsqueda, guiada por una pregunta de enfoque del agente",
+  "settings.experimental.swePrunerModel.title": "Modelo de SWE-Pruner",
+  "settings.experimental.swePrunerModel.description":
+    "Modelo usado para podar las salidas de herramientas; por defecto, el modelo pequeño configurado",
   "settings.experimental.mcpTimeout.title": "Tiempo de espera MCP (ms)",
   "settings.experimental.mcpTimeout.description": "Tiempo de espera para solicitudes del servidor MCP en milisegundos",
   "settings.experimental.remote.title": "Control Remote",
