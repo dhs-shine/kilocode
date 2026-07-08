@@ -128,6 +128,8 @@
   <!-- packages/kilo-vscode/webview-ui/src/components/settings/CustomProviderDialog.tsx -->
 - <https://kilo.ai/docs/automate/mcp/what-is-mcp>
   <!-- packages/kilo-vscode/webview-ui/src/components/marketplace/InstallModal.tsx -->
+- <https://kilo.ai/docs/code-with-ai/platforms/cli>
+  <!-- packages/opencode/src/kilocode/config/config.ts -->
 - <https://kilo.ai/docs/code-with-ai/platforms/vscode/whats-new>
   <!-- packages/kilo-vscode/webview-ui/src/components/migration/MigrationWizard.tsx -->
 - <https://kilo.ai/docs/customize/custom-subagents>

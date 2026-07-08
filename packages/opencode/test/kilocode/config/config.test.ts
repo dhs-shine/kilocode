@@ -616,6 +616,95 @@ describe("linked worktree config", () => {
   })
 })
 
+describe("opencode config migration notice", () => {
+  const warnings = () =>
+    Effect.runPromise(Config.Service.use((svc) => svc.warnings()).pipe(Effect.scoped, Effect.provide(layer)))
+
+  test("warns when a project .opencode directory exists", async () => {
+    await using globalTmp = await tmpdir()
+    await using tmp = await tmpdir({ git: true })
+    await Filesystem.write(path.join(tmp.path, ".opencode", "opencode.json"), JSON.stringify({ model: "test/legacy" }))
+
+    // Isolate the global config dir so a real ~/.config/opencode on the host cannot interfere.
+    const prev = Global.Path.config
+    ;(Global.Path as { config: string }).config = path.join(globalTmp.path, "kilo")
+    await clear()
+    await disposeAllInstances()
+
+    try {
+      await provideTestInstance({
+        directory: tmp.path,
+        fn: async () => {
+          await load()
+          const list = await warnings()
+          const hit = list.find((w) => w.message.includes("opencode configuration"))
+          expect(hit).toBeDefined()
+          expect(hit!.path).toContain(".opencode")
+          expect(hit!.message).toContain(KilocodeConfig.CONFIG_DOCS_URL)
+        },
+      })
+    } finally {
+      ;(Global.Path as { config: string }).config = prev
+      await clear()
+      await disposeAllInstances()
+    }
+  })
+
+  test("warns when a global opencode config directory exists", async () => {
+    await using globalTmp = await tmpdir()
+    await using tmp = await tmpdir({ git: true })
+    const opencodeDir = path.join(globalTmp.path, "opencode")
+    await Filesystem.write(path.join(opencodeDir, "opencode.json"), JSON.stringify({ model: "test/legacy" }))
+
+    const prev = Global.Path.config
+    ;(Global.Path as { config: string }).config = path.join(globalTmp.path, "kilo")
+    await clear()
+    await disposeAllInstances()
+
+    try {
+      await provideTestInstance({
+        directory: tmp.path,
+        fn: async () => {
+          await load()
+          const list = await warnings()
+          const hit = list.find((w) => w.message.includes("opencode configuration"))
+          expect(hit).toBeDefined()
+          expect(hit!.path).toBe(opencodeDir)
+        },
+      })
+    } finally {
+      ;(Global.Path as { config: string }).config = prev
+      await clear()
+      await disposeAllInstances()
+    }
+  })
+
+  test("stays silent when no opencode config exists", async () => {
+    await using globalTmp = await tmpdir()
+    await using tmp = await tmpdir({ git: true })
+
+    const prev = Global.Path.config
+    ;(Global.Path as { config: string }).config = path.join(globalTmp.path, "kilo")
+    await clear()
+    await disposeAllInstances()
+
+    try {
+      await provideTestInstance({
+        directory: tmp.path,
+        fn: async () => {
+          await load()
+          const list = await warnings()
+          expect(list.find((w) => w.message.includes("opencode configuration"))).toBeUndefined()
+        },
+      })
+    } finally {
+      ;(Global.Path as { config: string }).config = prev
+      await clear()
+      await disposeAllInstances()
+    }
+  })
+})
+
 describe("bash permission migration", () => {
   for (const action of ["allow", "ask", "deny"] as const) {
     test(`preserves string-form ${action} permission in jsonc`, async () => {

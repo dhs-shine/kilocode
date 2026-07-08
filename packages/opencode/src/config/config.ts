@@ -887,6 +887,17 @@ export const layer = Layer.effect(
           // kilocode_change end
         }
 
+        // kilocode_change start - warn about leftover opencode config directories (no longer read)
+        warnings.push(
+          ...(yield* KilocodeConfig.detectOpencodeConfig({
+            fs,
+            directory: ctx.directory,
+            worktree: ctx.worktree,
+            scanProject: !Flag.KILO_DISABLE_PROJECT_CONFIG,
+          })),
+        )
+        // kilocode_change end
+
         result.agent = result.agent || {}
         result.mode = result.mode || {}
         result.plugin = result.plugin || []

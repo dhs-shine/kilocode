@@ -436,4 +436,51 @@ export namespace KilocodeConfig {
   export function isConfigDir(dir: string, flagDir?: string): boolean {
     return dir.endsWith(".kilo") || dir.endsWith(".kilocode") || dir === flagDir
   }
+
+  // ── Opencode config migration notice ─────────────────────────────────
+
+  /** Docs page describing where Kilo reads configuration from. */
+  export const CONFIG_DOCS_URL = "https://kilo.ai/docs/code-with-ai/platforms/cli"
+
+  /**
+   * Detect leftover opencode config directories. Kilo used to fall back to
+   * opencode configuration but no longer reads `.opencode` directories, so
+   * surface a warning telling the user where to move it.
+   */
+  export const detectOpencodeConfig = Effect.fn("KilocodeConfig.detectOpencodeConfig")(function* (input: {
+    fs: AppFileSystem.Interface
+    directory: string
+    worktree?: string
+    scanProject: boolean
+  }) {
+    const found: string[] = []
+
+    // Global opencode config dir (sibling of the kilo global config dir, e.g. ~/.config/opencode).
+    const globalDir = path.join(path.dirname(Global.Path.config), "opencode")
+    if (existsSync(globalDir)) found.push(globalDir)
+
+    // Project `.opencode` directories, walked from the working directory up to the worktree root.
+    const project = input.scanProject
+      ? yield* input.fs
+          .up({ targets: [".opencode"], start: input.directory, stop: input.worktree })
+          .pipe(Effect.orElseSucceed(() => [] as string[]))
+      : []
+    for (const dir of project) {
+      if (existsSync(dir) && !found.includes(dir)) found.push(dir)
+    }
+
+    if (found.length === 0) return []
+    const suffix = found.length > 1 ? ` (and ${found.length - 1} more)` : ""
+    return [
+      {
+        path: found[0],
+        message:
+          `Kilo no longer falls back to opencode configuration. ` +
+          `Found opencode config at ${found[0]}${suffix}. ` +
+          `To use it in Kilo, move it into a .kilo directory (project) or ${Global.Path.config} (global). ` +
+          `See ${CONFIG_DOCS_URL}`,
+        detail: found.length > 1 ? `Locations: ${found.join(", ")}` : undefined,
+      },
+    ]
+  })
 }
