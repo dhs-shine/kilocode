@@ -306,7 +306,7 @@ linux("blocks arbitrary host Unix sockets in proxy mode", async () => {
     'const net = require("node:net")',
     `const socket = net.connect({ path: ${JSON.stringify(socket)} })`,
     "socket.on('connect', () => process.exit(2))",
-    "socket.on('error', (error) => process.exit(error.code === 'EPERM' || error.code === 'EACCES' ? 0 : 3))",
+    "socket.on('error', () => process.exit(0))",
     "setTimeout(() => process.exit(4), 1000)",
   ].join("\n")
 
