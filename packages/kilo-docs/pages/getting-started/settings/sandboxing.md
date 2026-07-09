@@ -56,7 +56,7 @@ The sandbox can reduce the impact of an unsafe tool call by:
 - Blocking direct outbound connections from sandboxed commands and policy-aware tools when network restriction is on
 - Applying the same restrictions to child processes, such as package installation and build scripts launched by a shell command
 
-This can reduce the risk of auto-approving selected routine commands, such as builds and tests, by placing operating-system limits around many of their effects. It does **not** make **Allow Everything** safe. An allowed command can still modify or delete project files, alter other writable Kilo directories, consume data it can read, or write unsafe code that runs later outside the sandbox.
+This can reduce the risk of auto-approving selected routine commands, such as builds and tests, by placing operating-system limits around many of their effects. It does **not** make **Allow Everything** safe. An allowed command can still modify or delete workspace files, alter other writable Kilo directories, consume data it can read, or write unsafe code that runs later outside the sandbox.
 
 The sandbox does not protect against every result of prompt injection. In particular, it does not prevent the agent from reading accessible files or including their contents in model context. It also cannot confine local MCP servers, plugin hooks, or any integration that runs outside the sandbox boundary.
 
@@ -83,7 +83,7 @@ A practical setup for work on unfamiliar or partially trusted code is:
 
 - Keep `read`, `grep`, and unnecessary external-directory access set to `ask` or `deny` when they may expose sensitive content.
 - Allow only routine tools and command patterns that you want to run without interruption.
-- Keep shell approval prompts for commands with important in-project effects or commands that can read sensitive data, because the sandbox still allows project writes and filesystem reads.
+- Keep shell approval prompts for commands with important in-workspace effects or commands that can read sensitive data, because the sandbox still allows workspace writes and filesystem reads.
 - Enable the sandbox and keep network restriction on to reduce write and direct network-exfiltration impact if an approved action behaves unexpectedly.
 - Add extra writable paths only when a known workflow requires them.
 
@@ -97,9 +97,17 @@ When the sandbox is active, agent tools can read files normally. The sandbox res
 
 Writes are allowed in:
 
-- The active project or worktree
-- Kilo's data, cache, config, state, temporary, binary, log, and repository directories
+- The active workspace or worktree
+- Kilo's runtime directories listed below
 - Paths listed in `sandbox.writable_paths`
+
+| Writable Kilo path | Purpose |
+|---|---|
+| `$XDG_DATA_HOME/kilo` (normally `~/.local/share/kilo`) | Session data, logs, and Kilo's managed repository cache under `repos/` |
+| `$XDG_CACHE_HOME/kilo` (normally `~/.cache/kilo`) | Cached data and downloaded binaries |
+| `$XDG_CONFIG_HOME/kilo` (normally `~/.config/kilo`) | Configuration and installed plugins |
+| `$XDG_STATE_HOME/kilo` (normally `~/.local/state/kilo`) | Runtime state |
+| `$TMPDIR/kilo` | Temporary files; on macOS this is commonly under `/var/folders/.../T/kilo` |
 
 Writes are denied everywhere else. The following rules still apply inside writable locations:
 
@@ -110,8 +118,10 @@ Writes are denied everywhere else. The following rules still apply inside writab
 
 Shell commands and their child processes inherit the same restrictions. Kilo's file tools perform mutations through a sandboxed worker. Writable file handles are unavailable, so a tool that requires an open read-write handle may fail even for an allowed path.
 
+Because Kilo's config directory is writable, a shell command can change configuration, permissions, plugins, or additional writable paths that affect future tool calls. Direct filesystem access inside trusted integrations is confined only when the integration uses Kilo's sandbox-aware filesystem service. Starting or restarting a process with the background-process tool is unavailable while sandboxing is active.
+
 {% callout type="info" %}
-The sandbox is a write boundary, not a privacy boundary. It does not prevent an agent from reading files outside your project if your operating-system account can read them.
+The sandbox is a write boundary, not a privacy boundary. It does not prevent an agent from reading files outside your workspace if your operating-system account can read them.
 {% /callout %}
 
 ## Network restrictions
@@ -121,7 +131,7 @@ The sandbox is a write boundary, not a privacy boundary. It does not prevent an 
 When network restriction is on, Kilo blocks:
 
 - Outbound network access from model-originated shell commands and their child processes
-- Requests made through Kilo's policy-aware first-party HTTP clients
+- Requests from built-in HTTP tools such as web fetch and web search
 - Remote MCP tool calls and custom or plugin tools that Kilo cannot prove will remain offline
 - Built-in tools such as codebase search, semantic search, and LSP that may use opaque or indirect network access
 
@@ -148,15 +158,6 @@ Cloud sessions do not expose the local sandbox control because their tools do no
 
 | Platform | Backend | Notes |
 |---|---|---|
-| macOS | `sandbox-exec` (Seatbelt) | Uses `/usr/bin/sandbox-exec`. File reads and inbound networking remain allowed. |
-| Linux | Bubblewrap (`bwrap`) | Uses system `/usr/bin/bwrap` or a bundled, SHA-256-verified binary. `KILO_BWRAP_PATH` can select another binary. Kilo probes filesystem and network namespace support before enabling confinement. |
+| macOS | `sandbox-exec` (Seatbelt) | Uses a Seatbelt profile through `/usr/bin/sandbox-exec`. |
+| Linux | Bubblewrap (`bwrap`) | Uses system `/usr/bin/bwrap` or a bundled, SHA-256-verified binary. `KILO_BWRAP_PATH` can select another binary. Kilo probes filesystem and network namespace support before enabling confinement. Additional writable paths must already exist before Bubblewrap starts. |
 | Windows | None | Unsupported. The VS Code settings and prompt controls are hidden, and enabling the config has no effect. |
-
-## Limitations
-
-- The sandbox supplements Kilo's permission system; it does not replace permission prompts or rules.
-- Local MCP servers and plugin hooks execute outside the operating-system sandbox.
-- Direct filesystem access inside trusted in-process integrations is covered only when the integration uses Kilo's sandbox-aware filesystem service.
-- Kilo's config directory is writable to sandboxed tools. A shell command can change configuration, permissions, plugins, or additional writable paths that affect future tool calls, so do not rely on the sandbox alone to protect policy integrity.
-- Starting or restarting a background process with the background-process tool is unavailable while sandboxing is active.
-- On Linux, an additional writable path must already exist before Bubblewrap starts.
