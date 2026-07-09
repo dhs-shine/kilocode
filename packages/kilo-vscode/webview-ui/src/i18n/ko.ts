@@ -1573,8 +1573,8 @@ export const dict = {
     "구성된 사용자 정의 명령이 없습니다. opencode.json에 명령을 추가하면 여기에 표시됩니다.",
   "settings.agentBehaviour.workflows.detail.description": "설명",
   "settings.agentBehaviour.workflows.detail.template": "템플릿",
-  "settings.experimental.sandbox.title": "샌드박스",
-  "settings.experimental.sandbox.description":
+  "settings.sandboxing.enabled.title": "샌드박스",
+  "settings.sandboxing.enabled.description":
     "에이전트 셸 명령을 프로젝트 및 Kilo 상태 디렉터리에 대한 쓰기를 제한하는 OS 수준의 샌드박스 내에서 실행",
 
   "settings.autoApprove.description":
