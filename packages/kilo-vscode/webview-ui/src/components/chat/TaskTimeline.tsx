@@ -1,3 +1,4 @@
+/** @jsxImportSource solid-js */
 /**
  * Horizontal session activity timeline rendered as color-grouped SVG paths.
  * Pointer and keyboard interaction use the same pure bar geometry.
@@ -5,11 +6,14 @@
 
 import { Component, For, Show, createMemo, createEffect, createSignal, on, onCleanup } from "solid-js"
 import { Portal } from "solid-js/web"
+import type { AssistantMessage as SDKAssistantMessage, Part as SDKPart } from "@kilocode/sdk/v2"
 import { useSession } from "../../context/session"
+import { visibleParts } from "../../context/session-queue"
 import { color, label } from "../../utils/timeline/colors"
 import { geometry, hit, navigate } from "../../utils/timeline/geometry"
 import { dispatchTimelineHighlight } from "../../utils/timeline/highlight"
 import { sizes, pinned, MAX_HEIGHT } from "../../utils/timeline/sizes"
+import { isRenderable } from "../../utils/transcript-parts"
 import type { Part, Message } from "../../types/messages"
 
 export interface TimelineBar {
@@ -61,9 +65,18 @@ export const TaskTimeline: Component = () => {
   const messages = () => session.visibleMessages()
   const allParts = () => {
     const msgs = messages()
+    const revert = session.revert() ?? undefined
+    const qs = session.questions()
     const result: Record<string, Part[]> = {}
     for (const m of msgs) {
-      const p = session.getParts(m.id)
+      if (m.role === "user") continue
+      const p = visibleParts(m.id, session.getParts(m.id), revert).filter((part) => {
+        if (!isRenderable(part as SDKPart, m as SDKAssistantMessage)) return false
+        if (part.type !== "tool" || part.tool !== "question") return true
+        if (part.state.status !== "pending" && part.state.status !== "running") return true
+        const call = (part as SDKPart & { callID: string }).callID
+        return qs.some((item) => item.tool?.callID === call && item.tool?.messageID === m.id)
+      })
       if (p.length > 0) result[m.id] = p
     }
     return result
@@ -80,9 +93,10 @@ export const TaskTimeline: Component = () => {
   const aria = () => {
     const idx = selected()
     const bar = bars()[idx]
-    if (!bar) return "Session activity timeline, no activity"
-    return `Session activity timeline, bar ${idx + 1} of ${bars().length}: ${bar.tip}`
+    if (!bar) return "No activity"
+    return `Bar ${idx + 1} of ${bars().length}: ${bar.tip}`
   }
+  const value = () => Math.max(0, selected() + 1)
 
   let prev = 0
   let frame: number | undefined
@@ -158,11 +172,12 @@ export const TaskTimeline: Component = () => {
     ref.style.userSelect = "none"
   }
 
-  const jumpToMessage = (idx: number) => {
+  const select = (idx: number) => {
     const bar = bars()[idx]
     if (!bar) return
     setActive(idx)
     window.dispatchEvent(new CustomEvent("scrollToMessage", { detail: { id: bar.msgId, partId: bar.partId } }))
+    showTip(idx)
   }
 
   const onPointerMove = (e: PointerEvent) => {
@@ -186,10 +201,7 @@ export const TaskTimeline: Component = () => {
     ref.style.userSelect = ""
     if (!wasDragging || dragMoved) return
     const idx = pointerIndex(e)
-    jumpToMessage(idx)
-    // onPointerDown hid the tip pre-emptively in case this turned into a
-    // drag; restore it for the clicked bar since the pointer is still on it.
-    showTip(idx)
+    select(idx)
   }
 
   const onWheel = (e: WheelEvent) => {
@@ -202,7 +214,7 @@ export const TaskTimeline: Component = () => {
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
-      jumpToMessage(selected())
+      select(selected())
       return
     }
     if (!ref || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return
@@ -250,9 +262,14 @@ export const TaskTimeline: Component = () => {
           ref={ref}
           class="task-timeline"
           data-timeline-count={bars().length}
-          role="img"
+          role="slider"
           tabIndex={0}
-          aria-label={aria()}
+          aria-label="Session activity timeline"
+          aria-description="Use arrow keys to choose activity, then press Enter to open it in the transcript."
+          aria-valuemin={bars().length > 0 ? 1 : 0}
+          aria-valuemax={bars().length}
+          aria-valuenow={value()}
+          aria-valuetext={aria()}
           style={{ height: `${MAX_HEIGHT}px` }}
           onKeyDown={onKeyDown}
           onBlur={hideTip}

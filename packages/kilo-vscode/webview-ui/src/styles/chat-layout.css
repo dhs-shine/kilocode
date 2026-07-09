@@ -226,11 +226,6 @@
   flex-direction: column;
   gap: 6px;
   width: 100%;
-  /* Reserves extra room, on top of the turn's own 4px padding, for the
-     task-timeline highlight strip (see [data-component="tool-part-wrapper"]
-     below) to sit further from the card edge with a visible gap. Scoped to
-     assistant content only so user bubbles/diffs stay unaffected. */
-  padding-left: 4px;
 }
 
 [data-component="assistant-memory-badge"] {
@@ -266,9 +261,7 @@
    An absolutely positioned element always paints above normal-flow
    (position: static) children, so it stays visible without needing to
    extend past the wrapper's own box — virtua's row virtualizer clips its
-   content to exactly that box (`overflow: clip`), so anything drawn outside
-   it (e.g. a negative left offset) gets clipped entirely once rows are
-   virtualized. */
+   content to exactly that box (`overflow: clip`). */
 [data-component="tool-part-wrapper"] {
   position: relative;
 }
@@ -278,11 +271,9 @@
   position: absolute;
   top: 2px;
   bottom: 2px;
-  /* .vscode-session-turn-assistant's extra 4px padding-left (see above) plus
-     the turn's own 4px gives 8px of gutter here before virtua's clip edge.
-     Sit 1px inside that edge for safety, leaving a clear gap before the card
-     (which starts at 0). */
-  left: -7px;
+  /* Use the turn's existing 4px inset: the 3px strip stays within the
+     virtualized row and leaves a 1px gap before the card. */
+  left: -4px;
   width: 3px;
   border-radius: 2px 0 0 2px;
   background: var(--timeline-color, transparent);
@@ -294,6 +285,12 @@
 
 [data-component="tool-part-wrapper"][data-timeline-highlight]::before {
   opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-component="tool-part-wrapper"]::before {
+    transition: none;
+  }
 }
 
 .chat-view .message-list-content > .revert-banner,

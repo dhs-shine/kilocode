@@ -25,8 +25,8 @@ import { useConfig } from "../../context/config"
 import { useLanguage } from "../../context/language"
 import { useMemory } from "../../context/memory"
 import { useServer } from "../../context/server"
-import { snapshotProgress } from "../../context/session-utils"
 import { planDisplayPath } from "../../utils/plan-path"
+import { isRenderable, UPSTREAM_SUPPRESSED_TOOLS } from "../../utils/transcript-parts"
 import { MemoryMarkerMeta } from "@kilocode/kilo-memory/marker-meta"
 import { color as timelineColor } from "../../utils/timeline/colors"
 import type { Part as TimelinePart } from "../../types/messages"
@@ -34,10 +34,6 @@ import type { TimelineHighlight } from "../../utils/timeline/highlight"
 import { QuestionDock } from "./QuestionDock"
 import { SuggestBar } from "./SuggestBar"
 
-// Tools that the upstream message-part renderer suppresses (returns null for).
-// We render these ourselves via ToolRegistry when they complete,
-// so the user can see what the AI set up.
-export const UPSTREAM_SUPPRESSED_TOOLS = new Set(["todowrite", "todoread"])
 const EDIT_TOOLS = new Set(["edit", "write", "apply_patch"])
 
 function editOpen(part: SDKPart, open: boolean) {
@@ -88,24 +84,6 @@ function PlanExitCard(props: { part: ToolPart }) {
       </div>
     </Show>
   )
-}
-
-function isRenderable(part: SDKPart): boolean {
-  if (part.type === "tool") {
-    const tool = (part as SDKPart & { tool: string }).tool
-    const state = (part as SDKPart & { state: { status: string } }).state
-    if (UPSTREAM_SUPPRESSED_TOOLS.has(tool)) {
-      // Show completed todo parts only when kilo-ui provides a visible renderer.
-      return state.status === "completed" && !!ToolRegistry.render(tool)
-    }
-    // Always render question tool parts — active ones get the inline QuestionDock
-    return true
-  }
-  if (part.type === "text") return !snapshotProgress(part) && !!(part as SDKPart & { text: string }).text?.trim()
-  if (part.type === "reasoning") {
-    return !!(part as SDKPart & { text: string }).text?.replace("[REDACTED]", "").trim()
-  }
-  return !!PART_MAPPING[part.type]
 }
 
 /**
@@ -203,8 +181,7 @@ export const AssistantMessage: Component<AssistantMessageProps> = (props) => {
     const stored = props.parts ?? data.store.part?.[props.message.id]
     if (!stored) return []
     return (stored as SDKPart[]).filter((part) => {
-      if (!isRenderable(part)) return false
-      if (part.type === "text" && part.synthetic && props.message.time.completed) return false
+      if (!isRenderable(part, props.message)) return false
       if (part.type !== "tool" || part.tool !== "question") return true
       if (part.state.status !== "pending" && part.state.status !== "running") return true
       return !!matchToolRequest(part, "question", session.questions())
