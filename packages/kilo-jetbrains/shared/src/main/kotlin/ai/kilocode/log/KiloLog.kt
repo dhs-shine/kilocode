@@ -21,10 +21,10 @@ import java.util.logging.LogRecord
  * Logging interface for the Kilo JetBrains plugin.
  *
  * In normal (non-sandbox) mode, output goes through IntelliJ's own [com.intellij.openapi.diagnostic.Logger],
- * which writes to the standard IDE log file, and to a rotated `kilo-dev.log` file inside the IDE log directory.
+ * which writes to the standard IDE log file, and to rotated `kilo-dev.log.*` files inside the IDE log directory.
  *
  * In sandbox mode (i.e. when running via `./gradlew runIde`, detected via the `idea.plugin.in.sandbox.mode`
- * system property), output is written only to `kilo-dev.log`.
+ * system property), output is written only to `kilo-dev.log.*`.
  *
  * Usage:
  * ```kotlin
@@ -119,7 +119,7 @@ internal class FileLog(cls: Class<*>) : KiloLog {
 
         private val handler: FileHandler by lazy {
             val dir = resolveLogDir()
-            val path = dir.resolve("kilo-dev.log")
+            val path = dir.resolve("kilo-dev.log.%g")
             IntellijLog(FileLog::class.java).info("Kilo diagnostic log directory: $dir")
             val h = FileHandler(path.toString(), LIMIT, COUNT, true)
             h.formatter = KiloFormatter()

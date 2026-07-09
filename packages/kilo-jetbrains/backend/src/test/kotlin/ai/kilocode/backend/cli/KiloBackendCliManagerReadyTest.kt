@@ -44,7 +44,7 @@ class KiloBackendCliManagerReadyTest {
             stdout = input,
             stderr = StringBuilder("stderr line"),
             pwd = "pwd123",
-            timeoutMs = 50,
+            timeoutMs = WATCHDOG_TIMEOUT_MS,
             alive = { true },
             pid = { 456L },
             code = { 0 },
@@ -57,7 +57,7 @@ class KiloBackendCliManagerReadyTest {
 
         val err = assertIs<CliServer.State.Error>(state)
         assertEquals(1, calls.get())
-        assertContains(err.message, "within 50ms")
+        assertContains(err.message, "within ${WATCHDOG_TIMEOUT_MS}ms")
         assertContains(err.message, "process alive=true")
         assertContains(err.message, "pid=456")
         assertContains(err.details.orEmpty(), "stderr line")
@@ -107,5 +107,6 @@ class KiloBackendCliManagerReadyTest {
 
     companion object {
         private const val TIMEOUT_MS = 1_000L
+        private const val WATCHDOG_TIMEOUT_MS = 50L
     }
 }

@@ -162,6 +162,8 @@ class KiloBackendAppService private constructor(
                 clear()
                 connection.restart()
                 log.info("restart: complete")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 log.warn("restart: failed", e)
                 throw e
@@ -177,6 +179,8 @@ class KiloBackendAppService private constructor(
                 clear()
                 connection.reinstall()
                 log.info("reinstall: complete")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 log.warn("reinstall: failed", e)
                 throw e

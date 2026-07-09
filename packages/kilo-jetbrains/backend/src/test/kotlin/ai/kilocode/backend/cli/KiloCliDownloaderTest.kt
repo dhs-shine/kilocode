@@ -274,7 +274,7 @@ class KiloCliDownloaderTest {
     }
 
     @Test
-    fun `cache lock times out clearly when held by another process`() = runBlocking {
+    fun `cache lock times out clearly when already held in this process`() = runBlocking {
         assertTrue(dir.mkdirs() || dir.isDirectory)
         val file = File(dir, ".lock")
         val log = TestLog()

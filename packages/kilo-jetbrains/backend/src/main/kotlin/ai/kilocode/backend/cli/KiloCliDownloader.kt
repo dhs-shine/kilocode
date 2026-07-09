@@ -131,11 +131,11 @@ class KiloCliDownloader(
         val mutex = LOCKS.computeIfAbsent(file.absolutePath) { Any() }
         return synchronized(mutex) {
             RandomAccessFile(file, "rw").channel.use { channel ->
-                val start = System.currentTimeMillis()
+                val start = System.nanoTime()
                 log.info("Waiting for Kilo CLI cache lock: ${file.absolutePath}")
                 val lock = acquire(file, channel::tryLock, start)
                 lock.use {
-                    log.info("Acquired Kilo CLI cache lock after ${System.currentTimeMillis() - start}ms: ${file.absolutePath}")
+                    log.info("Acquired Kilo CLI cache lock after ${elapsed(start)}ms: ${file.absolutePath}")
                     block()
                 }
             }
@@ -150,7 +150,7 @@ class KiloCliDownloader(
                 null
             }
             if (lock != null) return lock
-            val waited = System.currentTimeMillis() - start
+            val waited = elapsed(start)
             if (waited >= lockTimeoutMs) {
                 val msg = "Timed out waiting for Kilo CLI cache lock after ${waited}ms: ${file.absolutePath}"
                 log.warn(msg)
@@ -159,6 +159,8 @@ class KiloCliDownloader(
             Thread.sleep(LOCK_POLL_MS.coerceAtMost((lockTimeoutMs - waited).coerceAtLeast(1L)))
         }
     }
+
+    private fun elapsed(start: Long): Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)
 
     private fun stage(version: String, platform: String): File {
         val tmp = File(root, ".tmp")
@@ -377,16 +379,16 @@ class KiloCliDownloader(
             add("pluginsPath=${safe { PathManager.getPluginsPath() }}")
             add("logPath=${safe { PathManager.getLogPath() }}")
             add("logDir=${safe { PathManager.getLogDir().toString() }}")
-            add("idea.config.path=${System.getProperty("idea.config.path") ?: "<unset>"}")
-            add("idea.system.path=${System.getProperty("idea.system.path") ?: "<unset>"}")
-            add("idea.plugins.path=${System.getProperty("idea.plugins.path") ?: "<unset>"}")
-            add("idea.log.path=${System.getProperty("idea.log.path") ?: "<unset>"}")
-            add("idea.properties.file=${System.getProperty("idea.properties.file") ?: "<unset>"}")
-            add("user.home=${System.getProperty("user.home") ?: "<unset>"}")
-            add("USERPROFILE=${EnvironmentUtil.getValue("USERPROFILE") ?: "<unset>"}")
-            add("TEMP=${EnvironmentUtil.getValue("TEMP") ?: "<unset>"}")
-            add("TMP=${EnvironmentUtil.getValue("TMP") ?: "<unset>"}")
-            add("cacheRoot=${root.absolutePath}${info(root)}")
+            add("idea.config.path=${safe { System.getProperty("idea.config.path") ?: "<unset>" }}")
+            add("idea.system.path=${safe { System.getProperty("idea.system.path") ?: "<unset>" }}")
+            add("idea.plugins.path=${safe { System.getProperty("idea.plugins.path") ?: "<unset>" }}")
+            add("idea.log.path=${safe { System.getProperty("idea.log.path") ?: "<unset>" }}")
+            add("idea.properties.file=${safe { System.getProperty("idea.properties.file") ?: "<unset>" }}")
+            add("user.home=${safe { System.getProperty("user.home") ?: "<unset>" }}")
+            add("USERPROFILE=${safe { EnvironmentUtil.getValue("USERPROFILE") ?: "<unset>" }}")
+            add("TEMP=${safe { EnvironmentUtil.getValue("TEMP") ?: "<unset>" }}")
+            add("TMP=${safe { EnvironmentUtil.getValue("TMP") ?: "<unset>" }}")
+            add("cacheRoot=${safe { root.absolutePath + info(root) }}")
         }.joinToString(" ")
         log.info("Kilo CLI path diagnostics: $text")
     }

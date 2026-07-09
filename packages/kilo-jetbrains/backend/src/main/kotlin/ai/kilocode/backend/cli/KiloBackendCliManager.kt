@@ -8,6 +8,7 @@ import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.EnvironmentUtil
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
@@ -43,6 +44,7 @@ class KiloBackendCliManager(
 
     companion object {
         private const val STARTUP_TIMEOUT_MS = 30_000L
+        private const val STARTUP_TIMEOUT_GRACE_MS = 8_000L
         private const val KILL_TIMEOUT_SECONDS = 5L
     }
 
@@ -64,7 +66,21 @@ class KiloBackendCliManager(
             val path = resolveCli(onProgress)
             onResolved()
             log.info("CLI binary path: ${path.absolutePath} (size=${path.length()} bytes)")
-            spawn(path)
+            withTimeout(timeoutMs + STARTUP_TIMEOUT_GRACE_MS) { spawn(path) }
+        } catch (e: TimeoutCancellationException) {
+            val msg = "CLI startup timed out after ${timeoutMs}ms"
+            log.warn(msg, e)
+            process?.let { proc ->
+                log.info("Cleaning up orphaned CLI process (pid=${proc.pid()})")
+                process = null
+                cleanup(proc, "startup timeout cleanup")
+            }
+            CliServer.State.Error(
+                message = msg,
+                details = e.stackTraceToString(),
+            )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log.warn("CLI startup failed", e)
             process?.let { proc ->
@@ -106,6 +122,7 @@ class KiloBackendCliManager(
     private suspend fun spawn(cli: File): CliServer.State =
         withContext(Dispatchers.IO) {
             val pwd = generatePassword()
+            val start = System.nanoTime()
 
             val env = buildEnv(pwd)
             val diag = startupDiagnostics(cli, env, log)
@@ -148,20 +165,21 @@ class KiloBackendCliManager(
                 stdout = proc.inputStream,
                 stderr = stderr,
                 pwd = pwd,
-                timeoutMs = timeoutMs,
+                timeoutMs = (timeoutMs - elapsed(start)).coerceAtLeast(1L),
                 alive = { proc.isAlive },
                 pid = { proc.pid() },
                 code = { proc.waitFor() },
-                onTimeout = { cleanup(proc, "startup timeout") },
+                onTimeout = {
+                    if (process == proc) process = null
+                    cleanup(proc, "startup timeout")
+                },
                 diagnostics = { diag },
                 log = log,
                 onThread = { stdout = it },
             )
-            if (state is CliServer.State.Error) {
+            if (state is CliServer.State.Error && process == proc) {
                 process = null
-                uninstall()
-                this@KiloBackendCliManager.stderr = null
-                this@KiloBackendCliManager.stdout = null
+                cleanup(proc, "startup error")
             }
             state
         }
@@ -242,6 +260,8 @@ class KiloBackendCliManager(
         SecureRandom().nextBytes(bytes)
         return bytes.joinToString("") { "%02x".format(it) }
     }
+
+    private fun elapsed(start: Long): Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)
 }
 
 internal fun startupDiagnostics(cli: File, env: Map<String, String>, log: KiloLog): String {
