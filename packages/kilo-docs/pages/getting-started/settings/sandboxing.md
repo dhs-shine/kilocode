@@ -51,7 +51,7 @@ Use the sandbox when the agent may run unfamiliar commands, install dependencies
 
 The sandbox can reduce the impact of an unsafe tool call by:
 
-- Preventing writes outside the project and other explicitly writable locations
+- Preventing writes outside the workspace and other explicitly writable locations
 - Keeping sandboxed commands from changing `.git` metadata
 - Blocking direct outbound connections from sandboxed commands and policy-aware tools when network restriction is on
 - Applying the same restrictions to child processes, such as package installation and build scripts launched by a shell command
