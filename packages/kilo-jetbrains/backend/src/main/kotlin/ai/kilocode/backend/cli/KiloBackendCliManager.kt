@@ -63,10 +63,13 @@ class KiloBackendCliManager(
 
     override suspend fun init(onProgress: (CliDownload) -> Unit, onResolved: () -> Unit): CliServer.State {
         return try {
-            val path = resolveCli(onProgress)
-            onResolved()
-            log.info("CLI binary path: ${path.absolutePath} (size=${path.length()} bytes)")
-            withTimeout(timeoutMs + STARTUP_TIMEOUT_GRACE_MS) { spawn(path) }
+            val start = System.nanoTime()
+            withTimeout(timeoutMs + STARTUP_TIMEOUT_GRACE_MS) {
+                val path = resolveCli(onProgress)
+                onResolved()
+                log.info("CLI binary path: ${path.absolutePath} (size=${path.length()} bytes)")
+                spawn(path, start)
+            }
         } catch (e: TimeoutCancellationException) {
             val msg = "CLI startup timed out after ${timeoutMs}ms"
             log.warn(msg, e)
@@ -119,10 +122,9 @@ class KiloBackendCliManager(
     internal fun buildEnv(pwd: String, base: Map<String, String> = EnvironmentUtil.getEnvironmentMap()): Map<String, String> =
         buildKiloCliEnv(pwd, base, log)
 
-    private suspend fun spawn(cli: File): CliServer.State =
+    private suspend fun spawn(cli: File, start: Long): CliServer.State =
         withContext(Dispatchers.IO) {
             val pwd = generatePassword()
-            val start = System.nanoTime()
 
             val env = buildEnv(pwd)
             val diag = startupDiagnostics(cli, env, log)
