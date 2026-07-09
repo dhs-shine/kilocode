@@ -18,6 +18,7 @@ import ai.kilocode.client.session.views.base.BaseQuestionView
 import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionResultView
 import ai.kilocode.client.session.views.question.QuestionView
+import ai.kilocode.client.session.ui.selection.SessionCopyTarget
 import ai.kilocode.client.session.views.MessageToolbar
 import ai.kilocode.client.session.views.MessageView
 import ai.kilocode.client.session.views.TextView
@@ -237,10 +238,17 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
 
         val view = panel.findMessage("u1")!!.part("p1") as TextView
         val message = panel.findMessage("u1")!!
-        assertNotNull(find<MessageToolbar>(message))
+        val target = components(message).filterIsInstance<SessionCopyTarget>().single { it.copyToolbar != null }
+        val toolbar = target.copyToolbar as MessageToolbar
+        val placeholder = target.copyAnchor
+
+        assertFalse(components(message).filterIsInstance<MessageToolbar>().any { it === toolbar })
+        assertNull(toolbar.parent)
         assertFalse(view.hasCopyToolbar())
-        assertEquals(BorderLayout.LINE_START, message.promptToolbarAlignment())
+        assertEquals(BorderLayout.LINE_END, message.promptToolbarAlignment())
+        assertEquals(BorderLayout.LINE_END, toolbar.alignment())
         assertTrue(message.promptToolbarActive())
+        assertEquals(toolbar.preferredSize, placeholder.preferredSize)
     }
 
     fun `test user prompt toolbar omits rollback when revert handler is absent`() {
@@ -248,8 +256,9 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         model.updateContent("u1", part("p1", "u1", "text", text = "hello"))
 
         val message = panel.findMessage("u1")!!
+        val toolbar = components(message).filterIsInstance<SessionCopyTarget>().single { it.copyToolbar != null }.copyToolbar as MessageToolbar
 
-        assertFalse(components(message).filterIsInstance<JButton>().any { it.toolTipText == KiloBundle.message("revert.message.rollback") })
+        assertFalse(components(toolbar).filterIsInstance<JButton>().any { it.toolTipText == KiloBundle.message("revert.message.rollback") })
     }
 
     fun `test user prompt toolbar shows rollback when revert handler is present`() {
@@ -259,7 +268,8 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         model.updateContent("u1", part("p1", "u1", "text", text = "hello"))
 
         val message = panel.findMessage("u1")!!
-        val rollback = components(message)
+        val toolbar = components(message).filterIsInstance<SessionCopyTarget>().single { it.copyToolbar != null }.copyToolbar as MessageToolbar
+        val rollback = components(toolbar)
             .filterIsInstance<JButton>()
             .first { it.toolTipText == KiloBundle.message("revert.message.rollback") }
         rollback.doClick()

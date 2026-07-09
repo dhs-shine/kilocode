@@ -120,9 +120,13 @@ class TextViewTest : BasePlatformTestCase() {
 
         val layout = view.layout as BorderLayout
         assertSame(view.md.component, layout.getLayoutComponent(BorderLayout.CENTER))
-        val bar = layout.getLayoutComponent(BorderLayout.SOUTH) as MessageToolbar
+        val bar = view.copyToolbar as MessageToolbar
+        val placeholder = layout.getLayoutComponent(BorderLayout.SOUTH)
         assertEquals(BorderLayout.LINE_END, bar.alignment())
         assertTrue(components(bar).contains(view.copyButton()))
+        assertSame(view.copyAnchor, placeholder)
+        assertNull(bar.parent)
+        assertEquals(bar.preferredSize, placeholder.preferredSize)
         assertEquals(UiStyle.Gap.xs(), bar.insets.top)
         assertTrue(view.hasCopyToolbar())
     }
@@ -159,14 +163,14 @@ class TextViewTest : BasePlatformTestCase() {
         val view = TextView(Text("p1").also { it.content.append(" first ") })
         view.setCopyToolbar(true)
         val comp = view.md.component
-        val bar = (view.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH)
+        val bar = view.copyToolbar
 
         view.update(Text("p1").also { it.content.append(" second ") })
         view.appendDelta(" third ")
         view.copyButton().doClick()
 
         assertSame(comp, view.md.component)
-        assertSame(bar, (view.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH))
+        assertSame(bar, view.copyToolbar)
         assertEquals("second  third", clipboard())
     }
 

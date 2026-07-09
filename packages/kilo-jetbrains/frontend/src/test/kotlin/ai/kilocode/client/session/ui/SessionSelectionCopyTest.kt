@@ -5,6 +5,9 @@ import ai.kilocode.client.session.ui.selection.SessionCopyTarget
 import ai.kilocode.client.session.ui.selection.SessionContextMenu
 import ai.kilocode.client.session.ui.selection.SessionHoverCopyOverlay
 import ai.kilocode.client.session.ui.selection.SessionTargetResolver
+import ai.kilocode.client.session.views.MessageToolbar
+import ai.kilocode.client.session.views.MessageView
+import ai.kilocode.client.session.views.TextView
 import ai.kilocode.client.session.views.tool.ShellToolView
 import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.test.CopyProviderSink
@@ -173,6 +176,57 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         assertFalse(overlay.isVisible)
     }
 
+    fun `test user prompt toolbar appears in hover overlay`() {
+        showMessages()
+        emit(ChatEventDto.MessageUpdated("ses_test", message("u1")), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", part("p1", "u1", "text", "hello")))
+        val root = find<SessionRootPanel>(ui)
+        val message = find<MessageView>(ui)
+        val target = components(message).filterIsInstance<SessionCopyTarget>().single { it.copyToolbar != null }
+        val overlay = find<SessionHoverCopyOverlay>(ui)
+        val anchor = target.copyAnchor
+        val toolbar = target.copyToolbar as MessageToolbar
+
+        assertFalse(components(ui).any { it === toolbar })
+        assertNull(toolbar.parent)
+
+        show(overlay, target)
+        layout()
+
+        assertTrue(overlay.isVisible)
+        assertSame(root.overlay, overlay.parent)
+        val shown = overlay.components.single() as MessageToolbar
+        assertSame(toolbar, shown)
+        assertEquals(anchor.preferredSize, shown.preferredSize)
+
+        shown.copyButton().doClick()
+
+        assertEquals("hello", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+    }
+
+    fun `test assistant response toolbar appears in hover overlay`() {
+        showText(" response ")
+        val root = find<SessionRootPanel>(ui)
+        val target = components(ui).filterIsInstance<TextView>().first { it.markdown().contains("response") }
+        val overlay = find<SessionHoverCopyOverlay>(ui)
+        val toolbar = target.copyToolbar as MessageToolbar
+
+        assertTrue(target.hasCopyToolbar())
+        assertFalse(components(ui).any { it === toolbar })
+        assertNull(toolbar.parent)
+
+        show(overlay, target)
+        layout()
+
+        assertTrue(overlay.isVisible)
+        assertSame(root.overlay, overlay.parent)
+        val shown = overlay.components.single() as MessageToolbar
+        assertSame(toolbar, shown)
+        shown.copyButton().doClick()
+
+        assertEquals("response", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
+    }
+
     fun `test hover copy overlay ignores mouse events after disposal`() {
         val root = ShowingPanel()
         val parent = Disposer.newDisposable("overlay-test")
@@ -229,6 +283,12 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
 
     private fun rgb(color: java.awt.Color): Int = color.rgb and RGB_MASK
 
+    private fun show(overlay: SessionHoverCopyOverlay, target: SessionCopyTarget) {
+        val method = SessionHoverCopyOverlay::class.java.getDeclaredMethod("show", SessionCopyTarget::class.java)
+        method.isAccessible = true
+        method.invoke(overlay, target)
+    }
+
     fun `test hover overlay keeps current target while pointer remains inside anchor`() {
         val overlay = find<SessionHoverCopyOverlay>(ui)
         val target = TargetPanel("alpha")
@@ -267,7 +327,7 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
 
     private fun showText(text: String) {
         if (controller().id == null) showMessages()
-        emit(ChatEventDto.MessageUpdated("ses_test", message("msg_text")))
+        emit(ChatEventDto.MessageUpdated("ses_test", message("msg_text").copy(role = "assistant")))
         emit(ChatEventDto.PartUpdated("ses_test", part("part_text", "msg_text", "text", text)))
         layout()
     }
@@ -306,6 +366,13 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         if (root is UiDataProvider) yield(root)
         if (root is Container) {
             for (child in root.components) yieldAll(providers(child))
+        }
+    }
+
+    private fun components(root: Component): Sequence<Component> = sequence {
+        yield(root)
+        if (root is Container) {
+            for (child in root.components) yieldAll(components(child))
         }
     }
 

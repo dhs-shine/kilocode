@@ -22,6 +22,7 @@ internal class SessionHoverCopyOverlay(
     private var target: SessionCopyTarget? = null
     private val copy = SessionCopyButton(fill = true) { target?.copyText() }
     private val button = copy.button
+    private var child: JComponent = button
 
     init {
         isVisible = false
@@ -62,14 +63,14 @@ internal class SessionHoverCopyOverlay(
     }
 
     override fun doLayout() {
-        button.setBounds(0, 0, width, height)
+        child.setBounds(0, 0, width, height)
     }
 
-    override fun getPreferredSize() = button.preferredSize
+    override fun getPreferredSize() = child.preferredSize
 
-    override fun getMinimumSize() = button.minimumSize
+    override fun getMinimumSize() = child.minimumSize
 
-    override fun getMaximumSize() = button.maximumSize
+    override fun getMaximumSize() = child.maximumSize
 
     @RequiresEdt
     private fun sync(event: MouseEvent) {
@@ -88,6 +89,7 @@ internal class SessionHoverCopyOverlay(
     private fun show(item: SessionCopyTarget) {
         if (target === item && isVisible) return
         target = item
+        use(item.copyToolbar ?: button)
         isVisible = true
         parent?.doLayout()
         revalidate()
@@ -116,11 +118,20 @@ internal class SessionHoverCopyOverlay(
     @RequiresEdt
     private fun conceal() {
         copy.dismiss()
+        use(button)
         if (target == null && !isVisible) return
         target = null
         isVisible = false
         revalidate()
         repaint()
+    }
+
+    @RequiresEdt
+    private fun use(comp: JComponent) {
+        if (child === comp && comp.parent === this) return
+        removeAll()
+        child = comp
+        add(child)
     }
 
     override fun dispose() {

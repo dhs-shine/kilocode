@@ -12,6 +12,7 @@ import ai.kilocode.client.session.model.ToolCallRef
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
+import ai.kilocode.client.session.ui.selection.SessionCopyTarget
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.views.base.PartView
@@ -78,6 +79,7 @@ class MessageView(
     private var prompt: PromptView? = null
     private var promptBox: JPanel? = null
     private var promptToolbar: MessageToolbar? = null
+    private var promptToolbarPlaceholder: JComponent? = null
 
     init {
         isOpaque = false
@@ -293,6 +295,7 @@ class MessageView(
         prompt = null
         promptBox = null
         promptToolbar = null
+        promptToolbarPlaceholder = null
         for ((_, content) in msg.parts) {
             if (content is StepFinish) continue
             if (isHidden(content)) continue
@@ -396,6 +399,7 @@ class MessageView(
         prompt = null
         promptBox = null
         promptToolbar = null
+        promptToolbarPlaceholder = null
         hidden = null
     }
 
@@ -452,19 +456,27 @@ class MessageView(
         prompt = view
         val bar = promptToolbar ?: MessageToolbar(
             { prompt?.copyMarkdown(trim = false) },
-            BorderLayout.LINE_START,
+            BorderLayout.LINE_END,
             revert?.let { fn -> { fn(msg.info.id) } },
         ).also { promptToolbar = it }
+        val placeholder = promptToolbarPlaceholder ?: bar.placeholder().also { promptToolbarPlaceholder = it }
         val box = JPanel(BorderLayout()).also {
             it.isOpaque = false
             it.add(view, BorderLayout.CENTER)
             promptBox = it
         }
         bar.setActive(true)
-        return JPanel(BorderLayout()).also {
-            it.isOpaque = false
-            it.add(box, BorderLayout.CENTER)
-            it.add(bar, BorderLayout.SOUTH)
+        return object : JPanel(BorderLayout()), SessionCopyTarget {
+            override val copyAnchor: JComponent get() = placeholder
+            override val copyToolbar: JComponent get() = bar
+
+            override fun copyText(): String? = prompt?.copyMarkdown(trim = false)
+
+            init {
+                isOpaque = false
+                add(box, BorderLayout.CENTER)
+                add(placeholder, BorderLayout.SOUTH)
+            }
         }
     }
 

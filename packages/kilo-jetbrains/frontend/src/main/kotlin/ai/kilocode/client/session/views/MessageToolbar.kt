@@ -10,6 +10,8 @@ import ai.kilocode.client.plugin.KiloBundle
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import java.awt.Dimension
+import javax.swing.JComponent
 import javax.swing.JPanel
 
 internal class MessageToolbar(
@@ -64,6 +66,18 @@ internal class MessageToolbar(
 
     @RequiresEdt
     fun copyButton() = button
+
+    fun placeholder(): JComponent = object : JPanel() {
+        init {
+            isOpaque = false
+        }
+
+        override fun getPreferredSize(): Dimension = this@MessageToolbar.preferredSize
+
+        override fun getMinimumSize(): Dimension = this@MessageToolbar.minimumSize
+
+        override fun getMaximumSize(): Dimension = this@MessageToolbar.maximumSize
+    }
 
     override fun removeNotify() {
         copy.dismiss()
