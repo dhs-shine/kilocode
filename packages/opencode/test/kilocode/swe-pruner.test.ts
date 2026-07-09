@@ -26,7 +26,7 @@ function model(): Provider.Model {
   } as unknown as Provider.Model
 }
 
-function provider(seen: string[]): Provider.Interface {
+function provider(seen: string[], reply = "1-10"): Provider.Interface {
   const mdl = model()
   const lang = {
     specificationVersion: "v3",
@@ -36,7 +36,7 @@ function provider(seen: string[]): Provider.Interface {
     doGenerate: async (input: LanguageModelV3CallOptions) => {
       seen.push(JSON.stringify(input))
       return {
-        content: [{ type: "text", text: "1-10" }],
+        content: [{ type: "text", text: reply }],
         finishReason: { unified: "stop" },
         usage: {
           inputTokens: { total: 12 },
@@ -75,11 +75,19 @@ describe("SwePruner.question", () => {
 })
 
 describe("SwePruner.prunable", () => {
-  test("only read and grep are prunable", () => {
+  test("only read, grep, and bash are prunable", () => {
     expect(SwePruner.prunable("read")).toBe(true)
     expect(SwePruner.prunable("grep")).toBe(true)
-    expect(SwePruner.prunable("bash")).toBe(false)
+    expect(SwePruner.prunable("bash")).toBe(true)
     expect(SwePruner.prunable("edit")).toBe(false)
+  })
+})
+
+describe("SwePruner.enabled", () => {
+  test("requires the experimental feature flag", () => {
+    expect(SwePruner.enabled({ experimental: { swe_pruner: true } })).toBe(true)
+    expect(SwePruner.enabled({ experimental: { swe_pruner: false } })).toBe(false)
+    expect(SwePruner.enabled({})).toBe(false)
   })
 })
 
@@ -90,15 +98,28 @@ describe("SwePruner.extend", () => {
       properties: { filePath: { type: "string" as const } },
       required: ["filePath"],
     }
-    const extended = SwePruner.extend(schema)
+    const extended = SwePruner.extend(schema, "read")
     expect(extended.properties?.[SwePruner.PARAMETER]).toMatchObject({ type: "string" })
+    expect(extended.properties?.[SwePruner.PARAMETER]).toMatchObject({
+      description: expect.stringContaining("How is authentication handled?"),
+    })
     expect(extended.required).toEqual(["filePath"])
     expect(schema.properties).not.toHaveProperty(SwePruner.PARAMETER)
   })
 
+  test("uses an evidence-focused example for bash output", () => {
+    const schema = { type: "object" as const }
+    const extended = SwePruner.extend(schema, "bash")
+    expect(extended.properties?.[SwePruner.PARAMETER]).toMatchObject({
+      description: expect.stringContaining(
+        "what assertion details, error messages, and relevant stack frames were reported",
+      ),
+    })
+  })
+
   test("leaves non-object schemas untouched", () => {
     const schema = { type: "string" as const }
-    expect(SwePruner.extend(schema)).toBe(schema)
+    expect(SwePruner.extend(schema, "read")).toBe(schema)
   })
 })
 
@@ -196,6 +217,83 @@ describe("SwePruner.kept", () => {
 })
 
 describe("SwePruner.sweep", () => {
+  test("replaces bash output and its metadata preview after successful pruning", async () => {
+    const lines = Array.from({ length: 60 }, (_, index) => `${index + 1}: ${"test output ".repeat(5)}`)
+    const output = lines.join("\n")
+    const focus =
+      "Which tests failed, and what assertion details, error messages, and relevant stack frames were reported for each failure?"
+    const seen: string[] = []
+    const result = await SwePruner.sweep({
+      tool: "bash",
+      args: { context_focus_question: focus },
+      result: {
+        title: "Run tests",
+        output,
+        metadata: { output, exit: 1, description: "Run tests", truncated: false },
+      },
+    }).pipe(
+      Effect.provideService(Provider.Service, provider(seen)),
+      Effect.provideService(Config.Service, { get: () => Effect.succeed({}) } as Config.Interface),
+      Effect.runPromise,
+    )
+
+    expect(seen).toHaveLength(1)
+    expect(result.output).toStartWith("[SWE-Pruner: kept 15 of 60 output lines")
+    expect(result.output).toContain(lines[0])
+    expect(result.output).not.toContain(lines[29])
+    expect(result.metadata["output"]).toBe(result.output)
+    expect(result.metadata["exit"]).toBe(1)
+    expect(result.metadata["swePruner"]).toEqual({
+      question: focus,
+      kept: 15,
+      total: 60,
+    })
+  })
+
+  test("leaves hard-truncated bash output unchanged", async () => {
+    const output = Array.from({ length: 60 }, (_, index) => `${index + 1}: ${"test output ".repeat(5)}`).join("\n")
+    const seen: string[] = []
+    const result = {
+      title: "Run tests",
+      output,
+      metadata: { output: "raw preview", truncated: true, outputPath: "/tmp/full.log" },
+    }
+    const swept = await SwePruner.sweep({
+      tool: "bash",
+      args: { context_focus_question: "Which tests failed and why?" },
+      result,
+    }).pipe(
+      Effect.provideService(Provider.Service, provider(seen)),
+      Effect.provideService(Config.Service, { get: () => Effect.succeed({}) } as Config.Interface),
+      Effect.runPromise,
+    )
+
+    expect(seen).toHaveLength(0)
+    expect(swept).toBe(result)
+  })
+
+  test("leaves bash output unchanged when the skimmer keeps everything", async () => {
+    const output = Array.from({ length: 60 }, (_, index) => `${index + 1}: ${"test output ".repeat(5)}`).join("\n")
+    const seen: string[] = []
+    const result = {
+      title: "Run tests",
+      output,
+      metadata: { output, truncated: false },
+    }
+    const swept = await SwePruner.sweep({
+      tool: "bash",
+      args: { context_focus_question: "Which tests failed and why?" },
+      result,
+    }).pipe(
+      Effect.provideService(Provider.Service, provider(seen, "ALL")),
+      Effect.provideService(Config.Service, { get: () => Effect.succeed({}) } as Config.Interface),
+      Effect.runPromise,
+    )
+
+    expect(seen).toHaveLength(1)
+    expect(swept).toBe(result)
+  })
+
   test("preserves dynamically loaded instructions outside the pruned output", async () => {
     const lines = Array.from({ length: 60 }, (_, index) => `${index + 1}: ${"source content ".repeat(4)}`)
     const body = `<path>/repo/pkg/source.ts</path>\n<type>file</type>\n<content>\n${lines.join("\n")}\n</content>`

@@ -14,7 +14,7 @@ const log = Log.create({ service: "swe-pruner" })
  * SWE-Pruner: self-adaptive context pruning for coding agents.
  * https://arxiv.org/abs/2601.16746
  *
- * When enabled, file-reading tools (read, grep) advertise an optional
+ * When enabled, supported tools (read, grep, bash) advertise an optional
  * `context_focus_question` parameter. When the model provides it, the raw tool
  * output is skimmed by a small model that keeps only the lines relevant to the
  * question; omitted sections are marked inline. Any failure falls back to the
@@ -23,7 +23,7 @@ const log = Log.create({ service: "swe-pruner" })
 
 export const PARAMETER = "context_focus_question"
 
-const TOOLS = new Set(["read", "grep"])
+const TOOLS = new Set(["read", "grep", "bash"])
 const MIN_LINES = 50
 const MIN_CHARS = 2_000
 const MAX_CHARS = 200_000
@@ -36,12 +36,18 @@ const CLOSE = "\n</content>"
 const FILE = "\n<type>file</type>\n<content>\n"
 const REMINDER = `${CLOSE}\n\n<system-reminder>\n`
 
-const DESCRIPTION = [
-  "Optional focus question used to prune this tool's output to only the relevant lines.",
-  'When investigating something specific in a large file or search result, provide a complete, self-contained question describing what you are looking for (e.g. "How is authentication handled?").',
-  "Do not include file paths or line numbers in the question.",
-  "Omitted sections are marked inline; omit this parameter to receive the full output.",
-].join(" ")
+function description(tool: string) {
+  const example =
+    tool === "bash"
+      ? '"Which tests failed, and what assertion details, error messages, and relevant stack frames were reported for each failure?"'
+      : '"How is authentication handled?"'
+  return [
+    "Optional focus question used to prune this tool's output to only the relevant lines.",
+    `When investigating something specific, provide a complete, self-contained question describing what you are looking for (e.g. ${example}).`,
+    "Do not include file paths or line numbers in the question.",
+    "Omitted sections are marked inline; omit this parameter to receive the full output.",
+  ].join(" ")
+}
 
 const INSTRUCTION = [
   "You are a code-context skimmer inside a coding agent.",
@@ -71,13 +77,13 @@ export function question(args: unknown) {
 }
 
 /** Advertise the focus parameter to the model without mutating the cached tool schema. */
-export function extend(schema: JSONSchema7): JSONSchema7 {
+export function extend(schema: JSONSchema7, tool: string): JSONSchema7 {
   if (typeof schema !== "object" || schema === null || schema.type !== "object") return schema
   return {
     ...schema,
     properties: {
       ...schema.properties,
-      [PARAMETER]: { type: "string", description: DESCRIPTION },
+      [PARAMETER]: { type: "string", description: description(tool) },
     },
   }
 }
@@ -246,11 +252,13 @@ export const sweep = Effect.fn("SwePruner.sweep")(function* (input: {
   )
   if (!pruned) return input.result
   log.info("pruned", { tool: input.tool, kept: pruned.kept, total: pruned.total })
+  const output = pruned.output + part.tail
   return {
     ...input.result,
-    output: pruned.output + part.tail,
+    output,
     metadata: {
       ...input.result.metadata,
+      ...(input.tool === "bash" ? { output } : {}),
       swePruner: { question: focus, kept: pruned.kept, total: pruned.total },
     },
   }
