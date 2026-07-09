@@ -38,6 +38,7 @@ const REMINDER = `${CLOSE}\n\n<system-reminder>\n`
 
 const DESCRIPTION = [
   "Optional focus question used to prune this tool's output to only the relevant lines.",
+  "Use it when the task calls for specific evidence from output expected to be large or noisy. Omit it for broad exploration, complete audits, or when the full output may be needed later.",
   "Provide a complete, self-contained question that describes the concrete evidence needed to answer the task. When useful, state which routine or repetitive output can be omitted.",
   "Ask for evidence present in the output rather than conclusions it cannot support. Do not refer to the generated output line numbers.",
   "Omitted sections are marked inline; omit this parameter to receive the full output.",
