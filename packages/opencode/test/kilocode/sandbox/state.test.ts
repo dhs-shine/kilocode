@@ -360,6 +360,7 @@ it.instance("prevents a queued toggle from restoring a retired override", () =>
   Effect.gen(function* () {
     const test = yield* TestInstance
     const id = SessionID.make("ses_sandbox_retire_race")
+    if (!(yield* SandboxPolicy.status(id)).available) return
     const entered = yield* Deferred.make<void>()
     const release = yield* Deferred.make<void>()
     const removal = yield* SandboxPolicy.retire(

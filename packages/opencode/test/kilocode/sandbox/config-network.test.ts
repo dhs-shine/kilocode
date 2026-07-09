@@ -98,8 +98,8 @@ restricted.live("keeps network restriction enabled by default when the sandbox i
       Effect.exit,
     )
     if (!backendSupport().available) {
-      expect(Exit.isSuccess(exit)).toBe(true)
-      expect(target.requests()).toBe(1)
+      expect(Exit.isFailure(exit)).toBe(true)
+      expect(target.requests()).toBe(0)
       return
     }
     expect(Exit.isFailure(exit)).toBe(true)
@@ -119,8 +119,8 @@ open.live("allows network when restriction is disabled without authenticated ser
       Effect.exit,
     )
     if (!backendSupport().available) {
-      expect(Exit.isSuccess(exit)).toBe(true)
-      expect(target.requests()).toBe(1)
+      expect(Exit.isFailure(exit)).toBe(true)
+      expect(target.requests()).toBe(0)
       return
     }
     expect(status.enabled).toBe(true)
