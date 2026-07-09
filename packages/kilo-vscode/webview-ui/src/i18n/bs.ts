@@ -634,7 +634,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Grep pretraga",
   "ui.permission.toolLabel.webSearch": "Web pretraga",
   "ui.permission.toolLabel.list": "Izlistaj",
-  "ui.permission.toolLabel.externalDirectory": "Čitaj vanjski direktorij",
+  "ui.permission.toolLabel.externalDirectory": "Omogući pristup vanjskom direktoriju",
   "ui.permission.toolLabel.webFetch": "Web dohvat",
   "ui.permission.toolLabel.task": "Zadatak",
   "ui.permission.toolLabel.skill": "Vještina",

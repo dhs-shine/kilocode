@@ -629,7 +629,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Grep 검색",
   "ui.permission.toolLabel.webSearch": "웹 검색",
   "ui.permission.toolLabel.list": "목록",
-  "ui.permission.toolLabel.externalDirectory": "외부 디렉토리 읽기",
+  "ui.permission.toolLabel.externalDirectory": "외부 디렉터리에 액세스",
   "ui.permission.toolLabel.webFetch": "웹 가져오기",
   "ui.permission.toolLabel.task": "작업",
   "ui.permission.toolLabel.skill": "스킬",

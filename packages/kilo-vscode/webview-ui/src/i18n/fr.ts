@@ -641,7 +641,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Recherche Grep",
   "ui.permission.toolLabel.webSearch": "Recherche Web",
   "ui.permission.toolLabel.list": "Lister",
-  "ui.permission.toolLabel.externalDirectory": "Lire répertoire externe",
+  "ui.permission.toolLabel.externalDirectory": "Accéder au répertoire externe",
   "ui.permission.toolLabel.webFetch": "Récupération Web",
   "ui.permission.toolLabel.task": "Tâche",
   "ui.permission.toolLabel.skill": "Compétence",

@@ -509,7 +509,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Ricerca grep",
   "ui.permission.toolLabel.webSearch": "Ricerca web",
   "ui.permission.toolLabel.list": "Elenco",
-  "ui.permission.toolLabel.externalDirectory": "Leggi directory esterna",
+  "ui.permission.toolLabel.externalDirectory": "Accedi alla directory esterna",
   "ui.permission.toolLabel.webFetch": "Recupero web",
   "ui.permission.toolLabel.task": "Task",
   "ui.permission.toolLabel.skill": "Skill",

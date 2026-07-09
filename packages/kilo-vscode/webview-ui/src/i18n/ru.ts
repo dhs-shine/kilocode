@@ -633,7 +633,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Grep-поиск",
   "ui.permission.toolLabel.webSearch": "Веб-поиск",
   "ui.permission.toolLabel.list": "Список",
-  "ui.permission.toolLabel.externalDirectory": "Чтение внешнего каталога",
+  "ui.permission.toolLabel.externalDirectory": "Открыть доступ к внешней папке",
   "ui.permission.toolLabel.webFetch": "Веб-загрузка",
   "ui.permission.toolLabel.task": "Задача",
   "ui.permission.toolLabel.skill": "Навык",
