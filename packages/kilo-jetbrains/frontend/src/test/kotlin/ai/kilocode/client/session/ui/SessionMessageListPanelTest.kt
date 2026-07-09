@@ -44,7 +44,6 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
-import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
 import java.awt.Container
@@ -265,10 +264,9 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertFalse(components(message).filterIsInstance<MessageToolbar>().any { it === toolbar })
         assertNull(toolbar.parent)
         assertFalse(view.hasCopyToolbar())
-        assertEquals(BorderLayout.LINE_END, message.promptToolbarAlignment())
-        assertEquals(BorderLayout.LINE_END, toolbar.alignment())
         assertTrue(message.promptToolbarActive())
-        assertEquals(toolbar.preferredSize, placeholder.preferredSize)
+        assertEquals(toolbar.preferredSize.width, placeholder.preferredSize.width)
+        assertTrue(placeholder.preferredSize.height > toolbar.preferredSize.height)
     }
 
     fun `test user prompt toolbar omits rollback when revert handler is absent`() {

@@ -17,6 +17,9 @@ import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
 import ai.kilocode.client.session.views.base.PartView
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.ui.layout.HAlign
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.annotations.RequiresEdt
@@ -371,9 +374,6 @@ class MessageView(
     fun promptToolbarActive() = promptToolbar?.active() == true
 
     @RequiresEdt
-    fun promptToolbarAlignment() = promptToolbar?.alignment()
-
-    @RequiresEdt
     private fun syncPromptToolbar() {
         promptToolbar?.setActive(prompt?.copyMarkdown(trim = false)?.isNotEmpty() == true)
     }
@@ -456,7 +456,6 @@ class MessageView(
         prompt = view
         val bar = promptToolbar ?: MessageToolbar(
             { prompt?.copyMarkdown(trim = false) },
-            BorderLayout.LINE_END,
             revert?.let { fn -> { fn(msg.info.id) } },
         ).also { promptToolbar = it }
         val placeholder = promptToolbarPlaceholder ?: bar.placeholder().also { promptToolbarPlaceholder = it }
@@ -475,7 +474,7 @@ class MessageView(
             init {
                 isOpaque = false
                 add(box, BorderLayout.CENTER)
-                add(placeholder, BorderLayout.SOUTH)
+                add(placeholder.align(HAlign.RIGHT, VAlign.TOP), BorderLayout.SOUTH)
             }
         }
     }

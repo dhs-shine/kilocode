@@ -30,6 +30,7 @@ import java.awt.Point
 import java.awt.image.BufferedImage
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.SwingUtilities
 import javax.swing.text.JTextComponent
 
 @Suppress("UnstableApiUsage")
@@ -197,7 +198,9 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         assertSame(root.overlay, overlay.parent)
         val shown = overlay.components.single() as MessageToolbar
         assertSame(toolbar, shown)
-        assertEquals(anchor.preferredSize, shown.preferredSize)
+        assertEquals(anchor.preferredSize.width, shown.preferredSize.width)
+        assertTrue(anchor.preferredSize.height > shown.preferredSize.height)
+        assertInside(shown, shown.copyButton())
 
         shown.copyButton().doClick()
 
@@ -222,6 +225,7 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
         assertSame(root.overlay, overlay.parent)
         val shown = overlay.components.single() as MessageToolbar
         assertSame(toolbar, shown)
+        assertInside(shown, shown.copyButton())
         shown.copyButton().doClick()
 
         assertEquals("response", CopyPasteManager.getInstance().getContents(DataFlavor.stringFlavor))
@@ -282,6 +286,18 @@ class SessionSelectionCopyTest : SessionUiTestBase() {
     }
 
     private fun rgb(color: java.awt.Color): Int = color.rgb and RGB_MASK
+
+    private fun assertInside(parent: JComponent, child: JComponent) {
+        if (parent.width == 0 || parent.height == 0) {
+            parent.setBounds(0, 0, parent.preferredSize.width, parent.preferredSize.height)
+            parent.doLayout()
+        }
+        val pt = SwingUtilities.convertPoint(child.parent, child.location, parent)
+        assertTrue(pt.x >= 0)
+        assertTrue(pt.y >= 0)
+        assertTrue(pt.x + child.width <= parent.width)
+        assertTrue(pt.y + child.height <= parent.height)
+    }
 
     private fun show(overlay: SessionHoverCopyOverlay, target: SessionCopyTarget) {
         val method = SessionHoverCopyOverlay::class.java.getDeclaredMethod("show", SessionCopyTarget::class.java)

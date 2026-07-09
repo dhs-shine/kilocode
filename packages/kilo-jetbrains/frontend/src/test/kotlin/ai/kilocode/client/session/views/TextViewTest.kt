@@ -122,12 +122,12 @@ class TextViewTest : BasePlatformTestCase() {
         assertSame(view.md.component, layout.getLayoutComponent(BorderLayout.CENTER))
         val bar = view.copyToolbar as MessageToolbar
         val placeholder = layout.getLayoutComponent(BorderLayout.SOUTH)
-        assertEquals(BorderLayout.LINE_END, bar.alignment())
         assertTrue(components(bar).contains(view.copyButton()))
+        assertEquals(view.copyButton().preferredSize.width, bar.preferredSize.width)
         assertSame(view.copyAnchor, placeholder)
         assertNull(bar.parent)
-        assertEquals(bar.preferredSize, placeholder.preferredSize)
-        assertEquals(UiStyle.Gap.xs(), bar.insets.top)
+        assertEquals(bar.preferredSize.width, placeholder.preferredSize.width)
+        assertEquals(bar.preferredSize.height + UiStyle.Gap.xs(), placeholder.preferredSize.height)
         assertTrue(view.hasCopyToolbar())
     }
 

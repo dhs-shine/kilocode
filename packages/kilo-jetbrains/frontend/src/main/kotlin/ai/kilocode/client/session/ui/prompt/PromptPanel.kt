@@ -60,6 +60,7 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.AnimatedIcon
+import com.intellij.ui.IslandsState
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.xml.util.XmlStringUtil
 import com.intellij.util.ui.JBDimension
@@ -73,6 +74,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.BasicStroke
 import java.awt.BorderLayout
 import java.awt.Cursor
 import java.awt.Graphics
@@ -86,6 +88,7 @@ import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.awt.geom.Path2D
 import java.util.concurrent.Future
 import javax.swing.Box
 import javax.swing.BoxLayout
@@ -171,10 +174,13 @@ class PromptPanel(
             ed.settings.isUseSoftWraps = true
             ed.settings.isPaintSoftWraps = false
             ed.settings.isAdditionalPageAtBottom = false
+            ed.settings.setBlockCursor(false)
             SpellCheckingEditorCustomizationProvider.getInstance().getDisabledCustomization()?.customize(ed)
             ed.putUserData(PROMPT_ATTACHMENT_PASTE_HANDLER_KEY, PromptAttachmentPasteHandler { processPaste(it) })
+            ed.setVerticalScrollbarVisible(false)
+            ed.setHorizontalScrollbarVisible(false)
             ed.scrollPane.verticalScrollBarPolicy =
-                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
             ed.scrollPane.horizontalScrollBarPolicy =
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             installCompletionShortcut(ed)
@@ -312,9 +318,61 @@ class PromptPanel(
 
     private fun syncBorder() {
         border = JBUI.Borders.compound(
-            JBUI.Borders.customLineTop(SessionUiStyle.View.Prompt.separator()),
+            if (focused) {
+                JBUI.Borders.emptyTop(JBUI.scale(1))
+            } else {
+                JBUI.Borders.customLineTop(SessionUiStyle.View.Prompt.separator())
+            },
             JBUI.Borders.empty(),
         )
+    }
+
+    override fun paintChildren(g: Graphics) {
+        super.paintChildren(g)
+        if (!editorFocused()) return
+        val g2 = g.create() as Graphics2D
+        try {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            val line = JBUI.scale(SessionUiStyle.View.Prompt.FOCUS_WIDTH)
+            val half = line / 2f
+            val top = half
+            val left = half
+            val right = width - half
+            val bottom = height - half
+            val arc = if (IslandsState.isEnabled()) {
+                JBUI.scale(JBUI.getInt("Island.arc", SessionUiStyle.View.Prompt.CORNER_ARC)) / 2f
+            } else {
+                0f
+            }
+            val radius = arc
+                .coerceAtMost((right - left) / 2f)
+                .coerceAtMost(bottom - top)
+                .coerceAtLeast(0f)
+            val path = Path2D.Float().apply {
+                moveTo(left, top)
+                lineTo(right, top)
+                lineTo(right, bottom - radius)
+                if (radius > 0f) {
+                    quadTo(right, bottom, right - radius, bottom)
+                    lineTo(left + radius, bottom)
+                    quadTo(left, bottom, left, bottom - radius)
+                } else {
+                    lineTo(right, bottom)
+                    lineTo(left, bottom)
+                }
+                closePath()
+            }
+            g2.color = JBUI.CurrentTheme.Focus.focusColor()
+            g2.stroke = BasicStroke(line.toFloat(), BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND)
+            g2.draw(path)
+        } finally {
+            g2.dispose()
+        }
+    }
+
+    private fun editorFocused(): Boolean {
+        val ed = editor.getEditor(false) ?: return editor.hasFocus()
+        return editor.hasFocus() || ed.contentComponent.hasFocus()
     }
 
     @RequiresEdt

@@ -8,21 +8,18 @@ import ai.kilocode.client.ui.toolbarButton
 import com.intellij.icons.AllIcons
 import ai.kilocode.client.plugin.KiloBundle
 import com.intellij.util.concurrency.annotations.RequiresEdt
-import com.intellij.util.ui.JBUI
-import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.FlowLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
 
 internal class MessageToolbar(
     text: () -> String?,
-    private val align: String = BorderLayout.LINE_END,
     actions: List<ToolbarButtonAction> = emptyList(),
     tooltip: String = KiloBundle.message("session.copy.hover"),
-) : JPanel(BorderLayout()) {
-    constructor(text: () -> String?, align: String, revert: (() -> Unit)?) : this(
+) : JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)) {
+    constructor(text: () -> String?, revert: (() -> Unit)?) : this(
         text,
-        align,
         revert?.let {
             listOf(ToolbarButtonAction(AllIcons.Actions.Rollback, KiloBundle.message("revert.message.rollback"), it))
         }.orEmpty(),
@@ -39,8 +36,7 @@ internal class MessageToolbar(
 
     init {
         isOpaque = false
-        border = JBUI.Borders.emptyTop(UiStyle.Gap.xs())
-        add(row, align)
+        add(row)
     }
 
     @RequiresEdt
@@ -62,9 +58,6 @@ internal class MessageToolbar(
     fun active() = isVisible && button.isEnabled
 
     @RequiresEdt
-    fun alignment() = align
-
-    @RequiresEdt
     fun copyButton() = button
 
     fun placeholder(): JComponent = object : JPanel() {
@@ -72,11 +65,13 @@ internal class MessageToolbar(
             isOpaque = false
         }
 
-        override fun getPreferredSize(): Dimension = this@MessageToolbar.preferredSize
+        override fun getPreferredSize(): Dimension = dim(this@MessageToolbar.preferredSize)
 
-        override fun getMinimumSize(): Dimension = this@MessageToolbar.minimumSize
+        override fun getMinimumSize(): Dimension = dim(this@MessageToolbar.minimumSize)
 
-        override fun getMaximumSize(): Dimension = this@MessageToolbar.maximumSize
+        override fun getMaximumSize(): Dimension = dim(this@MessageToolbar.maximumSize)
+
+        private fun dim(size: Dimension) = Dimension(size.width, size.height + UiStyle.Gap.xs())
     }
 
     override fun removeNotify() {

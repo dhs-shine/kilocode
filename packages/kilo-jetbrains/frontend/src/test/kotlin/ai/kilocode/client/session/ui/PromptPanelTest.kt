@@ -192,7 +192,7 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(pad, ins.right)
     }
 
-    fun `test prompt focus keeps separator without side bars`() {
+    fun `test prompt focus outline follows editor focus`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         realize(panel, 260, 400)
         panel.setBounds(0, 0, 260, panel.preferredSize.height)
@@ -210,9 +210,10 @@ class PromptPanelTest : BasePlatformTestCase() {
                 it.focusGained(FocusEvent(editor.contentComponent, FocusEvent.FOCUS_GAINED))
             }
 
-            assertEquals(SessionUiStyle.View.Prompt.separator().rgb, paint(panel, panel.width / 2, 0).rgb)
-            assertTrue(JBUI.CurrentTheme.Focus.focusColor().rgb != paint(panel, 1, panel.height / 2).rgb)
-            assertTrue(JBUI.CurrentTheme.Focus.focusColor().rgb != paint(panel, panel.width - 2, panel.height / 2).rgb)
+            assertTrue(SessionUiStyle.View.Prompt.separator().rgb != paint(panel, panel.width / 2, 0).rgb)
+            assertEquals(JBUI.CurrentTheme.Focus.focusColor().rgb, paint(panel, panel.width / 2, 1).rgb)
+            assertEquals(JBUI.CurrentTheme.Focus.focusColor().rgb, paint(panel, 1, panel.height / 2).rgb)
+            assertEquals(JBUI.CurrentTheme.Focus.focusColor().rgb, paint(panel, panel.width - 1, panel.height / 2).rgb)
         } finally {
             KeyboardFocusManager.setCurrentKeyboardFocusManager(current)
         }
@@ -349,16 +350,17 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertTrue(attachedEditor.preferredSize.height < plainEditor.preferredSize.height)
     }
 
-    fun `test prompt editor scroll policy keeps horizontal disabled`() {
+    fun `test prompt editor hides scrollbars and keeps soft wraps`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         realize(panel, 180, 400)
 
         val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
 
-        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, editor.scrollPane.verticalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, editor.scrollPane.verticalScrollBarPolicy)
         assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
         assertTrue(editor.settings.isUseSoftWraps)
         assertFalse(editor.settings.isPaintSoftWraps)
+        assertFalse(editor.settings.isBlockCursor)
     }
 
     fun `test prompt editor highlights validated commands and mentions`() {
