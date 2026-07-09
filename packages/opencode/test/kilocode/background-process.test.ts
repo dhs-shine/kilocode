@@ -393,6 +393,13 @@ setInterval(() => console.log("tick"), 100)
         const otherID = SessionID.descending()
         const visible = yield* Effect.promise(() => BackgroundProcess.list({ sessionID: otherID }))
         expect(visible.map((item) => item.id)).toContain(info.id)
+        const files = artifacts(test.directory, info.id)
+        yield* Effect.promise(() =>
+          until(async () => {
+            const log = Bun.file(files.log)
+            return (await log.exists()) && (await log.text()).includes("ready")
+          }, "persistent process output was not flushed before reload"),
+        )
         yield* Effect.promise(() => BackgroundProcess.shutdown())
         const adopted = yield* Effect.promise(() => BackgroundProcess.get(info.id))
         expect(adopted?.pid).toBe(info.pid)
