@@ -64,16 +64,17 @@ class RevertBanner(
         card.setActionVisible("all", total > 1)
         notice.isVisible = revert.snapshot == null
         val keep = model.diff.mapTo(LinkedHashSet()) { it.file }
-        rows.entries.removeIf { item ->
-            if (item.key in keep) return@removeIf false
-            files.remove(item.value.panel)
-            true
-        }
-        for (item in model.diff) {
+        rows.entries.removeIf { it.key !in keep }
+        val order = model.diff.map { item ->
             val row = rows.getOrPut(item.file) {
-                Row(item.file).also { files.next(it.panel) }
+                Row(item.file)
             }
             row.update(item.file, item.additions, item.deletions)
+            row.panel
+        }
+        if (files.components.toList() != order) {
+            files.removeAll()
+            order.forEach { files.next(it) }
         }
         revalidate()
         repaint()

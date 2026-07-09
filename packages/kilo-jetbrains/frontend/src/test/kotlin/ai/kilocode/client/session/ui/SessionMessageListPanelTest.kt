@@ -710,24 +710,27 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         val banner = RevertBanner(model, {}, {})
         model.upsertMessage(msg("u1", "user"))
         model.setRevert(SessionRevertDto("u1"))
-        model.setDiff(listOf(DiffFileDto("src/A.kt", 1, 0)))
+        model.setDiff(listOf(DiffFileDto("src/A.kt", 1, 0), DiffFileDto("src/B.kt", 2, 1)))
         banner.update()
-        val row = components(banner).filterIsInstance<Stack>().first { stack ->
+        val rows = components(banner).filterIsInstance<Stack>().filter { stack ->
             stack.components.any { it is DiffStatBadge }
         }
         val count = components(banner).filterIsInstance<DiffStatBadge>().size
 
-        model.setDiff(listOf(DiffFileDto("src/A.kt", 3, 2)))
+        model.setDiff(listOf(DiffFileDto("src/B.kt", 4, 2), DiffFileDto("src/A.kt", 3, 2)))
         banner.update()
-        val next = components(banner).filterIsInstance<Stack>().first { stack ->
+        val next = components(banner).filterIsInstance<Stack>().filter { stack ->
             stack.components.any { it is DiffStatBadge }
         }
 
-        assertSame(row, next)
+        assertSame(rows[1], next[0])
+        assertSame(rows[0], next[1])
         assertEquals(count, components(banner).filterIsInstance<DiffStatBadge>().size)
-        val badge = components(banner).filterIsInstance<DiffStatBadge>().single()
-        assertEquals("+3", badge.addedLabelForTest().text)
-        assertEquals("-2", badge.removedLabelForTest().text)
+        val badges = components(banner).filterIsInstance<DiffStatBadge>()
+        assertEquals("+4", badges[0].addedLabelForTest().text)
+        assertEquals("-2", badges[0].removedLabelForTest().text)
+        assertEquals("+3", badges[1].addedLabelForTest().text)
+        assertEquals("-2", badges[1].removedLabelForTest().text)
     }
 
     fun `test rollback banner shows redo all only for multiple reverted messages`() {
