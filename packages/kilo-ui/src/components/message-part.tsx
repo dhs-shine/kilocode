@@ -2217,6 +2217,7 @@ ToolRegistry.register({
   name: "bash",
   render(props) {
     const i18n = useI18n()
+    const pruned = createMemo(() => swePruned(props.metadata))
     const pending = () => busy(props.status)
     const reveal = useToolReveal(pending, () => props.reveal !== false)
     const subtitle = () => props.input.description ?? props.metadata.description
@@ -2242,28 +2243,33 @@ ToolRegistry.register({
     const out = createMemo(() => processCarriageReturns(stripAnsi(rawOutput())))
 
     return (
-      <BasicTool
-        {...props}
-        icon="console"
-        hasDetails
-        defaultOpen={props.defaultOpen ?? true}
-        onOpenChange={setOpen}
-        allowPendingToggle
-        trigger={
-          <div data-slot="basic-tool-tool-info-structured">
-            <div data-slot="basic-tool-tool-info-main">
-              <span data-slot="basic-tool-tool-title">
-                <TextShimmer text={i18n.t("ui.tool.shell")} active={pending()} />
-              </span>
-              <Show when={subtitle()}>{(text) => <ShellText text={text()} animate={reveal()} />}</Show>
+      <>
+        <BasicTool
+          {...props}
+          icon="console"
+          hasDetails
+          defaultOpen={props.defaultOpen ?? true}
+          onOpenChange={setOpen}
+          allowPendingToggle
+          trigger={
+            <div data-slot="basic-tool-tool-info-structured">
+              <div data-slot="basic-tool-tool-info-main">
+                <span data-slot="basic-tool-tool-title">
+                  <TextShimmer text={i18n.t("ui.tool.shell")} active={pending()} />
+                </span>
+                <Show when={subtitle()}>{(text) => <ShellText text={text()} animate={reveal()} />}</Show>
+              </div>
             </div>
-          </div>
-        }
-      >
-        <Show when={mounted()}>
-          <BashHighlightedOutput cmd={cmd()} output={out()} outputPath={props.metadata.outputPath} active={open()} />
+          }
+        >
+          <Show when={mounted()}>
+            <BashHighlightedOutput cmd={cmd()} output={out()} outputPath={props.metadata.outputPath} active={open()} />
+          </Show>
+        </BasicTool>
+        <Show when={pruned()}>
+          {(info) => <ToolLoadedFile text={i18n.t("ui.tool.swePruned", info())} animate={props.reveal} />}
         </Show>
-      </BasicTool>
+      </>
     )
   },
 })
