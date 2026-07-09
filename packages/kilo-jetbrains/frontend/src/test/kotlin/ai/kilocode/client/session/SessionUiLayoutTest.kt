@@ -11,10 +11,12 @@ import ai.kilocode.client.session.ui.ConnectionPanel
 import ai.kilocode.client.session.ui.empty.EmptySessionPanel
 import ai.kilocode.client.session.ui.LoadingPanel
 import ai.kilocode.client.session.ui.SessionDropOverlay
+import ai.kilocode.client.session.ui.SessionLayoutPanel
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.SessionMessageListPanel
 import ai.kilocode.client.session.ui.SessionRootPanel
+import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.header.SessionHeaderPanel
 import ai.kilocode.client.session.ui.style.SessionUiStyle
@@ -29,7 +31,9 @@ import ai.kilocode.client.session.views.permission.PermissionView
 import ai.kilocode.client.session.views.question.QuestionView
 import ai.kilocode.rpc.dto.MessageWithPartsDto
 import com.intellij.ui.components.JBScrollPane
+import java.awt.Dimension
 import javax.swing.JLayeredPane
+import javax.swing.JPanel
 
 @Suppress("UnstableApiUsage")
 class SessionUiLayoutTest : SessionUiTestBase() {
@@ -71,6 +75,24 @@ class SessionUiLayoutTest : SessionUiTestBase() {
         assertSame(root.overlay, connection.parent)
         assertTrue(root.overlay.components.any { it is SessionAccountOverlay })
         assertFalse(root.content.components.contains(connection))
+    }
+
+    fun `test transcript uses larger standard gap before prompts after first item`() {
+        val panel = SessionLayoutPanel(gap = SessionUiStyle.SessionLayout.GAP).apply {
+            setSize(400, 300)
+            add(Row(SessionView.Kind.UserPrompt))
+            add(Row(SessionView.Kind.Default))
+            add(Row(SessionView.Kind.UserPrompt))
+        }
+
+        panel.doLayout()
+
+        assertEquals(0, panel.getComponent(0).y)
+        assertEquals(SessionUiStyle.SessionLayout.GAP, panel.getComponent(1).y - panel.getComponent(0).bounds.maxY.toInt())
+        assertEquals(
+            JBUI.scale(SessionUiStyle.SessionLayout.USER_PROMPT_GAP),
+            panel.getComponent(2).y - panel.getComponent(1).bounds.maxY.toInt(),
+        )
     }
 
     fun `test drop overlay is attached under root overlay layer`() {
@@ -640,4 +662,8 @@ class SessionUiLayoutTest : SessionUiTestBase() {
         .components
         .single()
         .let { it as javax.swing.JComponent }
+
+    private class Row(override val sessionViewKind: SessionView.Kind) : JPanel(), SessionView {
+        override fun getPreferredSize() = Dimension(100, 10)
+    }
 }

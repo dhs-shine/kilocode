@@ -4,6 +4,7 @@ import ai.kilocode.client.session.SessionFileOpener
 import ai.kilocode.client.session.model.FileAttachment
 import ai.kilocode.client.session.model.Message
 import ai.kilocode.client.session.ui.SessionLayoutPanel
+import ai.kilocode.client.session.ui.SessionView
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.session.ui.style.SessionEditorStyleTarget
@@ -35,9 +36,14 @@ class TurnView(
     private val repo: String? = null,
     private val hover: ((PartView, Boolean) -> Unit)? = null,
     private val revert: ((String) -> Unit)? = null,
-) : SessionLayoutPanel(JBUI.scale(SessionUiStyle.SessionLayout.GAP)), Disposable, SessionEditorStyleTarget {
+) : SessionLayoutPanel(JBUI.scale(SessionUiStyle.SessionLayout.GAP)), Disposable, SessionEditorStyleTarget, SessionView {
 
     private val messages = LinkedHashMap<String, MessageView>()
+
+    override val sessionViewKind = SessionView.Kind.Default
+
+    override val sessionGapKind: SessionView.Kind
+        get() = messages.values.firstOrNull { it.isVisible }?.sessionViewKind ?: SessionView.Kind.Default
 
     init {
         isOpaque = false

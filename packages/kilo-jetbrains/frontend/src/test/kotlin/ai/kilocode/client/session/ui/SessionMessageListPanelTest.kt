@@ -42,6 +42,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Color
@@ -103,6 +104,25 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         val right = panel.width - turn.x - turn.width
 
         assertEquals(right, left)
+    }
+
+    fun `test top level user turns use prompt gap after previous turn`() {
+        model.upsertMessage(msg("u1", "user"))
+        model.updateContent("u1", part("p1", "u1", "text", text = "first"))
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", part("p2", "a1", "text", text = "answer"))
+        model.upsertMessage(msg("u2", "user"))
+        model.updateContent("u2", part("p3", "u2", "text", text = "second"))
+
+        panel.setSize(600, 1000)
+        layout(panel)
+        val first = panel.findTurn("u1")!!
+        val second = panel.findTurn("u2")!!
+
+        assertEquals(
+            JBUI.scale(SessionUiStyle.SessionLayout.USER_PROMPT_GAP),
+            second.y - first.bounds.maxY.toInt(),
+        )
     }
 
     // ------ TurnAdded ------
