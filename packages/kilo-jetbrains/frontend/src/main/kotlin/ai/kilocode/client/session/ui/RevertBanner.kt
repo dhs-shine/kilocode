@@ -21,10 +21,11 @@ class RevertBanner(
     private val model: SessionModel,
     private val redoAction: () -> Unit,
     private val redoAllAction: () -> Unit,
+    focus: (() -> Unit)? = null,
 ) : BorderLayoutPanel(), SessionView, SessionEditorStyleTarget {
     override val sessionViewKind = SessionView.Kind.Default
 
-    private val card = BaseQuestionView()
+    private val card = BaseQuestionView(focus = focus)
 
     private val body = Stack.vertical(UiStyle.Gap.lg())
 

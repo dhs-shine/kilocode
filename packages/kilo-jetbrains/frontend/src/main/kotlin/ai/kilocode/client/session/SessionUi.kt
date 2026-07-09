@@ -68,6 +68,7 @@ import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
@@ -77,6 +78,7 @@ import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.registry.Registry
+import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.util.concurrency.annotations.RequiresEdt
 import java.util.function.Predicate
 import kotlinx.coroutines.CoroutineScope
@@ -263,6 +265,18 @@ class SessionUi(
         return prompt.defaultFocusedComponent
     }
 
+    internal val promptFocusedComponent: JComponent get() = prompt.defaultFocusedComponent
+
+    @RequiresEdt
+    internal fun focusPrompt() {
+        val target = prompt.defaultFocusedComponent
+        ApplicationManager.getApplication().invokeLater({
+            if (!disposed && !project.isDisposed) {
+                IdeFocusManager.getInstance(project).requestFocusInProject(target, project)
+            }
+        }, ModalityState.defaultModalityState())
+    }
+
     internal fun setModalContent(content: JComponent?, focus: (() -> JComponent)? = null) {
         modalFocus = if (content == null) null else focus
         root.setModalContent(content)
@@ -313,6 +327,7 @@ class SessionUi(
 
         load = LoadingPanel()
         progressBody = load
+        val focus = { manager?.focusPrompt() ?: focusPrompt() }
         question = QuestionView(
             project = project,
             reply = { id, dto, opts -> controller.replyQuestion(id, dto, opts) },
@@ -320,15 +335,18 @@ class SessionUi(
             follow = { scroll.following() },
             scroll = { scroll.followBottom(it) },
             selection = selection,
+            focus = focus,
         )
         permission = PermissionView(
             reply = { id, dto -> controller.replyPermission(id, dto) },
             selection = selection,
+            focus = focus,
         )
         login = LoginRequiredView(
             openProfile = { controller.openProfile() },
             dismiss = { controller.dismissLoginRequired() },
             selection = selection,
+            focus = focus,
         )
         messageBody = SessionMessageListPanel(
             controller.model,
@@ -343,7 +361,7 @@ class SessionUi(
             repo = workspace.directory,
             resize = { anchor, fn -> scroll.preserve(anchor, fn) },
             revert = ::revert,
-            banner = RevertBanner(controller.model, controller::redo, controller::redoAll),
+            banner = RevertBanner(controller.model, controller::redo, controller::redoAll, focus),
         ).also {
             it.onHover = { view, on -> if (on) popup.show(view) else popup.notifyExit(view) }
         }
