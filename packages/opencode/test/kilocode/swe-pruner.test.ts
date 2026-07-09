@@ -98,28 +98,15 @@ describe("SwePruner.extend", () => {
       properties: { filePath: { type: "string" as const } },
       required: ["filePath"],
     }
-    const extended = SwePruner.extend(schema, "read")
+    const extended = SwePruner.extend(schema)
     expect(extended.properties?.[SwePruner.PARAMETER]).toMatchObject({ type: "string" })
-    expect(extended.properties?.[SwePruner.PARAMETER]).toMatchObject({
-      description: expect.stringContaining("How is authentication handled?"),
-    })
     expect(extended.required).toEqual(["filePath"])
     expect(schema.properties).not.toHaveProperty(SwePruner.PARAMETER)
   })
 
-  test("uses an evidence-focused example for bash output", () => {
-    const schema = { type: "object" as const }
-    const extended = SwePruner.extend(schema, "bash")
-    expect(extended.properties?.[SwePruner.PARAMETER]).toMatchObject({
-      description: expect.stringContaining(
-        "what assertion details, error messages, and relevant stack frames were reported",
-      ),
-    })
-  })
-
   test("leaves non-object schemas untouched", () => {
     const schema = { type: "string" as const }
-    expect(SwePruner.extend(schema, "read")).toBe(schema)
+    expect(SwePruner.extend(schema)).toBe(schema)
   })
 })
 

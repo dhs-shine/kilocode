@@ -90,7 +90,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
     // kilocode_change start - SWE-Pruner (experimental): advertise the focus parameter on prunable tools
     const pruner = swe && SwePruner.prunable(item.id)
     const base = ToolJsonSchema.fromTool(item)
-    const schema = ProviderTransform.schema(input.model, pruner ? SwePruner.extend(base, item.id) : base)
+    const schema = ProviderTransform.schema(input.model, pruner ? SwePruner.extend(base) : base)
     // kilocode_change end
     tools[item.id] = tool({
       description: item.description,
