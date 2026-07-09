@@ -153,7 +153,7 @@ export function generate(
     ...(profile.network.mode === "proxy" ? [] : ["--disable-userns"]),
     "--unshare-pid",
     ...(profile.network.mode !== "allow" ? ["--unshare-net"] : []),
-    ...(profile.network.mode === "proxy" ? ["--cap-add", "CAP_SYS_ADMIN"] : []),
+    ...(profile.network.mode === "proxy" ? ["--cap-add", "cap_sys_admin"] : []),
     "--die-with-parent",
     "--new-session",
     "--ro-bind",
