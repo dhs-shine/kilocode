@@ -1440,7 +1440,7 @@ export const dict = {
     "샌드박스에서 쓰기를 허용하는 추가 파일시스템 경로(예: /tmp, /var/log). 샌드박스가 활성화되면 기본 쓰기 가능 경로와 병합됩니다.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "SWE-Pruner 활성화: 에이전트의 포커스 질문에 따라 대용량 읽기·검색 도구 출력을 관련 줄만 남기도록 정리합니다",
+    "SWE-Pruner 활성화: 에이전트가 제공한 초점 질문에 따라 작업 맥락을 고려하여 읽기, 검색 및 셸 도구의 대용량 출력을 프루닝합니다",
   "settings.experimental.swePrunerModel.title": "SWE-Pruner 모델",
   "settings.experimental.swePrunerModel.description":
     "도구 출력을 정리하는 데 사용하는 모델. 기본값은 구성된 소형 모델입니다",

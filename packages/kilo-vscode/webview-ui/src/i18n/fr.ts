@@ -1487,7 +1487,7 @@ export const dict = {
     "Chemins système supplémentaires autorisés en écriture par le bac à sable (par ex. /tmp, /var/log). Ils sont fusionnés avec les chemins en écriture par défaut lorsque le bac à sable est actif.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "Activer SWE-Pruner : élagage des sorties volumineuses des outils de lecture et de recherche, guidé par une question de focus fournie par l'agent",
+    "Activer SWE-Pruner : élagage des sorties volumineuses des outils de lecture, de recherche et de shell, tenant compte de la tâche et guidé par une question de focalisation fournie par l’agent",
   "settings.experimental.swePrunerModel.title": "Modèle SWE-Pruner",
   "settings.experimental.swePrunerModel.description":
     "Modèle utilisé pour élaguer les sorties d'outils ; par défaut, le small model configuré",

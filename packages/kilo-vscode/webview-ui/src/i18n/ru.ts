@@ -1457,7 +1457,7 @@ export const dict = {
     "Дополнительные пути файловой системы, в которые разрешена запись в песочнице (например, /tmp, /var/log). Они объединяются с путями записи по умолчанию при активной песочнице.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "Включить SWE-Pruner: обрезка больших выводов инструментов чтения и поиска на основе фокус-вопроса агента",
+    "Включить SWE-Pruner: обрезка больших объёмов вывода инструментов чтения, поиска и командной оболочки с учётом задачи и на основе предоставленного агентом фокус-вопроса",
   "settings.experimental.swePrunerModel.title": "Модель SWE-Pruner",
   "settings.experimental.swePrunerModel.description":
     "Модель для обрезки вывода инструментов; по умолчанию — настроенная малая модель",

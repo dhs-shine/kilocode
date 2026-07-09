@@ -1437,7 +1437,7 @@ export const dict = {
     "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "Enable SWE-Pruner: task-aware pruning of large read and search tool outputs, guided by a focus question from the agent",
+    "Enable SWE-Pruner: task-aware pruning of large read, search, and shell tool outputs, guided by a focus question from the agent",
   "settings.experimental.swePrunerModel.title": "SWE-Pruner Model",
   "settings.experimental.swePrunerModel.description":
     "Model used to skim tool outputs; defaults to the configured small model",

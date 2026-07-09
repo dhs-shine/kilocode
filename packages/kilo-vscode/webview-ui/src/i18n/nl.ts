@@ -1457,7 +1457,7 @@ export const dict = {
     "Extra bestandssysteempaden waar de sandbox schrijftoestemming voor geeft (bijv. /tmp, /var/log). Deze worden samengevoegd met de standaard schrijfbare paden wanneer de sandbox actief is.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "SWE-Pruner inschakelen: taakgericht snoeien van grote lees- en zoekuitvoer, gestuurd door een focusvraag van de agent",
+    "SWE-Pruner inschakelen: taakgericht snoeien van grote uitvoer van lees-, zoek- en shelltools, gestuurd door een focusvraag van de agent",
   "settings.experimental.swePrunerModel.title": "SWE-Pruner-model",
   "settings.experimental.swePrunerModel.description":
     "Model dat wordt gebruikt om tooluitvoer te snoeien; standaard het geconfigureerde kleine model",
