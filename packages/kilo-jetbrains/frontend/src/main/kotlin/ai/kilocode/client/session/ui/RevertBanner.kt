@@ -15,6 +15,7 @@ import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
+import javax.swing.JPanel
 
 class RevertBanner(
     private val model: SessionModel,
@@ -28,6 +29,8 @@ class RevertBanner(
     private val body = Stack.vertical(UiStyle.Gap.lg())
 
     private val files = Stack.vertical(UiStyle.Gap.xs())
+
+    private val rows = LinkedHashMap<String, Row>()
 
     private val hint = JBLabel(KiloBundle.message("revert.banner.hint")).apply {
         font = JBFont.small()
@@ -60,12 +63,17 @@ class RevertBanner(
         card.setHeader(KiloBundle.message(if (total == 1) "revert.banner.count.one" else "revert.banner.count.other", total))
         card.setActionVisible("all", total > 1)
         notice.isVisible = revert.snapshot == null
-        files.removeAll()
-        for (file in model.diff) {
-            val row = Stack.horizontal(UiStyle.Gap.sm())
-                .next(JBLabel(file.file).apply { foreground = UIUtil.getLabelForeground() })
-                .next(DiffStatBadge(file.additions, file.deletions))
-            files.next(row)
+        val keep = model.diff.mapTo(LinkedHashSet()) { it.file }
+        rows.entries.removeIf { item ->
+            if (item.key in keep) return@removeIf false
+            files.remove(item.value.panel)
+            true
+        }
+        for (item in model.diff) {
+            val row = rows.getOrPut(item.file) {
+                Row(item.file).also { files.next(it.panel) }
+            }
+            row.update(item.file, item.additions, item.deletions)
         }
         revalidate()
         repaint()
@@ -75,5 +83,27 @@ class RevertBanner(
         card.applyStyle(style)
         hint.foreground = UIUtil.getLabelForeground()
         notice.foreground = UIUtil.getContextHelpForeground()
+        rows.values.forEach { it.applyStyle() }
+    }
+
+    private class Row(file: String) {
+        private val label = JBLabel(file)
+        private val badge = DiffStatBadge(0, 0)
+        val panel: JPanel = Stack.horizontal(UiStyle.Gap.sm())
+            .next(label)
+            .next(badge)
+
+        init {
+            applyStyle()
+        }
+
+        fun update(file: String, additions: Int, deletions: Int) {
+            if (label.text != file) label.text = file
+            badge.update(additions, deletions)
+        }
+
+        fun applyStyle() {
+            label.foreground = UIUtil.getLabelForeground()
+        }
     }
 }

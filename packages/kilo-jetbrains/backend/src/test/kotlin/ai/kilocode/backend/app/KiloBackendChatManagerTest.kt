@@ -91,6 +91,38 @@ class KiloBackendChatManagerTest {
     }
 
     @Test
+    fun `revert failure throws on non successful response`() {
+        val port = mock.start()
+        val chat = KiloBackendChatManager(scope, TestLog())
+        chat.start(OkHttpClient(), port, MutableSharedFlow())
+        mock.revertStatus = 500
+
+        val error = assertFailsWith<RuntimeException> {
+            chat.revert("ses_abc", "/test/project", "msg1", "prt1")
+        }
+
+        assertEquals("revert failed: HTTP 500", error.message)
+        assertEquals(1, mock.requestCount("/session/ses_abc/revert"))
+        assertEquals("""{"messageID":"msg1","partID":"prt1"}""", mock.lastRevertBody)
+    }
+
+    @Test
+    fun `unrevert failure throws on non successful response`() {
+        val port = mock.start()
+        val chat = KiloBackendChatManager(scope, TestLog())
+        chat.start(OkHttpClient(), port, MutableSharedFlow())
+        mock.unrevertStatus = 500
+
+        val error = assertFailsWith<RuntimeException> {
+            chat.unrevert("ses_abc", "/test/project")
+        }
+
+        assertEquals("unrevert failed: HTTP 500", error.message)
+        assertEquals(1, mock.requestCount("/session/ses_abc/unrevert"))
+        assertEquals("{}", mock.lastUnrevertBody)
+    }
+
+    @Test
     fun `enhance prompt posts scoped request and returns rewritten text`() = runBlocking {
         val port = mock.start()
         val chat = KiloBackendChatManager(scope, TestLog())

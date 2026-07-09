@@ -124,6 +124,7 @@ class SessionUi(
     private var opening = ref != null
     private var pending = false
     private var loaded: Boolean? = null
+    private var revertPrompt: String? = null
     private val flushMs =
         Registry.intValue("kilo.session.flushMs", EVENT_FLUSH_MS.toInt())
             .takeIf { it > 0 }
@@ -667,14 +668,22 @@ class SessionUi(
 
     @RequiresEdt
     private fun syncPromptRevert() {
+        val saved = revertPrompt
+        if (saved != null && (prompt.text() != saved || prompt.hasAttachments())) {
+            revertPrompt = null
+            return
+        }
+        if (saved == null && prompt.hasDraft()) return
         val mark = controller.model.revert()
         if (mark == null) {
             prompt.clear()
+            revertPrompt = null
             return
         }
         val msg = controller.model.message(mark.messageID) ?: return
         val text = msg.parts.values.filterIsInstance<ai.kilocode.client.session.model.Text>().firstOrNull()?.content?.toString() ?: return
         prompt.setText(text)
+        revertPrompt = prompt.text()
     }
 
     private fun slashActions(): List<SlashAction> {

@@ -78,6 +78,21 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         assertTrue(appRpc.telemetry.any { it.event == "Session Redo" })
     }
 
+    fun `test redo unreverts stale rollback marker`() {
+        val (m, _, _) = prompted()
+        seedRevertMessages()
+        emit(ChatEventDto.SessionUpdated("ses_test", session("ses_test").copy(revert = SessionRevertDto("missing"))))
+        rpc.reverts.clear()
+        rpc.unreverts.clear()
+
+        edt { m.redo() }
+        flush()
+
+        assertTrue(rpc.reverts.isEmpty())
+        assertEquals(listOf("ses_test" to "/test"), rpc.unreverts)
+        assertTrue(appRpc.telemetry.any { it.event == "Session Redo" })
+    }
+
     fun `test redoAll calls unrevert`() {
         val (m, _, _) = prompted()
 

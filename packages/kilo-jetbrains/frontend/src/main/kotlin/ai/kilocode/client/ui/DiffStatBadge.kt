@@ -16,11 +16,11 @@ internal class DiffStatBadge(
     additions: Int,
     deletions: Int,
 ) : JPanel(GridBagLayout()) {
-    private val removed = JBLabel("-$deletions").apply {
+    private val removed = JBLabel().apply {
         foreground = removedColor()
         font = JBFont.small()
     }
-    private val added = JBLabel("+$additions").apply {
+    private val added = JBLabel().apply {
         foreground = addedColor()
         font = JBFont.small()
     }
@@ -33,6 +33,12 @@ internal class DiffStatBadge(
                 .next(removed)
                 .next(added),
         )
+        update(additions, deletions)
+    }
+
+    fun update(additions: Int, deletions: Int) {
+        removed.text = "-$deletions"
+        added.text = "+$additions"
     }
 
     override fun paintComponent(g: Graphics) {

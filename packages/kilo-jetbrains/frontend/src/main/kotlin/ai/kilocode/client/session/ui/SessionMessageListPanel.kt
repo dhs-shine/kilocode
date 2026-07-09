@@ -292,6 +292,9 @@ class SessionMessageListPanel(
         for ((id, view) in msgToView) {
             view.isVisible = !model.isRevertedMessage(id)
         }
+        for (view in turnViews.values) {
+            view.isVisible = view.messageIds().any { msgToView[it]?.isVisible == true }
+        }
     }
 
     private fun clear() {

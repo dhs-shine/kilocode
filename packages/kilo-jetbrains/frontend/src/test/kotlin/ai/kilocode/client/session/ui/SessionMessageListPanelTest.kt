@@ -28,6 +28,7 @@ import ai.kilocode.client.session.views.tool.ToolView
 import ai.kilocode.client.session.views.todo.TodoWriteView
 import ai.kilocode.client.ui.DiffStatBadge
 import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.rpc.dto.DiffFileDto
 import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageTimeDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
@@ -138,6 +139,32 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         """.trimIndent().trim(), panel.dump())
     }
 
+    fun `test turn view hides when all messages are reverted`() {
+        model.upsertMessage(msg("u1", "user"))
+        model.upsertMessage(msg("a1", "assistant"))
+        model.upsertMessage(msg("u2", "user"))
+        model.upsertMessage(msg("a2", "assistant"))
+
+        model.setRevert(SessionRevertDto("u2"))
+
+        assertTrue(panel.findTurn("u1")!!.isVisible)
+        assertTrue(panel.findMessage("u1")!!.isVisible)
+        assertFalse(panel.findTurn("u2")!!.isVisible)
+        assertFalse(panel.findMessage("u2")!!.isVisible)
+        assertFalse(panel.findMessage("a2")!!.isVisible)
+    }
+
+    fun `test turn view shows again when revert clears`() {
+        model.upsertMessage(msg("u1", "user"))
+        model.upsertMessage(msg("u2", "user"))
+        model.setRevert(SessionRevertDto("u2"))
+
+        model.setRevert(null)
+
+        assertTrue(panel.findTurn("u2")!!.isVisible)
+        assertTrue(panel.findMessage("u2")!!.isVisible)
+    }
+
     // ------ TurnRemoved ------
 
     fun `test removing only message removes the turn`() {
@@ -214,11 +241,31 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertFalse(view.hasCopyToolbar())
         assertEquals(BorderLayout.LINE_START, message.promptToolbarAlignment())
         assertTrue(message.promptToolbarActive())
+    }
 
+    fun `test user prompt toolbar omits rollback when revert handler is absent`() {
+        model.upsertMessage(msg("u1", "user"))
+        model.updateContent("u1", part("p1", "u1", "text", text = "hello"))
+
+        val message = panel.findMessage("u1")!!
+
+        assertFalse(components(message).filterIsInstance<JButton>().any { it.toolTipText == KiloBundle.message("revert.message.rollback") })
+    }
+
+    fun `test user prompt toolbar shows rollback when revert handler is present`() {
+        var called: String? = null
+        panel = SessionMessageListPanel(model, parent, openFile = openFile, revert = { called = it })
+        model.upsertMessage(msg("u1", "user"))
+        model.updateContent("u1", part("p1", "u1", "text", text = "hello"))
+
+        val message = panel.findMessage("u1")!!
         val rollback = components(message)
             .filterIsInstance<JButton>()
             .first { it.toolTipText == KiloBundle.message("revert.message.rollback") }
+        rollback.doClick()
+
         assertEquals(Cursor.HAND_CURSOR, rollback.cursor.type)
+        assertEquals("u1", called)
     }
 
     fun `test latest non blank assistant text part gets copy toolbar`() {
@@ -657,6 +704,30 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
             .filterIsInstance<JBLabel>()
             .first { it.text == KiloBundle.message("revert.banner.hint") }
         assertEquals(UIUtil.getLabelForeground().rgb, hint.foreground.rgb)
+    }
+
+    fun `test rollback banner reuses file rows across updates`() {
+        val banner = RevertBanner(model, {}, {})
+        model.upsertMessage(msg("u1", "user"))
+        model.setRevert(SessionRevertDto("u1"))
+        model.setDiff(listOf(DiffFileDto("src/A.kt", 1, 0)))
+        banner.update()
+        val row = components(banner).filterIsInstance<Stack>().first { stack ->
+            stack.components.any { it is DiffStatBadge }
+        }
+        val count = components(banner).filterIsInstance<DiffStatBadge>().size
+
+        model.setDiff(listOf(DiffFileDto("src/A.kt", 3, 2)))
+        banner.update()
+        val next = components(banner).filterIsInstance<Stack>().first { stack ->
+            stack.components.any { it is DiffStatBadge }
+        }
+
+        assertSame(row, next)
+        assertEquals(count, components(banner).filterIsInstance<DiffStatBadge>().size)
+        val badge = components(banner).filterIsInstance<DiffStatBadge>().single()
+        assertEquals("+3", badge.addedLabelForTest().text)
+        assertEquals("-2", badge.removedLabelForTest().text)
     }
 
     fun `test rollback banner shows redo all only for multiple reverted messages`() {

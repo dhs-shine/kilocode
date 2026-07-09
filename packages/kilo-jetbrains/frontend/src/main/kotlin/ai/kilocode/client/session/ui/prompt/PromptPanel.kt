@@ -378,6 +378,12 @@ class PromptPanel(
     fun text(): String = editor.text.trim()
 
     @RequiresEdt
+    fun hasDraft(): Boolean = text().isNotEmpty() || attachments.isNotEmpty()
+
+    @RequiresEdt
+    fun hasAttachments(): Boolean = attachments.isNotEmpty()
+
+    @RequiresEdt
     fun setText(value: String) {
         editor.text = value
         syncEditorHeight()

@@ -454,6 +454,11 @@ class SessionController(
         val mark = model.revert() ?: return
         val msgs = model.messages().toList()
         val pos = msgs.indexOfFirst { it.info.id == mark.messageID }
+        if (pos < 0) {
+            sid?.let { capture("Session Redo", sessionProps(it)) }
+            unrevert()
+            return
+        }
         val next = msgs.drop(pos + 1).firstOrNull { it.info.role == "user" }
         if (next == null) {
             sid?.let { capture("Session Redo", sessionProps(it)) }
