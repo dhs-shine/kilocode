@@ -1,6 +1,6 @@
 import { createEffect, createSignal, on, onCleanup, type Accessor } from "solid-js"
 
-// kilocode_change start - Solid's Node export disables browser-only scheduling primitives
+// kilocode_change start - port anomalyco/opencode#31748 for Node build conditions
 export function createDebouncedSignal<T>(value: T, ms: number): [Accessor<T>, (value: T) => void] {
   const [get, set] = createSignal(value)
   let timer: ReturnType<typeof setTimeout> | undefined

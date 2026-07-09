@@ -76,7 +76,7 @@ export function prefetchPreviews(sdk: Sdk, sync: Sync, sessionIDs: readonly stri
 export function createLeadingTrailingSignal<T>(initial: T, ms: number): [Accessor<T>, (v: T) => void, (v: T) => void] {
   const [get, set] = createSignal(initial)
   const setNow = (v: T) => set(() => v)
-  // kilocode_change start - preserve scheduling when Solid resolves its Node export
+  // kilocode_change start - Kilo preview equivalent of anomalyco/opencode#31748
   let timer: ReturnType<typeof setTimeout> | undefined
   let queued = false
   let value = initial
