@@ -616,7 +616,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Grep搜尋",
   "ui.permission.toolLabel.webSearch": "Web搜尋",
   "ui.permission.toolLabel.list": "列出",
-  "ui.permission.toolLabel.externalDirectory": "讀取外部目錄",
+  "ui.permission.toolLabel.externalDirectory": "存取外部目錄",
   "ui.permission.toolLabel.webFetch": "Web取得",
   "ui.permission.toolLabel.task": "任務",
   "ui.permission.toolLabel.skill": "技能",
