@@ -342,7 +342,7 @@ class SessionUi(
             ::openAttachment,
             repo = workspace.directory,
             resize = { anchor, fn -> scroll.preserve(anchor, fn) },
-            revert = { id -> controller.revert(id) },
+            revert = ::revert,
             banner = RevertBanner(controller.model, controller::redo, controller::redoAll),
         ).also {
             it.onHover = { view, on -> if (on) popup.show(view) else popup.notifyExit(view) }
@@ -664,6 +664,12 @@ class SessionUi(
         }
         controller.prompt(text, files)
         scroll.followBottom(follow)
+    }
+
+    @RequiresEdt
+    private fun revert(id: String) {
+        scroll.followBottom(true)
+        controller.revert(id)
     }
 
     @RequiresEdt
