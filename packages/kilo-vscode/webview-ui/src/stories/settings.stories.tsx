@@ -66,7 +66,17 @@ export const AutoApproveBashOnly: Story = {
 export const SandboxingPanel: Story = {
   name: "Settings — sandboxing controls",
   render: () => (
-    <StoryProviders config={{ sandbox: { network: "deny" } }} features={{ sandboxControls: true }}>
+    <StoryProviders
+      config={{
+        sandbox: {
+          enabled: true,
+          network: "deny",
+          allowed_hosts: ["github.com:443", "api.github.com:443"],
+          writable_paths: ["~/shared-output"],
+        },
+      }}
+      features={{ sandboxControls: true }}
+    >
       <div style={{ height: "700px", display: "flex", "flex-direction": "column" }}>
         <Settings tab="sandboxing" />
       </div>

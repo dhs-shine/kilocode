@@ -1482,6 +1482,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Bloquer l'accès réseau sortant des commandes provenant du modèle et des outils HTTP. Les serveurs MCP locaux et les hooks de plugin ne sont pas soumis à cette restriction. Le trafic d'inférence des fournisseurs et des modèles reste disponible.",
 
+  "settings.sandboxing.allowedHosts.title": "Destinations réseau autorisées",
+  "settings.sandboxing.allowedHosts.description":
+    "Hôtes et ports HTTPS exacts auxquels le bac à sable peut accéder. GitHub CLI nécessite généralement github.com:443 et api.github.com:443. Les modifications s’appliquent aux nouvelles sessions.",
   "settings.sandboxing.writablePaths.title": "Chemins en écriture supplémentaires",
   "settings.sandboxing.writablePaths.description":
     "Chemins système supplémentaires autorisés en écriture par le bac à sable (par ex. /tmp, /var/log). Ils sont fusionnés avec les chemins en écriture par défaut lorsque le bac à sable est actif.",

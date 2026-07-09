@@ -1422,6 +1422,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "احظر الوصول الصادر إلى الشبكة من الأوامر الصادرة عن النموذج وأدوات HTTP. تعمل خوادم MCP المحلية وخطافات المكونات الإضافية خارج هذا التقييد. تظل حركة مرور استدلال الموفّر والنموذج متاحة.",
 
+  "settings.sandboxing.allowedHosts.title": "وجهات الشبكة المسموح بها",
+  "settings.sandboxing.allowedHosts.description":
+    "مضيفات ومنافذ HTTPS الدقيقة التي يمكن لصندوق الحماية الوصول إليها. يحتاج GitHub CLI عادةً إلى github.com:443 وapi.github.com:443. تنطبق التغييرات على الجلسات الجديدة.",
   "settings.sandboxing.writablePaths.title": "مسارات قابلة للكتابة إضافية",
   "settings.sandboxing.writablePaths.description":
     "مسارات نظام ملفات إضافية يسمح صندوق الرمل بالكتابة إليها (مثل /tmp، /var/log). يتم دمجها مع مسارات الكتابة الافتراضية عندما يكون صندوق الرمل نشطًا.",

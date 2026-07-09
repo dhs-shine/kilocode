@@ -1431,6 +1431,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "บล็อกการเข้าถึงเครือข่ายขาออกจากคำสั่งที่มาจากโมเดลและเครื่องมือ HTTP เซิร์ฟเวอร์ MCP ภายในเครื่องและฮุกของปลั๊กอินทำงานอยู่นอกข้อจำกัดนี้ การรับส่งข้อมูลสำหรับการอนุมานของผู้ให้บริการและโมเดลยังคงใช้งานได้",
 
+  "settings.sandboxing.allowedHosts.title": "ปลายทางเครือข่ายที่อนุญาต",
+  "settings.sandboxing.allowedHosts.description":
+    "โฮสต์และพอร์ต HTTPS ที่แน่นอนซึ่งแซนด์บ็อกซ์เข้าถึงได้ โดยทั่วไป GitHub CLI ต้องใช้ github.com:443 และ api.github.com:443 การเปลี่ยนแปลงมีผลกับเซสชันใหม่",
   "settings.sandboxing.writablePaths.title": "เส้นทางที่เขียนได้เพิ่มเติม",
   "settings.sandboxing.writablePaths.description":
     "เส้นทางระบบไฟล์เพิ่มเติมที่แซนด์บ็อกซ์อนุญาตให้เขียนได้ (เช่น /tmp, /var/log) จะถูกรวมเข้ากับเส้นทางที่เขียนได้เริ่มต้นเมื่อแซนด์บ็อกซ์เปิดใช้งาน",

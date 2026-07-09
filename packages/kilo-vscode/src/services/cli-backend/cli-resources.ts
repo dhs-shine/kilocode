@@ -9,6 +9,8 @@ const kiloSandboxWorker = "kilo-sandbox-mutation-worker.js"
 const bwrap = "bwrap"
 const bwrapLicense = path.join("licenses", "bubblewrap")
 const bwrapLicenseFiles = ["NOTICE", "COPYING", "MUSL-COPYRIGHT", "build.ts"]
+const sandboxNetworkFiles = ["kilo-sandbox-network-relay.js", "kilo-sandbox-seccomp"]
+const sandboxRuntimeLicense = path.join("licenses", "sandbox-runtime")
 
 function paths(file: string) {
   if (/^[a-z]:[\\/]/i.test(file) || file.includes("\\")) return path.win32
@@ -60,6 +62,8 @@ export async function copySandboxResources(source: string, target: string): Prom
   const destination = path.join(to, bwrapLicense)
   await fs.promises.rm(helper, { force: true })
   await fs.promises.rm(destination, { recursive: true, force: true })
+  await Promise.all(sandboxNetworkFiles.map((file) => fs.promises.rm(path.join(to, file), { force: true })))
+  await fs.promises.rm(path.join(to, sandboxRuntimeLicense), { recursive: true, force: true })
 
   const executable = path.join(from, bwrap)
   if (!fs.existsSync(executable)) return
@@ -69,6 +73,18 @@ export async function copySandboxResources(source: string, target: string): Prom
   const licenses = path.join(from, bwrapLicense)
   if (!fs.existsSync(licenses)) return
   await fs.promises.cp(licenses, destination, { recursive: true })
+
+  for (const file of sandboxNetworkFiles) {
+    const source = path.join(from, file)
+    if (!fs.existsSync(source)) continue
+    const target = path.join(to, file)
+    await fs.promises.copyFile(source, target)
+    if (file === "kilo-sandbox-seccomp") await fs.promises.chmod(target, 0o755)
+  }
+  const runtimeLicense = path.join(from, sandboxRuntimeLicense)
+  if (fs.existsSync(runtimeLicense)) {
+    await fs.promises.cp(runtimeLicense, path.join(to, sandboxRuntimeLicense), { recursive: true })
+  }
 }
 
 export async function copyKiloSandboxWorker(source: string, target: string): Promise<void> {

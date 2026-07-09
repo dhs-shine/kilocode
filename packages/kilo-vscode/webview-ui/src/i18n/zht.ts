@@ -1369,6 +1369,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "封鎖模型發起的命令和 HTTP 工具的對外網路存取。本機 MCP 伺服器和外掛程式鉤子不受此限制。供應商與模型推論流量仍然可用。",
 
+  "settings.sandboxing.allowedHosts.title": "允許的網路目的地",
+  "settings.sandboxing.allowedHosts.description":
+    "沙盒可存取的確切 HTTPS 主機與連接埠。GitHub CLI 通常需要 github.com:443 和 api.github.com:443。變更適用於新工作階段。",
   "settings.sandboxing.writablePaths.title": "額外可寫路徑",
   "settings.sandboxing.writablePaths.description":
     "沙盒允許寫入的額外檔案系統路徑（例如 /tmp、/var/log）。沙盒啟用後，這些路徑會與預設可寫路徑合併。",

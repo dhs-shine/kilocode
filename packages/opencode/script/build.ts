@@ -23,6 +23,7 @@ import pkg from "../package.json"
 import { stageBubblewrap } from "./kilocode/bubblewrap"
 import { LanceDBRuntime } from "../src/kilocode/lancedb"
 import { KiloSandboxWorker } from "./kilocode/kilo-sandbox-worker"
+import { KiloSandboxNetwork } from "./kilocode/kilo-sandbox-network"
 // kilocode_change end
 
 // Load migrations from migration directories
@@ -250,6 +251,7 @@ await $`rm -rf dist`
 // kilocode_change start
 const kiloConsoleDist = await buildKiloConsole()
 const kiloSandboxWorker = await KiloSandboxWorker.bundle()
+const kiloSandboxNetwork = await KiloSandboxNetwork.bundle()
 // kilocode_change end
 
 const binaries: Record<string, string> = {}
@@ -336,6 +338,8 @@ for (const item of targets) {
       KILO_SESSION_EXPORT_WORKER_PATH: sessionExportWorkerPath,
       KILO_INDEXING_WORKER_PATH: indexingWorkerPath,
       KILO_SANDBOX_MUTATION_WORKER_PATH: JSON.stringify(KiloSandboxWorker.filename),
+      KILO_SANDBOX_NETWORK_RELAY_PATH: item.os === "linux" ? JSON.stringify(KiloSandboxNetwork.relay) : "undefined",
+      KILO_SANDBOX_SECCOMP_PATH: item.os === "linux" ? JSON.stringify(KiloSandboxNetwork.seccomp) : "undefined",
       // kilocode_change end
       KILO_CHANNEL: `'${Script.channel}'`,
       KILO_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
@@ -350,6 +354,9 @@ for (const item of targets) {
   await copyTreeSitterWasms(path.resolve(dir, `dist/${name}/bin`))
   await copyKiloConsole(kiloConsoleDist, path.resolve(dir, `dist/${name}/bin`))
   await KiloSandboxWorker.copy(kiloSandboxWorker, path.resolve(dir, `dist/${name}/bin`))
+  if (item.os === "linux") {
+    await KiloSandboxNetwork.copy(kiloSandboxNetwork, path.resolve(dir, `dist/${name}/bin`), item.arch)
+  }
 
   if (item.os === "linux") {
     const interpreters: Record<string, string> = {
@@ -402,6 +409,7 @@ for (const item of targets) {
       Bun.file(path.join(licenses, "NOTICE")).text(),
       Bun.file(path.join(licenses, "COPYING")).text(),
       Bun.file(path.join(licenses, "MUSL-COPYRIGHT")).text(),
+      Bun.file(path.resolve(dir, `dist/${name}/bin/licenses/sandbox-runtime/LICENSE`)).text(),
     ])
     await Bun.write(`dist/${name}/LICENSE`, content.join("\n\n---\n\n"))
   }

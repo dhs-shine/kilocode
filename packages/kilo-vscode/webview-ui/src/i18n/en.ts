@@ -1431,7 +1431,10 @@ export const dict = {
   "settings.sandboxing.title": "Sandboxing",
   "settings.sandboxing.network.title": "Restrict Network Access",
   "settings.sandboxing.network.description":
-    "Block outbound network access from model-originated commands and HTTP tools. Local MCP servers and plugin hooks run outside this restriction. Provider and model inference traffic remains available.",
+    "Block direct outbound access from model-originated commands and HTTP tools. MCP tools are unavailable while restricted. Provider traffic and trusted plugin hooks remain outside this restriction.",
+  "settings.sandboxing.allowedHosts.title": "Allowed Network Destinations",
+  "settings.sandboxing.allowedHosts.description":
+    "Exact HTTPS hosts and ports the sandbox may access. GitHub CLI normally needs github.com:443 and api.github.com:443. Changes apply to new sessions.",
   "settings.sandboxing.writablePaths.title": "Additional Writable Paths",
   "settings.sandboxing.writablePaths.description":
     "Extra filesystem paths the sandbox allows writes to (e.g. /tmp, /var/log). These are merged with the default writable paths when the sandbox is active.",

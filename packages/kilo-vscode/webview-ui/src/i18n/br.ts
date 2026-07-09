@@ -1458,6 +1458,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Bloqueie o acesso de saída à rede para comandos originados pelo modelo e ferramentas HTTP. Servidores MCP locais e hooks de plugins são executados fora dessa restrição. O tráfego de inferência de provedores e modelos permanece disponível.",
 
+  "settings.sandboxing.allowedHosts.title": "Destinos de rede permitidos",
+  "settings.sandboxing.allowedHosts.description":
+    "Hosts e portas HTTPS exatos que o sandbox pode acessar. O GitHub CLI normalmente precisa de github.com:443 e api.github.com:443. As alterações valem para novas sessões.",
   "settings.sandboxing.writablePaths.title": "Caminhos graváveis adicionais",
   "settings.sandboxing.writablePaths.description":
     "Caminhos adicionais do sistema de arquivos onde o sandbox permite gravação (por exemplo, /tmp, /var/log). Eles são mesclados com os caminhos graváveis padrão quando o sandbox está ativo.",

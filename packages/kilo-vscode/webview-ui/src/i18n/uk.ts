@@ -1440,6 +1440,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Блокуйте вихідний доступ до мережі для команд, ініційованих моделлю, та HTTP-інструментів. Локальні MCP-сервери й хуки плагінів працюють поза цим обмеженням. Трафік провайдерів та інференсу моделей залишається доступним.",
 
+  "settings.sandboxing.allowedHosts.title": "Дозволені мережеві адреси",
+  "settings.sandboxing.allowedHosts.description":
+    "Точні HTTPS-хости та порти, доступні пісочниці. Для GitHub CLI зазвичай потрібні github.com:443 і api.github.com:443. Зміни застосовуються до нових сеансів.",
   "settings.sandboxing.writablePaths.title": "Додаткові шляхи для запису",
   "settings.sandboxing.writablePaths.description":
     "Додаткові шляхи файлової системи, у які дозволено запис у пісочниці (наприклад, /tmp, /var/log). Вони об'єднуються зі шляхами запису за замовчуванням, коли пісочниця активна.",

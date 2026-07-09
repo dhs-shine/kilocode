@@ -1478,6 +1478,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Blockiert den ausgehenden Netzwerkzugriff für vom Modell initiierte Befehle und HTTP-Tools. Lokale MCP-Server und Plugin-Hooks sind von dieser Einschränkung ausgenommen. Anbieter- und Modellinferenzdatenverkehr bleibt verfügbar.",
 
+  "settings.sandboxing.allowedHosts.title": "Zulässige Netzwerkziele",
+  "settings.sandboxing.allowedHosts.description":
+    "Exakte HTTPS-Hosts und Ports, auf die die Sandbox zugreifen darf. GitHub CLI benötigt normalerweise github.com:443 und api.github.com:443. Änderungen gelten für neue Sitzungen.",
   "settings.sandboxing.writablePaths.title": "Zusätzliche schreibbare Pfade",
   "settings.sandboxing.writablePaths.description":
     "Zusätzliche Dateisystempfade, in die die Sandbox Schreibvorgänge erlaubt (z. B. /tmp, /var/log). Diese werden mit den Standard-Schreibpfaden zusammengeführt, wenn die Sandbox aktiv ist.",

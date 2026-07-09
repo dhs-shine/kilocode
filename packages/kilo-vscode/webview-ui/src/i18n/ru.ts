@@ -1452,6 +1452,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Блокировать исходящий доступ к сети для команд, инициированных моделью, и HTTP-инструментов. Локальные серверы MCP и хуки плагинов не подпадают под это ограничение. Трафик к провайдерам и моделям для инференса остаётся доступным.",
 
+  "settings.sandboxing.allowedHosts.title": "Разрешенные сетевые назначения",
+  "settings.sandboxing.allowedHosts.description":
+    "Точные HTTPS-хосты и порты, доступные песочнице. Для GitHub CLI обычно требуются github.com:443 и api.github.com:443. Изменения применяются к новым сеансам.",
   "settings.sandboxing.writablePaths.title": "Дополнительные пути для записи",
   "settings.sandboxing.writablePaths.description":
     "Дополнительные пути файловой системы, в которые разрешена запись в песочнице (например, /tmp, /var/log). Они объединяются с путями записи по умолчанию при активной песочнице.",

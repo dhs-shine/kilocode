@@ -1448,6 +1448,9 @@ export const dict = {
   "settings.sandboxing.network.description":
     "Bloker udgående netværksadgang fra kommandoer, der stammer fra modellen, og HTTP-værktøjer. Lokale MCP-servere og plugin-hooks er ikke underlagt denne begrænsning. Inferenstrafik til udbydere og modeller er fortsat tilgængelig.",
 
+  "settings.sandboxing.allowedHosts.title": "Tilladte netværksdestinationer",
+  "settings.sandboxing.allowedHosts.description":
+    "Præcise HTTPS-værter og porte, som sandkassen må tilgå. GitHub CLI kræver normalt github.com:443 og api.github.com:443. Ændringer gælder for nye sessioner.",
   "settings.sandboxing.writablePaths.title": "Yderligere skrivbare stier",
   "settings.sandboxing.writablePaths.description":
     "Yderligere filsystemstier, som sandkassen tillader skrivning til (f.eks. /tmp, /var/log). Disse flettes med de standardskrivbare stier, når sandkassen er aktiv.",
