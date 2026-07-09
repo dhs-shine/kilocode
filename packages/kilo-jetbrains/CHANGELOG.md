@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Surface a clear error when the Kilo backend fails to start instead of hanging on loading, and write the `kilo-dev.log` diagnostic log in release builds.
+- Surface a clear error when the Kilo backend fails to start instead of hanging on loading, write the `kilo-dev.log` diagnostic log in release builds, and add CLI install path diagnostics for relocated JetBrains system folders.
 
 ## 7.4.2
 
