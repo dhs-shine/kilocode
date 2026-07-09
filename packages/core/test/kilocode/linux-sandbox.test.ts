@@ -5,7 +5,7 @@ import { createServer } from "node:net"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { Effect } from "effect"
+import { Effect, Stream } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { backendSupport, run, type Profile } from "@kilocode/sandbox"
 import { CurrentProxyFactory, startProxy, type ProxyFactory } from "@kilocode/sandbox"
@@ -51,6 +51,25 @@ function execute(command: string, args: ReadonlyArray<string>, cwd: string, poli
 
 function spawn(script: string, cwd: string, policy: Profile, factory?: ProxyFactory) {
   return execute(process.execPath, ["-e", script], cwd, policy, factory)
+}
+
+function output(command: string, args: ReadonlyArray<string>, cwd: string, policy: Profile, factory: ProxyFactory) {
+  return Effect.scoped(
+    run(
+      policy,
+      ChildProcessSpawner.ChildProcessSpawner.use((spawner) =>
+        spawner.spawn(ChildProcess.make(command, args, { cwd })).pipe(
+          Effect.flatMap((handle) =>
+            Effect.all({
+              code: handle.exitCode,
+              stdout: Stream.mkString(Stream.decodeText(handle.stdout)),
+              stderr: Stream.mkString(Stream.decodeText(handle.stderr)),
+            }),
+          ),
+        ),
+      ),
+    ).pipe(Effect.provide(CrossSpawnSpawner.defaultLayer), Effect.provideService(CurrentProxyFactory, factory)),
+  )
 }
 
 async function fixture() {
@@ -236,7 +255,7 @@ linux("allows only configured HTTP proxy destinations", async () => {
 
   try {
     const ok = await Effect.runPromise(
-      execute("/usr/bin/curl", ["-fsS", `http://allowed.test:${port}/allowed`], root.project, policy, factory),
+      output("/usr/bin/curl", ["-fsS", `http://allowed.test:${port}/allowed`], root.project, policy, factory),
     )
     const denied = await Effect.runPromise(
       execute("/usr/bin/curl", ["-fsS", `http://blocked.test:${port}/blocked`], root.project, policy, factory),
@@ -250,7 +269,8 @@ linux("allows only configured HTTP proxy destinations", async () => {
         factory,
       ),
     )
-    expect(Number(ok)).toBe(0)
+    expect(Number(ok.code), ok.stderr).toBe(0)
+    expect(ok.stdout).toBe("sandbox-proxy-ok")
     expect(Number(denied)).not.toBe(0)
     expect(Number(direct)).not.toBe(0)
     expect(allowedRequests).toBe(1)
@@ -291,7 +311,8 @@ linux("blocks arbitrary host Unix sockets in proxy mode", async () => {
   ].join("\n")
 
   try {
-    expect(Number(await Effect.runPromise(spawn(script, root.project, policy, factory)))).toBe(0)
+    const result = await Effect.runPromise(output(process.execPath, ["-e", script], root.project, policy, factory))
+    expect(Number(result.code), result.stderr).toBe(0)
     expect(accepted).toBe(0)
   } finally {
     target.listener.stop(true)

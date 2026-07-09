@@ -150,7 +150,7 @@ export function generate(
   if (worker) validate(allow, process.execPath, mounts)
   const args = [
     "--unshare-user",
-    "--disable-userns",
+    ...(profile.network.mode === "proxy" ? [] : ["--disable-userns"]),
     "--unshare-pid",
     ...(profile.network.mode !== "allow" ? ["--unshare-net"] : []),
     ...(profile.network.mode === "proxy" ? ["--cap-add", "CAP_SYS_ADMIN"] : []),
