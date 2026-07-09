@@ -3,8 +3,8 @@ package ai.kilocode.client.session.ui.selection
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.ToolbarButtonAction
 import ai.kilocode.client.ui.toolbarButton
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.ide.CopyPasteManager
+import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.awt.RelativePoint
@@ -13,6 +13,7 @@ import java.awt.Point
 import java.awt.datatransfer.StringSelection
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import javax.swing.Icon
 
 internal class SessionCopyButton(
     fill: Boolean = false,
@@ -22,7 +23,7 @@ internal class SessionCopyButton(
     private var balloon: Balloon? = null
     val button = toolbarButton(
         ToolbarButtonAction(
-            AllIcons.Actions.Copy,
+            COPY_ICON,
             tooltip,
         ) { copy() },
         fill,
@@ -54,5 +55,9 @@ internal class SessionCopyButton(
                 item.setAnimationEnabled(false)
                 item.show(RelativePoint(button, Point(button.width / 2, 0)), Balloon.Position.above)
             }
+    }
+
+    companion object {
+        private val COPY_ICON: Icon = IconLoader.getIcon("/icons/copy.svg", SessionCopyButton::class.java)
     }
 }
