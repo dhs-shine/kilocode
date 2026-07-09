@@ -21,6 +21,16 @@ const SCRIPT = `
     { id: "empty-text", type: "text", text: "   " },
     { id: "synthetic-text", type: "text", text: "Synthetic", synthetic: true },
     { id: "visible-text", type: "text", text: "Visible transcript text" },
+    { id: "redacted-reasoning", type: "reasoning", text: "[REDACTED]" },
+    { id: "visible-reasoning", type: "reasoning", text: "Inspect the implementation" },
+    { id: "todo-pending", type: "tool", tool: "todowrite", state: { status: "pending", input: {} } },
+    {
+      id: "todo-completed",
+      type: "tool",
+      tool: "todowrite",
+      state: { status: "completed", input: {}, output: "done", title: "Updated todos" },
+    },
+    { id: "read-running", type: "tool", tool: "read", state: { status: "running", input: {} } },
   ]
   const visible = parts.filter((part) => isRenderable(part, message)).map((part) => part.id)
 
@@ -28,7 +38,8 @@ const SCRIPT = `
     console.log("${FAIL}" + reason)
     process.exit(2)
   }
-  if (visible.length !== 1 || visible[0] !== "visible-text") {
+  const expected = ["visible-text", "visible-reasoning", "todo-completed", "read-running"]
+  if (visible.length !== expected.length || visible.some((id, index) => id !== expected[index])) {
     fail("did not exclude transcript-invisible parts")
   }
   console.log("${PASS}")

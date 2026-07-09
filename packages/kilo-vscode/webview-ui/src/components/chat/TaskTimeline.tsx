@@ -11,7 +11,7 @@ import { useSession } from "../../context/session"
 import { visibleParts } from "../../context/session-queue"
 import { color, label } from "../../utils/timeline/colors"
 import { geometry, hit, navigate } from "../../utils/timeline/geometry"
-import { dispatchTimelineHighlight } from "../../utils/timeline/highlight"
+import { dispatchTimelineHighlight, same, type TimelineHighlight } from "../../utils/timeline/highlight"
 import { sizes, pinned, MAX_HEIGHT } from "../../utils/timeline/sizes"
 import { isRenderable } from "../../utils/transcript-parts"
 import type { Part, Message } from "../../types/messages"
@@ -129,14 +129,27 @@ export const TaskTimeline: Component = () => {
     setTip(undefined)
   }
 
-  createEffect(on(bars, hideTip, { defer: true }))
+  createEffect(
+    on(
+      bars,
+      (next, previous) => {
+        const idx = hover()
+        if (idx < 0 || same(previous?.[idx], next[idx])) return
+        hideTip()
+      },
+      { defer: true },
+    ),
+  )
 
   // Highlight the chat part behind the hovered/focused bar, using its own
   // color, so it's easy to follow which bar belongs to which tool call.
-  createEffect(() => {
+  createEffect<TimelineHighlight | undefined>((previous) => {
     const idx = hover()
     const bar = idx >= 0 ? bars()[idx] : undefined
-    dispatchTimelineHighlight(bar ? { msgId: bar.msgId, partId: bar.partId } : undefined)
+    const next = bar ? { msgId: bar.msgId, partId: bar.partId } : undefined
+    if (same(previous, next)) return previous
+    dispatchTimelineHighlight(next)
+    return next
   })
   onCleanup(() => dispatchTimelineHighlight(undefined))
 
@@ -265,7 +278,7 @@ export const TaskTimeline: Component = () => {
           role="slider"
           tabIndex={0}
           aria-label="Session activity timeline"
-          aria-description="Use arrow keys to choose activity, then press Enter to open it in the transcript."
+          aria-keyshortcuts="ArrowLeft ArrowRight Home End Enter Space"
           aria-valuemin={bars().length > 0 ? 1 : 0}
           aria-valuemax={bars().length}
           aria-valuenow={value()}

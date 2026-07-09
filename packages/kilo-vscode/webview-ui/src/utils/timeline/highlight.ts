@@ -13,6 +13,10 @@ export interface TimelineHighlight {
   partId: string
 }
 
+export function same(a: TimelineHighlight | undefined, b: TimelineHighlight | undefined) {
+  return a?.msgId === b?.msgId && a?.partId === b?.partId
+}
+
 const EVENT = "timelineHighlight"
 
 export function dispatchTimelineHighlight(value: TimelineHighlight | undefined) {

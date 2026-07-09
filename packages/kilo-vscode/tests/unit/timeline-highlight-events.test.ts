@@ -12,7 +12,7 @@ const SCRIPT = `
   globalThis.window = window
   globalThis.CustomEvent = window.CustomEvent
 
-  const { dispatchTimelineHighlight, onTimelineHighlight } = await import("./src/utils/timeline/highlight.ts")
+  const { dispatchTimelineHighlight, onTimelineHighlight, same } = await import("./src/utils/timeline/highlight.ts")
   const values = []
   const dispose = onTimelineHighlight((value) => values.push(value))
   const value = { msgId: "message-1", partId: "part-1" }
@@ -27,6 +27,9 @@ const SCRIPT = `
   if (values.length !== 1) fail("listener was not cleaned up")
   if (values[0]?.msgId !== value.msgId || values[0]?.partId !== value.partId) {
     fail("listener received the wrong highlight")
+  }
+  if (!same(value, { ...value }) || same(value, { ...value, partId: "part-2" })) {
+    fail("highlight identity comparison is incorrect")
   }
   console.log("${PASS}")
 `

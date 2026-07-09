@@ -49,4 +49,9 @@ describe("TaskTimeline delegated tooltip contract", () => {
     expect(src).toMatch(/const select = \(idx: number\) => \{[\s\S]*showTip\(idx\)/)
     expect(src).toMatch(/select\(selected\(\)\)/)
   })
+
+  it("preserves a hovered part across streaming updates", () => {
+    expect(src).toMatch(/if \(idx < 0 \|\| same\(previous\?\.\[idx\], next\[idx\]\)\) return/)
+    expect(src).toMatch(/if \(same\(previous, next\)\) return previous/)
+  })
 })
