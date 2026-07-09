@@ -259,7 +259,13 @@ it.instance(
       const id = SessionID.make("ses_sandbox_default_on")
       const status = yield* SandboxPolicy.status(id)
       expect(status.enabled).toBe(status.available)
-      expect(yield* execute(id, sandboxed)).toBe(status.available)
+      const result = yield* execute(id, sandboxed).pipe(Effect.exit)
+      if (!status.available) {
+        expect(Exit.isFailure(result)).toBe(true)
+        return
+      }
+      expect(Exit.isSuccess(result)).toBe(true)
+      if (Exit.isSuccess(result)) expect(result.value).toBe(true)
     }),
   { config: { sandbox: { enabled: true } } },
 )
