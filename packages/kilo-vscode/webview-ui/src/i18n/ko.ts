@@ -140,7 +140,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}}개 메시지 되돌림",
   "revert.banner.redo": "다시 실행",
   "revert.banner.redo.all": "모두 다시 실행",
-  "revert.banner.hint": "새 메시지를 보내 이를 영구적으로 만드세요",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "에이전트가 완료될 때까지 기다리세요",
   "command.session.compact": "세션 압축",
   "command.session.compact.description": "컨텍스트 크기를 줄이기 위해 세션 요약",

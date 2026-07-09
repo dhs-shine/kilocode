@@ -137,7 +137,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} messages annulés",
   "revert.banner.redo": "Rétablir",
   "revert.banner.redo.all": "Tout rétablir",
-  "revert.banner.hint": "Envoyez un nouveau message pour rendre ceci permanent",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Attendre la fin de l'agent",
   "command.session.compact": "Compacter la session",
   "command.session.compact.description": "Résumer la session pour réduire la taille du contexte",

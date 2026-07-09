@@ -136,7 +136,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} 件のメッセージが元に戻されました",
   "revert.banner.redo": "やり直し",
   "revert.banner.redo.all": "すべてやり直し",
-  "revert.banner.hint": "新しいメッセージを送信してこれを永続させてください",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "エージェントの完了を待ってください",
   "command.session.compact": "セッションを圧縮",
   "command.session.compact.description": "セッションを要約してコンテキストサイズを削減",
