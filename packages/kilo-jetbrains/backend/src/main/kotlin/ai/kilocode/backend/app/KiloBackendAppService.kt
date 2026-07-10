@@ -194,6 +194,9 @@ class KiloBackendAppService private constructor(
         }
     }
 
+    /** Best-effort synchronous CLI teardown for IDE shutdown. Safe to call repeatedly; never suspends. */
+    fun shutdownForAppClose() = shutdown()
+
     suspend fun retry() {
         mutex.withLock {
             when (val current = _appState.value) {

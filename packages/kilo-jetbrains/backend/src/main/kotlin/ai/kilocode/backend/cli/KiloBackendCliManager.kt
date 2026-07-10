@@ -3,6 +3,7 @@ package ai.kilocode.backend.cli
 import ai.kilocode.KiloPlugin
 import ai.kilocode.backend.dev.KiloDevMode
 import ai.kilocode.log.KiloLog
+import com.intellij.execution.process.OSProcessUtil
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.util.SystemInfo
@@ -244,18 +245,8 @@ class KiloBackendCliManager(
 
     private fun kill(proc: Process, source: String, wait: Boolean = true) {
         log.info("$source — killing CLI process tree (pid ${proc.pid()})")
-        children(proc).forEach { it.destroy() }
-        proc.destroy()
-        if (!wait) return
-        if (!proc.waitFor(KILL_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-            log.warn("CLI process did not exit after SIGTERM, sending SIGKILL")
-            children(proc).forEach { it.destroyForcibly() }
-            proc.destroyForcibly()
-        }
+        killCliProcessTree(proc, log, wait = wait, timeoutSeconds = KILL_TIMEOUT_SECONDS)
     }
-
-    private fun children(proc: Process): List<ProcessHandle> =
-        proc.toHandle().descendants().toList().asReversed()
 
     private fun close(proc: Process) {
         runCatching { proc.errorStream.close() }.onFailure { log.info("CLI stderr stream close skipped: ${it.message}") }
@@ -270,6 +261,32 @@ class KiloBackendCliManager(
     }
 
     private fun elapsed(start: Long): Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)
+}
+
+internal fun killCliProcessTree(
+    proc: Process,
+    log: KiloLog,
+    wait: Boolean = true,
+    timeoutSeconds: Long = 5L,
+    windows: Boolean = SystemInfo.isWindows,
+) {
+    if (windows) {
+        val ok = runCatching { OSProcessUtil.killProcessTree(proc) }
+            .onFailure { log.warn("killProcessTree failed for pid ${proc.pid()}", it) }
+            .getOrDefault(false)
+        if (ok) return
+        proc.toHandle().descendants().toList().asReversed().forEach { it.destroyForcibly() }
+        proc.destroyForcibly()
+        return
+    }
+    proc.toHandle().descendants().toList().asReversed().forEach { it.destroy() }
+    proc.destroy()
+    if (!wait) return
+    if (!proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+        log.warn("CLI process did not exit after SIGTERM, sending SIGKILL")
+        proc.toHandle().descendants().toList().asReversed().forEach { it.destroyForcibly() }
+        proc.destroyForcibly()
+    }
 }
 
 internal fun startupDiagnostics(cli: File, env: Map<String, String>, log: KiloLog): String {

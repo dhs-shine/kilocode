@@ -167,6 +167,19 @@ class KiloBackendAppServiceTest {
     }
 
     @Test
+    fun `shutdown for app close disposes server once`() {
+        val server = FakeCliServer(mock)
+        val svc = KiloBackendAppService.create(scope, server, log)
+
+        svc.shutdownForAppClose()
+        svc.shutdownForAppClose()
+        svc.dispose()
+
+        assertEquals(KiloAppState.Disconnected, svc.appState.value)
+        assertEquals(1, server.disposeCount)
+    }
+
+    @Test
     fun `config is loaded`() = runBlocking {
         mock.config = """{"model":"claude-4","username":"testuser"}"""
         val svc = create()
