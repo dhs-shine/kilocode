@@ -1237,11 +1237,11 @@ export const dict = {
   "settings.sandboxing.title": "Sandbox",
   "settings.sandboxing.network.title": "Limita l'accesso alla rete",
   "settings.sandboxing.network.description":
-    "Blocca l'accesso in uscita alla rete per i comandi avviati dal modello e gli strumenti HTTP. I server MCP locali e gli hook dei plugin operano al di fuori di questa restrizione. Il traffico verso i provider e per l'inferenza dei modelli rimane disponibile.",
+    "Blocca l'accesso in uscita diretto dai comandi avviati dal modello e dagli strumenti HTTP. Gli strumenti MCP locali e remoti non sono disponibili mentre la restrizione è attiva. Il traffico del provider e gli hook dei plugin attendibili restano al di fuori di questa restrizione.",
 
   "settings.sandboxing.allowedHosts.title": "Destinazioni di rete consentite",
   "settings.sandboxing.allowedHosts.description":
-    "Host e porte HTTPS esatti a cui può accedere la sandbox. GitHub CLI richiede normalmente github.com:443 e api.github.com:443. Le modifiche si applicano alle nuove sessioni.",
+    "Destinazioni DNS di host e porta per il traffico proxy HTTP e HTTPS in sandbox. GitHub CLI e HTTPS Git richiedono comunemente github.com:443 e api.github.com:443. Le modifiche si applicano alle nuove sessioni.",
   "settings.sandboxing.writablePaths.title": "Percorsi di scrittura aggiuntivi",
   "settings.sandboxing.writablePaths.description":
     "Percorsi aggiuntivi del file system in cui la sandbox consente la scrittura (es. /tmp, /var/log). Vengono uniti con i percorsi di scrittura predefiniti quando la sandbox è attiva.",

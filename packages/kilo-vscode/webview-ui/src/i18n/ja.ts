@@ -1441,11 +1441,11 @@ export const dict = {
   "settings.sandboxing.title": "サンドボックス化",
   "settings.sandboxing.network.title": "ネットワークアクセスを制限",
   "settings.sandboxing.network.description":
-    "モデルから発行されたコマンドと HTTP ツールによる外部ネットワークアクセスをブロックします。ローカル MCP サーバーとプラグインフックは、この制限の対象外です。プロバイダーおよびモデルへの推論通信は引き続き利用できます。",
+    "モデル起点のコマンドと HTTP ツールによる直接のアウトバウンドアクセスをブロックします。この制限が適用されている間、ローカルおよびリモートの MCP ツールは利用できません。プロバイダーのトラフィックと信頼済みプラグインフックは、この制限の対象外です。",
 
   "settings.sandboxing.allowedHosts.title": "許可されたネットワーク接続先",
   "settings.sandboxing.allowedHosts.description":
-    "サンドボックスがアクセスできる正確な HTTPS ホストとポートです。GitHub CLI には通常 github.com:443 と api.github.com:443 が必要です。変更は新しいセッションに適用されます。",
+    "サンドボックス化された HTTP および HTTPS プロキシトラフィックの DNS ホストとポートの宛先。GitHub CLI と HTTPS Git では通常、github.com:443 と api.github.com:443 が必要です。変更は新しいセッションに適用されます。",
   "settings.sandboxing.writablePaths.title": "追加の書き込み可能パス",
   "settings.sandboxing.writablePaths.description":
     "サンドボックスでの書き込みを許可する追加のファイルシステムパス（例: /tmp、/var/log）。サンドボックス有効時、デフォルトの書き込み可能パスと統合されます。",

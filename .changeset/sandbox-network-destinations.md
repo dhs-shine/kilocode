@@ -4,4 +4,4 @@
 "@kilocode/sdk": minor
 ---
 
-Allow exact HTTP and HTTPS destinations through the network sandbox while keeping all other direct outbound access blocked.
+Allow sandboxed HTTP and HTTPS proxy traffic to configured DNS hosts and ports while keeping direct outbound sockets blocked.

@@ -1476,11 +1476,11 @@ export const dict = {
   "settings.sandboxing.title": "Sandbox",
   "settings.sandboxing.network.title": "Netzwerkzugriff einschränken",
   "settings.sandboxing.network.description":
-    "Blockiert den ausgehenden Netzwerkzugriff für vom Modell initiierte Befehle und HTTP-Tools. Lokale MCP-Server und Plugin-Hooks sind von dieser Einschränkung ausgenommen. Anbieter- und Modellinferenzdatenverkehr bleibt verfügbar.",
+    "Blockiert den direkten ausgehenden Zugriff durch vom Modell initiierte Befehle und HTTP-Tools. Lokale und entfernte MCP-Tools sind während der Einschränkung nicht verfügbar. Provider-Datenverkehr und vertrauenswürdige Plugin-Hooks bleiben von dieser Einschränkung ausgenommen.",
 
   "settings.sandboxing.allowedHosts.title": "Zulässige Netzwerkziele",
   "settings.sandboxing.allowedHosts.description":
-    "Exakte HTTPS-Hosts und Ports, auf die die Sandbox zugreifen darf. GitHub CLI benötigt normalerweise github.com:443 und api.github.com:443. Änderungen gelten für neue Sitzungen.",
+    "DNS-Host- und Portziele für Sandbox-HTTP- und HTTPS-Proxy-Datenverkehr. GitHub CLI und HTTPS Git benötigen üblicherweise github.com:443 und api.github.com:443. Änderungen gelten für neue Sitzungen.",
   "settings.sandboxing.writablePaths.title": "Zusätzliche schreibbare Pfade",
   "settings.sandboxing.writablePaths.description":
     "Zusätzliche Dateisystempfade, in die die Sandbox Schreibvorgänge erlaubt (z. B. /tmp, /var/log). Diese werden mit den Standard-Schreibpfaden zusammengeführt, wenn die Sandbox aktiv ist.",

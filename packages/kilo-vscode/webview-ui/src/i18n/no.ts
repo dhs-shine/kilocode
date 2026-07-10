@@ -1409,11 +1409,11 @@ export const dict = {
   "settings.sandboxing.title": "Kjøring i sandkasse",
   "settings.sandboxing.network.title": "Begrens nettverkstilgang",
   "settings.sandboxing.network.description":
-    "Blokker utgående nettverkstilgang fra kommandoer generert av modellen og HTTP-verktøy. Lokale MCP-servere og programtilleggskroker kjører utenfor denne begrensningen. Trafikk for leverandør- og modellinferens forblir tilgjengelig.",
+    "Blokker direkte utgående tilgang fra kommandoer initiert av modellen og HTTP-verktøy. Lokale og eksterne MCP-verktøy er utilgjengelige mens denne begrensningen er aktiv. Leverandørtrafikk og pålitelige plugin-kroker omfattes ikke av denne begrensningen.",
 
   "settings.sandboxing.allowedHosts.title": "Tillatte nettverksmål",
   "settings.sandboxing.allowedHosts.description":
-    "Nøyaktige HTTPS-verter og porter som sandkassen kan bruke. GitHub CLI trenger vanligvis github.com:443 og api.github.com:443. Endringer gjelder for nye økter.",
+    "DNS-verts- og portdestinasjoner for HTTP- og HTTPS-proxytrafikk i sandkassen. GitHub CLI og HTTPS Git trenger vanligvis github.com:443 og api.github.com:443. Endringer gjelder for nye økter.",
   "settings.sandboxing.writablePaths.title": "Ytterligere skrivbare baner",
   "settings.sandboxing.writablePaths.description":
     "Ytterligere filsystembaner som sandkassen tillater skriving til (f.eks. /tmp, /var/log). Disse flettes med de standardskrivbare banene når sandkassen er aktiv.",

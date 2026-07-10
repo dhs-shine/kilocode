@@ -36,24 +36,40 @@ describe("sandbox network destinations", () => {
     }
   })
 
-  test("accepts only globally routable resolved addresses", () => {
-    for (const value of ["8.8.8.8", "1.1.1.1", "2606:4700:4700::1111", "2001:4860:4860::8888"]) {
-      expect(isPublicAddress(value), value).toBe(true)
-    }
-    for (const value of [
-      "127.0.0.1",
-      "10.0.0.1",
-      "169.254.169.254",
-      "192.168.0.1",
-      "100.64.0.1",
-      "224.0.0.1",
-      "::1",
-      "fe80::1",
-      "fc00::1",
-      "::ffff:169.254.169.254",
-      "64:ff9b::a9fe:a9fe",
-    ]) {
-      expect(isPublicAddress(value), value).toBe(false)
+  test("rejects known non-public resolved address ranges", () => {
+    for (const [input, expected, note] of [
+      ["8.8.8.8", true, "public IPv4"],
+      ["1.1.1.1", true, "public IPv4"],
+      ["2606:4700:4700::1111", true, "public IPv6 with unspecified-looking low 32 bits"],
+      ["2001:4860:4860::8888", true, "Google public IPv6"],
+      ["2607:f8b0:4005:805::200e", true, "Google public IPv6 endpoint"],
+      ["2606:4700:4700:1:a:0:100:0", true, "unknown network-specific /64 NAT64 layout"],
+      ["2606:4700:4700:1::a9fe:a9fe", true, "unknown network-specific /96 NAT64 layout"],
+      ["169.254.169.254", false, "metadata and link-local IPv4"],
+      ["10.0.0.1", false, "RFC1918 10/8"],
+      ["172.16.0.1", false, "RFC1918 172.16/12"],
+      ["192.168.0.1", false, "RFC1918 192.168/16"],
+      ["127.0.0.1", false, "loopback IPv4"],
+      ["100.64.0.1", false, "CGNAT IPv4"],
+      ["192.0.2.1", false, "documentation IPv4"],
+      ["198.51.100.1", false, "documentation IPv4"],
+      ["203.0.113.1", false, "documentation IPv4"],
+      ["240.0.0.1", false, "reserved IPv4"],
+      ["224.0.0.1", false, "multicast IPv4"],
+      ["::1", false, "loopback IPv6"],
+      ["fe80::1", false, "link-local IPv6"],
+      ["fc00::1", false, "unique-local IPv6"],
+      ["::ffff:8.8.8.8", false, "IPv4-mapped IPv6 with public IPv4"],
+      ["::8.8.8.8", false, "IPv4-compatible embedded IPv6"],
+      ["::808:808", false, "hexadecimal IPv4-compatible IPv6"],
+      ["64:ff9b::808:808", false, "well-known NAT64 with public IPv4"],
+      ["64:ff9b::a9fe:a9fe", false, "well-known NAT64 with metadata IPv4"],
+      ["64:ff9b:1::808:808", false, "local-use NAT64 with public IPv4"],
+      ["2002:808:808::1", false, "6to4 with public IPv4"],
+      ["2001:0:4136:e378:8000:63bf:3fff:fdd2", false, "Teredo"],
+      ["not-an-address", false, "invalid address"],
+    ] as const) {
+      expect(isPublicAddress(input), `${note}: ${input}`).toBe(expected)
     }
   })
 })

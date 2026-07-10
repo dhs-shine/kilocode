@@ -362,6 +362,43 @@ it.instance("serializes concurrent toggles for a session", () =>
   }),
 )
 
+it.instance("serializes activation with unrestricted tool start", () =>
+  Effect.gen(function* () {
+    const test = yield* TestInstance
+    const id = SessionID.make("ses_sandbox_activation_tool_race")
+    if (!(yield* SandboxPolicy.status(id)).available) return
+    const entered = yield* Deferred.make<void>()
+    const release = yield* Deferred.make<void>()
+    const family = yield* Deferred.make<void>()
+    const preflight = yield* Deferred.make<void>()
+    const guard = yield* Deferred.make<void>()
+    const running = yield* execute(
+      id,
+      Effect.gen(function* () {
+        yield* Deferred.succeed(entered, undefined)
+        yield* Deferred.await(release)
+        return yield* sandboxed
+      }),
+    ).pipe(Effect.forkChild)
+    yield* Deferred.await(entered)
+    const activation = yield* SandboxPolicy.toggleGuarded(
+      id,
+      () => Deferred.succeed(guard, undefined),
+      Deferred.succeed(family, undefined).pipe(Effect.as([{ id, directory: test.directory }])),
+      () => Deferred.succeed(preflight, undefined),
+    ).pipe(Effect.forkChild)
+    yield* Deferred.await(family)
+    yield* Deferred.await(preflight)
+    expect(yield* Deferred.isDone(guard)).toBe(false)
+
+    yield* Deferred.succeed(release, undefined)
+    expect(yield* Fiber.join(running)).toBe(false)
+    expect((yield* Fiber.join(activation)).enabled).toBe(true)
+    expect(yield* Deferred.isDone(guard)).toBe(true)
+    expect(yield* execute(id, sandboxed)).toBe(true)
+  }),
+)
+
 it.instance("prevents a queued toggle from restoring a retired override", () =>
   Effect.gen(function* () {
     const test = yield* TestInstance

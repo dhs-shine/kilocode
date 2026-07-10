@@ -17,9 +17,12 @@ import { SandboxConfig } from "./config"
 import { SandboxStore } from "./store"
 
 export type Snapshot = SandboxStore.Snapshot
+export type Target = { id: SessionID; directory: string }
 
 const snapshots = new Map<string, Snapshot>()
 const locks = new Map<SessionID, { semaphore: Semaphore.Semaphore; refs: number }>()
+const gates = new Map<SessionID, { semaphore: Semaphore.Semaphore; refs: number }>()
+const permits = 1_000_000
 
 function key(directory: string, sessionID: SessionID) {
   return directory + "\0" + sessionID
@@ -66,6 +69,31 @@ function locked<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
         if (entry.refs === 0 && locks.get(sessionID) === entry) locks.delete(sessionID)
       }),
   )
+}
+
+function lockedAll<A, E, R>(sessions: readonly SessionID[], effect: Effect.Effect<A, E, R>) {
+  return [...new Set(sessions)].reduceRight((next, sessionID) => locked(sessionID, next), effect)
+}
+
+function gated<A, E, R>(sessionID: SessionID, count: number, effect: Effect.Effect<A, E, R>) {
+  return Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const entry = gates.get(sessionID) ?? { semaphore: Semaphore.makeUnsafe(permits), refs: 0 }
+      entry.refs++
+      gates.set(sessionID, entry)
+      return entry
+    }),
+    (entry) => entry.semaphore.withPermits(count)(effect),
+    (entry) =>
+      Effect.sync(() => {
+        entry.refs--
+        if (entry.refs === 0 && gates.get(sessionID) === entry) gates.delete(sessionID)
+      }),
+  )
+}
+
+function gatedAll<A, E, R>(sessions: readonly SessionID[], effect: Effect.Effect<A, E, R>) {
+  return [...new Set(sessions)].reduceRight((next, sessionID) => gated(sessionID, permits, next), effect)
 }
 
 function root(path: string) {
@@ -211,9 +239,13 @@ export const networkRestricted = Effect.fn("SandboxPolicy.networkRestricted")(fu
   return current.state.enabled && current.state.mode !== "allow"
 })
 
-function change<E, R>(
+function change<E, R, F = never, Q = never, P = never, S = never>(
   sessionID: SessionID,
-  guard: Effect.Effect<unknown, E, R> | ((enabling: boolean) => Effect.Effect<unknown, E, R>),
+  guard:
+    | Effect.Effect<unknown, E, R>
+    | ((enabling: boolean, family: readonly Target[]) => Effect.Effect<unknown, E, R>),
+  family?: Effect.Effect<readonly Target[], F, Q>,
+  preflight?: (family: readonly Target[]) => Effect.Effect<unknown, P, S>,
 ) {
   return Effect.gen(function* () {
     const directory = yield* InstanceState.directory
@@ -232,19 +264,42 @@ function change<E, R>(
         }
         const enabling = !current.enabled
         if (enabling && !status.available) return status
-        yield* typeof guard === "function" ? guard(enabling) : guard
-        const next: Snapshot = { ...current, enabled: enabling, version: status.version + 1 }
-        yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
-        snapshots.set(key(directory, sessionID), next)
-        // The per-session SandboxStore is the authoritative state; the per-directory
-        // preference only seeds future sessions. A preference write failure must not
-        // fail the toggle or desync the in-memory cache from the persisted snapshot.
-        yield* Effect.promise(() => SandboxPreference.write(directory, next.enabled)).pipe(
-          Effect.catch(() => Effect.void),
-        )
-        const value = { ...status, enabled: next.enabled && support.available, version: next.version }
-        yield* (yield* Bus.Service).publish(Changed, { sessionID, ...value })
-        return value
+        const targets = enabling && family ? yield* family : [{ id: sessionID, directory }]
+        const sessions = targets.map((target) => target.id)
+        const update = Effect.gen(function* () {
+          yield* typeof guard === "function" ? guard(enabling, targets) : guard
+          const next: Snapshot = { ...current, enabled: enabling, version: status.version + 1 }
+          yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
+          snapshots.set(key(directory, sessionID), next)
+          if (enabling) {
+            yield* Effect.forEach(
+              targets,
+              (target) =>
+                target.id === sessionID ? Effect.void : inheritSnapshot(target.directory, next, target.id),
+              { discard: true },
+            )
+          }
+          // The per-session SandboxStore is the authoritative state; the per-directory
+          // preference only seeds future sessions. A preference write failure must not
+          // fail the toggle or desync the in-memory cache from the persisted snapshot.
+          yield* Effect.promise(() => SandboxPreference.write(directory, next.enabled)).pipe(
+            Effect.catch(() => Effect.void),
+          )
+          const value = { ...status, enabled: next.enabled && support.available, version: next.version }
+          yield* (yield* Bus.Service).publish(Changed, { sessionID, ...value })
+          return value
+        })
+        if (enabling) {
+          const children = sessions.filter((id) => id !== sessionID)
+          return yield* lockedAll(
+            children,
+            Effect.gen(function* () {
+              if (preflight) yield* preflight(targets)
+              return yield* gatedAll(sessions, update)
+            }),
+          )
+        }
+        return yield* update
       }),
     )
   })
@@ -278,6 +333,31 @@ function intersect(parent: Snapshot, child: Snapshot) {
   }
 }
 
+const inheritSnapshot = Effect.fn("SandboxPolicy.inheritSnapshot")(function* (
+  directory: string,
+  parent: Snapshot,
+  sessionID: SessionID,
+) {
+  const child = yield* read(directory, sessionID)
+  const next: Snapshot = child
+    ? {
+        enabled: parent.enabled || child.enabled,
+        ...intersect(parent, child),
+        version: child.version + 1,
+      }
+    : { ...parent, version: 0 }
+  if (
+    child &&
+    child.enabled === next.enabled &&
+    child.mode === next.mode &&
+    child.allowedHosts.join("\0") === next.allowedHosts.join("\0") &&
+    child.writablePaths.join("\0") === next.writablePaths.join("\0")
+  )
+    return
+  yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
+  snapshots.set(key(directory, sessionID), next)
+})
+
 export const inherit = Effect.fn("SandboxPolicy.inherit")(function* (
   parentID: SessionID,
   sessionID: SessionID,
@@ -295,36 +375,21 @@ export const inherit = Effect.fn("SandboxPolicy.inherit")(function* (
       // written back under the parent's key here, or it leaks a phantom parent record.
       yield* locked(
         sessionID,
-        Effect.gen(function* () {
-          const child = yield* read(directory, sessionID)
-          const next: Snapshot = child
-            ? {
-                enabled: parent.enabled || child.enabled,
-                ...intersect(parent, child),
-                version: child.version + 1,
-              }
-            : { ...parent, version: 0 }
-          if (
-            child &&
-            child.enabled === next.enabled &&
-            child.mode === next.mode &&
-            child.allowedHosts.join("\0") === next.allowedHosts.join("\0") &&
-            child.writablePaths.join("\0") === next.writablePaths.join("\0")
-          )
-            return
-          yield* Effect.promise(() => SandboxStore.write(directory, sessionID, next))
-          snapshots.set(key(directory, sessionID), next)
-        }),
+        inheritSnapshot(directory, parent, sessionID),
       )
     }),
   )
 })
 
-export function toggleGuarded<E, R>(
+export function toggleGuarded<E, R, F = never, Q = never, P = never, S = never>(
   sessionID: SessionID,
-  guard: Effect.Effect<unknown, E, R> | ((enabling: boolean) => Effect.Effect<unknown, E, R>),
+  guard:
+    | Effect.Effect<unknown, E, R>
+    | ((enabling: boolean, family: readonly Target[]) => Effect.Effect<unknown, E, R>),
+  family?: Effect.Effect<readonly Target[], F, Q>,
+  preflight?: (family: readonly Target[]) => Effect.Effect<unknown, P, S>,
 ) {
-  return change(sessionID, guard)
+  return change(sessionID, guard, family, preflight)
 }
 
 export function retire<A, E, R>(
@@ -360,17 +425,31 @@ export function dispose<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, 
 
 function execute<A, E, R>(sessionID: SessionID, effect: Effect.Effect<A, E, R>) {
   return Effect.gen(function* () {
-    const current = yield* snapshot(sessionID)
-    if (!current.state.enabled) return yield* unrestricted(effect)
-    const support = backendSupport({ mode: current.state.mode, allowedHosts: current.state.allowedHosts })
-    if (!support.available) {
-      return yield* Effect.fail(
-        new Error(support.reason ?? "The configured sandbox backend is unavailable"),
-      )
-    }
-    return yield* runSandbox(
-      profile(yield* InstanceState.context, current.state.mode, current.state.writablePaths, current.state.allowedHosts),
-      effect,
+    // Initialize before taking the execution gate so activation can safely hold the policy lock while
+    // waiting for an already-started tool to finish without deadlocking snapshot initialization.
+    yield* snapshot(sessionID)
+    return yield* gated(
+      sessionID,
+      1,
+      Effect.gen(function* () {
+        const current = yield* snapshot(sessionID)
+        if (!current.state.enabled) return yield* unrestricted(effect)
+        const support = backendSupport({ mode: current.state.mode, allowedHosts: current.state.allowedHosts })
+        if (!support.available) {
+          return yield* Effect.fail(
+            new Error(support.reason ?? "The configured sandbox backend is unavailable"),
+          )
+        }
+        return yield* runSandbox(
+          profile(
+            yield* InstanceState.context,
+            current.state.mode,
+            current.state.writablePaths,
+            current.state.allowedHosts,
+          ),
+          effect,
+        )
+      }),
     )
   })
 }

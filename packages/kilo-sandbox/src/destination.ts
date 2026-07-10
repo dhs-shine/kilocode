@@ -54,7 +54,12 @@ export function normalizeDestinations(input: ReadonlyArray<string>) {
 export function isPublicAddress(input: string) {
   if (!ipaddr.isValid(input)) return false
   const address = ipaddr.parse(input)
-  if (address.kind() === "ipv6" && (address as ipaddr.IPv6).isIPv4MappedAddress()) return false
+  if (address.kind() === "ipv6") {
+    const ipv6 = address as ipaddr.IPv6
+    if (ipv6.isIPv4MappedAddress() || ipv6.match(ipaddr.IPv6.parse("::"), 96)) return false
+  }
+  // Unknown network-specific NAT64 prefixes are indistinguishable from ordinary global IPv6 addresses.
+  // Identifying them requires trusted prefix configuration; range() rejects the recognized transition ranges.
   return address.range() === "unicast"
 }
 

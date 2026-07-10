@@ -8,6 +8,7 @@ import path from "node:path"
 import { Context, Effect, PlatformError } from "effect"
 import { normalizeDestinations, parseDestination, resolveDestination } from "./destination"
 import type { Profile } from "./profile"
+import { TlsClientHello } from "./tls-client-hello"
 
 export interface ProxyRuntime {
   readonly url: string
@@ -26,7 +27,9 @@ export const currentProxy: Effect.Effect<ProxyRuntime | undefined> = Effect.gen(
 })
 
 export type ProxyResolver = typeof resolveDestination
-export type ProxyFactory = (input: ReadonlyArray<string>) => Promise<ProxyRuntime & { readonly close: () => Promise<void> }>
+export type ProxyFactory = (
+  input: ReadonlyArray<string>,
+) => Promise<ProxyRuntime & { readonly close: () => Promise<void> }>
 
 export const CurrentProxyFactory = Context.Reference<ProxyFactory>("@kilocode/sandbox/CurrentProxyFactory", {
   defaultValue: () => startProxy,
@@ -96,10 +99,10 @@ export async function startProxy(
     sockets.add(socket)
     socket.once("close", () => sockets.delete(socket))
   })
-  server.on("connect", async (request, client, head) => {
+  server.on("connect", (request, client, head) => {
     client.on("error", () => undefined)
     if (!authenticate(request.headers["proxy-authorization"], token)) {
-      client.end("HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm=\"kilo\"\r\n\r\n")
+      client.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="kilo"\r\n\r\n')
       return
     }
     try {
@@ -108,16 +111,71 @@ export async function startProxy(
         client.end("HTTP/1.1 403 Forbidden\r\n\r\n")
         return
       }
-      const resolved = await resolve(dest)
-      const upstream = connect({ host: resolved.address, port: dest.port, family: resolved.family })
-      upstream.on("error", () => client.destroy())
-      upstream.once("connect", () => {
-        client.write("HTTP/1.1 200 Connection Established\r\n\r\n")
-        if (head.length > 0) upstream.write(head)
+      const hello = new TlsClientHello(dest.host)
+      let upstream: Socket | undefined
+      let dialing = false
+      let connected = false
+      let tunneled = false
+      const fail = () => {
+        clearTimeout(timer)
+        upstream?.destroy()
+        client.destroy()
+      }
+      const timer = setTimeout(fail, 30_000)
+      timer.unref()
+      const forward = () => {
+        if (!upstream || !connected || tunneled || client.destroyed || hello.push(Buffer.alloc(0)) !== "valid") return
+        clearTimeout(timer)
+        client.pause()
+        client.off("data", inspect)
+        tunneled = true
         upstream.pipe(client)
-        client.pipe(upstream)
+        const pipe = () => {
+          if (!upstream || client.destroyed) {
+            upstream?.destroy()
+            return
+          }
+          client.pipe(upstream)
+        }
+        if (upstream.write(hello.bytes())) pipe()
+        else upstream.once("drain", pipe)
+      }
+      const inspect = (chunk: Buffer) => {
+        const state = hello.push(chunk)
+        if (state === "invalid") {
+          fail()
+          return
+        }
+        if (dialing) {
+          if (state === "valid") forward()
+          return
+        }
+        if (state === "pending") return
+        dialing = true
+        void resolve(dest).then((resolved) => {
+          if (client.destroyed) return
+          upstream = connect({ host: resolved.address, port: dest.port, family: resolved.family })
+          upstream.on("error", fail)
+          upstream.once("connect", () => {
+            if (!upstream || client.destroyed) {
+              upstream?.destroy()
+              return
+            }
+            connected = true
+            forward()
+          })
+        }, fail)
+      }
+      client.on("data", inspect)
+      client.once("end", () => {
+        if (!tunneled) fail()
       })
-      client.once("close", () => upstream.destroy())
+      client.once("close", () => {
+        clearTimeout(timer)
+        upstream?.destroy()
+      })
+      client.write("HTTP/1.1 200 Connection Established\r\n\r\n")
+      if (head.length > 0) inspect(head)
     } catch {
       client.end("HTTP/1.1 502 Bad Gateway\r\n\r\n")
     }
@@ -225,9 +283,7 @@ export async function startProxy(
 
 export function withProxy<A, E, R>(profile: Profile, effect: Effect.Effect<A, E, R>) {
   if (profile.network.mode !== "proxy" && profile.network.allowedHosts.length > 0) {
-    return Effect.fail(
-      error("validateProxy", "Sandbox allowedHosts require proxy network mode"),
-    )
+    return Effect.fail(error("validateProxy", "Sandbox allowedHosts require proxy network mode"))
   }
   if (profile.network.mode !== "proxy") {
     return effect.pipe(Effect.provideService(CurrentProxy, undefined))
