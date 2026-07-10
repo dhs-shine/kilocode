@@ -33,7 +33,7 @@ class KiloBackendCliKillTest {
 
             assertTrue(proc.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS), "parent process did not exit")
             assertFalse(proc.isAlive)
-            kids.forEach { child -> assertFalse(child.isAlive, "child process ${child.pid()} is still alive") }
+            kids.forEach { child -> assertTrue(exited(child), "child process ${child.pid()} is still alive") }
         } finally {
             cleanup(proc)
         }
@@ -76,6 +76,14 @@ class KiloBackendCliKillTest {
             Thread.sleep(25)
         }
         return proc.toHandle().descendants().toList()
+    }
+
+    private fun exited(child: ProcessHandle): Boolean {
+        if (!child.isAlive) return true
+        return runCatching {
+            child.onExit().get(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            true
+        }.getOrDefault(!child.isAlive)
     }
 
     private fun cleanup(proc: Process) {
