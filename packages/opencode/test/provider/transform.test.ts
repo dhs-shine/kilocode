@@ -3340,18 +3340,20 @@ describe("ProviderTransform.variants", () => {
   })
 
   describe("@ai-sdk/xai", () => {
-    test("grok-3 returns empty object", () => {
+    test("grok-4.5 uses standard reasoning efforts", () => {
       const model = createMockModel({
-        id: "xai/grok-3",
+        id: "xai/grok-4.5",
         providerID: "xai",
         api: {
-          id: "grok-3",
+          id: "grok-4.5",
           url: "https://api.x.ai",
           npm: "@ai-sdk/xai",
         },
       })
+
       const result = ProviderTransform.variants(model)
-      expect(result).toEqual({})
+      expect(Object.keys(result)).toEqual(["low", "medium", "high"])
+      expect(result.medium).toEqual({ reasoningEffort: "medium" })
     })
 
     test("grok-3-mini returns low and high with reasoningEffort", () => {
