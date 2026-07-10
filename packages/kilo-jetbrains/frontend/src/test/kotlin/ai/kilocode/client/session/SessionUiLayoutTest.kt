@@ -439,7 +439,7 @@ class SessionUiLayoutTest : SessionUiTestBase() {
         assertNull(find(panel.findMessage("msg1")!!, RevertProgress::class.java))
     }
 
-    fun `test cancel revert clears inline rollback progress`() {
+    fun `test cancel revert keeps inline rollback progress until operation finishes`() {
         showMessages()
         emit(ChatEventDto.MessageUpdated("ses_test", message("msg1")), flush = false)
         emit(ChatEventDto.PartUpdated("ses_test", part("p_msg1", "msg1", "text", "hello")))
@@ -463,9 +463,15 @@ class SessionUiLayoutTest : SessionUiTestBase() {
         layout()
 
         assertSame(panel, scrollView())
-        assertNull(find(panel.findMessage("msg1")!!, RevertProgress::class.java))
+        assertNotNull(find<RevertProgress>(panel.findMessage("msg1")!!))
         assertTrue(rpc.reverts.isEmpty())
         gate.complete(Unit)
+        settle()
+        layout()
+
+        assertSame(panel, scrollView())
+        assertNull(find(panel.findMessage("msg1")!!, RevertProgress::class.java))
+        assertEquals(1, rpc.reverts.size)
     }
 
     fun `test retry before transcript shows loading panel`() {
