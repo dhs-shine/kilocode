@@ -4,7 +4,7 @@ import { TestProfile } from "../../script/kilocode/test-profile"
 
 const root = path.resolve(import.meta.dir, "..")
 const glob = new Bun.Glob("**/*.test.{ts,tsx}")
-const all = (await Array.fromAsync(glob.scan({ cwd: root }))).sort()
+const all = (await Array.fromAsync(glob.scan({ cwd: root }))).map((file) => file.replaceAll("\\", "/")).sort()
 
 describe("test profiles", () => {
   test("darwin profile contains valid test files", () => {
