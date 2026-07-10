@@ -20,7 +20,7 @@ type ClearPendingPromptsListener = () => void
 type DirectoryProvider = () => string[]
 const DRAIN_CONCURRENCY = 4
 
-async function parallel<T>(items: T[], fn: (item: T) => Promise<void>): Promise<void> {
+async function parallel(items: string[], fn: (item: string) => Promise<void>): Promise<void> {
   let next = 0
   const errors = new Map<number, unknown>()
   const worker = async () => {
@@ -37,8 +37,11 @@ async function parallel<T>(items: T[], fn: (item: T) => Promise<void>): Promise<
 
   await Promise.all(Array.from({ length: Math.min(DRAIN_CONCURRENCY, items.length) }, worker))
   if (errors.size === 0) return
-  const index = Math.min(...errors.keys())
-  throw errors.get(index)
+  const failures = [...errors].sort((a, b) => a[0] - b[0])
+  for (const [index, error] of failures.slice(1)) {
+    console.warn(`[Kilo New] ConnectionService: Additional prompt drain failed for ${items[index]}:`, error)
+  }
+  throw failures[0]![1]
 }
 
 function isNotFound(err: unknown) {
