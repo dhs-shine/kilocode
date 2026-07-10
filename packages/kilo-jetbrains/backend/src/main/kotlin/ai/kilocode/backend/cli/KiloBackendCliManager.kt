@@ -53,6 +53,8 @@ class KiloBackendCliManager(
     private var process: Process? = null
     @Volatile
     private var closing: Process? = null
+    @Volatile
+    private var job: KiloProcessJob? = null
     private val lock = Any()
     private var closed = false
     private var hook: Thread? = null
@@ -103,14 +105,16 @@ class KiloBackendCliManager(
     }
 
     override fun exited(proc: Process) {
-        val ok = synchronized(lock) {
-            if (process != proc) return@synchronized false
+        val orphan = synchronized(lock) {
+            if (process != proc) return
             process = null
+            val current = job
+            job = null
             uninstall()
             stderr = null
-            true
+            current
         }
-        if (!ok) return
+        orphan?.close()
         log.info("CLI process exited (pid=${proc.pid()}, exitCode=${runCatching { proc.exitValue() }.getOrNull()})")
     }
 
@@ -158,14 +162,19 @@ class KiloBackendCliManager(
                 throw e
             }
             log.info("CLI process started (pid=${proc.pid()})")
+            // Windows-only, best-effort: bind the CLI tree to the IDE via a kill-on-close job so it
+            // can never be orphaned. Null on other platforms / when unavailable — see KiloProcessJob.
+            val jobHandle = KiloProcessJob.assign(proc.pid(), log)
             val reject = synchronized(lock) {
                 if (closed) return@synchronized true
                 process = proc
+                job = jobHandle
                 install(proc)
                 false
             }
             if (reject) {
                 log.info("CLI process started after disposal; killing process tree (pid=${proc.pid()})")
+                jobHandle?.close()
                 cleanup(proc, "disposed startup cleanup")
                 return@withContext CliServer.State.Error("CLI startup cancelled because service is disposed")
             }
@@ -224,20 +233,35 @@ class KiloBackendCliManager(
     }
 
     /**
-     * Fast teardown for IDE app close: send SIGTERM so the CLI can flush state, then return without
-     * waiting. The JVM shutdown hook stays installed and escalates to SIGKILL when the JVM exits, so
-     * we neither block the shutdown thread (often the EDT) nor risk orphaning the tree.
+     * Fast teardown for IDE app close.
+     *
+     * Kill BEFORE touching the CLI's streams. On Windows, closing stderr/stdout while the reader
+     * threads are still blocked in a native read hangs indefinitely — which deadlocked IDE shutdown
+     * and left both the CLI and the IDE process alive (so the job's kill-on-close never fired, and a
+     * manual kill was needed to unblock the next launch). Closing the job triggers kill-on-close so
+     * the OS terminates the tree; [Process.destroy] is the no-job fallback. Both make the pending
+     * reads return EOF, so [close] cannot block. We do not wait, so the shutdown thread (often the
+     * EDT) is never blocked.
      */
     override fun closeForShutdown() {
-        val proc = synchronized(lock) {
+        log.info("App close — closeForShutdown() entered")
+        val state = synchronized(lock) {
             closed = true
-            process
-        } ?: return
+            val proc = process
+            val held = job
+            job = null
+            proc to held
+        }
+        val proc = state.first
+        val orphanJob = state.second
+        if (proc == null) {
+            orphanJob?.close()
+            log.info("App close — no live CLI process to stop (job present=${orphanJob != null})")
+            return
+        }
         closing = proc
-        close(proc)
-        descendants(proc).forEach { it.destroy() }
-        proc.destroy()
-        log.info("App close — SIGTERM sent to CLI tree (pid=${proc.pid()}); shutdown hook will confirm exit")
+        // Ordering is enforced (and regression-tested) in shutdownTree: kill first, close streams last.
+        shutdownTree(proc, jobKill = orphanJob != null, log = log, killJob = { orphanJob?.close() })
     }
 
     private fun take(): Process? = synchronized(lock) {
@@ -246,11 +270,18 @@ class KiloBackendCliManager(
         proc
     }
 
+    private fun clearJob(): KiloProcessJob? = synchronized(lock) {
+        val current = job
+        job = null
+        current
+    }
+
     private fun cleanup(proc: Process, source: String) {
         closing = proc
         try {
             uninstall()
-            close(proc)
+            clearJob()?.close()
+            closeStreams(proc, log)
             kill(proc, source)
             val thread = stderr
             stderr = null
@@ -293,12 +324,6 @@ class KiloBackendCliManager(
     private fun kill(proc: Process, source: String, wait: Boolean = true) {
         log.info("$source — killing CLI process tree (pid ${proc.pid()})")
         killCliProcessTree(proc, log, wait = wait, timeoutSeconds = KILL_TIMEOUT_SECONDS)
-    }
-
-    private fun close(proc: Process) {
-        runCatching { proc.errorStream.close() }.onFailure { log.info("CLI stderr stream close skipped: ${it.message}") }
-        runCatching { proc.inputStream.close() }.onFailure { log.info("CLI stdout stream close skipped: ${it.message}") }
-        runCatching { proc.outputStream.close() }.onFailure { log.info("CLI stdin stream close skipped: ${it.message}") }
     }
 
     private fun generatePassword(): String {
@@ -394,6 +419,35 @@ private fun confirmKilled(proc: Process, kids: List<ProcessHandle>, log: KiloLog
 
 private fun descendants(proc: Process): List<ProcessHandle> =
     proc.toHandle().descendants().toList().asReversed()
+
+/**
+ * App-close teardown, in the order that matters on Windows: terminate the tree FIRST — close the
+ * kill-on-close job ([killJob]), destroy descendants, destroy the parent — and only THEN close the
+ * CLI's streams. Closing a process stream while a reader thread is blocked reading it hangs on
+ * Windows until the process exits, so killing first makes those reads return EOF. Reversing this
+ * order deadlocked IDE shutdown; the order is locked by KiloBackendCliShutdownTest. Never waits, so
+ * the shutdown thread (often the EDT) is not blocked.
+ */
+internal fun shutdownTree(
+    proc: Process,
+    jobKill: Boolean,
+    log: KiloLog,
+    killJob: () -> Unit,
+    descendants: (Process) -> List<ProcessHandle> = ::descendants,
+) {
+    killJob()
+    descendants(proc).forEach { it.destroy() }
+    proc.destroy()
+    log.info("App close — CLI tree kill issued (pid=${proc.pid()}, jobKill=$jobKill); closing streams")
+    closeStreams(proc, log)
+    log.info("App close — CLI teardown complete (pid=${proc.pid()})")
+}
+
+internal fun closeStreams(proc: Process, log: KiloLog) {
+    runCatching { proc.errorStream.close() }.onFailure { log.info("CLI stderr stream close skipped: ${it.message}") }
+    runCatching { proc.inputStream.close() }.onFailure { log.info("CLI stdout stream close skipped: ${it.message}") }
+    runCatching { proc.outputStream.close() }.onFailure { log.info("CLI stdin stream close skipped: ${it.message}") }
+}
 
 internal fun startupDiagnostics(cli: File, env: Map<String, String>, log: KiloLog): String {
     val home = System.getProperty("user.home").orEmpty()
