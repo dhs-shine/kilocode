@@ -275,19 +275,29 @@ internal fun killCliProcessTree(
             .onFailure { log.warn("killProcessTree failed for pid ${proc.pid()}", it) }
             .getOrDefault(false)
         if (ok) return
-        proc.toHandle().descendants().toList().asReversed().forEach { it.destroyForcibly() }
+        descendants(proc).forEach { it.destroyForcibly() }
         proc.destroyForcibly()
         return
     }
-    proc.toHandle().descendants().toList().asReversed().forEach { it.destroy() }
+    val kids = descendants(proc)
+    kids.forEach { it.destroy() }
     proc.destroy()
     if (!wait) return
     if (!proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
         log.warn("CLI process did not exit after SIGTERM, sending SIGKILL")
-        proc.toHandle().descendants().toList().asReversed().forEach { it.destroyForcibly() }
+        kids.forEach { it.destroyForcibly() }
         proc.destroyForcibly()
+        return
+    }
+    val alive = kids.filter { it.isAlive }
+    if (alive.isNotEmpty()) {
+        log.warn("CLI child processes did not exit after SIGTERM, sending SIGKILL")
+        alive.forEach { it.destroyForcibly() }
     }
 }
+
+private fun descendants(proc: Process): List<ProcessHandle> =
+    proc.toHandle().descendants().toList().asReversed()
 
 internal fun startupDiagnostics(cli: File, env: Map<String, String>, log: KiloLog): String {
     val home = System.getProperty("user.home").orEmpty()
