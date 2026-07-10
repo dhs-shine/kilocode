@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [7.0.4] - 2026-07-10
+
+### Fixed
+- fix(jetbrains): stop orphaned CLI on Windows (app-close deadlock + kill-on-close job) by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12118
+
+### Changed
+- release(jetbrains): v7.0.3 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12115
+
+
 ## [7.0.3] - 2026-07-10
 
 ### Added
