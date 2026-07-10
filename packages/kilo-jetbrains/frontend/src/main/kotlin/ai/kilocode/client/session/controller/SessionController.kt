@@ -155,6 +155,9 @@ class SessionController(
     private var revertOp: RevertOp? = null
     private var revertSeq = 0L
     private var revertWatchdog: UiTimer? = null
+    // While a revert is in flight, turn/status transitions are deferred here instead of dropped,
+    // then reconciled when the operation releases so an underlying server turn is not lost.
+    private var revertDeferred: SessionState? = null
     private var creating: CompletableDeferred<String?>? = null
     private val childJobs: MutableMap<String, Job> = mutableMapOf()
     private val childIds: MutableSet<String> = mutableSetOf()
@@ -1289,14 +1292,20 @@ class SessionController(
             is ChatEventDto.TurnOpen -> {
                 partType = null
                 tool = null
-                if (revertOp != null) return
+                if (revertOp != null) {
+                    revertDeferred = SessionState.Busy(KiloBundle.message("session.status.considering"))
+                    return
+                }
                 model.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
             }
 
             is ChatEventDto.TurnClose -> {
                 partType = null
                 tool = null
-                if (revertOp != null) return
+                if (revertOp != null) {
+                    revertDeferred = SessionState.Idle
+                    return
+                }
                 // Keep pending questions visible for follow-up flows that arrive just before close.
                 val current = model.state
                 if (current is SessionState.AwaitingQuestion) return
@@ -1469,7 +1478,16 @@ class SessionController(
     }
 
     private fun status(dto: SessionStatusDto) {
-        if (revertOp != null) return
+        if (revertOp != null) {
+            revertDeferred = when (dto.type) {
+                "idle" -> SessionState.Idle
+                "busy" -> SessionState.Busy(KiloBundle.message("session.status.considering"))
+                "retry" -> SessionState.Retry(dto.message ?: "", dto.attempt ?: 0, dto.next ?: 0L)
+                "offline" -> SessionState.Offline(dto.message ?: "", dto.requestID ?: "")
+                else -> revertDeferred
+            }
+            return
+        }
         val state = when (dto.type) {
             "idle" -> {
                 val current = model.state
@@ -1501,6 +1519,10 @@ class SessionController(
         if (revertOp != null) return null
         val op = RevertOp(++revertSeq)
         revertOp = op
+        // Start with no deferred state; only turn/status transitions that actually arrive while the
+        // revert is held are recorded, so an aborted turn releases to Idle and a still-active turn
+        // (e.g. one that opened after the busy check) releases back to Busy.
+        revertDeferred = null
         model.setState(SessionState.Reverting(text, kind, message))
         startRevertWatchdog(op)
         return op
@@ -1534,7 +1556,7 @@ class SessionController(
         stopRevertWatchdog()
         revertJob = null
         revertOp = null
-        if (model.state is SessionState.Reverting) model.setState(SessionState.Idle)
+        reconcileReverting()
     }
 
     private fun cancelReverting(op: RevertOp) {
@@ -1543,7 +1565,16 @@ class SessionController(
         stopRevertWatchdog()
         revertJob = null
         revertOp = null
-        if (model.state is SessionState.Reverting) model.setState(SessionState.Idle)
+        reconcileReverting()
+    }
+
+    // Release the revert lock back to whatever turn/status transition arrived while it was held,
+    // so an underlying server turn is restored instead of leaving an idle prompt over an active turn.
+    private fun reconcileReverting() {
+        assertEdt()
+        val next = revertDeferred ?: SessionState.Idle
+        revertDeferred = null
+        if (model.state is SessionState.Reverting) model.setState(next)
     }
 
     private fun failReverting(op: RevertOp, e: Exception) {
@@ -1552,11 +1583,16 @@ class SessionController(
         stopRevertWatchdog()
         revertJob = null
         revertOp = null
+        // A failed revert surfaces the error explicitly; drop any deferred turn state.
+        revertDeferred = null
         model.setState(SessionState.Error(e.message ?: KiloBundle.message("session.error.unknown")))
     }
 
     private fun idle() {
-        if (revertOp != null) return
+        if (revertOp != null) {
+            revertDeferred = SessionState.Idle
+            return
+        }
         // Treat session.idle as an explicit signal to return to Idle.
         // Only apply if we're not in a more specific non-terminal state.
         val current = model.state
@@ -2162,6 +2198,7 @@ class SessionController(
             revertJob?.cancel()
             revertJob = null
             revertOp = null
+            revertDeferred = null
             val callbacks = enhancements.values.toList()
             enhancements.clear()
             cs.cancel()

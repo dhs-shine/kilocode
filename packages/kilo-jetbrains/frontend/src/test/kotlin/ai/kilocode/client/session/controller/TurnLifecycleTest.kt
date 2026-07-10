@@ -599,6 +599,29 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         flush()
     }
 
+    fun `test revert reconciles active turn deferred during rollback`() {
+        val (m, _, _) = prompted()
+        // Land on idle so the rollback does not abort, then start a gated rollback.
+        emit(ChatEventDto.TurnClose("ses_test", reason = "completed"))
+        assertTrue(m.model.state is SessionState.Idle)
+
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+        edt { m.revert("msg1") }
+        settle()
+        assertTrue(m.model.state is SessionState.Reverting)
+
+        // A server turn opens while the rollback is in flight; the transition is deferred, not dropped.
+        emit(ChatEventDto.TurnOpen("ses_test"))
+        assertTrue("turn open must not clear reverting", m.model.state is SessionState.Reverting)
+
+        gate.complete(Unit)
+        flush()
+
+        // Releasing the revert restores the still-active turn instead of forcing an idle prompt.
+        assertTrue("expected Busy, was ${m.model.state}", m.model.state is SessionState.Busy)
+    }
+
     fun `test rollback while busy enters reverting and aborts`() {
         val (m, _, _) = prompted()
         emit(ChatEventDto.TurnOpen("ses_test"))
