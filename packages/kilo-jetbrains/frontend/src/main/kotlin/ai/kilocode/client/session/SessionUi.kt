@@ -810,6 +810,7 @@ class SessionUi(
 
     private fun onStateChanged(state: SessionState) {
         if (disposed) return
+        if (state is SessionState.Reverting) overlay.clear()
         prompt.setBusy(state.isBusy())
         load.setState(state)
         scroll.setQuestionPending(questionPending(state))

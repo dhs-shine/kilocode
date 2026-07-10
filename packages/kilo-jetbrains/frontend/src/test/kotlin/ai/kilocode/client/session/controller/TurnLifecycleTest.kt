@@ -589,6 +589,12 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         emit(ChatEventDto.SessionStatusChanged("ses_test", SessionStatusDto("retry", message = "retrying", attempt = 1, next = 0L)))
         assertTrue("status retry must not clear reverting", m.model.state is SessionState.Reverting)
 
+        emit(ChatEventDto.TurnOpen("ses_test"))
+        assertTrue("turn open must not clear reverting", m.model.state is SessionState.Reverting)
+
+        emit(ChatEventDto.TurnClose("ses_test", reason = "completed"))
+        assertTrue("turn close must not clear reverting", m.model.state is SessionState.Reverting)
+
         gate.complete(Unit)
         flush()
     }
@@ -692,7 +698,7 @@ class TurnLifecycleTest : SessionControllerTestBase() {
     }
 
 
-    fun `test cancelRevert waits for in-flight rollback before returning to idle`() {
+    fun `test cancelRevert cancels in-flight rollback and returns to idle`() {
         val (m, _, _) = prompted()
         val gate = CompletableDeferred<Unit>()
         rpc.revertGate = gate
@@ -704,19 +710,17 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         edt { m.cancelRevert() }
         settle()
 
-        val state = m.model.state
-        assertTrue("expected Reverting, was $state", state is SessionState.Reverting)
-        assertEquals(KiloBundle.message("session.status.operation.finishing"), (state as SessionState.Reverting).text)
+        assertTrue(m.model.state is SessionState.Idle)
         assertTrue("rpc must still be waiting", rpc.reverts.isEmpty())
         assertTrue(appRpc.telemetry.any { it.event == "Session Revert Cancel Requested" })
 
         gate.complete(Unit)
         flush()
-        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg1", null)), rpc.reverts)
+        assertTrue(rpc.reverts.isEmpty())
         assertTrue(m.model.state is SessionState.Idle)
     }
 
-    fun `test cancelRevert waits for in-flight redoAll`() {
+    fun `test cancelRevert cancels in-flight redoAll`() {
         val (m, _, _) = prompted()
         val gate = CompletableDeferred<Unit>()
         rpc.unrevertGate = gate
@@ -728,12 +732,12 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         edt { m.cancelRevert() }
         settle()
 
-        assertTrue(m.model.state is SessionState.Reverting)
+        assertTrue(m.model.state is SessionState.Idle)
         assertTrue(rpc.unreverts.isEmpty())
 
         gate.complete(Unit)
         flush()
-        assertEquals(listOf("ses_test" to "/test"), rpc.unreverts)
+        assertTrue(rpc.unreverts.isEmpty())
         assertTrue(m.model.state is SessionState.Idle)
     }
 
@@ -759,17 +763,17 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         edt { m.abort() }
         settle()
 
-        assertTrue(m.model.state is SessionState.Reverting)
+        assertTrue(m.model.state is SessionState.Idle)
         assertTrue(rpc.aborts.isEmpty())
         assertTrue(rpc.reverts.isEmpty())
 
         gate.complete(Unit)
         flush()
-        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg1", null)), rpc.reverts)
+        assertTrue(rpc.reverts.isEmpty())
         assertTrue(m.model.state is SessionState.Idle)
     }
 
-    fun `test rollback watchdog times out without opening a second rollback`() {
+    fun `test rollback watchdog cancels timed out rollback and releases lock`() {
         val (m, _, _) = prompted()
         val gate = CompletableDeferred<Unit>()
         rpc.revertGate = gate
@@ -781,17 +785,17 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         pause(SessionController.REVERT_TIMEOUT_MS + 1)
 
         val state = m.model.state
-        assertTrue("expected Reverting, was $state", state is SessionState.Reverting)
-        assertEquals(KiloBundle.message("session.error.revert.timeout"), (state as SessionState.Reverting).text)
+        assertTrue("expected Error, was $state", state is SessionState.Error)
+        assertEquals(KiloBundle.message("session.error.revert.timeout"), (state as SessionState.Error).message)
         assertTrue(appRpc.telemetry.any { it.event == "Session Revert Timeout" })
 
+        gate.complete(Unit)
         edt { m.revert("msg2") }
         settle()
-        assertTrue(rpc.reverts.isEmpty())
+        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg2", null)), rpc.reverts)
 
-        gate.complete(Unit)
         flush()
-        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg1", null)), rpc.reverts)
+        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg2", null)), rpc.reverts)
         assertTrue(m.model.state is SessionState.Idle)
     }
 

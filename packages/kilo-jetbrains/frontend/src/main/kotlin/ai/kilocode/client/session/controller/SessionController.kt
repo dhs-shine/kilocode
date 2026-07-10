@@ -449,7 +449,7 @@ class SessionController(
                 LOG.info("${ChatLogSummary.sid(id)} kind=revert ok=true")
                 edt { clearReverting(op) }
             } catch (e: CancellationException) {
-                throw e
+                edt { cancelReverting(op) }
             } catch (e: Exception) {
                 capture("Session Error", sessionProps(id) + mapOf("context" to "revert", "errorClass" to e::class.java.name))
                 LOG.warn("${ChatLogSummary.sid(id)} kind=revert dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
@@ -473,7 +473,7 @@ class SessionController(
                 synchronizeFromDisk(id, "unrevert")
                 edt { clearReverting(op) }
             } catch (e: CancellationException) {
-                throw e
+                edt { cancelReverting(op) }
             } catch (e: Exception) {
                 capture("Session Error", sessionProps(id) + mapOf("context" to "unrevert", "errorClass" to e::class.java.name))
                 LOG.warn("${ChatLogSummary.sid(id)} kind=unrevert dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
@@ -524,7 +524,7 @@ class SessionController(
                 synchronizeFromDisk(id, "redo")
                 edt { clearReverting(op) }
             } catch (e: CancellationException) {
-                throw e
+                edt { cancelReverting(op) }
             } catch (e: Exception) {
                 edt { failReverting(op, e) }
             }
@@ -546,6 +546,7 @@ class SessionController(
         if (state is SessionState.Reverting) {
             model.setState(state.copy(text = KiloBundle.message("session.status.operation.finishing")))
         }
+        revertJob?.cancel()
     }
 
     private fun synchronizeFromDisk(id: String, kind: String) {
@@ -1288,12 +1289,14 @@ class SessionController(
             is ChatEventDto.TurnOpen -> {
                 partType = null
                 tool = null
+                if (revertOp != null) return
                 model.setState(SessionState.Busy(KiloBundle.message("session.status.considering")))
             }
 
             is ChatEventDto.TurnClose -> {
                 partType = null
                 tool = null
+                if (revertOp != null) return
                 // Keep pending questions visible for follow-up flows that arrive just before close.
                 val current = model.state
                 if (current is SessionState.AwaitingQuestion) return
@@ -1521,13 +1524,20 @@ class SessionController(
         LOG.warn("${ChatLogSummary.sid(sid ?: "?")} kind=revert timeout=true after=${revertTimeoutMs}ms")
         stopRevertWatchdog()
         sid?.let { capture("Session Revert Timeout", sessionProps(it)) }
-        val state = model.state
-        if (state is SessionState.Reverting) {
-            model.setState(state.copy(text = KiloBundle.message("session.error.revert.timeout")))
-        }
+        revertJob?.cancel()
+        failReverting(op, RuntimeException(KiloBundle.message("session.error.revert.timeout")))
     }
 
     private fun clearReverting(op: RevertOp) {
+        assertEdt()
+        if (revertOp?.key != op.key) return
+        stopRevertWatchdog()
+        revertJob = null
+        revertOp = null
+        if (model.state is SessionState.Reverting) model.setState(SessionState.Idle)
+    }
+
+    private fun cancelReverting(op: RevertOp) {
         assertEdt()
         if (revertOp?.key != op.key) return
         stopRevertWatchdog()

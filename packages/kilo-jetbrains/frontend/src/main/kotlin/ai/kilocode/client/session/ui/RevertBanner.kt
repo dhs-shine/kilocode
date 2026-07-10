@@ -86,7 +86,7 @@ class RevertBanner(
 
     @RequiresEdt
     fun setReverting(state: SessionState) {
-        val busy = state is SessionState.Reverting && state.kind == SessionState.Reverting.Kind.REDO
+        val busy = state is SessionState.Reverting
         if (busy) {
             card.setActionEnabled("redo", false)
             card.setActionEnabled("all", false)

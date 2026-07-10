@@ -818,7 +818,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertEquals(1, all)
     }
 
-    fun `test redo state disables banner actions and shows inline progress`() {
+    fun `test rollback state disables banner actions and shows inline progress`() {
         var cancelled = false
         val banner = RevertBanner(model, {}, {}, { cancelled = true })
         model.upsertMessage(msg("u1", "user"))
@@ -827,7 +827,7 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         model.setRevert(SessionRevertDto("u1"))
         banner.update()
 
-        banner.setReverting(SessionState.Reverting("Redoing...", SessionState.Reverting.Kind.REDO))
+        banner.setReverting(SessionState.Reverting("Rolling back...", SessionState.Reverting.Kind.ROLLBACK, "u1"))
 
         val buttons = components(banner).filterIsInstance<JButton>()
         assertTrue(buttons.filter { it.text == KiloBundle.message("revert.banner.redo") }.all { !it.isEnabled })
