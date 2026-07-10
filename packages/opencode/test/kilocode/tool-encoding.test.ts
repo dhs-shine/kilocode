@@ -226,12 +226,12 @@ describe("tool encoding preservation", () => {
           expect(result.metadata.truncated).toBe(true)
           expect(state.bytes).toBeGreaterThan(0)
           expect(state.bytes).toBeLessThan(Buffer.byteLength(content, "utf-8") / 2)
-          expect(state.closed).toBe(true)
           yield* Effect.promise(async () => {
             await fs.writeFile(temp, "replacement\n")
             await fs.rename(temp, filepath)
           })
           expect(yield* Effect.promise(() => fs.readFile(filepath, "utf8"))).toBe("replacement\n")
+          expect(state.closed).toBe(true)
         }),
       ),
     )
