@@ -75,11 +75,11 @@ export async function copySandboxResources(source: string, target: string): Prom
   await fs.promises.cp(licenses, destination, { recursive: true })
 
   for (const file of sandboxNetworkFiles) {
-    const source = path.join(from, file)
-    if (!fs.existsSync(source)) continue
-    const target = path.join(to, file)
-    await fs.promises.copyFile(source, target)
-    if (file === "kilo-sandbox-seccomp") await fs.promises.chmod(target, 0o755)
+    const input = path.join(from, file)
+    if (!fs.existsSync(input)) continue
+    const output = path.join(to, file)
+    await fs.promises.copyFile(input, output)
+    if (file === "kilo-sandbox-seccomp") await fs.promises.chmod(output, 0o755)
   }
   const runtimeLicense = path.join(from, sandboxRuntimeLicense)
   if (fs.existsSync(runtimeLicense)) {

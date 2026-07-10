@@ -16,6 +16,7 @@ const writablePathsDescription = "sandbox-writable-paths-description"
 function destination(input: string) {
   const match = /^([a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)(?::(\d{1,5}))?$/.exec(input)
   if (!match) return
+  if (/^[0-9.]+$/.test(match[1]) || match[1].length > 253) return
   const port = Number(match[2] ?? "443")
   if (
     port < 1 ||

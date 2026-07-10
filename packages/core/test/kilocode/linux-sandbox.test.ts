@@ -281,6 +281,32 @@ linux("allows only configured HTTP proxy destinations", async () => {
   }
 })
 
+linux("drops proxy setup capabilities and blocks nested user namespaces", async () => {
+  requireNetwork()
+  const root = await fixture()
+  const target = tcp()
+  const port = target.listener.port
+  const factory: ProxyFactory = (hosts) =>
+    startProxy(hosts, "linux", async () => ({ address: "127.0.0.1", family: 4 }))
+  const policy = profile([root.project], [], "proxy", [`allowed.test:${port}`])
+  const script = [
+    'const child = require("node:child_process")',
+    'const fs = require("node:fs")',
+    'const match = fs.readFileSync("/proc/self/status", "utf8").match(/^CapEff:\\s+([0-9a-f]+)$/m)',
+    "if (!match || (BigInt(`0x${match[1]}`) & (1n << 21n)) !== 0n) process.exit(2)",
+    'const nested = child.spawnSync("/usr/bin/unshare", ["--user", "--map-root-user", "true"])',
+    "process.exit(nested.status === 0 ? 3 : 0)",
+  ].join("\n")
+
+  try {
+    const result = await Effect.runPromise(output(process.execPath, ["-e", script], root.project, policy, factory))
+    expect(Number(result.code), result.stderr).toBe(0)
+  } finally {
+    target.listener.stop(true)
+    await fs.rm(root.root, { recursive: true, force: true })
+  }
+})
+
 linux("blocks arbitrary host Unix sockets in proxy mode", async () => {
   requireNetwork()
   const root = await fixture()

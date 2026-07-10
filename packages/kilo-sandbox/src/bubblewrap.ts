@@ -150,7 +150,7 @@ export function generate(
   if (worker) validate(allow, process.execPath, mounts)
   const args = [
     "--unshare-user",
-    ...(profile.network.mode === "proxy" ? [] : ["--disable-userns"]),
+    "--disable-userns",
     "--unshare-pid",
     ...(profile.network.mode !== "allow" ? ["--unshare-net"] : []),
     ...(profile.network.mode === "proxy" ? ["--cap-add", "cap_sys_admin"] : []),
@@ -285,7 +285,7 @@ function selection(): Selection {
 
 function support(network?: Profile["network"]): Support {
   const selected = selection()
-  if (!selected.support.available || network?.mode === "allow" || !selected.executable) return selected.support
+  if (!selected.support.available || !network || network.mode === "allow" || !selected.executable) return selected.support
   if (network?.mode === "proxy" && selected.proxy) return selected.proxy
   if (network?.mode === "deny" && selected.network) return selected.network
   const failure = probe(selected.executable, true)
@@ -297,7 +297,13 @@ function support(network?: Profile["network"]): Support {
   else if (network?.mode === "proxy") {
     const worker = relay().path
     const filter = seccomp()
-    const missing = !existsSync(worker) ? worker : !filter || !existsSync(filter) ? filter : undefined
+    const missing = !existsSync(worker)
+      ? worker
+      : filter === undefined
+        ? "unsupported architecture"
+        : !existsSync(filter)
+          ? filter
+          : undefined
     selected.proxy = missing
       ? { available: false, reason: `Linux sandbox proxy dependency is unavailable: ${missing ?? "unsupported architecture"}` }
       : { available: true }

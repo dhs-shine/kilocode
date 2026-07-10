@@ -169,7 +169,7 @@ Cloud sessions do not expose the local sandbox control because their tools do no
 
 ## Platform support
 
-On macOS and Linux, Kilo reports an error and refuses to run the affected tool if the required confinement or destination proxy cannot be established. It does not fall back to unrestricted execution.
+On every platform, Kilo reports an error and refuses to run the affected tool if the configured confinement or destination proxy cannot be established. It does not fall back to unrestricted execution.
 
 | Platform | Backend | Notes |
 |---|---|---|

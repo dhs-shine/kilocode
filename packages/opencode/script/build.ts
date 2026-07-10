@@ -402,14 +402,15 @@ for (const item of targets) {
 
   await $`rm -rf ./dist/${name}/bin/tui`
   // kilocode_change start
-  if (bwrap) {
-    const licenses = path.resolve(dir, `dist/${name}/bin/licenses/bubblewrap`)
+  if (item.os === "linux") {
     const content = await Promise.all([
       Bun.file(path.resolve(dir, "../../LICENSE")).text(),
-      Bun.file(path.join(licenses, "NOTICE")).text(),
-      Bun.file(path.join(licenses, "COPYING")).text(),
-      Bun.file(path.join(licenses, "MUSL-COPYRIGHT")).text(),
       Bun.file(path.resolve(dir, `dist/${name}/bin/licenses/sandbox-runtime/LICENSE`)).text(),
+      ...(bwrap
+        ? ["NOTICE", "COPYING", "MUSL-COPYRIGHT"].map((file) =>
+            Bun.file(path.resolve(dir, `dist/${name}/bin/licenses/bubblewrap/${file}`)).text(),
+          )
+        : []),
     ])
     await Bun.write(`dist/${name}/LICENSE`, content.join("\n\n---\n\n"))
   }
@@ -419,7 +420,7 @@ for (const item of targets) {
       {
         name,
         version: Script.version,
-        license: bwrap ? "SEE LICENSE IN LICENSE" : pkg.license, // kilocode_change
+        license: item.os === "linux" ? "SEE LICENSE IN LICENSE" : pkg.license, // kilocode_change
         preferUnplugged: true,
         os: [item.os],
         cpu: [item.arch],
