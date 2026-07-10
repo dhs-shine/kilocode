@@ -243,6 +243,7 @@ class SessionUi(
         is SessionState.Idle,
         is SessionState.Loading,
         is SessionState.Busy,
+        is SessionState.Reverting,
         is SessionState.Retry,
         is SessionState.Offline,
         is SessionState.Error -> null
@@ -361,7 +362,8 @@ class SessionUi(
             repo = workspace.directory,
             resize = { anchor, fn -> scroll.preserve(anchor, fn) },
             revert = ::revert,
-            banner = RevertBanner(controller.model, controller::redo, controller::redoAll, focus),
+            cancelRevert = controller::cancelRevert,
+            banner = RevertBanner(controller.model, controller::redo, controller::redoAll, controller::cancelRevert, focus),
         ).also {
             it.onHover = { view, on -> if (on) popup.show(view) else popup.notifyExit(view) }
         }

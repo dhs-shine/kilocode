@@ -1,5 +1,6 @@
 package ai.kilocode.client.session.controller
 
+import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.model.SessionState
 import ai.kilocode.client.testing.FakeSessionRpcApi
 import ai.kilocode.rpc.dto.ChatEventDto
@@ -15,6 +16,7 @@ import ai.kilocode.rpc.dto.QuestionInfoDto
 import ai.kilocode.rpc.dto.QuestionRequestDto
 import ai.kilocode.rpc.dto.SessionRevertDto
 import ai.kilocode.rpc.dto.SessionStatusDto
+import kotlinx.coroutines.CompletableDeferred
 
 class TurnLifecycleTest : SessionControllerTestBase() {
 
@@ -515,6 +517,264 @@ class TurnLifecycleTest : SessionControllerTestBase() {
             m,
         )
         assertModelEvents("", modelEvents)
+    }
+
+
+    fun `test rollback click enters reverting state before rpc resolves`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.revert("msg1") }
+        settle()
+
+        val state = m.model.state
+        assertTrue("expected Reverting, was $state", state is SessionState.Reverting)
+        assertEquals(KiloBundle.message("session.status.rollingback"), (state as SessionState.Reverting).text)
+
+        gate.complete(Unit)
+        flush()
+
+        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg1", null)), rpc.reverts)
+        assertTrue(m.model.state is SessionState.Idle)
+    }
+
+    fun `test reverting state renders in dump`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.revert("msg1") }
+        settle()
+
+        assertSession(
+            """
+            [code] [kilo/gpt-5] [reverting] [rolling back]
+            """,
+            m,
+        )
+
+        gate.complete(Unit)
+        flush()
+    }
+
+    fun `test session idle does not clobber reverting state`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.revert("msg1") }
+        settle()
+        assertTrue(m.model.state is SessionState.Reverting)
+
+        emit(ChatEventDto.SessionIdle("ses_test"))
+        assertTrue("idle must not clear reverting", m.model.state is SessionState.Reverting)
+
+        emit(ChatEventDto.SessionStatusChanged("ses_test", SessionStatusDto("idle")))
+        assertTrue("status idle must not clear reverting", m.model.state is SessionState.Reverting)
+
+        gate.complete(Unit)
+        flush()
+    }
+
+    fun `test rollback while busy enters reverting and aborts`() {
+        val (m, _, _) = prompted()
+        emit(ChatEventDto.TurnOpen("ses_test"))
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.revert("msg1") }
+        settle()
+        val state = m.model.state
+        assertTrue(state is SessionState.Reverting)
+        assertEquals(SessionState.Reverting.Kind.ROLLBACK, (state as SessionState.Reverting).kind)
+        assertEquals("msg1", state.message)
+
+        gate.complete(Unit)
+        flush()
+
+        assertEquals(listOf("ses_test" to "/test"), rpc.aborts)
+        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg1", null)), rpc.reverts)
+        assertTrue(m.model.state is SessionState.Idle)
+    }
+
+    fun `test revert failure surfaces error state`() {
+        val (m, _, _) = prompted()
+        rpc.revertThrows = IllegalStateException("boom")
+
+        edt { m.revert("msg1") }
+        flush()
+
+        val state = m.model.state
+        assertTrue("expected Error, was $state", state is SessionState.Error)
+        assertEquals("boom", (state as SessionState.Error).message)
+    }
+
+    fun `test rollback ignores reentrant click while reverting`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.revert("msg1") }
+        settle()
+        edt { m.revert("msg2") }
+        settle()
+
+        gate.complete(Unit)
+        flush()
+
+        assertEquals(1, rpc.reverts.size)
+    }
+
+    fun `test redo enters reverting with redoing status`() {
+        val (m, _, _) = prompted()
+        seedRevertMessages()
+        emit(ChatEventDto.SessionUpdated("ses_test", session("ses_test").copy(revert = SessionRevertDto("u1"))))
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.redo() }
+        settle()
+
+        val state = m.model.state
+        assertTrue("expected Reverting, was $state", state is SessionState.Reverting)
+        assertEquals(KiloBundle.message("session.status.redoing"), (state as SessionState.Reverting).text)
+        assertEquals(SessionState.Reverting.Kind.REDO, state.kind)
+
+        gate.complete(Unit)
+        flush()
+    }
+
+    fun `test redoAll enters reverting with redoing status`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.unrevertGate = gate
+
+        edt { m.redoAll() }
+        settle()
+
+        val state = m.model.state
+        assertTrue("expected Reverting, was $state", state is SessionState.Reverting)
+        assertEquals(KiloBundle.message("session.status.redoing"), (state as SessionState.Reverting).text)
+        assertEquals(SessionState.Reverting.Kind.REDO, state.kind)
+
+        gate.complete(Unit)
+        flush()
+        assertTrue(m.model.state is SessionState.Idle)
+    }
+
+    fun `test unrevert failure surfaces error state`() {
+        val (m, _, _) = prompted()
+        rpc.unrevertThrows = IllegalStateException("nope")
+
+        edt { m.unrevert() }
+        flush()
+
+        val state = m.model.state
+        assertTrue("expected Error, was $state", state is SessionState.Error)
+        assertEquals("nope", (state as SessionState.Error).message)
+    }
+
+
+    fun `test cancelRevert cancels in-flight rollback and returns to idle`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.revert("msg1") }
+        settle()
+        assertTrue(m.model.state is SessionState.Reverting)
+
+        edt { m.cancelRevert() }
+        settle()
+
+        assertTrue(m.model.state is SessionState.Idle)
+        assertTrue("rpc must not have recorded a revert", rpc.reverts.isEmpty())
+        assertTrue(appRpc.telemetry.any { it.event == "Session Revert Cancelled" })
+
+        gate.complete(Unit)
+        flush()
+        assertTrue(m.model.state is SessionState.Idle)
+    }
+
+    fun `test cancelRevert cancels in-flight redoAll`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.unrevertGate = gate
+
+        edt { m.redoAll() }
+        settle()
+        assertTrue(m.model.state is SessionState.Reverting)
+
+        edt { m.cancelRevert() }
+        settle()
+
+        assertTrue(m.model.state is SessionState.Idle)
+        assertTrue(rpc.unreverts.isEmpty())
+    }
+
+    fun `test cancelRevert is ignored when not reverting`() {
+        val (m, _, _) = prompted()
+
+        edt { m.cancelRevert() }
+        settle()
+
+        assertTrue(m.model.state is SessionState.Idle)
+        assertFalse(appRpc.telemetry.any { it.event == "Session Revert Cancelled" })
+    }
+
+    fun `test abort while reverting cancels rollback instead of aborting turn`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.revert("msg1") }
+        settle()
+        assertTrue(m.model.state is SessionState.Reverting)
+
+        edt { m.abort() }
+        settle()
+
+        assertTrue(m.model.state is SessionState.Idle)
+        assertTrue(rpc.aborts.isEmpty())
+        assertTrue(rpc.reverts.isEmpty())
+
+        gate.complete(Unit)
+    }
+
+    fun `test rollback watchdog times out to error`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.revert("msg1") }
+        settle()
+        assertTrue(m.model.state is SessionState.Reverting)
+
+        pause(SessionController.REVERT_TIMEOUT_MS + 1)
+
+        val state = m.model.state
+        assertTrue("expected Error, was $state", state is SessionState.Error)
+        assertEquals(KiloBundle.message("session.error.revert.timeout"), (state as SessionState.Error).message)
+        assertTrue(appRpc.telemetry.any { it.event == "Session Revert Timeout" })
+
+        gate.complete(Unit)
+    }
+
+    fun `test successful rollback stops watchdog`() {
+        val (m, _, _) = prompted()
+        val gate = CompletableDeferred<Unit>()
+        rpc.revertGate = gate
+
+        edt { m.revert("msg1") }
+        settle()
+        gate.complete(Unit)
+        flush()
+        assertTrue(m.model.state is SessionState.Idle)
+
+        pause(SessionController.REVERT_TIMEOUT_MS + 1)
+
+        assertTrue(m.model.state is SessionState.Idle)
     }
 
     private fun seedRevertMessages() {
