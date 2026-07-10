@@ -158,6 +158,8 @@ const Settings: Component<SettingsProps> = (props) => {
         variant="settings"
         value={active()}
         onChange={onTabChange}
+        inert={saving()}
+        aria-busy={saving()}
         style={{ flex: 1, overflow: "hidden" }}
       >
         <Tabs.List>

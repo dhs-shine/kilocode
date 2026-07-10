@@ -539,6 +539,10 @@ export interface ConfigUpdatedMessage {
   features: FeatureFlags
 }
 
+export interface ConfigSavedMessage {
+  type: "configSaved"
+}
+
 export interface ConfigUpdateFailedMessage {
   type: "configUpdateFailed"
   message: string
@@ -1133,6 +1137,7 @@ export type ExtensionMessage =
   | ClaudeCompatSettingLoadedMessage
   | ConfigLoadedMessage
   | ConfigUpdatedMessage
+  | ConfigSavedMessage
   | ConfigUpdateFailedMessage
   | GlobalConfigLoadedMessage
   | NotificationSettingsLoadedMessage

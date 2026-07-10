@@ -8,6 +8,10 @@ type Internals = {
   connectionState: "connecting" | "connected" | "disconnected" | "error"
   currentSession: { id: string } | null
   cachedIndexingStatusMessage: unknown
+  pending: number
+  configRevision: number
+  refreshWait: number
+  postMessage: (message: unknown) => void
   handleEvent: (event: unknown, directory?: string) => void
   reloadAfterAuthChange: () => Promise<void>
   handleUpdateConfig: (
@@ -16,6 +20,8 @@ type Internals = {
     globalUnset?: string[][],
     projectUnset?: string[][],
   ) => Promise<void>
+  fetchAndSendGlobalConfig: () => Promise<void>
+  fetchAndSendConfigUpdated: () => Promise<void>
   fetchAndSendConfig: () => Promise<void>
   fetchAndSendProviders: () => Promise<void>
   fetchAndSendAgents: () => Promise<void>
@@ -47,6 +53,7 @@ function createConnection() {
   }
 
   return {
+    client,
     drains: () => drains,
     patches: () => patches,
     service: {
@@ -107,6 +114,128 @@ describe("KiloProvider indexing refresh", () => {
 
     expect(conn.drains()).toBe(1)
     expect(indexing).toBe(0)
+  })
+
+  it("confirms saved config when the post-write refresh stalls", async () => {
+    const conn = createConnection()
+    conn.client.config.get = async () => new Promise<never>(() => {})
+    const provider = new KiloProvider({} as never, conn.service as never)
+    const internal = provider as unknown as Internals
+    const messages: Array<{ type?: string; writes: number }> = []
+
+    internal.connectionState = "connected"
+    internal.refreshWait = 0
+    internal.postMessage = (message) =>
+      messages.push({ ...(message as { type?: string }), writes: conn.patches().length })
+
+    await internal.handleUpdateConfig(
+      { indexing: { provider: "kilo" } },
+      { commit_message: { prompt: "Use conventional commits" } },
+    )
+
+    expect(messages).toEqual([{ type: "configSaved", writes: 2 }])
+    expect(internal.pending).toBe(0)
+  })
+
+  it("does not confirm a partially written scoped save", async () => {
+    const conn = createConnection()
+    conn.client.config.overlayUpdate = async (patch: unknown) => {
+      conn.patches().push(patch)
+      if ((patch as { scope?: string }).scope === "project") throw new Error("project write failed")
+      return { data: {} }
+    }
+    const provider = new KiloProvider({} as never, conn.service as never)
+    const internal = provider as unknown as Internals
+    const messages: Array<{ type?: string }> = []
+
+    internal.connectionState = "connected"
+    internal.postMessage = (message) => messages.push(message as { type?: string })
+
+    await internal.handleUpdateConfig({ snapshot: true }, { commit_message: { prompt: "test" } })
+
+    expect(messages.map((message) => message.type)).toEqual(["configUpdated", "configUpdateFailed"])
+    expect(internal.pending).toBe(0)
+  })
+
+  it("reports a partial write failure when the recovery refresh stalls", async () => {
+    const conn = createConnection()
+    conn.client.config.overlayUpdate = async (patch: unknown) => {
+      conn.patches().push(patch)
+      if ((patch as { scope?: string }).scope === "project") throw new Error("project write failed")
+      return { data: {} }
+    }
+    conn.client.config.get = async () => new Promise<never>(() => {})
+    const provider = new KiloProvider({} as never, conn.service as never)
+    const internal = provider as unknown as Internals
+    const messages: Array<{ type?: string }> = []
+
+    internal.connectionState = "connected"
+    internal.refreshWait = 0
+    internal.postMessage = (message) => messages.push(message as { type?: string })
+
+    await internal.handleUpdateConfig({ snapshot: true }, { commit_message: { prompt: "test" } })
+
+    expect(messages.map((message) => message.type)).toEqual(["configUpdateFailed"])
+    expect(internal.pending).toBe(0)
+  })
+
+  it("drops a stale config refresh that finishes after a newer one", async () => {
+    const conn = createConnection()
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let calls = 0
+    conn.client.config.get = async () => {
+      calls += 1
+      if (calls === 1) {
+        await gate
+        return { data: { snapshot: true } }
+      }
+      return { data: { snapshot: false } }
+    }
+    const provider = new KiloProvider({} as never, conn.service as never)
+    const internal = provider as unknown as Internals
+    const messages: Array<{ type?: string; config?: Config }> = []
+
+    internal.connectionState = "connected"
+    internal.postMessage = (message) => messages.push(message as { type?: string; config?: Config })
+
+    const stale = internal.fetchAndSendConfigUpdated()
+    await Bun.sleep(0)
+    await internal.fetchAndSendConfigUpdated()
+    release()
+    await stale
+
+    expect(messages).toHaveLength(1)
+    expect(messages[0]?.config?.snapshot).toBe(false)
+    expect(internal.configRevision).toBe(2)
+  })
+
+  it("drops a stale global-only config response", async () => {
+    const conn = createConnection()
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    conn.client.global.config.get = async () => {
+      await gate
+      return { data: { snapshot: true } }
+    }
+    const provider = new KiloProvider({} as never, conn.service as never)
+    const internal = provider as unknown as Internals
+    const messages: Array<{ type?: string }> = []
+
+    internal.connectionState = "connected"
+    internal.postMessage = (message) => messages.push(message as { type?: string })
+
+    const stale = internal.fetchAndSendGlobalConfig()
+    await Bun.sleep(0)
+    internal.configRevision++
+    release()
+    await stale
+
+    expect(messages).toHaveLength(0)
   })
 
   it("refreshes providers when prompt-training model visibility changes", async () => {

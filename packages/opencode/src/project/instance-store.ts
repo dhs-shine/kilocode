@@ -177,7 +177,7 @@ export const layer: Layer.Layer<Service, never, Project.Service | InstanceBootst
             }
             yield* disposeEntry(item[0], item[1], exit.value)
           }),
-        { discard: true },
+        { discard: true, concurrency: 4 }, // kilocode_change - dispose independent worktrees concurrently
       )
     })
 
