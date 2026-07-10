@@ -1895,4 +1895,5 @@ export const dict = {
   "chat.search.previousMatch": "Попередній збіг",
   "chat.search.nextMatch": "Наступний збіг",
   "chat.search.close": "Закрити пошук",
+  "chat.search.invalidRegex": "Недійсний регулярний вираз",
 }
