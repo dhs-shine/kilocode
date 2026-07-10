@@ -104,6 +104,7 @@ class SessionController(
     private data class OrganizationTarget(val org: String?)
     private data class Followup(val dir: String, val time: Long)
     private data class Pref(val agent: String?, val model: String?, val variants: List<String>, val variant: String?, val reset: Boolean)
+    private data class RevertOp(val key: Long)
     private data class Dispatch(
         val kind: String,
         val source: String,
@@ -151,6 +152,8 @@ class SessionController(
     private var eventJob: Job? = null
     private var drainJob: Job? = null
     private var revertJob: Job? = null
+    private var revertOp: RevertOp? = null
+    private var revertSeq = 0L
     private var revertWatchdog: UiTimer? = null
     private var creating: CompletableDeferred<String?>? = null
     private val childJobs: MutableMap<String, Job> = mutableMapOf()
@@ -276,6 +279,7 @@ class SessionController(
 
     private fun dispatch(data: Dispatch, send: suspend (String) -> Unit) {
         assertEdt()
+        if (revertOp != null) return
         val props = data.props + if (data.kind == "command") slashProps() else emptyMap()
         capture("Conversation Send Clicked", sessionProps(sid ?: ref?.key) + mapOf(
             "source" to data.source,
@@ -348,7 +352,7 @@ class SessionController(
     fun abort() {
         assertEdt()
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=abort" }
-        if (model.state is SessionState.Reverting) {
+        if (revertOp != null) {
             cancelRevert()
             return
         }
@@ -388,7 +392,7 @@ class SessionController(
     fun compact() {
         assertEdt()
         val id = sid ?: return
-        if (model.state.isBusy()) return
+        if (revertOp != null || model.state.isBusy()) return
         if (model.isEmpty()) return
         val parsed = model.model?.let(::parseModel) ?: return
         val sel = ModelSelectionDto(parsed.first, parsed.second)
@@ -421,18 +425,17 @@ class SessionController(
             return
         }
         val state = model.state
-        if (state is SessionState.Reverting) return
+        if (revertOp != null) return
         val busy = state.isBusy()
         LOG.info(
             "${ChatLogSummary.sid(id)} kind=revert clicked=true message=$message " +
                 "part=${part ?: "none"} busy=$busy",
         )
-        model.setState(SessionState.Reverting(
+        val op = beginReverting(
             KiloBundle.message("session.status.rollingback"),
             SessionState.Reverting.Kind.ROLLBACK,
             message,
-        ))
-        startRevertWatchdog()
+        ) ?: return
         revertJob = cs.launch {
             try {
                 if (busy) {
@@ -444,13 +447,13 @@ class SessionController(
                 capture("Session Rollback", sessionProps(id))
                 synchronizeFromDisk(id, "revert")
                 LOG.info("${ChatLogSummary.sid(id)} kind=revert ok=true")
-                edt { clearReverting() }
+                edt { clearReverting(op) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 capture("Session Error", sessionProps(id) + mapOf("context" to "revert", "errorClass" to e::class.java.name))
                 LOG.warn("${ChatLogSummary.sid(id)} kind=revert dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
-                edt { failReverting(e) }
+                edt { failReverting(op, e) }
             }
         }
     }
@@ -458,24 +461,23 @@ class SessionController(
     fun unrevert() {
         assertEdt()
         val id = sid ?: return
-        if (model.state is SessionState.Reverting) return
-        model.setState(SessionState.Reverting(
+        if (revertOp != null) return
+        val op = beginReverting(
             KiloBundle.message("session.status.redoing"),
             SessionState.Reverting.Kind.REDO,
-        ))
-        startRevertWatchdog()
+        ) ?: return
         revertJob = cs.launch {
             try {
                 sessions.unrevert(id, directory)
                 capture("Session Unrevert", sessionProps(id))
                 synchronizeFromDisk(id, "unrevert")
-                edt { clearReverting() }
+                edt { clearReverting(op) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 capture("Session Error", sessionProps(id) + mapOf("context" to "unrevert", "errorClass" to e::class.java.name))
                 LOG.warn("${ChatLogSummary.sid(id)} kind=unrevert dir=${ChatLogSummary.dir(directory)} failed message=${e.message}", e)
-                edt { failReverting(e) }
+                edt { failReverting(op, e) }
             }
         }
     }
@@ -503,22 +505,28 @@ class SessionController(
     private fun redoTo(message: String) {
         assertEdt()
         val id = sid ?: return
-        if (model.state is SessionState.Reverting) return
-        model.setState(SessionState.Reverting(
+        val state = model.state
+        if (revertOp != null) return
+        val busy = state.isBusy()
+        val op = beginReverting(
             KiloBundle.message("session.status.redoing"),
             SessionState.Reverting.Kind.REDO,
             message,
-        ))
-        startRevertWatchdog()
+        ) ?: return
         revertJob = cs.launch {
             try {
+                if (busy) {
+                    LOG.info("${ChatLogSummary.sid(id)} kind=redo abort=true reason=busy")
+                    sessions.abort(id, directory)
+                    LOG.info("${ChatLogSummary.sid(id)} kind=redo abort=true ok=true")
+                }
                 sessions.revert(id, directory, message, null)
                 synchronizeFromDisk(id, "redo")
-                edt { clearReverting() }
+                edt { clearReverting(op) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                edt { failReverting(e) }
+                edt { failReverting(op, e) }
             }
         }
     }
@@ -531,13 +539,13 @@ class SessionController(
 
     fun cancelRevert() {
         assertEdt()
-        if (model.state !is SessionState.Reverting) return
-        LOG.info("${ChatLogSummary.sid(sid ?: "?")} kind=revert cancelled=true")
-        stopRevertWatchdog()
-        revertJob?.cancel()
-        revertJob = null
-        sid?.let { capture("Session Revert Cancelled", sessionProps(it)) }
-        model.setState(SessionState.Idle)
+        if (revertOp == null) return
+        LOG.info("${ChatLogSummary.sid(sid ?: "?")} kind=revert cancelRequested=true")
+        sid?.let { capture("Session Revert Cancel Requested", sessionProps(it)) }
+        val state = model.state
+        if (state is SessionState.Reverting) {
+            model.setState(state.copy(text = KiloBundle.message("session.status.operation.finishing")))
+        }
     }
 
     private fun synchronizeFromDisk(id: String, kind: String) {
@@ -1458,6 +1466,7 @@ class SessionController(
     }
 
     private fun status(dto: SessionStatusDto) {
+        if (revertOp != null) return
         val state = when (dto.type) {
             "idle" -> {
                 val current = model.state
@@ -1484,11 +1493,21 @@ class SessionController(
         model.setState(state)
     }
 
-    private fun startRevertWatchdog() {
+    private fun beginReverting(text: String, kind: SessionState.Reverting.Kind, message: String? = null): RevertOp? {
+        assertEdt()
+        if (revertOp != null) return null
+        val op = RevertOp(++revertSeq)
+        revertOp = op
+        model.setState(SessionState.Reverting(text, kind, message))
+        startRevertWatchdog(op)
+        return op
+    }
+
+    private fun startRevertWatchdog(op: RevertOp) {
         assertEdt()
         stopRevertWatchdog()
         val ms = revertTimeoutMs.coerceIn(1, Int.MAX_VALUE.toLong()).toInt()
-        revertWatchdog = timers.timer(ms, repeats = false) { onRevertTimeout() }.also { it.start() }
+        revertWatchdog = timers.timer(ms, repeats = false) { onRevertTimeout(op) }.also { it.start() }
     }
 
     private fun stopRevertWatchdog() {
@@ -1496,32 +1515,38 @@ class SessionController(
         revertWatchdog = null
     }
 
-    private fun onRevertTimeout() {
+    private fun onRevertTimeout(op: RevertOp) {
         assertEdt()
-        if (model.state !is SessionState.Reverting) return
+        if (revertOp?.key != op.key) return
         LOG.warn("${ChatLogSummary.sid(sid ?: "?")} kind=revert timeout=true after=${revertTimeoutMs}ms")
-        revertJob?.cancel()
-        revertJob = null
         stopRevertWatchdog()
         sid?.let { capture("Session Revert Timeout", sessionProps(it)) }
-        model.setState(SessionState.Error(KiloBundle.message("session.error.revert.timeout")))
+        val state = model.state
+        if (state is SessionState.Reverting) {
+            model.setState(state.copy(text = KiloBundle.message("session.error.revert.timeout")))
+        }
     }
 
-    private fun clearReverting() {
+    private fun clearReverting(op: RevertOp) {
         assertEdt()
+        if (revertOp?.key != op.key) return
         stopRevertWatchdog()
         revertJob = null
+        revertOp = null
         if (model.state is SessionState.Reverting) model.setState(SessionState.Idle)
     }
 
-    private fun failReverting(e: Exception) {
+    private fun failReverting(op: RevertOp, e: Exception) {
         assertEdt()
+        if (revertOp?.key != op.key) return
         stopRevertWatchdog()
         revertJob = null
+        revertOp = null
         model.setState(SessionState.Error(e.message ?: KiloBundle.message("session.error.unknown")))
     }
 
     private fun idle() {
+        if (revertOp != null) return
         // Treat session.idle as an explicit signal to return to Idle.
         // Only apply if we're not in a more specific non-terminal state.
         val current = model.state
@@ -2126,6 +2151,7 @@ class SessionController(
             revertWatchdog = null
             revertJob?.cancel()
             revertJob = null
+            revertOp = null
             val callbacks = enhancements.values.toList()
             enhancements.clear()
             cs.cancel()
