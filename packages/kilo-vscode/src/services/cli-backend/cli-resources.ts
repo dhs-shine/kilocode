@@ -65,15 +65,6 @@ export async function copySandboxResources(source: string, target: string): Prom
   await Promise.all(sandboxNetworkFiles.map((file) => fs.promises.rm(path.join(to, file), { force: true })))
   await fs.promises.rm(path.join(to, sandboxRuntimeLicense), { recursive: true, force: true })
 
-  const executable = path.join(from, bwrap)
-  if (!fs.existsSync(executable)) return
-  await fs.promises.copyFile(executable, helper)
-  await fs.promises.chmod(helper, 0o755)
-
-  const licenses = path.join(from, bwrapLicense)
-  if (!fs.existsSync(licenses)) return
-  await fs.promises.cp(licenses, destination, { recursive: true })
-
   for (const file of sandboxNetworkFiles) {
     const input = path.join(from, file)
     if (!fs.existsSync(input)) continue
@@ -85,6 +76,15 @@ export async function copySandboxResources(source: string, target: string): Prom
   if (fs.existsSync(runtimeLicense)) {
     await fs.promises.cp(runtimeLicense, path.join(to, sandboxRuntimeLicense), { recursive: true })
   }
+
+  const executable = path.join(from, bwrap)
+  if (!fs.existsSync(executable)) return
+  await fs.promises.copyFile(executable, helper)
+  await fs.promises.chmod(helper, 0o755)
+
+  const licenses = path.join(from, bwrapLicense)
+  if (!fs.existsSync(licenses)) return
+  await fs.promises.cp(licenses, destination, { recursive: true })
 }
 
 export async function copyKiloSandboxWorker(source: string, target: string): Promise<void> {

@@ -175,6 +175,35 @@ describe("cli tree-sitter resources", () => {
     }
   })
 
+  it("copies seccomp licensing when bundled Bubblewrap is omitted", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-vscode-seccomp-license-"))
+    try {
+      const source = path.join(root, "dist", "bin", "kilo")
+      const target = path.join(root, "extension", "bin", "kilo")
+      const relay = path.join(path.dirname(source), "kilo-sandbox-network-relay.js")
+      const seccomp = path.join(path.dirname(source), "kilo-sandbox-seccomp")
+      const license = path.join(path.dirname(source), "licenses", "sandbox-runtime", "LICENSE")
+
+      await fs.mkdir(path.dirname(license), { recursive: true })
+      await fs.mkdir(path.dirname(target), { recursive: true })
+      await fs.writeFile(source, "binary")
+      await fs.writeFile(target, "binary")
+      await fs.writeFile(relay, "relay")
+      await fs.writeFile(seccomp, "seccomp")
+      await fs.writeFile(license, "Apache-2.0")
+
+      await copySandboxResources(source, target)
+
+      expect(await fs.readFile(path.join(path.dirname(target), "kilo-sandbox-network-relay.js"), "utf8")).toBe("relay")
+      expect(await fs.readFile(path.join(path.dirname(target), "kilo-sandbox-seccomp"), "utf8")).toBe("seccomp")
+      expect(await fs.readFile(path.join(path.dirname(target), "licenses", "sandbox-runtime", "LICENSE"), "utf8")).toBe(
+        "Apache-2.0",
+      )
+    } finally {
+      await fs.rm(root, { recursive: true, force: true })
+    }
+  })
+
   it("removes stale sandbox resources when the source has none", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "kilo-vscode-sandbox-stale-"))
     try {
