@@ -14,7 +14,7 @@
 
 - Harden Kilo Core startup and shutdown so startup failures show clearer diagnostics, app close stops the CLI process, and lingering child processes are cleaned up more reliably.
 - Fix workspace reload recovery so stale reload state no longer disrupts the session connection.
-- Fix  rollback and revert flows so prompt focus, scroll state, diff order, and turn state are preserved more reliably.
+- Fix JetBrains rollback and revert flows so prompt focus, scroll state, diff order, and turn state are preserved more reliably.
 - Fix Kilo Core Bedrock SSO credential resolution and commit-message error handling when no changes are available.
 
 ### Changed
