@@ -167,7 +167,7 @@ class KiloBackendAppServiceTest {
     }
 
     @Test
-    fun `shutdown for app close disposes server once`() {
+    fun `shutdown for app close fast-closes server once without blocking dispose`() {
         val server = FakeCliServer(mock)
         val svc = KiloBackendAppService.create(scope, server, log)
 
@@ -176,7 +176,9 @@ class KiloBackendAppServiceTest {
         svc.dispose()
 
         assertEquals(KiloAppState.Disconnected, svc.appState.value)
-        assertEquals(1, server.disposeCount)
+        // App close uses the non-blocking fast path, not the confirming dispose path.
+        assertEquals(1, server.closeCount)
+        assertEquals(0, server.disposeCount)
     }
 
     @Test

@@ -28,9 +28,11 @@ class KiloBackendCliKillTest {
         // and does not forward signals. Destroying the parent alone would orphan the
         // children, so passing assertions prove killCliProcessTree killed the whole tree.
         val proc = process("sh", "-c", "sleep 30 & sleep 30 & wait")
-        val kids = descendants(proc)
+        // Wait for both children so the captured set matches what the kill enumerates; otherwise a
+        // late-forked sleep could be asserted on but never seen by killCliProcessTree.
+        val kids = descendants(proc, min = 2)
         try {
-            assertTrue(kids.isNotEmpty(), "process tree did not spawn a descendant")
+            assertTrue(kids.size >= 2, "process tree did not spawn both descendants (found ${kids.size})")
 
             killCliProcessTree(proc, log, windows = false)
 
@@ -39,6 +41,21 @@ class KiloBackendCliKillTest {
             kids.forEach { child -> assertTrue(exited(child), "child process ${child.pid()} is still alive") }
         } finally {
             kids.forEach { it.destroyForcibly() }
+            cleanup(proc)
+        }
+    }
+
+    @Test
+    fun `no-wait path escalates to SIGKILL for a SIGTERM-ignoring process`() {
+        val log = TestLog()
+        // The parent ignores SIGTERM, so only SIGKILL can stop it. This is the shutdown-hook path
+        // (wait=false); it must still escalate rather than orphan a tree that survives SIGTERM.
+        val proc = process("sh", "-c", "trap '' TERM; sleep 30")
+        try {
+            killCliProcessTree(proc, log, wait = false, windows = false)
+            assertTrue(proc.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS), "process did not exit after SIGKILL")
+            assertFalse(proc.isAlive)
+        } finally {
             cleanup(proc)
         }
     }
@@ -72,11 +89,11 @@ class KiloBackendCliKillTest {
 
     private fun process(vararg cmd: String): Process = ProcessBuilder(*cmd).start()
 
-    private fun descendants(proc: Process): List<ProcessHandle> {
+    private fun descendants(proc: Process, min: Int = 1): List<ProcessHandle> {
         val end = System.nanoTime() + TimeUnit.SECONDS.toNanos(PROCESS_TIMEOUT_SECONDS)
         while (System.nanoTime() < end) {
             val kids = proc.toHandle().descendants().toList()
-            if (kids.isNotEmpty()) return kids
+            if (kids.size >= min) return kids
             Thread.sleep(25)
         }
         return proc.toHandle().descendants().toList()

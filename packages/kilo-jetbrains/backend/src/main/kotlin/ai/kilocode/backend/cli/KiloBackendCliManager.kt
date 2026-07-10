@@ -223,6 +223,23 @@ class KiloBackendCliManager(
         cleanup(proc, "Disposing")
     }
 
+    /**
+     * Fast teardown for IDE app close: send SIGTERM so the CLI can flush state, then return without
+     * waiting. The JVM shutdown hook stays installed and escalates to SIGKILL when the JVM exits, so
+     * we neither block the shutdown thread (often the EDT) nor risk orphaning the tree.
+     */
+    override fun closeForShutdown() {
+        val proc = synchronized(lock) {
+            closed = true
+            process
+        } ?: return
+        closing = proc
+        close(proc)
+        descendants(proc).forEach { it.destroy() }
+        proc.destroy()
+        log.info("App close — SIGTERM sent to CLI tree (pid=${proc.pid()}); shutdown hook will confirm exit")
+    }
+
     private fun take(): Process? = synchronized(lock) {
         val proc = process
         process = null
@@ -332,7 +349,12 @@ internal fun killCliProcessTree(
     original.forEach { it.destroy() }
     proc.destroy()
     if (!wait) {
-        log.info("CLI process tree SIGTERM sent without wait (pid=${proc.pid()}); exit not confirmed")
+        // Shutdown-hook backstop: the graceful cleanup path uninstalls this hook before killing,
+        // so if the hook still fires the CLI was never stopped cleanly. Escalate to SIGKILL right
+        // away rather than risk orphaning a SIGTERM-ignoring tree on JVM exit; we cannot block here.
+        original.forEach { it.destroyForcibly() }
+        proc.destroyForcibly()
+        log.info("CLI process tree SIGTERM+SIGKILL sent without wait (pid=${proc.pid()}); exit not confirmed")
         return
     }
     val parentExited = proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)
@@ -340,22 +362,43 @@ internal fun killCliProcessTree(
     // period, and killing the known processes can reparent them. Union the fresh scan with
     // the original handles so late children are escalated too.
     val kids = (original + descendants(proc)).distinctBy { it.pid() }
-    if (!parentExited) {
-        log.warn("CLI process did not exit after SIGTERM, sending SIGKILL")
-        kids.forEach { it.destroyForcibly() }
-        proc.destroyForcibly()
-        log.info("CLI process tree SIGKILL sent after SIGTERM timeout (pid=${proc.pid()}); exit not confirmed")
+    if (parentExited && kids.none { it.isAlive }) {
+        log.info("CLI process tree exited after SIGTERM (pid=${proc.pid()}, children=${kids.size})")
         return
     }
-    log.info("CLI process exited after SIGTERM (pid=${proc.pid()}, exitCode=${runCatching { proc.exitValue() }.getOrNull()})")
-    val alive = kids.filter { it.isAlive }
-    if (alive.isNotEmpty()) {
-        log.warn("CLI child processes did not exit after SIGTERM, sending SIGKILL")
-        alive.forEach { it.destroyForcibly() }
-        log.info("CLI child process SIGKILL sent after SIGTERM timeout (pid=${proc.pid()}, children=${alive.size}); exit not confirmed")
+    log.warn(
+        if (parentExited) "CLI child processes did not exit after SIGTERM, sending SIGKILL"
+        else "CLI process did not exit after SIGTERM, sending SIGKILL"
+    )
+    kids.forEach { it.destroyForcibly() }
+    proc.destroyForcibly()
+    confirmKilled(proc, kids, log, timeoutSeconds)
+}
+
+/**
+ * Wait for a SIGKILLed process tree to actually exit before returning, so callers observe a
+ * terminal state instead of a fire-and-forget kill. Bounds the wait for both the parent and each
+ * descendant handle by [timeoutSeconds]; children are non-child handles reaped via polling.
+ */
+private fun confirmKilled(proc: Process, kids: List<ProcessHandle>, log: KiloLog, timeoutSeconds: Long) {
+    val parentExited = proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)
+    awaitHandles(kids, timeoutSeconds)
+    val alive = kids.count { it.isAlive }
+    if (parentExited && alive == 0) {
+        log.info("CLI process tree exited after SIGKILL (pid=${proc.pid()}, children=${kids.size})")
         return
     }
-    log.info("CLI process tree exited after SIGTERM (pid=${proc.pid()}, children=${kids.size})")
+    log.warn("CLI process tree still alive after SIGKILL (pid=${proc.pid()}, parentAlive=${!parentExited}, children=$alive)")
+}
+
+private fun awaitHandles(handles: List<ProcessHandle>, timeoutSeconds: Long) {
+    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeoutSeconds)
+    for (handle in handles) {
+        if (!handle.isAlive) continue
+        val remaining = deadline - System.nanoTime()
+        if (remaining <= 0) break
+        runCatching { handle.onExit().get(remaining, TimeUnit.NANOSECONDS) }
+    }
 }
 
 private fun descendants(proc: Process): List<ProcessHandle> =
@@ -503,6 +546,9 @@ internal fun buildKiloCliEnv(
 ): Map<String, String> = buildMap {
     putAll(base)
     put("KILO_SERVER_PASSWORD", pwd)
+    // The CLI watches this PID and exits if the IDE process is hard-killed without a chance
+    // to signal or run the JVM shutdown hook, so it is never orphaned. See parent-watchdog.ts.
+    put("KILO_PARENT_PID", ProcessHandle.current().pid().toString())
     put("KILO_CLIENT", "jetbrains")
     put("KILO_ENABLE_QUESTION_TOOL", "true")
     put("KILO_PLATFORM", "jetbrains")
