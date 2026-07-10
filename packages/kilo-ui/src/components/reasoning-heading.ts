@@ -13,6 +13,10 @@ function clean(value: string) {
     .trim()
 }
 
+function visible(value: string) {
+  return value.replace(/<!--[\s\S]*?(?:-->|$)/g, "").trim() ? value : ""
+}
+
 function pick(src: string, expr: RegExp, group = 1): ReasoningHeading | undefined {
   const found = src.match(expr)
   const raw = found?.[group]
@@ -21,9 +25,10 @@ function pick(src: string, expr: RegExp, group = 1): ReasoningHeading | undefine
   const title = clean(raw)
   if (!title) return
 
+  const body = src.slice(found[0].length).trimStart()
   return {
     title,
-    body: src.slice(found[0].length).trimStart(),
+    body: visible(body),
   }
 }
 
@@ -34,7 +39,7 @@ export function reasoningHeading(text: string): ReasoningHeading {
     pick(src, /^#{1,6}[ \t]+([^\n]+?)(?:[ \t]+#+[ \t]*)?(?:\n|$)/) ??
     pick(src, /^([^\n]+)\n(?:=+|-+)[ \t]*(?:\n|$)/) ??
     pick(src, /^(\*\*|__)([^\n]+?)\1[ \t]*(?:\n|$)/, 2) ?? {
-      body: src,
+      body: visible(src),
     }
   )
 }
