@@ -725,6 +725,9 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
       high: { reasoningEffort: "high" },
     }
   }
+  if (id.includes("grok") && !id.includes("grok-4.5")) {
+    return {}
+  }
 
   switch (model.api.npm) {
     case "@kilocode/kilo-gateway": // kilocode_change

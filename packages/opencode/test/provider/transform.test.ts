@@ -3340,20 +3340,18 @@ describe("ProviderTransform.variants", () => {
   })
 
   describe("@ai-sdk/xai", () => {
-    test("grok-4.5 uses standard reasoning efforts", () => {
+    test("grok-3 returns empty object", () => {
       const model = createMockModel({
-        id: "xai/grok-4.5",
+        id: "xai/grok-3",
         providerID: "xai",
         api: {
-          id: "grok-4.5",
+          id: "grok-3",
           url: "https://api.x.ai",
           npm: "@ai-sdk/xai",
         },
       })
-
       const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["low", "medium", "high"])
-      expect(result.medium).toEqual({ reasoningEffort: "medium" })
+      expect(result).toEqual({})
     })
 
     test("grok-3-mini returns low and high with reasoningEffort", () => {
@@ -3370,6 +3368,23 @@ describe("ProviderTransform.variants", () => {
       expect(Object.keys(result)).toEqual(["low", "high"])
       expect(result.low).toEqual({ reasoningEffort: "low" })
       expect(result.high).toEqual({ reasoningEffort: "high" })
+    })
+
+    test("grok-4.5 uses standard reasoning efforts", () => {
+      const model = createMockModel({
+        id: "xai/grok-4.5",
+        providerID: "xai",
+        api: {
+          id: "grok-4.5",
+          url: "https://api.x.ai",
+          npm: "@ai-sdk/xai",
+        },
+      })
+
+      const result = ProviderTransform.variants(model)
+
+      expect(Object.keys(result)).toEqual(["low", "medium", "high"])
+      expect(result.medium).toEqual({ reasoningEffort: "medium" })
     })
   })
 
