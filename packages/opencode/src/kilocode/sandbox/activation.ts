@@ -28,7 +28,7 @@ export const idle = Effect.fn("SandboxActivation.idle")(function* (
   const status = yield* SessionStatus.Service
   const background = yield* BackgroundJob.Service
   const notebook = yield* Notebook
-  const store = yield* InstanceStore.Service
+  const current = yield* InstanceState.directory
   const ids = new Set<string>(family.map((target) => target.id))
   const root = family.find((target) => target.id === sessionID) ?? family[0]
   const groups = new Map<string, Target[]>()
@@ -37,20 +37,19 @@ export const idle = Effect.fn("SandboxActivation.idle")(function* (
     group.push(target)
     groups.set(target.directory, group)
   }
-  const scans = yield* Effect.forEach([...groups.entries()], ([directory, targets]) =>
-    store.provide(
-      { directory },
-      Effect.all(
-        [
-          status.list(),
-          background.list(),
-          Effect.promise(() => BackgroundProcess.list()),
-          Effect.promise(() => InteractiveTerminal.list()),
-          notebook.list(),
-        ] as const,
-      ).pipe(Effect.map((resources) => ({ directory, targets, resources }))),
-    ),
-  )
+  const scans = yield* Effect.forEach([...groups.entries()], ([directory, targets]) => {
+    const scan = Effect.all(
+      [
+        status.list(),
+        background.list(),
+        Effect.promise(() => BackgroundProcess.list()),
+        Effect.promise(() => InteractiveTerminal.list()),
+        notebook.list(),
+      ] as const,
+    ).pipe(Effect.map((resources) => ({ directory, targets, resources })))
+    if (directory === current) return scan
+    return Effect.flatMap(InstanceStore.Service, (store) => store.provide({ directory }, scan))
+  })
 
   for (const scan of scans) {
     const [states, jobs, processes, terminals, requests] = scan.resources
