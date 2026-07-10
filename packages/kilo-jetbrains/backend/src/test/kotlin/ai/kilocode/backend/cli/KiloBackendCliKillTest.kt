@@ -24,10 +24,12 @@ class KiloBackendCliKillTest {
     @Test
     fun `kills a real process tree`() {
         val log = TestLog()
-        val script = "trap 'kill -TERM \"${'$'}child\" 2>/dev/null; wait \"${'$'}child\"; exit 0' TERM; sleep 30 & child=${'$'}!; wait \"${'$'}child\""
-        val proc = process("sh", "-c", script)
+        // The parent backgrounds two children and only `wait`s — it installs no TERM trap
+        // and does not forward signals. Destroying the parent alone would orphan the
+        // children, so passing assertions prove killCliProcessTree killed the whole tree.
+        val proc = process("sh", "-c", "sleep 30 & sleep 30 & wait")
+        val kids = descendants(proc)
         try {
-            val kids = descendants(proc)
             assertTrue(kids.isNotEmpty(), "process tree did not spawn a descendant")
 
             killCliProcessTree(proc, log, windows = false)
@@ -36,6 +38,7 @@ class KiloBackendCliKillTest {
             assertFalse(proc.isAlive)
             kids.forEach { child -> assertTrue(exited(child), "child process ${child.pid()} is still alive") }
         } finally {
+            kids.forEach { it.destroyForcibly() }
             cleanup(proc)
         }
     }

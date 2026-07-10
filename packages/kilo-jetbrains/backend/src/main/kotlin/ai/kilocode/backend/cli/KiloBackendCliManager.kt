@@ -53,6 +53,8 @@ class KiloBackendCliManager(
     private var process: Process? = null
     @Volatile
     private var closing: Process? = null
+    private val lock = Any()
+    private var closed = false
     private var hook: Thread? = null
     private var stderr: Thread? = null
     private var stdout: Thread? = null
@@ -63,6 +65,7 @@ class KiloBackendCliManager(
     override fun process(): Process? = process
 
     override suspend fun init(onProgress: (CliDownload) -> Unit, onResolved: () -> Unit): CliServer.State {
+        if (closed) return CliServer.State.Error("CLI manager is disposed")
         return try {
             val start = System.nanoTime()
             withTimeout(timeoutMs + STARTUP_TIMEOUT_GRACE_MS) {
@@ -74,9 +77,9 @@ class KiloBackendCliManager(
         } catch (e: TimeoutCancellationException) {
             val msg = "CLI startup timed out after ${timeoutMs}ms"
             log.warn(msg, e)
-            process?.let { proc ->
+            val proc = take()
+            if (proc != null) {
                 log.info("Cleaning up orphaned CLI process (pid=${proc.pid()})")
-                process = null
                 cleanup(proc, "startup timeout cleanup")
             }
             CliServer.State.Error(
@@ -87,9 +90,9 @@ class KiloBackendCliManager(
             throw e
         } catch (e: Exception) {
             log.warn("CLI startup failed", e)
-            process?.let { proc ->
+            val proc = take()
+            if (proc != null) {
                 log.info("Cleaning up orphaned CLI process (pid=${proc.pid()})")
-                process = null
                 cleanup(proc, "startup failure cleanup")
             }
             CliServer.State.Error(
@@ -100,16 +103,19 @@ class KiloBackendCliManager(
     }
 
     override fun exited(proc: Process) {
-        if (process != proc) return
+        val ok = synchronized(lock) {
+            if (process != proc) return@synchronized false
+            process = null
+            uninstall()
+            stderr = null
+            true
+        }
+        if (!ok) return
         log.info("CLI process exited (pid=${proc.pid()}, exitCode=${runCatching { proc.exitValue() }.getOrNull()})")
-        process = null
-        uninstall()
-        stderr = null
     }
 
     override fun stop() {
-        val proc = process ?: return
-        process = null
+        val proc = take() ?: return
         cleanup(proc, "stop()")
     }
 
@@ -152,8 +158,17 @@ class KiloBackendCliManager(
                 throw e
             }
             log.info("CLI process started (pid=${proc.pid()})")
-            process = proc
-            install(proc)
+            val reject = synchronized(lock) {
+                if (closed) return@synchronized true
+                process = proc
+                install(proc)
+                false
+            }
+            if (reject) {
+                log.info("CLI process started after disposal; killing process tree (pid=${proc.pid()})")
+                cleanup(proc, "disposed startup cleanup")
+                return@withContext CliServer.State.Error("CLI startup cancelled because service is disposed")
+            }
 
             val stderr = StringBuilder()
 
@@ -187,17 +202,31 @@ class KiloBackendCliManager(
                 log = log,
                 onThread = { stdout = it },
             )
-            if (state is CliServer.State.Error && process == proc) {
+            val current = synchronized(lock) {
+                if (state !is CliServer.State.Error || process != proc) return@synchronized null
                 process = null
+                proc
+            }
+            if (current != null) {
                 cleanup(proc, "startup error")
             }
             state
         }
 
     override fun dispose() {
-        val proc = process ?: return
-        process = null
+        val proc = synchronized(lock) {
+            closed = true
+            val current = process
+            process = null
+            current
+        } ?: return
         cleanup(proc, "Disposing")
+    }
+
+    private fun take(): Process? = synchronized(lock) {
+        val proc = process
+        process = null
+        proc
     }
 
     private fun cleanup(proc: Process, source: String) {
@@ -275,24 +304,43 @@ internal fun killCliProcessTree(
         val ok = runCatching { OSProcessUtil.killProcessTree(proc) }
             .onFailure { log.warn("killProcessTree failed for pid ${proc.pid()}", it) }
             .getOrDefault(false)
-        if (ok) {
-            log.info("CLI process tree kill reported success (pid=${proc.pid()})")
+        // killProcessTree returns after its recursive call but does not wait for or
+        // re-check the process, so a true result alone does not confirm exit.
+        if (!wait) {
+            if (!ok) {
+                descendants(proc).forEach { it.destroyForcibly() }
+                proc.destroyForcibly()
+            }
+            log.info("CLI process tree kill requested without wait (pid=${proc.pid()}, treeKill=$ok); exit not confirmed")
+            return
+        }
+        if (ok && proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+            log.info("CLI process tree exited after kill (pid=${proc.pid()}, exitCode=${runCatching { proc.exitValue() }.getOrNull()})")
             return
         }
         log.info("CLI process tree kill fallback sending SIGKILL (pid=${proc.pid()})")
         descendants(proc).forEach { it.destroyForcibly() }
         proc.destroyForcibly()
-        log.info("CLI process tree SIGKILL sent without wait (pid=${proc.pid()}); exit not confirmed")
+        if (proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+            log.info("CLI process tree exited after SIGKILL fallback (pid=${proc.pid()})")
+        } else {
+            log.warn("CLI process still alive after SIGKILL fallback (pid=${proc.pid()})")
+        }
         return
     }
-    val kids = descendants(proc)
-    kids.forEach { it.destroy() }
+    val original = descendants(proc)
+    original.forEach { it.destroy() }
     proc.destroy()
     if (!wait) {
         log.info("CLI process tree SIGTERM sent without wait (pid=${proc.pid()}); exit not confirmed")
         return
     }
-    if (!proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+    val parentExited = proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)
+    // Re-enumerate before SIGKILL: a tool/shell can fork new descendants during the grace
+    // period, and killing the known processes can reparent them. Union the fresh scan with
+    // the original handles so late children are escalated too.
+    val kids = (original + descendants(proc)).distinctBy { it.pid() }
+    if (!parentExited) {
         log.warn("CLI process did not exit after SIGTERM, sending SIGKILL")
         kids.forEach { it.destroyForcibly() }
         proc.destroyForcibly()
