@@ -1899,4 +1899,5 @@ export const dict = {
   "chat.search.nextMatch": "Sonraki eşleşme",
   "chat.search.close": "Aramayı kapat",
   "chat.search.invalidRegex": "Geçersiz normal ifade",
+  "chat.search.noResults": "Sonuç yok",
 }
