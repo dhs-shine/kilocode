@@ -67,7 +67,7 @@ jobs:
           echo 'settings=[{"os":"linux","index":1,"total":2,"host":"blacksmith-4vcpu-ubuntu-2404","run":true,"packages":true},{"os":"linux","index":2,"total":2,"host":"blacksmith-4vcpu-ubuntu-2404","run":true,"packages":false},{"os":"macos","index":1,"total":1,"host":"macos-15","run":true,"packages":true},{"os":"windows","index":1,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":true},{"os":"windows","index":2,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":false},{"os":"windows","index":3,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":false},{"os":"windows","index":4,"total":4,"host":"blacksmith-4vcpu-windows-2025","run":true,"packages":false}]' >> "$GITHUB_OUTPUT"
 
   unit:
-    name: ${{ matrix.settings.total > 1 && format('unit ({0}, {1}/{2})', matrix.settings.os, matrix.settings.index, matrix.settings.total) || format('unit ({0})', matrix.settings.os) }}
+    name: ${{ !matrix.settings.run && 'unit (unchanged)' || matrix.settings.total > 1 && format('unit ({0}, {1}/{2})', matrix.settings.os, matrix.settings.index, matrix.settings.total) || format('unit ({0})', matrix.settings.os) }}
     needs: changes
     strategy:
       fail-fast: false
@@ -214,6 +214,18 @@ jobs:
   # kilocode_change end
 
   # kilocode_change start
+  unit-required:
+    name: unit (linux)
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    needs:
+      - unit
+    if: always()
+    steps:
+      - name: Verify unit matrix passed
+        run: |
+          echo "unit=${{ needs.unit.result }}"
+          test "${{ needs.unit.result }}" = "success"
+
   required:
     name: test (linux)
     runs-on: blacksmith-4vcpu-ubuntu-2404
