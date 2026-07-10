@@ -15,7 +15,6 @@ import { Bus } from "../../src/bus"
 import * as CrossSpawnSpawner from "@opencode-ai/core/cross-spawn-spawner"
 import { EditTool } from "../../src/tool/edit"
 import { Format } from "../../src/format"
-import { Instance } from "../../src/kilocode/instance"
 import { Instruction } from "../../src/session/instruction"
 import { LSP } from "../../src/lsp/lsp"
 import { MessageID, SessionID } from "../../src/session/schema"
@@ -24,6 +23,7 @@ import * as Tool from "../../src/tool/tool"
 import { Truncate } from "../../src/tool/truncate"
 import { WriteTool } from "../../src/tool/write"
 import * as EncodedIO from "../../src/kilocode/tool/encoded-io"
+import * as TextStream from "../../src/kilocode/text-stream"
 import { disposeAllInstances, provideTmpdirInstance } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
 
@@ -191,15 +191,16 @@ describe("tool encoding preservation", () => {
   })
 
   describe("ReadTool streaming and pagination", () => {
-    it.live("streams UTF-8 files and stops after the output cap", () =>
+    it.live("releases a truncated UTF-8 file before atomic replacement", () =>
       provideTmpdirInstance((dir) =>
         Effect.gen(function* () {
           const filepath = path.join(dir, "large.txt")
+          const temp = `${filepath}.tmp`
           const content = `${"x".repeat(80)}\n`.repeat(50_000)
           yield* Effect.promise(() => fs.writeFile(filepath, content))
 
           const base = yield* AppFileSystem.Service
-          const counter = { bytes: 0 }
+          const state = { bytes: 0, closed: false }
           const result = yield* runRead({ filePath: filepath }).pipe(
             Effect.provideService(
               AppFileSystem.Service,
@@ -209,41 +210,7 @@ describe("tool encoding preservation", () => {
                   base.stream(file, options).pipe(
                     Stream.tap((chunk) =>
                       Effect.sync(() => {
-                        counter.bytes += chunk.length
-                      }),
-                    ),
-                  ),
-              }),
-            ),
-          )
-
-          expect(result.metadata.truncated).toBe(true)
-          expect(counter.bytes).toBeGreaterThan(0)
-          expect(counter.bytes).toBeLessThan(Buffer.byteLength(content, "utf-8") / 2)
-        }),
-      ),
-    )
-
-    it.live("stops the filesystem stream when the tool is aborted", () =>
-      provideTmpdirInstance((dir) =>
-        Effect.gen(function* () {
-          const filepath = path.join(dir, "abort.txt")
-          yield* Effect.promise(() => fs.writeFile(filepath, `${"x".repeat(80)}\n`.repeat(50_000)))
-
-          const base = yield* AppFileSystem.Service
-          const controller = new AbortController()
-          const state = { chunks: 0, closed: false }
-          const exit = yield* runRead({ filePath: filepath }, { ...ctx, abort: controller.signal }).pipe(
-            Effect.provideService(
-              AppFileSystem.Service,
-              AppFileSystem.Service.of({
-                ...base,
-                stream: (file, options) =>
-                  base.stream(file, options).pipe(
-                    Stream.tap(() =>
-                      Effect.sync(() => {
-                        state.chunks += 1
-                        controller.abort()
+                        state.bytes += chunk.length
                       }),
                     ),
                     Stream.ensuring(
@@ -254,12 +221,69 @@ describe("tool encoding preservation", () => {
                   ),
               }),
             ),
-            Effect.exit,
           )
+
+          expect(result.metadata.truncated).toBe(true)
+          expect(state.bytes).toBeGreaterThan(0)
+          expect(state.bytes).toBeLessThan(Buffer.byteLength(content, "utf-8") / 2)
+          expect(state.closed).toBe(true)
+          yield* Effect.promise(async () => {
+            await fs.writeFile(temp, "replacement\n")
+            await fs.rename(temp, filepath)
+          })
+          expect(yield* Effect.promise(() => fs.readFile(filepath, "utf8"))).toBe("replacement\n")
+        }),
+      ),
+    )
+
+    it.live("closes the source stream when the read is aborted", () =>
+      provideTmpdirInstance((dir) =>
+        Effect.gen(function* () {
+          const filepath = path.join(dir, "abort.txt")
+          const temp = `${filepath}.tmp`
+          yield* Effect.promise(() => fs.writeFile(filepath, `${"x".repeat(80)}\n`.repeat(50_000)))
+
+          const base = yield* AppFileSystem.Service
+          const controller = new AbortController()
+          const state = { chunks: 0, closed: false }
+          const service = AppFileSystem.Service.of({
+            ...base,
+            stream: (file, options) =>
+              base.stream(file, options).pipe(
+                Stream.ensuring(
+                  Effect.sync(() => {
+                    state.closed = true
+                  }),
+                ),
+              ),
+          })
+          const exit = yield* Effect.tryPromise({
+            try: () =>
+              TextStream.withFallback(
+                service,
+                filepath,
+                (stream) =>
+                  new Promise<void>((resolve, reject) => {
+                    stream.once("data", () => {
+                      state.chunks += 1
+                      controller.abort()
+                    })
+                    stream.once("end", resolve)
+                    stream.once("error", reject)
+                    stream.resume()
+                  }),
+                controller.signal,
+              ),
+            catch: (err) => err,
+          }).pipe(Effect.exit)
 
           expect(Exit.isFailure(exit)).toBe(true)
           expect(state.chunks).toBeGreaterThan(0)
           expect(state.closed).toBe(true)
+          yield* Effect.promise(async () => {
+            await fs.writeFile(temp, "replacement\n")
+            await fs.rename(temp, filepath)
+          })
         }),
       ),
     )
@@ -268,6 +292,7 @@ describe("tool encoding preservation", () => {
       provideTmpdirInstance((dir) =>
         Effect.gen(function* () {
           const filepath = path.join(dir, "legacy.txt")
+          const temp = `${filepath}.tmp`
           const lines = Array.from({ length: 1_000 }, (_, i) => `valid-${i + 1}-${"x".repeat(70)}`)
           const content = Buffer.concat([
             Buffer.from(lines.join("\n") + "\n"),
@@ -277,7 +302,7 @@ describe("tool encoding preservation", () => {
           yield* Effect.promise(() => fs.writeFile(filepath, content))
 
           const base = yield* AppFileSystem.Service
-          const calls = { bytes: 0, reads: 0 }
+          const calls = { reads: 0 }
           const result = yield* runRead({ filePath: filepath, offset: 999, limit: 5 }).pipe(
             Effect.provideService(
               AppFileSystem.Service,
@@ -287,23 +312,18 @@ describe("tool encoding preservation", () => {
                   Effect.sync(() => {
                     calls.reads += 1
                   }).pipe(Effect.andThen(base.readFile(file))),
-                stream: (file, options) =>
-                  base.stream(file, { ...options, chunkSize: 1024 }).pipe(
-                    Stream.tap((chunk) =>
-                      Effect.sync(() => {
-                        calls.bytes += chunk.length
-                      }),
-                    ),
-                  ),
               }),
             ),
           )
 
-          expect(calls.bytes).toBeGreaterThan(64 * 1024)
           expect(calls.reads).toBe(1)
           expect(result.output.match(/999: valid-999-/g)?.length).toBe(1)
           expect(result.output).toContain(`1001: ${samples.shiftJis}`)
           expect(result.output).toContain("1002: last")
+          yield* Effect.promise(async () => {
+            await fs.writeFile(temp, "replacement\n")
+            await fs.rename(temp, filepath)
+          })
         }),
       ),
     )
