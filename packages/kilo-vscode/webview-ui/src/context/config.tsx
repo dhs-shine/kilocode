@@ -130,32 +130,40 @@ export const ConfigProvider: ParentComponent = (props) => {
       return
     }
     if (message.type === "configUpdated") {
-      // Config pushes can come from unrelated saves or disposal events. Re-apply
-      // local drafts and wait for configSaved before acknowledging this write.
-      setConfig(resolveConfig(message.config, draft(), has(draft() as Record<string, unknown>)))
-      if (message.globalConfig !== undefined) {
-        setGlobalConfig(mergeScopedConfig(message.globalConfig, globalDraft()))
-        setSavedGlobal(message.globalConfig)
+      if (saving()) {
+        // This configUpdated is the confirmation of our saveConfig() write.
+        // Clear the draft now that the server has confirmed the write.
+        setSaving(false)
+        setDraft({})
+        setGlobalDraft({})
+        setProjectDraft({})
+        setSaveError(null)
+        setConfig(message.config)
+        if (message.globalConfig !== undefined) {
+          setGlobalConfig(mergeScopedConfig(message.globalConfig, globalDraft()))
+          setSavedGlobal(message.globalConfig)
+        }
+        if (message.projectConfig !== undefined) {
+          setProjectConfig(message.projectConfig)
+          setSavedProject(message.projectConfig)
+        }
+        setFeatures(message.features)
+      } else {
+        // configUpdated from a different source (e.g. PermissionDock save).
+        // Re-apply the draft on top so pending settings changes are preserved.
+        setConfig(resolveConfig(message.config, draft(), has(draft() as Record<string, unknown>)))
+        if (message.globalConfig !== undefined) {
+          setGlobalConfig(mergeScopedConfig(message.globalConfig, globalDraft()))
+          setSavedGlobal(message.globalConfig)
+        }
+        if (message.projectConfig !== undefined) {
+          setProjectConfig(mergeScopedConfig(message.projectConfig, projectDraft()))
+          setSavedProject(message.projectConfig)
+        }
+        setFeatures(message.features)
       }
-      if (message.projectConfig !== undefined) {
-        setProjectConfig(mergeScopedConfig(message.projectConfig, projectDraft()))
-        setSavedProject(message.projectConfig)
-      }
-      setFeatures(message.features)
       if (message.settings) mergeSettings(message.settings)
       setSaved(message.config)
-      return
-    }
-    if (message.type === "configSaved") {
-      if (!saving()) return
-      setSaving(false)
-      setDraft({})
-      setGlobalDraft({})
-      setProjectDraft({})
-      setSaveError(null)
-      setSaved(config())
-      setSavedGlobal(globalConfig())
-      setSavedProject(projectConfig())
       return
     }
     if (message.type === "configUpdateFailed") {
@@ -205,7 +213,6 @@ export const ConfigProvider: ParentComponent = (props) => {
   })
 
   function updateConfig(partial: Partial<Config>) {
-    if (saving()) return
     // Optimistically update local state with deep merge + null stripping
     setConfig((prev) => stripNulls(deepMerge(prev, partial)))
     // Accumulate in draft — will be sent on saveConfig()
@@ -216,28 +223,24 @@ export const ConfigProvider: ParentComponent = (props) => {
   }
 
   function updateGlobalConfig(partial: Partial<Config>) {
-    if (saving()) return
     setGlobalConfig((prev) => mergeScopedConfig(prev, partial))
     setGlobalDraft((prev) => deepMerge(prev as Config, partial))
     setSaveError(null)
   }
 
   function updateProjectConfig(partial: Partial<Config>) {
-    if (saving()) return
     setProjectConfig((prev) => mergeScopedConfig(prev, partial))
     setProjectDraft((prev) => deepMerge(prev as Config, partial))
     setSaveError(null)
   }
 
   function updateSetting(key: string, value: unknown) {
-    if (saving()) return
     setSettings((prev) => ({ ...prev, [key]: value }))
     setSettingsDraft((prev) => ({ ...prev, [key]: value }))
     setSaveError(null)
   }
 
   function saveConfig() {
-    if (saving()) return
     const changes = draft()
     const globals = globalDraft()
     const projects = projectDraft()
@@ -247,7 +250,7 @@ export const ConfigProvider: ParentComponent = (props) => {
     const projectDirty = has(projects as Record<string, unknown>)
     const settingsDirty = has(pending)
     if (!configDirty && !globalDirty && !projectDirty && !settingsDirty) return
-    // Don't clear draft/isDirty yet — wait for configSaved confirmation.
+    // Don't clear draft/isDirty yet — wait for configUpdated confirmation.
     // If the write fails, the save bar stays visible so the user can retry.
     setSaving(true)
     setSaveError(null)

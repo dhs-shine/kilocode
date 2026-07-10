@@ -198,22 +198,17 @@ describe("ConfigState", () => {
       expect(s.config.username).toBe("bob") // server update applied
     })
 
-    it("waits for explicit save confirmation before clearing the draft", () => {
+    it("clears draft when update confirms our save", () => {
       const s = new ConfigState()
       s.handleConfigLoaded({ snapshot: true })
       s.updateConfig({ snapshot: false })
       s.saveConfig()
       expect(s.saving).toBe(true)
 
-      // An unrelated config push must not confirm the in-flight write.
+      // Server confirms the write
       s.handleConfigUpdated({ snapshot: false })
 
       expect(s.config.snapshot).toBe(false)
-      expect(s.dirty).toBe(true)
-      expect(s.saving).toBe(true)
-
-      s.handleConfigSaved()
-
       expect(s.dirty).toBe(false)
       expect(s.saving).toBe(false)
       expect(Object.keys(s.draft).length).toBe(0)
@@ -225,9 +220,8 @@ describe("ConfigState", () => {
       s.updateConfig({ default_agent: null })
       s.saveConfig()
 
-      // The refresh returns config without default_agent before the write ack.
+      // Server confirms the write by returning config without default_agent.
       s.handleConfigUpdated({})
-      s.handleConfigSaved()
 
       expect(s.config.default_agent).toBeUndefined()
       expect(s.dirty).toBe(false)
@@ -264,20 +258,6 @@ describe("ConfigState", () => {
       expect(s.saved.agent?.code?.prompt).toBeUndefined()
       expect(s.config.agent?.code?.prompt).toBeUndefined()
     })
-
-    it("rejects programmatic edits while the settings UI is inert", () => {
-      const s = new ConfigState()
-      s.handleConfigLoaded({ snapshot: true, username: "alice" })
-      s.updateConfig({ snapshot: false })
-      s.saveConfig()
-
-      s.updateConfig({ username: "bob" })
-      s.handleConfigSaved()
-
-      expect(s.config).toEqual({ snapshot: false, username: "alice" })
-      expect(s.saved).toEqual({ snapshot: false, username: "alice" })
-      expect(s.dirty).toBe(false)
-    })
   })
 
   describe("configSaveFailed while a save is in-flight", () => {
@@ -309,7 +289,6 @@ describe("ConfigState", () => {
     s.saveConfig()
     s.saveConfig()
     s.handleConfigUpdated({ snapshot: false })
-    s.handleConfigSaved()
 
     expect(s.saving).toBe(false)
     expect(s.dirty).toBe(false)
@@ -380,9 +359,8 @@ describe("ConfigState", () => {
       s.updateConfig({ agent: { explore: { model: null } } })
       s.saveConfig()
 
-      // Backend removed the override, then explicitly confirms the write.
+      // Backend removed the override and pushes the stripped config back.
       s.handleConfigUpdated({ agent: { explore: {} } })
-      s.handleConfigSaved()
 
       expect(s.config.agent?.explore?.model).toBeUndefined()
       expect(s.dirty).toBe(false)

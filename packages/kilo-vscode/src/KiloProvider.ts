@@ -59,7 +59,7 @@ import type { RemoteStatusService } from "./services/RemoteStatusService"
 import { resolveProjectDirectory } from "./project-directory"
 import { seedSessionStatuses } from "./session-status"
 import { normalizeEnhancePromptErrorMessage } from "./enhance-prompt-error"
-import { deadline, retry } from "./services/cli-backend/retry"
+import { retry } from "./services/cli-backend/retry"
 import { slimInfo, slimPart, slimParts } from "./kilo-provider/slim-metadata"
 import { handleSidebarWorktreeMessage } from "./kilo-provider/sidebar-worktree"
 import { parseMessageFiles, type MessageFile } from "./kilo-provider/message-files"
@@ -361,8 +361,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private cachedMcpStatusMessage: unknown = null
   /** Ref-count of in-flight handleUpdateConfig calls; prevents fetchAndSendConfig from sending stale data */
   private pending = 0
-  private configRevision = 0
-  private refreshWait = 5_000
   private configWarningsShown = false
   /** Cached notificationsLoaded payload */
   private cachedNotificationsMessage: NotificationsMessage | null = null
@@ -2434,13 +2432,11 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     try {
       const workspaceDir = this.getWorkspaceDirectory()
-      const revision = this.configRevision
       const [{ data: config }, { data: global }, { data: overlay }] = await Promise.all([
         retry(() => this.client!.config.get({ directory: workspaceDir }, { throwOnError: true })),
         this.client.global.config.get({ throwOnError: true }),
         this.client.config.overlay({ directory: workspaceDir, scope: "project" }, { throwOnError: true }),
       ])
-      if (revision !== this.configRevision) return
       this.cachedGlobalConfig = global ?? null
 
       const message = {
@@ -2461,10 +2457,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   /** Fetch global-only config (no project/managed layers) for settings export. */
   private async fetchAndSendGlobalConfig(): Promise<void> {
     if (!this.client || this.connectionState !== "connected") return
-    const revision = this.configRevision
     try {
       const { data: config } = await this.client.global.config.get({ throwOnError: true })
-      if (revision !== this.configRevision) return
       this.cachedGlobalConfig = config ?? null
       this.postMessage({ type: "globalConfigLoaded", config })
     } catch (error) {
@@ -2547,7 +2541,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
    */
   private async fetchAndSendConfigUpdated(): Promise<void> {
     if (!this.client || this.connectionState !== "connected") return
-    const revision = ++this.configRevision
     try {
       const dir = this.getWorkspaceDirectory()
       const [{ data: config }, { data: global }, { data: overlay }] = await Promise.all([
@@ -2555,7 +2548,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         this.client.global.config.get({ throwOnError: true }),
         this.client.config.overlay({ directory: dir, scope: "project" }, { throwOnError: true }),
       ])
-      if (revision !== this.configRevision) return
       this.cachedGlobalConfig = global ?? null
       this.cachedConfigMessage = {
         type: "configLoaded",
@@ -2918,7 +2910,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     const hasProject = Object.keys(project).length > 0 || projectUnset.length > 0
 
     this.pending++
-    this.configRevision++
     const dir = this.getWorkspaceDirectory()
 
     try {
@@ -2936,32 +2927,17 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
         )
       }
     } catch (error) {
-      this.cachedConfigMessage = null
-      this.cachedGlobalConfig = null
-      this.pending--
-      await deadline(
-        this.fetchAndSendConfigUpdated(),
-        this.refreshWait,
-        "Timed out refreshing config after a failed save",
-      ).catch((err) => console.error("[Kilo New] KiloProvider: Failed to refresh config after a failed save:", err))
       this.postConfigFailure(error)
+      this.pending--
       return
     }
 
-    const revision = ++this.configRevision
-    this.postMessage({ type: "configSaved" })
-
     try {
-      const [{ data: merged }, { data: global }, { data: overlay }] = await deadline(
-        Promise.all([
-          retry(() => this.client!.config.get({ directory: dir }, { throwOnError: true })),
-          this.client.global.config.get({ throwOnError: true }),
-          this.client.config.overlay({ directory: dir, scope: "project" }, { throwOnError: true }),
-        ]),
-        this.refreshWait,
-        "Timed out refreshing saved config",
-      )
-      if (revision !== this.configRevision) return
+      const [{ data: merged }, { data: global }, { data: overlay }] = await Promise.all([
+        retry(() => this.client!.config.get({ directory: dir }, { throwOnError: true })),
+        this.client.global.config.get({ throwOnError: true }),
+        this.client.config.overlay({ directory: dir, scope: "project" }, { throwOnError: true }),
+      ])
       this.cachedGlobalConfig = global ?? null
       this.cachedConfigMessage = {
         type: "configLoaded",
@@ -2986,12 +2962,21 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       ])
     } catch (error) {
       console.error("[Kilo New] KiloProvider: Config write succeeded but post-write refresh failed:", error)
-      // The webview already holds the optimistic state acknowledged by configSaved.
-      // Never replay stale scoped config when the authoritative refresh is unavailable.
-      if (revision === this.configRevision) {
-        this.cachedConfigMessage = null
-        this.cachedGlobalConfig = null
-      }
+      const patch =
+        partial.indexing === undefined && project.indexing === undefined
+          ? { ...partial, ...project }
+          : { ...partial, ...project, indexing: { ...(partial.indexing ?? {}), ...(project.indexing ?? {}) } }
+      const cached = (this.cachedConfigMessage as { config?: unknown } | null)?.config
+      const features = (this.cachedConfigMessage as { features?: unknown } | null)?.features
+      const optimistic =
+        cached && typeof cached === "object" ? { ...(cached as Record<string, unknown>), ...patch } : patch
+      this.postMessage({
+        type: "configUpdated",
+        config: optimistic,
+        globalConfig: this.cachedGlobalConfig ?? undefined,
+        settings: { maxCost: this.maxCostSetting(), languageCommitMessage: this.commitMessageLanguageSetting() },
+        features: features ?? configFeatures(optimistic as Config),
+      })
       this.requirements.clear()
     } finally {
       this.pending--

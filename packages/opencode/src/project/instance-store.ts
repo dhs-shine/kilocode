@@ -100,10 +100,12 @@ export const layer: Layer.Layer<Service, never, Project.Service | InstanceBootst
 
     const disposeEntry = Effect.fnUntraced(function* (directory: string, entry: Entry, ctx: InstanceContext) {
       if (cache.get(directory) !== entry) return false
-      yield* disposeContext(ctx)
-      if (cache.get(directory) !== entry) return false
-      cache.delete(directory)
-      return true
+      // kilocode_change start - remove disposed entries even when event publication fails
+      const exit = yield* Effect.exit(disposeContext(ctx))
+      const removed = yield* removeEntry(directory, entry)
+      yield* exit
+      return removed
+      // kilocode_change end
     })
 
     const load = (input: LoadInput): Effect.Effect<InstanceContext> => {
@@ -163,7 +165,8 @@ export const layer: Layer.Layer<Service, never, Project.Service | InstanceBootst
 
     const disposeAllOnce = Effect.fnUntraced(function* () {
       yield* Effect.logInfo("disposing all instances")
-      yield* Effect.forEach(
+      // kilocode_change start - dispose independent worktrees concurrently without interrupting siblings
+      const exits = yield* Effect.forEach(
         [...cache.entries()],
         (item) =>
           Effect.gen(function* () {
@@ -176,9 +179,12 @@ export const layer: Layer.Layer<Service, never, Project.Service | InstanceBootst
               return
             }
             yield* disposeEntry(item[0], item[1], exit.value)
-          }),
-        { discard: true, concurrency: 4 }, // kilocode_change - dispose independent worktrees concurrently
-      )
+          }).pipe(Effect.exit),
+        { concurrency: 4 },
+      ).pipe(Effect.uninterruptible)
+      const failure = exits.find(Exit.isFailure)
+      if (failure) yield* failure
+      // kilocode_change end
     })
 
     const cachedDisposeAll = yield* Effect.cachedWithTTL(disposeAllOnce(), Duration.zero)

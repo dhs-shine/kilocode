@@ -100,7 +100,6 @@ export class ConfigState {
 
   /** Accumulate a partial change (same as the toggle click path). */
   updateConfig(partial: Partial<Config>) {
-    if (this.saving) return
     this.config = stripNulls(deepMerge(this.config, partial))
     this.draft = deepMerge(this.draft as Config, partial)
     this.dirty = true
@@ -116,7 +115,14 @@ export class ConfigState {
 
   /** Handle an incoming configUpdated push from the extension. */
   handleConfigUpdated(server: Config) {
-    this.config = resolveConfig(server, this.draft, this.dirty)
+    if (this.saving) {
+      this.saving = false
+      this.draft = {}
+      this.dirty = false
+      this.config = server
+    } else {
+      this.config = resolveConfig(server, this.draft, this.dirty)
+    }
     this.saved = server
   }
 
