@@ -2,6 +2,57 @@
 
 ## [Unreleased]
 
+## [7.0.3] - 2026-07-10
+
+### Added
+- feat(vscode): jump transcript to message on timeline bar click by @sylwester-liljegren in https://github.com/Kilo-Org/kilocode/pull/12025
+- feat(commit-message): Generate commit messages in the user's selected UI language instead of always using English. by @IOLOII in https://github.com/Kilo-Org/kilocode/pull/11994
+- feat(opencode): warn users about leftover opencode configuration by @markijbema in https://github.com/Kilo-Org/kilocode/pull/12034
+- feat(vscode): support multilingual notebook autocomplete by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11631
+- feat(opencode): experimental SWE-Pruner for task-aware tool output pruning by @Drilmo in https://github.com/Kilo-Org/kilocode/pull/11980
+- feat: add AI image generation tool by @vkeerthivikram in https://github.com/Kilo-Org/kilocode/pull/11826
+- feat: add dev:local script to run CLI against local cloud dev server by @eshurakov in https://github.com/Kilo-Org/kilocode/pull/12055
+- feat(cli): prune large bash outputs with SWE-Pruner by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12067
+- feat: promote sandbox configuration by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12049
+- feat(jetbrains): add repo CLI dev mode by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12047
+- feat(jetbrains): add rollback redo controls by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12059
+- feat(cli): improve model usage layout by @jeanduplessis in https://github.com/Kilo-Org/kilocode/pull/12106
+
+### Fixed
+- fix(cli): return a typed 422 for commit-message with no changes by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12033
+- fix(vscode): fit settings sidebar to localized section labels by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12032
+- fix(vscode): expose custom model image modality by @jackson-zhou in https://github.com/Kilo-Org/kilocode/pull/11825
+- fix(agent-manager): defer automatic branch naming until intent is clear by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12002
+- fix(memory): drop filename allowlist from diff durability check by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/12041
+- fix: show dismissed question content in chat history by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12043
+- fix(indexing): respect nested ignore files during codebase indexing by @shssoichiro in https://github.com/Kilo-Org/kilocode/pull/12042
+- fix(jetbrains): stabilize workspace reload state by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12044
+- fix(ci): retry flaky Windows Bun installs by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12046
+- fix(cli): exclude scoped instructions from SWE-Pruner by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12052
+- fix(cli): retry transient npm publish failures by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12072
+- fix(agent-manager): inherit model and variant in tool sessions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12073
+- fix(vscode): clarify effective permissions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12077
+- fix(jetbrains): harden CLI startup and install diagnostics by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12060
+- fix(cli): resolve Bedrock SSO credentials by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/12079
+- fix(vscode): gate sandbox controls on setting by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12078
+- fix(cli): remove explicit subagent delegation prompt by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12087
+- fix(vscode): load initial diff previews by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12089
+- fix(codex): hide gpt-5.5-pro for Codex OAuth users by @rakshith1928 in https://github.com/Kilo-Org/kilocode/pull/12040
+- fix(vscode): speed up settings saves by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12093
+- fix(jetbrains): stop CLI on app close by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12105
+- fix(jetbrains): show revert progress inline by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12104
+
+### Changed
+- release(jetbrains): v7.0.2 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12020
+- ci: reduce test workflow setup time by @markijbema in https://github.com/Kilo-Org/kilocode/pull/11409
+- docs(jetbrains): update plugin installation docs by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12023
+- test(cli): stabilize process-heavy integration tests by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12045
+- test(cli): stabilize active-run prompt test by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12054
+- chore(jetbrains): bump CLI pin to v7.4.5 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12074
+- test(ci): shard cross-platform CLI suite by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12051
+- revert(cli): undo Bedrock buffer pin by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/12095
+
+
 ### Fixed
 
 - Surface a clear error when the Kilo backend fails to start instead of hanging on loading, write rotated `kilo-dev.log.*` diagnostic logs in release builds, and add CLI install path diagnostics for relocated JetBrains system folders.
