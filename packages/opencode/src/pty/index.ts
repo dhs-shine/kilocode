@@ -6,12 +6,13 @@ import { EffectBridge } from "@/effect/bridge"
 import { lazy } from "@opencode-ai/core/util/lazy"
 import { Plugin } from "@/plugin"
 import { Shell } from "@/shell/shell"
+import { KiloPtySelfCommand } from "@/kilocode/pty/self-command" // kilocode_change
 import type { Proc } from "#pty"
 import * as Log from "@opencode-ai/core/util/log"
 import { PtyID } from "./schema"
 import { Effect, Layer, Context, Schema, Types } from "effect"
-import { zod } from "@/util/effect-zod"
-import { NonNegativeInt, PositiveInt, withStatics } from "@/util/schema"
+import { NonNegativeInt, PositiveInt } from "@opencode-ai/core/schema"
+import { SessionID } from "@/session/schema" // kilocode_change
 
 const log = Log.create({ service: "pty" })
 
@@ -61,10 +62,13 @@ export const Info = Schema.Struct({
   args: Schema.Array(Schema.String),
   cwd: Schema.String,
   status: Schema.Literals(["running", "exited"]),
-  pid: PositiveInt,
-})
-  .annotate({ identifier: "Pty" })
-  .pipe(withStatics((s) => ({ zod: zod(s) })))
+  // Windows ConPTY (@lydell/node-pty >= 1.2.0-beta.12) assigns the child pid
+  // asynchronously, so `proc.pid` is 0 at the synchronous spawn point and only
+  // resolves a tick later. `create` snapshots it immediately, so 0 is a valid
+  // "pid not yet assigned" value here.
+  pid: NonNegativeInt,
+  sessionID: Schema.optional(Schema.NullOr(SessionID)), // kilocode_change
+}).annotate({ identifier: "Pty" })
 
 export type Info = Types.DeepMutable<Schema.Schema.Type<typeof Info>>
 
@@ -74,21 +78,26 @@ export const CreateInput = Schema.Struct({
   cwd: Schema.optional(Schema.String),
   title: Schema.optional(Schema.String),
   env: Schema.optional(Schema.Record(Schema.String, Schema.String)),
-}).pipe(withStatics((s) => ({ zod: zod(s) })))
+})
 
 export type CreateInput = Types.DeepMutable<Schema.Schema.Type<typeof CreateInput>>
 
 export const UpdateInput = Schema.Struct({
   title: Schema.optional(Schema.String),
+  sessionID: Schema.optional(Schema.NullOr(SessionID)), // kilocode_change
   size: Schema.optional(
     Schema.Struct({
       rows: PositiveInt,
       cols: PositiveInt,
     }),
   ),
-}).pipe(withStatics((s) => ({ zod: zod(s) })))
+})
 
 export type UpdateInput = Types.DeepMutable<Schema.Schema.Type<typeof UpdateInput>>
+
+export class NotFoundError extends Schema.TaggedErrorClass<NotFoundError>()("Pty.NotFoundError", {
+  ptyID: PtyID,
+}) {}
 
 export const Event = {
   Created: BusEvent.define("pty.created", Schema.Struct({ info: Info })),
@@ -99,17 +108,20 @@ export const Event = {
 
 export interface Interface {
   readonly list: () => Effect.Effect<Info[]>
-  readonly get: (id: PtyID) => Effect.Effect<Info | undefined>
+  readonly get: (id: PtyID) => Effect.Effect<Info, NotFoundError>
   readonly create: (input: CreateInput) => Effect.Effect<Info>
-  readonly update: (id: PtyID, input: UpdateInput) => Effect.Effect<Info | undefined>
-  readonly remove: (id: PtyID) => Effect.Effect<void>
-  readonly resize: (id: PtyID, cols: number, rows: number) => Effect.Effect<void>
-  readonly write: (id: PtyID, data: string) => Effect.Effect<void>
+  readonly update: (id: PtyID, input: UpdateInput) => Effect.Effect<Info, NotFoundError>
+  readonly remove: (id: PtyID) => Effect.Effect<void, NotFoundError>
+  readonly resize: (id: PtyID, cols: number, rows: number) => Effect.Effect<void, NotFoundError>
+  readonly write: (id: PtyID, data: string) => Effect.Effect<void, NotFoundError>
   readonly connect: (
     id: PtyID,
     ws: Socket,
     cursor?: number,
-  ) => Effect.Effect<{ onMessage: (message: string | ArrayBuffer) => void; onClose: () => void } | undefined>
+  ) => Effect.Effect<
+    { onMessage: (message: string | ArrayBuffer) => void; onClose: () => void } | undefined,
+    NotFoundError
+  >
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Pty") {}
@@ -153,10 +165,15 @@ export const layer = Layer.effect(
       }),
     )
 
+    const requireSession = Effect.fn("Pty.requireSession")(function* (id: PtyID) {
+      const session = (yield* InstanceState.get(state)).sessions.get(id)
+      if (!session) return yield* new NotFoundError({ ptyID: id })
+      return session
+    })
+
     const remove = Effect.fn("Pty.remove")(function* (id: PtyID) {
       const s = yield* InstanceState.get(state)
-      const session = s.sessions.get(id)
-      if (!session) return
+      const session = yield* requireSession(id)
       s.sessions.delete(id)
       log.info("removing session", { id })
       teardown(session)
@@ -169,8 +186,7 @@ export const layer = Layer.effect(
     })
 
     const get = Effect.fn("Pty.get")(function* (id: PtyID) {
-      const s = yield* InstanceState.get(state)
-      return s.sessions.get(id)?.info
+      return (yield* requireSession(id)).info
     })
 
     const create = Effect.fn("Pty.create")(function* (input: CreateInput) {
@@ -178,13 +194,14 @@ export const layer = Layer.effect(
       const bridge = yield* EffectBridge.make()
       const cfg = yield* config.get()
       const id = PtyID.ascending()
-      const command = input.command || Shell.preferred(cfg.shell)
-      const args = input.args || []
+      const resolved = KiloPtySelfCommand.resolve(input) // kilocode_change
+      const command = resolved.command || Shell.preferred(cfg.shell) // kilocode_change
+      const args = resolved.args || [] // kilocode_change
       if (Shell.login(command)) {
         args.push("-l")
       }
 
-      const cwd = input.cwd || s.dir
+      const cwd = resolved.cwd || s.dir // kilocode_change
       const shell = yield* plugin.trigger("shell.env", { cwd }, { env: {} })
       const env = {
         ...process.env,
@@ -192,6 +209,7 @@ export const layer = Layer.effect(
         ...shell.env,
         TERM: "xterm-256color",
         KILO_TERMINAL: "1",
+        KILO_PTY_ID: id, // kilocode_change
       } as Record<string, string>
       // kilocode_change start
       // Don't leak the kilo server's auth credential into user shells.
@@ -275,12 +293,15 @@ export const layer = Layer.effect(
     })
 
     const update = Effect.fn("Pty.update")(function* (id: PtyID, input: UpdateInput) {
-      const s = yield* InstanceState.get(state)
-      const session = s.sessions.get(id)
-      if (!session) return
+      const session = yield* requireSession(id)
       if (input.title) {
         session.info.title = input.title
       }
+      // kilocode_change start
+      if ("sessionID" in input) {
+        session.info.sessionID = input.sessionID ?? undefined
+      }
+      // kilocode_change end
       if (input.size) {
         session.process.resize(input.size.cols, input.size.rows)
       }
@@ -289,28 +310,27 @@ export const layer = Layer.effect(
     })
 
     const resize = Effect.fn("Pty.resize")(function* (id: PtyID, cols: number, rows: number) {
-      const s = yield* InstanceState.get(state)
-      const session = s.sessions.get(id)
-      if (session && session.info.status === "running") {
+      const session = yield* requireSession(id)
+      if (session.info.status === "running") {
         session.process.resize(cols, rows)
       }
     })
 
     const write = Effect.fn("Pty.write")(function* (id: PtyID, data: string) {
-      const s = yield* InstanceState.get(state)
-      const session = s.sessions.get(id)
-      if (session && session.info.status === "running") {
+      const session = yield* requireSession(id)
+      if (session.info.status === "running") {
         session.process.write(data)
       }
     })
 
     const connect = Effect.fn("Pty.connect")(function* (id: PtyID, ws: Socket, cursor?: number) {
-      const s = yield* InstanceState.get(state)
-      const session = s.sessions.get(id)
-      if (!session) {
-        ws.close()
-        return
-      }
+      const session = yield* requireSession(id).pipe(
+        Effect.tapError(() =>
+          Effect.sync(() => {
+            ws.close()
+          }),
+        ),
+      )
       log.info("client connected to session", { id })
 
       const sub = sock(ws)

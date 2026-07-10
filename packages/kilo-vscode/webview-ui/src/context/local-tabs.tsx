@@ -18,6 +18,7 @@ import {
   closeTab,
   isPendingTab,
   openSessionTab,
+  pendingTabForCreated,
   reconcileTabs,
   replacePendingTab,
   restoreTabs,
@@ -48,8 +49,7 @@ export const LocalTabsProvider: ParentComponent = (props) => {
   const server = useServer()
   const session = useSession()
   const saved = vscode.getState<LocalTabsState>()
-  let count = 0
-  const pending = () => `${PENDING_TAB_PREFIX}${++count}`
+  const pending = () => `${PENDING_TAB_PREFIX}${crypto.randomUUID()}`
   const init = restoreTabs(saved?.sidebarSessionTabIDs, saved?.sidebarActiveSessionTabID, pending)
   const [ids, setIds] = createSignal(init.ids)
   const [active, setActive] = createSignal(init.active)
@@ -126,13 +126,13 @@ export const LocalTabsProvider: ParentComponent = (props) => {
   onMount(() => {
     const cleanup = vscode.onMessage((message) => {
       if (message.type === "sessionCreated") {
-        const draft = message.draftID && ids().includes(message.draftID) ? message.draftID : activePending()
+        const draft = pendingTabForCreated(ids(), activePending(), message.draftID)
         if (!draft) return
         const before = active()
         const next = replacePendingTab(current(), draft, message.session.id)
         fresh.add(message.session.id)
         apply(next)
-        if (before !== next.active) focus(next.active)
+        focus(next.active)
         return
       }
       if (message.type === "cloudSessionImported") {

@@ -39,7 +39,7 @@ The panel opens as an editor tab and stays active across focus changes.
 
 Agent Manager uses the same sign-in, provider settings, models, BYOK keys, custom providers, MCP servers, and permission rules as the extension sidebar. Configure them from extension Settings and they apply to Agent Manager as well.
 
-See [Setup & Authentication](/docs/getting-started/setup-authentication), [AI Providers](/docs/ai-providers), and [Bring Your Own Key](/docs/getting-started/byok) for setup details.
+See [Authentication](/docs/getting-started/setup-authentication), [AI Providers](/docs/ai-providers), and [Bring Your Own Key](/docs/getting-started/byok) for setup details.
 
 ## Working with Worktrees
 
@@ -136,18 +136,26 @@ Imported work stays associated with its branch or worktree and can be continued 
 - Use session history to reopen local sessions or preview cloud sessions
 - Continue a cloud session locally from Agent Manager using the same extension sign-in and provider settings
 
+### Renaming Worktrees
+
+Double-click a worktree name to edit its label inline. You can also right-click the worktree and choose **Rename**. Press `Enter` or click outside the field to save, or press `Escape` to cancel.
+
+Renaming a worktree changes only the label shown in Agent Manager. It does not rename the underlying git branch.
+
 ## Starting Sessions From Chat
 
-Kilo can start Agent Manager sessions from chat with the experimental `agent_manager` tool. Enable it in **Settings > Experimental > Agent Manager Tool**, or set `experimental.agent_manager_tool` to `true` in `kilo.jsonc`.
+Kilo can start Agent Manager sessions from chat with the `agent_manager` tool. It is available by default only in the VS Code extension because Agent Manager is an extension feature.
 
-The tool is available only in the VS Code extension because Agent Manager is an extension feature. It supports two modes:
+The tool supports two modes:
 
 | Mode | Behavior |
 |---|---|
 | `worktree` | Creates one Agent Manager git worktree and session per task |
 | `local` | Creates Agent Manager sessions in the current workspace without git worktree isolation |
 
-Each request can include 1-20 tasks. Each task must include at least one of `prompt`, `name`, or `branchName`. Use `versions: true` only when the tasks are alternate versions of the same work to compare; otherwise, multiple tasks start as independent sessions.
+Each request can include 1-20 tasks. Each task must include at least one of `prompt`, `name`, or `branchName`. Prompted tasks inherit the model and reasoning variant used by the chat turn that starts them. A task can override that selection with a `model` (by name, e.g. `Claude Opus 4.1`) when you explicitly request a different model, or with one of the current model's reasoning `variant` values when you request a different variant. Agent Manager resolves the provider for a model override, preferring the provider used by the current turn and falling back to the Kilo Gateway; a qualified `provider/model` ID is also accepted to force a specific provider. Prepared sessions without an initial prompt use the normal model defaults. Use `versions: true` only when the tasks are alternate versions of the same work to compare; otherwise, multiple tasks start as independent sessions.
+
+The companion `agent_manager_models` tool searches models and their supported reasoning variants on demand. Results are grouped by model name (with the offering providers listed for reference) and limited to 20 per call, so the full catalog is never added to the conversation context.
 
 The tool uses the `agent_manager` permission. Approval prompts are scoped to the requested mode, so approving `worktree` does not automatically approve `local`.
 
@@ -168,7 +176,7 @@ Sections let you group worktrees into collapsible, color-coded folders in the si
 
 Multi-version worktrees (created via Multi-Version Mode) are moved together — assigning one version to a section moves all versions in the group.
 
-### Renaming
+### Renaming Sections
 
 Right-click the section header and select **Rename Section**. An inline text field appears — type the new name and press `Enter` to confirm or `Escape` to cancel.
 

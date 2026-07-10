@@ -7,10 +7,21 @@ export const dict = {
   "provider.connect.kiloGateway.visit.prefix": "Besuchen Sie ",
   "provider.connect.kiloGateway.visit.link": "kilo.ai",
   "provider.connect.kiloGateway.visit.suffix": ", um Ihren API-Schlüssel zu erhalten.",
+  "provider.connect.kiloGateway.byok.prefix": "Für weitere Nutzungsstatistiken ",
+  "provider.connect.kiloGateway.byok.link": "BYOK via Kilo's Gateway",
+  "provider.connect.kiloGateway.byok.suffix": " nutzen.",
 
-  // Provider dialog translations
-  "dialog.provider.group.recommended": "Empfohlen",
-  "dialog.provider.kilo.note": "Zugriff auf 500+ KI-Modelle",
+  // Provider settings translations
+  "settings.providers.group.recommended": "Empfohlen",
+  "settings.providers.note.kilo": "Zugriff auf 500+ KI-Modelle",
+  "settings.providers.note.opencode": "Kuratierte Modelle, darunter Claude, GPT, Gemini und mehr",
+  "settings.providers.note.anthropic": "Direkter Zugriff auf Claude-Modelle, einschließlich Pro und Max",
+  "settings.providers.note.deepseek": "DeepSeek-Modelle für Denk- und Programmieraufgaben",
+  "settings.providers.note.copilot": "Claude-Modelle für Programmierunterstützung",
+  "settings.providers.note.openai": "GPT- und Codex-Modelle mit API-Schlüssel oder ChatGPT-Anmeldung",
+  "settings.providers.note.google": "Gemini-Modelle für schnelle, strukturierte Antworten",
+  "settings.providers.note.openrouter": "Zugriff auf alle unterstützten Modelle über einen Anbieter",
+  "settings.providers.note.vercel": "Einheitlicher Zugriff auf KI-Modelle mit intelligentem Routing",
 
   // Reasoning block label
   "ui.permission.run": "Ausführen",
@@ -19,7 +30,6 @@ export const dict = {
   // Marketplace
   "marketplace.tab.skills": "Skills",
   "marketplace.tab.mcpServers": "MCP-Server",
-  "marketplace.tab.modes": "Modi",
   "marketplace.category.all": "Alle",
   "marketplace.placeholder": "Noch nicht implementiert",
   "marketplace.card.installed": "Installiert",
@@ -32,6 +42,27 @@ export const dict = {
   "marketplace.install.scope": "Bereich",
   "marketplace.install.scope.project": "Projekt",
   "marketplace.install.scope.global": "Global",
+  "marketplace.install.scope.project.description":
+    "Nur dieses Projekt. Die installierten Dateien können versioniert und mit Ihrem Team geteilt werden.",
+  "marketplace.install.scope.global.description":
+    "Alle Projekte auf diesem Computer. Wird in Ihrer Benutzerkonfiguration gespeichert.",
+  "marketplace.install.destination": "Installationsziel",
+  "marketplace.install.about.mcp":
+    "Ein MCP-Server stellt Kilo zusätzliche Werkzeuge für die Arbeit mit externen Diensten oder lokalen Programmen bereit.",
+  "marketplace.install.about.agent":
+    "Ein Agent fügt eine wiederverwendbare Rolle mit eigenen Anweisungen und Berechtigungen hinzu.",
+  "marketplace.install.about.skill":
+    "Ein Skill fügt aufgabenspezifische Anweisungen und Ressourcen hinzu, die Kilo bei Bedarf laden kann.",
+  "marketplace.install.mcp.warning":
+    "MCP-Server können lokale Befehle ausführen oder eine Verbindung zu externen Diensten herstellen. Kilo fragt vor der Verwendung ihrer Werkzeuge um Erlaubnis, sofern Ihre Berechtigungen dies nicht automatisch erlauben.",
+  "marketplace.install.project.warning":
+    "Projektdateien können in die Versionsverwaltung aufgenommen werden. Speichern Sie hier keine Geheimnisse, es sei denn, die Konfiguration verweist auf eine Umgebungsvariable.",
+  "marketplace.install.learnMore": "Erfahren Sie, wie Installationen aus dem Marketplace funktionieren",
+  "marketplace.install.learnMcp": "Mehr über MCP erfahren",
+  "marketplace.install.installedAt": "Installiert unter {{path}}",
+  "marketplace.intro":
+    "Installieren Sie wiederverwendbare Agenten, Skills und MCP-Werkzeuge für ein Projekt oder für alle Projekte.",
+  "marketplace.intro.learnMore": "Über den Marketplace",
   "marketplace.install.prerequisites": "Voraussetzungen",
   "marketplace.install.installing": "Wird installiert...",
   "marketplace.install.cancel": "Abbrechen",
@@ -45,10 +76,13 @@ export const dict = {
   "marketplace.remove.cancel": "Abbrechen",
   "marketplace.remove.confirm.button": "Entfernen",
   "marketplace.tab.mcp": "MCP",
+  "marketplace.tab.agents": "Agenten",
   "marketplace.search": "Suchen...",
   "marketplace.filter.all": "Alle Elemente",
   "marketplace.filter.notInstalled": "Nicht installiert",
+  "marketplace.filter.relevant": "Relevant für meinen Arbeitsbereich",
   "marketplace.empty": "Keine Elemente gefunden",
+  "marketplace.empty.relevant": "Keine relevanten Marketplace-Elemente für diesen Arbeitsbereich gefunden.",
   "marketplace.badge.mcpServer": "MCP-Server",
   "marketplace.badge.mode": "Modus",
   "marketplace.card.by": "von {{author}}",
@@ -60,7 +94,7 @@ export const dict = {
   "marketplace.scope.global": "Global",
   "marketplace.remove.type.mcp": "MCP-Server",
   "marketplace.remove.type.skill": "Skill",
-  "marketplace.remove.type.mode": "Modus",
+  "marketplace.remove.type.agent": "Agent",
   "marketplace.remove.failed": "Fehler beim Entfernen von {{name}}",
   "marketplace.install": "Installieren",
   "marketplace.filter.installed": "Installiert",
@@ -69,8 +103,10 @@ export const dict = {
   "marketplace.warning.busyMany": "Mehrere Sitzungen laufen und werden unterbrochen",
   "marketplace.warning.installAnyway": "Trotzdem installieren",
   "marketplace.warning.cancel": "Abbrechen",
-  "marketplace.contribute.prompt": "Fehlt ein Skill, Modus oder MCP-Server?",
+  "marketplace.contribute.prompt": "Fehlt ein Skill, Agent oder MCP-Server?",
   "marketplace.contribute.cta": "Auf GitHub beitragen",
+  "marketplace.migration.notice":
+    "Modi wurden durch Agenten ersetzt. Wenn Sie zuvor Marketplace-Modi installiert haben, entfernen Sie diese bitte und installieren Sie sie als Agenten neu, um zum neuen Format zu migrieren.",
 
   // Plan follow-up question shown after plan_exit
   "plan.followup.header": "Umsetzen",
@@ -79,6 +115,8 @@ export const dict = {
   "plan.followup.answer.newSession.description": "In einer neuen Sitzung mit leerem Kontext umsetzen",
   "plan.followup.answer.continue": "Hier fortfahren",
   "plan.followup.answer.continue.description": "Den Plan in dieser Sitzung umsetzen",
+  "plan.followup.answer.keepRefining": "Weiter verfeinern",
+  "plan.followup.answer.keepRefining.description": "Weiter planen, ohne jetzt zu implementieren",
 
   // Slow-repo snapshot prompt
   "snapshot.slowRepo.header": "Snapshot ist langsam",

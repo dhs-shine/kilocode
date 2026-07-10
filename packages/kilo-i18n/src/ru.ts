@@ -7,10 +7,21 @@ export const dict = {
   "provider.connect.kiloGateway.visit.prefix": "Посетите ",
   "provider.connect.kiloGateway.visit.link": "kilo.ai",
   "provider.connect.kiloGateway.visit.suffix": ", чтобы получить ваш API-ключ.",
+  "provider.connect.kiloGateway.byok.prefix": "Для получения дополнительной статистики использования используйте ",
+  "provider.connect.kiloGateway.byok.link": "BYOK через Kilo's Gateway",
+  "provider.connect.kiloGateway.byok.suffix": ".",
 
-  // Provider dialog translations
-  "dialog.provider.group.recommended": "Рекомендуемые",
-  "dialog.provider.kilo.note": "Доступ к 500+ моделям ИИ",
+  // Provider settings translations
+  "settings.providers.group.recommended": "Рекомендуемые",
+  "settings.providers.note.kilo": "Доступ к 500+ моделям ИИ",
+  "settings.providers.note.opencode": "Подобранные модели, включая Claude, GPT, Gemini и другие",
+  "settings.providers.note.anthropic": "Прямой доступ к моделям Claude, включая Pro и Max",
+  "settings.providers.note.deepseek": "Модели DeepSeek для задач рассуждения и программирования",
+  "settings.providers.note.copilot": "Модели Claude для помощи в программировании",
+  "settings.providers.note.openai": "Модели GPT и Codex с API-ключом или входом через ChatGPT",
+  "settings.providers.note.google": "Модели Gemini для быстрых структурированных ответов",
+  "settings.providers.note.openrouter": "Доступ ко всем поддерживаемым моделям через одного провайдера",
+  "settings.providers.note.vercel": "Единый доступ к AI-моделям с умной маршрутизацией",
 
   // Reasoning block label
   "ui.permission.run": "Запустить",
@@ -19,7 +30,6 @@ export const dict = {
   // Marketplace
   "marketplace.tab.skills": "Навыки",
   "marketplace.tab.mcpServers": "MCP-серверы",
-  "marketplace.tab.modes": "Режимы",
   "marketplace.category.all": "Все",
   "marketplace.placeholder": "Будет реализовано",
   "marketplace.card.installed": "Установлено",
@@ -32,6 +42,27 @@ export const dict = {
   "marketplace.install.scope": "Область",
   "marketplace.install.scope.project": "Проект",
   "marketplace.install.scope.global": "Глобально",
+  "marketplace.install.scope.project.description":
+    "Только этот проект. Установленные файлы можно добавить в систему контроля версий и предоставить команде.",
+  "marketplace.install.scope.global.description":
+    "Все проекты на этом компьютере. Сохраняется в вашей пользовательской конфигурации.",
+  "marketplace.install.destination": "Место установки",
+  "marketplace.install.about.mcp":
+    "MCP-сервер предоставляет Kilo дополнительные инструменты для работы с внешними сервисами или локальными программами.",
+  "marketplace.install.about.agent":
+    "Агент добавляет многократно используемую роль с собственными инструкциями и разрешениями.",
+  "marketplace.install.about.skill":
+    "Навык добавляет инструкции и ресурсы для определённых задач, которые Kilo может загрузить при необходимости.",
+  "marketplace.install.mcp.warning":
+    "MCP-серверы могут выполнять локальные команды или подключаться к внешним сервисам. Kilo запросит разрешение перед использованием их инструментов, если только ваши разрешения не допускают это автоматически.",
+  "marketplace.install.project.warning":
+    "Файлы проекта могут быть добавлены в систему контроля версий. Не храните здесь секреты, если только конфигурация не ссылается на переменную окружения.",
+  "marketplace.install.learnMore": "Узнайте, как работает установка из Marketplace",
+  "marketplace.install.learnMcp": "Подробнее о MCP",
+  "marketplace.install.installedAt": "Установлено в {{path}}",
+  "marketplace.intro":
+    "Устанавливайте многократно используемых агентов, навыки и инструменты MCP для одного или всех проектов.",
+  "marketplace.intro.learnMore": "О Marketplace",
   "marketplace.install.prerequisites": "Предварительные требования",
   "marketplace.install.installing": "Установка...",
   "marketplace.install.cancel": "Отмена",
@@ -45,10 +76,13 @@ export const dict = {
   "marketplace.remove.cancel": "Отмена",
   "marketplace.remove.confirm.button": "Удалить",
   "marketplace.tab.mcp": "MCP",
+  "marketplace.tab.agents": "Агенты",
   "marketplace.search": "Поиск...",
   "marketplace.filter.all": "Все элементы",
   "marketplace.filter.notInstalled": "Не установлено",
+  "marketplace.filter.relevant": "Подходящие для моего рабочего пространства",
   "marketplace.empty": "Элементы не найдены",
+  "marketplace.empty.relevant": "Для этого рабочего пространства не найдено подходящих элементов маркетплейса.",
   "marketplace.badge.mcpServer": "MCP-сервер",
   "marketplace.badge.mode": "Режим",
   "marketplace.card.by": "от {{author}}",
@@ -60,7 +94,7 @@ export const dict = {
   "marketplace.scope.global": "глобально",
   "marketplace.remove.type.mcp": "MCP-сервер",
   "marketplace.remove.type.skill": "навык",
-  "marketplace.remove.type.mode": "режим",
+  "marketplace.remove.type.agent": "агент",
   "marketplace.remove.failed": "Не удалось удалить {{name}}",
   "marketplace.install": "Установить",
   "marketplace.filter.installed": "Установлено",
@@ -69,8 +103,10 @@ export const dict = {
   "marketplace.warning.busyMany": "Несколько сеансов выполняются и будут прерваны",
   "marketplace.warning.installAnyway": "Установить в любом случае",
   "marketplace.warning.cancel": "Отмена",
-  "marketplace.contribute.prompt": "Не хватает навыка, режима или MCP-сервера?",
+  "marketplace.contribute.prompt": "Не хватает навыка, агента или MCP-сервера?",
   "marketplace.contribute.cta": "Внести вклад на GitHub",
+  "marketplace.migration.notice":
+    "Режимы заменены агентами. Если вы ранее устанавливали режимы из магазина, удалите их и переустановите как агенты, чтобы перейти на новый формат.",
 
   // Plan follow-up question shown after plan_exit
   "plan.followup.header": "Реализовать",
@@ -79,6 +115,8 @@ export const dict = {
   "plan.followup.answer.newSession.description": "Реализовать в новой сессии с чистым контекстом",
   "plan.followup.answer.continue": "Продолжить здесь",
   "plan.followup.answer.continue.description": "Реализовать план в этой сессии",
+  "plan.followup.answer.keepRefining": "Продолжить уточнение",
+  "plan.followup.answer.keepRefining.description": "Продолжить планирование без реализации пока что",
 
   // Slow-repo snapshot prompt
   "snapshot.slowRepo.header": "Снимок выполняется медленно",

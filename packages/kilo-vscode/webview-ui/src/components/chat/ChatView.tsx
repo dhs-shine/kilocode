@@ -5,7 +5,7 @@
  * Main chat container that combines all chat components
  */
 
-import { type Component, Show, createEffect, createMemo, createSignal, on, onCleanup, onMount } from "solid-js"
+import { type Component, type JSX, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import { Button } from "@kilocode/kilo-ui/button"
 import { Icon } from "@kilocode/kilo-ui/icon"
 import { Spinner } from "@kilocode/kilo-ui/spinner"
@@ -14,6 +14,7 @@ import { showToast } from "@kilocode/kilo-ui/toast"
 import { DropdownMenu } from "@kilocode/kilo-ui/dropdown-menu"
 import { TaskHeader } from "./TaskHeader"
 import { MessageList } from "./MessageList"
+import { AgentRequirements } from "./AgentRequirements"
 import { PromptInput } from "./PromptInput"
 import { PermissionDock } from "./PermissionDock"
 import { StartupErrorBanner } from "./StartupErrorBanner"
@@ -24,17 +25,21 @@ import { useVSCode } from "../../context/vscode"
 import { useLanguage } from "../../context/language"
 import { useWorktreeMode } from "../../context/worktree-mode"
 import { useServer } from "../../context/server"
+import { useAgentRequirements } from "../../context/agent-requirements"
 import { isPromptBlocked, isSuggesting, isQuestioning } from "./prompt-input-utils"
+import { showTabStrip } from "../../utils/local-tabs"
 
 interface ChatViewProps {
   onSelectSession?: (id: string) => void
   onShowHistory?: () => void
   onForkMessage?: (sessionId: string, messageId: string) => void
+  onForkSession?: (sessionId: string) => void
   readonly?: boolean
   /** When true, show the "Continue in Worktree" button. Defaults to true in the sidebar. */
   continueInWorktree?: boolean
   promptBoxId?: string
   pendingSessionID?: string
+  emptyState?: () => JSX.Element
 }
 
 export const ChatView: Component<ChatViewProps> = (props) => {
@@ -44,6 +49,7 @@ export const ChatView: Component<ChatViewProps> = (props) => {
   const worktreeMode = useWorktreeMode()
   const server = useServer()
   const tabs = useLocalTabs()
+  const requirements = useAgentRequirements()
   // Show "Show Changes" only in the standalone sidebar, not inside Agent Manager
   const isSidebar = () => worktreeMode === undefined
   const pendingSessionID = () => props.pendingSessionID ?? tabs?.pending()
@@ -73,30 +79,21 @@ export const ChatView: Component<ChatViewProps> = (props) => {
   const standaloneQuestions = createMemo(() => familyQuestions().filter((q) => !q.tool))
   const standaloneSuggestions = createMemo(() => familySuggestions().filter((s) => !s.tool))
   const permissionRequest = () => familyPermissions().find((p) => p.sessionID === id()) ?? familyPermissions()[0]
-  // Prompt input is decoupled from questions/suggestions — only permissions block.
+  // Questions and suggestions do not block input; permissions and agent requirements do.
   // Pending questions and suggestions are auto-dismissed in sendMessage/sendCommand.
-  const blocked = () => isPromptBlocked(familyPermissions().length)
+  const blocked = () => isPromptBlocked(familyPermissions().length) || (!props.readonly && requirements.blocked())
+  const requirementReason = () =>
+    !props.readonly && requirements.blocked() ? language.t("agentRequirements.prompt.blocked") : undefined
   // Session is busy only because a suggestion tool call is pending — prompt should behave as idle
   const suggesting = () => isSuggesting(blocked(), familySuggestions().length)
   // Session is busy only because a question tool call is pending — prompt should behave as idle
   const questioning = () => isQuestioning(blocked(), familyQuestions().length)
   const dock = () => !props.readonly || !!permissionRequest()
 
-  // When a bottom-dock permission disappears while the session is busy,
-  // the scroll container grows taller. Dispatch a custom event so MessageList can
-  // resume auto-scroll.
-  createEffect(
-    on(blocked, (isBlocked, wasBlocked) => {
-      if (wasBlocked && !isBlocked && !idle()) {
-        window.dispatchEvent(new CustomEvent("resumeAutoScroll"))
-      }
-    }),
-  )
-
   onMount(() => {
     if (props.readonly) return
     const handler = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || session.status() === "idle" || e.defaultPrevented) return
+      if (e.key !== "Escape" || (!session.submitting() && session.status() === "idle") || e.defaultPrevented) return
       e.preventDefault()
       session.abort()
     }
@@ -143,6 +140,12 @@ export const ChatView: Component<ChatViewProps> = (props) => {
   }
 
   const startSession = () => window.dispatchEvent(new CustomEvent("newTaskRequest"))
+
+  const fork = () => {
+    const sid = id()
+    if (!sid) return
+    props.onForkSession?.(sid)
+  }
 
   const startWorktree = () => vscode.postMessage({ type: "agentManager.createWorktree" })
 
@@ -196,11 +199,14 @@ export const ChatView: Component<ChatViewProps> = (props) => {
 
   const canStartSession = (hasChat: boolean) => hasChat
 
+  const canFork = (hasChat: boolean) => hasChat && !isSidebar() && session.status() === "idle" && !!props.onForkSession
+
   const canStartWorktree = () => isSidebar() && server.gitInstalled()
 
   const canMoveToWorktree = (hasChat: boolean) => hasChat && canContinueInWorktree() && server.gitInstalled()
 
-  const hasActions = (hasChat: boolean) => canStartSession(hasChat) || canStartWorktree() || canMoveToWorktree(hasChat)
+  const hasActions = (hasChat: boolean) =>
+    canStartSession(hasChat) || canFork(hasChat) || canStartWorktree() || canMoveToWorktree(hasChat)
 
   const renderActions = (hasChat: boolean) => (
     <Show when={hasActions(hasChat)}>
@@ -216,6 +222,19 @@ export const ChatView: Component<ChatViewProps> = (props) => {
                 aria-label={language.t("sidebar.session.newSession")}
               >
                 {language.t("sidebar.session.newSession")}
+              </Button>
+            </Tooltip>
+          </Show>
+          <Show when={canFork(hasChat)}>
+            <Tooltip value={language.t("agentManager.tab.forkSession")} placement="top">
+              <Button
+                variant="ghost"
+                size="small"
+                onClick={fork}
+                aria-label={language.t("agentManager.tab.forkSession")}
+              >
+                <Icon name="fork" size="small" />
+                {language.t("agentManager.tab.forkSession")}
               </Button>
             </Tooltip>
           </Show>
@@ -312,20 +331,29 @@ export const ChatView: Component<ChatViewProps> = (props) => {
 
   return (
     <div class="chat-view">
-      <Show when={isSidebar() && !props.readonly && (tabs?.ids().length ?? 0) > 1}>
+      <Show when={isSidebar() && !props.readonly && tabs && showTabStrip(tabs.ids())}>
         <SessionTabStrip />
       </Show>
       <TaskHeader readonly={props.readonly} />
       <div class="chat-messages-wrapper">
         <div class="chat-messages">
-          <MessageList
-            onSelectSession={props.onSelectSession}
-            onShowHistory={props.onShowHistory}
-            onForkMessage={props.onForkMessage}
-            questions={standaloneQuestions}
-            suggestions={standaloneSuggestions}
-            readonly={props.readonly}
-          />
+          <Show
+            when={!props.readonly && requirements.visible()}
+            fallback={
+              <MessageList
+                onSelectSession={props.onSelectSession}
+                onShowHistory={props.onShowHistory}
+                onForkMessage={props.onForkMessage}
+                questions={standaloneQuestions}
+                suggestions={standaloneSuggestions}
+                readonly={props.readonly}
+                emptyState={props.emptyState}
+                announce={isSidebar()}
+              />
+            }
+          >
+            <AgentRequirements />
+          </Show>
         </div>
       </div>
 
@@ -349,6 +377,7 @@ export const ChatView: Component<ChatViewProps> = (props) => {
           <Show when={!props.readonly}>
             <PromptInput
               blocked={blocked}
+              blockedReason={requirementReason}
               suggesting={suggesting}
               questioning={questioning}
               boxId={props.promptBoxId}

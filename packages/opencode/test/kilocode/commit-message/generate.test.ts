@@ -1,5 +1,6 @@
-import { describe, expect, test, mock, beforeEach } from "bun:test"
+import { describe, expect, test, mock, beforeEach, spyOn } from "bun:test"
 import type { GitContext } from "@/kilocode/commit-message/types"
+import type { Provider } from "@/provider/provider"
 
 // Mock dependencies before importing the module under test.
 // IMPORTANT: Bun's mock.module() is process-wide and permanent. To avoid
@@ -7,10 +8,7 @@ import type { GitContext } from "@/kilocode/commit-message/types"
 // this test needs.
 
 const realLog = await import("@opencode-ai/core/util/log")
-const realProvider = await import("@/provider/provider")
-const realLLM = await import("@/session/llm")
 const realAgent = await import("@/agent/agent")
-const realGitContext = await import("@/kilocode/commit-message/git-context")
 
 let mockStreamText = "feat(src): add hello world logging"
 
@@ -29,39 +27,11 @@ const defaultGitContext: GitContext = {
 let mockGitContext: GitContext = { ...defaultGitContext }
 let captured: { path: string; selected?: string[] } = { path: "" }
 
-mock.module("@/kilocode/commit-message/git-context", () => ({
-  ...realGitContext,
-  getGitContext: async (repoPath: string, selectedFiles?: string[]) => {
-    captured = { path: repoPath, selected: selectedFiles }
-    return mockGitContext
-  },
-}))
-
-mock.module("@/provider/provider", () => ({
-  ...realProvider,
-  Provider: {
-    ...realProvider.Provider,
-    defaultModel: async () => ({ providerID: "test", modelID: "test-model" }),
-    getSmallModel: async () => ({
-      providerID: "test",
-      id: "test-small-model",
-    }),
-    getModel: async () => ({ providerID: "test", id: "test-model" }),
-  },
-}))
-
-mock.module("@/session/llm", () => ({
-  ...realLLM,
-  LLM: {
-    ...realLLM.LLM,
-    stream: async () => ({
-      textStream: (async function* () {
-        yield mockStreamText
-      })(),
-      text: Promise.resolve(mockStreamText),
-    }),
-  },
-}))
+function lastPrompt(): string | undefined {
+  const args = stream.mock.calls[stream.mock.calls.length - 1]
+  if (!args) return undefined
+  return (args[0] as { agent?: { prompt?: string } }).agent?.prompt
+}
 
 mock.module("@/agent/agent", () => ({
   ...realAgent,
@@ -78,10 +48,25 @@ mock.module("@opencode-ai/core/util/log", () => ({
   }),
 }))
 
-import { generateCommitMessage } from "../../../src/kilocode/commit-message/generate"
+import { CommitMessageRuntime, generateCommitMessage, NoChangesError } from "../../../src/kilocode/commit-message/generate"
+
+const context = spyOn(CommitMessageRuntime, "context").mockImplementation(async (repoPath, selectedFiles) => {
+  captured = { path: repoPath, selected: selectedFiles }
+  return mockGitContext
+})
+const stream = spyOn(CommitMessageRuntime, "generate").mockImplementation(async () => mockStreamText)
+const model = spyOn(CommitMessageRuntime, "model").mockImplementation(
+  async () => ({ providerID: "test", id: "test-small-model" }) as Provider.Model,
+)
 
 describe("commit-message.generate", () => {
   beforeEach(() => {
+    context.mockImplementation(async (repoPath, selectedFiles) => {
+      captured = { path: repoPath, selected: selectedFiles }
+      return mockGitContext
+    })
+    stream.mockImplementation(async () => mockStreamText)
+    model.mockImplementation(async () => ({ providerID: "test", id: "test-small-model" }) as Provider.Model)
     mockStreamText = "feat(src): add hello world logging"
     mockGitContext = { ...defaultGitContext }
     captured = { path: "" }
@@ -154,11 +139,14 @@ describe("commit-message.generate", () => {
   })
 
   describe("error on no changes", () => {
-    test("throws when no git changes are found", async () => {
+    test("throws NoChangesError when no git changes are found", async () => {
       mockGitContext = { branch: "main", recentCommits: [], files: [] }
-      await expect(generateCommitMessage({ path: "/repo" })).rejects.toThrow(
-        "No changes found to generate a commit message for",
-      )
+      const err = await generateCommitMessage({ path: "/repo" }).catch((e) => e)
+      expect(err).toBeInstanceOf(NoChangesError)
+      if (err instanceof NoChangesError) {
+        expect(err.message).toBe("No changes found to generate a commit message for")
+        expect(err.name).toBe("CommitMessageNoChanges")
+      }
     })
   })
 
@@ -183,6 +171,37 @@ describe("commit-message.generate", () => {
     test("uses custom prompt when provided", async () => {
       const result = await generateCommitMessage({ path: "/repo", prompt: "Write a haiku commit message." })
       expect(result.message).toBeTruthy()
+      expect(lastPrompt()).toContain("Write a haiku commit message.")
+    })
+  })
+
+  describe("language", () => {
+    test("does not add language instruction when language is omitted", async () => {
+      await generateCommitMessage({ path: "/repo" })
+      const prompt = lastPrompt()
+      expect(prompt).toBeTruthy()
+      expect(prompt).not.toContain("Language Requirement")
+    })
+
+    test("does not add language instruction when language is English", async () => {
+      await generateCommitMessage({ path: "/repo", language: "en" })
+      const prompt = lastPrompt()
+      expect(prompt).toBeTruthy()
+      expect(prompt).not.toContain("Language Requirement")
+    })
+
+    test("adds language instruction for non-English languages", async () => {
+      await generateCommitMessage({ path: "/repo", language: "zh" })
+      const prompt = lastPrompt()
+      expect(prompt).toContain("Language Requirement")
+      expect(prompt).toContain("following language: zh")
+    })
+
+    test("appends language instruction to custom prompt", async () => {
+      await generateCommitMessage({ path: "/repo", prompt: "Write a haiku commit message.", language: "zh" })
+      const prompt = lastPrompt()
+      expect(prompt).toContain("Write a haiku commit message.")
+      expect(prompt).toContain("Language Requirement")
     })
   })
 })

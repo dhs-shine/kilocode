@@ -36,13 +36,18 @@ type Args = {
 
 let active: Recording | undefined
 let starting: string | undefined
+let ffmpeg: Promise<string> | undefined
+
+export async function prewarmSpeechCapture(): Promise<void> {
+  await resolveFFmpeg()
+}
 
 export async function startSpeechCapture(input: Input): Promise<boolean> {
   if (active || starting) throw new Error("Speech recording is already in progress")
 
   starting = input.requestId
   try {
-    const bin = await findFFmpeg()
+    const bin = await resolveFFmpeg()
     const file = path.join(os.tmpdir(), `kilo-stt-${process.pid}-${Date.now()}.wav`)
     const state = await startWithArgs(bin, file, input, await inputArgSets(bin))
     return !state.stopped
@@ -229,6 +234,23 @@ function requireActive(requestId: string): Recording {
   return active
 }
 
+async function resolveFFmpeg(): Promise<string> {
+  const cached = ffmpeg
+  if (cached) {
+    const bin = await cached
+    if (!path.isAbsolute(bin) || existsSync(bin)) return bin
+  }
+
+  const task = findFFmpeg()
+  ffmpeg = task
+  try {
+    return await task
+  } catch (err) {
+    if (ffmpeg === task) ffmpeg = undefined
+    throw err
+  }
+}
+
 async function findFFmpeg(): Promise<string> {
   const paths = [
     process.env.KILO_FFMPEG_PATH,
@@ -313,7 +335,29 @@ async function listDshowAudioDevices(bin: string): Promise<string[]> {
 
 export function parseDshowAudioDevices(raw: string): string[] {
   const devices = new Set<string>()
-  for (const match of raw.matchAll(/"([^"]+)"\s+\(audio\)/g)) devices.add(match[1]!)
+  const state = { audio: false }
+  const legacy = /"([^"]+)"\s+\(audio\)/
+  const quoted = /"([^"]+)"/
+  const section = (line: string) => /DirectShow audio devices/i.test(line)
+  const other = (line: string) => /DirectShow (video|external) devices/i.test(line)
+  const alt = (line: string) => /\]\s+Alternative name\s+"/i.test(line)
+  for (const line of raw.split(/\r?\n/)) {
+    const match = legacy.exec(line)
+    if (match) devices.add(match[1]!)
+
+    if (section(line)) {
+      state.audio = true
+      continue
+    }
+    if (other(line)) {
+      if (!state.audio) continue
+      state.audio = false
+      break
+    }
+    if (!state.audio || alt(line)) continue
+    const found = quoted.exec(line)
+    if (found) devices.add(found[1]!)
+  }
   return [...devices]
 }
 

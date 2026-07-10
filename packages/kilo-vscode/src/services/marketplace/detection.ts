@@ -5,6 +5,10 @@ import { MarketplacePaths } from "./paths"
 
 type Entry = [string, { type: string }]
 
+function entry(id: string, type: "agent" | "mcp" | "skill"): Entry {
+  return [`${type}:${id}`, { type }]
+}
+
 export interface CliSkill {
   name: string
   location: string
@@ -16,6 +20,7 @@ export class InstallationDetector {
   /**
    * Detect installed marketplace items.
    *
+   * Agents are detected from .kilo/agents/*.md files.
    * MCP servers and modes are detected from kilo.json config files.
    * Skills come from the CLI backend (via GET /skill), which is the
    * authoritative source — it scans all skill directories.
@@ -23,12 +28,14 @@ export class InstallationDetector {
   async detect(workspace?: string, skills?: CliSkill[]): Promise<MarketplaceInstalledMetadata> {
     const project = workspace
       ? Object.fromEntries([
+          ...(await this.detectAgentFiles("project", workspace)),
           ...(await this.detectFromConfig(this.paths.configPath("project", workspace))),
           ...this.skillEntries(skills, workspace, true),
         ])
       : {}
 
     const global = Object.fromEntries([
+      ...(await this.detectAgentFiles("global")),
       ...(await this.detectFromConfig(this.paths.configPath("global"))),
       ...this.skillEntries(skills, workspace, false),
     ])
@@ -49,7 +56,21 @@ export class InstallationDetector {
           ? !!workspace && this.isProjectSkill(s.location, workspace)
           : !workspace || !this.isProjectSkill(s.location, workspace),
       )
-      .map((s) => [s.name, { type: "skill" }])
+      .map((skill) => entry(skill.name, "skill"))
+  }
+
+  /** Scan .kilo/agents/*.md files to detect installed marketplace agents. */
+  private async detectAgentFiles(scope: "project" | "global", workspace?: string): Promise<Entry[]> {
+    const dir = this.paths.agentsDir(scope, workspace)
+    try {
+      const files = await fs.readdir(dir)
+      return files.filter((file) => file.endsWith(".md")).map((file) => entry(path.basename(file, ".md"), "agent"))
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        console.warn(`Failed to detect agent files from ${dir}:`, err)
+      }
+      return []
+    }
   }
 
   /** Read mcp and agent entries from a kilo.json config file. */
@@ -61,13 +82,13 @@ export class InstallationDetector {
 
       if (parsed?.mcp && typeof parsed.mcp === "object") {
         for (const key of Object.keys(parsed.mcp)) {
-          entries.push([key, { type: "mcp" }])
+          entries.push(entry(key, "mcp"))
         }
       }
 
       if (parsed?.agent && typeof parsed.agent === "object") {
         for (const key of Object.keys(parsed.agent)) {
-          entries.push([key, { type: "mode" }])
+          entries.push(entry(key, "agent"))
         }
       }
 

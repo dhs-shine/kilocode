@@ -5,17 +5,21 @@ import {
 } from "../../webview-ui/src/components/speech-to-text/availability"
 import { DEFAULT_SPEECH_TO_TEXT_MODEL } from "../../src/speech-to-text/models"
 
-describe("speech-to-text config availability", () => {
-  const providers = ["kilo"]
-  const profile = {}
-
-  it("enables speech input from resolved config when Kilo access exists", () => {
-    expect(canUseSpeechToText({ experimental: { speech_to_text: true } }, providers, profile)).toBe(true)
+describe("speech-to-text availability", () => {
+  it("shows speech input for stored Kilo credentials", () => {
+    expect(canUseSpeechToText({}, { kilo: "oauth" })).toBe(true)
+    expect(canUseSpeechToText({}, { kilo: "api" })).toBe(true)
   })
 
-  it("hides speech input when the config flag is false or unset", () => {
-    expect(canUseSpeechToText({ experimental: { speech_to_text: false } }, providers, profile)).toBe(false)
-    expect(canUseSpeechToText({}, providers, profile)).toBe(false)
+  it("hides speech input without usable Kilo credentials", () => {
+    expect(canUseSpeechToText({}, {})).toBe(false)
+    expect(canUseSpeechToText({}, { kilo: "wellknown" })).toBe(false)
+  })
+
+  it("honors enabled and disabled provider configuration", () => {
+    expect(canUseSpeechToText({ disabled_providers: ["kilo"] }, { kilo: "oauth" })).toBe(false)
+    expect(canUseSpeechToText({ enabled_providers: ["openai"] }, { kilo: "oauth" })).toBe(false)
+    expect(canUseSpeechToText({ enabled_providers: ["kilo"] }, { kilo: "oauth" })).toBe(true)
   })
 
   it("normalizes configured and unknown transcription models", () => {

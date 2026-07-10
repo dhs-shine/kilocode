@@ -12,14 +12,20 @@ export interface McpInstallationMethod {
   prerequisites?: string[]
 }
 
+export interface MarketplaceSuggestFor {
+  filename?: string[]
+  vscode_extension?: string[]
+}
+
 export interface MarketplaceItemBase {
   id: string
   name: string
   description: string
+  category: string
   author?: string
   authorUrl?: string
-  tags?: string[]
   prerequisites?: string[]
+  suggest_for?: MarketplaceSuggestFor
 }
 
 export interface McpMarketplaceItem extends MarketplaceItemBase {
@@ -29,21 +35,33 @@ export interface McpMarketplaceItem extends MarketplaceItemBase {
   parameters?: McpParameter[]
 }
 
-export interface ModeMarketplaceItem extends MarketplaceItemBase {
-  type: "mode"
-  content: string
+export interface AgentContent {
+  mode: "primary" | "subagent" | "all"
+  description: string
+  prompt: string
+  options?: Record<string, unknown>
+  permission?: Record<string, unknown>
+  requirements?: {
+    skills?: string[]
+    mcps?: string[]
+    vscode_extensions?: Array<{ name: string; id: string }>
+  }
+}
+
+export interface AgentMarketplaceItem extends MarketplaceItemBase {
+  type: "agent"
+  content: AgentContent
 }
 
 export interface SkillMarketplaceItem extends MarketplaceItemBase {
   type: "skill"
-  category: string
   githubUrl: string
   content: string
   displayName: string
   displayCategory: string
 }
 
-export type MarketplaceItem = McpMarketplaceItem | ModeMarketplaceItem | SkillMarketplaceItem
+export type MarketplaceItem = McpMarketplaceItem | AgentMarketplaceItem | SkillMarketplaceItem
 
 export interface InstallMarketplaceItemOptions {
   target?: "global" | "project"
@@ -55,8 +73,15 @@ export interface MarketplaceInstalledMetadata {
   global: Record<string, { type: string }>
 }
 
+export interface MarketplaceRelevance {
+  filename?: string[]
+  vscodeExtension?: string[]
+}
+
+export type MarketplaceRelevanceMetadata = Record<string, MarketplaceRelevance>
+
 export interface MarketplaceFilters {
   type?: string
   search?: string
-  tags?: string[]
+  categories?: string[]
 }

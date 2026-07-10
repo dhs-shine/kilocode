@@ -4,11 +4,13 @@ import {
   closeTab,
   nextTabAfterClose,
   openSessionTab,
+  pendingTabForCreated,
   reconcileTabs,
   reconcileTrackedTabs,
   replacePendingTab,
   restoreTabs,
   restoreTrackedTabs,
+  showTabStrip,
   type LocalTabState,
 } from "../../webview-ui/src/utils/local-tabs"
 
@@ -39,6 +41,12 @@ const reorder = (items: { id: string }[], order: string[]) => {
 const inventory = (local: string[], external: string[] = []) => ({ local, external: new Set(external) })
 
 describe("local session tabs", () => {
+  it("hides only the initial blank composer tab", () => {
+    expect(showTabStrip([pending()])).toBe(false)
+    expect(showTabStrip([pending(), "sidebar-pending:2"])).toBe(true)
+    expect(showTabStrip(["s1"])).toBe(true)
+  })
+
   it("restores a fresh pending tab when no sessions were persisted", () => {
     expect(restoreTabs(undefined, undefined, makePending())).toEqual({ ids: [pending()], active: pending() })
   })
@@ -87,6 +95,11 @@ describe("local session tabs", () => {
       ids: ["s1", "pending-2"],
       active: "pending-2",
     })
+  })
+
+  it("does not replace another pending tab when an explicit draft was closed", () => {
+    expect(pendingTabForCreated(["sidebar-pending:2"], "sidebar-pending:2", "sidebar-pending:1")).toBeUndefined()
+    expect(pendingTabForCreated(["sidebar-pending:2"], "sidebar-pending:2", undefined)).toBe("sidebar-pending:2")
   })
 })
 

@@ -1,32 +1,24 @@
-Kilo Code supports all JetBrains IDEs including IntelliJ IDEA, WebStorm, PyCharm, and more.
+Kilo Code v7 for JetBrains is officially available. It uses a native JetBrains interface, works well in [remote development split mode](https://www.jetbrains.com/remote-development/), and does not require Node.js.
 
-### Prerequisites
+The JetBrains plugin provides the best native JetBrains UX for working with an AI coding agent, and it improves with every release. Enable automatic plugin updates to get the latest fixes and improvements as soon as they are available.
 
-Before installing the Kilo Code plugin, ensure you have:
+### Install the JetBrains plugin
 
-1. **JetBrains Toolbox (Recommended):**
-   - Download from [https://www.jetbrains.com/toolbox-app/](https://www.jetbrains.com/toolbox-app/)
-   - Toolbox is required for authentication callbacks to work properly
-   - Without Toolbox, you'll need to manually configure API keys
+1. Open IntelliJ IDEA or another [JetBrains IDE](https://www.jetbrains.com/ides/)
+2. Go to **Settings → Plugins**
+3. Search for **Kilo Code** in the **Marketplace** tab
+4. Click **Install** or **Update** and restart your IDE if prompted
+5. Open **Settings → Appearance & Behavior → System Settings → Updates**, then enable **Update plugins automatically** (recommended)
 
-2. **Node.js:**
-   - Download LTS version from [https://nodejs.org/](https://nodejs.org/)
-   - Required for the extension's backend services
+{% image src="/docs/img/jetbrains/plugin-marketplace.png" alt="JetBrains Plugins Marketplace showing the Kilo Code plugin search result" width="900" caption="Search for Kilo Code in the JetBrains Plugins Marketplace." /%}
 
-### Install directly
+{% image src="/docs/img/jetbrains/plugin-auto-updates.png" alt="JetBrains Updates settings with Update plugins automatically enabled" width="900" caption="Enable automatic plugin updates to receive Kilo Code fixes and improvements." /%}
 
-1. If you don't have a JetBrains IDE installed, download one from [jetbrains.com](https://www.jetbrains.com/)
-2. Then, you can click the button below to install Kilo Code directly from the JetBrains Marketplace:
+### If you used the v7 EAP {% #jetbrains-early-access %}
 
-[![Install Kilo Code](https://raster.shields.io/badge/Install%20Kilo%20Code-F8F674?style=for-the-badge)](https://plugins.jetbrains.com/plugin/28350-kilo-code)
-
-### Install from JetBrains Marketplace
-
-1. Open your JetBrains IDE
-2. Go to **Settings/Preferences → Plugins**
-3. Click **Marketplace** tab
-4. Search for "Kilo Code"
-5. Click **Install** and restart your IDE
+{% callout type="info" %}
+Remove the EAP repository URL from **Settings → Plugins → Manage Plugin Repositories**. The official v7 plugin is now available from the default JetBrains Marketplace channel, and leaving the custom repository configured can keep your IDE on EAP updates.
+{% /callout %}
 
 ### Supported IDEs
 
@@ -39,7 +31,3 @@ Before installing the Kilo Code plugin, ensure you have:
 - CLion
 - RubyMine
 - DataGrip
-
-{% callout type="info" %}
-Both Community and Ultimate editions are supported. Some AI features may vary based on your JetBrains license.
-{% /callout %}

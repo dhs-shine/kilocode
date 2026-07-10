@@ -14,6 +14,7 @@ export const SessionTab: Component<{
   role?: "tab"
   selected?: boolean
   tabIndex?: number
+  closeTabIndex?: number
   onSelect: () => void
   onMiddleClick?: (event: MouseEvent) => void
   onKeyDown?: JSX.EventHandlerUnion<HTMLDivElement, KeyboardEvent>
@@ -57,7 +58,8 @@ export const SessionTab: Component<{
         icon="close-small"
         size="small"
         variant="ghost"
-        label={props.closeLabel}
+        aria-label={props.closeLabel}
+        tabIndex={props.closeTabIndex}
         class="am-tab-close"
         onClick={(event) => {
           event.stopPropagation()

@@ -5,6 +5,7 @@
  * This file is the style entrypoint for chat-related webview styles.
  */
 
+@import "./session-title-editor.css";
 @import "./task-header.css";
 @import "./session-tabs.css";
 @import "./chat-layout.css";
@@ -12,6 +13,7 @@
 @import "./session-actions.css";
 @import "./welcome.css";
 @import "./prompt-input.css";
+@import "./agent-requirements.css";
 @import "./prompt-dropdowns.css";
 @import "./model-selector.css";
 @import "./permission-dock.css";

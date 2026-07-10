@@ -57,21 +57,25 @@ my-project/
 The filename must be uppercase (`AGENTS.md`), not lowercase (`agents.md`). This ensures consistency across different operating systems and tools.
 {% /callout %}
 
-### Subdirectory AGENTS.md Files
+### Per-Directory AGENTS.md Files
 
-You can also place AGENTS.md files in subdirectories to provide context-specific instructions:
+You can place AGENTS.md files in subdirectories to provide context-specific instructions when the agent accesses files in those locations:
 
 ```
 my-project/
 ├── AGENTS.md                    # Root-level instructions
 ├── src/
 │   └── backend/
-│       └── AGENTS.md            # Backend-specific instructions
+│       └── AGENTS.md            # Backend-specific instructions (loaded when reading backend files)
 └── docs/
-    └── AGENTS.md                # Documentation-specific instructions
+    └── AGENTS.md                # Documentation-specific instructions (loaded when reading docs files)
 ```
 
-When working in a subdirectory, Kilo Code will load both the root AGENTS.md and any subdirectory AGENTS.md files, with subdirectory files taking precedence for conflicting instructions.
+{% callout type="info" %}
+Per-directory AGENTS.md files are **dynamically loaded** when the agent reads files in that directory - they are not pre-loaded at session start. When the agent reads a file in `src/backend/`, the corresponding `AGENTS.md` is discovered and its contents are injected into the conversation as `<system-reminder>` tags.
+
+This is useful for providing context-specific guidance for different parts of a monorepo or project.
+{% /callout %}
 
 ## File Protection
 
@@ -165,19 +169,6 @@ In the new platform, AGENTS.md is loaded alongside other instruction sources. Th
 | **[Skills](/docs/customize/skills)** | Both | `.kilo/skills/`, config `skills` key | Loaded on demand |
 
 {% /tab %}
-{% tab label="VSCode (Legacy)" %}
-
-AGENTS.md works alongside Kilo Code's other configuration systems:
-
-| Feature | Scope | Location | Purpose | Priority |
-|---|---|---|---|---|
-| **[Mode-specific Custom Rules](/docs/customize/custom-rules)** | Project | `.kilocode/rules-{mode}/` | Mode-specific rules and constraints | 1 (Highest) |
-| **[Custom Rules](/docs/customize/custom-rules)** | Project | `.kilocode/rules/` | Kilo Code-specific rules and constraints | 2 |
-| **[AGENTS.md](/docs/customize/agents-md)** | Project | `AGENTS.md` | Universal standard for any AI coding tool | 3 |
-| **[Global Custom Rules](/docs/customize/custom-rules)** | Global | `~/.kilocode/rules/` | Global Kilo Code rules | 4 |
-| **[Custom Instructions](/docs/customize/custom-instructions)** | Global | IDE settings | Personal preferences across all projects | 5 (Lowest) |
-
-{% /tab %}
 {% /tabs %}
 
 ### Enabling/Disabling AGENTS.md
@@ -203,17 +194,6 @@ export KILO_DISABLE_EXTERNAL_SKILLS=true
 ```
 
 AGENTS.md itself cannot be individually disabled — it is always loaded if present. To override its instructions, use higher-priority sources like the `instructions` config key or agent-specific prompts.
-
-{% /tab %}
-{% tab label="VSCode (Legacy)" %}
-
-AGENTS.md support is **enabled by default**. To disable it, edit `settings.json`:
-
-```json
-{
-  "kilocode.useAgentRules": false
-}
-```
 
 {% /tab %}
 {% /tabs %}

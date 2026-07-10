@@ -1,19 +1,20 @@
 export * as TuiConfig from "./tui"
 
-import z from "zod"
+import path from "path"
+import { createBindingLookup } from "@opentui/keymap/extras"
 import { mergeDeep, unique } from "remeda"
-import { Context, Effect, Fiber, Layer } from "effect"
+import { Cause, Context, Effect, Fiber, Layer, Schema } from "effect"
 import { ConfigParse } from "@/config/parse"
 import * as ConfigPaths from "@/config/paths"
 import { migrateTuiConfig } from "./tui-migrate"
-import { TuiInfo } from "./tui-schema"
+import { KeymapLeaderTimeoutDefault, resolveAttentionSoundPaths, TuiInfo } from "./tui-schema"
 import { Flag } from "@opencode-ai/core/flag/flag"
 import { isRecord } from "@/util/record"
 import { Global } from "@opencode-ai/core/global"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { CurrentWorkingDirectory } from "./cwd"
 import { ConfigPlugin } from "@/config/plugin"
-import { ConfigKeybinds } from "@/config/keybinds"
+import { TuiKeybind } from "./keybind"
 import { InstallationLocal, InstallationVersion } from "@opencode-ai/core/installation/version"
 import { makeRuntime } from "@opencode-ai/core/effect/runtime"
 import { Filesystem } from "@/util/filesystem"
@@ -21,27 +22,38 @@ import * as Log from "@opencode-ai/core/util/log"
 import { ConfigVariable } from "@/config/variable"
 import { Npm } from "@opencode-ai/core/npm"
 import { KilocodeDefaultPlugins } from "@/kilocode/config/default-plugins" // kilocode_change
+import type { DeepMutable } from "@opencode-ai/core/schema"
+import type { TuiAttentionSoundName } from "@kilocode/plugin/tui"
+import { FormatError, FormatUnknownError } from "@/cli/error"
 
 const log = Log.create({ service: "tui.config" })
 
 export const Info = TuiInfo
+export type Info = DeepMutable<Schema.Schema.Type<typeof Info>>
 
 type Acc = {
   result: Info
+  plugin_origins: ConfigPlugin.Origin[]
 }
 
-type State = {
-  config: Info
-  deps: Array<Fiber.Fiber<void, AppFileSystem.Error>>
-}
-
-export type Info = z.output<typeof Info> & {
+export type Resolved = Omit<Info, "attention" | "keybinds" | "leader_timeout"> & {
+  attention: {
+    enabled: boolean
+    notifications: boolean
+    sound: boolean
+    volume: number
+    sound_pack: string
+    sounds: Partial<Record<TuiAttentionSoundName, string>>
+  }
+  keybinds: TuiKeybind.BindingLookupView
+  leader_timeout: number
   // Internal resolved plugin list used by runtime loading.
   plugin_origins?: ConfigPlugin.Origin[]
 }
 
 export interface Interface {
-  readonly get: () => Effect.Effect<Info>
+  readonly get: () => Effect.Effect<Resolved>
+  readonly info: () => Effect.Effect<Info>
   readonly waitForDependencies: () => Effect.Effect<void>
 }
 
@@ -69,8 +81,26 @@ function normalize(raw: Record<string, unknown>) {
   }
 }
 
+function dropUnknownKeybinds(input: Record<string, unknown>, configFilepath: string) {
+  if (!isRecord(input.keybinds)) return input
+
+  const invalid = TuiKeybind.unknownKeys(input.keybinds)
+  if (!invalid.length) return input
+
+  log.warn("ignored unknown tui keybinds", {
+    path: configFilepath,
+    keybinds: invalid,
+    hint: "Remove these entries or rename them to keys from the tui.json schema.",
+  })
+  return {
+    ...input,
+    keybinds: Object.fromEntries(Object.entries(input.keybinds).filter(([key]) => !invalid.includes(key))),
+  }
+}
+
 const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: string }) {
   const afs = yield* AppFileSystem.Service
+  let appliedOrder = 0
 
   const resolvePlugins = (config: Info, configFilepath: string): Effect.Effect<Info> =>
     Effect.gen(function* () {
@@ -82,29 +112,55 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
       return config
     })
 
-  const load = (text: string, configFilepath: string): Effect.Effect<Info> =>
+  // kilocode_change start - trusted gates {env:}; fileScope confines untrusted {file:} reads
+  const load = (
+    text: string,
+    configFilepath: string,
+    trusted: boolean,
+    fileScope?: ConfigVariable.FileScope,
+  ): Effect.Effect<Info> =>
+    // kilocode_change end
     Effect.gen(function* () {
+      // kilocode_change start - only trusted tui config resolves {env:}; untrusted {file:} confined to fileScope
       const expanded = yield* Effect.promise(() =>
-        ConfigVariable.substitute({ text, type: "path", path: configFilepath, missing: "empty" }),
+        ConfigVariable.substitute({ text, type: "path", path: configFilepath, missing: "empty", trusted, fileScope }),
       )
+      // kilocode_change end
       const data = ConfigParse.jsonc(expanded, configFilepath)
       if (!isRecord(data)) return {} as Info
       // Flatten a nested "tui" key so users who wrote `{ "tui": { ... } }` inside tui.json
       // (mirroring the old opencode.json shape) still get their settings applied.
-      const validated = ConfigParse.schema(Info, normalize(data), configFilepath)
+      const normalized = dropUnknownKeybinds(normalize(data), configFilepath)
+      const parsed = ConfigParse.schema(Info, normalized, configFilepath)
+      const validated = parsed.attention?.sounds
+        ? {
+            ...parsed,
+            attention: {
+              ...parsed.attention,
+              sounds: resolveAttentionSoundPaths(path.dirname(configFilepath), parsed.attention.sounds),
+            },
+          }
+        : parsed
       return yield* resolvePlugins(validated, configFilepath)
     }).pipe(
-      // catchCause (not tapErrorCause + orElseSucceed) because ConfigParse.jsonc/.schema
+      // catchCause (not tapErrorCause + orElseSucceed) because JSONC parsing and validation
       // can sync-throw — those become defects, which orElseSucceed wouldn't catch.
       Effect.catchCause((cause) =>
         Effect.sync(() => {
-          log.warn("invalid tui config", { path: configFilepath, cause })
+          const error = Cause.squash(cause)
+          const reason = FormatError(error) ?? FormatUnknownError(error)
+          log.warn("skipping invalid tui config", {
+            path: configFilepath,
+            reason,
+          })
           return {} as Info
         }),
       ),
     )
 
-  const loadFile = (filepath: string): Effect.Effect<Info> =>
+  // kilocode_change start - trusted + fileScope threaded to load
+  const loadFile = (filepath: string, trusted: boolean, fileScope?: ConfigVariable.FileScope): Effect.Effect<Info> =>
+    // kilocode_change end
     Effect.gen(function* () {
       // Silent-swallow non-NotFound read errors (perms, EISDIR, IO) → log + skip.
       // Matches how parse/schema/plugin failures in load() are handled — every
@@ -112,32 +168,46 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
       const text = yield* afs.readFileStringSafe(filepath).pipe(
         Effect.catchCause((cause) =>
           Effect.sync(() => {
-            log.warn("failed to read tui config", { path: filepath, cause })
+            const error = Cause.squash(cause)
+            const reason = FormatError(error) ?? FormatUnknownError(error)
+            log.warn("failed to read tui config", {
+              path: filepath,
+              reason,
+            })
             return undefined
           }),
         ),
       )
       if (!text) return {} as Info
-      return yield* load(text, filepath)
+      log.info("loading tui config", { path: filepath })
+      return yield* load(text, filepath, trusted, fileScope) // kilocode_change
     })
 
-  const mergeFile = (acc: Acc, file: string) =>
+  // kilocode_change start - trusted + fileScope threaded to loadFile
+  const mergeFile = (acc: Acc, file: string, trusted: boolean, fileScope?: ConfigVariable.FileScope) =>
+    // kilocode_change end
     Effect.gen(function* () {
-      const data = yield* loadFile(file)
+      const data = yield* loadFile(file, trusted, fileScope) // kilocode_change
+      if (Object.keys(data).length) {
+        appliedOrder += 1
+        log.info("applying tui config", { path: file, order: appliedOrder })
+      }
       acc.result = mergeDeep(acc.result, data)
       if (!data.plugin?.length) return
 
       const scope = pluginScope(file, ctx)
       const plugins = ConfigPlugin.deduplicatePluginOrigins([
-        ...(acc.result.plugin_origins ?? []),
+        ...acc.plugin_origins,
         ...data.plugin.map((spec) => ({ spec, scope, source: file })),
       ])
       acc.result.plugin = plugins.map((item) => item.spec)
-      acc.result.plugin_origins = plugins
+      acc.plugin_origins = plugins
     })
 
-  // Every config dir we may read from: global config dir, any `.opencode`
+  // kilocode_change start - discover canonical and legacy Kilo config directories
+  // Every config dir we may read from: global config, .kilo and legacy .kilocode
   // folders between cwd and home, and KILO_CONFIG_DIR.
+  // kilocode_change end
   const directories = yield* ConfigPaths.directories(ctx.directory)
   yield* Effect.promise(() => migrateTuiConfig({ directories, cwd: ctx.directory }))
 
@@ -145,60 +215,81 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
 
   const acc: Acc = {
     result: {},
+    plugin_origins: [],
   }
 
   // 1. Global tui config (lowest precedence).
   for (const file of ConfigPaths.fileInDirectory(Global.Path.config, "tui")) {
-    yield* mergeFile(acc, file)
+    yield* mergeFile(acc, file, true) // kilocode_change - global config is trusted
   }
 
   // 2. Explicit KILO_TUI_CONFIG override, if set.
   if (Flag.KILO_TUI_CONFIG) {
     const configFile = Flag.KILO_TUI_CONFIG
-    yield* mergeFile(acc, configFile)
+    yield* mergeFile(acc, configFile, true) // kilocode_change - explicit env-provided path is trusted
     log.debug("loaded custom tui config", { path: configFile })
   }
 
   // 3. Project tui files, applied root-first so the closest file wins.
   for (const file of projectFiles) {
-    yield* mergeFile(acc, file)
+    yield* mergeFile(acc, file, false, { root: ctx.directory, source: file }) // kilocode_change - untrusted, {file:} confined to project
   }
 
-  // 4. `.opencode` directories (and KILO_CONFIG_DIR) discovered while
-  // walking up the tree. Also returned below so callers can install plugin
-  // dependencies from each location.
-  // kilocode_change start - also load tui.json from .kilo/.kilocode
+  // kilocode_change start - load tui.json from supported Kilo config directories
+  // 4. `.kilo` and legacy `.kilocode` directories (and KILO_CONFIG_DIR)
+  // discovered while walking up the tree. Also returned below so callers can
+  // install plugin dependencies from each location.
   const dirs = unique(directories).filter(
-    (dir) =>
-      dir.endsWith(".kilo") || dir.endsWith(".kilocode") || dir.endsWith(".opencode") || dir === Flag.KILO_CONFIG_DIR,
+    (dir) => dir.endsWith(".kilo") || dir.endsWith(".kilocode") || dir === Flag.KILO_CONFIG_DIR,
   )
   // kilocode_change end
 
   for (const dir of dirs) {
-    // if (!dir.endsWith(".opencode") && dir !== Flag.KILO_CONFIG_DIR) continue // kilocode_change
+    // kilocode_change start - trust global (home/KILO_CONFIG_DIR) dirs like config.ts; in-repo .kilo/.kilocode stay untrusted
+    const trusted = pluginScope(dir, ctx) === "global"
+    const fileScope = trusted ? undefined : { root: ctx.directory, source: dir }
     for (const file of ConfigPaths.fileInDirectory(dir, "tui")) {
-      yield* mergeFile(acc, file)
+      yield* mergeFile(acc, file, trusted, fileScope)
     }
+    // kilocode_change end
   }
 
-  const keybinds = { ...(acc.result.keybinds ?? {}) }
+  const keybinds = { ...acc.result.keybinds }
   if (process.platform === "win32") {
     // Native Windows terminals do not support POSIX suspend, so prefer prompt undo.
     keybinds.terminal_suspend = "none"
-    keybinds.input_undo ??= unique([
-      "ctrl+z",
-      ...ConfigKeybinds.Keybinds.shape.input_undo.parse(undefined).split(","),
-    ]).join(",")
+    const inputUndo = TuiKeybind.defaultValue("input_undo")
+    keybinds.input_undo ??= unique(["ctrl+z", ...(typeof inputUndo === "string" ? inputUndo.split(",") : [])]).join(",")
   }
-  acc.result.keybinds = ConfigKeybinds.Keybinds.parse(keybinds)
+  const parsedKeybinds = TuiKeybind.parse(keybinds)
+  const info = acc.result
+  const result: Resolved = {
+    ...info,
+    attention: {
+      enabled: acc.result.attention?.enabled ?? false,
+      notifications: acc.result.attention?.notifications ?? true,
+      sound: acc.result.attention?.sound ?? true,
+      volume: acc.result.attention?.volume ?? 0.4,
+      sound_pack: acc.result.attention?.sound_pack ?? "kilo.default", // kilocode_change
+      sounds: acc.result.attention?.sounds ?? {},
+    },
+    keybinds: createBindingLookup(TuiKeybind.toBindingConfig(parsedKeybinds), {
+      commandMap: TuiKeybind.CommandMap,
+      bindingDefaults: TuiKeybind.bindingDefaults(),
+    }),
+    leader_timeout: acc.result.leader_timeout ?? KeymapLeaderTimeoutDefault,
+    plugin_origins: acc.plugin_origins.length ? acc.plugin_origins : undefined,
+  }
 
-  // kilocode_change start — inject Kilo default plugins to keep TUI aligned with server config
-  KilocodeDefaultPlugins.apply(acc.result, { disabled: Flag.KILO_DISABLE_DEFAULT_PLUGINS, log })
+  // kilocode_change start - inject Kilo default plugins to keep TUI aligned with server config
+  KilocodeDefaultPlugins.apply(result, { disabled: Flag.KILO_DISABLE_DEFAULT_PLUGINS, log })
+  info.plugin = result.plugin
   // kilocode_change end
 
   return {
-    config: acc.result,
-    dirs: acc.result.plugin?.length ? dirs : [],
+    config: result,
+    info,
+    dirs: result.plugin?.length ? dirs : [],
   }
 })
 
@@ -227,11 +318,12 @@ export const layer = Layer.effect(
     )
 
     const get = Effect.fn("TuiConfig.get")(() => Effect.succeed(data.config))
+    const info = Effect.fn("TuiConfig.info")(() => Effect.succeed(data.info))
 
     const waitForDependencies = Effect.fn("TuiConfig.waitForDependencies")(() =>
       Effect.forEach(deps, Fiber.join, { concurrency: "unbounded" }).pipe(Effect.ignore(), Effect.asVoid),
     )
-    return Service.of({ get, waitForDependencies })
+    return Service.of({ get, info, waitForDependencies })
   }).pipe(Effect.withSpan("TuiConfig.layer")),
 )
 

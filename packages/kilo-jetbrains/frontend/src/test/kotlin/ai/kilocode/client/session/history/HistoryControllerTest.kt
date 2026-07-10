@@ -5,24 +5,35 @@ import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.SessionManager
+import ai.kilocode.client.session.SessionActivityKind
 import ai.kilocode.client.session.SessionRef
 import ai.kilocode.client.testing.FakeSessionRpcApi
 import ai.kilocode.client.testing.FakeWorkspaceRpcApi
+import ai.kilocode.client.ui.UiStyle
+import ai.kilocode.client.ui.HoverIcon
+import ai.kilocode.client.ui.layout.Align
 import ai.kilocode.rpc.dto.CloudSessionDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.SessionDto
+import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.SessionTimeDto
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.SearchTextField
+import com.intellij.ui.SimpleColoredComponent
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBList
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import java.awt.BorderLayout
 import java.awt.Cursor
 import java.awt.event.KeyEvent
 import java.time.Instant
@@ -32,6 +43,7 @@ import java.time.temporal.ChronoUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.JComponent
 import javax.swing.KeyStroke
+import javax.swing.ScrollPaneConstants
 import javax.swing.event.ListDataEvent
 import javax.swing.event.ListDataListener
 
@@ -102,6 +114,21 @@ class HistoryControllerTest : BasePlatformTestCase() {
         assertEquals(FakeSessionRpcApi.CloudCall("/test", "next_1", 50, null), rpc.cloudCalls[1])
     }
 
+    fun `test cloud load records page telemetry`() {
+        rpc.cloud += cloud("cloud_1", "Cloud One")
+        rpc.cloudCursor = "next_1"
+        val events = mutableListOf<Pair<String, Map<String, String>>>()
+        val controller = telemetryController(events)
+
+        controller.reloadCloud()
+        flush()
+
+        val event = events.single { it.first == "History Cloud Page Loaded" }
+        assertEquals("true", event.second["reset"])
+        assertEquals("1", event.second["count"])
+        assertEquals("true", event.second["hasNextCursor"])
+    }
+
     fun `test local delete calls rpc and removes item`() {
         rpc.listed += session("ses_1", "Local One")
         val controller = controller()
@@ -113,6 +140,169 @@ class HistoryControllerTest : BasePlatformTestCase() {
 
         assertEquals(listOf("ses_1" to "/test"), rpc.deletes)
         assertTrue(controller.local.items.isEmpty())
+    }
+
+    fun `test opening history items records source telemetry`() {
+        val events = mutableListOf<Pair<String, Map<String, String>>>()
+        val controller = telemetryController(events)
+
+        controller.open(LocalHistoryItem(session("ses_1", "Local One")))
+        controller.open(CloudHistoryItem(cloud("cloud_1", "Cloud One")))
+        flush()
+
+        val opened = events.filter { it.first == "History Session Opened" }
+        assertEquals(listOf("local", "cloud"), opened.map { it.second["source"] })
+    }
+
+    fun `test activity returns typed items`() {
+        rpc.statuses.value = mapOf(
+            "ses_busy" to SessionStatusDto("busy"),
+            "ses_idle" to SessionStatusDto("idle"),
+            "ses_retry" to SessionStatusDto("retry"),
+            "ses_offline" to SessionStatusDto("offline"),
+        )
+        flush()
+
+        val activity = sessions.activity()
+
+        assertEquals(mapOf("ses_busy" to SessionActivityKind.RUNNING), activity)
+    }
+
+    fun `test controller activity returns service activity`() {
+        rpc.statuses.value = mapOf("ses_1" to SessionStatusDto("busy"))
+        flush()
+
+        val activity = controller().activity()
+
+        assertEquals(mapOf("ses_1" to SessionActivityKind.RUNNING), activity)
+    }
+
+    fun `test local history renderer shows running badge for active id`() {
+        val item = LocalHistoryItem(session("ses_1", "Running"))
+        val controller = controller()
+        controller.local.replace(listOf(item))
+        val renderer = LocalHistoryRenderer(controller.local, activity = { mapOf("ses_1" to SessionActivityKind.RUNNING) })
+
+        renderer.getListCellRendererComponent(javax.swing.JList(arrayOf(item)), item, 0, false, false)
+
+        assertTrue(renderer.runningVisible())
+    }
+
+    fun `test local history renderer uses title overlay`() {
+        val item = LocalHistoryItem(session("ses_1", "Stored"))
+        val controller = controller()
+        controller.local.replace(listOf(item))
+        val renderer = LocalHistoryRenderer(controller.local, titles = { mapOf("ses_1" to "Live") })
+
+        renderer.getListCellRendererComponent(javax.swing.JList(arrayOf(item)), item, 0, false, false)
+
+        assertEquals("Live", renderer.titleText())
+    }
+
+    fun `test cloud history renderer hides running badge for inactive id`() {
+        val item = CloudHistoryItem(cloud("cloud_1", "Cloud"))
+        val controller = controller()
+        controller.cloud.replace(listOf(item), null)
+        val renderer = CloudHistoryRenderer(controller.cloud) { emptyMap() }
+
+        renderer.getListCellRendererComponent(javax.swing.JList(arrayOf(item)), item, 0, false, false)
+
+        assertFalse(renderer.runningVisible())
+    }
+
+    fun `test history renderer uses trailing time with squeezable title`() {
+        val item = LocalHistoryItem(session("ses_1", "Long ".repeat(80)))
+        val controller = controller()
+        controller.local.replace(listOf(item))
+        val renderer = LocalHistoryRenderer(controller.local)
+        val view = renderer.getListCellRendererComponent(javax.swing.JList(arrayOf(item)), item, 0, false, false)
+
+        val title = UIUtil.uiTraverser(view).filter(SimpleColoredComponent::class.java).firstOrNull() ?: error("missing title")
+        val head = title.parent
+        assertTrue(head.layout is BorderLayout)
+        assertSame(title, (head.layout as BorderLayout).getLayoutComponent(BorderLayout.CENTER))
+
+        val time = UIUtil.uiTraverser(view).filter(JBLabel::class.java)
+            .first { it.text == HistoryTime.relative(item) }
+        val main = time.parent
+        assertTrue(main.layout is BorderLayout)
+        assertSame(time, (main.layout as BorderLayout).getLayoutComponent(BorderLayout.EAST))
+
+        val row = main.parent as JComponent
+        val ins = row.border.getBorderInsets(row)
+        assertEquals(ins.left, ins.right)
+        assertEquals(UiStyle.Gap.lg(), ins.right)
+    }
+
+    fun `test history panel sync updates running badges`() {
+        rpc.listed += session("ses_1", "Local One")
+        val panel = HistoryPanel(parent, controller())
+        flush()
+        assertFalse(panel.runningBadgeVisible(0))
+
+        rpc.statuses.value = mapOf("ses_1" to SessionStatusDto("busy"))
+        flush()
+        panel.syncActivity()
+
+        assertTrue(panel.runningBadgeVisible(0))
+        assertEquals(KiloBundle.message("session.part.tool.running"), panel.badgeText(0))
+    }
+
+    fun `test history panel overlay shows specific badge`() {
+        rpc.listed += session("ses_1", "Local One")
+        val panel = HistoryPanel(parent, controller(), manager = object : SessionManager {
+            override fun newSession() {}
+            override fun showHistory() {}
+            override fun openSession(ref: SessionRef) {}
+            override fun activity() = mapOf("ses_1" to SessionActivityKind.PERMISSION)
+        })
+        flush()
+
+        panel.syncActivity()
+
+        assertEquals(KiloBundle.message("history.badge.permission"), panel.badgeText(0))
+    }
+
+    fun `test history panel sync repaints activity kind change`() {
+        rpc.listed += session("ses_1", "Local One")
+        var kind: SessionActivityKind? = null
+        val panel = HistoryPanel(parent, controller(), manager = object : SessionManager {
+            override fun newSession() {}
+            override fun showHistory() {}
+            override fun openSession(ref: SessionRef) {}
+            override fun activity() = sessions.activity() + kind?.let { mapOf("ses_1" to it) }.orEmpty()
+        })
+        rpc.statuses.value = mapOf("ses_1" to SessionStatusDto("busy"))
+        flush()
+
+        panel.syncActivity()
+        assertEquals(KiloBundle.message("session.part.tool.running"), panel.badgeText(0))
+
+        kind = SessionActivityKind.QUESTION
+        panel.syncActivity()
+
+        assertEquals(KiloBundle.message("history.badge.question"), panel.badgeText(0))
+    }
+
+    fun `test history panel sync uses live title overlay`() {
+        rpc.listed += session("ses_1", "Stored")
+        var title = "Live"
+        val panel = HistoryPanel(parent, controller(), manager = object : SessionManager {
+            override fun newSession() {}
+            override fun showHistory() {}
+            override fun openSession(ref: SessionRef) {}
+            override fun titles() = title.takeIf { it.isNotBlank() }?.let { mapOf("ses_1" to it) }.orEmpty()
+        })
+        flush()
+
+        panel.syncActivity()
+
+        assertEquals("Live", panel.titleText(0))
+
+        title = ""
+        panel.syncActivity()
+
+        assertEquals("Stored", panel.titleText(0))
     }
 
     fun `test panel filters and switches source`() {
@@ -135,11 +325,29 @@ class HistoryControllerTest : BasePlatformTestCase() {
         assertEquals(1, panel.itemCount())
     }
 
+    fun `test history panels do not scroll horizontally`() {
+        rpc.listed += session("ses_1", "Local ".repeat(80))
+        rpc.cloud += cloud("cloud_1", "Cloud ".repeat(80))
+        val panel = HistoryPanel(parent, controller())
+        flush()
+
+        assertNoHorizontalScroll(panel)
+        panel.clickCloud()
+        flush()
+
+        assertNoHorizontalScroll(panel)
+    }
+
     fun `test panel shows back button with tabs`() {
         val panel = HistoryPanel(parent, controller())
         flush()
 
         assertEquals(KiloBundle.message("history.back"), panel.backText())
+        val backs = UIUtil.uiTraverser(panel.component).filter(HoverIcon::class.java)
+            .filter { it.toolTipText == KiloBundle.message("history.back") }
+            .toList()
+        assertTrue(backs.isNotEmpty())
+        assertTrue(backs.all { it.parent is Align })
 
         panel.clickCloud()
         flush()
@@ -670,6 +878,13 @@ class HistoryControllerTest : BasePlatformTestCase() {
 
     private fun controller() = HistoryController(sessions, workspace, scope)
 
+    private fun telemetryController(events: MutableList<Pair<String, Map<String, String>>>) = HistoryController(
+        sessions,
+        workspace,
+        scope,
+        telemetry = { event, props -> events.add(event to props) },
+    )
+
     private fun controllerWithGit(url: String?) = HistoryController(
         sessions,
         workspace,
@@ -690,6 +905,26 @@ class HistoryControllerTest : BasePlatformTestCase() {
         override fun showHistory() {}
         override fun openSession(ref: SessionRef) {}
     }
+
+    private fun assertNoHorizontalScroll(panel: HistoryPanel) {
+        assertEquals(0, panel.component.insets.right)
+
+        val searches = UIUtil.uiTraverser(panel.component).filter(SearchTextField::class.java).toList()
+        assertTrue(searches.isNotEmpty())
+        assertTrue(searches.all { inset(it.parent as JComponent) == UiStyle.Gap.lg() })
+
+        val scrolls = UIUtil.uiTraverser(panel.component).filter(JBScrollPane::class.java).toList()
+            .filter { it.viewport.view is JBList<*> }
+        assertTrue(scrolls.isNotEmpty())
+        assertTrue(scrolls.all { it.horizontalScrollBarPolicy == ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER })
+        assertTrue(scrolls.all { it.viewportBorder.getBorderInsets(it).right == UiStyle.Gap.lg() })
+
+        val lists = UIUtil.uiTraverser(panel.component).filter(JBList::class.java).toList()
+        assertTrue(lists.isNotEmpty())
+        assertTrue(lists.all { it.getScrollableTracksViewportWidth() })
+    }
+
+    private fun inset(component: JComponent) = component.border.getBorderInsets(component).right
 
     private fun collect(controller: HistoryController): MutableList<String> {
         val events = mutableListOf<String>()

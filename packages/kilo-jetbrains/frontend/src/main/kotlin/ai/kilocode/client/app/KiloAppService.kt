@@ -3,6 +3,8 @@
 package ai.kilocode.client.app
 
 import ai.kilocode.rpc.KiloAppRpcApi
+import ai.kilocode.rpc.dto.ConfigPatchDto
+import ai.kilocode.rpc.dto.DeviceAuthDto
 import ai.kilocode.rpc.dto.HealthDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
@@ -11,6 +13,8 @@ import ai.kilocode.rpc.dto.ModelSelectionDto
 import ai.kilocode.rpc.dto.ModelSelectionUpdateDto
 import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.ModelVariantUpdateDto
+import ai.kilocode.rpc.dto.ProfileDto
+import ai.kilocode.rpc.dto.ProfileStatusDto
 import ai.kilocode.log.KiloLog
 import com.intellij.openapi.components.Service
 import fleet.rpc.client.durable
@@ -23,7 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * App-level frontend service for Kilo CLI interaction.
+ * App-level frontend service for Kilo Core interaction.
  *
  * Communicates with the backend via [KiloAppRpcApi]. All operations
  * are app-scoped — no project context is needed.
@@ -43,10 +47,16 @@ class KiloAppService internal constructor(
 
     private val started = AtomicBoolean(false)
 
-    /** CLI version string from the last successful health check, or null if unknown. */
+    /** Core version and platform from the backend, or null if unknown. */
     @Volatile
-    var version: String? = null
-        private set
+    private var info: CoreInfo? = null
+    private val coreLock = Any()
+    private val coreDone = mutableListOf<(CoreInfo?) -> Unit>()
+    private var coreJob: Job? = null
+
+    val core: CoreInfo? get() = info
+
+    val version: String? get() = info?.version
 
     internal val _state = MutableStateFlow(init)
     val state: StateFlow<KiloAppStateDto> = _state.asStateFlow()
@@ -75,6 +85,9 @@ class KiloAppService internal constructor(
     }
 
     private fun onState(state: KiloAppStateDto) {
+        val version = state.downloadVersion
+        val platform = state.downloadPlatform
+        if (version != null && platform != null) info = CoreInfo(version, platform)
         _state.value = state
         if (state.status == KiloAppStatusDto.READY) refreshModelFavoritesAsync()
     }
@@ -92,20 +105,20 @@ class KiloAppService internal constructor(
         call { retry() }
     }
 
-    /** Kill the CLI process and restart it. */
+    /** Kill the Core process and restart it. */
     suspend fun restart() {
         LOG.info("restart: resetting state and sending RPC")
         started.set(false)
-        version = null
+        info = null
         call { restart() }
         LOG.info("restart: RPC returned — backend restart complete")
     }
 
-    /** Kill the CLI process, re-extract the binary, and restart. */
+    /** Kill the Core process, re-download the binary, and restart. */
     suspend fun reinstall() {
         LOG.info("reinstall: resetting state and sending RPC")
         started.set(false)
-        version = null
+        info = null
         call { reinstall() }
         LOG.info("reinstall: RPC returned — backend reinstall complete")
     }
@@ -127,18 +140,58 @@ class KiloAppService internal constructor(
         cs.launch { reinstall() }
     }
 
-    /** Fetch the CLI version and cache it. Call once after connection is established. */
-    fun fetchVersionAsync() {
-        cs.launch {
-            LOG.info("fetchVersion: requesting health check")
-            val dto = health()
-            if (dto == null) {
-                LOG.warn("fetchVersion: health check returned null — version not available")
-                return@launch
-            }
-            version = dto.version
-            LOG.info("fetchVersion: CLI version is ${dto.version}")
+    suspend fun coreInfo(): CoreInfo? = try {
+        val next = CoreInfo(
+            version = call { cliVersion() },
+            platform = call { cliPlatform() },
+        )
+        info = next
+        next
+    } catch (e: Exception) {
+        LOG.warn("core info failed", e)
+        null
+    }
+
+    /** Fetch the pinned Core version and platform and cache it. */
+    fun fetchCoreInfoAsync(done: (CoreInfo?) -> Unit = {}) {
+        val cached = info
+        if (cached != null) {
+            done(cached)
+            return
         }
+
+        synchronized(coreLock) {
+            val current = info
+            if (current != null) {
+                done(current)
+                return
+            }
+            coreDone.add(done)
+            if (coreJob != null) return
+            coreJob = cs.launch {
+                fetchCoreInfo()
+            }
+        }
+    }
+
+    private suspend fun fetchCoreInfo() {
+        LOG.info("fetchCoreInfo: requesting Core version and platform")
+        val next = coreInfo()
+        val list = synchronized(coreLock) {
+            val items = coreDone.toList()
+            coreDone.clear()
+            coreJob = null
+            items
+        }
+        list.forEach { it(next) }
+        if (next != null) {
+            LOG.info("fetchCoreInfo: Core version is ${next.version} (${next.platform})")
+        }
+    }
+
+    /** Fetch the pinned Core version and cache it. */
+    fun fetchVersionAsync(done: (String?) -> Unit = {}) {
+        fetchCoreInfoAsync { done(it?.version) }
     }
 
     fun refreshModelFavoritesAsync() {
@@ -211,9 +264,81 @@ class KiloAppService internal constructor(
         }
     }
 
+    suspend fun updateConfig(patch: ConfigPatchDto): KiloAppStateDto? = try {
+        LOG.info("config update: sending RPC ${summary(patch)}")
+        val next = call { updateConfig(patch) }
+        _state.value = next
+        LOG.info("config update: RPC completed ${summary(patch)}")
+        next
+    } catch (e: Exception) {
+        LOG.warn("config update failed ${summary(patch)}", e)
+        null
+    }
+
+    fun updateConfigAsync(
+        patch: ConfigPatchDto,
+        done: (KiloAppStateDto?) -> Unit,
+    ): Job = cs.launch {
+        val state = updateConfig(patch)
+        done(state)
+    }
+
     private fun setModelState(state: ModelStateDto) {
         _models.value = state
         _favorites.value = state.favorite
+    }
+
+    /** Refresh the user profile and return the latest data. Null = not logged in. */
+    suspend fun refreshProfile(): ProfileDto? = try {
+        call { refreshProfile() }.also { setProfile(it) }
+    } catch (e: Exception) {
+        LOG.warn("profile refresh failed", e)
+        null
+    }
+
+    /** Refresh profile in fire-and-forget fashion from non-suspend context. */
+    fun refreshProfileAsync() {
+        cs.launch { refreshProfile() }
+    }
+
+    /**
+     * Start the Kilo device auth login flow.
+     * Returns [DeviceAuthDto] with the URL/code to display.
+     * Throws on failure.
+     */
+    suspend fun startLogin(directory: String? = null): DeviceAuthDto = call { startLogin(directory) }
+
+    /**
+     * Complete the login flow. Blocks until authentication finishes.
+     * Returns the user profile, or null if unavailable.
+     */
+    suspend fun completeLogin(directory: String? = null): ProfileDto? = try {
+        call { completeLogin(directory) }.also { setProfile(it) }
+    } catch (e: Exception) {
+        LOG.warn("login completion failed", e)
+        null
+    }
+
+    /** Log out and clear the user profile. */
+    suspend fun logout(): Boolean = try {
+        call { logout() }.also { ok ->
+            if (ok) setProfile(null)
+        }
+    } catch (e: Exception) {
+        LOG.warn("logout failed", e)
+        false
+    }
+
+    /**
+     * Switch active account context.
+     * Pass null for personal account, organization ID for org context.
+     * Returns the updated profile, or null if not logged in.
+     */
+    suspend fun setOrganization(organizationId: String?): ProfileDto? = try {
+        call { setOrganization(organizationId) }.also { setProfile(it) }
+    } catch (e: Exception) {
+        LOG.warn("organization switch failed", e)
+        null
     }
 
     /**
@@ -222,9 +347,24 @@ class KiloAppService internal constructor(
     fun watch(fn: (KiloAppStateDto) -> Unit): Job {
         return cs.launch {
             state.collect { next ->
-                if (next.status == KiloAppStatusDto.READY) fetchVersionAsync()
+                if (next.status == KiloAppStatusDto.READY) fetchCoreInfoAsync()
                 fn(next)
             }
         }
     }
+
+    private fun setProfile(profile: ProfileDto?) {
+        val current = _state.value
+        val progress = current.progress?.copy(
+            profile = if (profile == null) ProfileStatusDto.NOT_LOGGED_IN else ProfileStatusDto.LOADED,
+        )
+        _state.value = current.copy(profile = profile, progress = progress)
+    }
+}
+
+data class CoreInfo(val version: String, val platform: String)
+
+private fun summary(patch: ConfigPatchDto): String {
+    val values = patch.values.keys.sorted().joinToString(",").ifEmpty { "none" }
+    return "values=$values agents=${patch.agents.size}"
 }

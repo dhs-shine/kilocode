@@ -5,10 +5,21 @@ export const dict = {
   "provider.connect.kiloGateway.visit.prefix": "访问 ",
   "provider.connect.kiloGateway.visit.link": "kilo.ai",
   "provider.connect.kiloGateway.visit.suffix": " 获取您的 API 密钥。",
+  "provider.connect.kiloGateway.byok.prefix": "如需更多使用统计信息，请",
+  "provider.connect.kiloGateway.byok.link": "通过 Kilo's Gateway 进行 BYOK",
+  "provider.connect.kiloGateway.byok.suffix": "。",
 
-  // Provider dialog translations
-  "dialog.provider.group.recommended": "推荐",
-  "dialog.provider.kilo.note": "访问 500+ AI 模型",
+  // Provider settings translations
+  "settings.providers.group.recommended": "推荐",
+  "settings.providers.note.kilo": "访问 500+ AI 模型",
+  "settings.providers.note.opencode": "精选模型，包括 Claude、GPT、Gemini 等",
+  "settings.providers.note.anthropic": "直接访问 Claude 模型，包括 Pro 和 Max",
+  "settings.providers.note.deepseek": "用于推理和编码任务的 DeepSeek 模型",
+  "settings.providers.note.copilot": "用于编码辅助的 Claude 模型",
+  "settings.providers.note.openai": "使用 API 密钥或 ChatGPT 登录访问 GPT 和 Codex 模型",
+  "settings.providers.note.google": "用于快速结构化响应的 Gemini 模型",
+  "settings.providers.note.openrouter": "通过一个提供商访问所有支持的模型",
+  "settings.providers.note.vercel": "通过智能路由统一访问 AI 模型",
 
   // Reasoning block label
   "ui.permission.run": "运行",
@@ -17,7 +28,6 @@ export const dict = {
   // Marketplace
   "marketplace.tab.skills": "技能",
   "marketplace.tab.mcpServers": "MCP 服务器",
-  "marketplace.tab.modes": "模式",
   "marketplace.category.all": "全部",
   "marketplace.placeholder": "待实现",
   "marketplace.card.installed": "已安装",
@@ -30,6 +40,23 @@ export const dict = {
   "marketplace.install.scope": "作用域",
   "marketplace.install.scope.project": "项目",
   "marketplace.install.scope.global": "全局",
+  "marketplace.install.scope.project.description":
+    "仅限此项目。安装的文件可以提交到版本控制并与你的团队共享。",
+  "marketplace.install.scope.global.description": "此计算机上的所有项目。存储在你的用户配置中。",
+  "marketplace.install.destination": "安装位置",
+  "marketplace.install.about.mcp":
+    "MCP 服务器为 Kilo 提供用于处理外部服务或本地程序的额外工具。",
+  "marketplace.install.about.agent": "智能体会添加一个具有专属指令和权限的可复用角色。",
+  "marketplace.install.about.skill": "技能会添加特定任务的指令和资源，Kilo 可在需要时加载它们。",
+  "marketplace.install.mcp.warning":
+    "MCP 服务器可以运行本地命令或连接外部服务。除非你的权限允许自动使用，否则 Kilo 会在使用其工具前请求许可。",
+  "marketplace.install.project.warning":
+    "项目文件可能会提交到版本控制。除非配置引用了环境变量，否则不要在此处存储密钥。",
+  "marketplace.install.learnMore": "了解 Marketplace 安装的工作方式",
+  "marketplace.install.learnMcp": "详细了解 MCP",
+  "marketplace.install.installedAt": "已安装到 {{path}}",
+  "marketplace.intro": "为一个项目或所有项目安装可复用的智能体、技能和 MCP 工具。",
+  "marketplace.intro.learnMore": "关于 Marketplace",
   "marketplace.install.prerequisites": "先决条件",
   "marketplace.install.installing": "安装中...",
   "marketplace.install.cancel": "取消",
@@ -42,10 +69,13 @@ export const dict = {
   "marketplace.remove.cancel": "取消",
   "marketplace.remove.confirm.button": "移除",
   "marketplace.tab.mcp": "MCP",
+  "marketplace.tab.agents": "智能体",
   "marketplace.search": "搜索...",
   "marketplace.filter.all": "所有项目",
   "marketplace.filter.notInstalled": "未安装",
+  "marketplace.filter.relevant": "与我的工作区相关",
   "marketplace.empty": "未找到项目",
+  "marketplace.empty.relevant": "未找到与此工作区相关的市场项目。",
   "marketplace.badge.mcpServer": "MCP 服务器",
   "marketplace.badge.mode": "模式",
   "marketplace.card.by": "作者：{{author}}",
@@ -57,7 +87,7 @@ export const dict = {
   "marketplace.scope.global": "全局",
   "marketplace.remove.type.mcp": "MCP 服务器",
   "marketplace.remove.type.skill": "技能",
-  "marketplace.remove.type.mode": "模式",
+  "marketplace.remove.type.agent": "智能体",
   "marketplace.remove.failed": "移除 {{name}} 失败",
   "marketplace.install": "安装",
   "marketplace.filter.installed": "已安装",
@@ -66,8 +96,10 @@ export const dict = {
   "marketplace.warning.busyMany": "多个会话正在运行，将被中断",
   "marketplace.warning.installAnyway": "仍然安装",
   "marketplace.warning.cancel": "取消",
-  "marketplace.contribute.prompt": "缺少技能、模式或 MCP 服务器？",
+  "marketplace.contribute.prompt": "缺少技能、智能体或 MCP 服务器？",
   "marketplace.contribute.cta": "在 GitHub 上贡献",
+  "marketplace.migration.notice":
+    "模式已被智能体取代。如果您之前安装了市场中的模式，请将其删除并重新安装为智能体，以迁移到新格式。",
 
   // Plan follow-up question shown after plan_exit
   "plan.followup.header": "实现",
@@ -76,6 +108,8 @@ export const dict = {
   "plan.followup.answer.newSession.description": "在具有干净上下文的新会话中实现",
   "plan.followup.answer.continue": "在此继续",
   "plan.followup.answer.continue.description": "在本会话中实现计划",
+  "plan.followup.answer.keepRefining": "继续完善",
+  "plan.followup.answer.keepRefining.description": "继续规划，暂不实现",
 
   // Slow-repo snapshot prompt
   "snapshot.slowRepo.header": "快照速度较慢",

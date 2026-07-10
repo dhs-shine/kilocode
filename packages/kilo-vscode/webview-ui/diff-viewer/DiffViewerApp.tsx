@@ -11,8 +11,8 @@ import { File } from "@kilocode/kilo-ui/file"
 import { Icon } from "@kilocode/kilo-ui/icon"
 import { ThemeProvider } from "@kilocode/kilo-ui/theme"
 import { Toast } from "@kilocode/kilo-ui/toast"
-import { FullScreenDiffView } from "../agent-manager/FullScreenDiffView"
-import { mergeWorktreeDiffs } from "../agent-manager/diff-state"
+import { FullScreenDiffView } from "./FullScreenDiffView"
+import { mergeWorktreeDiffs } from "./diff-state"
 import { LanguageProvider, useLanguage } from "../src/context/language"
 import { ServerProvider, useServer } from "../src/context/server"
 import { ConfigProvider } from "../src/context/config"
@@ -23,6 +23,7 @@ import type { DiffSourceCapabilities, DiffSourceDescriptor } from "../../src/dif
 import type { DiffViewerNotice } from "../src/types/messages/extension-messages"
 import { DiffPickerHeader } from "./DiffPickerHeader"
 import { BaseBranchPicker } from "./BaseBranchPicker"
+import { SpeechToTextPrewarm } from "../src/components/speech-to-text/SpeechToTextPrewarm"
 
 const NOTICE_KEYS: Record<DiffViewerNotice, string> = {
   "snapshots-disabled": "diffViewer.notice.snapshotsDisabled",
@@ -305,6 +306,7 @@ export const DiffViewerApp: Component = () => {
           <ServerProvider>
             <ProviderProvider>
               <ConfigProvider>
+                <SpeechToTextPrewarm />
                 <DiffViewerShell />
               </ConfigProvider>
             </ProviderProvider>

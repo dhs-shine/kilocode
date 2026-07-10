@@ -7,10 +7,21 @@ export const dict = {
   "provider.connect.kiloGateway.visit.prefix": "API anahtarınızı almak için ",
   "provider.connect.kiloGateway.visit.link": "kilo.ai",
   "provider.connect.kiloGateway.visit.suffix": " adresini ziyaret edin.",
+  "provider.connect.kiloGateway.byok.prefix": "Daha fazla kullanım istatistiği için ",
+  "provider.connect.kiloGateway.byok.link": "Kilo's Gateway üzerinden BYOK",
+  "provider.connect.kiloGateway.byok.suffix": " kullanın.",
 
-  // Provider dialog translations
-  "dialog.provider.group.recommended": "Önerilen",
-  "dialog.provider.kilo.note": "500+ AI modeline erişim",
+  // Provider settings translations
+  "settings.providers.group.recommended": "Önerilen",
+  "settings.providers.note.kilo": "500+ AI modeline erişim",
+  "settings.providers.note.opencode": "Claude, GPT, Gemini ve daha fazlasını içeren seçilmiş modeller",
+  "settings.providers.note.anthropic": "Pro ve Max dahil Claude modellerine doğrudan erişim",
+  "settings.providers.note.deepseek": "Akıl yürütme ve kodlama görevleri için DeepSeek modelleri",
+  "settings.providers.note.copilot": "Kodlama yardımı için Claude modelleri",
+  "settings.providers.note.openai": "API anahtarı veya ChatGPT girişiyle GPT ve Codex modelleri",
+  "settings.providers.note.google": "Hızlı, yapılandırılmış yanıtlar için Gemini modelleri",
+  "settings.providers.note.openrouter": "Desteklenen tüm modellere tek sağlayıcıdan erişim",
+  "settings.providers.note.vercel": "Akıllı yönlendirme ile AI modellerine birleşik erişim",
 
   // Reasoning block label
   "ui.permission.run": "Çalıştır",
@@ -19,7 +30,6 @@ export const dict = {
   // Marketplace
   "marketplace.tab.skills": "Yetenekler",
   "marketplace.tab.mcpServers": "MCP Sunucuları",
-  "marketplace.tab.modes": "Modlar",
   "marketplace.category.all": "Tümü",
   "marketplace.placeholder": "Uygulanacak",
   "marketplace.card.installed": "Yüklendi",
@@ -32,6 +42,26 @@ export const dict = {
   "marketplace.install.scope": "Kapsam",
   "marketplace.install.scope.project": "Proje",
   "marketplace.install.scope.global": "Genel",
+  "marketplace.install.scope.project.description":
+    "Yalnızca bu proje. Yüklenen dosyalar sürüm kontrolüne eklenebilir ve ekibinizle paylaşılabilir.",
+  "marketplace.install.scope.global.description":
+    "Bu makinedeki tüm projeler. Kullanıcı yapılandırmanızda saklanır.",
+  "marketplace.install.destination": "Yükleme hedefi",
+  "marketplace.install.about.mcp":
+    "Bir MCP sunucusu, harici hizmetler veya yerel programlarla çalışmak için Kilo'ya ek araçlar sağlar.",
+  "marketplace.install.about.agent": "Bir ajan, kendi talimatları ve izinleri olan yeniden kullanılabilir bir rol ekler.",
+  "marketplace.install.about.skill":
+    "Bir yetenek, Kilo'nun gerektiğinde yükleyebileceği göreve özel talimatlar ve kaynaklar ekler.",
+  "marketplace.install.mcp.warning":
+    "MCP sunucuları yerel komutları çalıştırabilir veya harici hizmetlere bağlanabilir. İzinleriniz otomatik olarak izin vermediği sürece Kilo, araçlarını kullanmadan önce izin ister.",
+  "marketplace.install.project.warning":
+    "Proje dosyaları sürüm kontrolüne eklenebilir. Yapılandırma bir ortam değişkenine başvurmuyorsa gizli bilgileri burada saklamayın.",
+  "marketplace.install.learnMore": "Marketplace yüklemelerinin nasıl çalıştığını öğrenin",
+  "marketplace.install.learnMcp": "MCP hakkında daha fazla bilgi edinin",
+  "marketplace.install.installedAt": "{{path}} konumuna yüklendi",
+  "marketplace.intro":
+    "Yeniden kullanılabilir ajanları, yetenekleri ve MCP araçlarını bir proje veya tüm projeler için yükleyin.",
+  "marketplace.intro.learnMore": "Marketplace hakkında",
   "marketplace.install.prerequisites": "Ön koşullar",
   "marketplace.install.installing": "Yükleniyor...",
   "marketplace.install.cancel": "İptal",
@@ -45,10 +75,13 @@ export const dict = {
   "marketplace.remove.cancel": "İptal",
   "marketplace.remove.confirm.button": "Kaldır",
   "marketplace.tab.mcp": "MCP",
+  "marketplace.tab.agents": "Ajanlar",
   "marketplace.search": "Ara...",
   "marketplace.filter.all": "Tüm Öğeler",
   "marketplace.filter.notInstalled": "Yüklü Değil",
+  "marketplace.filter.relevant": "Çalışma alanımla ilgili",
   "marketplace.empty": "Öğe bulunamadı",
+  "marketplace.empty.relevant": "Bu çalışma alanıyla ilgili marketplace öğesi bulunamadı.",
   "marketplace.badge.mcpServer": "MCP Sunucusu",
   "marketplace.badge.mode": "Mod",
   "marketplace.card.by": "{{author}} tarafından",
@@ -60,7 +93,7 @@ export const dict = {
   "marketplace.scope.global": "genel",
   "marketplace.remove.type.mcp": "MCP sunucusu",
   "marketplace.remove.type.skill": "yetenek",
-  "marketplace.remove.type.mode": "mod",
+  "marketplace.remove.type.agent": "ajan",
   "marketplace.remove.failed": "{{name}} kaldırılamadı",
   "marketplace.install": "Yükle",
   "marketplace.filter.installed": "Yüklendi",
@@ -69,8 +102,10 @@ export const dict = {
   "marketplace.warning.busyMany": "Birden fazla oturum çalışıyor ve kesintiye uğrayacak",
   "marketplace.warning.installAnyway": "Yine de yükle",
   "marketplace.warning.cancel": "İptal",
-  "marketplace.contribute.prompt": "Bir yetenek, mod veya MCP sunucusu mu eksik?",
+  "marketplace.contribute.prompt": "Bir yetenek, ajan veya MCP sunucusu mu eksik?",
   "marketplace.contribute.cta": "GitHub'da katkıda bulun",
+  "marketplace.migration.notice":
+    "Modlar agentlarla değiştirildi. Daha önce marketplace modları yüklediyseniz, yeni formata geçiş yapmak için bunları kaldırın ve agent olarak yeniden yükleyin.",
 
   // Plan follow-up question shown after plan_exit
   "plan.followup.header": "Uygula",
@@ -79,6 +114,8 @@ export const dict = {
   "plan.followup.answer.newSession.description": "Temiz bir bağlamla yeni bir oturumda uygula",
   "plan.followup.answer.continue": "Burada devam et",
   "plan.followup.answer.continue.description": "Planı bu oturumda uygula",
+  "plan.followup.answer.keepRefining": "İyileştirmeye devam et",
+  "plan.followup.answer.keepRefining.description": "Henüz uygulamadan planlamaya devam et",
 
   // Slow-repo snapshot prompt
   "snapshot.slowRepo.header": "Anlık görüntü yavaş",

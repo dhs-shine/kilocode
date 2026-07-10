@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { toIndexingConfigInput } from "../../../src/config"
 import { CodeIndexConfigManager, type IndexingConfigInput } from "../../../src/indexing/config-manager"
 
 function createInput(input: Partial<IndexingConfigInput> = {}): IndexingConfigInput {
@@ -25,9 +26,49 @@ describe("CodeIndexConfigManager", () => {
     expect(cfg.getConfig().ollamaOptions?.baseUrl).toBe("http://localhost:11434")
   })
 
-  test("defaults vector store to qdrant when omitted", () => {
+  test("configures an OpenAI-compatible endpoint without an API key", () => {
+    const cfg = new CodeIndexConfigManager(
+      createInput({
+        embedderProvider: "openai-compatible",
+        openAiKey: undefined,
+        openAiCompatibleBaseUrl: "http://localhost:1234/v1",
+      }),
+    )
+
+    expect(cfg.isFeatureConfigured).toBe(true)
+    expect(cfg.getConfig().openAiCompatibleOptions).toEqual({
+      baseUrl: "http://localhost:1234/v1",
+      apiKey: undefined,
+    })
+  })
+
+  test("requires a base URL for an OpenAI-compatible endpoint", () => {
+    const cfg = new CodeIndexConfigManager(
+      createInput({
+        embedderProvider: "openai-compatible",
+        openAiKey: undefined,
+        openAiCompatibleApiKey: "sk-test",
+      }),
+    )
+
+    expect(cfg.isFeatureConfigured).toBe(false)
+  })
+
+  test("defaults vector store to LanceDB when omitted", () => {
     const cfg = new CodeIndexConfigManager(createInput({ vectorStoreProvider: undefined }))
 
+    expect(cfg.getConfig().vectorStoreProvider).toBe("lancedb")
+  })
+
+  test("normalizes omitted vector store config to LanceDB for hosts", () => {
+    expect(toIndexingConfigInput(undefined).vectorStoreProvider).toBe("lancedb")
+  })
+
+  test("preserves an explicit Qdrant override", () => {
+    const input = toIndexingConfigInput({ vectorStore: "qdrant" })
+    const cfg = new CodeIndexConfigManager(input)
+
+    expect(input.vectorStoreProvider).toBe("qdrant")
     expect(cfg.getConfig().vectorStoreProvider).toBe("qdrant")
   })
 
@@ -83,6 +124,20 @@ describe("CodeIndexConfigManager", () => {
     expect(cfg.currentModelDimension).toBe(2048)
   })
 
+  test("uses configured dimension before static model metadata", () => {
+    const cfg = new CodeIndexConfigManager(
+      createInput({
+        embedderProvider: "openrouter",
+        openAiKey: undefined,
+        openRouterApiKey: "or-test",
+        modelId: "google/gemini-embedding-2-preview",
+        modelDimension: 1536,
+      }),
+    )
+
+    expect(cfg.currentModelDimension).toBe(1536)
+  })
+
   describe("loadConfiguration restart checks", () => {
     test("requires restart when model changes with same dimension", () => {
       const cfg = new CodeIndexConfigManager(createInput({ modelId: "text-embedding-3-small" }))
@@ -113,6 +168,19 @@ describe("CodeIndexConfigManager", () => {
       )
 
       expect(result.requiresRestart).toBe(true)
+    })
+
+    test("requires restart when OpenAI-compatible auth is added or removed", () => {
+      const input = createInput({
+        embedderProvider: "openai-compatible",
+        openAiKey: undefined,
+        openAiCompatibleBaseUrl: "http://localhost:1234/v1",
+      })
+      const cfg = new CodeIndexConfigManager(input)
+
+      expect(cfg.loadConfiguration({ ...input, openAiCompatibleApiKey: "sk-test" }).requiresRestart).toBe(true)
+      expect(cfg.loadConfiguration(input).requiresRestart).toBe(true)
+      expect(cfg.loadConfiguration(input).requiresRestart).toBe(false)
     })
 
     test("requires restart when Kilo auth changes", () => {

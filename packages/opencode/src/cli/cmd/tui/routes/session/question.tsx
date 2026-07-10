@@ -1,14 +1,15 @@
 import { createStore } from "solid-js/store"
-import { createMemo, createSignal, For, Show } from "solid-js"
-import { useKeyboard } from "@opentui/solid"
+import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
+import { useRenderer } from "@opentui/solid"
 import type { TextareaRenderable } from "@opentui/core"
-import { useKeybind } from "../../context/keybind"
 import { selectedForeground, tint, useTheme } from "../../context/theme"
 import type { QuestionAnswer, QuestionRequest } from "@kilocode/sdk/v2"
 import { useSDK } from "../../context/sdk"
 import { SplitBorder } from "../../component/border"
-import { useTextareaKeybindings } from "../../component/textarea-keybindings"
-import { useDialog } from "../../ui/dialog"
+import { useTuiConfig } from "../../context/tui-config"
+import { useBindings, useOpencodeModeStack } from "../../keymap"
+
+const QUESTION_MODE = "question"
 
 // kilocode_change start
 export function QuestionPrompt(props: {
@@ -19,8 +20,9 @@ export function QuestionPrompt(props: {
   // kilocode_change end
   const sdk = useSDK()
   const { theme } = useTheme()
-  const keybind = useKeybind()
-  const bindings = useTextareaKeybindings()
+  const renderer = useRenderer()
+  const tuiConfig = useTuiConfig()
+  const modeStack = useOpencodeModeStack()
 
   const questions = createMemo(() => props.request.questions)
   const single = createMemo(() => questions().length === 1 && questions()[0]?.multiple !== true)
@@ -126,137 +128,165 @@ export function QuestionPrompt(props: {
     pick(opt.label)
   }
 
-  const dialog = useDialog()
+  onMount(() => {
+    const popMode = modeStack.push(QUESTION_MODE)
+    onCleanup(popMode)
+  })
 
-  useKeyboard((evt) => {
-    // Skip processing if a dialog (e.g., command palette) is open
-    if (dialog.stack.length > 0) return
-
-    // kilocode_change start - avoid intrusive key capture for non-blocking review suggestions
-    if (props.nonBlocking && props.inputFocused?.()) return
-    // kilocode_change end
-
-    // When editing custom answer textarea
-    if (store.editing && !confirm()) {
-      if (evt.name === "escape") {
-        evt.preventDefault()
-        setStore("editing", false)
-        return
-      }
-      if (keybind.match("input_clear", evt)) {
-        evt.preventDefault()
-        const text = textarea?.plainText ?? ""
-        if (!text) {
+  useBindings(() => ({
+    mode: QUESTION_MODE,
+    enabled: store.editing && !confirm(),
+    commands: [
+      {
+        name: "prompt.clear",
+        title: "Clear answer edit",
+        category: "Question",
+        run() {
+          const text = textarea?.plainText ?? ""
+          if (!text) {
+            setStore("editing", false)
+            return
+          }
+          textarea?.setText("")
+        },
+      },
+    ],
+    bindings: [
+      {
+        key: "escape",
+        desc: "Cancel answer edit",
+        group: "Question",
+        cmd: () => {
           setStore("editing", false)
-          return
-        }
-        textarea?.setText("")
-        return
-      }
-      if (evt.name === "return") {
-        evt.preventDefault()
-        const text = textarea?.plainText?.trim() ?? ""
-        const prev = store.custom[store.tab]
+        },
+      },
+      ...tuiConfig.keybinds.get("prompt.clear"),
+      {
+        key: "return",
+        desc: "Submit answer edit",
+        group: "Question",
+        cmd: () => {
+          const text = textarea?.plainText?.trim() ?? ""
+          const prev = store.custom[store.tab]
 
-        if (!text) {
-          if (prev) {
+          if (!text) {
+            if (prev) {
+              const inputs = [...store.custom]
+              inputs[store.tab] = ""
+              setStore("custom", inputs)
+
+              const answers = [...store.answers]
+              answers[store.tab] = (answers[store.tab] ?? []).filter((x) => x !== prev)
+              setStore("answers", answers)
+            }
+            setStore("editing", false)
+            return
+          }
+
+          if (multi()) {
             const inputs = [...store.custom]
-            inputs[store.tab] = ""
+            inputs[store.tab] = text
             setStore("custom", inputs)
 
+            const existing = store.answers[store.tab] ?? []
+            const next = [...existing]
+            if (prev) {
+              const index = next.indexOf(prev)
+              if (index !== -1) next.splice(index, 1)
+            }
+            if (!next.includes(text)) next.push(text)
             const answers = [...store.answers]
-            answers[store.tab] = (answers[store.tab] ?? []).filter((x) => x !== prev)
+            answers[store.tab] = next
             setStore("answers", answers)
+            setStore("editing", false)
+            return
           }
+
+          pick(text, true)
           setStore("editing", false)
-          return
-        }
+        },
+      },
+    ],
+  }))
 
-        if (multi()) {
-          const inputs = [...store.custom]
-          inputs[store.tab] = text
-          setStore("custom", inputs)
+  useBindings(() => {
+    const opts = options()
+    const total = opts.length + (custom() ? 1 : 0)
+    const max = Math.min(total, 9)
 
-          const existing = store.answers[store.tab] ?? []
-          const next = [...existing]
-          if (prev) {
-            const index = next.indexOf(prev)
-            if (index !== -1) next.splice(index, 1)
-          }
-          if (!next.includes(text)) next.push(text)
-          const answers = [...store.answers]
-          answers[store.tab] = next
-          setStore("answers", answers)
-          setStore("editing", false)
-          return
-        }
-
-        pick(text, true)
-        setStore("editing", false)
-        return
-      }
-      // Let textarea handle all other keys
-      return
-    }
-
-    if (evt.name === "left" || evt.name === "h") {
-      evt.preventDefault()
-      selectTab((store.tab - 1 + tabs()) % tabs())
-    }
-
-    if (evt.name === "right" || evt.name === "l") {
-      evt.preventDefault()
-      selectTab((store.tab + 1) % tabs())
-    }
-
-    if (evt.name === "tab") {
-      evt.preventDefault()
-      const direction = evt.shift ? -1 : 1
-      selectTab((store.tab + direction + tabs()) % tabs())
-    }
-
-    if (confirm()) {
-      if (evt.name === "return") {
-        evt.preventDefault()
-        submit()
-      }
-      if (evt.name === "escape" || keybind.match("app_exit", evt)) {
-        evt.preventDefault()
-        reject()
-      }
-    } else {
-      const opts = options()
-      const total = opts.length + (custom() ? 1 : 0)
-      const max = Math.min(total, 9)
-      const digit = Number(evt.name)
-
-      if (!Number.isNaN(digit) && digit >= 1 && digit <= max) {
-        evt.preventDefault()
-        const index = digit - 1
-        moveTo(index)
-        selectOption()
-        return
-      }
-
-      if (evt.name === "up" || evt.name === "k") {
-        evt.preventDefault()
-        moveTo((store.selected - 1 + total) % total)
-      }
-
-      if (evt.name === "down" || evt.name === "j") {
-        evt.preventDefault()
-        moveTo((store.selected + 1) % total)
-      }
-
-      if (evt.name === "return") {
-        evt.preventDefault()
-        selectOption()
-      }
-
-      if (evt.name === "escape" || keybind.match("app_exit", evt)) {
-        evt.preventDefault()
-        reject()
-      }
+    return {
+      mode: QUESTION_MODE,
+      // kilocode_change start - avoid intrusive key capture for non-blocking review questions
+      enabled: !store.editing && !(props.nonBlocking && props.inputFocused?.()),
+      // kilocode_change end
+      commands: [
+        {
+          name: "app.exit",
+          title: "Reject question",
+          category: "Question",
+          run() {
+            reject()
+          },
+        },
+      ],
+      bindings: [
+        {
+          key: "left",
+          desc: "Previous question",
+          group: "Question",
+          cmd: () => selectTab((store.tab - 1 + tabs()) % tabs()),
+        },
+        {
+          key: "h",
+          desc: "Previous question",
+          group: "Question",
+          cmd: () => selectTab((store.tab - 1 + tabs()) % tabs()),
+        },
+        { key: "right", desc: "Next question", group: "Question", cmd: () => selectTab((store.tab + 1) % tabs()) },
+        { key: "l", desc: "Next question", group: "Question", cmd: () => selectTab((store.tab + 1) % tabs()) },
+        {
+          key: "tab",
+          desc: "Next question",
+          group: "Question",
+          cmd: ({ event }: { event: { shift: boolean } }) => {
+            selectTab((store.tab + (event.shift ? -1 : 1) + tabs()) % tabs())
+          },
+        },
+        ...(confirm()
+          ? [
+              { key: "return", desc: "Submit answer", group: "Question", cmd: () => submit() },
+              { key: "escape", desc: "Reject question", group: "Question", cmd: () => reject() },
+              ...tuiConfig.keybinds.get("app.exit"),
+            ]
+          : [
+              ...Array.from({ length: max }, (_, index) => ({
+                key: String(index + 1),
+                desc: `Select answer ${index + 1}`,
+                group: "Question",
+                cmd: () => {
+                  moveTo(index)
+                  selectOption()
+                },
+              })),
+              {
+                key: "up",
+                desc: "Previous answer",
+                group: "Question",
+                cmd: () => moveTo((store.selected - 1 + total) % total),
+              },
+              {
+                key: "k",
+                desc: "Previous answer",
+                group: "Question",
+                cmd: () => moveTo((store.selected - 1 + total) % total),
+              },
+              { key: "down", desc: "Next answer", group: "Question", cmd: () => moveTo((store.selected + 1) % total) },
+              { key: "j", desc: "Next answer", group: "Question", cmd: () => moveTo((store.selected + 1) % total) },
+              { key: "return", desc: "Select answer", group: "Question", cmd: () => selectOption() },
+              { key: "escape", desc: "Reject question", group: "Question", cmd: () => reject() },
+              ...tuiConfig.keybinds.get("app.exit"),
+            ]),
+      ],
     }
   })
 
@@ -289,7 +319,10 @@ export function QuestionPrompt(props: {
                     }
                     onMouseOver={() => setTabHover(index())}
                     onMouseOut={() => setTabHover(null)}
-                    onMouseUp={() => selectTab(index())}
+                    onMouseUp={() => {
+                      if (renderer.getSelection()?.getSelectedText()) return
+                      selectTab(index())
+                    }}
                   >
                     <text
                       fg={
@@ -314,7 +347,10 @@ export function QuestionPrompt(props: {
               }
               onMouseOver={() => setTabHover("confirm")}
               onMouseOut={() => setTabHover(null)}
-              onMouseUp={() => selectTab(questions().length)}
+              onMouseUp={() => {
+                if (renderer.getSelection()?.getSelectedText()) return
+                selectTab(questions().length)
+              }}
             >
               <text fg={confirm() ? selectedForeground(theme, theme.accent) : theme.textMuted}>Confirm</text>
             </box>
@@ -338,7 +374,10 @@ export function QuestionPrompt(props: {
                     <box
                       onMouseOver={() => moveTo(i())}
                       onMouseDown={() => moveTo(i())}
-                      onMouseUp={() => selectOption()}
+                      onMouseUp={() => {
+                        if (renderer.getSelection()?.getSelectedText()) return
+                        selectOption()
+                      }}
                     >
                       <box flexDirection="row">
                         <box backgroundColor={active() ? theme.backgroundElement : undefined} paddingRight={1}>
@@ -352,7 +391,7 @@ export function QuestionPrompt(props: {
                           </text>
                         </box>
                         <Show when={!multi()}>
-                          <text fg={theme.success}>{picked() ? "✓" : ""}</text>
+                          <text fg={theme.success}>{picked() ? " ✓" : ""}</text>
                         </Show>
                       </box>
 
@@ -367,7 +406,10 @@ export function QuestionPrompt(props: {
                 <box
                   onMouseOver={() => moveTo(options().length)}
                   onMouseDown={() => moveTo(options().length)}
-                  onMouseUp={() => selectOption()}
+                  onMouseUp={() => {
+                    if (renderer.getSelection()?.getSelectedText()) return
+                    selectOption()
+                  }}
                 >
                   <box flexDirection="row">
                     <box backgroundColor={other() ? theme.backgroundElement : undefined} paddingRight={1}>
@@ -382,7 +424,7 @@ export function QuestionPrompt(props: {
                     </box>
 
                     <Show when={!multi()}>
-                      <text fg={theme.success}>{customPicked() ? "✓" : ""}</text>
+                      <text fg={theme.success}>{customPicked() ? " ✓" : ""}</text>
                     </Show>
                   </box>
                   <Show when={store.editing}>
@@ -404,7 +446,6 @@ export function QuestionPrompt(props: {
                         textColor={theme.text}
                         focusedTextColor={theme.text}
                         cursorColor={theme.primary}
-                        keyBindings={bindings()}
                       />
                     </box>
                   </Show>

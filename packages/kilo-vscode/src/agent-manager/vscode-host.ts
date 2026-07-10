@@ -9,12 +9,13 @@ import * as vscode from "vscode"
 import type { Host, PanelContext, OutputHandle, SessionProvider, Disposable } from "./host"
 import type { KiloConnectionService } from "../services/cli-backend"
 import { KiloProvider } from "../KiloProvider"
-import { PLATFORM } from "./constants"
+import { PLATFORM, SNAPSHOT_INITIALIZATION } from "./constants"
 import { DiffVirtualProvider } from "../DiffVirtualProvider"
 import { buildWebviewHtml } from "../utils"
 import { openFileInEditor, getWorkspaceRoot } from "../review-utils"
 import { TelemetryProxy, type TelemetryEventName } from "../services/telemetry"
 import type { AutoApproveController } from "../commands/toggle-auto-approve"
+import type { RemoteStatusService } from "../services/RemoteStatusService"
 
 export class VscodeHost implements Host {
   private diffVirtual: DiffVirtualProvider | undefined
@@ -24,6 +25,7 @@ export class VscodeHost implements Host {
     private readonly extensionUri: vscode.Uri,
     private readonly connectionService: KiloConnectionService,
     private readonly context: vscode.ExtensionContext,
+    private readonly remoteService: RemoteStatusService,
   ) {}
 
   setDiffVirtualProvider(provider: DiffVirtualProvider): void {
@@ -84,21 +86,28 @@ export class VscodeHost implements Host {
       scriptUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "dist", "agent-manager.js")),
       styleUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "dist", "agent-manager.css")),
       iconsBaseUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "assets", "icons")),
+      workerUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "dist", "shiki-worker.js")),
       title: "Agent Manager",
       port,
     })
 
     const provider = new KiloProvider(this.extensionUri, this.connectionService, this.context, {
       platform: PLATFORM,
+      snapshotInitialization: SNAPSHOT_INITIALIZATION,
       slimEditMetadata: true,
       worktreeDirectories: () => opts.worktreeDirectories?.() ?? [],
     })
     if (this.diffVirtual) {
       provider.setDiffVirtualProvider(this.diffVirtual)
     }
+    provider.setRemoteService(this.remoteService)
     provider.attachToWebview(panel.webview, {
       onBeforeMessage: opts.onBeforeMessage,
     })
+    provider.setStreamVisibility(panel.active && panel.visible)
+    const streams = panel.onDidChangeViewState((event) =>
+      provider.setStreamVisibility(event.webviewPanel.active && event.webviewPanel.visible),
+    )
     if (this.autoApprove) provider.setAutoApproveController(this.autoApprove)
 
     const sessions: SessionProvider = {
@@ -110,6 +119,8 @@ export class VscodeHost implements Host {
       registerSession: (s) => provider.registerSession(s),
       recoverPendingPrompts: () => provider.recoverPendingPrompts(),
       onFollowupAdopted: (cb) => provider.onFollowupAdopted(cb),
+      showMemory: (id) => provider.showMemory(id),
+      toggleMemory: (id) => provider.toggleMemory(id),
       dispose: () => provider.dispose(),
     }
 
@@ -147,6 +158,7 @@ export class VscodeHost implements Host {
         return panel.onDidDispose(cb)
       },
       dispose() {
+        streams.dispose()
         provider.dispose()
         panel.dispose()
       },
@@ -155,6 +167,14 @@ export class VscodeHost implements Host {
 
   workspacePath(): string | undefined {
     return getWorkspaceRoot()
+  }
+
+  autoBranchNaming(): { enabled: boolean; prefix: string } {
+    const cfg = vscode.workspace.getConfiguration("kilo-code.new.agentManager")
+    return {
+      enabled: cfg.get("autoBranchNaming", true),
+      prefix: cfg.get("branchPrefix", ""),
+    }
   }
 
   showError(msg: string): void {

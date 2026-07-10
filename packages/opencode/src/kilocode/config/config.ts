@@ -1,7 +1,6 @@
 import path from "path"
 import { pathToFileURL } from "url"
 import { existsSync } from "fs"
-import z from "zod"
 import { Effect, Schema } from "effect"
 import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser"
 import { mergeDeep } from "remeda"
@@ -44,11 +43,8 @@ export namespace KilocodeConfig {
   /** All config file names in precedence order (kilo + opencode). */
   export const ALL_CONFIG_FILES = ["kilo.jsonc", "kilo.json", "opencode.jsonc", "opencode.json"] as const
 
-  /** Directory suffixes that Kilo recognizes in addition to .opencode. */
+  /** Config directory suffixes in update-target preference order. */
   export const KILO_DIR_SUFFIXES = [".kilo", ".kilocode"] as const
-
-  /** All config directory suffixes Kilo can update, including upstream .opencode. */
-  export const ALL_CONFIG_DIR_SUFFIXES = [".kilo", ".kilocode", ".opencode"] as const
 
   /** Path patterns for resolving kilo agent names from file paths. */
   export const AGENT_PATTERNS = ["/.kilo/agent/", "/.kilo/agents/", "/.kilocode/agent/", "/.kilocode/agents/"] as const
@@ -66,7 +62,7 @@ export namespace KilocodeConfig {
    *
    * This mirrors the Kilo project-config load chain: prefer existing config files
    * in ancestor config directories, then existing root config files, and create
-   * `.kilo/kilo.json` when no project config exists yet.
+   * `.kilo/kilo.jsonc` when no project config exists yet.
    */
   export const projectConfigUpdateTarget = Effect.fn("KilocodeConfig.projectConfigUpdateTarget")(function* (input: {
     fs: AppFileSystem.Interface
@@ -74,13 +70,13 @@ export namespace KilocodeConfig {
     worktree?: string
   }) {
     const dirs = yield* input.fs
-      .up({ targets: [...ALL_CONFIG_DIR_SUFFIXES], start: input.directory, stop: input.worktree })
+      .up({ targets: [...KILO_DIR_SUFFIXES], start: input.directory, stop: input.worktree })
       .pipe(Effect.orDie)
     const roots = yield* input.fs
       .up({ targets: [...ALL_CONFIG_FILES], start: input.directory, stop: input.worktree })
       .pipe(Effect.orDie)
     const files = [...dirs.flatMap((dir) => ALL_CONFIG_FILES.map((file) => path.join(dir, file))), ...roots]
-    return files.find((file) => existsSync(file)) ?? path.join(input.directory, ".kilo", "kilo.json")
+    return files.find((file) => existsSync(file)) ?? path.join(input.directory, ".kilo", "kilo.jsonc")
   })
 
   export const updateProjectConfig = Effect.fn("KilocodeConfig.updateProjectConfig")(function* (input: {
@@ -99,6 +95,7 @@ export namespace KilocodeConfig {
     const patch = input.writable(input.config)
 
     if (file.endsWith(".jsonc")) {
+      if (source === undefined && Object.keys(mergeConfig({}, patch)).length === 0) return
       const updated = input.patch(before, patch)
       yield* input.fs.writeWithDirs(file, updated).pipe(Effect.orDie)
       return
@@ -113,6 +110,14 @@ export namespace KilocodeConfig {
   export function scopeIndexing(info: Config.Info, scope: "global" | "local"): Config.Info {
     if (scope !== "global") return info
     return stripGlobalIndexing(info)
+  }
+
+  export function retireIndexingFlag(info: Record<string, unknown>, source: string) {
+    if (!isRecord(info.experimental) || !("semantic_indexing" in info.experimental)) return info
+    const experimental = { ...info.experimental }
+    delete experimental.semantic_indexing
+    log.warn("ignored retired experimental.semantic_indexing config; use indexing.enabled instead", { path: source })
+    return { ...info, experimental }
   }
 
   function stripGlobalIndexing(info: Config.Info): Config.Info {
@@ -147,8 +152,10 @@ export namespace KilocodeConfig {
     return undefined
   }
 
-  /** Format Zod issues into a human-readable string. */
-  export function formatIssues(issues: z.core.$ZodIssue[]) {
+  type Issue = { readonly message: string; readonly path: readonly string[]; readonly [key: string]: unknown }
+
+  /** Format schema issues into a human-readable string. */
+  export function formatIssues(issues: readonly Issue[]) {
     return issues
       .map((issue) => {
         const loc = issue.path.map(String).join(".")
@@ -162,7 +169,7 @@ export namespace KilocodeConfig {
   export async function handleInvalid(
     kind: "agent" | "command",
     item: string,
-    issues: z.core.$ZodIssue[],
+    issues: readonly Issue[],
     cause: Error,
     warnings?: Config.Warning[],
   ) {
@@ -171,8 +178,9 @@ export namespace KilocodeConfig {
     const err = new ConfigError.InvalidError({ path: item, issues }, { cause })
     if (warnings) warnings.push({ path: item, message, detail: text || undefined })
     try {
-      const { Session } = await import("@/session/session")
-      Bus.publish(Session.Event.Error, { error: new NamedError.Unknown({ message }).toObject() })
+      const [{ Session }, { capture }] = await Promise.all([import("@/session/session"), import("@/kilocode/instance")])
+      const ctx = capture()
+      if (ctx) Bus.publish(ctx, Session.Event.Error, { error: new NamedError.Unknown({ message }).toObject() })
     } catch (e) {
       log.warn("could not publish session error", { message, err: e })
     }
@@ -260,8 +268,8 @@ export namespace KilocodeConfig {
       log.warn("failed to load kilocode rules", { error: err })
     }
 
-    // Load Kilocode MCP servers (skip global VSCode extension paths unless running in the extension)
-    const skipGlobal = process.env["KILO_PLATFORM"] !== "vscode"
+    // Load Kilocode MCP servers (skip global VSCode extension paths unless running in an editor or Console daemon)
+    const skipGlobal = process.env["KILO_PLATFORM"] !== "vscode" && process.env["KILOCODE_FEATURE"] !== "daemon"
     const mcp = await McpMigrator.loadMcpConfig(input.projectDir, skipGlobal)
     if (Object.keys(mcp).length > 0) {
       result = input.merge(result, { mcp })
@@ -334,14 +342,20 @@ export namespace KilocodeConfig {
     // no global config → new user, they'll get the new bash:ask default
     if (existing.length === 0 && !hasLegacy) return
 
+    const configs: Array<{ file: string; data: Record<string, unknown> }> = []
     // check if any config file already has an explicit bash permission
     for (const file of existing) {
       const text = await Bun.file(file)
         .text()
         .catch(() => "")
       const data = parseJsonc(text) ?? {}
-      if (data.permission?.bash) return
+      configs.push({ file, data })
+      if (typeof data.permission === "string" || (isRecord(data.permission) && data.permission.bash)) return
     }
+
+    // A schema-only file is generated for editor completion. It does not mean
+    // the user predates the bash permission default.
+    if (!hasLegacy && configs.every((item) => Object.keys(item.data).every((key) => key === "$schema"))) return
 
     // also check legacy TOML config for bash permission
     if (hasLegacy) {
@@ -420,6 +434,64 @@ export namespace KilocodeConfig {
 
   /** Check whether a directory path should be treated as a config directory (for loading config files). */
   export function isConfigDir(dir: string, flagDir?: string): boolean {
-    return dir.endsWith(".kilo") || dir.endsWith(".kilocode") || dir.endsWith(".opencode") || dir === flagDir
+    return dir.endsWith(".kilo") || dir.endsWith(".kilocode") || dir === flagDir
+  }
+
+  // ── Opencode config migration notice ─────────────────────────────────
+
+  /** Client-neutral docs page describing where Kilo reads configuration from. */
+  export const CONFIG_DOCS_URL = "https://kilo.ai/docs/getting-started/settings"
+
+  /** Stable id for the synthetic "move your opencode config" notification (used for client-side dismissal). */
+  export const OPENCODE_NOTIFICATION_ID = "kilo.local.opencode-config-detected"
+
+  /**
+   * Detect leftover opencode config directories. Kilo used to fall back to
+   * opencode configuration but no longer reads `.opencode` directories.
+   * Returns the existing `.opencode` locations (global + project), highest first.
+   */
+  export function detectOpencodeConfig(input: { directory: string; worktree?: string; scanProject: boolean }): string[] {
+    const found: string[] = []
+
+    // Global opencode config dir (sibling of the kilo global config dir, e.g. ~/.config/opencode).
+    const globalDir = path.join(path.dirname(Global.Path.config), "opencode")
+    if (existsSync(globalDir)) found.push(globalDir)
+
+    // Project `.opencode` directories, walked from the working directory up to the worktree root.
+    if (input.scanProject) {
+      let current = input.directory
+      while (true) {
+        const candidate = path.join(current, ".opencode")
+        if (existsSync(candidate) && !found.includes(candidate)) found.push(candidate)
+        if (input.worktree === current) break
+        const parent = path.dirname(current)
+        if (parent === current) break
+        current = parent
+      }
+    }
+
+    return found
+  }
+
+  /**
+   * Build the synthetic notification shown when a leftover `.opencode` config
+   * directory is found. Returns undefined when nothing needs migrating.
+   * The shape matches the gateway `Notification` schema so it can be appended
+   * to the cloud notifications list and reuse each client's dismissal path.
+   */
+  export function opencodeConfigNotification(input: { directory: string; worktree?: string; scanProject: boolean }) {
+    const found = detectOpencodeConfig(input)
+    if (found.length === 0) return undefined
+    const suffix = found.length > 1 ? ` (and ${found.length - 1} more)` : ""
+    return {
+      id: OPENCODE_NOTIFICATION_ID,
+      title: "Move your opencode configuration",
+      message:
+        `Kilo no longer falls back to opencode configuration. ` +
+        `Found opencode config at ${found[0]}${suffix}. ` +
+        `Move it into a .kilo directory (project) or ${Global.Path.config} (global).`,
+      action: { actionText: "Learn more", actionURL: CONFIG_DOCS_URL },
+      showIn: ["cli", "extension"],
+    }
   }
 }

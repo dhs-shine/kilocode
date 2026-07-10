@@ -1,4 +1,9 @@
+import type { KilocodeSessionModelUsageResponse } from "@kilocode/sdk/v2"
 import type { Part, TokenUsage } from "./parts"
+
+export type SessionModelUsage = KilocodeSessionModelUsageResponse
+
+export type SessionCloseReason = "completed" | "error" | "interrupted"
 
 // Message structure (simplified for webview)
 export interface Message {
@@ -53,6 +58,8 @@ export interface SessionInfo {
     diffs?: SessionFileDiff[]
   } | null
 }
+
+export type SessionUpdate = Partial<SessionInfo> & Pick<SessionInfo, "id">
 
 // Cloud session info (from Kilo cloud API)
 export interface CloudSessionInfo {

@@ -7,10 +7,21 @@ export const dict = {
   "provider.connect.kiloGateway.visit.prefix": "Posjetite ",
   "provider.connect.kiloGateway.visit.link": "kilo.ai",
   "provider.connect.kiloGateway.visit.suffix": " da preuzmete svoj API ključ.",
+  "provider.connect.kiloGateway.byok.prefix": "Za više statistika korištenja, koristite ",
+  "provider.connect.kiloGateway.byok.link": "BYOK putem Kilo's Gateway",
+  "provider.connect.kiloGateway.byok.suffix": ".",
 
-  // Provider dialog translations
-  "dialog.provider.group.recommended": "Preporučeno",
-  "dialog.provider.kilo.note": "Pristup za 500+ AI modela",
+  // Provider settings translations
+  "settings.providers.group.recommended": "Preporučeno",
+  "settings.providers.note.kilo": "Pristup za 500+ AI modela",
+  "settings.providers.note.opencode": "Odabrani modeli uključujući Claude, GPT, Gemini i još mnogo toga",
+  "settings.providers.note.anthropic": "Direktan pristup Claude modelima, uključujući Pro i Max",
+  "settings.providers.note.deepseek": "DeepSeek modeli za zadatke rezonovanja i programiranja",
+  "settings.providers.note.copilot": "Claude modeli za pomoć pri programiranju",
+  "settings.providers.note.openai": "GPT i Codex modeli uz API ključ ili ChatGPT prijavu",
+  "settings.providers.note.google": "Gemini modeli za brze, strukturirane odgovore",
+  "settings.providers.note.openrouter": "Pristup svim podržanim modelima od jednog provajdera",
+  "settings.providers.note.vercel": "Objedinjen pristup AI modelima s pametnim usmjeravanjem",
 
   // Desktop translations
   "desktop.menu.reloadWebview": "Ponovno učitavanje webview-a",
@@ -24,7 +35,6 @@ export const dict = {
   // Marketplace
   "marketplace.tab.skills": "Vještine",
   "marketplace.tab.mcpServers": "MCP Serveri",
-  "marketplace.tab.modes": "Modovi",
   "marketplace.category.all": "Sve",
   "marketplace.placeholder": "Biće implementirano",
   "marketplace.card.installed": "Instalirano",
@@ -37,6 +47,25 @@ export const dict = {
   "marketplace.install.scope": "Opseg",
   "marketplace.install.scope.project": "Projekat",
   "marketplace.install.scope.global": "Globalno",
+  "marketplace.install.scope.project.description":
+    "Samo ovaj projekat. Instalirane datoteke mogu se dodati u kontrolu verzija i dijeliti s vašim timom.",
+  "marketplace.install.scope.global.description":
+    "Svi projekti na ovom računaru. Čuva se u vašoj korisničkoj konfiguraciji.",
+  "marketplace.install.destination": "Odredište instalacije",
+  "marketplace.install.about.mcp":
+    "MCP server pruža Kilu dodatne alate za rad s vanjskim servisima ili lokalnim programima.",
+  "marketplace.install.about.agent": "Agent dodaje višekratnu ulogu s vlastitim uputama i dozvolama.",
+  "marketplace.install.about.skill":
+    "Vještina dodaje upute i resurse za određene zadatke koje Kilo može učitati kada su potrebni.",
+  "marketplace.install.mcp.warning":
+    "MCP serveri mogu pokretati lokalne naredbe ili se povezivati s vanjskim servisima. Kilo će zatražiti dozvolu prije korištenja njihovih alata, osim ako vaše dozvole to automatski dopuštaju.",
+  "marketplace.install.project.warning":
+    "Datoteke projekta mogu se dodati u kontrolu verzija. Ne čuvajte tajne ovdje osim ako konfiguracija upućuje na varijablu okruženja.",
+  "marketplace.install.learnMore": "Saznajte kako funkcionišu instalacije s Marketplacea",
+  "marketplace.install.learnMcp": "Saznajte više o MCP-u",
+  "marketplace.install.installedAt": "Instalirano u {{path}}",
+  "marketplace.intro": "Instalirajte višekratne agente, vještine i MCP alate za jedan ili sve projekte.",
+  "marketplace.intro.learnMore": "O Marketplaceu",
   "marketplace.install.prerequisites": "Preduslovi",
   "marketplace.install.installing": "Instalacija...",
   "marketplace.install.cancel": "Otkaži",
@@ -50,10 +79,13 @@ export const dict = {
   "marketplace.remove.cancel": "Otkaži",
   "marketplace.remove.confirm.button": "Ukloni",
   "marketplace.tab.mcp": "MCP",
+  "marketplace.tab.agents": "Agenti",
   "marketplace.search": "Pretraži...",
   "marketplace.filter.all": "Sve stavke",
   "marketplace.filter.notInstalled": "Nije instalirano",
+  "marketplace.filter.relevant": "Relevantno za moj radni prostor",
   "marketplace.empty": "Nema pronađenih stavki",
+  "marketplace.empty.relevant": "Nisu pronađene relevantne stavke marketplacea za ovaj radni prostor.",
   "marketplace.badge.mcpServer": "MCP Server",
   "marketplace.badge.mode": "Režim",
   "marketplace.card.by": "od {{author}}",
@@ -65,7 +97,7 @@ export const dict = {
   "marketplace.scope.global": "globalno",
   "marketplace.remove.type.mcp": "MCP server",
   "marketplace.remove.type.skill": "vještina",
-  "marketplace.remove.type.mode": "režim",
+  "marketplace.remove.type.agent": "agent",
   "marketplace.remove.failed": "Uklanjanje {{name}} nije uspjelo",
   "marketplace.install": "Instaliraj",
   "marketplace.filter.installed": "Instalirano",
@@ -74,8 +106,10 @@ export const dict = {
   "marketplace.warning.busyMany": "Nekoliko sesija je pokrenuto i bit će prekinuto",
   "marketplace.warning.installAnyway": "Instaliraj svejedno",
   "marketplace.warning.cancel": "Otkaži",
-  "marketplace.contribute.prompt": "Nedostaje vještina, način rada ili MCP server?",
+  "marketplace.contribute.prompt": "Nedostaje vještina, agent ili MCP server?",
   "marketplace.contribute.cta": "Doprinesi na GitHub-u",
+  "marketplace.migration.notice":
+    "Modovi su zamijenjeni agentima. Ako ste prethodno instalirali marketplace modove, uklonite ih i ponovo instalirajte kao agente da biste prešli na novi format.",
 
   // Plan follow-up question shown after plan_exit
   "plan.followup.header": "Implementiraj",
@@ -84,6 +118,8 @@ export const dict = {
   "plan.followup.answer.newSession.description": "Implementiraj u novoj sesiji s čistim kontekstom",
   "plan.followup.answer.continue": "Nastavi ovdje",
   "plan.followup.answer.continue.description": "Implementiraj plan u ovoj sesiji",
+  "plan.followup.answer.keepRefining": "Nastavi dorađivati",
+  "plan.followup.answer.keepRefining.description": "Nastavi planirati bez implementacije za sada",
 
   // Slow-repo snapshot prompt
   "snapshot.slowRepo.header": "Snapshot je spor",

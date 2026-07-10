@@ -20,6 +20,9 @@ export interface LocalTabReconcileResult {
 
 export const isPendingTab = (id: string) => id.startsWith(PENDING_TAB_PREFIX)
 
+export const showTabStrip = (ids: readonly string[], check: PendingTabCheck = isPendingTab) =>
+  ids.length > 1 || ids.some((id) => !check(id))
+
 const unique = (ids: string[]) => [...new Set(ids.filter(Boolean))]
 
 type PendingTabFactory = () => string
@@ -59,6 +62,16 @@ export function replacePendingTab(state: LocalTabState, pending: string, id: str
   const ids = unique(state.ids.map((tab) => (tab === pending ? id : tab)))
   const active = state.active === pending ? id : state.active
   return { ids, active: active && ids.includes(active) ? active : ids[0] }
+}
+
+export function pendingTabForCreated(
+  ids: readonly string[],
+  active: string | undefined,
+  draft: string | undefined,
+  check: PendingTabCheck = isPendingTab,
+): string | undefined {
+  if (draft) return ids.includes(draft) && check(draft) ? draft : undefined
+  return active && ids.includes(active) && check(active) ? active : undefined
 }
 
 export function nextTabAfterClose(ids: readonly string[], id: string): string | undefined {

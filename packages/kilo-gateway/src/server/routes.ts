@@ -6,11 +6,14 @@
  */
 
 import { fetchKilocodeNotifications, KilocodeNotificationSchema } from "../api/notifications.js"
+import { fetchKiloImageModels } from "../api/models.js"
 import { fetchOrganizationModes, clearModesCache } from "../api/modes.js"
 import { KILO_API_BASE, HEADER_FEATURE, HEADER_ORGANIZATIONID } from "../api/constants.js"
 import { buildKiloHeaders } from "../headers.js"
 import type { ImportDeps, DrizzleDb } from "../cloud-sessions.js"
 import { fetchCloudSession, fetchCloudSessionForImport, importSessionToDb } from "../cloud-sessions.js"
+import { createEditHandler } from "./edit.js"
+import { createFimHandler } from "./fim.js"
 import {
   GatewayError,
   UnauthorizedError,
@@ -29,7 +32,7 @@ type Validator = any
 type Resolver = any
 type Errors = any
 type Auth = any
-type ModelCache = { clear: (providerID: string) => void }
+type ModelCache = { clear: (providerID: string) => void | Promise<void> }
 type Z = any
 
 interface KiloRoutesDeps extends ImportDeps {
@@ -43,8 +46,6 @@ interface KiloRoutesDeps extends ImportDeps {
   z: Z
   Instances: { disposeAllInstances(): Promise<void> }
 }
-
-const FIM_TIMEOUT_MS = 30_000
 
 /**
  * Create Kilo Gateway routes with OpenCode dependencies injected
@@ -101,16 +102,36 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
     email: z.string(),
     name: z.string().optional(),
     organizations: z.array(Organization).optional(),
+    selectedOrganizationId: z.string().optional(),
+    hasPersonalAccount: z.boolean().optional(),
   })
 
   const Balance = z.object({
     balance: z.number(),
   })
 
+  const KiloPassState = z.object({
+    currentPeriodBaseCreditsUsd: z.number(),
+    currentPeriodUsageUsd: z.number(),
+    currentPeriodBonusCreditsUsd: z.number(),
+    nextBillingAt: z.string().nullable().optional(),
+  })
+
   const ProfileWithBalance = z.object({
     profile: Profile,
     balance: Balance.nullable(),
+    kiloPass: KiloPassState.nullable(),
     currentOrgId: z.string().nullable(),
+  })
+
+  const EditCompletionResponse = z.object({
+    content: z.string(),
+    usage: z
+      .object({
+        prompt_tokens: z.number().optional(),
+        completion_tokens: z.number().optional(),
+      })
+      .optional(),
   })
 
   const FimStreamChunk = z.object({
@@ -318,74 +339,51 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
         z.object({
           prefix: z.string(),
           suffix: z.string(),
+          provider: z.string().optional(),
           model: z.string().optional(),
           maxTokens: z.number().optional(),
           temperature: z.number().optional(),
         }),
       ),
-      async (c: any) => {
-        const proxy = await getProxyAuth()
-
-        if (!proxy.auth) {
-          return c.json({ error: "Not authenticated with Kilo Gateway" }, 401)
-        }
-
-        if (!proxy.token) {
-          return c.json({ error: "No valid token found" }, 401)
-        }
-
-        const { prefix, suffix, model, maxTokens, temperature } = c.req.valid("json")
-        const fimModel = model ?? "mistralai/codestral-2501"
-        const fimMaxTokens = maxTokens ?? 256
-        const fimTemperature = temperature ?? 0.2
-
-        const baseApiUrl = KILO_API_BASE + "/api/"
-        const endpoint = new URL("fim/completions", baseApiUrl)
-
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${proxy.token}`,
-          ...buildKiloHeaders(undefined, { kilocodeOrganizationId: proxy.organizationId }),
-          [HEADER_FEATURE]: "autocomplete",
-        }
-
-        const signal = AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(FIM_TIMEOUT_MS)])
-
-        let response: Response
-        try {
-          response = await fetch(endpoint, {
-            method: "POST",
-            headers,
-            signal,
-            body: JSON.stringify({
-              model: fimModel,
-              prompt: prefix,
-              suffix,
-              max_tokens: fimMaxTokens,
-              temperature: fimTemperature,
-              stream: true,
-            }),
-          })
-        } catch (err) {
-          if (err instanceof DOMException && err.name === "TimeoutError")
-            return c.json({ error: "FIM request timed out" }, 504 as any)
-          if (signal.aborted) return c.json({ error: "FIM request canceled" }, 499 as any)
-          throw err
-        }
-
-        if (!response.ok) {
-          const text = await response.text()
-          return c.json({ error: `FIM request failed: ${response.status} ${text}` }, response.status as any)
-        }
-
-        return new Response(response.body, {
-          headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
+      createFimHandler(Auth),
+    )
+    .post(
+      "/edit",
+      describeRoute({
+        summary: "Next Edit completion",
+        description:
+          "Proxy a Mercury-style Next Edit request. The client supplies structured editor " +
+          "context; the gateway assembles the sentinel-tagged prompt and forwards to the upstream edit endpoint.",
+        operationId: "kilo.edit",
+        responses: {
+          200: {
+            description: "Next Edit completion",
+            content: {
+              "application/json": {
+                schema: resolver(EditCompletionResponse),
+              },
+            },
           },
-        })
-      },
+          ...errors(400, 401),
+        },
+      }),
+      validator(
+        "json",
+        z.object({
+          provider: z.string().optional(),
+          model: z.string().optional(),
+          maxTokens: z.number().optional(),
+          currentFilePath: z.string(),
+          currentFileContent: z.string(),
+          cursorLine: z.number(),
+          cursorCharacter: z.number(),
+          editableRegionStartLine: z.number(),
+          editableRegionEndLine: z.number(),
+          recentlyViewedSnippets: z.array(z.object({ filepath: z.string(), content: z.string() })),
+          editDiffHistory: z.array(z.string()),
+        }),
+      ),
+      createEditHandler(Auth),
     )
     .post(
       "/audio/transcriptions",
@@ -437,6 +435,95 @@ export function createKiloRoutes(deps: KiloRoutesDeps) {
           headers,
           signal: c.req.raw.signal,
           body: JSON.stringify(body),
+        })
+
+        const text = await response.text()
+        return new Response(text, {
+          status: response.status,
+          headers: {
+            "Content-Type": response.headers.get("Content-Type") ?? "application/json",
+          },
+        })
+      },
+    )
+    .get(
+      "/models/images",
+      describeRoute({
+        summary: "Image generation models",
+        description: "List image-capable models from the Kilo Gateway OpenRouter passthrough",
+        operationId: "kilo.models.images",
+        responses: {
+          200: {
+            description: "Image model list",
+            content: {
+              "application/json": {
+                schema: resolver(
+                  z.array(z.object({ id: z.string(), name: z.string(), description: z.string().optional() })),
+                ),
+              },
+            },
+          },
+          ...errors(400, 401),
+        },
+      }),
+      async (c: any) => {
+        try {
+          const proxy = await getProxyAuth()
+          if (!proxy.auth || !proxy.token) throw new UnauthorizedError()
+
+          const result = await fetchKiloImageModels({
+            kilocodeToken: proxy.token,
+            kilocodeOrganizationId: proxy.organizationId,
+          })
+          if (result.error) {
+            if (result.error.kind === "unauthorized") throw new UnauthorizedError()
+            throw new Error(`Failed to fetch image models: ${result.error.kind}`)
+          }
+          return c.json(result.models)
+        } catch (err) {
+          if (!(err instanceof UnauthorizedError)) throw err
+          return c.json({ error: "Not authenticated with Kilo Gateway" }, 401)
+        }
+      },
+    )
+    .post(
+      "/image/generations",
+      describeRoute({
+        summary: "Image generation",
+        description:
+          "Proxy an image generation request (chat-completions with modalities) to the Kilo Gateway OpenRouter passthrough",
+        operationId: "kilo.image.generations",
+        responses: {
+          200: {
+            description: "Image generation response",
+            content: {
+              "application/json": {
+                schema: resolver(z.unknown()),
+              },
+            },
+          },
+          ...errors(400, 401),
+        },
+      }),
+      validator("json", z.object({ body: z.unknown() }).passthrough()),
+      async (c: any) => {
+        const proxy = await getProxyAuth()
+        if (!proxy.auth) return c.json({ error: "Not authenticated with Kilo Gateway" }, 401)
+        if (!proxy.token) return c.json({ error: "No valid token found" }, 401)
+
+        const payload = c.req.valid("json")
+        const headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${proxy.token}`,
+          ...buildKiloHeaders(undefined, { kilocodeOrganizationId: proxy.organizationId }),
+          [HEADER_FEATURE]: "vscode-extension",
+        }
+
+        const response = await fetch(`${KILO_API_BASE}/api/openrouter/chat/completions`, {
+          method: "POST",
+          headers,
+          signal: c.req.raw.signal,
+          body: JSON.stringify(payload.body ?? payload),
         })
 
         const text = await response.text()

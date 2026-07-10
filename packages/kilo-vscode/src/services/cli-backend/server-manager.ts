@@ -4,6 +4,7 @@ import * as crypto from "crypto"
 import * as fs from "fs"
 import * as path from "path"
 import * as vscode from "vscode"
+import { resolveLocalBwrapEnv, resolveTreeSitterEnv } from "./cli-resources"
 import { t } from "./i18n"
 import { parseServerPort } from "./server-utils"
 
@@ -16,6 +17,7 @@ export interface ServerInstance {
 const STARTUP_TIMEOUT_SECONDS = 30
 
 type WorkspaceFolderLike = { uri: { fsPath: string } }
+type ServerExitListener = (code: number | null) => void
 
 export function resolveServerCwd(folders: readonly WorkspaceFolderLike[] | undefined, storage: string): string {
   return folders?.[0]?.uri.fsPath ?? storage
@@ -26,11 +28,18 @@ export function resolveIndexingEnv(folders: readonly WorkspaceFolderLike[] | und
   return { KILO_DISABLE_CODEBASE_INDEXING: "vscode-no-workspace" }
 }
 
+export function resolveManagedServerEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return { ...env, KILO_DISABLE_CHANNEL_DB: "true" }
+}
+
 export class ServerManager {
   private instance: ServerInstance | null = null
   private startupPromise: Promise<ServerInstance> | null = null
 
-  constructor(private readonly context: vscode.ExtensionContext) {}
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly onExit?: ServerExitListener,
+  ) {}
 
   /**
    * Get or start the server instance
@@ -85,6 +94,10 @@ export class ServerManager {
       const spawnCwd = resolveServerCwd(folders, this.context.globalStorageUri.fsPath)
       fs.mkdirSync(spawnCwd, { recursive: true })
       const indexingEnv = resolveIndexingEnv(folders)
+      const localCli =
+        this.context.extensionMode === vscode.ExtensionMode.Development ||
+        fs.existsSync(path.join(this.context.extensionPath, "bin", ".cli-version"))
+      const bwrapEnv = process.env.KILO_BWRAP_PATH ? {} : resolveLocalBwrapEnv(this.context.extensionPath, localCli)
       // TLS / corporate-proxy support:
       //   - Default NODE_USE_SYSTEM_CA=1 so the bundled Bun CLI trusts the OS
       //     trust store (Windows cert store, macOS keychain, Linux /etc/ssl).
@@ -103,7 +116,7 @@ export class ServerManager {
           NODE_USE_SYSTEM_CA: "1",
           ...(extraCaCerts && { NODE_EXTRA_CA_CERTS: extraCaCerts }),
           ...(!proxyStrictSSL && { NODE_TLS_REJECT_UNAUTHORIZED: "0" }),
-          ...process.env,
+          ...resolveManagedServerEnv(process.env),
           // VS Code's http.proxy / http.noProxy settings are not reflected in
           // process.env, so spawned children bypass the user's configured proxy
           // and fail behind corporate firewalls. Forward them as the standard
@@ -129,8 +142,11 @@ export class ServerManager {
           KILO_MACHINE_ID: vscode.env.machineId,
           KILO_APP_VERSION: this.context.extension.packageJSON.version,
           KILO_VSCODE_VERSION: vscode.version,
+          KILOCODE_VERSION: this.context.extension.packageJSON.version,
           KILOCODE_EDITOR_NAME: `${vscode.env.appName} ${vscode.version}`,
           ...(!claudeCompat && { KILO_DISABLE_CLAUDE_CODE: "true" }),
+          ...resolveTreeSitterEnv(this.context.extensionPath),
+          ...bwrapEnv,
         },
         stdio: ["ignore", "pipe", "pipe"],
         detached: true,
@@ -169,6 +185,7 @@ export class ServerManager {
         console.log("[Kilo New] ServerManager: 🛑 Process exited with code:", code)
         if (this.instance?.process === serverProcess) {
           this.instance = null
+          this.onExit?.(code)
         }
         if (!resolved) {
           const { userMessage, userDetails } = toErrorMessage(

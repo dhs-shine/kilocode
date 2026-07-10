@@ -29,6 +29,16 @@ describe("CodeIndexServiceFactory", () => {
     setOpenAIConstructorHook(undefined)
   })
 
+  test("creates an OpenAI-compatible embedder without an API key", () => {
+    const factory = createFactory({
+      embedderProvider: "openai-compatible",
+      openAiKey: undefined,
+      openAiCompatibleBaseUrl: "http://localhost:1234/v1",
+    })
+
+    expect(factory.createEmbedder().embedderInfo).toEqual({ name: "openai-compatible" })
+  })
+
   test("uses default LanceDB directory when config is unset", () => {
     const factory = createFactory({ vectorStoreProvider: "lancedb", lancedbVectorStoreDirectory: undefined })
 
@@ -149,9 +159,40 @@ describe("CodeIndexServiceFactory", () => {
     expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
       input: ["hello"],
       model: "openai/text-embedding-3-small",
-      encoding_format: "base64",
+      encoding_format: "float",
       dimensions: 1024,
     })
+  })
+
+  test("creates vector store for OpenRouter Gemini embedding preview", () => {
+    const factory = createFactory({
+      embedderProvider: "openrouter",
+      openAiKey: undefined,
+      openRouterApiKey: "or-test",
+      modelId: "google/gemini-embedding-2-preview",
+      vectorStoreProvider: "lancedb",
+    })
+
+    const store = factory.createVectorStore() as unknown as { vectorSize: number }
+
+    expect(store).toBeDefined()
+    expect(store.vectorSize).toBe(3072)
+  })
+
+  test("uses configured dimension before static model metadata for vector stores", () => {
+    const factory = createFactory({
+      embedderProvider: "openrouter",
+      openAiKey: undefined,
+      openRouterApiKey: "or-test",
+      modelId: "openai/text-embedding-3-small",
+      modelDimension: 1024,
+      vectorStoreProvider: "lancedb",
+    })
+
+    const store = factory.createVectorStore() as unknown as { vectorSize: number }
+
+    expect(store).toBeDefined()
+    expect(store.vectorSize).toBe(1024)
   })
 
   test("creates Kilo embedder with Cloud-provided model", async () => {
@@ -177,6 +218,7 @@ describe("CodeIndexServiceFactory", () => {
       input: ["hello"],
       model: "mistralai/mistral-embed-2312",
       encoding_format: "base64",
+      dimensions: 1024,
     })
   })
 })

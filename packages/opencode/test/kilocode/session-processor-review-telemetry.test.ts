@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { KiloSessionProcessor } from "../../src/kilocode/session/processor"
 import type { MessageV2 } from "../../src/session/message-v2"
 
-const REVIEW_COMMANDS = ["review", "local-review", "local-review-uncommitted"] as const
+const REVIEW_COMMANDS = ["review"] as const
 
 const expected = (command: (typeof REVIEW_COMMANDS)[number]) => ({
   mode: "review" as const,
@@ -79,5 +79,47 @@ describe("KiloSessionProcessor.extractReviewTelemetry", () => {
       { type: "text", metadata: { mode: "review", feature: "code_reviews", command: "unknown" } },
     ]
     expect(KiloSessionProcessor.extractReviewTelemetry(parts as unknown as MessageV2.Part[])).toBeUndefined()
+  })
+})
+
+describe("KiloSessionProcessor.suggestionReviewTelemetry", () => {
+  test("returns suggest-sourced telemetry for accepted review commands", () => {
+    expect(
+      KiloSessionProcessor.suggestionReviewTelemetry({
+        accepted: { prompt: "/review uncommitted --focus telemetry" },
+      }),
+    ).toEqual({ ...expected("review"), tool: "suggest" })
+  })
+
+  test("returns undefined for accepted non-review commands", () => {
+    expect(KiloSessionProcessor.suggestionReviewTelemetry({ accepted: { prompt: "/test" } })).toBeUndefined()
+  })
+
+  test("returns undefined when accepted prompt is not a slash command", () => {
+    expect(KiloSessionProcessor.suggestionReviewTelemetry({ accepted: { prompt: "Run tests" } })).toBeUndefined()
+  })
+
+  test("returns undefined when accepted metadata is missing", () => {
+    expect(KiloSessionProcessor.suggestionReviewTelemetry({ dismissed: true })).toBeUndefined()
+  })
+})
+
+describe("KiloSessionProcessor.extractSuggestionReviewTelemetry", () => {
+  test("recovers review telemetry from completed suggest tool metadata", () => {
+    const parts = [
+      {
+        type: "tool",
+        tool: "suggest",
+        state: {
+          status: "completed",
+          metadata: { accepted: { prompt: "/review branch" } },
+        },
+      },
+    ]
+
+    expect(KiloSessionProcessor.extractSuggestionReviewTelemetry(parts as unknown as MessageV2.Part[])).toEqual({
+      ...expected("review"),
+      tool: "suggest",
+    })
   })
 })

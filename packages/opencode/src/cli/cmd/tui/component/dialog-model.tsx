@@ -7,17 +7,16 @@ import { DialogSelect } from "@tui/ui/dialog-select"
 import { useDialog } from "@tui/ui/dialog"
 import { createDialogProviderOptions, DialogProvider } from "./dialog-provider"
 import { DialogVariant } from "./dialog-variant"
-import { useKeybind } from "../context/keybind"
 import type { Model } from "@kilocode/sdk/v2" // kilocode_change
 import * as fuzzysort from "fuzzysort"
 import { useConnected } from "./use-connected"
 import { ModelInfoPanel } from "@/kilocode/components/model-info-panel" // kilocode_change
+import { FreeModelDisclosure } from "@/kilocode/components/free-model-disclosure" // kilocode_change
 
 export function DialogModel(props: { providerID?: string }) {
   const local = useLocal()
   const sync = useSync()
   const dialog = useDialog()
-  const keybind = useKeybind()
   const [query, setQuery] = createSignal("")
   const dimensions = useTerminalDimensions() // kilocode_change
 
@@ -63,6 +62,15 @@ export function DialogModel(props: { providerID?: string }) {
     if (!next) return
     setPreview(next)
   })
+
+  const footer = (providerID: string, model: Model) => {
+    const labels = [
+      providerID === "kilo" && FreeModelDisclosure.hasByok(model) ? FreeModelDisclosure.byok : undefined,
+      providerID === "kilo" && FreeModelDisclosure.collectsData(model) ? FreeModelDisclosure.label : undefined,
+      model.cost?.input === 0 && providerID === "opencode" ? "Free" : undefined,
+    ].filter((label) => label !== undefined)
+    return labels.length > 0 ? labels.join(" · ") : undefined
+  }
   // kilocode_change end
 
   const options = createMemo(() => {
@@ -86,9 +94,9 @@ export function DialogModel(props: { providerID?: string }) {
             description: provider.name,
             category,
             disabled: provider.id === "opencode" && model.id.includes("-nano"),
-            footer: model.cost?.input === 0 && provider.id === "opencode" ? "Free" : undefined,
+            footer: footer(provider.id, model), // kilocode_change
             onSelect: () => {
-              onSelect(provider.id, model.id)
+              onSelect(provider.id, model.id) // kilocode_change
             },
           },
         ]
@@ -118,6 +126,7 @@ export function DialogModel(props: { providerID?: string }) {
           map(([model, info]) => ({
             value: { providerID: provider.id, modelID: model },
             title: info.name ?? model,
+            releaseDate: info.release_date,
             description: favorites.some((item) => item.providerID === provider.id && item.modelID === model)
               ? "(Favorite)"
               : undefined,
@@ -129,26 +138,23 @@ export function DialogModel(props: { providerID?: string }) {
               : undefined,
             // kilocode_change end
             disabled: provider.id === "opencode" && model.includes("-nano"),
-            footer: info.cost?.input === 0 && provider.id === "opencode" ? "Free" : undefined,
+            footer: footer(provider.id, info), // kilocode_change
             onSelect() {
-              onSelect(provider.id, model)
+              onSelect(provider.id, model) // kilocode_change
             },
           })),
           filter((x) => {
-            // kilocode_change: always dedupe favorites/recents (upstream only did this when showSections was true)
-            if (favorites.some((item) => item.providerID === x.value.providerID && item.modelID === x.value.modelID))
-              return false
-            if (recents.some((item) => item.providerID === x.value.providerID && item.modelID === x.value.modelID))
-              return false
+            // kilocode_change start - only dedupe favorites/recents when those sections are visible
+            if (showExtra()) {
+              if (favorites.some((item) => item.providerID === x.value.providerID && item.modelID === x.value.modelID))
+                return false
+              if (recents.some((item) => item.providerID === x.value.providerID && item.modelID === x.value.modelID))
+                return false
+            }
+            // kilocode_change end
             return true
           }),
-          sortBy(
-            // kilocode_change start - Sort within Recommended / Kilo Gateway
-            (x) => (x.value.providerID === "kilo" ? (kiloRank().get(x.value.modelID) ?? Infinity) : 0),
-            // kilocode_change end
-            (x) => x.footer !== "Free",
-            (x) => x.title,
-          ),
+          (options) => sortModelOptions(options, props.providerID !== undefined, kiloRank()), // kilocode_change
         ),
       ),
     )
@@ -213,16 +219,16 @@ export function DialogModel(props: { providerID?: string }) {
       <box flexGrow={1} flexShrink={1}>
         <DialogSelect<ReturnType<typeof options>[number]["value"]>
           options={options()}
-          keybind={[
+          actions={[
             {
-              keybind: keybind.all.model_provider_list?.[0],
+              command: "model.dialog.provider",
               title: connected() ? "Connect provider" : "View all providers",
               onTrigger() {
                 dialog.replace(() => <DialogProvider />)
               },
             },
             {
-              keybind: keybind.all.model_favorite_toggle?.[0],
+              command: "model.dialog.favorite",
               title: "Favorite",
               disabled: !connected(),
               onTrigger: (option) => {
@@ -252,4 +258,35 @@ export function DialogModel(props: { providerID?: string }) {
     </box>
   )
   // kilocode_change end
+}
+
+export function sortModelOptions<
+  T extends {
+    footer?: string
+    releaseDate: string
+    title: string
+    value?: { providerID: string; modelID: string } // kilocode_change
+  },
+>(
+  options: T[],
+  newestFirst: boolean,
+  rank: ReadonlyMap<string, number> = new Map(), // kilocode_change
+) {
+  // kilocode_change start - Sort within Recommended / Kilo Gateway
+  const recommended = (option: T) =>
+    option.value?.providerID === "kilo" ? (rank.get(option.value.modelID) ?? Infinity) : 0
+  // kilocode_change end
+  if (newestFirst)
+    return sortBy(
+      options,
+      recommended, // kilocode_change
+      [(option) => option.releaseDate, "desc"],
+      (option) => option.title,
+    )
+  return sortBy(
+    options,
+    recommended, // kilocode_change
+    (option) => option.footer === undefined, // kilocode_change - free model footers include Kilo disclosure labels
+    (option) => option.title,
+  )
 }

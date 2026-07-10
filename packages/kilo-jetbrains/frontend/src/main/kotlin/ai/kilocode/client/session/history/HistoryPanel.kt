@@ -6,7 +6,11 @@ import ai.kilocode.client.session.ui.LoadingPanel
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.HoverIcon
-import ai.kilocode.client.ui.iconButton
+import ai.kilocode.client.ui.layout.HAlign
+import ai.kilocode.client.ui.layout.VAlign
+import ai.kilocode.client.ui.layout.align
+import ai.kilocode.client.util.UiTimerSource
+import ai.kilocode.client.util.UiTimers
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.application.ApplicationManager
@@ -16,6 +20,7 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.util.Disposer
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.PopupHandler
 import com.intellij.ui.SearchTextField
@@ -47,6 +52,7 @@ import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
+import javax.swing.ScrollPaneConstants
 import javax.swing.SwingUtilities
 import javax.swing.event.DocumentEvent
 import javax.swing.event.ListDataEvent
@@ -57,9 +63,11 @@ class HistoryPanel(
     private val controller: HistoryController,
     private val nav: () -> Unit = {},
     private val manager: SessionManager? = null,
+    private val timers: UiTimerSource = UiTimers,
 ) : BorderLayoutPanel(), Disposable, DataProvider {
     private val localSearch = search(controller.local)
     private val cloudSearch = search(controller.cloud)
+    private var snapshot = HistoryActivitySnapshot()
     private val localList = localList()
     private val cloudList = cloudList()
     private val more = LoadMoreButton()
@@ -80,6 +88,7 @@ class HistoryPanel(
         .setText(KiloBundle.message("history.tab.cloud"))
         .setForeSideComponent(back())
     private var stale = false
+    private val timer = timers.timer(ACTIVITY_MS) { syncActivity() }
     private val tabs: JBTabs = JBTabsFactory.createTabs(null, this).apply {
         presentation.setSingleRow(true)
         presentation.setTabsPosition(JBTabsPosition.top)
@@ -95,7 +104,7 @@ class HistoryPanel(
 
     init {
         Disposer.register(parent, this)
-        border = JBUI.Borders.empty(UiStyle.Gap.lg())
+        border = JBUI.Borders.empty(UiStyle.Gap.lg(), UiStyle.Gap.lg(), UiStyle.Gap.lg(), 0)
         more.addActionListener { controller.loadMoreCloud() }
         bind(localList, controller.local)
         bind(cloudList, controller.cloud)
@@ -105,11 +114,14 @@ class HistoryPanel(
         }
         addHierarchyListener { e ->
             if (e.changeFlags and HierarchyEvent.SHOWING_CHANGED.toLong() == 0L) return@addHierarchyListener
-            if (isShowing && stale) {
-                refresh()
+            if (isShowing) {
+                syncActivity()
+                timer.start()
+                if (stale) refresh()
                 return@addHierarchyListener
             }
-            if (!isShowing) stale = true
+            timer.stop()
+            stale = true
         }
         body.add(load, CARD_LOAD)
         body.add(tabs.component, CARD_TABS)
@@ -176,7 +188,7 @@ class HistoryPanel(
         )
     }
 
-    private fun back(): BorderLayoutPanel {
+    private fun back(): JComponent {
         val label = KiloBundle.message("history.back")
         val btn = HoverIcon().apply {
             icon = AllIcons.Actions.Back
@@ -185,8 +197,7 @@ class HistoryPanel(
             cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
             addActionListener { nav() }
         }
-        return BorderLayoutPanel().apply {
-            add(btn, BorderLayout.WEST)
+        return btn.align(HAlign.LEFT, VAlign.CENTER).apply {
             border = JBUI.Borders.emptyRight(UiStyle.Gap.lg())
         }
     }
@@ -198,11 +209,13 @@ class HistoryPanel(
                 if (list === cloudList) {
                     add(repoOnly, BorderLayout.SOUTH)
                 }
+                border = JBUI.Borders.emptyRight(UiStyle.Gap.lg())
             }
             add(north, BorderLayout.NORTH)
             add(JBScrollPane(list).apply {
                 border = JBUI.Borders.empty()
-                viewportBorder = JBUI.Borders.empty()
+                viewportBorder = JBUI.Borders.emptyRight(UiStyle.Gap.lg())
+                horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             }, BorderLayout.CENTER)
             footer?.let {
                 add(Centerizer(it, Centerizer.TYPE.HORIZONTAL).apply {
@@ -212,10 +225,10 @@ class HistoryPanel(
         }
     }
 
-    private fun localList() = JBList(controller.local).apply {
+    private fun localList() = HistoryList(controller.local).apply {
         selectionMode = ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         isFocusable = true
-        cellRenderer = LocalHistoryRenderer(controller.local)
+        cellRenderer = LocalHistoryRenderer(controller.local, { snapshot.activity }, { snapshot.titles })
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         emptyText.text = KiloBundle.message("history.empty")
         addMouseListener(object : MouseAdapter() {
@@ -240,10 +253,10 @@ class HistoryPanel(
         ScrollingUtil.installActions(this)
     }
 
-    private fun cloudList() = JBList(controller.cloud).apply {
+    private fun cloudList() = HistoryList(controller.cloud).apply {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
         isFocusable = true
-        cellRenderer = CloudHistoryRenderer(controller.cloud)
+        cellRenderer = CloudHistoryRenderer(controller.cloud) { snapshot.activity }
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         emptyText.text = KiloBundle.message("history.empty")
         addMouseListener(object : MouseAdapter() {
@@ -282,6 +295,26 @@ class HistoryPanel(
         cards.show(body, if (loading()) CARD_LOAD else CARD_TABS)
         revalidate()
         repaint()
+    }
+
+    @RequiresEdt
+    internal fun syncActivity() {
+        val next = HistoryActivitySnapshot(
+            activity = manager?.activity() ?: controller.activity(),
+            titles = manager?.titles().orEmpty(),
+        )
+        val changed = snapshot.changed(next)
+        snapshot = next
+        repaintRows(localList, controller.local, changed)
+        repaintRows(cloudList, controller.cloud, changed)
+    }
+
+    private fun <T : HistoryItem> repaintRows(list: JBList<T>, model: HistoryModel<T>, ids: Set<String>) {
+        if (ids.isEmpty()) return
+        model.visibleItems.forEachIndexed { index, item ->
+            if (item.id !in ids) return@forEachIndexed
+            list.getCellBounds(index, index)?.let(list::repaint)
+        }
     }
 
     private fun loading(): Boolean {
@@ -418,6 +451,34 @@ class HistoryPanel(
         return items.indices.mapNotNull { HistoryRenderer.section(items, it) }
     }
 
+    internal fun runningBadgeVisible(index: Int): Boolean {
+        return badgeText(index) != null
+    }
+
+    internal fun badgeText(index: Int): String? {
+        val list = activeList()
+        val item = list.model.getElementAt(index) ?: return null
+        @Suppress("UNCHECKED_CAST")
+        val renderer = list.cellRenderer as javax.swing.ListCellRenderer<HistoryItem>
+        @Suppress("UNCHECKED_CAST")
+        val typed = list as JList<HistoryItem>
+        val view = renderer.getListCellRendererComponent(typed, item, index, false, false)
+        if (view !is HistoryRenderer<*>) return null
+        return view.badgeText()
+    }
+
+    internal fun titleText(index: Int): String? {
+        val list = activeList()
+        val item = list.model.getElementAt(index) ?: return null
+        @Suppress("UNCHECKED_CAST")
+        val renderer = list.cellRenderer as javax.swing.ListCellRenderer<HistoryItem>
+        @Suppress("UNCHECKED_CAST")
+        val typed = list as JList<HistoryItem>
+        val view = renderer.getListCellRendererComponent(typed, item, index, false, false)
+        if (view !is HistoryRenderer<*>) return null
+        return view.titleText()
+    }
+
     internal fun repoOnlyVisible() = repoOnly.isVisible
 
     internal fun repoOnlySelected() = repoOnly.isSelected
@@ -445,6 +506,7 @@ class HistoryPanel(
     }
 
     override fun dispose() {
+        timer.stop()
         controller.onRepoOnlyChanged = null
     }
 
@@ -490,10 +552,15 @@ class HistoryPanel(
         }
     }
 
+    private class HistoryList<T : HistoryItem>(model: HistoryModel<T>) : JBList<T>(model) {
+        override fun getScrollableTracksViewportWidth() = true
+    }
+
     internal fun showingLoading() = !controller.local.loaded && !controller.cloud.loaded && (controller.local.loading || controller.cloud.loading)
 
     private companion object {
         const val CARD_LOAD = "load"
         const val CARD_TABS = "tabs"
+        const val ACTIVITY_MS = 3_000
     }
 }

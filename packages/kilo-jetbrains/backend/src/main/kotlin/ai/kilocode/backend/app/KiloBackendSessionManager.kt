@@ -9,6 +9,7 @@ import ai.kilocode.jetbrains.api.model.SessionStatus
 import ai.kilocode.rpc.dto.CloudSessionListDto
 import ai.kilocode.rpc.dto.SessionDto
 import ai.kilocode.rpc.dto.SessionListDto
+import ai.kilocode.rpc.dto.SessionRevertDto
 import ai.kilocode.rpc.dto.SessionStatusDto
 import ai.kilocode.rpc.dto.SessionSummaryDto
 import ai.kilocode.rpc.dto.SessionTimeDto
@@ -67,8 +68,16 @@ class KiloBackendSessionManager(
                 if (event.type == "session.status") {
                     val pair = KiloCliDataParser.parseSessionStatus(event.data)
                     if (pair != null) {
+                        val prev = _statuses.value[pair.first]
                         _statuses.update { it + pair }
+                        val total = _statuses.value.size
                         log.debug { "${ChatLogSummary.sid(pair.first)} evt=session.status ${ChatLogSummary.status(pair.second)}" }
+                        if (pair.second.type != "busy") {
+                            log.info(
+                                "${ChatLogSummary.sid(pair.first)} kind=status route=session-map " +
+                                    "${ChatLogSummary.status(pair.second)} prev=${prev?.type ?: "none"} total=$total bytes=${event.data.length}",
+                            )
+                        }
                     }
                 }
             }
@@ -263,8 +272,8 @@ class KiloBackendSessionManager(
         title = s.title,
         version = s.version,
         time = SessionTimeDto(
-            created = s.time.created.toDouble(),
-            updated = s.time.updated.toDouble(),
+            created = time(s.id, "created", s.time.created),
+            updated = time(s.id, "updated", s.time.updated),
             archived = s.time.archived,
         ),
         summary = s.summary?.let {
@@ -274,6 +283,7 @@ class KiloBackendSessionManager(
                 files = it.files.safeInt(),
             )
         },
+        revert = revertDto(s.revert),
     )
 
     private fun dto(s: GlobalSession) = SessionDto(
@@ -284,18 +294,35 @@ class KiloBackendSessionManager(
         title = s.title,
         version = s.version,
         time = SessionTimeDto(
-            created = s.time.created.toDouble(),
-            updated = s.time.updated.toDouble(),
+            created = time(s.id, "created", s.time.created),
+            updated = time(s.id, "updated", s.time.updated),
             archived = s.time.archived,
         ),
         summary = s.summary?.let {
             SessionSummaryDto(
-                additions = it.additions.safeInt(),
-                deletions = it.deletions.safeInt(),
-                files = it.files.safeInt(),
+                additions = it.additions?.safeInt() ?: 0,
+                deletions = it.deletions?.safeInt() ?: 0,
+                files = it.files?.safeInt() ?: 0,
             )
         },
+        revert = revertDto(s.revert),
     )
+
+    private fun revertDto(s: ai.kilocode.jetbrains.api.model.SessionRevert?) = s?.let {
+        revertDto(it.messageID, it.partID, it.snapshot, it.diff)
+    }
+
+    private fun revertDto(s: ai.kilocode.jetbrains.api.model.GlobalSessionRevert?) = s?.let {
+        revertDto(it.messageID, it.partID, it.snapshot, it.diff)
+    }
+
+    private fun revertDto(message: String, part: String?, snapshot: String?, diff: String?) =
+        SessionRevertDto(
+            messageID = message,
+            partID = part,
+            snapshot = snapshot,
+            diff = diff,
+        )
 
     private fun statusDto(s: SessionStatus) = SessionStatusDto(
         type = s.type.value,
@@ -306,6 +333,12 @@ class KiloBackendSessionManager(
     )
 
     private fun encode(value: String) = java.net.URLEncoder.encode(value, Charsets.UTF_8)
+
+    private fun time(id: String, field: String, value: Number?): Double {
+        if (value != null) return value.toDouble()
+        log.warn("Session $id missing $field timestamp; defaulting to 0.0")
+        return 0.0
+    }
 
     private fun escape(value: String) = buildString {
         for (c in value) {
@@ -321,4 +354,5 @@ class KiloBackendSessionManager(
     }
 
     private fun Long.safeInt() = coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
+    private fun Double.safeInt() = toLong().safeInt()
 }

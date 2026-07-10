@@ -1,7 +1,9 @@
+import { RemoteModelCatalog } from "@/kilo-sessions/remote-model-catalog"
 import { RemoteProtocol } from "@/kilo-sessions/remote-protocol"
 import type { RemoteWS } from "@/kilo-sessions/remote-ws"
 import { GlobalBus } from "@/bus/global"
 import { Session } from "@/session/session"
+import type { MessageV2 } from "@/session/message-v2"
 import { SessionPrompt } from "@/session/prompt"
 import { Question } from "@/question"
 import { Suggestion } from "@/kilocode/suggestion" // kilocode_change
@@ -9,16 +11,17 @@ import { Permission } from "@/permission"
 import { PermissionID } from "@/permission/schema"
 import { SessionID } from "@/session/schema"
 import { QuestionID } from "@/question/schema"
+import { Provider } from "@/provider/provider"
 import { ModelID, ProviderID } from "@/provider/schema"
-import * as Log from "@opencode-ai/core/util/log"
 import z from "zod"
-import { zodObject } from "@/util/effect-zod"
+import { zodObject } from "@opencode-ai/core/effect-zod"
+import { Effect, Option, Schema } from "effect"
 
-type Provide = typeof import("@/project/with-instance").provide
+type Provide = typeof import("@/kilocode/instance").provide
 
 async function provide<R>(input: { directory: string; fn: () => R }): Promise<R> {
-  const { WithInstance } = await import("@/project/with-instance")
-  return WithInstance.provide(input)
+  const { provide } = await import("@/kilocode/instance")
+  return provide(input)
 }
 
 const QuestionData = z.object({
@@ -37,24 +40,35 @@ const SuggestionData = z.object({
   index: z.number().int().nonnegative(),
 })
 
+const decodeSessionID = Schema.decodeUnknownOption(SessionID)
+
 // kilocode_change start — lazy init to avoid circular dependency
 // (Server → RemoteRoutes → RemoteSender → SessionPrompt at module load time)
+type RemotePromptInput = Omit<SessionPrompt.PromptInput, "model"> & {
+  model?: string | RemoteModelCatalog.ModelRef
+}
 let _remotePromptInput: z.ZodObject<any> | undefined
 function getRemotePromptInput() {
   return (_remotePromptInput ??= zodObject(SessionPrompt.PromptInput).extend({
-    model: z.string().optional(),
+    model: z.union([z.string(), RemoteModelCatalog.ModelRef]).optional(),
   }))
 }
 // kilocode_change end
-function normalizeModel(model: string | undefined) {
+function normalizeModel(model: string | RemoteModelCatalog.ModelRef | undefined) {
   if (!model) return undefined
+  if (typeof model !== "string") {
+    return {
+      providerID: ProviderID.make(model.providerID),
+      modelID: ModelID.make(model.modelID),
+    }
+  }
   return {
     providerID: ProviderID.make("kilo"),
     modelID: ModelID.make(model.startsWith("kilocode/") ? model.slice("kilocode/".length) : model),
   }
 }
 
-function normalizePrompt(input: SessionPrompt.PromptInput & { model?: string }): SessionPrompt.PromptInput {
+function normalizePrompt(input: RemotePromptInput): SessionPrompt.PromptInput {
   return {
     ...input,
     model: normalizeModel(input.model),
@@ -72,6 +86,22 @@ export namespace RemoteSender {
     }
     subscribe?: (callback: (event: any) => void) => () => void
     provide?: Provide
+    permission?: {
+      readonly list: () => Promise<ReadonlyArray<Permission.Request>>
+      readonly reply: (input: Permission.ReplyInput) => Promise<void>
+    }
+    question?: {
+      readonly list: () => Promise<ReadonlyArray<Question.Request>>
+      readonly reply: (input: Parameters<Question.Interface["reply"]>[0]) => Promise<void>
+      readonly reject: (requestID: QuestionID) => Promise<void>
+    }
+    prompt?: (input: SessionPrompt.PromptInput) => Promise<unknown>
+    catalog?: {
+      readonly get: (sessionID: SessionID) => Promise<Session.Info>
+      readonly messages: (sessionID: SessionID) => Promise<MessageV2.WithParts[]>
+      readonly providers: () => Promise<Record<ProviderID, Provider.Info>>
+      readonly default: () => Promise<RemoteModelCatalog.ModelRef | undefined>
+    }
   }
 
   export type Sender = {
@@ -83,6 +113,60 @@ export namespace RemoteSender {
     const sessions = new Set<string>()
     const children = new Map<string, string>() // childId → parentId
     let unsub: (() => void) | undefined
+    const permission = options.permission ?? {
+      list: async () => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Permission.Service.use((svc) => svc.list()))
+      },
+      reply: async (input: Permission.ReplyInput) => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Permission.Service.use((svc) => svc.reply(input)))
+      },
+    }
+    const question = options.question ?? {
+      list: async () => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Question.Service.use((svc) => svc.list()))
+      },
+      reply: async (input: Parameters<Question.Interface["reply"]>[0]) => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Question.Service.use((svc) => svc.reply(input)))
+      },
+      reject: async (requestID: QuestionID) => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Question.Service.use((svc) => svc.reject(requestID)))
+      },
+    }
+    const prompt =
+      options.prompt ??
+      (async (input: SessionPrompt.PromptInput) => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(SessionPrompt.Service.use((svc) => svc.prompt(input)))
+      })
+    const catalog = options.catalog ?? {
+      get: async (sessionID: SessionID) => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Session.Service.use((svc) => svc.get(sessionID)))
+      },
+      messages: async (sessionID: SessionID) => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(
+          Session.Service.use((svc) =>
+            svc
+              .findMessage(sessionID, (message) => message.info.role === "user" && !!message.info.model)
+              .pipe(Effect.map((message) => (Option.isSome(message) ? [message.value] : []))),
+          ),
+        )
+      },
+      providers: async () => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Provider.Service.use((svc) => svc.list()))
+      },
+      default: async () => {
+        const { AppRuntime } = await import("@/effect/app-runtime")
+        return AppRuntime.runPromise(Provider.Service.use((svc) => svc.defaultModel()))
+      },
+    }
 
     const sub =
       options.subscribe ??
@@ -95,7 +179,10 @@ export namespace RemoteSender {
       })
 
     async function directoryFor(sid: string): Promise<string> {
-      const info = await Session.get(SessionID.make(sid)).catch(() => undefined)
+      const { AppRuntime } = await import("@/effect/app-runtime")
+      const info = await AppRuntime.runPromise(
+        Session.Service.use((svc) => svc.get(SessionID.make(sid)).pipe(Effect.orElseSucceed(() => undefined))),
+      )
       return info?.directory ?? options.directory
     }
 
@@ -132,8 +219,8 @@ export namespace RemoteSender {
     async function replay(sessionId: string) {
       const [suggestions, questions, permissions] = await Promise.all([
         Suggestion.list(),
-        Question.list(),
-        Permission.list(),
+        question.list(),
+        permission.list(),
       ])
       for (const suggestion of suggestions) {
         if (suggestion.sessionID !== sessionId) continue
@@ -178,7 +265,10 @@ export namespace RemoteSender {
     }
 
     async function discoverChildren(parentId: string) {
-      const childSessions = await Session.children(SessionID.make(parentId))
+      const { AppRuntime } = await import("@/effect/app-runtime")
+      const childSessions = await AppRuntime.runPromise(
+        Session.Service.use((svc) => svc.children(SessionID.make(parentId))),
+      )
       for (const child of childSessions) {
         children.set(child.id, parentId)
         const root = rootOf(child.id) ?? parentId
@@ -258,6 +348,48 @@ export namespace RemoteSender {
     }
 
     function dispatch(msg: RemoteProtocol.Command) {
+      if (msg.command === "list_models") {
+        const parsed = RemoteModelCatalog.Request.safeParse(msg.data)
+        const session = msg.sessionId ? decodeSessionID(msg.sessionId) : Option.none<SessionID>()
+        if (!parsed.success || Option.isNone(session)) {
+          options.conn.send({
+            type: "response",
+            id: msg.id,
+            error: "invalid list_models command",
+          })
+          return
+        }
+        const run = options.provide ?? provide
+        void (async () => {
+          try {
+            const info = await catalog.get(session.value)
+            const result = await run({
+              directory: info.directory,
+              fn: async () => {
+                const [providers, messages, fallback] = await Promise.all([
+                  catalog.providers(),
+                  catalog.messages(info.id),
+                  catalog.default().catch((err) => {
+                    options.log.warn("default model lookup failed", { error: String(err) })
+                    return undefined
+                  }),
+                ])
+                return RemoteModelCatalog.build({
+                  providers,
+                  session: info,
+                  messages,
+                  defaultModel: fallback,
+                })
+              },
+            })
+            options.conn.send({ type: "response", id: msg.id, result })
+          } catch {
+            options.log.error("list models command failed", { id: msg.id })
+            options.conn.send({ type: "response", id: msg.id, error: "failed to list models" })
+          }
+        })()
+        return
+      }
       if (msg.command === "send_message") {
         const parsed = getRemotePromptInput().safeParse(msg.data)
         if (!parsed.success) {
@@ -268,9 +400,7 @@ export namespace RemoteSender {
           })
           return
         }
-        const input = SessionPrompt.PromptInput.zod.safeParse(
-          normalizePrompt(parsed.data as SessionPrompt.PromptInput & { model?: string }),
-        )
+        const input = SessionPrompt.PromptInput.zod.safeParse(normalizePrompt(parsed.data as RemotePromptInput))
         if (!input.success) {
           options.conn.send({
             type: "response",
@@ -280,7 +410,7 @@ export namespace RemoteSender {
           return
         }
         dispatchLongRunning(msg, directoryFor(input.data.sessionID), async () => {
-          await SessionPrompt.prompt(input.data as SessionPrompt.PromptInput)
+          await prompt(input.data as SessionPrompt.PromptInput)
         })
         return
       }
@@ -296,7 +426,7 @@ export namespace RemoteSender {
         }
         const dir = msg.sessionId ? directoryFor(msg.sessionId) : Promise.resolve(options.directory)
         dispatchQuick(msg, dir, () =>
-          Question.reply({ ...parsed.data, requestID: QuestionID.make(parsed.data.requestID) }),
+          question.reply({ ...parsed.data, requestID: QuestionID.make(parsed.data.requestID) }),
         )
         return
       }
@@ -311,7 +441,7 @@ export namespace RemoteSender {
           return
         }
         const dir = msg.sessionId ? directoryFor(msg.sessionId) : Promise.resolve(options.directory)
-        dispatchQuick(msg, dir, () => Question.reject(QuestionID.make(parsed.data.requestID)))
+        dispatchQuick(msg, dir, () => question.reject(QuestionID.make(parsed.data.requestID)))
         return
       }
       if (msg.command === "suggestion_accept") {
@@ -359,12 +489,7 @@ export namespace RemoteSender {
         }
         const dir = msg.sessionId ? directoryFor(msg.sessionId) : Promise.resolve(options.directory)
         dispatchQuick(msg, dir, async () => {
-          const { AppRuntime } = await import("@/effect/app-runtime")
-          await AppRuntime.runPromise(
-            Permission.Service.use((svc) =>
-              svc.reply({ ...parsed.data, requestID: PermissionID.make(parsed.data.requestID) }),
-            ),
-          )
+          await permission.reply({ ...parsed.data, requestID: PermissionID.make(parsed.data.requestID) })
         })
         return
       }

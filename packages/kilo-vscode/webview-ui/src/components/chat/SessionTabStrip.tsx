@@ -79,6 +79,7 @@ export const SessionTabStrip: Component = () => {
                     role="tab"
                     selected={tabs.active() === id}
                     tabIndex={tabs.active() === id ? 0 : -1}
+                    closeTabIndex={tabs.active() === id ? 0 : -1}
                     onSelect={() => tabs.select(id)}
                     onMiddleClick={(event) => middle(id, event)}
                     onKeyDown={(event) => key(id, event)}

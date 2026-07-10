@@ -23,20 +23,22 @@ const TSX_FILES = [
   path.join(ROOT, "webview-ui/agent-manager/NewWorktreeDialog.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/sortable-tab.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/DiffPanel.tsx"),
-  path.join(ROOT, "webview-ui/agent-manager/FullScreenDiffView.tsx"),
-  path.join(ROOT, "webview-ui/agent-manager/MarkdownDiffView.tsx"),
-  path.join(ROOT, "webview-ui/agent-manager/MarkdownAnnotationLayer.tsx"),
-  path.join(ROOT, "webview-ui/agent-manager/markdown-comment-ranges.ts"),
-  path.join(ROOT, "webview-ui/agent-manager/DiffEndMarker.tsx"),
-  path.join(ROOT, "webview-ui/agent-manager/FileTree.tsx"),
-  path.join(ROOT, "webview-ui/agent-manager/review-annotations.ts"),
-  path.join(ROOT, "webview-ui/agent-manager/review-annotation-speech.tsx"),
+  path.join(ROOT, "webview-ui/diff-viewer/FullScreenDiffView.tsx"),
+  path.join(ROOT, "webview-ui/diff-viewer/ImageDiffView.tsx"),
+  path.join(ROOT, "webview-ui/diff-viewer/MarkdownDiffView.tsx"),
+  path.join(ROOT, "webview-ui/diff-viewer/MarkdownAnnotationLayer.tsx"),
+  path.join(ROOT, "webview-ui/diff-viewer/markdown-comment-ranges.ts"),
+  path.join(ROOT, "webview-ui/diff-viewer/DiffEndMarker.tsx"),
+  path.join(ROOT, "webview-ui/diff-viewer/FileTree.tsx"),
+  path.join(ROOT, "webview-ui/diff-viewer/review-annotations.ts"),
+  path.join(ROOT, "webview-ui/diff-viewer/review-annotation-speech.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/MultiModelSelector.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/ApplyDialog.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/WorktreeItem.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/SectionHeader.tsx"),
-  path.join(ROOT, "webview-ui/agent-manager/CurrentTabsMenu.tsx"),
+  path.join(ROOT, "webview-ui/agent-manager/SidebarSearchMenu.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/SidebarToggleButton.tsx"),
+  path.join(ROOT, "webview-ui/agent-manager/WorktreeSectionActions.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/tab-rendering.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/terminal/TerminalTab.tsx"),
   path.join(ROOT, "webview-ui/agent-manager/terminal/SortableTerminalTab.tsx"),
@@ -163,6 +165,16 @@ describe("Agent Manager Provider Messages", () => {
     expect(body).toContain("agentManager.sessionAdded")
   })
 
+  it("warms MCP before creating every new worktree session", () => {
+    const body = getMethodBody("createSessionInWorktree")
+    const warmup = body.indexOf("startSession(")
+    const create = body.indexOf("client.session.create(")
+
+    expect(warmup).toBeGreaterThanOrEqual(0)
+    expect(create).toBeGreaterThanOrEqual(0)
+    expect(warmup).toBeLessThan(create)
+  })
+
   it("state-mutating messages wait for state initialization", () => {
     const body = getMethodBody("shouldWaitForState")
     const messages = [
@@ -199,6 +211,27 @@ describe("Agent Manager Provider Messages", () => {
     const body = getMethodBody("disposeAsync")
     expect(body).toContain("await this.terminalRouter.dispose()")
     expect(body).not.toContain("void this.terminalRouter.dispose()")
+  })
+
+  it("clears remote session registrations when the panel closes", () => {
+    const body = getMethodBody("attachPanel")
+    expect(body).toContain('this.connectionService.unregisterFocused("agent-manager")')
+    expect(body).toContain('this.connectionService.registerOpen("agent-manager", [])')
+    expect(body).toContain("this.activeSessionId = undefined")
+  })
+
+  it("reports all open Agent Manager sessions for remote control", () => {
+    const body = fs.readFileSync(TSX_FILE, "utf-8")
+    expect(body).toContain("reportRemoteSessions(vscode, localSessionIDs, managedSessions, isPending)")
+  })
+})
+
+describe("Agent Manager Model Picker", () => {
+  it("discloses data collection for free models in compare picker", () => {
+    const source = fs.readFileSync(path.join(ROOT, "webview-ui/agent-manager/MultiModelSelector.tsx"), "utf-8")
+
+    expect(source).toContain("model.tag.dataCollected")
+    expect(source).toContain("model.isFree")
   })
 })
 
@@ -634,6 +667,10 @@ const VSCODE_ALLOWED: Record<string, { note: string }> = {
   "run/task.ts": {
     note: "vscode adapter for Agent Manager run scripts",
   },
+  // Reads terminal.integrated.* and editor.font* config for xterm font settings
+  "terminal-font.ts": {
+    note: "vscode config reader for integrated terminal font settings",
+  },
 }
 
 /**
@@ -764,6 +801,8 @@ describe("Agent Manager — provider chain parity with sidebar", () => {
     // Agent Manager owns its local session tabs and ChatView only reads this
     // optional context in the standard sidebar/editor webview.
     "LocalTabsProvider",
+    // Work-style onboarding is injected only into the sidebar empty state.
+    "WorkStyleProvider",
   ]
 
   it("agent manager includes all context providers from sidebar App.tsx", () => {
