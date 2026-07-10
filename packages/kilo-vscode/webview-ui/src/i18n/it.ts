@@ -1811,4 +1811,5 @@ export const dict = {
   "chat.search.close": "Chiudi ricerca",
   "chat.search.invalidRegex": "Espressione regolare non valida",
   "chat.search.noResults": "Nessun risultato",
+  "chat.search.searchingHistory": "Ricerca nei messaggi precedenti…",
 } as const

@@ -1851,4 +1851,5 @@ export const dict = {
   "chat.search.close": "ปิดการค้นหา",
   "chat.search.invalidRegex": "นิพจน์ทั่วไปไม่ถูกต้อง",
   "chat.search.noResults": "ไม่มีผลลัพธ์",
+  "chat.search.searchingHistory": "กำลังค้นหาข้อความก่อนหน้า…",
 }

@@ -1873,4 +1873,5 @@ export const dict = {
   "chat.search.close": "Close search",
   "chat.search.invalidRegex": "Invalid regular expression",
   "chat.search.noResults": "No results",
+  "chat.search.searchingHistory": "Searching earlier messages…",
 }
