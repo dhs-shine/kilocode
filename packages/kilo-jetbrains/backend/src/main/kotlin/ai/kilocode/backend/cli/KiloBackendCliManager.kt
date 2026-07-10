@@ -376,29 +376,20 @@ internal fun killCliProcessTree(
 }
 
 /**
- * Wait for a SIGKILLed process tree to actually exit before returning, so callers observe a
- * terminal state instead of a fire-and-forget kill. Bounds the wait for both the parent and each
- * descendant handle by [timeoutSeconds]; children are non-child handles reaped via polling.
+ * Confirm the tracked parent has exited after SIGKILL so callers observe a terminal state. The
+ * parent is our direct child, so [Process.waitFor] reaps it deterministically. Descendants are
+ * non-child handles: SIGKILL has been delivered, but an orphaned child reparents to init and can
+ * briefly linger as an unreaped zombie that still reports alive, so we report them best-effort
+ * rather than block on an exit we cannot observe from here.
  */
 private fun confirmKilled(proc: Process, kids: List<ProcessHandle>, log: KiloLog, timeoutSeconds: Long) {
     val parentExited = proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)
-    awaitHandles(kids, timeoutSeconds)
     val alive = kids.count { it.isAlive }
     if (parentExited && alive == 0) {
         log.info("CLI process tree exited after SIGKILL (pid=${proc.pid()}, children=${kids.size})")
         return
     }
-    log.warn("CLI process tree still alive after SIGKILL (pid=${proc.pid()}, parentAlive=${!parentExited}, children=$alive)")
-}
-
-private fun awaitHandles(handles: List<ProcessHandle>, timeoutSeconds: Long) {
-    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeoutSeconds)
-    for (handle in handles) {
-        if (!handle.isAlive) continue
-        val remaining = deadline - System.nanoTime()
-        if (remaining <= 0) break
-        runCatching { handle.onExit().get(remaining, TimeUnit.NANOSECONDS) }
-    }
+    log.warn("CLI process tree escalated to SIGKILL (pid=${proc.pid()}, parentAlive=${!parentExited}, childrenReportedAlive=$alive)")
 }
 
 private fun descendants(proc: Process): List<ProcessHandle> =

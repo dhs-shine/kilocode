@@ -1,6 +1,7 @@
 package ai.kilocode.backend.cli
 
 import ai.kilocode.backend.testing.TestLog
+import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertFalse
@@ -100,11 +101,24 @@ class KiloBackendCliKillTest {
     }
 
     private fun exited(child: ProcessHandle): Boolean {
+        val end = System.nanoTime() + TimeUnit.SECONDS.toNanos(PROCESS_TIMEOUT_SECONDS)
+        while (System.nanoTime() < end) {
+            if (dead(child)) return true
+            Thread.sleep(25)
+        }
+        return dead(child)
+    }
+
+    // A SIGKILLed orphan reparents to init and can linger as an unreaped zombie: ProcessHandle still
+    // reports it alive and onExit() never fires for a non-child, though it is functionally dead. On
+    // Linux, read /proc so a zombie ('Z') or already-reaped (missing) process counts as exited;
+    // elsewhere fall back to the liveness flag (init reaps promptly on macOS).
+    private fun dead(child: ProcessHandle): Boolean {
         if (!child.isAlive) return true
-        return runCatching {
-            child.onExit().get(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            true
-        }.getOrDefault(!child.isAlive)
+        val stat = File("/proc/${child.pid()}/stat")
+        if (!stat.isFile) return false
+        val text = runCatching { stat.readText() }.getOrNull() ?: return true
+        return text.substringAfterLast(") ").firstOrNull() == 'Z'
     }
 
     private fun cleanup(proc: Process) {
