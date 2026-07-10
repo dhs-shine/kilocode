@@ -6,7 +6,7 @@
 
 ### Added
 
-- Add rollback redo controls in  sessions so reverted changes can be restored from the chat UI.
+- Add rollback redo controls in JetBrains sessions so reverted changes can be restored from the chat UI.
 - Add inline revert progress in JetBrains sessions, including localized status text and safer cancellation handling.
 - Add Kilo Core support for localized commit-message generation, AI image generation, large bash-output pruning, and improved model-usage display.
 
