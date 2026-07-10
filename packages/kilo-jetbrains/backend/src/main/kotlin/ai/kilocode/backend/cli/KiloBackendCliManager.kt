@@ -101,6 +101,7 @@ class KiloBackendCliManager(
 
     override fun exited(proc: Process) {
         if (process != proc) return
+        log.info("CLI process exited (pid=${proc.pid()}, exitCode=${runCatching { proc.exitValue() }.getOrNull()})")
         process = null
         uninstall()
         stderr = null
@@ -274,26 +275,39 @@ internal fun killCliProcessTree(
         val ok = runCatching { OSProcessUtil.killProcessTree(proc) }
             .onFailure { log.warn("killProcessTree failed for pid ${proc.pid()}", it) }
             .getOrDefault(false)
-        if (ok) return
+        if (ok) {
+            log.info("CLI process tree kill reported success (pid=${proc.pid()})")
+            return
+        }
+        log.info("CLI process tree kill fallback sending SIGKILL (pid=${proc.pid()})")
         descendants(proc).forEach { it.destroyForcibly() }
         proc.destroyForcibly()
+        log.info("CLI process tree SIGKILL sent without wait (pid=${proc.pid()}); exit not confirmed")
         return
     }
     val kids = descendants(proc)
     kids.forEach { it.destroy() }
     proc.destroy()
-    if (!wait) return
+    if (!wait) {
+        log.info("CLI process tree SIGTERM sent without wait (pid=${proc.pid()}); exit not confirmed")
+        return
+    }
     if (!proc.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
         log.warn("CLI process did not exit after SIGTERM, sending SIGKILL")
         kids.forEach { it.destroyForcibly() }
         proc.destroyForcibly()
+        log.info("CLI process tree SIGKILL sent after SIGTERM timeout (pid=${proc.pid()}); exit not confirmed")
         return
     }
+    log.info("CLI process exited after SIGTERM (pid=${proc.pid()}, exitCode=${runCatching { proc.exitValue() }.getOrNull()})")
     val alive = kids.filter { it.isAlive }
     if (alive.isNotEmpty()) {
         log.warn("CLI child processes did not exit after SIGTERM, sending SIGKILL")
         alive.forEach { it.destroyForcibly() }
+        log.info("CLI child process SIGKILL sent after SIGTERM timeout (pid=${proc.pid()}, children=${alive.size}); exit not confirmed")
+        return
     }
+    log.info("CLI process tree exited after SIGTERM (pid=${proc.pid()}, children=${kids.size})")
 }
 
 private fun descendants(proc: Process): List<ProcessHandle> =
