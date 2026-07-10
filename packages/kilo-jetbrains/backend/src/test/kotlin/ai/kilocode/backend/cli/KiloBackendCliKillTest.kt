@@ -24,7 +24,8 @@ class KiloBackendCliKillTest {
     @Test
     fun `kills a real process tree`() {
         val log = TestLog()
-        val proc = process("sh", "-c", "sleep 30 & wait")
+        val script = "trap 'kill -TERM \"${'$'}child\" 2>/dev/null; wait \"${'$'}child\"; exit 0' TERM; sleep 30 & child=${'$'}!; wait \"${'$'}child\""
+        val proc = process("sh", "-c", script)
         try {
             val kids = descendants(proc)
             assertTrue(kids.isNotEmpty(), "process tree did not spawn a descendant")
