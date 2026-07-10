@@ -127,10 +127,10 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
             </box>
             <Show when={modelsOpen()}>
               <Show when={data().models.length > 0} fallback={<text fg={theme().textMuted}>No model usage yet</text>}>
-                <box gap={1}>
+                <box gap={1} paddingTop={1}>
                   <For each={groups()}>
                     {(group) => (
-                      <box>
+                      <box gap={1}>
                         <text fg={theme().text}>
                           <b>{group.providerName}</b>
                         </text>
