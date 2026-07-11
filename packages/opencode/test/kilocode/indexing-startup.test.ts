@@ -525,6 +525,49 @@ describe("indexing startup degradation", () => {
     })
   })
 
+  test("does not validate the indexing model when indexing is disabled", async () => {
+    global.fetch = (() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            defaultModel: "mistralai/mistral-embed-2312",
+            models: [
+              { id: "mistralai/mistral-embed-2312", name: "Mistral Embed 2312", dimension: 1024, scoreThreshold: 0.35 },
+            ],
+            aliases: {},
+          }),
+        ),
+      )) as unknown as typeof global.fetch
+    const logger = Log.create({ service: "kilocode-indexing" })
+    const warn = spyOn(logger, "warn")
+    const key = process.env.KILO_API_KEY
+
+    const config: Partial<Config.Info> = {
+      ...staleKilo,
+      indexing: { ...staleKilo.indexing, enabled: false, model: "removed/model" },
+    }
+    await using tmp = await tmpdir({ git: true, config })
+    process.env["KILO_CONFIG_DIR"] = tmp.path
+    process.env.KILO_API_KEY = "kilo-token"
+
+    try {
+      await provideTestInstance({
+        directory: tmp.path,
+        init: Effect.promise(() => KiloIndexing.init()),
+        fn: async () => {
+          const status = await wait(() => KiloIndexing.current(), "Disabled")
+          expect(status.state).toBe("Disabled")
+          const modelErr = warn.mock.calls.find((call) => IndexingModelError.isInstance(call[1]?.err))?.[1]?.err
+          expect(modelErr).toBeUndefined()
+        },
+      })
+    } finally {
+      if (key === undefined) delete process.env.KILO_API_KEY
+      else process.env.KILO_API_KEY = key
+      warn.mockRestore()
+    }
+  })
+
   test("does not allocate an engine when indexing configuration is disabled", async () => {
     const created: string[] = []
     IndexingWorker.override((directory, root, hooks) => {

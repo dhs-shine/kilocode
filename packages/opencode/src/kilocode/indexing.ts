@@ -101,7 +101,7 @@ async function model(input: ReturnType<typeof toIndexingConfigInput>, auth: Kilo
   if (input.modelId) {
     const id = catalog.aliases[input.modelId] ?? input.modelId
     const chosen = catalog.models.find((item) => item.id === id)
-    if (catalog.models.length > 0 && !chosen) {
+    if (catalog.models.length > 0 && !chosen && input.enabled !== false) {
       throw new IndexingModelError({ model: input.modelId })
     }
     if (chosen) {
