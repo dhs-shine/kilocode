@@ -51,8 +51,12 @@ const baselineDirectory = Effect.fn("KiloIndexing.baselineDirectory")(function* 
 })
 
 function failed(err: unknown): z.infer<typeof IndexingStatus> {
-  const msg = err instanceof Error ? err.message : String(err)
-  const text = msg.startsWith("Failed to initialize:") ? msg : `Failed to initialize: ${msg}`
+  const base = IndexingModelError.isInstance(err)
+    ? `Invalid indexing.model "${err.data.model}"`
+    : err instanceof Error
+      ? err.message
+      : String(err)
+  const text = base.startsWith("Failed to initialize:") ? base : `Failed to initialize: ${base}`
 
   return {
     state: "Error",
@@ -278,7 +282,13 @@ export namespace KiloIndexing {
     const globalConfig = await AppRuntime.runPromise(Config.Service.use((svc) => svc.getGlobal()))
     const global = globalConfig.indexing
     const merged = indexingWithKiloDefault({ ...global, ...cfg.indexing }, auth)
-    const cfgInput = await model(enrichKilo(input(merged, global), auth), auth)
+    let cfgInput: Awaited<ReturnType<typeof model>>
+    try {
+      cfgInput = await model(enrichKilo(input(merged, global), auth), auth)
+    } catch (err) {
+      log.warn("indexing model resolution failed", { err })
+      return track(hit, await inert(() => failed(err)))
+    }
     const workspaces = new Set<WorkspaceID | undefined>([WorkspaceContext.workspaceID])
     const box = { status: pending() }
     const warnings = new Map<string, IndexingWarning>()
