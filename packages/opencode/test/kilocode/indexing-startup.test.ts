@@ -645,6 +645,57 @@ describe("indexing startup degradation", () => {
     }
   })
 
+  test("passes a valid explicit Kilo model through without error", async () => {
+    global.fetch = (() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            defaultModel: "mistralai/mistral-embed-2312",
+            models: [
+              { id: "mistralai/mistral-embed-2312", name: "Mistral Embed 2312", dimension: 1024, scoreThreshold: 0.35 },
+            ],
+            aliases: {},
+          }),
+        ),
+      )) as unknown as typeof global.fetch
+    const logger = Log.create({ service: "kilocode-indexing" })
+    const warn = spyOn(logger, "warn")
+    const init = spyOn(CodeIndexManager.prototype, "initialize").mockResolvedValue({ requiresRestart: false })
+    const key = process.env.KILO_API_KEY
+
+    const config: Partial<Config.Info> = {
+      ...staleKilo,
+      indexing: { ...staleKilo.indexing, model: "mistralai/mistral-embed-2312" },
+    }
+    await using tmp = await tmpdir({ git: true, config })
+    process.env["KILO_CONFIG_DIR"] = tmp.path
+    process.env.KILO_API_KEY = "kilo-token"
+
+    try {
+      await provideTestInstance({
+        directory: tmp.path,
+        init: Effect.promise(() => KiloIndexing.init()),
+        fn: async () => {
+          await called(init)
+          expect(init.mock.calls[0]?.[0]).toMatchObject({
+            embedderProvider: "kilo",
+            modelId: "mistralai/mistral-embed-2312",
+            modelDimension: 1024,
+            searchMinScore: 0.35,
+          })
+          const modelErr = warn.mock.calls.find((call) => IndexingModelError.isInstance(call[1]?.err))?.[1]?.err
+          expect(modelErr).toBeUndefined()
+          expect((await KiloIndexing.current()).state).not.toBe("Error")
+        },
+      })
+    } finally {
+      if (key === undefined) delete process.env.KILO_API_KEY
+      else process.env.KILO_API_KEY = key
+      init.mockRestore()
+      warn.mockRestore()
+    }
+  })
+
   test("uses hosted dimensions for supported Kilo models", async () => {
     global.fetch = (() =>
       Promise.resolve(
