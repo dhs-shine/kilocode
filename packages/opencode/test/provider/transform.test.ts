@@ -934,6 +934,7 @@ describe("ProviderTransform.schema - gemini non-object properties removal", () =
     expect(result.properties.data.required).toEqual(["name"])
   })
 
+  // kilocode_change start
   test("removes required from object array items with no properties", () => {
     const schema = {
       type: "object",
@@ -978,6 +979,7 @@ describe("ProviderTransform.schema - gemini non-object properties removal", () =
 
     expect(result.properties.issue_fields.items.required).toBeUndefined()
   })
+  // kilocode_change end
 
   test("does not affect non-gemini providers", () => {
     const openaiModel = {
