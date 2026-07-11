@@ -1,6 +1,6 @@
 import z from "zod"
 import path from "path"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
 import { type IndexingTelemetryEvent, type VectorStoreSearchResult } from "@kilocode/kilo-indexing/engine"
 import { toIndexingConfigInput, type IndexingConfig } from "@kilocode/kilo-indexing/config"
 import { hasIndexingPlugin } from "@kilocode/kilo-indexing/detect"
@@ -16,6 +16,7 @@ import { makeRuntime } from "@/effect/run-service"
 import { registerDisposer } from "@/effect/instance-registry"
 import { Global } from "@opencode-ai/core/global"
 import * as Log from "@opencode-ai/core/util/log"
+import { NamedError } from "@opencode-ai/core/util/error"
 import type { WorkspaceID } from "@/control-plane/schema"
 import { WorkspaceContext } from "@/control-plane/workspace-context"
 import { Event as IndexingEvent, Warning as IndexingWarningEvent } from "./indexing-event"
@@ -30,6 +31,10 @@ const auth = makeRuntime(Auth.Service, Auth.defaultLayer)
 const missing = () => disabledIndexingStatus("Indexing plugin is not enabled for this workspace.")
 const noWorkspace = () =>
   disabledIndexingStatus("Codebase indexing is disabled because no workspace folder is open in VS Code.")
+
+export const IndexingModelError = NamedError.create("IndexingModelError", {
+  model: Schema.String,
+})
 
 const baselineDirectory = Effect.fn("KiloIndexing.baselineDirectory")(function* (dir: string) {
   if (Instance.project.vcs !== "git") return undefined
@@ -88,23 +93,30 @@ async function model(input: ReturnType<typeof toIndexingConfigInput>, auth: Kilo
   if (input.embedderProvider !== "kilo") return input
 
   const catalog = await fetchKiloEmbeddingModelCatalog({ baseURL: auth.baseUrl, token: auth.apiKey })
-  const id = input.modelId ? (catalog.aliases[input.modelId] ?? input.modelId) : catalog.defaultModel
-  const chosen = catalog.models.find((item) => item.id === id)
-  const fallback = catalog.aliases[catalog.defaultModel] ?? catalog.defaultModel
-  const found = chosen ?? catalog.models.find((item) => item.id === fallback)
 
+  if (input.modelId) {
+    const id = catalog.aliases[input.modelId] ?? input.modelId
+    const chosen = catalog.models.find((item) => item.id === id)
+    if (catalog.models.length > 0 && !chosen) {
+      throw new IndexingModelError({ model: input.modelId })
+    }
+    if (chosen) {
+      return {
+        ...input,
+        modelId: chosen.id,
+        modelDimension: chosen.dimension,
+        searchMinScore: input.searchMinScore ?? chosen.scoreThreshold,
+      }
+    }
+  }
+
+  const fallback = catalog.aliases[catalog.defaultModel] ?? catalog.defaultModel
+  const found = catalog.models.find((item) => item.id === fallback)
   if (!found) {
     if (input.modelId || input.modelDimension) {
       log.warn("ignoring unsupported Kilo embedding model configuration", { model: input.modelId })
     }
     return { ...input, modelId: undefined, modelDimension: undefined }
-  }
-
-  if (input.modelId && !chosen) {
-    log.warn("using default Kilo embedding model instead of unsupported configuration", {
-      model: input.modelId,
-      fallback: found.id,
-    })
   }
 
   return {
