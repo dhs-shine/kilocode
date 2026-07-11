@@ -8,7 +8,7 @@ import type { Config } from "../../src/config/config"
 import { GlobalBus } from "../../src/bus/global"
 import { WorkspaceID } from "../../src/control-plane/schema"
 import { WorkspaceContext } from "../../src/control-plane/workspace-context"
-import { KiloIndexing } from "../../src/kilocode/indexing"
+import { KiloIndexing, IndexingModelError } from "../../src/kilocode/indexing"
 import { indexingWarningKey } from "../../src/kilocode/indexing-warning"
 import { IndexingWorker } from "../../src/kilocode/indexing-worker-client"
 import { provideTestInstance, withTestInstance } from "../fixture/fixture"
@@ -599,7 +599,7 @@ describe("indexing startup degradation", () => {
     }
   })
 
-  test("falls back from unsupported stored Kilo models to the hosted default", async () => {
+  test("reports an error for an unsupported explicit Kilo model instead of falling back", async () => {
     global.fetch = (() =>
       Promise.resolve(
         new Response(
@@ -612,7 +612,8 @@ describe("indexing startup degradation", () => {
           }),
         ),
       )) as unknown as typeof global.fetch
-    const init = spyOn(CodeIndexManager.prototype, "initialize").mockResolvedValue({ requiresRestart: false })
+    const logger = Log.create({ service: "kilocode-indexing" })
+    const warn = spyOn(logger, "warn")
     const key = process.env.KILO_API_KEY
 
     await using tmp = await tmpdir({ git: true, config: staleKilo })
@@ -624,19 +625,23 @@ describe("indexing startup degradation", () => {
         directory: tmp.path,
         init: Effect.promise(() => KiloIndexing.init()),
         fn: async () => {
-          await called(init)
-          expect(init.mock.calls[0]?.[0]).toMatchObject({
-            embedderProvider: "kilo",
-            modelId: "mistralai/mistral-embed-2312",
-            modelDimension: 1024,
-            searchMinScore: 0.35,
-          })
+          const status = await wait(() => KiloIndexing.current(), "Error")
+          expect(status.state).toBe("Error")
+          expect(status.message).toBe('Failed to initialize: Invalid indexing.model "custom/model"')
+          expect(await KiloIndexing.available()).toBe(false)
+          expect(KiloIndexing.ready()).toBe(false)
+          expect(await KiloIndexing.search("unsupported model")).toEqual([])
+
+          const err = warn.mock.calls[0]?.[1]?.err
+          expect(err).toBeDefined()
+          expect(IndexingModelError.isInstance(err)).toBe(true)
+          expect(err.data.model).toBe("custom/model")
         },
       })
     } finally {
       if (key === undefined) delete process.env.KILO_API_KEY
       else process.env.KILO_API_KEY = key
-      init.mockRestore()
+      warn.mockRestore()
     }
   })
 
