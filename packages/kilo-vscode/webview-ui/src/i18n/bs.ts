@@ -1452,8 +1452,11 @@ export const dict = {
   "settings.sandboxing.title": "Rad u izoliranom okruženju",
   "settings.sandboxing.network.title": "Ograniči pristup mreži",
   "settings.sandboxing.network.description":
-    "Blokiraj odlazni mrežni pristup za naredbe koje potiču od modela i HTTP alate. Lokalni MCP serveri i hookovi dodataka izvršavaju se izvan ovog ograničenja. Saobraćaj za inferenciju pružatelja i modela ostaje dostupan.",
+    "Blokira direktni odlazni pristup iz naredbi koje potiču od modela i HTTP alata. Lokalni i udaljeni MCP alati nisu dostupni dok je ograničenje aktivno. Saobraćaj provajdera i pouzdane zakačke dodataka ostaju izvan ovog ograničenja.",
 
+  "settings.sandboxing.allowedHosts.title": "Dozvoljena mrežna odredišta",
+  "settings.sandboxing.allowedHosts.description":
+    "DNS odredišta hosta i porta za sandboxirani HTTP i HTTPS proxy promet. GitHub CLI i HTTPS Git obično trebaju github.com:443 i api.github.com:443. Promjene se primjenjuju na nove sesije.",
   "settings.sandboxing.writablePaths.title": "Dodatne upisive putanje",
   "settings.sandboxing.writablePaths.description":
     "Dodatne putanje sistema datoteka u koje sandbox dozvoljava upis (npr. /tmp, /var/log). Spajaju se sa zadanim upisivim putanjama kada je sandbox aktivan.",

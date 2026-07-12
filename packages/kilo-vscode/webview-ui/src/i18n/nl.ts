@@ -1450,8 +1450,11 @@ export const dict = {
   "settings.sandboxing.title": "Sandbox",
   "settings.sandboxing.network.title": "Netwerktoegang beperken",
   "settings.sandboxing.network.description":
-    "Blokkeer uitgaande netwerktoegang voor door het model geïnitieerde opdrachten en HTTP-tools. Lokale MCP-servers en plugin-hooks vallen buiten deze beperking. Netwerkverkeer voor providers en modelinferentie blijft beschikbaar.",
+    "Blokkeer directe uitgaande toegang vanuit opdrachten die door het model zijn geïnitieerd en HTTP-hulpprogramma's. Lokale en externe MCP-hulpprogramma's zijn niet beschikbaar zolang deze beperking actief is. Verkeer van providers en hooks van vertrouwde plug-ins vallen buiten deze beperking.",
 
+  "settings.sandboxing.allowedHosts.title": "Toegestane netwerkbestemmingen",
+  "settings.sandboxing.allowedHosts.description":
+    "DNS-host- en poortbestemmingen voor HTTP- en HTTPS-proxyverkeer in een sandbox. GitHub CLI en HTTPS Git hebben doorgaans github.com:443 en api.github.com:443 nodig. Wijzigingen gelden voor nieuwe sessies.",
   "settings.sandboxing.writablePaths.title": "Extra schrijfbare paden",
   "settings.sandboxing.writablePaths.description":
     "Extra bestandssysteempaden waar de sandbox schrijftoestemming voor geeft (bijv. /tmp, /var/log). Deze worden samengevoegd met de standaard schrijfbare paden wanneer de sandbox actief is.",

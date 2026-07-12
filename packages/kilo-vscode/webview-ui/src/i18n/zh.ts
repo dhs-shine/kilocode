@@ -1403,8 +1403,11 @@ export const dict = {
   "settings.sandboxing.title": "沙盒",
   "settings.sandboxing.network.title": "限制网络访问",
   "settings.sandboxing.network.description":
-    "阻止模型发起的命令和 HTTP 工具进行出站网络访问。本地 MCP 服务器和插件钩子不受此限制。提供商和模型推理流量仍然可用。",
+    "阻止由模型发起的命令和 HTTP 工具直接进行出站访问。受限时，本地和远程 MCP 工具均不可用。提供商流量和受信任的插件钩子不受此限制。",
 
+  "settings.sandboxing.allowedHosts.title": "允许的网络目标",
+  "settings.sandboxing.allowedHosts.description":
+    "用于沙盒化 HTTP 和 HTTPS 代理流量的 DNS 主机和端口目标。GitHub CLI 和 HTTPS Git 通常需要 github.com:443 和 api.github.com:443。更改将应用于新会话。",
   "settings.sandboxing.writablePaths.title": "额外可写路径",
   "settings.sandboxing.writablePaths.description":
     "沙盒允许写入的额外文件系统路径（例如 /tmp、/var/log）。沙盒启用后，这些路径会与默认可写路径合并。",
