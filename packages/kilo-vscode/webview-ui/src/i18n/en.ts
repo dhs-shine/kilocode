@@ -1449,7 +1449,7 @@ export const dict = {
     "Nucleus sampling threshold (0–1). Limits token choices to the smallest set whose cumulative probability reaches P. Lower values make output more focused; higher values allow more diversity. Leave empty to use the model default.",
   "settings.agentBehaviour.maxSteps.title": "Max Steps",
   "settings.agentBehaviour.maxSteps.description":
-    "Maximum number of agentic turns (think → tool call → repeat) before the agent stops. Increase for complex multi-step tasks; lower to keep responses shorter and more predictable.",
+    "Maximum number of agent steps. At the limit, tools are disabled and the agent provides a final response. Increase for complex multi-step tasks; lower to keep responses shorter and more predictable.",
   "settings.agentBehaviour.hidden.title": "Hidden",
   "settings.agentBehaviour.hidden.description": "Hide this agent from the mode switcher in the chat input",
   "settings.agentBehaviour.disable.title": "Disabled",
