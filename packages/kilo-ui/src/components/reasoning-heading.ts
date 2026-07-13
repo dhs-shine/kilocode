@@ -14,7 +14,11 @@ function clean(value: string) {
 }
 
 function visible(value: string) {
-  return value.replace(/<!--[\s\S]*?(?:-->|$)/g, "").trim() ? value : ""
+  const closed = value.replace(/<!--[\s\S]*?-->/g, "")
+  const start = closed.indexOf("<!--")
+  if (start === -1) return closed.trim() ? value : ""
+  const body = `${closed.slice(0, start)}${closed.slice(start + 4)}`
+  return body.trim() ? body.trimStart() : ""
 }
 
 function pick(src: string, expr: RegExp, group = 1): ReasoningHeading | undefined {

@@ -70,6 +70,13 @@ describe("reasoning heading", () => {
     })
   })
 
+  test("preserves reasoning after an interrupted HTML comment", () => {
+    expect(reasoningHeading("**Assessing search behavior**\n\n<!--\nActually reconsider the alternate endpoint.")).toEqual({
+      title: "Assessing search behavior",
+      body: "Actually reconsider the alternate endpoint.",
+    })
+  })
+
   test("treats a titleless placeholder comment as empty", () => {
     expect(reasoningHeading("<!-- -->")).toEqual({ body: "" })
   })
