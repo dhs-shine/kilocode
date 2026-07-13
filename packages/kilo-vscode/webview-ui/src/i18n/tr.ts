@@ -1489,7 +1489,7 @@ export const dict = {
     "Çekirdek örnekleme eşiği (0–1). Token seçeneklerini, kümülatif olasılığı P’ye ulaşan en küçük kümeyle sınırlar. Daha düşük değerler çıktıyı daha odaklı hâle getirir; daha yüksek değerler daha fazla çeşitliliğe izin verir. Modelin varsayılan değerini kullanmak için boş bırakın.",
   "settings.agentBehaviour.maxSteps.title": "Maksimum Adım",
   "settings.agentBehaviour.maxSteps.description":
-    "Maksimum ajan adımı sayısıdır. Sınıra ulaşıldığında araçlar devre dışı bırakılır ve ajan son bir yanıt verir. Karmaşık ve çok adımlı görevler için artırın; yanıtları daha kısa ve öngörülebilir tutmak için azaltın.",
+    "Maksimum ajan adımı sayısıdır. Sınıra ulaşıldığında ajana araçları kullanmayı bırakması ve son bir yanıt vermesi talimatı verilir. Karmaşık ve çok adımlı görevler için artırın; yanıtları daha kısa ve öngörülebilir tutmak için azaltın.",
   "settings.agentBehaviour.hidden.title": "Gizli",
   "settings.agentBehaviour.hidden.description": "Bu ajanı sohbet girişindeki mod değiştiriciden gizle",
   "settings.agentBehaviour.disable.title": "Devre dışı",

@@ -1280,7 +1280,7 @@ export const dict = {
     "Soglia di campionamento nucleus (0–1). Limita la scelta dei token all’insieme più piccolo la cui probabilità cumulativa raggiunge P. Valori più bassi rendono il risultato più mirato; valori più alti consentono una maggiore varietà. Lascia vuoto per usare il valore predefinito del modello.",
   "settings.agentBehaviour.maxSteps.title": "Passaggi massimi",
   "settings.agentBehaviour.maxSteps.description":
-    "Numero massimo di passaggi dell’agente. Al raggiungimento del limite, gli strumenti vengono disabilitati e l’agente fornisce una risposta finale. Aumentalo per attività complesse in più passaggi; riducilo per mantenere le risposte più brevi e prevedibili.",
+    "Numero massimo di passaggi dell’agente. Al raggiungimento del limite, l’agente riceve l’istruzione di smettere di usare gli strumenti e fornire una risposta finale. Aumentalo per attività complesse in più passaggi; riducilo per mantenere le risposte più brevi e prevedibili.",
   "settings.agentBehaviour.hidden.title": "Nascosto",
   "settings.agentBehaviour.hidden.description": "Nascondi questo agente dal selettore modalità nell'input chat",
   "settings.agentBehaviour.disable.title": "Disabilitato",

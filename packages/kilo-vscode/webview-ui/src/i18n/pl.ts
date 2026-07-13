@@ -1492,7 +1492,7 @@ export const dict = {
     "Próg próbkowania nucleus (0–1). Ogranicza wybór tokenów do najmniejszego zbioru, którego skumulowane prawdopodobieństwo osiąga P. Niższe wartości zwiększają ukierunkowanie wyniku; wyższe pozwalają na większą różnorodność. Pozostaw puste, aby użyć wartości domyślnej modelu.",
   "settings.agentBehaviour.maxSteps.title": "Maks. kroki",
   "settings.agentBehaviour.maxSteps.description":
-    "Maksymalna liczba kroków agenta. Po osiągnięciu limitu narzędzia zostają wyłączone, a agent udziela końcowej odpowiedzi. Zwiększ dla złożonych zadań wieloetapowych; zmniejsz, aby odpowiedzi były krótsze i bardziej przewidywalne.",
+    "Maksymalna liczba kroków agenta. Po osiągnięciu limitu agent otrzymuje polecenie, aby przestać używać narzędzi i udzielić końcowej odpowiedzi. Zwiększ dla złożonych zadań wieloetapowych; zmniejsz, aby odpowiedzi były krótsze i bardziej przewidywalne.",
   "settings.agentBehaviour.hidden.title": "Ukryty",
   "settings.agentBehaviour.hidden.description": "Ukryj tego agenta z przełącznika trybów w polu czatu",
   "settings.agentBehaviour.disable.title": "Wyłączony",

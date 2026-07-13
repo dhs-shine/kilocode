@@ -1521,7 +1521,7 @@ export const dict = {
     "Schwellenwert für Nucleus-Sampling (0–1). Beschränkt die Token-Auswahl auf die kleinste Menge, deren kumulierte Wahrscheinlichkeit P erreicht. Niedrigere Werte machen die Ausgabe fokussierter; höhere Werte ermöglichen mehr Vielfalt. Leer lassen, um den Standardwert des Modells zu verwenden.",
   "settings.agentBehaviour.maxSteps.title": "Max. Schritte",
   "settings.agentBehaviour.maxSteps.description":
-    "Maximale Anzahl von Agentenschritten. Beim Erreichen des Limits werden Werkzeuge deaktiviert und der Agent gibt eine abschließende Antwort. Für komplexe mehrstufige Aufgaben erhöhen; für kürzere und besser vorhersehbare Antworten verringern.",
+    "Maximale Anzahl von Agentenschritten. Beim Erreichen des Limits wird der Agent angewiesen, keine Werkzeuge mehr zu verwenden und eine abschließende Antwort zu geben. Für komplexe mehrstufige Aufgaben erhöhen; für kürzere und besser vorhersehbare Antworten verringern.",
   "settings.agentBehaviour.hidden.title": "Versteckt",
   "settings.agentBehaviour.hidden.description": "Diesen Agent im Modus-Umschalter der Chat-Eingabe ausblenden",
   "settings.agentBehaviour.disable.title": "Deaktiviert",

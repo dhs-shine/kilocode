@@ -1497,7 +1497,7 @@ export const dict = {
     "Prag nucleus uzorkovanja (0–1). Ograničava izbor tokena na najmanji skup čija kumulativna vjerovatnoća dostiže P. Niže vrijednosti čine rezultat fokusiranijim; više vrijednosti omogućavaju veću raznolikost. Ostavite prazno da biste koristili zadanu vrijednost modela.",
   "settings.agentBehaviour.maxSteps.title": "Maks. koraci",
   "settings.agentBehaviour.maxSteps.description":
-    "Maksimalan broj koraka agenta. Kada se dostigne ograničenje, alati se onemogućavaju i agent daje završni odgovor. Povećajte za složene zadatke u više koraka; smanjite da bi odgovori bili kraći i predvidljiviji.",
+    "Maksimalan broj koraka agenta. Kada se dostigne ograničenje, agent dobija uputu da prestane koristiti alate i da završni odgovor. Povećajte za složene zadatke u više koraka; smanjite da bi odgovori bili kraći i predvidljiviji.",
   "settings.agentBehaviour.hidden.title": "Skriveno",
   "settings.agentBehaviour.hidden.description": "Sakrij ovog agenta iz prebacivača modova u unosu chata",
   "settings.agentBehaviour.disable.title": "Onemogućeno",

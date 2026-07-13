@@ -1446,7 +1446,7 @@ export const dict = {
     "核采样阈值（0–1）。将候选词元限制为累计概率达到 P 的最小集合。较低的值使输出更专注；较高的值允许更多样性。留空则使用模型默认值。",
   "settings.agentBehaviour.maxSteps.title": "最大步数",
   "settings.agentBehaviour.maxSteps.description":
-    "智能体的最大步骤数。达到上限后，工具将被禁用，智能体会给出最终响应。对于复杂的多步骤任务可提高此值；降低此值可使响应更短且更可预测。",
+    "智能体的最大步骤数。达到上限后，智能体会收到指示，停止使用工具并给出最终响应。对于复杂的多步骤任务可提高此值；降低此值可使响应更短且更可预测。",
   "settings.agentBehaviour.hidden.title": "隐藏",
   "settings.agentBehaviour.hidden.description": "在聊天输入的模式切换器中隐藏此智能体",
   "settings.agentBehaviour.disable.title": "已禁用",

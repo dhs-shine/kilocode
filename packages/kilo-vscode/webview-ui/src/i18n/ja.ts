@@ -1486,7 +1486,7 @@ export const dict = {
     "核サンプリングのしきい値です（0–1）。累積確率が P に達する最小のトークン集合に選択肢を制限します。低い値では出力がより集中的になり、高い値では多様性が増します。モデルのデフォルト値を使用する場合は空欄にしてください。",
   "settings.agentBehaviour.maxSteps.title": "最大ステップ数",
   "settings.agentBehaviour.maxSteps.description":
-    "エージェントの最大ステップ数です。上限に達するとツールが無効になり、エージェントは最終応答を返します。複雑な複数ステップのタスクでは増やし、応答を短く予測しやすくするには減らしてください。",
+    "エージェントの最大ステップ数です。上限に達すると、エージェントはツールの使用を停止して最終応答を返すよう指示されます。複雑な複数ステップのタスクでは増やし、応答を短く予測しやすくするには減らしてください。",
   "settings.agentBehaviour.hidden.title": "非表示",
   "settings.agentBehaviour.hidden.description": "チャット入力のモード切り替えからこのエージェントを非表示にする",
   "settings.agentBehaviour.disable.title": "無効",

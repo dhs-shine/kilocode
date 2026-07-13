@@ -1491,7 +1491,7 @@ export const dict = {
     "Tærskel for nucleus-sampling (0–1). Begrænser valget af tokens til den mindste mængde, hvis kumulative sandsynlighed når P. Lavere værdier gør resultatet mere fokuseret; højere værdier tillader større variation. Lad feltet være tomt for at bruge modellens standardværdi.",
   "settings.agentBehaviour.maxSteps.title": "Maks. trin",
   "settings.agentBehaviour.maxSteps.description":
-    "Det maksimale antal agenttrin. Ved grænsen deaktiveres værktøjerne, og agenten giver et endeligt svar. Forøg værdien til komplekse opgaver med flere trin; sænk den for at holde svarene kortere og mere forudsigelige.",
+    "Det maksimale antal agenttrin. Ved grænsen bliver agenten instrueret i at stoppe med at bruge værktøjer og give et endeligt svar. Forøg værdien til komplekse opgaver med flere trin; sænk den for at holde svarene kortere og mere forudsigelige.",
   "settings.agentBehaviour.hidden.title": "Skjult",
   "settings.agentBehaviour.hidden.description": "Skjul denne agent fra tilstandsvælgeren i chatinput",
   "settings.agentBehaviour.disable.title": "Deaktiveret",

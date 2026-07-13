@@ -1499,7 +1499,7 @@ export const dict = {
     "Drempel voor nucleus-sampling (0–1). Beperkt de tokenkeuze tot de kleinste verzameling waarvan de cumulatieve waarschijnlijkheid P bereikt. Lagere waarden maken de uitvoer gerichter; hogere waarden laten meer variatie toe. Laat leeg om de standaardwaarde van het model te gebruiken.",
   "settings.agentBehaviour.maxSteps.title": "Max Stappen",
   "settings.agentBehaviour.maxSteps.description":
-    "Maximaal aantal agentstappen. Bij het bereiken van de limiet worden tools uitgeschakeld en geeft de agent een definitief antwoord. Verhoog dit voor complexe taken met meerdere stappen; verlaag het om antwoorden korter en voorspelbaarder te houden.",
+    "Maximaal aantal agentstappen. Bij het bereiken van de limiet krijgt de agent de instructie om geen tools meer te gebruiken en een definitief antwoord te geven. Verhoog dit voor complexe taken met meerdere stappen; verlaag het om antwoorden korter en voorspelbaarder te houden.",
   "settings.agentBehaviour.hidden.title": "Verborgen",
   "settings.agentBehaviour.hidden.description": "Verberg deze agent uit de modusschakelaar in de chatinvoer",
   "settings.agentBehaviour.disable.title": "Uitgeschakeld",

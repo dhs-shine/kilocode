@@ -1501,7 +1501,7 @@ export const dict = {
     "Limite da amostragem nucleus (0–1). Restringe as opções de tokens ao menor conjunto cuja probabilidade acumulada atinge P. Valores mais baixos tornam o resultado mais focado; valores mais altos permitem maior diversidade. Deixe em branco para usar o padrão do modelo.",
   "settings.agentBehaviour.maxSteps.title": "Passos máximos",
   "settings.agentBehaviour.maxSteps.description":
-    "Número máximo de etapas do agente. Ao atingir o limite, as ferramentas são desativadas e o agente fornece uma resposta final. Aumente para tarefas complexas com várias etapas; reduza para manter as respostas mais curtas e previsíveis.",
+    "Número máximo de etapas do agente. Ao atingir o limite, o agente é instruído a parar de usar ferramentas e fornecer uma resposta final. Aumente para tarefas complexas com várias etapas; reduza para manter as respostas mais curtas e previsíveis.",
   "settings.agentBehaviour.hidden.title": "Oculto",
   "settings.agentBehaviour.hidden.description": "Ocultar este agente do seletor de modos na entrada do chat",
   "settings.agentBehaviour.disable.title": "Desativado",

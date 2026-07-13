@@ -1509,7 +1509,7 @@ export const dict = {
     "Umbral de muestreo nucleus (0–1). Limita las opciones de tokens al conjunto más pequeño cuya probabilidad acumulada alcanza P. Los valores más bajos hacen que el resultado sea más centrado; los más altos permiten mayor diversidad. Déjalo vacío para usar el valor predeterminado del modelo.",
   "settings.agentBehaviour.maxSteps.title": "Pasos máximos",
   "settings.agentBehaviour.maxSteps.description":
-    "Número máximo de pasos del agente. Al alcanzar el límite, las herramientas se desactivan y el agente proporciona una respuesta final. Auméntalo para tareas complejas de varios pasos; redúcelo para mantener las respuestas más cortas y predecibles.",
+    "Número máximo de pasos del agente. Al alcanzar el límite, se indica al agente que deje de usar herramientas y proporcione una respuesta final. Auméntalo para tareas complejas de varios pasos; redúcelo para mantener las respuestas más cortas y predecibles.",
   "settings.agentBehaviour.hidden.title": "Oculto",
   "settings.agentBehaviour.hidden.description": "Ocultar este agente del selector de modos en la entrada del chat",
   "settings.agentBehaviour.disable.title": "Desactivado",

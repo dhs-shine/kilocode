@@ -1410,7 +1410,7 @@ export const dict = {
     "核取樣閾值（0–1）。將候選詞元限制為累積機率達到 P 的最小集合。較低的值會讓輸出更聚焦；較高的值則允許更多樣性。留空則使用模型預設值。",
   "settings.agentBehaviour.maxSteps.title": "最大步數",
   "settings.agentBehaviour.maxSteps.description":
-    "Agent 的最大步驟數。達到上限後，工具將被停用，Agent 會提供最終回應。對於複雜的多步驟工作可提高此值；降低此值可讓回應更短且更容易預測。",
+    "Agent 的最大步驟數。達到上限後，Agent 會收到指示，停止使用工具並提供最終回應。對於複雜的多步驟工作可提高此值；降低此值可讓回應更短且更容易預測。",
   "settings.agentBehaviour.hidden.title": "隱藏",
   "settings.agentBehaviour.hidden.description": "在聊天輸入的模式切換器中隱藏此 Agent",
   "settings.agentBehaviour.disable.title": "已停用",

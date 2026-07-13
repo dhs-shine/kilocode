@@ -1525,7 +1525,7 @@ export const dict = {
     "Seuil d’échantillonnage nucleus (0–1). Limite le choix des jetons au plus petit ensemble dont la probabilité cumulée atteint P. Les valeurs plus faibles rendent le résultat plus ciblé ; les valeurs plus élevées permettent davantage de diversité. Laissez ce champ vide pour utiliser la valeur par défaut du modèle.",
   "settings.agentBehaviour.maxSteps.title": "Étapes max.",
   "settings.agentBehaviour.maxSteps.description":
-    "Nombre maximal d’étapes de l’agent. Lorsque la limite est atteinte, les outils sont désactivés et l’agent fournit une réponse finale. Augmentez cette valeur pour les tâches complexes à plusieurs étapes ; réduisez-la pour obtenir des réponses plus courtes et plus prévisibles.",
+    "Nombre maximal d’étapes de l’agent. Lorsque la limite est atteinte, l’agent reçoit pour instruction de cesser d’utiliser les outils et de fournir une réponse finale. Augmentez cette valeur pour les tâches complexes à plusieurs étapes ; réduisez-la pour obtenir des réponses plus courtes et plus prévisibles.",
   "settings.agentBehaviour.hidden.title": "Masqué",
   "settings.agentBehaviour.hidden.description": "Masquer cet agent du sélecteur de mode dans la saisie du chat",
   "settings.agentBehaviour.disable.title": "Désactivé",
