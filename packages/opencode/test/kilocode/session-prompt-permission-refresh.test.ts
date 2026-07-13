@@ -2,7 +2,10 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { expect } from "bun:test"
 import { Effect, Exit, Fiber, Layer } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
+import { rm, symlink } from "fs/promises"
+import os from "os"
 import path from "path"
+import { pathToFileURL } from "url"
 import { AppFileSystem } from "@opencode-ai/core/filesystem"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import * as Log from "@opencode-ai/core/util/log"
@@ -202,6 +205,7 @@ function makeHttp() {
 }
 
 const it = testEffect(makeHttp())
+const symlinkIt = process.platform === "win32" ? it.live.skip : it.live
 
 const cfg = {
   provider: {
@@ -247,6 +251,259 @@ function providerCfg(url: string) {
     },
   }
 }
+
+it.live(
+  "blocks @file content denied by .kilocodeignore",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const sentinel = "KILO_12133_MENTION_SENTINEL"
+        yield* Effect.promise(() =>
+          Promise.all([
+            Bun.write(path.join(dir, "my_file.txt"), sentinel),
+            Bun.write(path.join(dir, ".kilocodeignore"), "my_file.txt\n"),
+          ]),
+        )
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const permission = yield* Permission.Service
+        const session = yield* sessions.create({})
+        const parts = yield* prompt.resolvePromptParts("Please list the contents of @my_file.txt")
+        const message = yield* prompt.prompt({ sessionID: session.id, noReply: true, parts })
+        const text = message.parts
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n")
+
+        expect(parts.some((part) => part.type === "file" && part.filename === "my_file.txt")).toBe(true)
+        expect(text).not.toContain(sentinel)
+        expect(text).toContain("prevents you from using this specific tool call")
+        expect(message.parts.some((part) => part.type === "file")).toBe(false)
+        expect(yield* permission.list()).toEqual([])
+      }),
+      { git: true, config: providerCfg },
+    ),
+  30_000,
+)
+
+it.live(
+  "asks before adding @file content to the prompt",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const sentinel = "KILO_12133_ASK_SENTINEL"
+        const file = path.join(dir, "ask.txt")
+        yield* Effect.promise(() => Bun.write(file, sentinel))
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const permission = yield* Permission.Service
+        const session = yield* sessions.create({})
+        const fiber = yield* prompt
+          .prompt({
+            sessionID: session.id,
+            noReply: true,
+            parts: yield* prompt.resolvePromptParts("Read @ask.txt"),
+          })
+          .pipe(Effect.forkScoped)
+        const pending = yield* pollWithTimeout(
+          Effect.gen(function* () {
+            const requests = yield* permission.list()
+            return requests.find((request) => request.sessionID === session.id && request.permission === "read")
+          }),
+          "file mention read permission was never requested",
+        )
+
+        expect(pending.patterns).toEqual(["ask.txt"])
+        yield* permission.reply({ requestID: pending.id, reply: "once" })
+        const exit = yield* Fiber.await(fiber)
+        expect(Exit.isSuccess(exit)).toBe(true)
+        if (Exit.isSuccess(exit)) {
+          const text = exit.value.parts
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join("\n")
+          expect(text).toContain(sentinel)
+        }
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          permission: { read: { "*": "allow", "ask.txt": "ask" } },
+        }),
+      },
+    ),
+  30_000,
+)
+
+it.live(
+  "blocks denied files in directory and binary prompt attachments",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const folder = path.join(dir, "folder")
+        const binary = path.join(dir, "secret.bin")
+        const nested = "KILO_12133_DIRECTORY_SENTINEL"
+        const direct = "KILO_12133_BINARY_SENTINEL"
+        const fs = yield* AppFileSystem.Service
+        yield* fs.ensureDir(folder)
+        yield* Effect.promise(() =>
+          Promise.all([
+            Bun.write(path.join(folder, "public.txt"), "public content"),
+            Bun.write(path.join(folder, "private.txt"), nested),
+            Bun.write(binary, direct),
+          ]),
+        )
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({})
+        const directory = yield* prompt.prompt({
+          sessionID: session.id,
+          noReply: true,
+          parts: yield* prompt.resolvePromptParts("Read @folder"),
+        })
+        const file = yield* prompt.prompt({
+          sessionID: session.id,
+          noReply: true,
+          parts: [
+            { type: "text", text: "Read @secret.bin" },
+            { type: "file", mime: "application/octet-stream", filename: "secret.bin", url: pathToFileURL(binary).href },
+          ],
+        })
+        const text = [...directory.parts, ...file.parts]
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n")
+
+        expect(text).not.toContain(nested)
+        expect(text).not.toContain(direct)
+        expect(text.match(/prevents you from using this specific tool call/g)).toHaveLength(2)
+        expect(file.parts.some((part) => part.type === "file")).toBe(false)
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          permission: {
+            read: {
+              "*": "allow",
+              "folder/private.txt": "deny",
+              "secret.bin": "deny",
+            },
+          },
+        }),
+      },
+    ),
+  30_000,
+)
+
+symlinkIt(
+  "checks read rules for both symlink names and targets",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const text = "KILO_12133_SYMLINK_TEXT_SENTINEL"
+        const binary = "KILO_12133_SYMLINK_BINARY_SENTINEL"
+        const privateText = path.join(dir, "private.txt")
+        const publicText = path.join(dir, "public.txt")
+        const privateBinary = path.join(dir, "private.bin")
+        const publicBinary = path.join(dir, "public.bin")
+        yield* Effect.promise(async () => {
+          await Promise.all([Bun.write(privateText, text), Bun.write(privateBinary, binary)])
+          await Promise.all([symlink("private.txt", publicText), symlink("private.bin", publicBinary)])
+        })
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({})
+        const mention = yield* prompt.prompt({
+          sessionID: session.id,
+          noReply: true,
+          parts: yield* prompt.resolvePromptParts("Read @public.txt"),
+        })
+        const attachment = yield* prompt.prompt({
+          sessionID: session.id,
+          noReply: true,
+          parts: [
+            { type: "text", text: "Read @public.bin" },
+            {
+              type: "file",
+              mime: "application/octet-stream",
+              filename: "public.bin",
+              url: pathToFileURL(publicBinary).href,
+            },
+          ],
+        })
+        const content = [...mention.parts, ...attachment.parts]
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n")
+
+        expect(content).not.toContain(text)
+        expect(content).not.toContain(binary)
+        expect(content.match(/prevents you from using this specific tool call/g)).toHaveLength(2)
+        expect(attachment.parts.some((part) => part.type === "file")).toBe(false)
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          permission: {
+            read: {
+              "*": "allow",
+              "private.txt": "deny",
+              "private.bin": "deny",
+            },
+          },
+        }),
+      },
+    ),
+  30_000,
+)
+
+symlinkIt(
+  "does not trust symlink targets outside configured references",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const docs = path.join(dir, "docs")
+        const outside = path.join(os.tmpdir(), `kilo-12133-${crypto.randomUUID()}.txt`)
+        const sentinel = "KILO_12133_REFERENCE_SYMLINK_SENTINEL"
+        const fs = yield* AppFileSystem.Service
+        yield* fs.ensureDir(docs)
+        yield* Effect.promise(() => Bun.write(outside, sentinel))
+        yield* Effect.addFinalizer(() => Effect.promise(() => rm(outside, { force: true })))
+        yield* Effect.promise(() => symlink(outside, path.join(docs, "public.txt")))
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({})
+        const parts = yield* prompt.resolvePromptParts("Read @docs/public.txt")
+        const message = yield* prompt.prompt({ sessionID: session.id, noReply: true, parts })
+        const content = message.parts
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n")
+
+        expect(parts.some((part) => part.type === "file" && part.filename === "docs/public.txt")).toBe(true)
+        expect(content).not.toContain(sentinel)
+        expect(content).toContain("prevents you from using this specific tool call")
+        expect(message.parts.some((part) => part.type === "file")).toBe(false)
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          reference: { docs: "./docs" },
+          permission: { read: "allow", external_directory: "deny" },
+        }),
+      },
+    ),
+  30_000,
+)
 
 it.live("active tool calls use permissions changed after model streaming starts", () =>
   provideTmpdirServer(

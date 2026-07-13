@@ -14,6 +14,7 @@ import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
 import { Reference } from "@/reference/reference"
 // kilocode_change start
 import * as Encoding from "../kilocode/encoding"
+import { KiloReference } from "@/kilocode/reference/contains"
 import * as Extract from "../kilocode/tool/read-extract"
 import * as TextStream from "../kilocode/text-stream"
 // kilocode_change end
@@ -202,21 +203,32 @@ export const ReadTool = Tool.define(
       filepath: string,
       items: string[],
       directory: string,
-      abort: AbortSignal,
+      worktree: string,
+      ctx: Tool.Context,
     ) {
       const entries = yield* fs.readDirectoryEntries(filepath).pipe(Effect.catch(() => Effect.succeed([])))
       const types = new Map(entries.map((entry) => [entry.name, entry.type]))
+      const children = items
+        .filter((item) => !item.endsWith("/") && types.get(item) === "file")
+        .map((item) => path.join(filepath, item))
+      if (children.length > 0) {
+        yield* ctx.ask({
+          permission: "read",
+          patterns: children.map((child) => path.relative(worktree, child)),
+          always: ["*"],
+          metadata: {},
+        })
+      }
       const files = yield* Effect.forEach(
-        items.filter((item) => !item.endsWith("/") && types.get(item) === "file"),
-        Effect.fnUntraced(function* (item) {
-          const child = path.join(filepath, item)
+        children,
+        Effect.fnUntraced(function* (child) {
           const info = yield* fs.stat(child).pipe(Effect.catch(() => Effect.void))
           if (info?.type !== "File") return
           const sample = yield* readSample(child, Number(info.size), SAMPLE_BYTES).pipe(
             Effect.catch(() => Effect.succeed(new Uint8Array())),
           )
           if (isBinaryFile(child, sample)) return
-          const file = yield* lines(child, { limit: DEFAULT_READ_LIMIT, offset: 1 }, abort).pipe(
+          const file = yield* lines(child, { limit: DEFAULT_READ_LIMIT, offset: 1 }, ctx.abort).pipe(
             Effect.catch(() => Effect.void),
           )
           if (!file) return
@@ -245,8 +257,17 @@ export const ReadTool = Tool.define(
       if (process.platform === "win32") {
         filepath = AppFileSystem.normalizePath(filepath)
       }
-      yield* reference.ensure(filepath)
-      const title = path.relative(instance.worktree, filepath)
+      // kilocode_change start - authorize and read the canonical target of symlinks
+      const requested = filepath
+      yield* reference.ensure(requested)
+      const resolved = yield* fs.realPath(requested).pipe(Effect.catch(() => Effect.succeed(requested)))
+      const target = process.platform === "win32" ? AppFileSystem.normalizePath(resolved) : resolved
+      const title = path.relative(instance.worktree, requested)
+      const referenced =
+        (yield* reference.contains(requested)) && (yield* KiloReference.contains({ fs, references: reference, target }))
+      const patterns = [...new Set([requested, target].map((item) => path.relative(instance.worktree, item)))]
+      filepath = target
+      // kilocode_change end
 
       const stat = yield* fs.stat(filepath).pipe(
         Effect.catchIf(
@@ -256,13 +277,13 @@ export const ReadTool = Tool.define(
       )
 
       yield* assertExternalDirectoryEffect(ctx, filepath, {
-        bypass: Boolean(ctx.extra?.["bypassCwdCheck"]) || (yield* reference.contains(filepath)),
+        bypass: Boolean(ctx.extra?.["bypassCwdCheck"]) || referenced, // kilocode_change
         kind: stat?.type === "Directory" ? "directory" : "file",
       })
 
       yield* ctx.ask({
         permission: "read",
-        patterns: [path.relative(instance.worktree, filepath)],
+        patterns, // kilocode_change - deny either the requested path or symlink target
         always: ["*"],
         metadata: {},
       })
@@ -278,7 +299,9 @@ export const ReadTool = Tool.define(
         const truncated = start + sliced.length < items.length
         // kilocode_change start
         const expand = Boolean(ctx.extra?.["includeDirectoryFiles"])
-        const loaded = expand ? yield* readDirectoryFiles(filepath, sliced, instance.directory, ctx.abort) : []
+        const loaded = expand
+          ? yield* readDirectoryFiles(filepath, sliced, instance.directory, instance.worktree, ctx)
+          : []
         const content = loaded.map((item) => item.content).join("\n\n")
         // kilocode_change end
 

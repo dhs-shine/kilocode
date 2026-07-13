@@ -7,6 +7,7 @@ import { KiloSession } from "@/kilocode/session" // kilocode_change
 import { KiloCostPropagation } from "@/kilocode/session/cost-propagation" // kilocode_change
 import { KiloSessionProcessor } from "@/kilocode/session/processor" // kilocode_change
 import { KiloSessionOverflow } from "@/kilocode/session/overflow" // kilocode_change
+import { KiloReference } from "@/kilocode/reference/contains" // kilocode_change
 import * as SandboxPolicy from "@/kilocode/sandbox/policy" // kilocode_change
 import { CommandTimeout } from "@/kilocode/command-timeout" // kilocode_change
 import { Suggestion } from "@/kilocode/suggestion" // kilocode_change
@@ -61,6 +62,7 @@ import * as EffectLogger from "@opencode-ai/core/effect/logger"
 import { InstanceState } from "@/effect/instance-state"
 import { EffectBridge } from "@/effect/bridge"
 import { TaskTool, type TaskPromptOps } from "@/tool/task"
+import { assertExternalDirectoryEffect } from "@/tool/external-directory" // kilocode_change
 import { SessionRunState } from "./run-state"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
@@ -847,6 +849,11 @@ export const layer = Layer.effect(
         const reference = yield* references.get(name.slice(0, slash))
         if (!reference || reference.kind === "invalid") return
         if (!AppFileSystem.contains(reference.path, filepath)) return
+        // kilocode_change start - symlinks must remain inside the configured reference root
+        const root = yield* fsys.realPath(reference.path).pipe(Effect.catch(() => Effect.succeed(reference.path)))
+        const real = yield* fsys.realPath(filepath).pipe(Effect.catch(() => Effect.succeed(filepath)))
+        if (!AppFileSystem.contains(root, real)) return
+        // kilocode_change end
 
         const target = path.relative(reference.path, filepath).split(path.sep).join("/")
         if (!target || target.startsWith("../") || target === "..") return
@@ -966,19 +973,37 @@ export const layer = Layer.effect(
               const mime = (yield* fsys.isDir(filepath)) ? "application/x-directory" : part.mime
 
               const { read } = yield* registry.named()
-              const execRead = (args: Parameters<typeof read.execute>[0], extra?: Tool.Context["extra"]) => {
-                const controller = new AbortController()
-                return read
-                  .execute(args, {
-                    sessionID: input.sessionID,
-                    abort: controller.signal,
-                    agent: input.agent!,
-                    messageID: info.id,
-                    extra: { bypassCwdCheck: true, ...extra },
-                    messages: [],
-                    metadata: () => Effect.void,
-                    ask: () => Effect.void,
+              // kilocode_change start - authorize prompt attachments like model-issued read calls
+              const controller = new AbortController()
+              const ask: Tool.Context["ask"] = (request) =>
+                Effect.gen(function* () {
+                  const session = yield* sessions.get(input.sessionID)
+                  yield* KiloSessionPrompt.askPermission({
+                    permission,
+                    agents,
+                    sessions,
+                    agent: ag,
+                    session,
+                    request: {
+                      ...request,
+                      sessionID: input.sessionID,
+                    },
                   })
+                }).pipe(Effect.orDie)
+              const ctx = (extra?: Tool.Context["extra"]): Tool.Context => ({
+                sessionID: input.sessionID,
+                abort: controller.signal,
+                agent: ag.name,
+                messageID: info.id,
+                extra: { bypassCwdCheck: Boolean(referenceContext), ...extra },
+                messages: [],
+                metadata: () => Effect.void,
+                ask,
+              })
+              // kilocode_change end
+              const execRead = (args: Parameters<typeof read.execute>[0], extra?: Tool.Context["extra"]) => {
+                return read
+                  .execute(args, ctx(extra)) // kilocode_change - enforce read and external_directory permissions
                   .pipe(Effect.onInterrupt(() => Effect.sync(() => controller.abort())))
               }
 
@@ -1110,10 +1135,55 @@ export const layer = Layer.effect(
                 ]
               }
 
+              // kilocode_change start - direct binary and media attachments bypass ReadTool
+              const target = yield* fsys.realPath(filepath).pipe(Effect.catch(() => Effect.succeed(filepath)))
+              const access = yield* Effect.gen(function* () {
+                const instance = yield* InstanceState.context
+                const context = ctx()
+                const referenced =
+                  Boolean(referenceContext) ||
+                  ((yield* references.contains(filepath)) &&
+                    (yield* KiloReference.contains({ fs: fsys, references, target })))
+                yield* assertExternalDirectoryEffect(context, target, {
+                  bypass: referenced,
+                  kind: "file",
+                })
+                yield* context.ask({
+                  permission: "read",
+                  patterns: [
+                    ...new Set([path.relative(instance.worktree, filepath), path.relative(instance.worktree, target)]),
+                  ],
+                  always: ["*"],
+                  metadata: {},
+                })
+              }).pipe(Effect.exit)
+              if (Exit.isFailure(access)) {
+                const error = Cause.squash(access.cause)
+                log.error("failed to read file", { error })
+                const message = error instanceof Error ? error.message : String(error)
+                yield* bus.publish(Session.Event.Error, {
+                  sessionID: input.sessionID,
+                  error: new NamedError.Unknown({ message }).toObject(),
+                })
+                return [
+                  ...(referenceContext
+                    ? [{ ...referenceContext, messageID: info.id, sessionID: input.sessionID }]
+                    : []),
+                  {
+                    messageID: info.id,
+                    sessionID: input.sessionID,
+                    type: "text",
+                    synthetic: true,
+                    text: `Read tool failed to read ${filepath} with the following error: ${message}`,
+                  },
+                ]
+              }
+              // kilocode_change end
+
               // kilocode_change start - reject oversized user image files before reading and base64 allocation
               if (mime.startsWith("image/")) {
                 const limit = (yield* config.get()).attachment?.image?.max_base64_bytes ?? Image.MAX_BASE64_BYTES
-                const stat = yield* fsys.stat(filepath).pipe(Effect.catch(Effect.die))
+                const stat = yield* fsys.stat(target).pipe(Effect.catch(Effect.die))
                 const encoded = ((stat.size + 2n) / 3n) * 4n
                 if (encoded > BigInt(limit))
                   return yield* Effect.die(
@@ -1135,7 +1205,7 @@ export const layer = Layer.effect(
                 type: "file",
                 url:
                   `data:${mime};base64,` +
-                  Buffer.from(yield* fsys.readFile(filepath).pipe(Effect.catch(Effect.die))).toString("base64"),
+                  Buffer.from(yield* fsys.readFile(target).pipe(Effect.catch(Effect.die))).toString("base64"),
                 mime,
                 filename: part.filename!,
                 source: part.source,
