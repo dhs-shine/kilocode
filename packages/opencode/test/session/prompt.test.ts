@@ -2542,16 +2542,16 @@ noLLMServer.instance(
     Effect.gen(function* () {
       const prompt = yield* SessionPrompt.Service
       const sessions = yield* Session.Service
-      const source = yield* sessions.create({
+      const session = yield* sessions.create({
         model: {
           id: ModelID.make("test-model"),
           providerID: ProviderID.make("test"),
           variant: "high",
         },
       })
-      const fork = yield* sessions.fork({ sessionID: source.id })
+
       const handoff = yield* prompt.prompt({
-        sessionID: fork.id,
+        sessionID: session.id,
         noReply: true,
         parts: [{ type: "text", text: "fork handoff", synthetic: true }],
       })
@@ -2563,7 +2563,7 @@ noLLMServer.instance(
         variant: "high",
       })
 
-      const saved = yield* sessions.get(fork.id)
+      const saved = yield* sessions.get(session.id)
       expect(saved.model?.variant).toBe("high")
     }),
   { config: cfg },
