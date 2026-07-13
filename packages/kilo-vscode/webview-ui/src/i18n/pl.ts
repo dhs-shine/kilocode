@@ -136,7 +136,7 @@ export const dict = {
   "revert.banner.count_other": "Cofnięto {{count}} wiadomości",
   "revert.banner.redo": "Ponów",
   "revert.banner.redo.all": "Ponów wszystko",
-  "revert.banner.hint": "Wyślij nową wiadomość, aby to utrwalić",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Poczekaj aż agent zakończy",
   "command.session.compact": "Kompaktuj sesję",
   "command.session.compact.description": "Podsumuj sesję, aby zmniejszyć rozmiar kontekstu",
@@ -633,7 +633,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Wyszukiwanie Grep",
   "ui.permission.toolLabel.webSearch": "Wyszukiwanie Web",
   "ui.permission.toolLabel.list": "Wylistuj",
-  "ui.permission.toolLabel.externalDirectory": "Czytaj katalog zewnętrzny",
+  "ui.permission.toolLabel.externalDirectory": "Uzyskaj dostęp do katalogu zewnętrznego",
   "ui.permission.toolLabel.webFetch": "Pobieranie Web",
   "ui.permission.toolLabel.task": "Zadanie",
   "ui.permission.toolLabel.skill": "Umiejętność",
@@ -1409,14 +1409,17 @@ export const dict = {
   "settings.sandboxing.title": "Izolacja w piaskownicy",
   "settings.sandboxing.network.title": "Ogranicz dostęp do sieci",
   "settings.sandboxing.network.description":
-    "Blokuj wychodzący dostęp do sieci z poleceń pochodzących od modelu i narzędzi HTTP. Lokalne serwery MCP i hooki wtyczek nie podlegają temu ograniczeniu. Ruch do dostawców i modeli na potrzeby wnioskowania pozostaje dostępny.",
+    "Blokuj bezpośredni dostęp wychodzący z poleceń inicjowanych przez model i narzędzi HTTP. Lokalne i zdalne narzędzia MCP są niedostępne, gdy to ograniczenie jest aktywne. Ruch dostawców i zaufane hooki wtyczek pozostają poza tym ograniczeniem.",
 
+  "settings.sandboxing.allowedHosts.title": "Dozwolone miejsca docelowe sieci",
+  "settings.sandboxing.allowedHosts.description":
+    "Docelowe hosty DNS i porty dla ruchu HTTP i HTTPS przez proxy w piaskownicy. GitHub CLI i HTTPS Git zwykle wymagają github.com:443 i api.github.com:443. Zmiany dotyczą nowych sesji.",
   "settings.sandboxing.writablePaths.title": "Dodatkowe ścieżki zapisu",
   "settings.sandboxing.writablePaths.description":
     "Dodatkowe ścieżki systemu plików, do których sandbox zezwala na zapis (np. /tmp, /var/log). Są one łączone z domyślnymi ścieżkami zapisu, gdy sandbox jest aktywny.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "Włącz SWE-Pruner: przycinanie dużych wyników narzędzi odczytu i wyszukiwania, kierowane pytaniem przewodnim agenta",
+    "Włącz SWE-Pruner: przycinanie obszernych danych wyjściowych narzędzi odczytu, wyszukiwania i powłoki z uwzględnieniem zadania, kierowane pytaniem przewodnim dostarczonym przez agenta",
   "settings.experimental.swePrunerModel.title": "Model SWE-Pruner",
   "settings.experimental.swePrunerModel.description":
     "Model używany do przycinania wyników narzędzi; domyślnie skonfigurowany mały model",
@@ -1592,8 +1595,8 @@ export const dict = {
     "Brak skonfigurowanych niestandardowych komend. Dodaj komendy do opencode.json, aby je tu zobaczyć.",
   "settings.agentBehaviour.workflows.detail.description": "Opis",
   "settings.agentBehaviour.workflows.detail.template": "Szablon",
-  "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description":
+  "settings.sandboxing.enabled.title": "Sandbox",
+  "settings.sandboxing.enabled.description":
     "Uruchamiaj polecenia shell agenta w sandboxie na poziomie systemu operacyjnego, który ogranicza zapisy do katalogów stanu projektu i Kilo",
 
   "settings.autoApprove.description":
@@ -1871,4 +1874,15 @@ export const dict = {
   "diffViewer.baseBranch.loading": "Loading branches…",
   "diffViewer.baseBranch.none": "—",
   "plan.exit.ready": "Plan jest gotowy:",
+  "chat.search.placeholder": "Szukaj w czacie…",
+  "chat.search.toggle": "Szukaj w czacie",
+  "chat.search.matchCase": "Uwzględnij wielkość liter",
+  "chat.search.matchWholeWord": "Całe wyrazy",
+  "chat.search.useRegex": "Użyj wyrażenia regularnego",
+  "chat.search.previousMatch": "Poprzednie dopasowanie",
+  "chat.search.nextMatch": "Następne dopasowanie",
+  "chat.search.close": "Zamknij wyszukiwanie",
+  "chat.search.invalidRegex": "Nieprawidłowe wyrażenie regularne",
+  "chat.search.noResults": "Brak wyników",
+  "chat.search.searchingHistory": "Wyszukiwanie we wcześniejszych wiadomościach…",
 }

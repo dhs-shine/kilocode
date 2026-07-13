@@ -136,7 +136,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} beskeder fortrudt",
   "revert.banner.redo": "Gentag",
   "revert.banner.redo.all": "Gentag alt",
-  "revert.banner.hint": "Send en ny besked for at gøre dette permanent",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Vent på at agenten er færdig",
   "command.session.compact": "Komprimér session",
   "command.session.compact.description": "Opsummer sessionen for at reducere kontekststørrelsen",
@@ -631,7 +631,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Grep-søgning",
   "ui.permission.toolLabel.webSearch": "Websøgning",
   "ui.permission.toolLabel.list": "Liste",
-  "ui.permission.toolLabel.externalDirectory": "Læs ekstern mappe",
+  "ui.permission.toolLabel.externalDirectory": "Giv adgang til ekstern mappe",
   "ui.permission.toolLabel.webFetch": "Webhentning",
   "ui.permission.toolLabel.task": "Opgave",
   "ui.permission.toolLabel.skill": "Færdighed",
@@ -1446,14 +1446,17 @@ export const dict = {
   "settings.sandboxing.title": "Sandboxing",
   "settings.sandboxing.network.title": "Begræns netværksadgang",
   "settings.sandboxing.network.description":
-    "Bloker udgående netværksadgang fra kommandoer, der stammer fra modellen, og HTTP-værktøjer. Lokale MCP-servere og plugin-hooks er ikke underlagt denne begrænsning. Inferenstrafik til udbydere og modeller er fortsat tilgængelig.",
+    "Blokerer direkte udgående adgang fra modelgenererede kommandoer og HTTP-værktøjer. Lokale og eksterne MCP-værktøjer er ikke tilgængelige, mens begrænsningen er aktiv. Udbydertrafik og pålidelige plugin-hooks forbliver uden for denne begrænsning.",
 
+  "settings.sandboxing.allowedHosts.title": "Tilladte netværksdestinationer",
+  "settings.sandboxing.allowedHosts.description":
+    "DNS-værts- og portdestinationer for sandboxet HTTP- og HTTPS-proxytrafik. GitHub CLI og HTTPS Git kræver typisk github.com:443 og api.github.com:443. Ændringer gælder for nye sessioner.",
   "settings.sandboxing.writablePaths.title": "Yderligere skrivbare stier",
   "settings.sandboxing.writablePaths.description":
     "Yderligere filsystemstier, som sandkassen tillader skrivning til (f.eks. /tmp, /var/log). Disse flettes med de standardskrivbare stier, når sandkassen er aktiv.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "Aktivér SWE-Pruner: opgavebevidst beskæring af store læse- og søgeoutput, styret af et fokusspørgsmål fra agenten",
+    "Aktivér SWE-Pruner: opgavebevidst beskæring af store output fra læse-, søge- og shellværktøjer, styret af et fokusspørgsmål fra agenten",
   "settings.experimental.swePrunerModel.title": "SWE-Pruner-model",
   "settings.experimental.swePrunerModel.description":
     "Model til beskæring af værktøjsoutput; som standard den konfigurerede lille model",
@@ -1588,8 +1591,8 @@ export const dict = {
     "Ingen brugerdefinerede kommandoer konfigureret. Tilføj kommandoer til opencode.json for at se dem her.",
   "settings.agentBehaviour.workflows.detail.description": "Beskrivelse",
   "settings.agentBehaviour.workflows.detail.template": "Skabelon",
-  "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description":
+  "settings.sandboxing.enabled.title": "Sandbox",
+  "settings.sandboxing.enabled.description":
     "Kør shell-kommandoer for agenten i en sandbox på operativsystemniveau, der begrænser skrivning til projekt- og Kilo-tilstandsmapperne",
 
   "settings.autoApprove.description":
@@ -1865,4 +1868,15 @@ export const dict = {
   "diffViewer.baseBranch.loading": "Loading branches…",
   "diffViewer.baseBranch.none": "—",
   "plan.exit.ready": "Planen er klar:",
+  "chat.search.placeholder": "Søg i chat…",
+  "chat.search.toggle": "Søg i chat",
+  "chat.search.matchCase": "Forskel på store/små bogstaver",
+  "chat.search.matchWholeWord": "Match helt ord",
+  "chat.search.useRegex": "Brug regulært udtryk",
+  "chat.search.previousMatch": "Forrige match",
+  "chat.search.nextMatch": "Næste match",
+  "chat.search.close": "Luk søgning",
+  "chat.search.invalidRegex": "Ugyldigt regulært udtryk",
+  "chat.search.noResults": "Ingen resultater",
+  "chat.search.searchingHistory": "Søger i tidligere beskeder…",
 }

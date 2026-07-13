@@ -174,7 +174,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     const id = session.currentSessionID()
     return id?.startsWith("cloud:") ? undefined : id
   }
-  const sandboxVisible = () => features().sandboxControls && !session.currentSessionID()?.startsWith("cloud:")
+  const sandboxVisible = () =>
+    features().sandboxControls &&
+    globalConfig().sandbox?.enabled === true &&
+    !session.currentSessionID()?.startsWith("cloud:")
   const sandbox = () => {
     const id = sandboxID()
     return id ? sandboxes()[id] : undefined
@@ -183,7 +186,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const sandboxAvailable = () => (sandboxID() ? sandbox()?.available : sandboxDefault()?.available) ?? false
   const sandboxReason = () => (sandboxID() ? sandbox()?.reason : sandboxDefault()?.reason)
   const sandboxReady = () => (sandboxID() ? sandbox() !== undefined : sandboxDefault() !== undefined)
-  const sandboxNetworkEnabled = () => config().experimental?.sandbox_restrict_network !== false
+  const sandboxNetworkEnabled = () => config().sandbox?.network !== "allow"
   const sandboxRequest = (sessionID?: string) => sandboxRequests()[sessionID ?? ""]
   const sandboxDisabled = () =>
     !server.isConnected() || !sandboxReady() || !sandboxAvailable() || sandboxRequest(sandboxID()) !== undefined
@@ -698,6 +701,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         setEnhancing(false)
       }
     }
+
+    if (message.type === "filePickerResult") {
+      mention.insertFilePickerResult(message.path, message.requestId)
+    }
   })
   vscode.postMessage({ type: "requestAutoApproveState" })
 
@@ -1113,40 +1120,51 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           >
             <For each={mention.mentionResults()}>
               {(item, index) => (
-                <div
-                  class="file-mention-item"
-                  classList={{ "file-mention-item--active": index() === mention.mentionIndex() }}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    if (textareaRef) mention.selectMention(item, textareaRef, setText, adjustHeight)
-                  }}
-                  onMouseEnter={() => mention.setMentionIndex(index())}
-                >
-                  {item.type === "terminal" ? (
-                    <>
-                      <Icon name="console" class="file-mention-icon" />
-                      <span class="file-mention-name">{item.label}</span>
-                      <span class="file-mention-dir">{item.description}</span>
-                    </>
-                  ) : item.type === "git-changes" ? (
-                    <>
-                      <Icon name="branch" class="file-mention-icon" />
-                      <span class="file-mention-name">{item.label}</span>
-                      <span class="file-mention-dir">{item.description}</span>
-                    </>
-                  ) : (
-                    <>
-                      <FileIcon
-                        node={{ path: item.value, type: item.type === "folder" ? "directory" : "file" }}
-                        class="file-mention-icon"
-                      />
-                      <span class="file-mention-name">
-                        {item.type === "folder" ? `${fileName(item.value)}/` : fileName(item.value)}
-                      </span>
-                      <span class="file-mention-dir">{dirName(item.value)}</span>
-                    </>
-                  )}
-                </div>
+                <>
+                  <div
+                    class="file-mention-item"
+                    classList={{ "file-mention-item--active": index() === mention.mentionIndex() }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      if (textareaRef) mention.selectMention(item, textareaRef, setText, adjustHeight)
+                    }}
+                    onMouseEnter={() => mention.setMentionIndex(index())}
+                  >
+                    {item.type === "terminal" ? (
+                      <>
+                        <Icon name="console" class="file-mention-icon" />
+                        <span class="file-mention-name">{item.label}</span>
+                        <span class="file-mention-dir">{item.description}</span>
+                      </>
+                    ) : item.type === "git-changes" ? (
+                      <>
+                        <Icon name="branch" class="file-mention-icon" />
+                        <span class="file-mention-name">{item.label}</span>
+                        <span class="file-mention-dir">{item.description}</span>
+                      </>
+                    ) : item.type === "file-picker" ? (
+                      <>
+                        <Icon name="folder" class="file-mention-icon" />
+                        <span class="file-mention-name">{item.label}</span>
+                        <span class="file-mention-dir">{item.description}</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileIcon
+                          node={{ path: item.value, type: item.type === "folder" ? "directory" : "file" }}
+                          class="file-mention-icon"
+                        />
+                        <span class="file-mention-name">
+                          {item.type === "folder" ? `${fileName(item.value)}/` : fileName(item.value)}
+                        </span>
+                        <span class="file-mention-dir">{dirName(item.value)}</span>
+                      </>
+                    )}
+                  </div>
+                  <Show when={item.type === "file-picker" && index() < mention.mentionResults().length - 1}>
+                    <div class="file-mention-separator" />
+                  </Show>
+                </>
               )}
             </For>
           </Show>

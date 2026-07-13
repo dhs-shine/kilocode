@@ -136,7 +136,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} повідомлень скасовано",
   "revert.banner.redo": "Повторити",
   "revert.banner.redo.all": "Повторити все",
-  "revert.banner.hint": "Надішліть нове повідомлення, щоб зробити це постійним",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Зачекайте завершення агента",
   "command.session.compact": "Стиснути сесію",
   "command.session.compact.description": "Підсумувати сесію для зменшення розміру контексту",
@@ -635,7 +635,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Пошук Grep",
   "ui.permission.toolLabel.webSearch": "Веб-пошук",
   "ui.permission.toolLabel.list": "Список",
-  "ui.permission.toolLabel.externalDirectory": "Читати зовнішню директорію",
+  "ui.permission.toolLabel.externalDirectory": "Надати доступ до зовнішньої папки",
   "ui.permission.toolLabel.webFetch": "Веб-запит",
   "ui.permission.toolLabel.task": "Завдання",
   "ui.permission.toolLabel.skill": "Навичка",
@@ -1438,14 +1438,17 @@ export const dict = {
   "settings.sandboxing.title": "Пісочниця",
   "settings.sandboxing.network.title": "Обмежити доступ до мережі",
   "settings.sandboxing.network.description":
-    "Блокуйте вихідний доступ до мережі для команд, ініційованих моделлю, та HTTP-інструментів. Локальні MCP-сервери й хуки плагінів працюють поза цим обмеженням. Трафік провайдерів та інференсу моделей залишається доступним.",
+    "Блокуйте прямий вихідний доступ із команд, ініційованих моделлю, та інструментів HTTP. Локальні й віддалені інструменти MCP недоступні, коли обмеження активне. Трафік постачальника та довірені хуки плагінів не підпадають під це обмеження.",
 
+  "settings.sandboxing.allowedHosts.title": "Дозволені мережеві адреси",
+  "settings.sandboxing.allowedHosts.description":
+    "DNS-вузли та порти призначення для ізольованого proxy-трафіку HTTP і HTTPS. GitHub CLI та HTTPS Git зазвичай потребують github.com:443 і api.github.com:443. Зміни застосовуються до нових сеансів.",
   "settings.sandboxing.writablePaths.title": "Додаткові шляхи для запису",
   "settings.sandboxing.writablePaths.description":
     "Додаткові шляхи файлової системи, у які дозволено запис у пісочниці (наприклад, /tmp, /var/log). Вони об'єднуються зі шляхами запису за замовчуванням, коли пісочниця активна.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "Увімкнути SWE-Pruner: обрізання великих виводів інструментів читання та пошуку на основі фокус-питання агента",
+    "Увімкнути SWE-Pruner: обрізання з урахуванням завдання великих виводів інструментів читання, пошуку та оболонки, кероване фокус-питанням, наданим агентом",
   "settings.experimental.swePrunerModel.title": "Модель SWE-Pruner",
   "settings.experimental.swePrunerModel.description":
     "Модель для обрізання виводу інструментів; за замовчуванням — налаштована мала модель",
@@ -1460,8 +1463,8 @@ export const dict = {
   "settings.experimental.remote.inactive": "Неактивний",
   "settings.experimental.remote.hint": "Використовуйте /remote у чаті для перемикання",
   "settings.experimental.toolToggles": "Перемикачі інструментів",
-  "settings.experimental.sandbox.title": "Пісочниця",
-  "settings.experimental.sandbox.description":
+  "settings.sandboxing.enabled.title": "Пісочниця",
+  "settings.sandboxing.enabled.description":
     "Виконувати команди оболонки агента в пісочниці на рівні ОС, яка обмежує запис до каталогів стану проєкту та Kilo",
 
   "settings.agentBehaviour.defaultAgent.title": "Агент за замовчуванням",
@@ -1884,4 +1887,15 @@ export const dict = {
   "diffViewer.baseBranch.loading": "Loading branches…",
   "diffViewer.baseBranch.none": "—",
   "plan.exit.ready": "План готовий:",
+  "chat.search.placeholder": "Пошук у чаті…",
+  "chat.search.toggle": "Пошук у чаті",
+  "chat.search.matchCase": "Враховувати регістр",
+  "chat.search.matchWholeWord": "Слово цілком",
+  "chat.search.useRegex": "Використовувати регулярний вираз",
+  "chat.search.previousMatch": "Попередній збіг",
+  "chat.search.nextMatch": "Наступний збіг",
+  "chat.search.close": "Закрити пошук",
+  "chat.search.invalidRegex": "Недійсний регулярний вираз",
+  "chat.search.noResults": "Немає результатів",
+  "chat.search.searchingHistory": "Пошук у попередніх повідомленнях…",
 }

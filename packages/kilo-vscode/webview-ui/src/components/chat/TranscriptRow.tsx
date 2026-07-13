@@ -20,6 +20,7 @@ interface TranscriptRowViewProps {
   onForkMessage?: (sessionId: string, messageId: string) => void
   /** Part behind the currently hovered/focused task-timeline bar, if any. */
   highlight?: () => TimelineHighlight | undefined
+  activeSearch?: boolean
 }
 
 export const TranscriptRowView: Component<TranscriptRowViewProps> = (props) => {
@@ -43,6 +44,7 @@ export const TranscriptRowView: Component<TranscriptRowViewProps> = (props) => {
       data-row-index={props.index}
       data-turn={props.row.turn}
       data-live={props.row.live ? "" : undefined}
+      data-search-active={props.activeSearch ? "" : undefined}
     >
       <Show when={props.row.type === "user" ? props.row : undefined}>
         {(row) => (

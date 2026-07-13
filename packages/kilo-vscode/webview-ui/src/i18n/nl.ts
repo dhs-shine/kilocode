@@ -136,7 +136,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} berichten teruggedraaid",
   "revert.banner.redo": "Opnieuw uitvoeren",
   "revert.banner.redo.all": "Alles opnieuw uitvoeren",
-  "revert.banner.hint": "Stuur een nieuw bericht om dit definitief te maken",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Wacht tot de agent klaar is",
   "command.session.compact": "Sessie comprimeren",
   "command.session.compact.description": "De sessie samenvatten om de contextgrootte te verkleinen",
@@ -636,7 +636,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Grep Zoeken",
   "ui.permission.toolLabel.webSearch": "Web Zoeken",
   "ui.permission.toolLabel.list": "Lijst",
-  "ui.permission.toolLabel.externalDirectory": "Externe map lezen",
+  "ui.permission.toolLabel.externalDirectory": "Externe map openen",
   "ui.permission.toolLabel.webFetch": "Web Ophalen",
   "ui.permission.toolLabel.task": "Taak",
   "ui.permission.toolLabel.skill": "Vaardigheid",
@@ -1450,14 +1450,17 @@ export const dict = {
   "settings.sandboxing.title": "Sandbox",
   "settings.sandboxing.network.title": "Netwerktoegang beperken",
   "settings.sandboxing.network.description":
-    "Blokkeer uitgaande netwerktoegang voor door het model geïnitieerde opdrachten en HTTP-tools. Lokale MCP-servers en plugin-hooks vallen buiten deze beperking. Netwerkverkeer voor providers en modelinferentie blijft beschikbaar.",
+    "Blokkeer directe uitgaande toegang vanuit opdrachten die door het model zijn geïnitieerd en HTTP-hulpprogramma's. Lokale en externe MCP-hulpprogramma's zijn niet beschikbaar zolang deze beperking actief is. Verkeer van providers en hooks van vertrouwde plug-ins vallen buiten deze beperking.",
 
+  "settings.sandboxing.allowedHosts.title": "Toegestane netwerkbestemmingen",
+  "settings.sandboxing.allowedHosts.description":
+    "DNS-host- en poortbestemmingen voor HTTP- en HTTPS-proxyverkeer in een sandbox. GitHub CLI en HTTPS Git hebben doorgaans github.com:443 en api.github.com:443 nodig. Wijzigingen gelden voor nieuwe sessies.",
   "settings.sandboxing.writablePaths.title": "Extra schrijfbare paden",
   "settings.sandboxing.writablePaths.description":
     "Extra bestandssysteempaden waar de sandbox schrijftoestemming voor geeft (bijv. /tmp, /var/log). Deze worden samengevoegd met de standaard schrijfbare paden wanneer de sandbox actief is.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "SWE-Pruner inschakelen: taakgericht snoeien van grote lees- en zoekuitvoer, gestuurd door een focusvraag van de agent",
+    "SWE-Pruner inschakelen: taakgericht snoeien van grote uitvoer van lees-, zoek- en shelltools, gestuurd door een focusvraag van de agent",
   "settings.experimental.swePrunerModel.title": "SWE-Pruner-model",
   "settings.experimental.swePrunerModel.description":
     "Model dat wordt gebruikt om tooluitvoer te snoeien; standaard het geconfigureerde kleine model",
@@ -1472,8 +1475,8 @@ export const dict = {
   "settings.experimental.remote.inactive": "Inactief",
   "settings.experimental.remote.hint": "Gebruik /remote in de chat om te schakelen",
   "settings.experimental.toolToggles": "Tool Schakelaars",
-  "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description":
+  "settings.sandboxing.enabled.title": "Sandbox",
+  "settings.sandboxing.enabled.description":
     "Shell-opdrachten van de agent uitvoeren in een sandbox op besturingssysteemniveau die schrijfbewerkingen beperkt tot de project- en Kilo-statusmappen",
 
   "settings.agentBehaviour.defaultAgent.title": "Standaard Agent",
@@ -1900,4 +1903,15 @@ export const dict = {
   "diffViewer.baseBranch.loading": "Loading branches…",
   "diffViewer.baseBranch.none": "—",
   "plan.exit.ready": "Plan is klaar:",
+  "chat.search.placeholder": "Chat doorzoeken…",
+  "chat.search.toggle": "Chat doorzoeken",
+  "chat.search.matchCase": "Hoofdlettergevoelig",
+  "chat.search.matchWholeWord": "Heel woord",
+  "chat.search.useRegex": "Reguliere expressie gebruiken",
+  "chat.search.previousMatch": "Vorige overeenkomst",
+  "chat.search.nextMatch": "Volgende overeenkomst",
+  "chat.search.close": "Zoeken sluiten",
+  "chat.search.invalidRegex": "Ongeldige reguliere expressie",
+  "chat.search.noResults": "Geen resultaten",
+  "chat.search.searchingHistory": "Eerdere berichten doorzoeken…",
 }

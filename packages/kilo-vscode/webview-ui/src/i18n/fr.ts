@@ -137,7 +137,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} messages annulés",
   "revert.banner.redo": "Rétablir",
   "revert.banner.redo.all": "Tout rétablir",
-  "revert.banner.hint": "Envoyez un nouveau message pour rendre ceci permanent",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Attendre la fin de l'agent",
   "command.session.compact": "Compacter la session",
   "command.session.compact.description": "Résumer la session pour réduire la taille du contexte",
@@ -641,7 +641,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Recherche Grep",
   "ui.permission.toolLabel.webSearch": "Recherche Web",
   "ui.permission.toolLabel.list": "Lister",
-  "ui.permission.toolLabel.externalDirectory": "Lire répertoire externe",
+  "ui.permission.toolLabel.externalDirectory": "Accéder au répertoire externe",
   "ui.permission.toolLabel.webFetch": "Récupération Web",
   "ui.permission.toolLabel.task": "Tâche",
   "ui.permission.toolLabel.skill": "Compétence",
@@ -1480,14 +1480,17 @@ export const dict = {
   "settings.sandboxing.title": "Mise en bac à sable",
   "settings.sandboxing.network.title": "Restreindre l'accès au réseau",
   "settings.sandboxing.network.description":
-    "Bloquer l'accès réseau sortant des commandes provenant du modèle et des outils HTTP. Les serveurs MCP locaux et les hooks de plugin ne sont pas soumis à cette restriction. Le trafic d'inférence des fournisseurs et des modèles reste disponible.",
+    "Bloque l’accès sortant direct des commandes lancées par le modèle et des outils HTTP. Les outils MCP locaux et distants ne sont pas disponibles tant que la restriction s’applique. Le trafic du fournisseur et les hooks de plugins approuvés restent en dehors de cette restriction.",
 
+  "settings.sandboxing.allowedHosts.title": "Destinations réseau autorisées",
+  "settings.sandboxing.allowedHosts.description":
+    "Destinations d’hôte et de port DNS pour le trafic proxy HTTP et HTTPS isolé. GitHub CLI et HTTPS Git nécessitent généralement github.com:443 et api.github.com:443. Les modifications s’appliquent aux nouvelles sessions.",
   "settings.sandboxing.writablePaths.title": "Chemins en écriture supplémentaires",
   "settings.sandboxing.writablePaths.description":
     "Chemins système supplémentaires autorisés en écriture par le bac à sable (par ex. /tmp, /var/log). Ils sont fusionnés avec les chemins en écriture par défaut lorsque le bac à sable est actif.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "Activer SWE-Pruner : élagage des sorties volumineuses des outils de lecture et de recherche, guidé par une question de focus fournie par l'agent",
+    "Activer SWE-Pruner : élagage des sorties volumineuses des outils de lecture, de recherche et de shell, tenant compte de la tâche et guidé par une question de focalisation fournie par l’agent",
   "settings.experimental.swePrunerModel.title": "Modèle SWE-Pruner",
   "settings.experimental.swePrunerModel.description":
     "Modèle utilisé pour élaguer les sorties d'outils ; par défaut, le small model configuré",
@@ -1628,8 +1631,8 @@ export const dict = {
     "Aucune commande personnalisée configurée. Ajoutez des commandes à opencode.json pour les voir ici.",
   "settings.agentBehaviour.workflows.detail.description": "Description",
   "settings.agentBehaviour.workflows.detail.template": "Modèle",
-  "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description":
+  "settings.sandboxing.enabled.title": "Sandbox",
+  "settings.sandboxing.enabled.description":
     "Exécuter les commandes shell de l'agent dans un sandbox au niveau du système d'exploitation qui restreint les écritures aux répertoires d'état du projet et de Kilo",
 
   "settings.autoApprove.description":
@@ -1913,4 +1916,15 @@ export const dict = {
   "diffViewer.baseBranch.loading": "Chargement des branches…",
   "diffViewer.baseBranch.none": "—",
   "plan.exit.ready": "Le plan est prêt :",
+  "chat.search.placeholder": "Rechercher dans la conversation…",
+  "chat.search.toggle": "Rechercher dans la conversation",
+  "chat.search.matchCase": "Respecter la casse",
+  "chat.search.matchWholeWord": "Mot entier",
+  "chat.search.useRegex": "Utiliser une expression régulière",
+  "chat.search.previousMatch": "Résultat précédent",
+  "chat.search.nextMatch": "Résultat suivant",
+  "chat.search.close": "Fermer la recherche",
+  "chat.search.invalidRegex": "Expression régulière non valide",
+  "chat.search.noResults": "Aucun résultat",
+  "chat.search.searchingHistory": "Recherche dans les messages précédents…",
 }

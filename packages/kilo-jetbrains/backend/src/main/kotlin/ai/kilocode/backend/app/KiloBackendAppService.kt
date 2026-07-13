@@ -155,24 +155,47 @@ class KiloBackendAppService private constructor(
     }
 
     suspend fun restart() {
+        log.info("restart: requested — waiting for lifecycle mutex")
         mutex.withLock {
-            clear()
-            connection.restart()
+            log.info("restart: acquired lifecycle mutex")
+            try {
+                clear()
+                connection.restart()
+                log.info("restart: complete")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.warn("restart: failed", e)
+                throw e
+            }
         }
     }
 
     suspend fun reinstall() {
+        log.info("reinstall: requested — waiting for lifecycle mutex")
         mutex.withLock {
-            clear()
-            connection.reinstall()
+            log.info("reinstall: acquired lifecycle mutex")
+            try {
+                clear()
+                connection.reinstall()
+                log.info("reinstall: complete")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.warn("reinstall: failed", e)
+                throw e
+            }
         }
     }
 
-    suspend fun shutdownForUnload() {
-        mutex.withLock {
-            shutdown()
-        }
-    }
+    /**
+     * Synchronous CLI teardown for plugin unload. Confirms process exit but does not wait on the
+     * lifecycle mutex, so an in-flight download/spawn cannot delay unload. Safe to call repeatedly.
+     */
+    fun shutdownForUnload() = shutdown(fast = false)
+
+    /** Best-effort CLI teardown for IDE app close. Non-blocking; safe to call repeatedly. */
+    fun shutdownForAppClose() = shutdown(fast = true)
 
     suspend fun retry() {
         mutex.withLock {
@@ -906,17 +929,17 @@ class KiloBackendAppService private constructor(
     }
 
     override fun dispose() {
-        shutdown()
+        shutdown(fast = false)
     }
 
-    private fun shutdown() {
+    private fun shutdown(fast: Boolean) {
         if (closed) return
         closed = true
         watcher?.cancel()
         watcher = null
         clearNow()
         connection.dispose()
-        server.dispose()
+        if (fast) server.closeForShutdown() else server.dispose()
     }
 }
 

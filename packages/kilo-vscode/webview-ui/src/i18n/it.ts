@@ -130,7 +130,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} messaggi ripristinati",
   "revert.banner.redo": "Ripeti",
   "revert.banner.redo.all": "Ripeti tutto",
-  "revert.banner.hint": "Invia un nuovo messaggio per rendere permanente questa modifica",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Attendi che l'agente finisca",
   "command.session.compact": "Compatta sessione",
   "command.session.compact.description": "Riassumi la sessione per ridurre la dimensione del contesto",
@@ -509,7 +509,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Ricerca grep",
   "ui.permission.toolLabel.webSearch": "Ricerca web",
   "ui.permission.toolLabel.list": "Elenco",
-  "ui.permission.toolLabel.externalDirectory": "Leggi directory esterna",
+  "ui.permission.toolLabel.externalDirectory": "Accedi alla directory esterna",
   "ui.permission.toolLabel.webFetch": "Recupero web",
   "ui.permission.toolLabel.task": "Task",
   "ui.permission.toolLabel.skill": "Skill",
@@ -1237,14 +1237,17 @@ export const dict = {
   "settings.sandboxing.title": "Sandbox",
   "settings.sandboxing.network.title": "Limita l'accesso alla rete",
   "settings.sandboxing.network.description":
-    "Blocca l'accesso in uscita alla rete per i comandi avviati dal modello e gli strumenti HTTP. I server MCP locali e gli hook dei plugin operano al di fuori di questa restrizione. Il traffico verso i provider e per l'inferenza dei modelli rimane disponibile.",
+    "Blocca l'accesso in uscita diretto dai comandi avviati dal modello e dagli strumenti HTTP. Gli strumenti MCP locali e remoti non sono disponibili mentre la restrizione è attiva. Il traffico del provider e gli hook dei plugin attendibili restano al di fuori di questa restrizione.",
 
+  "settings.sandboxing.allowedHosts.title": "Destinazioni di rete consentite",
+  "settings.sandboxing.allowedHosts.description":
+    "Destinazioni DNS di host e porta per il traffico proxy HTTP e HTTPS in sandbox. GitHub CLI e HTTPS Git richiedono comunemente github.com:443 e api.github.com:443. Le modifiche si applicano alle nuove sessioni.",
   "settings.sandboxing.writablePaths.title": "Percorsi di scrittura aggiuntivi",
   "settings.sandboxing.writablePaths.description":
     "Percorsi aggiuntivi del file system in cui la sandbox consente la scrittura (es. /tmp, /var/log). Vengono uniti con i percorsi di scrittura predefiniti quando la sandbox è attiva.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "Abilita SWE-Pruner: potatura delle uscite di grandi dimensioni degli strumenti di lettura e ricerca, guidata da una domanda di focus dell'agente",
+    "Abilita SWE-Pruner: potatura degli output di grandi dimensioni degli strumenti di lettura, ricerca e shell, che tiene conto del compito ed è guidata da una domanda di focalizzazione fornita dall'agente",
   "settings.experimental.swePrunerModel.title": "Modello SWE-Pruner",
   "settings.experimental.swePrunerModel.description":
     "Modello usato per potare le uscite degli strumenti; per impostazione predefinita, il modello piccolo configurato",
@@ -1306,8 +1309,8 @@ export const dict = {
     "Fai clic per limitare le scritture nel file system e l'accesso alla rete.",
   "prompt.action.sandbox.description.disabledNetworkAllowed":
     "Fai clic per limitare le scritture nel file system. L'accesso alla rete resta consentito dalle impostazioni della sandbox.",
-  "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description":
+  "settings.sandboxing.enabled.title": "Sandbox",
+  "settings.sandboxing.enabled.description":
     "Esegui i comandi shell dell'agente all'interno di un sandbox a livello di sistema operativo che limita le scritture alle directory di stato del progetto e di Kilo",
 
   "settings.agentBehaviour.skillPaths": "Percorsi cartelle skill",
@@ -1798,4 +1801,15 @@ export const dict = {
   "speechToText.error.emptyTranscript": "Nessun parlato rilevato.",
   "speechToText.error.encoding": "Impossibile codificare la registrazione.",
   "speechToText.toast.transcribed": "Trascrizione inserita",
+  "chat.search.placeholder": "Cerca nella chat…",
+  "chat.search.toggle": "Cerca nella chat",
+  "chat.search.matchCase": "Maiuscole/minuscole",
+  "chat.search.matchWholeWord": "Parola intera",
+  "chat.search.useRegex": "Usa espressione regolare",
+  "chat.search.previousMatch": "Risultato precedente",
+  "chat.search.nextMatch": "Risultato successivo",
+  "chat.search.close": "Chiudi ricerca",
+  "chat.search.invalidRegex": "Espressione regolare non valida",
+  "chat.search.noResults": "Nessun risultato",
+  "chat.search.searchingHistory": "Ricerca nei messaggi precedenti…",
 } as const

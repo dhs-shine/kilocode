@@ -136,7 +136,7 @@ export const dict = {
   "revert.banner.count_other": "{{count}} mesaj geri alındı",
   "revert.banner.redo": "Yinele",
   "revert.banner.redo.all": "Tümünü Yinele",
-  "revert.banner.hint": "Bunu kalıcı yapmak için yeni bir mesaj gönderin",
+  "revert.banner.hint": "You can redo these changes until you send a new message",
   "revert.disabled.agentBusy": "Ajanın bitmesini bekleyin",
   "command.session.compact": "Oturumu sıkıştır",
   "command.session.compact.description": "Bağlam boyutunu azaltmak için oturumu özetle",
@@ -633,7 +633,7 @@ export const dict = {
   "ui.permission.toolLabel.grepSearch": "Grep Araması",
   "ui.permission.toolLabel.webSearch": "Web Araması",
   "ui.permission.toolLabel.list": "Listele",
-  "ui.permission.toolLabel.externalDirectory": "Harici Dizin Oku",
+  "ui.permission.toolLabel.externalDirectory": "Harici Dizine Eriş",
   "ui.permission.toolLabel.webFetch": "Web Getir",
   "ui.permission.toolLabel.task": "Görev",
   "ui.permission.toolLabel.skill": "Beceri",
@@ -1440,14 +1440,17 @@ export const dict = {
   "settings.sandboxing.title": "Sandbox",
   "settings.sandboxing.network.title": "Ağ Erişimini Kısıtla",
   "settings.sandboxing.network.description":
-    "Model tarafından başlatılan komutların ve HTTP araçlarının giden ağ erişimini engelleyin. Yerel MCP sunucuları ve eklenti kancaları bu kısıtlamanın dışında çalışır. Sağlayıcı ve model çıkarım trafiği kullanılabilir durumda kalır.",
+    "Model kaynaklı komutlar ve HTTP araçlarından doğrudan dışa yönelik erişimi engelleyin. Yerel ve uzak MCP araçları, kısıtlama etkin durumdayken kullanılamaz. Sağlayıcı trafiği ve güvenilir eklenti kancaları bu kısıtlamanın dışında kalır.",
 
+  "settings.sandboxing.allowedHosts.title": "İzin Verilen Ağ Hedefleri",
+  "settings.sandboxing.allowedHosts.description":
+    "Korumalı alana alınmış HTTP ve HTTPS proxy trafiği için DNS ana bilgisayar ve bağlantı noktası hedefleri. GitHub CLI ve HTTPS Git genellikle github.com:443 ve api.github.com:443 gerektirir. Değişiklikler yeni oturumlara uygulanır.",
   "settings.sandboxing.writablePaths.title": "Ek Yazılabilir Yollar",
   "settings.sandboxing.writablePaths.description":
     "Sandığın yazılmasına izin veren ek dosya sistemi yolları (ör. /tmp, /var/log). Sandık etkinken varsayılan yazılabilir yollarla birleştirilir.",
   "settings.experimental.swePruner.title": "SWE-Pruner",
   "settings.experimental.swePruner.description":
-    "SWE-Pruner'ı etkinleştir: ajanın odak sorusuna göre büyük okuma ve arama araç çıktılarının budanması",
+    "SWE-Pruner'ı etkinleştir: ajan tarafından sağlanan bir odak sorusunun yönlendirmesiyle okuma, arama ve kabuk araçlarının büyük çıktılarının göreve duyarlı olarak budanması",
   "settings.experimental.swePrunerModel.title": "SWE-Pruner Modeli",
   "settings.experimental.swePrunerModel.description":
     "Araç çıktılarını budamak için kullanılan model; varsayılan olarak yapılandırılmış küçük model",
@@ -1462,8 +1465,8 @@ export const dict = {
   "settings.experimental.remote.inactive": "Pasif",
   "settings.experimental.remote.hint": "Geçiş yapmak için sohbette /remote kullanın",
   "settings.experimental.toolToggles": "Araç Açma/Kapatma",
-  "settings.experimental.sandbox.title": "Sandbox",
-  "settings.experimental.sandbox.description":
+  "settings.sandboxing.enabled.title": "Sandbox",
+  "settings.sandboxing.enabled.description":
     "Agent shell komutlarını, proje ve Kilo durum dizinlerine yazmaları kısıtlanan işletim sistemi düzeyinde bir sandbox içinde çalıştırın",
 
   "settings.agentBehaviour.defaultAgent.title": "Varsayılan Ajan",
@@ -1887,4 +1890,15 @@ export const dict = {
   "diffViewer.baseBranch.loading": "Loading branches…",
   "diffViewer.baseBranch.none": "—",
   "plan.exit.ready": "Plan hazır:",
+  "chat.search.placeholder": "Sohbette ara…",
+  "chat.search.toggle": "Sohbette ara",
+  "chat.search.matchCase": "Büyük/küçük harf eşleştir",
+  "chat.search.matchWholeWord": "Tam sözcük eşleştir",
+  "chat.search.useRegex": "Normal ifade kullan",
+  "chat.search.previousMatch": "Önceki eşleşme",
+  "chat.search.nextMatch": "Sonraki eşleşme",
+  "chat.search.close": "Aramayı kapat",
+  "chat.search.invalidRegex": "Geçersiz normal ifade",
+  "chat.search.noResults": "Sonuç yok",
+  "chat.search.searchingHistory": "Önceki mesajlarda aranıyor…",
 }
