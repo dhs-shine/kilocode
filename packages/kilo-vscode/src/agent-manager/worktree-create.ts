@@ -52,7 +52,9 @@ export async function createWorktreeOnDisk(
   ctx.postToWebview({ type: "agentManager.worktreeSetup", status: "creating", message: "Creating git worktree..." })
 
   // Resolve effective base branch using configured default
-  const effectiveBase = opts?.existingBranch ? undefined : await resolveBaseBranch(ctx, manager, state, opts?.baseBranch)
+  const effectiveBase = opts?.existingBranch
+    ? undefined
+    : await resolveBaseBranch(ctx, manager, state, opts?.baseBranch)
 
   let result: CreateWorktreeResult
   try {
@@ -119,7 +121,11 @@ async function resolveBaseBranch(
 }
 
 /** Reset a stale default base branch and notify the webview. */
-function clearStaleDefaultBaseBranch(ctx: CreateWorktreeOnDiskContext, state: WorktreeStateManager, stale: string): void {
+function clearStaleDefaultBaseBranch(
+  ctx: CreateWorktreeOnDiskContext,
+  state: WorktreeStateManager,
+  stale: string,
+): void {
   ctx.log(`Default base branch "${stale}" no longer exists, clearing`)
   state.setDefaultBaseBranch(undefined)
   ctx.pushState()

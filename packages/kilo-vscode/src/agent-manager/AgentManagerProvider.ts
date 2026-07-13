@@ -29,7 +29,11 @@ import { forkSession } from "./fork-session"
 import { continueInWorktree } from "./continue-in-worktree"
 import { WorktreeDiffController } from "./worktree-diff-controller"
 import { WorktreeImporter } from "./worktree-importer"
-import { createWorktreeOnDisk, type CreateWorktreeOnDiskOptions, type CreateWorktreeOnDiskResult } from "./worktree-create"
+import {
+  createWorktreeOnDisk,
+  type CreateWorktreeOnDiskOptions,
+  type CreateWorktreeOnDiskResult,
+} from "./worktree-create"
 import { recordPromotionHandoff } from "./promotion-handoff"
 import { restoreWorktrees } from "./state-recovery"
 import { createLocalDiff, diffSummary as localDiffSummary } from "./local-diff"
@@ -731,9 +735,7 @@ export class AgentManagerProvider implements Disposable {
   // ---------------------------------------------------------------------------
 
   /** Create a git worktree on disk and register it in state. Returns null on failure. */
-  private async createWorktreeOnDisk(
-    opts?: CreateWorktreeOnDiskOptions,
-  ): Promise<CreateWorktreeOnDiskResult | null> {
+  private async createWorktreeOnDisk(opts?: CreateWorktreeOnDiskOptions): Promise<CreateWorktreeOnDiskResult | null> {
     return createWorktreeOnDisk(
       {
         getWorktreeManager: () => this.getWorktreeManager(),
