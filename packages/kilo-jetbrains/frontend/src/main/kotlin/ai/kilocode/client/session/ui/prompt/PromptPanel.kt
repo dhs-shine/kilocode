@@ -116,7 +116,7 @@ class PromptPanel(
     companion object {
         private val LOG = KiloLog.create(PromptPanel::class.java)
         private val SEND_ICON: Icon = IconLoader.getIcon("/icons/send.svg", PromptPanel::class.java)
-        private val STOP_ICON: Icon = IconLoader.getIcon("/icons/stop.svg", PromptPanel::class.java)
+        private val STOP_ICON: Icon = AllIcons.Actions.Suspend
         private val SHIELD_ICON: Icon = IconLoader.getIcon("/icons/shield.svg", PromptPanel::class.java)
         private val SHIELD_FILLED_ICON: Icon = IconLoader.getIcon("/icons/shield-filled.svg", PromptPanel::class.java)
         private val WAND_ICON: Icon = IconLoader.getIcon("/icons/wand-sparkles.svg", PromptPanel::class.java)

@@ -1001,7 +1001,13 @@ class PromptPanelTest : BasePlatformTestCase() {
         panel.setBusy(true)
 
         assertEquals("Stop", panel.buttonForTest().toolTipText)
+        assertSame(AllIcons.Actions.Suspend, panel.buttonForTest().icon)
         assertTrue(panel.isStopEnabled)
+    }
+
+    fun `test send icon matches scroll button theme colors`() {
+        assertTrue(resource("/icons/send.svg").contains("fill=\"#0066B8\""))
+        assertTrue(resource("/icons/send_dark.svg").contains("fill=\"#0A7BD8\""))
     }
 
     fun `test busy disables send button`() {
@@ -1377,6 +1383,11 @@ class PromptPanelTest : BasePlatformTestCase() {
             PasteAction.TRANSFERABLE_PROVIDER.name -> Producer { item }
             else -> null
         }
+    }
+
+    private fun resource(path: String): String {
+        val stream = PromptPanel::class.java.getResourceAsStream(path) ?: error("missing resource $path")
+        return stream.use { it.readBytes().decodeToString() }
     }
 
     private class FileListTransferable(private val files: List<File>) : Transferable {
