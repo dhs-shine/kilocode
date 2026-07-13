@@ -1460,12 +1460,16 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private handleLegacyMigrationMessage(message: { type: string }): boolean {
     switch (message.type) {
       case "requestMigrationData": {
-        const msg = message as { source: MigrationSource; operationId: string }
+        const msg = message as unknown as { source: MigrationSource; operationId: string }
         void handleRequestMigrationData(this.migrationCtx, msg.source, msg.operationId)
         break
       }
       case "startMigration": {
-        const msg = message as { source: MigrationSource; operationId: string; selections: MigrationSelections }
+        const msg = message as unknown as {
+          source: MigrationSource
+          operationId: string
+          selections: MigrationSelections
+        }
         void handleStartMigration(this.migrationCtx, msg.source, msg.operationId, msg.selections)
         break
       }
