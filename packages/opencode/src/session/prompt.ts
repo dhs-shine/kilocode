@@ -778,6 +778,7 @@ export const layer = Layer.effect(
           .get(),
       )
       const model = input.model ?? ag.model ?? (yield* currentModel(input.sessionID))
+      // kilocode_change start - retain the source session variant across Agent Manager's model-less fork handoff
       const stored = !input.model && !ag.model ? model : undefined
       const same = ag.model && model.providerID === ag.model.providerID && model.modelID === ag.model.modelID
       const full =
@@ -790,6 +791,7 @@ export const layer = Layer.effect(
         input.variant ??
         (stored && "variant" in stored && typeof stored.variant === "string" ? stored.variant : undefined) ??
         (ag.variant && full?.variants?.[ag.variant] ? ag.variant : undefined)
+      // kilocode_change end
 
       const info: MessageV2.User = {
         id: input.messageID ?? MessageID.ascending(),

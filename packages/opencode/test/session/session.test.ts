@@ -5,7 +5,7 @@ import { GlobalBus, type GlobalEvent } from "../../src/bus/global"
 import * as Log from "@opencode-ai/core/util/log"
 import { MessageV2 } from "../../src/session/message-v2"
 import { MessageID, PartID, type SessionID } from "../../src/session/schema"
-import { ModelID, ProviderID } from "@/provider/schema"
+import { ModelID, ProviderID } from "@/provider/schema" // kilocode_change
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { provideInstance, tmpdirScoped } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
@@ -217,6 +217,7 @@ describe("Session", () => {
     }),
   )
 
+  // kilocode_change start
   it.instance("fork preserves model and variant", () =>
     Effect.gen(function* () {
       const session = yield* SessionNs.Service
@@ -242,4 +243,5 @@ describe("Session", () => {
       expect(forked.model).not.toBe(saved.model)
     }),
   )
+  // kilocode_change end
 })

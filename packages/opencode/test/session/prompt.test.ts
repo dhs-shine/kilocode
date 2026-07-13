@@ -2535,6 +2535,7 @@ it.instance(
 
 // Agent variant
 
+// kilocode_change start - Agent Manager records a model-less synthetic prompt after forking
 noLLMServer.instance(
   "preserves the session variant through a model-less handoff",
   () =>
@@ -2567,6 +2568,7 @@ noLLMServer.instance(
     }),
   { config: cfg },
 )
+// kilocode_change end
 
 noLLMServer.instance(
   "applies agent variant only when using agent model",
