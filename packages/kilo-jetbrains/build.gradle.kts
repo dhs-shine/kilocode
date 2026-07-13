@@ -21,12 +21,10 @@ fun port(value: String): Int {
     return n
 }
 
-fun checked(value: String, production: Boolean): String {
-    val release = Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?$")
-    val snapshot = Regex("^[0-9]+\\.[0-9]+\\.[0-9]+-dev\\.[A-Za-z0-9._-]+\\.[0-9]{8}T[0-9]{6}Z$")
-    if (!production && value == "0.0.0-dev") return value
-    require(release.matches(value) || (!production && snapshot.matches(value))) {
-        "Invalid JetBrains plugin version: $value. Expected x.y.z, x.y.z-rc.n, or dev-only x.y.z-dev.<user>.<timestamp>."
+fun checked(value: String): String {
+    if (value == "0.0.0-dev") return value
+    require(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?$").matches(value)) {
+        "Invalid JetBrains plugin version: $value"
     }
     return value
 }
@@ -88,10 +86,9 @@ val pinned = providers.gradleProperty("kilo.cli.pinned").map { it.trim().toBoole
 val override = providers.gradleProperty("kilo.version").orNull?.trim()?.takeIf { it.isNotEmpty() }
 val prop = providers.gradleProperty("kilo.jetbrains.version").orNull?.trim()?.takeIf { it.isNotEmpty() }
 val tag = gitTag()?.removePrefix("jetbrains/v")
-val ver = override?.let { checked(it, release) } ?: prop?.let { checked(it, release) } ?: if (release) checked(
+val ver = override?.let(::checked) ?: prop?.let(::checked) ?: if (release) checked(
     tag ?: error("Missing JetBrains plugin version. Publish builds must set kilo.jetbrains.version or run from a jetbrains/v<version> tag."),
-    release,
-) else checked(tag ?: "0.0.0-dev", release)
+) else checked(tag ?: "0.0.0-dev")
 
 if (release && !pinned) error(
     "kilo.cli.pinned=false is a dev-only mode and cannot be released. Set kilo.cli.pinned=true before a production/publish build."

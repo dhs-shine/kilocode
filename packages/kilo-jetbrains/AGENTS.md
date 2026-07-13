@@ -230,28 +230,6 @@ For the full release process (resolve version, pin verification, prepare, change
 - **Run split backend**: `./gradlew --no-configuration-cache runIdeBackend` — if it exits shortly after startup, check for an orphaned Java process from a previous backend run and kill it before restarting.
 - **Run in monolithic sandbox**: `./gradlew runIde` — launches sandboxed IntelliJ with the plugin. Does not build or bundle CLI binaries; the backend downloads the pinned release at connect time.
 
-### Dev Snapshot Builds
-
-Use dev snapshots for local installable ZIPs that should never be published. The version must be the current JetBrains plugin version from `gradle.properties`, plus the username and a UTC timestamp: `<current>-dev.<user>.<yyyyMMddTHHmmssZ>`. Do not use `script/build-version.sh` for snapshots because it is for releasable versions only.
-
-Run from `packages/kilo-jetbrains/`:
-
-```bash
-base="$(bun -e 'const text = await Bun.file("gradle.properties").text(); const match = text.match(/^kilo\\.jetbrains\\.version=(.+)$/m); if (!match) throw new Error("Missing kilo.jetbrains.version"); console.log(match[1].trim())')"
-user="$(bun -e 'const raw = process.env.USER || process.env.LOGNAME || "user"; const safe = raw.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, ""); console.log(safe || "user")')"
-stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-version="${base}-dev.${user}.${stamp}"
-
-./gradlew clean buildPlugin -Pkilo.version="$version" -Pkilo.channel=eap
-
-zip="$(pwd)/$(ls -t build/distributions/*.zip | head -n 1)"
-dir="$(dirname "$zip")"
-printf 'JetBrains dev snapshot ZIP: %s\n' "$zip"
-printf 'JetBrains dev snapshot directory: %s\n' "$dir"
-```
-
-If the snapshot must bundle the local repo CLI instead of downloading the pinned CLI release, first set `kilo.cli.pinned=false` and run `./gradlew :backend:buildRepoCli` from `packages/kilo-jetbrains/`; restore `kilo.cli.pinned=true` before any release work.
-
 ### CLI/SDK Change Awareness
 
 - JetBrains runtime behavior normally depends on the downloaded CLI release pinned by `packages/kilo-jetbrains/package.json`; local `packages/opencode/` changes are used only with `kilo.cli.pinned=false` repo CLI mode.
