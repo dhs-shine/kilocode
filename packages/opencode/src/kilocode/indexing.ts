@@ -17,7 +17,7 @@ import { registerDisposer } from "@/effect/instance-registry"
 import { Global } from "@opencode-ai/core/global"
 import * as Log from "@opencode-ai/core/util/log"
 import { NamedError } from "@opencode-ai/core/util/error"
-import type { WorkspaceID } from "@/control-plane/schema"
+import type { WorkspaceV2 } from "@opencode-ai/core/workspace"
 import { WorkspaceContext } from "@/control-plane/workspace-context"
 import { Event as IndexingEvent, Warning as IndexingWarningEvent } from "./indexing-event"
 import { indexingWarningKey, type IndexingWarning } from "./indexing-warning"
@@ -218,7 +218,7 @@ export namespace KiloIndexing {
     initialized?: boolean
     current(): Status
     warnings(): IndexingWarning[]
-    scope(workspace: WorkspaceID | undefined): void
+    scope(workspace: WorkspaceV2.ID | undefined): void
     publish(): Promise<void>
     dispose(): Promise<void>
   }
@@ -289,7 +289,7 @@ export namespace KiloIndexing {
       log.warn("indexing model resolution failed", { err })
       return track(hit, await inert(() => failed(err)))
     }
-    const workspaces = new Set<WorkspaceID | undefined>([WorkspaceContext.workspaceID])
+    const workspaces = new Set<WorkspaceV2.ID | undefined>([WorkspaceContext.workspaceID])
     const box = { status: pending() }
     const warnings = new Map<string, IndexingWarning>()
     const delivery = {
