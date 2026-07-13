@@ -8,11 +8,13 @@ export namespace KiloReference {
     references: Pick<Reference.Interface, "list">
     target: string
   }) {
-    const target = yield* input.fs.realPath(input.target).pipe(Effect.catch(() => Effect.succeed(input.target)))
+    const resolved = yield* input.fs.realPath(input.target).pipe(Effect.catch(() => Effect.succeed(input.target)))
+    const target = AppFileSystem.normalizePath(resolved)
     const refs = yield* input.references.list()
     for (const reference of refs) {
       if (reference.kind !== "git") continue
-      const root = yield* input.fs.realPath(reference.path).pipe(Effect.catch(() => Effect.succeed(reference.path)))
+      const resolved = yield* input.fs.realPath(reference.path).pipe(Effect.catch(() => Effect.succeed(reference.path)))
+      const root = AppFileSystem.normalizePath(resolved)
       if (AppFileSystem.contains(root, target)) return true
     }
     return false
