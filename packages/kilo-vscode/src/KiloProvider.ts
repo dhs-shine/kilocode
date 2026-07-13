@@ -5,7 +5,6 @@ import type {
   Session,
   SessionStatus,
   Event,
-  GlobalEvent,
   TextPartInput,
   FilePartInput,
   Config,
@@ -60,11 +59,13 @@ import { resolveProjectDirectory } from "./project-directory"
 import { seedSessionStatuses } from "./session-status"
 import { normalizeEnhancePromptErrorMessage } from "./enhance-prompt-error"
 import { retry } from "./services/cli-backend/retry"
+import { normalize, type SSEPayload, type SyncPayload, type WirePayload } from "./services/cli-backend/sdk-sse-adapter"
 import { slimInfo, slimPart, slimParts } from "./kilo-provider/slim-metadata"
 import { handleSidebarWorktreeMessage } from "./kilo-provider/sidebar-worktree"
 import { parseMessageFiles, type MessageFile } from "./kilo-provider/message-files"
 import { renameSession } from "./kilo-provider/rename-session"
 import { handleFileSearch } from "./kilo-provider/file-search"
+import { handleFilePicker } from "./kilo-provider/file-picker"
 import { watchFontSizeConfig } from "./kilo-provider/font-size"
 import { getTerminalContents } from "./services/terminal/context"
 import { disposeGitChangesTarget } from "./kilo-provider/git-changes-target"
@@ -110,7 +111,9 @@ import {
   handleSkipLegacyMigration,
   handleClearLegacyData,
   type MigrationContext,
+  type MigrationSource,
 } from "./kilo-provider/handlers/migration"
+import type { MigrationSelections } from "./legacy-migration/legacy-types"
 // legacy-migration end
 import {
   handleLogin,
@@ -208,17 +211,7 @@ const mapAgent = (a: Agent) => ({
 const SESSION_SCOPED_PART_EVENTS = new Set(["message.part.updated", "message.part.delta", "message.part.removed"])
 const isSessionScopedPartEvent = (type: string) => SESSION_SCOPED_PART_EVENTS.has(type)
 
-type SyncPayload = Extract<GlobalEvent["payload"], { type: "sync" }>
-type RawSyncPayload = {
-  type: "sync"
-  syncEvent: {
-    type: SyncPayload["name"]
-    id: string
-    seq: number
-    aggregateID: string
-    data: unknown
-  }
-}
+type RawSyncPayload = Extract<WirePayload, { type: "sync" }>
 type LegacySyncEvent =
   | {
       id: string
@@ -258,13 +251,7 @@ type LegacySyncEvent =
       properties: Extract<SyncPayload, { name: "session.deleted.1" }>["data"]
     }
 
-type FullSessionUpdatedEvent = {
-  id: string
-  type: "session.updated"
-  properties: { sessionID: string; info: Session }
-}
-
-type ProviderEvent = Event | LegacySyncEvent | FullSessionUpdatedEvent
+type ProviderEvent = Event | LegacySyncEvent
 
 function isLegacySyncEvent(event: ProviderEvent): event is LegacySyncEvent {
   if (event.type === "session.updated") return "source" in event && event.source === "sync"
@@ -278,23 +265,9 @@ function isLegacySyncEvent(event: ProviderEvent): event is LegacySyncEvent {
   )
 }
 
-function isFullSessionUpdatedEvent(event: ProviderEvent): event is FullSessionUpdatedEvent {
-  return event.type === "session.updated" && !isLegacySyncEvent(event)
-}
-
-export function unwrapSyncEvent(event: GlobalEvent["payload"] | RawSyncPayload): ProviderEvent | undefined {
+export function unwrapSyncEvent(event: SSEPayload | RawSyncPayload): ProviderEvent | undefined {
   if (event.type !== "sync") return event
-  const payload =
-    "syncEvent" in event
-      ? ({
-          type: "sync",
-          name: event.syncEvent.type,
-          id: event.syncEvent.id,
-          seq: event.syncEvent.seq,
-          aggregateID: event.syncEvent.aggregateID,
-          data: event.syncEvent.data,
-        } as SyncPayload)
-      : event
+  const payload = "syncEvent" in event ? normalize(event) : event
 
   switch (payload.name) {
     case "message.updated.1":
@@ -370,10 +343,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private promptRecoveryQueued = false
   private promptRecovery: Promise<void> | null = null
   private trackedSessionIds: Set<string> = new Set()
+  private readonly openSessionIds = new Set<string>()
   private modelUsageSessionIds: Set<string> = new Set()
   private syncedChildSessions: Set<string> = new Set()
   private readonly checkpoints = new Map<string, Promise<void>>()
   private readonly sessionCreations = new Map<string, Promise<{ sid: string; dir: string }>>()
+  private readonly draftSessions = new Map<string, { sid: string; dir: string; expires: number }>()
   private readonly sandboxTransitions = new Map<string, Promise<void>>()
   private readonly revisions = new Map<string, { id: string; seq: number }>()
   private readonly refreshes = new Map<string, number>()
@@ -610,7 +585,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       connection: this.connectionService,
       post: (msg: { type: "error"; message: string }) => this.postMessage(msg),
       register: (session: Session) => this.registerSession(session),
-      forked: (session: Session) => this.postMessage({ type: "sessionForked", sessionID: session.id }),
+      forked: (session: Session, sourceID: string) =>
+        this.postMessage({ type: "sessionForked", sessionID: session.id, forkedFromID: sourceID }),
       status: (sessionID: string) => this.sessionStatusMap.get(sessionID),
       directory: (sessionID: string) => this.getWorkspaceDirectory(sessionID),
     }
@@ -842,6 +818,24 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     })
   }
 
+  private trackOpenSessions(ids: string[]): void {
+    const next = new Set(ids)
+    for (const id of this.openSessionIds) {
+      if (!next.has(id)) this.trackedSessionIds.delete(id)
+    }
+    this.openSessionIds.clear()
+    for (const id of next) {
+      this.openSessionIds.add(id)
+      this.trackedSessionIds.add(id)
+    }
+    const now = Date.now()
+    for (const [key, session] of this.draftSessions) {
+      if (next.has(session.sid) || session.expires <= now) this.draftSessions.delete(key)
+    }
+    this.connectionService.registerOpen(this.instanceId, ids)
+    this.recoverPendingPrompts()
+  }
+
   private async flushPendingPrompts(): Promise<void> {
     while (this.promptRecoveryQueued && this.isWebviewReady) {
       if (!this.client) return
@@ -911,6 +905,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           dir: this.getWorkspaceDirectory(this.currentSession?.id),
           post: (msg) => this.postMessage(msg),
           exportTranscript: (sessionID) => this.handleExportSessionTranscript(sessionID),
+          openSessions: (ids) => this.trackOpenSessions(ids),
         })
       ) {
         return
@@ -944,6 +939,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       if (await this.handleModelSelectorExpandedMessage(message)) return
       this.visibleTaskStreams.handle(message)
       if (await this.handleMemoryMessage(message)) return
+      if (this.handleLegacyMigrationMessage(message)) return
       switch (message.type) {
         case "webviewReady":
           console.log("[Kilo New] KiloProvider: ✅ webviewReady received")
@@ -1277,6 +1273,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
             post: (msg) => this.postMessage(msg),
           })
           break
+        case "requestFilePicker":
+          await handleFilePicker({ requestId: message.requestId, post: (msg) => this.postMessage(msg) })
+          break
         case "requestTerminalContext":
           void this.handleTerminalContext(message.requestId)
           break
@@ -1391,23 +1390,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           this.postMessage({ type: "favoritesLoaded", favorites })
           break
         }
-        // legacy-migration start
-        case "requestMigrationData":
-          void handleRequestMigrationData(this.migrationCtx, message.source, message.operationId)
-          break
-        case "startMigration":
-          void handleStartMigration(this.migrationCtx, message.source, message.operationId, message.selections)
-          break
-        case "skipLegacyMigration":
-          void handleSkipLegacyMigration(this.migrationCtx)
-          break
-        case "clearLegacyData":
-          void handleClearLegacyData(this.migrationCtx)
-          break
-        case "finalizeLegacyMigration":
-          void handleFinalizeLegacyMigration(this.migrationCtx)
-          break
-        // legacy-migration end
         case "enhancePrompt": {
           const sdkClient = this.client
           if (!sdkClient) {
@@ -1465,6 +1447,39 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     }
     return false
   }
+
+  // legacy-migration start
+  private handleLegacyMigrationMessage(message: { type: string }): boolean {
+    switch (message.type) {
+      case "requestMigrationData": {
+        const msg = message as unknown as { source: MigrationSource; operationId: string }
+        void handleRequestMigrationData(this.migrationCtx, msg.source, msg.operationId)
+        break
+      }
+      case "startMigration": {
+        const msg = message as unknown as {
+          source: MigrationSource
+          operationId: string
+          selections: MigrationSelections
+        }
+        void handleStartMigration(this.migrationCtx, msg.source, msg.operationId, msg.selections)
+        break
+      }
+      case "skipLegacyMigration":
+        void handleSkipLegacyMigration(this.migrationCtx)
+        break
+      case "clearLegacyData":
+        void handleClearLegacyData(this.migrationCtx)
+        break
+      case "finalizeLegacyMigration":
+        void handleFinalizeLegacyMigration(this.migrationCtx)
+        break
+      default:
+        return false
+    }
+    return true
+  }
+  // legacy-migration end
 
   private async toggleFavorite(message: {
     action: "add" | "remove"
@@ -2021,6 +2036,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
    */
   private pruneDeletedSession(sessionID: string): void {
     this.trackedSessionIds.delete(sessionID)
+    this.openSessionIds.delete(sessionID)
+    for (const [key, session] of this.draftSessions) {
+      if (session.sid === sessionID) this.draftSessions.delete(key)
+    }
     this.streams.drop(sessionID)
     this.visibleTaskStreams.delete(sessionID)
     this.syncedChildSessions.delete(sessionID)
@@ -3003,8 +3022,20 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       workspaceDirectory: this.getRootDirectory(),
     })
 
-    if (!sessionID && !this.currentSession) {
-      const key = `${draftID ?? context ?? "new"}\0${dir}`
+    const key = `${draftID ?? context ?? "new"}\0${dir}`
+    const now = Date.now()
+    for (const [draft, session] of this.draftSessions) {
+      if (session.expires <= now) this.draftSessions.delete(draft)
+    }
+    if (!sessionID && draftID) {
+      const resolved = this.draftSessions.get(key)
+      if (resolved) {
+        this.trackedSessionIds.add(resolved.sid)
+        return { sid: resolved.sid, dir: resolved.dir }
+      }
+    }
+
+    if (!sessionID && (draftID || !this.currentSession)) {
       const pending = this.sessionCreations.get(key)
       if (pending) return pending
       const creation = (async () => {
@@ -3024,7 +3055,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           session: this.sessionToWebview(session),
           draftID,
         })
-        return { sid: session.id, dir }
+        const resolved = { sid: session.id, dir }
+        if (draftID) this.draftSessions.set(key, { ...resolved, expires: Date.now() + 60_000 })
+        return resolved
       })().finally(() => this.sessionCreations.delete(key))
       this.sessionCreations.set(key, creation)
       return creation
@@ -3848,12 +3881,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     // Drop session events from other projects before any tracking logic.
     // This must come first: the trackedSessionIds guard below would otherwise
     // let a foreign session through if it was accidentally tracked.
-    if (
-      !isLegacySyncEvent(event) &&
-      !isFullSessionUpdatedEvent(event) &&
-      isEventFromForeignProject(event, this.projectID)
-    )
-      return
+    if (!isLegacySyncEvent(event) && isEventFromForeignProject(event, this.projectID)) return
     if (
       this.projectID &&
       (event.type === "session.created" || event.type === "session.updated") &&
@@ -3921,7 +3949,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     if (event.type === "session.updated") {
       // Full bus snapshots duplicate sync patches with the same event ID but no sequence metadata.
-      if (isFullSessionUpdatedEvent(event)) return
+      if (!isLegacySyncEvent(event)) return
       const sid = event.properties.sessionID
       const revision = this.revisions.get(sid)
       const versioned = event.seq > 0 || (revision?.seq ?? 0) > 0
@@ -4374,6 +4402,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   dispose(): void {
     this.unsubscribeRemote?.()
     this.focusSession()
+    this.connectionService.registerOpen(this.instanceId, [])
     this.statsPoller?.stop()
     this.statsGitOps?.dispose()
     this.unsubscribeEvent?.()
@@ -4402,7 +4431,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.promptRecoveryQueued = false
     clearNetworkWaits(this.trackedSessionIds)
     this.trackedSessionIds.clear()
+    this.openSessionIds.clear()
     this.syncedChildSessions.clear()
+    this.draftSessions.clear()
     this.sessionDirectories.clear()
     this.anacondaDesktop.dispose()
     this.aborts.clear()
