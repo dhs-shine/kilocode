@@ -38,6 +38,7 @@ import { Pty } from "@/pty"
 import { PtyTicket } from "@/pty/ticket"
 import { Question } from "@/question"
 import { Notebook } from "@/kilocode/notebook/service" // kilocode_change
+import { AgentManager } from "@/kilocode/agent-manager/service" // kilocode_change
 import { Session } from "@/session/session"
 import { SessionCompaction } from "@/session/compaction"
 import { SessionPrompt } from "@/session/prompt"
@@ -228,6 +229,7 @@ export function createRoutes(
       Pty.defaultLayer,
       PtyTicket.defaultLayer,
       Question.defaultLayer,
+      AgentManager.defaultLayer, // kilocode_change
       Notebook.defaultLayer, // kilocode_change
       Ripgrep.defaultLayer,
       RuntimeFlags.defaultLayer,

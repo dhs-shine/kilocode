@@ -36,6 +36,7 @@ import { createLocalDiff, diffSummary as localDiffSummary } from "./local-diff"
 import { parseToolRequest, startFromTool, type ToolRequest } from "./tool-start"
 import { stopSessionProcesses } from "../kilo-provider/background-process"
 import { sandboxSessionMetadata } from "../shared/sandbox-session"
+import { AgentManagerOrchestrationBridge } from "./orchestration-bridge"
 
 import { startSession } from "./mcp-warmup"
 import { readTerminalFont, watchTerminalFont } from "./terminal-font"
@@ -47,14 +48,6 @@ import { PLATFORM } from "./constants"
 import type { AgentManagerOutMessage, AgentManagerInMessage } from "./types"
 import type { Host, PanelContext, OutputHandle, Disposable } from "./host"
 
-/**
- * AgentManagerProvider opens the Agent Manager panel.
- *
- * Uses WorktreeStateManager for centralized state persistence. Worktrees and
- * sessions are stored in `.kilo/agent-manager.json`. The UI shows two
- * sections: WORKTREES (top) with managed worktrees + their sessions, and
- * SESSIONS (bottom) with unassociated local sessions.
- */
 export class AgentManagerProvider implements Disposable {
   public static readonly viewType = "kilo-code.new.AgentManagerPanel"
 
@@ -70,6 +63,7 @@ export class AgentManagerProvider implements Disposable {
   private stateReady: Promise<void> | undefined
   private statsPoller: GitStatsPoller
   private prBridge!: PRStatusBridge
+  private orchestration: AgentManagerOrchestrationBridge
   private gitOps: GitOps
   private diffs: WorktreeDiffController
   private naming: BranchNamingController
@@ -181,6 +175,18 @@ export class AgentManagerProvider implements Disposable {
       log: (...a) => this.log(...a),
       semaphore,
     })
+    this.orchestration = new AgentManagerOrchestrationBridge(this.connectionService, {
+      root: () => this.getRoot(),
+      state: () => this.state,
+      ready: async () => {
+        this.stateReady ??= this.initializeState()
+        await this.stateReady
+        return this.state
+      },
+      stats: (refresh) => this.statsPoller.snapshot(refresh),
+      prs: () => this.prBridge.snapshot(),
+      log: (...args) => this.log(...args),
+    })
     this.unsubTool = this.connectionService.onEventFiltered(
       (event) => (event as { type?: string }).type === "kilocode.agent_manager.start",
       (event, directory) => this.onToolEvent(event, directory),
@@ -284,10 +290,6 @@ export class AgentManagerProvider implements Disposable {
       ctx.sessions.dispose()
     })
   }
-
-  // ---------------------------------------------------------------------------
-  // State initialization
-  // ---------------------------------------------------------------------------
 
   private async initializeState(): Promise<void> {
     const manager = this.getWorktreeManager()
@@ -1977,6 +1979,7 @@ export class AgentManagerProvider implements Disposable {
     this.unsubTool?.()
     this.unsubStatus?.()
     this.unsubFont?.()
+    this.orchestration.dispose()
     this.connectionService.unregisterFocused("agent-manager")
     this.connectionService.registerOpen("agent-manager", [])
     this.diffs.stop()

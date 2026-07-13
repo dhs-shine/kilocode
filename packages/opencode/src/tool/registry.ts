@@ -28,6 +28,7 @@ import { ProviderID, type ModelID } from "../provider/schema"
 import { WebSearchTool } from "./websearch"
 import { KiloToolRegistry } from "../kilocode/tool/registry" // kilocode_change
 import { Notebook } from "@/kilocode/notebook/service" // kilocode_change
+import { AgentManager } from "@/kilocode/agent-manager/service" // kilocode_change
 import { RepoCloneTool } from "./repo_clone"
 import { RepoOverviewTool } from "./repo_overview"
 import { Flag } from "@opencode-ai/core/flag/flag" // kilocode_change
@@ -161,8 +162,9 @@ export const layer: Layer.Layer<
     const agent = yield* Agent.Service
     // kilocode_change start
     const suggesttool = yield* SuggestTool
+    const manager = Option.getOrUndefined(yield* Effect.serviceOption(AgentManager.Service))
     const notebook = Option.getOrUndefined(yield* Effect.serviceOption(Notebook.Service))
-    const kiloToolInfos = yield* KiloToolRegistry.infos(notebook).pipe(Effect.provide(MemoryService.layer))
+    const kiloToolInfos = yield* KiloToolRegistry.infos(manager, notebook).pipe(Effect.provide(MemoryService.layer))
     // kilocode_change end
 
     const state = yield* InstanceState.make<State>(
@@ -460,6 +462,7 @@ export const defaultLayer = Layer.suspend(
       // kilocode_change start - provide Kilo-owned registry dependencies
       .pipe(
         Layer.provide(Command.defaultLayer),
+        Layer.provide(AgentManager.defaultLayer),
         Layer.provide(Notebook.defaultLayer),
         Layer.provide(RuntimeFlags.defaultLayer),
         Layer.provide(SessionStatus.defaultLayer),
