@@ -9,13 +9,12 @@ import { isAbsolutePath } from "../path-utils"
 import { WorktreeManager, type CreateWorktreeResult } from "./WorktreeManager"
 import { remoteRef, WorktreeStateManager, type Worktree } from "./WorktreeStateManager"
 import { handleSection } from "./section-handler"
-import { chooseBaseBranch, normalizeBaseBranch } from "./base-branch"
+import { normalizeBaseBranch } from "./base-branch"
 import { GitStatsPoller, type LocalStats, type WorktreePresenceResult, type WorktreeStats } from "./GitStatsPoller"
 import { PRStatusBridge } from "./pr-status-bridge"
 import { GitOps } from "./GitOps"
 import { versionedName } from "./branch-name"
 import { BranchNamingController } from "./branch-naming"
-import { classifyWorktreeError } from "./git-import"
 import { SetupScriptService } from "./SetupScriptService"
 import { SetupScriptRunner } from "./SetupScriptRunner"
 import { copyEnvFiles } from "./env-copy"
@@ -30,6 +29,7 @@ import { forkSession } from "./fork-session"
 import { continueInWorktree } from "./continue-in-worktree"
 import { WorktreeDiffController } from "./worktree-diff-controller"
 import { WorktreeImporter } from "./worktree-importer"
+import { createWorktreeOnDisk, type CreateWorktreeOnDiskOptions, type CreateWorktreeOnDiskResult } from "./worktree-create"
 import { recordPromotionHandoff } from "./promotion-handoff"
 import { restoreWorktrees } from "./state-recovery"
 import { createLocalDiff, diffSummary as localDiffSummary } from "./local-diff"
@@ -730,107 +730,21 @@ export class AgentManagerProvider implements Disposable {
   // Shared helpers
   // ---------------------------------------------------------------------------
 
-  /** Resolve the effective base branch using the configured default, explicit override, and existence check. */
-  private async resolveBaseBranch(
-    manager: WorktreeManager,
-    state: WorktreeStateManager,
-    explicit?: string,
-  ): Promise<string | undefined> {
-    const configured = state.getDefaultBaseBranch()
-    if (!configured && !explicit) return undefined
-
-    const configuredExists = configured ? await manager.branchExists(configured) : false
-    const result = chooseBaseBranch({ explicit, configured, configuredExists })
-
-    if (result.stale) {
-      this.clearStaleDefaultBaseBranch(state, result.stale)
-    }
-    return result.branch
-  }
-
-  /** Reset a stale default base branch and notify the webview. */
-  private clearStaleDefaultBaseBranch(state: WorktreeStateManager, stale: string): void {
-    this.log(`Default base branch "${stale}" no longer exists, clearing`)
-    state.setDefaultBaseBranch(undefined)
-    this.pushState()
-  }
-
   /** Create a git worktree on disk and register it in state. Returns null on failure. */
-  private async createWorktreeOnDisk(opts?: {
-    groupId?: string
-    baseBranch?: string
-    branchName?: string
-    existingBranch?: string
-    name?: string
-    label?: string
-  }): Promise<{
-    worktree: ReturnType<WorktreeStateManager["addWorktree"]>
-    result: CreateWorktreeResult
-  } | null> {
-    const manager = this.getWorktreeManager()
-    const state = this.getStateManager()
-    if (!manager || !state) {
-      this.postToWebview({
-        type: "agentManager.worktreeSetup",
-        status: "error",
-        message: "Open a folder that contains a git repository to use worktrees",
-        errorCode: "not_git_repo",
-      })
-      return null
-    }
-
-    this.postToWebview({ type: "agentManager.worktreeSetup", status: "creating", message: "Creating git worktree..." })
-
-    // Resolve effective base branch using configured default
-    const effectiveBase = opts?.existingBranch
-      ? undefined
-      : await this.resolveBaseBranch(manager, state, opts?.baseBranch)
-
-    let result: CreateWorktreeResult
-    try {
-      result = await manager.createWorktree({
-        prompt: opts?.name || "kilo",
-        baseBranch: effectiveBase ?? opts?.baseBranch,
-        branchName: opts?.branchName,
-        existingBranch: opts?.existingBranch,
-      })
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error)
-      this.postToWebview({
-        type: "agentManager.worktreeSetup",
-        status: "error",
-        message: msg,
-        errorCode: classifyWorktreeError(msg),
-      })
-      this.host.capture("Agent Manager Session Error", {
-        source: PLATFORM,
-        error: msg,
-        context: "createWorktree",
-      })
-      return null
-    }
-
-    const worktree = state.addWorktree({
-      branch: result.branch,
-      path: result.path,
-      parentBranch: result.parentBranch,
-      remote: result.remote,
-      groupId: opts?.groupId,
-      label: opts?.label,
-      branchOwned: !opts?.existingBranch,
-    })
-
-    // Push state immediately so the sidebar shows the new worktree with a loading indicator
-    this.pushState()
-    this.postToWebview({
-      type: "agentManager.worktreeSetup",
-      status: "creating",
-      message: "Setting up worktree...",
-      branch: result.branch,
-      worktreeId: worktree.id,
-    })
-
-    return { worktree, result }
+  private async createWorktreeOnDisk(
+    opts?: CreateWorktreeOnDiskOptions,
+  ): Promise<CreateWorktreeOnDiskResult | null> {
+    return createWorktreeOnDisk(
+      {
+        getWorktreeManager: () => this.getWorktreeManager(),
+        getStateManager: () => this.getStateManager(),
+        postToWebview: (message) => this.postToWebview(message),
+        capture: (event, properties) => this.host.capture(event, properties),
+        pushState: () => this.pushState(),
+        log: (...args) => this.log(...args),
+      },
+      opts,
+    )
   }
 
   /** Create a CLI session in a worktree directory. Returns null on failure. */
