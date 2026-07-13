@@ -177,12 +177,9 @@ class PromptPanel(
             ed.settings.setBlockCursor(false)
             SpellCheckingEditorCustomizationProvider.getInstance().getDisabledCustomization()?.customize(ed)
             ed.putUserData(PROMPT_ATTACHMENT_PASTE_HANDLER_KEY, PromptAttachmentPasteHandler { processPaste(it) })
-            ed.setVerticalScrollbarVisible(false)
             ed.setHorizontalScrollbarVisible(false)
-            ed.scrollPane.verticalScrollBarPolicy =
-                ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
-            ed.scrollPane.horizontalScrollBarPolicy =
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            ed.scrollPane.verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+            ed.scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             installCompletionShortcut(ed)
             completion?.let { MentionNavigator(ed, it).install() }
             installFileDrop(ed.contentComponent, "editor")
@@ -911,6 +908,7 @@ class PromptPanel(
         val content = editor.preferredSize.height
         val sessionCap = rootCap(min)
         val height = minOf(content, sessionCap ?: content).coerceAtLeast(min)
+        syncEditorScroll(view, content > height)
         if (before == height && lower == height) {
             editor.preferredSize = JBDimension(0, height)
             editor.minimumSize = JBDimension(0, height)
@@ -920,6 +918,18 @@ class PromptPanel(
         editor.minimumSize = JBDimension(0, height)
         revalidate()
         repaint()
+    }
+
+    @RequiresEdt
+    private fun syncEditorScroll(ed: EditorEx?, overflow: Boolean) {
+        // AS_NEEDED keeps the standard auto-hiding editor scrollbar (appears on
+        // scroll/hover, fades on inactivity); NEVER hides it entirely when the
+        // content fits so no bar is shown at all.
+        ed?.scrollPane?.verticalScrollBarPolicy = if (overflow) {
+            ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+        } else {
+            ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER
+        }
     }
 
     @RequiresEdt

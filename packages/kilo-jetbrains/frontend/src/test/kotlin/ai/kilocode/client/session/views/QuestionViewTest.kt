@@ -3,6 +3,7 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Question
 import ai.kilocode.client.session.model.QuestionItem
 import ai.kilocode.client.session.model.QuestionOption
+import ai.kilocode.client.session.ui.SessionRootPanel
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.base.BaseQuestionView
@@ -34,6 +35,7 @@ class QuestionViewTest : BasePlatformTestCase() {
 
     private val replies = mutableListOf<Triple<String, QuestionReplyDto, List<List<String>>>>()
     private val rejects = mutableListOf<String>()
+    private val roots = mutableListOf<SessionRootPanel>()
     private var scrolls = 0
     private lateinit var view: QuestionView
 
@@ -45,6 +47,15 @@ class QuestionViewTest : BasePlatformTestCase() {
             reject = { id -> rejects.add(id) },
             scroll = { scrolls++ },
         )
+    }
+
+    override fun tearDown() {
+        try {
+            roots.asReversed().forEach { it.removeNotify() }
+            roots.clear()
+        } finally {
+            super.tearDown()
+        }
     }
 
     // ------ empty question ------
@@ -737,6 +748,33 @@ class QuestionViewTest : BasePlatformTestCase() {
         assertTrue("custom editor should grow when soft-wrapped text needs more lines", ed.preferredSize.height > initial)
     }
 
+    fun `test custom editor enables vertical scrollbar only after cap`() {
+        view.show(customSingleQuestion("q_custom_cap"))
+        val root = realize(view, 240, 600)
+
+        val customRadio = findAll<JBRadioButton>(view).first { it.actionCommand == "" }
+        customRadio.doClick()
+        layoutTree(root)
+
+        val ed = findAll<EditorTextField>(view).first()
+        val editor = ed.getEditor(false)!!
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, editor.scrollPane.verticalScrollBarPolicy)
+
+        ed.text = (1..40).joinToString("\n") { "line $it" }
+        layoutTree(root)
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertTrue(ed.preferredSize.height <= root.height / 3)
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, editor.scrollPane.verticalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
+
+        ed.text = "short"
+        layoutTree(root)
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, editor.scrollPane.verticalScrollBarPolicy)
+    }
+
     fun `test blank custom input does not enable submit`() {
         view.show(customSingleQuestion("q_custom_blank"))
 
@@ -1025,6 +1063,17 @@ class QuestionViewTest : BasePlatformTestCase() {
     private fun layout(root: Container, width: Int = 400) {
         root.setSize(width, root.preferredSize.height)
         layoutTree(root)
+    }
+
+    private fun realize(child: Component, width: Int, height: Int): SessionRootPanel {
+        val root = SessionRootPanel()
+        root.setSize(width, height)
+        root.content.add(child, BorderLayout.CENTER)
+        root.addNotify()
+        layoutTree(root)
+        UIUtil.dispatchAllInvocationEvents()
+        roots.add(root)
+        return root
     }
 
     private fun layoutTree(root: Container) {

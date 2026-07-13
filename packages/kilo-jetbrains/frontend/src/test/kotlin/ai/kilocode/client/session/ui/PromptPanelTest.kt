@@ -332,6 +332,10 @@ class PromptPanelTest : BasePlatformTestCase() {
 
         val chrome = (panel.preferredSize.height - editor.preferredSize.height).coerceAtLeast(0)
         assertTrue(editor.preferredSize.height <= root.height / 3 - chrome + 1)
+        assertEquals(
+            ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+            editor.getEditor(false)!!.scrollPane.verticalScrollBarPolicy,
+        )
     }
 
     fun `test attachment strip is included in session root cap`() {
@@ -350,17 +354,29 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertTrue(attachedEditor.preferredSize.height < plainEditor.preferredSize.height)
     }
 
-    fun `test prompt editor hides scrollbars and keeps soft wraps`() {
+    fun `test prompt editor hides scrollbars until content overflows cap`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         realize(panel, 180, 400)
 
-        val editor = (panel.defaultFocusedComponent as EditorTextField).getEditor(false)!!
+        val field = panel.defaultFocusedComponent as EditorTextField
+        val editor = field.getEditor(false)!!
 
         assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, editor.scrollPane.verticalScrollBarPolicy)
         assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
         assertTrue(editor.settings.isUseSoftWraps)
         assertFalse(editor.settings.isPaintSoftWraps)
         assertFalse(editor.settings.isBlockCursor)
+
+        field.text = (1..40).joinToString("\n") { "line $it" }
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, editor.scrollPane.verticalScrollBarPolicy)
+        assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
+
+        field.text = "short"
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertEquals(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, editor.scrollPane.verticalScrollBarPolicy)
     }
 
     fun `test prompt editor highlights validated commands and mentions`() {
