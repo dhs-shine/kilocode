@@ -1,0 +1,99 @@
+package ai.kilocode.backend.migration
+
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.nio.file.Files
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+class LegacyV5ImporterTest {
+    @Test
+    fun `imports raw v5 files into legacy settings shape`() {
+        val home = Files.createTempDirectory("kilo-v5-home").toFile()
+        val cfg = Files.createTempDirectory("kilo-v5-config").toFile()
+        val root = home.resolve(".kilocode")
+        val storage = root.resolve("globalStorage")
+        storage.resolve("settings").mkdirs()
+        storage.resolve("tasks/task-1").mkdirs()
+        cfg.resolve("options").mkdirs()
+
+        root.resolve("secrets.json").writeText("""
+            {
+              "kilo-code": {
+                "roo_cline_config_api_config": "{\"currentApiConfigName\":\"p\",\"apiConfigs\":{\"p\":{\"apiProvider\":\"anthropic\",\"apiKey\":\"sk\",\"apiModelId\":\"claude\"}}}",
+                "openai-codex-oauth-credentials": "{\"access\":\"token\"}"
+              }
+            }
+        """.trimIndent())
+        storage.resolve("settings/mcp_settings.json").writeText("""{"mcpServers":{"tool":{"command":"npx"}}}""")
+        storage.resolve("settings/custom_modes.yaml").writeText("""
+customModes:
+  - slug: helper
+    name: Helper
+    roleDefinition: Help.
+    groups: [read]
+        """.trimIndent())
+        storage.resolve("tasks/task-1/api_conversation_history.json").writeText("""[{"role":"user","content":"Fix it"}]""")
+        cfg.resolve("options/kilocode-extension-storage.xml").writeText("""
+<application>
+  <component name="ExtensionStorageService">
+    <option name="storageMap">
+      <map>
+        <entry key="kilo-code" value="{&quot;taskHistory&quot;:&quot;[{\&quot;id\&quot;:\&quot;task-1\&quot;,\&quot;task\&quot;:\&quot;Fix it\&quot;,\&quot;workspace\&quot;:\&quot;/tmp/project\&quot;,\&quot;ts\&quot;:1700000000000}]&quot;,&quot;kilo-code.language&quot;:&quot;en&quot;,&quot;customModePrompts&quot;:&quot;{}&quot;}" />
+      </map>
+    </option>
+  </component>
+</application>
+        """.trimIndent())
+
+        val obj = LegacyV5Importer(LegacyV5Sources(home, cfg)).import()
+        assertNotNull(obj["providerProfiles"])
+        assertEquals("{\"access\":\"token\"}", obj["oauth"]!!.jsonObject["openai-codex-oauth-credentials"]!!.jsonPrimitive.content)
+        assertNotNull(obj["mcpSettings"])
+        assertNotNull(obj["customModes"])
+        assertEquals(JsonPrimitive("en"), obj["globalState"]!!.jsonObject["kilo-code.language"])
+        assertNotNull(obj["taskHistory"])
+        assertNotNull(obj["conversations"]!!.jsonObject["task-1"])
+
+        val detection = LegacyMigrationEngine(InMemoryLegacyMigrationStore(obj), NoopLegacyMigrationBackend()).detect()
+        assertTrue(detection.hasData)
+        assertEquals(1, detection.providers.size)
+        assertEquals(1, detection.mcpServers.size)
+        assertEquals(1, detection.customModes.size)
+        assertEquals(1, detection.sessions.size)
+        assertEquals("en", detection.settings!!.language)
+    }
+
+    @Test
+    fun `resolves alternate extension id by content`() {
+        val home = Files.createTempDirectory("kilo-v5-home").toFile()
+        val cfg = Files.createTempDirectory("kilo-v5-config").toFile()
+        val root = home.resolve(".kilocode")
+        root.mkdirs()
+        root.resolve("secrets.json").writeText("""
+            { "other": { "roo_cline_config_api_config": "{\"currentApiConfigName\":\"p\",\"apiConfigs\":{}}" } }
+        """.trimIndent())
+
+        val obj = LegacyV5Importer(LegacyV5Sources(home, cfg)).import()
+        assertNotNull(obj["providerProfiles"])
+    }
+
+    @Test
+    fun `synthesized history title strips task wrapper`() {
+        val home = Files.createTempDirectory("kilo-v5-home").toFile()
+        val cfg = Files.createTempDirectory("kilo-v5-config").toFile()
+        val task = home.resolve(".kilocode/globalStorage/kilo code.kilo-code/tasks/task-1")
+        task.mkdirs()
+        task.resolve("api_conversation_history.json").writeText("""[
+            {"role":"user","content":[{"type":"text","text":"<task>create sample skills</task>"},{"type":"text","text":"<environment_details>\n# Current Workspace Directory (/tmp/project) Files\n</environment_details>"}]}
+        ]""".trimIndent())
+
+        val obj = LegacyV5Importer(LegacyV5Sources(home, cfg)).import()
+        val history = kotlinx.serialization.json.Json.parseToJsonElement(obj["taskHistory"]!!.jsonPrimitive.content).jsonArray
+        assertEquals("create sample skills", history[0].jsonObject["task"]!!.jsonPrimitive.content)
+    }
+}

@@ -151,7 +151,7 @@ object LegacySessionParts {
         }
 
     fun toTool(partId: String, messageId: String, sessionId: String, created: Long, elem: Map<*, *>): JsonObject {
-        val tool = elem["name"] as? String ?: "unknown"
+        val spec = toolSpec(elem)
         val callId = elem["id"] as? String ?: partId
         return buildJsonObject {
             put("id", partId)
@@ -161,12 +161,12 @@ object LegacySessionParts {
             put("data", buildJsonObject {
                 put("type", "tool")
                 put("callID", callId)
-                put("tool", tool)
+                put("tool", spec.name)
                 put("state", buildJsonObject {
                     put("status", "completed")
-                    put("input", mapToJsonObject(elem["input"]))
-                    put("output", tool)
-                    put("title", tool)
+                    put("input", JsonObject(spec.input.mapValues { JsonPrimitive(it.value) }))
+                    put("output", spec.output)
+                    put("title", spec.title)
                     put("metadata", JsonObject(emptyMap()))
                     put("time", buildJsonObject { put("start", created); put("end", created) })
                 })
@@ -184,9 +184,9 @@ object LegacySessionParts {
         toolId: String?,
     ): JsonObject? {
         val toolUse = findToolUseInConversation(conversation, toolId) ?: return null
-        val tool = toolUse["name"] as? String ?: "unknown"
+        val spec = toolSpec(toolUse)
         val callId = toolUse["id"] as? String ?: partId
-        val output = getTextFromContent(result["content"]) ?: tool
+        val output = getTextFromContent(result["content"]) ?: spec.output
 
         return buildJsonObject {
             put("id", partId)
@@ -196,12 +196,12 @@ object LegacySessionParts {
             put("data", buildJsonObject {
                 put("type", "tool")
                 put("callID", callId)
-                put("tool", tool)
+                put("tool", spec.name)
                 put("state", buildJsonObject {
                     put("status", "completed")
-                    put("input", mapToJsonObject(toolUse["input"]))
+                    put("input", JsonObject(spec.input.mapValues { JsonPrimitive(it.value) }))
                     put("output", output)
-                    put("title", tool)
+                    put("title", spec.title)
                     put("metadata", JsonObject(emptyMap()))
                     put("time", buildJsonObject { put("start", created); put("end", created) })
                 })
@@ -279,6 +279,75 @@ object LegacySessionParts {
             }.toMap()
         )
     }
+
+    private data class ToolSpec(
+        val name: String,
+        val title: String,
+        val input: Map<String, String>,
+        val output: String,
+    )
+
+    private fun toolSpec(elem: Map<*, *>): ToolSpec {
+        val legacy = elem["name"] as? String ?: "unknown"
+        val input = elem["input"] as? Map<*, *> ?: emptyMap<Any, Any>()
+        val mapped = when (legacy) {
+            "read_file" -> "read"
+            "list_files" -> "list"
+            "write_to_file" -> "write"
+            "apply_diff", "replace_in_file" -> "edit"
+            "execute_command" -> "bash"
+            "search_files" -> "grep"
+            "glob" -> "glob"
+            "update_todo_list" -> "todowrite"
+            else -> legacy
+        }
+        val data = toolInput(mapped, input)
+        val title = when (mapped) {
+            "read" -> "Read"
+            "list" -> "List"
+            "write" -> "Write"
+            "edit" -> "Edit"
+            "bash" -> "Shell"
+            "grep" -> "Search"
+            "todowrite" -> "Update todos"
+            else -> legacy.replace('_', ' ').replaceFirstChar { it.titlecase() }
+        }
+        return ToolSpec(mapped, title, data, legacy)
+    }
+
+    private fun toolInput(tool: String, input: Map<*, *>): Map<String, String> {
+        fun str(key: String) = scalar(input[key])?.takeIf { it.isNotBlank() }
+        return when (tool) {
+            "read" -> mapOfNotNull("filePath" to str("path"), "offset" to str("start_line"), "limit" to str("end_line"))
+            "list" -> mapOfNotNull("path" to str("path"))
+            "write" -> mapOfNotNull("filePath" to str("path"), "content" to str("content"))
+            "edit" -> {
+                val patch = str("diff") ?: str("content")
+                mapOfNotNull("filePath" to str("path"), "patch" to patch)
+            }
+            "bash" -> mapOfNotNull("command" to str("command"))
+            "grep" -> {
+                val pattern = str("regex") ?: str("pattern")
+                mapOfNotNull("pattern" to pattern, "path" to str("path"), "include" to str("file_pattern"))
+            }
+            "glob" -> mapOfNotNull("pattern" to str("pattern"), "path" to str("path"))
+            "todowrite" -> {
+                val todos = str("todos") ?: str("content")
+                mapOfNotNull("todos" to todos)
+            }
+            else -> input.entries.mapNotNull { (k, v) -> (k as? String)?.let { it to v.toString() } }.toMap()
+        }
+    }
+
+    private fun scalar(value: Any?): String? = when (value) {
+        is String -> value
+        is JsonPrimitive -> value.jsonPrimitive.content
+        null -> null
+        else -> value.toString()
+    }
+
+    private fun mapOfNotNull(vararg pairs: Pair<String, String?>): Map<String, String> =
+        pairs.mapNotNull { (k, v) -> v?.let { k to it } }.toMap()
 
     private fun valueToJsonElement(v: Any?): JsonElement? = when (v) {
         null -> null

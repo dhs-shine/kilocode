@@ -191,6 +191,21 @@ class LegacyMigrationSessionTest {
         assertTrue(LegacySessionParts.thereIsNoToolResult(conv, "call-id-1"))
     }
 
+    @Test
+    fun `legacy tool names are mapped to current tool names`() {
+        val conv = """[
+            {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"write_to_file","input":{"path":".kilocode/rules/coding-style.md","content":"rules"}}]},
+            {"role":"user","content":[{"type":"tool_result","tool_use_id":"call-1","content":[{"type":"text","text":"done"}]}]}
+        ]"""
+        val parsed = LegacySessionParser.parseSession("task-tools", conv)
+        val tool = parsed.parts.first { it["data"]!!.jsonObject["type"]!!.jsonPrimitive.content == "tool" }
+        val data = tool["data"]!!.jsonObject
+        val state = data["state"]!!.jsonObject
+        assertEquals("write", data["tool"]!!.jsonPrimitive.content)
+        assertEquals("Write", state["title"]!!.jsonPrimitive.content)
+        assertEquals(".kilocode/rules/coding-style.md", state["input"]!!.jsonObject["filePath"]!!.jsonPrimitive.content)
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------

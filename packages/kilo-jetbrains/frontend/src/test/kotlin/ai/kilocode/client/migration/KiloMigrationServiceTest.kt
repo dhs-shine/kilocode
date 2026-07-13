@@ -93,7 +93,7 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
         assertEquals(MigrationUiState.Hidden, service.state.value)
     }
 
-    fun `test finish calls finalize and hides`() {
+    fun `test finish with kept source marks completed without cleanup`() {
         app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         settle()
         service.finish()
@@ -101,6 +101,7 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
         assertEquals(1, rpc.finalizeCalls.size)
         assertEquals(LegacyMigrationStatusDto.completed, rpc.finalizeCalls[0])
         assertEquals(0, rpc.cleanupCalls.size)
+        assertEquals(0, rpc.resumeCalls.size)
         assertEquals(MigrationUiState.Hidden, service.state.value)
     }
 
@@ -114,7 +115,9 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
         settle()
 
         assertEquals(1, rpc.finalizeCalls.size)
+        assertEquals(LegacyMigrationStatusDto.completed, rpc.finalizeCalls[0])
         assertEquals(1, rpc.cleanupCalls.size)
+        assertEquals(0, rpc.resumeCalls.size)
         val targets = rpc.cleanupCalls[0]
         assertTrue(targets.providerProfiles)
         assertTrue(targets.mcpSettings)

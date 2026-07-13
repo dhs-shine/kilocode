@@ -27,6 +27,8 @@ class FakeMigrationRpcApi : KiloMigrationRpcApi {
     val detectCalls = mutableListOf<Unit>()
     val migrateCalls = mutableListOf<LegacyMigrationSelectionsDto>()
     val skipCalls = mutableListOf<Unit>()
+    val resumeCalls = mutableListOf<Unit>()
+    val resetStatusCalls = mutableListOf<Unit>()
     val finalizeCalls = mutableListOf<LegacyMigrationStatusDto>()
     val cleanupCalls = mutableListOf<LegacyCleanupTargetsDto>()
 
@@ -34,6 +36,13 @@ class FakeMigrationRpcApi : KiloMigrationRpcApi {
         assertNotEdt("status")
         statusCalls.add(Unit)
         return statusResult
+    }
+
+    override suspend fun resetStatus(): Boolean {
+        assertNotEdt("resetStatus")
+        resetStatusCalls.add(Unit)
+        statusResult = null
+        return true
     }
 
     override suspend fun detect(): LegacyMigrationDetectionDto {
@@ -51,6 +60,11 @@ class FakeMigrationRpcApi : KiloMigrationRpcApi {
     override suspend fun skip() {
         assertNotEdt("skip")
         skipCalls.add(Unit)
+    }
+
+    override suspend fun resume() {
+        assertNotEdt("resume")
+        resumeCalls.add(Unit)
     }
 
     override suspend fun finalize(status: LegacyMigrationStatusDto) {

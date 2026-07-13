@@ -20,13 +20,18 @@ import ai.kilocode.rpc.dto.MigrationItemStatusDto
 import ai.kilocode.rpc.dto.MigrationSessionPhaseDto
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import fleet.rpc.client.durable
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
@@ -173,14 +178,25 @@ class KiloMigrationService internal constructor(
         telemetry("Migration Finished", mapOf("status" to status.name, "cleanupRequested" to (selections?.keepLegacySettingsFile == false).toString()))
         cs.launch {
             try {
-                call { finalize(status) }
                 if (selections?.keepLegacySettingsFile == false) {
                     call { cleanup(cleanupTargets()) }
                 }
+                call { finalize(status) }
             } catch (e: Exception) {
                 LOG.warn("migration finalize failed", e)
             }
             _state.value = MigrationUiState.Hidden
+        }
+    }
+
+    fun resetStatusAndRestart(done: (Boolean) -> Unit) {
+        cs.launch {
+            val ok = runCatching {
+                if (!call { resetStatus() }) return@runCatching false
+                service<KiloAppService>().restart()
+                true
+            }.getOrDefault(false)
+            withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) { done(ok) }
         }
     }
 

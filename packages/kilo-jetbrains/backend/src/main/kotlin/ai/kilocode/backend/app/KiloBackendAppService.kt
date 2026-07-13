@@ -118,6 +118,9 @@ class KiloBackendAppService private constructor(
     private var eventWatcher: Job? = null
     private var loader: Job? = null
     private var closed = false
+    private var migrationOffered = false
+    private var migrationSuppressed = false
+    private var migrationForceRequested = false
     private val loadLock = Any()
     private val rev = AtomicLong()
 
@@ -312,9 +315,20 @@ class KiloBackendAppService private constructor(
     internal suspend fun resumeAfterMigration() {
         mutex.withLock {
             if (_appState.value !is KiloAppState.MigrationRequired) return
+            migrationSuppressed = true
             load()
+            migrationForceRequested = false
         }
     }
+
+    internal fun resetMigrationOfferForRerun() {
+        migrationOffered = false
+        migrationSuppressed = false
+        migrationForceRequested = true
+        log.info("Migration check: reset in-memory offer suppression for forced rerun")
+    }
+
+    internal fun forceMigrationRequested(): Boolean = migrationForceRequested
 
     private suspend fun reconnect() {
         mutex.withLock {
@@ -540,15 +554,26 @@ class KiloBackendAppService private constructor(
             return@withContext null
         }
         log.info("Migration check: started")
-        val store = KiloBackendLegacyMigrationStoreService.store(log)
-        val status = store.status()
+        if (migrationSuppressed) {
+            log.info("Migration check: skipped because migration was dismissed for this startup")
+            return@withContext null
+        }
+        if (migrationOffered) {
+            log.info("Migration check: skipped because migration was already offered this startup")
+            return@withContext null
+        }
+        val status = KiloBackendLegacyMigrationStoreService.status(log)
         if (status != null) {
             log.info("Migration check: skipped because status=$status")
             return@withContext null
         }
+        val source = KiloBackendLegacyMigrationStoreService.resolveSource(log, includeFile = migrationForceRequested)
+        val store = source.store
         val detection = KiloBackendMigrationManager(http, connection.port).detect(store)
         log.info("Migration check: completed hasData=${detection.hasData} ${migrationSummary(detection)}")
-        if (detection.hasData) detection else null
+        if (!detection.hasData) return@withContext null
+        migrationOffered = true
+        detection
     }
 
     private fun migrationSummary(detection: LegacyMigrationDetection): String {
