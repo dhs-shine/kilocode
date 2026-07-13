@@ -1205,7 +1205,7 @@ export const layer = Layer.effect(
                 type: "file",
                 url:
                   `data:${mime};base64,` +
-                  Buffer.from(yield* fsys.readFile(target).pipe(Effect.catch(Effect.die))).toString("base64"),
+                  Buffer.from(yield* fsys.readFile(target).pipe(Effect.catch(Effect.die))).toString("base64"), // kilocode_change
                 mime,
                 filename: part.filename!,
                 source: part.source,
