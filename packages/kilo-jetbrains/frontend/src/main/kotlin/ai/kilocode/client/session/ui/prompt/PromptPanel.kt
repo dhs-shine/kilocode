@@ -76,6 +76,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.BasicStroke
 import java.awt.BorderLayout
+import java.awt.Component
 import java.awt.Cursor
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -142,7 +143,7 @@ class PromptPanel(
             JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING),
             JBUI.scale(SessionUiStyle.View.Prompt.SHELL_HORIZONTAL_PADDING),
             JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING),
-            JBUI.scale(SessionUiStyle.View.Prompt.SHELL_HORIZONTAL_PADDING),
+            JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING),
         )
     }
     private val attachments = mutableListOf<PromptAttachment>()
@@ -241,6 +242,14 @@ class PromptPanel(
         accessibleContext.accessibleName = KiloBundle.message("prompt.action.enhance")
         addActionListener { enhance() }
     }
+    private val separator = object : JComponent() {
+        override fun getPreferredSize() = JBUI.size(1, JBUI.scale(16))
+        override fun getMinimumSize() = preferredSize
+        override fun getMaximumSize() = preferredSize
+    }.apply {
+        alignmentY = Component.CENTER_ALIGNMENT
+        border = JBUI.Borders.customLineLeft(SessionUiStyle.View.Prompt.separator())
+    }
 
     @Volatile
     private var busy = false
@@ -286,6 +295,8 @@ class PromptPanel(
         bar.add(auto)
         bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
         bar.add(enhance)
+        bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
+        bar.add(separator)
         bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
         bar.add(button)
         shell.add(bar, BorderLayout.SOUTH)

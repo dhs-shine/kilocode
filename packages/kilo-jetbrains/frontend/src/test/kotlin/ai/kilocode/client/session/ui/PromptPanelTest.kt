@@ -97,6 +97,7 @@ import java.io.File
 import java.util.Base64
 import javax.imageio.ImageIO
 import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.ImageIcon
 import javax.swing.ScrollPaneConstants
@@ -190,6 +191,16 @@ class PromptPanelTest : BasePlatformTestCase() {
 
         assertEquals(pad, ins.left)
         assertEquals(pad, ins.right)
+    }
+
+    fun `test prompt shell right padding matches bottom padding`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+        val shell = panel.shellForTest()
+        val ins = shell.border.getBorderInsets(shell)
+
+        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_HORIZONTAL_PADDING), ins.left)
+        assertEquals(JBUI.scale(SessionUiStyle.View.Prompt.SHELL_VERTICAL_PADDING), ins.bottom)
+        assertEquals(ins.bottom, ins.right)
     }
 
     fun `test prompt focus outline follows editor focus`() {
@@ -1054,18 +1065,21 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertSame(icon, button.icon)
     }
 
-    fun `test auto approve and enhance buttons sit next to send button`() {
+    fun `test auto approve enhance separator and send buttons sit in order`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val auto = autoApproveButton(panel)
         val enhance = enhanceButton(panel)
         val send = panel.buttonForTest()
         val items = auto.parent.components.toList()
+        val sep = items[items.indexOf(enhance) + 2] as JComponent
 
         assertTrue(SwingUtilities.isDescendingFrom(auto, panel.shellForTest()))
         assertSame(auto.parent, enhance.parent)
         assertSame(auto.parent, send.parent)
         assertEquals(2, items.indexOf(enhance) - items.indexOf(auto))
-        assertEquals(2, items.indexOf(send) - items.indexOf(enhance))
+        assertEquals(4, items.indexOf(send) - items.indexOf(enhance))
+        assertEquals(JBUI.scale(1), sep.preferredSize.width)
+        assertNotNull(sep.border)
     }
 
     fun `test enhance button follows connection and busy state`() {
