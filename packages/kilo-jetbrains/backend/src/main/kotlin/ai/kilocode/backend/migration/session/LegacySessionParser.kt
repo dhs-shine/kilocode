@@ -38,8 +38,10 @@ object LegacySessionParser {
         val conversation = parseConversation(conversationRaw)
         val messages = LegacySessionMessages.parseMessages(conversation, id, workspace, effectiveItem)
         val parts = LegacySessionParts.parseParts(conversation, id, effectiveItem)
+        val referenced = parts.mapNotNull { it["messageID"]?.jsonPrimitive?.content }.toSet()
+        val kept = messages.filter { it["id"]?.jsonPrimitive?.content in referenced }
 
-        return NormalizedSession(project = project, session = session, messages = messages, parts = parts)
+        return NormalizedSession(project = project, session = session, messages = kept, parts = parts)
     }
 
     // -----------------------------------------------------------------------

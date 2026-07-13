@@ -3,12 +3,12 @@ package ai.kilocode.backend.migration
 import ai.kilocode.backend.migration.session.LegacySessionIds
 import ai.kilocode.backend.migration.session.LegacySessionParser
 import ai.kilocode.backend.migration.session.LegacySessionParts
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 class LegacyMigrationSessionTest {
 
     // -----------------------------------------------------------------------
-    // Deterministic IDs matching VS Code formulas
+    // Deterministic IDs
     // -----------------------------------------------------------------------
 
     @Test
@@ -37,12 +37,13 @@ class LegacyMigrationSessionTest {
     }
 
     @Test
-    fun `partId matches VS Code formula`() {
+    fun `ordered partId sorts by ordinal for a message`() {
         val id = "task-x"
         val index = 1
-        val part = 2
-        val expected = "prt_migrated_${sha1("$id:$index:$part").take(26)}"
-        assertEquals(expected, LegacySessionIds.createPartId(id, index, part))
+        val first = LegacySessionIds.createOrderedPartId(id, index, 0)
+        val second = LegacySessionIds.createOrderedPartId(id, index, 1)
+        assertTrue(first < second)
+        assertEquals("prt_migrated_${sha1("$id:$index").take(20)}_0000", first)
     }
 
     @Test
@@ -184,14 +185,6 @@ class LegacyMigrationSessionTest {
     // -----------------------------------------------------------------------
 
     @Test
-    fun `thereIsNoToolResult returns true when no matching result`() {
-        val conv = listOf(
-            ai.kilocode.backend.migration.session.LegacyApiMessage("user", "text", null, null, null, null, null, null, null),
-        )
-        assertTrue(LegacySessionParts.thereIsNoToolResult(conv, "call-id-1"))
-    }
-
-    @Test
     fun `legacy tool names are mapped to current tool names`() {
         val conv = """[
             {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"write_to_file","input":{"path":".kilocode/rules/coding-style.md","content":"rules"}}]},
@@ -201,9 +194,86 @@ class LegacyMigrationSessionTest {
         val tool = parsed.parts.first { it["data"]!!.jsonObject["type"]!!.jsonPrimitive.content == "tool" }
         val data = tool["data"]!!.jsonObject
         val state = data["state"]!!.jsonObject
+        val assistant = LegacySessionIds.createMessageId("task-tools", 0)
+        val user = LegacySessionIds.createMessageId("task-tools", 1)
+        assertEquals(1, parsed.messages.size)
+        assertEquals(assistant, parsed.messages.single()["id"]!!.jsonPrimitive.content)
+        assertEquals(assistant, tool["messageID"]!!.jsonPrimitive.content)
+        assertFalse(parsed.parts.any { it["messageID"]!!.jsonPrimitive.content == user })
         assertEquals("write", data["tool"]!!.jsonPrimitive.content)
         assertEquals("Write", state["title"]!!.jsonPrimitive.content)
         assertEquals(".kilocode/rules/coding-style.md", state["input"]!!.jsonObject["filePath"]!!.jsonPrimitive.content)
+        assertEquals("done", state["output"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `assistant text before tool keeps ordered part ids`() {
+        val conv = """[
+            {"role":"assistant","content":[
+                {"type":"text","text":"I will inspect files"},
+                {"type":"tool_use","id":"call-1","name":"list_files","input":{"path":"."}}
+            ]},
+            {"role":"user","content":[{"type":"tool_result","tool_use_id":"call-1","content":[{"type":"text","text":"a.kt"}]}]}
+        ]"""
+        val parsed = LegacySessionParser.parseSession("task-order", conv)
+        val text = parsed.parts.first { type(it) == "text" }
+        val tool = parsed.parts.first { type(it) == "tool" }
+        assertEquals(1, parsed.messages.size)
+        assertEquals(LegacySessionIds.createMessageId("task-order", 0), text["messageID"]!!.jsonPrimitive.content)
+        assertEquals(text["messageID"]!!.jsonPrimitive.content, tool["messageID"]!!.jsonPrimitive.content)
+        assertTrue(text["id"]!!.jsonPrimitive.content < tool["id"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `tool result feedback produces surviving user message`() {
+        val conv = """[
+            {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"read_file","input":{"path":"README.md"}}]},
+            {"role":"user","content":[{"type":"tool_result","tool_use_id":"call-1","content":[{"type":"text","text":"done\n<feedback>Use a different file</feedback>"}]}]}
+        ]"""
+        val parsed = LegacySessionParser.parseSession("task-feedback", conv)
+        val id = LegacySessionIds.createMessageId("task-feedback", 1)
+        val part = parsed.parts.first { it["messageID"]!!.jsonPrimitive.content == id }
+        assertEquals(2, parsed.messages.size)
+        assertEquals("user", parsed.messages[1]["data"]!!.jsonObject["role"]!!.jsonPrimitive.content)
+        assertEquals("Use a different file", part["data"]!!.jsonObject["text"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `tool result without feedback is dropped from messages`() {
+        val conv = """[
+            {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"list_files","input":{"path":"."}}]},
+            {"role":"user","content":[
+                {"type":"tool_result","tool_use_id":"call-1","content":[{"type":"text","text":"done"}]},
+                {"type":"text","text":"<environment_details>context</environment_details>"}
+            ]}
+        ]"""
+        val parsed = LegacySessionParser.parseSession("task-drop", conv)
+        val user = LegacySessionIds.createMessageId("task-drop", 1)
+        assertEquals(1, parsed.messages.size)
+        assertFalse(parsed.messages.any { it["id"]!!.jsonPrimitive.content == user })
+        assertFalse(parsed.parts.any { it["messageID"]!!.jsonPrimitive.content == user })
+    }
+
+    @Test
+    fun `todo tool keeps structured todo list`() {
+        val conv = """[
+            {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"update_todo_list","input":{"todos":[
+                {"content":"Write tests","status":"completed","priority":"high"},
+                {"content":"Review","status":"pending","priority":"medium"}
+            ]}}]},
+            {"role":"user","content":[{"type":"tool_result","tool_use_id":"call-1","content":[{"type":"text","text":"todos updated"}]}]}
+        ]"""
+        val parsed = LegacySessionParser.parseSession("task-todos", conv)
+        val tool = parsed.parts.first { type(it) == "tool" }
+        val data = tool["data"]!!.jsonObject
+        val state = data["state"]!!.jsonObject
+        val input = state["input"]!!.jsonObject["todos"]!!.jsonArray
+        val metadata = state["metadata"]!!.jsonObject["todos"]!!.jsonArray
+        assertEquals("todowrite", data["tool"]!!.jsonPrimitive.content)
+        assertEquals(2, input.size)
+        assertEquals("Write tests", input[0].jsonObject["content"]!!.jsonPrimitive.content)
+        assertEquals(2, metadata.size)
+        assertEquals("Review", metadata[1].jsonObject["content"]!!.jsonPrimitive.content)
     }
 
     // -----------------------------------------------------------------------
@@ -211,6 +281,9 @@ class LegacyMigrationSessionTest {
     // -----------------------------------------------------------------------
 
     private fun sha1(value: String): String = LegacySessionIds.hash(value)
+
+    private fun type(part: kotlinx.serialization.json.JsonObject): String =
+        part["data"]!!.jsonObject["type"]!!.jsonPrimitive.content
 
     private fun assertNull(actual: String?) {
         kotlin.test.assertNull(actual)
