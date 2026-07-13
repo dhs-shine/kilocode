@@ -1,5 +1,5 @@
 ---
-" @kilocode/cli": patch
+"@kilocode/cli": patch
 ---
 
 Fix `kilo upgrade` for curl installs resolving the wrong latest version
