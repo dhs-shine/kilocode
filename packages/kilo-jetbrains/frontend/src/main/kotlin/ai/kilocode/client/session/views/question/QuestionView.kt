@@ -25,7 +25,6 @@ import com.intellij.ui.components.JBRadioButton
 import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
-import javax.swing.ScrollPaneConstants
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -165,9 +164,9 @@ class QuestionView(
         this.style = style
         card.applyStyle(style)
         customEditor?.let { ed ->
-            ed.font = style.transcriptFont
-            ed.getEditor(false)?.let(style::applyTranscriptToEditor)
-            ed.background = style.editorScheme.defaultBackground
+            style.applyTranscriptToField(ed)
+            ed.background = style.editorBackground
+            syncEditorHeight(ed)
         }
         val changed = texts.fold(false) { acc, item -> setFont(item.first, item.second) || acc }
         if (!changed) return
@@ -496,21 +495,14 @@ class QuestionView(
         ed.setShowPlaceholderWhenFocused(true)
         ed.setOneLineMode(false)
         ed.addSettingsProvider { ex ->
-            style.applyTranscriptToEditor(ex)
-            ex.setBorder(JBUI.Borders.empty())
-            ex.scrollPane.border = JBUI.Borders.empty()
-            ex.scrollPane.viewportBorder = JBUI.Borders.empty()
-            ex.backgroundColor = style.editorScheme.defaultBackground
-            ex.scrollPane.background = style.editorScheme.defaultBackground
-            ex.scrollPane.viewport.background = style.editorScheme.defaultBackground
+            style.applyPromptToEditor(ex)
             ex.settings.isUseSoftWraps = true
             ex.settings.isPaintSoftWraps = false
             ex.settings.isAdditionalPageAtBottom = false
-            ex.scrollPane.horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
         }
         selection?.register(ed)?.let(regs::add)
-        ed.font = style.transcriptFont
-        ed.background = style.editorScheme.defaultBackground
+        style.applyTranscriptToField(ed)
+        ed.background = style.editorBackground
 
         // Pre-fill with saved text. This call also forces lazy document creation so
         // that addDocumentListener can install on a non-null document immediately.

@@ -17,6 +17,7 @@ import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBRadioButton
 import com.intellij.ui.components.JBTextArea
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Component
@@ -287,8 +288,36 @@ class QuestionViewTest : BasePlatformTestCase() {
             assertEquals(style.transcriptFont.fontName, editor.colorsScheme.editorFontName)
             assertEquals(style.transcriptFont.size, editor.colorsScheme.editorFontSize)
             assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, editor.scrollPane.horizontalScrollBarPolicy)
+            val ins = editor.scrollPane.viewportBorder.getBorderInsets(editor.scrollPane)
+            val pad = JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_HORIZONTAL_INSET)
+            assertEquals(pad, ins.left)
+            assertEquals(pad, ins.right)
             assertTrue(editor.settings.isUseSoftWraps)
             assertFalse(editor.settings.isPaintSoftWraps)
+        } finally {
+            view.hideView()
+            view.removeNotify()
+        }
+    }
+
+    fun `test custom answer editor style updates use transcript font`() {
+        view.show(customSingleQuestion("q_custom_style_update"))
+
+        findAll<JBRadioButton>(view).first { it.actionCommand == "" }.doClick()
+        val field = findAll<EditorTextField>(view).first()
+        view.addNotify()
+        try {
+            layout(view)
+            UIUtil.dispatchAllInvocationEvents()
+            val editor = field.getEditor(true) ?: error("missing editor")
+            val style = SessionEditorStyle.create(family = "Courier New", size = 26)
+
+            view.applyStyle(style)
+
+            assertEquals(style.transcriptFont, field.font)
+            assertEquals(style.transcriptFont.fontName, editor.colorsScheme.editorFontName)
+            assertEquals(style.transcriptFont.size, editor.colorsScheme.editorFontSize)
+            assertFalse(style.editorFont.fontName == editor.colorsScheme.editorFontName)
         } finally {
             view.hideView()
             view.removeNotify()

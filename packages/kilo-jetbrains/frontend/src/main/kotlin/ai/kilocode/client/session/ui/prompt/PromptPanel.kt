@@ -378,24 +378,8 @@ class PromptPanel(
     @RequiresEdt
     private fun chrome(ed: EditorEx) {
         if (ed.isDisposed) return
-        style.applyTranscriptToEditor(ed)
+        style.applyPromptToEditor(ed)
         if (ed.isDisposed) return
-        val bg = style.editorBackground
-        ed.setBorder(JBUI.Borders.empty())
-        ed.scrollPane.border = JBUI.Borders.empty()
-        ed.scrollPane.viewportBorder = JBUI.Borders.empty(
-            0,
-            JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_HORIZONTAL_INSET),
-            0,
-            JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_HORIZONTAL_INSET),
-        )
-        ed.backgroundColor = bg
-        ed.component.background = bg
-        ed.contentComponent.background = bg
-        ed.scrollPane.background = bg
-        ed.scrollPane.viewport.background = bg
-        ed.scrollPane.revalidate()
-        ed.scrollPane.repaint()
     }
 
     @RequiresEdt
@@ -482,7 +466,7 @@ class PromptPanel(
         this.style = style
         background = style.editorScheme.defaultBackground
         shell.background = style.editorScheme.defaultBackground
-        editor.font = style.transcriptFont
+        style.applyTranscriptToField(editor)
         editor.getEditor(false)?.let(::chrome)
         editor.background = style.editorBackground
         syncEditorHeight()
