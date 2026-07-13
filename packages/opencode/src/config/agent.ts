@@ -134,8 +134,14 @@ export const Info = AgentSchema.pipe(
 ).annotate({ identifier: "AgentConfig" })
 export type Info = Schema.Schema.Type<typeof Info>
 
-// kilocode_change start
-export async function load(dir: string, warnings?: Warning[]) {
+// kilocode_change start - trusted gates {env:}; fileScope confines untrusted agent prompt {file:} reads
+export async function load(
+  dir: string,
+  warnings?: Warning[],
+  trusted = false,
+  fileScope?: ConfigVariable.FileScope,
+  sourceScope?: ConfigVariable.FileScope,
+) {
   // kilocode_change end
   const result: Record<string, Info> = {}
   for (const item of await Glob.scan("{agent,agents}/**/*.md", {
@@ -144,7 +150,9 @@ export async function load(dir: string, warnings?: Warning[]) {
     dot: true,
     symlink: true,
   })) {
-    const md = await ConfigMarkdown.parse(item).catch(async (err) => {
+    // kilocode_change start
+    const md = await ConfigMarkdown.parse(item, { trusted, fileScope, sourceScope }).catch(async (err) => {
+      // kilocode_change end
       const message = ConfigMarkdown.FrontmatterError.isInstance(err)
         ? err.data.message
         : `Failed to parse agent ${item}`
@@ -168,7 +176,9 @@ export async function load(dir: string, warnings?: Warning[]) {
 
     const name = configEntryNameFromPath(path.relative(dir, item), ["agent/", "agents/"])
 
-    // kilocode_change start - substitute agent prompt variables relative to the agent file
+    // kilocode_change start - substitute agent prompt variables relative to the agent file. Project agents are
+    // untrusted (no {env:}, {file:} confined to fileScope.root); a rejected substitution must skip only this
+    // agent with a warning, not fail the whole config load, mirroring the frontmatter-parse handling above.
     const prompt = await ConfigVariable.substitute({
       text: md.content.trim(),
       type: "virtual",
@@ -176,7 +186,17 @@ export async function load(dir: string, warnings?: Warning[]) {
       source: item,
       missing: "empty",
       escapeJson: false,
+      trusted,
+      fileScope,
+    }).catch((err): string | undefined => {
+      const message =
+        (ConfigError.InvalidError.isInstance(err) ? err.data.message : undefined) ??
+        `Failed to substitute variables in agent ${item}`
+      if (warnings) warnings.push({ path: item, message })
+      log.error("failed to substitute agent prompt", { agent: item, err })
+      return undefined
     })
+    if (prompt === undefined) continue
     const config = {
       name,
       ...md.data,
@@ -199,7 +219,13 @@ export async function load(dir: string, warnings?: Warning[]) {
 }
 
 // kilocode_change start
-export async function loadMode(dir: string, warnings?: Warning[]) {
+export async function loadMode(
+  dir: string,
+  warnings?: Warning[],
+  trusted = false,
+  fileScope?: ConfigVariable.FileScope,
+  sourceScope?: ConfigVariable.FileScope,
+) {
   // kilocode_change end
   const result: Record<string, Info> = {}
   for (const item of await Glob.scan("{mode,modes}/*.md", {
@@ -208,7 +234,9 @@ export async function loadMode(dir: string, warnings?: Warning[]) {
     dot: true,
     symlink: true,
   })) {
-    const md = await ConfigMarkdown.parse(item).catch(async (err) => {
+    // kilocode_change start
+    const md = await ConfigMarkdown.parse(item, { trusted, fileScope, sourceScope }).catch(async (err) => {
+      // kilocode_change end
       const message = ConfigMarkdown.FrontmatterError.isInstance(err)
         ? err.data.message
         : `Failed to parse mode ${item}`

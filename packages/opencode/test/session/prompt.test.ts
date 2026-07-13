@@ -13,6 +13,7 @@ import { Agent as AgentSvc } from "../../src/agent/agent"
 import { BackgroundJob } from "@/background/job"
 import { Bus } from "../../src/bus"
 import { Command } from "../../src/command"
+import { Auth } from "../../src/auth" // kilocode_change
 import { Config } from "@/config/config"
 import { LSP } from "@/lsp/lsp"
 import { MCP } from "../../src/mcp"
@@ -60,6 +61,7 @@ import { reply, TestLLMServer } from "../lib/llm-server"
 import { SyncEvent } from "@/sync"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
+import { MemoryService } from "@kilocode/kilo-memory/effect/service" // kilocode_change
 
 void Log.init({ print: false })
 
@@ -211,6 +213,7 @@ function makePrompt(input?: { processor?: "blocking" }) {
     status,
     SyncEvent.defaultLayer,
     EventV2Bridge.defaultLayer,
+    MemoryService.layer, // kilocode_change
   ).pipe(Layer.provideMerge(infra))
   const question = Question.layer.pipe(Layer.provideMerge(deps))
   const todo = Todo.layer.pipe(Layer.provideMerge(deps))
@@ -224,6 +227,7 @@ function makePrompt(input?: { processor?: "blocking" }) {
     Layer.provide(Ripgrep.defaultLayer),
     Layer.provide(Format.defaultLayer),
     Layer.provide(RuntimeFlags.layer({ experimentalEventSystem: true })),
+    Layer.provide(Auth.defaultLayer), // kilocode_change
     Layer.provideMerge(todo),
     Layer.provideMerge(question),
     Layer.provideMerge(deps),
@@ -346,20 +350,18 @@ const useServerConfig = Effect.fn("test.useServerConfig")(function* (config: (ur
   return { dir, llm }
 })
 
-// Wait for a session's runner to enter a busy state. SessionStatus is flipped to
-// "busy" inside Runner.startShell's modifyEffect at the same moment the runner
-// is registered, so this is a deterministic readiness signal — cancel can't
-// no-op once we observe it.
+// kilocode_change start - wait for the runner state that cancel observes instead of session status
 const waitForBusy = (sessionID: SessionID, duration: Duration.Input = "2 seconds") =>
   pollWithTimeout(
     Effect.gen(function* () {
-      const status = yield* SessionStatus.Service
-      const s = yield* status.get(sessionID)
-      return s.type === "busy" ? (true as const) : undefined
+      const run = yield* SessionRunState.Service
+      const exit = yield* run.assertNotBusy(sessionID).pipe(Effect.exit)
+      return Exit.isFailure(exit) ? (true as const) : undefined
     }),
     `session ${sessionID} never became busy`,
     duration,
   )
+// kilocode_change end
 
 const hasBash = Effect.sync(() => Bun.which("bash") !== null)
 
@@ -1520,7 +1522,7 @@ it.instance(
       expect(inputs).toHaveLength(2)
       expect(JSON.stringify(inputs.at(-1)?.messages)).toContain("second")
     }),
-  3_000,
+  10_000, // kilocode_change - loaded CI runners can exceed 3s for two prompt turns
 )
 
 it.instance(
