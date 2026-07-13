@@ -2,7 +2,7 @@
 import path from "path"
 import fs from "fs/promises"
 import { StringDecoder } from "string_decoder"
-import { Cause, Effect, Exit } from "effect"
+import { Cause, Effect, Exit, Fiber, Latch, Scope } from "effect"
 import { SessionID, PartID } from "@/session/schema"
 import { MessageV2 } from "@/session/message-v2"
 import { Session } from "@/session/session"
@@ -29,6 +29,44 @@ import CODE_SWITCH from "@/session/prompt/code-switch.txt"
 
 export namespace KiloSessionPrompt {
   const modes = ["ask", "plan", "architect"]
+  type Intake = { cancelled: boolean; fiber?: Fiber.Fiber<void, unknown> }
+  const intakes = new Map<SessionID, Set<Intake>>()
+
+  export const startAsyncPrompt = Effect.fn("KiloSessionPrompt.startAsyncPrompt")(function* (input: {
+    sessionID: SessionID
+    scope: Scope.Scope
+    work: Effect.Effect<void, unknown>
+  }) {
+    const ready = yield* Latch.make()
+    const entry: Intake = { cancelled: false }
+    const work = ready.whenOpen(input.work).pipe(
+      Effect.ensuring(
+        Effect.sync(() => {
+          const entries = intakes.get(input.sessionID)
+          entries?.delete(entry)
+          if (entries?.size === 0) intakes.delete(input.sessionID)
+        }),
+      ),
+    )
+    const entries = intakes.get(input.sessionID) ?? new Set()
+    entries.add(entry)
+    intakes.set(input.sessionID, entries)
+    const fiber = yield* work.pipe(Effect.forkIn(input.scope, { startImmediately: true }))
+    entry.fiber = fiber
+    yield* (entry.cancelled ? Fiber.interrupt(fiber) : ready.open).pipe(Effect.uninterruptible)
+  }, Effect.uninterruptible)
+
+  export const abortAsyncPrompts = Effect.fn("KiloSessionPrompt.abortAsyncPrompts")(function* (sessionID: SessionID) {
+    const entries = [...(intakes.get(sessionID) ?? [])]
+    yield* Effect.forEach(
+      entries,
+      (entry) => {
+        entry.cancelled = true
+        return entry.fiber ? Fiber.interrupt(entry.fiber) : Effect.void
+      },
+      { concurrency: "unbounded", discard: true },
+    )
+  })
 
   export function titleID(sessionID: SessionID) {
     return `title-${sessionID}`
@@ -247,11 +285,7 @@ export namespace KiloSessionPrompt {
     return built.blocks
   })
 
-  export function memoryPart(input: {
-    sessionID: SessionID
-    message: MessageV2.Assistant
-    cache: MemoryMarker.Cache
-  }) {
+  export function memoryPart(input: { sessionID: SessionID; message: MessageV2.Assistant; cache: MemoryMarker.Cache }) {
     return MemoryMarker.part(input)
   }
 

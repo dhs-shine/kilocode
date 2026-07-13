@@ -1,5 +1,6 @@
 import { Image } from "@/image/image" // kilocode_change - classify user image validation defects
 import { KiloSessionHttpApi } from "@/kilocode/server/httpapi/session-fork" // kilocode_change
+import { KiloSessionPrompt } from "@/kilocode/session/prompt" // kilocode_change
 import { BlockedError as AgentRequirementError } from "@/kilocode/agent-requirements" // kilocode_change
 import { Agent } from "@/agent/agent"
 import { Bus } from "@/bus"
@@ -313,25 +314,30 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
     }) {
       yield* requireSession(ctx.params.sessionID)
       // kilocode_change start - cast to bridge schema-readonly to PromptInput mutable; matches legacy Hono session.ts
-      yield* promptSvc
-        .prompt({ ...ctx.payload, sessionID: ctx.params.sessionID } as unknown as SessionPrompt.PromptInput)
-        .pipe(
-          Effect.catchCause((cause) =>
-            Effect.gen(function* () {
-              yield* Effect.logError("prompt_async failed").pipe(
-                Effect.annotateLogs({ sessionID: ctx.params.sessionID, cause }),
-              )
-              const error = Cause.squash(cause)
-              yield* bus.publish(Session.Event.Error, {
-                sessionID: ctx.params.sessionID,
-                error: AgentRequirementError.isInstance(error)
-                  ? error.toObject()
-                  : new NamedError.Unknown({ message: Cause.pretty(cause) }).toObject(),
+      yield* KiloSessionPrompt.startAsyncPrompt({
+        sessionID: ctx.params.sessionID,
+        scope,
+        work: promptSvc
+          .prompt({ ...ctx.payload, sessionID: ctx.params.sessionID } as unknown as SessionPrompt.PromptInput)
+          .pipe(
+            Effect.asVoid,
+            Effect.catchCause((cause) => {
+              if (Cause.hasInterruptsOnly(cause)) return Effect.void
+              return Effect.gen(function* () {
+                yield* Effect.logError("prompt_async failed").pipe(
+                  Effect.annotateLogs({ sessionID: ctx.params.sessionID, cause }),
+                )
+                const error = Cause.squash(cause)
+                yield* bus.publish(Session.Event.Error, {
+                  sessionID: ctx.params.sessionID,
+                  error: AgentRequirementError.isInstance(error)
+                    ? error.toObject()
+                    : new NamedError.Unknown({ message: Cause.pretty(cause) }).toObject(),
+                })
               })
             }),
           ),
-          Effect.forkIn(scope, { startImmediately: true }),
-        )
+      })
       // kilocode_change end
       return HttpApiSchema.NoContent.make()
     })

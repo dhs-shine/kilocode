@@ -1,8 +1,8 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { expect } from "bun:test"
-import { Effect, Exit, Fiber, Layer } from "effect"
+import { Effect, Exit, Fiber, Layer, Scope } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
-import { rm, symlink } from "fs/promises"
+import { rename, rm, symlink } from "fs/promises"
 import os from "os"
 import path from "path"
 import { pathToFileURL } from "url"
@@ -293,8 +293,10 @@ it.live(
     provideTmpdirServer(
       Effect.fnUntraced(function* ({ dir }) {
         const sentinel = "KILO_12133_ASK_SENTINEL"
+        const denied = "KILO_12133_REPLACEMENT_SENTINEL"
         const file = path.join(dir, "ask.txt")
-        yield* Effect.promise(() => Bun.write(file, sentinel))
+        const replacement = path.join(dir, "replacement.txt")
+        yield* Effect.promise(() => Promise.all([Bun.write(file, sentinel), Bun.write(replacement, denied)]))
 
         const prompt = yield* SessionPrompt.Service
         const sessions = yield* Session.Service
@@ -316,6 +318,7 @@ it.live(
         )
 
         expect(pending.patterns).toEqual(["ask.txt"])
+        yield* Effect.promise(() => rename(replacement, file))
         yield* permission.reply({ requestID: pending.id, reply: "once" })
         const exit = yield* Fiber.await(fiber)
         expect(Exit.isSuccess(exit)).toBe(true)
@@ -325,6 +328,7 @@ it.live(
             .map((part) => part.text)
             .join("\n")
           expect(text).toContain(sentinel)
+          expect(text).not.toContain(denied)
         }
       }),
       {
@@ -339,7 +343,163 @@ it.live(
 )
 
 it.live(
-  "blocks denied files in directory and binary prompt attachments",
+  "stops a prompt while an attachment read permission is pending",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir, llm }) {
+        const sentinel = "KILO_12133_ABORT_SENTINEL"
+        const file = path.join(dir, "abort.txt")
+        yield* Effect.promise(() => Bun.write(file, sentinel))
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const permission = yield* Permission.Service
+        const scope = yield* Scope.Scope
+        const session = yield* sessions.create({})
+        yield* KiloSessionPrompt.startAsyncPrompt({
+          sessionID: session.id,
+          scope,
+          work: prompt
+            .prompt({
+              sessionID: session.id,
+              parts: yield* prompt.resolvePromptParts("Read @abort.txt"),
+            })
+            .pipe(Effect.asVoid),
+        })
+        yield* pollWithTimeout(
+          Effect.gen(function* () {
+            const requests = yield* permission.list()
+            return requests.find((request) => request.sessionID === session.id && request.permission === "read")
+          }),
+          "attachment read permission was never requested",
+        )
+
+        yield* prompt.cancel(session.id)
+        yield* pollWithTimeout(
+          Effect.gen(function* () {
+            const requests = yield* permission.list()
+            return requests.some((request) => request.sessionID === session.id) ? undefined : true
+          }),
+          "attachment read permission remained after cancellation",
+        )
+        const messages = yield* sessions.messages({ sessionID: session.id })
+        expect(
+          messages.flatMap((message) => message.parts).some((part) => "text" in part && part.text.includes(sentinel)),
+        ).toBe(false)
+        expect(yield* llm.calls).toBe(0)
+      }),
+      {
+        git: true,
+        config: (url) => ({ ...providerCfg(url), permission: { read: "ask" } }),
+      },
+    ),
+  30_000,
+)
+
+it.live(
+  "reads a direct attachment from the object authorized before path replacement",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const allowed = "KILO_12133_ALLOWED_BINARY_SENTINEL"
+        const denied = "KILO_12133_REPLACEMENT_BINARY_SENTINEL"
+        const file = path.join(dir, "binary.bin")
+        const replacement = path.join(dir, "replacement.bin")
+        yield* Effect.promise(() => Promise.all([Bun.write(file, allowed), Bun.write(replacement, denied)]))
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const permission = yield* Permission.Service
+        const session = yield* sessions.create({})
+        const fiber = yield* prompt
+          .prompt({
+            sessionID: session.id,
+            noReply: true,
+            parts: [
+              { type: "text", text: "Read @binary.bin" },
+              {
+                type: "file",
+                mime: "application/octet-stream",
+                filename: "binary.bin",
+                url: pathToFileURL(file).href,
+              },
+            ],
+          })
+          .pipe(Effect.forkScoped)
+        const pending = yield* pollWithTimeout(
+          Effect.gen(function* () {
+            const requests = yield* permission.list()
+            return requests.find((request) => request.sessionID === session.id && request.permission === "read")
+          }),
+          "binary attachment read permission was never requested",
+        )
+
+        yield* Effect.promise(() => rename(replacement, file))
+        yield* permission.reply({ requestID: pending.id, reply: "once" })
+        const exit = yield* Fiber.await(fiber)
+        expect(Exit.isSuccess(exit)).toBe(true)
+        if (Exit.isSuccess(exit)) {
+          const attachment = exit.value.parts.find((part) => part.type === "file")
+          expect(attachment?.type).toBe("file")
+          if (attachment?.type === "file") {
+            const content = Buffer.from(attachment.url.split(",")[1] ?? "", "base64").toString()
+            expect(content).toBe(allowed)
+            expect(content).not.toContain(denied)
+          }
+        }
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          permission: { read: { "*": "allow", "binary.bin": "ask" } },
+        }),
+      },
+    ),
+  30_000,
+)
+
+it.live(
+  "does not load nearby instructions while expanding a file mention",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const allowed = "KILO_12133_ALLOWED_FILE_SENTINEL"
+        const denied = "KILO_12133_DENIED_INSTRUCTION_SENTINEL"
+        const fs = yield* AppFileSystem.Service
+        yield* fs.ensureDir(path.join(dir, "nested"))
+        yield* Effect.promise(() =>
+          Promise.all([
+            Bun.write(path.join(dir, "nested", "file.txt"), allowed),
+            Bun.write(path.join(dir, "nested", "AGENTS.md"), denied),
+            Bun.write(path.join(dir, ".kilocodeignore"), "nested/AGENTS.md\n"),
+          ]),
+        )
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({})
+        const message = yield* prompt.prompt({
+          sessionID: session.id,
+          noReply: true,
+          parts: yield* prompt.resolvePromptParts("Read @nested/file.txt"),
+        })
+        const text = message.parts
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n")
+
+        expect(text).toContain(allowed)
+        expect(text).not.toContain(denied)
+        expect(text).not.toContain("Instructions from:")
+      }),
+      { git: true, config: providerCfg },
+    ),
+  30_000,
+)
+
+it.live(
+  "does not inline directory children and blocks denied binary attachments",
   () =>
     provideTmpdirServer(
       Effect.fnUntraced(function* ({ dir }) {
@@ -380,7 +540,7 @@ it.live(
 
         expect(text).not.toContain(nested)
         expect(text).not.toContain(direct)
-        expect(text.match(/prevents you from using this specific tool call/g)).toHaveLength(2)
+        expect(text.match(/prevents you from using this specific tool call/g)).toHaveLength(1)
         expect(file.parts.some((part) => part.type === "file")).toBe(false)
       }),
       {
@@ -500,6 +660,120 @@ symlinkIt(
           reference: { docs: "./docs" },
           permission: { read: "allow", external_directory: "deny" },
         }),
+      },
+    ),
+  30_000,
+)
+
+symlinkIt(
+  "does not disclose suggestions through an external symlinked parent",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const outside = path.join(os.tmpdir(), `kilo-12133-missing-${crypto.randomUUID()}`)
+        const fs = yield* AppFileSystem.Service
+        yield* fs.ensureDir(outside)
+        yield* Effect.addFinalizer(() => Effect.promise(() => rm(outside, { recursive: true, force: true })))
+        yield* Effect.promise(() =>
+          Promise.all([
+            Bun.write(path.join(outside, "missing-secret-name.txt"), "secret"),
+            symlink(outside, path.join(dir, "link")),
+          ]),
+        )
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({})
+        const missing = path.join(dir, "link", "missing-secret")
+        const message = yield* prompt.prompt({
+          sessionID: session.id,
+          noReply: true,
+          parts: [
+            { type: "text", text: "Read @link/missing-secret" },
+            {
+              type: "file",
+              mime: "text/plain",
+              filename: "link/missing-secret",
+              url: pathToFileURL(missing).href,
+            },
+          ],
+        })
+        const text = message.parts
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n")
+
+        expect(text).not.toContain("missing-secret-name.txt")
+        expect(text).toContain("prevents you from using this specific tool call")
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          permission: { read: "allow", external_directory: "deny" },
+        }),
+      },
+    ),
+  30_000,
+)
+
+symlinkIt(
+  "uses the authorized directory snapshot after the path is replaced",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const folder = path.join(dir, "folder")
+        const moved = path.join(dir, "moved")
+        const outside = path.join(os.tmpdir(), `kilo-12133-directory-${crypto.randomUUID()}`)
+        const fs = yield* AppFileSystem.Service
+        yield* fs.ensureDir(folder)
+        yield* fs.ensureDir(outside)
+        yield* Effect.addFinalizer(() => Effect.promise(() => rm(outside, { recursive: true, force: true })))
+        yield* Effect.promise(() =>
+          Promise.all([
+            Bun.write(path.join(folder, "allowed-name.txt"), "allowed"),
+            Bun.write(path.join(outside, "secret-name.txt"), "secret"),
+          ]),
+        )
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const permission = yield* Permission.Service
+        const session = yield* sessions.create({})
+        const fiber = yield* prompt
+          .prompt({
+            sessionID: session.id,
+            noReply: true,
+            parts: yield* prompt.resolvePromptParts("Read @folder"),
+          })
+          .pipe(Effect.forkScoped)
+        const pending = yield* pollWithTimeout(
+          Effect.gen(function* () {
+            const requests = yield* permission.list()
+            return requests.find((request) => request.sessionID === session.id && request.permission === "read")
+          }),
+          "directory read permission was never requested",
+        )
+
+        yield* Effect.promise(async () => {
+          await rename(folder, moved)
+          await symlink(outside, folder)
+        })
+        yield* permission.reply({ requestID: pending.id, reply: "once" })
+        const exit = yield* Fiber.await(fiber)
+        expect(Exit.isSuccess(exit)).toBe(true)
+        if (Exit.isSuccess(exit)) {
+          const text = exit.value.parts
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join("\n")
+          expect(text).toContain("allowed-name.txt")
+          expect(text).not.toContain("secret-name.txt")
+        }
+      }),
+      {
+        git: true,
+        config: (url) => ({ ...providerCfg(url), permission: { read: "ask" } }),
       },
     ),
   30_000,

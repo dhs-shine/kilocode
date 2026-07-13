@@ -1,5 +1,3 @@
-import type { AppFileSystem } from "@opencode-ai/core/filesystem"
-import { Effect, Stream } from "effect"
 import { addAbortSignal, Readable } from "stream"
 import * as Encoding from "./encoding"
 
@@ -18,8 +16,6 @@ export class InvalidUtf8Error extends Error {
   }
 }
 
-type FileSystem = Pick<AppFileSystem.Interface, "readFile" | "stream">
-
 function decode(decoder: TextDecoder, bytes?: Uint8Array) {
   try {
     return decoder.decode(bytes, bytes ? { stream: true } : undefined)
@@ -28,9 +24,9 @@ function decode(decoder: TextDecoder, bytes?: Uint8Array) {
   }
 }
 
-async function* chunks(fs: FileSystem, filepath: string) {
+async function* chunks(open: () => Readable) {
   const decoder = new TextDecoder("utf-8", { fatal: true })
-  for await (const bytes of Stream.toAsyncIterable(fs.stream(filepath))) {
+  for await (const bytes of open()) {
     const text = decode(decoder, bytes)
     if (text) yield text
   }
@@ -42,9 +38,9 @@ export function abortable(stream: Readable, signal?: AbortSignal) {
   return signal ? addAbortSignal(signal, stream) : stream
 }
 
-/** UTF-8 text stream backed by the injected filesystem service. */
-export function openUtf8(fs: FileSystem, filepath: string, signal?: AbortSignal): Readable {
-  return abortable(Readable.from(chunks(fs, filepath)), signal)
+/** UTF-8 text stream backed by an already-open file. */
+export function openUtf8(open: () => Readable, signal?: AbortSignal): Readable {
+  return abortable(Readable.from(chunks(open)), signal)
 }
 
 export function safeSlice(text: string, end: number) {
@@ -54,8 +50,8 @@ export function safeSlice(text: string, end: number) {
 }
 
 /** Whole-file decoded Readable; buffers legacy encodings only after UTF-8 streaming fails. */
-export async function openDecoded(fs: FileSystem, filepath: string, signal?: AbortSignal): Promise<Readable> {
-  const bytes = Buffer.from(await Effect.runPromise(fs.readFile(filepath), { signal }))
+export async function openDecoded(read: (signal?: AbortSignal) => Promise<Buffer>, signal?: AbortSignal) {
+  const bytes = await read(signal)
   return abortable(Readable.from([Encoding.decode(bytes, Encoding.detect(bytes))]), signal)
 }
 
@@ -64,15 +60,15 @@ export async function openDecoded(fs: FileSystem, filepath: string, signal?: Abo
  * retry once against {@link openDecoded}. Other errors propagate.
  */
 export async function withFallback<T>(
-  fs: FileSystem,
-  filepath: string,
+  open: () => Readable,
+  read: (signal?: AbortSignal) => Promise<Buffer>,
   fn: (input: Readable) => Promise<T>,
   signal?: AbortSignal,
 ): Promise<T> {
   try {
-    return await fn(openUtf8(fs, filepath, signal))
+    return await fn(openUtf8(open, signal))
   } catch (err) {
     if (!(err instanceof InvalidUtf8Error)) throw err
   }
-  return fn(await openDecoded(fs, filepath, signal))
+  return fn(await openDecoded(read, signal))
 }
