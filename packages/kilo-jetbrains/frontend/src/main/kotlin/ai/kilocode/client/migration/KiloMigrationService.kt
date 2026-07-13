@@ -43,6 +43,7 @@ interface MigrationUiController {
     fun check()
     fun start(selections: MigrationUiSelections)
     fun skip()
+    fun later()
     fun finish()
 }
 
@@ -157,6 +158,24 @@ class KiloMigrationService internal constructor(
                 call { skip() }
             } catch (e: Exception) {
                 LOG.warn("migration skip failed", e)
+            }
+            _state.value = MigrationUiState.Hidden
+        }
+    }
+
+    /**
+     * Defer migration — resumes app load without marking any status, so migration is offered
+     * again on the next startup.
+     */
+    override fun later() {
+        LOG.info("Migration wizard: user chose later")
+        val current = _state.value as? MigrationUiState.Needed
+        if (current != null) telemetry("Migration Deferred", detectionProps(current.detection))
+        cs.launch {
+            try {
+                call { resume() }
+            } catch (e: Exception) {
+                LOG.warn("migration resume failed", e)
             }
             _state.value = MigrationUiState.Hidden
         }

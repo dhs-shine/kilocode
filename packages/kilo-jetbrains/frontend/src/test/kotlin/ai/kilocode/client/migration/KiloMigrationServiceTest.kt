@@ -93,6 +93,17 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
         assertEquals(MigrationUiState.Hidden, service.state.value)
     }
 
+    fun `test later resumes without marking status and hides`() {
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
+        settle()
+        service.later()
+        settle()
+        assertEquals(1, rpc.resumeCalls.size)
+        assertEquals(0, rpc.skipCalls.size)
+        assertEquals(0, rpc.finalizeCalls.size)
+        assertEquals(MigrationUiState.Hidden, service.state.value)
+    }
+
     fun `test finish with kept source marks completed without cleanup`() {
         app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         settle()

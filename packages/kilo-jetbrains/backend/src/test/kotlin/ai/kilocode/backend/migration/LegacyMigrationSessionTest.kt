@@ -276,6 +276,19 @@ class LegacyMigrationSessionTest {
         assertEquals("Review", metadata[1].jsonObject["content"]!!.jsonPrimitive.content)
     }
 
+    @Test
+    fun `tool use without matching result has empty output`() {
+        val conv = """[
+            {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"read_file","input":{"path":"README.md"}}]}
+        ]"""
+        val parsed = LegacySessionParser.parseSession("task-noresult", conv)
+        val tool = parsed.parts.first { type(it) == "tool" }
+        val data = tool["data"]!!.jsonObject
+        val state = data["state"]!!.jsonObject
+        assertEquals("read", data["tool"]!!.jsonPrimitive.content)
+        assertEquals("", state["output"]!!.jsonPrimitive.content)
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------

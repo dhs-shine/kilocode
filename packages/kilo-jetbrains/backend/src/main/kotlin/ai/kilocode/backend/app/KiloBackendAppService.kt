@@ -5,6 +5,7 @@ import ai.kilocode.backend.cli.KiloBackendCliManager
 import ai.kilocode.backend.cli.KiloCliDataParser
 import ai.kilocode.backend.migration.KiloBackendLegacyMigrationStoreService
 import ai.kilocode.backend.migration.LegacyMigrationDetection
+import ai.kilocode.backend.migration.LegacyMigrationStatus
 import ai.kilocode.backend.telemetry.KiloBackendTelemetry
 import ai.kilocode.log.KiloLog
 import ai.kilocode.backend.workspace.KiloBackendWorkspaceManager
@@ -554,17 +555,13 @@ class KiloBackendAppService private constructor(
             return@withContext null
         }
         log.info("Migration check: started")
-        if (migrationSuppressed) {
-            log.info("Migration check: skipped because migration was dismissed for this startup")
-            return@withContext null
-        }
-        if (migrationOffered) {
-            log.info("Migration check: skipped because migration was already offered this startup")
-            return@withContext null
-        }
-        val status = KiloBackendLegacyMigrationStoreService.status(log)
-        if (status != null) {
-            log.info("Migration check: skipped because status=$status")
+        // Status is only consulted when the in-memory flags do not already block the offer,
+        // preserving the original short-circuit order.
+        val status = if (migrationSuppressed || migrationOffered) null
+        else KiloBackendLegacyMigrationStoreService.status(log)
+        val gate = migrationGate(migrationSuppressed, migrationOffered, status)
+        if (gate != MigrationGate.Proceed) {
+            log.info("Migration check: skipped gate=$gate status=$status")
             return@withContext null
         }
         val source = KiloBackendLegacyMigrationStoreService.resolveSource(log, includeFile = migrationForceRequested)
@@ -1014,3 +1011,21 @@ private data class FetchResult<T>(val value: T?, val error: LoadError?) {
 
 /** Thrown when a required data fetch exhausts all retries. */
 private class LoadFailure(val error: LoadError) : Exception("Failed to load ${error.resource}")
+
+/** Why a startup migration offer is or is not made. */
+internal enum class MigrationGate { Proceed, Suppressed, AlreadyOffered, StatusSet }
+
+/**
+ * Pure startup-gating decision for the migration offer. Suppression (dismissed this startup)
+ * takes priority, then a prior offer this startup, then a persisted status.
+ */
+internal fun migrationGate(
+    suppressed: Boolean,
+    offered: Boolean,
+    status: LegacyMigrationStatus?,
+): MigrationGate = when {
+    suppressed -> MigrationGate.Suppressed
+    offered -> MigrationGate.AlreadyOffered
+    status != null -> MigrationGate.StatusSet
+    else -> MigrationGate.Proceed
+}

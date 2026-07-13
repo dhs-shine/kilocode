@@ -6,6 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class KiloBackendLegacyMigrationStoreServiceTest {
     @Test
@@ -23,25 +24,43 @@ class KiloBackendLegacyMigrationStoreServiceTest {
     }
 
     @Test
-    fun `stale inline completed status is ignored without durable marker`() {
+    fun `inline completed status is adopted into durable marker`() {
         val dir = Files.createTempDirectory("kilo-migration-config").toFile()
         val env = mapOf("KILO_CONFIG_DIR" to dir.absolutePath)
         val log = TestLog()
         val store = KiloBackendLegacyMigrationStoreService.store(log, env)
         store.mark(LegacyMigrationStatus.Completed)
 
-        assertNull(KiloBackendLegacyMigrationStoreService.status(log, env))
+        // First read adopts the inline status into the durable marker.
+        assertEquals(LegacyMigrationStatus.Completed, KiloBackendLegacyMigrationStoreService.status(log, env))
+        assertTrue(dir.resolve("legacy-migration-status").isFile)
+
+        // The adopted marker then survives deletion of the legacy settings file.
+        store.cleanup(LegacyCleanupTargets(legacySettingsFile = true))
+        assertFalse(dir.resolve("legacy-settings.json").exists())
+        assertEquals(LegacyMigrationStatus.Completed, KiloBackendLegacyMigrationStoreService.status(log, env))
     }
 
     @Test
-    fun `inline skipped status is ignored without durable marker`() {
+    fun `inline skipped status is adopted into durable marker`() {
         val dir = Files.createTempDirectory("kilo-migration-config").toFile()
         val env = mapOf("KILO_CONFIG_DIR" to dir.absolutePath)
         val log = TestLog()
         val store = KiloBackendLegacyMigrationStoreService.store(log, env)
         store.mark(LegacyMigrationStatus.Skipped)
 
+        assertEquals(LegacyMigrationStatus.Skipped, KiloBackendLegacyMigrationStoreService.status(log, env))
+        assertTrue(dir.resolve("legacy-migration-status").isFile)
+    }
+
+    @Test
+    fun `absent status stays null`() {
+        val dir = Files.createTempDirectory("kilo-migration-config").toFile()
+        val env = mapOf("KILO_CONFIG_DIR" to dir.absolutePath)
+        val log = TestLog()
+
         assertNull(KiloBackendLegacyMigrationStoreService.status(log, env))
+        assertFalse(dir.resolve("legacy-migration-status").exists())
     }
 
     @Test

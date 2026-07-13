@@ -44,21 +44,24 @@ class LegacyV5Importer(private val src: LegacyV5Sources) {
         }
     }
 
+    // Scan fallback used when the IDE globalState XML has no taskHistory. v5 never writes a
+    // per-task metadata file with the workspace (task_metadata.json only holds files_in_context),
+    // so workspace must come from the conversation and ts from ui_messages.json.
     private fun scanHistory(): List<JsonObject> = src.taskDirIds().mapNotNull { id ->
-        val stored = parseObject(src.historyItemFile(id))
         val conv = src.taskConversationFile(id) ?: return@mapNotNull null
-        val workspace = stored?.get("workspace")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-            ?: workspace(conv)
-            ?: return@mapNotNull null
+        val workspace = workspace(conv) ?: return@mapNotNull null
         buildJsonObject {
             put("id", id)
-            put("task", stored?.get("task")?.jsonPrimitive?.content?.let(::cleanTitle) ?: title(conv, id))
+            put("task", title(conv, id))
             put("workspace", workspace)
-            put("ts", stored?.get("ts")?.jsonPrimitive?.content?.toLongOrNull() ?: timestamp(id))
-            stored?.get("mode")?.jsonPrimitive?.content?.let { put("mode", it) }
-            stored?.get("rootTaskId")?.jsonPrimitive?.content?.let { put("rootTaskId", it) }
-            stored?.get("parentTaskId")?.jsonPrimitive?.content?.let { put("parentTaskId", it) }
+            put("ts", uiTimestamp(id) ?: timestamp(id))
         }
+    }
+
+    private fun uiTimestamp(id: String): Long? {
+        val raw = src.uiMessagesFile(id) ?: return null
+        val arr = runCatching { json.parseToJsonElement(raw).jsonArray }.getOrNull() ?: return null
+        return arr.firstNotNullOfOrNull { (it as? JsonObject)?.get("ts")?.jsonPrimitive?.content?.toLongOrNull() }
     }
 
     private fun parseGlobalState(): JsonObject? {

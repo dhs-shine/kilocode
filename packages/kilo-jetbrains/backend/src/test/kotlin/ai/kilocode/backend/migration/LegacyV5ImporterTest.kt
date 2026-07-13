@@ -8,6 +8,7 @@ import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LegacyV5ImporterTest {
@@ -95,5 +96,61 @@ customModes:
         val obj = LegacyV5Importer(LegacyV5Sources(home, cfg)).import()
         val history = kotlinx.serialization.json.Json.parseToJsonElement(obj["taskHistory"]!!.jsonPrimitive.content).jsonArray
         assertEquals("create sample skills", history[0].jsonObject["task"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `imports scoped mcp and custom modes`() {
+        val home = Files.createTempDirectory("kilo-v5-home").toFile()
+        val cfg = Files.createTempDirectory("kilo-v5-config").toFile()
+        val scoped = home.resolve(".kilocode/globalStorage/kilo code.kilo-code/settings")
+        scoped.mkdirs()
+        scoped.resolve("mcp_settings.json").writeText("""{"mcpServers":{"tool":{"command":"npx"}}}""")
+        scoped.resolve("custom_modes.yaml").writeText("""
+customModes:
+  - slug: helper
+    name: Helper
+    roleDefinition: Help.
+    groups: [read]
+        """.trimIndent())
+
+        val obj = LegacyV5Importer(LegacyV5Sources(home, cfg)).import()
+        assertNotNull(obj["mcpSettings"])
+        assertNotNull(obj["customModes"])
+
+        val detection = LegacyMigrationEngine(InMemoryLegacyMigrationStore(obj), NoopLegacyMigrationBackend()).detect()
+        assertEquals(1, detection.mcpServers.size)
+        assertEquals(1, detection.customModes.size)
+    }
+
+    @Test
+    fun `scan fallback derives ts from ui messages`() {
+        val home = Files.createTempDirectory("kilo-v5-home").toFile()
+        val cfg = Files.createTempDirectory("kilo-v5-config").toFile()
+        val task = home.resolve(".kilocode/globalStorage/kilo code.kilo-code/tasks/task-1")
+        task.mkdirs()
+        task.resolve("api_conversation_history.json").writeText("""[
+            {"role":"user","content":[{"type":"text","text":"<task>do it</task>"},{"type":"text","text":"<environment_details>\n# Current Workspace Directory (/tmp/project) Files\n</environment_details>"}]}
+        ]""".trimIndent())
+        task.resolve("ui_messages.json").writeText("""[{"ts":1700000000123,"type":"say","say":"text","text":"do it"}]""")
+
+        val obj = LegacyV5Importer(LegacyV5Sources(home, cfg)).import()
+        val history = kotlinx.serialization.json.Json.parseToJsonElement(obj["taskHistory"]!!.jsonPrimitive.content).jsonArray
+        assertEquals("/tmp/project", history[0].jsonObject["workspace"]!!.jsonPrimitive.content)
+        assertEquals(1700000000123L, history[0].jsonObject["ts"]!!.jsonPrimitive.content.toLong())
+    }
+
+    @Test
+    fun `scan fallback skips sessions without workspace`() {
+        val home = Files.createTempDirectory("kilo-v5-home").toFile()
+        val cfg = Files.createTempDirectory("kilo-v5-config").toFile()
+        val task = home.resolve(".kilocode/globalStorage/kilo code.kilo-code/tasks/task-nows")
+        task.mkdirs()
+        task.resolve("api_conversation_history.json").writeText("""[
+            {"role":"user","content":[{"type":"text","text":"just a question with no workspace marker"}]}
+        ]""".trimIndent())
+
+        val obj = LegacyV5Importer(LegacyV5Sources(home, cfg)).import()
+        assertNull(obj["taskHistory"])
+        assertTrue((obj["conversations"] as? kotlinx.serialization.json.JsonObject)?.isEmpty() ?: true)
     }
 }

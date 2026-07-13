@@ -27,7 +27,14 @@ class KiloBackendLegacyMigrationStoreService {
 
         internal fun status(log: KiloLog, env: Map<String, String>? = null): LegacyMigrationStatus? {
             val file = fileStore(log, env)
-            return markerStatus(file.marker)
+            markerStatus(file.marker)?.let { return it }
+            // Back-compat: older builds persisted the status only inline in legacy-settings.json
+            // and never wrote the durable marker. Adopt it into the marker once so users who
+            // already completed or skipped are not re-prompted after upgrading.
+            val inline = file.store.status() ?: return null
+            markStatus(log, inline, env)
+            log.info("Migration status: adopted inline status=$inline into durable marker file=${file.marker.absolutePath}")
+            return inline
         }
 
         internal fun markStatus(log: KiloLog, status: LegacyMigrationStatus, env: Map<String, String>? = null) {
@@ -49,18 +56,27 @@ class KiloBackendLegacyMigrationStoreService {
         }
 
         internal fun resolveSource(log: KiloLog, includeFile: Boolean = false): LegacyMigrationSource {
-            val file = fileStore(log)
+            val env = KiloBackendCliManager(log).buildEnv("migration")
+            return resolveSource(log, includeFile, env, LegacyV5Sources(log = log::info))
+        }
+
+        internal fun resolveSource(
+            log: KiloLog,
+            includeFile: Boolean,
+            env: Map<String, String>,
+            sources: LegacyV5Sources,
+        ): LegacyMigrationSource {
+            val file = fileStore(log, env)
             if (includeFile && file.file.isFile) {
                 log.info("Migration source: file")
                 return LegacyMigrationSource.FileBacked(file.store)
             }
             log.info("Migration source: probing raw v5 data; legacy settings file is input only file=${file.file.absolutePath}")
-            val src = LegacyV5Sources(log = log::info)
-            if (!src.anyPresent()) {
+            if (!sources.anyPresent()) {
                 log.info("Migration source: none")
                 return LegacyMigrationSource.None(file.store)
             }
-            val obj = LegacyV5Importer(src).import()
+            val obj = LegacyV5Importer(sources).import()
             if (obj.isEmpty()) {
                 log.info("Migration source: none")
                 return LegacyMigrationSource.None(file.store)

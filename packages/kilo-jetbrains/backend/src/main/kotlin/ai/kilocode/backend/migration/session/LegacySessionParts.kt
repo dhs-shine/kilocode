@@ -261,7 +261,9 @@ object LegacySessionParts {
             "todowrite" -> "Update todos"
             else -> legacy.replace('_', ' ').replaceFirstChar { it.titlecase() }
         }
-        return ToolSpec(mapped, title, data, legacy)
+        // No output is known at spec time; the caller fills it from the matching tool_result.
+        // Fall back to an empty string (never the tool name) when no result is found.
+        return ToolSpec(mapped, title, data, "")
     }
 
     private fun toolInput(tool: String, input: Map<*, *>): Map<String, JsonElement> {
