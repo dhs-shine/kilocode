@@ -4,7 +4,7 @@ import * as path from "path"
 import { Readable } from "stream" // kilocode_change
 import { createInterface } from "readline"
 import * as Tool from "./tool"
-import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { FSUtil } from "@opencode-ai/core/fs-util"
 import { LSP } from "@/lsp/lsp"
 import DESCRIPTION from "./read.txt"
 import { InstanceState } from "@/effect/instance-state"
@@ -45,10 +45,40 @@ export const Parameters = Schema.Struct({
   }),
 })
 
-export const ReadTool = Tool.define(
+type Display =
+  | {
+      type: "directory"
+      path: string
+      entries: string[]
+      offset: number
+      totalEntries: number
+      truncated: boolean
+    }
+  | {
+      type: "file"
+      path: string
+      text: string
+      lineStart: number
+      lineEnd: number
+      totalLines: number
+      truncated: boolean
+    }
+
+type Metadata = {
+  preview: string
+  truncated: boolean
+  loaded: string[]
+  display?: Display
+}
+
+export const ReadTool = Tool.define<
+  typeof Parameters,
+  Metadata,
+  FSUtil.Service | Instruction.Service | LSP.Service | Reference.Service | Scope.Scope
+>(
   "read",
   Effect.gen(function* () {
-    const fs = yield* AppFileSystem.Service
+    const fs = yield* FSUtil.Service
     const instruction = yield* Instruction.Service
     const lsp = yield* LSP.Service
     const reference = yield* Reference.Service
@@ -79,7 +109,8 @@ export const ReadTool = Tool.define(
     // kilocode_change end
 
     const warm = Effect.fn("ReadTool.warm")(function* (filepath: string) {
-      yield* lsp.touchFile(filepath).pipe(Effect.ignore, Effect.forkIn(scope))
+      // LSP warm-up is optional; do not let a background defect fail an otherwise successful read.
+      yield* lsp.touchFile(filepath).pipe(Effect.ignoreCause, Effect.forkIn(scope))
     })
 
     // kilocode_change start - extracted formats and text consume the authorized open object
@@ -158,7 +189,7 @@ export const ReadTool = Tool.define(
 
     const run = Effect.fn("ReadTool.execute")(function* (
       params: Schema.Schema.Type<typeof Parameters>,
-      ctx: Tool.Context,
+      ctx: Tool.Context<Metadata>,
     ) {
       const instance = yield* InstanceState.context
       let filepath = params.filePath
@@ -166,7 +197,7 @@ export const ReadTool = Tool.define(
         filepath = path.resolve(instance.directory, filepath)
       }
       if (process.platform === "win32") {
-        filepath = AppFileSystem.normalizePath(filepath)
+        filepath = FSUtil.normalizePath(filepath)
       }
       const requested = filepath
       yield* reference.ensure(requested)
@@ -224,11 +255,17 @@ export const ReadTool = Tool.define(
             preview: sliced.slice(0, 20).join("\n"),
             truncated,
             loaded: [],
+            display: {
+              type: "directory" as const,
+              path: filepath,
+              entries: sliced,
+              offset,
+              totalEntries: items.length,
+              truncated,
+            },
           },
         }
       }
-      // kilocode_change end
-
       // kilocode_change start - hold one object open across authorization and every content read
       return yield* KiloReadObject.use(requested, (bound) =>
         Effect.gen(function* () {
@@ -256,7 +293,7 @@ export const ReadTool = Tool.define(
             try: (signal) => bound.sample(SAMPLE_BYTES, AbortSignal.any([ctx.abort, signal])),
             catch: (err) => (err instanceof Error ? err : new Error(String(err))),
           })
-          const mime = sniffAttachmentMime(sample, AppFileSystem.mimeType(requested))
+          const mime = sniffAttachmentMime(sample, FSUtil.mimeType(requested))
           const isImage = SUPPORTED_IMAGE_MIMES.has(mime)
 
           if (isImage || isPdfAttachment(mime)) {
@@ -311,6 +348,15 @@ export const ReadTool = Tool.define(
               preview: file.raw.slice(0, 20).join("\n"),
               truncated,
               loaded: loaded.map((item) => item.filepath),
+              display: {
+                type: "file" as const,
+                path: bound.target,
+                text: file.raw.join("\n"),
+                lineStart: file.offset,
+                lineEnd: last,
+                totalLines: file.count,
+                truncated,
+              },
             },
           }
         }),
@@ -321,13 +367,13 @@ export const ReadTool = Tool.define(
     return {
       description: DESCRIPTION,
       parameters: Parameters,
-      execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
+      execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context<Metadata>) =>
         run(params, ctx).pipe(Effect.orDie),
     }
   }),
 )
 
-// kilocode_change start - extracted formats use native readers; ordinary text is supplied by AppFileSystem above
+// kilocode_change start - extracted formats use native readers; ordinary text is supplied by FSUtil above
 async function collect(stream: Readable, opts: { limit: number; offset: number }) {
   // kilocode_change end
   const rl = createInterface({ input: stream, crlfDelay: Infinity })

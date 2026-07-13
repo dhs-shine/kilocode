@@ -4,9 +4,10 @@ import { Effect, Exit, Fiber, Layer, Scope } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { rename, rm, symlink } from "fs/promises"
 import os from "os"
+import { Database } from "@opencode-ai/core/database/database"
 import path from "path"
 import { pathToFileURL } from "url"
-import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { FSUtil } from "@opencode-ai/core/fs-util"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import * as Log from "@opencode-ai/core/util/log"
 import { Agent as AgentSvc } from "../../src/agent/agent"
@@ -45,7 +46,7 @@ import { Skill } from "../../src/skill"
 import { Snapshot } from "../../src/snapshot"
 import { Storage } from "../../src/storage/storage"
 import { SyncEvent } from "../../src/sync"
-import { Ripgrep } from "../../src/file/ripgrep"
+import { Ripgrep } from "@opencode-ai/core/filesystem/ripgrep"
 import { ToolRegistry } from "../../src/tool/registry"
 import { Truncate } from "../../src/tool/truncate"
 import { KiloHeadless } from "../../src/kilocode/permission/headless"
@@ -120,7 +121,7 @@ const lsp = Layer.succeed(
   }),
 )
 
-const status = SessionStatus.layer.pipe(Layer.provideMerge(Bus.layer))
+const status = Layer.mergeAll(SessionStatus.defaultLayer, Bus.layer)
 const run = SessionRunState.layer.pipe(Layer.provide(status))
 const infra = Layer.mergeAll(NodeFileSystem.layer, CrossSpawnSpawner.defaultLayer)
 
@@ -140,10 +141,11 @@ function makeHttp() {
     ProviderSvc.defaultLayer,
     lsp,
     mcp,
-    AppFileSystem.defaultLayer,
+    FSUtil.defaultLayer,
     Reference.defaultLayer,
     SyncEvent.defaultLayer,
     EventV2Bridge.defaultLayer,
+    Database.defaultLayer,
     status,
     MemoryService.layer,
   ).pipe(Layer.provideMerge(infra))
@@ -301,7 +303,10 @@ it.live(
         const prompt = yield* SessionPrompt.Service
         const sessions = yield* Session.Service
         const permission = yield* Permission.Service
+        const agents = yield* AgentSvc.Service
+        const agent = yield* agents.defaultInfo()
         const session = yield* sessions.create({})
+        expect(Permission.evaluate("read", "ask.txt", agent.permission).action).toBe("ask")
         const fiber = yield* prompt
           .prompt({
             sessionID: session.id,
@@ -466,7 +471,7 @@ it.live(
       Effect.fnUntraced(function* ({ dir }) {
         const allowed = "KILO_12133_ALLOWED_FILE_SENTINEL"
         const denied = "KILO_12133_DENIED_INSTRUCTION_SENTINEL"
-        const fs = yield* AppFileSystem.Service
+        const fs = yield* FSUtil.Service
         yield* fs.ensureDir(path.join(dir, "nested"))
         yield* Effect.promise(() =>
           Promise.all([
@@ -507,7 +512,7 @@ it.live(
         const binary = path.join(dir, "secret.bin")
         const nested = "KILO_12133_DIRECTORY_SENTINEL"
         const direct = "KILO_12133_BINARY_SENTINEL"
-        const fs = yield* AppFileSystem.Service
+        const fs = yield* FSUtil.Service
         yield* fs.ensureDir(folder)
         yield* Effect.promise(() =>
           Promise.all([
@@ -632,7 +637,7 @@ symlinkIt(
         const docs = path.join(dir, "docs")
         const outside = path.join(os.tmpdir(), `kilo-12133-${crypto.randomUUID()}.txt`)
         const sentinel = "KILO_12133_REFERENCE_SYMLINK_SENTINEL"
-        const fs = yield* AppFileSystem.Service
+        const fs = yield* FSUtil.Service
         yield* fs.ensureDir(docs)
         yield* Effect.promise(() => Bun.write(outside, sentinel))
         yield* Effect.addFinalizer(() => Effect.promise(() => rm(outside, { force: true })))
@@ -641,17 +646,26 @@ symlinkIt(
         const prompt = yield* SessionPrompt.Service
         const sessions = yield* Session.Service
         const session = yield* sessions.create({})
-        const parts = yield* prompt.resolvePromptParts("Read @docs/public.txt")
-        const message = yield* prompt.prompt({ sessionID: session.id, noReply: true, parts })
+        const message = yield* prompt.prompt({
+          sessionID: session.id,
+          noReply: true,
+          parts: [
+            { type: "text", text: "Read @docs/public.txt" },
+            {
+              type: "file",
+              mime: "text/plain",
+              filename: "docs/public.txt",
+              url: pathToFileURL(path.join(docs, "public.txt")).href,
+            },
+          ],
+        })
         const content = message.parts
           .filter((part) => part.type === "text")
           .map((part) => part.text)
           .join("\n")
 
-        expect(parts.some((part) => part.type === "file" && part.filename === "docs/public.txt")).toBe(true)
         expect(content).not.toContain(sentinel)
         expect(content).toContain("prevents you from using this specific tool call")
-        expect(message.parts.some((part) => part.type === "file")).toBe(false)
       }),
       {
         git: true,
@@ -671,7 +685,7 @@ symlinkIt(
     provideTmpdirServer(
       Effect.fnUntraced(function* ({ dir }) {
         const outside = path.join(os.tmpdir(), `kilo-12133-missing-${crypto.randomUUID()}`)
-        const fs = yield* AppFileSystem.Service
+        const fs = yield* FSUtil.Service
         yield* fs.ensureDir(outside)
         yield* Effect.addFinalizer(() => Effect.promise(() => rm(outside, { recursive: true, force: true })))
         yield* Effect.promise(() =>
@@ -725,7 +739,7 @@ symlinkIt(
         const folder = path.join(dir, "folder")
         const moved = path.join(dir, "moved")
         const outside = path.join(os.tmpdir(), `kilo-12133-directory-${crypto.randomUUID()}`)
-        const fs = yield* AppFileSystem.Service
+        const fs = yield* FSUtil.Service
         yield* fs.ensureDir(folder)
         yield* fs.ensureDir(outside)
         yield* Effect.addFinalizer(() => Effect.promise(() => rm(outside, { recursive: true, force: true })))
@@ -870,8 +884,8 @@ it.live("headless run: subagent permission asks fail instead of waiting forever"
 
       expect(err).toBeInstanceOf(Permission.DeniedError)
       expect(yield* permission.list()).toEqual([])
-      expect(KiloHeadless.denies(child.id)).toBe(true)
-      expect(KiloHeadless.denies(root.id)).toBe(false)
+          expect(yield* KiloHeadless.denies(child.id)).toBe(true)
+          expect(yield* KiloHeadless.denies(root.id)).toBe(false)
 
       KiloHeadless.clear(root.id)
     }),

@@ -2,7 +2,7 @@ import { open, readdir, realpath, stat, type FileHandle } from "node:fs/promises
 import { type BigIntStats } from "node:fs"
 import { Readable } from "node:stream"
 import { Effect } from "effect"
-import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { FSUtil } from "@opencode-ai/core/fs-util"
 
 export namespace KiloReadObject {
   export class ChangedError extends Error {}
@@ -78,7 +78,7 @@ export namespace KiloReadObject {
           if (opened.dev !== seen.dev || opened.ino !== seen.ino) {
             return yield* Effect.fail(new ChangedError(`File changed while opening: ${requested}`))
           }
-          const target = process.platform === "win32" ? AppFileSystem.normalizePath(resolved) : resolved
+          const target = process.platform === "win32" ? FSUtil.normalizePath(resolved) : resolved
           return yield* fn({
             requested,
             target,
@@ -99,7 +99,7 @@ export namespace KiloReadObject {
         const opened = await stat(requested, { bigint: true })
         if (!opened.isDirectory()) throw new ChangedError(`Not a directory: ${requested}`)
         const resolved = await realpath(requested)
-        const target = process.platform === "win32" ? AppFileSystem.normalizePath(resolved) : resolved
+        const target = process.platform === "win32" ? FSUtil.normalizePath(resolved) : resolved
         const seen = await stat(resolved, { bigint: true })
         if (opened.dev !== seen.dev || opened.ino !== seen.ino) {
           throw new ChangedError(`Directory changed while opening: ${requested}`)
@@ -107,7 +107,7 @@ export namespace KiloReadObject {
         const entries = await readdir(resolved, { withFileTypes: true })
         const after = await stat(resolved, { bigint: true })
         const current = await realpath(requested)
-        const canonical = process.platform === "win32" ? AppFileSystem.normalizePath(current) : current
+        const canonical = process.platform === "win32" ? FSUtil.normalizePath(current) : current
         if (opened.dev !== after.dev || opened.ino !== after.ino || canonical !== target) {
           throw new ChangedError(`Directory changed while reading: ${requested}`)
         }

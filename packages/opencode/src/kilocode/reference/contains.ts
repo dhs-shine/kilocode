@@ -1,10 +1,10 @@
 import { Effect } from "effect"
-import { AppFileSystem } from "@opencode-ai/core/filesystem"
+import { FSUtil } from "@opencode-ai/core/fs-util"
 import type { Reference, Resolved } from "@/reference/reference"
 
 export namespace KiloReference {
   export const contains = Effect.fn("KiloReference.contains")(function* (input: {
-    fs: Pick<AppFileSystem.Interface, "realPath">
+    fs: Pick<FSUtil.Interface, "realPath">
     references: Pick<Reference.Interface, "list">
     target: string
   }) {
@@ -17,7 +17,7 @@ export namespace KiloReference {
   })
 
   export const root = Effect.fn("KiloReference.root")(function* (
-    fs: Pick<AppFileSystem.Interface, "realPath">,
+    fs: Pick<FSUtil.Interface, "realPath">,
     reference: Exclude<Resolved, { kind: "invalid" }>,
     target: string,
   ) {
@@ -25,12 +25,12 @@ export namespace KiloReference {
   })
 
   export const path = Effect.fn("KiloReference.path")(function* (
-    fs: Pick<AppFileSystem.Interface, "realPath">,
+    fs: Pick<FSUtil.Interface, "realPath">,
     reference: string,
     target: string,
   ) {
     const resolved = yield* fs.realPath(reference).pipe(Effect.option)
     if (resolved._tag === "None") return false
-    return AppFileSystem.contains(AppFileSystem.normalizePath(resolved.value), target)
+    return FSUtil.contains(FSUtil.normalizePath(resolved.value), target)
   })
 }
