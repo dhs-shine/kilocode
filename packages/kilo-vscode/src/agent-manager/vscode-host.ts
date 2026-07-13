@@ -121,6 +121,8 @@ export class VscodeHost implements Host {
       onFollowupAdopted: (cb) => provider.onFollowupAdopted(cb),
       acknowledgeDraft: (draftID, sessionID) => provider.acknowledgeDraft(draftID, sessionID),
       abortSessions: (ids) => provider.abortSessions(ids),
+      showMemory: (id) => provider.showMemory(id),
+      toggleMemory: (id) => provider.toggleMemory(id),
       dispose: () => provider.dispose(),
     }
 
@@ -167,6 +169,14 @@ export class VscodeHost implements Host {
 
   workspacePath(): string | undefined {
     return getWorkspaceRoot()
+  }
+
+  autoBranchNaming(): { enabled: boolean; prefix: string } {
+    const cfg = vscode.workspace.getConfiguration("kilo-code.new.agentManager")
+    return {
+      enabled: cfg.get("autoBranchNaming", true),
+      prefix: cfg.get("branchPrefix", ""),
+    }
   }
 
   showError(msg: string): void {

@@ -46,6 +46,8 @@ export interface SessionProvider {
   onFollowupAdopted(cb: (session: Session, directory: string) => void): void
   acknowledgeDraft(draftID: string, sessionID: string): void
   abortSessions(ids: readonly string[]): Promise<void>
+  showMemory(sessionID?: string): Promise<void>
+  toggleMemory(sessionID?: string): Promise<void>
   dispose(): void
 }
 
@@ -100,6 +102,9 @@ export interface Host {
 
   /** Get the workspace/project root path. */
   workspacePath(): string | undefined
+
+  /** Read the user's automatic branch naming preferences. */
+  autoBranchNaming(): { enabled: boolean; prefix: string }
 
   /** Show an error notification. */
   showError(msg: string): void

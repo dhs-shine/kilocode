@@ -11,6 +11,7 @@ import type {
   MessageLoadMode,
   SessionCloseReason,
   SessionInfo,
+  SessionModelUsage,
   SessionUpdate,
 } from "./sessions"
 import type { PermissionRequest } from "./permissions"
@@ -46,6 +47,7 @@ import type {
   MigrationSessionProgressMessage,
   MigrationStateMessage,
 } from "./migration"
+import type { MemoryEventMessage, MemoryLoadedMessage, MemoryOperationResultMessage } from "./memory"
 
 // ============================================
 // Messages FROM extension TO webview
@@ -194,6 +196,18 @@ export interface MessagesLoadedMessage {
   since?: number
 }
 
+export interface SessionModelUsageLoadedMessage {
+  type: "sessionModelUsageLoaded"
+  sessionID: string
+  requestID: string
+  data?: SessionModelUsage
+}
+
+export interface SessionModelUsageChangedMessage {
+  type: "sessionModelUsageChanged"
+  sessionID: string
+}
+
 export interface MessageCreatedMessage {
   type: "messageCreated"
   message: Message
@@ -327,6 +341,11 @@ export interface KiloEmbeddingModelsLoadedMessage {
   catalog: KiloEmbeddingModelCatalog
 }
 
+export interface ImageModelsLoadedMessage {
+  type: "imageModelsLoaded"
+  models: Array<{ id: string; name: string; description?: string }>
+}
+
 export interface ProvidersLoadedMessage {
   type: "providersLoaded"
   providers: Record<string, Provider>
@@ -418,6 +437,12 @@ export interface FileSearchResultMessage {
   requestId: string
 }
 
+export interface FilePickerResultMessage {
+  type: "filePickerResult"
+  path: string
+  requestId: string
+}
+
 export interface TerminalContextResultMessage {
   type: "terminalContextResult"
   requestId: string
@@ -459,6 +484,19 @@ export interface QuestionErrorMessage {
   requestID: string
 }
 
+export interface SessionCostAlertMessage {
+  type: "sessionCostAlert"
+  sessionID: string
+  limit: number
+  cost: string
+}
+
+export interface SessionCostAlertResolvedMessage {
+  type: "sessionCostAlertResolved"
+  sessionID: string
+  limit: number
+}
+
 export interface SuggestionRequestMessage {
   type: "suggestionRequest"
   suggestion: SuggestionRequest
@@ -484,11 +522,17 @@ export interface ClaudeCompatSettingLoadedMessage {
   enabled: boolean
 }
 
+export interface ExtensionSettings {
+  maxCost?: number
+  [key: string]: unknown
+}
+
 export interface ConfigLoadedMessage {
   type: "configLoaded"
   config: Config
   globalConfig?: Config
   projectConfig?: Config
+  settings?: ExtensionSettings
   features: FeatureFlags
 }
 
@@ -497,6 +541,7 @@ export interface ConfigUpdatedMessage {
   config: Config
   globalConfig?: Config
   projectConfig?: Config
+  settings?: ExtensionSettings
   features: FeatureFlags
 }
 
@@ -703,6 +748,12 @@ export interface VariantsLoadedMessage {
 export interface RecentsLoadedMessage {
   type: "recentsLoaded"
   recents: ModelSelection[]
+}
+
+// Persisted model-selector expand/collapse preference (extension → webview)
+export interface ModelSelectorExpandedLoadedMessage {
+  type: "modelSelectorExpandedLoaded"
+  value: boolean
 }
 
 export interface FavoritesLoadedMessage {
@@ -1042,6 +1093,8 @@ export type ExtensionMessage =
   | SessionDeletedMessage
   | MessageRemovedMessage
   | MessagesLoadedMessage
+  | SessionModelUsageLoadedMessage
+  | SessionModelUsageChangedMessage
   | MessageCreatedMessage
   | SessionsLoadedMessage
   | CloudSessionsLoadedMessage
@@ -1056,6 +1109,7 @@ export type ExtensionMessage =
   | IndexingStatusLoadedMessage
   | IndexingSettingsLoadedMessage
   | KiloEmbeddingModelsLoadedMessage
+  | ImageModelsLoadedMessage
   | ProvidersLoadedMessage
   | AgentsLoadedMessage
   | SkillsLoadedMessage
@@ -1069,6 +1123,7 @@ export type ExtensionMessage =
   | SpeechToTextResultMessage
   | SpeechToTextErrorMessage
   | FileSearchResultMessage
+  | FilePickerResultMessage
   | TerminalContextResultMessage
   | TerminalContextErrorMessage
   | GitChangesContextResultMessage
@@ -1076,6 +1131,8 @@ export type ExtensionMessage =
   | QuestionRequestMessage
   | QuestionResolvedMessage
   | QuestionErrorMessage
+  | SessionCostAlertMessage
+  | SessionCostAlertResolvedMessage
   | SuggestionRequestMessage
   | SuggestionResolvedMessage
   | SuggestionErrorMessage
@@ -1163,6 +1220,7 @@ export type ExtensionMessage =
   | AnacondaDesktopExtensionMessage
   | CustomProviderModelsFetchedMessage
   | RecentsLoadedMessage
+  | ModelSelectorExpandedLoadedMessage
   | FavoritesLoadedMessage
   | ModelSelectionsLoadedMessage
   | LanguageChangedMessage
@@ -1174,3 +1232,6 @@ export type ExtensionMessage =
   | TelemetryStateMessage
   | RemoteStatusMessage
   | ValidateFilesResultMessage
+  | MemoryLoadedMessage
+  | MemoryEventMessage
+  | MemoryOperationResultMessage
