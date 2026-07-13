@@ -568,6 +568,40 @@ describe("indexing startup degradation", () => {
     }
   })
 
+  test("disabled indexing does not resolve the Kilo model catalog", async () => {
+    const fetchSpy = spyOn(globalThis, "fetch")
+    const key = process.env.KILO_API_KEY
+
+    const config: Partial<Config.Info> = {
+      ...staleKilo,
+      indexing: {
+        ...staleKilo.indexing,
+        enabled: false,
+        model: "removed/model",
+        kilo: { baseUrl: "not a url" },
+      },
+    }
+    await using tmp = await tmpdir({ git: true, config })
+    process.env["KILO_CONFIG_DIR"] = tmp.path
+    process.env.KILO_API_KEY = "kilo-token"
+
+    try {
+      await provideTestInstance({
+        directory: tmp.path,
+        init: Effect.promise(() => KiloIndexing.init()),
+        fn: async () => {
+          const status = await wait(() => KiloIndexing.current(), "Disabled")
+          expect(status.state).toBe("Disabled")
+          expect(fetchSpy).not.toHaveBeenCalled()
+        },
+      })
+    } finally {
+      if (key === undefined) delete process.env.KILO_API_KEY
+      else process.env.KILO_API_KEY = key
+      fetchSpy.mockRestore()
+    }
+  })
+
   test("does not allocate an engine when indexing configuration is disabled", async () => {
     const created: string[] = []
     IndexingWorker.override((directory, root, hooks) => {
