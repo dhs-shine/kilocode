@@ -146,7 +146,7 @@ function reply(text: string, capture?: (input: LLM.StreamInput) => void) {
   }
 }
 
-function fakeRuntime(outputTokenMax?: number, error?: MessageV2.Assistant["error"]) {
+function fakeRuntime(outputTokenMax?: number, error?: MessageV2.Assistant["error"], empty = false) {
   const calls: string[] = []
   const outputs: number[] = []
   const bus = Bus.layer
@@ -180,13 +180,14 @@ function fakeRuntime(outputTokenMax?: number, error?: MessageV2.Assistant["error
                   : calls.length === 1
                     ? "chunk one"
                     : "chunk two"
-                yield* sessions.updatePart({
-                  id: PartID.ascending(),
-                  messageID: input.assistantMessage.id,
-                  sessionID: input.sessionID,
-                  type: "text",
-                  text,
-                })
+                if (!empty)
+                  yield* sessions.updatePart({
+                    id: PartID.ascending(),
+                    messageID: input.assistantMessage.id,
+                    sessionID: input.sessionID,
+                    type: "text",
+                    text,
+                  })
                 input.assistantMessage.finish = "stop"
                 return "continue" as const
               }),
@@ -221,7 +222,7 @@ function fakeRuntime(outputTokenMax?: number, error?: MessageV2.Assistant["error
   }
 }
 
-async function failure(error: MessageV2.Assistant["error"]) {
+async function failure(error?: MessageV2.Assistant["error"], empty = false) {
   await using tmp = await tmpdir()
   return provideTestInstance({
     directory: tmp.path,
@@ -238,7 +239,7 @@ async function failure(error: MessageV2.Assistant["error"]) {
         }),
       )
 
-      const { rt } = fakeRuntime(undefined, error)
+      const { rt } = fakeRuntime(undefined, error, empty)
       try {
         const msgs = await svc.messages({ sessionID: session.id })
         const parent = msgs.at(-1)?.info.id
@@ -373,6 +374,19 @@ describe("KiloCompactionChunks", () => {
     expect(result.summary.info.error.data.message).toBe(
       "Session too large to compact - context exceeds model limit even after stripping media",
     )
+  })
+
+  test("reports empty chunk worker responses as API errors", async () => {
+    const result = await failure(undefined, true)
+
+    expect(result.result).toBe("stop")
+    expect(result.summary?.info.role).toBe("assistant")
+    if (result.summary?.info.role !== "assistant") return
+    expect(result.summary.info.finish).toBe("error")
+    expect(result.summary.info.error?.name).toBe("APIError")
+    if (result.summary.info.error?.name !== "APIError") return
+    expect(result.summary.info.error.data.message).toBe("Compaction worker returned an empty response")
+    expect(result.summary.info.error.data.isRetryable).toBe(true)
   })
 
   test("falls back to chunk workers after the first compaction overflows", async () => {

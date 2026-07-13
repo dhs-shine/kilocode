@@ -285,7 +285,17 @@ export namespace KiloCompactionChunks {
       const result = out.result
       const output = out.output
       if (result !== "continue") return { result, output: undefined, error: out.error }
-      if (!output) return { result: "stop" as const, output: undefined, error: out.error }
+      if (!output)
+        return {
+          result: "stop" as const,
+          output: undefined,
+          error:
+            out.error ??
+            new MessageV2.APIError({
+              message: "Compaction worker returned an empty response",
+              isRetryable: true,
+            }).toObject(),
+        }
       return { result, output, error: undefined }
     })
   }
