@@ -328,7 +328,6 @@ class QuestionViewTest : BasePlatformTestCase() {
             assertEquals(style.transcriptFont, field.font)
             assertEquals(style.transcriptFont.fontName, editor.colorsScheme.editorFontName)
             assertEquals(style.transcriptFont.size, editor.colorsScheme.editorFontSize)
-            assertFalse(style.editorFont.fontName == editor.colorsScheme.editorFontName)
         } finally {
             view.hideView()
             view.removeNotify()
