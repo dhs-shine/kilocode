@@ -146,7 +146,7 @@ function reply(text: string, capture?: (input: LLM.StreamInput) => void) {
   }
 }
 
-function fakeRuntime(outputTokenMax?: number) {
+function fakeRuntime(outputTokenMax?: number, error?: MessageV2.Assistant["error"]) {
   const calls: string[] = []
   const outputs: number[] = []
   const bus = Bus.layer
@@ -167,6 +167,12 @@ function fakeRuntime(outputTokenMax?: number) {
               Effect.gen(function* () {
                 outputs.push(input.model.limit.output)
                 calls.push(JSON.stringify(stream.messages))
+                if (error) {
+                  input.assistantMessage.error = error
+                  input.assistantMessage.finish = "error"
+                  yield* sessions.updateMessage(input.assistantMessage)
+                  return "stop" as const
+                }
                 const text = stream.messages.some((msg) =>
                   JSON.stringify(msg).includes("Create a new anchored summary"),
                 )
@@ -213,6 +219,48 @@ function fakeRuntime(outputTokenMax?: number) {
       ),
     ),
   }
+}
+
+async function failure(error: MessageV2.Assistant["error"]) {
+  await using tmp = await tmpdir()
+  return provideTestInstance({
+    directory: tmp.path,
+    fn: async () => {
+      const session = await svc.create({})
+      await user(session.id, "oversized " + "x".repeat(80_000))
+      await Effect.runPromise(
+        KiloSessionCompaction.create({
+          session: store,
+          sessionID: session.id,
+          agent: "build",
+          model: ref,
+          auto: false,
+        }),
+      )
+
+      const { rt } = fakeRuntime(undefined, error)
+      try {
+        const msgs = await svc.messages({ sessionID: session.id })
+        const parent = msgs.at(-1)?.info.id
+        expect(parent).toBeTruthy()
+        const result = await rt.runPromise(
+          SessionCompaction.Service.use((svc) =>
+            svc.process({
+              parentID: parent!,
+              messages: msgs,
+              sessionID: session.id,
+              auto: false,
+            }),
+          ),
+        )
+        const all = await svc.messages({ sessionID: session.id })
+        const summary = all.find((msg) => msg.info.role === "assistant" && msg.info.summary)
+        return { result, summary }
+      } finally {
+        await rt.dispose()
+      }
+    },
+  })
 }
 
 function liveRuntime(layer: Layer.Layer<LLM.Service>, context = 10_000) {
@@ -291,6 +339,40 @@ describe("KiloCompactionChunks", () => {
 
     expect(KiloCompactionChunks.needed({ cfg, model, tokens: 5_000, outputTokenMax })).toBe(false)
     expect(KiloCompactionChunks.budget({ cfg, model, outputTokenMax })).toBe(5_692)
+  })
+
+  test("preserves gateway errors from chunk workers", async () => {
+    const error = new MessageV2.APIError({
+      message: "The operation was aborted",
+      statusCode: 504,
+      isRetryable: true,
+      responseBody: '{"error_type":"timeout"}',
+    }).toObject()
+
+    const result = await failure(error)
+
+    expect(result.result).toBe("stop")
+    expect(result.summary?.info.role).toBe("assistant")
+    if (result.summary?.info.role !== "assistant") return
+    expect(result.summary.info.finish).toBe("error")
+    expect(result.summary.info.error).toEqual(error)
+  })
+
+  test("keeps context overflow on the terminal compaction path", async () => {
+    const result = await failure(
+      new MessageV2.ContextOverflowError({
+        message: "worker context overflow",
+      }).toObject(),
+    )
+
+    expect(result.result).toBe("stop")
+    expect(result.summary?.info.role).toBe("assistant")
+    if (result.summary?.info.role !== "assistant") return
+    expect(result.summary.info.error?.name).toBe("ContextOverflowError")
+    if (result.summary.info.error?.name !== "ContextOverflowError") return
+    expect(result.summary.info.error.data.message).toBe(
+      "Session too large to compact - context exceeds model limit even after stripping media",
+    )
   })
 
   test("falls back to chunk workers after the first compaction overflows", async () => {
