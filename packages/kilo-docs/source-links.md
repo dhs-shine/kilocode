@@ -25,12 +25,15 @@
   <!-- packages/opencode/src/config/config.ts -->
 - <https://app.kilo.ai/credits>
   <!-- packages/kilo-vscode/src/services/autocomplete/AutocompleteServiceManager.ts -->
+  <!-- packages/kilo-vscode/webview-ui/src/components/profile/ProfileView.tsx -->
 - <https://app.kilo.ai/profile>
   <!-- packages/kilo-vscode/webview-ui/src/components/profile/ProfileView.tsx -->
 - <https://app.kilo.ai/tui.json>
   <!-- packages/opencode/src/cli/cmd/tui/config/tui-migrate.ts -->
 - <https://app.kilo.ai/usage>
   <!-- packages/opencode/src/kilocode/components/dialog-kilo-profile.tsx -->
+- <https://arxiv.org/abs/2601.16746>
+  <!-- packages/opencode/src/kilocode/swe-pruner.ts -->
 - <https://auth.x.ai>
   <!-- packages/opencode/src/plugin/xai.ts -->
 - <https://auth.x.ai/oauth2/authorize>
@@ -113,6 +116,8 @@
   <!-- packages/opencode/src/cli/cmd/generate.ts -->
   <!-- packages/opencode/src/kilocode/server/httpapi/public.ts -->
   <!-- packages/opencode/src/provider/provider.ts -->
+- <https://kilo.ai/cli/install>
+  <!-- packages/opencode/src/kilocode/installation/index.ts -->
 - <https://kilo.ai/discord>
   <!-- packages/kilo-vscode/webview-ui/src/components/chat/FeedbackDialog.tsx -->
   <!-- packages/kilo-vscode/webview-ui/src/components/settings/AboutKiloCodeTab.tsx -->
@@ -134,15 +139,17 @@
   <!-- packages/kilo-vscode/webview-ui/src/components/marketplace/MarketplaceListView.tsx -->
 - <https://kilo.ai/docs/customize/workflows>
   <!-- packages/opencode/src/config/config.ts -->
+- <https://kilo.ai/docs/getting-started/settings>
+  <!-- packages/opencode/src/kilocode/config/config.ts -->
 - <https://kilo.ai/gateway>
   <!-- packages/opencode/src/kilocode/cli/cmd/tui/component/dialog-provider.tsx -->
-- <https://kilo.ai/install>
-  <!-- packages/opencode/src/kilocode/installation/index.ts -->
 - <https://kilo.ai/kiloclaw>
   <!-- packages/kilo-vscode/webview-ui/kiloclaw/components/SetupView.tsx -->
   <!-- packages/opencode/src/kilocode/components/dialog-claw-setup.tsx -->
 - <https://kilo.ai/pricing>
   <!-- packages/opencode/src/cli/cmd/tui/component/dialog-retry-action.tsx -->
+- <https://kilo.ai/pricing/kilo-pass>
+  <!-- packages/kilo-vscode/webview-ui/src/components/profile/ProfileView.tsx -->
 - <https://kilo.ai/support>
   <!-- packages/kilo-vscode/webview-ui/src/components/chat/FeedbackDialog.tsx -->
   <!-- packages/kilo-vscode/webview-ui/src/components/settings/AboutKiloCodeTab.tsx -->
@@ -153,6 +160,8 @@
   <!-- packages/opencode/src/kilocode/server/httpapi/public.ts -->
 - <https://opencode.ai/zen>
   <!-- packages/kilo-vscode/webview-ui/src/i18n/en.ts -->
+- <https://openrouter.ai/api/v1/chat/completions>
+  <!-- packages/opencode/src/kilocode/tool/generate-image.ts -->
 - <https://openrouter.ai/docs/cookbook/administration/usage-accounting>
   <!-- packages/opencode/src/kilocode/session/index.ts -->
 - <https://opncd.ai>
