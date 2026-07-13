@@ -438,6 +438,12 @@ export interface FileSearchResultMessage {
   requestId: string
 }
 
+export interface FilePickerResultMessage {
+  type: "filePickerResult"
+  path: string
+  requestId: string
+}
+
 export interface TerminalContextResultMessage {
   type: "terminalContextResult"
   requestId: string
@@ -1118,6 +1124,7 @@ export type ExtensionMessage =
   | SpeechToTextResultMessage
   | SpeechToTextErrorMessage
   | FileSearchResultMessage
+  | FilePickerResultMessage
   | TerminalContextResultMessage
   | TerminalContextErrorMessage
   | GitChangesContextResultMessage
