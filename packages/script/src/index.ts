@@ -128,7 +128,6 @@ const team = [
   "jrf0110",
   "kilo-code-bot",
   "kilo-code-bot[bot]",
-  "kilo-engineering",
   "kilo-maintainer[bot]",
   "kilocode-bot",
   "kiloconnect-lite[bot]",
