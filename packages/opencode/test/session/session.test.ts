@@ -5,6 +5,7 @@ import { GlobalBus, type GlobalEvent } from "../../src/bus/global"
 import * as Log from "@opencode-ai/core/util/log"
 import { MessageV2 } from "../../src/session/message-v2"
 import { MessageID, PartID, type SessionID } from "../../src/session/schema"
+import { ModelID, ProviderID } from "@/provider/schema"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { provideInstance, tmpdirScoped } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
@@ -213,6 +214,32 @@ describe("Session", () => {
 
       expect(created.metadata).toBeUndefined()
       expect(saved.metadata).toBeUndefined()
+    }),
+  )
+
+  it.instance("fork preserves model and variant", () =>
+    Effect.gen(function* () {
+      const session = yield* SessionNs.Service
+      const model = {
+        id: ModelID.make("test-model"),
+        providerID: ProviderID.make("test-provider"),
+        variant: "high",
+      }
+      const created = yield* Effect.acquireRelease(
+        session.create({ title: "with-model", model }),
+        (info) => session.remove(info.id).pipe(Effect.ignore),
+      )
+      const saved = yield* session.get(created.id)
+      expect(saved.model).toEqual(model)
+
+      const fork = yield* Effect.acquireRelease(session.fork({ sessionID: created.id }), (info) =>
+        session.remove(info.id).pipe(Effect.ignore),
+      )
+      const forked = yield* session.get(fork.id)
+
+      expect(forked.model).toEqual(model)
+      expect(forked.model?.variant).toBe("high")
+      expect(forked.model).not.toBe(saved.model)
     }),
   )
 })

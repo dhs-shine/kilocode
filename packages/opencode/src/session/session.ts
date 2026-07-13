@@ -784,6 +784,7 @@ export const layer: Layer.Layer<
         workspaceID: original.workspaceID,
         title,
         metadata: structuredClone(original.metadata),
+        model: original.model ? { ...original.model } : undefined, // kilocode_change - preserve model + variant from the source session
         sourceID: input.sessionID, // kilocode_change - forks preserve initialized confinement
         sandboxFallback, // kilocode_change - seed confinement from the source session's original directory
       })

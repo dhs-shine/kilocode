@@ -2536,6 +2536,39 @@ it.instance(
 // Agent variant
 
 noLLMServer.instance(
+  "preserves the session variant through a model-less handoff",
+  () =>
+    Effect.gen(function* () {
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const source = yield* sessions.create({
+        model: {
+          id: ModelID.make("test-model"),
+          providerID: ProviderID.make("test"),
+          variant: "high",
+        },
+      })
+      const fork = yield* sessions.fork({ sessionID: source.id })
+      const handoff = yield* prompt.prompt({
+        sessionID: fork.id,
+        noReply: true,
+        parts: [{ type: "text", text: "fork handoff", synthetic: true }],
+      })
+      if (handoff.info.role !== "user") throw new Error("expected user message")
+
+      expect(handoff.info.model).toEqual({
+        providerID: ProviderID.make("test"),
+        modelID: ModelID.make("test-model"),
+        variant: "high",
+      })
+
+      const saved = yield* sessions.get(fork.id)
+      expect(saved.model?.variant).toBe("high")
+    }),
+  { config: cfg },
+)
+
+noLLMServer.instance(
   "applies agent variant only when using agent model",
   () =>
     Effect.gen(function* () {
