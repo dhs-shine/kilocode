@@ -1015,6 +1015,7 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
     // https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-vertex
     case "@ai-sdk/google":
       // https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai
+      if (id.includes("gemma")) return {} // kilocode_change
       if (id.includes("2.5")) {
         return {
           high: {
