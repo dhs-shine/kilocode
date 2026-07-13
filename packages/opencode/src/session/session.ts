@@ -778,8 +778,8 @@ export const layer: Layer.Layer<
       // kilocode_change start - forks into another directory cannot read the source confinement from the new dir, so carry it over explicitly
       const sandboxFallback = yield* SandboxPolicy.peek(original.directory, input.sessionID)
       // kilocode_change end
-      const msgs = yield* messages({ sessionID: input.sessionID })
       // kilocode_change start - historical forks must use the model from retained context, not a later source-session selection
+      const msgs = yield* messages({ sessionID: input.sessionID })
       const point = input.messageID
       const message = point
         ? msgs.findLast((msg) => msg.info.id < point && msg.info.role === "user")
