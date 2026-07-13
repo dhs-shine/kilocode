@@ -244,4 +244,60 @@ describe("Session", () => {
     }),
   )
   // kilocode_change end
+
+  // kilocode_change start
+  it.instance("historical fork preserves the model at the fork point", () =>
+    Effect.gen(function* () {
+      const session = yield* SessionNs.Service
+      const source = yield* Effect.acquireRelease(
+        session.create({
+          model: {
+            id: ModelID.make("test-model"),
+            providerID: ProviderID.make("test-provider"),
+            variant: "high",
+          },
+        }),
+        (info) => session.remove(info.id).pipe(Effect.ignore),
+      )
+      yield* session.updateMessage({
+        id: MessageID.ascending(),
+        sessionID: source.id,
+        role: "user",
+        time: { created: Date.now() },
+        agent: "code",
+        model: {
+          providerID: ProviderID.make("test-provider"),
+          modelID: ModelID.make("test-model"),
+          variant: "low",
+        },
+        tools: {},
+        mode: "",
+      } as unknown as MessageV2.Info)
+      const latest = yield* session.updateMessage({
+        id: MessageID.ascending(),
+        sessionID: source.id,
+        role: "user",
+        time: { created: Date.now() },
+        agent: "code",
+        model: {
+          providerID: ProviderID.make("test-provider"),
+          modelID: ModelID.make("test-model"),
+          variant: "high",
+        },
+        tools: {},
+        mode: "",
+      } as unknown as MessageV2.Info)
+      const fork = yield* Effect.acquireRelease(
+        session.fork({ sessionID: source.id, messageID: latest.id }),
+        (info) => session.remove(info.id).pipe(Effect.ignore),
+      )
+
+      expect(fork.model).toEqual({
+        id: ModelID.make("test-model"),
+        providerID: ProviderID.make("test-provider"),
+        variant: "low",
+      })
+    }),
+  )
+  // kilocode_change end
 })
