@@ -93,6 +93,7 @@ import { DataBridge, MermaidDownloadBridge } from "../src/App"
 import { LanguageBridge } from "../src/context/language-bridge"
 import { useLanguage } from "../src/context/language"
 import { formatRelativeDate } from "../src/utils/date"
+import { createTabFocus } from "../src/utils/tab-navigation"
 import { nextSelectionAfterDelete, adjacentHint, filterUnassignedSessions, LOCAL } from "./navigate"
 import {
   addPendingTab as addLocalPendingTab,
@@ -102,10 +103,16 @@ import {
   replacePendingTab,
   restoreTrackedTabs,
 } from "../src/utils/local-tabs"
+import {
+  deletePendingDraft,
+  discardPendingDraft,
+  isPendingSend,
+  promotePendingDraftDiscard,
+} from "../src/utils/draft-store"
 import { reorderTabs, applyTabOrder, firstOrderedTitle } from "./tab-order"
 import { createTabOrderSync } from "./tab-order-sync"
 import { reportRemoteSessions } from "./remote-sessions"
-import { ConstrainDragYAxis } from "./sortable-tab"
+import { ConstrainDragYAxis } from "../src/components/chat/TabDnd"
 import { isTerminalTabId, createTerminalState, createTerminalHandlers, createTerminalMessageHandler } from "./terminal"
 import { focusCurrentTab, renderTab, renderTerminalLayer, renderNewTabButton } from "./tab-rendering"
 import { useTabScroll } from "./tab-scroll"
@@ -1158,9 +1165,13 @@ const AgentManagerContent: Component = () => {
 
     // Add created sessions as local tabs (both direct from the prompt and
     // backend follow-ups). Dedups HTTP + SSE firing together.
+    const createdSessions = new Set<string>()
     const unsubCreate = vscode.onMessage((msg) => {
       if (msg.type !== "sessionCreated") return
       const created = msg as SessionCreatedMessage
+      if (!created.draftID && createdSessions.delete(created.session.id)) return
+      if (created.draftID) createdSessions.add(created.session.id)
+      if (created.draftID && promotePendingDraftDiscard(created.draftID, created.session.id)) return
       const pending = created.draftID && localSessionIDs().includes(created.draftID) ? created.draftID : undefined
       if (!pending && localSessionIDs().includes(created.session.id)) return
       if (worktreeSessionIds().has(created.session.id)) return
@@ -1576,6 +1587,7 @@ const AgentManagerContent: Component = () => {
     freezeTabs()
     setReviewActive(false)
     setReviewOpenForSelection(false)
+    tabFocus.restore()
   }
 
   // Data for the review tab: use local diff data for local context,
@@ -1956,6 +1968,11 @@ const AgentManagerContent: Component = () => {
     } else {
       vscode.postMessage({ type: "agentManager.closeSession", sessionId })
     }
+    if (pending) {
+      if (session.isSubmitting(sessionId) || isPendingSend(sessionId)) discardPendingDraft(sessionId)
+      queueMicrotask(() => deletePendingDraft(sessionId))
+    }
+    tabFocus.restore()
   }
 
   const handleTabMouseDown = (sessionId: string, e: MouseEvent) => {
@@ -2089,11 +2106,15 @@ const AgentManagerContent: Component = () => {
       selectSession: session.selectSession,
       activateTerminal: termHandlers.activate,
     })
+  const tabFocus = createTabFocus({ ids: () => tabIds(), select: focusTab })
 
   // Close the currently active tab via keyboard shortcut.
   // If no tabs remain, fall through to close the selected worktree.
   const closeActiveTab = () => {
-    if (termHandlers.closeActive()) return
+    if (termHandlers.closeActive()) {
+      tabFocus.restore()
+      return
+    }
     if (reviewActive()) {
       closeReviewTab()
       return
@@ -2640,6 +2661,8 @@ const AgentManagerContent: Component = () => {
                   <div
                     class="am-tab-list"
                     ref={tabScroll.setRef}
+                    role="tablist"
+                    aria-label={t("agentManager.shortcuts.category.tabs")}
                     style={{ "--tab-count": `${tabIds().length}` } as JSX.CSSProperties}
                   >
                     <SortableProvider ids={tabIds()}>
@@ -2660,8 +2683,9 @@ const AgentManagerContent: Component = () => {
                             adjacentHint,
                             activateTerminal: termHandlers.activate,
                             deactivateTerminal: termHandlers.deactivate,
-                            closeTerminal: termHandlers.closeTerminal,
-                            terminalMiddleClick: termHandlers.middleClick,
+                            closeTerminal: (id) => tabFocus.run(() => termHandlers.closeTerminal(id)),
+                            terminalMiddleClick: (id, event) =>
+                              tabFocus.middle(event, () => termHandlers.middleClick(id, event)),
                             closeReview: closeReviewTab,
                             reviewMiddleClick: handleReviewTabMouseDown,
                             selectReviewTab: () => setReviewActive(true),
@@ -2669,6 +2693,7 @@ const AgentManagerContent: Component = () => {
                             sessionMiddleClick: handleTabMouseDown,
                             sessionClose: handleCloseTab,
                             sessionFork: handleForkSession,
+                            onTabKey: tabFocus.key,
                             reviewLabel: t("session.tab.review"),
                             reviewTooltip: t("command.review.toggle"),
                           })

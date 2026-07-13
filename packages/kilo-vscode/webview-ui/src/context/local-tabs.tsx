@@ -15,7 +15,10 @@ import { useVSCode } from "./vscode"
 import {
   PENDING_TAB_PREFIX,
   addPendingTab,
+  addSessionTab,
+  closeOtherTabs,
   closeTab,
+  insertSessionTabAfter,
   isPendingTab,
   openSessionTab,
   pendingTabForCreated,
@@ -24,6 +27,13 @@ import {
   restoreTabs,
   type LocalTabState,
 } from "../utils/local-tabs"
+import {
+  deletePendingDraft,
+  discardPendingDraft,
+  isPendingSend,
+  promotePendingDraftDiscard,
+} from "../utils/draft-store"
+import { moveTab, reorderTabs } from "../utils/tab-order"
 
 interface LocalTabsState extends Record<string, unknown> {
   sidebarSessionTabIDs?: string[]
@@ -36,8 +46,14 @@ interface LocalTabsValue {
   pending: Accessor<string | undefined>
   add: () => string
   open: (id: string) => void
+  openAfter: (source: string, id: string) => void
   select: (id: string) => void
   close: (id: string) => void
+  closeOthers: (id: string) => void
+  previewCloud: (id: string) => void
+  reorder: (from: string, to: string) => boolean
+  move: (id: string, offset: -1 | 1) => number | undefined
+  persist: () => void
 }
 
 const LocalTabsContext = createContext<LocalTabsValue>()
@@ -53,6 +69,7 @@ export const LocalTabsProvider: ParentComponent = (props) => {
   const init = restoreTabs(saved?.sidebarSessionTabIDs, saved?.sidebarActiveSessionTabID, pending)
   const [ids, setIds] = createSignal(init.ids)
   const [active, setActive] = createSignal(init.active)
+  const [cloud, setCloud] = createSignal<string>()
   const fresh = new Set<string>()
   const current = (): LocalTabState => ({ ids: ids(), active: active() })
   const apply = (next: LocalTabState) => {
@@ -60,6 +77,7 @@ export const LocalTabsProvider: ParentComponent = (props) => {
     if (active() !== next.active) setActive(next.active)
   }
   const focus = (id: string | undefined) => {
+    setCloud(undefined)
     if (!id || isPendingTab(id)) {
       session.clearCurrentSession()
       return
@@ -83,6 +101,12 @@ export const LocalTabsProvider: ParentComponent = (props) => {
     focus(id)
   }
 
+  const openAfter = (source: string, id: string) => {
+    apply(insertSessionTabAfter(current(), source, id))
+    focus(id)
+    persist()
+  }
+
   const add = () => {
     const id = pending()
     apply(addPendingTab(current(), id))
@@ -95,6 +119,34 @@ export const LocalTabsProvider: ParentComponent = (props) => {
     const next = closeTab(current(), id, pending)
     apply(next)
     if (before === id || before !== next.active) focus(next.active)
+    if (isPendingTab(id)) {
+      if (session.isSubmitting(id) || isPendingSend(id)) discardPendingDraft(id)
+      queueMicrotask(() => deletePendingDraft(id))
+    }
+  }
+
+  const closeOthers = (id: string) => {
+    const removed = ids().filter((tab) => tab !== id && isPendingTab(tab))
+    const next = closeOtherTabs(current(), id)
+    apply(next)
+    focus(next.active)
+    for (const pending of removed) {
+      if (session.isSubmitting(pending) || isPendingSend(pending)) discardPendingDraft(pending)
+    }
+    queueMicrotask(() => removed.forEach(deletePendingDraft))
+  }
+  const previewCloud = (id: string) => setCloud(id)
+  const reorder = (from: string, to: string) => {
+    const next = reorderTabs(ids(), from, to)
+    if (!next) return false
+    setIds(next)
+    return true
+  }
+  const move = (id: string, offset: -1 | 1) => {
+    const next = moveTab(ids(), id, offset)
+    if (!next) return undefined
+    setIds(next)
+    return next.indexOf(id)
   }
 
   let restored = false
@@ -107,15 +159,18 @@ export const LocalTabsProvider: ParentComponent = (props) => {
   })
 
   let timer: ReturnType<typeof setTimeout> | undefined
-  createEffect(() => {
+  const persist = () => {
     const tabs = real()
     const tab = active()
     const selected = tab && !isPendingTab(tab) ? tab : undefined
+    const prev = vscode.getState<LocalTabsState>() ?? {}
+    vscode.setState({ ...prev, sidebarSessionTabIDs: tabs, sidebarActiveSessionTabID: selected })
+  }
+  createEffect(() => {
+    real()
+    active()
     clearTimeout(timer)
-    timer = setTimeout(() => {
-      const prev = vscode.getState<LocalTabsState>() ?? {}
-      vscode.setState({ ...prev, sidebarSessionTabIDs: tabs, sidebarActiveSessionTabID: selected })
-    }, 300)
+    timer = setTimeout(persist, 300)
   })
   onCleanup(() => clearTimeout(timer))
 
@@ -125,8 +180,13 @@ export const LocalTabsProvider: ParentComponent = (props) => {
 
   onMount(() => {
     const cleanup = vscode.onMessage((message) => {
+      if (message.type === "openCloudSession") {
+        setCloud(message.sessionId)
+        return
+      }
       if (message.type === "sessionCreated") {
-        const draft = pendingTabForCreated(ids(), activePending(), message.draftID)
+        if (message.draftID && promotePendingDraftDiscard(message.draftID, message.session.id)) return
+        const draft = pendingTabForCreated(ids(), message.draftID)
         if (!draft) return
         const before = active()
         const next = replacePendingTab(current(), draft, message.session.id)
@@ -136,8 +196,10 @@ export const LocalTabsProvider: ParentComponent = (props) => {
         return
       }
       if (message.type === "cloudSessionImported") {
+        const activate = cloud() === message.cloudSessionId
         fresh.add(message.session.id)
-        apply(openSessionTab(current(), message.session.id))
+        apply(activate ? openSessionTab(current(), message.session.id) : addSessionTab(current(), message.session.id))
+        if (activate) setCloud(undefined)
         return
       }
       if (message.type === "sessionsLoaded") {
@@ -161,7 +223,23 @@ export const LocalTabsProvider: ParentComponent = (props) => {
   })
 
   return (
-    <LocalTabsContext.Provider value={{ ids, active, pending: activePending, add, open, select, close }}>
+    <LocalTabsContext.Provider
+      value={{
+        ids,
+        active,
+        pending: activePending,
+        add,
+        open,
+        openAfter,
+        select,
+        close,
+        closeOthers,
+        previewCloud,
+        reorder,
+        move,
+        persist,
+      }}
+    >
       {props.children}
     </LocalTabsContext.Provider>
   )

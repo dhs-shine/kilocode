@@ -81,11 +81,35 @@
   max-width: var(--am-tab-width);
   height: 100%;
   flex: 0 0 var(--am-tab-width);
+  touch-action: none;
   transition:
     flex-basis 140ms ease,
     max-width 140ms ease,
     min-width 140ms ease,
     width 140ms ease;
+}
+
+.session-tab-bar .am-tab-list[data-tab-widths-frozen] .am-tab-sortable,
+.session-tab-bar .am-tab-sortable.am-tab-dragging {
+  transition: none;
+}
+
+.session-tab-bar .am-tab-sortable.am-tab-dragging {
+  opacity: 0.25;
+}
+
+.session-tab-overlay {
+  max-width: 240px;
+  padding: 8px 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-weak-base);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised-base);
+  box-shadow: var(--shadow-md);
+  color: var(--text-base);
+  font-size: var(--kilo-font-size-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .session-tab-bar .am-tab {
@@ -121,6 +145,19 @@
   color: var(--text-base);
   border-bottom-color: var(--surface-interactive-base);
   background: color-mix(in srgb, var(--surface-interactive-base) 10%, transparent);
+}
+
+.session-tab-bar .am-tab-target {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+}
+
+.session-tab-bar .am-tab:has(.am-tab-target:focus-visible) {
+  background: var(--button-ghost-hover, var(--surface-base-hover, rgba(128, 128, 128, 0.2)));
+  color: var(--text-base);
 }
 
 .session-tab-bar .am-tab-title {
@@ -159,8 +196,6 @@
   min-width: 0;
   height: 100%;
   flex: 1;
-  padding-right: 27px;
-  margin-right: -27px;
 }
 
 .session-tab-bar .am-tab-close-wrap {
@@ -191,4 +226,29 @@
 
 .session-tab-bar .am-tab-close[data-component="icon-button"] [data-slot="icon-svg"] {
   color: var(--text-base);
+}
+
+/* Match tab context menus to dropdown-menu visuals on every tab surface. */
+.session-tab-menu {
+  min-width: 210px;
+  border: 1px solid color-mix(in oklch, var(--border-base) 50%, transparent) !important;
+  box-shadow: var(--shadow-md) !important;
+
+  [data-slot="context-menu-item"],
+  [data-slot="context-menu-checkbox-item"],
+  [data-slot="context-menu-radio-item"],
+  [data-slot="context-menu-sub-trigger"] {
+    padding: 6px 10px;
+    font-size: var(--font-size-small);
+    transition: none;
+
+    &:hover,
+    &[data-highlighted] {
+      background: var(--surface-raised-base-hover);
+    }
+  }
+
+  [data-slot="context-menu-separator"] {
+    margin: 4px 0;
+  }
 }

@@ -612,7 +612,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       connection: this.connectionService,
       post: (msg: { type: "error"; message: string }) => this.postMessage(msg),
       register: (session: Session) => this.registerSession(session),
-      forked: (session: Session) => this.postMessage({ type: "sessionForked", sessionID: session.id }),
+      forked: (session: Session, sourceID: string) =>
+        this.postMessage({ type: "sessionForked", sessionID: session.id, forkedFromID: sourceID }),
       status: (sessionID: string) => this.sessionStatusMap.get(sessionID),
       directory: (sessionID: string) => this.getWorkspaceDirectory(sessionID),
     }

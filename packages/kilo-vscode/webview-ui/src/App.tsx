@@ -281,9 +281,10 @@ const AppContent: Component = () => {
     if (agent) session.selectAgent(agent.name)
   }
 
-  const handleForked = (message: { type?: string; sessionID?: string }) => {
+  const handleForked = (message: { type?: string; sessionID?: string; forkedFromID?: string }) => {
     if (message.type !== "sessionForked" || !message.sessionID) return
-    if (tabs) tabs.open(message.sessionID)
+    if (tabs && message.forkedFromID) tabs.openAfter(message.forkedFromID, message.sessionID)
+    if (tabs && !message.forkedFromID) tabs.open(message.sessionID)
     if (!tabs) session.selectSession(message.sessionID)
     setCurrentView("newTask")
   }

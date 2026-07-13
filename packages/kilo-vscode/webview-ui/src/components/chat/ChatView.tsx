@@ -349,6 +349,7 @@ export const ChatView: Component<ChatViewProps> = (props) => {
                 readonly={props.readonly}
                 emptyState={props.emptyState}
                 announce={isSidebar()}
+                sessionID={pendingSessionID}
               />
             }
           >

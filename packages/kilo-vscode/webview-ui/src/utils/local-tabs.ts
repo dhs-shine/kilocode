@@ -20,8 +20,7 @@ export interface LocalTabReconcileResult {
 
 export const isPendingTab = (id: string) => id.startsWith(PENDING_TAB_PREFIX)
 
-export const showTabStrip = (ids: readonly string[], check: PendingTabCheck = isPendingTab) =>
-  ids.length > 1 || ids.some((id) => !check(id))
+export const showTabStrip = (ids: readonly string[]) => ids.length > 1
 
 const unique = (ids: string[]) => [...new Set(ids.filter(Boolean))]
 
@@ -57,6 +56,15 @@ export function openSessionTab(state: LocalTabState, id: string): LocalTabState 
   return { ids: unique([...state.ids, id]), active: id }
 }
 
+export function insertSessionTabAfter(state: LocalTabState, source: string, id: string): LocalTabState {
+  if (state.ids.includes(id)) return { ids: state.ids, active: id }
+  const index = state.ids.indexOf(source)
+  if (index === -1) return openSessionTab(state, id)
+  const ids = [...state.ids]
+  ids.splice(index + 1, 0, id)
+  return { ids, active: id }
+}
+
 export function replacePendingTab(state: LocalTabState, pending: string, id: string): LocalTabState {
   if (!state.ids.includes(pending)) return state
   const ids = unique(state.ids.map((tab) => (tab === pending ? id : tab)))
@@ -66,12 +74,11 @@ export function replacePendingTab(state: LocalTabState, pending: string, id: str
 
 export function pendingTabForCreated(
   ids: readonly string[],
-  active: string | undefined,
   draft: string | undefined,
   check: PendingTabCheck = isPendingTab,
 ): string | undefined {
-  if (draft) return ids.includes(draft) && check(draft) ? draft : undefined
-  return active && ids.includes(active) && check(active) ? active : undefined
+  if (!draft) return undefined
+  return ids.includes(draft) && check(draft) ? draft : undefined
 }
 
 export function nextTabAfterClose(ids: readonly string[], id: string): string | undefined {
@@ -86,6 +93,15 @@ export function closeTab(state: LocalTabState, id: string, pending: PendingTabFa
   const ids = state.ids.filter((tab) => tab !== id)
   if (state.active !== id) return normalize(ids, state.active, pending)
   return normalize(ids, nextTabAfterClose(state.ids, id), pending)
+}
+
+export function closeOtherTabs(state: LocalTabState, id: string): LocalTabState {
+  if (!state.ids.includes(id)) return state
+  return { ids: [id], active: id }
+}
+
+export function addSessionTab(state: LocalTabState, id: string): LocalTabState {
+  return { ids: unique([...state.ids, id]), active: state.active }
 }
 
 export function reconcileTabs(

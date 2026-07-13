@@ -1,9 +1,12 @@
 import { describe, expect, it } from "bun:test"
 import {
   addPendingTab,
+  addSessionTab,
+  closeOtherTabs,
   closeTab,
   nextTabAfterClose,
   openSessionTab,
+  insertSessionTabAfter,
   pendingTabForCreated,
   reconcileTabs,
   reconcileTrackedTabs,
@@ -13,6 +16,7 @@ import {
   showTabStrip,
   type LocalTabState,
 } from "../../webview-ui/src/utils/local-tabs"
+import { reorderTabs } from "../../webview-ui/src/utils/tab-order"
 
 const pending = (id = "sidebar-pending:1") => id
 const makePending =
@@ -41,10 +45,11 @@ const reorder = (items: { id: string }[], order: string[]) => {
 const inventory = (local: string[], external: string[] = []) => ({ local, external: new Set(external) })
 
 describe("local session tabs", () => {
-  it("hides only the initial blank composer tab", () => {
+  it("hides the tab strip when only one tab remains", () => {
     expect(showTabStrip([pending()])).toBe(false)
     expect(showTabStrip([pending(), "sidebar-pending:2"])).toBe(true)
-    expect(showTabStrip(["s1"])).toBe(true)
+    expect(showTabStrip(["s1"])).toBe(false)
+    expect(showTabStrip(["s1", "s2"])).toBe(true)
   })
 
   it("restores a fresh pending tab when no sessions were persisted", () => {
@@ -72,6 +77,25 @@ describe("local session tabs", () => {
     expect(openSessionTab(state(["s1", "s2"], "s1"), "s2")).toEqual({ ids: ["s1", "s2"], active: "s2" })
   })
 
+  it("inserts a fork immediately after its source in a custom order", () => {
+    expect(insertSessionTabAfter(state(["s3", "s1", "s2"], "s3"), "s1", "fork")).toEqual({
+      ids: ["s3", "s1", "fork", "s2"],
+      active: "fork",
+    })
+  })
+
+  it("keeps repeated fork events idempotent", () => {
+    const current = state(["s3", "s1", "fork", "s2"], "s1")
+    expect(insertSessionTabAfter(current, "s1", "fork")).toEqual({ ids: current.ids, active: "fork" })
+  })
+
+  it("appends a fork when its source tab is no longer open", () => {
+    expect(insertSessionTabAfter(state(["s1", "s2"], "s1"), "missing", "fork")).toEqual({
+      ids: ["s1", "s2", "fork"],
+      active: "fork",
+    })
+  })
+
   it("selects the neighboring tab after closing the active one", () => {
     expect(closeTab(state(["s1", "s2", "s3"], "s2"), "s2", makePending())).toEqual({
       ids: ["s1", "s3"],
@@ -97,9 +121,33 @@ describe("local session tabs", () => {
     })
   })
 
+  it("preserves a dragged pending tab position when it becomes a real session", () => {
+    const ids = reorderTabs(["s1", pending(), "s2"], pending(), "s1")!
+    expect(replacePendingTab(state(ids, pending()), pending(), "s3")).toEqual({
+      ids: ["s3", "s1", "s2"],
+      active: "s3",
+    })
+  })
+
   it("does not replace another pending tab when an explicit draft was closed", () => {
-    expect(pendingTabForCreated(["sidebar-pending:2"], "sidebar-pending:2", "sidebar-pending:1")).toBeUndefined()
-    expect(pendingTabForCreated(["sidebar-pending:2"], "sidebar-pending:2", undefined)).toBe("sidebar-pending:2")
+    expect(pendingTabForCreated(["sidebar-pending:2"], "sidebar-pending:1")).toBeUndefined()
+    expect(pendingTabForCreated(["sidebar-pending:2"], undefined)).toBeUndefined()
+  })
+
+  it("adds a background session without changing the active tab", () => {
+    expect(addSessionTab(state(["s1"], "s1"), "s2")).toEqual({ ids: ["s1", "s2"], active: "s1" })
+  })
+
+  it("closes every other tab and activates the retained tab", () => {
+    expect(closeOtherTabs(state(["s1", pending(), "s2"], "s1"), pending())).toEqual({
+      ids: [pending()],
+      active: pending(),
+    })
+  })
+
+  it("does not close tabs when the retained id is missing", () => {
+    const current = state(["s1", "s2"], "s1")
+    expect(closeOtherTabs(current, "missing")).toBe(current)
   })
 })
 
