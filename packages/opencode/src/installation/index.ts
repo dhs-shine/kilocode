@@ -308,11 +308,17 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProce
           return data.version
         }
 
+        // kilocode_change start - curl/unknown fallback: resolve from the npm dist-tag
+        // instead of GitHub /releases/latest, which is polluted by non-CLI (e.g. JetBrains)
+        // releases and returns a tag like "jetbrains/v7.0.4" that breaks version resolution.
         const response = yield* httpOk.execute(
-          HttpClientRequest.get(KiloRelease.api).pipe(HttpClientRequest.acceptJson), // kilocode_change
+          HttpClientRequest.get(
+            `${yield* NpmConfig.registry(process.cwd())}/${KiloNpm.path}/${InstallationChannel}`,
+          ).pipe(HttpClientRequest.acceptJson),
         )
-        const data = yield* HttpClientResponse.schemaBodyJson(GitHubRelease)(response)
-        return data.tag_name.replace(/^v/, "")
+        const data = yield* HttpClientResponse.schemaBodyJson(NpmPackage)(response)
+        return data.version
+        // kilocode_change end
       }, Effect.orDie),
       upgrade: Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {
         let upgradeResult: { code: number; stdout: string; stderr: string } | undefined
