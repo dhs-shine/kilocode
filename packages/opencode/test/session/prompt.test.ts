@@ -2544,8 +2544,8 @@ noLLMServer.instance(
       const sessions = yield* Session.Service
       const session = yield* sessions.create({
         model: {
-          id: ModelID.make("test-model"),
-          providerID: ProviderID.make("test"),
+          id: ref.modelID,
+          providerID: ref.providerID,
           variant: "high",
         },
       })
@@ -2558,8 +2558,8 @@ noLLMServer.instance(
       if (handoff.info.role !== "user") throw new Error("expected user message")
 
       expect(handoff.info.model).toEqual({
-        providerID: ProviderID.make("test"),
-        modelID: ModelID.make("test-model"),
+        providerID: ref.providerID,
+        modelID: ref.modelID,
         variant: "high",
       })
 

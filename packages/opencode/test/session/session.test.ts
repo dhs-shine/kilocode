@@ -5,7 +5,7 @@ import { GlobalBus, type GlobalEvent } from "../../src/bus/global"
 import * as Log from "@opencode-ai/core/util/log"
 import { MessageV2 } from "../../src/session/message-v2"
 import { MessageID, PartID, type SessionID } from "../../src/session/schema"
-import { ModelID, ProviderID } from "@/provider/schema" // kilocode_change
+type SessionModel = NonNullable<SessionNs.Info["model"]> // kilocode_change
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { provideInstance, tmpdirScoped } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
@@ -222,10 +222,10 @@ describe("Session", () => {
     Effect.gen(function* () {
       const session = yield* SessionNs.Service
       const model = {
-        id: ModelID.make("test-model"),
-        providerID: ProviderID.make("test-provider"),
+        id: "test-model",
+        providerID: "test-provider",
         variant: "high",
-      }
+      } as SessionModel
       const created = yield* Effect.acquireRelease(
         session.create({ title: "with-model", model }),
         (info) => session.remove(info.id).pipe(Effect.ignore),
@@ -252,10 +252,10 @@ describe("Session", () => {
       const source = yield* Effect.acquireRelease(
         session.create({
           model: {
-            id: ModelID.make("test-model"),
-            providerID: ProviderID.make("test-provider"),
+            id: "test-model",
+            providerID: "test-provider",
             variant: "high",
-          },
+          } as SessionModel,
         }),
         (info) => session.remove(info.id).pipe(Effect.ignore),
       )
@@ -266,8 +266,8 @@ describe("Session", () => {
         time: { created: Date.now() },
         agent: "code",
         model: {
-          providerID: ProviderID.make("test-provider"),
-          modelID: ModelID.make("test-model"),
+          providerID: source.model!.providerID,
+          modelID: source.model!.id,
           variant: "low",
         },
         tools: {},
@@ -280,8 +280,8 @@ describe("Session", () => {
         time: { created: Date.now() },
         agent: "code",
         model: {
-          providerID: ProviderID.make("test-provider"),
-          modelID: ModelID.make("test-model"),
+          providerID: source.model!.providerID,
+          modelID: source.model!.id,
           variant: "high",
         },
         tools: {},
@@ -293,8 +293,8 @@ describe("Session", () => {
       )
 
       expect(fork.model).toEqual({
-        id: ModelID.make("test-model"),
-        providerID: ProviderID.make("test-provider"),
+        id: source.model!.id,
+        providerID: source.model!.providerID,
         variant: "low",
       })
     }),

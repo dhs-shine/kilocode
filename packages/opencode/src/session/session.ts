@@ -787,7 +787,7 @@ export const layer: Layer.Layer<
       const model =
         message?.info.role === "user"
           ? {
-              id: ModelID.make(message.info.model.modelID),
+              id: message.info.model.modelID,
               providerID: message.info.model.providerID,
               variant: message.info.model.variant,
             }
