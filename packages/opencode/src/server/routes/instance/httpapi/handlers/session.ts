@@ -315,12 +315,12 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       payload: typeof PromptPayload.Type
     }) {
       yield* requireSession(ctx.params.sessionID)
-      // kilocode_change start - cast to bridge schema-readonly to PromptInput mutable; matches legacy Hono session.ts
       yield* promptSvc
         .prompt({ ...ctx.payload, sessionID: ctx.params.sessionID } as unknown as SessionPrompt.PromptInput)
         .pipe(
-          Effect.catchCause((cause) =>
-            Effect.gen(function* () {
+          Effect.catchCause((cause) => {
+            if (Cause.hasInterruptsOnly(cause)) return Effect.void // kilocode_change - Stop is not an error
+            return Effect.gen(function* () {
               yield* Effect.logError("prompt_async failed").pipe(
                 Effect.annotateLogs({ sessionID: ctx.params.sessionID, cause }),
               )
@@ -331,11 +331,10 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
                   ? error.toObject()
                   : new NamedError.Unknown({ message: Cause.pretty(cause) }).toObject(),
               })
-            }),
-          ),
+            })
+          }),
           Effect.forkIn(scope, { startImmediately: true }),
         )
-      // kilocode_change end
       return HttpApiSchema.NoContent.make()
     })
 
