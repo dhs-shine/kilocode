@@ -302,6 +302,19 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertEquals(min, editor.preferredSize.height)
     }
 
+    fun `test empty prompt panel stays compact at narrow width`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+        val editor = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 80, 900)
+        UIUtil.dispatchAllInvocationEvents()
+        val chrome = (panel.shellForTest().preferredSize.height - editor.preferredSize.height).coerceAtLeast(0)
+        val ins = panel.insets
+
+        assertEquals(editor.preferredSize.height + chrome + ins.top + ins.bottom, panel.preferredSize.height)
+        assertTrue(panel.preferredSize.height < 180)
+    }
+
     fun `test prompt editor grows when single line wraps`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val editor = panel.defaultFocusedComponent as EditorTextField

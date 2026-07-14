@@ -78,6 +78,7 @@ import java.awt.BasicStroke
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Cursor
+import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
@@ -313,6 +314,12 @@ class PromptPanel(
         syncBorder()
     }
 
+    override fun getPreferredSize(): Dimension = promptSize(super.getPreferredSize())
+
+    override fun getMinimumSize(): Dimension = promptSize(super.getMinimumSize())
+
+    override fun getMaximumSize(): Dimension = Dimension(super.getMaximumSize().width, preferredSize.height)
+
     private fun syncFocus(value: Boolean) {
         if (focused == value) {
             repaint()
@@ -333,6 +340,12 @@ class PromptPanel(
             },
             JBUI.Borders.empty(),
         )
+    }
+
+    private fun promptSize(size: Dimension): Dimension {
+        val chrome = (shell.preferredSize.height - editor.preferredSize.height).coerceAtLeast(0)
+        val ins = insets
+        return Dimension(size.width, editor.preferredSize.height + chrome + ins.top + ins.bottom)
     }
 
     override fun paintChildren(g: Graphics) {
