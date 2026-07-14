@@ -292,9 +292,7 @@ export class AgentManagerProvider implements Disposable {
     })
   }
 
-  // ---------------------------------------------------------------------------
   // State initialization
-  // ---------------------------------------------------------------------------
 
   private async initializeState(): Promise<void> {
     const manager = this.getWorktreeManager()
@@ -365,9 +363,7 @@ export class AgentManagerProvider implements Disposable {
     await state.flush()
   }
 
-  // ---------------------------------------------------------------------------
   // Message interceptor
-  // ---------------------------------------------------------------------------
 
   private async onMessage(msg: Record<string, unknown>): Promise<Record<string, unknown> | null> {
     if (this.prBridge.handleMessage(msg)) return null
@@ -513,8 +509,13 @@ export class AgentManagerProvider implements Disposable {
     }
 
     if (m.type === "requestTerminalContext") {
-      if (m.sessionID && !this.terminalManager.hasActiveTerminal()) this.terminalManager.showExisting(m.sessionID)
-      return msg
+      if (!m.sessionID || this.terminalManager.prepareContext(m.sessionID)) return msg
+      this.panel?.postMessage({
+        type: "terminalContextError",
+        requestId: m.requestId,
+        error: "No terminal is associated with this session",
+      })
+      return null
     }
 
     if (m.type === "loadMessages") {
@@ -742,9 +743,7 @@ export class AgentManagerProvider implements Disposable {
       })
   }
 
-  // ---------------------------------------------------------------------------
   // Shared helpers
-  // ---------------------------------------------------------------------------
 
   /** Resolve the effective base branch using the configured default, explicit override, and existence check. */
   private async resolveBaseBranch(
@@ -1035,9 +1034,7 @@ export class AgentManagerProvider implements Disposable {
     )
   }
 
-  // ---------------------------------------------------------------------------
   // Worktree actions
-  // ---------------------------------------------------------------------------
 
   /** Create a new worktree with an auto-created first session. */
   private async onCreateWorktree(baseBranch?: string, branchName?: string): Promise<null> {
@@ -1303,9 +1300,7 @@ export class AgentManagerProvider implements Disposable {
     return null
   }
 
-  // ---------------------------------------------------------------------------
   // Multi-version worktree creation
-  // ---------------------------------------------------------------------------
 
   /** Create N worktree sessions for the same prompt (multi-version mode). */
   private async onCreateMultiVersion(
@@ -1486,9 +1481,7 @@ export class AgentManagerProvider implements Disposable {
     return null
   }
 
-  // ---------------------------------------------------------------------------
   // Keybindings
-  // ---------------------------------------------------------------------------
 
   private sendKeybindings(): void {
     const keybindings = this.host.extensionKeybindings()
@@ -1496,9 +1489,7 @@ export class AgentManagerProvider implements Disposable {
     this.postToWebview({ type: "agentManager.keybindings", bindings })
   }
 
-  // ---------------------------------------------------------------------------
   // Setup script
-  // ---------------------------------------------------------------------------
 
   /** Open the worktree setup script in the editor for user configuration. */
   private async configureSetupScript(): Promise<void> {
@@ -1553,9 +1544,7 @@ export class AgentManagerProvider implements Disposable {
     }
   }
 
-  // ---------------------------------------------------------------------------
   // Repo info
-  // ---------------------------------------------------------------------------
 
   private async sendRepoInfo(): Promise<void> {
     const manager = this.getWorktreeManager()
@@ -1569,9 +1558,7 @@ export class AgentManagerProvider implements Disposable {
     }
   }
 
-  // ---------------------------------------------------------------------------
   // State helpers
-  // ---------------------------------------------------------------------------
 
   private registerWorktreeSession(sessionId: string, directory: string): void {
     const worktree = this.state?.findWorktreeByPath(directory)
@@ -1725,9 +1712,7 @@ export class AgentManagerProvider implements Disposable {
     })
   }
 
-  // ---------------------------------------------------------------------------
   // Manager accessors
-  // ---------------------------------------------------------------------------
 
   private getRoot(): string | undefined {
     return this.host.workspacePath()
@@ -1770,9 +1755,7 @@ export class AgentManagerProvider implements Disposable {
     return this.setupScript
   }
 
-  // ---------------------------------------------------------------------------
   // Worktree file helpers
-  // ---------------------------------------------------------------------------
 
   /** Open a worktree directory directly in VS Code. */
   private openWorktreeDirectory(worktreeId: string): void {

@@ -5,7 +5,6 @@ import type {
   Session,
   SessionStatus,
   Event,
-  GlobalEvent,
   TextPartInput,
   FilePartInput,
   Config,
@@ -60,6 +59,7 @@ import { resolveProjectDirectory } from "./project-directory"
 import { seedSessionStatuses } from "./session-status"
 import { normalizeEnhancePromptErrorMessage } from "./enhance-prompt-error"
 import { retry } from "./services/cli-backend/retry"
+import { normalize, type SSEPayload, type SyncPayload, type WirePayload } from "./services/cli-backend/sdk-sse-adapter"
 import { slimInfo, slimPart, slimParts } from "./kilo-provider/slim-metadata"
 import { handleSidebarWorktreeMessage } from "./kilo-provider/sidebar-worktree"
 import { parseMessageFiles, type MessageFile } from "./kilo-provider/message-files"
@@ -211,17 +211,7 @@ const mapAgent = (a: Agent) => ({
 const SESSION_SCOPED_PART_EVENTS = new Set(["message.part.updated", "message.part.delta", "message.part.removed"])
 const isSessionScopedPartEvent = (type: string) => SESSION_SCOPED_PART_EVENTS.has(type)
 
-type SyncPayload = Extract<GlobalEvent["payload"], { type: "sync" }>
-type RawSyncPayload = {
-  type: "sync"
-  syncEvent: {
-    type: SyncPayload["name"]
-    id: string
-    seq: number
-    aggregateID: string
-    data: unknown
-  }
-}
+type RawSyncPayload = Extract<WirePayload, { type: "sync" }>
 type LegacySyncEvent =
   | {
       id: string
@@ -261,13 +251,7 @@ type LegacySyncEvent =
       properties: Extract<SyncPayload, { name: "session.deleted.1" }>["data"]
     }
 
-type FullSessionUpdatedEvent = {
-  id: string
-  type: "session.updated"
-  properties: { sessionID: string; info: Session }
-}
-
-type ProviderEvent = Event | LegacySyncEvent | FullSessionUpdatedEvent
+type ProviderEvent = Event | LegacySyncEvent
 
 function isLegacySyncEvent(event: ProviderEvent): event is LegacySyncEvent {
   if (event.type === "session.updated") return "source" in event && event.source === "sync"
@@ -281,23 +265,9 @@ function isLegacySyncEvent(event: ProviderEvent): event is LegacySyncEvent {
   )
 }
 
-function isFullSessionUpdatedEvent(event: ProviderEvent): event is FullSessionUpdatedEvent {
-  return event.type === "session.updated" && !isLegacySyncEvent(event)
-}
-
-export function unwrapSyncEvent(event: GlobalEvent["payload"] | RawSyncPayload): ProviderEvent | undefined {
+export function unwrapSyncEvent(event: SSEPayload | RawSyncPayload): ProviderEvent | undefined {
   if (event.type !== "sync") return event
-  const payload =
-    "syncEvent" in event
-      ? ({
-          type: "sync",
-          name: event.syncEvent.type,
-          id: event.syncEvent.id,
-          seq: event.syncEvent.seq,
-          aggregateID: event.syncEvent.aggregateID,
-          data: event.syncEvent.data,
-        } as SyncPayload)
-      : event
+  const payload = "syncEvent" in event ? normalize(event) : event
 
   switch (payload.name) {
     case "message.updated.1":
@@ -373,10 +343,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   private promptRecoveryQueued = false
   private promptRecovery: Promise<void> | null = null
   private trackedSessionIds: Set<string> = new Set()
+  private readonly openSessionIds = new Set<string>()
   private modelUsageSessionIds: Set<string> = new Set()
   private syncedChildSessions: Set<string> = new Set()
   private readonly checkpoints = new Map<string, Promise<void>>()
   private readonly sessionCreations = new Map<string, Promise<{ sid: string; dir: string } | undefined>>()
+  private readonly draftSessions = new Map<string, { sid: string; dir: string; expires: number }>()
   private readonly sandboxTransitions = new Map<string, Promise<void>>()
   private readonly revisions = new Map<string, { id: string; seq: number }>()
   private readonly refreshes = new Map<string, number>()
@@ -613,7 +585,8 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       connection: this.connectionService,
       post: (msg: { type: "error"; message: string }) => this.postMessage(msg),
       register: (session: Session) => this.registerSession(session),
-      forked: (session: Session) => this.postMessage({ type: "sessionForked", sessionID: session.id }),
+      forked: (session: Session, sourceID: string) =>
+        this.postMessage({ type: "sessionForked", sessionID: session.id, forkedFromID: sourceID }),
       status: (sessionID: string) => this.sessionStatusMap.get(sessionID),
       directory: (sessionID: string) => this.getWorkspaceDirectory(sessionID),
     }
@@ -845,6 +818,24 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     })
   }
 
+  private trackOpenSessions(ids: string[]): void {
+    const next = new Set(ids)
+    for (const id of this.openSessionIds) {
+      if (!next.has(id)) this.trackedSessionIds.delete(id)
+    }
+    this.openSessionIds.clear()
+    for (const id of next) {
+      this.openSessionIds.add(id)
+      this.trackedSessionIds.add(id)
+    }
+    const now = Date.now()
+    for (const [key, session] of this.draftSessions) {
+      if (next.has(session.sid) || session.expires <= now) this.draftSessions.delete(key)
+    }
+    this.connectionService.registerOpen(this.instanceId, ids)
+    this.recoverPendingPrompts()
+  }
+
   private async flushPendingPrompts(): Promise<void> {
     while (this.promptRecoveryQueued && this.isWebviewReady) {
       if (!this.client) return
@@ -914,6 +905,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           dir: this.getWorkspaceDirectory(this.currentSession?.id),
           post: (msg) => this.postMessage(msg),
           exportTranscript: (sessionID) => this.handleExportSessionTranscript(sessionID),
+          openSessions: (ids) => this.trackOpenSessions(ids),
         })
       ) {
         return
@@ -2044,6 +2036,10 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
    */
   private pruneDeletedSession(sessionID: string): void {
     this.trackedSessionIds.delete(sessionID)
+    this.openSessionIds.delete(sessionID)
+    for (const [key, session] of this.draftSessions) {
+      if (session.sid === sessionID) this.draftSessions.delete(key)
+    }
     this.streams.drop(sessionID)
     this.visibleTaskStreams.delete(sessionID)
     this.syncedChildSessions.delete(sessionID)
@@ -3026,8 +3022,20 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       workspaceDirectory: this.getRootDirectory(),
     })
 
-    if (!sessionID && !this.currentSession) {
-      const key = `${draftID ?? context ?? "new"}\0${dir}`
+    const key = `${draftID ?? context ?? "new"}\0${dir}`
+    const now = Date.now()
+    for (const [draft, session] of this.draftSessions) {
+      if (session.expires <= now) this.draftSessions.delete(draft)
+    }
+    if (!sessionID && draftID) {
+      const resolved = this.draftSessions.get(key)
+      if (resolved) {
+        this.trackedSessionIds.add(resolved.sid)
+        return { sid: resolved.sid, dir: resolved.dir }
+      }
+    }
+
+    if (!sessionID && (draftID || !this.currentSession)) {
       const pending = this.sessionCreations.get(key)
       if (pending) return pending
       if (draftID) this.creatingDrafts.add(draftID)
@@ -3037,9 +3045,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           { directory: dir, platform: this.opts.platform, metadata },
           { throwOnError: true },
         )
-        if (draftID) this.draftSessions.set(draftID, session.id)
         if (draftID && this.closedDrafts.delete(draftID)) {
-          this.draftSessions.delete(draftID)
           await this.client!.session.delete({ sessionID: session.id, directory: dir }, { throwOnError: true })
           return undefined
         }
@@ -3054,7 +3060,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
           session: this.sessionToWebview(session),
           draftID,
         })
-        return { sid: session.id, dir }
+        const resolved = { sid: session.id, dir }
+        if (draftID) this.draftSessions.set(key, { ...resolved, expires: Date.now() + 60_000 })
+        return resolved
       })().finally(() => {
         this.sessionCreations.delete(key)
         if (draftID) this.creatingDrafts.delete(draftID)
@@ -3072,7 +3080,6 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   /** Drafts closed while their backend session is being created or submitted. */
   private closedDrafts = new Set<string>()
   private creatingDrafts = new Set<string>()
-  private draftSessions = new Map<string, string>()
 
   /** Abort controllers for active retry loops, keyed by session ID */
   private retryAbortControllers = new Map<string, AbortController>()
@@ -3264,7 +3271,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
       await this.requirements.assertAgentRequirements(agent, dir)
       const editorContext = await this.gatherEditorContext(dir)
       if (draftID && this.closedDrafts.delete(draftID)) {
-        this.draftSessions.delete(draftID)
+        for (const [k, v] of this.draftSessions) if (v.sid === sid) this.draftSessions.delete(k)
         return
       }
 
@@ -3392,8 +3399,12 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   }
 
   public acknowledgeDraft(draftID: string, sessionID: string): void {
-    if (this.draftSessions.get(draftID) !== sessionID) return
-    this.draftSessions.delete(draftID)
+    for (const [k, v] of this.draftSessions) {
+      if (v.sid === sessionID) {
+        this.draftSessions.delete(k)
+        break
+      }
+    }
     this.closedDrafts.delete(draftID)
   }
 
@@ -3401,7 +3412,13 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     const sessions = [...new Set(ids)]
     const targets = new Set(sessions.filter((sid) => !sid.startsWith("pending:")))
     for (const draft of sessions.filter((sid) => sid.startsWith("pending:"))) {
-      const sid = this.draftSessions.get(draft)
+      let sid: string | undefined
+      for (const [k, v] of this.draftSessions) {
+        if (k.startsWith(`${draft}\0`)) {
+          sid = v.sid
+          break
+        }
+      }
       if (!sid && !this.creatingDrafts.has(draft)) continue
       this.closedDrafts.add(draft)
       if (sid) targets.add(sid)
@@ -3915,12 +3932,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     // Drop session events from other projects before any tracking logic.
     // This must come first: the trackedSessionIds guard below would otherwise
     // let a foreign session through if it was accidentally tracked.
-    if (
-      !isLegacySyncEvent(event) &&
-      !isFullSessionUpdatedEvent(event) &&
-      isEventFromForeignProject(event, this.projectID)
-    )
-      return
+    if (!isLegacySyncEvent(event) && isEventFromForeignProject(event, this.projectID)) return
     if (
       this.projectID &&
       (event.type === "session.created" || event.type === "session.updated") &&
@@ -3988,7 +4000,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
 
     if (event.type === "session.updated") {
       // Full bus snapshots duplicate sync patches with the same event ID but no sequence metadata.
-      if (isFullSessionUpdatedEvent(event)) return
+      if (!isLegacySyncEvent(event)) return
       const sid = event.properties.sessionID
       const revision = this.revisions.get(sid)
       const versioned = event.seq > 0 || (revision?.seq ?? 0) > 0
@@ -4441,6 +4453,7 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
   dispose(): void {
     this.unsubscribeRemote?.()
     this.focusSession()
+    this.connectionService.registerOpen(this.instanceId, [])
     this.statsPoller?.stop()
     this.statsGitOps?.dispose()
     this.unsubscribeEvent?.()
@@ -4469,7 +4482,9 @@ export class KiloProvider implements vscode.WebviewViewProvider, TelemetryProper
     this.promptRecoveryQueued = false
     clearNetworkWaits(this.trackedSessionIds)
     this.trackedSessionIds.clear()
+    this.openSessionIds.clear()
     this.syncedChildSessions.clear()
+    this.draftSessions.clear()
     this.sessionDirectories.clear()
     this.anacondaDesktop.dispose()
     this.aborts.clear()

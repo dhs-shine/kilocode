@@ -47,6 +47,7 @@ const TSX_FILES = [
   // Shared components that consume agent-manager CSS classes (e.g. am-dropdown,
   // am-branch-item) used by both the agent manager and the diff viewer.
   path.join(ROOT, "webview-ui/src/components/shared/BranchSelect.tsx"),
+  path.join(ROOT, "webview-ui/src/components/chat/TabDnd.tsx"),
   path.join(ROOT, "webview-ui/diff-viewer/BaseBranchPicker.tsx"),
 ]
 const TSX_FILE = TSX_FILES[0]!
@@ -220,7 +221,7 @@ describe("Agent Manager Provider Messages", () => {
     const body = text.slice(start, end)
     expect(start).toBeGreaterThanOrEqual(0)
     expect(end).toBeGreaterThan(start)
-    expect(body).toContain("if (pending) closedDrafts.add(sessionId)")
+    expect(body).toContain("closedDrafts.add(sessionId)")
     expect(body).toContain('vscode.postMessage({ type: "agentManager.closeSession", sessionId })')
     expect(body).not.toContain('type: "agentManager.forgetSession"')
     expect(getMethodBody("onCloseSession")).toContain("await this.panel?.sessions.abortSessions([sessionId])")
@@ -342,13 +343,12 @@ describe("Agent Manager Provider — onMessage routing", () => {
     expect(text).toContain("syncOnSessionSwitch")
   })
 
-  it("terminal context keeps the current active terminal when present", () => {
+  it("terminal context reveals the terminal associated with the originating session", () => {
     const text = body("onSessionMessage")
-    const check = text.indexOf("!this.terminalManager.hasActiveTerminal()")
-    const show = text.indexOf("this.terminalManager.showExisting(m.sessionID)")
-    expect(check).toBeGreaterThan(-1)
+    const show = text.indexOf("this.terminalManager.prepareContext(m.sessionID)")
     expect(show).toBeGreaterThan(-1)
-    expect(check, "active terminal check must guard session terminal reveal").toBeLessThan(show)
+    expect(text).not.toContain("!this.terminalManager.hasActiveTerminal()")
+    expect(text).toContain('type: "terminalContextError"')
   })
 
   it("session routing handles clearSession for SSE re-registration", () => {
@@ -827,6 +827,9 @@ describe("Agent Manager — provider chain parity with sidebar", () => {
     // which the agent manager already includes in its provider chain.
     "LanguageProvider",
     "DataProvider",
+    // Agent Manager owns its local session tabs and ChatView only reads this
+    // optional context in the standard sidebar/editor webview.
+    "LocalTabsProvider",
     // Work-style onboarding is injected only into the sidebar empty state.
     "WorkStyleProvider",
   ]
