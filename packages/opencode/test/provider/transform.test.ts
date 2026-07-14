@@ -3370,6 +3370,7 @@ describe("ProviderTransform.variants", () => {
       expect(result.high).toEqual({ reasoningEffort: "high" })
     })
 
+    // kilocode_change start
     test("grok-4.5 uses standard reasoning efforts", () => {
       const model = createMockModel({
         id: "xai/grok-4.5",
@@ -3386,6 +3387,7 @@ describe("ProviderTransform.variants", () => {
       expect(Object.keys(result)).toEqual(["low", "medium", "high"])
       expect(result.medium).toEqual({ reasoningEffort: "medium" })
     })
+    // kilocode_change end
   })
 
   describe("@ai-sdk/deepinfra", () => {
