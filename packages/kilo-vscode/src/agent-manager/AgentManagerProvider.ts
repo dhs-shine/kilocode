@@ -37,6 +37,7 @@ import { createLocalDiff, diffSummary as localDiffSummary } from "./local-diff"
 import { parseToolRequest, startFromTool, type ToolRequest } from "./tool-start"
 import { stopSessionProcesses } from "../kilo-provider/background-process"
 import { sandboxSessionMetadata } from "../shared/sandbox-session"
+import { pruneSubagents } from "./prune-subagents"
 
 import { startSession } from "./mcp-warmup"
 import { readTerminalFont, watchTerminalFont } from "./terminal-font"
@@ -322,12 +323,10 @@ export class AgentManagerProvider implements Disposable {
     }
 
     for (const wt of state.getWorktrees()) {
-      for (const s of state.getSessions(wt.id)) {
-        this.panel?.sessions.setSessionDirectory(s.id, wt.path)
-        this.panel?.sessions.trackSession(s.id)
-      }
+      for (const s of state.getSessions(wt.id)) this.panel?.sessions.setSessionDirectory(s.id, wt.path)
     }
-    for (const s of state.getSessions()) if (!s.worktreeId) this.panel?.sessions.trackSession(s.id)
+    await pruneSubagents(state, this.panel?.sessions, (message) => this.log(message))
+    for (const s of state.getSessions()) this.panel?.sessions.trackSession(s.id)
     this.pushState()
 
     // Refresh sessions so worktree sessions appear in the list
