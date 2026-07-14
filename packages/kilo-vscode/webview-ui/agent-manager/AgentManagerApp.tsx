@@ -299,8 +299,8 @@ const AgentManagerContent: Component = () => {
   const [applySelectedFiles, setApplySelectedFiles] = createSignal<string[]>([])
   const [applySelectionTouched, setApplySelectionTouched] = createSignal(false)
 
-  // Pending local tab counter for generating unique IDs
   const PENDING_PREFIX = "pending:"
+  const closedDrafts = new Set<string>()
   const [activePendingId, setActivePendingId] = createSignal<string | undefined>()
 
   // Per-sidebar-context terminal state. `terms.activeId` holds the id
@@ -619,8 +619,7 @@ const AgentManagerContent: Component = () => {
     const next = addLocalPendingTab({ ids: localSessionIDs(), active: activePendingId() }, id)
     setLocalSessionIDs(next.ids)
     appendToTabOrder(LOCAL, id)
-    // Deactivate any focused terminal so the new pending session is
-    // actually visible — visibleTabId prioritises terms.activeId().
+    // Deactivate any focused terminal so the new pending session is visible.
     terms.setActiveId(undefined)
     setActivePendingId(id)
     session.clearCurrentSession()
@@ -1192,6 +1191,7 @@ const AgentManagerContent: Component = () => {
       if (!isKnownRootSession(created.session)) return
       if (!created.draftID && createdSessions.delete(created.session.id)) return
       if (created.draftID) createdSessions.add(created.session.id)
+      if (created.draftID && closedDrafts.delete(created.draftID)) return
       if (created.draftID && promotePendingDraftDiscard(created.draftID, created.session.id)) return
       const pending = created.draftID && localSessionIDs().includes(created.draftID) ? created.draftID : undefined
       if (!pending && localSessionIDs().includes(created.session.id)) return
@@ -1201,7 +1201,11 @@ const AgentManagerContent: Component = () => {
       if (!pending) saveTabMemory()
       placeLocal(created.session.id, pending, active)
       if (!pending) setSelection(LOCAL)
-      vscode.postMessage({ type: "agentManager.persistSession", sessionId: created.session.id })
+      vscode.postMessage({
+        type: "agentManager.persistSession",
+        sessionId: created.session.id,
+        draftID: created.draftID,
+      })
       if (focus) session.selectSession(created.session.id)
     })
 
@@ -1986,14 +1990,13 @@ const AgentManagerContent: Component = () => {
     }
     if (pending || localSet().has(sessionId)) {
       setLocalSessionIDs((prev) => prev.filter((id) => id !== sessionId))
-      if (!pending) vscode.postMessage({ type: "agentManager.forgetSession", sessionId })
-    } else {
-      vscode.postMessage({ type: "agentManager.closeSession", sessionId })
     }
     if (pending) {
+      closedDrafts.add(sessionId)
       if (session.isSubmitting(sessionId) || isPendingSend(sessionId)) discardPendingDraft(sessionId)
       queueMicrotask(() => deletePendingDraft(sessionId))
     }
+    vscode.postMessage({ type: "agentManager.closeSession", sessionId })
     tabFocus.restore()
   }
 
