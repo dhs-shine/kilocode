@@ -27,59 +27,19 @@
 ## [7.0.5] - 2026-07-14
 
 ### Added
-- feat: allow sandbox network destinations by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12075
-- feat(vscode): add file picker to @ mention dropdown by @sylwester-liljegren in https://github.com/Kilo-Org/kilocode/pull/12028
-- feat(vscode): add in-chat search for the current session by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12155
-- feat(vscode): add persistent local session tabs by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/10466
-- feat: report active CLI and VS Code app and session presence by @eshurakov in https://github.com/Kilo-Org/kilocode/pull/12159
-- feat(vscode): highlight transcript parts from timeline bars by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12065
-- feat(agent-manager): add prompt enhancer to worktree dialog by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11687
-- feat: bump session ingest version to v2 by @pandemicsyn in https://github.com/Kilo-Org/kilocode/pull/12117
+
+- Add an elapsed-time indicator to the session progress footer so long-running tasks show how long they have been active.
+- Support importing legacy JetBrains v5 data directly from raw storage when the previous consolidated migration file is unavailable.
 
 ### Fixed
-- fix(cli): use filePath in Gemini prompt by @Githubguy132010 in https://github.com/Kilo-Org/kilocode/pull/12101
-- fix(cli): resolve latest CLI release when GitHub latest points to non-CLI tag by @umi008 in https://github.com/Kilo-Org/kilocode/pull/12148
-- fix(agent-manager): accept Windows workspace path casing by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12152
-- fix(cli): show Kilo Gateway login rate limit message by @mjnaderi in https://github.com/Kilo-Org/kilocode/pull/11837
-- fix: restore GPT-5.6 reasoning summaries by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12092
-- fix(cli): explain Gemini API key rejections by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12162
-- fix(cli): sanitize unsupported regex lookarounds by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12153
-- fix(cli): avoid independent worktree indexing scans by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12164
-- fix(cli): preserve sanitized tool schema inputs by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12166
-- fix(cli): resolve curl upgrade version from npm dist-tag instead of GitHub releases/latest by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12167
-- fix: sanitize empty Gemini object requirements by @jstar0 in https://github.com/Kilo-Org/kilocode/pull/11955
-- fix(cli): skip thinkingLevel for Gemma models on Google provider by @umi008 in https://github.com/Kilo-Org/kilocode/pull/12149
-- fix(cli): block project markdown secret exfiltration by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12168
-- fix(vscode): focus prompt after closing sidebar tab by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12176
-- fix(vscode): preserve focus after closing inactive tab by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12177
-- fix(cli): preserve provider errors from chunked compaction by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12156
-- fix(indexing): retry remote embedder validation on fail by @shssoichiro in https://github.com/Kilo-Org/kilocode/pull/12187
-- fix(jetbrains): facelift session controls by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12180
-- fix(cli): preserve forked session variants by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12175
-- fix(cli): release Windows file handles after reads by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12097
-- fix(agent-manager): keep subagents out of tabs by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11536
-- fix(agent-manager): inherit sandbox for tool-started sessions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11783
-- fix(docs): exclude t.me links from lychee link checker by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12197
-- fix(agent-manager): stop sessions when closing tabs by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/11424
-- fix(cli): surface invalid Kilo indexing.model as an error instead of silently falling back by @rakshith1928 in https://github.com/Kilo-Org/kilocode/pull/12128
-- fix(vscode): remember initial prompts in history by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/12201
-- fix(cli): allow trusting global skill directories by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12160
-- fix(cli): enforce read permissions for file mentions by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12158
-- fix(vscode): improve question option contrast by @LEN5010 in https://github.com/Kilo-Org/kilocode/pull/11922
-- fix(cli): temporarily disable session export by @lambertjosh in https://github.com/Kilo-Org/kilocode/pull/12205
-- fix(cli): isolate model cache refresh from caller cancellation by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12203
-- fix(jetbrains): restore legacy v5 migration import by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12188
+
+- Restore the v5 migration wizard for users whose legacy provider, OAuth, MCP, mode, setting, or session data was not detected during upgrade.
+- Improve migration reliability by preserving checklist todos, importing legacy tool calls as assistant parts, validating raw session IDs, and reducing migration memory usage.
+- Polish session controls with more native prompt icons, progress footer spacing, auto-hiding prompt scrollbars, and improved rollback/redo scrolling.
 
 ### Changed
-- release(jetbrains): v7.0.4 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12119
-- chore(script): reconcile team list with active maintainers by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12154
-- test(sandbox): stabilize fragmented ClientHello coverage by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12151
-- docs(kilo-docs): exclude Google AI Studio API keys page from link checker by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12163
-- OpenCode v1.16.2 by @johnnyeric in https://github.com/Kilo-Org/kilocode/pull/12088
-- test(jetbrains): reduce unit test runtime by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12171
-- Fix remote CLI session control from mobile by @iscekic in https://github.com/Kilo-Org/kilocode/pull/12189
-- docs(vscode): improve agent behaviour setting descriptions (#7668) by @Tamsi in https://github.com/Kilo-Org/kilocode/pull/11868
 
+- Keep the JetBrains plugin pinned to Kilo Core 7.4.5 for this release.
 
 ## [7.0.4] - 2026-07-10
 
