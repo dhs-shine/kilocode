@@ -46,6 +46,10 @@ function setup(active = false) {
       events.push("post")
       posts.push(msg)
     },
+    waitForReady: async () => {
+      events.push("wait")
+      waits.push("agent")
+    },
   }
 
   api.commands.registerCommand = (command, callback) => {
@@ -103,9 +107,9 @@ describe("registerCodeActions", () => {
 
     await state.commands.get("kilo-code.new.addToContext")?.()
 
-    expect(state.events).toEqual(["post"])
+    expect(state.events).toEqual(["wait", "post"])
     expect(state.executed).toEqual([])
-    expect(state.waits).toEqual([])
+    expect(state.waits).toEqual(["agent"])
     expect(state.posts).toEqual([
       {
         type: "appendChatBoxMessage",

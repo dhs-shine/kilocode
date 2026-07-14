@@ -388,7 +388,7 @@ describe("Collapsed deferred tool details contract (source)", () => {
     const block =
       message.match(/ToolRegistry\.register\(\{\s*name:\s*"bash"[\s\S]*?(?=ToolRegistry\.register\(|$)/)?.[0] ?? ""
     expect(block).toContain("const [mounted, setMounted] = createSignal(open())")
-    expect(block).toMatch(/if \(open\(\) \|\| pending\(\)\) setMounted\(true\)/)
+    expect(block).toMatch(/if \(open\(\) \|\| pending\(\) \|\| props\.forceOpen\) setMounted\(true\)/)
     expect(block).toContain("hasDetails")
     expect(block).toMatch(/<Show when=\{mounted\(\)\}>[\s\S]*?<BashHighlightedOutput/)
   })
