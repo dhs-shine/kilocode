@@ -21,16 +21,22 @@ export function registerCodeActions(
   // does not queue — it silently drops the message if the webview hasn't
   // installed its listener yet. Wait for the selected target's own
   // readiness too before posting to it.
-  const revealTarget = async (view: KiloProvider | AgentManagerProvider) => {
+  //
+  // AgentManagerProvider.waitForReady() resolves `false` instead of hanging
+  // forever when the selected panel closes or is replaced while waiting.
+  // Propagate that so callers skip posting instead of delivering the
+  // message to whatever panel happens to be active by the time the wait
+  // settles.
+  const revealTarget = async (view: KiloProvider | AgentManagerProvider): Promise<boolean> => {
     if (view === provider) {
       await reveal()
-      return
+      return true
     }
     if (view === agentManager) {
-      await agentManager.waitForReady()
-      return
+      return agentManager.waitForReady()
     }
     await view.waitForReady()
+    return true
   }
 
   context.subscriptions.push(
@@ -87,13 +93,13 @@ export function registerCodeActions(
         selectedText: ctx.selectedText,
       })
       const view = target()
-      await revealTarget(view)
+      if (!(await revealTarget(view))) return
       view.postMessage({ type: "appendChatBoxMessage", text: prompt })
     }),
 
     vscode.commands.registerCommand("kilo-code.new.focusChatInput", async () => {
       const view = target()
-      await revealTarget(view)
+      if (!(await revealTarget(view))) return
       view.postMessage({ type: "action", action: "focusInput" })
     }),
 

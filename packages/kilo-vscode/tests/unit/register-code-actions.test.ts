@@ -23,7 +23,7 @@ const original = {
   diagnostics: api.languages.getDiagnostics,
 }
 
-function setup(active = false) {
+function setup(active = false, agentReady = true) {
   const commands = new Map<string, Command>()
   const executed: unknown[][] = []
   const events: string[] = []
@@ -49,6 +49,7 @@ function setup(active = false) {
     waitForReady: async () => {
       events.push("wait")
       waits.push("agent")
+      return agentReady
     },
   }
 
@@ -116,5 +117,14 @@ describe("registerCodeActions", () => {
         text: "src/file.ts:3-5\n```\nconst value = 1\n```",
       },
     ])
+  })
+
+  it("does not post to the Agent Manager when its readiness wait is cancelled", async () => {
+    const state = setup(true, false)
+
+    await state.commands.get("kilo-code.new.addToContext")?.()
+
+    expect(state.events).toEqual(["wait"])
+    expect(state.posts).toEqual([])
   })
 })

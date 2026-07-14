@@ -2311,7 +2311,12 @@ ToolRegistry.register({
           }
         >
           <Show when={mounted()}>
-            <BashHighlightedOutput cmd={cmd()} output={out()} outputPath={props.metadata.outputPath} active={open()} />
+            <BashHighlightedOutput
+              cmd={cmd()}
+              output={out()}
+              outputPath={props.metadata.outputPath}
+              active={open() || !!props.forceOpen}
+            />
           </Show>
         </BasicTool>
         <Show when={pruned()}>
@@ -2625,18 +2630,28 @@ ToolRegistry.register({
     })
     // Deleted files start collapsed above; a chat search match could be
     // inside one. `forceOpenFile` (from MessageList's per-chunk file
-    // attribution) names exactly which file's accordion to open — falling
-    // back to expanding every file only when forceOpen fires without a
-    // known file (defensive; MessageList always attributes apply_patch
-    // matches to a specific file today).
+    // attribution) names exactly which file's accordion to open. This is
+    // tracked separately from the user's own manual toggles: replacing it
+    // on every navigation (rather than appending to `expanded`, which never
+    // shrinks) closes the previously force-opened file again, so its Pierre
+    // diff instance unmounts instead of accumulating one per visited match.
+    const [searchOpenFile, setSearchOpenFile] = createSignal<string | undefined>()
     createEffect(() => {
       if (props.forceOpenFile) {
-        const path = props.forceOpenFile
-        setExpanded((prev) => (prev.includes(path) ? prev : [...prev, path]))
+        setSearchOpenFile(props.forceOpenFile)
         return
       }
+      // Defensive fallback for forceOpen without a known file (MessageList
+      // always attributes apply_patch matches to a specific file today):
+      // expand everything rather than nothing.
+      setSearchOpenFile(undefined)
       if (!props.forceOpen) return
       setExpanded(files().map((f) => f.filePath))
+    })
+    const allExpanded = createMemo(() => {
+      const search = searchOpenFile()
+      if (!search) return expanded()
+      return expanded().includes(search) ? expanded() : [...expanded(), search]
     })
     const subtitle = createMemo(() => {
       const count = files().length
@@ -2690,8 +2705,15 @@ ToolRegistry.register({
                   multiple
                   data-scope="apply-patch"
                   style={{ "--sticky-accordion-offset": "37px" }}
-                  value={expanded()}
-                  onChange={(value) => setExpanded(Array.isArray(value) ? value : value ? [value] : [])}
+                  value={allExpanded()}
+                  onChange={(value) => {
+                    const next = Array.isArray(value) ? value : value ? [value] : []
+                    // The user explicitly closed the search-forced file —
+                    // stop treating it as force-open so it doesn't reopen
+                    // itself out of `allExpanded()` on the next render.
+                    if (searchOpenFile() && !next.includes(searchOpenFile()!)) setSearchOpenFile(undefined)
+                    setExpanded(next.filter((path) => path !== searchOpenFile()))
+                  }}
                 >
                   <For each={files()}>
                     {(file) => {

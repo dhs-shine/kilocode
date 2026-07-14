@@ -29,6 +29,7 @@ import { useServer } from "../../context/server"
 import { useLanguage } from "../../context/language"
 import { useI18n } from "@kilocode/kilo-ui/context/i18n"
 import { useProvider } from "../../context/provider"
+import { useWorktreeMode } from "../../context/worktree-mode"
 import { WelcomeEmptyState } from "./WelcomeEmptyState"
 import { TranscriptRowView } from "./TranscriptRow"
 import type { ErrorDisplayProps } from "./ErrorDisplay"
@@ -58,7 +59,7 @@ import {
 } from "../../context/session-queue"
 import { childID } from "../../context/session-utils"
 import { taskResult } from "./task-tool-state"
-import { tr } from "./question-dock-utils"
+import { activeQuestionTab, tr } from "./question-dock-utils"
 import { useData } from "@kilocode/kilo-ui/context/data"
 import { getDirectory as getRawDirectory, getFilename } from "@opencode-ai/core/util/path"
 import {
@@ -105,6 +106,11 @@ export const MessageList: Component<MessageListProps> = (props) => {
   const provider = useProvider()
   const i18n = useI18n()
   const data = useData()
+  // Only present inside Agent Manager (see worktree-mode.tsx). Agent Manager
+  // never calls registerExpandedTaskTool(), so its "task" cards always fall
+  // back to kilo-ui's default hideDetails renderer, which never shows a
+  // task's result text — indexing it there would produce a phantom match.
+  const inAgentManager = !!useWorktreeMode()
 
   // Mirrors message-part.tsx's own (unexported) relativizeProjectPath/
   // getDirectory exactly, so the directory text indexed here matches what
@@ -378,7 +384,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
     // completion — so both need handling before the completed-only gate
     // below, or an in-progress task/question would index nothing at all.
     if (part.tool === "task") return taskText(part, state)
-    if (part.tool === "question") return questionText(state)
+    if (part.tool === "question") return questionText(part, state)
     if (state.status !== "completed") return "title" in state && state.title ? [state.title] : []
     if (CONTEXT_GROUP_TOOLS.has(part.tool)) return state.title ? [state.title] : []
     if (part.tool === "bash") return bashText(state)
@@ -443,11 +449,19 @@ export const MessageList: Component<MessageListProps> = (props) => {
     // no live child session to display instead (result() there resolves to
     // undefined once a child session exists) — mirror that exactly so a
     // completed task with no child session stays searchable, without
-    // indexing text that's actually replaced by the child tool list.
-    if (state.status === "completed") {
-      const child = childID({ type: "tool", tool: part.tool, state: { metadata: state.metadata } })
+    // indexing text that's actually replaced by the child tool list. Agent
+    // Manager never registers TaskToolExpanded at all (it always uses
+    // kilo-ui's default hideDetails task card, which never shows result
+    // text there), so skip this entirely in that surface.
+    if (state.status === "completed" && !inAgentManager) {
+      const child = childID({
+        type: "tool",
+        tool: part.tool,
+        metadata: part.metadata as { sessionId?: string } | undefined,
+        state: { metadata: state.metadata },
+      })
       const result = taskResult(state.output, child)
-      if (result) chunks.push(result)
+      if (result) chunks.push(stripMarkdownLinkUrls(result))
     }
     return chunks
   }
@@ -462,28 +476,40 @@ export const MessageList: Component<MessageListProps> = (props) => {
   type QuestionOption = { label?: string; description?: string; labelKey?: string; descriptionKey?: string }
   type QuestionInfo = { question?: string; questionKey?: string; options?: QuestionOption[] }
 
-  function questionText(state: ToolState): string[] {
+  // Correlates a "question" tool part to its live QuestionRequest the same
+  // way AssistantMessage.tsx's matchToolRequest does (by callID/messageID),
+  // so the pending branch below can read which page QuestionDock actually
+  // has mounted (question-dock-utils.ts's activeQuestionTab) instead of
+  // assuming it's always the first one.
+  function liveQuestionRequestId(part: Part & { type: "tool" }): string | undefined {
+    return session.questions().find((r) => r.tool?.callID === part.callID && r.tool?.messageID === part.messageID)?.id
+  }
+
+  function questionText(part: Part & { type: "tool" }, state: ToolState): string[] {
     const input = state.input as { questions?: QuestionInfo[] } | undefined
     const questions = input?.questions ?? []
     const done = state.status === "completed"
     const metadata = done ? (state.metadata as { answers?: unknown; dismissed?: unknown } | undefined) : undefined
     const answers = Array.isArray(metadata?.answers) ? (metadata!.answers as unknown[][]) : undefined
     const dismissed = metadata?.dismissed === true
+    const requestId = done ? undefined : liveQuestionRequestId(part)
+    const mountedTab = requestId ? activeQuestionTab(requestId) : 0
     const chunks: string[] = []
     questions.forEach((q, i) => {
-      // QuestionDock renders localized text via questionKey/labelKey/
-      // descriptionKey (see question-dock-utils.ts's tr()), with the raw
-      // wire strings kept only as untranslated fallbacks/reply values —
-      // index what's actually displayed, not the canonical fallback.
-      const questionLabel = tr(language.t, q.questionKey, q.question ?? "")
+      // The pending QuestionDock renders localized text via questionKey/
+      // labelKey/descriptionKey (see question-dock-utils.ts's tr()), with
+      // the raw wire strings kept only as untranslated fallbacks/reply
+      // values. Once completed, kilo-ui's question renderer instead shows
+      // the raw `q.question` directly (no questionKey lookup) — index
+      // whichever one that surface actually displays.
+      const questionLabel = done ? (q.question ?? "") : tr(language.t, q.questionKey, q.question ?? "")
       if (questionLabel) chunks.push(questionLabel)
       if (!done) {
         // QuestionDock only ever mounts one page (store.tab) of a pending
-        // multi-question at a time and there's no external signal exposing
-        // which page that is — indexing every question's full option list
-        // produces matches for pages that aren't in the DOM. Limit to the
-        // first question, which is always the page mounted on first render.
-        if (i > 0) return
+        // multi-question at a time — limit to the page it has published as
+        // mounted (question-dock-utils.ts), which stays correct as the user
+        // navigates instead of freezing on page 0.
+        if (i !== mountedTab) return
         for (const option of q.options ?? []) {
           const label = tr(language.t, option.labelKey, option.label ?? "")
           if (label) chunks.push(label)
@@ -551,12 +577,14 @@ export const MessageList: Component<MessageListProps> = (props) => {
     const files = ((state.metadata as { files?: { filePath?: string; relativePath?: string }[] } | undefined)?.files ??
       []) as { filePath?: string; relativePath?: string }[]
     // Only when there's exactly one file does the trigger also show a
-    // ToolMetaLine for it (filename, then bidi-isolated directory), on top
-    // of that file's own accordion header (bidi-isolated directory, then
-    // filename) — for a multi-file patch each file's name only appears
-    // once, in its own accordion header. Multi-file chunks are tagged with
-    // the file's `filePath` (matching the accordion's item key) so a match
-    // can force just that one nested item open instead of every file.
+    // ToolMetaLine for it (filename, then bidi-isolated directory), ON TOP
+    // OF that file's own ToolFileAccordion header (bidi-isolated directory,
+    // then filename) — both are rendered simultaneously for a single-file
+    // patch, same as edit/write's two-location layout in editWriteText.
+    // For a multi-file patch each file's name only appears once, in its own
+    // accordion header. Multi-file chunks are tagged with the file's
+    // `filePath` (matching the accordion's item key) so a match can force
+    // just that one nested item open instead of every file.
     const single = files.length === 1
     const chunks: ToolChunk[] = []
     for (const file of files) {
@@ -566,6 +594,8 @@ export const MessageList: Component<MessageListProps> = (props) => {
       if (single) {
         chunks.push(getFilename(path))
         if (dir) chunks.push(dir)
+        if (dir) chunks.push(dir)
+        chunks.push(getFilename(path))
         continue
       }
       const tag = (text: string): ToolChunk => ({ text, file: file.filePath! })
