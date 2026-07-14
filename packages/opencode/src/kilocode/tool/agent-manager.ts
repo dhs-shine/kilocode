@@ -1,8 +1,10 @@
 // kilocode_change - new file
 import { Bus } from "@/bus"
+import { InstanceState } from "@/effect/instance-state"
 import { AgentManagerEvent, type AgentManagerTask } from "@/kilocode/agent-manager/event"
 import { AgentManager, HostError } from "@/kilocode/agent-manager/service"
 import type { Result } from "@/kilocode/agent-manager/protocol"
+import * as SandboxInheritance from "@/kilocode/sandbox/inheritance"
 import { KiloSessionMessageOrder } from "@/kilocode/session/message-order"
 import { Provider } from "@/provider/provider"
 import { SessionID } from "@/session/schema"
@@ -327,9 +329,16 @@ export const AgentManagerTool = Tool.define<
           })
 
           const requestID = `am-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+          const directory = yield* InstanceState.directory
+          const sandboxInheritanceToken = SandboxInheritance.issue({
+            sessionID: ctx.sessionID,
+            directory,
+            count: params.tasks.length,
+          })
           yield* bus.publish(AgentManagerEvent.Start, {
             requestID,
             sessionID: ctx.sessionID,
+            sandboxInheritanceToken,
             mode: params.mode,
             versions: params.versions,
             tasks,

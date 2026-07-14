@@ -4143,6 +4143,7 @@ export class Session2 extends HeyApiClient {
       permission?: PermissionRuleset
       platform?: string
       workspaceID?: string
+      sandboxInheritanceToken?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -4161,6 +4162,7 @@ export class Session2 extends HeyApiClient {
             { in: "body", key: "permission" },
             { in: "body", key: "platform" },
             { in: "body", key: "workspaceID" },
+            { in: "body", key: "sandboxInheritanceToken" },
           ],
         },
       ],
@@ -5075,8 +5077,12 @@ export class Session2 extends HeyApiClient {
     parameters?: {
       directory?: string
       workspace?: string
-      focused?: Array<string>
-      open?: Array<string>
+      viewer?: {
+        id: string
+        active: boolean
+      }
+      attached?: Array<string>
+      visible?: Array<string>
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -5087,8 +5093,9 @@ export class Session2 extends HeyApiClient {
           args: [
             { in: "query", key: "directory" },
             { in: "query", key: "workspace" },
-            { in: "body", key: "focused" },
-            { in: "body", key: "open" },
+            { in: "body", key: "viewer" },
+            { in: "body", key: "attached" },
+            { in: "body", key: "visible" },
           ],
         },
       ],
