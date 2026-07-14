@@ -5,7 +5,6 @@ import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.Color
-import java.awt.Insets
 
 /** Static style tokens owned by the chat session UI. */
 object SessionUiStyle {
@@ -18,12 +17,13 @@ object SessionUiStyle {
         const val GAP = 3
         const val USER_PROMPT_GAP = 10
         const val TRANSCRIPT_SCROLLBAR_PADDING = 10
-        val InnerInsets = Insets(
-            UiStyle.Gap.md(),
-            UiStyle.Gap.sm() + TRANSCRIPT_SCROLLBAR_PADDING,
-            UiStyle.Gap.sm(),
-            UiStyle.Gap.sm(),
-        )
+
+        // Unscaled base transcript insets. Base 6 == UiStyle.Gap.md, base 4 == UiStyle.Gap.sm.
+        // Left and right reserve scrollbar allowance to match the previous symmetric padding.
+        const val INNER_TOP = 6
+        const val INNER_BOTTOM = 4
+        const val INNER_HORIZONTAL = 4 + TRANSCRIPT_SCROLLBAR_PADDING
+
         const val USER_PROMPT_INDENT = 100
         const val SCROLL_INCREMENT = 48
     }
