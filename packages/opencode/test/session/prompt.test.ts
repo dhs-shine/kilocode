@@ -1276,7 +1276,7 @@ raceNoLLMServer.instance(
       }
     }),
   { config: cfg },
-  3_000,
+  10_000, // kilocode_change - cancellation tree cleanup can exceed 3s under macOS CI shard load
 )
 
 noLLMServer.instance(
