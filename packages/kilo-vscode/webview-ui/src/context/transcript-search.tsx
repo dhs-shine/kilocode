@@ -2,9 +2,12 @@ import { createContext, useContext, createSignal, type Accessor, type ParentComp
 
 export interface SearchMatch {
   key: string
-  messageId: string
   /** Index (0-based) of this occurrence among all matches within the same row. */
   occurrence: number
+  /** id of the part (tool call/reasoning block/text) this occurrence falls
+   * within, if it could be attributed to one — lets navigation force a
+   * collapsed part open instead of just scrolling to the row. */
+  partId?: string
 }
 
 interface TranscriptSearchContextValue {

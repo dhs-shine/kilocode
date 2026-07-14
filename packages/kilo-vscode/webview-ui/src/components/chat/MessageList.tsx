@@ -27,6 +27,7 @@ import { createAutoScroll } from "@kilocode/kilo-ui/hooks"
 import { useSession } from "../../context/session"
 import { useServer } from "../../context/server"
 import { useLanguage } from "../../context/language"
+import { useI18n } from "@kilocode/kilo-ui/context/i18n"
 import { useProvider } from "../../context/provider"
 import { WelcomeEmptyState } from "./WelcomeEmptyState"
 import { TranscriptRowView } from "./TranscriptRow"
@@ -96,6 +97,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
   const server = useServer()
   const language = useLanguage()
   const provider = useProvider()
+  const i18n = useI18n()
 
   const autoScroll = createAutoScroll({
     working: () => session.status() !== "idle",
@@ -163,9 +165,21 @@ export const MessageList: Component<MessageListProps> = (props) => {
 
   const search = useTranscriptSearch()
 
-  function rowText(row: TranscriptRow): string {
-    if (row.type === "error") return errorText(row.error)
-    if (row.type === "diff") return ""
+  interface RowTextRange {
+    start: number
+    end: number
+    partId: string
+  }
+
+  // Returns the row's full searchable text plus, for every chunk that came
+  // from a specific part (tool call/reasoning/text/file), the character
+  // range it occupies within that text. Lets a match's character index be
+  // attributed back to the part it came from, so navigation can force that
+  // exact collapsed tool/reasoning block open instead of just scrolling to
+  // the row.
+  function rowText(row: TranscriptRow): { text: string; ranges: RowTextRange[] } {
+    if (row.type === "error") return { text: errorText(row.error), ranges: [] }
+    if (row.type === "diff") return { text: "", ranges: [] }
     // User message text is rendered by UserMessageDisplay/HighlightedText
     // (message-part.tsx), which never parses markdown at all — [label](url)
     // always shows literally, brackets and all, unlike assistant text/
@@ -174,13 +188,22 @@ export const MessageList: Component<MessageListProps> = (props) => {
     // visible occurrences (the literal label and the literal URL) into one.
     const markdown = row.type !== "user"
     const chunks: string[] = []
+    const ranges: RowTextRange[] = []
+    let pos = 0
+    const push = (text: string, partId: string) => {
+      if (!text) return
+      if (chunks.length > 0) pos += 1 // account for the "\n" chunk joiner below
+      chunks.push(text)
+      ranges.push({ start: pos, end: pos + text.length, partId })
+      pos += text.length
+    }
     for (const part of row.parts) {
       switch (part.type) {
         case "text":
-          if (!part.synthetic) chunks.push(markdown ? stripMarkdownLinkUrls(part.text) : part.text)
+          if (!part.synthetic) push(markdown ? stripMarkdownLinkUrls(part.text) : part.text, part.id)
           break
         case "reasoning":
-          chunks.push(stripMarkdownLinkUrls(part.text))
+          push(stripMarkdownLinkUrls(part.text), part.id)
           break
         case "tool":
           // Bash output is rendered via escapeHtml + syntax highlighting
@@ -190,14 +213,18 @@ export const MessageList: Component<MessageListProps> = (props) => {
           // Stripping it here would search text that no longer matches the
           // literal characters on screen, the same class of mismatch this
           // rewrite fixes elsewhere.
-          chunks.push(...toolText(part))
+          for (const chunk of toolText(part)) push(chunk, part.id)
           break
         case "file":
-          if (part.filename) chunks.push(part.filename)
+          if (part.filename) push(part.filename, part.id)
           break
       }
     }
-    return chunks.join("\n")
+    return { text: chunks.join("\n"), ranges }
+  }
+
+  function partIdAt(ranges: RowTextRange[], index: number): string | undefined {
+    return ranges.find((r) => index >= r.start && index < r.end)?.partId
   }
 
   // Markdown link/image URLs are part of the raw source text but are never
@@ -273,18 +300,148 @@ export const MessageList: Component<MessageListProps> = (props) => {
   // the same class of bug this rewrite fixes for every other tool.
   const CONTEXT_GROUP_TOOLS = new Set(["read", "glob", "grep", "list"])
 
+  // edit/write/apply_patch render their actual diff content through
+  // @pierre/diffs inside a shadow-DOM <diffs-container> (packages/ui/src/
+  // pierre/file-runtime.ts's getViewerRoot()), which a light-DOM text scan
+  // can never reach — and diff-mode rendering is virtualized by default, so
+  // even piercing the shadow root wouldn't guarantee off-screen lines are
+  // mounted. state.input/state.metadata also duplicate the full before/
+  // after file content and the path itself several times over (a unified
+  // patch string with the path repeated in its `---`/`+++` headers, a
+  // separate raw `metadata.diff` copy, write's extra top-level
+  // `metadata.filepath`), none of which corresponds 1:1 with what's on
+  // screen. Rather than collect+dedupe those redundant fields, mirror the
+  // renderer's fixed, known layout directly: edit/write always show one
+  // file's path in exactly two places (the BasicTool trigger's
+  // ToolMetaLine and that file's own accordion header); apply_patch's
+  // trigger only adds a third, single-file ToolMetaLine when there's
+  // exactly one file (message-part.tsx's `single()`) — for a multi-file
+  // patch each file's name only appears once, in its own accordion header.
+  const DIFF_TOOLS = new Set(["edit", "write"])
+  // todowrite/todoread's renderer resolves the shown list from a fallback
+  // chain (metadata.view.todos, else metadata.todos, else input.todos) —
+  // packages/opencode/src/tool/todo.ts sets metadata.todos to the exact
+  // same array as input.todos, and metadata.view.todos to the exact same
+  // content again whenever the view is in "full" mode (the common case,
+  // see packages/opencode/src/kilocode/todo-view.ts). Recursively collecting
+  // both input and metadata would count every todo's text 2-3x even though
+  // shown() only ever renders it once.
+  const TODO_TOOLS = new Set(["todowrite", "todoread"])
+
   function toolText(part: Part & { type: "tool" }): string[] {
     const state = part.state
-    if (state.status === "running") return state.title ? [state.title] : []
     if (state.status === "error") return state.error ? [state.error] : []
-    if (state.status !== "completed") return []
+    // task's trigger (title "{type} Agent" + input.description subtitle) and
+    // question's dock (question text + full option list) render the same
+    // way whether the call is still pending/running or already completed —
+    // unlike every other tool, where only a bare title shows until
+    // completion — so both need handling before the completed-only gate
+    // below, or an in-progress task/question would index nothing at all.
+    if (part.tool === "task") return taskText(part, state)
+    if (part.tool === "question") return questionText(state)
+    if (state.status !== "completed") return "title" in state && state.title ? [state.title] : []
     if (CONTEXT_GROUP_TOOLS.has(part.tool)) return state.title ? [state.title] : []
     if (part.tool === "bash") return bashText(state)
+    if (part.tool === "apply_patch") return applyPatchText(state)
+    if (DIFF_TOOLS.has(part.tool)) return editWriteText(state)
+    if (TODO_TOOLS.has(part.tool)) return todoText(state)
     const chunks: string[] = []
     if (state.title) chunks.push(state.title)
     collectStrings(state.input, chunks)
     collectStrings(state.metadata, chunks)
     if (typeof state.output === "string" && state.output) chunks.push(mcpOutputText(state.output))
+    return chunks
+  }
+
+  function todoText(state: Extract<ToolState, { status: "completed" }>): string[] {
+    const metadata = state.metadata as { todos?: unknown; view?: unknown } | undefined
+    const input = state.input as { todos?: unknown } | undefined
+    const view = metadata?.view
+    const viewTodos = isTodoView(view) ? view.todos : undefined
+    const todos =
+      viewTodos ??
+      (Array.isArray(metadata?.todos) ? metadata.todos : undefined) ??
+      (Array.isArray(input?.todos) ? input.todos : undefined) ??
+      []
+    return (todos as { content?: unknown }[])
+      .map((todo) => todo?.content)
+      .filter((content): content is string => typeof content === "string" && content.length > 0)
+  }
+
+  function isTodoView(value: unknown): value is { todos?: { content?: unknown }[] } {
+    return !!value && typeof value === "object" && Array.isArray((value as { todos?: unknown }).todos)
+  }
+
+  // Matches TaskToolExpanded.tsx (the renderer this webview actually
+  // registers for "task", overriding kilo-ui's default) exactly: title is
+  // always `i18n.t("ui.tool.agent", { type })` regardless of status — the
+  // "capitalize" CSS class only changes how it *looks*, the DOM text node
+  // itself is the raw, lowercase subagent_type. The "(N)" child-tool-count
+  // suffix shown there is a live value from session.getSessionToolCount(),
+  // not stored on the part at all, so it can't be indexed from a snapshot —
+  // searching for that count isn't meaningful content anyway.
+  function taskText(part: Part & { type: "tool" }, state: ToolState): string[] {
+    const input = state.input as { subagent_type?: string; description?: string } | undefined
+    const type = input?.subagent_type || part.tool
+    const chunks = [i18n.t("ui.tool.agent", { type })]
+    if (input?.description) chunks.push(input.description)
+    return chunks
+  }
+
+  // QuestionDock renders very different content depending on whether the
+  // question is still awaiting an answer or already resolved: while
+  // pending/running it shows the full clickable option list (label +
+  // description per option); once completed it only shows the question
+  // text plus whichever answer was actually given (dismissed questions show
+  // neither the options nor a real answer, just a static "dismissed"
+  // label that isn't meaningful content to index).
+  function questionText(state: ToolState): string[] {
+    const input = state.input as
+      | { questions?: { question?: string; options?: { label?: string; description?: string }[] }[] }
+      | undefined
+    const questions = input?.questions ?? []
+    const done = state.status === "completed"
+    const metadata = done ? (state.metadata as { answers?: unknown; dismissed?: unknown } | undefined) : undefined
+    const answers = Array.isArray(metadata?.answers) ? (metadata!.answers as unknown[][]) : undefined
+    const dismissed = metadata?.dismissed === true
+    const chunks: string[] = []
+    questions.forEach((q, i) => {
+      if (q.question) chunks.push(q.question)
+      if (!done) {
+        for (const option of q.options ?? []) {
+          if (option.label) chunks.push(option.label)
+          if (option.description) chunks.push(option.description)
+        }
+        return
+      }
+      if (dismissed) return
+      for (const value of answers?.[i] ?? []) {
+        if (typeof value === "string" && value) chunks.push(value)
+      }
+    })
+    return chunks
+  }
+
+  function editWriteText(state: Extract<ToolState, { status: "completed" }>): string[] {
+    const input = state.input as { filePath?: string } | undefined
+    const metadata = state.metadata as { filepath?: string; filediff?: { file?: string } } | undefined
+    const path = input?.filePath ?? metadata?.filediff?.file ?? metadata?.filepath
+    if (!path) return []
+    return [path, path]
+  }
+
+  function applyPatchText(state: Extract<ToolState, { status: "completed" }>): string[] {
+    const files = ((state.metadata as { files?: { filePath?: string; relativePath?: string }[] } | undefined)?.files ??
+      []) as { filePath?: string; relativePath?: string }[]
+    // Only when there's exactly one file does the trigger also show a
+    // ToolMetaLine for it, on top of that file's own accordion header.
+    const perFile = files.length === 1 ? 2 : 1
+    const chunks: string[] = []
+    for (const file of files) {
+      const path = file.relativePath ?? file.filePath
+      if (!path) continue
+      for (let i = 0; i < perFile; i += 1) chunks.push(path)
+    }
     return chunks
   }
 
@@ -409,7 +566,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
     const list = rows()
     const result: SearchMatch[] = []
     for (const row of list) {
-      const text = rowText(row)
+      const { text, ranges } = rowText(row)
       p.lastIndex = 0
       let occurrence = 0
       let hit = p.exec(text)
@@ -419,7 +576,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
           hit = p.exec(text)
           continue
         }
-        result.push({ key: row.key, messageId: row.message.id, occurrence })
+        result.push({ key: row.key, occurrence, partId: partIdAt(ranges, hit.index) })
         occurrence += 1
         hit = p.exec(text)
       }
@@ -482,6 +639,26 @@ export const MessageList: Component<MessageListProps> = (props) => {
 
   const activeMatch = createMemo(() => matches()[search.index()])
 
+  // Maps a row's key to the part ids the data model could attribute matches
+  // to there. A row with NO entry here has zero data-level matches, so the
+  // highlighter must scan nothing in it at all — otherwise unindexed text (a
+  // static button label, a sibling part that didn't match) could get
+  // highlighted despite never being counted. An entry always exists for
+  // every row that has at least one match, even with an empty part-id set
+  // (a match that couldn't be attributed to a specific part, e.g. error/diff
+  // rows) — the highlighter treats "entry exists" as "this row has a real
+  // match" and falls back to scanning the whole row whenever the part-id
+  // lookup doesn't resolve to a mounted element.
+  const matchedPartsByRow = createMemo(() => {
+    const map = new Map<string, Set<string>>()
+    for (const match of matches()) {
+      const set = map.get(match.key) ?? new Set<string>()
+      if (match.partId) set.add(match.partId)
+      map.set(match.key, set)
+    }
+    return map
+  })
+
   // Highlights every rendered occurrence of the query (not just matching
   // rows) via the CSS Custom Highlight API, and returns the precise Range of
   // the current occurrence so navigation can judge whether it needs to
@@ -496,7 +673,12 @@ export const MessageList: Component<MessageListProps> = (props) => {
       return
     }
     const active = activeMatch()
-    const range = applyTranscriptHighlights(el, pattern(), active && { key: active.key, occurrence: active.occurrence })
+    const range = applyTranscriptHighlights(
+      el,
+      pattern(),
+      active && { key: active.key, occurrence: active.occurrence },
+      matchedPartsByRow(),
+    )
     if (!pendingCenter) return
     pendingCenter = false
     if (!range) return
@@ -820,6 +1002,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
                         index={index()}
                         onForkMessage={props.onForkMessage}
                         activeSearch={activeKey() === row.key}
+                        activeSearchPartID={activeKey() === row.key ? activeMatch()?.partId : undefined}
                       />
                     )}
                   </Virtualizer>
@@ -830,6 +1013,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
                       row={lookup().get(key)!}
                       onForkMessage={props.onForkMessage}
                       activeSearch={activeKey() === key}
+                      activeSearchPartID={activeKey() === key ? activeMatch()?.partId : undefined}
                     />
                   )}
                 </For>
@@ -839,7 +1023,13 @@ export const MessageList: Component<MessageListProps> = (props) => {
               <RevertBanner />
             </Show>
             <For each={partition().queued}>
-              {(row) => <TranscriptRowView row={row} activeSearch={activeKey() === row.key} />}
+              {(row) => (
+                <TranscriptRowView
+                  row={row}
+                  activeSearch={activeKey() === row.key}
+                  activeSearchPartID={activeKey() === row.key ? activeMatch()?.partId : undefined}
+                />
+              )}
             </For>
             <WorkingIndicator />
             <TurnOutcome />

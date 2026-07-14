@@ -142,6 +142,10 @@ export interface MessagePartProps {
   message: MessageType
   hideDetails?: boolean
   defaultOpen?: boolean
+  /** True when this part contains the transcript search's current match —
+   * forces a collapsed tool/reasoning block open so the user can see the
+   * highlighted match without manually expanding it first. */
+  forceOpen?: boolean
   reasoningAutoCollapse?: boolean
   showAssistantCopyPartID?: string | null
   showTurnDiffSummary?: boolean
@@ -974,6 +978,7 @@ export function Part(props: MessagePartProps) {
         message={props.message}
         hideDetails={props.hideDetails}
         defaultOpen={props.defaultOpen}
+        forceOpen={props.forceOpen}
         reasoningAutoCollapse={props.reasoningAutoCollapse}
         showAssistantCopyPartID={props.showAssistantCopyPartID}
         showTurnDiffSummary={props.showTurnDiffSummary}
@@ -1198,6 +1203,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
                     status={part.state.status}
                     hideDetails={props.hideDetails}
                     defaultOpen={props.defaultOpen}
+                    forceOpen={props.forceOpen}
                     animate
                     reveal={props.animate}
                   />
@@ -1265,6 +1271,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
               attachments={part.state.attachments}
               hideDetails={props.hideDetails}
               defaultOpen={props.defaultOpen}
+              forceOpen={props.forceOpen}
               animate
               reveal={props.animate}
             />
@@ -1518,6 +1525,18 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props: MessagePartProp
     else rememberReasoningState(userCollapsed, id)
     setOpen(value)
   }
+
+  // Reasoning has no built-in "force open" hook (unlike BasicTool's forceOpen
+  // ratchet) — mirror that one-way-open behavior here so jumping a chat
+  // search match to a collapsed reasoning block reveals it, the same as it
+  // does for tool calls. Recorded into userOpened/userCollapsed the same way
+  // a manual open would be, so it stays open across remounts/re-renders.
+  createEffect(() => {
+    if (!props.forceOpen || open()) return
+    if (props.reasoningAutoCollapse) rememberReasoningState(userOpened, id)
+    else userCollapsed.delete(id)
+    setOpen(true)
+  })
 
   createEffect(() => {
     if (!props.reasoningAutoCollapse) return
@@ -2587,6 +2606,15 @@ ToolRegistry.register({
       if (seeded) return
       seeded = true
       setExpanded(list.filter((f) => f.type !== "delete").map((f) => f.filePath))
+    })
+    // Deleted files start collapsed above; a chat search match could be
+    // inside one, and there's no per-file tracking of which file a match
+    // falls in, so force-opening this tool expands every file's accordion
+    // rather than guessing — better to over-reveal than leave the match
+    // hidden behind a still-collapsed file.
+    createEffect(() => {
+      if (!props.forceOpen) return
+      setExpanded(files().map((f) => f.filePath))
     })
     const subtitle = createMemo(() => {
       const count = files().length

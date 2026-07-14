@@ -8,8 +8,9 @@ export function registerCodeActions(
   context: vscode.ExtensionContext,
   provider: KiloProvider,
   agentManager?: AgentManagerProvider,
+  activeTabProvider?: () => KiloProvider | undefined,
 ): void {
-  const target = () => (agentManager?.isActive() ? agentManager : provider)
+  const target = () => (agentManager?.isActive() ? agentManager : (activeTabProvider?.() ?? provider))
   const reveal = async () => {
     await vscode.commands.executeCommand("kilo-code.SidebarProvider.focus")
     await provider.waitForReady()
@@ -81,6 +82,20 @@ export function registerCodeActions(
         await reveal()
       }
       view.postMessage({ type: "action", action: "focusInput" })
+    }),
+
+    // Command Palette only — no keybinding. A keybinding would need to
+    // route through VS Code's keybinding-to-focused-webview forwarding,
+    // which doesn't reliably reach a webview whose own input already has
+    // focus; invoking straight from the palette sidesteps that path
+    // entirely, the same way terminalAddToContext etc. do. Toggles: the
+    // webview closes the search bar itself if it's already open.
+    vscode.commands.registerCommand("kilo-code.new.toggleChatSearch", async () => {
+      const view = target()
+      if (view === provider) {
+        await reveal()
+      }
+      view.postMessage({ type: "action", action: "focusSearch" })
     }),
   )
 }

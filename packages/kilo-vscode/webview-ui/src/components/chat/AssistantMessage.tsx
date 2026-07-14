@@ -125,6 +125,10 @@ interface AssistantMessageProps {
   parts?: SDKPart[]
   showAssistantCopyPartID?: string | null
   feedback?: MessageFeedbackControls
+  /** id of the part containing the current chat-search match, if any — forces
+   * that part's collapsed tool/reasoning content open so the user can see
+   * the highlighted match without manually expanding it first. */
+  forceOpenPartID?: string
 }
 
 type ToolStateProps = {
@@ -136,7 +140,7 @@ type ToolStateProps = {
 
 type MemoryItem = MemoryMarkerMeta.Decoded
 
-function TodoToolCard(props: { part: ToolPart }) {
+function TodoToolCard(props: { part: ToolPart; forceOpen?: boolean }) {
   const render = ToolRegistry.render(props.part.tool)
   const state = () => props.part.state as ToolStateProps
   return (
@@ -152,6 +156,7 @@ function TodoToolCard(props: { part: ToolPart }) {
           output={state()?.output}
           status={state()?.status}
           defaultOpen
+          forceOpen={props.forceOpen}
           reveal={false}
         />
       )}
@@ -159,7 +164,7 @@ function TodoToolCard(props: { part: ToolPart }) {
   )
 }
 
-function BashToolCard(props: { part: ToolPart; defaultOpen: boolean }) {
+function BashToolCard(props: { part: ToolPart; defaultOpen: boolean; forceOpen?: boolean }) {
   const render = ToolRegistry.render(props.part.tool)
   const state = () => props.part.state as ToolStateProps
   return (
@@ -176,6 +181,7 @@ function BashToolCard(props: { part: ToolPart; defaultOpen: boolean }) {
           output={state()?.output}
           status={state()?.status}
           defaultOpen={props.defaultOpen}
+          forceOpen={props.forceOpen}
           animate
           reveal={state()?.status === "pending" || state()?.status === "running"}
         />
@@ -279,6 +285,7 @@ export const AssistantMessage: Component<AssistantMessageProps> = (props) => {
             if (!planExitInfo(part)) return
             return part as unknown as ToolPart
           })
+          const forceOpen = createMemo(() => !!props.forceOpenPartID && part.id === props.forceOpenPartID)
 
           return (
             <Show
@@ -291,7 +298,7 @@ export const AssistantMessage: Component<AssistantMessageProps> = (props) => {
                 PART_MAPPING[part.type]
               }
             >
-              <div data-component="tool-part-wrapper" data-part-type={part.type}>
+              <div data-component="tool-part-wrapper" data-part-type={part.type} data-part-id={part.id}>
                 <Show
                   when={activeQuestion()}
                   fallback={
@@ -312,6 +319,7 @@ export const AssistantMessage: Component<AssistantMessageProps> = (props) => {
                                       message={props.message as SDKMessage}
                                       showAssistantCopyPartID={props.showAssistantCopyPartID}
                                       defaultOpen={editOpen(part, edit())}
+                                      forceOpen={forceOpen()}
                                       reasoningAutoCollapse={display.reasoningAutoCollapse()}
                                       feedback={props.feedback}
                                       animate={
@@ -322,11 +330,17 @@ export const AssistantMessage: Component<AssistantMessageProps> = (props) => {
                                     />
                                   }
                                 >
-                                  <TodoToolCard part={part as unknown as ToolPart} />
+                                  <TodoToolCard part={part as unknown as ToolPart} forceOpen={forceOpen()} />
                                 </Show>
                               }
                             >
-                              {(tool) => <BashToolCard part={tool() as unknown as ToolPart} defaultOpen={open()} />}
+                              {(tool) => (
+                                <BashToolCard
+                                  part={tool() as unknown as ToolPart}
+                                  defaultOpen={open()}
+                                  forceOpen={forceOpen()}
+                                />
+                              )}
                             </Show>
                           }
                         >

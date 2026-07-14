@@ -18,6 +18,9 @@ interface TranscriptRowViewProps {
   index?: number
   onForkMessage?: (sessionId: string, messageId: string) => void
   activeSearch?: boolean
+  /** id of the part (tool call/reasoning block) containing the current chat
+   * search match within this row, if any. */
+  activeSearchPartID?: string
 }
 
 export const TranscriptRowView: Component<TranscriptRowViewProps> = (props) => {
@@ -78,6 +81,7 @@ export const TranscriptRowView: Component<TranscriptRowViewProps> = (props) => {
               message={row().message as unknown as SDKAssistantMessage}
               parts={row().parts as unknown as SDKPart[]}
               showAssistantCopyPartID={row().copy}
+              forceOpenPartID={props.activeSearchPartID}
               feedback={{
                 enabled: feedback.telemetryEnabled(),
                 rating: feedback.getRating(row().message.id),

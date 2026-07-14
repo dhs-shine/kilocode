@@ -8,7 +8,7 @@
  * session activity) and a context window progress bar.
  */
 
-import { Component, For, Show, createMemo, createSignal, createEffect, onMount, onCleanup } from "solid-js"
+import { Component, For, Show, createMemo, createSignal, createEffect, on, onMount, onCleanup } from "solid-js"
 import { IconButton } from "@kilocode/kilo-ui/icon-button"
 import { Tooltip } from "@kilocode/kilo-ui/tooltip"
 import { Icon } from "@kilocode/kilo-ui/icon"
@@ -110,6 +110,34 @@ export const TaskHeader: Component<TaskHeaderProps> = (props) => {
   }
   window.addEventListener("message", handler)
   onCleanup(() => window.removeEventListener("message", handler))
+
+  // "Kilo Code: Search Current Chat" (Command Palette) toggles the search
+  // bar from here rather than TranscriptSearch.tsx itself: that component
+  // only mounts once search.active() is already true (it's behind a
+  // <Show>), so it can never be what turns search on in the first place —
+  // and it also wouldn't exist anymore to react to a request to close it.
+  // TaskHeader is mounted the whole time there's an active chat, so it's
+  // the right place to react to the external toggle request.
+  const toggleSearch = () => search.setActive(!search.active())
+  window.addEventListener("focusTranscriptSearch", toggleSearch)
+  onCleanup(() => window.removeEventListener("focusTranscriptSearch", toggleSearch))
+
+  // Whenever search closes — the header toggle button, the command palette
+  // toggle above, the search bar's own "X", or Escape — send focus back to
+  // the chat input rather than leaving it stranded on whatever control was
+  // just clicked/removed. `defer: true` skips the initial run so mounting
+  // with search already inactive doesn't steal focus from wherever it
+  // already was.
+  createEffect(
+    on(
+      () => search.active(),
+      (active) => {
+        if (active) return
+        window.dispatchEvent(new CustomEvent("focusPrompt", { detail: { restore: true } }))
+      },
+      { defer: true },
+    ),
+  )
 
   const toggle = () => {
     const next = !expanded()
