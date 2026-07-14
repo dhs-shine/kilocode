@@ -1,6 +1,7 @@
 package ai.kilocode.client.settings.providers
 
 import ai.kilocode.client.app.KiloProviderService
+import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.SettingsListConfig
 import ai.kilocode.client.settings.base.SettingsListItem
 import ai.kilocode.client.settings.base.SettingsListRenderer
@@ -12,7 +13,9 @@ import ai.kilocode.client.settings.base.settingsListVisibleCells
 import ai.kilocode.client.testing.FakeProviderRpcApi
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.rpc.dto.CustomProviderConfigDto
+import ai.kilocode.rpc.dto.CustomModelFetchResultDto
 import ai.kilocode.rpc.dto.ModelDto
+import ai.kilocode.rpc.dto.ProviderActionResultDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderMetadataDto
@@ -20,6 +23,7 @@ import ai.kilocode.rpc.dto.ProviderOAuthReadyDto
 import ai.kilocode.rpc.dto.ProviderSettingsDto
 import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.CollectionListModel
@@ -69,6 +73,137 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         } finally {
             super.tearDown()
         }
+    }
+
+    fun `test custom save error surfaces backend error`() {
+        val result = ProviderActionResultDto(ProviderSettingsDto(), error = "boom")
+        assertEquals("boom", customSaveError("my-openai", result))
+    }
+
+    fun `test custom save error reports dropped provider`() {
+        val result = ProviderActionResultDto(ProviderSettingsDto())
+        assertEquals(KiloBundle.message("settings.providers.customNotUsable"), customSaveError("my-openai", result))
+    }
+
+    fun `test custom save error passes when provider present`() {
+        val result = ProviderActionResultDto(providerState(provider("my-openai", "My OpenAI")))
+        assertNull(customSaveError("my-openai", result))
+    }
+
+    fun `test custom model rows start with select all`() {
+        val rows = customModelRows(listOf("gpt-4o", "gpt-4o-mini"))
+
+        assertTrue(rows[0].selectAll)
+        assertEquals(listOf("gpt-4o", "gpt-4o-mini"), rows.drop(1).map { it.id })
+    }
+
+    fun `test custom dialog add is disabled until model list exists`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val dialog = edt {
+            val dialog = CustomProviderDialog(
+                cs,
+                "/tmp",
+                { CustomModelFetchResultDto(listOf("gpt-4o")) },
+                { ProviderActionResultDto(providerState(provider("my-openai", "My OpenAI"))) },
+            )
+            val fields = components(center(dialog)).filterIsInstance<JTextField>()
+            fields[0].text = "my-openai"
+            fields[2].text = "https://example.com/v1"
+            dialog
+        }
+
+        edt {
+            assertFalse(dialog.isOKActionEnabled)
+            components(center(dialog)).filterIsInstance<JTextField>()[5].text = "gpt-4o"
+            assertTrue(dialog.isOKActionEnabled)
+            components(center(dialog)).filterIsInstance<JTextField>()[5].text = ""
+            assertFalse(dialog.isOKActionEnabled)
+            dispose(dialog)
+        }
+    }
+
+    fun `test custom dialog cancels model fetch and ignores late result`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val gate = CompletableDeferred<CustomModelFetchResultDto>()
+        lateinit var pick: JButton
+        lateinit var field: JTextField
+        val dialog = edt {
+            val dialog = CustomProviderDialog(
+                cs,
+                "/tmp",
+                { gate.await() },
+                { ProviderActionResultDto(providerState(provider("my-openai", "My OpenAI"))) },
+            )
+            val panel = center(dialog)
+            val fields = components(panel).filterIsInstance<JTextField>()
+            fields[0].text = "my-openai"
+            fields[2].text = "http://127.0.0.1:8080"
+            pick = components(panel).filterIsInstance<JButton>().first()
+            field = fields[5]
+            pick.doClick()
+            dialog
+        }
+
+        edt {
+            assertEquals(KiloBundle.message("settings.providers.customFetchingModels"), field.text)
+            assertEquals(KiloBundle.message("settings.providers.customCancelModels"), pick.text)
+            assertFalse(field.isEditable)
+            assertFalse(dialog.isOKActionEnabled)
+            assertNull(validation(dialog))
+
+            pick.doClick()
+            assertEquals("", field.text)
+            assertEquals(KiloBundle.message("settings.providers.customSelectModels"), pick.text)
+            assertTrue(field.isEditable)
+        }
+
+        gate.complete(CustomModelFetchResultDto(listOf("gpt-4o")))
+        flushUntil { edt { field.isEditable } }
+
+        edt {
+            assertEquals("", field.text)
+            assertEquals(KiloBundle.message("settings.providers.customSelectModels"), pick.text)
+            assertFalse(dialog.isOKActionEnabled)
+            dispose(dialog)
+        }
+    }
+
+    fun `test custom dialog save error stays until next add`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val next = CompletableDeferred<ProviderActionResultDto>()
+        var calls = 0
+        val dialog = edt {
+            val dialog = CustomProviderDialog(
+                cs,
+                "/tmp",
+                { CustomModelFetchResultDto(listOf("gpt-4o")) },
+                {
+                    calls++
+                    if (calls == 1) ProviderActionResultDto(ProviderSettingsDto(), error = "boom") else next.await()
+                },
+            )
+            val fields = components(center(dialog)).filterIsInstance<JTextField>()
+            fields[0].text = "my-openai"
+            fields[2].text = "https://example.com/v1"
+            fields[5].text = "gpt-4o"
+            submit(dialog)
+            dialog
+        }
+
+        flushUntil { edt { validation(dialog) == "boom" } }
+
+        edt {
+            assertEquals("boom", validation(dialog))
+            submit(dialog)
+            assertNull(validation(dialog))
+        }
+
+        next.complete(ProviderActionResultDto(providerState(provider("my-openai", "My OpenAI"))))
+        flushUntil { edt { dialog.outcome != null } }
+        edt { dispose(dialog) }
     }
 
     fun `test catalog provider without auth methods is connectable`() {
@@ -878,6 +1013,24 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
     private fun list(component: JComponent) = components(component).filterIsInstance<JBList<ProviderListRow>>().single()
 
     private fun fieldsByName(root: Container, name: String): List<JTextField> = components(root).filterIsInstance<JTextField>().filter { it.name == name }
+
+    private fun center(dialog: CustomProviderDialog) = call(dialog, "createCenterPanel") as JComponent
+
+    private fun submit(dialog: CustomProviderDialog) {
+        call(dialog, "doOKAction")
+    }
+
+    private fun validation(dialog: CustomProviderDialog) = (call(dialog, "doValidate") as ValidationInfo?)?.message
+
+    private fun dispose(dialog: CustomProviderDialog) {
+        call(dialog, "dispose")
+    }
+
+    private fun call(dialog: CustomProviderDialog, name: String): Any? {
+        val method = dialog.javaClass.getDeclaredMethod(name)
+        method.isAccessible = true
+        return method.invoke(dialog)
+    }
 
     private fun center(rect: Rectangle) = Point(rect.x + rect.width / 2, rect.y + rect.height / 2)
 

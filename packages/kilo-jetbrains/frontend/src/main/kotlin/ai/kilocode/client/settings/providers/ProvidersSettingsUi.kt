@@ -10,11 +10,15 @@ import ai.kilocode.client.settings.base.SettingsListView
 import ai.kilocode.client.settings.auth.DeviceOAuthInfo
 import ai.kilocode.client.settings.auth.DeviceOAuthPanel
 import ai.kilocode.client.settings.auth.DeviceOAuthText
+import ai.kilocode.client.session.ui.PickerRow
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.CustomModelDto
+import ai.kilocode.rpc.dto.CustomModelFetchDto
+import ai.kilocode.rpc.dto.CustomModelFetchResultDto
 import ai.kilocode.rpc.dto.CustomProviderSaveDto
+import ai.kilocode.rpc.dto.ProviderActionResultDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
 import ai.kilocode.rpc.dto.ProviderAuthOptionDto
 import ai.kilocode.rpc.dto.ProviderConnectDto
@@ -42,13 +46,22 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.DocumentAdapter
+import com.intellij.ui.GroupHeaderSeparator
+import com.intellij.ui.ListUtil
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.ScrollingUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBPasswordField
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
+import com.intellij.openapi.ui.popup.JBPopup
+import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.ui.popup.util.PopupUtil
+import com.intellij.ui.NewUI
 import com.intellij.util.concurrency.annotations.RequiresEdt
+import com.intellij.util.ui.EmptyIcon
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -58,14 +71,22 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
+import java.awt.Component
+import java.awt.Cursor
+import java.awt.Dimension
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import javax.swing.Icon
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.DefaultListCellRenderer
 import javax.swing.JList
+import javax.swing.JPanel
 import javax.swing.KeyStroke
+import javax.swing.ListCellRenderer
 import javax.swing.ListSelectionModel
+import javax.swing.SwingConstants
 import javax.swing.event.DocumentEvent
 import javax.swing.Timer
 
@@ -74,6 +95,83 @@ private val edt = Dispatchers.EDT + ModalityState.any().asContextElement()
 private val OAUTH_CODE_RE = Regex("""code:\s*(\S+)""", RegexOption.IGNORE_CASE)
 
 private fun oauthCode(text: String?): String? = text?.let { OAUTH_CODE_RE.find(it)?.groupValues?.getOrNull(1) }
+
+private const val CUSTOM_MODEL_POPUP_MIN_WIDTH = 320
+private const val CUSTOM_MODEL_POPUP_MAX_ROWS = 10
+
+// Inline error text for a custom-provider save. A blank result with the provider missing from the
+// returned list means the CLI dropped it (e.g. no usable models), so surface that instead of closing silently.
+internal fun customSaveError(id: String, result: ProviderActionResultDto): String? {
+    result.error?.let { return it }
+    if (result.state.providers.none { it.id == id }) return KiloBundle.message("settings.providers.customNotUsable")
+    return null
+}
+
+internal data class CustomModelRow(
+    val id: String? = null,
+    val selectAll: Boolean = false,
+)
+
+internal fun customModelRows(ids: List<String>): List<CustomModelRow> {
+    if (ids.isEmpty()) return emptyList()
+    return listOf(CustomModelRow(selectAll = true)) + ids.map { CustomModelRow(id = it) }
+}
+
+private class CustomModelRowRenderer(
+    private val all: Set<String>,
+    private val selectedIds: () -> Set<String>,
+) : JPanel(BorderLayout()), ListCellRenderer<CustomModelRow> {
+    private val checked: Icon = AllIcons.Actions.Checked
+    private val empty: Icon = EmptyIcon.create(checked)
+    private val check = JBLabel().apply {
+        horizontalAlignment = SwingConstants.CENTER
+        verticalAlignment = SwingConstants.CENTER
+    }
+    private val title = JBLabel().apply {
+        border = JBUI.Borders.emptyLeft(JBUI.CurrentTheme.ActionsList.elementIconGap())
+    }
+    private val sep = GroupHeaderSeparator(JBUI.CurrentTheme.Popup.separatorLabelInsets()).apply {
+        setHideLine(false)
+    }
+    private val row = JPanel(BorderLayout()).apply {
+        border = JBUI.Borders.empty(
+            UiStyle.Gap.md(),
+            UiStyle.Gap.lg(),
+            UiStyle.Gap.md(),
+            UiStyle.Gap.pad(),
+        )
+        add(check, BorderLayout.WEST)
+        add(title, BorderLayout.CENTER)
+    }
+    private val wrap = PickerRow()
+
+    init {
+        isOpaque = true
+        UiStyle.Components.transparent(row, check, title)
+        wrap.setContent(row)
+        add(wrap, BorderLayout.CENTER)
+    }
+
+    override fun getListCellRendererComponent(
+        list: JList<out CustomModelRow>,
+        value: CustomModelRow,
+        index: Int,
+        selected: Boolean,
+        focus: Boolean,
+    ): Component {
+        val current = selectedIds()
+        val active = selected || focus || list.hasFocus()
+        val on = if (value.selectAll) all.isNotEmpty() && all.all { it in current } else value.id in current
+        check.icon = if (on) checked else empty
+        title.text = if (value.selectAll) KiloBundle.message("settings.providers.customModelsSelectAll") else value.id.orEmpty()
+        background = list.background
+        wrap.update(list, selected, active)
+        title.foreground = UIUtil.getListForeground(selected, active)
+        remove(sep)
+        if (value.selectAll) add(sep, BorderLayout.SOUTH)
+        return this
+    }
+}
 
 internal class ProvidersSettingsUi(
     private val cs: CoroutineScope,
@@ -216,14 +314,19 @@ internal class ProvidersSettingsUi(
     @RequiresEdt
     private fun custom() {
         checkEdt()
-        val dialog = CustomProviderDialog()
+        // The dialog performs the save itself so failures can be shown inline and the user can
+        // correct their input without re-typing. It only closes on a verified success.
+        val dialog = CustomProviderDialog(
+            cs,
+            directory,
+            { service<KiloProviderService>().fetchCustomModels(it) },
+            { service<KiloProviderService>().saveCustom(it) },
+        )
         if (!dialog.showAndGet()) return
-        val input = dialog.input(directory)
-        if (!launch("save custom provider") { id ->
-            val result = service<KiloProviderService>().saveCustom(input)
-            apply(id, result.state, result.error)
-        }) return
-        syncLoading()
+        val next = dialog.outcome ?: return
+        state = next
+        view.update(next)
+        clearProgress()
     }
 
     private fun toolbar(): JComponent {
@@ -539,31 +642,58 @@ private class ApiKeyDialog(title: String, method: ProviderAuthMethodDto?) : Dial
     }
 }
 
-private class CustomProviderDialog : DialogWrapper(true) {
+internal class CustomProviderDialog(
+    private val cs: CoroutineScope,
+    private val directory: String,
+    private val fetch: suspend (CustomModelFetchDto) -> CustomModelFetchResultDto,
+    private val save: suspend (CustomProviderSaveDto) -> ProviderActionResultDto,
+) : DialogWrapper(true) {
     private val id = JBTextField()
     private val name = JBTextField()
     private val url = JBTextField()
     private val key = JBPasswordField().apply { columns = 50 }
     private val env = JBTextField()
     private val models = JBTextField()
+    private val pick = JButton(KiloBundle.message("settings.providers.customSelectModels"))
+    private var saving = false
+    private var fetching = false
+    private var active = true
+    private var actionError: String? = null
+    private var popup: JBPopup? = null
+    private var job: Job? = null
+    private var draft: String? = null
+    private var token = 0
+
+    // Set once the save succeeds; the panel reads it after the dialog closes to update the list.
+    var outcome: ProviderSettingsDto? = null
+        private set
 
     init {
         title = KiloBundle.message("settings.providers.customTitle")
+        setOKButtonText(KiloBundle.message("settings.providers.customAdd"))
         init()
         initValidation()
+        models.document.addDocumentListener(object : DocumentAdapter() {
+            override fun textChanged(e: DocumentEvent) {
+                syncActions()
+            }
+        })
+        pick.addActionListener {
+            if (fetching) cancelFetch()
+            else selectModels()
+        }
+        syncActions()
     }
 
     @RequiresEdt
-    fun input(directory: String) = CustomProviderSaveDto(
+    private fun input() = CustomProviderSaveDto(
         directory = directory,
         id = id.text.trim(),
         name = name.text.trim(),
         baseUrl = url.text.trim(),
         apiKey = String(key.password).takeIf { it.isNotBlank() },
         envVar = env.text.trim().takeIf { it.isNotBlank() },
-        models = models.text.split(',').mapNotNull { raw ->
-            raw.trim().takeIf { it.isNotBlank() }?.let { CustomModelDto(it, it) }
-        },
+        models = modelIds().map { CustomModelDto(it, it) },
     )
 
     override fun createCenterPanel(): JComponent {
@@ -574,17 +704,276 @@ private class CustomProviderDialog : DialogWrapper(true) {
             KiloBundle.message("settings.providers.customUrl") to url,
             KiloBundle.message("settings.providers.apiKey") to key,
             KiloBundle.message("settings.providers.customEnv") to env,
-            KiloBundle.message("settings.providers.customModels") to models,
         ).forEach { (label, field) ->
             panel.next(JBLabel(label))
             panel.next(field)
         }
+        panel.next(JBLabel(KiloBundle.message("settings.providers.customModels")))
+        panel.next(JPanel(BorderLayout(UiStyle.Gap.sm(), 0)).apply {
+            add(models, BorderLayout.CENTER)
+            add(pick, BorderLayout.EAST)
+        })
         return panel
     }
 
     override fun doValidate(): ValidationInfo? {
         if (id.text.isBlank()) return ValidationInfo(KiloBundle.message("settings.providers.customIdRequired"), id)
         if (url.text.isBlank()) return ValidationInfo(KiloBundle.message("settings.providers.customUrlRequired"), url)
+        actionError?.let { return ValidationInfo(it) }
+        if (!fetching && modelIds().isEmpty()) return ValidationInfo(KiloBundle.message("settings.providers.customModelsRequired"), models)
         return null
+    }
+
+    override fun doOKAction() {
+        checkEdt()
+        ProvidersSettingsUi.LOG.info("custom provider add: clicked saving=$saving fetching=$fetching id='${id.text.trim()}' models=${modelIds().size}")
+        if (saving) {
+            ProvidersSettingsUi.LOG.info("custom provider add: ignored, save already in progress")
+            return
+        }
+        actionError = null
+        setErrorText(null)
+        val invalid = doValidate()
+        if (invalid != null) {
+            ProvidersSettingsUi.LOG.info("custom provider add: blocked by validation: ${invalid.message}")
+            return
+        }
+        val input = input()
+        ProvidersSettingsUi.LOG.info("custom provider add: saving id='${input.id}' baseUrl='${input.baseUrl}' models=${input.models.size} hasKey=${input.apiKey != null} env='${input.envVar}'")
+        saving = true
+        syncActions()
+        cs.launch {
+            val result = try {
+                save(input)
+            } catch (e: CancellationException) {
+                ProvidersSettingsUi.LOG.info("custom provider add: save cancelled id='${input.id}'")
+                throw e
+            } catch (e: Exception) {
+                ProvidersSettingsUi.LOG.warn("custom provider save failed id='${input.id}'", e)
+                withContext(edt) { fail("${e::class.simpleName}: ${e.message}") }
+                return@launch
+            }
+            withContext(edt) {
+                if (!active) {
+                    ProvidersSettingsUi.LOG.info("custom provider add: dialog no longer active, dropping result id='${input.id}'")
+                    return@withContext
+                }
+                val error = customSaveError(input.id, result)
+                if (error != null) {
+                    ProvidersSettingsUi.LOG.warn("custom provider add: save reported error id='${input.id}': $error")
+                    fail(error)
+                    return@withContext
+                }
+                ProvidersSettingsUi.LOG.info("custom provider add: save succeeded id='${input.id}', closing dialog")
+                outcome = result.state
+                closeOk()
+            }
+        }
+    }
+
+    @RequiresEdt
+    private fun fail(text: String) {
+        if (!active) return
+        saving = false
+        finishFetch()
+        actionError = text
+        setErrorText(text)
+        syncActions()
+    }
+
+    @RequiresEdt
+    private fun selectModels() {
+        checkEdt()
+        if (saving || fetching) return
+        actionError = null
+        setErrorText(null)
+        val err = fetchValidationError()
+        if (err != null) {
+            fail(err)
+            return
+        }
+        startFetch()
+        val input = CustomModelFetchDto(
+            baseUrl = url.text.trim(),
+            apiKey = String(key.password).takeIf { it.isNotBlank() },
+        )
+        val current = token
+        job = cs.launch {
+            val result = try {
+                fetch(input)
+            } catch (e: CancellationException) {
+                return@launch
+            } catch (e: Exception) {
+                ProvidersSettingsUi.LOG.warn("custom provider model fetch failed", e)
+                withContext(edt) {
+                    if (token == current) fail("${e::class.simpleName}: ${e.message}")
+                }
+                return@launch
+            }
+            withContext(edt) {
+                if (!active || token != current) return@withContext
+                finishFetch()
+                val error = result.error
+                if (error != null) {
+                    fail(error)
+                    return@withContext
+                }
+                val ids = result.models.mapNotNull { it.trim().takeIf(String::isNotBlank) }.distinct()
+                if (ids.isEmpty()) {
+                    fail(KiloBundle.message("settings.providers.customModelsEmpty"))
+                    return@withContext
+                }
+                showModelPopup(ids)
+            }
+        }
+    }
+
+    @RequiresEdt
+    private fun startFetch() {
+        draft = models.text
+        token++
+        fetching = true
+        models.isEditable = false
+        models.text = KiloBundle.message("settings.providers.customFetchingModels")
+        syncActions()
+    }
+
+    @RequiresEdt
+    private fun cancelFetch() {
+        checkEdt()
+        job?.cancel()
+        token++
+        finishFetch()
+        setErrorText(null)
+    }
+
+    // Restores the field to what it held before the fetch and re-enables editing. The stale-result
+    // guard uses `token`, so a late response from a cancelled fetch is ignored and never lands here.
+    @RequiresEdt
+    private fun finishFetch() {
+        if (!fetching && draft == null) return
+        job = null
+        fetching = false
+        models.isEditable = true
+        draft?.let { models.text = it }
+        draft = null
+        syncActions()
+    }
+
+    private fun fetchValidationError(): String? {
+        if (url.text.isBlank()) return KiloBundle.message("settings.providers.customUrlRequired")
+        if (!url.text.trim().let { it.startsWith("http://") || it.startsWith("https://") }) return KiloBundle.message("settings.providers.customUrlInvalid")
+        return null
+    }
+
+    @RequiresEdt
+    private fun showModelPopup(ids: List<String>) {
+        checkEdt()
+        popup?.cancel()
+        val rows = customModelRows(ids)
+        val data = CollectionListModel(rows)
+        val listBackground = if (NewUI.isEnabled()) JBUI.CurrentTheme.Popup.BACKGROUND else UIUtil.getListBackground()
+        val list = JBList(data).apply {
+            selectionMode = ListSelectionModel.SINGLE_SELECTION
+            isFocusable = true
+            cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+            background = listBackground
+            border = JBUI.Borders.empty(PopupUtil.getListInsets(false, false))
+            cellRenderer = CustomModelRowRenderer(ids.toSet()) { modelIds().toSet() }
+            visibleRowCount = rows.size.coerceAtMost(CUSTOM_MODEL_POPUP_MAX_ROWS)
+        }
+        fun sync() {
+            list.repaint()
+            syncActions()
+        }
+        fun toggle(row: CustomModelRow) {
+            if (row.selectAll) {
+                val all = modelIds().toSet().containsAll(ids)
+                setModelIds(if (all) emptyList() else ids)
+                sync()
+                return
+            }
+            val id = row.id ?: return
+            val selected = modelIds().toMutableSet()
+            if (!selected.add(id)) selected.remove(id)
+            setModelIds(ids.filter { it in selected })
+            sync()
+        }
+        list.addMouseListener(object : MouseAdapter() {
+            override fun mouseReleased(e: MouseEvent) {
+                if (!UIUtil.isActionClick(e, MouseEvent.MOUSE_RELEASED, true)) return
+                val idx = list.locationToIndex(e.point).takeIf { it >= 0 } ?: return
+                val bounds = list.getCellBounds(idx, idx) ?: return
+                if (!bounds.contains(e.point)) return
+                toggle(data.getElementAt(idx))
+                e.consume()
+            }
+        })
+        list.registerKeyboardAction(
+            { list.selectedValue?.let(::toggle) },
+            KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0),
+            JComponent.WHEN_FOCUSED,
+        )
+        list.registerKeyboardAction(
+            { list.selectedValue?.let(::toggle) },
+            KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
+            JComponent.WHEN_FOCUSED,
+        )
+        ListUtil.installAutoSelectOnMouseMove(list)
+        ScrollingUtil.installActions(list)
+        val scroll = JBScrollPane(list).apply {
+            border = JBUI.Borders.empty()
+            viewportBorder = JBUI.Borders.empty()
+            background = listBackground
+            viewport.background = listBackground
+            viewport.isOpaque = true
+            preferredSize = Dimension(JBUI.scale(CUSTOM_MODEL_POPUP_MIN_WIDTH), preferredSize.height)
+        }
+        popup = JBPopupFactory.getInstance()
+            .createComponentPopupBuilder(scroll, list)
+            .setRequestFocus(true)
+            .setFocusable(true)
+            .setCancelOnClickOutside(true)
+            .setCancelKeyEnabled(true)
+            .setCancelOnWindowDeactivation(true)
+            .setLocateWithinScreenBounds(true)
+            .setResizable(false)
+            .setMovable(false)
+            .createPopup()
+        popup?.showUnderneathOf(pick)
+    }
+
+    private fun modelIds(): List<String> {
+        val text = draft.takeIf { fetching } ?: models.text
+        return text.split(',').mapNotNull { it.trim().takeIf(String::isNotBlank) }
+    }
+
+    private fun setModelIds(ids: Collection<String>) {
+        draft = null
+        models.text = ids.distinct().joinToString(", ")
+    }
+
+    private fun syncActions() {
+        isOKActionEnabled = !saving && !fetching && modelIds().isNotEmpty()
+        pick.isEnabled = !saving
+        pick.text = if (fetching) {
+            KiloBundle.message("settings.providers.customCancelModels")
+        } else {
+            KiloBundle.message("settings.providers.customSelectModels")
+        }
+    }
+
+    private fun closeOk() = super.doOKAction()
+
+    override fun dispose() {
+        active = false
+        token++
+        job?.cancel()
+        popup?.cancel()
+        super.dispose()
+    }
+
+    private fun checkEdt() {
+        check(ApplicationManager.getApplication().isDispatchThread) { "Custom provider dialog updates must run on EDT" }
     }
 }
