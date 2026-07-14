@@ -1,5 +1,11 @@
 # kilo-code
 
+## 7.4.7
+
+### Patch Changes
+
+- [#12176](https://github.com/Kilo-Org/kilocode/pull/12176) [`b740152`](https://github.com/Kilo-Org/kilocode/commit/b74015280aee3cf2de901f39386025073a8726f0) - Focus the sidebar prompt after closing an active session tab.
+
 ## 7.4.6
 
 ### Minor Changes
