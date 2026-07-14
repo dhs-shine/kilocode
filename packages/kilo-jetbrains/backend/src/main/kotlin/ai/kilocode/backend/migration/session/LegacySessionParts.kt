@@ -19,6 +19,8 @@ import kotlinx.serialization.json.put
  */
 object LegacySessionParts {
 
+    private val TODO = Regex("^(?:-\\s*)?\\[\\s*([ xX\\-~])\\s*]\\s+(.+)$")
+
     fun parseParts(
         conversation: List<LegacyApiMessage>,
         id: String,
@@ -296,11 +298,46 @@ object LegacySessionParts {
 
     private fun todoInput(raw: Any?): JsonElement? {
         val elem = valueToJsonElement(raw) ?: return null
-        if (elem is JsonArray) return elem
-        val text = (elem as? JsonPrimitive)?.jsonPrimitive?.content?.trim()
-        if (text?.startsWith("[") != true) return null
-        return LegacyMigrationJson.parseArray(text)
+        if (elem is JsonArray) return normalizeTodos(elem)
+        val text = (elem as? JsonPrimitive)?.jsonPrimitive?.content?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        LegacyMigrationJson.parseArray(text)?.let { return normalizeTodos(it) }
+        return parseMarkdownTodos(text)
     }
+
+    private fun parseMarkdownTodos(raw: String): JsonArray? {
+        val items = raw.split(Regex("\\r?\\n"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .mapNotNull { line ->
+                val match = TODO.matchEntire(line) ?: return@mapNotNull null
+                val marker = match.groupValues[1]
+                val status = when (marker) {
+                    "x", "X" -> "completed"
+                    "-", "~" -> "in_progress"
+                    else -> "pending"
+                }
+                todo(match.groupValues[2].trim(), status, "medium")
+            }
+        return items.takeIf { it.isNotEmpty() }?.let { JsonArray(it) }
+    }
+
+    private fun normalizeTodos(raw: JsonArray): JsonArray? {
+        val items = raw.mapNotNull { elem ->
+            val obj = elem as? JsonObject ?: return@mapNotNull null
+            val content = field(obj, "content")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            todo(content, field(obj, "status") ?: "pending", field(obj, "priority") ?: "medium")
+        }
+        return items.takeIf { it.isNotEmpty() }?.let { JsonArray(it) }
+    }
+
+    private fun todo(content: String, status: String, priority: String) = buildJsonObject {
+        put("content", content)
+        put("status", status)
+        put("priority", priority)
+    }
+
+    private fun field(obj: JsonObject, key: String): String? =
+        runCatching { obj[key]?.jsonPrimitive?.content }.getOrNull()
 
     private fun scalar(value: Any?): String? = when (value) {
         is String -> value

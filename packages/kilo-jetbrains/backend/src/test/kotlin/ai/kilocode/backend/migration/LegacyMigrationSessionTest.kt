@@ -1,11 +1,14 @@
 package ai.kilocode.backend.migration
 
+import ai.kilocode.backend.cli.KiloCliDataParser
 import ai.kilocode.backend.migration.session.LegacySessionIds
 import ai.kilocode.backend.migration.session.LegacySessionParser
 import ai.kilocode.backend.migration.session.LegacySessionParts
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -274,6 +277,69 @@ class LegacyMigrationSessionTest {
         assertEquals("Write tests", input[0].jsonObject["content"]!!.jsonPrimitive.content)
         assertEquals(2, metadata.size)
         assertEquals("Review", metadata[1].jsonObject["content"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `todo tool parses legacy markdown checklist string`() {
+        val conv = """[
+            {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"update_todo_list","input":{"todos":"[x] Done\n[ ] Next\n[-] Working\n[~] Also working"}}]},
+            {"role":"user","content":[{"type":"tool_result","tool_use_id":"call-1","content":[{"type":"text","text":"todos updated"}]}]}
+        ]"""
+        val parsed = LegacySessionParser.parseSession("task-md-todos", conv)
+        val tool = parsed.parts.first { type(it) == "tool" }
+        val data = tool["data"]!!.jsonObject
+        val state = data["state"]!!.jsonObject
+        val todos = state["metadata"]!!.jsonObject["todos"]!!.jsonArray
+
+        assertEquals("todowrite", data["tool"]!!.jsonPrimitive.content)
+        assertEquals(4, todos.size)
+        assertEquals("Done", todos[0].jsonObject["content"]!!.jsonPrimitive.content)
+        assertEquals("completed", todos[0].jsonObject["status"]!!.jsonPrimitive.content)
+        assertEquals("medium", todos[0].jsonObject["priority"]!!.jsonPrimitive.content)
+        assertEquals("Next", todos[1].jsonObject["content"]!!.jsonPrimitive.content)
+        assertEquals("pending", todos[1].jsonObject["status"]!!.jsonPrimitive.content)
+        assertEquals("Working", todos[2].jsonObject["content"]!!.jsonPrimitive.content)
+        assertEquals("in_progress", todos[2].jsonObject["status"]!!.jsonPrimitive.content)
+        assertEquals("Also working", todos[3].jsonObject["content"]!!.jsonPrimitive.content)
+        assertEquals("in_progress", todos[3].jsonObject["status"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `todo tool legacy markdown todos are visible to dto parser`() {
+        val conv = """[
+            {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"update_todo_list","input":{"todos":"[x] Done\n[ ] Next"}}]},
+            {"role":"user","content":[{"type":"tool_result","tool_use_id":"call-1","content":[{"type":"text","text":"todos updated"}]}]}
+        ]"""
+        val migrated = LegacySessionParser.parseSession("task-md-roundtrip", conv)
+            .parts
+            .first { type(it) == "tool" }
+        val data = migrated["data"]!!.jsonObject
+        val flat = buildJsonObject {
+            put("id", migrated["id"]!!)
+            put("sessionID", migrated["sessionID"]!!)
+            put("messageID", migrated["messageID"]!!)
+            data.entries.forEach { (key, value) -> put(key, value) }
+        }
+
+        val part = KiloCliDataParser.parsePart(flat)
+        assertEquals(2, part.todos.size)
+        assertEquals("Done", part.todos[0].content)
+        assertEquals("completed", part.todos[0].status)
+        assertEquals("medium", part.todos[0].priority)
+        assertEquals("Next", part.todos[1].content)
+        assertEquals("pending", part.todos[1].status)
+        assertEquals("medium", part.todos[1].priority)
+    }
+
+    @Test
+    fun `todo tool ignores non checklist text`() {
+        val conv = """[
+            {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"update_todo_list","input":{"todos":"not a checklist"}}]}
+        ]"""
+        val parsed = LegacySessionParser.parseSession("task-empty-todos", conv)
+        val tool = parsed.parts.first { type(it) == "tool" }
+        val state = tool["data"]!!.jsonObject["state"]!!.jsonObject
+        assertFalse(state["metadata"]!!.jsonObject.containsKey("todos"))
     }
 
     @Test
