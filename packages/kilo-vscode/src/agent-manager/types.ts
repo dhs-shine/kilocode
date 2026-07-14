@@ -565,6 +565,11 @@ interface OpenSessionsIn {
   sessionIDs: string[]
 }
 
+interface VisibleSessionIn {
+  type: "agentManager.visibleSession"
+  sessionID: string | null
+}
+
 interface OpenFileIn {
   type: "agentManager.openFile"
   sessionId: string
@@ -810,6 +815,7 @@ export type AgentManagerInMessage =
   | RefreshPRIn
   | OpenPRIn
   | OpenSessionsIn
+  | VisibleSessionIn
   | OpenFileIn
   | GenericOpenFileIn
   | PreviewImageIn

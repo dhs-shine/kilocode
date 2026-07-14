@@ -27,6 +27,7 @@ import { startVscodeRunTask } from "./run/task"
 import { RunController } from "./run/controller"
 import { handleRunMessage } from "./run/message"
 import { forkSession } from "./fork-session"
+import { AgentManagerVisiblePresence } from "./am-visible-presence"
 import { continueInWorktree } from "./continue-in-worktree"
 import { WorktreeDiffController } from "./worktree-diff-controller"
 import { WorktreeImporter } from "./worktree-importer"
@@ -85,10 +86,13 @@ export class AgentManagerProvider implements Disposable {
   // Tracks sessions owned by this panel until they are explicitly closed.
   private panelSessions = new Set<string>()
 
-  /** Session ID most recently loaded via a `loadMessages` message from the webview.
-   *  Updated synchronously — unlike the session provider's currentSession which depends on
-   *  an async `session.get` round-trip and can be stale during rapid tab switches. */
+  /** Session ID most recently loaded via `loadMessages`; updated synchronously. */
   private activeSessionId: string | undefined
+  private visiblePresence = new AgentManagerVisiblePresence(
+    (ids) => this.connectionService.registerVisible("agent-manager", ids),
+    () => this.panel?.visible ?? false,
+    (ids) => this.connectionService.registerAttached("agent-manager", ids),
+  )
   constructor(
     private readonly host: Host,
     private readonly connectionService: KiloConnectionService,
@@ -260,6 +264,7 @@ export class AgentManagerProvider implements Disposable {
     this.onVisibilityChange?.(ctx.visible)
     ctx.onDidChangeVisibility((visible) => {
       this.statsPoller.setVisible(visible)
+      this.visiblePresence.flush()
     })
 
     ctx.sessions.onFollowupAdopted((session, directory) => {
@@ -283,8 +288,7 @@ export class AgentManagerProvider implements Disposable {
         this.prBridge.poller.stop()
         this.diffs.stop()
         this.activeSessionId = undefined
-        this.connectionService.unregisterFocused("agent-manager")
-        this.connectionService.registerOpen("agent-manager", [])
+        this.visiblePresence.clear()
         this.panel = undefined
         this.onVisibilityChange?.(false)
       }
@@ -520,7 +524,6 @@ export class AgentManagerProvider implements Disposable {
 
     if (m.type === "loadMessages") {
       this.activeSessionId = m.sessionID
-      this.connectionService.registerFocused("agent-manager", m.sessionID)
       this.terminalManager.syncOnSessionSwitch(m.sessionID)
       this.prBridge.poller.setActiveWorktreeId(this.state?.getSession(m.sessionID)?.worktreeId ?? undefined)
       return msg
@@ -528,7 +531,7 @@ export class AgentManagerProvider implements Disposable {
 
     if (m.type === "clearSession") {
       this.activeSessionId = undefined
-      this.connectionService.unregisterFocused("agent-manager")
+      this.visiblePresence.setDisplayed(null)
       void Promise.resolve().then(() => {
         if (!this.panel || !this.state) return
         for (const id of this.state.worktreeSessionIds()) {
@@ -548,7 +551,9 @@ export class AgentManagerProvider implements Disposable {
 
     if (m.type === "agentManager.openSessions") {
       for (const id of m.sessionIDs) this.panelSessions.add(id)
-      this.connectionService.registerOpen("agent-manager", m.sessionIDs)
+    }
+    if (m.type === "agentManager.openSessions" || m.type === "agentManager.visibleSession") {
+      this.visiblePresence.handle(m)
       return null
     }
   }
@@ -1481,8 +1486,6 @@ export class AgentManagerProvider implements Disposable {
     return null
   }
 
-  // Keybindings
-
   private sendKeybindings(): void {
     const keybindings = this.host.extensionKeybindings()
     const bindings = buildKeybindingMap(keybindings, process.platform === "darwin")
@@ -1976,8 +1979,7 @@ export class AgentManagerProvider implements Disposable {
     this.unsubTool?.()
     this.unsubStatus?.()
     this.unsubFont?.()
-    this.connectionService.unregisterFocused("agent-manager")
-    this.connectionService.registerOpen("agent-manager", [])
+    this.visiblePresence.clear()
     this.diffs.stop()
     this.naming.dispose()
     this.statsPoller.stop()
