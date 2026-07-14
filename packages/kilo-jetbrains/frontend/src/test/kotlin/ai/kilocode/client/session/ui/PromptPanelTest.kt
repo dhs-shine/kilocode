@@ -277,11 +277,24 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertTrue(editor.preferredSize.height > min)
     }
 
-    fun `test prompt editor keeps three line minimum`() {
+    fun `test prompt editor keeps compact empty minimum`() {
         val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
         val editor = panel.defaultFocusedComponent as EditorTextField
 
         realize(panel, 260, 400)
+        val view = editor.getEditor(false)!!
+        val min = view.lineHeight * SessionUiStyle.View.Prompt.EDITOR_LINES +
+            JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_CHROME)
+
+        assertEquals(min, editor.preferredSize.height)
+    }
+
+    fun `test empty prompt ignores narrow placeholder preferred height`() {
+        val panel = PromptPanel(project = project, onSend = { _, _ -> }, onAbort = {}, onEnhance = { _, _ -> })
+        val editor = panel.defaultFocusedComponent as EditorTextField
+
+        realize(panel, 80, 400)
+        UIUtil.dispatchAllInvocationEvents()
         val view = editor.getEditor(false)!!
         val min = view.lineHeight * SessionUiStyle.View.Prompt.EDITOR_LINES +
             JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_CHROME)

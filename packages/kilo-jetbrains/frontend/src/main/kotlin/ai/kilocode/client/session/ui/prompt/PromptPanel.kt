@@ -916,7 +916,7 @@ class PromptPanel(
         val view = editor.getEditor(false)
         val line = view?.lineHeight ?: editor.getFontMetrics(editor.font).height
         val min = line * SessionUiStyle.View.Prompt.EDITOR_LINES + JBUI.scale(SessionUiStyle.View.Prompt.EDITOR_CHROME)
-        val content = editor.preferredSize.height
+        val content = if (editor.text.isBlank()) min else editor.preferredSize.height
         val sessionCap = rootCap(min)
         val height = minOf(content, sessionCap ?: content).coerceAtLeast(min)
         syncEditorScroll(view, content > height)
