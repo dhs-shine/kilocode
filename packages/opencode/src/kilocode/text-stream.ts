@@ -24,14 +24,38 @@ function decode(decoder: TextDecoder, bytes?: Uint8Array) {
   }
 }
 
-async function* chunks(open: () => Readable) {
+function utf8(open: () => Readable, signal?: AbortSignal) {
+  signal?.throwIfAborted()
+  const iterator = open()[Symbol.asyncIterator]()
   const decoder = new TextDecoder("utf-8", { fatal: true })
-  for await (const bytes of open()) {
-    const text = decode(decoder, bytes)
-    if (text) yield text
-  }
-  const tail = decode(decoder)
-  if (tail) yield tail
+  const out = new Readable({
+    read() {
+      void (async () => {
+        while (true) {
+          const next = await iterator.next()
+          if (next.done) {
+            const tail = decode(decoder)
+            if (tail) this.push(tail)
+            this.push(null)
+            return
+          }
+          const text = decode(decoder, next.value)
+          if (!text) continue
+          this.push(text)
+          return
+        }
+      })().catch((err) => this.destroy(err instanceof Error ? err : new Error(String(err))))
+    },
+    destroy(err, callback) {
+      Promise.resolve(iterator.return?.()).then(
+        () => callback(err),
+        (cause) => callback(cause instanceof Error ? cause : new Error(String(cause))),
+      )
+    },
+  })
+  const closed = new Promise<void>((resolve) => out.once("close", resolve))
+
+  return { stream: abortable(out, signal), closed }
 }
 
 export function abortable(stream: Readable, signal?: AbortSignal) {
@@ -40,7 +64,7 @@ export function abortable(stream: Readable, signal?: AbortSignal) {
 
 /** UTF-8 text stream backed by an already-open file. */
 export function openUtf8(open: () => Readable, signal?: AbortSignal): Readable {
-  return abortable(Readable.from(chunks(open)), signal)
+  return utf8(open, signal).stream
 }
 
 export function safeSlice(text: string, end: number) {
@@ -65,10 +89,14 @@ export async function withFallback<T>(
   fn: (input: Readable) => Promise<T>,
   signal?: AbortSignal,
 ): Promise<T> {
+  const input = utf8(open, signal)
   try {
-    return await fn(openUtf8(open, signal))
+    return await fn(input.stream)
   } catch (err) {
     if (!(err instanceof InvalidUtf8Error)) throw err
+  } finally {
+    input.stream.destroy()
+    await input.closed
   }
   return fn(await openDecoded(read, signal))
 }
