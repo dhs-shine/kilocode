@@ -101,7 +101,11 @@ export class AgentManagerOrchestrationBridge {
     })
     this.unsubscribeDirectories = connection.registerDirectoryProvider(() => {
       const root = this.options.root()
-      const dirs = this.options.state()?.getWorktrees().map((worktree) => worktree.path) ?? []
+      const dirs =
+        this.options
+          .state()
+          ?.getWorktrees()
+          .map((worktree) => worktree.path) ?? []
       return root ? [root, ...dirs] : dirs
     })
   }
@@ -209,7 +213,8 @@ export class AgentManagerOrchestrationBridge {
 
   private cancel(event: { requestID: string; sessionID: string }, directory?: string): void {
     const origin = this.origins.get(event.requestID)
-    if (origin && (origin.sessionID !== event.sessionID || (directory && !sameDirectory(origin.directory, directory)))) return
+    if (origin && (origin.sessionID !== event.sessionID || (directory && !sameDirectory(origin.directory, directory))))
+      return
     this.remember(this.settled, event.requestID)
     const active = this.active.get(event.requestID)
     if (!active) return
@@ -239,7 +244,8 @@ export class AgentManagerOrchestrationBridge {
     try {
       const state = await this.options.ready()
       const root = this.options.root()
-      if (!state || !root) throw new OrchestrationError("workspace_unavailable", "Agent Manager requires an open workspace")
+      if (!state || !root)
+        throw new OrchestrationError("workspace_unavailable", "Agent Manager requires an open workspace")
       if (this.disposed || active.cancelled) return
       const client = this.connection.getClient()
       if (request.operation === "overview") {

@@ -3,11 +3,7 @@ import * as fs from "fs"
 import * as os from "os"
 import * as path from "path"
 import type { KiloClient, Session } from "@kilocode/sdk/v2/client"
-import {
-  OrchestrationError,
-  overview,
-  prompt,
-} from "../../src/agent-manager/orchestration-domain"
+import { OrchestrationError, overview, prompt } from "../../src/agent-manager/orchestration-domain"
 import { WorktreeStateManager } from "../../src/agent-manager/WorktreeStateManager"
 import type { PRStatus as AgentManagerPRStatus } from "../../src/agent-manager/types"
 
@@ -228,7 +224,6 @@ describe("Agent Manager orchestration domain", () => {
     ).rejects.toMatchObject({
       code: "cross_workspace",
     } satisfies Partial<OrchestrationError>)
-
     ;(client.session.get as ReturnType<typeof mock>).mockImplementation(async () => ({
       data: { id: "ses_target", directory: worktree, title: "Target" } as Session,
     }))

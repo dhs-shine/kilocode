@@ -54,12 +54,19 @@ const providers = {
   } as unknown as Provider.Info,
 }
 
+const agent: Agent.Info = {
+  name: "build",
+  mode: "primary",
+  permission: [],
+  options: {},
+}
+
 // Default provider is `test`, so resolution should prefer test, then kilo, then others.
 function makeRuntime(defaultProviderID = "test", host: Partial<AgentManager.Interface> = {}) {
   return ManagedRuntime.make(
     Layer.mergeAll(
       Truncate.defaultLayer,
-      Agent.defaultLayer,
+      Layer.mock(Agent.Service, { get: () => Effect.succeed(agent) }),
       Bus.defaultLayer,
       CrossSpawnSpawner.defaultLayer,
       Layer.mock(AgentManager.Service, host),

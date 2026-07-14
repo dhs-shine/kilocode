@@ -122,7 +122,9 @@ function pr(status: PRStatus): PullRequestSummary {
 
 function ordered<T extends { id: string }>(items: T[], order: string[] | undefined): T[] {
   const index = new Map((order ?? []).map((id, idx) => [id, idx]))
-  return [...items].sort((a, b) => (index.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (index.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+  return [...items].sort(
+    (a, b) => (index.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (index.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+  )
 }
 
 function matches(summary: SessionSummary, states: Set<FilterState> | undefined): boolean {
@@ -145,7 +147,9 @@ function pullRequest(worktree: Worktree, status: PRStatus | undefined): PullRequ
 }
 
 async function live(input: OverviewInput, sessions: ManagedSession[]) {
-  const dirs = [...new Set(sessions.map((session) => directory(input.root, input.state, session)).filter(Boolean))] as string[]
+  const dirs = [
+    ...new Set(sessions.map((session) => directory(input.root, input.state, session)).filter(Boolean)),
+  ] as string[]
   const statuses = new Map<string, Activity>()
   const permissions = new Set<string>()
   const questions = new Set<string>()
@@ -212,7 +216,10 @@ function sessionSummaries(
     const summary: SessionSummary = {
       id: session.id,
       name: (cached || session.id).slice(0, 500),
-      activity: !dir || stale.has(session.id) || state.unavailable.has(dir) ? "offline" : (state.statuses.get(session.id) ?? "idle"),
+      activity:
+        !dir || stale.has(session.id) || state.unavailable.has(dir)
+          ? "offline"
+          : (state.statuses.get(session.id) ?? "idle"),
       ...(attention.length ? { attention: [...attention] } : {}),
     }
     if (matches(summary, filters)) summaries.set(session.id, summary)
@@ -314,9 +321,16 @@ export async function prompt(input: {
 }): Promise<void> {
   if (input.signal?.aborted) return
   const managed = input.state.getSession(input.sessionID)
-  if (!managed) throw new OrchestrationError("unknown_session", "The session is not managed by this Agent Manager workspace")
+  if (!managed)
+    throw new OrchestrationError("unknown_session", "The session is not managed by this Agent Manager workspace")
   const dir = directory(input.root, input.state, managed)
-  if (!dir || !(await fs.promises.access(dir).then(() => true, () => false))) {
+  if (
+    !dir ||
+    !(await fs.promises.access(dir).then(
+      () => true,
+      () => false,
+    ))
+  ) {
     throw new OrchestrationError("stale_session", "The managed session directory is no longer available")
   }
   const response = await input.client.session.get({ sessionID: input.sessionID, directory: dir })
@@ -331,7 +345,10 @@ export async function prompt(input: {
   if (status.error) throw new OrchestrationError("host_error", "The managed session status could not be read")
   const activity = status.data?.[input.sessionID]?.type ?? "idle"
   if (activity !== "idle") {
-    throw new OrchestrationError("unavailable_session", `The managed session is ${activity}; only idle sessions can be prompted`)
+    throw new OrchestrationError(
+      "unavailable_session",
+      `The managed session is ${activity}; only idle sessions can be prompted`,
+    )
   }
   if (input.signal?.aborted) return
   await input.client.session.promptAsync(
