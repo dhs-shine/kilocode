@@ -12,6 +12,7 @@ import javax.swing.Icon
 internal enum class ProviderListAction {
     CONNECT,
     OAUTH,
+    EDIT,
     DISCONNECT,
     ENABLE,
 }
@@ -38,7 +39,8 @@ internal data class ProviderListRow(
                 action.name,
                 providerListActionText(action),
                 enabled(action),
-                alwaysVisible = action == ProviderListAction.DISCONNECT && connected,
+                alwaysVisible = (action == ProviderListAction.DISCONNECT || action == ProviderListAction.EDIT) && connected,
+                primary = action == ProviderListAction.EDIT,
             )
         }
 
@@ -48,6 +50,7 @@ internal data class ProviderListRow(
 internal fun providerListActionText(action: ProviderListAction) = when (action) {
     ProviderListAction.CONNECT -> KiloBundle.message("settings.providers.connect")
     ProviderListAction.OAUTH -> KiloBundle.message("settings.providers.oauth")
+    ProviderListAction.EDIT -> KiloBundle.message("settings.providers.edit")
     ProviderListAction.DISCONNECT -> KiloBundle.message("settings.providers.disconnect")
     ProviderListAction.ENABLE -> KiloBundle.message("settings.providers.enable")
 }
@@ -87,7 +90,13 @@ internal fun providerActions(
 ): List<ProviderListAction> {
     if (provider.id in disabled) return listOf(ProviderListAction.ENABLE)
     if (provider.id == KILO_PROVIDER_ID && configured(provider, state, state.connected.toSet())) return emptyList()
-    if (configured(provider, state, state.connected.toSet())) return listOf(ProviderListAction.DISCONNECT)
+    if (configured(provider, state, state.connected.toSet())) {
+        return if (customEditable(provider, state)) {
+            listOf(ProviderListAction.EDIT, ProviderListAction.DISCONNECT)
+        } else {
+            listOf(ProviderListAction.DISCONNECT)
+        }
+    }
     val methods = providerMethods(provider, state)
     return buildList {
         if (methods.any { it.type == "oauth" }) add(ProviderListAction.OAUTH)

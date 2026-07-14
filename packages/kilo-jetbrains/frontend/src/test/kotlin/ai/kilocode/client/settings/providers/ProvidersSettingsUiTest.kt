@@ -12,8 +12,8 @@ import ai.kilocode.client.settings.base.settingsListSectionTitle
 import ai.kilocode.client.settings.base.settingsListVisibleCells
 import ai.kilocode.client.testing.FakeProviderRpcApi
 import ai.kilocode.client.ui.UiStyle
-import ai.kilocode.rpc.dto.CustomProviderConfigDto
 import ai.kilocode.rpc.dto.CustomModelFetchResultDto
+import ai.kilocode.rpc.dto.CustomProviderConfigDto
 import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ProviderActionResultDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
@@ -206,6 +206,60 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt { dispose(dialog) }
     }
 
+    fun `test custom dialog closes on save success`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val dialog = edt {
+            val dialog = CustomProviderDialog(
+                cs,
+                "/tmp",
+                { CustomModelFetchResultDto(listOf("gpt-4o")) },
+                { ProviderActionResultDto(providerState(provider("my-openai", "My OpenAI"))) },
+            )
+            val fields = components(center(dialog)).filterIsInstance<JTextField>()
+            fields[0].text = "my-openai"
+            fields[2].text = "https://example.com/v1"
+            fields[5].text = "gpt-4o"
+            submit(dialog)
+            dialog
+        }
+
+        flushUntil { edt { dialog.outcome != null } }
+
+        edt {
+            assertEquals("my-openai", dialog.savedId)
+            assertTrue(dialog.isOKActionEnabled)
+            dispose(dialog)
+        }
+    }
+
+    fun `test custom dialog edit prefill locks id and leaves key blank`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val dialog = edt {
+            CustomProviderDialog(
+                cs,
+                "/tmp",
+                { CustomModelFetchResultDto(listOf("gpt-4o")) },
+                { ProviderActionResultDto(providerState(provider("my-openai", "My OpenAI"))) },
+                CustomProviderEdit("my-openai", "My OpenAI", "https://example.com/v1", null, listOf("gpt-4o")),
+            )
+        }
+
+        edt {
+            val fields = components(center(dialog)).filterIsInstance<JTextField>()
+            assertEquals("my-openai", fields[0].text)
+            assertFalse(fields[0].isEditable)
+            assertEquals("My OpenAI", fields[1].text)
+            assertEquals("https://example.com/v1", fields[2].text)
+            assertEquals("", fields[3].text)
+            assertEquals("", fields[4].text)
+            assertEquals("gpt-4o", fields[5].text)
+            assertEquals(KiloBundle.message("settings.providers.customSave"), dialog.okText())
+            dispose(dialog)
+        }
+    }
+
     fun `test catalog provider without auth methods is connectable`() {
         val content = content()
 
@@ -303,7 +357,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test configured custom provider exposes only disconnect`() {
+    fun `test configured custom provider exposes edit and disconnect`() {
         val content = content()
 
         edt {
@@ -318,9 +372,33 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
         edt {
             val row = rows(content).single()
-            assertEquals(listOf(ProviderListAction.DISCONNECT), row.actions)
+            assertEquals(listOf(ProviderListAction.EDIT, ProviderListAction.DISCONNECT), row.actions)
             assertTrue(row.badges.isEmpty())
         }
+    }
+
+    fun `test editable custom provider edit cell is primary`() {
+        val state = ProviderSettingsDto(
+            providers = listOf(provider("local-openai", "Local OpenAI", source = "custom")),
+            config = mapOf("local-openai" to CustomProviderConfigDto("local-openai", npm = CUSTOM_PROVIDER_PACKAGE)),
+        )
+
+        val row = providerListRows(state, "").single()
+
+        assertEquals(listOf(ProviderListAction.EDIT, ProviderListAction.DISCONNECT), row.actions)
+        assertTrue(row.cells.first { it.id == "EDIT" }.primary)
+    }
+
+    fun `test connected non custom provider still exposes only disconnect`() {
+        val rows = providerListRows(
+            ProviderSettingsDto(
+                providers = listOf(provider("anthropic", "Anthropic")),
+                connected = listOf("anthropic"),
+            ),
+            "",
+        )
+
+        assertEquals(listOf(ProviderListAction.DISCONNECT), rows.single().actions)
     }
 
     fun `test custom providers have no badge while env providers keep env badge`() {
@@ -409,7 +487,46 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         assertEquals("Connected providers", settingsListSectionTitle(rows, 0))
         assertEquals("Popular providers", settingsListSectionTitle(rows, 1))
         assertEquals("All providers", settingsListSectionTitle(rows, 2))
-        assertEquals(listOf(ProviderListAction.DISCONNECT), rows[0].actions)
+        assertEquals(listOf(ProviderListAction.EDIT, ProviderListAction.DISCONNECT), rows[0].actions)
+    }
+
+    fun `test edit callback fires instead of disconnect on primary`() {
+        var edited: ProviderSettingsProviderDto? = null
+        var disconnected: ProviderSettingsProviderDto? = null
+        val content = edt { ProvidersContent({}, {}, { disconnected = it }, {}, { edited = it }) }
+        val state = ProviderSettingsDto(
+            providers = listOf(provider("local-openai", "Local OpenAI", source = "custom")),
+            config = mapOf("local-openai" to CustomProviderConfigDto("local-openai", npm = CUSTOM_PROVIDER_PACKAGE)),
+        )
+
+        edt {
+            content.update(state)
+            triggerPrimary(content)
+        }
+
+        assertEquals("local-openai", edited?.id)
+        assertNull(disconnected)
+    }
+
+    fun `test provider content update selects saved provider`() {
+        val content = content()
+        val state = ProviderSettingsDto(
+            providers = listOf(
+                provider("aaa-openai", "AAA OpenAI", source = "custom"),
+                provider("local-openai", "Local OpenAI", source = "custom"),
+            ),
+            config = mapOf(
+                "aaa-openai" to CustomProviderConfigDto("aaa-openai", npm = CUSTOM_PROVIDER_PACKAGE),
+                "local-openai" to CustomProviderConfigDto("local-openai", npm = CUSTOM_PROVIDER_PACKAGE),
+            ),
+        )
+
+        edt { content.update(state, select = "local-openai") }
+
+        edt {
+            assertEquals(listOf("aaa-openai", "local-openai"), rows(content).map { it.key })
+            assertEquals("local-openai", list(content).selectedValue.key)
+        }
     }
 
     fun `test unconfigured openai compatible template provider is hidden`() {
@@ -962,7 +1079,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt { assertTrue(rows(panel).isEmpty()) }
     }
 
-    private fun content() = edt { ProvidersContent({}, {}, {}, {}) }
+    private fun content() = edt { ProvidersContent({}, {}, {}, {}, {}) }
 
     private fun content(panel: ProvidersSettingsUi) = components(panel).filterIsInstance<ProvidersContent>().single()
 
@@ -1024,6 +1141,12 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
     private fun dispose(dialog: CustomProviderDialog) {
         call(dialog, "dispose")
+    }
+
+    private fun CustomProviderDialog.okText(): String {
+        val method = com.intellij.openapi.ui.DialogWrapper::class.java.getDeclaredMethod("getOKAction")
+        method.isAccessible = true
+        return (method.invoke(this) as javax.swing.Action).getValue(javax.swing.Action.NAME) as String
     }
 
     private fun call(dialog: CustomProviderDialog, name: String): Any? {

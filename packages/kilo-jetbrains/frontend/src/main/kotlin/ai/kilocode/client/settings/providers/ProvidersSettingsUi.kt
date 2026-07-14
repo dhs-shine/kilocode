@@ -5,6 +5,7 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.settings.base.BaseContentPanel
 import ai.kilocode.client.settings.base.SettingsPanel
 import ai.kilocode.client.settings.base.SettingsListConfig
+import ai.kilocode.client.settings.base.SettingsListSelection
 import ai.kilocode.client.settings.base.SettingsToolbarAction
 import ai.kilocode.client.settings.base.SettingsListView
 import ai.kilocode.client.settings.auth.DeviceOAuthInfo
@@ -193,7 +194,7 @@ internal class ProvidersSettingsUi(
         AllIcons.Actions.Refresh,
         { !busy },
     ) { reload() }
-    private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable)
+    private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable, ::edit)
     private val search = SearchTextField(false).apply {
         textEditor.emptyText.text = KiloBundle.message("settings.providers.search")
     }
@@ -314,18 +315,40 @@ internal class ProvidersSettingsUi(
     @RequiresEdt
     private fun custom() {
         checkEdt()
-        // The dialog performs the save itself so failures can be shown inline and the user can
-        // correct their input without re-typing. It only closes on a verified success.
+        openCustomDialog(null)
+    }
+
+    @RequiresEdt
+    private fun edit(provider: ProviderSettingsProviderDto) {
+        checkEdt()
+        val cfg = state.config[provider.id] ?: return
+        openCustomDialog(
+            CustomProviderEdit(
+                id = provider.id,
+                name = cfg.name ?: provider.name,
+                baseUrl = cfg.options["baseURL"].orEmpty(),
+                envVar = cfg.env.firstOrNull(),
+                models = cfg.models.values.map { it.id },
+            ),
+        )
+    }
+
+    // The dialog performs the save itself so failures can be shown inline and the user can
+    // correct their input without re-typing. It only closes on a verified success.
+    @RequiresEdt
+    private fun openCustomDialog(existing: CustomProviderEdit?) {
+        checkEdt()
         val dialog = CustomProviderDialog(
             cs,
             directory,
             { service<KiloProviderService>().fetchCustomModels(it) },
             { service<KiloProviderService>().saveCustom(it) },
+            existing,
         )
         if (!dialog.showAndGet()) return
         val next = dialog.outcome ?: return
         state = next
-        view.update(next)
+        view.update(next, dialog.savedId)
         clearProgress()
     }
 
@@ -522,6 +545,7 @@ internal class ProvidersContent(
     private val oauth: (ProviderSettingsProviderDto) -> Unit,
     private val disconnect: (ProviderSettingsProviderDto) -> Unit,
     private val enable: (ProviderSettingsProviderDto) -> Unit,
+    private val edit: (ProviderSettingsProviderDto) -> Unit,
 ) : BaseContentPanel() {
     private val view = SettingsListView(KiloBundle.message("settings.providers.noMatches"), SettingsListConfig.Preferred) { key, id ->
         activate(key, id)
@@ -534,13 +558,13 @@ internal class ProvidersContent(
     }
 
     @RequiresEdt
-    fun update(state: ProviderSettingsDto) {
+    fun update(state: ProviderSettingsDto, select: String? = null) {
         checkEdt()
         val notes = state.providers.count { providerDescription(it).isNotBlank() }
         ProvidersSettingsUi.LOG.info("provider settings content update: start providers=${state.providers.size} connected=${state.connected.size} disabled=${state.disabled.size} descriptions=$notes")
         this.state = state
         val rows = providerListRows(state, "", disabledRows = busy)
-        view.update(rows)
+        if (select != null) view.update(rows, SettingsListSelection.Key(select)) else view.update(rows)
         ProvidersSettingsUi.LOG.info("provider settings content update: completed rows=${rows.size}")
     }
 
@@ -582,6 +606,7 @@ internal class ProvidersContent(
             ProviderListAction.OAUTH -> oauth(row.provider)
             ProviderListAction.DISCONNECT -> disconnect(row.provider)
             ProviderListAction.ENABLE -> enable(row.provider)
+            ProviderListAction.EDIT -> edit(row.provider)
         }
     }
 
@@ -642,11 +667,20 @@ private class ApiKeyDialog(title: String, method: ProviderAuthMethodDto?) : Dial
     }
 }
 
+internal data class CustomProviderEdit(
+    val id: String,
+    val name: String,
+    val baseUrl: String,
+    val envVar: String?,
+    val models: List<String>,
+)
+
 internal class CustomProviderDialog(
     private val cs: CoroutineScope,
     private val directory: String,
     private val fetch: suspend (CustomModelFetchDto) -> CustomModelFetchResultDto,
     private val save: suspend (CustomProviderSaveDto) -> ProviderActionResultDto,
+    private val existing: CustomProviderEdit? = null,
 ) : DialogWrapper(true) {
     private val id = JBTextField()
     private val name = JBTextField()
@@ -668,11 +702,23 @@ internal class CustomProviderDialog(
     var outcome: ProviderSettingsDto? = null
         private set
 
+    // Id of the provider the save persisted; used to select the row after the dialog closes.
+    var savedId: String? = null
+        private set
+
     init {
-        title = KiloBundle.message("settings.providers.customTitle")
-        setOKButtonText(KiloBundle.message("settings.providers.customAdd"))
+        title = if (existing != null) {
+            KiloBundle.message("settings.providers.customEditTitle")
+        } else {
+            KiloBundle.message("settings.providers.customTitle")
+        }
+        setOKButtonText(
+            if (existing != null) KiloBundle.message("settings.providers.customSave")
+            else KiloBundle.message("settings.providers.customAdd"),
+        )
         init()
         initValidation()
+        existing?.let { prefill(it) }
         models.document.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
                 syncActions()
@@ -683,6 +729,17 @@ internal class CustomProviderDialog(
             else selectModels()
         }
         syncActions()
+    }
+
+    @RequiresEdt
+    private fun prefill(edit: CustomProviderEdit) {
+        checkEdt()
+        id.text = edit.id
+        id.isEditable = false
+        name.text = edit.name
+        url.text = edit.baseUrl
+        env.text = edit.envVar.orEmpty()
+        models.text = edit.models.joinToString(", ")
     }
 
     @RequiresEdt
@@ -766,7 +823,10 @@ internal class CustomProviderDialog(
                 }
                 ProvidersSettingsUi.LOG.info("custom provider add: save succeeded id='${input.id}', closing dialog")
                 outcome = result.state
-                closeOk()
+                savedId = input.id
+                saving = false
+                syncActions()
+                close(OK_EXIT_CODE)
             }
         }
     }
@@ -962,8 +1022,6 @@ internal class CustomProviderDialog(
             KiloBundle.message("settings.providers.customSelectModels")
         }
     }
-
-    private fun closeOk() = super.doOKAction()
 
     override fun dispose() {
         active = false
