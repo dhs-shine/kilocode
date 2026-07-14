@@ -180,7 +180,7 @@ export const layer = Layer.effect(
       yield* elog.info("cancel", { sessionID })
       yield* KiloSessionPromptQueue.cancel(sessionID) // kilocode_change - drop queued follow-up loops on abort
       KiloSessionPrompt.abortPlanFollowup(sessionID) // kilocode_change - abort pending plan-followup handover work
-      yield* KiloSessionPrompt.abortAsyncPrompts(sessionID) // kilocode_change - interrupt attachment permission waits
+      yield* KiloSessionPrompt.abortIntakes(sessionID) // kilocode_change - interrupt attachment permission waits
       yield* state.cancel(sessionID)
     })
 
@@ -996,7 +996,7 @@ export const layer = Layer.effect(
                 abort: controller.signal,
                 agent: ag.name,
                 messageID: info.id,
-                extra: { ...extra, referenceRoot: reference?.root, includeInstructions: false },
+                extra: { ...extra, referenceRoot: reference?.root, includeInstructions: false, denyDirectory: true },
                 messages: [],
                 metadata: () => Effect.void,
                 ask,
@@ -1136,63 +1136,63 @@ export const layer = Layer.effect(
                 ]
               }
 
-              // kilocode_change start - authorize and consume direct attachments through one open object
-              const access = yield* KiloReadObject.use(filepath, (bound) =>
-                Effect.gen(function* () {
-                  if (!bound.stat.isFile()) return yield* Effect.fail(new Error(`Cannot read non-file: ${filepath}`))
-                  const instance = yield* InstanceState.context
-                  const context = ctx()
-                  const explicit = reference ? yield* KiloReference.path(fsys, reference.root, bound.target) : false
-                  const referenced =
-                    explicit ||
-                    ((yield* references.contains(filepath)) &&
-                      (yield* KiloReference.contains({ fs: fsys, references, target: bound.target })))
-                  yield* assertExternalDirectoryEffect(context, bound.target, { bypass: referenced, kind: "file" })
-                  yield* context.ask({
-                    permission: "read",
-                    patterns: [
-                      ...new Set([filepath, bound.target].map((item) => path.relative(instance.worktree, item))),
-                    ],
-                    always: ["*"],
-                    metadata: {},
-                  })
+              // kilocode_change start - authorize metadata, then reopen and verify before consuming bytes
+              const access = yield* Effect.gen(function* () {
+                const file = yield* KiloReadObject.file(filepath)
+                const instance = yield* InstanceState.context
+                const context = ctx()
+                const explicit = reference ? yield* KiloReference.path(fsys, reference.root, file.target) : false
+                const referenced =
+                  explicit ||
+                  ((yield* references.contains(filepath)) &&
+                    (yield* KiloReference.contains({ fs: fsys, references, target: file.target })))
+                yield* assertExternalDirectoryEffect(context, file.target, { bypass: referenced, kind: "file" })
+                yield* context.ask({
+                  permission: "read",
+                  patterns: [...new Set([filepath, file.target].map((item) => path.relative(instance.worktree, item)))],
+                  always: ["*"],
+                  metadata: {},
+                })
 
-                  const limit = mime.startsWith("image/")
-                    ? ((yield* config.get()).attachment?.image?.max_base64_bytes ?? Image.MAX_BASE64_BYTES)
-                    : undefined
-                  const raw = limit === undefined ? undefined : Math.floor(limit / 4) * 3 + 1
-                  const bytes = yield* Effect.tryPromise({
-                    try: (signal) => bound.read(raw, AbortSignal.any([context.abort, signal])),
-                    catch: (err) => (err instanceof Error ? err : new Error(String(err))),
-                  })
-                  if (limit !== undefined) {
-                    const encoded = Math.ceil(bytes.byteLength / 3) * 4
-                    if (encoded > limit) {
-                      return yield* Effect.fail(
-                        new Image.SizeError({
-                          bytes: encoded,
-                          max: limit,
-                          width: 0,
-                          height: 0,
-                          max_width: 0,
-                          max_height: 0,
-                        }),
-                      )
+                return yield* KiloReadObject.use(file, (bound) =>
+                  Effect.gen(function* () {
+                    const limit = mime.startsWith("image/")
+                      ? ((yield* config.get()).attachment?.image?.max_base64_bytes ?? Image.MAX_BASE64_BYTES)
+                      : undefined
+                    const raw = limit === undefined ? undefined : Math.floor(limit / 4) * 3 + 1
+                    const bytes = yield* Effect.tryPromise({
+                      try: (signal) => bound.read(raw, AbortSignal.any([context.abort, signal])),
+                      catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+                    })
+                    if (limit !== undefined) {
+                      const encoded = Math.ceil(bytes.byteLength / 3) * 4
+                      if (encoded > limit) {
+                        return yield* Effect.fail(
+                          new Image.SizeError({
+                            bytes: encoded,
+                            max: limit,
+                            width: 0,
+                            height: 0,
+                            max_width: 0,
+                            max_height: 0,
+                          }),
+                        )
+                      }
                     }
-                  }
-                  const file: MessageV2.FilePart = {
-                    id: part.id ? PartID.make(part.id) : PartID.ascending(),
-                    messageID: info.id,
-                    sessionID: input.sessionID,
-                    type: "file",
-                    url: `data:${mime};base64,${bytes.toString("base64")}`,
-                    mime,
-                    filename: part.filename!,
-                    source: part.source,
-                  }
-                  return mime.startsWith("image/") ? yield* image.normalize(file) : file
-                }),
-              ).pipe(Effect.exit)
+                    const file: MessageV2.FilePart = {
+                      id: part.id ? PartID.make(part.id) : PartID.ascending(),
+                      messageID: info.id,
+                      sessionID: input.sessionID,
+                      type: "file",
+                      url: `data:${mime};base64,${bytes.toString("base64")}`,
+                      mime,
+                      filename: part.filename!,
+                      source: part.source,
+                    }
+                    return mime.startsWith("image/") ? yield* image.normalize(file) : file
+                  }),
+                )
+              }).pipe(Effect.exit)
               if (Exit.isFailure(access)) {
                 const error = Cause.squash(access.cause)
                 if (
@@ -1222,9 +1222,7 @@ export const layer = Layer.effect(
               }
               // kilocode_change end
               return [
-                ...(referenceContext
-                  ? [{ ...referenceContext, messageID: info.id, sessionID: input.sessionID }]
-                  : []),
+                ...(referenceContext ? [{ ...referenceContext, messageID: info.id, sessionID: input.sessionID }] : []),
                 {
                   messageID: info.id,
                   sessionID: input.sessionID,
@@ -1423,7 +1421,7 @@ export const layer = Layer.effect(
         yield* KiloSessionPrompt.recoverDanglingAssistant({ sessionID: input.sessionID, status, sessions })
         yield* KiloSessionPrompt.recoverProviderFinishError({ sessionID: input.sessionID, status, sessions })
         // kilocode_change end
-        const message = yield* createUserMessage(input)
+        const message = yield* KiloSessionPrompt.intake(input.sessionID, createUserMessage(input)) // kilocode_change
         yield* sessions.touch(input.sessionID)
 
         const permissions: PermissionV1.Rule[] = []
@@ -1995,14 +1993,17 @@ export const layer = Layer.effect(
         })
         yield* getModel(model.providerID, model.modelID, input.sessionID)
         const text = `/${input.command}${input.arguments ? ` ${input.arguments}` : ""}`
-        const user = yield* createUserMessage({
-          sessionID: input.sessionID,
-          messageID: input.messageID,
-          model,
-          agent: agent.name,
-          variant: input.variant,
-          parts: [{ type: "text", text }, ...(input.parts ?? [])],
-        })
+        const user = yield* KiloSessionPrompt.intake(
+          input.sessionID,
+          createUserMessage({
+            sessionID: input.sessionID,
+            messageID: input.messageID,
+            model,
+            agent: agent.name,
+            variant: input.variant,
+            parts: [{ type: "text", text }, ...(input.parts ?? [])],
+          }),
+        )
         yield* sessions.touch(input.sessionID)
         const ctx = yield* InstanceState.context
         const completed = Date.now()

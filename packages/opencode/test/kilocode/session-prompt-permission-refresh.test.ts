@@ -1,6 +1,6 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { expect } from "bun:test"
-import { Effect, Exit, Fiber, Layer, Scope } from "effect"
+import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { rename, rm, symlink } from "fs/promises"
 import os from "os"
@@ -51,6 +51,7 @@ import { ToolRegistry } from "../../src/tool/registry"
 import { Truncate } from "../../src/tool/truncate"
 import { KiloHeadless } from "../../src/kilocode/permission/headless"
 import { KiloSessionPrompt } from "../../src/kilocode/session/prompt"
+import { KiloReadObject } from "../../src/kilocode/tool/read-object"
 import { MemoryService } from "@kilocode/kilo-memory/effect/service"
 import { provideTmpdirServer } from "../fixture/fixture"
 import { awaitWithTimeout, pollWithTimeout, testEffect } from "../lib/effect"
@@ -209,6 +210,14 @@ function makeHttp() {
 const it = testEffect(makeHttp())
 const symlinkIt = process.platform === "win32" ? it.live.skip : it.live
 
+it.live("recognizes Windows named-pipe paths before filesystem inspection", () =>
+  Effect.sync(() => {
+    expect(KiloReadObject.namedPipe("\\\\.\\pipe\\secret")).toBe(true)
+    expect(KiloReadObject.namedPipe("\\\\server\\pipe\\secret")).toBe(true)
+    expect(KiloReadObject.namedPipe("C:\\project\\secret.txt")).toBe(false)
+  }),
+)
+
 const cfg = {
   provider: {
     test: {
@@ -290,7 +299,7 @@ it.live(
 )
 
 it.live(
-  "asks before adding @file content to the prompt",
+  "fails closed when an @file path changes while permission is pending",
   () =>
     provideTmpdirServer(
       Effect.fnUntraced(function* ({ dir }) {
@@ -320,6 +329,7 @@ it.live(
             return requests.find((request) => request.sessionID === session.id && request.permission === "read")
           }),
           "file mention read permission was never requested",
+          "15 seconds",
         )
 
         expect(pending.patterns).toEqual(["ask.txt"])
@@ -332,8 +342,9 @@ it.live(
             .filter((part) => part.type === "text")
             .map((part) => part.text)
             .join("\n")
-          expect(text).toContain(sentinel)
+          expect(text).not.toContain(sentinel)
           expect(text).not.toContain(denied)
+          expect(text).toContain("changed after authorization")
         }
       }),
       {
@@ -341,6 +352,57 @@ it.live(
         config: (url) => ({
           ...providerCfg(url),
           permission: { read: { "*": "allow", "ask.txt": "ask" } },
+        }),
+      },
+    ),
+  30_000,
+)
+
+it.live(
+  "adds @file content after read permission approval",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const sentinel = "KILO_12133_APPROVED_SENTINEL"
+        const file = path.join(dir, "approved.txt")
+        yield* Effect.promise(() => Bun.write(file, sentinel))
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const permission = yield* Permission.Service
+        const session = yield* sessions.create({})
+        const fiber = yield* prompt
+          .prompt({
+            sessionID: session.id,
+            noReply: true,
+            parts: yield* prompt.resolvePromptParts("Read @approved.txt"),
+          })
+          .pipe(Effect.forkScoped)
+        const pending = yield* pollWithTimeout(
+          Effect.gen(function* () {
+            const requests = yield* permission.list()
+            return requests.find((request) => request.sessionID === session.id && request.permission === "read")
+          }),
+          "approved file read permission was never requested",
+          "15 seconds",
+        )
+
+        yield* permission.reply({ requestID: pending.id, reply: "once" })
+        const exit = yield* Fiber.await(fiber)
+        expect(Exit.isSuccess(exit)).toBe(true)
+        if (Exit.isSuccess(exit)) {
+          const text = exit.value.parts
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join("\n")
+          expect(text).toContain(sentinel)
+        }
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          permission: { read: { "*": "allow", "approved.txt": "ask" } },
         }),
       },
     ),
@@ -359,24 +421,20 @@ it.live(
         const prompt = yield* SessionPrompt.Service
         const sessions = yield* Session.Service
         const permission = yield* Permission.Service
-        const scope = yield* Scope.Scope
         const session = yield* sessions.create({})
-        yield* KiloSessionPrompt.startAsyncPrompt({
-          sessionID: session.id,
-          scope,
-          work: prompt
-            .prompt({
-              sessionID: session.id,
-              parts: yield* prompt.resolvePromptParts("Read @abort.txt"),
-            })
-            .pipe(Effect.asVoid),
-        })
+        const fiber = yield* prompt
+          .prompt({
+            sessionID: session.id,
+            parts: yield* prompt.resolvePromptParts("Read @abort.txt"),
+          })
+          .pipe(Effect.forkScoped)
         yield* pollWithTimeout(
           Effect.gen(function* () {
             const requests = yield* permission.list()
             return requests.find((request) => request.sessionID === session.id && request.permission === "read")
           }),
           "attachment read permission was never requested",
+          "15 seconds",
         )
 
         yield* prompt.cancel(session.id)
@@ -386,11 +444,14 @@ it.live(
             return requests.some((request) => request.sessionID === session.id) ? undefined : true
           }),
           "attachment read permission remained after cancellation",
+          "15 seconds",
         )
         const messages = yield* sessions.messages({ sessionID: session.id })
         expect(
           messages.flatMap((message) => message.parts).some((part) => "text" in part && part.text.includes(sentinel)),
         ).toBe(false)
+        const exit = yield* Fiber.await(fiber)
+        expect(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)).toBe(true)
         expect(yield* llm.calls).toBe(0)
       }),
       {
@@ -402,7 +463,61 @@ it.live(
 )
 
 it.live(
-  "reads a direct attachment from the object authorized before path replacement",
+  "stops a legacy command while an attachment read permission is pending",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const sentinel = "KILO_12133_COMMAND_ABORT_SENTINEL"
+        const file = path.join(dir, "command.txt")
+        yield* Effect.promise(() => Bun.write(file, sentinel))
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const permission = yield* Permission.Service
+        const session = yield* sessions.create({})
+        const fiber = yield* prompt
+          .command({
+            sessionID: session.id,
+            command: "local-review",
+            arguments: "",
+            parts: [
+              {
+                type: "file",
+                mime: "text/plain",
+                filename: "command.txt",
+                url: pathToFileURL(file).href,
+              },
+            ],
+          })
+          .pipe(Effect.forkScoped)
+        yield* pollWithTimeout(
+          Effect.gen(function* () {
+            const requests = yield* permission.list()
+            return requests.find((request) => request.sessionID === session.id && request.permission === "read")
+          }),
+          "legacy command attachment permission was never requested",
+          "15 seconds",
+        )
+
+        yield* prompt.cancel(session.id)
+        const exit = yield* Fiber.await(fiber)
+        expect(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)).toBe(true)
+        expect((yield* permission.list()).some((request) => request.sessionID === session.id)).toBe(false)
+        const messages = yield* sessions.messages({ sessionID: session.id })
+        expect(
+          messages.flatMap((message) => message.parts).some((part) => "text" in part && part.text.includes(sentinel)),
+        ).toBe(false)
+      }),
+      {
+        git: true,
+        config: (url) => ({ ...providerCfg(url), permission: { read: "ask" } }),
+      },
+    ),
+  30_000,
+)
+
+it.live(
+  "fails closed when a direct attachment path changes while permission is pending",
   () =>
     provideTmpdirServer(
       Effect.fnUntraced(function* ({ dir }) {
@@ -437,6 +552,7 @@ it.live(
             return requests.find((request) => request.sessionID === session.id && request.permission === "read")
           }),
           "binary attachment read permission was never requested",
+          "15 seconds",
         )
 
         yield* Effect.promise(() => rename(replacement, file))
@@ -444,13 +560,14 @@ it.live(
         const exit = yield* Fiber.await(fiber)
         expect(Exit.isSuccess(exit)).toBe(true)
         if (Exit.isSuccess(exit)) {
-          const attachment = exit.value.parts.find((part) => part.type === "file")
-          expect(attachment?.type).toBe("file")
-          if (attachment?.type === "file") {
-            const content = Buffer.from(attachment.url.split(",")[1] ?? "", "base64").toString()
-            expect(content).toBe(allowed)
-            expect(content).not.toContain(denied)
-          }
+          const text = exit.value.parts
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join("\n")
+          expect(text).not.toContain(allowed)
+          expect(text).not.toContain(denied)
+          expect(text).toContain("changed after authorization")
+          expect(exit.value.parts.some((part) => part.type === "file")).toBe(false)
         }
       }),
       {
@@ -732,7 +849,7 @@ symlinkIt(
 )
 
 symlinkIt(
-  "uses the authorized directory snapshot after the path is replaced",
+  "does not expand a directory attachment after permission approval",
   () =>
     provideTmpdirServer(
       Effect.fnUntraced(function* ({ dir }) {
@@ -767,6 +884,7 @@ symlinkIt(
             return requests.find((request) => request.sessionID === session.id && request.permission === "read")
           }),
           "directory read permission was never requested",
+          "15 seconds",
         )
 
         yield* Effect.promise(async () => {
@@ -781,13 +899,100 @@ symlinkIt(
             .filter((part) => part.type === "text")
             .map((part) => part.text)
             .join("\n")
-          expect(text).toContain("allowed-name.txt")
+          expect(text).not.toContain("allowed-name.txt")
           expect(text).not.toContain("secret-name.txt")
+          expect(text).toContain("Directory attachments cannot be expanded")
         }
       }),
       {
         git: true,
         config: (url) => ({ ...providerCfg(url), permission: { read: "ask" } }),
+      },
+    ),
+  30_000,
+)
+
+it.live(
+  "checks read permission without enumerating missing-file suggestions",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const folder = path.join(dir, "private")
+        const fs = yield* FSUtil.Service
+        yield* fs.ensureDir(folder)
+        yield* Effect.promise(() => Bun.write(path.join(folder, "missing-secret-name.txt"), "secret"))
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({})
+        const missing = path.join(folder, "missing-secret")
+        const message = yield* prompt.prompt({
+          sessionID: session.id,
+          noReply: true,
+          parts: [
+            { type: "text", text: "Read @private/missing-secret" },
+            {
+              type: "file",
+              mime: "text/plain",
+              filename: "private/missing-secret",
+              url: pathToFileURL(missing).href,
+            },
+          ],
+        })
+        const text = message.parts
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n")
+
+        expect(text).not.toContain("missing-secret-name.txt")
+        expect(text).toContain("prevents you from using this specific tool call")
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          permission: { read: { "*": "allow", "private/*": "deny" } },
+        }),
+      },
+    ),
+  30_000,
+)
+
+symlinkIt(
+  "rejects a denied FIFO attachment without waiting for a writer",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ dir }) {
+        const fifo = path.join(dir, "secret.pipe")
+        const child = Bun.spawn(["mkfifo", fifo], { stdout: "ignore", stderr: "pipe", windowsHide: true })
+        expect(yield* Effect.promise(() => child.exited)).toBe(0)
+
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const session = yield* sessions.create({})
+        const message = yield* prompt.prompt({
+          sessionID: session.id,
+          noReply: true,
+          parts: [
+            { type: "text", text: "Read @secret.pipe" },
+            {
+              type: "file",
+              mime: "text/plain",
+              filename: "secret.pipe",
+              url: pathToFileURL(fifo).href,
+            },
+          ],
+        })
+        const text = message.parts
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n")
+
+        expect(text).toContain("Not a regular file")
+      }),
+      {
+        git: true,
+        config: (url) => ({ ...providerCfg(url), permission: { read: "deny" } }),
       },
     ),
   30_000,
@@ -884,8 +1089,8 @@ it.live("headless run: subagent permission asks fail instead of waiting forever"
 
       expect(err).toBeInstanceOf(Permission.DeniedError)
       expect(yield* permission.list()).toEqual([])
-          expect(yield* KiloHeadless.denies(child.id)).toBe(true)
-          expect(yield* KiloHeadless.denies(root.id)).toBe(false)
+      expect(yield* KiloHeadless.denies(child.id)).toBe(true)
+      expect(yield* KiloHeadless.denies(root.id)).toBe(false)
 
       KiloHeadless.clear(root.id)
     }),

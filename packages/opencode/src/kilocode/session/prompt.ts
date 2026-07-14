@@ -2,7 +2,7 @@
 import path from "path"
 import fs from "fs/promises"
 import { StringDecoder } from "string_decoder"
-import { Cause, Effect, Exit, Fiber, Latch, Scope } from "effect"
+import { Cause, Effect, Exit, Fiber, Scope } from "effect"
 import { SessionID, PartID } from "@/session/schema"
 import { MessageV2 } from "@/session/message-v2"
 import { Session } from "@/session/session"
@@ -16,10 +16,9 @@ import { KiloSession } from "@/kilocode/session"
 import { KiloSessionMessageOrder } from "@/kilocode/session/message-order"
 import { Permission } from "@/permission"
 import { Question } from "@/question"
-import { environmentDetails, type EditorContext } from "@/kilocode/editor-context"
+import { environmentDetails } from "@/kilocode/editor-context"
 import { Identifier } from "@/id/id"
 import { Filesystem } from "@/util/filesystem"
-import { InstanceState } from "@/effect/instance-state"
 import NATIVE_PLAN_PROMPT from "@/kilocode/session/native-plan-prompt.txt"
 import { MemoryPaths } from "@kilocode/kilo-memory/effect/paths"
 import { MemoryMarker } from "@/kilocode/memory/marker"
@@ -29,34 +28,33 @@ import CODE_SWITCH from "@/session/prompt/code-switch.txt"
 
 export namespace KiloSessionPrompt {
   const modes = ["ask", "plan", "architect"]
-  type Intake = { cancelled: boolean; fiber?: Fiber.Fiber<void, unknown> }
+  type Intake = { cancelled: boolean; fiber?: Fiber.Fiber<unknown, unknown> }
   const intakes = new Map<SessionID, Set<Intake>>()
 
-  export const startAsyncPrompt = Effect.fn("KiloSessionPrompt.startAsyncPrompt")(function* (input: {
-    sessionID: SessionID
-    scope: Scope.Scope
-    work: Effect.Effect<void, unknown>
-  }) {
-    const ready = yield* Latch.make()
-    const entry: Intake = { cancelled: false }
-    const work = ready.whenOpen(input.work).pipe(
-      Effect.ensuring(
-        Effect.sync(() => {
-          const entries = intakes.get(input.sessionID)
-          entries?.delete(entry)
-          if (entries?.size === 0) intakes.delete(input.sessionID)
+  export function intake<A, E, R>(sessionID: SessionID, work: Effect.Effect<A, E, R>) {
+    return Effect.scoped(
+      Effect.uninterruptibleMask((restore) =>
+        Effect.gen(function* () {
+          const scope = yield* Scope.Scope
+          const entry: Intake = { cancelled: false }
+          const cleanup = Effect.sync(() => {
+            const entries = intakes.get(sessionID)
+            entries?.delete(entry)
+            if (entries?.size === 0) intakes.delete(sessionID)
+          })
+          const entries = intakes.get(sessionID) ?? new Set()
+          entries.add(entry)
+          intakes.set(sessionID, entries)
+          const fiber = yield* work.pipe(Effect.ensuring(cleanup), Effect.forkIn(scope, { startImmediately: true }))
+          entry.fiber = fiber
+          if (entry.cancelled) yield* Fiber.interrupt(fiber)
+          return yield* restore(Fiber.join(fiber))
         }),
       ),
     )
-    const entries = intakes.get(input.sessionID) ?? new Set()
-    entries.add(entry)
-    intakes.set(input.sessionID, entries)
-    const fiber = yield* work.pipe(Effect.forkIn(input.scope, { startImmediately: true }))
-    entry.fiber = fiber
-    yield* (entry.cancelled ? Fiber.interrupt(fiber) : ready.open).pipe(Effect.uninterruptible)
-  }, Effect.uninterruptible)
+  }
 
-  export const abortAsyncPrompts = Effect.fn("KiloSessionPrompt.abortAsyncPrompts")(function* (sessionID: SessionID) {
+  export const abortIntakes = Effect.fn("KiloSessionPrompt.abortIntakes")(function* (sessionID: SessionID) {
     const entries = [...(intakes.get(sessionID) ?? [])]
     yield* Effect.forEach(
       entries,

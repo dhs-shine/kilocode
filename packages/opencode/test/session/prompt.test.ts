@@ -2405,14 +2405,8 @@ noLLMServer.instance(
       const text = stored.parts.find((part): part is SessionV1.TextPart => part.type === "text" && !part.synthetic)
 
       expect(text?.text).toBe("Use @docs for context")
-      expect(synthetic.some((part) => part.text.includes(JSON.stringify({ filePath: docs })))).toBe(true)
-      expect(files).toHaveLength(1)
-      expect(files[0]).toMatchObject({
-        filename: "docs",
-        mime: "application/x-directory",
-        source: { type: "file", path: "docs", text: { value: "@docs", start: 4, end: 9 } },
-      })
-      expect(fileURLToPath(files[0].url)).toBe(docs)
+      expect(synthetic.some((part) => part.text.includes("Directory attachments cannot be expanded"))).toBe(true) // kilocode_change
+      expect(files).toHaveLength(0) // kilocode_change
 
       yield* sessions.remove(session.id)
     }),

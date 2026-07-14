@@ -84,26 +84,18 @@ export const ReadTool = Tool.define<
     const reference = yield* Reference.Service
     const scope = yield* Scope.Scope
 
-    // kilocode_change start - canonicalize missing-file parents before suggestion disclosure
-    const miss = Effect.fn("ReadTool.miss")(function* (filepath: string, ctx: Tool.Context) {
+    // kilocode_change start - authorize missing paths without enumerating sibling names
+    const miss = Effect.fn("ReadTool.miss")(function* (filepath: string, worktree: string, ctx: Tool.Context) {
       const dir = path.dirname(filepath)
-      const base = path.basename(filepath)
-      const parent = yield* KiloReadObject.directory(dir).pipe(Effect.option)
+      const parent = yield* fs.realPath(dir).pipe(Effect.option)
       if (parent._tag === "None") return yield* Effect.fail(new Error(`File not found: ${filepath}`))
-      yield* assertExternalDirectoryEffect(ctx, parent.value.target, { bypass: false, kind: "directory" })
-      const items = parent.value.items
-        .filter(
-          (item) => item.toLowerCase().includes(base.toLowerCase()) || base.toLowerCase().includes(item.toLowerCase()),
-        )
-        .map((item) => path.join(parent.value.target, item))
-        .slice(0, 3)
-
-      if (items.length > 0) {
-        return yield* Effect.fail(
-          new Error(`File not found: ${filepath}\n\nDid you mean one of these?\n${items.join("\n")}`),
-        )
-      }
-
+      yield* assertExternalDirectoryEffect(ctx, parent.value, { bypass: false, kind: "directory" })
+      yield* ctx.ask({
+        permission: "read",
+        patterns: [...new Set([filepath, parent.value].map((item) => path.relative(worktree, item)))],
+        always: ["*"],
+        metadata: {},
+      })
       return yield* Effect.fail(new Error(`File not found: ${filepath}`))
     })
     // kilocode_change end
@@ -111,6 +103,22 @@ export const ReadTool = Tool.define<
     const warm = Effect.fn("ReadTool.warm")(function* (filepath: string) {
       // LSP warm-up is optional; do not let a background defect fail an otherwise successful read.
       yield* lsp.touchFile(filepath).pipe(Effect.ignoreCause, Effect.forkIn(scope))
+    })
+
+    const list = Effect.fn("ReadTool.list")(function* (filepath: string) {
+      const items = yield* fs.readDirectoryEntries(filepath)
+      return yield* Effect.forEach(
+        items,
+        Effect.fnUntraced(function* (item) {
+          if (item.type === "directory") return item.name + "/"
+          if (item.type !== "symlink") return item.name
+
+          const target = yield* fs.stat(path.join(filepath, item.name)).pipe(Effect.catch(() => Effect.void))
+          if (target?.type === "Directory") return item.name + "/"
+          return item.name
+        }),
+        { concurrency: "unbounded" },
+      ).pipe(Effect.map((items: string[]) => items.sort((a, b) => a.localeCompare(b))))
     })
 
     // kilocode_change start - extracted formats and text consume the authorized open object
@@ -210,14 +218,14 @@ export const ReadTool = Tool.define<
         ),
       )
       if (!info) {
-        return yield* miss(requested, ctx)
+        return yield* miss(requested, instance.worktree, ctx)
       }
       // kilocode_change end
 
       // kilocode_change start - directory mentions expose only a bound listing, never child file bodies
       if (info.type === "Directory") {
-        const directory = yield* KiloReadObject.directory(requested)
-        const target = directory.target
+        const resolved = yield* fs.realPath(requested)
+        const target = process.platform === "win32" ? FSUtil.normalizePath(resolved) : resolved
         const explicit =
           typeof ctx.extra?.["referenceRoot"] === "string" &&
           (yield* KiloReference.path(fs, ctx.extra["referenceRoot"], target))
@@ -232,7 +240,10 @@ export const ReadTool = Tool.define<
           always: ["*"],
           metadata: {},
         })
-        const items = directory.items
+        if (ctx.extra?.["denyDirectory"] === true) {
+          return yield* Effect.fail(new Error(`Directory attachments cannot be expanded: ${requested}`))
+        }
+        const items = yield* list(target)
         const limit = Math.max(1, params.limit ?? DEFAULT_READ_LIMIT) // kilocode_change - prevent zero-limit loops
         const offset = params.offset || 1
         const start = offset - 1
@@ -266,25 +277,24 @@ export const ReadTool = Tool.define<
           },
         }
       }
-      // kilocode_change start - hold one object open across authorization and every content read
-      return yield* KiloReadObject.use(requested, (bound) =>
+      // kilocode_change start - authorize metadata, then bind every content read to the same reopened object
+      const file = yield* KiloReadObject.file(requested)
+      const explicit =
+        typeof ctx.extra?.["referenceRoot"] === "string" &&
+        (yield* KiloReference.path(fs, ctx.extra["referenceRoot"], file.target))
+      const referenced =
+        explicit ||
+        ((yield* reference.contains(requested)) &&
+          (yield* KiloReference.contains({ fs, references: reference, target: file.target })))
+      yield* assertExternalDirectoryEffect(ctx, file.target, { bypass: referenced, kind: "file" })
+      yield* ctx.ask({
+        permission: "read",
+        patterns: [...new Set([requested, file.target].map((item) => path.relative(instance.worktree, item)))],
+        always: ["*"],
+        metadata: {},
+      })
+      return yield* KiloReadObject.use(file, (bound) =>
         Effect.gen(function* () {
-          if (!bound.stat.isFile()) return yield* Effect.fail(new Error(`Cannot read non-file: ${requested}`))
-          const explicit =
-            typeof ctx.extra?.["referenceRoot"] === "string" &&
-            (yield* KiloReference.path(fs, ctx.extra["referenceRoot"], bound.target))
-          const referenced =
-            explicit ||
-            ((yield* reference.contains(requested)) &&
-              (yield* KiloReference.contains({ fs, references: reference, target: bound.target })))
-          yield* assertExternalDirectoryEffect(ctx, bound.target, { bypass: referenced, kind: "file" })
-          yield* ctx.ask({
-            permission: "read",
-            patterns: [...new Set([requested, bound.target].map((item) => path.relative(instance.worktree, item)))],
-            always: ["*"],
-            metadata: {},
-          })
-
           const loaded =
             ctx.extra?.["includeInstructions"] === false
               ? []
