@@ -83,6 +83,7 @@ export namespace KiloReadObject {
       process.platform === "win32"
         ? constants.O_RDONLY
         : constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW
+    const streams = new Set<Readable>()
     const acquire = Effect.tryPromise({
       try: () => open(info.target, flags),
       catch: failure,
@@ -112,17 +113,31 @@ export namespace KiloReadObject {
             handle,
             read: (limit, signal) => bytes(handle, limit, signal),
             sample: (limit, signal) => bytes(handle, limit, signal),
-            stream: (signal) => Readable.from(chunks(handle, signal)),
+            stream: (signal) => {
+              const stream = Readable.from(chunks(handle, signal))
+              streams.add(stream)
+              stream.once("close", () => streams.delete(stream))
+              return stream
+            },
           })
         }),
       (handle) =>
         Effect.tryPromise({
           try: async () => {
+            await Promise.all(
+              [...streams].map(
+                (stream) =>
+                  new Promise<void>((resolve) => {
+                    if (stream.closed) return resolve()
+                    stream.once("close", resolve)
+                    stream.destroy()
+                  }),
+              ),
+            )
             await handle.close()
           },
           catch: failure,
-        }).pipe(Effect.catch(() => Effect.void)),
+        }),
     )
   }
-
 }
