@@ -2,6 +2,7 @@ package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.Dimension
@@ -248,6 +249,25 @@ class SessionLayoutTest : BasePlatformTestCase() {
         val size = p.layout.preferredLayoutSize(p)
         assertEquals(300, size.width)
         assertEquals(JBUI.scale(5) + 10 + JBUI.scale(4) + 15 + JBUI.scale(7), size.height)
+    }
+
+    fun `test preferredLayoutSize is not double-scaled by user scale factor`() {
+        // IDE zoom raises the JBUI user scale factor. Child heights and gaps are already
+        // scaled px, so the transcript preferred height must not be scaled a second time.
+        val original = JBUIScale.scale(1f)
+        try {
+            JBUIScale.setUserScaleFactorForTest(2f)
+            val p = panel(gap = 4, width = 300)
+            p.add(label(height = 10))
+            p.add(label(height = 15))
+            p.add(label(height = 20))
+            p.doLayout()
+
+            val size = p.layout.preferredLayoutSize(p)
+            assertEquals(10 + JBUI.scale(4) + 15 + JBUI.scale(4) + 20, size.height)
+        } finally {
+            JBUIScale.setUserScaleFactorForTest(original)
+        }
     }
 
     fun `test layout scales base gap at layout time`() {

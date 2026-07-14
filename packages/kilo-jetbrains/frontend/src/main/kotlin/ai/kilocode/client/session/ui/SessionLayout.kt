@@ -1,7 +1,6 @@
 package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.ui.style.SessionUiStyle
-import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.Component
@@ -51,7 +50,10 @@ class SessionLayout(
             comp.setSize(child.width, comp.height.coerceAtLeast(1))
             h += comp.preferredSize.height
         }
-        return JBDimension(w + ins.left + ins.right, h)
+        // w and h are already scaled px (child preferred heights + scaled gaps/insets) and
+        // match what layoutContainer stacks, so return a plain Dimension. A JBDimension would
+        // scale again by the user scale factor and inflate the transcript height under IDE zoom.
+        return Dimension(w + ins.left + ins.right, h)
     }
 
     override fun minimumLayoutSize(parent: Container): Dimension = preferredLayoutSize(parent)
