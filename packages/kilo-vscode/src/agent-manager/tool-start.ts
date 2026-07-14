@@ -4,6 +4,7 @@ import type { CreateWorktreeResult } from "./WorktreeManager"
 import type { WorktreeStateManager } from "./WorktreeStateManager"
 import type { PanelContext } from "./host"
 import { PLATFORM, SNAPSHOT_INITIALIZATION } from "./constants"
+import { sameDirectory } from "../kilo-provider-utils"
 
 const LABEL_MAX = 28
 const PREFIX = new Set(["feat", "fix", "chore", "bug", "issue", "task", "branch"])
@@ -12,6 +13,8 @@ export interface ToolTask {
   prompt?: string
   name?: string
   branchName?: string
+  model?: { providerID: string; modelID: string }
+  variant?: string
 }
 
 export interface ToolRequest {
@@ -105,6 +108,8 @@ async function prompt(client: KiloClient, sid: string, dir: string, task: ToolTa
       sessionID: sid,
       directory: dir,
       parts: [{ type: "text", text: body }],
+      model: task.model,
+      variant: task.variant,
       snapshotInitialization: SNAPSHOT_INITIALIZATION,
     },
     { throwOnError: true },
@@ -117,8 +122,9 @@ async function local(deps: ToolDeps, client: KiloClient, task: ToolTask, directo
   if (!root || !state) return false
 
   const dir = clean(directory) ?? root
-  const wt = dir === root ? undefined : state.findWorktreeByPath(dir)
-  if (dir !== root && !wt) {
+  const match = sameDirectory(dir, root)
+  const wt = match ? undefined : state.findWorktreeByPath(dir)
+  if (!match && !wt) {
     deps.log("Agent Manager tool local request ignored unknown directory", dir)
     deps.post({
       type: "error",
@@ -237,12 +243,30 @@ function record(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object"
 }
 
+function model(value: unknown): ToolTask["model"] {
+  if (!record(value)) return undefined
+  const providerID = typeof value.providerID === "string" ? value.providerID.trim() : ""
+  const modelID = typeof value.modelID === "string" ? value.modelID.trim() : ""
+  if (!providerID || !modelID) return undefined
+  return { providerID, modelID }
+}
+
 function task(value: unknown): ToolTask | undefined {
   if (!record(value)) return undefined
   const out: ToolTask = {}
   for (const key of ["prompt", "name", "branchName"] as const) {
-    if (typeof value[key] === "string" && value[key].trim()) out[key] = value[key]
+    if (Object.hasOwn(value, key) && typeof value[key] === "string" && value[key].trim()) out[key] = value[key]
   }
+  const hasModel = Object.hasOwn(value, "model")
+  const selected = hasModel ? model(value.model) : undefined
+  if (hasModel && !selected) return undefined
+  if (selected) out.model = selected
+
+  if (Object.hasOwn(value, "variant")) {
+    if (!selected || typeof value.variant !== "string" || !value.variant.trim()) return undefined
+    out.variant = value.variant.trim()
+  }
+  if (selected && !out.prompt) return undefined
   if (!out.prompt && !out.name && !out.branchName) return undefined
   return out
 }
@@ -253,11 +277,9 @@ export function parseToolRequest(value: unknown): ToolRequest | undefined {
   const tasks = value.tasks
   if (mode !== "worktree" && mode !== "local") return undefined
   if (!Array.isArray(tasks) || tasks.length === 0) return undefined
-  const parsed = tasks
-    .slice(0, 20)
-    .map(task)
-    .filter((item): item is ToolTask => !!item)
-  if (parsed.length === 0) return undefined
+  const limited = tasks.slice(0, 20)
+  const parsed = limited.map(task).filter((item): item is ToolTask => !!item)
+  if (parsed.length !== limited.length) return undefined
   return {
     requestID: typeof value.requestID === "string" ? value.requestID : `am-${Date.now()}`,
     sessionID: typeof value.sessionID === "string" ? value.sessionID : undefined,

@@ -641,8 +641,16 @@ interface SendCommandIn {
   contextDirectory?: string
 }
 
+interface QuestionReplyIn {
+  type: "questionReply"
+  requestID: string
+  sessionID?: string
+  answers: string[][]
+}
+
 interface RequestSandboxDefaultIn {
   type: "requestSandboxDefault"
+  requestID?: string
   agentManagerContext?: string
   contextDirectory?: string
 }
@@ -808,6 +816,7 @@ export type AgentManagerInMessage =
   | LoadMessagesIn
   | SendMessageIn
   | SendCommandIn
+  | QuestionReplyIn
   | RequestSandboxDefaultIn
   | SetSandboxDefaultIn
   | ToggleSandboxIn

@@ -18,28 +18,9 @@ export function isKnownRootSession(session: Pick<SessionLike, "parentID">): bool
   return session.parentID === null
 }
 
-export function keepWorktreeSession(
-  current: string | undefined,
-  worktreeId: string,
-  sessions: Pick<SessionLike, "id" | "parentID">[],
-  managed: { id: string; worktreeId: string | null }[],
-  pending: Record<string, string>,
-): boolean {
-  if (!current) return false
-  const info = sessions.find((item) => item.id === current)
-  if (!info || !isKnownRootSession(info)) return false
-  const state = managed.find((item) => item.id === current)
-  return state?.worktreeId === worktreeId || pending[current] === worktreeId
-}
-
-export function prunePendingWorktreeSessions(
-  pending: Record<string, string>,
-  managed: { id: string }[],
-): Record<string, string> | undefined {
-  const ids = new Set(managed.map((item) => item.id))
-  const entries = Object.entries(pending).filter(([id]) => !ids.has(id))
-  if (entries.length === Object.keys(pending).length) return
-  return Object.fromEntries(entries)
+export function canOpenRootSession(id: string, sessions: Pick<SessionLike, "id" | "parentID">[]): boolean {
+  const session = sessions.find((item) => item.id === id)
+  return !!session && isKnownRootSession(session)
 }
 
 export function filterUnassignedSessions<T extends SessionLike>(
@@ -50,19 +31,6 @@ export function filterUnassignedSessions<T extends SessionLike>(
   return [...sessions]
     .filter((s) => isKnownRootSession(s) && !worktree.has(s.id) && !local.has(s.id))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-}
-
-export function admitCreatedSession(
-  session: Pick<SessionLike, "id" | "parentID">,
-  draft: string | undefined,
-  local: string[],
-  worktree: Set<string>,
-): { pending: string | undefined } | undefined {
-  if (!isKnownRootSession(session)) return
-  const pending = draft && local.includes(draft) ? draft : undefined
-  if (!pending && local.includes(session.id)) return
-  if (worktree.has(session.id)) return
-  return { pending }
 }
 
 export function resolveNavigation(direction: "up" | "down", current: string | undefined, ids: string[]): NavResult {
@@ -127,61 +95,6 @@ export function adjacentHint(
   return ""
 }
 
-/**
- * Compute which session IDs should populate the "local" tab on state restore.
- *
- * Managed sessions with `worktreeId === null` are non-worktree sessions that
- * were persisted to agent-manager.json.  On restore we use them as the local
- * tab list, optionally applying a persisted tab order.
- *
- * @param sessions   - All managed sessions from agent-manager.json
- * @param current    - The webview's current localSessionIDs (may contain pending tabs)
- * @param tabOrder   - Persisted tab order for the "local" key, if any
- * @param isPending  - Predicate to identify pending (not-yet-created) tab IDs
- * @param applyOrder - Reorder helper: (items, order) → ordered items
- */
-export function restoreLocalSessions(
-  sessions: { id: string; worktreeId: string | null }[],
-  current: string[],
-  tabOrder: string[] | undefined,
-  isPending: (id: string) => boolean,
-  applyOrder: (items: { id: string }[], order: string[]) => { id: string }[],
-): string[] | undefined {
-  const locals = sessions.filter((s) => !s.worktreeId).map((s) => s.id)
-  // Sessions assigned to a worktree must never appear in the local tab. A race
-  // where sessionCreated (SSE) arrives before agentManager.state can incorrectly
-  // add a worktree session to localSessionIDs; evict them here on every state push.
-  const worktree = new Set(sessions.filter((s) => s.worktreeId).map((s) => s.id))
-  const evict = (ids: string[]) => (worktree.size > 0 ? ids.filter((id) => !worktree.has(id)) : ids)
-  const real = current.filter((id) => !isPending(id))
-
-  // First restore: current has no real sessions but disk has some
-  if (locals.length > 0 && real.length === 0) {
-    if (!tabOrder) return locals
-    return applyOrder(
-      locals.map((id) => ({ id })),
-      tabOrder,
-    ).map((item) => item.id)
-  }
-
-  // Merge any disk-persisted sessions missing from current (e.g. vscode.setState
-  // debounce didn't fire before close, but persistSession already wrote to disk)
-  const missing = locals.filter((id) => !current.includes(id))
-  const base = missing.length > 0 ? [...current, ...missing] : current
-  const merged = evict(base)
-  const changed = missing.length > 0 || merged.length !== base.length
-
-  // Apply tab order if present
-  if (tabOrder && merged.length > 0) {
-    return applyOrder(
-      merged.map((id) => ({ id })),
-      tabOrder,
-    ).map((item) => item.id)
-  }
-
-  return changed ? merged : undefined
-}
-
 export function remoteSessions(
   local: string[],
   managed: { id: string; worktreeId: string | null }[],
@@ -193,37 +106,6 @@ export function remoteSessions(
       ...managed.filter((session) => session.worktreeId).map((session) => session.id),
     ]),
   ]
-}
-
-export function reconcileLocalSessions(
-  current: string[],
-  loaded: Pick<SessionLike, "id" | "parentID">[],
-  managed: { id: string; worktreeId: string | null }[],
-  isPending: (id: string) => boolean,
-): { ids: string[]; forget: string[] } | undefined {
-  const seen = new Set(loaded.filter(isKnownRootSession).map((s) => s.id))
-  const children = new Set(loaded.filter((s) => s.parentID !== undefined && !isKnownRootSession(s)).map((s) => s.id))
-  const unknown = new Set(loaded.filter((s) => s.parentID === undefined).map((s) => s.id))
-  const local = new Set(managed.filter((s) => !s.worktreeId).map((s) => s.id))
-  const worktree = new Set(managed.filter((s) => s.worktreeId).map((s) => s.id))
-  const ids: string[] = []
-  const forget = new Set(managed.filter((s) => children.has(s.id)).map((s) => s.id))
-
-  for (const id of current) {
-    if (isPending(id)) {
-      ids.push(id)
-      continue
-    }
-    if (children.has(id) || unknown.has(id) || worktree.has(id)) continue
-    if (seen.has(id) || local.has(id)) {
-      ids.push(id)
-      continue
-    }
-    forget.add(id)
-  }
-
-  if (ids.length === current.length && forget.size === 0) return undefined
-  return { ids, forget: [...forget] }
 }
 
 /**

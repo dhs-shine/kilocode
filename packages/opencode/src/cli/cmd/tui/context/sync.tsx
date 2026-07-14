@@ -20,6 +20,7 @@ import type {
   ProviderAuthMethod,
   VcsInfo,
   BackgroundProcessInfo, // kilocode_change
+  InteractiveTerminalSnapshot, // kilocode_change
 } from "@kilocode/sdk/v2"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useProject } from "@tui/context/project"
@@ -32,9 +33,10 @@ import { useExit } from "./exit"
 import { useArgs } from "./args"
 import { batch, createEffect, on, onMount } from "solid-js" // kilocode_change - add createEffect/on for workspace re-bootstrap
 import { handleSuggestionEvent } from "@/kilocode/suggestion/tui/sync" // kilocode_change
+import { appendTerminalOutput } from "@/kilocode/interactive-terminal/output" // kilocode_change
 import { useToast } from "@tui/ui/toast" // kilocode_change
 import * as Log from "@opencode-ai/core/util/log"
-import { emptyConsoleState, type ConsoleState } from "@/config/console-state"
+import { emptyConsoleState, type ConsoleState } from "@opencode-ai/core/v1/config/console-state"
 import type { IndexingStatus } from "@kilocode/kilo-indexing/status" // kilocode_change
 import path from "path"
 import { useKV } from "./kv"
@@ -82,6 +84,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       background_process: {
         [sessionID: string]: BackgroundProcessInfo[]
       }
+      interactive_terminal: {
+        [sessionID: string]: InteractiveTerminalSnapshot[]
+      }
       // kilocode_change end
       message: {
         [sessionID: string]: Message[]
@@ -126,6 +131,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       session_diff: {},
       todo: {},
       background_process: {}, // kilocode_change
+      interactive_terminal: {}, // kilocode_change
       message: {},
       part: {},
       lsp: [],
@@ -143,6 +149,11 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     const kv = useKV()
 
     // kilocode_change start
+    function processScope(scope: string) {
+      const current = project.instance.path()
+      return scope === current.directory || scope === current.worktree || scope === project.data.project.worktree
+    }
+
     function evict(sessionID: string) {
       // Collect child session IDs so we can evict them too.
       const children = store.session.filter((s) => s.parentID === sessionID).map((s) => s.id)
@@ -156,7 +167,10 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           delete draft.session_diff[sessionID]
           delete draft.session_status[sessionID]
           delete draft.todo[sessionID]
-          delete draft.background_process[sessionID] // kilocode_change
+          const processes = draft.background_process[sessionID]?.filter((item) => item.lifetime === "persistent")
+          if (processes?.length) draft.background_process[sessionID] = processes
+          else delete draft.background_process[sessionID]
+          delete draft.interactive_terminal[sessionID] // kilocode_change
           delete draft.permission[sessionID]
           delete draft.question[sessionID]
           delete draft.suggestion[sessionID]
@@ -177,18 +191,27 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
     const fullSyncedSessions = new Set<string>()
     const deleted = new Set<string>() // kilocode_change
+    const terminalDeleted = new Set<string>() // kilocode_change
     let syncedWorkspace = project.workspace.current()
     let vcsVersion = 0 // kilocode_change
+    const syncingSessions = new Map<string, Promise<void>>()
+    const hydratingSessions = new Map<string, { messages: Set<string>; parts: Set<string> }>()
+    const touchMessage = (sessionID: string, messageID: string) => {
+      hydratingSessions.get(sessionID)?.messages.add(messageID)
+    }
+    const touchPart = (sessionID: string, partID: string) => {
+      hydratingSessions.get(sessionID)?.parts.add(partID)
+    }
 
     function sessionListQuery(): { scope?: "project"; path?: string } {
-      if (!kv.get("session_directory_filter_enabled", true)) return { scope: "project" }
-      if (!project.data.instance.path.worktree || !project.data.instance.path.directory) return { scope: "project" }
-      return {
-        path: path
-          .relative(path.resolve(project.data.instance.path.worktree), project.data.instance.path.directory)
-          .replaceAll("\\", "/"),
-      }
+    if (!kv.get("session_directory_filter_enabled", true)) return { scope: "project" }
+    if (!project.data.instance.path.worktree || !project.data.instance.path.directory) return { scope: "project" }
+    return {
+      path: path
+        .relative(path.resolve(project.data.instance.path.worktree), project.data.instance.path.directory)
+        .replaceAll("\\", "/"),
     }
+  }
 
     function listSessions() {
       return sdk.client.session
@@ -201,7 +224,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         case "server.instance.disposed":
           // kilocode_change start
           deleted.clear()
+          terminalDeleted.clear()
           setStore("background_process", {})
+          setStore("interactive_terminal", {})
           // kilocode_change end
           void bootstrap()
           break
@@ -345,6 +370,22 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           setStore("session_diff", event.properties.sessionID, event.properties.diff)
           break
 
+        case "session.next.moved": {
+          const result = Binary.search(store.session, event.properties.sessionID, (s) => s.id)
+          if (!result.found) break
+          setStore(
+            "session",
+            result.index,
+            produce((session) => {
+              session.directory = event.properties.location.directory
+              session.path = event.properties.subdirectory
+              session.workspaceID = event.properties.location.workspaceID
+              session.time.updated = event.properties.timestamp
+            }),
+          )
+          break
+        }
+
         // kilocode_change start
         case "session.status": {
           setStore("session_status", event.properties.sessionID, event.properties.status)
@@ -354,36 +395,92 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
         // kilocode_change start
         case "background_process.updated": {
+          if (!processScope(event.properties.scope)) break
           const info = event.properties.info
           deleted.delete(info.id)
-          const list = store.background_process[info.sessionID]
-          if (!list) {
-            setStore("background_process", info.sessionID, [info])
-            break
-          }
-          const result = Binary.search(list, info.id, (item) => item.id)
-          if (result.found) {
-            setStore("background_process", info.sessionID, result.index, reconcile(info))
-            break
-          }
           setStore(
             "background_process",
-            info.sessionID,
             produce((draft) => {
-              draft.splice(result.index, 0, info)
+              for (const [sessionID, list] of Object.entries(draft)) {
+                const index = list.findIndex((item) => item.id === info.id)
+                if (index < 0) continue
+                list.splice(index, 1)
+                if (list.length === 0) delete draft[sessionID]
+              }
+              const list = draft[info.sessionID] ?? []
+              const result = Binary.search(list, info.id, (item) => item.id)
+              list.splice(result.index, 0, info)
+              draft[info.sessionID] = list
             }),
           )
           break
         }
 
         case "background_process.deleted": {
+          if (!processScope(event.properties.scope)) break
           deleted.add(event.properties.processID)
-          const list = store.background_process[event.properties.sessionID]
-          if (!list) break
-          const result = Binary.search(list, event.properties.processID, (item) => item.id)
-          if (!result.found) break
           setStore(
             "background_process",
+            produce((draft) => {
+              for (const [sessionID, list] of Object.entries(draft)) {
+                const index = list.findIndex((item) => item.id === event.properties.processID)
+                if (index < 0) continue
+                list.splice(index, 1)
+                if (list.length === 0) delete draft[sessionID]
+              }
+            }),
+          )
+          break
+        }
+
+        case "interactive_terminal.updated": {
+          const info = event.properties.info
+          terminalDeleted.delete(info.id)
+          const list = store.interactive_terminal[info.sessionID]
+          if (!list) {
+            setStore("interactive_terminal", info.sessionID, [{ info, output: "", cursor: 0 }])
+            break
+          }
+          const result = Binary.search(list, info.id, (item) => item.info.id)
+          if (result.found) {
+            setStore("interactive_terminal", info.sessionID, result.index, "info", reconcile(info))
+            break
+          }
+          setStore(
+            "interactive_terminal",
+            info.sessionID,
+            produce((draft) => {
+              draft.splice(result.index, 0, { info, output: "", cursor: 0 })
+            }),
+          )
+          break
+        }
+
+        case "interactive_terminal.data": {
+          const list = store.interactive_terminal[event.properties.sessionID]
+          if (!list) break
+          const result = Binary.search(list, event.properties.terminalID, (item) => item.info.id)
+          if (!result.found) break
+          setStore(
+            "interactive_terminal",
+            event.properties.sessionID,
+            result.index,
+            produce((draft) => {
+              draft.output = appendTerminalOutput(draft.output, event.properties.data)
+              draft.cursor = event.properties.cursor
+            }),
+          )
+          break
+        }
+
+        case "interactive_terminal.deleted": {
+          terminalDeleted.add(event.properties.terminalID)
+          const list = store.interactive_terminal[event.properties.sessionID]
+          if (!list) break
+          const result = Binary.search(list, event.properties.terminalID, (item) => item.info.id)
+          if (!result.found) break
+          setStore(
+            "interactive_terminal",
             event.properties.sessionID,
             produce((draft) => {
               draft.splice(result.index, 1)
@@ -398,6 +495,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           if (!parts) break
           const result = Binary.search(parts, event.properties.partID, (p) => p.id)
           if (!result.found) break
+          touchPart(event.properties.sessionID, event.properties.partID)
           setStore(
             "part",
             event.properties.messageID,
@@ -487,6 +585,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           break
         }
         case "message.updated.1": {
+          touchMessage(event.data.info.sessionID, event.data.info.id) // kilocode_change - hydration tracker
           const info = strip(event.data.info)
           const messages = store.message[info.sessionID]
           if (!messages) {
@@ -526,6 +625,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           break
         }
         case "message.removed.1": {
+          touchMessage(event.data.sessionID, event.data.messageID) // kilocode_change - hydration tracker
           const messages = store.message[event.data.sessionID]
           if (!messages) break
           const match = Binary.search(messages, event.data.messageID, (m) => m.id)
@@ -540,6 +640,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           break
         }
         case "message.part.updated.1": {
+          touchPart(event.data.sessionID, event.data.part.id) // kilocode_change - hydration tracker
           const part = event.data.part
           const parts = store.part[part.messageID]
           if (!parts) {
@@ -561,6 +662,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           break
         }
         case "message.part.removed.1": {
+          touchPart(event.data.sessionID, event.data.partID) // kilocode_change - hydration tracker
           const parts = store.part[event.data.messageID]
           if (!parts) break
           const match = Binary.search(parts, event.data.partID, (p) => p.id)
@@ -587,7 +689,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         fullSyncedSessions.clear()
         // kilocode_change start
         deleted.clear()
+        terminalDeleted.clear()
         setStore("background_process", {})
+        setStore("interactive_terminal", {})
         // kilocode_change end
         syncedWorkspace = workspace
       }
@@ -695,16 +799,42 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
               setStore(
                 "background_process",
                 produce((draft) => {
+                  const items = new Map(
+                    Object.values(draft)
+                      .flat()
+                      .map((item) => [item.id, item]),
+                  )
+                  for (const item of Object.values(next).flat()) {
+                    if (deleted.has(item.id)) continue
+                    const prev = items.get(item.id)
+                    if (!prev || item.time.updated > prev.time.updated) items.set(item.id, item)
+                  }
+                  for (const sessionID of Object.keys(draft)) delete draft[sessionID]
+                  for (const item of items.values()) {
+                    if (!draft[item.sessionID]) draft[item.sessionID] = []
+                    draft[item.sessionID].push(item)
+                  }
+                  for (const list of Object.values(draft)) list.sort((a, b) => a.id.localeCompare(b.id))
+                }),
+              )
+            }),
+            sdk.client.interactiveTerminal.list({ workspace }).then((x) => {
+              const next: Record<string, InteractiveTerminalSnapshot[]> = {}
+              for (const item of x.data ?? []) {
+                if (terminalDeleted.has(item.info.id)) continue
+                if (!next[item.info.sessionID]) next[item.info.sessionID] = []
+                next[item.info.sessionID].push(item)
+              }
+              for (const list of Object.values(next)) list.sort((a, b) => a.info.id.localeCompare(b.info.id))
+              setStore(
+                "interactive_terminal",
+                produce((draft) => {
                   for (const [sessionID, list] of Object.entries(next)) {
-                    const items = new Map((draft[sessionID] ?? []).map((item) => [item.id, item]))
+                    const items = new Map((draft[sessionID] ?? []).map((item) => [item.info.id, item]))
                     for (const item of list) {
-                      if (deleted.has(item.id)) continue
-                      const prev = items.get(item.id)
-                      if (!prev || item.time.updated >= prev.time.updated) items.set(item.id, item)
+                      if (!items.has(item.info.id)) items.set(item.info.id, item)
                     }
-                    const value = Array.from(items.values()).toSorted((a, b) => a.id.localeCompare(b.id))
-                    if (value.length === 0) delete draft[sessionID]
-                    else draft[sessionID] = value
+                    draft[sessionID] = Array.from(items.values()).toSorted((a, b) => a.info.id.localeCompare(b.info.id))
                   }
                 }),
               )
@@ -814,28 +944,76 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         },
         async sync(sessionID: string) {
           if (fullSyncedSessions.has(sessionID)) return
-          const [session, messages, todo, diff] = await Promise.all([
-            sdk.client.session.get({ sessionID }, { throwOnError: true }),
-            sdk.client.session.messages({ sessionID, limit: 100 }),
-            sdk.client.session.todo({ sessionID }),
-            sdk.client.session.diff({ sessionID }),
-          ])
-          setStore(
-            produce((draft) => {
-              const match = Binary.search(draft.session, sessionID, (s) => s.id)
-              if (match.found) draft.session[match.index] = session.data!
-              if (!match.found) draft.session.splice(match.index, 0, session.data!)
-              draft.todo[sessionID] = todo.data ?? []
-              const infos: (typeof draft.message)[string] = []
-              for (const message of messages.data ?? []) {
-                infos.push(strip(message.info)) // kilocode_change
-                draft.part[message.info.id] = message.parts
-              }
-              draft.message[sessionID] = infos
-              draft.session_diff[sessionID] = diff.data ?? []
-            }),
-          )
-          fullSyncedSessions.add(sessionID)
+          const syncing = syncingSessions.get(sessionID)
+          if (syncing) return syncing
+          const tracker = { messages: new Set<string>(), parts: new Set<string>() }
+          hydratingSessions.set(sessionID, tracker)
+          const task = (async () => {
+            const [session, messages, todo, diff] = await Promise.all([
+              sdk.client.session.get({ sessionID }, { throwOnError: true }),
+              sdk.client.session.messages({ sessionID, limit: 100 }),
+              sdk.client.session.todo({ sessionID }),
+              sdk.client.session.diff({ sessionID }),
+            ])
+            setStore(
+              produce((draft) => {
+                const match = Binary.search(draft.session, sessionID, (s) => s.id)
+                if (match.found) draft.session[match.index] = session.data!
+                if (!match.found) draft.session.splice(match.index, 0, session.data!)
+                draft.todo[sessionID] = todo.data ?? []
+                const currentMessages = draft.message[sessionID] ?? []
+                const infos = (messages.data ?? []).flatMap((message) => {
+                  if (!tracker.messages.has(message.info.id)) return [strip(message.info)] // kilocode_change
+                  const current = currentMessages.find((item) => item.id === message.info.id)
+                  return current ? [current] : []
+                })
+                infos.push(
+                  ...currentMessages.filter(
+                    (message) => tracker.messages.has(message.id) && !infos.some((item) => item.id === message.id),
+                  ),
+                )
+                const removed = infos.slice(0, -100)
+                const visible = infos.slice(-100)
+                const visibleIDs = new Set(visible.map((message) => message.id))
+                for (const message of messages.data ?? []) {
+                  if (!visibleIDs.has(message.info.id)) {
+                    delete draft.part[message.info.id]
+                    continue
+                  }
+                  const currentParts = draft.part[message.info.id] ?? []
+                  const parts = message.parts.flatMap((part) => {
+                    const current = currentParts.find((item) => item.id === part.id)
+                    if (tracker.parts.has(part.id)) return current ? [current] : []
+                    if (
+                      current &&
+                      (part.type === "text" || part.type === "reasoning") &&
+                      (current.type === "text" || current.type === "reasoning") &&
+                      part.text.length === 0 &&
+                      current.text.length > 0
+                    ) {
+                      return [current]
+                    }
+                    return [part]
+                  })
+                  parts.push(
+                    ...currentParts.filter(
+                      (part) => tracker.parts.has(part.id) && !parts.some((item) => item.id === part.id),
+                    ),
+                  )
+                  draft.part[message.info.id] = parts
+                }
+                for (const message of removed) delete draft.part[message.id]
+                draft.message[sessionID] = visible
+                draft.session_diff[sessionID] = diff.data ?? []
+              }),
+            )
+            fullSyncedSessions.add(sessionID)
+          })().finally(() => {
+            syncingSessions.delete(sessionID)
+            hydratingSessions.delete(sessionID)
+          })
+          syncingSessions.set(sessionID, task)
+          return task
         },
         evict, // kilocode_change
       },

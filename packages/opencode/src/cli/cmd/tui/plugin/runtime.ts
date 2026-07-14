@@ -39,6 +39,7 @@ import { internalTuiPlugins, type InternalTuiPlugin } from "./internal"
 import { setupSlots, Slot as View } from "./slots"
 import type { HostPluginApi, HostSlots } from "./slots"
 import { ConfigPlugin } from "@/config/plugin"
+import { ConfigPluginV1 } from "@opencode-ai/core/v1/config/plugin"
 import { createCommandShim } from "./command-shim"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { Effect } from "effect"
@@ -46,7 +47,7 @@ import { Effect } from "effect"
 ensureRuntimePluginSupport({ additional: keymapRuntimeModules })
 
 type PluginLoad = {
-  options: ConfigPlugin.Options | undefined
+  options: ConfigPluginV1.Options | undefined
   spec: string
   target: string
   retry: boolean
@@ -254,10 +255,13 @@ function createThemeInstaller(
     const src = Filesystem.resolveFilePath(root, file)
     const name = path.basename(src, path.extname(src))
     const source_dir = path.dirname(meta.source)
+    // kilocode_change start - install local themes into supported Kilo config directories
+    const base = path.basename(source_dir)
     const local_dir =
-      path.basename(source_dir) === ".opencode"
+      base === ".kilo" || base === ".kilocode"
         ? path.join(source_dir, "themes")
-        : path.join(source_dir, ".opencode", "themes")
+        : path.join(source_dir, ".kilo", "themes")
+    // kilocode_change end
     const dest_dir = meta.scope === "local" ? local_dir : path.join(Global.Path.config, "themes")
     const dest = path.join(dest_dir, `${name}.json`)
     const stat = await Filesystem.statAsync(src)
@@ -843,7 +847,7 @@ function defaultPluginOrigin(state: RuntimeState, spec: string): ConfigPlugin.Or
   return {
     spec,
     scope: "local",
-    source: state.api.state.path.config || path.join(state.directory, ".opencode", "tui.json"),
+    source: state.api.state.path.config || path.join(state.directory, ".kilo", "tui.json"), // kilocode_change
   }
 }
 
@@ -995,7 +999,7 @@ async function installPluginBySpec(
   const tui = manifest.targets.find((item) => item.kind === "tui")
   if (tui) {
     const file = patch.items.find((item) => item.kind === "tui")?.file
-    const next = tui.opts ? ([spec, tui.opts] as ConfigPlugin.Spec) : spec
+    const next = tui.opts ? ([spec, tui.opts] as ConfigPluginV1.Spec) : spec
     state.pending.set(spec, {
       spec: next,
       scope: global ? "global" : "local",

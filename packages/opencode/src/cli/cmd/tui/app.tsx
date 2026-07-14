@@ -33,6 +33,7 @@ import { SDKProvider, useSDK } from "@tui/context/sdk"
 import { StartupLoading } from "@tui/component/startup-loading"
 import { SyncProvider, useSync } from "@tui/context/sync"
 import { SyncProviderV2 } from "@tui/context/sync-v2"
+import { NudgeProvider } from "@/kilocode/cli/cmd/tui/context/nudge" // kilocode_change
 import { LocalProvider, useLocal } from "@tui/context/local"
 import { DialogModel } from "@tui/component/dialog-model"
 import { useConnected } from "@tui/component/use-connected"
@@ -267,15 +268,19 @@ async function mountTui(input: TuiInput & { keymap: ReturnType<typeof createDefa
                                 <LocalProvider>
                                   <PromptStashProvider>
                                     <DialogProvider>
-                                      <FrecencyProvider>
-                                        <PromptHistoryProvider>
-                                          <PromptRefProvider>
-                                            <EditorContextProvider>
-                                              <App onSnapshot={input.onSnapshot} />
-                                            </EditorContextProvider>
-                                          </PromptRefProvider>
-                                        </PromptHistoryProvider>
-                                      </FrecencyProvider>
+                                      {/* kilocode_change start */}
+                                      <NudgeProvider>
+                                        <FrecencyProvider>
+                                          <PromptHistoryProvider>
+                                            <PromptRefProvider>
+                                              <EditorContextProvider>
+                                                <App onSnapshot={input.onSnapshot} />
+                                              </EditorContextProvider>
+                                            </PromptRefProvider>
+                                          </PromptHistoryProvider>
+                                        </FrecencyProvider>
+                                      </NudgeProvider>
+                                      {/* kilocode_change end */}
                                     </DialogProvider>
                                   </PromptStashProvider>
                                 </LocalProvider>
@@ -649,6 +654,8 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         suggested: true,
         category: "Agent",
         slashName: "models",
+        // Bias /mo toward /models over /move without changing global fuzzy scoring.
+        slashAliases: ["mo"],
         run: () => {
           dialog.replace(() => <DialogModel />)
         },
@@ -731,6 +738,13 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         hidden: local.model.variant.list().length === 0,
         slashName: "variants",
         run: () => {
+          if (local.model.variant.list().length === 0) {
+            return toast.show({
+              title: "No variants available",
+              message: "The current model does not support any variants.",
+              variant: "info",
+            })
+          }
           dialog.replace(() => <DialogVariant />)
         },
       },
@@ -982,11 +996,13 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
 
   KiloApp.init() // kilocode_change
 
-  event.on(TuiEvent.CommandExecute.type, (evt) => {
+  event.on(TuiEvent.CommandExecute.type, (evt, { workspace }) => {
+    if (workspace !== project.workspace.current()) return
     keymap.dispatchCommand(evt.properties.command)
   })
 
-  event.on(TuiEvent.ToastShow.type, (evt) => {
+  event.on(TuiEvent.ToastShow.type, (evt, { workspace }) => {
+    if (workspace !== project.workspace.current()) return
     toast.show({
       title: evt.properties.title,
       message: evt.properties.message,
@@ -995,7 +1011,8 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     })
   })
 
-  event.on(TuiEvent.SessionSelect.type, (evt) => {
+  event.on(TuiEvent.SessionSelect.type, (evt, { workspace }) => {
+    if (workspace !== project.workspace.current()) return
     route.navigate({
       type: "session",
       sessionID: evt.properties.sessionID,
@@ -1012,7 +1029,8 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     }
   })
 
-  event.on("session.error", (evt) => {
+  event.on("session.error", (evt, { workspace }) => {
+    if (workspace !== project.workspace.current()) return
     const error = evt.properties.error
     if (error && typeof error === "object" && error.name === "MessageAbortedError") return
     if (KiloApp.handleSessionError(error, toast)) return // kilocode_change
@@ -1107,7 +1125,9 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
               <Home />
             </Match>
             <Match when={route.data.type === "session"}>
-              <Session />
+              <Show when={route.data.type === "session" ? route.data.sessionID : undefined} keyed>
+                {(_) => <Session />}
+              </Show>
             </Match>
             {/* kilocode_change start */}
             <Match when={route.data.type === "kiloclaw"}>

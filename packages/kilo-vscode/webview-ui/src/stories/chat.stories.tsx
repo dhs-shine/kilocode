@@ -13,12 +13,15 @@ import { StoryProviders, defaultMockData, mockSessionValue } from "./StoryProvid
 import { ChatView } from "../components/chat/ChatView"
 import { ErrorDisplay } from "../components/chat/ErrorDisplay"
 import { TaskHeader } from "../components/chat/TaskHeader"
+import { TaskUsage } from "../components/chat/TaskUsage"
 import { QuestionDock } from "../components/chat/QuestionDock"
 import { SuggestBar } from "../components/chat/SuggestBar"
 import { MessageList } from "../components/chat/MessageList"
 import { VscodeUserMessage } from "../components/chat/VscodeUserMessage"
 import { TurnOutcome } from "../components/shared/TurnOutcome"
 import { SessionContext } from "../context/session"
+import { MemoryContext, type MemoryContextValue } from "../context/memory"
+import { ProviderContext } from "../context/provider"
 import { ServerContext } from "../context/server"
 import { WorktreeModeProvider } from "../context/worktree-mode"
 import type {
@@ -27,6 +30,7 @@ import type {
   Part,
   QuestionRequest,
   ReviewComment,
+  SessionModelUsage,
   SuggestionRequest,
   TodoItem,
 } from "../types/messages"
@@ -149,7 +153,7 @@ const reviewSuggestion: SuggestionRequest = {
   id: "s-review-001",
   sessionID: SESSION_ID,
   text: "Start a code review of uncommitted changes?",
-  actions: [{ label: "Start review", description: "Run a local review now", prompt: "/local-review-uncommitted" }],
+  actions: [{ label: "Start review", description: "Run a local review now", prompt: "/review uncommitted" }],
   tool: { messageID: "asst-msg-002", callID: "call-suggest-001" },
 }
 
@@ -983,6 +987,130 @@ export const TaskHeaderWithTodosAllDone: Story = {
       </StoryProviders>
     )
   },
+}
+
+const mockMemory: MemoryContextValue = {
+  status: () => ({}) as any,
+  show: () => undefined,
+  loading: () => false,
+  pending: () => false,
+  error: () => undefined,
+  enabled: () => true,
+  sessionTokens: () => 533,
+  totalTokens: () => 12_400,
+  refresh: () => {},
+  showMemory: () => {},
+  enable: () => {},
+  disable: () => {},
+  auto: () => {},
+  rebuild: () => {},
+  remember: () => {},
+  forget: () => {},
+}
+
+export const TaskHeaderWithMemory: Story = {
+  name: "TaskHeader — with memory enabled",
+  render: () => {
+    const session = {
+      ...mockSessionValue({ id: SESSION_ID, status: "idle" }),
+      messages: () => [{ id: "msg-001" }] as any[],
+      currentSession: () => ({
+        id: SESSION_ID,
+        title: "Integrate project memory",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }),
+    }
+    return (
+      <StoryProviders sessionID={SESSION_ID} status="idle" noPadding>
+        <SessionContext.Provider value={session as any}>
+          <MemoryContext.Provider value={mockMemory}>
+            <div style={{ width: "380px" }}>
+              <TaskHeader />
+            </div>
+          </MemoryContext.Provider>
+        </SessionContext.Provider>
+      </StoryProviders>
+    )
+  },
+}
+
+const usageTokens = { input: 25_900_000, output: 52_000, reasoning: 4_100, cache: { read: 10_500_000, write: 80_000 } }
+const usageData = {
+  sessionIDs: [SESSION_ID, "story-subagent-001"],
+  totals: {
+    steps: 4,
+    cost: 0.097214,
+    tokens: { input: 25_908_400, output: 52_710, reasoning: 4_220, cache: { read: 10_514_000, write: 80_900 } },
+  },
+  models: [
+    { providerID: "kilo", modelID: "qwen/qwen3.7-plus-20260602", steps: 3, cost: 0.067214, tokens: usageTokens },
+    {
+      providerID: "minimax",
+      modelID: "minimax-m3",
+      steps: 1,
+      cost: 0.03,
+      tokens: { input: 8_400, output: 710, reasoning: 120, cache: { read: 14_000, write: 900 } },
+    },
+  ],
+} satisfies SessionModelUsage
+const usageProviders = {
+  kilo: {
+    id: "kilo",
+    name: "Kilo Gateway",
+    models: {
+      "qwen/qwen3.7-plus": { id: "qwen/qwen3.7-plus", name: "Qwen: Qwen3.7 Plus (20% off)" },
+    },
+  },
+  minimax: {
+    id: "minimax",
+    name: "MiniMax",
+    models: { "minimax-m3": { id: "minimax-m3", name: "MiniMax M3" } },
+  },
+}
+const usageProvider = {
+  providers: () => usageProviders,
+  connected: () => ["kilo", "minimax"],
+  defaults: () => ({}),
+  defaultSelection: () => ({ providerID: "kilo", modelID: "qwen/qwen3.7-plus" }),
+  models: () => [],
+  findModel: () => undefined,
+  authMethods: () => ({}),
+  authStates: () => ({}),
+  isModelValid: () => true,
+}
+
+const usageStory = (open: boolean) => () => (
+  <StoryProviders sessionID={SESSION_ID} status="idle" noPadding>
+    <ProviderContext.Provider value={usageProvider as any}>
+      <div style={{ "max-height": "560px", overflow: "auto" }}>
+        <TaskUsage
+          defaultOpen={open}
+          usage={usageData}
+          tokens={{
+            input: usageData.totals.tokens.input,
+            output: usageData.totals.tokens.output,
+            cached: usageData.totals.tokens.cache.read,
+          }}
+        />
+      </div>
+    </ProviderContext.Provider>
+  </StoryProviders>
+)
+
+export const TaskUsageCollapsed: Story = {
+  name: "Task usage — collapsed",
+  render: usageStory(false),
+}
+
+export const TaskUsageExpanded: Story = {
+  name: "Task usage — provider and model breakdown",
+  render: usageStory(true),
+}
+
+export const TaskUsageExpanded200: Story = {
+  name: "Task usage — provider and model breakdown, narrow",
+  render: usageStory(true),
 }
 
 // ---------------------------------------------------------------------------
