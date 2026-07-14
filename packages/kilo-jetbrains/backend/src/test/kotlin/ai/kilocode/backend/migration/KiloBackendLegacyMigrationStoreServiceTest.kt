@@ -89,4 +89,17 @@ class KiloBackendLegacyMigrationStoreServiceTest {
         assertEquals(true, KiloBackendLegacyMigrationStoreService.resetStatus(log, env))
         assertNull(KiloBackendLegacyMigrationStoreService.status(log, env))
     }
+
+    @Test
+    fun `reset status clears adopted inline status`() {
+        val dir = Files.createTempDirectory("kilo-migration-config").toFile()
+        val env = mapOf("KILO_CONFIG_DIR" to dir.absolutePath)
+        val log = TestLog()
+        val store = KiloBackendLegacyMigrationStoreService.store(log, env)
+        store.mark(LegacyMigrationStatus.Skipped)
+
+        assertEquals(LegacyMigrationStatus.Skipped, KiloBackendLegacyMigrationStoreService.status(log, env))
+        assertEquals(true, KiloBackendLegacyMigrationStoreService.resetStatus(log, env))
+        assertNull(KiloBackendLegacyMigrationStoreService.status(log, env))
+    }
 }

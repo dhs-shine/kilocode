@@ -21,6 +21,8 @@ class FakeMigrationRpcApi : KiloMigrationRpcApi {
 
     var statusResult: LegacyMigrationStatusDto? = null
     var detectResult: LegacyMigrationDetectionDto = emptyDetection()
+    var skipError: Exception? = null
+    var resumeError: Exception? = null
     val events = MutableSharedFlow<LegacyMigrationEventDto>(extraBufferCapacity = 64)
 
     val statusCalls = mutableListOf<Unit>()
@@ -60,11 +62,13 @@ class FakeMigrationRpcApi : KiloMigrationRpcApi {
     override suspend fun skip() {
         assertNotEdt("skip")
         skipCalls.add(Unit)
+        skipError?.let { throw it }
     }
 
     override suspend fun resume() {
         assertNotEdt("resume")
         resumeCalls.add(Unit)
+        resumeError?.let { throw it }
     }
 
     override suspend fun finalize(status: LegacyMigrationStatusDto) {

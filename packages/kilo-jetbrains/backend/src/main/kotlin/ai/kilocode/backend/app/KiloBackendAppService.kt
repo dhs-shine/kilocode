@@ -550,27 +550,34 @@ class KiloBackendAppService private constructor(
     }
 
     private suspend fun detectMigration(): LegacyMigrationDetection? = withContext(Dispatchers.IO) {
-        val http = connection.apiClient ?: run {
-            log.info("Migration check: skipped because CLI HTTP client is not connected")
-            return@withContext null
+        try {
+            val http = connection.apiClient ?: run {
+                log.info("Migration check: skipped because CLI HTTP client is not connected")
+                return@withContext null
+            }
+            log.info("Migration check: started")
+            // Status is only consulted when the in-memory flags do not already block the offer,
+            // preserving the original short-circuit order.
+            val status = if (migrationSuppressed || migrationOffered) null
+            else KiloBackendLegacyMigrationStoreService.status(log)
+            val gate = migrationGate(migrationSuppressed, migrationOffered, status)
+            if (gate != MigrationGate.Proceed) {
+                log.info("Migration check: skipped gate=$gate status=$status")
+                return@withContext null
+            }
+            val source = KiloBackendLegacyMigrationStoreService.resolveSource(log, includeFile = migrationForceRequested)
+            val store = source.store
+            val detection = KiloBackendMigrationManager(http, connection.port).detect(store)
+            log.info("Migration check: completed hasData=${detection.hasData} ${migrationSummary(detection)}")
+            if (!detection.hasData) return@withContext null
+            migrationOffered = true
+            detection
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.warn("Migration check failed: ${e.message}", e)
+            null
         }
-        log.info("Migration check: started")
-        // Status is only consulted when the in-memory flags do not already block the offer,
-        // preserving the original short-circuit order.
-        val status = if (migrationSuppressed || migrationOffered) null
-        else KiloBackendLegacyMigrationStoreService.status(log)
-        val gate = migrationGate(migrationSuppressed, migrationOffered, status)
-        if (gate != MigrationGate.Proceed) {
-            log.info("Migration check: skipped gate=$gate status=$status")
-            return@withContext null
-        }
-        val source = KiloBackendLegacyMigrationStoreService.resolveSource(log, includeFile = migrationForceRequested)
-        val store = source.store
-        val detection = KiloBackendMigrationManager(http, connection.port).detect(store)
-        log.info("Migration check: completed hasData=${detection.hasData} ${migrationSummary(detection)}")
-        if (!detection.hasData) return@withContext null
-        migrationOffered = true
-        detection
     }
 
     private fun migrationSummary(detection: LegacyMigrationDetection): String {

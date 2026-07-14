@@ -158,6 +158,8 @@ class KiloMigrationService internal constructor(
                 call { skip() }
             } catch (e: Exception) {
                 LOG.warn("migration skip failed", e)
+                finishWithError(e.message ?: "Migration skip failed")
+                return@launch
             }
             _state.value = MigrationUiState.Hidden
         }
@@ -176,6 +178,8 @@ class KiloMigrationService internal constructor(
                 call { resume() }
             } catch (e: Exception) {
                 LOG.warn("migration resume failed", e)
+                finishWithError(e.message ?: "Migration resume failed")
+                return@launch
             }
             _state.value = MigrationUiState.Hidden
         }

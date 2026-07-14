@@ -13,6 +13,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.PosixFilePermissions
 
 /** Provides the production [LegacyMigrationStore] backed by the CLI Kilo config directory. */
 @Service(Service.Level.APP)
@@ -40,19 +44,16 @@ class KiloBackendLegacyMigrationStoreService {
         internal fun markStatus(log: KiloLog, status: LegacyMigrationStatus, env: Map<String, String>? = null) {
             val file = fileStore(log, env)
             file.marker.parentFile?.mkdirs()
-            file.marker.writeText(status.name)
+            writePrivate(file.marker, status.name)
             log.info("Migration status: marked status=$status file=${file.marker.absolutePath}")
         }
 
         internal fun resetStatus(log: KiloLog, env: Map<String, String>? = null): Boolean {
             val file = fileStore(log, env)
-            if (!file.marker.exists()) {
-                log.info("Migration status: reset skipped because marker is missing file=${file.marker.absolutePath}")
-                return true
-            }
-            val ok = file.marker.delete()
-            log.info("Migration status: reset marker file=${file.marker.absolutePath} deleted=$ok")
-            return ok
+            val marker = if (file.marker.exists()) file.marker.delete() else true
+            val inline = file.store.clearStatus()
+            log.info("Migration status: reset marker file=${file.marker.absolutePath} deleted=$marker inlineCleared=$inline")
+            return marker && inline
         }
 
         internal fun resolveSource(log: KiloLog, includeFile: Boolean = false): LegacyMigrationSource {
@@ -76,14 +77,42 @@ class KiloBackendLegacyMigrationStoreService {
                 log.info("Migration source: none")
                 return LegacyMigrationSource.None(file.store)
             }
-            val obj = LegacyV5Importer(sources).import()
+            val obj = LegacyV5Importer(sources).import(includeConversations = false)
             if (obj.isEmpty()) {
                 log.info("Migration source: none")
                 return LegacyMigrationSource.None(file.store)
             }
             val store = InMemoryLegacyMigrationStore(obj)
             log.info("Migration source: v5-raw keys=${obj.keys.size} conversations=${(obj["conversations"] as? JsonObject)?.size ?: 0}")
-            return LegacyMigrationSource.V5Raw(store, obj, file.file)
+            return LegacyMigrationSource.V5Raw(store, obj, file.file, sources)
+        }
+
+        internal fun writePrivate(file: File, text: String) {
+            file.parentFile?.mkdirs()
+            val path = file.toPath()
+            if (!Files.exists(path)) {
+                runCatching {
+                    Files.createFile(path, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
+                }.getOrElse {
+                    if (!Files.exists(path)) Files.createFile(path)
+                }
+            }
+            restrict(file)
+            Files.writeString(path, text, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING)
+            restrict(file)
+        }
+
+        private fun restrict(file: File) {
+            val path = file.toPath()
+            runCatching {
+                Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rw-------"))
+            }.getOrElse {
+                file.setReadable(false, false)
+                file.setWritable(false, false)
+                file.setExecutable(false, false)
+                file.setReadable(true, true)
+                file.setWritable(true, true)
+            }
         }
 
         private fun fileStore(log: KiloLog, env: Map<String, String>? = null): FileStore {
@@ -128,6 +157,7 @@ sealed class LegacyMigrationSource(open val store: LegacyMigrationStore) {
         override val store: LegacyMigrationStore,
         val consolidated: JsonObject,
         val file: File,
+        val sources: LegacyV5Sources? = null,
     ) : LegacyMigrationSource(store)
     data class None(override val store: LegacyMigrationStore) : LegacyMigrationSource(store)
 }
@@ -150,6 +180,18 @@ class LegacySettingsFileMigrationStore(
         val root = read().orEmpty().toMutableMap()
         root[STATUS] = JsonPrimitive(status.name)
         write(JsonObject(root))
+    }
+
+    fun clearStatus(): Boolean {
+        val root = read()?.toMutableMap() ?: return true
+        if (root.remove(STATUS) == null) return true
+        return runCatching {
+            write(JsonObject(root))
+            true
+        }.getOrElse {
+            warn("Failed to clear migration status at ${file.absolutePath}", it)
+            false
+        }
     }
 
     override fun providerProfilesRaw(): String? = string("providerProfiles")
@@ -203,21 +245,26 @@ class LegacySettingsFileMigrationStore(
     }
 
     private fun write(root: JsonObject) {
-        file.parentFile?.mkdirs()
-        file.writeText(json.encodeToString(JsonObject.serializer(), root))
+        KiloBackendLegacyMigrationStoreService.writePrivate(file, json.encodeToString(JsonObject.serializer(), root))
     }
 }
 
 fun materializeLegacyMigrationSource(
     source: LegacyMigrationSource,
     log: KiloLog? = null,
+    sessions: Set<String>? = null,
 ): LegacyMigrationStore = when (source) {
     is LegacyMigrationSource.FileBacked -> source.store
     is LegacyMigrationSource.None -> source.store
     is LegacyMigrationSource.V5Raw -> {
+        val root = source.sources?.let { LegacyV5Importer(it).import(includeConversations = true, sessions = sessions) }
+            ?: source.consolidated
         source.file.parentFile?.mkdirs()
         log?.info("Migration source: writing regenerated legacy settings JSON file=${source.file.absolutePath}")
-        source.file.writeText(LegacySettingsFileMigrationStore.json.encodeToString(JsonObject.serializer(), source.consolidated))
+        KiloBackendLegacyMigrationStoreService.writePrivate(
+            source.file,
+            LegacySettingsFileMigrationStore.json.encodeToString(JsonObject.serializer(), root),
+        )
         log?.info("Migration source: regenerated legacy settings JSON file=${source.file.absolutePath}")
         LegacySettingsFileMigrationStore(source.file)
     }

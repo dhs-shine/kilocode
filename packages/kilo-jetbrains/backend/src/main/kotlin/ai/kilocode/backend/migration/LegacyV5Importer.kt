@@ -21,25 +21,31 @@ class LegacyV5Importer(private val src: LegacyV5Sources) {
         private val json = Json { ignoreUnknownKeys = true }
     }
 
-    fun import(): JsonObject {
+    fun import(includeConversations: Boolean = true, sessions: Set<String>? = null): JsonObject {
         val secrets = parseObject(src.secretsJson())
         val secret = entry(secrets, PROVIDERS)
         val state = parseGlobalState()
         val history = state?.get("taskHistory")?.content()
         val prompts = state?.get("customModePrompts")?.content()
-        val scanned = if (history == null) scanHistory() else emptyList()
+        val stored = historyIds(history)
+        val scanned = if (stored.isEmpty()) scanHistory() else emptyList()
         val scanRaw = scanned.takeIf { it.isNotEmpty() }?.let { json.encodeToString(kotlinx.serialization.json.JsonArray.serializer(), buildJsonArray { it.forEach(::add) }) }
-        val ids = historyIds(history).ifEmpty { scanned.mapNotNull { it["id"]?.jsonPrimitive?.content } }
-        val conv = ids.mapNotNull { id -> src.taskConversationFile(id)?.let { id to JsonPrimitive(it) } }.toMap()
+        val ids = stored.ifEmpty { scanned.mapNotNull { it["id"]?.content() } }
+        val wanted = sessions ?: ids.toSet()
+        val conv = ids.mapNotNull { id ->
+            if (id !in wanted) return@mapNotNull null
+            val raw = if (includeConversations) src.taskConversationFile(id) ?: return@mapNotNull null else ""
+            id to JsonPrimitive(raw)
+        }.toMap()
 
         return buildJsonObject {
-            secret?.get(PROVIDERS)?.jsonPrimitive?.content?.let { put("providerProfiles", it) }
+            secret?.get(PROVIDERS)?.content()?.let { put("providerProfiles", it) }
             oauth(secret).takeIf { it.isNotEmpty() }?.let { put("oauth", JsonObject(it)) }
             src.mcpSettingsFile()?.let { put("mcpSettings", it) }
             src.customModesFile()?.let { put("customModes", it) }
             state?.let { put("globalState", it) }
             prompts?.let { put("customModePrompts", it) }
-            (history ?: scanRaw)?.let { put("taskHistory", it) }
+            (history?.takeIf { stored.isNotEmpty() } ?: scanRaw)?.let { put("taskHistory", it) }
             if (conv.isNotEmpty()) put("conversations", JsonObject(conv))
         }
     }
@@ -94,13 +100,14 @@ class LegacyV5Importer(private val src: LegacyV5Sources) {
         secret ?: return emptyMap()
         return secret.entries
             .filter { it.key == CODEX || it.key.contains("oauth", ignoreCase = true) }
-            .associate { it.key to JsonPrimitive(it.value.jsonPrimitive.content) }
+            .mapNotNull { it.value.content()?.let { value -> it.key to JsonPrimitive(value) } }
+            .toMap()
     }
 
     private fun historyIds(raw: String?): List<String> {
         raw ?: return emptyList()
         val arr = runCatching { json.parseToJsonElement(raw) }.getOrNull() as? kotlinx.serialization.json.JsonArray ?: return emptyList()
-        return arr.mapNotNull { item -> (item as? JsonObject)?.get("id")?.jsonPrimitive?.content }
+        return arr.mapNotNull { item -> (item as? JsonObject)?.get("id")?.content() }
     }
 
     private fun workspace(raw: String): String? {
@@ -112,7 +119,7 @@ class LegacyV5Importer(private val src: LegacyV5Sources) {
         val arr = runCatching { json.parseToJsonElement(raw).jsonArray }.getOrNull() ?: return id
         val text = arr.firstNotNullOfOrNull { item ->
             val msg = item as? JsonObject ?: return@firstNotNullOfOrNull null
-            if (msg["role"]?.jsonPrimitive?.content != "user") return@firstNotNullOfOrNull null
+            if (msg["role"]?.content() != "user") return@firstNotNullOfOrNull null
             contentText(msg["content"])
         }
         return text?.let(::cleanTitle)?.takeIf { it.isNotBlank() } ?: id
@@ -134,7 +141,7 @@ class LegacyV5Importer(private val src: LegacyV5Sources) {
         val arr = runCatching { elem.jsonArray }.getOrNull() ?: return null
         return arr.firstNotNullOfOrNull { block ->
             val obj = block as? JsonObject ?: return@firstNotNullOfOrNull null
-            obj["text"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+            obj["text"]?.content()?.takeIf { it.isNotBlank() }
         }
     }
 

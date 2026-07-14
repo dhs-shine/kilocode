@@ -4,6 +4,7 @@ import ai.kilocode.backend.testing.TestLog
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermissions
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -28,6 +29,8 @@ class LegacyMigrationMaterializeTest {
 
         val store = materializeLegacyMigrationSource(source, log)
         assertTrue(file.isFile)
+        val perms = runCatching { Files.getPosixFilePermissions(file.toPath()) }.getOrNull()
+        if (perms != null) assertEquals(PosixFilePermissions.fromString("rw-------"), perms)
         assertEquals("{\"currentApiConfigName\":\"p\",\"apiConfigs\":{}}", store.providerProfilesRaw())
 
         // Re-opening the freshly written file yields the same payload.

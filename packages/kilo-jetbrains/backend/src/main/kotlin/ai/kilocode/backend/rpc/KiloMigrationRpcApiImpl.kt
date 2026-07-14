@@ -71,7 +71,8 @@ class KiloMigrationRpcApiImpl : KiloMigrationRpcApi {
         val source = withContext(Dispatchers.IO) { storeService.resolveSource(includeFile = app.forceMigrationRequested()) }
         return channelFlow {
             withContext(Dispatchers.IO) {
-                val store = materializeLegacyMigrationSource(source, LOG)
+                val ids = domainSelections.sessions.map { it.id }.toSet()
+                val store = materializeLegacyMigrationSource(source, LOG, ids)
                 val sink = object : LegacyMigrationSink {
                     override fun item(progress: ai.kilocode.backend.migration.LegacyMigrationItemProgress) {
                         LOG.info("Migration RPC item: item=${progress.item} status=${progress.status} message=${progress.message}")
@@ -104,10 +105,7 @@ class KiloMigrationRpcApiImpl : KiloMigrationRpcApi {
 
     override suspend fun skip() {
         LOG.info("Migration RPC skip: marking skipped")
-        val source = withContext(Dispatchers.IO) { storeService.resolveSource(includeFile = app.forceMigrationRequested()) }
-        val store = materializeLegacyMigrationSource(source, LOG)
         withContext(Dispatchers.IO) {
-            store.mark(LegacyMigrationStatus.Skipped)
             storeService.markStatus(LegacyMigrationStatus.Skipped)
         }
         app.resumeAfterMigration()

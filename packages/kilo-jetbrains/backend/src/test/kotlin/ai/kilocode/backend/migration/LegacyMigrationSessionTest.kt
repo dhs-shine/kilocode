@@ -258,6 +258,24 @@ class LegacyMigrationSessionTest {
     }
 
     @Test
+    fun `assistant parent ids are relinked after dropped tool result turns`() {
+        val conv = """[
+            {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"list_files","input":{"path":"."}}]},
+            {"role":"user","content":[{"type":"tool_result","tool_use_id":"call-1","content":[{"type":"text","text":"done"}]}]},
+            {"role":"assistant","content":"Next step"}
+        ]"""
+        val parsed = LegacySessionParser.parseSession("task-relink", conv)
+        val first = LegacySessionIds.createMessageId("task-relink", 0)
+        val dropped = LegacySessionIds.createMessageId("task-relink", 1)
+        val second = LegacySessionIds.createMessageId("task-relink", 2)
+        val assistant = parsed.messages.single { it["id"]!!.jsonPrimitive.content == second }
+
+        assertEquals(2, parsed.messages.size)
+        assertFalse(parsed.messages.any { it["id"]!!.jsonPrimitive.content == dropped })
+        assertEquals(first, assistant["data"]!!.jsonObject["parentID"]!!.jsonPrimitive.content)
+    }
+
+    @Test
     fun `todo tool keeps structured todo list`() {
         val conv = """[
             {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"update_todo_list","input":{"todos":[

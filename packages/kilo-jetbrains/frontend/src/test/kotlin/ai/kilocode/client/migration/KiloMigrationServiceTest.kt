@@ -104,6 +104,20 @@ class KiloMigrationServiceTest : BasePlatformTestCase() {
         assertEquals(MigrationUiState.Hidden, service.state.value)
     }
 
+    fun `test later keeps wizard visible when resume fails`() {
+        app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
+        rpc.resumeError = IllegalStateException("backend unavailable")
+        settle()
+
+        service.later()
+        settle()
+
+        val state = service.state.value as MigrationUiState.Needed
+        assertEquals(1, rpc.resumeCalls.size)
+        assertEquals(MigrationUiPhase.error, state.phase)
+        assertEquals("backend unavailable", state.results.single().message)
+    }
+
     fun `test finish with kept source marks completed without cleanup`() {
         app.value = KiloAppStateDto(KiloAppStatusDto.MIGRATION_REQUIRED, migration = sampleDetection())
         settle()
