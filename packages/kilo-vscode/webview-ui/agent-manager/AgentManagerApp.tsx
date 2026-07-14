@@ -1088,6 +1088,7 @@ const AgentManagerContent: Component = () => {
       else if (msg.action === "closeWorktree") closeSelectedWorktree()
       else if (msg.action === "showShortcuts") handleShowKeyboardShortcuts()
       else if (msg.action === "focusInput") window.dispatchEvent(new Event("focusPrompt"))
+      else if (msg.action === "focusSearch") window.dispatchEvent(new CustomEvent("focusTranscriptSearch"))
       else if (msg.action === "newTerminal") termHandlers.requestNew()
       else if (msg.action === "cycleAgentMode" && document.hasFocus()) cycleAgent(1)
       else if (msg.action === "cyclePreviousAgentMode" && document.hasFocus()) cycleAgent(-1)

@@ -21,6 +21,8 @@ interface TranscriptRowViewProps {
   /** id of the part (tool call/reasoning block) containing the current chat
    * search match within this row, if any. */
   activeSearchPartID?: string
+  /** For a multi-file apply_patch match, the specific file within that part. */
+  activeSearchPartFile?: string
 }
 
 export const TranscriptRowView: Component<TranscriptRowViewProps> = (props) => {
@@ -82,6 +84,7 @@ export const TranscriptRowView: Component<TranscriptRowViewProps> = (props) => {
               parts={row().parts as unknown as SDKPart[]}
               showAssistantCopyPartID={row().copy}
               forceOpenPartID={props.activeSearchPartID}
+              forceOpenFile={props.activeSearchPartFile}
               feedback={{
                 enabled: feedback.telemetryEnabled(),
                 rating: feedback.getRating(row().message.id),

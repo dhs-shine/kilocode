@@ -15,6 +15,23 @@ export function registerCodeActions(
     await vscode.commands.executeCommand("kilo-code.SidebarProvider.focus")
     await provider.waitForReady()
   }
+  // Only the sidebar `provider` branch used to await readiness before
+  // posting. An editor-tab webview or the Agent Manager panel can still be
+  // opening/restoring when one of these commands fires, and postMessage()
+  // does not queue — it silently drops the message if the webview hasn't
+  // installed its listener yet. Wait for the selected target's own
+  // readiness too before posting to it.
+  const revealTarget = async (view: KiloProvider | AgentManagerProvider) => {
+    if (view === provider) {
+      await reveal()
+      return
+    }
+    if (view === agentManager) {
+      await agentManager.waitForReady()
+      return
+    }
+    await view.waitForReady()
+  }
 
   context.subscriptions.push(
     vscode.commands.registerCommand("kilo-code.new.explainCode", async () => {
@@ -70,17 +87,13 @@ export function registerCodeActions(
         selectedText: ctx.selectedText,
       })
       const view = target()
-      if (view === provider) {
-        await reveal()
-      }
+      await revealTarget(view)
       view.postMessage({ type: "appendChatBoxMessage", text: prompt })
     }),
 
     vscode.commands.registerCommand("kilo-code.new.focusChatInput", async () => {
       const view = target()
-      if (view === provider) {
-        await reveal()
-      }
+      await revealTarget(view)
       view.postMessage({ type: "action", action: "focusInput" })
     }),
 
@@ -92,9 +105,7 @@ export function registerCodeActions(
     // webview closes the search bar itself if it's already open.
     vscode.commands.registerCommand("kilo-code.new.toggleChatSearch", async () => {
       const view = target()
-      if (view === provider) {
-        await reveal()
-      }
+      await revealTarget(view)
       view.postMessage({ type: "action", action: "focusSearch" })
     }),
   )

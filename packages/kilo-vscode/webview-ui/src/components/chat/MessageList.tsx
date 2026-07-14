@@ -56,6 +56,11 @@ import {
   stableMessageTurns,
   type MessageTurn,
 } from "../../context/session-queue"
+import { childID } from "../../context/session-utils"
+import { taskResult } from "./task-tool-state"
+import { tr } from "./question-dock-utils"
+import { useData } from "@kilocode/kilo-ui/context/data"
+import { getDirectory as getRawDirectory, getFilename } from "@opencode-ai/core/util/path"
 import {
   partitionRows,
   retainTurn,
@@ -98,6 +103,26 @@ export const MessageList: Component<MessageListProps> = (props) => {
   const language = useLanguage()
   const provider = useProvider()
   const i18n = useI18n()
+  const data = useData()
+
+  // Mirrors message-part.tsx's own (unexported) relativizeProjectPath/
+  // getDirectory exactly, so the directory text indexed here matches what
+  // ToolMetaLine/ToolFileAccordion actually put on screen.
+  function relativizeProjectPath(path: string, directory?: string) {
+    if (!path) return ""
+    if (!directory) return path
+    if (directory === "/") return path
+    if (directory === "\\") return path
+    if (path === directory) return ""
+    const separator = directory.includes("\\") ? "\\" : "/"
+    const prefix = directory.endsWith(separator) ? directory : directory + separator
+    if (!path.startsWith(prefix)) return path
+    return path.slice(directory.length)
+  }
+
+  function getDirectory(path: string | undefined) {
+    return relativizeProjectPath(getRawDirectory(path), data.directory)
+  }
 
   const autoScroll = createAutoScroll({
     working: () => session.status() !== "idle",
@@ -169,7 +194,13 @@ export const MessageList: Component<MessageListProps> = (props) => {
     start: number
     end: number
     partId: string
+    /** For a multi-file apply_patch chunk, the file this range belongs to. */
+    file?: string
   }
+
+  /** A tool-text chunk, optionally attributed to a specific file within a
+   * multi-file tool part (currently only apply_patch's per-file chunks). */
+  type ToolChunk = string | { text: string; file: string }
 
   // Returns the row's full searchable text plus, for every chunk that came
   // from a specific part (tool call/reasoning/text/file), the character
@@ -190,11 +221,11 @@ export const MessageList: Component<MessageListProps> = (props) => {
     const chunks: string[] = []
     const ranges: RowTextRange[] = []
     let pos = 0
-    const push = (text: string, partId: string) => {
+    const push = (text: string, partId: string, file?: string) => {
       if (!text) return
       if (chunks.length > 0) pos += 1 // account for the "\n" chunk joiner below
       chunks.push(text)
-      ranges.push({ start: pos, end: pos + text.length, partId })
+      ranges.push({ start: pos, end: pos + text.length, partId, file })
       pos += text.length
     }
     for (const part of row.parts) {
@@ -213,7 +244,10 @@ export const MessageList: Component<MessageListProps> = (props) => {
           // Stripping it here would search text that no longer matches the
           // literal characters on screen, the same class of mismatch this
           // rewrite fixes elsewhere.
-          for (const chunk of toolText(part)) push(chunk, part.id)
+          for (const chunk of toolText(part)) {
+            if (typeof chunk === "string") push(chunk, part.id)
+            else push(chunk.text, part.id, chunk.file)
+          }
           break
         case "file":
           if (part.filename) push(part.filename, part.id)
@@ -223,8 +257,8 @@ export const MessageList: Component<MessageListProps> = (props) => {
     return { text: chunks.join("\n"), ranges }
   }
 
-  function partIdAt(ranges: RowTextRange[], index: number): string | undefined {
-    return ranges.find((r) => index >= r.start && index < r.end)?.partId
+  function rangeAt(ranges: RowTextRange[], index: number): RowTextRange | undefined {
+    return ranges.find((r) => index >= r.start && index < r.end)
   }
 
   // Markdown link/image URLs are part of the raw source text but are never
@@ -318,17 +352,22 @@ export const MessageList: Component<MessageListProps> = (props) => {
   // exactly one file (message-part.tsx's `single()`) — for a multi-file
   // patch each file's name only appears once, in its own accordion header.
   const DIFF_TOOLS = new Set(["edit", "write"])
-  // todowrite/todoread's renderer resolves the shown list from a fallback
-  // chain (metadata.view.todos, else metadata.todos, else input.todos) —
+  // todowrite's renderer resolves the shown list from a fallback chain
+  // (metadata.view.todos, else metadata.todos, else input.todos) —
   // packages/opencode/src/tool/todo.ts sets metadata.todos to the exact
   // same array as input.todos, and metadata.view.todos to the exact same
   // content again whenever the view is in "full" mode (the common case,
   // see packages/opencode/src/kilocode/todo-view.ts). Recursively collecting
   // both input and metadata would count every todo's text 2-3x even though
   // shown() only ever renders it once.
-  const TODO_TOOLS = new Set(["todowrite", "todoread"])
+  // todoread is deliberately excluded: AssistantMessage.tsx's isRenderable()
+  // only shows a completed part from UPSTREAM_SUPPRESSED_TOOLS when
+  // ToolRegistry has a renderer for it, and only "todowrite" is registered —
+  // a completed todoread never reaches the DOM, so indexing it would count
+  // matches with nothing to highlight or navigate to.
+  const TODO_TOOLS = new Set(["todowrite"])
 
-  function toolText(part: Part & { type: "tool" }): string[] {
+  function toolText(part: Part & { type: "tool" }): ToolChunk[] {
     const state = part.state
     if (state.status === "error") return state.error ? [state.error] : []
     // task's trigger (title "{type} Agent" + input.description subtitle) and
@@ -343,7 +382,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
     if (CONTEXT_GROUP_TOOLS.has(part.tool)) return state.title ? [state.title] : []
     if (part.tool === "bash") return bashText(state)
     if (part.tool === "apply_patch") return applyPatchText(state)
-    if (DIFF_TOOLS.has(part.tool)) return editWriteText(state)
+    if (DIFF_TOOLS.has(part.tool)) return editWriteText(part.tool, state)
     if (TODO_TOOLS.has(part.tool)) return todoText(state)
     const chunks: string[] = []
     if (state.title) chunks.push(state.title)
@@ -353,19 +392,33 @@ export const MessageList: Component<MessageListProps> = (props) => {
     return chunks
   }
 
+  // transcript-search-highlight.ts's scanScope() walks the whole [data-part-
+  // id] subtree for this tool, which includes the ToolTriggerRow's title
+  // ("To-dos") and "completed/total" subtitle alongside each item's content
+  // — indexing only item content undercounts what's actually scanned there,
+  // shifting which range resolveSearchScopes/scanScope picks as "active".
   function todoText(state: Extract<ToolState, { status: "completed" }>): string[] {
     const metadata = state.metadata as { todos?: unknown; view?: unknown } | undefined
     const input = state.input as { todos?: unknown } | undefined
     const view = metadata?.view
     const viewTodos = isTodoView(view) ? view.todos : undefined
-    const todos =
-      viewTodos ??
+    // Matches the renderer's own `todos()` memo (used for the "N/M"
+    // subtitle): metadata.todos, else input.todos — never the (possibly
+    // view-truncated) compact list.
+    const full =
       (Array.isArray(metadata?.todos) ? metadata.todos : undefined) ??
       (Array.isArray(input?.todos) ? input.todos : undefined) ??
       []
-    return (todos as { content?: unknown }[])
-      .map((todo) => todo?.content)
-      .filter((content): content is string => typeof content === "string" && content.length > 0)
+    const shown = viewTodos ?? full
+    const chunks: string[] = [i18n.t("ui.tool.todos")]
+    if (full.length > 0) {
+      const completed = (full as { status?: unknown }[]).filter((t) => t?.status === "completed").length
+      chunks.push(`${completed}/${full.length}`)
+    }
+    for (const content of (shown as { content?: unknown }[]).map((todo) => todo?.content)) {
+      if (typeof content === "string" && content.length > 0) chunks.push(content)
+    }
+    return chunks
   }
 
   function isTodoView(value: unknown): value is { todos?: { content?: unknown }[] } {
@@ -385,6 +438,16 @@ export const MessageList: Component<MessageListProps> = (props) => {
     const type = input?.subagent_type || part.tool
     const chunks = [i18n.t("ui.tool.agent", { type })]
     if (input?.description) chunks.push(input.description)
+    // TaskToolExpanded.tsx only shows the raw <task_result> body when there's
+    // no live child session to display instead (result() there resolves to
+    // undefined once a child session exists) — mirror that exactly so a
+    // completed task with no child session stays searchable, without
+    // indexing text that's actually replaced by the child tool list.
+    if (state.status === "completed") {
+      const child = childID({ type: "tool", tool: part.tool, state: { metadata: state.metadata } })
+      const result = taskResult(state.output, child)
+      if (result) chunks.push(result)
+    }
     return chunks
   }
 
@@ -395,10 +458,11 @@ export const MessageList: Component<MessageListProps> = (props) => {
   // text plus whichever answer was actually given (dismissed questions show
   // neither the options nor a real answer, just a static "dismissed"
   // label that isn't meaningful content to index).
+  type QuestionOption = { label?: string; description?: string; labelKey?: string; descriptionKey?: string }
+  type QuestionInfo = { question?: string; questionKey?: string; options?: QuestionOption[] }
+
   function questionText(state: ToolState): string[] {
-    const input = state.input as
-      | { questions?: { question?: string; options?: { label?: string; description?: string }[] }[] }
-      | undefined
+    const input = state.input as { questions?: QuestionInfo[] } | undefined
     const questions = input?.questions ?? []
     const done = state.status === "completed"
     const metadata = done ? (state.metadata as { answers?: unknown; dismissed?: unknown } | undefined) : undefined
@@ -406,11 +470,24 @@ export const MessageList: Component<MessageListProps> = (props) => {
     const dismissed = metadata?.dismissed === true
     const chunks: string[] = []
     questions.forEach((q, i) => {
-      if (q.question) chunks.push(q.question)
+      // QuestionDock renders localized text via questionKey/labelKey/
+      // descriptionKey (see question-dock-utils.ts's tr()), with the raw
+      // wire strings kept only as untranslated fallbacks/reply values —
+      // index what's actually displayed, not the canonical fallback.
+      const questionLabel = tr(language.t, q.questionKey, q.question ?? "")
+      if (questionLabel) chunks.push(questionLabel)
       if (!done) {
+        // QuestionDock only ever mounts one page (store.tab) of a pending
+        // multi-question at a time and there's no external signal exposing
+        // which page that is — indexing every question's full option list
+        // produces matches for pages that aren't in the DOM. Limit to the
+        // first question, which is always the page mounted on first render.
+        if (i > 0) return
         for (const option of q.options ?? []) {
-          if (option.label) chunks.push(option.label)
-          if (option.description) chunks.push(option.description)
+          const label = tr(language.t, option.labelKey, option.label ?? "")
+          if (label) chunks.push(label)
+          const description = option.description ? tr(language.t, option.descriptionKey, option.description) : ""
+          if (description) chunks.push(description)
         }
         return
       }
@@ -422,25 +499,77 @@ export const MessageList: Component<MessageListProps> = (props) => {
     return chunks
   }
 
-  function editWriteText(state: Extract<ToolState, { status: "completed" }>): string[] {
-    const input = state.input as { filePath?: string } | undefined
-    const metadata = state.metadata as { filepath?: string; filediff?: { file?: string } } | undefined
-    const path = input?.filePath ?? metadata?.filediff?.file ?? metadata?.filepath
-    if (!path) return []
-    return [path, path]
+  type Diagnostic = { severity: number; range: { start: { line: number; character: number } }; message: string }
+
+  // Mirrors getDiagnostics()/DiagnosticsDisplay in message-part.tsx: up to 3
+  // severity-1 diagnostics for the file, each shown as an "Error" label, a
+  // "[line:char]" location, and the diagnostic message.
+  function editWriteDiagnostics(metadata: unknown, filePath: string | undefined): string[] {
+    const byFile = (metadata as { diagnostics?: Record<string, Diagnostic[]> } | undefined)?.diagnostics
+    if (!byFile || !filePath) return []
+    const diagnostics = (byFile[filePath] ?? []).filter((d) => d.severity === 1).slice(0, 3)
+    const chunks: string[] = []
+    for (const d of diagnostics) {
+      chunks.push(i18n.t("ui.messagePart.diagnostic.error"))
+      chunks.push(`[${d.range.start.line + 1}:${d.range.start.character + 1}]`)
+      if (d.message) chunks.push(d.message)
+    }
+    return chunks
   }
 
-  function applyPatchText(state: Extract<ToolState, { status: "completed" }>): string[] {
+  // edit/write show a file's path in two places with different layouts:
+  // the BasicTool trigger's ToolMetaLine (filename, then — only when the raw
+  // input path has a directory — the directory, bidi-isolated) and that
+  // file's own accordion header (directory-then-filename, same bidi
+  // wrapper). edit's accordion can source a different path than the
+  // trigger (metadata.filediff.file falls back to input.filePath); write
+  // uses input.filePath for both. Mirror both occurrences exactly rather
+  // than indexing the raw path string, which never appears in the DOM as a
+  // single contiguous run.
+  function editWriteText(tool: string, state: Extract<ToolState, { status: "completed" }>): string[] {
+    const input = state.input as { filePath?: string } | undefined
+    const metadata = state.metadata as
+      | { filepath?: string; filediff?: { file?: string }; diagnostics?: Record<string, Diagnostic[]> }
+      | undefined
+    const triggerPath = input?.filePath
+    const accordionPath = tool === "edit" ? (metadata?.filediff?.file ?? triggerPath) : triggerPath
+    const chunks: string[] = []
+    if (triggerPath) {
+      chunks.push(getFilename(triggerPath))
+      if (triggerPath.includes("/")) chunks.push(`\u2066${getDirectory(triggerPath)}\u2069`)
+    }
+    if (accordionPath) {
+      if (accordionPath.includes("/")) chunks.push(`\u2066${getDirectory(accordionPath)}\u2069`)
+      chunks.push(getFilename(accordionPath))
+    }
+    chunks.push(...editWriteDiagnostics(metadata, triggerPath))
+    return chunks
+  }
+
+  function applyPatchText(state: Extract<ToolState, { status: "completed" }>): ToolChunk[] {
     const files = ((state.metadata as { files?: { filePath?: string; relativePath?: string }[] } | undefined)?.files ??
       []) as { filePath?: string; relativePath?: string }[]
     // Only when there's exactly one file does the trigger also show a
-    // ToolMetaLine for it, on top of that file's own accordion header.
-    const perFile = files.length === 1 ? 2 : 1
-    const chunks: string[] = []
+    // ToolMetaLine for it (filename, then bidi-isolated directory), on top
+    // of that file's own accordion header (bidi-isolated directory, then
+    // filename) — for a multi-file patch each file's name only appears
+    // once, in its own accordion header. Multi-file chunks are tagged with
+    // the file's `filePath` (matching the accordion's item key) so a match
+    // can force just that one nested item open instead of every file.
+    const single = files.length === 1
+    const chunks: ToolChunk[] = []
     for (const file of files) {
       const path = file.relativePath ?? file.filePath
-      if (!path) continue
-      for (let i = 0; i < perFile; i += 1) chunks.push(path)
+      if (!path || !file.filePath) continue
+      const dir = path.includes("/") ? `\u2066${getDirectory(path)}\u2069` : undefined
+      if (single) {
+        chunks.push(getFilename(path))
+        if (dir) chunks.push(dir)
+        continue
+      }
+      const tag = (text: string): ToolChunk => ({ text, file: file.filePath! })
+      if (dir) chunks.push(tag(dir))
+      chunks.push(tag(getFilename(path)))
     }
     return chunks
   }
@@ -576,7 +705,8 @@ export const MessageList: Component<MessageListProps> = (props) => {
           hit = p.exec(text)
           continue
         }
-        result.push({ key: row.key, occurrence, partId: partIdAt(ranges, hit.index) })
+        const range = rangeAt(ranges, hit.index)
+        result.push({ key: row.key, occurrence, partId: range?.partId, partFile: range?.file })
         occurrence += 1
         hit = p.exec(text)
       }
@@ -1003,6 +1133,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
                         onForkMessage={props.onForkMessage}
                         activeSearch={activeKey() === row.key}
                         activeSearchPartID={activeKey() === row.key ? activeMatch()?.partId : undefined}
+                        activeSearchPartFile={activeKey() === row.key ? activeMatch()?.partFile : undefined}
                       />
                     )}
                   </Virtualizer>
@@ -1014,6 +1145,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
                       onForkMessage={props.onForkMessage}
                       activeSearch={activeKey() === key}
                       activeSearchPartID={activeKey() === key ? activeMatch()?.partId : undefined}
+                      activeSearchPartFile={activeKey() === key ? activeMatch()?.partFile : undefined}
                     />
                   )}
                 </For>
@@ -1028,6 +1160,7 @@ export const MessageList: Component<MessageListProps> = (props) => {
                   row={row}
                   activeSearch={activeKey() === row.key}
                   activeSearchPartID={activeKey() === row.key ? activeMatch()?.partId : undefined}
+                  activeSearchPartFile={activeKey() === row.key ? activeMatch()?.partFile : undefined}
                 />
               )}
             </For>

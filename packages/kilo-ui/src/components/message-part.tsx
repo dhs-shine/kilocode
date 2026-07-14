@@ -146,6 +146,10 @@ export interface MessagePartProps {
    * forces a collapsed tool/reasoning block open so the user can see the
    * highlighted match without manually expanding it first. */
   forceOpen?: boolean
+  /** For a multi-file apply_patch part, the specific file path (matching
+   * that file's `filePath`) whose accordion contains the current match —
+   * lets that one nested item open instead of every file in the patch. */
+  forceOpenFile?: string
   reasoningAutoCollapse?: boolean
   showAssistantCopyPartID?: string | null
   showTurnDiffSummary?: boolean
@@ -979,6 +983,7 @@ export function Part(props: MessagePartProps) {
         hideDetails={props.hideDetails}
         defaultOpen={props.defaultOpen}
         forceOpen={props.forceOpen}
+        forceOpenFile={props.forceOpenFile}
         reasoningAutoCollapse={props.reasoningAutoCollapse}
         showAssistantCopyPartID={props.showAssistantCopyPartID}
         showTurnDiffSummary={props.showTurnDiffSummary}
@@ -1004,6 +1009,9 @@ export interface ToolProps {
   hideDetails?: boolean
   defaultOpen?: boolean
   forceOpen?: boolean
+  /** For a multi-file apply_patch part, the specific file path whose
+   * accordion contains the current transcript search match. */
+  forceOpenFile?: string
   locked?: boolean
   animate?: boolean
   reveal?: boolean
@@ -1272,6 +1280,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
               hideDetails={props.hideDetails}
               defaultOpen={props.defaultOpen}
               forceOpen={props.forceOpen}
+              forceOpenFile={props.forceOpenFile}
               animate
               reveal={props.animate}
             />
@@ -2257,8 +2266,15 @@ ToolRegistry.register({
     const [open, setOpen] = createSignal(readToolOpen(key(), props.defaultOpen ?? true) ?? true)
     const [mounted, setMounted] = createSignal(open())
 
+    // BasicTool's `initialOpen()` forces its own open state to true whenever
+    // forceOpen is set, but that's an initial value, not a transition — if
+    // it's already mounted open (e.g. after a virtualized remount), there's
+    // no open/close change for `onOpenChange={setOpen}` below to fire, so
+    // this local `open`/`mounted` pair (seeded independently from
+    // readToolOpen) can stay stale and out of sync, leaving the accordion
+    // visibly expanded with no output mounted inside it.
     createEffect(() => {
-      if (open() || pending()) setMounted(true)
+      if (open() || pending() || props.forceOpen) setMounted(true)
     })
 
     // also apply processCarriageReturns for Windows CLI tools
@@ -2608,11 +2624,17 @@ ToolRegistry.register({
       setExpanded(list.filter((f) => f.type !== "delete").map((f) => f.filePath))
     })
     // Deleted files start collapsed above; a chat search match could be
-    // inside one, and there's no per-file tracking of which file a match
-    // falls in, so force-opening this tool expands every file's accordion
-    // rather than guessing — better to over-reveal than leave the match
-    // hidden behind a still-collapsed file.
+    // inside one. `forceOpenFile` (from MessageList's per-chunk file
+    // attribution) names exactly which file's accordion to open — falling
+    // back to expanding every file only when forceOpen fires without a
+    // known file (defensive; MessageList always attributes apply_patch
+    // matches to a specific file today).
     createEffect(() => {
+      if (props.forceOpenFile) {
+        const path = props.forceOpenFile
+        setExpanded((prev) => (prev.includes(path) ? prev : [...prev, path]))
+        return
+      }
       if (!props.forceOpen) return
       setExpanded(files().map((f) => f.filePath))
     })

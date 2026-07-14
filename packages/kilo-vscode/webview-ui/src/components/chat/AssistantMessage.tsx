@@ -129,6 +129,9 @@ interface AssistantMessageProps {
    * that part's collapsed tool/reasoning content open so the user can see
    * the highlighted match without manually expanding it first. */
   forceOpenPartID?: string
+  /** For a multi-file apply_patch match, the specific file within that part —
+   * lets that one nested item open instead of every file in the patch. */
+  forceOpenFile?: string
 }
 
 type ToolStateProps = {
@@ -320,6 +323,7 @@ export const AssistantMessage: Component<AssistantMessageProps> = (props) => {
                                       showAssistantCopyPartID={props.showAssistantCopyPartID}
                                       defaultOpen={editOpen(part, edit())}
                                       forceOpen={forceOpen()}
+                                      forceOpenFile={forceOpen() ? props.forceOpenFile : undefined}
                                       reasoningAutoCollapse={display.reasoningAutoCollapse()}
                                       feedback={props.feedback}
                                       animate={
