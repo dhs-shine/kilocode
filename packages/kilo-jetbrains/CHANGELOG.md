@@ -24,6 +24,23 @@
 
 ## [Unreleased]
 
+## [7.0.6] - 2026-07-14
+
+### Added
+- feat(agent-manager): add native orchestration API by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12174
+
+### Fixed
+- fix(vscode): move "Browse files..." to end of @-mention dropdown by @AmariahAK in https://github.com/Kilo-Org/kilocode/pull/12183
+- fix(vscode): correct cache token indicator by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12211
+- fix(agent-manager): preserve local HEAD when moving session to worktree by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12212
+- fix(jetbrains): honor IDE certificate and proxy settings for outbound HTTPS by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12214
+- fix(cli): keep session database compatible with released clients by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12207
+- fix(jetbrains): scale session UI with IDE zoom by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12215
+
+### Changed
+- release(jetbrains): v7.0.5 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12206
+
+
 ## [7.0.5] - 2026-07-14
 
 ### Added
