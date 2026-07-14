@@ -1,6 +1,8 @@
 package ai.kilocode.backend.migration
 
 import ai.kilocode.backend.testing.TestLog
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -88,5 +90,28 @@ class LegacyMigrationMaterializeTest {
         val archived = LegacySettingsFileMigrationStore.json.parseToJsonElement(file.readText()).jsonObject["conversations"]!!.jsonObject
         assertEquals("""[{"role":"user","content":"one"}]""", archived["task-1"]!!.jsonPrimitive.content)
         assertEquals("""[{"role":"user","content":"two"}]""", archived["task-2"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `scoped raw v5 store rejects traversal session ids`() {
+        val home = Files.createTempDirectory("kilo-v5-home").toFile()
+        val dir = Files.createTempDirectory("kilo-migration-config").toFile()
+        val file = dir.resolve("legacy-settings.json")
+        val root = home.resolve(".kilocode/globalStorage")
+        root.resolve("escape").mkdirs()
+        root.resolve("escape/api_conversation_history.json").writeText("""[{"role":"user","content":"secret"}]""")
+        val logs = mutableListOf<String>()
+        val src = LegacyV5Sources(home, Files.createTempDirectory("kilo-v5-config").toFile()) { logs.add(it) }
+        val obj = buildJsonObject {
+            put("conversations", JsonObject(mapOf("../escape" to JsonPrimitive(""))))
+        }
+        val source = LegacyMigrationSource.V5Raw(InMemoryLegacyMigrationStore(obj), obj, file, src)
+
+        val store = materializeLegacyMigrationSource(source, TestLog(), setOf("../escape"))
+
+        assertNull(store.taskConversationRaw("../escape"))
+        assertTrue(logs.none { it.contains("../escape") })
+        val archived = LegacySettingsFileMigrationStore.json.parseToJsonElement(file.readText()).jsonObject["conversations"]?.jsonObject
+        assertTrue(archived == null || "../escape" !in archived.keys)
     }
 }

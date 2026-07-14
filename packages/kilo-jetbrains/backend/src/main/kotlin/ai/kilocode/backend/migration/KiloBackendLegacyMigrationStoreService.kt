@@ -280,7 +280,7 @@ fun materializeLegacyMigrationSource(
 }
 
 private fun writeLegacyV5Archive(file: File, root: JsonObject, src: LegacyV5Sources) {
-    val ids = (root["conversations"] as? JsonObject)?.keys.orEmpty()
+    val ids = (root["conversations"] as? JsonObject)?.keys.orEmpty().filter(::validLegacyTaskId)
     KiloBackendLegacyMigrationStoreService.writePrivate(file) { out ->
         var first = true
         fun next() {
@@ -325,6 +325,7 @@ private class ScopedLegacyV5MigrationStore(
     private val sessions: Set<String>?,
 ) : LegacyMigrationStore {
     private val store = InMemoryLegacyMigrationStore(root)
+    private val ids = (root["conversations"] as? JsonObject)?.keys.orEmpty().filterTo(mutableSetOf(), ::validLegacyTaskId)
 
     override fun status(): LegacyMigrationStatus? = store.status()
     override fun mark(status: LegacyMigrationStatus) = store.mark(status)
@@ -337,9 +338,16 @@ private class ScopedLegacyV5MigrationStore(
     override fun globalStateValue(key: String): JsonElement? = store.globalStateValue(key)
     override fun taskHistoryRaw(): String? = store.taskHistoryRaw()
     override fun taskConversationRaw(id: String): String? {
+        if (id !in ids) return null
         if (sessions != null && id !in sessions) return null
         return src.taskConversationFile(id)
     }
 
     override fun cleanup(targets: LegacyCleanupTargets): LegacyCleanupReport = store.cleanup(targets)
+}
+
+private fun validLegacyTaskId(id: String): Boolean {
+    if (id.isBlank()) return false
+    if (id == "." || id == "..") return false
+    return !id.contains('/') && !id.contains('\\')
 }
