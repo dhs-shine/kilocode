@@ -192,6 +192,31 @@ customModes:
     }
 
     @Test
+    fun `metadata import skips history entries without conversation files`() {
+        val home = Files.createTempDirectory("kilo-v5-home").toFile()
+        val cfg = Files.createTempDirectory("kilo-v5-config").toFile()
+        val task = home.resolve(".kilocode/globalStorage/tasks/task-1")
+        task.mkdirs()
+        task.resolve("api_conversation_history.json").writeText("""[{"role":"user","content":"present"}]""")
+        cfg.resolve("options").mkdirs()
+        cfg.resolve("options/kilocode-extension-storage.xml").writeText("""
+<application>
+  <component name="ExtensionStorageService">
+    <option name="storageMap">
+      <map>
+        <entry key="kilo-code" value="{&quot;taskHistory&quot;:&quot;[{\&quot;id\&quot;:\&quot;task-1\&quot;,\&quot;task\&quot;:\&quot;One\&quot;,\&quot;workspace\&quot;:\&quot;/tmp/project\&quot;,\&quot;ts\&quot;:1700000000000},{\&quot;id\&quot;:\&quot;missing\&quot;,\&quot;task\&quot;:\&quot;Missing\&quot;,\&quot;workspace\&quot;:\&quot;/tmp/project\&quot;,\&quot;ts\&quot;:1700000000001}]&quot;}" />
+      </map>
+    </option>
+  </component>
+</application>
+        """.trimIndent())
+
+        val obj = LegacyV5Importer(LegacyV5Sources(home, cfg)).import(includeConversations = false)
+        val conv = obj["conversations"]!!.jsonObject
+        assertEquals(setOf("task-1"), conv.keys)
+    }
+
+    @Test
     fun `scan fallback skips sessions without workspace`() {
         val home = Files.createTempDirectory("kilo-v5-home").toFile()
         val cfg = Files.createTempDirectory("kilo-v5-config").toFile()

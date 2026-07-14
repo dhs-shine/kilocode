@@ -34,7 +34,8 @@ class LegacyV5Importer(private val src: LegacyV5Sources) {
         val wanted = sessions ?: ids.toSet()
         val conv = ids.mapNotNull { id ->
             if (id !in wanted) return@mapNotNull null
-            val raw = if (includeConversations) src.taskConversationFile(id) ?: return@mapNotNull null else ""
+            val raw = if (includeConversations) src.taskConversationFile(id) ?: return@mapNotNull null
+            else if (src.hasTaskConversationFile(id)) "" else return@mapNotNull null
             id to JsonPrimitive(raw)
         }.toMap()
 

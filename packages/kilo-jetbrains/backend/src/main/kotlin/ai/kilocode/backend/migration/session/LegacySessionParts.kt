@@ -313,7 +313,8 @@ object LegacySessionParts {
                 val marker = match.groupValues[1]
                 val status = when (marker) {
                     "x", "X" -> "completed"
-                    "-", "~" -> "in_progress"
+                    "-" -> "cancelled"
+                    "~" -> "in_progress"
                     else -> "pending"
                 }
                 todo(match.groupValues[2].trim(), status, "medium")

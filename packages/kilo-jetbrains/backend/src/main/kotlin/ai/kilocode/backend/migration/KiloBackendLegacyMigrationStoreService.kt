@@ -257,8 +257,10 @@ fun materializeLegacyMigrationSource(
     is LegacyMigrationSource.FileBacked -> source.store
     is LegacyMigrationSource.None -> source.store
     is LegacyMigrationSource.V5Raw -> {
-        val root = source.sources?.let { LegacyV5Importer(it).import(includeConversations = true, sessions = sessions) }
+        val root = source.sources?.let { LegacyV5Importer(it).import(includeConversations = true) }
             ?: source.consolidated
+        val store = source.sources?.takeIf { sessions != null }
+            ?.let { InMemoryLegacyMigrationStore(LegacyV5Importer(it).import(includeConversations = true, sessions = sessions)) }
         source.file.parentFile?.mkdirs()
         log?.info("Migration source: writing regenerated legacy settings JSON file=${source.file.absolutePath}")
         KiloBackendLegacyMigrationStoreService.writePrivate(
@@ -266,6 +268,6 @@ fun materializeLegacyMigrationSource(
             LegacySettingsFileMigrationStore.json.encodeToString(JsonObject.serializer(), root),
         )
         log?.info("Migration source: regenerated legacy settings JSON file=${source.file.absolutePath}")
-        LegacySettingsFileMigrationStore(source.file)
+        store ?: LegacySettingsFileMigrationStore(source.file)
     }
 }

@@ -19,6 +19,7 @@ class LegacyV5Sources(
     fun mcpSettingsFile(): String? = firstFile("mcpSettings", "settings/mcp_settings.json")?.read("mcpSettings")
     fun customModesFile(): String? = firstFile("customModes", "settings/custom_modes.yaml")?.read("customModes")
     fun taskConversationFile(id: String): String? = taskFile(id, "api_conversation_history.json")?.read("taskConversation id=$id")
+    fun hasTaskConversationFile(id: String): Boolean = taskFile(id, "api_conversation_history.json") != null
     fun uiMessagesFile(id: String): String? = taskFile(id, "ui_messages.json")?.read("uiMessages id=$id")
 
     fun taskDirIds(): List<String> {

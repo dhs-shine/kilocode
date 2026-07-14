@@ -2,11 +2,14 @@ package ai.kilocode.backend.migration
 
 import ai.kilocode.backend.testing.TestLog
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermissions
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -40,5 +43,45 @@ class LegacyMigrationMaterializeTest {
         // Finalizing writes the durable marker and status() honors it afterwards.
         KiloBackendLegacyMigrationStoreService.markStatus(log, LegacyMigrationStatus.Completed, env)
         assertEquals(LegacyMigrationStatus.Completed, KiloBackendLegacyMigrationStoreService.status(log, env))
+    }
+
+    @Test
+    fun `materialize selected sessions writes full archive but returns scoped store`() {
+        val home = Files.createTempDirectory("kilo-v5-home").toFile()
+        val cfg = Files.createTempDirectory("kilo-v5-config").toFile()
+        val dir = Files.createTempDirectory("kilo-migration-config").toFile()
+        val file = dir.resolve("legacy-settings.json")
+        val tasks = home.resolve(".kilocode/globalStorage/tasks")
+        tasks.resolve("task-1").mkdirs()
+        tasks.resolve("task-2").mkdirs()
+        tasks.resolve("task-1/api_conversation_history.json").writeText("""[{"role":"user","content":"one"}]""")
+        tasks.resolve("task-2/api_conversation_history.json").writeText("""[{"role":"user","content":"two"}]""")
+        cfg.resolve("options").mkdirs()
+        cfg.resolve("options/kilocode-extension-storage.xml").writeText("""
+<application>
+  <component name="ExtensionStorageService">
+    <option name="storageMap">
+      <map>
+        <entry key="kilo-code" value="{&quot;taskHistory&quot;:&quot;[{\&quot;id\&quot;:\&quot;task-1\&quot;,\&quot;task\&quot;:\&quot;One\&quot;,\&quot;workspace\&quot;:\&quot;/tmp/project\&quot;,\&quot;ts\&quot;:1700000000000},{\&quot;id\&quot;:\&quot;task-2\&quot;,\&quot;task\&quot;:\&quot;Two\&quot;,\&quot;workspace\&quot;:\&quot;/tmp/project\&quot;,\&quot;ts\&quot;:1700000000001}]&quot;}" />
+      </map>
+    </option>
+  </component>
+</application>
+        """.trimIndent())
+
+        val root = LegacyV5Importer(LegacyV5Sources(home, cfg)).import(includeConversations = false)
+        val source = LegacyMigrationSource.V5Raw(
+            InMemoryLegacyMigrationStore(root),
+            root,
+            file,
+            LegacyV5Sources(home, cfg),
+        )
+        val store = materializeLegacyMigrationSource(source, TestLog(), setOf("task-1"))
+
+        assertEquals("""[{"role":"user","content":"one"}]""", store.taskConversationRaw("task-1"))
+        assertNull(store.taskConversationRaw("task-2"))
+        val archived = LegacySettingsFileMigrationStore.json.parseToJsonElement(file.readText()).jsonObject["conversations"]!!.jsonObject
+        assertEquals("""[{"role":"user","content":"one"}]""", archived["task-1"]!!.jsonPrimitive.content)
+        assertEquals("""[{"role":"user","content":"two"}]""", archived["task-2"]!!.jsonPrimitive.content)
     }
 }
