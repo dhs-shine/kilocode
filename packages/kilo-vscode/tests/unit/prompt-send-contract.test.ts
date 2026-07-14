@@ -310,6 +310,20 @@ describe("PromptInput send origin contract", () => {
     expect(source).toMatch(/session\.sendMessage\([\s\S]*origin \?\? null\)/)
     expect(source).toMatch(/session\.sendCommand\([\s\S]*origin \?\? null\)/)
   })
+
+  it("records sent prompts before a pending session key change can return", () => {
+    const start = source.indexOf("const handleSend = async () =>")
+    const end = source.indexOf("\n  return (", start)
+    const body = source.slice(start, end)
+    const send = Math.max(body.indexOf("session.sendMessage("), body.indexOf("session.sendCommand("))
+    const append = body.lastIndexOf("history.append(draft)")
+    const guard = body.indexOf("if (draftKey() !== key) return")
+
+    expect(send).toBeGreaterThan(-1)
+    expect(append).toBeGreaterThan(send)
+    expect(append).toBeLessThan(guard)
+    expect(body.indexOf('setText("")', guard)).toBeGreaterThan(guard)
+  })
 })
 
 describe("SessionContext userClearedSession contract", () => {

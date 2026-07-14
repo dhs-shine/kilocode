@@ -2,13 +2,14 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { expect } from "bun:test"
 import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
-import { rename, rm, symlink } from "fs/promises"
+import fs, { rename, rm, symlink } from "fs/promises"
 import os from "os"
 import { Database } from "@opencode-ai/core/database/database"
 import path from "path"
 import { pathToFileURL } from "url"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
+import { Global } from "@opencode-ai/core/global"
 import * as Log from "@opencode-ai/core/util/log"
 import { Agent as AgentSvc } from "../../src/agent/agent"
 import { BackgroundJob } from "../../src/background/job"
@@ -996,6 +997,74 @@ symlinkIt(
       },
     ),
   30_000,
+)
+
+it.live(
+  "global skill shell access can be approved permanently",
+  () =>
+    provideTmpdirServer(
+      Effect.fnUntraced(function* ({ llm }) {
+        const prompt = yield* SessionPrompt.Service
+        const sessions = yield* Session.Service
+        const permission = yield* Permission.Service
+        const chat = yield* sessions.create({ title: "Global skill permission" })
+        const skill = path.join(Global.Path.config, "skills", chat.id)
+        const call = { command: "pwd", workdir: skill, description: "Run global skill resource" }
+
+        yield* Effect.promise(() => fs.mkdir(skill, { recursive: true }))
+        yield* llm.push(reply().tool("bash", call), reply().text("first complete").stop())
+
+        yield* prompt.prompt({
+          sessionID: chat.id,
+          agent: "build",
+          noReply: true,
+          parts: [{ type: "text", text: "run the skill" }],
+        })
+        const first = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkScoped)
+
+        const pending = yield* pollWithTimeout(
+          Effect.gen(function* () {
+            const list = yield* permission.list()
+            return list.find((item) => item.sessionID === chat.id)
+          }),
+          "global skill permission was never surfaced",
+        )
+        expect(pending?.permission).toBe("external_directory")
+        const always = (pending?.always ?? []) as string[]
+        expect(always).toHaveLength(1)
+        expect(always[0]?.endsWith(`/skills/${chat.id}/*`)).toBe(true)
+        const rules = (pending?.metadata?.rules ?? []) as string[]
+        expect(rules).toHaveLength(1)
+        expect(rules[0]?.endsWith(`/skills/${chat.id}/*`)).toBe(true)
+        expect(pending.metadata).not.toMatchObject({ disableAlways: true, configProtected: true })
+
+        yield* permission.reply({ requestID: pending.id, reply: "always" })
+        expect(
+          Exit.isSuccess(yield* awaitWithTimeout(Fiber.await(first), "first global skill run did not finish")),
+        ).toBe(true)
+
+        yield* llm.push(reply().tool("bash", call), reply().text("second complete").stop())
+        yield* prompt.prompt({
+          sessionID: chat.id,
+          agent: "build",
+          noReply: true,
+          parts: [{ type: "text", text: "run the skill again" }],
+        })
+        const second = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkScoped)
+        expect(
+          Exit.isSuccess(yield* awaitWithTimeout(Fiber.await(second), "trusted global skill prompted a second time")),
+        ).toBe(true)
+        expect(yield* permission.list()).toEqual([])
+      }),
+      {
+        git: true,
+        config: (url) => ({
+          ...providerCfg(url),
+          permission: { bash: "allow", external_directory: "allow" },
+        }),
+      },
+    ),
+  { timeout: 15_000 },
 )
 
 it.live("active tool calls use permissions changed after model streaming starts", () =>
