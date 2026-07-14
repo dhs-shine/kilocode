@@ -258,20 +258,24 @@ class LegacyMigrationSessionTest {
     }
 
     @Test
-    fun `assistant parent ids keep result user turn before continuation`() {
+    fun `assistant parent ids skip result-only carrier before continuation`() {
         val conv = """[
+            {"role":"user","content":"Inspect files"},
             {"role":"assistant","content":[{"type":"tool_use","id":"call-1","name":"list_files","input":{"path":"."}}]},
             {"role":"user","content":[{"type":"tool_result","tool_use_id":"call-1","content":[{"type":"text","text":"done"}]}]},
             {"role":"assistant","content":"Next step"}
         ]"""
         val parsed = LegacySessionParser.parseSession("task-relink", conv)
-        val dropped = LegacySessionIds.createMessageId("task-relink", 1)
-        val second = LegacySessionIds.createMessageId("task-relink", 2)
+        val prompt = LegacySessionIds.createMessageId("task-relink", 0)
+        val carrier = LegacySessionIds.createMessageId("task-relink", 2)
+        val second = LegacySessionIds.createMessageId("task-relink", 3)
         val assistant = parsed.messages.single { it["id"]!!.jsonPrimitive.content == second }
 
-        assertEquals(3, parsed.messages.size)
-        assertTrue(parsed.messages.any { it["id"]!!.jsonPrimitive.content == dropped })
-        assertEquals(dropped, assistant["data"]!!.jsonObject["parentID"]!!.jsonPrimitive.content)
+        assertEquals(4, parsed.messages.size)
+        assertTrue(parsed.messages.any { it["id"]!!.jsonPrimitive.content == carrier })
+        assertTrue(parsed.parts.any { it["messageID"]!!.jsonPrimitive.content == prompt })
+        assertFalse(parsed.parts.any { it["messageID"]!!.jsonPrimitive.content == carrier })
+        assertEquals(prompt, assistant["data"]!!.jsonObject["parentID"]!!.jsonPrimitive.content)
     }
 
     @Test

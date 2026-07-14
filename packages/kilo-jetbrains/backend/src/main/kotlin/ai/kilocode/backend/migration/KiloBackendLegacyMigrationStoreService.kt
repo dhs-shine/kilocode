@@ -13,6 +13,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
+import java.io.Writer
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
@@ -88,6 +89,10 @@ class KiloBackendLegacyMigrationStoreService {
         }
 
         internal fun writePrivate(file: File, text: String) {
+            writePrivate(file) { it.write(text) }
+        }
+
+        internal fun writePrivate(file: File, write: (Writer) -> Unit) {
             file.parentFile?.mkdirs()
             val path = file.toPath()
             if (!Files.exists(path)) {
@@ -98,7 +103,7 @@ class KiloBackendLegacyMigrationStoreService {
                 }
             }
             restrict(file)
-            Files.writeString(path, text, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING)
+            Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING).use(write)
             restrict(file)
         }
 
@@ -257,17 +262,84 @@ fun materializeLegacyMigrationSource(
     is LegacyMigrationSource.FileBacked -> source.store
     is LegacyMigrationSource.None -> source.store
     is LegacyMigrationSource.V5Raw -> {
-        val root = source.sources?.let { LegacyV5Importer(it).import(includeConversations = true) }
-            ?: source.consolidated
-        val store = source.sources?.takeIf { sessions != null }
-            ?.let { InMemoryLegacyMigrationStore(LegacyV5Importer(it).import(includeConversations = true, sessions = sessions)) }
         source.file.parentFile?.mkdirs()
         log?.info("Migration source: writing regenerated legacy settings JSON file=${source.file.absolutePath}")
-        KiloBackendLegacyMigrationStoreService.writePrivate(
-            source.file,
-            LegacySettingsFileMigrationStore.json.encodeToString(JsonObject.serializer(), root),
-        )
+        val store = source.sources?.let {
+            writeLegacyV5Archive(source.file, source.consolidated, it)
+            ScopedLegacyV5MigrationStore(source.consolidated, it, sessions)
+        } ?: run {
+            KiloBackendLegacyMigrationStoreService.writePrivate(
+                source.file,
+                LegacySettingsFileMigrationStore.json.encodeToString(JsonObject.serializer(), source.consolidated),
+            )
+            LegacySettingsFileMigrationStore(source.file)
+        }
         log?.info("Migration source: regenerated legacy settings JSON file=${source.file.absolutePath}")
-        store ?: LegacySettingsFileMigrationStore(source.file)
+        store
     }
+}
+
+private fun writeLegacyV5Archive(file: File, root: JsonObject, src: LegacyV5Sources) {
+    val ids = (root["conversations"] as? JsonObject)?.keys.orEmpty()
+    KiloBackendLegacyMigrationStoreService.writePrivate(file) { out ->
+        var first = true
+        fun next() {
+            if (!first) out.write(",")
+            first = false
+        }
+        fun elem(value: JsonElement) = out.write(
+            LegacySettingsFileMigrationStore.json.encodeToString(JsonElement.serializer(), value),
+        )
+        fun key(value: String) = elem(JsonPrimitive(value))
+
+        out.write("{")
+        root.entries.forEach { (name, value) ->
+            if (name == "conversations") return@forEach
+            next()
+            key(name)
+            out.write(":")
+            elem(value)
+        }
+        if (ids.isNotEmpty()) {
+            next()
+            key("conversations")
+            out.write(":{")
+            var seen = false
+            ids.forEach { id ->
+                val raw = src.taskConversationFile(id) ?: return@forEach
+                if (seen) out.write(",")
+                seen = true
+                key(id)
+                out.write(":")
+                elem(JsonPrimitive(raw))
+            }
+            out.write("}")
+        }
+        out.write("}")
+    }
+}
+
+private class ScopedLegacyV5MigrationStore(
+    root: JsonObject,
+    private val src: LegacyV5Sources,
+    private val sessions: Set<String>?,
+) : LegacyMigrationStore {
+    private val store = InMemoryLegacyMigrationStore(root)
+
+    override fun status(): LegacyMigrationStatus? = store.status()
+    override fun mark(status: LegacyMigrationStatus) = store.mark(status)
+    override fun providerProfilesRaw(): String? = store.providerProfilesRaw()
+    override fun oauthRaw(key: String): String? = store.oauthRaw(key)
+    override fun mcpSettingsRaw(): String? = store.mcpSettingsRaw()
+    override fun customModesRaw(): String? = store.customModesRaw()
+    override fun customModePromptsRaw(): String? = store.customModePromptsRaw()
+    override fun autocompleteRaw(): String? = store.autocompleteRaw()
+    override fun globalStateValue(key: String): JsonElement? = store.globalStateValue(key)
+    override fun taskHistoryRaw(): String? = store.taskHistoryRaw()
+    override fun taskConversationRaw(id: String): String? {
+        if (sessions != null && id !in sessions) return null
+        return src.taskConversationFile(id)
+    }
+
+    override fun cleanup(targets: LegacyCleanupTargets): LegacyCleanupReport = store.cleanup(targets)
 }

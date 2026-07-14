@@ -69,15 +69,20 @@ class LegacyMigrationMaterializeTest {
 </application>
         """.trimIndent())
 
-        val root = LegacyV5Importer(LegacyV5Sources(home, cfg)).import(includeConversations = false)
+        val logs = mutableListOf<String>()
+        val sources = LegacyV5Sources(home, cfg) { logs.add(it) }
+        val root = LegacyV5Importer(sources).import(includeConversations = false)
         val source = LegacyMigrationSource.V5Raw(
             InMemoryLegacyMigrationStore(root),
             root,
             file,
-            LegacyV5Sources(home, cfg),
+            sources,
         )
+        logs.clear()
         val store = materializeLegacyMigrationSource(source, TestLog(), setOf("task-1"))
 
+        assertEquals(1, logs.count { it.contains("reading taskConversation id=task-1") })
+        assertEquals(1, logs.count { it.contains("reading taskConversation id=task-2") })
         assertEquals("""[{"role":"user","content":"one"}]""", store.taskConversationRaw("task-1"))
         assertNull(store.taskConversationRaw("task-2"))
         val archived = LegacySettingsFileMigrationStore.json.parseToJsonElement(file.readText()).jsonObject["conversations"]!!.jsonObject

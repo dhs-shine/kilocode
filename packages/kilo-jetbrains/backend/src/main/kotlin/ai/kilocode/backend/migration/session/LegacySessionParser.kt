@@ -39,7 +39,7 @@ object LegacySessionParser {
         val messages = LegacySessionMessages.parseMessages(conversation, id, workspace, effectiveItem)
         val parts = LegacySessionParts.parseParts(conversation, id, effectiveItem)
         val referenced = parts.mapNotNull { it["messageID"]?.jsonPrimitive?.content }.toSet()
-        val kept = relink(keep(messages, referenced))
+        val kept = relink(keep(messages, referenced), referenced)
 
         return NormalizedSession(project = project, session = session, messages = kept, parts = parts)
     }
@@ -52,10 +52,13 @@ object LegacySessionParser {
         role(next) == "assistant" && next["id"]?.jsonPrimitive?.content in referenced
     }
 
-    private fun relink(messages: List<JsonObject>): List<JsonObject> = messages.mapIndexed { index, msg ->
+    private fun relink(messages: List<JsonObject>, referenced: Set<String>): List<JsonObject> = messages.mapIndexed { index, msg ->
         val data = msg["data"] as? JsonObject ?: return@mapIndexed msg
         if (role(msg) != "assistant") return@mapIndexed msg
-        val parent = messages.take(index).lastOrNull { role(it) == "user" }?.get("id")?.jsonPrimitive?.content
+        val parent = messages.take(index).lastOrNull {
+            val id = it["id"]?.jsonPrimitive?.content
+            role(it) == "user" && id != null && id in referenced
+        }?.get("id")?.jsonPrimitive?.content
             ?: msg["id"]?.jsonPrimitive?.content
         parent ?: return@mapIndexed msg
         JsonObject(msg.toMutableMap().also {
