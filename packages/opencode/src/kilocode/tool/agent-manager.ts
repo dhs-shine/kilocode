@@ -8,6 +8,7 @@ import * as SandboxInheritance from "@/kilocode/sandbox/inheritance"
 import { KiloSessionMessageOrder } from "@/kilocode/session/message-order"
 import { Provider } from "@/provider/provider"
 import { SessionID } from "@/session/schema"
+import * as ToolJsonSchema from "@/tool/json-schema"
 import { Tool } from "@/tool/tool"
 import { Effect, Schema } from "effect"
 import { matchesQuery } from "./model-search"
@@ -237,6 +238,7 @@ export const AgentManagerTool = Tool.define<
     return {
       description: DESCRIPTION,
       parameters: Params,
+      jsonSchema: { ...ToolJsonSchema.fromSchema(Params), type: "object" },
       execute: (params, ctx) =>
         Effect.gen(function* () {
           if ("action" in params) {
