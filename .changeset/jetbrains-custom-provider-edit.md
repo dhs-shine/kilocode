@@ -2,4 +2,4 @@
 "@kilocode/kilo-jetbrains": patch
 ---
 
-Support editing custom OpenAI-compatible providers from JetBrains settings, keep added or edited providers selected, and close the custom provider dialog after a successful save.
+Support editing custom OpenAI-compatible providers from JetBrains settings and replace their Disconnect action with Edit and Delete. Added or edited providers stay selected, and the custom provider dialog now closes after a successful save.
