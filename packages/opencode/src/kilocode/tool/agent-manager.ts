@@ -77,6 +77,16 @@ const PromptParams = Schema.Struct({
 
 export const Params = Schema.Union([StartParams, ListParams, PromptParams])
 
+const WireParams = Schema.Struct({
+  mode: Schema.optional(StartParams.fields.mode),
+  versions: Schema.optional(StartParams.fields.versions),
+  tasks: Schema.optional(StartParams.fields.tasks),
+  action: Schema.optional(Schema.Literals(["list", "prompt"])),
+  filter: Schema.optional(ListParams.fields.filter),
+  sessionID: Schema.optional(PromptParams.fields.sessionID),
+  prompt: Schema.optional(PromptParams.fields.prompt),
+})
+
 type Input = Schema.Schema.Type<typeof Task>
 type Selected = { task?: AgentManagerTask; error?: string }
 type Candidate = { providerID: string; model: Provider.Info["models"][string] }
@@ -238,7 +248,7 @@ export const AgentManagerTool = Tool.define<
     return {
       description: DESCRIPTION,
       parameters: Params,
-      jsonSchema: { ...ToolJsonSchema.fromSchema(Params), type: "object" },
+      jsonSchema: ToolJsonSchema.fromSchema(WireParams),
       execute: (params, ctx) =>
         Effect.gen(function* () {
           if ("action" in params) {

@@ -150,12 +150,23 @@ function publish(
 }
 
 describe("agent_manager tool", () => {
-  test("uses an object-root input schema", async () => {
+  test("uses an object-root input schema without combinators", async () => {
     const tool = await init()
     const schema = ToolJsonSchema.fromTool(tool)
 
     expect(schema.type).toBe("object")
-    expect(schema.anyOf).toHaveLength(3)
+    expect(schema.anyOf).toBeUndefined()
+    expect(schema.oneOf).toBeUndefined()
+    expect(schema.allOf).toBeUndefined()
+    expect(Object.keys(schema.properties ?? {})).toEqual([
+      "mode",
+      "versions",
+      "tasks",
+      "action",
+      "filter",
+      "sessionID",
+      "prompt",
+    ])
   })
 
   test("asks for agent_manager permission", async () => {
