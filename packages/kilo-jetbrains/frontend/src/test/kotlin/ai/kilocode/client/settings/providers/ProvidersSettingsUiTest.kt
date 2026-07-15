@@ -90,11 +90,50 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         assertNull(customSaveError("my-openai", result))
     }
 
-    fun `test custom model rows start with select all`() {
-        val rows = customModelRows(listOf("gpt-4o", "gpt-4o-mini"))
+    fun `test custom dialog toggles model ids`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val dialog = edt {
+            CustomProviderDialog(
+                cs,
+                "/tmp",
+                { CustomModelFetchResultDto(listOf("gpt-4o")) },
+                { ProviderActionResultDto(providerState(provider("my-openai", "My OpenAI"))) },
+            )
+        }
 
-        assertTrue(rows[0].selectAll)
-        assertEquals(listOf("gpt-4o", "gpt-4o-mini"), rows.drop(1).map { it.id })
+        edt {
+            val field = components(center(dialog)).filterIsInstance<JTextField>()[5]
+            dialog.toggleModel("gpt-4o", listOf("gpt-4o", "gpt-4o-mini"))
+            assertEquals("gpt-4o", field.text)
+            dialog.toggleModel("gpt-4o", listOf("gpt-4o", "gpt-4o-mini"))
+            assertEquals("", field.text)
+            dispose(dialog)
+        }
+    }
+
+    fun `test custom dialog selects and clears model ids`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val dialog = edt {
+            CustomProviderDialog(
+                cs,
+                "/tmp",
+                { CustomModelFetchResultDto(listOf("gpt-4o")) },
+                { ProviderActionResultDto(providerState(provider("my-openai", "My OpenAI"))) },
+            )
+        }
+
+        edt {
+            val field = components(center(dialog)).filterIsInstance<JTextField>()[5]
+            dialog.selectAllModels(listOf("gpt-4o", "gpt-4o-mini"))
+            assertEquals("gpt-4o, gpt-4o-mini", field.text)
+            assertTrue(dialog.isOKActionEnabled)
+            dialog.clearModels()
+            assertEquals("", field.text)
+            assertFalse(dialog.isOKActionEnabled)
+            dispose(dialog)
+        }
     }
 
     fun `test custom dialog add is disabled until model list exists`() {

@@ -11,9 +11,10 @@ import ai.kilocode.client.settings.base.SettingsListView
 import ai.kilocode.client.settings.auth.DeviceOAuthInfo
 import ai.kilocode.client.settings.auth.DeviceOAuthPanel
 import ai.kilocode.client.settings.auth.DeviceOAuthText
-import ai.kilocode.client.session.ui.PickerRow
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.layout.Stack
+import ai.kilocode.client.ui.picker.PickerListRenderer
+import ai.kilocode.client.ui.picker.PickerPopup
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.CustomModelDto
 import ai.kilocode.rpc.dto.CustomModelFetchDto
@@ -47,23 +48,13 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.DocumentAdapter
-import com.intellij.ui.GroupHeaderSeparator
-import com.intellij.ui.ListUtil
 import com.intellij.ui.SearchTextField
-import com.intellij.ui.ScrollingUtil
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBPasswordField
-import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
+import com.intellij.ui.components.ActionLink
 import com.intellij.openapi.ui.popup.JBPopup
-import com.intellij.openapi.ui.popup.JBPopupFactory
-import com.intellij.openapi.ui.popup.util.PopupUtil
-import com.intellij.ui.NewUI
 import com.intellij.util.concurrency.annotations.RequiresEdt
-import com.intellij.util.ui.EmptyIcon
-import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.UIUtil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -73,20 +64,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import java.awt.Component
-import java.awt.Cursor
-import java.awt.Dimension
 import java.awt.event.KeyEvent
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
-import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.DefaultListCellRenderer
 import javax.swing.JList
 import javax.swing.JPanel
+import javax.swing.JSeparator
 import javax.swing.KeyStroke
-import javax.swing.ListCellRenderer
-import javax.swing.ListSelectionModel
 import javax.swing.SwingConstants
 import javax.swing.event.DocumentEvent
 import javax.swing.Timer
@@ -97,7 +82,7 @@ private val OAUTH_CODE_RE = Regex("""code:\s*(\S+)""", RegexOption.IGNORE_CASE)
 
 private fun oauthCode(text: String?): String? = text?.let { OAUTH_CODE_RE.find(it)?.groupValues?.getOrNull(1) }
 
-private const val CUSTOM_MODEL_POPUP_MIN_WIDTH = 320
+private const val CUSTOM_MODEL_POPUP_WIDTH = 320
 private const val CUSTOM_MODEL_POPUP_MAX_ROWS = 10
 
 // Inline error text for a custom-provider save. A blank result with the provider missing from the
@@ -108,69 +93,27 @@ internal fun customSaveError(id: String, result: ProviderActionResultDto): Strin
     return null
 }
 
-internal data class CustomModelRow(
-    val id: String? = null,
-    val selectAll: Boolean = false,
-)
+private class CustomModelRenderer(
+    model: CollectionListModel<String>,
+    selected: () -> Set<String>,
+) : PickerListRenderer<String>(
+    model = model,
+    checked = { it in selected() },
+    sectionTitle = { _, _ -> null },
+    content = JBLabel(),
+) {
+    private val label = content as JBLabel
 
-internal fun customModelRows(ids: List<String>): List<CustomModelRow> {
-    if (ids.isEmpty()) return emptyList()
-    return listOf(CustomModelRow(selectAll = true)) + ids.map { CustomModelRow(id = it) }
-}
-
-private class CustomModelRowRenderer(
-    private val all: Set<String>,
-    private val selectedIds: () -> Set<String>,
-) : JPanel(BorderLayout()), ListCellRenderer<CustomModelRow> {
-    private val checked: Icon = AllIcons.Actions.Checked
-    private val empty: Icon = EmptyIcon.create(checked)
-    private val check = JBLabel().apply {
-        horizontalAlignment = SwingConstants.CENTER
-        verticalAlignment = SwingConstants.CENTER
-    }
-    private val title = JBLabel().apply {
-        border = JBUI.Borders.emptyLeft(JBUI.CurrentTheme.ActionsList.elementIconGap())
-    }
-    private val sep = GroupHeaderSeparator(JBUI.CurrentTheme.Popup.separatorLabelInsets()).apply {
-        setHideLine(false)
-    }
-    private val row = JPanel(BorderLayout()).apply {
-        border = JBUI.Borders.empty(
-            UiStyle.Gap.md(),
-            UiStyle.Gap.lg(),
-            UiStyle.Gap.md(),
-            UiStyle.Gap.pad(),
-        )
-        add(check, BorderLayout.WEST)
-        add(title, BorderLayout.CENTER)
-    }
-    private val wrap = PickerRow()
-
-    init {
-        isOpaque = true
-        UiStyle.Components.transparent(row, check, title)
-        wrap.setContent(row)
-        add(wrap, BorderLayout.CENTER)
-    }
-
-    override fun getListCellRendererComponent(
-        list: JList<out CustomModelRow>,
-        value: CustomModelRow,
+    override fun update(
+        value: String,
         index: Int,
         selected: Boolean,
-        focus: Boolean,
-    ): Component {
-        val current = selectedIds()
-        val active = selected || focus || list.hasFocus()
-        val on = if (value.selectAll) all.isNotEmpty() && all.all { it in current } else value.id in current
-        check.icon = if (on) checked else empty
-        title.text = if (value.selectAll) KiloBundle.message("settings.providers.customModelsSelectAll") else value.id.orEmpty()
-        background = list.background
-        wrap.update(list, selected, active)
-        title.foreground = UIUtil.getListForeground(selected, active)
-        remove(sep)
-        if (value.selectAll) add(sep, BorderLayout.SOUTH)
-        return this
+        focused: Boolean,
+        foreground: java.awt.Color,
+        weak: java.awt.Color,
+    ) {
+        label.text = value
+        label.foreground = foreground
     }
 }
 
@@ -930,77 +873,40 @@ internal class CustomProviderDialog(
     private fun showModelPopup(ids: List<String>) {
         checkEdt()
         popup?.cancel()
-        val rows = customModelRows(ids)
-        val data = CollectionListModel(rows)
-        val listBackground = if (NewUI.isEnabled()) JBUI.CurrentTheme.Popup.BACKGROUND else UIUtil.getListBackground()
-        val list = JBList(data).apply {
-            selectionMode = ListSelectionModel.SINGLE_SELECTION
-            isFocusable = true
-            cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-            background = listBackground
-            border = JBUI.Borders.empty(PopupUtil.getListInsets(false, false))
-            cellRenderer = CustomModelRowRenderer(ids.toSet()) { modelIds().toSet() }
-            visibleRowCount = rows.size.coerceAtMost(CUSTOM_MODEL_POPUP_MAX_ROWS)
-        }
+        val data = CollectionListModel(ids)
+        val select = ActionLink(KiloBundle.message("settings.providers.customModelsSelectAll"))
+        val clear = ActionLink(KiloBundle.message("settings.providers.customModelsUnselectAll"))
+        lateinit var picker: PickerPopup<String>
         fun sync() {
-            list.repaint()
+            picker.repaint()
             syncActions()
         }
-        fun toggle(row: CustomModelRow) {
-            if (row.selectAll) {
-                val all = modelIds().toSet().containsAll(ids)
-                setModelIds(if (all) emptyList() else ids)
-                sync()
-                return
-            }
-            val id = row.id ?: return
-            val selected = modelIds().toMutableSet()
-            if (!selected.add(id)) selected.remove(id)
-            setModelIds(ids.filter { it in selected })
+        select.addActionListener {
+            selectAllModels(ids)
             sync()
         }
-        list.addMouseListener(object : MouseAdapter() {
-            override fun mouseReleased(e: MouseEvent) {
-                if (!UIUtil.isActionClick(e, MouseEvent.MOUSE_RELEASED, true)) return
-                val idx = list.locationToIndex(e.point).takeIf { it >= 0 } ?: return
-                val bounds = list.getCellBounds(idx, idx) ?: return
-                if (!bounds.contains(e.point)) return
-                toggle(data.getElementAt(idx))
-                e.consume()
-            }
-        })
-        list.registerKeyboardAction(
-            { list.selectedValue?.let(::toggle) },
-            KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0),
-            JComponent.WHEN_FOCUSED,
-        )
-        list.registerKeyboardAction(
-            { list.selectedValue?.let(::toggle) },
-            KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0),
-            JComponent.WHEN_FOCUSED,
-        )
-        ListUtil.installAutoSelectOnMouseMove(list)
-        ScrollingUtil.installActions(list)
-        val scroll = JBScrollPane(list).apply {
-            border = JBUI.Borders.empty()
-            viewportBorder = JBUI.Borders.empty()
-            background = listBackground
-            viewport.background = listBackground
-            viewport.isOpaque = true
-            preferredSize = Dimension(JBUI.scale(CUSTOM_MODEL_POPUP_MIN_WIDTH), preferredSize.height)
+        clear.addActionListener {
+            clearModels()
+            sync()
         }
-        popup = JBPopupFactory.getInstance()
-            .createComponentPopupBuilder(scroll, list)
-            .setRequestFocus(true)
-            .setFocusable(true)
-            .setCancelOnClickOutside(true)
-            .setCancelKeyEnabled(true)
-            .setCancelOnWindowDeactivation(true)
-            .setLocateWithinScreenBounds(true)
-            .setResizable(false)
-            .setMovable(false)
-            .createPopup()
-        popup?.showUnderneathOf(pick)
+        picker = PickerPopup(
+            anchor = pick,
+            placement = PickerPopup.Placement.UNDERNEATH,
+            rows = { query -> customModelRows(ids, query) },
+            model = data,
+            renderer = CustomModelRenderer(data) { modelIds().toSet() },
+            mode = PickerPopup.Mode.Multi,
+            onPrimary = {
+                toggleModel(it, ids)
+                syncActions()
+            },
+            search = true,
+            toolbar = listOf(select, JSeparator(SwingConstants.VERTICAL), clear),
+            minWidth = CUSTOM_MODEL_POPUP_WIDTH,
+            maxWidth = CUSTOM_MODEL_POPUP_WIDTH,
+            maxVisibleRows = CUSTOM_MODEL_POPUP_MAX_ROWS,
+        )
+        popup = picker.show()
     }
 
     private fun modelIds(): List<String> {
@@ -1022,6 +928,35 @@ internal class CustomProviderDialog(
             KiloBundle.message("settings.providers.customSelectModels")
         }
     }
+    private fun customModelRows(ids: List<String>, query: String): List<String> {
+        val text = query.trim()
+        if (text.isEmpty()) return ids
+        return ids.filter { it.contains(text, ignoreCase = true) }
+    }
+
+    @RequiresEdt
+    internal fun toggleModel(id: String, order: List<String> = modelIds() + id) {
+        checkEdt()
+        val selected = modelIds().toMutableSet()
+        if (!selected.add(id)) selected.remove(id)
+        setModelIds(order.filter { it in selected })
+        syncActions()
+    }
+
+    @RequiresEdt
+    internal fun selectAllModels(ids: Collection<String>) {
+        checkEdt()
+        setModelIds(ids)
+        syncActions()
+    }
+
+    @RequiresEdt
+    internal fun clearModels() {
+        checkEdt()
+        setModelIds(emptyList())
+        syncActions()
+    }
+
 
     override fun dispose() {
         active = false
