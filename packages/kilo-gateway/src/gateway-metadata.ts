@@ -1,50 +1,91 @@
 import type { LanguageModelV3 } from "@openrouter/ai-sdk-provider"
+import { z } from "zod"
 
 type Part = Awaited<ReturnType<LanguageModelV3["doStream"]>>["stream"] extends ReadableStream<infer Part> ? Part : never
 
-type Json = null | string | number | boolean | Json[] | { [key: string]: Json | undefined }
-type Gateway = { [key: string]: Json | undefined }
-type Data = { [key: string]: Json | undefined }
+const dataSchema = z.record(z.string(), z.json())
+const attemptSchema = z
+  .object({
+    canonicalSlug: z.string().optional(),
+    success: z.boolean().optional(),
+  })
+  .catchall(z.json())
+const routingSchema = z
+  .object({
+    canonicalSlug: z.string().optional(),
+    modelAttempts: z.array(attemptSchema).optional(),
+  })
+  .catchall(z.json())
+const gatewaySchema = z
+  .object({
+    routing: routingSchema.optional(),
+  })
+  .catchall(z.json())
+const metadataSchema = z.object({ gateway: gatewaySchema.optional() })
+const gatewayEventSchema = z.object({
+  provider_metadata: metadataSchema.optional(),
+  response: z.object({ provider_metadata: metadataSchema.optional() }).optional(),
+})
+const rawEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("message_start"),
+    message: z.object({
+      model: z.string().optional(),
+      usage: dataSchema.optional(),
+    }),
+  }),
+  z.object({
+    type: z.literal("message_delta"),
+    usage: dataSchema.optional(),
+  }),
+  z.object({
+    type: z.enum(["response.completed", "response.incomplete"]),
+    response: z.object({
+      model: z.string().optional(),
+      usage: dataSchema.optional(),
+    }),
+  }),
+])
 
-function object(value: unknown): Data | undefined {
-  if (!value || Array.isArray(value) || typeof value !== "object") return
-  return value as Data
-}
+type Gateway = z.infer<typeof gatewaySchema>
+type Data = z.infer<typeof dataSchema>
 
 function gateway(value: unknown): Gateway | undefined {
-  const raw = object(value)
-  if (!raw) return
-  const response = object(raw.response)
-  const meta = raw.provider_metadata ?? response?.provider_metadata
-  return object(object(meta)?.gateway)
+  const result = gatewayEventSchema.safeParse(value)
+  if (!result.success) return
+  return result.data.provider_metadata?.gateway ?? result.data.response?.provider_metadata?.gateway
 }
 
 function model(meta: Gateway) {
   const route = meta.routing
-  if (!route || Array.isArray(route) || typeof route !== "object") return
-  const attempts = Array.isArray(route.modelAttempts) ? route.modelAttempts : []
-  const hit = attempts.findLast((item) => {
-    if (!item || typeof item !== "object") return false
-    return (item as Record<string, unknown>).success === true
-  }) as Record<string, unknown> | undefined
+  if (!route) return
+  const hit = route.modelAttempts?.findLast((item) => item.success === true)
   const id = hit?.canonicalSlug ?? route.canonicalSlug
-  if (typeof id !== "string") return
+  if (!id) return
   const value = id.trim()
   return value || undefined
 }
 
 function raw(value: unknown) {
-  const item = object(value)
-  if (!item || typeof item.type !== "string") return {}
-  const response = object(item.response)
-  const start = item.type === "message_start" ? object(item.message) : undefined
-  const terminal = item.type === "response.completed" || item.type === "response.incomplete"
-  const usage = object(terminal ? response?.usage : (item.usage ?? start?.usage))
-  const id = terminal ? response?.model : start?.model
-  return {
-    usage,
-    model: typeof id === "string" && id.trim() ? id.trim() : undefined,
-    terminal,
+  const result = rawEventSchema.safeParse(value)
+  if (!result.success) return {}
+  const item = result.data
+  switch (item.type) {
+    case "message_start":
+      return {
+        usage: item.message.usage,
+        model: item.message.model?.trim() || undefined,
+        terminal: false,
+      }
+    case "message_delta":
+      return { usage: item.usage, terminal: false }
+    case "response.completed":
+    case "response.incomplete":
+      return {
+        usage: item.response.usage,
+        model: item.response.model?.trim() || undefined,
+        terminal: true,
+      }
   }
 }
 
