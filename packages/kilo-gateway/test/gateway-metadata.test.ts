@@ -109,6 +109,100 @@ describe("Kilo Gateway response metadata", () => {
     expect(part.providerMetadata?.gateway).toEqual(openai)
   })
 
+  test("surfaces OpenRouter Responses model and upstream cost", async () => {
+    const sdk = createKilo({
+      kilocodeToken: "test",
+      fetch: async () =>
+        response([
+          {
+            type: "response.created",
+            response: { id: "gen_test", created_at: 0, model: "gpt-5.6-sol", service_tier: null },
+          },
+          {
+            type: "response.completed",
+            response: {
+              id: "gen_test",
+              model: "openai/gpt-5.6-sol",
+              incomplete_details: null,
+              usage: {
+                input_tokens: 10_208,
+                input_tokens_details: { cached_tokens: 0, cache_write_tokens: 10_205 },
+                output_tokens: 13,
+                output_tokens_details: { reasoning_tokens: 0 },
+                total_tokens: 10_221,
+                cost: 0.0032093125,
+                is_byok: true,
+                cost_details: {
+                  upstream_inference_cost: 0.06418625,
+                  upstream_inference_input_cost: 0.06379625,
+                  upstream_inference_output_cost: 0.00039,
+                },
+              },
+              service_tier: "default",
+            },
+          },
+        ]),
+    })
+
+    const part = await finish(streamText({ model: sdk.openai("openai/gpt-5.6-sol"), prompt: "Hi" }))
+    expect(part.response.modelId).toBe("openai/gpt-5.6-sol")
+    expect(part.usage.raw).toMatchObject({
+      cost: 0.0032093125,
+      is_byok: true,
+      cost_details: { upstream_inference_cost: 0.06418625 },
+    })
+    expect(part.providerMetadata?.openai).toMatchObject({ responseId: "gen_test" })
+    expect(part.providerMetadata?.gateway).toBeUndefined()
+  })
+
+  test("preserves OpenRouter Messages model and upstream cost", async () => {
+    const sdk = createKilo({
+      kilocodeToken: "test",
+      fetch: async () =>
+        response([
+          {
+            type: "message_start",
+            message: {
+              id: "gen_test",
+              model: "anthropic/claude-fable-5",
+              role: "assistant",
+              usage: { input_tokens: 0, output_tokens: 0 },
+            },
+          },
+          {
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null },
+            usage: {
+              input_tokens: 2,
+              output_tokens: 20,
+              cache_creation_input_tokens: 17_860,
+              cache_read_input_tokens: 0,
+              cost: 0.0112135,
+              is_byok: true,
+              cost_details: {
+                upstream_inference_cost: 0.22427,
+                upstream_inference_prompt_cost: 0.22327,
+                upstream_inference_completions_cost: 0.001,
+              },
+            },
+          },
+          { type: "message_stop" },
+        ]),
+    })
+
+    const part = await finish(streamText({ model: sdk.anthropic("anthropic/claude-fable-5"), prompt: "Hi" }))
+    expect(part.response.modelId).toBe("anthropic/claude-fable-5")
+    expect(part.usage.raw).toMatchObject({
+      cost: 0.0112135,
+      is_byok: true,
+      cost_details: { upstream_inference_cost: 0.22427 },
+    })
+    expect(part.providerMetadata?.anthropic).toMatchObject({
+      usage: { cost_details: { upstream_inference_cost: 0.22427 } },
+    })
+    expect(part.providerMetadata?.gateway).toBeUndefined()
+  })
+
   test("exposes raw chunks only when requested", async () => {
     const sdk = createKilo({
       kilocodeToken: "test",

@@ -4,17 +4,19 @@ type Part = Awaited<ReturnType<LanguageModelV3["doStream"]>>["stream"] extends R
 
 type Json = null | string | number | boolean | Json[] | { [key: string]: Json | undefined }
 type Gateway = { [key: string]: Json | undefined }
+type Data = { [key: string]: Json | undefined }
+
+function object(value: unknown): Data | undefined {
+  if (!value || Array.isArray(value) || typeof value !== "object") return
+  return value as Data
+}
 
 function gateway(value: unknown): Gateway | undefined {
-  if (!value || typeof value !== "object") return
-  const raw = value as Record<string, unknown>
-  const response =
-    raw.response && typeof raw.response === "object" ? (raw.response as Record<string, unknown>) : undefined
+  const raw = object(value)
+  if (!raw) return
+  const response = object(raw.response)
   const meta = raw.provider_metadata ?? response?.provider_metadata
-  if (!meta || typeof meta !== "object") return
-  const item = (meta as Record<string, unknown>).gateway
-  if (!item || typeof item !== "object") return
-  return item as Gateway
+  return object(object(meta)?.gateway)
 }
 
 function model(meta: Gateway) {
@@ -31,6 +33,21 @@ function model(meta: Gateway) {
   return value || undefined
 }
 
+function raw(value: unknown) {
+  const item = object(value)
+  if (!item || typeof item.type !== "string") return {}
+  const response = object(item.response)
+  const start = item.type === "message_start" ? object(item.message) : undefined
+  const terminal = item.type === "response.completed" || item.type === "response.incomplete"
+  const usage = object(terminal ? response?.usage : (item.usage ?? start?.usage))
+  const id = terminal ? response?.model : start?.model
+  return {
+    usage,
+    model: typeof id === "string" && id.trim() ? id.trim() : undefined,
+    terminal,
+  }
+}
+
 export function wrap(input: LanguageModelV3): LanguageModelV3 {
   return {
     specificationVersion: "v3",
@@ -40,8 +57,12 @@ export function wrap(input: LanguageModelV3): LanguageModelV3 {
     doGenerate: (options) => input.doGenerate(options),
     async doStream(options) {
       const result = await input.doStream({ ...options, includeRawChunks: true })
-      const raw = options.includeRawChunks === true
+      const chunks = options.includeRawChunks === true
       let meta: Gateway | undefined
+      let usage: Data | undefined
+      let initial: string | undefined
+      let terminal: string | undefined
+      let current: string | undefined
 
       return {
         ...result,
@@ -50,22 +71,32 @@ export function wrap(input: LanguageModelV3): LanguageModelV3 {
             transform(part, controller) {
               if (part.type === "raw") {
                 meta = gateway(part.rawValue) ?? meta
-                if (raw) controller.enqueue(part)
+                const info = raw(part.rawValue)
+                usage = info.usage ? { ...usage, ...info.usage } : usage
+                if (info.model) {
+                  if (info.terminal) terminal = info.model
+                  else initial = info.model
+                }
+                if (chunks) controller.enqueue(part)
                 return
               }
-              if (part.type !== "finish" || !meta) {
+              if (part.type === "response-metadata") current = part.modelId ?? current
+              if (part.type !== "finish") {
                 controller.enqueue(part)
                 return
               }
 
-              const id = model(meta)
-              if (id) controller.enqueue({ type: "response-metadata", modelId: id })
+              const id = (meta ? model(meta) : undefined) ?? terminal ?? initial
+              if (id && id !== current) controller.enqueue({ type: "response-metadata", modelId: id })
               controller.enqueue({
                 ...part,
-                providerMetadata: {
-                  ...part.providerMetadata,
-                  gateway: meta,
-                },
+                usage: usage
+                  ? {
+                      ...part.usage,
+                      raw: { ...part.usage.raw, ...usage },
+                    }
+                  : part.usage,
+                providerMetadata: meta ? { ...part.providerMetadata, gateway: meta } : part.providerMetadata,
               })
             },
           }),
