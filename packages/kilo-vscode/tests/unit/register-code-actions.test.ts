@@ -127,4 +127,22 @@ describe("registerCodeActions", () => {
     expect(state.events).toEqual(["wait"])
     expect(state.posts).toEqual([])
   })
+
+  it("toggles chat search on the active Agent Manager once it is ready", async () => {
+    const state = setup(true)
+
+    await state.commands.get("kilo-code.new.toggleChatSearch")?.()
+
+    expect(state.events).toEqual(["wait", "post"])
+    expect(state.posts).toEqual([{ type: "action", action: "focusSearch" }])
+  })
+
+  it("does not toggle chat search when Agent Manager readiness is cancelled", async () => {
+    const state = setup(true, false)
+
+    await state.commands.get("kilo-code.new.toggleChatSearch")?.()
+
+    expect(state.events).toEqual(["wait"])
+    expect(state.posts).toEqual([])
+  })
 })

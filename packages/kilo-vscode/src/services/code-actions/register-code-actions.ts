@@ -111,7 +111,7 @@ export function registerCodeActions(
     // webview closes the search bar itself if it's already open.
     vscode.commands.registerCommand("kilo-code.new.toggleChatSearch", async () => {
       const view = target()
-      await revealTarget(view)
+      if (!(await revealTarget(view))) return
       view.postMessage({ type: "action", action: "focusSearch" })
     }),
   )
