@@ -1,11 +1,14 @@
 package ai.kilocode.client.ui.picker
 
+import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.ui.HoverIcon
 import ai.kilocode.client.ui.layout.HAlign
 import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.client.ui.layout.VAlign
 import ai.kilocode.client.ui.layout.align
+import com.intellij.CommonBundle
+import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.ui.popup.JBPopup
@@ -34,6 +37,7 @@ import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.Icon
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.JPanel
@@ -58,6 +62,7 @@ internal class PickerPopup<T>(
     private val renderer: PickerListRenderer<T>,
     private val key: (T) -> Any? = { it as Any },
     private val mode: Mode,
+    private val autoClose: Boolean = mode == Mode.Single,
     private val onPrimary: (T) -> Unit,
     private val sectionTitle: (List<T>, Int) -> String? = { _, _ -> null },
     private val trailingHit: ((JList<*>, java.awt.Rectangle, java.awt.Point) -> Boolean)? = null,
@@ -95,7 +100,9 @@ internal class PickerPopup<T>(
     }
     private lateinit var popup: JBPopup
     private lateinit var content: JPanel
+    private lateinit var head: JComponent
     private lateinit var scroll: JScrollPane
+    private var foot: JComponent? = null
     private var shown = false
 
     fun show(): JBPopup {
@@ -109,7 +116,8 @@ internal class PickerPopup<T>(
         ListUtil.installAutoSelectOnMouseMove(list)
         ScrollingUtil.installActions(list)
 
-        val head = header()
+        head = header()
+        foot = footer()
         scroll = ScrollPaneFactory.createScrollPane(list).apply {
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             verticalScrollBarPolicy = JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
@@ -124,6 +132,7 @@ internal class PickerPopup<T>(
             border = JBUI.Borders.empty()
             add(head, BorderLayout.NORTH)
             add(scroll, BorderLayout.CENTER)
+            foot?.let { add(it, BorderLayout.SOUTH) }
             details?.let { add(it, BorderLayout.EAST) }
         }
         PopupUtil.applyNewUIBackground(list)
@@ -135,7 +144,7 @@ internal class PickerPopup<T>(
         refresh()
         syncExpand()
         preview()
-        resize(head)
+        resize()
         popup = JBPopupFactory.getInstance()
             .createComponentPopupBuilder(content, field?.textEditor ?: list)
             .setRequestFocus(true)
@@ -184,7 +193,7 @@ internal class PickerPopup<T>(
         val pad = JBUI.CurrentTheme.Popup.Selection.LEFT_RIGHT_INSET.get()
         val head = JPanel(BorderLayout()).apply {
             background = popupBackground
-            border = JBUI.Borders.empty(ins.top, ins.left, ins.bottom, pad)
+            border = JBUI.Borders.empty(pad, ins.left, ins.bottom, pad)
         }
         field?.let { head.add(it.align(HAlign.TRACK, VAlign.CENTER), BorderLayout.CENTER) }
         val actions = toolbar + listOfNotNull(expand)
@@ -195,6 +204,22 @@ internal class PickerPopup<T>(
             head.add(bar.align(HAlign.RIGHT, VAlign.CENTER), BorderLayout.EAST)
         }
         return head
+    }
+
+    private fun footer(): JComponent? {
+        if (autoClose) return null
+        val btn = JButton(CommonBundle.getCloseButtonText()).apply {
+            putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
+            background = popupBackground
+            isFocusable = false
+            isRequestFocusEnabled = false
+            addActionListener { popup.closeOk(null) }
+        }
+        return JPanel(BorderLayout()).apply {
+            background = popupBackground
+            border = JBUI.Borders.empty(UiStyle.Gap.pad(), UiStyle.Gap.pad(), UiStyle.Gap.pad(), UiStyle.Gap.pad())
+            add(btn.align(HAlign.RIGHT, VAlign.CENTER), BorderLayout.CENTER)
+        }
     }
 
     private fun installSearch() {
@@ -246,7 +271,7 @@ internal class PickerPopup<T>(
 
     private fun primary(value: T) {
         onPrimary(value)
-        if (mode == Mode.Single) {
+        if (autoClose) {
             popup.closeOk(null)
             return
         }
@@ -286,7 +311,7 @@ internal class PickerPopup<T>(
         if (!expanded) list.clearSelection()
         syncExpand()
         preview()
-        resize(content.getComponent(0) as JComponent)
+        resize()
     }
 
     private fun syncExpand() {
@@ -302,8 +327,8 @@ internal class PickerPopup<T>(
         details.isVisible = expanded
     }
 
-    private fun resize(head: JComponent) {
-        val size = computeInitialPopupSize(list, scroll, head, expanded)
+    private fun resize() {
+        val size = computeInitialPopupSize(list, scroll, head, foot, expanded)
         content.preferredSize = size
         if (expanded && details != null) {
             details.preferredSize = Dimension(size.width - scroll.preferredSize.width, scroll.preferredSize.height)
@@ -315,14 +340,19 @@ internal class PickerPopup<T>(
 
     private fun selectedKey(): Any? = list.selectedValue?.let(key)
 
-    private fun computeInitialPopupSize(list: JList<T>, scroll: JScrollPane, head: JComponent, expanded: Boolean): Dimension {
-        val width = maxOf(computeListPreferredWidth(list), head.preferredSize.width.coerceIn(JBUI.scale(minWidth), JBUI.scale(maxWidth)))
+    private fun computeInitialPopupSize(list: JList<T>, scroll: JScrollPane, head: JComponent, foot: JComponent?, expanded: Boolean): Dimension {
+        val width = maxOf(
+            computeListPreferredWidth(list),
+            head.preferredSize.width.coerceIn(JBUI.scale(minWidth), JBUI.scale(maxWidth)),
+            foot?.preferredSize?.width?.coerceIn(JBUI.scale(minWidth), JBUI.scale(maxWidth)) ?: 0,
+        )
         list.fixedCellWidth = width
         val height = computeListPreferredHeight(list)
         val bar = if (list.model.size > maxVisibleRows) scroll.verticalScrollBar.preferredSize.width else 0
         val listWidth = width + bar
         val detailWidth = if (expanded && details != null) width else 0
-        val size = Dimension(listWidth + detailWidth, head.preferredSize.height + height)
+        val footHeight = foot?.preferredSize?.height ?: 0
+        val size = Dimension(listWidth + detailWidth, head.preferredSize.height + height + footHeight)
         scroll.preferredSize = Dimension(listWidth, height)
         return size
     }

@@ -22,6 +22,7 @@ import ai.kilocode.rpc.dto.ProviderMetadataDto
 import ai.kilocode.rpc.dto.ProviderOAuthReadyDto
 import ai.kilocode.rpc.dto.ProviderSettingsDto
 import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.testFramework.replaceService
@@ -396,7 +397,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test configured custom provider exposes edit and disconnect`() {
+    fun `test configured custom provider exposes edit and delete`() {
         val content = content()
 
         edt {
@@ -411,7 +412,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
         edt {
             val row = rows(content).single()
-            assertEquals(listOf(ProviderListAction.EDIT, ProviderListAction.DISCONNECT), row.actions)
+            assertEquals(listOf(ProviderListAction.EDIT, ProviderListAction.DELETE), row.actions)
             assertTrue(row.badges.isEmpty())
         }
     }
@@ -424,7 +425,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
 
         val row = providerListRows(state, "").single()
 
-        assertEquals(listOf(ProviderListAction.EDIT, ProviderListAction.DISCONNECT), row.actions)
+        assertEquals(listOf(ProviderListAction.EDIT, ProviderListAction.DELETE), row.actions)
         assertTrue(row.cells.first { it.id == "EDIT" }.primary)
     }
 
@@ -506,7 +507,6 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         assertEquals("Connected providers", settingsListSectionTitle(rows, 0))
         assertEquals("Popular providers", settingsListSectionTitle(rows, 1))
         assertEquals(listOf(ProviderListAction.DISCONNECT), rows[0].actions)
-        assertTrue(rows[0].connected)
     }
 
     fun `test source custom catalog providers remain visible while configured custom providers are connected`() {
@@ -526,13 +526,13 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         assertEquals("Connected providers", settingsListSectionTitle(rows, 0))
         assertEquals("Popular providers", settingsListSectionTitle(rows, 1))
         assertEquals("All providers", settingsListSectionTitle(rows, 2))
-        assertEquals(listOf(ProviderListAction.EDIT, ProviderListAction.DISCONNECT), rows[0].actions)
+        assertEquals(listOf(ProviderListAction.EDIT, ProviderListAction.DELETE), rows[0].actions)
     }
 
-    fun `test edit callback fires instead of disconnect on primary`() {
+    fun `test edit callback fires instead of delete on primary`() {
         var edited: ProviderSettingsProviderDto? = null
-        var disconnected: ProviderSettingsProviderDto? = null
-        val content = edt { ProvidersContent({}, {}, { disconnected = it }, {}, { edited = it }) }
+        var deleted: ProviderSettingsProviderDto? = null
+        val content = edt { ProvidersContent({}, {}, { deleted = it }, {}, { edited = it }) }
         val state = ProviderSettingsDto(
             providers = listOf(provider("local-openai", "Local OpenAI", source = "custom")),
             config = mapOf("local-openai" to CustomProviderConfigDto("local-openai", npm = CUSTOM_PROVIDER_PACKAGE)),
@@ -544,7 +544,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         }
 
         assertEquals("local-openai", edited?.id)
-        assertNull(disconnected)
+        assertNull(deleted)
     }
 
     fun `test provider content update selects saved provider`() {
@@ -668,14 +668,29 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test renderer keeps connected disconnect action visible when unselected`() {
+    fun `test connected actions only appear on selection`() {
         edt {
-            val row = ProviderListRow(provider("openai", "OpenAI"), "Connected providers", listOf(ProviderListAction.DISCONNECT), connected = true)
+            val row = ProviderListRow(provider("openai", "OpenAI"), "Connected providers", listOf(ProviderListAction.DISCONNECT))
             val list = hitList(row)
-            val area = actionBounds(list, selected = false).getValue(ProviderListAction.DISCONNECT)
 
-            assertEquals(ProviderListAction.DISCONNECT, actionAt(list, center(area), selected = false))
+            assertTrue(actionBounds(list, selected = false).isEmpty())
+            val area = actionBounds(list, selected = true).getValue(ProviderListAction.DISCONNECT)
+            assertEquals(ProviderListAction.DISCONNECT, actionAt(list, center(area), selected = true))
         }
+    }
+
+    fun `test delete action uses trash icon and no label`() {
+        val row = providerListRows(
+            ProviderSettingsDto(
+                providers = listOf(provider("local-openai", "Local OpenAI", source = "custom")),
+                config = mapOf("local-openai" to CustomProviderConfigDto("local-openai", npm = CUSTOM_PROVIDER_PACKAGE)),
+            ),
+            "",
+        ).single()
+
+        val delete = row.cells.single { it.id == ProviderListAction.DELETE.name }
+        assertEquals(AllIcons.Actions.GC, delete.icon)
+        assertTrue(delete.iconOnly)
     }
 
     fun `test renderer ignores disabled env disconnect action`() {

@@ -60,7 +60,7 @@ internal abstract class PickerListRenderer<T>(
         horizontalAlignment = SwingConstants.CENTER
         verticalAlignment = SwingConstants.CENTER
     }
-    private val row = JPanel(BorderLayout()).apply {
+    private val row = JPanel(BorderLayout(JBUI.CurrentTheme.ActionsList.elementIconGap(), 0)).apply {
         border = JBUI.Borders.empty(
             UiStyle.Gap.md(),
             UiStyle.Gap.lg(),
