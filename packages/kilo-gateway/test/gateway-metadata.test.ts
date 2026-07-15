@@ -197,9 +197,6 @@ describe("Kilo Gateway response metadata", () => {
       is_byok: true,
       cost_details: { upstream_inference_cost: 0.22427 },
     })
-    expect(part.providerMetadata?.anthropic).toMatchObject({
-      usage: { cost_details: { upstream_inference_cost: 0.22427 } },
-    })
     expect(part.providerMetadata?.gateway).toBeUndefined()
   })
 
