@@ -662,7 +662,7 @@ internal class CustomProviderDialog(
         )
         init()
         initValidation()
-        existing?.let { prefill(it) } ?: preset()
+        existing?.let { prefill(it) }
         models.document.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
                 syncActions()
@@ -673,14 +673,6 @@ internal class CustomProviderDialog(
             else selectModels()
         }
         syncActions()
-    }
-
-    @RequiresEdt
-    private fun preset() {
-        checkEdt()
-        id.text = "Anaconda"
-        name.text = "Anaconda"
-        url.text = "http://127.0.0.1:8080"
     }
 
     @RequiresEdt
