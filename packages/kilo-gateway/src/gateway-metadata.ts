@@ -22,13 +22,10 @@ const gatewaySchema = z
   })
   .catchall(z.json())
 const metadataSchema = z.object({ gateway: gatewaySchema.optional() })
-const gatewayEventSchema = z.object({
-  provider_metadata: metadataSchema.optional(),
-  response: z.object({ provider_metadata: metadataSchema.optional() }).optional(),
-})
 const rawEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("message_start"),
+    provider_metadata: metadataSchema.optional(),
     message: z.object({
       model: z.string().optional(),
       usage: dataSchema.optional(),
@@ -36,25 +33,22 @@ const rawEventSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("message_delta"),
+    provider_metadata: metadataSchema.optional(),
     usage: dataSchema.optional(),
   }),
   z.object({
     type: z.enum(["response.completed", "response.incomplete"]),
+    provider_metadata: metadataSchema.optional(),
     response: z.object({
       model: z.string().optional(),
       usage: dataSchema.optional(),
+      provider_metadata: metadataSchema.optional(),
     }),
   }),
 ])
 
 type Gateway = z.infer<typeof gatewaySchema>
 type Data = z.infer<typeof dataSchema>
-
-function gateway(value: unknown): Gateway | undefined {
-  const result = gatewayEventSchema.safeParse(value)
-  if (!result.success) return
-  return result.data.provider_metadata?.gateway ?? result.data.response?.provider_metadata?.gateway
-}
 
 function model(meta: Gateway) {
   const route = meta.routing
@@ -66,22 +60,34 @@ function model(meta: Gateway) {
   return value || undefined
 }
 
-function raw(value: unknown) {
+function event(value: unknown) {
+  if (!value || Array.isArray(value) || typeof value !== "object") return {}
+  const type = Reflect.get(value, "type")
+  if (
+    type !== "message_start" &&
+    type !== "message_delta" &&
+    type !== "response.completed" &&
+    type !== "response.incomplete"
+  )
+    return {}
+
   const result = rawEventSchema.safeParse(value)
   if (!result.success) return {}
   const item = result.data
   switch (item.type) {
     case "message_start":
       return {
+        meta: item.provider_metadata?.gateway,
         usage: item.message.usage,
         model: item.message.model?.trim() || undefined,
         terminal: false,
       }
     case "message_delta":
-      return { usage: item.usage, terminal: false }
+      return { meta: item.provider_metadata?.gateway, usage: item.usage, terminal: false }
     case "response.completed":
     case "response.incomplete":
       return {
+        meta: item.provider_metadata?.gateway ?? item.response.provider_metadata?.gateway,
         usage: item.response.usage,
         model: item.response.model?.trim() || undefined,
         terminal: true,
@@ -111,8 +117,8 @@ export function wrap(input: LanguageModelV3): LanguageModelV3 {
           new TransformStream<Part, Part>({
             transform(part, controller) {
               if (part.type === "raw") {
-                meta = gateway(part.rawValue) ?? meta
-                const info = raw(part.rawValue)
+                const info = event(part.rawValue)
+                meta = info.meta ?? meta
                 usage = info.usage ? { ...usage, ...info.usage } : usage
                 if (info.model) {
                   if (info.terminal) terminal = info.model
