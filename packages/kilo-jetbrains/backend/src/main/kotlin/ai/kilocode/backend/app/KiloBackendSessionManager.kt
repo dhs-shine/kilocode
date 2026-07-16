@@ -278,9 +278,31 @@ class KiloBackendSessionManager(
         ),
         summary = s.summary?.let {
             SessionSummaryDto(
-                additions = it.additions.safeInt(),
-                deletions = it.deletions.safeInt(),
-                files = it.files.safeInt(),
+                additions = count(it.additions),
+                deletions = count(it.deletions),
+                files = count(it.files),
+            )
+        },
+        revert = revertDto(s.revert),
+    )
+
+    private fun dto(s: ai.kilocode.jetbrains.api.model.Session1) = SessionDto(
+        id = s.id,
+        projectID = s.projectID,
+        directory = s.directory,
+        parentID = s.parentID,
+        title = s.title,
+        version = s.version,
+        time = SessionTimeDto(
+            created = time(s.id, "created", s.time.created),
+            updated = time(s.id, "updated", s.time.updated),
+            archived = s.time.archived,
+        ),
+        summary = s.summary?.let {
+            SessionSummaryDto(
+                additions = count(it.additions),
+                deletions = count(it.deletions),
+                files = count(it.files),
             )
         },
         revert = revertDto(s.revert),
@@ -300,19 +322,15 @@ class KiloBackendSessionManager(
         ),
         summary = s.summary?.let {
             SessionSummaryDto(
-                additions = it.additions?.safeInt() ?: 0,
-                deletions = it.deletions?.safeInt() ?: 0,
-                files = it.files?.safeInt() ?: 0,
+                additions = count(it.additions),
+                deletions = count(it.deletions),
+                files = count(it.files),
             )
         },
         revert = revertDto(s.revert),
     )
 
     private fun revertDto(s: ai.kilocode.jetbrains.api.model.SessionRevert?) = s?.let {
-        revertDto(it.messageID, it.partID, it.snapshot, it.diff)
-    }
-
-    private fun revertDto(s: ai.kilocode.jetbrains.api.model.GlobalSessionRevert?) = s?.let {
         revertDto(it.messageID, it.partID, it.snapshot, it.diff)
     }
 
@@ -333,6 +351,8 @@ class KiloBackendSessionManager(
     )
 
     private fun encode(value: String) = java.net.URLEncoder.encode(value, Charsets.UTF_8)
+
+    private fun count(value: Double?) = value?.safeInt() ?: 0
 
     private fun time(id: String, field: String, value: Number?): Double {
         if (value != null) return value.toDouble()
