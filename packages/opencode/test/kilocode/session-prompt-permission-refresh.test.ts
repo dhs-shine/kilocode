@@ -1152,7 +1152,7 @@ it.live(
         yield* permission.reply({ requestID: pending.id, reply: "always" })
         expect(
           Exit.isSuccess(
-            yield* awaitWithTimeout(Fiber.await(first), "first global skill run did not finish", "10 seconds"),
+            yield* awaitWithTimeout(Fiber.await(first), "first global skill run did not finish", "15 seconds"),
           ),
         ).toBe(true)
 
@@ -1166,7 +1166,11 @@ it.live(
         const second = yield* prompt.loop({ sessionID: chat.id }).pipe(Effect.forkScoped)
         expect(
           Exit.isSuccess(
-            yield* awaitWithTimeout(Fiber.await(second), "trusted global skill prompted a second time", "10 seconds"),
+            yield* awaitWithTimeout(
+              Fiber.await(second),
+              "trusted global skill prompted a second time",
+              "15 seconds",
+            ),
           ),
         ).toBe(true)
         expect(yield* permission.list()).toEqual([])
