@@ -1,4 +1,5 @@
 import type { LanguageModelV3 } from "@openrouter/ai-sdk-provider"
+import { wrapLanguageModel } from "ai"
 import { z } from "zod"
 
 type Part = Awaited<ReturnType<LanguageModelV3["doStream"]>>["stream"] extends ReadableStream<infer Part> ? Part : never
@@ -50,7 +51,7 @@ const rawEventSchema = z.discriminatedUnion("type", [
 type Gateway = z.infer<typeof gatewaySchema>
 type Data = z.infer<typeof dataSchema>
 
-function model(meta: Gateway) {
+function routed(meta: Gateway) {
   const route = meta.routing
   if (!route) return
   const hit = route.modelAttempts?.findLast((item) => item.success === true)
@@ -96,59 +97,58 @@ function event(value: unknown) {
 }
 
 export function wrap(input: LanguageModelV3): LanguageModelV3 {
-  return {
-    specificationVersion: "v3",
-    provider: input.provider,
-    modelId: input.modelId,
-    supportedUrls: input.supportedUrls,
-    doGenerate: (options) => input.doGenerate(options),
-    async doStream(options) {
-      const result = await input.doStream({ ...options, includeRawChunks: true })
-      const chunks = options.includeRawChunks === true
-      let meta: Gateway | undefined
-      let usage: Data | undefined
-      let initial: string | undefined
-      let terminal: string | undefined
-      let current: string | undefined
+  return wrapLanguageModel({
+    model: input,
+    middleware: {
+      specificationVersion: "v3",
+      async wrapStream({ model, params }) {
+        const result = await model.doStream({ ...params, includeRawChunks: true })
+        const chunks = params.includeRawChunks === true
+        let meta: Gateway | undefined
+        let usage: Data | undefined
+        let initial: string | undefined
+        let terminal: string | undefined
+        let current: string | undefined
 
-      return {
-        ...result,
-        stream: result.stream.pipeThrough(
-          new TransformStream<Part, Part>({
-            transform(part, controller) {
-              if (part.type === "raw") {
-                const info = event(part.rawValue)
-                meta = info.meta ?? meta
-                usage = info.usage ? { ...usage, ...info.usage } : usage
-                if (info.model) {
-                  if (info.terminal) terminal = info.model
-                  else initial = info.model
+        return {
+          ...result,
+          stream: result.stream.pipeThrough(
+            new TransformStream<Part, Part>({
+              transform(part, controller) {
+                if (part.type === "raw") {
+                  const info = event(part.rawValue)
+                  meta = info.meta ?? meta
+                  usage = info.usage ? { ...usage, ...info.usage } : usage
+                  if (info.model) {
+                    if (info.terminal) terminal = info.model
+                    else initial = info.model
+                  }
+                  if (chunks) controller.enqueue(part)
+                  return
                 }
-                if (chunks) controller.enqueue(part)
-                return
-              }
-              if (part.type === "response-metadata") current = part.modelId ?? current
-              if (part.type !== "finish") {
-                controller.enqueue(part)
-                return
-              }
+                if (part.type === "response-metadata") current = part.modelId ?? current
+                if (part.type !== "finish") {
+                  controller.enqueue(part)
+                  return
+                }
 
-              const id = (meta ? model(meta) : undefined) ?? terminal ?? initial
-              if (id && id !== current) controller.enqueue({ type: "response-metadata", modelId: id })
-              controller.enqueue({
-                ...part,
-                usage: usage
-                  ? {
-                      ...part.usage,
-                      raw: { ...part.usage.raw, ...usage },
-                    }
-                  : part.usage,
-                providerMetadata: meta ? { ...part.providerMetadata, gateway: meta } : part.providerMetadata,
-              })
-            },
-          }),
-        ),
-      }
+                const id = (meta ? routed(meta) : undefined) ?? terminal ?? initial
+                if (id && id !== current) controller.enqueue({ type: "response-metadata", modelId: id })
+                controller.enqueue({
+                  ...part,
+                  usage: usage
+                    ? {
+                        ...part.usage,
+                        raw: { ...part.usage.raw, ...usage },
+                      }
+                    : part.usage,
+                  providerMetadata: meta ? { ...part.providerMetadata, gateway: meta } : part.providerMetadata,
+                })
+              },
+            }),
+          ),
+        }
+      },
     },
-  }
+  })
 }
