@@ -52,6 +52,22 @@
 
 ## [Unreleased]
 
+## [7.0.7] - 2026-07-16
+
+### Added
+- feat(cli): wire dev:local to local event service by @eshurakov in https://github.com/Kilo-Org/kilocode/pull/12216
+- feat(vscode): toggle chat search from Command Palette, jump focus on close, and auto-expand matched blocks by @sylwester-liljegren in https://github.com/Kilo-Org/kilocode/pull/12194
+- feat(jetbrains): improve custom provider setup by @kirillk in https://github.com/Kilo-Org/kilocode/pull/12217
+
+### Fixed
+- fix(cli): bound background process probes by @marius-kilocode in https://github.com/Kilo-Org/kilocode/pull/12243
+- fix(vscode): support filenames with spaces and unicode in @mentions by @sylwester-liljegren in https://github.com/Kilo-Org/kilocode/pull/11977
+- fix(cli): make agent manager schema provider-compatible by @chrarnoldus in https://github.com/Kilo-Org/kilocode/pull/12244
+
+### Changed
+- release(jetbrains): v7.0.6 by @kilo-maintainer[bot] in https://github.com/Kilo-Org/kilocode/pull/12219
+
+
 ## [7.0.6] - 2026-07-14
 
 ### Fixed
