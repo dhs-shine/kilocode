@@ -262,7 +262,7 @@ export namespace KiloSessionProcessor {
     set: (info: { attempt: number; message: string; next: number }) => Effect.Effect<void>
   }) {
     return Effect.gen(function* () {
-      for (const index of [0, 1, 2]) {
+      for (const index of Array.from({ length: INCOMPLETE_RESPONSE_RETRIES + 1 }, (_, index) => index)) {
         const result = yield* input.run().pipe(Effect.exit)
         if (Exit.isFailure(result)) {
           const error = Cause.squash(result.cause)

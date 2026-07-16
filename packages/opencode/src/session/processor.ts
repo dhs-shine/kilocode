@@ -1028,8 +1028,8 @@ export const layer = Layer.effect(
               },
               { text: ctx.currentText.text },
             )).text
-            if (ctx.currentText.text.trim()) attempt.text = true // kilocode_change
             if (ctx.currentText.text.trim()) {
+              attempt.text = true // kilocode_change
               ctx.step.text = true
             } // kilocode_change
             if (!ctx.assistantMessage.summary) {
